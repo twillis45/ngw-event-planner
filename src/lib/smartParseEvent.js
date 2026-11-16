@@ -636,7 +636,7 @@ export function parseSmartEventText(text, opts = {}) {
   // match lower case and the whole distinction collapse. Written this way the
   // one guard serves both branches. (Measured: with a bare lower-case `day`,
   // "Mother's Day brunch" still returned the honoree "Mother".)
-  const NOT_WHO = '(?!\\s+(?:[Dd]ay\\b|[Hh]ouse|[Pp]lace|[Hh]ome|[Aa]partment|[Cc]ondo|[Yy]ard|[Bb]ackyard|[Cc]abin|[Ff]arm|[Cc]hurch|[Bb]arn|[Gg]arage|[Kk]itchen|[Bb]asement|[Dd]eck|[Pp]atio|[Pp]ool|[Bb][Bb][Qq]|[Cc]atering|[Cc]aterer|[Dd][Jj]|[Pp]hotography|[Bb]akery|[Ff]lorist)\\b)';
+  const NOT_WHO = '(?!\\s+(?:[Dd]ay\\b|[Hh]ouse|[Pp]lace|[Hh]ome|[Aa]partment|[Cc]ondo|[Yy]ard|[Bb]ackyard|[Cc]abin|[Ff]arm|[Cc]hurch|[Bb]arn|[Gg]arage|[Kk]itchen|[Bb]asement|[Dd]eck|[Pp]atio|[Pp]ool|[Ll]oft|[Tt]ownhouse|[Dd]orm|[Ll]ounge|[Rr]oom|[Oo]ffice|[Ss]tudio|[Cc]ottage|[Ff]riends\\s*giving|[Bb][Bb][Qq]|[Cc]atering|[Cc]aterer|[Dd][Jj]|[Pp]hotography|[Bb]akery|[Ff]lorist)\\b)';
   // ── A COUPLE IS TWO PEOPLE, AND WE WERE NAMING ONE ────────────────────
   //
   // "Mom and Dad's 50th anniversary" returned the honoree "Dad". Not a
@@ -1824,8 +1824,12 @@ export function parseSmartEventText(text, opts = {}) {
   // anywhere and nothing disclosed. A host is not an honoree — nobody is being
   // celebrated — so this is its own field, and only a capitalized name at the
   // very start of the sentence counts, never a pronoun or "This".
+  // A Friendsgiving celebrates nobody, so "Marcus's Friendsgiving" names whose
+  // table it is: the host (50-host run, 11/16/2026; NOT_WHO keeps it from
+  // becoming an honoree).
   const hostName = (() => {
-    const m = t.match(/^\s*([A-Z][a-z'’\-]{1,20})\s+(?:is|will\s+be)\s+(?:hosting|throwing|having)\b/);
+    const m = t.match(/^\s*([A-Z][a-z'’\-]{1,20})\s+(?:is|will\s+be)\s+(?:hosting|throwing|having)\b/)
+      || t.match(/\b([A-Z][a-z\-]{1,20})[’']s\s+friends\s*giving\b/i);
     if (!m) return null;
     return /^(?:this|that|it|he|she|we|they|there|who|everyone|someone|my|our)$/i.test(m[1]) ? null : m[1];
   })();

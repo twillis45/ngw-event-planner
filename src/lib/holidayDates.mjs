@@ -107,6 +107,18 @@ export function resolveHoliday(text, now = new Date()) {
       const back = (d.getUTCDay() - 6 + 7) % 7;      // 6 = Saturday
       d = new Date(d.getTime() - back * 86400000);
     }
+    // "THE DAY AFTER THANKSGIVING" IS NOT THANKSGIVING (50-host run, 11/16/2026).
+    // "the day after/before <holiday>" and "the <weekday> before/after
+    // <holiday>" saved the holiday itself: a wrong date, worse than none.
+    // "day" moves one day; a weekday moves to the nearest one strictly on that
+    // side. Same source-wrapping as the weekend test above.
+    const rel = t.match(new RegExp('\\b(?:the\\s+)?(day|sunday|monday|tuesday|wednesday|thursday|friday|saturday)\\s+(before|after)\\s+(?:' + h.re.source + ')', 'i'));
+    if (rel) {
+      const dir = rel[2].toLowerCase() === 'after' ? 1 : -1;
+      const which = rel[1].toLowerCase();
+      const want = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].indexOf(which);
+      do { d = new Date(d.getTime() + dir * 86400000); } while (want >= 0 && d.getUTCDay() !== want);
+    }
     return { date: iso(d), label: h.label, weekend };
   }
   return null;

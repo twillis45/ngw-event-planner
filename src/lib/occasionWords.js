@@ -14,9 +14,15 @@ export function occasionShortName(type) {
   return KEEPS_PARTY.test(t) ? t : t.replace(/\s+Party$/i, '');
 }
 
-/** Lowercase, no article: "cookout", "watch party". */
+// Names of days and holidays keep their capital mid-sentence: "a Friendsgiving",
+// "a Juneteenth cookout", never "a friendsgiving" (50-host run, 11/16/2026).
+// Types come from a closed taxonomy, so a word list is enough.
+const PROPER = /^(?:friendsgiving|thanksgiving|christmas|easter|halloween|hanukkah|chanukah|diwali|eid|juneteenth|kwanzaa|passover|purim|ramadan|nowruz|super|bowl|mardi|gras|quincea[nñ]era)$/i;
+
+/** Lowercase, no article: "cookout", "watch party"; names keep a capital: "Friendsgiving". */
 export function occasionNoun(type) {
-  return String(type || 'event').trim().replace(/^the\s+/i, '').toLowerCase();
+  return String(type || 'event').trim().replace(/^the\s+/i, '')
+    .split(/(\s+)/).map((w) => (PROPER.test(w) ? w : w.toLowerCase())).join('');
 }
 
 /** With its article: "a cookout", "an anniversary". */

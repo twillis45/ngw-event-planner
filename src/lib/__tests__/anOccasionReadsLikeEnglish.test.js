@@ -22,3 +22,11 @@ test('the reveal says "A cookout.", never "A the cookout."', () => {
   expect(id.what).toMatch(/^A cookout\./);
   expect(JSON.stringify(id)).not.toMatch(/a the cookout/i);
 });
+
+// A proper noun keeps its capital mid-sentence (50-host run, 11/16/2026: "For
+// 20 at a friendsgiving"). Only the named-occasion words; "cookout" stays lower.
+test.each([
+  ['Friendsgiving', 'a Friendsgiving'], ['Thanksgiving Hosting', 'a Thanksgiving hosting'],
+  ['Juneteenth Cookout', 'a Juneteenth cookout'], ['Christmas Party', 'a Christmas party'],
+  ['Super Bowl Party', 'a Super Bowl party'], ['Halloween Party', 'a Halloween party'],
+])('proper noun: %s → %s', (t, out) => { expect(aOccasion(t)).toBe(out); });

@@ -8898,7 +8898,7 @@ export default function HostShellV2() {
             const over = (() => { try { return planCostsAboveNote(spend && spend.expected, typical); } catch (_e) { return null; } })();
             return over ? (
               <Grounding gap={8}>
-                {over.text} <button style={linkBtn} onClick={() => setB(over.cover)}>Use {fmt(over.cover)}</button>
+                {over.text} <button className="tap-44" style={linkBtn} onClick={() => setB(over.cover)}>Use {fmt(over.cover)}</button>
               </Grounding>
             ) : null;
           })()}
@@ -8910,7 +8910,7 @@ export default function HostShellV2() {
               it no longer pretends to be the only figure in the room. */}
           {rowsStandIn && (
             <Grounding gap={8}>
-              Your categories already add up to {fmt(rowsStandIn.rowsSum)} across {rowsStandIn.rowCount} {rowsStandIn.rowCount === 1 ? 'line' : 'lines'} — <button style={linkBtn} onClick={() => setB(rowsStandIn.rowsSum)}>use that</button> if it is the ceiling you mean.
+              Your categories already add up to {fmt(rowsStandIn.rowsSum)} across {rowsStandIn.rowCount} {rowsStandIn.rowCount === 1 ? 'line' : 'lines'} — <button className="tap-44" style={linkBtn} onClick={() => setB(rowsStandIn.rowsSum)}>use that</button> if it is the ceiling you mean.
             </Grounding>
           )}
           {/* ── AND WHOSE MONEY IT IS ──────────────────────────────────────
@@ -15736,8 +15736,10 @@ export default function HostShellV2() {
                     }
                     const isNoteOpen = placeNoteOpen === s.key;
                     return (
-                      <div key={s.key} style={{ padding: '7px 0' }}>
-                        <button style={{ width: '100%', alignItems: 'flex-start', background: 'none', border: 'none', font: 'inherit', textAlign: 'left', cursor: 'pointer', padding: 0, display: 'flex' }}
+                      <div key={s.key}>
+                        {/* The 7px lives IN the button (50-host run, 11/16/2026): on the
+                            wrapper it left a one-line row a ~20px tap target. */}
+                        <button style={{ width: '100%', alignItems: 'flex-start', background: 'none', border: 'none', font: 'inherit', textAlign: 'left', cursor: 'pointer', padding: '7px 0', display: 'flex' }}
                           onClick={() => { const opening = !isNoteOpen; setPlaceNoteOpen(opening ? s.key : null); if (opening) setPlaceNoteDraft(event[noteField] || ''); }} aria-label={'Add note for ' + s.label}>
                           <span style={{ fontSize: 'var(--t-body-s)' }}>
                             <strong style={{ color: rowColor }}>{s.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>{isNoteOpen ? '⌄' : '›'}</span></strong>
@@ -24714,7 +24716,10 @@ export default function HostShellV2() {
                                     midpoint of anything. A rate across a headcount is true
                                     in every one of those states; a multiplication is not. */}
                                 {foodPlan.guests > 0 && foodPlan.foodHigh > 0 && (
-                                  <>Full food and drink plan: ≈ {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head across {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}. </>
+                                  // The plan sizes to the attendance CEILING, so it can sit
+                                  // above the host's own number ("21" for her 20). Said, not
+                                  // left to read as a typo (50-host run, 11/16/2026).
+                                  <>Full food and drink plan: ≈ {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head across {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}{Number(event.guestEstimate) > 0 && foodPlan.guests > Number(event.guestEstimate) ? ` (your ${Number(event.guestEstimate)} plus a little extra)` : ''}. </>
                                 )}
                                 {foodPlan.realCount > 0
                                   ? <>{foodPlan.realCount} of {foodPlan.itemCount} priced for real, the rest estimated.</>
