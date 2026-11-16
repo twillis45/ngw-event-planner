@@ -13,6 +13,10 @@ import { guestCountIsConfirmed, guestCountNotice } from './guestCountFor';
 import { STAY_FROM_PICK, STAY_FROM_PLAN } from './lodgingIntel';
 import { normalizeCvbContact } from './cvbIntel';
 import { incidentPlanFor } from './knowledge/incidentContext';
+// vendorDetailsMessage imports fmtLongDate from here; both sides only call the
+// other at run time, so the cycle resolves (ES live bindings).
+import { vendorGreetingName } from './vendorDetailsMessage';
+import { vendorDisplayName } from './vendorDisplayName';
 
 // A gathering that must carry a somber, respectful tone — never the festive template.
 const SOMBRE_RE = /funeral|memorial|shiva|celebration of life|life celebration|wake|remembrance|in memoriam|mourn|repast/i;
@@ -274,14 +278,46 @@ export function draftGuestBrief(event, profile, opts = {}) {
 export function draftVendorOutreach(event, vendor, profile) {
   if (!event) return { subject: '', body: '' };
   const cat = (vendor && vendor.category ? String(vendor.category) : 'help').toLowerCase();
-  const name = (vendor && vendor.name ? String(vendor.name) : '').trim();
   const type = (event.type ? String(event.type) : 'event').toLowerCase();
   const date = fmtLongDate(event.date);
   // OUTWARD: our own typical never goes to a vendor. See outwardHeadCount.
   const count = outwardHeadCount(event);
   const place = placePhrase(event);
   const host = hostName(profile);
-  const greeting = name ? `Hi ${name},` : 'Hi there,';
+  // WHO IT GREETS (#138, owner's demo 11/15/2026): the contact person's first
+  // name (a role like "Post Quartermaster" whole), else the business without its
+  // " — City, ST" — the same reader as the "Send the details" text.
+  const greet = vendorGreetingName({ ...(vendor || {}), name: vendor ? vendorDisplayName(vendor) : '' });
+  const greeting = greet ? `Hi ${greet},` : 'Hi there,';
+  // A BOOKED VENDOR IS NOT ASKED FOR A QUOTE (#138). The draft went to a
+  // contracted caterer asking "are you available that date … your pricing?".
+  // Once booked (Contracted / Deposit Paid / Confirmed / Booked / Paid) the note
+  // confirms the details the host has on record; every line is optional and only
+  // states a fact the event or vendor record holds.
+  if (vendor && isVendorBooked(vendor)) {
+    const lines = [greeting, ''];
+    const what = [`Confirming the details for the ${type}`];
+    if (date) what.push(`on ${date}`);
+    if (place && place !== 'our place') what.push(`at ${place}`);
+    lines.push(`${what.join(' ')}:`);
+    const start = timePhrase(event);
+    if (start) lines.push(`• Start: ${/^in the /.test(start) ? start.replace(/^in the /, '') : fmtClock(start) || start}`);
+    if (count) lines.push(`• Guests: about ${count}`);
+    const arrival = fmtClock(vendor.arrivalTime) || String(vendor.arrivalTime || '').trim();
+    if (arrival) lines.push(`• Your arrival: ${arrival}`);
+    const open = [];
+    if (['required', 'requested'].includes(vendor.coiStatus) && vendor.coiWaived !== true) open.push('the certificate of insurance');
+    if (Number(vendor.depositAmt) > 0 && !vendor.depositPaid) open.push('the deposit');
+    if (open.length) lines.push('', `Still to sort out: ${open.join(' and ')}.`);
+    if (/cater|food|bar|beverage|bak|cake|chef/i.test(cat)) lines.push(`I’ll send the final guest count closer to the date.`);
+    lines.push('', 'Does all of that match what you have? Thanks so much!');
+    if (host) lines.push(host);
+    return {
+      subject: `${type[0].toUpperCase()}${type.slice(1)}${date ? ' · ' + date : ''} — confirming the details`,
+      body: lines.join('\n').trim(),
+      notice: guestCountNotice(event),
+    };
+  }
   const bits = [`I’m planning ${/^[aeiou]/i.test(type) ? 'an' : 'a'} ${type}`];
   if (date)  bits.push(`on ${date}`);
   if (count) bits.push(`for about ${count} guests`);
