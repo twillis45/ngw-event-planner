@@ -32,7 +32,7 @@ import { test, expect, settled, dateIn } from './fixtures.mjs';
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
   const el = [...document.querySelectorAll('button,[role="button"],a')]
-    .find((x) => rx.test((x.innerText || '').trim()));
+    .find((x) => rx.test((x.innerText || x.textContent || '').trim()));
   if (!el) return null;
   el.click();
   return (el.innerText || '').trim().replace(/\s+/g, ' ').slice(0, 80);
@@ -70,7 +70,7 @@ const openDecisionCard = async (page, type, rowLabel) => {
   await settled(page);
   const opened = await page.evaluate((lbl) => {
     const rx = new RegExp(lbl);
-    const el = [...document.querySelectorAll('.frow')].find((x) => rx.test((x.innerText || '').trim()));
+    const el = [...document.querySelectorAll('.frow')].find((x) => rx.test((x.innerText || x.textContent || '').trim()));
     if (!el) return null;
     el.click();
     return (el.innerText || '').replace(/\s+/g, ' ').slice(0, 40);

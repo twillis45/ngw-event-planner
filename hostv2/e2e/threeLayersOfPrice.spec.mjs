@@ -48,7 +48,7 @@ const storeLayerOffered = (page) => page.evaluate(() => [...document.querySelect
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
   const el = [...document.querySelectorAll('button,[role="button"],a')]
-    .find((x) => rx.test((x.innerText || '').trim()));
+    .find((x) => rx.test((x.innerText || x.textContent || '').trim()));
   if (!el) return null;
   el.click();
   return (el.innerText || '').trim().replace(/\s+/g, ' ').slice(0, 80);

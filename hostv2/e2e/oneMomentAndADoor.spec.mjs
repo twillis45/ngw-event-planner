@@ -19,7 +19,7 @@ import { test, expect, settled } from './fixtures.mjs';
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
   const el = [...document.querySelectorAll('button,[role="button"],a')]
-    .find((x) => rx.test((x.innerText || '').trim()));
+    .find((x) => rx.test((x.innerText || x.textContent || '').trim()));
   if (!el) return null;
   el.click();
   return (el.innerText || '').trim().replace(/\s+/g, ' ').slice(0, 60);
@@ -44,6 +44,23 @@ const openBoard = async (page) => {
   });
   await page.goto('?elegant=1');
   await settled(page);
+  // OPEN WHAT A HOST OPENS (WebKit full run, 11/17/2026). The moment line lives
+  // in the "what's counted" slide-down, closed and `inert` until its caret is
+  // tapped. Chromium's innerText still returned the closed panel's text, so the
+  // premise passed on words the host could not see; WebKit's did not, and all
+  // four tests failed there. Tap the caret the way she would, then read —
+  // after the slide-down has grown to its content: it opens with a height
+  // transition, and WebKit leaves text clipped at 0px out of innerText.
+  await page.locator('[aria-controls="whats-counted"]').first().click();
+  await expect(page.locator('#whats-counted')).not.toHaveAttribute('inert', '');
+  // (The panel's own scrollHeight tracks its growing height mid-transition —
+  // measured 41px "done" — so the target is the inner wrapper's content.)
+  await page.waitForFunction(() => {
+    const p = document.getElementById('whats-counted');
+    const inner = p && p.querySelector('.slidepanel-inner');
+    const h = p ? p.getBoundingClientRect().height : 0;
+    return !!inner && h > 0 && h >= inner.scrollHeight - 1;
+  });
 };
 
 test('(premise) the board really does carry the moment line', async ({ page }) => {
