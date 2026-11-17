@@ -7,7 +7,7 @@
 // reached an object and stopped there, and a gate on the object could never
 // have caught it. That is this repo's standing law and it is the reason this
 // file exists rather than one more jest assertion.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, openWhatsCounted } from './fixtures.mjs';
 
 const SEED = "Mom's 80th birthday in Santa Fe New Mexico on June 14 2027, "
   + 'about 30 people flying in for 3 nights, dinner at an adobe courtyard, '
@@ -51,6 +51,7 @@ test('THE ALTITUDE REACHES THE PLAN: the pacing task is on the host\'s checklist
   await page.getByRole('button', { name: /^Open your plan$/ }).click();
   await expect(page.getByText(/A number to plan around/i)).toBeVisible({ timeout: 20000 });
 
+  await openWhatsCounted(page);
   const opened = await page.evaluate(() => {
     const el = [...document.querySelectorAll('button,[role="button"],a,.frow,.tab')]
       .find((x) => /^checklist/i.test((x.innerText || '').trim()));

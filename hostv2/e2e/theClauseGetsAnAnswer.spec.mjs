@@ -17,7 +17,7 @@
 // the plan does not hold — while the lodging requirements on another screen
 // show it being acted on. The negative assertion is the one that would have
 // caught the bug this slice exists to fix.
-import { test, expect, settled, dateIn } from './fixtures.mjs';
+import { test, expect, settled, dateIn, openWhatsCounted } from './fixtures.mjs';
 
 // Exactly the sentence the measured case used, carrying three clauses of
 // three different kinds: one the parser reads (the town), one a SEAM consumer
@@ -52,6 +52,7 @@ const boot = async (page, ev) => {
   }, ev);
   await page.goto('?elegant=1');
   await settled(page);
+  await openWhatsCounted(page);
 };
 
 // innerText reflects CSS text-transform, and `.shelf-label` is uppercased —
@@ -105,6 +106,7 @@ test('"Noted" answers it, and the answer survives a reload', async ({ page }) =>
   // The real test: it was written to the EVENT, not to component state.
   await page.reload();
   await settled(page);
+  await openWhatsCounted(page);
   const after = await bodyText(page);
   expect(after, 'and it is still gone on the next visit').not.toMatch(/“sit-down lunch”/);
   // Nothing is owed any more, so the whole block stands down rather than

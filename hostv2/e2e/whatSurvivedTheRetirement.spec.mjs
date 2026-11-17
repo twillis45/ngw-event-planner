@@ -118,10 +118,11 @@ test.describe('the moved content reaches a real screen', () => {
     await openSection(page, 'The spread & shopping');
     await openTheList(page);
     await openCategory(page, 'drinks');
-    const text = await sheetText(page);
     // The item itself, by its authored name — not a category count, which would
-    // pass on any second beverage line.
-    expect(text).toMatch(/ice for the drink tubs/);
+    // pass on any second beverage line. Retried, not read once: the category
+    // opens with a transition, and a one-shot read mid-transition missed it in
+    // WebKit under load (3 of 6 runs, 11/17/2026).
+    await expect(page.locator('.sheet').last()).toContainText(/ice for the drink tubs/i);
   });
 });
 

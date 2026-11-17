@@ -22,7 +22,7 @@
 // `{c.cueLabel}` unconditionally behind a `›` navigation chevron, and that
 // field can legitimately be null — so a row could appear as an empty 44px
 // button that toasts `undefined`.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, openWhatsCounted } from './fixtures.mjs';
 
 const SEED = "Mom's 80th birthday in Santa Fe New Mexico on June 14 2027, "
   + 'about 30 people flying in for 3 nights, dinner at an adobe courtyard';
@@ -41,6 +41,7 @@ test('THE PLAN PARTS READ AS ENGLISH, not as engine keys', async ({ page }) => {
   await page.getByRole('button', { name: /^Open your plan$/ }).click();
   await expect(page.getByText(/A number to plan around/i)).toBeVisible({ timeout: 20000 });
 
+  await openWhatsCounted(page);
   const rows = await page.evaluate(() => {
     const head = [...document.querySelectorAll('*')].find((el) => !el.children.length
       && /parts of your plan this count reads/i.test(el.textContent || ''));

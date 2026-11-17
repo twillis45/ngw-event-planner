@@ -239,9 +239,12 @@ test.describe('GOLD-07 — a guest replies and the whole plan moves', () => {
 
     await tap(guest, /^Yes, I.m in$/);
     await guest.waitForTimeout(400);
-    await tap(guest, /^\+$/);                       // two kids, one tap each
-    await guest.waitForTimeout(150);
-    await tap(guest, /^\+$/);
+    // Two kids, one tap each, by the stepper's own name. `tap` takes the LAST
+    // "+" on the page, and the form has more than one: under load in WebKit the
+    // second tap landed on another stepper and the payload carried 1 kid
+    // (WebKit full run, 11/17/2026). The app is right — setKids(k => k + 1).
+    await guest.getByRole('button', { name: 'More kids' }).click();
+    await guest.getByRole('button', { name: 'More kids' }).click();
     await guest.waitForTimeout(150);
     await tap(guest, /^Add dietary or access needs$/);
     await guest.waitForTimeout(400);
