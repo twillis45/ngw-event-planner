@@ -71,3 +71,21 @@ test('the Venue sheet names the stay and opens it', async ({ page }) => {
   await expect(page).toHaveURL(/demo=lodging/);
   await expect(page.locator('[data-stay-party]')).toContainText('House of Blues Anaheim');
 });
+
+// Call 1 (owner-approved 11/16/2026): a hotel's own site cannot be read; it can
+// be kept. The dead end becomes "Save it as the place", and the link stays.
+test('a hotel site that cannot be read can be saved as the place, with its link', async ({ page }) => {
+  await seed(page, trip('House of Blues Anaheim'));
+  await page.route('**/api/lodging/unfurl**', (r) => r.fulfill({ json: { ok: false } }));
+  await page.goto('./?demo=lodging');
+  const link = 'https://www.marriott.com/en-us/hotels/laxah-anaheim-marriott/overview/';
+  await page.locator('textarea').first().fill(link);
+  await page.getByRole('button', { name: /Read what I pasted/i }).click();
+  await expect(page.locator('[data-stay-save-link]')).toBeVisible({ timeout: 15000 });
+  await page.getByLabel('Where everyone is staying').fill('Anaheim Marriott');
+  await page.getByRole('button', { name: 'That’s the plan, not booked' }).click();
+  await page.waitForTimeout(800);
+  const e = await stored(page);
+  expect([e.lodging.hotelName, e.lodging.url, e.lodging.from]).toEqual(['Anaheim Marriott', link, 'the plan, not booked yet']);
+  await expect(page.locator('[data-stay-planned]')).toContainText('Everyone stays at Anaheim Marriott');
+});

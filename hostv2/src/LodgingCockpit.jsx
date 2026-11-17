@@ -44,6 +44,7 @@ import { normalizeCvbContact } from '@app/lib/cvbIntel';
 import { draftLodgingNote } from '@app/lib/doItForMe';
 import { saveCustomEvents } from '@app/lib/customEventStore';
 import { venueFor } from '@app/lib/venueFor';
+import { proposeTownFromHeard } from '@app/lib/cityText';
 import { settleChoicePatch } from '@app/lib/choiceProvenance';
 import { spanNights } from '@app/lib/dates';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
@@ -560,7 +561,10 @@ function NoTown({ event, patch }) {
     // A town typed at creation that could not be confirmed (no state): proposed,
     // with where it came from, for the host to finish (round 2, 11/16/2026).
     const heard = String(event.cityHeard || '').trim();
-    if (heard) return { value: heard, basis: 'from what you typed when you made this event' };
+    // With its state when the app's city list has exactly one by that name
+    // (owner-approved, 11/16/2026) — still a proposal she accepts or changes.
+    const withState = proposeTownFromHeard(heard);
+    if (heard) return { value: withState ? withState.label : heard, basis: 'from what you typed when you made this event' };
     return value ? { value, basis: 'from the location already on this event' } : null;
   })();
   const [town, setTown] = useState(proposed ? proposed.value : '');
@@ -681,6 +685,9 @@ function Looking({ event, patch }) {
   // work out that the textarea below is now the point.
   const [wentLooking, setWentLooking] = useState(false);
   const [readErr, setReadErr] = useState('');
+  // A single link no reader understands (a hotel's own site): kept, so the host
+  // can save it as the place instead of hitting a dead end (owner, 11/16/2026).
+  const [unreadLink, setUnreadLink] = useState('');
   const [busy, setBusy] = useState(false);
   const [staged, setStaged] = useState(null);
   const [searchOffer, setSearchOffer] = useState(null);
@@ -877,6 +884,7 @@ function Looking({ event, patch }) {
       // form that isn't there.
       const detailPage = looksLikeHotelDetailPage(src);
       const hotelsPage = looksLikeHotelsResultsPage(src);
+      setUnreadLink(!door && !detailPage && !hotelsPage && /^https?:\/\/\S+$/.test(String(src || '').trim()) ? String(src).trim() : '');
       setReadErr(door
         ? `That’s the ${DOOR_SHORT[door] || 'search'} search link, not a house. Open it, then copy one place from the results and bring that back.`
         : detailPage
@@ -889,6 +897,7 @@ function Looking({ event, patch }) {
       return;
     }
     setReadErr('');
+    setUnreadLink('');
     // ── SEVERAL HOUSES IS A REAL CHOICE; ONE IS NOT ────────────────────────
     // The live sheet's rule, and it is the right one: "a results page with many
     // candidates still asks — that IS a real choice about which houses to keep",
@@ -1798,7 +1807,7 @@ function Looking({ event, patch }) {
           } catch { setReadErr('I couldn’t read the clipboard — paste into the box instead.'); }
         }}>{busy ? 'Reading…' : (text.trim() ? 'Read what I pasted' : 'Paste what I copied')}</button>
       </Panel>
-      <AlreadySorted event={event} patch={patch} />
+      <AlreadySorted event={event} patch={patch} link={unreadLink} />
     </>
   );
 }
@@ -1817,11 +1826,12 @@ function Looking({ event, patch }) {
 // everything the block needs — code, cutoff, backups, who to call, the roster,
 // the guest note — is there. No new stage, no parallel intake: the same door
 // the confirmation-typing host was always supposed to have.
-function AlreadySorted({ event, patch }) {
+function AlreadySorted({ event, patch, link = '' }) {
   const stay = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
   const [name, setName] = useState('');
   const [rate, setRate] = useState('');
   if (String(stay.hotelName || '').trim()) return null;   // already sorted
+  const Wrap = link ? Panel : FoldPanel;
   const n = Number(rate);
   // The rate is only a GROUP rate when the rooms are actually held — the guest
   // note reads `from` to decide exactly that.
@@ -1829,10 +1839,16 @@ function AlreadySorted({ event, patch }) {
     lodging: {
       ...stay, hotelName: name.trim(), from,
       ...(Number.isFinite(n) && n > 0 ? { rate: Math.round(n) } : null),
+      ...(link ? { url: link } : null),
     },
   });
   return (
-    <FoldPanel label="ALREADY SORTED IT YOURSELF?">
+    <Wrap label={link ? 'SAVE IT AS THE PLACE' : 'ALREADY SORTED IT YOURSELF?'}>
+      {link && (
+        <p className="lc-note" data-stay-save-link>
+          That site can’t be read here, but you can keep it: name the place, and the link stays with it.
+        </p>
+      )}
       {/* ── ASK, DO NOT ASSUME (2026-08-06, 3rd sitting) ──────────────────────
           The first cut of this panel invited BOTH "booked a block on the phone"
           and "know where everyone's staying" — then stamped every answer
@@ -1862,7 +1878,7 @@ function AlreadySorted({ event, patch }) {
       <p className="lc-note">
         Only “held” counts as booked — it is what the rest of the plan reads when it says lodging is sorted.
       </p>
-    </FoldPanel>
+    </Wrap>
   );
 }
 

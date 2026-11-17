@@ -214,7 +214,7 @@ import {
 } from '@app/lib/vendorIntelligence';
 import { isVendorBooked, isVendorConfirmed } from '@app/lib/workstreams';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
-import { isPlausibleCityText, parseVenueLocation } from '@app/lib/cityText';
+import { isPlausibleCityText, parseVenueLocation, proposeTownFromHeard } from '@app/lib/cityText';
 import { foodShopItems } from '@app/lib/foodShopItems';
 import { eventGeoQuery } from '@app/lib/eventGeoQuery';
 // ── SEND THE LIST TO THE STORE (ported to hostv2 2026-09-23) ────────────────
@@ -1605,6 +1605,21 @@ export default function HostShellV2() {
               Google Maps search of the event's own town (said on the label),
               and the inquiry written from facts the host gave. The place she
               picks goes in the box above — the one source every part reads. */}
+          {/* "Anaheim" WITHOUT ITS STATE (owner-approved, 11/16/2026). Heard at
+              creation but never confirmed, so searches and weather had no town.
+              Proposed for one tap only when the app's city list holds exactly one
+              by that name; nothing is saved until she taps. */}
+          {(() => {
+            if (venueFor(event).city) return null;
+            const t = proposeTownFromHeard(event.cityHeard);
+            if (!t) return null;
+            return (
+              <p className="grounding" data-town-propose style={{ margin: '0 0 var(--sp-2)' }}>
+                Town: <b>{t.label}</b>?{' '}
+                <button className="mini" onClick={() => patchEvent({ venueCity: t.city, venueState: t.state }, `Town set — searches and weather now use ${t.label}.`)}>That’s it</button>
+              </p>
+            );
+          })()}
           {(() => {
             // Only while there is no place yet (50-host run, 11/16/2026): the
             // Venue sheet kept offering "Find venues near…" under "Currently:
@@ -12390,7 +12405,13 @@ export default function HostShellV2() {
                 // Include a SECOND bundle here (host 2026-07-18): "Resolve 9 decisions" behind
                 // the conflict hero drops below the fold as a path-row, so the first screen isn't
                 // two stacked bundles. A bundle routes to its own sheet on tap.
-                const thenItems = (queue || []).slice(1).filter(a => a && a.level !== 'critical' && !!resolveRoute(a.route));
+                // ONE PLACE TO ANSWER THE VENUE (owner, 11/16/2026: "not confusing").
+                // While no venue is set the board already carries the venue box
+                // (the blocker card, or the parked card), so a "Name the venue"
+                // row here asked the same question twice on one screen.
+                const venueBoxOnBoard = !vf.isSet;
+                const thenItems = (queue || []).slice(1).filter(a => a && a.level !== 'critical' && !!resolveRoute(a.route)
+                  && !(venueBoxOnBoard && (a.blockerType === 'venue-selection' || /^(name the venue|add the location|pick the place)/i.test(String(a.title || '').trim()))));
                 if (!thenItems.length) return null;
                 // Dated money obligations, read ONCE for the whole list — the reason
                 // service matches a row to an action by key/vendorId. Never an estimate.
