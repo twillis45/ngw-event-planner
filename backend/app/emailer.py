@@ -7,6 +7,7 @@ Two paths:
 Both are fail-soft: a failed email must never block message creation. The message
 is always persisted to Postgres first; email delivery is a best-effort sidecar.
 """
+import html as _html
 import logging
 import re
 from typing import Optional
@@ -136,11 +137,13 @@ async def send_approval_email(to: str | None, event_name: str, context: str, lin
     try:
         result = await _send_via_resend(
             to=to,
-            subject=f"Approval needed — {event_name}",
+            subject=f"Approval needed — {' '.join(str(event_name or '').split())}",
+            # Escaped (security self-test, 11/17/2026): the event name and the
+            # context are typed by the host; the link carries the event id.
             html=(
-                f"<p>An approval is requested for <strong>{event_name}</strong>:</p>"
-                f"<blockquote>{context}</blockquote>"
-                f"<p><a href=\"{link}\">Review &amp; respond</a></p>"
+                f"<p>An approval is requested for <strong>{_html.escape(str(event_name or ''))}</strong>:</p>"
+                f"<blockquote>{_html.escape(str(context or ''))}</blockquote>"
+                f"<p><a href=\"{_html.escape(str(link or ''), quote=True)}\">Review &amp; respond</a></p>"
             ),
         )
         resend_id = result.get("id") if isinstance(result, dict) else None

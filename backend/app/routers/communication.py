@@ -6,6 +6,7 @@ No direct frontend DB writes. No realtime. This is a controlled ledger, not chat
 Sprint 58.2: general email delivery via Resend for any standard message when the
 planner provides a recipient email + `deliver_email: true`.
 """
+import html as _html
 import json
 from datetime import datetime
 from typing import Optional, Literal
@@ -56,6 +57,51 @@ class MessageCreate(BaseModel):
     portal_token: Optional[str] = None    # planner's event.portalToken; stored in metadata.portal_token
                                           # for approval_request messages so the public portal-respond
                                           # endpoint can authorize verdicts without a new table.
+
+
+# ── Email is to someone ON the event (security self-test, 11/17/2026, H1) ─────
+# Any signed-in account could email any address from the product's domain:
+# made-up event id, caller-chosen recipient/subject/From/reply-to, raw HTML, no
+# limit. The host app's one use is "Email this vendor", whose address is saved
+# on the event, so that is the rule: the event must be saved to the account
+# (a public.events row, so _assert_event_access ran its strict studio check,
+# never the first-touch claim), the recipient must be an address stored in that
+# event exactly, and sends per event per day are counted in the database.
+EMAIL_SENDS_PER_EVENT_PER_DAY = 40
+
+
+def _addresses_in(node, out):
+    if isinstance(node, dict):
+        for v in node.values():
+            _addresses_in(v, out)
+    elif isinstance(node, list):
+        for v in node:
+            _addresses_in(v, out)
+    elif isinstance(node, str) and "@" in node:
+        out.add(node.strip().lower())
+    return out
+
+
+async def _assert_email_send_allowed(conn, event_id: str, recipient: str) -> None:
+    row = await conn.fetchrow("select data from public.events where id=$1", event_id)
+    if row is None:
+        raise HTTPException(409, "Save this event to your account before emailing from it.")
+    data = row["data"]
+    if isinstance(data, str):
+        data = json.loads(data or "{}")
+    if (recipient or "").strip().lower() not in _addresses_in(data or {}, set()):
+        raise HTTPException(403, "Only an address saved on this event can be emailed.")
+    n = await conn.fetchval(
+        "select count(*) from event_messages where event_id=$1 and metadata ? 'delivery'"
+        " and created_at > now() - interval '1 day'",
+        event_id,
+    )
+    if (n or 0) >= EMAIL_SENDS_PER_EVENT_PER_DAY:
+        raise HTTPException(429, "This event has sent its email for today. Try again tomorrow.")
+
+
+def _one_line(s: Optional[str]) -> str:
+    return " ".join(str(s or "").split())
 
 
 class PortalResponse(BaseModel):
@@ -318,10 +364,19 @@ async def create_message(
 
     approval_status = "pending" if payload.message_type == "approval_request" else None
 
+    standard_email = bool(payload.deliver_email and payload.recipient_email and payload.message_type == "standard")
+    approval_email_to = (payload.recipient_email or payload.notify_email) if (
+        payload.message_type == "approval_request" and channel_type == "CLIENT") else None
+    # Replies may only be routed to the sender's own (session) address.
+    own = (principal or {}).get("email") or ""
+    reply_to = payload.reply_to if (payload.reply_to and own and payload.reply_to.strip().lower() == own.strip().lower()) else None
+
     pool = await get_pool()
     async with pool.acquire() as conn:
         if principal:
             await _assert_event_access(conn, event_id, principal)
+        if standard_email or approval_email_to:
+            await _assert_email_send_allowed(conn, event_id, payload.recipient_email if standard_email else approval_email_to)
         ch = await _channel(conn, event_id, channel_type)
 
         # Build initial metadata. Sprint 58.2: delivery intent is recorded here
@@ -357,13 +412,13 @@ async def create_message(
     # ── Email delivery ─────────────────────────────────────────────────────────
     # Sprint 58.2: general email delivery for standard messages.
     # The message is already persisted — email is a best-effort sidecar.
-    if payload.deliver_email and payload.recipient_email and payload.message_type == "standard":
+    if standard_email:
         # Build a minimal but readable HTML body
         body_text = payload.body or ""
-        body_html = body_text.replace("\n", "<br>")
-        sender = payload.author_name or "Your event planner"
-        subj = payload.subject or f"Message from {sender}"
-        greeting = f"<p>Hi{(' ' + payload.recipient_name) if payload.recipient_name else ''},</p>" if payload.recipient_name else ""
+        body_html = _html.escape(body_text).replace("\n", "<br>")
+        sender = _one_line(payload.author_name) or "Your event planner"
+        subj = _one_line(payload.subject) or f"Message from {sender}"
+        greeting = f"<p>Hi {_html.escape(_one_line(payload.recipient_name))},</p>" if payload.recipient_name else ""
         html = f"{greeting}<div style=\"font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;\">{body_html}</div><p style=\"margin-top:24px;font-size:13px;color:#888;\">— Sent via NGW Events</p>"
 
         delivery_result = await send_thread_email(
@@ -371,7 +426,7 @@ async def create_message(
             subject=subj,
             body_html=html,
             sender_name=sender,
-            reply_to=payload.reply_to,
+            reply_to=reply_to,
         )
 
         # Patch the message metadata with the delivery result.

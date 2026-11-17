@@ -35,6 +35,20 @@ UPSERT_SQL = """
 """
 
 
+# The public price route's write (security self-test, 11/17/2026): the FIRST
+# observation of a record id stands. An upsert let an anonymous caller replace
+# an admin-reviewed observation — new figure, status back to open, audit gone.
+INSERT_IF_ABSENT_SQL = """
+    insert into kas_records (id, kind, data, asset_id, created_by, updated_at)
+    values ($1, $2, $3::jsonb, $4, $5, now())
+    on conflict (id) do nothing
+"""
+
+
+async def insert_kas_record_if_absent(conn, record: dict, kind: str, asset_id, created_by):
+    await conn.execute(INSERT_IF_ABSENT_SQL, record["id"], kind, json.dumps(record), asset_id, created_by)
+
+
 async def upsert_kas_record(conn, record: dict, kind: str, asset_id, created_by):
     """Write one KAS record on an existing connection.
 

@@ -99,6 +99,7 @@ expected_tables (source, tbl, policies, alt_policies) as (values
   ('supabase/migrations', 'event_announcements',        array[]::text[], null),
   ('supabase/migrations', 'event_passes',               array[]::text[], null),
   ('supabase/migrations', 'pass_payment_blocks',        array[]::text[], null),
+  ('supabase/migrations', 'retired_event_ids',          array[]::text[], null),
   -- backend/migrations (frozen legacy, hand-applied)
   ('backend/migrations', 'event_channels',      array[]::text[], null),
   ('backend/migrations', 'event_messages',      array[]::text[], null),
@@ -146,7 +147,9 @@ expected_definers (sig, authenticated_execute) as (values
   ('guest_photos_due_for_purge(integer)', false),
   ('is_event_cohost(text)',               true),
   ('events_studio_locked()',              false),
-  ('events_drop_guest_activity()',        false)
+  ('events_drop_guest_activity()',        false),
+  ('events_retire_id()',                  false),
+  ('events_refuse_retired_id()',          false)
 ),
 
 public_functions as (
@@ -306,7 +309,15 @@ migration_objects (migration, object, present) as (values
      coalesce((select not exists (select 1 from public.guest_threads t where not exists (select 1 from public.events e where e.id = t.event_id))
                   and not exists (select 1 from public.invite_opens o where not exists (select 1 from public.events e where e.id = o.event_id))
                   and not exists (select 1 from public.invite_open_days d where not exists (select 1 from public.events e where e.id = d.event_id))
-              where to_regclass('public.guest_threads') is not null), false))
+              where to_regclass('public.guest_threads') is not null), false)),
+  ('029', 'enabled triggers events_retire_id and events_refuse_retired_id on public.events',
+     (select count(*) = 2 from pg_trigger t where t.tgname in ('events_retire_id','events_refuse_retired_id')
+        and t.tgrelid = to_regclass('public.events') and t.tgenabled = 'O')),
+  ('029', 'the browser cannot read or write retired_event_ids',
+     coalesce((select not bool_or(has_table_privilege(r.rolname, 'public.retired_event_ids', p))
+                 from pg_roles r, unnest(array['select','insert','update','delete']) p
+                where r.rolname in ('anon','authenticated')
+                  and to_regclass('public.retired_event_ids') is not null), false))
 ),
 
 -- supabase_migrations.schema_migrations may not exist; read it only through
