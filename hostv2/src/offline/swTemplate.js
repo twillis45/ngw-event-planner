@@ -24,6 +24,21 @@ const KILL_URL = '__BASE__sw-kill.txt';
 // out-rank a working network, and one good deploy reaches every host on their
 // next load with signal. The failure stays bounded by construction rather
 // than by our confidence in this file.
+// ── THE PAGE'S KILL REACHES THE WORKER FIRST (11/16/2026) ──────────────────
+// ?nosw=1 unregisters this worker and deletes its caches, but an unregistered
+// worker keeps serving the page that is already open, and its fetch handler
+// used to re-create the cache 300-450 ms after the delete (measured; the kill
+// left a cache behind about half the time). So the page tells it first and
+// waits for the answer: from then on this worker answers nothing and never
+// opens a cache. The check and the open sit in one synchronous step, so an
+// open that began before the flag is queued ahead of the page's delete.
+let KILLED = false;
+self.addEventListener('message', (e) => {
+  if (!e.data || e.data.type !== 'ngw-kill') return;
+  KILLED = true;
+  if (e.ports && e.ports[0]) e.ports[0].postMessage('killed');
+});
+
 self.addEventListener('install', (e) => {
   e.waitUntil((async () => {
     const c = await caches.open(CACHE);
@@ -61,6 +76,7 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  if (KILLED) return;              // killed: the browser goes to the network itself
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
@@ -78,6 +94,7 @@ self.addEventListener('fetch', (e) => {
       try {
         return await fetch(req);
       } catch (_) {
+        if (KILLED) return Response.error();
         const c = await caches.open(CACHE);
         return (await c.match('__SHELL__')) || Response.error();
       }
@@ -90,6 +107,7 @@ self.addEventListener('fetch', (e) => {
   // navigation.
   if (PRECACHE.includes(url.pathname)) {
     e.respondWith((async () => {
+      if (KILLED) return fetch(req);
       const c = await caches.open(CACHE);
       const hit = await c.match(url.pathname);
       if (hit) return hit;

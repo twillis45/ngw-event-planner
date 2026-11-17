@@ -164,10 +164,17 @@ test('THE KILL SWITCH: ?nosw=1 removes it and it stays removed', async ({ page }
   await controlled(page);
 
   await page.goto('?nosw=1');
-  await page.waitForFunction(async () => {
-    const regs = await navigator.serviceWorker.getRegistrations();
-    return regs.length === 0;
-  }, null, { timeout: 15000 });
+  // Wait for the kill's END STATE, both halves (11/16/2026): it unregisters
+  // first and deletes caches second, so waiting on registrations alone sampled
+  // mid-teardown. Then the caches must STAY gone for a second, which is the
+  // half that used to fail: the still-running worker re-created its cache.
+  // The kill says when it is done (it sweeps until clean); wait for THAT, then
+  // nothing may come back.
+  await page.waitForFunction(() => !!sessionStorage.getItem('ngw-sw-kill-done'), null, { timeout: 15000 });
+  for (let i = 0; i < 5; i++) {
+    expect(await page.evaluate(async () => (await caches.keys()).length), `a cache came back on poll ${i + 1}`).toBe(0);
+    await page.waitForTimeout(200);
+  }
 
   const after = await page.evaluate(async () => ({
     regs: (await navigator.serviceWorker.getRegistrations()).length,
