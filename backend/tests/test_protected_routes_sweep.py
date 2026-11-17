@@ -131,7 +131,7 @@ PUBLIC = {
         "builds a shopping-list link from the body, stores nothing; spends OUR Instacart key",
     "GET /api/shopping/kroger/status": "config presence only",
     "POST /api/shopping/kroger/search-list":
-        "public product prices, stores nothing; spends OUR Kroger client credentials",
+        "public product prices; records a price observation insert-if-absent (never overwrites); list capped at 80; spends OUR Kroger client credentials",
     "GET /api/shopping/kroger/locations": "public store locations; spends OUR Kroger client credentials",
     "GET /api/lodging/unfurl":
         "https Airbnb/Vrbo listing hosts only, every redirect hop re-checked by safe_get (no SSRF)",

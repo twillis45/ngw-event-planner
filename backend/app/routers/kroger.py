@@ -58,7 +58,7 @@ from typing import List, Optional
 
 import httpx
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 log = logging.getLogger("ngw.kroger")
 router = APIRouter(prefix="/api/shopping", tags=["shopping"])
@@ -100,8 +100,13 @@ class LineItem(BaseModel):
     purchaseId: Optional[str] = None
 
 
+# One Kroger API call per line, on a public route (security self-test,
+# 11/17/2026): a list was unbounded. The largest curated plan is ~44 lines.
+MAX_LIST_ITEMS = 80
+
+
 class SearchListRequest(BaseModel):
-    items: List[LineItem] = []
+    items: List[LineItem] = Field(default_factory=list, max_length=MAX_LIST_ITEMS)
     locationId: Optional[str] = None
     # The playbook type ("Get-Together"), so an observation names the asset it
     # is evidence about. Same rule as purchaseId: absent means not recorded.
@@ -293,7 +298,7 @@ async def _persist_observations(records: list) -> int:
         # serving prices on a deployment with no database configured, and a
         # top-level import would couple the two.
         from ..db import get_pool
-        from ..kas_store import upsert_kas_record
+        from ..kas_store import insert_kas_record_if_absent
         pool = await get_pool()
         async with pool.acquire() as conn:
             async with conn.transaction():
@@ -302,7 +307,9 @@ async def _persist_observations(records: list) -> int:
                     # logic is deliberately NOT shared — that path has an admin
                     # principal to audit and a concurrent editor to guard
                     # against, and this one has neither.
-                    await upsert_kas_record(
+                    # Insert-if-absent, never an upsert: this route is public,
+                    # and the id is built from fields the caller chooses.
+                    await insert_kas_record_if_absent(
                         conn, rec, "observation", rec.get("assetId"), "kroger-api",
                     )
         # ── SAY SO WHEN IT WORKS, NOT ONLY WHEN IT FAILS ────────────────────
