@@ -10450,7 +10450,7 @@ export default function HostShellV2() {
                           onClick={() => setFIsDestination(effIsDestination === true ? false : effIsDestination === false ? null : true)}>
                           {effIsDestination === true
                             ? 'Destination event' + (fIsDestination != null ? ''
-                              : parsed.destinationBasis === 'travel-language' ? ' · heard'
+                              : (parsed.destinationBasis === 'travel-language' || parsed.destinationBasis === 'stay-language') ? ' · heard'
                                 : parsed.destinationBasis === 'place-differs-from-your-area' ? ' · not your area' : '')
                             : effIsDestination === false ? 'Local event'
                               : 'Local, or folks traveling in?'}

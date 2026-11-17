@@ -1406,7 +1406,17 @@ export function parseSmartEventText(text, opts = {}) {
   // sentence shape — did not, which is the same defect one layer down. It is
   // the whitelist-vouched city, never the raw captured words, so nothing
   // reaches this gate that resolveSpokenCity has not already admitted.
-  const isDestination = travelSaid
+  // WHERE PEOPLE SLEEP IS SAID, NOT GUESSED (40-host lodging run, 11/16/2026):
+  // "reunion in Santa Fe, NM … renting a couple of houses", "bachelorette in
+  // Nashville, TN … need an Airbnb", "wedding weekend in Orlando, FL … hotel
+  // room block" were saved as NOT trips — town+state alone is the uncommitted
+  // 'place-named' guess — so Where everyone stays never appeared. Lodging she
+  // named, in a town she named, is her own statement. Never for a private home
+  // (a sleepover at her house), and never the venue's own name ("…Hotel").
+  const _tNoVenue = [namedAt, venueAt, venuePhrase].filter(Boolean).reduce((acc, n) => acc.split(n).join(' '), t);
+  const lodgingSaid = !home && !!placeName
+    && /\bairbnbs?\b|\bvrbos?\b|\brentals?\b|\brent(?:ed|ing)?\s+(?:(?:an?|a\s+couple\s+of|some|two|three|a\s+few)\s+)?(?:big\s+)?(?:house|houses|home|homes|cabins?|condos?|villas?)\b|\b(?:room|hotel)\s+blocks?\b|\bhotels?\b|\bcabins?\b|\blodging\b/i.test(_tNoVenue);
+  const isDestination = travelSaid || lodgingSaid
     || ((!!loc || !!awayPlace || !!spokenPlace || !!spokenCity) && placeAway);
 
   // Why it was decided, for the "· heard" chip and any later explanation. Never
@@ -1419,6 +1429,7 @@ export function parseSmartEventText(text, opts = {}) {
   const destinationBasis = !isDestination ? null
     : (landmark && !TRAVEL_STRONG.test(t) && !area) ? 'landmark-named'
     : travelSaid ? 'travel-language'
+    : lodgingSaid ? 'stay-language'
     : (homeCity ? 'place-differs-from-your-area' : 'place-named');
 
   // ── The two axes that actually pick the destination decisions ────────────
