@@ -193,6 +193,14 @@ for (const state of STATES) {
 
     test('loop-advance — settles walk the queue without stalling', async ({ page }) => {
       behaviourOnly(test.info());
+      // THE CEILING WAS UNDER THE MEASURED COST (WebKit full run 4, 11/17/2026).
+      // Eight settles, each with fixed 900 + 400 ms reads, measured locally at
+      // 24.3 s (Chromium) and 25.1 s (WebKit) for Game Night day-of and ~24 s
+      // for Dinner T-1, against the 30 s default; CI's slower WebKit runner went
+      // over twice in a row. Not a hang: every step advanced. 75 s is ~3x the
+      // measured cost and still a hang detector. Raise only against a new
+      // measurement (same rule as shellParses.test.mjs, 11/2).
+      test.setTimeout(75_000);
       await boot(page, state);
       // WALK THE QUEUE (Up-Next #2): repeatedly take the hero's first in-place
       // settle (.decopt row or .cta.stay) and require the board to MOVE each
