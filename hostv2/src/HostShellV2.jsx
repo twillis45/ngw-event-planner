@@ -1547,6 +1547,23 @@ export default function HostShellV2() {
   // the autocomplete would be unusable. Returning JSX from a helper inlines it
   // into the same element tree instead, which is what "identical render = proof"
   // requires anyway.
+  // RENAMED 2026-09-24 (host). "I'm handling the venue myself" reads
+  // like an ANSWER — covered, sorted, done — when all it does is
+  // acknowledge the blocker so the plan stops leading with it. The
+  // venue stays unknown and stays counted against the host, which the
+  // parked note underneath then has to explain. A label that needs a
+  // paragraph to correct it is the wrong label.
+  // "I'll sort this" names the act: the host is taking it off the
+  // app's hands, not telling it the answer. Nothing about stopping the
+  // asking is in the words, because the app already stops — saying so
+  // would describe our behavior back to the host instead of naming
+  // theirs.
+  const sortVenueBtn = (
+    <button className="mini" onClick={() => patchEvent(
+      parkVenuePatch(event),
+      'Parked — the plan will stop leading with the venue.')}
+    >I’ll sort this</button>
+  );
   const renderVenueCapture = ({ ctaClass = 'cta', wrapStyle = { display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }, wrapClass, autoFocus = false } = {}) => (
     <>
       <div className={wrapClass} style={wrapStyle}>
@@ -1627,9 +1644,9 @@ export default function HostShellV2() {
             if (venueFor(event).isSet) return null;
             const searchUrl = venueSearchUrl(event);
             const inquiry = draftVenueInquiry(event, profile);
-            if (!searchUrl && !inquiry) return null;
+            if (!searchUrl && !inquiry) return sortVenueBtn;
             return (
-              <div data-venue-help className="actions-row" style={{ marginTop: 0, marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
+              <div data-venue-help className="actions-row" style={{ marginTop: 0, marginBottom: 0, flexWrap: 'wrap' }}>
                 {searchUrl && (
                   <a className="mini" data-venue-search href={searchUrl} target="_blank" rel="noopener noreferrer">
                     Find venues near {venueFor(event).city} · Google Maps
@@ -1640,24 +1657,15 @@ export default function HostShellV2() {
                     Write my venue inquiry
                   </button>
                 )}
+                {/* ONE ROW, NOT TWO (live check, 11/17/2026): "I'll sort this"
+                    sat alone under the help row although both fit side by
+                    side at 390px (179 + 99 + 8 of 308). */}
+                {sortVenueBtn}
               </div>
             );
           })()}
-          {/* RENAMED 2026-09-24 (host). "I'm handling the venue myself" reads
-              like an ANSWER — covered, sorted, done — when all it does is
-              acknowledge the blocker so the plan stops leading with it. The
-              venue stays unknown and stays counted against the host, which the
-              parked note underneath then has to explain. A label that needs a
-              paragraph to correct it is the wrong label.
-              "I'll sort this" names the act: the host is taking it off the
-              app's hands, not telling it the answer. Nothing about stopping the
-              asking is in the words, because the app already stops — saying so
-              would describe our behavior back to the host instead of naming
-              theirs. */}
-          <button className="mini" onClick={() => patchEvent(
-            parkVenuePatch(event),
-            'Parked — the plan will stop leading with the venue.')}
-          >I’ll sort this</button>
+
+
         </div>
       )}
     </>
@@ -15139,10 +15147,12 @@ export default function HostShellV2() {
                 {travel.relevant && (() => {
                   const stayName = String((travel.lodging && travel.lodging.hotelName) || '').trim();
                   return (
-                    <p className="grounding" data-venue-stay style={{ margin: '0 0 var(--sp-2)' }}>
-                      Where everyone stays: <b>{stayName || 'not picked yet'}</b>{' · '}
+                    // A wrapping row, not "text · button" (live check, 11/17/2026):
+                    // at 390px the button wrapped and left the "·" dangling.
+                    <div className="grounding" data-venue-stay style={{ margin: '0 0 var(--sp-2)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 'var(--sp-2)', rowGap: 'var(--sp-2)' }}>
+                      <span>Where everyone stays: <b>{stayName || 'not picked yet'}</b></span>
                       <button className="mini" onClick={() => goToLodgingCockpit()}>{stayName ? 'Open it' : (vf.name && !vf.isHome ? 'Find places near the party' : 'Find places to stay')}</button>
-                    </p>
+                    </div>
                   );
                 })()}
                 {vf.display && !vf.confirmed && (

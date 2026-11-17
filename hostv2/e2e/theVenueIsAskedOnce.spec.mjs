@@ -60,6 +60,12 @@ test('help me find one: a search of Anaheim, and an inquiry written from what sh
   expect(u.origin + u.pathname).toBe('https://www.google.com/maps/search/');
   expect(u.searchParams.get('query')).toBe('event venues near Anaheim, CA');
   expect(await link.getAttribute('target')).toBe('_blank');
+  // One row, not two (live check, 11/17/2026): "I'll sort this" sits in the
+  // help row beside the inquiry, on the same line at 390px.
+  const tops = await help.evaluate((h) => ['[data-venue-inquiry]', 'button:not([data-venue-inquiry])']
+    .map((q) => Math.round(h.querySelector(q).getBoundingClientRect().top)));
+  expect(await help.getByRole('button', { name: 'I’ll sort this' }).count()).toBe(1);
+  expect(tops[0]).toBe(tops[1]);
   await help.locator('[data-venue-inquiry]').click();
   const draft = page.locator('.sheet').last();
   await expect(draft).toContainText('venue inquiry');

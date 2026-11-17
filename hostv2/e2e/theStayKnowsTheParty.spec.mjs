@@ -67,6 +67,8 @@ test('the Venue sheet names the stay and opens it', async ({ page }) => {
   await openSectionByName(page, 'Venue');
   const line = page.locator('[data-venue-stay]');
   await expect(line).toContainText('Where everyone stays: not picked yet');
+  // No dangling separator when the button wraps at 390px (live, 11/17/2026).
+  expect(await line.innerText()).not.toContain('·');
   await line.getByRole('button', { name: 'Find places near the party' }).click();
   await expect(page).toHaveURL(/demo=lodging/);
   await expect(page.locator('[data-stay-party]')).toContainText('House of Blues Anaheim');
