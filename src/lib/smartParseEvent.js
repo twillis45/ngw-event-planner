@@ -807,6 +807,29 @@ export function parseSmartEventText(text, opts = {}) {
     return /^\s+(?:house|place|home|apartment|condo|yard|backyard|cabin|farm|garden|lake house)\b/i.test(t.slice(m.index + m[0].length)) ? '' : m[1];
   })();
 
+  // ── "AT HOUSE OF BLUES ANAHEIM" — A NAMED VENUE (owner, 11/16/2026) ────────
+  // A named venue was only read in the comma form "at Venue, City, ST" (venueAt
+  // below). "…party at House of Blues Anaheim in Anaheim, CA…", "at The Grove of
+  // Anaheim on June 12", "at the Phoenix Club in Anaheim" kept the town and
+  // dropped the venue, and the plan then asked "Where is the event?" — asking
+  // for what she had just told it. A run of Capitalized words (with of / the /
+  // and / & between them) after "at" is kept VERBATIM when it ends at a clause
+  // boundary. Never a time, holiday, month, weekday, "Noon", or a bare town
+  // name ("at Anaheim" is the town, which the city readers own).
+  const namedAt = (() => {
+    const NOT_A_PLACE = /^(?:the\s+)?(?:noon|midnight|christmas(?:\s+eve)?|thanksgiving|easter|halloween|hanukkah|passover|new\s+year['’]?s?(?:\s+eve)?|memorial\s+day|labor\s+day|independence\s+day|(?:mon|tues|wednes|thurs|fri|satur|sun)day|january|february|march|april|may|june|july|august|september|october|november|december|sunset|sunrise|dusk|dawn|home)$/i;
+    const m = t.match(/\bat\s+((?:the\s+)?[A-Z][\w'’&.-]*(?:\s+(?:(?:of|the|and|&|at|on\s+the)\s+)?[A-Z][\w'’&.-]*){0,6})(?=\s+(?:in|on|for|this|next|with|from|near|by)\b|\s*[,.;!?]|\s*$)/);
+    if (!m) return '';
+    let name = m[1].trim();
+    // "the Phoenix Club" → "The Phoenix Club": a name, read on the invite.
+    name = name.charAt(0).toUpperCase() + name.slice(1);
+    if (NOT_A_PLACE.test(name)) return '';
+    if (/['’]s$/.test(name)) return '';                 // "at Vida's" — atPossessive owns it
+    const town = resolveSpokenCity(name);
+    if (town && town.city && town.city.toLowerCase() === name.toLowerCase()) return '';
+    return name;
+  })();
+
   // ── Milestone number ("80th birthday", "50th anniversary") ──────────────
   // A real signal that used to be silently discarded — carried into the event
   // NAME by the caller rather than invented as a new standalone field.
@@ -1852,13 +1875,13 @@ export function parseSmartEventText(text, opts = {}) {
     // kept treating a booked hall as "no venue yet" — the exact lane this field
     // exists to switch. A phrase carrying my/our is still a home.
     venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home'
-      : (lodging || venueAt || venuePhrase || atPossessive ? 'venue' : ''),
+      : (lodging || venueAt || venuePhrase || atPossessive || namedAt ? 'venue' : ''),
     // The NAME does not carry its street (11/15/2026, atSomeonesIsAPlace): "at
     // Vida's - 120 Maple Ave, Pasadena" kept "Vida's - 120 Maple Ave" while the
     // street was already in venueAddress. Strip only that exact street.
     venue: venuePhrase || (venueAt && venueAddress
       ? (venueAt.replace(new RegExp('\\s*[-–—,]\\s*' + venueAddress.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'), '').trim() || venueAt)
-      : venueAt) || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : (atPossessive || (area ? area.label : ''))),
+      : venueAt) || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : (atPossessive || namedAt || (area ? area.label : ''))),
     // Order is strongest-first: a said "City, ST" or ZIP, then a curated
     // vacation area's real hub town, then a named landmark's published city
     // (it carries a real state, so it outranks the next one), then the bare

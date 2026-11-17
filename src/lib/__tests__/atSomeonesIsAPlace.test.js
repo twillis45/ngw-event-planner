@@ -41,7 +41,10 @@ describe('negative controls — a real honoree is still found', () => {
   });
   test("a business named for someone keeps its whole name (Anderson's Farm)", () => {
     expect(p("wedding at Anderson's Farm, 100 people").venue).not.toBe("Anderson's");
-    expect(p("wedding at Anderson's Farm, 100 people").venueKind).not.toBe('venue');
+    // 11/16/2026: the whole business name is now kept as the venue
+    // (aVenueSheNamedIsKept.test.js). It is a venue, never the host's home.
+    expect(p("wedding at Anderson's Farm, 100 people").venue).toBe("Anderson's Farm");
+    expect(p("wedding at Anderson's Farm, 100 people").venueKind).not.toBe('home');
   });
   test('an address after the place keeps its verbatim venue', () => {
     const r = p("Friendsgiving at Vida's - 120 Maple Ave, Pasadena, MD for 15");

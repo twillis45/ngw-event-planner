@@ -96,9 +96,12 @@ describe('NEGATIVE CONTROL: it did not widen onto venue names', () => {
     // The reason the shared list is safe here is that REL_WORDS is closed
     // kinship vocabulary. A shape-based relation slot with no pronoun in
     // front of it would have swallowed all of these.
+    // 11/16/2026: a capitalized business name after "at" is now kept as the
+    // VENUE (aVenueSheNamedIsKept.test.js), so "Anderson's Farm" reads as a
+    // venue. What this control guards is unchanged: never somebody's HOME.
     for (const s of ["wedding at Anderson's Farm", "wedding at Miller's Barn",
       "reception at Smith's Garden", "party at Sarah's house"]) {
-      expect({ [s]: kindOf(s) }).toEqual({ [s]: null });
+      expect({ [s]: kindOf(s) === 'home' }).toEqual({ [s]: false });
     }
   });
 

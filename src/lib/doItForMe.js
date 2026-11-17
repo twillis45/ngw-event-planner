@@ -340,6 +340,43 @@ export function draftVendorOutreach(event, vendor, profile) {
   };
 }
 
+// ── HELP ME FIND A VENUE (owner, 11/16/2026) ───────────────────────────────
+// "Handle this for me", made honest. The app holds no venue listings, so it does
+// the two things it truly can: search the event's own town on Google Maps, and
+// write the inquiry the host sends to the places she finds — from facts she
+// already gave, through the same outward headcount gate as every vendor note.
+
+/** Google Maps search for event venues in the event's town; null with no town. */
+export function venueSearchUrl(event) {
+  const vf = venueFor(event || {});
+  const town = vf.city && !/^\d{5}$/.test(vf.city) ? (vf.state ? `${vf.city}, ${vf.state}` : vf.city) : (vf.zip || '');
+  if (!town) return null;
+  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('event venues near ' + town);
+}
+
+/** The note she sends a venue she found. Null for an at-home event. */
+export function draftVenueInquiry(event, profile) {
+  if (!event) return null;
+  const vf = venueFor(event);
+  if (vf.isHome) return null;
+  const type = (event.type ? String(event.type) : 'event').toLowerCase();
+  const date = fmtLongDate(event.date);
+  const count = outwardHeadCount(event);
+  const town = vf.city ? (vf.state ? `${vf.city}, ${vf.state}` : vf.city) : '';
+  const bits = [`I’m planning ${/^[aeiou]/i.test(type) ? 'an' : 'a'} ${type}`];
+  if (date) bits.push(`on ${date}`);
+  if (count) bits.push(`for about ${count} guests`);
+  if (town) bits.push(`in ${town}`);
+  const lines = ['Hi there,', '', `${bits.join(' ')}. I’m looking for a venue. Is that date open, and could you share your pricing, how many people the space holds, and what’s included?`, '', 'Thanks so much!'];
+  const host = hostName(profile);
+  if (host) lines.push(host);
+  return {
+    subject: `${type[0].toUpperCase()}${type.slice(1)}${date ? ' · ' + date : ''} — venue inquiry`,
+    body: lines.join('\n').trim(),
+    notice: guestCountNotice(event),
+  };
+}
+
 // #3 — the thank-yous. One warm note the host sends to guests / anyone who helped.
 export function draftThankYou(event, profile) {
   if (!event) return { subject: '', body: '' };

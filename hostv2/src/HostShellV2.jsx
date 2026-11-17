@@ -71,7 +71,7 @@ import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
-import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach } from '@app/lib/doItForMe';
+import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
 // dollars turned $0.20/lb of ice into "$0/lb" on 84 of the corpus's 440
 // per-unit lines. One definition, shared with the CRA food sheet.
@@ -1597,6 +1597,31 @@ export default function HostShellV2() {
         </div>
       ) : (
         <div style={{ marginTop: 'var(--sp-2)' }}>
+          {/* HELP ME FIND ONE (owner, 11/16/2026: "make handle this for me
+              functionally feasible"). In the ONE venue control, so all four
+              places that ask carry it. Only what the app can really do: a
+              Google Maps search of the event's own town (said on the label),
+              and the inquiry written from facts the host gave. The place she
+              picks goes in the box above — the one source every part reads. */}
+          {(() => {
+            const searchUrl = venueSearchUrl(event);
+            const inquiry = draftVenueInquiry(event, profile);
+            if (!searchUrl && !inquiry) return null;
+            return (
+              <div data-venue-help className="actions-row" style={{ marginTop: 0, marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
+                {searchUrl && (
+                  <a className="mini" data-venue-search href={searchUrl} target="_blank" rel="noopener noreferrer">
+                    Find venues near {venueFor(event).city} · Google Maps
+                  </a>
+                )}
+                {inquiry && (
+                  <button className="mini" data-venue-inquiry onClick={() => openDraft('Venue inquiry', inquiry)}>
+                    Write my venue inquiry
+                  </button>
+                )}
+              </div>
+            );
+          })()}
           {/* RENAMED 2026-09-24 (host). "I'm handling the venue myself" reads
               like an ANSWER — covered, sorted, done — when all it does is
               acknowledge the blocker so the plan stops leading with it. The
