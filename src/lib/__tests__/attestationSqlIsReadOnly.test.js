@@ -138,11 +138,22 @@ describe('coverage', () => {
   });
 
   // 027 (announcements, 11/16/2026): server-only, gone with its event.
-  test('it proves the announcements table is server-only and cascades, and expects 027 recorded', () => {
+  test('it proves the announcements table is server-only and cascades', () => {
     for (const name of [
       "'event_announcements'", "to_regclass('public.event_announcements')", "confdeltype = 'c') = 1",
       "has_table_privilege(r.rolname, 'public.event_announcements', p)",
-      'generate_series(1, 27)',
+    ]) expect(sql).toContain(name);
+  });
+
+  // 028 (owner, 11/16/2026, "drop them with the event"): deleting an event
+  // removes its guest questions, guest emails and invite opens at once. The
+  // pack proves the trigger is enabled, its definer is closed to the browser,
+  // and nothing is left from a deleted event. The record now reaches 028.
+  test('it proves a deleted event takes its guest activity with it, and expects 028 recorded', () => {
+    for (const name of [
+      "t.tgname = 'events_drop_guest_activity'", "'events_drop_guest_activity()'",
+      "to_regprocedure('public.events_drop_guest_activity()')",
+      'generate_series(1, 28)',
     ]) expect(sql).toContain(name);
   });
 
