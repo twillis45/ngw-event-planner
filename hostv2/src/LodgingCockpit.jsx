@@ -441,6 +441,35 @@ export default function LodgingCockpit() {
               learns to ignore. */}
           <h1 className="lc-h1">{copy.title}</h1>
           <p className="lc-why">{copy.why}</p>
+          {/* ── WHERE THE PARTY IS (owner, 11/16/2026: "Venue is related to
+              where everyone stays") ── The 40-host run: this screen never named
+              the venue, though distance to the party is the first thing guests
+              ask. One line, the same reader the plan uses, and the way to
+              change it. When the party is AT a hotel, staying there is offered
+              in one tap — as the plan, not as booked. */}
+          {(() => {
+            let vf = {}; try { vf = venueFor(event) || {}; } catch { vf = {}; }
+            if (!vf.isSet) return null;
+            const stay = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
+            const partyHotel = !vf.isHome && !String(stay.hotelName || '').trim()
+              && /\b(hotel|inn|suites|resort|marriott|hilton|hyatt|sheraton|westin|lodge|motel|courtyard|hampton)\b/i.test(String(vf.display || ''));
+            return (
+              <>
+                <p className="lc-note" data-stay-party>
+                  The party: <b>{vf.isHome ? 'your place' : vf.display}</b>{vf.city ? ` · ${vf.city}${vf.state ? ', ' + vf.state : ''}` : ''}
+                  {' · '}<button type="button" className="lc-link tap-44" onClick={goAddVenue}>Change the venue</button>
+                </p>
+                {partyHotel && (
+                  <div className="lc-ctas">
+                    <button className="cta soft" data-stay-party-hotel
+                      onClick={() => patch({ lodging: { ...stay, hotelName: vf.display, from: STAY_FROM_PLAN } })}>
+                      Guests stay at {vf.display} too
+                    </button>
+                  </div>
+                )}
+              </>
+            );
+          })()}
           {/* ── THE HERO LEADS, THE CAUTION FOLLOWS (host, 2026-09-27) ──────
               The stage opened on a four-line warning about a venue address,
               and the thing the screen is actually FOR — "Go find some places."
@@ -2866,6 +2895,21 @@ function Picked({ event, intel, patch, focus }) {
   // is what this panel used to write alone, so it seeds from either.
   const [code, setCode] = useState(stay.code || stay.bookingCode || '');
   const [rateEnds, setRateEnds] = useState(stay.deadline || '');
+  // A place she NAMED as the plan (no listing behind it) — "That's the plan, not
+  // booked" or "Guests stay at the party hotel too" (owner, 11/16/2026). Shown as
+  // what it is, with the one next step: say when the rooms are held.
+  const stayRec = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
+  if (!chosen && String(stayRec.hotelName || '').trim() && stayRec.from === STAY_FROM_PLAN) {
+    return (
+      <Panel label="THE PLAN">
+        <p className="lc-body" data-stay-planned>Everyone stays at <b>{stayRec.hotelName}</b> — the plan, not booked yet.</p>
+        <p className="lc-note">Ask them to hold a block of rooms for your dates; a hold costs nothing and can be released.</p>
+        <div className="lc-ctas">
+          <button className="cta" onClick={() => patch({ lodging: { ...stayRec, from: STAY_FROM_CONFIRMATION } })}>The rooms are held</button>
+        </div>
+      </Panel>
+    );
+  }
   if (!chosen) return <Panel label="THE PICK"><p className="lc-note">Nothing picked yet — this is what it will show once one is.</p></Panel>;
   const money = (n) => (Number.isFinite(Number(n)) && Number(n) > 0 ? `$${Math.round(Number(n)).toLocaleString()}` : '—');
   const pickSub = [

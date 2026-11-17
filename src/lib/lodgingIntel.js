@@ -2304,7 +2304,12 @@ export function lodgingSearchLinks(event) {
   // style ("resort spa"), it leads the hotel query — searching "hotels in Santa
   // Fe" for someone who said "resort spa" hands back the wrong 115 results.
   const style = String((ev.lodgingStyle || '')).trim();
-  const hotelQ = [style || 'hotels', 'in', place].join(' ');
+  // NEAR THE PARTY (owner, 11/16/2026: "Venue is related to where everyone
+  // stays"). Rooms across town from the venue are the money-losing mistake the
+  // spend guard above warns about; once the party has a named venue, the hotel
+  // door searches near it. A private home is never named to a search engine.
+  const nearVenue = vf.name && !vf.isHome ? `near ${vf.name},` : 'in';
+  const hotelQ = [style || 'hotels', nearVenue, place].join(' ');
   const hotelTs = googleTravelTs({ place, start, end, guests });
   const hotelHref = `https://www.google.com/travel/search?q=${encodeURIComponent(hotelQ)}`
     + (hotelTs ? `&ts=${hotelTs}` : '');
@@ -3007,8 +3012,15 @@ export function lodgingStage(event, intel) {
   let blocked = null;
   try { blocked = lodgingSearchBlocked(ev); } catch (_e) { blocked = null; }
 
+  // A PLACE SHE NAMED AS THE PLAN IS THE PICK (owner, 11/16/2026: "make sure
+  // workflow is not confusing"). "That's the plan, not booked" — or "Guests
+  // stay at the party hotel too" — left this screen on "Go find some places."
+  // A name with from === STAY_FROM_PLAN is a choice, not a booking: it lands on
+  // "Lock one in.", where holding the rooms is the next step.
+  const stayRec = (ev.lodging && typeof ev.lodging === 'object') ? ev.lodging : {};
+  const plannedByName = !chosen && String(stayRec.hotelName || '').trim() && stayRec.from === STAY_FROM_PLAN;
   const stage = booked ? 'booked'
-    : chosen ? 'picked'
+    : (chosen || plannedByName) ? 'picked'
     : opts.length > 0 ? 'weighing'
     : blocked ? 'no-town'
     : 'looking';

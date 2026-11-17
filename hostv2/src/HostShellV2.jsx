@@ -15111,6 +15111,19 @@ export default function HostShellV2() {
                 {vf.display && (
                   <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Currently: <b>{vf.display}</b>{vf.city ? ` · ${vf.city}${vf.state ? ', ' + vf.state : ''}` : ''}{vf.confirmed ? (vf.isHome ? ' · your home, confirmed' : ' · confirmed') : ''}. Enter a new place to change it.</p>
                 )}
+                {/* WHERE EVERYONE STAYS, FROM THE VENUE (owner, 11/16/2026: "Venue
+                    is related to where everyone stays"). On a trip the two are one
+                    question — rooms far from the party are the costly mistake — so
+                    the venue names the stay and opens it; the stay names the venue. */}
+                {travel.relevant && (() => {
+                  const stayName = String((travel.lodging && travel.lodging.hotelName) || '').trim();
+                  return (
+                    <p className="grounding" data-venue-stay style={{ margin: '0 0 var(--sp-2)' }}>
+                      Where everyone stays: <b>{stayName || 'not picked yet'}</b>{' · '}
+                      <button className="mini" onClick={() => goToLodgingCockpit()}>{stayName ? 'Open it' : (vf.name && !vf.isHome ? 'Find places near the party' : 'Find places to stay')}</button>
+                    </p>
+                  );
+                })()}
                 {vf.display && !vf.confirmed && (
                   <div style={{ margin: '0 0 var(--sp-3)' }}>
                     <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Is this a private home, or a venue?</p>
