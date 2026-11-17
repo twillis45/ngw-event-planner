@@ -22,11 +22,15 @@ from ..auth import require_planner
 from ..config import APP_BASE_URL
 from ..db import get_pool
 from ..emailer import _send_via_resend, failure_reason, is_email_configured
+from ..rate_counter import bump
 
 router = APIRouter(tags=["cohosts"])
 log = logging.getLogger("ngw.cohosts")
 
 MAX_COHOSTS = 10
+# Invite EMAILS per event per day (security self-test M4, 11/17/2026): the
+# co-host cap counts current rows, so invite-remove-invite re-sent without limit.
+INVITE_EMAILS_PER_EVENT_PER_DAY = 20
 EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,189}\.[^@\s]{2,63}$")
 
 
@@ -95,6 +99,11 @@ async def invite_cohost(event_id: str, payload: CohostInvite, authorization: Opt
             """insert into public.event_cohosts (event_id, email, invited_by) values ($1, $2, $3::uuid)
                on conflict (event_id, email) do nothing returning id""",
             event_id, email, principal.get("id"))
+        # Each NEW invite sends an email; count them per event per day in the
+        # database (security self-test M4). Past the cap the invite is undone.
+        if created and not await bump(conn, f"cohost-invite:{event_id}", INVITE_EMAILS_PER_EVENT_PER_DAY):
+            await conn.execute("delete from public.event_cohosts where id=$1", created)
+            raise HTTPException(429, "This event has sent today's co-host invites. Try again tomorrow.")
         cohosts = await _list(conn, event_id)
     emailed = False
     if created and is_email_configured():

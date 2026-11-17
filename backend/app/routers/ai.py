@@ -38,6 +38,8 @@ from pydantic import BaseModel
 from typing import Optional
 
 from ..auth import require_planner
+from ..db import get_pool
+from ..rate_counter import bump
 from ..error_log import record_error
 from ..safe_fetch import SafeFetchError, safe_get, storage_allowed_hosts
 
@@ -112,6 +114,12 @@ AI_FEATURE_MAX_TOKENS = int(os.environ.get("AI_FEATURE_MAX_TOKENS", "1024"))   #
 AI_MAX_INPUT_CHARS    = int(os.environ.get("AI_MAX_INPUT_CHARS", "8000"))      # input cap (per field)
 AI_RATE_MAX           = int(os.environ.get("AI_RATE_MAX", "15"))               # requests
 AI_RATE_WINDOW        = int(os.environ.get("AI_RATE_WINDOW", "60"))            # per N seconds
+# Daily ceilings counted in the database (security self-test M2, 11/17/2026). The
+# per-minute limit above lives in process memory: ~21,600 calls a day per account,
+# reset by every deploy. These defaults are a first setting, not a measurement of
+# real use — raise them with AI_DAILY_PER_USER / AI_DAILY_ALL when hosts hit them.
+AI_DAILY_PER_USER     = int(os.environ.get("AI_DAILY_PER_USER", "200"))
+AI_DAILY_ALL          = int(os.environ.get("AI_DAILY_ALL", "5000"))
 
 # Allow-listed features → server-built system prompts. There is NO way for the
 # client to supply a system prompt or call an unrestricted endpoint.
@@ -146,6 +154,23 @@ def _rate_check(user_id: str):
     hits.append(now)
     _ai_rate[user_id] = hits
     return True, 0
+
+
+async def _daily_budget(user_id: str):
+    """Refuse (429) past today's per-user or all-users AI ceiling."""
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            mine = await bump(conn, f"ai:user:{user_id}", AI_DAILY_PER_USER)
+            everyone = await bump(conn, "ai:all", AI_DAILY_ALL) if mine else True
+    except Exception as e:  # noqa: BLE001 — no database: the per-minute limit still holds
+        log.warning("ai daily budget unavailable, allowing: %s", type(e).__name__)
+        return
+    if not mine:
+        raise HTTPException(status_code=429, detail="You've used today's AI help. It resets tomorrow.")
+    if not everyone:
+        log.error("ai daily ceiling for all users reached (%d)", AI_DAILY_ALL)
+        raise HTTPException(status_code=429, detail="AI help is resting for today. It resets tomorrow.")
 
 
 def is_ai_configured() -> bool:
@@ -243,6 +268,8 @@ async def ai_feature(
 
     # 5. Per-user rate limit (429 with Retry-After).
     allowed, retry_after = _rate_check(user_id)
+    if allowed:
+        await _daily_budget(user_id)
     if not allowed:
         log.warning("ai.feature RATE_LIMIT user=%s feature=%s est_in=%d", user_id, body.feature, est_in_tokens)
         raise HTTPException(status_code=429, detail="Rate limit exceeded — try again shortly",
@@ -353,6 +380,8 @@ async def orchestrate(
 
     # 4. Per-user rate limit (shares the feature-proxy limiter).
     allowed, retry_after = _rate_check(user_id)
+    if allowed:
+        await _daily_budget(user_id)
     if not allowed:
         log.warning("ai.orchestrate RATE_LIMIT user=%s", user_id)
         raise HTTPException(status_code=429, detail="Rate limit exceeded — try again shortly",
@@ -473,6 +502,8 @@ async def extract_document(
         raise HTTPException(status_code=503, detail="AI proxy not configured — set OPENAI_API_KEY")
 
     allowed, retry_after = _rate_check(user_id)
+    if allowed:
+        await _daily_budget(user_id)
     if not allowed:
         log.warning("ai.extract_document RATE_LIMIT user=%s", user_id)
         raise HTTPException(
@@ -688,6 +719,8 @@ async def parse_vendor_reply(
 
     # 4. Per-user rate limit.
     allowed, retry_after = _rate_check(user_id)
+    if allowed:
+        await _daily_budget(user_id)
     if not allowed:
         log.warning("ai.parse_vendor_reply RATE_LIMIT user=%s", user_id)
         raise HTTPException(status_code=429, detail="Rate limit exceeded — try again shortly",

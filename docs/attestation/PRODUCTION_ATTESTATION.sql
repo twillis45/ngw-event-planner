@@ -100,6 +100,7 @@ expected_tables (source, tbl, policies, alt_policies) as (values
   ('supabase/migrations', 'event_passes',               array[]::text[], null),
   ('supabase/migrations', 'pass_payment_blocks',        array[]::text[], null),
   ('supabase/migrations', 'retired_event_ids',          array[]::text[], null),
+  ('supabase/migrations', 'rate_counters',              array[]::text[], null),
   -- backend/migrations (frozen legacy, hand-applied)
   ('backend/migrations', 'event_channels',      array[]::text[], null),
   ('backend/migrations', 'event_messages',      array[]::text[], null),
@@ -149,7 +150,8 @@ expected_definers (sig, authenticated_execute) as (values
   ('events_studio_locked()',              false),
   ('events_drop_guest_activity()',        false),
   ('events_retire_id()',                  false),
-  ('events_refuse_retired_id()',          false)
+  ('events_refuse_retired_id()',          false),
+  ('events_pass_stamp_sticks()',          false)
 ),
 
 public_functions as (
@@ -317,7 +319,19 @@ migration_objects (migration, object, present) as (values
      coalesce((select not bool_or(has_table_privilege(r.rolname, 'public.retired_event_ids', p))
                  from pg_roles r, unnest(array['select','insert','update','delete']) p
                 where r.rolname in ('anon','authenticated')
-                  and to_regclass('public.retired_event_ids') is not null), false))
+                  and to_regclass('public.retired_event_ids') is not null), false)),
+  ('030', 'enabled trigger events_pass_stamp_sticks on public.events',
+     exists (select 1 from pg_trigger t where t.tgname = 'events_pass_stamp_sticks'
+               and t.tgrelid = to_regclass('public.events') and t.tgenabled = 'O')),
+  ('030', 'the browser cannot read or write rate_counters',
+     coalesce((select not bool_or(has_table_privilege(r.rolname, 'public.rate_counters', p))
+                 from pg_roles r, unnest(array['select','insert','update','delete']) p
+                where r.rolname in ('anon','authenticated')
+                  and to_regclass('public.rate_counters') is not null), false)),
+  ('030', 'an invitation is written only as planner or assistant, by its inviter',
+     exists (select 1 from pg_policies p where p.schemaname = 'public' and p.tablename = 'studio_invitations'
+               and p.policyname = 'invitations: owner write'
+               and p.with_check like '%invited_by%' and p.with_check like '%planner%'))
 ),
 
 -- supabase_migrations.schema_migrations may not exist; read it only through

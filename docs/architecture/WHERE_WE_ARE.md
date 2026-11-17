@@ -1,5 +1,12 @@
 # Where We Are -- live status board
 
+## November 17, 2026 — a security self-test instead of a pentest firm; WebKit measured
+
+- **The owner chose a self-test over hiring a firm.** Scans plus a route-by-route read of the backend, payments, email, the database rules and the browser code found two High holes, both fixed and merged (#159): any signed-in account could send email to anyone from our domain, and a deleted event's id could be retaken to read its guests' RSVPs (migration 029). One anonymous write and outdated image/web libraries were fixed with them. The four Mediums followed in #161 (migration 030): the trip pass can't be dodged by editing the event, AI help has a daily cap, co-host invite emails are capped, and an invitation can't make someone an owner. Not independent — the board is asked to amend SEC-4 to "self-test plus one independent check before paid promotion".
+- **Safari's engine, measured.** The full WebKit run went from 1,182/326 to 1,367 passed / 165 failed; 132 of those were the tests reading text the way Chromium does (#160). About 33 remain, mostly test-tool limits; about 6 may be real and are next.
+- **#158 checked live:** the town proposal, the Sample chip, and the welcome after deleting your last event all work on the demo account.
+- **Owner next:** CAPTCHA on sign-in (one person can lock every host out for an hour today), confirm 029/030 applied, the custom domain, and the 11/20 items (privacy policy, the independent check, restore drill).
+
 ## November 16–17, 2026 — email works; announcements; 028; venue and Where everyone stays, tested by 90 synthetic hosts
 
 - **Live by 10:40 PM EST 11/16 (#151–#157):** email from the app (reply notices, announcements to everyone, co-host invites); migrations 026–028 applied and attested by the owner (028: deleting an event drops its guest questions, emails and opens at once, 0 FAIL / 206 PASS); the declined-card return message; the offline kill switch; feature analytics in PostHog (checked live); venue fixes and "Help me find one" (a Maps search of the town and a drafted inquiry).
