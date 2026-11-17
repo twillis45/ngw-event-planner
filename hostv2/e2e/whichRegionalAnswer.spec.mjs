@@ -21,7 +21,7 @@ import { test, expect, settled, sheetSettled } from './fixtures.mjs';
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
   const el = [...document.querySelectorAll('button,[role="button"],a')]
-    .find((x) => rx.test((x.innerText || '').trim()));
+    .find((x) => rx.test((x.innerText || x.textContent || '').trim()));
   if (el) el.click();
   return !!el;
 }, src);
