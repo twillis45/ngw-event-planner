@@ -646,7 +646,7 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
 
   test('nothing overflows the phone, and no console errors', async ({ page }) => {
     const errors = [];
-    page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('console', m => { if (m.type() === 'error' && !/interactive-widget/.test(m.text())) errors.push(m.text()); }); // WebKit notes the Chrome-only viewport key; not an error
     page.on('pageerror', e => errors.push(String(e)));
 
     await mockUnfurl(page);

@@ -30,11 +30,22 @@
 // first, so a spec-specific mock (see mockUnfurl/mockResults in
 // lodgingCockpit.spec.mjs) still wins over this fallback.
 import { test as base, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+
+// THE SITE-ROOT MANIFEST (WebKit full run, 11/17/2026). index.html links
+// /ngw-event-planner/hostv2-manifest.json, which the deploy serves from the
+// repo's root public/ (live: 200). The hostv2 preview serves only hostv2's own
+// build, so every test page 404'd on it — invisible in Chromium's headless
+// shell, which never fetches manifests, and a console error in every WebKit
+// spec that asserts none. Served here from the real file.
+const MANIFEST = readFileSync(new URL('../../public/hostv2-manifest.json', import.meta.url));
 
 export const test = base.extend({
   page: async ({ page }, use) => {
     await page.route('https://e2e-mock.invalid/**',
       (route) => route.fulfill({ status: 200, json: { ok: true } }));
+    await page.route('**/ngw-event-planner/hostv2-manifest.json',
+      (route) => route.fulfill({ status: 200, contentType: 'application/manifest+json', body: MANIFEST }));
     await use(page);
   },
 });
