@@ -1,9 +1,9 @@
-fastapi==0.115.0
+fastapi==0.163.1
 uvicorn[standard]==0.30.6
 asyncpg==0.29.0
 httpx==0.27.2
 pydantic==2.9.2
-python-dotenv==1.0.1
+python-dotenv==1.2.4
 stripe==16.1.0
 # Backend 500s caught by main._error_capture go to Sentry (stage 7 board condition C2); inert without SENTRY_DSN.
 sentry-sdk==2.73.0
@@ -11,4 +11,4 @@ sentry-sdk==2.73.0
 # from the pixels alone, so EXIF/GPS and all other metadata never reach storage.
 # Nothing already installed decodes images. HEIC is refused rather than adding
 # pillow-heif (a native libheif build).
-pillow==12.3.0
+pillow==13.0.0

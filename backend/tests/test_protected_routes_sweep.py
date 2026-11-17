@@ -254,9 +254,9 @@ def test_planner_gated_routes_answer_401_bare(bare_client):
         path = r.path
         for name in r.param_convertors:
             path = path.replace("{" + name + "}", "INTERNAL_TEAM" if name == "channel_type" else "x")
-        payload = schema_value(TypeAdapter(r.body_field.type_).json_schema()) if r.body_field else None
+        payload = schema_value(TypeAdapter(r.body_field.field_info.annotation).json_schema()) if r.body_field else None
         params = {f.alias: schema_value(TypeAdapter(f.field_info.annotation).json_schema())
-                  for f in r.dependant.query_params if f.required}
+                  for f in r.dependant.query_params if f.field_info.is_required()}
         resp = bare_client.request(method, path, json=payload, params=params)
         hit += 1
         # Valid route/body/query input must reach authentication. A validation
