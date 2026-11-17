@@ -16,7 +16,7 @@
 //   · the question says what made it relevant, in her own words;
 //   · the app does not answer it — it names who to ask;
 //   · answering closes it, INCLUDING answering no, and the answer sticks.
-import { test, expect, settled, dateIn } from './fixtures.mjs';
+import { test, expect, settled, dateIn, openWhatsCounted } from './fixtures.mjs';
 
 // Exactly what heardAccessNeeds writes from "…, she uses a walker".
 const WALKER = [{ kind: 'step-free', phrase: 'she uses a walker', source: 'host-said' }];
@@ -44,6 +44,7 @@ const boot = async (page, ev) => {
   }, ev);
   await page.goto('?elegant=1');
   await settled(page);
+  await openWhatsCounted(page);
 };
 
 // `.shelf-label` is uppercased by CSS and innerText reflects text-transform,
@@ -95,6 +96,7 @@ test('"No" closes it as firmly as "Yes", and the answer survives a reload', asyn
 
   await page.reload();
   await settled(page);
+  await openWhatsCounted(page);
   const after = await bodyText(page);
   expect(after, 'and stays closed — it was written to the event').not.toMatch(/step-free way into/i);
   expect(after).not.toMatch(/Worth finding out/i);

@@ -15,7 +15,7 @@
 // This spec gates the DELIVERY, not the string. A jest assertion on
 // `airFloor.because` has been green the whole time the screen said nothing;
 // that is the failure mode this file exists for.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, openWhatsCounted } from './fixtures.mjs';
 
 const SEED = "Mom's 80th birthday in Santa Fe New Mexico on June 14 2027, "
   + 'about 30 people flying in for 3 nights, dinner at an adobe courtyard, '
@@ -34,6 +34,7 @@ const openChecklist = async (page) => {
   // Take the proposed budget so the ask stops standing in front of the plan.
   await page.getByRole('button', { name: /^Use \$[\d,]+$/ }).click();
   await page.waitForTimeout(1200);
+  await openWhatsCounted(page);
 };
 
 test('THE WINDOW REACHES THE HOST: the invite row explains its own date', async ({ page }) => {

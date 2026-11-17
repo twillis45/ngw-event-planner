@@ -52,6 +52,29 @@ export const test = base.extend({
 
 export { expect };
 
+// ─── OPEN "WHAT'S COUNTED" THE WAY A HOST DOES (WebKit full run, 11/17/2026) ──
+// Readiness pills, "Worth finding out", the unheld-clause block and the plan
+// parts live in the #whats-counted slide-down, closed and `inert` until its
+// caret is tapped. Chromium's innerText (and a programmatic .click()) reached
+// them anyway, so specs read and clicked controls a host could not see; WebKit
+// gives them no text, and 17 specs failed there. This taps the visible caret
+// when the panel is closed and waits for it to reach its content height — the
+// INNER wrapper's, since the panel's own scrollHeight tracks its growing
+// height mid-transition. Safe to call twice; call it again after a reload.
+export const openWhatsCounted = async (page) => {
+  const panel = page.locator('#whats-counted');
+  if (!(await panel.count())) return;
+  if ((await panel.getAttribute('inert')) !== null) {
+    await page.locator('[aria-controls="whats-counted"]:visible').first().click();
+  }
+  await page.waitForFunction(() => {
+    const p = document.getElementById('whats-counted');
+    const inner = p && p.querySelector('.slidepanel-inner');
+    const h = p ? p.getBoundingClientRect().height : 0;
+    return !!inner && !p.hasAttribute('inert') && h > 0 && h >= inner.scrollHeight - 1;
+  });
+};
+
 // ─── THE RAIL IS UP FROM 1024, NOT 1280 (2026-09-02, skip census) ───────────
 //
 // Nine e2e guards read `viewport.width < 1280` and explained themselves as

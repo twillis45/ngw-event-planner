@@ -18,7 +18,7 @@
 // EMPTY → POPULATED transition as a consequence of replies arriving. This file
 // owns the surface's own behaviour once populated: the tallies, the access
 // instruction, and what assignment actually does.
-import { test, expect, settled, dateIn, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, dateIn, openSectionByName, openWhatsCounted } from './fixtures.mjs';
 
 // One roster, carrying one of each thing the seating surface claims to know
 // about: a guest bringing kids, a vegetarian, a wheelchair user, and a NO that
@@ -70,6 +70,7 @@ const boot = async (page, ev) => {
   }, ev);
   await page.goto('?elegant=1');
   await settled(page);
+  await openWhatsCounted(page);
 };
 
 test.describe('BASELINE · Who sits where', () => {
