@@ -161,6 +161,20 @@ const readHost = async (browser, readbackRows) => {
     await page.waitForFunction(() => /\d+ of \d+ confirmed|planned around/i.test(document.body.innerText || ''),
       null, { timeout: 15_000 }).catch(() => {});
   }
+  // "Guests 5 of 6 confirmed" is a pill in the "what's counted" slide-down,
+  // closed and inert until its caret is tapped. Chromium's innerText read it
+  // anyway; WebKit's does not (WebKit full run, 11/17/2026). Open it the way
+  // she would, and read once it has grown to its content.
+  const caret = page.locator('[aria-controls="whats-counted"]:visible').first();
+  if (await caret.count()) {
+    await caret.click();
+    await page.waitForFunction(() => {
+      const p = document.getElementById('whats-counted');
+      const inner = p && p.querySelector('.slidepanel-inner');
+      const h = p ? p.getBoundingClientRect().height : 0;
+      return !!inner && h > 0 && h >= inner.scrollHeight - 1;
+    });
+  }
   const out = {
     board: await bodyText(page),
     food: await openSection(page, 'The spread & shopping'),
