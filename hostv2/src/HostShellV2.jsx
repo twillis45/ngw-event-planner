@@ -1586,10 +1586,14 @@ export default function HostShellV2() {
             Parked — you’re sorting the venue yourself, so the plan has stopped leading with it.
             It still shows as unanswered above, because we don’t know the place yet.
           </p>
+          {/* "Actually, help me find one" promised a search the app does not
+              have (11/16/2026, CTA truthfulness): un-parking only puts the venue
+              back at the top of the plan, asking for a name or address. The
+              words now say exactly that. */}
           <button className="mini" onClick={() => patchEvent(
             unparkVenuePatch(event),
-            'Back on the list — the plan will help you find a place again.')}
-          >Actually, help me find one</button>
+            'Back on your list — the plan leads with the venue again.')}
+          >Put it back on my list</button>
         </div>
       ) : (
         <div style={{ marginTop: 'var(--sp-2)' }}>

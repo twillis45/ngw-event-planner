@@ -88,8 +88,14 @@ test('it is reversible, and the parked state says so while it lasts', async ({ p
   await settled(page);
   expect(await bodyText(page)).toMatch(/Parked — you.re sorting the venue yourself/i);
 
-  await tapText(page, 'Actually, help me find one');
+  // The undo says what it does: it puts the venue back on the list. It never
+  // promises to FIND one (11/16/2026) — the app has no venue search.
+  expect(await bodyText(page)).not.toMatch(/help (me|you) find/i);
+  await tapText(page, 'Put it back on my list');
   await page.waitForTimeout(1600);
   await settled(page);
-  expect(await bodyText(page)).toMatch(/Pick the place in Santa Fe/i);
+  const t = await bodyText(page);
+  expect(t).toMatch(/Pick the place in Santa Fe/i);
+  expect(t).not.toMatch(/help (me|you) find/i);
 });
+
