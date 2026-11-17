@@ -64,10 +64,12 @@ const lefts = (page) => page.evaluate(() => {
     const title = row.querySelector('.f-name');
     if (!title) continue;
     const tx = Math.round(title.getBoundingClientRect().x);
-    const btns = [...row.querySelectorAll('[data-row-action]')];
-    // the row's helper / assign buttons sit in the sibling .row-assign
+    const btns = [];
+    // every button under a row sits in the sibling .row-assign: the row's own
+    // action first (11/16: moved out of the row's <button>, axe
+    // nested-interactive), then helper / assign
     const sib = row.nextElementSibling && row.nextElementSibling.classList.contains('row-assign') ? row.nextElementSibling : null;
-    if (sib) btns.push(...sib.querySelectorAll(':scope > button'));
+    if (sib) btns.push(...sib.querySelectorAll(':scope > button, :scope > .row-act > button'));
     for (const b of btns) {
       const r = b.getBoundingClientRect();
       if (r.width) out.push({ row: title.innerText.slice(0, 30), label: b.innerText.slice(0, 30), dx: Math.round(r.x) - tx, left: Math.round(r.x), top: Math.round(r.top), bottom: Math.round(r.bottom) });
@@ -99,4 +101,21 @@ test('the buttons under one row keep one even gap between them', async ({ page }
   // one gap (12px, --sp-3) between every pair — it was 3px under the row link and 12 below
   expect(Math.max(...gaps) - Math.min(...gaps), JSON.stringify(gaps)).toBeLessThanOrEqual(2);
   expect(Math.min(...gaps), JSON.stringify(gaps)).toBeGreaterThanOrEqual(10);
+});
+
+
+// Nothing interactive inside a row's own <button> (axe on live, 11/16/2026:
+// nested-interactive, serious, 36 rows — the action was a role=button span
+// inside it, which a screen reader cannot reach as a button).
+test('no checklist row hides a button inside its own button', async ({ page }) => {
+  await boot(page);
+  await mockHost(page);
+  await openChecklist(page);
+  const nested = await page.evaluate(() => [...document.querySelectorAll('button.frow')]
+    .filter((b) => b.querySelector('button, [role="button"], a[href], input, select, textarea, [tabindex]'))
+    .map((b) => (b.innerText || '').slice(0, 40)));
+  expect(nested).toEqual([]);
+  const act = page.locator('.row-assign [data-row-action]').first();
+  await expect(act).toBeVisible();
+  expect(await act.evaluate((el) => el.tagName)).toBe('BUTTON');
 });

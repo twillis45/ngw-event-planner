@@ -12767,17 +12767,21 @@ export default function HostShellV2() {
                     {countedCaret({ textTransform: 'none', letterSpacing: 'normal', marginLeft: 6 })}
                   </h2>
                 )}
-                {/* role=button div, NOT a <button> — it contains its own interactive
-                    "what's counted" caret, and a native button-in-button is invalid
-                    HTML + ambiguous to screen readers (per-screen re-audit). */}
-                <div className="tile tile-a" role="button" tabIndex={0}
+                {/* NOT a button of any kind (axe on live, 11/16/2026: nested-interactive,
+                    serious). It holds real controls (the date/venue chips, the "what's
+                    counted" caret), and a role=button box around them is the same
+                    button-in-button a native one would be: a screen reader announces
+                    one button and drops the rest. A click anywhere still takes a mouse
+                    to what's next; the keyboard and screen-reader path to the same
+                    place is the hero's own ask button, and the tile's chips and caret
+                    are reachable on their own. */}
+                <div className="tile tile-a"
                   onClick={() => {
                     // Tap = take me to what's next, front and center (attention
                     // system); the caret corner toggles the readouts panel.
                     if (queue.length) { const k = String(queue[0].id || 0); setEditor(null); spotlight(k); }
                     else setHandledOpen(o => !o);
-                  }}
-                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (queue.length) { setEditor(null); spotlight(String(queue[0].id || 0)); } else setHandledOpen(o => !o); } }}>
+                  }}>
                   {/* ── WHERE ARE WE (Phase 5G-C1 Part 8) ───────────────────────
                       This tile already carried the counts and the ranked next cue. What
                       it never said was WHERE IN THE ARC the event sits, or what that
@@ -20461,32 +20465,14 @@ export default function HostShellV2() {
                             // fallback for a task whose lead we genuinely cannot resolve.
                             return [due, due ? null : t.week, t.owner].filter(Boolean).join(' · ');
                           })()}
-                          {/* Deep-link to the surface that handles this step — nested
-                              role=button span (same pattern as the food row's tune
-                              control), stopPropagation so it launches instead of
-                              toggling the check. */}
                         </span>
-                        {/* ON ITS OWN LINE, UNDER THE DUE DATE (owner, 11/16/2026: "make
-                            sure the CTAs are balanced"). Inline it floated beside the
-                            due text — "Map the spread →" landed at the right edge while
-                            the row's other buttons started at the left — so every row's
-                            buttons now share one left edge, the text column's. */}
-                        {action ? (
-                          <span style={{ display: 'flex', marginTop: 'var(--sp-3)' }}>
-                            <span role="button" tabIndex={0} className="mini rowlink" data-row-action
-                              onClick={e => { e.stopPropagation(); action.go(); }}
-                              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); action.go(); } }}>
-                              {action.label} →
-                            </span>
-                          </span>
-                        ) : null}
                       </span>
                     </button>
                     );
                     // ── ASSIGN (ownership ruling clauses 1a, 3, 7) ───────────────
                     // A SIBLING of the row button, never a child: nested
-                    // interactive content is invalid, and this row already
-                    // carries one such compromise.
+                    // interactive content is invalid (and since 11/16 the row's
+                    // own action lives out here too).
                     //
                     // It does not render at all when there is nobody to assign
                     // to (clause 7's disclosure rule) -- an empty picker is
@@ -20511,8 +20497,18 @@ export default function HostShellV2() {
                     const tSend = helperSend && helperSend.taskId === t.id ? helperSend : null;
                     // Nothing to hand off on a row the plan already handled, unless someone
                     // already holds it (owner, 11/16/2026: every CTA justified).
+                    // THE ROW'S OWN ACTION ("Line them up →") — a real button and a
+                    // SIBLING of the row, beside Assign (axe on live, 11/16/2026:
+                    // nested-interactive, serious, 36 rows: it used to be a
+                    // role=button span INSIDE the row's <button>, which a screen
+                    // reader cannot reach as a button). Same left edge as Assign,
+                    // so the 11/16 "CTAs balanced" rule still holds.
+                    const actionEl = action ? (
+                      <span className="row-act"><button type="button" className="mini rowlink" data-row-action onClick={() => action.go()}>{action.label} →</button></span>
+                    ) : null;
                     const assignEl = assignablePeople.length && !(inferred && !owner) ? (
                       <div className="row-assign" key={(t.id || i) + '-assign'}>
+                        {actionEl}
                         <button className="mini rowlink assign-btn"
                           aria-label={owner
                             ? `${owner} has ${lead2}, ${rStatus}. Change who has this.`
@@ -20574,7 +20570,7 @@ export default function HostShellV2() {
                           </div>
                         )}
                       </div>
-                    ) : null;
+                    ) : (actionEl ? <div className="row-assign" key={(t.id || i) + '-act'}>{actionEl}</div> : null);
                     if (!isCvbRow) {
                       return assignEl
                         ? <Fragment key={(t.id || i) + '-w'}>{rowBtn}{assignEl}</Fragment>
@@ -20595,6 +20591,7 @@ export default function HostShellV2() {
                     return (
                       <Fragment key={(t.id || i) + '-cvb'}>
                         {rowBtn}
+                        {actionEl && <div className="row-assign">{actionEl}</div>}
                         <details className="cvb-brief" style={{ margin: '2px 0 10px', padding: '0 2px' }}>
                           <summary className="v-meta" style={{ cursor: 'pointer', listStyle: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span className="mini rowlink">{savedCvb ? 'Their contact + what to ask for' : 'What to ask for — and where their contact goes'} ▾</span>

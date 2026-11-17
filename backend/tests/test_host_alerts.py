@@ -140,3 +140,18 @@ def test_an_rsvp_tells_the_host_its_name_and_answer_only(monkeypatch):
         json={"idempotency_key": "k1", "name": " Jordan Avery ", "rsvp": "Yes", "note": "private note", "phone": "555"})
     assert r.status_code == 200
     assert calls == [("e1", "rsvp", "Jordan Avery", "Yes")]
+
+
+def test_a_failed_send_gives_the_hour_back(monkeypatch, sent):
+    # 11/16/2026: Resend refused every send for two hours (a bad From, then a key
+    # that could not send from the domain). Each failure still used up the
+    # event's hour, so the first good send after a fix could wait an hour.
+    async def boom(**k): raise RuntimeError("resend down")
+    monkeypatch.setattr(ha, "_send_via_resend", boom)
+    _run(monkeypatch, ROW, "ev1", "rsvp", "Jordan", "Yes")
+    assert "ev1" not in ha._last_sent
+    async def ok(to, subject, html, **k):
+        sent.append((to, subject)); return {"id": "r2"}
+    monkeypatch.setattr(ha, "_send_via_resend", ok)
+    _run(monkeypatch, ROW, "ev1", "rsvp", "Sam", "No")
+    assert sent == [("casey.host@example.test", "Sam replied No — Friendsgiving")]
