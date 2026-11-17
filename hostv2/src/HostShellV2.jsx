@@ -1526,7 +1526,9 @@ export default function HostShellV2() {
     // pendingCity comes from the address-autocomplete pick (already "City, ST"
     // when Nominatim returned a state) — setVenue (the constitution's ONE write
     // path) owns kind inference + the strict city gate for it.
-    patchEvent(setVenue(event, { name: v, locationText: pendingCity }),
+    // Naming the place ends "I'll sort this" (50-host run, 11/16/2026): a host
+    // who parked the venue and later typed it kept the parked flag in her data.
+    patchEvent({ ...setVenue(event, { name: v, locationText: pendingCity }), ...(venueParked(event) ? unparkVenuePatch(event) : {}) },
       'Venue on the plan — invites, maps, and the rain note now carry it.');
     setVenueErr(null); setVenueDraft(''); setPendingCity(''); setAddrSugs([]);
   };
@@ -1604,6 +1606,10 @@ export default function HostShellV2() {
               and the inquiry written from facts the host gave. The place she
               picks goes in the box above — the one source every part reads. */}
           {(() => {
+            // Only while there is no place yet (50-host run, 11/16/2026): the
+            // Venue sheet kept offering "Find venues near…" under "Currently:
+            // House of Blues Anaheim" — help for a question already answered.
+            if (venueFor(event).isSet) return null;
             const searchUrl = venueSearchUrl(event);
             const inquiry = draftVenueInquiry(event, profile);
             if (!searchUrl && !inquiry) return null;

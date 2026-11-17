@@ -104,3 +104,17 @@ test('it is reversible, and the parked state says so while it lasts', async ({ p
   expect(t).not.toMatch(/help (me|you) find/i);
 });
 
+
+// 50-host run (11/16/2026): parked, then the host names the place after all.
+test('naming the venue after parking it ends the parking', async ({ page }) => {
+  await openBoard(page);
+  await tapText(page, 'I.ll sort this');
+  await page.waitForTimeout(1200);
+  const box = page.locator('article input[aria-label="Venue"]:visible').first();
+  await box.click(); await page.keyboard.type('House of Blues Anaheim', { delay: 5 });
+  await box.locator('xpath=..').getByRole('button', { name: 'Save' }).click();
+  await page.waitForTimeout(1200);
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]')[0] || {});
+  expect(stored.venue).toBe('House of Blues Anaheim');
+  expect((stored.decisionBlockerStatus || {})['venue-selection']).toBeUndefined();
+});

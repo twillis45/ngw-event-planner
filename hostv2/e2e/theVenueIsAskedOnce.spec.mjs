@@ -81,6 +81,8 @@ test('saved in one place, every place shows it and none asks again', async ({ pa
   expect([e.venue, e.venueKind || 'venue']).toEqual(['House of Blues Anaheim', 'venue']);
   // …and the sheet itself now reads it back from the same field.
   await expect(page.locator('.sheet').last()).toContainText('Currently: House of Blues Anaheim');
+  // The help is for finding a place; once there is one, it is gone (50-host run).
+  await expect(page.locator('.sheet').last().locator('[data-venue-help]')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await page.goto('./?elegant=1'); await settled(page);
   expect(await asks(page)).toEqual([]);                           // the board card is gone
