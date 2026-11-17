@@ -31,11 +31,19 @@ const withStore = (seed) => {
 describe("a host's own events are visible to the event pool", () => {
   beforeEach(() => { });
 
+  // ── THIS TEST PAYS THE COLD IMPORT (2026-11-17) ──────────────────────────
+  // The first import of eventPool.js transforms its whole module graph. Measured
+  // alone: 2333 / 2180 / 2247 ms for this test, ~20 ms for each test after it.
+  // In CI the hostv2 unit files run in parallel (26 s of test time in a 9.4 s
+  // wall), and on PR #159 this one crossed vitest's 5000 ms default — a TIMEOUT,
+  // never an assertion, on a PR that touched no hostv2 code. Same cause and same
+  // remedy as shellParses.test.mjs (11/2): the ceiling was under the real cost.
+  // 20 s is still a hang detector; raise it only against a new measurement.
   it('loadCustomEvents returns an event that is in storage', async () => {
     withStore({ 'ngw-hostv2-custom-events': JSON.stringify([{ id: 'vis-1', name: 'Mine', type: 'Repast' }]) });
     const mod = await import('../src/eventPool.js?visible1');
     expect(mod.loadCustomEvents().map((e) => e.id)).toContain('vis-1');
-  });
+  }, 20000);
 
   it('LS_CUSTOMS is a real local binding here, not only a re-export', async () => {
     // The specific defect: the module could still EXPORT the key while being
