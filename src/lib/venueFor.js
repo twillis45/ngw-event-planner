@@ -91,7 +91,13 @@ export function venueFor(event) {
   // ONLY while no venue is named — naming "VFW Post 3150" makes it a venue,
   // and demanding a city on top of a named venue was the exact false blocker
   // ctaStateTransitions locks against.
-  const kind = ev.venueKind || (ev.recordKind === 'host_event' && !name ? 'home' : 'venue');
+  // A 'home' the old substring guess wrote for a named venue ("The Boathouse")
+  // reads as a venue again. Only an unconfirmed guess on a name that guess
+  // matched and a home phrase does not: a host's own confirmation, and a home
+  // set at creation for an address, are never second-guessed.
+  const staleHomeGuess = ev.venueKind === 'home' && !ev.venueConfirmed && !!rawName
+    && OLD_HOME_GUESS.test(rawName) && !isHomeVenueName(rawName);
+  const kind = staleHomeGuess ? 'venue' : (ev.venueKind || (ev.recordKind === 'host_event' && !name ? 'home' : 'venue'));
   const isHome = kind === 'home';
   // CITY-LEAK-1 gate rides INSIDE the accessor: a polluted venueCity ("VFW
   // Post 3150 — Alexandria, VA") never escapes as a city again.
@@ -203,6 +209,23 @@ export function venueFor(event) {
 //                 (the manual "Which town?" field's exact rule)
 //   current       the event, so an explicit kind the host already set survives
 //                 a rename instead of being silently flipped.
+// ── IS THIS NAME A PRIVATE HOME? BY WORDS, NOT LETTERS (11/16/2026) ─────────
+// The guess used to be a bare substring test (/backyard|house|home|yard|place|
+// garden/), so "The Boathouse", "Riverside Clubhouse", "Madison Square Garden"
+// and "Union Place Hotel" all became the host's home. The whole name must be a
+// home phrase: "home", "backyard", or a home word after my/our/the or a
+// possessive ("Mom's house", "my sister's place", "Mom and Dad's house") — the
+// same line smartParseEvent draws at creation.
+const HOME_WORD = '(?:back\\s?yard|yard|home|house|place|garden|apartment|condo)';
+const HOME_NAME = new RegExp(
+  '^(?:at\\s+)?(?:home|back\\s?yard|' +
+  '(?:(?:my|our)\\s+)?(?:[a-z][\\w.-]*(?:\\s+(?:and|&)\\s+[a-z][\\w.-]*)?[\'\u2019]s\\s+)' + HOME_WORD + '|' +
+  '(?:my|our)\\s+' + HOME_WORD + '|' +
+  'the\\s+(?:back\\s?yard|yard|house|home))$', 'i');
+export const isHomeVenueName = (v) => HOME_NAME.test(String(v || '').trim().replace(/\s+/g, ' '));
+// What the OLD guess matched, kept only to recognize its mistakes on read.
+const OLD_HOME_GUESS = /backyard|house|home|yard|place|garden/i;
+
 export function setVenue(current, { name, locationText } = {}) {
   const v = String(name || '').trim();
   const parsed = locationText
@@ -210,7 +233,7 @@ export function setVenue(current, { name, locationText } = {}) {
     : null;
   return {
     venue: v,
-    venueKind: /backyard|house|home|yard|place|garden/i.test(v) ? 'home' : String((current || {}).venueKind || ''),
+    venueKind: isHomeVenueName(v) ? 'home' : String((current || {}).venueKind || ''),
     // A new place is a new question: the old answer to "is this a private home?"
     // was about a different address.
     venueConfirmed: false,

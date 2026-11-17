@@ -15,7 +15,7 @@
 -- header row is INFO). The summary row near the top counts the FAILs.
 --
 -- WHERE EACH EXPECTATION COMES FROM (so a FAIL can be traced to a file):
---   tables + policies  supabase/migrations/001–027 (applied by the Supabase
+--   tables + policies  supabase/migrations/001–028 (applied by the Supabase
 --                      integration, 017–021 by hand on 11/7), backend/migrations
 --                      and src/lib/knowledge/kaw1-migration.sql (hand-applied;
 --                      a table from those two that is ABSENT here passes, since
@@ -48,6 +48,12 @@
 --                      or writes its files). 024 is expected recorded too.
 --                      The two consent columns (uploader_private,
 --                      share_blocked; board 11/16) exist.
+--   event deletion     028 (owner, 11/16): an enabled AFTER DELETE trigger
+--                      events_drop_guest_activity on public.events removes the
+--                      event's guest threads, messages and invite opens at
+--                      once; its function is a SECURITY DEFINER no browser
+--                      role may run, and no guest activity is left whose
+--                      event row is gone.
 --   event files        022: storage.objects policies for the event-files bucket
 --                      grant nothing to anon/public and all check auth.uid();
 --                      the bucket is private with the app's 10 MB / type limits.
@@ -139,7 +145,8 @@ expected_definers (sig, authenticated_execute) as (values
   ('purge_old_guest_activity(integer)',   false),
   ('guest_photos_due_for_purge(integer)', false),
   ('is_event_cohost(text)',               true),
-  ('events_studio_locked()',              false)
+  ('events_studio_locked()',              false),
+  ('events_drop_guest_activity()',        false)
 ),
 
 public_functions as (
@@ -285,7 +292,21 @@ migration_objects (migration, object, present) as (values
      coalesce((select not bool_or(has_table_privilege(r.rolname, 'public.event_announcements', p))
                  from pg_roles r, unnest(array['select','insert','update','delete']) p
                 where r.rolname in ('anon','authenticated')
-                  and to_regclass('public.event_announcements') is not null), false))
+                  and to_regclass('public.event_announcements') is not null), false)),
+  ('028', 'enabled trigger events_drop_guest_activity on public.events',
+     exists (select 1 from pg_trigger t where t.tgname = 'events_drop_guest_activity'
+               and t.tgrelid = to_regclass('public.events') and t.tgenabled = 'O')),
+  ('028', 'anon and authenticated cannot execute events_drop_guest_activity()',
+     coalesce((select case when r.anon and r.authenticated then
+                 not has_function_privilege('anon', to_regprocedure('public.events_drop_guest_activity()'), 'execute')
+                 and not has_function_privilege('authenticated', to_regprocedure('public.events_drop_guest_activity()'), 'execute') end
+               from role_present r
+              where to_regprocedure('public.events_drop_guest_activity()') is not null), false)),
+  ('028', 'no guest question, guest email or invite open is left from a deleted event',
+     coalesce((select not exists (select 1 from public.guest_threads t where not exists (select 1 from public.events e where e.id = t.event_id))
+                  and not exists (select 1 from public.invite_opens o where not exists (select 1 from public.events e where e.id = o.event_id))
+                  and not exists (select 1 from public.invite_open_days d where not exists (select 1 from public.events e where e.id = d.event_id))
+              where to_regclass('public.guest_threads') is not null), false))
 ),
 
 -- supabase_migrations.schema_migrations may not exist; read it only through
@@ -302,7 +323,7 @@ recorded as (
 ),
 
 expected_versions as (
-  select array_agg(lpad(g::text, 3, '0') order by g) as versions from generate_series(1, 27) g
+  select array_agg(lpad(g::text, 3, '0') order by g) as versions from generate_series(1, 28) g
 ),
 
 all_rows (ord, k, "check", subject, expected, actual, verdict) as (

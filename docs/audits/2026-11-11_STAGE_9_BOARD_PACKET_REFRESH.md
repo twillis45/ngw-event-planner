@@ -1,6 +1,8 @@
 # Stage 9 — Promotion: board packet refresh for hostv2 (live, charging)
 
 **Status: the board has NOT sat. This packet contains no verdict and must not be read as one.**
+
+> **Corrections, 11/16/2026 (stage 9 work order item 15).** The four lines the board named (`:24`, `:35`, `:84`, `:161` as read on 11/11), plus a fifth it did not name (the `S9-5` entry in the open list), were stale when the board read them and are corrected in place, each marked *[corrected 11/16]*: a Terms of Service draft existed from 11/11, 1:34 AM EST (commit `a35af601`), and the `S9-5` server check reached production with PR #116 on 11/11. Nothing else in this packet was changed.
 A stage 9 record needs `boardVerdict` and `boardSeats` from a sitting (`ngw-event-planner-workspace/docs/gate-records/2026-11-11/records.json`, `not_drafted_here."9"`). The sitting planned for Monday, November 9, 2026 (`docs/audits/2026-11-03_STAGE_9_BOARD_PACKET.md:6`) did not happen (11/11/2026 re-measurement).
 
 Prepared November 11, 2026, on app branch `main-2utz0n` @ `a36f5073`. Production serves `main` @ `61cb1324` with `release_profile=live` (`HANDOFF.md:22`). This refreshes the 11/3 packet; read that one for the stage 9 definition (§1) and the `promote-surface` gate table (§4). Neither is repeated here.
@@ -21,7 +23,7 @@ Prepared November 11, 2026, on app branch `main-2utz0n` @ `a36f5073`. Production
 | `S9-1`/`S9-2` (anon purge, anon RSVP insert) fixed in the repo | `supabase/migrations/019_browser_privilege_boundaries.sql:29-31`; `PROMOTION-DEFERRED.md:76-79` | Code: closed. Production: unreported (§2, stage 5) |
 | `S9-3` (caller-priced checkout) and `S9-4` (refund revokes pass) fixed | `PROMOTION-DEFERRED.md:27-31`; `backend/app/routers/stripe_payments.py:67` | Closed in code with tests |
 | `RP-1` (sweep counted a docstring as a gate) fixed, red-proofed again 11/11 | `PROMOTION-DEFERRED.md:22-26` | Closed |
-| `S9-5`: the server now checks the pass where a live vendor-brief link is minted | `backend/app/routers/vendor_brief.py:240-283`; commit `423f8b11` (PR #116) | **On `main-2utz0n`, not in production.** The legacy self-contained brief URL cannot be gated (§3, D3) |
+| `S9-5`: the server now checks the pass where a live vendor-brief link is minted | `backend/app/routers/vendor_brief.py:240-283`; commit `423f8b11` (PR #116) | **In production since 11/11 (PR #116 merged to `main`).** *[corrected 11/16]* The legacy self-contained brief URL cannot be gated (§3, D3) |
 | `S9-6`: `PROMOTION-DEFERRED.md` rewritten for `live` | `PROMOTION-DEFERRED.md:1-16`; commit `a36f5073` | On `main-2utz0n`, unmerged |
 | Rollback rewritten as four layers; never rehearsed | `docs/RUNBOOK.md:100-150` | Written only |
 | Policy links wired, all null until a URL is published | `src/lib/brand.js:151`; commit `78e23479` | No policy is published (`LEGAL-1`) |
@@ -31,8 +33,8 @@ Prepared November 11, 2026, on app branch `main-2utz0n` @ `a36f5073`. Production
 **Finding ledger (11/11/2026 re-measurement, `HANDOFF.md:610`).** 42 P0/P1 findings:
 - 27 closed in code with passing tests.
 - 2 closed by owner report only: `PAY-1` (live payment), `SEC-1` (live RLS).
-- 5 open: `NAT-4` (native magic link), `NAT-7` (native shell gaps), `STAGE2-2` (iOS/Android undeclared), `S9-6` (fixed 11/11 on `main-2utz0n`, unmerged), `S9-5` (server check on `main-2utz0n`, PR #116; the legacy brief URL stays ungated).
-- 8 owner actions: `NAT-1` store billing; `NAT-5`/`LEGAL-1` policies unpublished, no Terms draft; `UAT-1` no first-time users; `SEC-2` backups and restore drill; `SEC-4` pentest not booked; `NAT-6` domain; `NAT-8` store privacy labels.
+- 5 open: `NAT-4` (native magic link), `NAT-7` (native shell gaps), `STAGE2-2` (iOS/Android undeclared), `S9-6` (fixed 11/11 on `main-2utz0n`, unmerged), `S9-5` (server check in production since 11/11, PR #116; the legacy brief URL stays ungated) *[corrected 11/16]*.
+- 8 owner actions: `NAT-1` store billing; `NAT-5`/`LEGAL-1` policies unpublished (drafts for privacy, refunds and terms exist) *[corrected 11/16]*; `UAT-1` no first-time users; `SEC-2` backups and restore drill; `SEC-4` pentest not booked; `NAT-6` domain; `NAT-8` store privacy labels.
 
 **Stage 1 is still unruled.** No ruler, basis or pre-registered kill threshold (`ngw-event-planner-workspace/docs/gate-records/2026-11-02/STAGE_1_PROPOSAL.md:59`; recertification `STAGE1-1`, `docs/audits/2026-11-03_HOSTV2_PATH_TO_PRODUCTION_RECERTIFICATION.md:44`). The Madhavan Ramanujam seat's evidence (11/3 §3, seat 10) depends on it.
 
@@ -81,7 +83,7 @@ Separately: PR #116 must merge for the server check to reach production at all.
 
 ### D4. Selling without published policies (`LEGAL-1`)
 
-No privacy policy, terms or refund policy is published. Drafts exist for privacy and refunds, with unfilled `[OWNER: …]` placeholders; **no Terms draft exists** (`docs/legal/README.md:9-26`; `PROMOTION-DEFERRED.md:93-98`). The app links each policy as soon as its URL is set and links nothing until then (`src/lib/brand.js:151`).
+No privacy policy, terms or refund policy is published. Drafts exist for privacy, refunds and terms (the Terms draft from 11/11, commit `a35af601`), with unfilled `[OWNER: …]` placeholders *[corrected 11/16]* (`docs/legal/`; `PROMOTION-DEFERRED.md:93-98`). The app links each policy as soon as its URL is set and links nothing until then (`src/lib/brand.js:151`).
 
 | Option | Consequences |
 |---|---|
@@ -158,7 +160,7 @@ Workspace repo (`ngw-event-planner-workspace`):
 | Evidence the board needs | In the repository? |
 |---|---|
 | C1–C9 merged | **Yes**, PRs #99–#115 (`records.json` stage 3) |
-| S9-5 server check in production | **No.** On `main-2utz0n`, PR #116 |
+| S9-5 server check in production | **Yes, since 11/11** (PR #116 merged to `main`) *[corrected 11/16]* |
 | Live-key Stripe lifecycle | **Owner-reported** 11/8–11/10 (`HANDOFF.md:76-78`) |
 | S9-1 privilege query on production | **Not reported** |
 | RUNBOOK §A–D attestations | **Not reported** |

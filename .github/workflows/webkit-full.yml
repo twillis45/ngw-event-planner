@@ -1,0 +1,62 @@
+# The whole browser suite in WebKit (Safari's engine), by hand only.
+#
+# WHY THIS EXISTS. Release-candidate exit criterion 2: "full suite green in
+# Chromium and WebKit on the release commit". Every change is gated on the full
+# Chromium matrix (checks.yml) plus 8 critical journeys in WebKit; nothing had
+# ever run every spec in WebKit, so the criterion was unmeasured. This measures
+# it: every spec, phone and desktop, WebKit, eight shards.
+#
+# It gates nothing and runs on nothing automatically (workflow_dispatch only):
+# a full WebKit pass costs eight runners for about 20 minutes, and its result
+# is a record for the release, not a merge check. Run it on the release commit.
+#
+# Least privilege: reads the repo, runs tests. No secrets, no writes.
+name: WebKit full suite
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: webkit-full-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  webkit-full-shard:
+    name: WebKit full (${{ matrix.shard }}/8)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            hostv2/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: hostv2
+      # Same install guards as checks.yml's webkit-critical job (stale Chrome
+      # apt repo, dpkg lock left by a timed-out apt-get, transient mirrors).
+      - run: sudo rm -f /etc/apt/sources.list.d/google-chrome*
+      - run: echo 'DPkg::Lock::Timeout "900";' | sudo tee /etc/apt/apt.conf.d/90-ngw-lock-timeout
+      - run: s=1; for i in 1 2 3 4; do timeout 600 npx playwright install --with-deps webkit && s=0 && break; s=1; echo "playwright install failed (attempt $i/4)"; sleep $((i * 30)); done; exit $s
+        working-directory: hostv2
+      - run: npm run e2e:build
+        working-directory: hostv2
+      - run: npx playwright test --config=playwright.webkit-full.config.mjs --shard=${{ matrix.shard }}/8 --trace off --reporter=list
+        working-directory: hostv2
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: webkit-full-failures-${{ matrix.shard }}
+          path: hostv2/test-results/
+          retention-days: 7

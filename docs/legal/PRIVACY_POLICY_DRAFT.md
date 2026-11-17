@@ -294,7 +294,12 @@ receives. We do not send them more than the row says.
   routine runs nightly where the database's scheduler is turned on; until the
   owner confirms it is running there, it is run by hand. The scrambled device
   codes are kept only for one day's count and deleted after two days.
-  ⟶ `purge_old_guest_activity`, `024_guest_messages.sql` ⟵
+  **When the host deletes the event, its guest questions, the email
+  addresses guests gave for answers, and its invitation opens are deleted
+  with it, at once** (owner ruling 11/16/2026; migration 028 applied and
+  attested in production 11/16/2026, 0 FAIL / 206 PASS).
+  ⟶ `purge_old_guest_activity`, `024_guest_messages.sql`;
+  `events_drop_guest_activity`, `028_event_delete_drops_guest_activity.sql` ⟵
 - **Guest photos:** we intend to delete photos, and the record of who shared
   them, 90 days after the event's last day, and **when the host deletes the
   event, its photos go within a day** (they can't be opened from the moment

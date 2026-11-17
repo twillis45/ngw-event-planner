@@ -91,8 +91,10 @@ rests on an owner report rather than a check.
 - [x] **The price shown is the price charged:** `thePassPriceIsTheServersPrice`
       ties every "$39" to `PASS_AMOUNT_CENTS`.
 - [ ] **No privacy policy, terms or refund policy is published** (LEGAL-1).
-      Drafts in `docs/legal/` carry unfilled owner placeholders, no Terms draft
-      exists, and the refund rule is the owner's to pick. The app is wired to
+      Drafts in `docs/legal/` (privacy, refunds and Terms of Service, the
+      last added 11/11/2026, commit `a35af601`) carry unfilled owner
+      placeholders and await attorney review. The refund rule is ruled
+      (11/12/2026: 14 days, full refund, if no new vendor brief was sent). The app is wired to
       link each one the moment its URL is set in `BRAND.policies`
       (`src/lib/brand.js`); until then it links nothing rather than a draft.
       **Risk accepted: none.** This is the largest exposure on the list.

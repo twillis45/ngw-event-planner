@@ -17,7 +17,17 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
-## November 16, 2026 (latest, evening) — email works; reply notices; announcements (027); axe on live
+## November 16, 2026 (late evening) — declined card live; #153/#154 live; #155 kill switch + analytics; demo cleared
+
+- **Declined card, LIVE (G44 / owner item 7 decline row):** demo account → pass sheet → Stripe Checkout with Stripe's decline card. Stripe refused it on its page, nothing was charged, the server's pass record still read `held:false`. The app said nothing on the way back → **#154**: `?pass_cancel=1` toasts once "Checkout closed — nothing was charged. The pass is here whenever you want it." (spec in `thePassSurvivesTheWebhookRace`). Also "1 guest gets it" (singular).
+- **#153 (live 7:04 PM):** nested-interactive fixes from axe on live; a failed host-alert send gives the hour back.
+- **#155:** the `?nosw=1` kill switch, fixed properly — the page tells every worker (controller, active, waiting, installing) `{type:'ngw-kill'}` over a MessageChannel BEFORE unregistering; a killed worker stops touching caches; then caches are swept until two clean checks in a row, and `ngw-sw-kill-done` is set. Red-proof: 19/20 fail without it, 30/30 pass with it. Plus `calendar_feed._esc` (`"\;"` → `"\\;"`, the Render startup SyntaxWarning) guarded by `test_no_invalid_escapes.py`; plus analytics for every feature shipped 11/16 (`section_opened`, `calendar_added`, `cohost_invited`, `family_link_on`, `guest_update_posted`, `guest_answered`, `guest_photo_approved`) — kind/count properties only, a unit test rejects any name/email/body property; text-gate ratchet 59 → 60 (justified in the file).
+- **Demo data cleared** at the owner's request: "Jordan's Friendsgiving" deleted on live; its invite and updates now 404.
+- **028 — deleting an event drops its guest activity at once** (owner: "Drop them with the event"). The browser deletes the `events` row directly (`events.deleteEvent`), so an AFTER DELETE trigger (`events_drop_guest_activity`, SECURITY DEFINER, closed to the browser) removes the event's `guest_threads`/`guest_messages`/`invite_opens`/`invite_open_days`/`invite_open_devices` in the same transaction; a one-time cleanup removed what earlier deletions left. Real-Postgres test `test_event_delete_drops_guest_activity.py` (8 checks; 4 fail without it; skipped in CI). Owner applied + recorded: **0 FAIL / 206 PASS** (8:34 PM EST). Photos still go at the nightly run (files need the Storage API).
+- **Stage 9 work order #15 done:** stale lines corrected — `PROMOTION-DEFERRED.md` ("no Terms draft"; a Terms draft existed from 11/11, `a35af601`) and the 11/11 refresh packet (`:24`, `:35`, `:84`, `:161`, plus the unnamed `S9-5` open-list line), each marked *[corrected 11/16]*.
+- 🔴 **Trap: a superseded CI run reports "e2e: failure".** `cancel-in-progress` cancels the shards and the aggregate fails with "CANCELLED, not failed". Check the head SHA before treating it as red.
+
+## November 16, 2026 (evening) — email works; reply notices; announcements (027); axe on live
 
 - **Email from the app works** (first time on production). Two causes, fixed by the owner with the logs that named them:
   1. 5:02 PM EST: Resend 422 "Invalid `from` field" — the From setting held something invisible. Owner corrected it; PR #151 now EXTRACTS the address (`emailer.format_from`) and a from-field 422 logs the exact From sent.
