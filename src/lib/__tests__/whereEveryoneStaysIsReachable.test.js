@@ -23,3 +23,13 @@ test.each([
   ['Sleepover birthday party at my house in Anaheim, CA, June 12 2027, 8 kids', 'a sleepover at home'],
   ['Birthday party at the Phoenix Club, Anaheim, CA, June 12 2027, 60 guests', 'no lodging words'],
 ])('(control) %s — %s: not a said trip', (s) => { expect(said(p(s))).toBe(false); });
+
+// Rerun on the final build (11/17/2026): three more ordinary ways of saying it.
+test.each([
+  '50th birthday weekend Anaheim CA 6/11/2027 - 6/13/2027, 40 guests, half are traveling',
+  "Jordan's 50th at Embassy Suites Anaheim South, June 12 2027, 60 guests, room block for travelers",
+  '50th birthday party at Anaheim Majestic Garden Hotel June 12-13 2027 for 50, family staying overnight there',
+])('a trip said another ordinary way: %s', (s) => { expect(said(p(s))).toBe(true); });
+test('(control) staying overnight at her own house is not a trip', () => {
+  expect(said(p('Birthday sleepover at my house June 12 2027, 6 kids staying overnight'))).toBe(false);
+});

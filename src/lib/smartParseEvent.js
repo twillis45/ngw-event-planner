@@ -1216,6 +1216,9 @@ export function parseSmartEventText(text, opts = {}) {
     '\\b(?:fly|flies|flying|flew)\\s+(?:in|out|into|down|up|over)\\b',
     '\\b(?:travel|travels|travell?ing)\\s+(?:in|out|from|down|up|over)\\b',
     '\\bcoming\\s+in\\s+from\\b', '\\bin\\s+town\\s+for\\b',
+    // "half are traveling", "room block for travelers", "out-of-towners"
+    // (host-panel rerun, 11/17/2026): who is travelling, said plainly.
+    '\\b(?:are|is|guests?|people|family|folks|friends|relatives)\\s+travell?ing\\b', '\\btravell?ers\\b', '\\bout[- ]of[- ]towners\\b',
     '\\b(?:weekend|day|road)\\s+trip\\b', '\\btrip\\s+to\\b',
     '\\bgetaway\\b', '\\bretreat\\b',
     '\\bdriv(?:e|ing)\\s+(?:up|down|out|in)\\b',
@@ -1414,8 +1417,10 @@ export function parseSmartEventText(text, opts = {}) {
   // named, in a town she named, is her own statement. Never for a private home
   // (a sleepover at her house), and never the venue's own name ("…Hotel").
   const _tNoVenue = [namedAt, venueAt, venuePhrase].filter(Boolean).reduce((acc, n) => acc.split(n).join(' '), t);
-  const lodgingSaid = !home && !!placeName
-    && /\bairbnbs?\b|\bvrbos?\b|\brentals?\b|\brent(?:ed|ing)?\s+(?:(?:an?|a\s+couple\s+of|some|two|three|a\s+few)\s+)?(?:big\s+)?(?:house|houses|home|homes|cabins?|condos?|villas?)\b|\b(?:room|hotel)\s+blocks?\b|\bhotels?\b|\bcabins?\b|\blodging\b/i.test(_tNoVenue);
+  // A named venue counts as the place too ("…at the Majestic Garden Hotel …
+  // family staying overnight there" names no town, only the party hotel).
+  const lodgingSaid = !home && (!!placeName || !!namedAt || !!venueAt)
+    && /\bstay(?:ing|s)?\s+(?:overnight|the\s+night)\b|\bairbnbs?\b|\bvrbos?\b|\brentals?\b|\brent(?:ed|ing)?\s+(?:(?:an?|a\s+couple\s+of|some|two|three|a\s+few)\s+)?(?:big\s+)?(?:house|houses|home|homes|cabins?|condos?|villas?)\b|\b(?:room|hotel)\s+blocks?\b|\bhotels?\b|\bcabins?\b|\blodging\b/i.test(_tNoVenue);
   const isDestination = travelSaid || lodgingSaid
     || ((!!loc || !!awayPlace || !!spokenPlace || !!spokenCity) && placeAway);
 
