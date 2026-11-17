@@ -9,6 +9,7 @@
 import { useMemo, useState } from 'react';
 import { calendarItems, weekDays, monthWeeks, shiftAnchor, rangeLabel, calendarIcs } from '@app/lib/planCalendar';
 import { localISO, getToday } from '@app/lib/dates';
+import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 import { calendarFeedUrl, calendarWebcalUrl, newCalendarCode, isCalendarFeedConfigured } from '@app/lib/api/calendarFeed';
 
 const VIEW_KEY = 'ngw-calendar-view';
@@ -36,6 +37,7 @@ function addToCalendar(event) {
   a.download = (String(event.name || 'plan').replace(/[’']/g, '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'plan') + '-plan.ics';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(href), 4000);
+  try { trackEvent(ANALYTICS.CALENDAR_ADDED, { how: 'file' }); } catch (_e) { /* counter only */ }
 }
 
 // SUBSCRIBE (owner, 11/16/2026: "need subscription calendar"): one private
@@ -58,7 +60,7 @@ function Subscribe({ event, signedIn, onSave, onLine }) {
       ) : !code ? (
         <>
           <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Subscribe once and your calendar app keeps these dates up to date as the plan changes.</p>
-          <button className="mini" data-cal-sub-on onClick={() => onSave({ calendarCode: newCalendarCode() }, 'Calendar subscription is on.')}>Subscribe in my calendar app</button>
+          <button className="mini" data-cal-sub-on onClick={() => { onSave({ calendarCode: newCalendarCode() }, 'Calendar subscription is on.'); try { trackEvent(ANALYTICS.CALENDAR_ADDED, { how: 'subscription' }); } catch (_e) { /* counter only */ } }}>Subscribe in my calendar app</button>
         </>
       ) : (
         <>

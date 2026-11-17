@@ -24,6 +24,7 @@ import {
 import {
   isGuestPhotosApiConfigured, fetchEventGuestPhotos, approveGuestPhoto, hideGuestPhoto, deleteGuestPhoto, setGuestPhotoSharing,
 } from '@app/lib/api/guestPhotos';
+import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 import { sortThreads, questionsWaiting, openedLine, openDayLine } from '@app/lib/guestInbox';
 import { PhotoShareControls } from './GuestPhotosV2.jsx';
 import PhotoViewer from './PhotoViewer.jsx';
@@ -66,6 +67,7 @@ export function HostQuestions({ eventId, onWaiting }) {
     setBusy(true); setErr(''); setLine('');
     try {
       await replyToGuestThread(eventId, open.id, body);
+      try { trackEvent(ANALYTICS.GUEST_ANSWERED, { emailed: !!open.thread.email_notices }); } catch (_e) { /* counter only */ }
       setDraft('');
       setLine(open.thread.email_notices
         ? `Sent — it shows on ${first(open.thread.guest_name)}’s invite, and ${first(open.thread.guest_name)} gets it by email.`
@@ -243,7 +245,7 @@ export function HostGuestPhotos({ eventId, event, onPhotos }) {
                     {p.status === 'approved' && !p.uploader_private && p.share_blocked ? ' · Sharing off' : ''}
                   </div>
                   <div className="actions-row photo-acts">
-                    {p.status !== 'approved' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => approveGuestPhoto(eventId, p.id), 'Approved — guests can see it now.')}>Approve</button>}
+                    {p.status !== 'approved' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => approveGuestPhoto(eventId, p.id).then((x) => { try { trackEvent(ANALYTICS.GUEST_PHOTO_APPROVED); } catch (_e) { /* counter only */ } return x; }), 'Approved — guests can see it now.')}>Approve</button>}
                     {p.status !== 'hidden' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => hideGuestPhoto(eventId, p.id), 'Hidden from guests.')}>Hide</button>}
                     {p.status === 'approved' && !p.uploader_private && (
                       <button className="mini" data-photo-sharing disabled={busy === p.id}
@@ -274,7 +276,7 @@ export function HostGuestPhotos({ eventId, event, onPhotos }) {
           actions={(p) => (
             <>
               <span className="pv-note">From {p.guest_name} · {p.status === 'pending' ? 'Waiting for your approval' : p.status === 'approved' ? 'Guests can see it' : 'Hidden from guests'}</span>
-              {p.status !== 'approved' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => approveGuestPhoto(eventId, p.id), 'Approved — guests can see it now.')}>Approve</button>}
+              {p.status !== 'approved' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => approveGuestPhoto(eventId, p.id).then((x) => { try { trackEvent(ANALYTICS.GUEST_PHOTO_APPROVED); } catch (_e) { /* counter only */ } return x; }), 'Approved — guests can see it now.')}>Approve</button>}
               {p.status !== 'hidden' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => hideGuestPhoto(eventId, p.id), 'Hidden from guests.')}>Hide</button>}
             </>
           )} />

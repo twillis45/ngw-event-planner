@@ -181,6 +181,17 @@ export const EVENTS = {
   ACCOUNT_TYPE_SELECTED:  'account_type_selected',
   HOST_HOME_VIEWED:       'host_home_viewed',
   HOST_NEXT_STEP_CLICKED: 'host_next_step_clicked',
+
+  // Feature use (owner, 11/16/2026: "add analytics"). Which section was opened,
+  // and the moments that matter in the features shipped 11/16. Counts and kinds
+  // only: never a name, an email, a code or a message body.
+  SECTION_OPENED:         'section_opened',         // { section } — calendar, cohosts, split, family, guests…
+  CALENDAR_ADDED:         'calendar_added',         // { how: 'file' | 'subscription' }
+  COHOST_INVITED:         'cohost_invited',         // { emailed }
+  FAMILY_LINK_ON:         'family_link_on',
+  GUEST_UPDATE_POSTED:    'guest_update_posted',    // { emailing } — how many guests get it by email
+  GUEST_ANSWERED:         'guest_answered',         // { emailed } — the host answered a guest's question
+  GUEST_PHOTO_APPROVED:   'guest_photo_approved',
   FIRST_GUEST_ADDED:      'first_guest_added',     // UX-7 no-intake funnel
   FIRST_VENDOR_ADDED:     'first_vendor_added',
 

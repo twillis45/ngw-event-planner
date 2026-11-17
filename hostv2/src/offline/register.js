@@ -39,17 +39,51 @@ import { markSignal } from './lastSignal';
 
 const KILLED_KEY = 'ngw-sw-killed';
 
+// Tell a worker to stop touching caches, and wait for it to say so (or 1 s).
+function tellWorkerToStop(w) {
+  return new Promise((resolve) => {
+    try {
+      const ch = new MessageChannel();
+      const t = setTimeout(resolve, 1000);
+      ch.port1.onmessage = () => { clearTimeout(t); resolve(); };
+      w.postMessage({ type: 'ngw-kill' }, [ch.port2]);
+    } catch (_) { resolve(); }
+  });
+}
+
 /** Tear down every worker and cache this origin has. Safe to call twice. */
 export async function disableOfflineShell() {
   try { localStorage.setItem(KILLED_KEY, '1'); } catch (_) { /* no storage */ }
   try {
     const regs = await navigator.serviceWorker.getRegistrations();
+    // FIRST every worker stops (11/16/2026): an unregistered worker still serves
+    // this open page, and without this it re-created the cache after the delete.
+    const workers = new Set([navigator.serviceWorker.controller,
+      ...regs.flatMap((r) => [r.active, r.waiting, r.installing])].filter(Boolean));
+    await Promise.all([...workers].map(tellWorkerToStop));
     await Promise.all(regs.map((r) => r.unregister()));
   } catch (_) { /* nothing registered */ }
   try {
-    const keys = await caches.keys();
-    await Promise.all(keys.map((k) => caches.delete(k)));
+    const sweep = async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+      return keys.length;
+    };
+    await sweep();
+    // THEN SWEEP UNTIL IT STAYS CLEAN (11/16/2026). The worker can start nothing
+    // new once it has been told, but a request it took BEFORE the kill (this
+    // runs on 'load', after the page's own files) can still open its cache
+    // after the delete above: cache storage does not order the worker's open
+    // against this page's delete. Measured: an empty cache back 300-450 ms
+    // later. Two clean looks in a row, 250 ms apart, at most ~1.5 s.
+    for (let i = 0, clean = 0; i < 6 && clean < 2; i += 1) {
+      await new Promise((r) => setTimeout(r, 250));
+      clean = (await sweep()) === 0 ? clean + 1 : 0;
+    }
   } catch (_) { /* no cache api */ }
+  // When the kill finished, for anyone (a support check, the e2e) who needs to
+  // know it is over rather than guess with a timer.
+  try { sessionStorage.setItem('ngw-sw-kill-done', String(Date.now())); } catch (_) { /* no storage */ }
 }
 
 /** Has a host (or we) disabled it on this device? */

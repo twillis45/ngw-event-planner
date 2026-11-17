@@ -6,6 +6,7 @@
 // The link reads the plan as SAVED to the server, so it needs a signed-in host
 // whose plan is kept; signed out, the sheet says so and offers nothing to copy.
 import { useState } from 'react';
+import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 import { newFamilyCode } from '@app/lib/api/familyView';
 
 export default function FamilyLinkSheet({ event, signedIn, appUrl, onSave, onLine }) {
@@ -43,7 +44,7 @@ export default function FamilyLinkSheet({ event, signedIn, appUrl, onSave, onLin
         </p>
       ) : !code ? (
         <button className="cta" style={{ width: '100%', marginTop: 'var(--sp-4)' }} data-family-on
-          onClick={() => onSave({ familyCode: newFamilyCode() }, 'The family link is on.')}>
+          onClick={() => { onSave({ familyCode: newFamilyCode() }, 'The family link is on.'); try { trackEvent(ANALYTICS.FAMILY_LINK_ON); } catch (_e) { /* counter only */ } }}>
           Turn on the family link
         </button>
       ) : (

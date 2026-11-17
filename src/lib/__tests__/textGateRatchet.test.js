@@ -399,7 +399,16 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // sectionDirectory.js) to PASS_AMOUNT_CENTS in the backend — a claim about the
 // two files agreeing, which no rendered test can make: e2e runs against a
 // mocked backend and never sees the constant Stripe is told to charge.
-const MAX_HOSTV2_TEXT_GATES = 59;
+//
+// 59 → 60 (11/16/2026): featureUseIsCounted.test.js. Owner: "add analytics".
+// It asserts each new analytics event is FIRED somewhere in the host app and
+// is never sent with a name, an email or a body. That is the same kind of claim
+// as everyBackendRouteHasACaller: an event defined and never sent is an
+// ABSENCE across the whole shell, and no browser run can show that nothing
+// anywhere fires it. The behavior half is real e2e:
+// hostv2/e2e/featureUseIsCounted.spec.mjs opens the Calendar, adds the plan to
+// a calendar, and reads the recorded events (kind only) from the dev tap.
+const MAX_HOSTV2_TEXT_GATES = 60;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

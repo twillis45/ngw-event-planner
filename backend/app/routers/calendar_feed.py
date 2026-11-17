@@ -32,7 +32,7 @@ MAX_ITEMS = 400
 
 
 def _esc(s) -> str:
-    return (str(s or "").replace("\\", "\\\\").replace(";", "\;").replace(",", "\\,")
+    return (str(s or "").replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,")
             .replace("\r\n", "\\n").replace("\n", "\\n"))
 
 
