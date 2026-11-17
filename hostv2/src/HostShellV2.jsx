@@ -1584,7 +1584,7 @@ export default function HostShellV2() {
         <div style={{ marginTop: 'var(--sp-2)' }}>
           <p className="grounding" style={{ margin: '0 0 var(--sp-1)' }}>
             Parked — you’re sorting the venue yourself, so the plan has stopped leading with it.
-            It still shows as unanswered above, because we don’t know the place yet.
+            It still counts as unanswered in your plan, because we don’t know the place yet.
           </p>
           {/* "Actually, help me find one" promised a search the app does not
               have (11/16/2026, CTA truthfulness): un-parking only puts the venue
@@ -13765,7 +13765,9 @@ export default function HostShellV2() {
                         {(days != null && days <= 1) ? 'Today' : 'Plan'}
                       </span>
                     </div>
-                    <h3>Where is it happening?</h3>
+                    {/* Parked (owner, 11/16/2026): the host said she is handling it,
+                        so the heading stops asking and says so. */}
+                    <h3>{venueParked(event) ? 'Venue: you’re handling it' : 'Where is it happening?'}</h3>
                     <p className="because">{(days != null && days <= 1)
                       ? 'It’s the day — guests, the rain note, and every map link need a place. This can’t wait.'
                       : 'Everything hangs off the venue — invites, the rain backup, seats and space.'}</p>

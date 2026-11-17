@@ -87,6 +87,11 @@ test('it is reversible, and the parked state says so while it lasts', async ({ p
   await page.waitForTimeout(1600);
   await settled(page);
   expect(await bodyText(page)).toMatch(/Parked — you.re sorting the venue yourself/i);
+  // Owner, 11/16/2026: once parked, the card stops asking and points at nothing
+  // that is not there ("unanswered above" named no item above it).
+  expect(await bodyText(page)).toMatch(/Venue: you.re handling it/);
+  expect(await bodyText(page)).not.toMatch(/Where is it happening\?|unanswered above/);
+  expect(await bodyText(page)).toMatch(/still counts as unanswered in your plan/);
 
   // The undo says what it does: it puts the venue back on the list. It never
   // promises to FIND one (11/16/2026) — the app has no venue search.
