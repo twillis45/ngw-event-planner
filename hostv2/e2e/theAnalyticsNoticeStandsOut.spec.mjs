@@ -11,10 +11,14 @@
 // PostHog is blocked: nothing leaves the machine.
 import { test, expect, settled } from './fixtures.mjs';
 
-test.use({ launchOptions: {
-  ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}),
-  args: ['--host-resolver-rules=MAP ngw.test 127.0.0.1'],
-} });
+// The made-up host reaches the preview by ROUTING, not a launch flag: the
+// first cut used Chromium's --host-resolver-rules, which crashed WebKit at
+// launch (WebKit full run, 11/17/2026). The page still sees ngw.test as its
+// hostname, which is all the bundle's analytics check reads.
+// (Fetched from Node and fulfilled: WebKit does not honor a host change in
+// route.continue, so the page never loaded there.)
+const mapHost = (page) => page.route(/^http:\/\/ngw\.test(:\d+)?\//,
+  async (r) => r.fulfill({ response: await r.fetch({ url: r.request().url().replace('ngw.test', '127.0.0.1') }) }));
 
 const arrive = async (page, baseURL, w, h) => {
   await page.setViewportSize({ width: w, height: h });
@@ -23,6 +27,7 @@ const arrive = async (page, baseURL, w, h) => {
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
   });
+  await mapHost(page);
   await page.goto(baseURL.replace('127.0.0.1', 'ngw.test') + '?elegant=1');
   await settled(page);
 };

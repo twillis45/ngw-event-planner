@@ -116,7 +116,10 @@ const NAME_PROBE = () => {
   };
   const els = [...document.querySelectorAll('button,a[href],input,select,textarea,[role=button]')].filter(vis);
   const unnamed = els.filter((el) => {
-    const t = (el.innerText || '').trim();
+    // textContent when innerText is empty: WebKit returns '' for a control in an
+    // off-screen content-visibility:auto section, but a screen reader names it
+    // from its DOM text (WebKit full run, 11/17/2026: 261 false findings).
+    const t = (el.innerText || el.textContent || '').trim();
     return !t && !el.getAttribute('aria-label') && !el.getAttribute('aria-labelledby') && !el.getAttribute('title');
   }).map((el) => `${el.tagName}.${(el.className || '').toString().slice(0, 40)}`);
   return { total: els.length, unnamed };

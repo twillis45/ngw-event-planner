@@ -117,7 +117,7 @@ for (const { name, viewport } of VIEWPORTS) {
 
     test('the ask, the record and the panel are about ONE thing', async ({ page }) => {
       const errors = [];
-      page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+      page.on('console', m => { if (m.type() === 'error' && !/interactive-widget/.test(m.text())) errors.push(m.text()); }); // WebKit notes the Chrome-only viewport key; not an error
       page.on('pageerror', e => errors.push(String(e)));
 
       await bootGameNight(page);
@@ -162,7 +162,7 @@ for (const { name, viewport } of VIEWPORTS) {
 
     test('a real open decision still renders, aligned with its ask', async ({ page }) => {
       const errors = [];
-      page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+      page.on('console', m => { if (m.type() === 'error' && !/interactive-widget/.test(m.text())) errors.push(m.text()); }); // WebKit notes the Chrome-only viewport key; not an error
       page.on('pageerror', e => errors.push(String(e)));
 
       await bootRepast(page);

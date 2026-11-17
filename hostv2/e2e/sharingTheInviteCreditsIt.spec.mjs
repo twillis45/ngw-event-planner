@@ -31,7 +31,9 @@ const hostEvent = () => ({
   timeline: [{ id: 't_invite', task: INVITE, leadDays: -7, week: '1 week out', done: false, owner: '', category: 'planning', phase: 'guest' }],
 });
 
-test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
+// Clipboard permissions are a Chromium name; WebKit refuses 'clipboard-write'
+// at newPage (WebKit full run, 11/17/2026) and allows writes from a tap anyway.
+test.use({ permissions: async ({ browserName }, use) => use(browserName === 'chromium' ? ['clipboard-read', 'clipboard-write'] : []) });
 
 test('copy the invite, say it was sent, and the invite task is credited — with no blame on day 0', async ({ page }) => {
   await page.route(`${API}/**`, (r) => r.fulfill({ status: 200, json: [] }));

@@ -28,6 +28,18 @@ const IMG = (id) => `${API}/img/${id}.jpg`;
 
 const serve = async (page, { open = true, mine = [], approved = [], keepPrivate = false } = {}) => {
   const calls = { upload: [], privacy: [], del: [] };
+  // THE BYTES, MEASURED WHERE BOTH ENGINES CAN SEE THEM (WebKit full run,
+  // 11/17/2026). Playwright's WebKit interception reports a Blob or File body as
+  // 0 bytes (probe: blob 0, file 0, arraybuffer 632; Chromium 632 for all
+  // three) although the upload is sent. So the page records the size of the
+  // body it hands to fetch; the route's own count stays primary where visible.
+  await page.addInitScript(() => {
+    const real = window.fetch;
+    window.fetch = (u, o) => {
+      if (String(u).includes('/api/public/photos/') && o && o.body instanceof Blob) window.__photoBytes = o.body.size;
+      return real(u, o);
+    };
+  });
   let mineNow = [...mine];
   await page.route(`${API}/**`, (r) => r.fulfill({ status: 404, json: { detail: 'not found' } }));
   await page.route(`${API}/img/**`, (r) => r.fulfill({ status: 200, contentType: 'image/jpeg', body: JPEG }));
@@ -110,7 +122,7 @@ test('the upload screen says what sharing means; "keep private" starts off; an u
   expect(calls.upload[0]).toMatchObject({ name: 'Ana Ruiz', private: '0', type: 'image/jpeg' });
   expect(calls.upload[0].tz).toMatch(/^-?\d+$/);
   expect(calls.upload[0].key.length).toBeGreaterThanOrEqual(16);
-  expect(calls.upload[0].bytes).toBe(JPEG.length);
+  expect(calls.upload[0].bytes || await page.evaluate(() => window.__photoBytes || 0)).toBe(JPEG.length);
   // Her photo, with what it is waiting for — never a bare "pending": a
   // "Waiting" badge on the tile, and the full sentence in its name and viewer.
   const tile = card.locator('[data-my-photos] .photo-tile-btn');

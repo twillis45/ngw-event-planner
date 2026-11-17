@@ -351,8 +351,18 @@ for (const state of STATES) {
       const vp = page.viewportSize();
       await page.mouse.move(vp.width / 2, vp.height / 2); // wheel events land at the pointer — put it IN the app
       let atEnd = false;
+      // Mobile WebKit has no mouse wheel in Playwright ("Mouse wheel is not
+      // supported in mobile WebKit", WebKit full run 11/17/2026). There the same
+      // 700px steps go through scrollBy, one per frame, never one jump to the end.
+      let wheel = true;
       for (let i = 0; i < 60 && !atEnd; i++) {
-        await page.mouse.wheel(0, 700);
+        if (wheel) {
+          try { await page.mouse.wheel(0, 700); } catch (e) {
+            if (!/not supported/i.test(String(e && e.message))) throw e;
+            wheel = false;
+          }
+        }
+        if (!wheel) await page.evaluate(() => { const a = document.querySelector('.app'); if (a) a.scrollBy(0, 700); });
         await page.waitForTimeout(70);
         atEnd = await page.evaluate(() => {
           const a = document.querySelector('.app');
