@@ -935,10 +935,16 @@ const PASS_PAID_RETURN = (() => {
 // Stripe sends a host who gives up on checkout — a declined card, or just the
 // back arrow — to `?pass_cancel=1`, and the app used to say nothing at all. The
 // truth is small and worth saying: nothing was charged, and the pass is still
-// there. Read once at module scope, like PASS_PAID_RETURN (params are stripped
-// during boot).
+// there. Read once at module scope and removed from the address bar, like
+// OPEN_ON_LOAD, so a refresh does not say it again (live check 11/16: it did).
 const PASS_CANCEL_RETURN = (() => {
-  try { return new URLSearchParams(window.location.search).get('pass_cancel') === '1'; } catch { return false; }
+  try {
+    const u = new URL(window.location.href);
+    if (u.searchParams.get('pass_cancel') !== '1') return false;
+    u.searchParams.delete('pass_cancel');
+    window.history.replaceState(null, '', u.toString());
+    return true;
+  } catch { return false; }
 })();
 
 // ── THE COCKPIT'S PASS DOOR LANDS HERE (gap H1, 11/12/2026) ────────────────

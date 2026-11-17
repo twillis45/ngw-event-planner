@@ -324,4 +324,11 @@ test('back from a checkout that did not finish: "nothing was charged", once', as
   const toasts = await page.evaluate(() => window.__toastsSeen);
   expect(toasts.filter((t) => /Checkout closed — nothing was charged\./.test(t)), JSON.stringify(toasts)).toHaveLength(1);
   expect(toasts.filter((t) => /pass is yours|payment went through|you paid/i.test(t))).toHaveLength(0);
+  // Once means once: the live check (11/16, 8:40 PM EST) found ?pass_cancel=1
+  // left in the address bar, so a refresh said it all again. It is removed.
+  expect(new URL(page.url()).searchParams.get('pass_cancel')).toBeNull();
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(3000);
+  const after = await page.evaluate(() => window.__toastsSeen);
+  expect(after.filter((t) => /Checkout closed/.test(t)), JSON.stringify(after)).toHaveLength(0);
 });
