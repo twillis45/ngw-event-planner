@@ -34,6 +34,7 @@ class DB:
         self.members = {(STUDIO, HOST)}
         self.events = {"ev1": {"studio_id": STUDIO, "name": "Vida’s Friendsgiving"}}
         self.rows = []      # {id, event_id, email, user_id, accepted_at, created_at}
+        self.counters = {}
         self.users = {HOST: ("host@example.test", True), COHOST: ("cohost@example.test", True),
                       STRANGER: ("stranger@example.test", False)}
 
@@ -42,6 +43,10 @@ class Conn:
     def __init__(self, db): self.db = db
     async def fetchval(self, q, *a):
         if "to_regclass('public.event_cohosts')" in q: return True
+        if "to_regclass('public.rate_counters')" in q: return True
+        if "insert into public.rate_counters" in q:
+            self.db.counters[a[0]] = self.db.counters.get(a[0], 0) + 1
+            return self.db.counters[a[0]]
         if "from studio_members" in q: return 1 if (str(a[0]), str(a[1])) in self.db.members else None
         if "count(*) from public.event_cohosts" in q: return sum(r["event_id"] == a[0] for r in self.db.rows)
         if "insert into public.event_cohosts" in q:
@@ -176,3 +181,16 @@ def test_a_cohost_leaves_by_saying_me(env):
     assert env.c.delete("/api/events/ev1/cohosts/me").status_code == 200 and env.db.rows == []
     env.who["id"] = STRANGER
     assert env.c.delete("/api/events/ev1/cohosts/me").status_code == 404
+
+
+# ── Security self-test M4 (11/17/2026): invite, remove, invite again re-sent the
+# email without limit — the 10-co-host cap counts current rows, not sends. Invite
+# emails per event per day are counted; past the cap nothing is sent or saved.
+def test_invite_emails_per_event_per_day_are_capped(env):
+    for _ in range(ch.INVITE_EMAILS_PER_EVENT_PER_DAY):
+        r = invite(env, "victim@example.test")
+        assert r.status_code == 200 and r.json()["emailed"] is True
+        env.c.delete(f"/api/events/ev1/cohosts/{env.db.rows[0]['id']}")
+    sent = len(env.sent)
+    r = invite(env, "victim@example.test")
+    assert r.status_code == 429 and len(env.sent) == sent and env.db.rows == []

@@ -51,7 +51,12 @@ export async function currentStudioId() {
     const { data, error } = await supabase
       .from('studio_members')
       .select('studio_id, role')
-      .eq('user_id', uid);
+      .eq('user_id', uid)
+      // Oldest membership first (security self-test M5, 11/17/2026): with two
+      // owner rows the pick was whatever order the database returned, so her
+      // new events could land in another studio. Her own studio, made at
+      // sign-up, is her oldest — the same order ensure_studio() uses.
+      .order('created_at', { ascending: true });
     if (error) return null;
     let studioId = data?.length ? (data.find((m) => m.role === 'owner') || data[0]).studio_id : null;
     // Self-heal (migration 010): a signed-in user with NO membership is stranded —
