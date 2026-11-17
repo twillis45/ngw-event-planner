@@ -3786,6 +3786,18 @@ export default function HostShellV2() {
         || (ROSTER[0] && ROSTER[0].id)
         || BOOT_EVENT_ID;
       switchEvent(to);
+      // HER LAST EVENT GONE IS NOT AN INVITATION INTO A SAMPLE (live, 11/16/2026):
+      // the ladder above ends on a sample so eventId never dangles, and she was
+      // left on "Margaret Adeyemi's Retirement" — a made-up caterer bill, nothing
+      // saying it was a sample. With nothing of hers left, she gets the welcome
+      // a new visitor gets and chooses (issue #100 D-5, the same trap at boot).
+      const ownLeft = next.length
+        || REAL_EVENTS.some(e => e && e.id !== id)
+        || (hydratedEvents || []).some(e => e && e.id !== id);
+      if (!ownLeft) {
+        try { localStorage.removeItem(LS_WELCOMED); } catch { /* private mode — the gate still shows now */ }
+        setWelcome(true);
+      }
     }
     if (isSupabaseConfigured() && session) {
       cloudDeleteEvent(id)
@@ -10952,6 +10964,11 @@ export default function HostShellV2() {
               {elegantMode && (askMode || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
+                  {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
+                      its caterer bill, its vendors — read as the host's own when she
+                      landed on one. Every board layout carries this header, so the
+                      label is here once per layout, beside the text the tests read. */}
+                  {!eventIsTheHostsOwn && <span className="eb-sample" data-sample-event>Sample</span>}
                   {/* The eyebrow is the ONE element every elegant screen keeps, so it
                       carries the date STATUS — and with no date it said nothing at all,
                       leaving the countdown slot silently empty. Figma 922:121 puts
@@ -13992,6 +14009,11 @@ export default function HostShellV2() {
               {elegantMode && (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
+                  {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
+                      its caterer bill, its vendors — read as the host's own when she
+                      landed on one. Every board layout carries this header, so the
+                      label is here once per layout, beside the text the tests read. */}
+                  {!eventIsTheHostsOwn && <span className="eb-sample" data-sample-event>Sample</span>}
                   <span className="eb-text">MENU</span>
                 </button>
               )}
@@ -14232,6 +14254,11 @@ export default function HostShellV2() {
               {elegantMode && (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
+                  {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
+                      its caterer bill, its vendors — read as the host's own when she
+                      landed on one. Every board layout carries this header, so the
+                      label is here once per layout, beside the text the tests read. */}
+                  {!eventIsTheHostsOwn && <span className="eb-sample" data-sample-event>Sample</span>}
                   <span className="eb-text">MENU</span>
                 </button>
               )}
@@ -14796,6 +14823,11 @@ export default function HostShellV2() {
               {elegantMode && (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
+                  {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
+                      its caterer bill, its vendors — read as the host's own when she
+                      landed on one. Every board layout carries this header, so the
+                      label is here once per layout, beside the text the tests read. */}
+                  {!eventIsTheHostsOwn && <span className="eb-sample" data-sample-event>Sample</span>}
                   <span className="eb-text">MENU</span>
                 </button>
               )}
