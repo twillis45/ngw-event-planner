@@ -145,3 +145,18 @@ test('no updates: no box at all', async ({ page }) => {
   await expect(page.locator('.inv2-label').first()).toBeVisible();
   await expect(page.locator('[data-guest-updates]')).toHaveCount(0);
 });
+
+
+// Live check 11/16/2026: one opted-in guest read "the 1 guest who asked for
+// email get it". Singular now.
+test('one guest who asked for email reads in the singular', async ({ page }) => {
+  await boot(page);
+  await serveHost(page, { emailGuests: 1 });
+  const box = await openGuestList(page);
+  await expect(box.locator('[data-updates-reach]')).toHaveText('It shows on every guest’s invite, and the 1 guest who asked for email gets it by email.');
+  await box.getByRole('textbox', { name: 'Your update to every guest' }).fill('Doors at 3:30.');
+  await box.locator('[data-update-post]').click();
+  await expect(box.locator('[data-update-post]')).toHaveText('Post and email 1 guest');
+  await box.locator('[data-update-post]').click();
+  await expect(box.locator('[data-update-status]')).toHaveText('Posted — it’s on every invite, and 1 guest gets it by email.');
+});

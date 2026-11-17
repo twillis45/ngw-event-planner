@@ -931,6 +931,16 @@ const PASS_PAID_RETURN = (() => {
   return null;
 })();
 
+// ── BACK FROM A CHECKOUT THAT DIDN'T FINISH (live declined-card run, 11/16/2026)
+// Stripe sends a host who gives up on checkout — a declined card, or just the
+// back arrow — to `?pass_cancel=1`, and the app used to say nothing at all. The
+// truth is small and worth saying: nothing was charged, and the pass is still
+// there. Read once at module scope, like PASS_PAID_RETURN (params are stripped
+// during boot).
+const PASS_CANCEL_RETURN = (() => {
+  try { return new URLSearchParams(window.location.search).get('pass_cancel') === '1'; } catch { return false; }
+})();
+
 // ── THE COCKPIT'S PASS DOOR LANDS HERE (gap H1, 11/12/2026) ────────────────
 // LodgingCockpit.jsx is its own page, so when it is reached on a locked event
 // its "See the One-Event Pass" door cannot call setSheet — it comes back with
@@ -3972,6 +3982,15 @@ export default function HostShellV2() {
   // unlocks nothing. Verification failing on a REAL payment self-heals on a
   // later boot: Stripe keeps the session, the host keeps the receipt, and
   // support can re-run the same link. Green confirmation only after verify.
+  // Checkout closed without paying: say so, once. Stripe charged nothing (a
+  // declined card never reaches us, and a cancel is not a sale), so this is
+  // the whole truth and needs no server check.
+  const passCancelShown = useRef(false);
+  useEffect(() => {
+    if (!PASS_CANCEL_RETURN || passCancelShown.current) return;
+    passCancelShown.current = true;
+    toast('Checkout closed — nothing was charged. The pass is here whenever you want it.');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const passPaidApplied = useRef(false);
   useEffect(() => {
     if (!PASS_PAID_RETURN || !PASS_PAID_RETURN.eventId || passPaidApplied.current) return;

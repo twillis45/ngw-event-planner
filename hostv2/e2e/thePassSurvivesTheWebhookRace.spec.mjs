@@ -299,3 +299,29 @@ test.describe('GOLD-09 — the pass entitlement reaches the shell', () => {
     expect(asks.length).toBeGreaterThanOrEqual(3);
   });
 });
+
+
+// ── BACK FROM A CHECKOUT THAT DIDN'T FINISH (live declined-card run, 11/16/2026)
+// Stripe returns a host who gives up (a declined card, or the back arrow) to
+// ?pass_cancel=1. The live run found the app said nothing; it now says nothing
+// was charged, and never claims a payment.
+test('back from a checkout that did not finish: "nothing was charged", once', async ({ page }) => {
+  await page.addInitScript(([e, lastId]) => {
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
+    localStorage.setItem('ngw-hostv2-last-event', lastId);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1');
+    localStorage.setItem('ngw-v2-welcomed', '1');
+    window.__toastsSeen = [];
+    setInterval(() => {
+      const n = document.querySelector('div.toast');
+      const t = n ? (n.innerText || '').replace(/\s+/g, ' ').trim() : '';
+      if (t && !window.__toastsSeen.includes(t)) window.__toastsSeen.push(t);
+    }, 80);
+  }, [eventFixture(), EVENT_ID]);
+  await page.goto(`${BASE}?pass_cancel=1`, { waitUntil: 'load' });
+  await page.waitForTimeout(5000);
+  const toasts = await page.evaluate(() => window.__toastsSeen);
+  expect(toasts.filter((t) => /Checkout closed — nothing was charged\./.test(t)), JSON.stringify(toasts)).toHaveLength(1);
+  expect(toasts.filter((t) => /pass is yours|payment went through|you paid/i.test(t))).toHaveLength(0);
+});

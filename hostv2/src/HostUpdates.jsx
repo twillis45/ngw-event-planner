@@ -15,6 +15,7 @@ const when = (iso) => {
   try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return ''; }
 };
 const guests = (n) => `${n} guest${n === 1 ? '' : 's'}`;
+const gets = (n) => (n === 1 ? 'gets' : 'get');   // "1 guest gets", "2 guests get" (live check 11/16)
 
 export default function HostUpdates({ eventId }) {
   const [st, setSt] = useState(undefined);       // undefined loading · { announcements, limits, email_guests } · { failed }
@@ -62,7 +63,7 @@ export default function HostUpdates({ eventId }) {
     setBusy(''); setConfirm(false);
     if (!r.ok) { setErr(r.status === 429 || r.status === 422 ? r.reason : 'That didn’t post. Try again.'); return; }
     setDraft('');
-    setLine(r.emailing > 0 ? `Posted — it’s on every invite, and ${guests(r.emailing)} get it by email.` : 'Posted — it’s on every invite.');
+    setLine(r.emailing > 0 ? `Posted — it’s on every invite, and ${guests(r.emailing)} ${gets(r.emailing)} it by email.` : 'Posted — it’s on every invite.');
     load();
   };
   const remove = async (a) => {
@@ -79,7 +80,7 @@ export default function HostUpdates({ eventId }) {
       <div className="shelf-label" style={{ marginBottom: 6 }}>Updates to everyone</div>
       <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }} data-updates-reach>
         {emailN > 0
-          ? `It shows on every guest’s invite, and the ${guests(emailN)} who asked for email get it by email.`
+          ? `It shows on every guest’s invite, and the ${guests(emailN)} who asked for email ${gets(emailN)} it by email.`
           : 'It shows on every guest’s invite. No guest has asked for email yet, so nobody is emailed.'}
       </p>
       {canPost ? (
