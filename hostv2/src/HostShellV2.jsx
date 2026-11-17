@@ -214,7 +214,7 @@ import {
 } from '@app/lib/vendorIntelligence';
 import { isVendorBooked, isVendorConfirmed } from '@app/lib/workstreams';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
-import { isPlausibleCityText, parseVenueLocation } from '@app/lib/cityText';
+import { isPlausibleCityText, parseVenueLocation, proposeTownFromHeard } from '@app/lib/cityText';
 import { foodShopItems } from '@app/lib/foodShopItems';
 import { eventGeoQuery } from '@app/lib/eventGeoQuery';
 // ── SEND THE LIST TO THE STORE (ported to hostv2 2026-09-23) ────────────────
@@ -1526,7 +1526,9 @@ export default function HostShellV2() {
     // pendingCity comes from the address-autocomplete pick (already "City, ST"
     // when Nominatim returned a state) — setVenue (the constitution's ONE write
     // path) owns kind inference + the strict city gate for it.
-    patchEvent(setVenue(event, { name: v, locationText: pendingCity }),
+    // Naming the place ends "I'll sort this" (50-host run, 11/16/2026): a host
+    // who parked the venue and later typed it kept the parked flag in her data.
+    patchEvent({ ...setVenue(event, { name: v, locationText: pendingCity }), ...(venueParked(event) ? unparkVenuePatch(event) : {}) },
       'Venue on the plan — invites, maps, and the rain note now carry it.');
     setVenueErr(null); setVenueDraft(''); setPendingCity(''); setAddrSugs([]);
   };
@@ -1603,7 +1605,26 @@ export default function HostShellV2() {
               Google Maps search of the event's own town (said on the label),
               and the inquiry written from facts the host gave. The place she
               picks goes in the box above — the one source every part reads. */}
+          {/* "Anaheim" WITHOUT ITS STATE (owner-approved, 11/16/2026). Heard at
+              creation but never confirmed, so searches and weather had no town.
+              Proposed for one tap only when the app's city list holds exactly one
+              by that name; nothing is saved until she taps. */}
           {(() => {
+            if (venueFor(event).city) return null;
+            const t = proposeTownFromHeard(event.cityHeard);
+            if (!t) return null;
+            return (
+              <p className="grounding" data-town-propose style={{ margin: '0 0 var(--sp-2)' }}>
+                Town: <b>{t.label}</b>?{' '}
+                <button className="mini" onClick={() => patchEvent({ venueCity: t.city, venueState: t.state }, `Town set — searches and weather now use ${t.label}.`)}>That’s it</button>
+              </p>
+            );
+          })()}
+          {(() => {
+            // Only while there is no place yet (50-host run, 11/16/2026): the
+            // Venue sheet kept offering "Find venues near…" under "Currently:
+            // House of Blues Anaheim" — help for a question already answered.
+            if (venueFor(event).isSet) return null;
             const searchUrl = venueSearchUrl(event);
             const inquiry = draftVenueInquiry(event, profile);
             if (!searchUrl && !inquiry) return null;
@@ -3786,6 +3807,18 @@ export default function HostShellV2() {
         || (ROSTER[0] && ROSTER[0].id)
         || BOOT_EVENT_ID;
       switchEvent(to);
+      // HER LAST EVENT GONE IS NOT AN INVITATION INTO A SAMPLE (live, 11/16/2026):
+      // the ladder above ends on a sample so eventId never dangles, and she was
+      // left on "Margaret Adeyemi's Retirement" — a made-up caterer bill, nothing
+      // saying it was a sample. With nothing of hers left, she gets the welcome
+      // a new visitor gets and chooses (issue #100 D-5, the same trap at boot).
+      const ownLeft = next.length
+        || REAL_EVENTS.some(e => e && e.id !== id)
+        || (hydratedEvents || []).some(e => e && e.id !== id);
+      if (!ownLeft) {
+        try { localStorage.removeItem(LS_WELCOMED); } catch { /* private mode — the gate still shows now */ }
+        setWelcome(true);
+      }
     }
     if (isSupabaseConfigured() && session) {
       cloudDeleteEvent(id)
@@ -10432,7 +10465,7 @@ export default function HostShellV2() {
                           onClick={() => setFIsDestination(effIsDestination === true ? false : effIsDestination === false ? null : true)}>
                           {effIsDestination === true
                             ? 'Destination event' + (fIsDestination != null ? ''
-                              : parsed.destinationBasis === 'travel-language' ? ' · heard'
+                              : (parsed.destinationBasis === 'travel-language' || parsed.destinationBasis === 'stay-language') ? ' · heard'
                                 : parsed.destinationBasis === 'place-differs-from-your-area' ? ' · not your area' : '')
                             : effIsDestination === false ? 'Local event'
                               : 'Local, or folks traveling in?'}
@@ -10952,6 +10985,11 @@ export default function HostShellV2() {
               {elegantMode && (askMode || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
+                  {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
+                      its caterer bill, its vendors — read as the host's own when she
+                      landed on one. Every board layout carries this header, so the
+                      label is here once per layout, beside the text the tests read. */}
+                  {!eventIsTheHostsOwn && <span className="eb-sample" data-sample-event>Sample</span>}
                   {/* The eyebrow is the ONE element every elegant screen keeps, so it
                       carries the date STATUS — and with no date it said nothing at all,
                       leaving the countdown slot silently empty. Figma 922:121 puts
@@ -12367,7 +12405,13 @@ export default function HostShellV2() {
                 // Include a SECOND bundle here (host 2026-07-18): "Resolve 9 decisions" behind
                 // the conflict hero drops below the fold as a path-row, so the first screen isn't
                 // two stacked bundles. A bundle routes to its own sheet on tap.
-                const thenItems = (queue || []).slice(1).filter(a => a && a.level !== 'critical' && !!resolveRoute(a.route));
+                // ONE PLACE TO ANSWER THE VENUE (owner, 11/16/2026: "not confusing").
+                // While no venue is set the board already carries the venue box
+                // (the blocker card, or the parked card), so a "Name the venue"
+                // row here asked the same question twice on one screen.
+                const venueBoxOnBoard = !vf.isSet;
+                const thenItems = (queue || []).slice(1).filter(a => a && a.level !== 'critical' && !!resolveRoute(a.route)
+                  && !(venueBoxOnBoard && (a.blockerType === 'venue-selection' || /^(name the venue|add the location|pick the place)/i.test(String(a.title || '').trim()))));
                 if (!thenItems.length) return null;
                 // Dated money obligations, read ONCE for the whole list — the reason
                 // service matches a row to an action by key/vendorId. Never an estimate.
@@ -13992,6 +14036,11 @@ export default function HostShellV2() {
               {elegantMode && (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
+                  {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
+                      its caterer bill, its vendors — read as the host's own when she
+                      landed on one. Every board layout carries this header, so the
+                      label is here once per layout, beside the text the tests read. */}
+                  {!eventIsTheHostsOwn && <span className="eb-sample" data-sample-event>Sample</span>}
                   <span className="eb-text">MENU</span>
                 </button>
               )}
@@ -14232,6 +14281,11 @@ export default function HostShellV2() {
               {elegantMode && (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
+                  {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
+                      its caterer bill, its vendors — read as the host's own when she
+                      landed on one. Every board layout carries this header, so the
+                      label is here once per layout, beside the text the tests read. */}
+                  {!eventIsTheHostsOwn && <span className="eb-sample" data-sample-event>Sample</span>}
                   <span className="eb-text">MENU</span>
                 </button>
               )}
@@ -14796,6 +14850,11 @@ export default function HostShellV2() {
               {elegantMode && (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
+                  {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
+                      its caterer bill, its vendors — read as the host's own when she
+                      landed on one. Every board layout carries this header, so the
+                      label is here once per layout, beside the text the tests read. */}
+                  {!eventIsTheHostsOwn && <span className="eb-sample" data-sample-event>Sample</span>}
                   <span className="eb-text">MENU</span>
                 </button>
               )}
@@ -15073,6 +15132,19 @@ export default function HostShellV2() {
                 {vf.display && (
                   <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Currently: <b>{vf.display}</b>{vf.city ? ` · ${vf.city}${vf.state ? ', ' + vf.state : ''}` : ''}{vf.confirmed ? (vf.isHome ? ' · your home, confirmed' : ' · confirmed') : ''}. Enter a new place to change it.</p>
                 )}
+                {/* WHERE EVERYONE STAYS, FROM THE VENUE (owner, 11/16/2026: "Venue
+                    is related to where everyone stays"). On a trip the two are one
+                    question — rooms far from the party are the costly mistake — so
+                    the venue names the stay and opens it; the stay names the venue. */}
+                {travel.relevant && (() => {
+                  const stayName = String((travel.lodging && travel.lodging.hotelName) || '').trim();
+                  return (
+                    <p className="grounding" data-venue-stay style={{ margin: '0 0 var(--sp-2)' }}>
+                      Where everyone stays: <b>{stayName || 'not picked yet'}</b>{' · '}
+                      <button className="mini" onClick={() => goToLodgingCockpit()}>{stayName ? 'Open it' : (vf.name && !vf.isHome ? 'Find places near the party' : 'Find places to stay')}</button>
+                    </p>
+                  );
+                })()}
                 {vf.display && !vf.confirmed && (
                   <div style={{ margin: '0 0 var(--sp-3)' }}>
                     <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Is this a private home, or a venue?</p>

@@ -11,7 +11,7 @@
 //   2. Saved in ANY one place, every other place stops asking and shows it.
 //   3. Until then, the shared venue control carries the help the app can
 //      actually give: a Google Maps search of the town, and the inquiry.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const SAID = "Jordan's 50th birthday party in Anaheim, CA on Saturday June 12, 2027 for 60 guests";
 const SAID_WITH_VENUE = "Jordan's 50th birthday party at House of Blues Anaheim in Anaheim, CA on Saturday June 12, 2027 for 60 guests";
@@ -72,7 +72,9 @@ test('saved in one place, every place shows it and none asks again', async ({ pa
   await create(page, SAID);
   expect((await asks(page)).length).toBeGreaterThan(0);          // (premise) it does ask
   // Save it in the Venue SHEET…
-  await page.getByRole('button', { name: /^Name the venue/ }).first().click();
+  // The Venue sheet, from the section list (the board's duplicate "Name the
+  // venue" row is gone — one place to answer it on the board itself).
+  await openSectionByName(page, 'Venue');
   const box = page.locator('.sheet input[aria-label="Venue"]:visible').first();
   await box.click(); await page.keyboard.type('House of Blues Anaheim', { delay: 5 });
   await box.locator('xpath=..').getByRole('button', { name: 'Save' }).click();
@@ -81,10 +83,35 @@ test('saved in one place, every place shows it and none asks again', async ({ pa
   expect([e.venue, e.venueKind || 'venue']).toEqual(['House of Blues Anaheim', 'venue']);
   // …and the sheet itself now reads it back from the same field.
   await expect(page.locator('.sheet').last()).toContainText('Currently: House of Blues Anaheim');
+  // The help is for finding a place; once there is one, it is gone (50-host run).
+  await expect(page.locator('.sheet').last().locator('[data-venue-help]')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await page.goto('./?elegant=1'); await settled(page);
   expect(await asks(page)).toEqual([]);                           // the board card is gone
   await page.goto('./'); await settled(page);
   expect(await asks(page)).toEqual([]);                           // the standard view's hero too
   expect(await page.locator('[data-venue-help]:visible').count()).toBe(0);
+});
+
+// ── Calls 1 and 2 and the duplicate row (owner-approved 11/16/2026) ──────────
+test('"in Anaheim" with no state: the board proposes Anaheim, CA for one tap, and then the search appears', async ({ page }) => {
+  test.setTimeout(90000);
+  await create(page, "Jordan's 50th birthday party in Anaheim on Saturday June 12, 2027 for 60 guests");
+  expect((await stored(page)).venueCity || '').toBe('');
+  const ask = page.locator('[data-town-propose]:visible').first();
+  await expect(ask).toContainText('Town: Anaheim, CA?');
+  await ask.getByRole('button', { name: 'That’s it' }).click();
+  await page.waitForTimeout(600);
+  const e = await stored(page);
+  expect([e.venueCity, e.venueState]).toEqual(['Anaheim', 'CA']);
+  await expect(page.locator('[data-town-propose]:visible')).toHaveCount(0);
+  await expect(page.locator('[data-venue-search]:visible').first()).toHaveText('Find venues near Anaheim · Google Maps');
+});
+
+test('the board asks for the venue in one place, not a row and a card', async ({ page }) => {
+  test.setTimeout(90000);
+  await create(page, SAID);
+  const rows = await page.locator('.then-fold button').allInnerTexts();
+  expect(rows.filter((t) => /name the venue|add the location|pick the place/i.test(t))).toEqual([]);
+  await expect(page.locator('article input[aria-label="Venue"]:visible')).toHaveCount(1);
 });

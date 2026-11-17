@@ -222,3 +222,26 @@ export function resolveSpokenCity(v) {
   if (!name) return null;
   return { city: name, state: null };
 }
+
+
+// ─── proposeTownFromHeard — "Anaheim" → "Anaheim, CA?" (owner, 11/16/2026) ───
+// A town typed with no state is kept as heard (cityHeard), never committed: a
+// guessed state is worse than asking. 15 of 50 hosts in the Anaheim run lost the
+// venue search, the weather and the stay town over it. So the app PROPOSES the
+// state for one tap — and only when its own curated list holds exactly ONE
+// "City, ST" by that name. Two or more (Springfield, Columbus, Kansas City) and
+// it proposes nothing. Returns { city, state, label } or null.
+export function proposeTownFromHeard(heard) {
+  const h = String(heard || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  if (!h || /,|\d/.test(h)) return null;
+  const hits = [];
+  for (const entry of US_CITIES) {
+    const i = String(entry).lastIndexOf(',');
+    if (i < 0) continue;
+    if (String(entry).slice(0, i).trim().toLowerCase() === h) hits.push(entry);
+  }
+  const uniq = [...new Set(hits)];
+  if (uniq.length !== 1) return null;
+  const [city, state] = uniq[0].split(',').map((x) => x.trim());
+  return { city, state, label: `${city}, ${state}` };
+}

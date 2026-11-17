@@ -1,5 +1,13 @@
 # Where We Are -- live status board
 
+## November 16–17, 2026 — email works; announcements; 028; venue and Where everyone stays, tested by 90 synthetic hosts
+
+- **Live by 10:40 PM EST 11/16 (#151–#157):** email from the app (reply notices, announcements to everyone, co-host invites); migrations 026–028 applied and attested by the owner (028: deleting an event drops its guest questions, emails and opens at once, 0 FAIL / 206 PASS); the declined-card return message; the offline kill switch; feature analytics in PostHog (checked live); venue fixes and "Help me find one" (a Maps search of the town and a drafted inquiry).
+- **#158 (merging):** the sample event says "Sample" and a host who deletes her last event gets the welcome, not a sample; and everything below.
+- **90 synthetic hosts.** 50 planned a 50th birthday in Anaheim from creation and finished the venue six ways; 40 took trips through Where everyone stays six ways. What they hit is fixed with tests: help after a venue was set, a hotel venue read as a trip, a street named for a landmark, four sentence shapes, a parked venue that stayed parked, trips that named their lodging but never reached Where everyone stays.
+- **The venue and the stay now point at each other:** the stay screen names the party and searches hotels near it, a party hotel is one tap, a named plan reads as the pick, a hotel site can be saved as the place, and the Venue sheet names and opens the stay. A town typed without its state is proposed for one tap when the app knows only one.
+- **Next:** a researched "Group trip" occasion after launch (owner, 11/16); the owner's 11/20 items (privacy policy, pentest booking, restore drill).
+
 ## November 16, 2026 (late) — guest questions, guest photos, the event hashtag (built, not pushed)
 
 - **Built in one batch, on top of the held live-hunt batch, local commits only.** Owner rulings A–E and the photo board's consent option C.

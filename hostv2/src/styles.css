@@ -698,6 +698,10 @@ button{font-family:inherit}
 .eb-menu > span{ display:block; height:1.5px; border-radius:1px; background:var(--muted); transition:background .16s var(--ease-out); }
 .eb-menu > span:nth-child(2){ width:11px; }
 .eb-caret{ font-size:9px; color:var(--faint); margin-left:-2px; }
+/* "Sample" on a built-in sample event's header (owner, 11/16/2026): a quiet
+   steel chip, never a warning color — it labels, it does not alarm. */
+.eb-sample{ flex:0 0 auto; font-size:11px; font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--steel-soft); background:var(--steel-tint); border-radius:var(--r-pill); padding:2px 8px; }
 .ev-eyebrow::after{ content:''; position:absolute; left:0; right:0; top:50%;
   transform:translateY(-50%); height:44px; }
 .ev-eyebrow:hover{ color:var(--steel-soft); }

@@ -87,7 +87,13 @@ export function parseSmartEventText(text, opts = {}) {
   // it something else (anniversary, grade, street, …), and only when nothing
   // else named the occasion: a stated type always wins.
   const _POSS_ORDINAL = /\b[\w]+['’]s\s+(\d{1,3}(?:st|nd|rd|th))\b(?!\s+(?:anniversary|wedding|reunion|retirement|year|years|grade|street|st\b|avenue|ave\b|floor|place|annual|jubilee|birthday))/i;
-  const _possMilestone = t.match(_POSS_ORDINAL);
+  const _possMilestone = t.match(_POSS_ORDINAL)
+    // "Surprise 50th for my husband Jordan" (50-host run, 11/16/2026): an
+    // ordinal FOR one person is that person's birthday. Never with a couple or
+    // the word anniversary, which name the other occasion.
+    || (!/\banniversar|\bparents\b|\bgrandparents\b|\bcouple\b|\b\w+\s+(?:and|&)\s+\w+['’]s\b/i.test(t)
+      ? t.match(/\b(?:surprise\s+)?(\d{1,3}(?:st|nd|rd|th))\s+for\s+(?:my\s+|our\s+)?(?:husband|wife|mom|mother|dad|father|son|daughter|sister|brother|aunt|uncle|grandma|grandpa|best\s+friend|friend|boss|partner|[A-Z][a-z]+)\b/)
+      : null);
   // A TYPO STILL NAMES THE OCCASION (run 2, R2-9 / R2-22): "retirment pary",
   // "anniversery dinner", "graduaton party" resolved to nothing, Dinner Party or
   // Birthday. A closed list of the misspellings people actually type, plus
@@ -100,7 +106,14 @@ export function parseSmartEventText(text, opts = {}) {
     .replace(/\bgradu(?:aton|ation|tion|ateion|atin)\b/gi, 'graduation')
     .replace(/\bwed(?:ing|dding|ding)\b/gi, 'wedding')
     .replace(/\bbook\s+club\b/gi, 'get-together');
-  const type = _resolveType(tType) || (_possMilestone ? 'Birthday' : null);
+  // "50th birthday BBQ in my backyard" (50-host run, 11/16/2026) became "My
+  // Cookout" and lost the 50th: the FORMAT out-ranked the OCCASION she named.
+  // When she says "Nth birthday", a format type (cookout, dinner, brunch…)
+  // yields to Birthday; a specific occasion (quinceañera, sweet 16…) does not.
+  const _saidNthBirthday = /\b\d{1,3}(?:st|nd|rd|th)\s+birthday\b/i.test(tType);
+  const _resolved = _resolveType(tType);
+  const _isFormatType = (x) => /cookout|bbq|barbecue|dinner|picnic|brunch|pool|happy hour|potluck|get-together|crab|boil|fish fry|game night/i.test(String(x || ''));
+  const type = (_saidNthBirthday && _isFormatType(_resolved) ? 'Birthday' : _resolved) || (_possMilestone ? 'Birthday' : null);
   // The generic word she actually used ("party", "fiesta", "celebration"), so a
   // guess is declared in her words, not ours (run 2, R2-8).
   const _typeWord = (() => { const m = t.match(new RegExp(GENERIC_GATHERING_WORDS.source, 'i')); return m ? m[0] : null; })();
@@ -684,6 +697,13 @@ export function parseSmartEventText(text, opts = {}) {
     return null;
   })()
     || matchPerson(new RegExp('([A-Z][a-zA-Z]+(?:\\s+[A-Z][a-zA-Z]+)?)[\u2019\']s\\b' + NOT_WHO))
+    // "Jordan turns 50!" (50-host run, 11/16/2026): the name before turns/is
+    // turning is who the party is for.
+    || (() => {
+      const m = t.match(/\b([A-Z][a-zA-Z]+)\s+(?:turns|is\s+turning)\s+\d{1,3}\b/);
+      if (!m || /^(She|He|They|It|My|Our|Who)$/.test(m[1])) return null;
+      return m;
+    })()
     // "for Vida", "honoring Marcus" — the honoree named without a possessive
     // (host report 2026-07-27: "Birthday celebration for Vida" dropped the name).
     // Months/weekdays/pronouns/articles are excluded so "for November" or
@@ -818,7 +838,9 @@ export function parseSmartEventText(text, opts = {}) {
   // name ("at Anaheim" is the town, which the city readers own).
   const namedAt = (() => {
     const NOT_A_PLACE = /^(?:the\s+)?(?:noon|midnight|christmas(?:\s+eve)?|thanksgiving|easter|halloween|hanukkah|passover|new\s+year['’]?s?(?:\s+eve)?|memorial\s+day|labor\s+day|independence\s+day|(?:mon|tues|wednes|thurs|fri|satur|sun)day|january|february|march|april|may|june|july|august|september|october|november|december|sunset|sunrise|dusk|dawn|home)$/i;
-    const m = t.match(/\bat\s+((?:the\s+)?[A-Z][\w'’&.-]*(?:\s+(?:(?:of|the|and|&|at|on\s+the)\s+)?[A-Z][\w'’&.-]*){0,6})(?=\s+(?:in|on|for|this|next|with|from|near|by)\b|\s*[,.;!?]|\s*$)/);
+    // A date straight after the name ends it ("…Garden Hotel June 12-13"), and a
+    // month or weekday is never part of a name (50-host run, 11/16/2026).
+    const m = t.match(/\bat\s+((?:the\s+)?(?!(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b)[A-Z][\w'’&.-]*(?:\s+(?:(?:of|the|and|&|at|on\s+the)\s+)?(?!(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b)[A-Z][\w'’&.-]*){0,6})(?=\s+(?:in|on|for|this|next|with|from|near|by|January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b|\s+\d|\s*[,.;!?]|\s*$)/);
     if (!m) return '';
     let name = m[1].trim();
     // "the Phoenix Club" → "The Phoenix Club": a name, read on the invite.
@@ -1167,7 +1189,10 @@ export function parseSmartEventText(text, opts = {}) {
   // address, and REFUSES an ambiguous bare brand ("Six Flags", "Busch
   // Gardens") rather than guessing one of its locations — see
   // knowledge/landmarkGazetteer.js for the sources and the refusals.
-  const landmark = matchLandmark(t);
+  // A STREET IS NOT A TRIP (50-host run, 11/16/2026): "1530 S Disneyland Dr,
+  // Anaheim" matched Disneyland and made a local party a destination. The
+  // street line she typed is read for landmarks without itself.
+  const landmark = matchLandmark(venueAddress ? t.split(venueAddress).join(' ') : t);
 
   // ── What isDestination ACTUALLY means ────────────────────────────────────
   // Read the decisions it gates: "How many guests are traveling in", "How are
@@ -1191,6 +1216,9 @@ export function parseSmartEventText(text, opts = {}) {
     '\\b(?:fly|flies|flying|flew)\\s+(?:in|out|into|down|up|over)\\b',
     '\\b(?:travel|travels|travell?ing)\\s+(?:in|out|from|down|up|over)\\b',
     '\\bcoming\\s+in\\s+from\\b', '\\bin\\s+town\\s+for\\b',
+    // "half are traveling", "room block for travelers", "out-of-towners"
+    // (host-panel rerun, 11/17/2026): who is travelling, said plainly.
+    '\\b(?:are|is|guests?|people|family|folks|friends|relatives)\\s+travell?ing\\b', '\\btravell?ers\\b', '\\bout[- ]of[- ]towners\\b',
     '\\b(?:weekend|day|road)\\s+trip\\b', '\\btrip\\s+to\\b',
     '\\bgetaway\\b', '\\bretreat\\b',
     '\\bdriv(?:e|ing)\\s+(?:up|down|out|in)\\b',
@@ -1381,7 +1409,19 @@ export function parseSmartEventText(text, opts = {}) {
   // sentence shape — did not, which is the same defect one layer down. It is
   // the whitelist-vouched city, never the raw captured words, so nothing
   // reaches this gate that resolveSpokenCity has not already admitted.
-  const isDestination = travelSaid
+  // WHERE PEOPLE SLEEP IS SAID, NOT GUESSED (40-host lodging run, 11/16/2026):
+  // "reunion in Santa Fe, NM … renting a couple of houses", "bachelorette in
+  // Nashville, TN … need an Airbnb", "wedding weekend in Orlando, FL … hotel
+  // room block" were saved as NOT trips — town+state alone is the uncommitted
+  // 'place-named' guess — so Where everyone stays never appeared. Lodging she
+  // named, in a town she named, is her own statement. Never for a private home
+  // (a sleepover at her house), and never the venue's own name ("…Hotel").
+  const _tNoVenue = [namedAt, venueAt, venuePhrase].filter(Boolean).reduce((acc, n) => acc.split(n).join(' '), t);
+  // A named venue counts as the place too ("…at the Majestic Garden Hotel …
+  // family staying overnight there" names no town, only the party hotel).
+  const lodgingSaid = !home && (!!placeName || !!namedAt || !!venueAt)
+    && /\bstay(?:ing|s)?\s+(?:overnight|the\s+night)\b|\bairbnbs?\b|\bvrbos?\b|\brentals?\b|\brent(?:ed|ing)?\s+(?:(?:an?|a\s+couple\s+of|some|two|three|a\s+few)\s+)?(?:big\s+)?(?:house|houses|home|homes|cabins?|condos?|villas?)\b|\b(?:room|hotel)\s+blocks?\b|\bhotels?\b|\bcabins?\b|\blodging\b/i.test(_tNoVenue);
+  const isDestination = travelSaid || lodgingSaid
     || ((!!loc || !!awayPlace || !!spokenPlace || !!spokenCity) && placeAway);
 
   // Why it was decided, for the "· heard" chip and any later explanation. Never
@@ -1394,6 +1434,7 @@ export function parseSmartEventText(text, opts = {}) {
   const destinationBasis = !isDestination ? null
     : (landmark && !TRAVEL_STRONG.test(t) && !area) ? 'landmark-named'
     : travelSaid ? 'travel-language'
+    : lodgingSaid ? 'stay-language'
     : (homeCity ? 'place-differs-from-your-area' : 'place-named');
 
   // ── The two axes that actually pick the destination decisions ────────────
@@ -1421,7 +1462,12 @@ export function parseSmartEventText(text, opts = {}) {
   // plan runs across days, people are sleeping somewhere. Lodging words say it
   // outright. A staycation is local AND overnight, which is exactly the case the
   // single boolean could not express.
-  const saidOvernight = /\bovernight\b|\b(?:\d+|one|two|three|four|five|six|seven|a\s+couple(?:\s+of)?|a\s+few|several|for\s+the)\s+nights?\b|\bsleep\s*overs?\b|\bslumber\s+part(?:y|ies)\b|\bstaycation\b|\bstay(?:ing|cation)?\s+over\b|\bhotels?\b|\bairbnb\b|\bvrbo\b|\brentals?\b|\blodging\b|\broom\s+block\b|\bcabins?\b/i.test(t);
+  // THE PARTY'S HOTEL IS NOT WHERE ANYONE SLEEPS (50-host run, 11/16/2026):
+  // "…at Anaheim Majestic Garden Hotel" lit "Staying overnight" because the
+  // venue's own name holds the word. The venue name she gave is read for stay
+  // words without itself; "everyone staying at the hotel" still counts.
+  const tStay = [namedAt, venueAt, venuePhrase].filter(Boolean).reduce((acc, n) => acc.split(n).join(' '), t);
+  const saidOvernight = /\bovernight\b|\b(?:\d+|one|two|three|four|five|six|seven|a\s+couple(?:\s+of)?|a\s+few|several|for\s+the)\s+nights?\b|\bsleep\s*overs?\b|\bslumber\s+part(?:y|ies)\b|\bstaycation\b|\bstay(?:ing|cation)?\s+over\b|\bhotels?\b|\bairbnb\b|\bvrbo\b|\brentals?\b|\blodging\b|\broom\s+block\b|\bcabins?\b/i.test(tStay);
   const overnight = (endDate || saidOvernight) ? true : null;
   // SAID beats DERIVED when both are true (2026-08-06). This read `endDate ?
   // 'multi-day-span' : 'said-so'`, so a host who wrote the word "overnight" AND
