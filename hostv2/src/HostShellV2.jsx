@@ -5154,6 +5154,12 @@ export default function HostShellV2() {
   // typing appended: 10 → "105", "1015").
   const [guestDraft, setGuestDraft] = useState(null);
   const [sheet, setSheet] = useState(() => (OPEN_ON_LOAD ? { kind: OPEN_ON_LOAD } : null));   // deep-link landing: {kind, focus}
+  // Which section a host opens (11/16/2026, "add analytics"): the kind only.
+  const sheetKind = sheet && sheet.kind;
+  useEffect(() => {
+    if (!sheetKind) return;
+    try { trackEvent(ANALYTICS.SECTION_OPENED, { section: sheetKind }); } catch (_e) { /* a counter never blocks a sheet */ }
+  }, [sheetKind]);
   // The dietary panel closes when the sheet changes (round 2, 11/16/2026): opened
   // on the food Plan tab, it stayed open on Shop and on every later visit,
   // covering "The list". Plan, Shop and Bringing are separate sheet kinds.

@@ -7,6 +7,7 @@
 // A CO-HOST sees who they are here and can leave.
 // Signed out, or a plan not yet saved: the sheet says so and offers nothing.
 import { useEffect, useState } from 'react';
+import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 import { listCohosts, inviteCohost, removeCohost, leaveCohostedEvent, isCohostApiConfigured } from '@app/lib/api/cohosts';
 
 export default function CohostsSheet({ event, signedIn, onLine, onLeft }) {
@@ -56,6 +57,7 @@ export default function CohostsSheet({ event, signedIn, onLine, onLeft }) {
     if (!r.ok) { setErr(r.status === 404 || r.status === 403 || r.status === 422 || r.status === 429 || r.status === 503 ? r.reason : 'The invite didn’t go through. Try again.'); return; }
     setEmail('');
     setState({ cohosts: r.cohosts || [] });
+    if (!r.already_invited) { try { trackEvent(ANALYTICS.COHOST_INVITED, { emailed: !!r.emailed }); } catch (_e) { /* counter only */ } }
     onLine(r.already_invited ? 'They’re already invited.'
       : r.emailed ? `Invite sent to ${v.toLowerCase()}.`
         : `Invited — tell ${v.toLowerCase()} to sign in with that email. (The invite email didn’t go out.)`);

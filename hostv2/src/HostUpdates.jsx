@@ -9,6 +9,7 @@
 // because an email cannot be taken back. Removing a post takes it off the
 // invite and says plainly that emails already sent stay sent.
 import { useEffect, useState } from 'react';
+import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 import { listAnnouncements, postAnnouncement, removeAnnouncement, isAnnouncementsApiConfigured } from '@app/lib/api/announcements';
 
 const when = (iso) => {
@@ -63,6 +64,7 @@ export default function HostUpdates({ eventId }) {
     setBusy(''); setConfirm(false);
     if (!r.ok) { setErr(r.status === 429 || r.status === 422 ? r.reason : 'That didn’t post. Try again.'); return; }
     setDraft('');
+    try { trackEvent(ANALYTICS.GUEST_UPDATE_POSTED, { emailing: r.emailing || 0 }); } catch (_e) { /* counter only */ }
     setLine(r.emailing > 0 ? `Posted — it’s on every invite, and ${guests(r.emailing)} ${gets(r.emailing)} it by email.` : 'Posted — it’s on every invite.');
     load();
   };
