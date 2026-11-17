@@ -206,6 +206,17 @@ test('the account panel clears it — a surface this sweep had never measured', 
   await expect(page.locator('#sheet-title')).toHaveText(/account|settings/i);
   // ...and that there were controls on it to measure. Clean must mean measured.
   expect(await page.locator('.sheet button, .sheet a').count()).toBeGreaterThan(2);
+  // MEASURE A SHEET AT REST (WebKit full run, 11/17/2026). The sweep hit-tests
+  // each control's 44px expander with elementFromPoint; while the sheet is
+  // still sliding in, the probe lands on the moving panel. Desktop WebKit
+  // finishes later than Chromium, so 14 controls read 30-37px there — and, at
+  // rest, Back answers 20px above and below its text in both engines.
+  // Only time-based animations that END count: a looping one (iterations
+  // Infinity) or a scroll-driven one (duration 'auto' — the board's strataFocus
+  // tiles) stays "running" for as long as the page lives.
+  await page.waitForFunction(() => document.getAnimations()
+    .filter((a) => { const t = a.effect && a.effect.getTiming(); return t && t.iterations !== Infinity && t.duration !== 'auto'; })
+    .every((a) => a.playState !== 'running'));
   expect(surprising(await sweep(page))).toEqual([]);
 });
 
