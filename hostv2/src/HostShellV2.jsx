@@ -7159,23 +7159,41 @@ export default function HostShellV2() {
   // no engine change required. Cost is optional; blank/unparsed stays 0, the
   // honest "no cost yet / they're bringing it" framing (never a fake number).
   const FOOD_ADD_MAX = 120;
+  // MORE THAN ONE AT A TIME (owner, 11/18/2026: "Allow more than one at a time
+  // for add item under shop"). One item per line — typed or pasted — and the
+  // form stays open after adding, cleared, so the next one goes straight in.
+  // Lines, not commas: an item's own name can carry a comma.
+  const foodAddNames = () => {
+    const seen = new Set();
+    return String(foodAddName || '').split(/\r?\n/).map(x => x.trim()).filter(x => {
+      const k = x.toLowerCase();
+      if (!x || seen.has(k)) return false;
+      seen.add(k); return true;
+    });
+  };
   const commitFoodAdd = () => {
-    const name = foodAddName.trim();
-    if (!name) return;
+    const names = foodAddNames();
+    if (!names.length) return;
     // A LINE IS A LINE, NOT A PARAGRAPH (run 2: a 900-character item was saved).
-    if (name.length > FOOD_ADD_MAX) { toast('Keep it under ' + FOOD_ADD_MAX + ' characters — a short name reads best on the list.'); return; }
+    const long = names.find(n => n.length > FOOD_ADD_MAX);
+    if (long) { toast('Keep each item under ' + FOOD_ADD_MAX + ' characters — a short name reads best on the list.'); return; }
     // ALREADY ON THE LIST IS SAID, NOT REFUSED (run 2, R2-21).
-    const twin = similarPlanLine(name, (foodPlan && foodPlan.list) || []);
-    const id = 'add-' + Date.now().toString(36);
-    const guess = guessFoodCategory(name);
-    patchEvent({
-      foodAdd: [...(event.foodAdd || []), {
-        id, name, owner: foodAddOwner.trim(),
-        cost: Math.max(0, Math.round(Number(foodAddCost) || 0)),
-        group: foodAddGroup || guess.group, cat: guess.cat,
-      }],
-    }, name + ' added to the plan.' + (twin ? ' Your list already has “' + twin + '” — remove one if they’re the same.' : ''));
-    setFoodAddName(''); setFoodAddOwner(''); setFoodAddCost(''); setFoodAddGroup(null); setFoodAddOpen(false);
+    const twins = names.map(n => similarPlanLine(n, (foodPlan && foodPlan.list) || [])).filter(Boolean);
+    const stamp = Date.now().toString(36);
+    // The cost belongs to ONE item; with several, it would be a guess which.
+    const cost = names.length === 1 ? Math.max(0, Math.round(Number(foodAddCost) || 0)) : 0;
+    const added = names.map((name, i) => {
+      const guess = guessFoodCategory(name);
+      return {
+        id: 'add-' + stamp + (names.length > 1 ? '-' + i : ''), name, owner: foodAddOwner.trim(),
+        cost, group: foodAddGroup || guess.group, cat: guess.cat,
+      };
+    });
+    patchEvent({ foodAdd: [...(event.foodAdd || []), ...added] },
+      (names.length === 1 ? names[0] + ' added to the plan.' : names.length + ' items added to the plan.')
+      + (twins.length ? ' Your list already has “' + twins[0] + '”' + (twins.length > 1 ? ' and ' + (twins.length - 1) + ' more like these' : '') + ' — remove one if they’re the same.' : ''));
+    setFoodAddName(''); setFoodAddCost(''); setFoodAddGroup(null);
+    try { setTimeout(() => { const el = document.querySelector('[data-food-add-name]'); if (el) el.focus(); }, 0); } catch { /* focus is a nicety */ }
   };
 
   // Roster quick-add: paste names, one per line — a REAL guest list, which is
@@ -23492,10 +23510,12 @@ export default function HostShellV2() {
                   {foodAddOpen ? (
                     <div className="brow" style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 'var(--sp-3)' }}>
                       <div className="shelf-label" style={{ marginBottom: 'var(--sp-2)' }}>Add your own item</div>
-                      <input className="field" style={{ maxWidth: 'none' }} autoFocus
-                        placeholder="e.g. Aunt Carol's potato salad, extra ice"
+                      <textarea className="field" style={{ maxWidth: 'none', resize: 'vertical', fontFamily: 'inherit' }} autoFocus rows={2}
+                        data-food-add-name aria-label="Items to add, one per line"
+                        placeholder={'e.g. Aunt Carol\'s potato salad\nExtra ice'}
                         value={foodAddName} onChange={e => setFoodAddName(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') commitFoodAdd(); }} />
+                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitFoodAdd(); } }} />
+                      <p className="of" style={{ margin: 'var(--sp-1) 0 0' }}>One per line — paste a list to add several. Enter adds; Shift+Enter starts a new line.</p>
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'wrap' }}>
                         <input className="field" style={{ maxWidth: 220, flex: 1 }} placeholder="Who's bringing it (optional)"
                           value={foodAddOwner} onChange={e => setFoodAddOwner(e.target.value)}
@@ -23528,11 +23548,11 @@ export default function HostShellV2() {
                         })}
                       </div>
                       <div className="actions-row" style={{ marginTop: 10 }}>
-                        <button className="cta" disabled={!foodAddName.trim()} style={!foodAddName.trim() ? { opacity: .45 } : undefined}
-                          onClick={commitFoodAdd}>Add to the plan</button>
-                        <button className="mini" onClick={() => { setFoodAddOpen(false); setFoodAddName(''); setFoodAddOwner(''); setFoodAddCost(''); setFoodAddGroup(null); }}>Cancel</button>
+                        <button className="cta" data-food-add-commit disabled={!foodAddName.trim()} style={!foodAddName.trim() ? { opacity: .45 } : undefined}
+                          onClick={commitFoodAdd}>{foodAddNames().length > 1 ? `Add ${foodAddNames().length} to the plan` : 'Add to the plan'}</button>
+                        <button className="mini" onClick={() => { setFoodAddOpen(false); setFoodAddName(''); setFoodAddOwner(''); setFoodAddCost(''); setFoodAddGroup(null); }}>Done</button>
                       </div>
-                      <p className="grounding" style={{ marginTop: 'var(--sp-2)' }}>Cost is optional — leave it blank if you don’t know it yet, or if someone else is bringing it.</p>
+                      <p className="grounding" style={{ marginTop: 'var(--sp-2)' }}>Cost is optional — leave it blank if you don’t know it yet, or if someone else is bringing it.{foodAddNames().length > 1 ? ' With several items, add each cost on its own line in the list.' : ''}</p>
                     </div>
                   ) : (
                     sheet.kind === 'foodplan' ? null : (
