@@ -23675,8 +23675,14 @@ export default function HostShellV2() {
                         data-food-add-name aria-label="Items to add, one per line"
                         placeholder={'e.g. Aunt Carol\'s potato salad\nExtra ice'}
                         value={foodAddName} onChange={e => setFoodAddName(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitFoodAdd(); } }} />
-                      <p className="of" style={{ margin: 'var(--sp-1) 0 0' }}>One per line — paste a list to add several. Enter adds; Shift+Enter starts a new line.</p>
+                        /* RETURN IS A NEW LINE (owner, 11/18/2026: "Still can't add
+                           multiple"). Enter used to add and only Shift+Enter made a
+                           line, and a phone keyboard has no Shift: one item was all
+                           an iPhone could ever enter. Return now starts the next
+                           line everywhere; the button adds; Ctrl/Cmd+Return adds
+                           from a keyboard. */
+                        onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); commitFoodAdd(); } }} />
+                      <p className="of" style={{ margin: 'var(--sp-1) 0 0' }}>One item per line — press Return for the next one, or paste a list. Then tap Add.</p>
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'wrap' }}>
                         <BringerPicker guests={event.guests} label="Who's bringing it (optional)" placeholder="Who's bringing it (optional)"
                           style={{ maxWidth: 260, flex: 1 }} value={foodAddOwner} onChange={setFoodAddOwner} />

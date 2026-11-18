@@ -45,11 +45,32 @@ test('three lines pasted become three items, and the form stays open for more', 
   await expect(box).toBeVisible();
   await expect(box).toHaveValue('');
   await expect(box).toBeFocused();
-  // …and the next one goes straight in with Enter.
+  // …and from a keyboard, Ctrl/Cmd+Return adds what's typed. (Amended
+  // 11/18/2026: plain Return used to add, which a phone keyboard, with no
+  // Shift, turned into "one item at a time". Return is now a new line.)
   await box.fill('Bug spray');
-  await box.press('Enter');
+  await box.press('Control+Enter');
   await expect.poll(() => added(page)).toEqual(['Paper towels', 'Cornhole set', 'Sunscreen', 'Bug spray']);
   await expect(box).toHaveValue('');
+});
+
+// Owner, 11/18/2026: "Still can't add multiple to list of item additions." On a
+// phone the only way to start a second line is Return, and Return added the
+// first item and cleared the box. Typed the way a phone types it, key by key:
+test('typed item by item with Return, the way a phone does it, they all go in', async ({ page }) => {
+  await openShop(page);
+  const box = page.getByRole('textbox', { name: 'Items to add, one per line' });
+  await box.click();
+  await page.keyboard.type('Ice');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Charcoal');
+  await page.keyboard.press('Enter');
+  await page.keyboard.type('Paper plates');
+  await expect(box).toHaveValue('Ice\nCharcoal\nPaper plates');
+  await expect.poll(() => added(page)).toEqual([]);   // Return added nothing on its own
+  await expect(page.locator('[data-food-add-commit]')).toHaveText('Add 3 to the plan');
+  await page.locator('[data-food-add-commit]').click();
+  await expect.poll(() => added(page)).toEqual(['Ice', 'Charcoal', 'Paper plates']);
 });
 
 test('a repeated line is added once, and a blank line is skipped', async ({ page }) => {

@@ -115,7 +115,9 @@ test('R2-21: an item the list already has is added, and the list says so', async
   await open(page, 'The spread');
   await page.getByRole('button', { name: /Add an item you/ }).first().click();
   const box = page.getByPlaceholder(/Aunt Carol/).first();
-  await box.fill('Ice'); await box.press('Enter');
+  // Return makes a new line now (owner, 11/18/2026: several items at once), so
+  // the item goes in with the Add button, as a host on a phone adds it.
+  await box.fill('Ice'); await page.locator('[data-food-add-commit]').first().click();
   await expect.poll(() => page.evaluate(() => window.__t.join(' | '))).toMatch(/Ice added to the plan\. Your list already has “Ice/);
 });
 
