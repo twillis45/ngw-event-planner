@@ -193,6 +193,7 @@ import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePar
 import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
 import { BRAND } from '@app/lib/brand';
+import BringerPicker from './BringerPicker';
 import { readArrival, rememberArrival, arrivalFor, spendArrival, exampleSentenceFor } from '@app/lib/acquisition';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_NUDGE } from '@app/lib/knowledge/geoCostIndex';
@@ -21386,8 +21387,8 @@ export default function HostShellV2() {
                     {rows.map((r) => {
                       const saved = String((event.foodOwner || {})[r.id] || r.owner || '').trim();
                       const editing = bringerEdit && bringerEdit.id === r.id;
-                      const commit = () => {
-                        const v = String((bringerEdit && bringerEdit.value) || '').trim();
+                      const commit = (val) => {
+                        const v = String((val !== undefined ? val : (bringerEdit && bringerEdit.value)) || '').trim();
                         const next = { ...(event.foodOwner || {}) };
                         if (v) next[r.id] = v; else delete next[r.id];
                         setBringerEdit(null);
@@ -21402,15 +21403,13 @@ export default function HostShellV2() {
                               style={{ display: 'block', marginBottom: 'var(--sp-1)' }}>
                               Who is bringing {r.short || r.item}?
                             </label>
-                            <input className="field" id={'bringer-' + r.id} autoFocus
-                              placeholder="A name, as you were told it"
+                            {/* From the guest list (owner, 11/18/2026): a dropdown of
+                                guests who haven't declined, or "Someone not on the
+                                list…" for the church kitchen or a neighbor. */}
+                            <BringerPicker guests={event.guests} id={'bringer-' + r.id} autoFocus
                               value={bringerEdit.value}
-                              onChange={(e) => setBringerEdit({ id: r.id, value: e.target.value })}
-                              onBlur={commit}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') commit();
-                                if (e.key === 'Escape') setBringerEdit(null);
-                              }} />
+                              onChange={(v) => setBringerEdit({ id: r.id, value: v })}
+                              onCommit={(v) => commit(v)} onCancel={() => setBringerEdit(null)} />
                           </div>
                         );
                       }
@@ -23679,9 +23678,8 @@ export default function HostShellV2() {
                         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitFoodAdd(); } }} />
                       <p className="of" style={{ margin: 'var(--sp-1) 0 0' }}>One per line — paste a list to add several. Enter adds; Shift+Enter starts a new line.</p>
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                        <input className="field" style={{ maxWidth: 220, flex: 1 }} placeholder="Who's bringing it (optional)"
-                          value={foodAddOwner} onChange={e => setFoodAddOwner(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') commitFoodAdd(); }} />
+                        <BringerPicker guests={event.guests} label="Who's bringing it (optional)" placeholder="Who's bringing it (optional)"
+                          style={{ maxWidth: 260, flex: 1 }} value={foodAddOwner} onChange={setFoodAddOwner} />
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', padding: '0 10px' }}>
                           <span className="of">$</span>
                           <input type="number" inputMode="decimal" min="0" placeholder="cost (optional)"
