@@ -27097,7 +27097,7 @@ export default function HostShellV2() {
             {/* The day's own sky (weatherGlyphs, 11/18/2026), drawn in the rail's
                 stroke family — it was one rain cloud for every alert, heat
                 included. aria-hidden; the wx-line text carries the meaning. */}
-            <span className="wx-glyph" aria-hidden="true">{weatherGlyph(skyKind(wx))}</span>
+            <span className="wx-glyph" aria-hidden="true">{weatherGlyph(skyKind(wx), { mono: true })}</span>
             <span className="wx-line">
               {/* The sample marker rides the COLLAPSED line — the only line most
                   hosts read. A forecast claim may never outrun its source. */}

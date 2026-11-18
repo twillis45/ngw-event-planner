@@ -22,16 +22,16 @@ const CLOUD_UP = 'M4.6 9.6h6.9a2.75 2.75 0 0 0 .35-5.48 4.05 4.05 0 0 0-7.82-.78
 const G = {
   clear: (
     <>
-      <circle cx="8" cy="8" r="2.9" />
-      <path d="M8 1.4v1.3M8 13.3v1.3M1.4 8h1.3M13.3 8h1.3M3.33 3.33l.92.92M11.75 11.75l.92.92M3.33 12.67l.92-.92M11.75 4.25l.92-.92" />
+      <circle className="wx-sun" cx="8" cy="8" r="2.9" />
+      <path className="wx-sun" d="M8 1.4v1.3M8 13.3v1.3M1.4 8h1.3M13.3 8h1.3M3.33 3.33l.92.92M11.75 11.75l.92.92M3.33 12.67l.92-.92M11.75 4.25l.92-.92" />
     </>
   ),
   // The sun stands behind the cloud: its disc is an arc that stops where the
   // cloud begins, so no line crosses another (no fills means no hiding).
   partly: (
     <>
-      <path d="M8.35 5.1A2.35 2.35 0 1 0 4.05 6.9" />
-      <path d="M6 1.3v1M1.3 6h1M2.65 2.65l.7.7M9.35 2.65l-.7.7" />
+      <path className="wx-sun" d="M8.35 5.1A2.35 2.35 0 1 0 4.05 6.9" />
+      <path className="wx-sun" d="M6 1.3v1M1.3 6h1M2.65 2.65l.7.7M9.35 2.65l-.7.7" />
       <path d="M6.3 13.8h5.5a2.35 2.35 0 0 0 .3-4.68 3.45 3.45 0 0 0-6.65-.66A2.69 2.69 0 0 0 6.3 13.8z" />
     </>
   ),
@@ -49,31 +49,31 @@ const G = {
   drizzle: (
     <>
       <path d={CLOUD_UP} />
-      <path d="M5.4 12.2v.9M8 13.2v.9M10.6 12.2v.9" />
+      <path className="wx-fall" d="M5.4 12.2v.9M8 13.2v.9M10.6 12.2v.9" />
     </>
   ),
   rain: (
     <>
       <path d={CLOUD_UP} />
-      <path d="M5.6 11.6l-.9 2.6M8.4 11.6l-.9 2.6M11.2 11.6l-.9 2.6" />
+      <path className="wx-fall" d="M5.6 11.6l-.9 2.6M8.4 11.6l-.9 2.6M11.2 11.6l-.9 2.6" />
     </>
   ),
   storm: (
     <>
       <path d={CLOUD_UP} />
-      <path d="M8.7 10.6l-1.9 2.5h2.4l-1.9 2.5" />
+      <path className="wx-sun" d="M8.7 10.6l-1.9 2.5h2.4l-1.9 2.5" />
     </>
   ),
   snow: (
     <>
       <path d={CLOUD_UP} />
-      <path d="M5.3 12h.01M8 12h.01M10.7 12h.01M6.65 14.4h.01M9.35 14.4h.01" />
+      <path className="wx-fall" d="M5.3 12h.01M8 12h.01M10.7 12h.01M6.65 14.4h.01M9.35 14.4h.01" />
     </>
   ),
   sleet: (
     <>
       <path d={CLOUD_UP} />
-      <path d="M5.6 11.6l-.7 2M10.1 11.6l-.7 2M7.9 12.6h.01M12.1 12.6h.01" />
+      <path className="wx-fall" d="M5.6 11.6l-.7 2M10.1 11.6l-.7 2M7.9 12.6h.01M12.1 12.6h.01" />
     </>
   ),
   wind: (
@@ -89,9 +89,19 @@ export const WEATHER_GLYPH_KINDS = Object.keys(G);
 
 /** weatherGlyph(kind, size) -> an inline <svg>, aria-hidden: the words beside
  *  it carry the meaning. An unknown kind draws the plain cloud. */
-export function weatherGlyph(kind, { size = 16, className = 'wx-g' } = {}) {
+//
+// COLOR (owner, 11/18/2026: "Ok for some color"). Two tones from the existing
+// vocabulary — no new hue: the cloud, mist and wind keep the line's own ink;
+// what the sky is DOING takes color — the sun and the lightning amber
+// (--warn), rain, drizzle, snow and sleet steel (--steel-soft, the steel the
+// theme already tunes per mode to read on the page; plain --steel runs about
+// 2.9:1 on the dark ground). Identification like the event-type dot, not a
+// status signal, so it does not count against UX_02's 3-color budget. `mono`
+// keeps one tone where the glyph sits inside a status surface (the weather
+// pill speaks in its alert tone alone).
+export function weatherGlyph(kind, { size = 16, className = 'wx-g', mono = false } = {}) {
   return (
-    <svg className={className} viewBox="0 0 16 16" width={size} height={size} aria-hidden="true" focusable="false" data-wx-glyph={G[kind] ? kind : 'cloudy'} {...S}>
+    <svg className={className + (mono ? '' : ' wx-color')} viewBox="0 0 16 16" width={size} height={size} aria-hidden="true" focusable="false" data-wx-glyph={G[kind] ? kind : 'cloudy'} {...S}>
       {G[kind] || G.cloudy}
     </svg>
   );

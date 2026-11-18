@@ -54,6 +54,8 @@ test('the event day shows the hour the host set, and an indoor event gets the fo
   // The day's own sky, drawn (owner, 11/18: "beautiful glyphs for weather"):
   // OpenWeather's 03d is scattered clouds.
   await expect(day.locator('[data-cal-wx] [data-wx-glyph]')).toHaveAttribute('data-wx-glyph', 'cloudy');
+  // In color (owner, 11/18: "Ok for some color"): the two-tone set, not mono.
+  await expect(day.locator('[data-cal-wx] [data-wx-glyph]')).toHaveClass(/\bwx-color\b/);
   expect(calls).toEqual(expect.arrayContaining(['geocode', 'onecall']));
   // Indoor: the outdoor alert stays off.
   await expect(page.locator('.wxpill')).toHaveCount(0);
