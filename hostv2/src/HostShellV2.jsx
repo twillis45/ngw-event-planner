@@ -12164,6 +12164,25 @@ export default function HostShellV2() {
                              now, so the four render sites can't drift apart again. */
                           : ctaLabelFor(a.cta, a.route, event)
                         }</button>; })()}
+                        {/* MARK IT DONE WHERE IT IS SHOWN (owner, live, 11/18/2026: "Can't
+                            get past this screen"). 692 of 813 playbook steps can only be
+                            completed by a tick (no plan field satisfies them — taskEngine),
+                            and a board card only routed: its button opened a section that
+                            could not complete the step, and the tick lived in the checklist
+                            sheet. A card that IS an open checklist step now ticks it here,
+                            through the same toggleTask the checklist uses. */}
+                        {(() => {
+                          if (decHeroActions || coiHero || coiTaskDone) return null;
+                          const norm = (x) => String(x || '').toLowerCase().replace(/\s+/g, ' ').trim();
+                          // By id when the action names its step (tier 2's taskId, a route's
+                          // taskId); else by the card's title, which may be cut short.
+                          const rid = a.taskId || (a.route && a.route.taskId);
+                          const head = norm(a.title).replace(/[.…]+$/, '');
+                          const ti = (event.timeline || []).findIndex((t) => t && !t.done
+                            && ((rid && t.id === rid) || (head.length >= 12 && norm(t.task).startsWith(head))));
+                          if (ti < 0) return null;
+                          return <button className="mini" data-mark-step-done onClick={() => toggleTask(ti)}>Mark done</button>;
+                        })()}
                         {/* SNOOZE — set it down without losing it. The reason a zero state can
                             be believed: a host who has decided to leave a thing can SAY so, and
                             the list actually empties. The grounded proposal (computed above) is
