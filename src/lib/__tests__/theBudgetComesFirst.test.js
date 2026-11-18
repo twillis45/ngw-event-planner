@@ -6,10 +6,14 @@
 import { eventPlan } from '../../CommandCenter';
 import { playbookChecklist } from '../playbooks';
 
-const NOW = new Date('2026-11-18T05:51:00Z');
+// LOCAL calendar days (CI also runs in Pacific/Midway and Pacific/Kiritimati):
+// a UTC date string put "the event day" a day away in Midway, where the budget
+// rightly leads.
+const NOW = (() => { const d = new Date(2026, 10, 18, 12, 0, 0); return d; })();
+const localIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const mk = (days, extra = {}) => {
   const d = new Date(NOW); d.setDate(d.getDate() + days);
-  const ev = { id: 'cust-fg', name: 'My Friendsgiving', type: 'Friendsgiving', date: d.toISOString().slice(0, 10), startTime: '4:00 PM',
+  const ev = { id: 'cust-fg', name: 'My Friendsgiving', type: 'Friendsgiving', date: localIso(d), startTime: '4:00 PM',
     venue: "Vida's", venueKind: 'venue', guestMode: 'count', guestEstimate: 15, guestCountSource: 'host', budget: [], vendors: [], guests: [],
     createdAt: NOW.toISOString(), ...extra };
   ev.timeline = playbookChecklist(ev).map((r) => ({ id: r.id, week: r.week || '', leadDays: r.leadDays ?? null, task: r.task || '', done: false }));
