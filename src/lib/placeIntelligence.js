@@ -40,6 +40,39 @@ export const PLACE_TARGETS = {
 
 const has = (v) => !!String(v || '').trim();
 
+// Event types that usually happen outside. ONE list: startTime and
+// phaseProgress each carried an identical private copy until 11/18/2026.
+export const OUTDOOR_TYPE = /cookout|bbq|barbecue|fish fry|crab feast|crawfish|boil|picnic|day party|block party|tailgate|luau|beach|garden party|graduation|juneteenth|family reunion|reunion/i;
+
+// ─── THE APP'S OWN GUESS, AS A PROPOSAL (owner, 11/18/2026: DIFM) ────────────
+// "Don't remove how we infer that it's outside. Should be part of DIFM." The
+// inference is offered to the host with its reason and accepted in one tap;
+// nothing is stored until she does. null once she has answered, or when
+// nothing about the event sounds outdoor.
+export function outdoorsGuess(event = {}) {
+  if (!event || event.indoorOutdoor) return null;
+  const vf = venueFor(event);
+  if (vf.kind === 'outdoor') return { guess: 'outdoor', because: `${vf.display || 'your venue'} is listed as an outdoor venue` };
+  if (vf.name && isLikelyOutdoor(vf.name, '')) return { guess: 'outdoor', because: `from the name “${vf.name}”` };
+  if (isLikelyOutdoor('', event.notes || '')) return { guess: 'outdoor', because: 'from your notes' };
+  const type = String(event.type || '').trim();
+  if (OUTDOOR_TYPE.test(type)) return { guess: 'outdoor', because: `${/^the\s/i.test(type) ? type.replace(/^the\s+/i, 'a ').toLowerCase() : 'a ' + type.toLowerCase()} usually is` };
+  return null;
+}
+
+// ─── IS ANY OF IT OUTSIDE? — ONCE (11/18/2026) ───────────────────────────────
+// The place checks' own outdoors rule, published so the day-of list asks the
+// same question instead of depending on which playbook was authored with a
+// weather row (6 of 46 were). Existing fields only: an outdoor venue kind, the
+// host's indoor/outdoor answer, or an outdoor word in the venue name or notes.
+export function placeIsOutdoors(event = {}) {
+  const vf = venueFor(event || {});
+  return vf.kind === 'outdoor'
+    || event.indoorOutdoor === 'outdoor'
+    || event.indoorOutdoor === 'both'
+    || (!event.indoorOutdoor && isLikelyOutdoor(vf.name, event.notes || ''));
+}
+
 export function derivePlaceIntelligence(event = {}) {
   // ONE venue reader (venueFor) — kind rule, at-home carve-out, and the
   // CITY-LEAK gate all live there now instead of a local copy.
@@ -48,10 +81,7 @@ export function derivePlaceIntelligence(event = {}) {
   const atHome = vf.isHome;
   const venueResolved = vf.isSet;
   const hasAddress = !!vf.address;
-  const outdoors = kind === 'outdoor'
-    || event.indoorOutdoor === 'outdoor'
-    || event.indoorOutdoor === 'both'
-    || (!event.indoorOutdoor && isLikelyOutdoor(vf.name, event.notes || ''));
+  const outdoors = placeIsOutdoors(event);
   const indoorOnly = event.indoorOutdoor === 'indoor';
   const hasVendors = (event.vendors || []).some((v) => v && has(v.name));
   const rain = rainPlanStatus(event);
@@ -123,7 +153,9 @@ export function derivePlaceIntelligence(event = {}) {
   // 4 · Rain backup — indoor-only venues genuinely don't need one (na, not
   // failure). Everyone else: a saved plan is handled; outdoors without one
   // is a real risk; unknown gets an honest nudge, not a warning.
-  if (indoorOnly && !atHome) {
+  // The host's own "Indoors" answer (asked in hostv2 since 11/18/2026) holds at
+  // home too; before it was asked, a home event's rain need was only guessed.
+  if (indoorOnly) {
     add('rain', 'Rain backup', PLACE_STATES.NA, 'Indoor venue — a rain backup isn’t required.');
   } else if (rain.hasPlan) {
     add('rain', 'Rain backup', PLACE_STATES.HANDLED, 'Rain plan saved.');

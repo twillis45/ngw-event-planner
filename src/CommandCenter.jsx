@@ -25,6 +25,7 @@
 // independently scannable + actionable. VAR A and VAR C are exploration
 // artifacts retained in Figma for future iteration; not shipped on purpose.
 
+import { guestCountFor } from './lib/guestCountFor';
 import { useState, useEffect, useMemo } from 'react';
 import { color, space, type, radius, elevation, edge } from './design/tokens';
 // Sprint 57f.1: derive compression urgency from the event's own timeline so
@@ -1582,7 +1583,10 @@ export function _eventFoundationActions(event) {
       cta: 'Add guests', route: { tab: 'Guests', focusField: 'guests-entry' },
       done: hasGuestSignal,
       handledFact: hasGuestSignal
-        ? `${guests.filter(g => g && g.rsvp === 'Yes').length || Number(event.guestCount) || Number(event.guestEstimate) || guests.length} guests`
+        // ONE COUNT (single-source audit 11/18/2026): this row put the yes
+        // replies first, so a host planning for 40 with 3 yeses saw "3 guests"
+        // handled while every other tile said 40. guestCountFor is the count.
+        ? `${guestCountFor(event).count || guests.length} guests`
         : null,
     },
     {
@@ -2152,6 +2156,10 @@ export function eventPlan(event, ctx = null) {
     // backup) and dedup keeps the richer ladder row, that row's primaryRoute was undefined —
     // dropping the row-level deep-link the phase item had.
     primaryRoute: top.primaryRoute || null,
+    // The checklist step this action IS, when it is one (tier 2): the board card
+    // ticks it in place. decisionId keeps the action's record id through the rebuild.
+    ...(top.taskId ? { taskId: top.taskId } : null),
+    ...(top.decisionId ? { decisionId: top.decisionId } : null),
     // RE-AUDIT F1 (fresh-eyes, 2026-07-14): `level` was DROPPED here. The selector stamps
     // level:'critical' on overdue payments, decisions and COI — and this rebuild threw the
     // stamp away, so canSnooze() saw no 'critical' and rendered "not now" on "Send payment
@@ -3275,8 +3283,25 @@ export function _selectEventNextActionInner(event) {
       consequence: od > 0
         ? `Overdue by ${daysWord(od)}. Open decisions block timeline, vendor, and approval progress downstream.`
         : `Pending decision. Holding it open blocks downstream timeline + vendor work.`,
-      primaryCta: 'Decide',
-      primaryRoute: { tab: 'Decisions', decisionId: urgent.id },
+      // AN OVERDUE STEP GOES WHERE IT CAN BE DONE (owner, live, 11/18/2026: "Can't
+      // get past this screen"). Every overdue checklist step lands in this list
+      // ("Open Decisions = overdue uncompleted tasks"), and this tier sent each one
+      // to the Decisions surface with "Decide". In the host app that is "Calls to
+      // make", which holds the playbook's choices — never a checklist step — so
+      // "Send the invite" opened "All settled. Nothing waiting on you." and came
+      // straight back. The step now routes the way the checklist routes it
+      // (checklistRouteFor: "Open the invite", "Open the list"…), else to its own
+      // checklist row. The record id stays `decision:<taskId>` (decisionId below,
+      // read by _topActionId) so a snooze written against it still binds; taskId
+      // lets the board card tick the step in place.
+      ...(() => {
+        const hit = (() => { try { return checklistRouteFor(urgent.title, { taskId: urgent.id }, event); } catch (_e) { return null; } })();
+        return (hit && hit.route)
+          ? { primaryCta: hit.label, primaryRoute: hit.route }
+          : { primaryCta: 'Open the checklist', primaryRoute: { tab: 'Planning Tasks', taskId: urgent.id } };
+      })(),
+      decisionId: urgent.id,
+      taskId: urgent.id,
       // RE-AUDIT F7: the task's own lead, so the snooze lead-window cap
       // (proposedSnoozeDays opts.leadDays) finally binds for the top action.
       leadDays: taskLeadDays(urgent),

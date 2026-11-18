@@ -93,3 +93,87 @@ test('copy the invite, say it was sent, and the invite task is credited — with
   const row = t.slice(t.indexOf('Send the invite'), t.indexOf('Send the invite') + 220);
   expect(row).toMatch(/done by your plan/);
 });
+
+// ─── THE INVITE SENT FROM ITS DRAFT IS SENT (owner, live, 11/18/2026) ────────
+// "Can't get past this screen after completing the invite info": the board kept
+// leading with "Send the invite … past its window". The invite DRAFT ("Copy the
+// invite") offers Share, Text it, WhatsApp and "Mark it sent — I sent it myself",
+// and every one wrote only the send ledger — while "Send the invite" is credited
+// by invitesSentAt alone (taskEngine). Sent, marked, and still asked for.
+test('the invite written and sent from its draft credits "Send the invite"', async ({ page }) => {
+  await page.route(`${API}/**`, (r) => r.fulfill({ status: 200, json: [] }));
+  await page.route(`${API}/api/public/invite/${CODE}`, (r) => r.fulfill({
+    status: 200, json: { ok: true, event: { id: EVENT_ID, name: 'Game night', type: 'Game Night', date: dateIn(2), rsvpCode: CODE, goingCount: 0 } },
+  }));
+  await page.addInitScript((e) => {
+    try { delete Navigator.prototype.share; } catch (_e) { /* absent already */ }
+    if (sessionStorage.getItem('seeded')) return;
+    sessionStorage.setItem('seeded', '1');
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
+    localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1');
+    localStorage.setItem('ngw-v2-welcomed', '1');
+  }, hostEvent());
+  await page.goto(`${BASE}?elegant=1`);
+  await page.waitForFunction(() => (document.querySelector('.app')?.innerText || '').trim().length > 120, null, { timeout: 20_000 });
+  const tap = (re) => page.evaluate((s) => {
+    const el = [...document.querySelectorAll('button,[role="button"],a')].filter((x) => new RegExp(s).test((x.innerText || x.textContent || '').trim())).pop();
+    if (el) el.click();
+    return !!el;
+  }, re.source);
+  const stored = () => page.evaluate((id) => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events')).find((e) => e.id === id), EVENT_ID);
+  await tap(/^Menu$/); await page.waitForTimeout(400);
+  await tap(/^Jump to a section$/); await page.waitForTimeout(400);
+  expect(await tap(/^Guests/)).toBe(true);
+  await page.waitForTimeout(900);
+  expect(await tap(/^Copy the invite$/), 'the invite draft is offered').toBe(true);
+  await expect(page.getByRole('button', { name: 'Mark it sent — I sent it myself' })).toBeVisible({ timeout: 10_000 });
+  expect((await stored()).invitesSentAt || null, '(premise) not credited yet').toBe(null);
+  await page.getByRole('button', { name: 'Mark it sent — I sent it myself' }).click();
+  await page.waitForTimeout(800);
+  expect(typeof (await stored()).invitesSentAt, 'marking the invite sent credits the invite').toBe('string');
+});
+
+// A host who sent the invite ANOTHER way (her own text, in person) says so where
+// "Open the invite" lands, once, and the board moves on (owner, live, 11/18/2026).
+test('"I already sent it" credits the invite, survives a reload, and then goes away', async ({ page }) => {
+  await page.route(`${API}/**`, (r) => r.fulfill({ status: 200, json: [] }));
+  await page.addInitScript((e) => {
+    if (sessionStorage.getItem('seeded')) return;
+    sessionStorage.setItem('seeded', '1');
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
+    localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1');
+    localStorage.setItem('ngw-v2-welcomed', '1');
+  }, hostEvent());
+  await page.goto(`${BASE}?elegant=1`);
+  await page.waitForFunction(() => (document.querySelector('.app')?.innerText || '').trim().length > 120, null, { timeout: 20_000 });
+  const tap = (re) => page.evaluate((s) => {
+    const el = [...document.querySelectorAll('button,[role="button"],a')].filter((x) => new RegExp(s).test((x.innerText || x.textContent || '').trim())).pop();
+    if (el) el.click();
+    return !!el;
+  }, re.source);
+  const openSection = async (name) => {
+    await tap(/^Menu$/); await page.waitForTimeout(400);
+    await tap(/^Jump to a section$/); await page.waitForTimeout(400);
+    expect(await tap(new RegExp('^' + name))).toBe(true);
+    await page.waitForTimeout(900);
+  };
+  await openSection('Guests');
+  const sent = page.locator('[data-invite-sent]:visible, .sheet button:has-text("I already sent it")').first();
+  await expect(sent).toBeVisible();
+  await sent.click();
+  await page.waitForTimeout(800);
+  const stored = await page.evaluate((id) => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events')).find((e) => e.id === id), EVENT_ID);
+  expect(typeof stored.invitesSentAt).toBe('string');
+  await expect(page.getByRole('button', { name: 'I already sent it' })).toHaveCount(0);
+  await page.keyboard.press('Escape'); await page.waitForTimeout(400);
+  await page.reload();
+  await page.waitForFunction(() => (document.querySelector('.app')?.innerText || '').trim().length > 120, null, { timeout: 20_000 });
+  await openSection('Your checklist');
+  const t = await page.evaluate(() => (document.querySelector('.sheet:last-of-type')?.innerText || document.body.innerText || '').replace(/\s+/g, ' '));
+  const row = t.slice(t.indexOf('Send the invite'), t.indexOf('Send the invite') + 220);
+  expect(row).toMatch(/done by your plan/);
+});

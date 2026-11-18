@@ -48,9 +48,9 @@
 import { aOccasion } from './occasionWords';
 import { getPlaybook } from './playbooks';
 import { ANCHOR_HOUR } from './eventWhen';
+import { OUTDOOR_TYPE } from './placeIntelligence';
 
 // Types that live outdoors — the same list phaseProgress uses to decide a rain plan matters.
-const OUTDOOR_TYPE = /cookout|bbq|barbecue|fish fry|crab feast|crawfish|boil|picnic|day party|block party|tailgate|luau|beach|garden party|graduation|juneteenth|family reunion|reunion/i;
 
 // The rule-of-thumb tier (3): when nothing grounds a time, which part of the day is the
 // COMMON starting point for this kind of event. Coarse on purpose — a bucket, not a clock —

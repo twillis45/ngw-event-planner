@@ -14,6 +14,8 @@
 // grandfathered, not sanctioned.)
 import { isPlausibleCityText, parseVenueLocation, splitTrailingPlace } from './cityText';
 
+const STREET_LINE = /^\d{1,6}[a-z]?\s+(?:[a-z0-9.'-]+\s+){0,4}(st|street|rd|road|ave|avenue|blvd|boulevard|ln|lane|dr|drive|way|ct|court|pl|place|pkwy|parkway|hwy|highway|cir|circle|ter|terrace|trl|trail|pike|sq|square)\b\.?/i;
+
 // Home-ish venue labels: real to the host ("Backyard") but useless as a maps
 // destination — the city carries the location for those.
 const HOMEISH = /^(backyard|back\s?yard|home|house|my place|host'?s home|our (place|home|backyard))$/i;
@@ -112,12 +114,18 @@ export function venueFor(event) {
   const street = String(ev.venueStreet || '').trim();
   // A real address needs a street — city/state alone must not masquerade as one
   // (they'd hijack mapsQuery away from the venue name).
+  // A STREET TYPED AS THE VENUE IS THE ADDRESS (owner report, 11/18/2026):
+  // "271 Whitaker Rd, Pasadena MD" has no comma before the state, so the town
+  // parsers above leave it whole as the NAME — and arrival then asked for the
+  // street she had just typed. A house number followed by a street-type word is
+  // an address; "21 Club" and "VFW Post 3150" are not.
+  const nameIsStreet = !!name && STREET_LINE.test(name);
   const address = String(ev.venueAddress || '').trim()
     || (street
       ? [street,
         city && state ? `${city}, ${state}` : (city || state),
         String(ev.venueZip || '').trim()].filter(Boolean).join(', ')
-      : '');
+      : (nameIsStreet ? name : ''));
   // The at-home carve-out, defined ONCE: a home host's location lives in
   // venueCity; a named-venue host's lives in venue. (Three engines used to
   // each carry their own copy of this rule.)
@@ -171,7 +179,7 @@ export function venueFor(event) {
   // nothing to show for itself but its town. Show the street the host typed —
   // it is the most specific thing known about where this is.
   const displayLine = name
-    ? (dashTail ? name : [name, city].filter(Boolean).join(', '))
+    ? (dashTail || (city && name.toLowerCase().includes(city.toLowerCase())) ? name : [name, city].filter(Boolean).join(', '))
     : (isHome && city ? `At home in ${city}` : (address || city));
   const mapsQuery = address
     || (dashTail ? name : [name && !HOMEISH.test(name) ? name : '', city, state].filter(Boolean).join(', '));

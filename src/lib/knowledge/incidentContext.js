@@ -15,7 +15,7 @@
 // Dame EAP / Yale OEM / MPI, all cited below); that is the shape we follow.
 
 import { venueFor } from '../venueFor';
-import { isLikelyOutdoor } from '../weather';
+import { placeIsOutdoors } from '../placeIntelligence';
 import { FIRE_SAFETY_SOURCES } from './fireSafetyContext';
 
 // Every id referenced by a line below resolves here — the same {org, url,
@@ -205,7 +205,7 @@ export function resolveIncidentSource(id) {
 export function incidentPlanFor(event) {
   const ev = event || {};
   const vfv = venueFor(ev);
-  const outdoors = (() => { try { return isLikelyOutdoor(vfv.name, ev.notes || ''); } catch { return false; } })();
+  const outdoors = (() => { try { return placeIsOutdoors(ev); } catch { return false; } })();
   const waterish = /pool|lake|beach|river|waterfront|marina|pond/i.test([vfv.name, String(ev.notes || ''), String(ev.type || '')].join(' '));
   const kidsAround = ev.kidsPolicy !== 'adults_only';
   const addr = vfv.address || vfv.displayLine || '';

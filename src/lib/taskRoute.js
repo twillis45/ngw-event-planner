@@ -94,6 +94,19 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // host marks the thank-you there, so the CTA does what it says.
   if (/thank (the|them|everyone|people|your)|thank[- ]?you|write the notes\b/i.test(t))
     return { label: 'Open your guest list', route: { tab: 'Guests' } };
+  // LINKS FOR STEPS THAT NAME A REAL SCREEN (owner, 11/18/2026: "make sure
+  // check boxes link to all places"). Of 179 rows with no link, most are real
+  // kitchen or house work with no screen (cook, fry, sweep) and stay honest
+  // check-offs. These name a place the app has: the money agreement, the date,
+  // the volunteer shifts, the friend who owns the main dish.
+  if (/how money works|money rule|shared receipts|settle up|final tally|\btreasurer\b/.test(t))
+    return { label: 'Open your money', route: { tab: 'Budget', focusField: 'hsp-budget' } };
+  if (/\b(pick|choose|set) the date\b/.test(t))
+    return { label: 'Set the date', route: { tab: 'Event Details', focusField: 'event-date' } };
+  if (/\bshifts?\b/.test(t))
+    return { label: 'Assign it', route: { tab: 'Event Details', focusField: 'space' } };
+  if (/\bown the main\b/.test(t))
+    return { label: 'Map the spread', route: { tab: 'Planning', focusField: 'food-plan' } };
   if (/per[- ]person\b.{0,40}(number|cost|amount|budget)|who pays|we cover the\b/.test(t))
     return { label: 'Open your money', route: { tab: 'Budget', focusField: 'hsp-budget' } };
   // Watchers, chaperones and house rules are the helper/place assignments.

@@ -3,6 +3,8 @@ import { isVendorBooked } from './workstreams';
 import { venueFor } from './venueFor';
 import { budgetIsSet } from './budgetFor';
 import { rsvpHasResponded } from './rsvp';
+// Live binding, read only at call time: playbooks imports this module too.
+import { openFoodChoices, isDietaryChoice } from './playbooks';
 
 // Single source of truth for "is this planning task already handled by real event state?"
 //
@@ -34,6 +36,18 @@ export function hasNamedVendor(event) {
 // taskSatisfied(event, task) → boolean. `task` may be a timeline task ({task}) or a
 // subtask ({text}). Keyword-matched against the same domains the next-step engine routes
 // on, so the surfaces can never disagree about whether a task is handled.
+const DIETARY_STEP = /\b(collect|ask|count|note|gather)\b[^;]*\b(dietary|allerg)/;
+
+// ─── THE INVITE IS OUT (single-source audit, 11/18/2026) ─────────────────────
+// Recorded as sent, or any guest has answered (an answer proves an invite
+// reached them). The checklist and the guest sheet's "I already sent it" both
+// ask this, so a replied-to invite is never offered as unsent.
+export function invitesOut(event) {
+  if (!event) return false;
+  if (event.invitesSentAt) return true;
+  return (Array.isArray(event.guests) ? event.guests : []).some((g) => rsvpHasResponded(g));
+}
+
 export function taskSatisfied(event, task) {
   if (!event || !task) return false;
   const s = String(task.task || task.text || '').toLowerCase();
@@ -62,10 +76,25 @@ export function taskSatisfied(event, task) {
   // wins over the generic headcount match below.
   if (/^set\b.*\bdate\b/.test(s) || /\bset (the |a )?date\b/.test(s))         return dateSet;
 
+  // DIETARY NEEDS COLLECTED (11/18/2026): "Collect dietary needs", "Ask every
+  // guest for allergies", "note any dietary needs" are the step the food
+  // sheet's "Dietary needs noted" answers. Additive: when the host has not
+  // noted them, the step falls through to whatever else it is about. An
+  // invite that only ASKS about diets is excluded — sending the ask is not
+  // having the answers.
+  if (event.dietaryNoted && DIETARY_STEP.test(s) && !/\b(invit|send)|chase|nudge/.test(s)) return true;
+
   // ── BRUTAL AUDIT 2026-07-28 GUARDS — these run before every domain rule ─────
   // A this-or-that question is a DECISION — no stored fact proves a choice was
   // made ("Ticketed (paid) or free registration?", "At home or a venue?").
   if (/\bor\b/.test(s) && /\?\s*$/.test(s)) return false;
+  // A SEND-THE-INVITE STEP IS PROVEN BY THE INVITE GOING OUT, even when it
+  // goes on to "collect RSVPs" or "track replies" (single-source audit,
+  // 11/18/2026): "Send invites + collect RSVP, dietary, plus-ones" fell to the
+  // act guard below, so "I already sent it" said the plan moves on while the
+  // row stayed open. Leading send verbs only; the chase rows keep their own rule.
+  if (/^(text\/email |send( out)? )(the |your )?invit/.test(s)) return invitesOut(event);
+
   // ACTS — calls, briefings, walk-throughs, physical work, ongoing collection —
   // are never proven by presence facts. "Recruit 3-5 volunteers" was marked done
   // by a typed headcount; "share live location" by a venue name; "track RSVPs"
@@ -138,10 +167,7 @@ export function taskSatisfied(event, task) {
   // NB: the ORIGINAL branch used /invite/, which does not match "invitations"
   // (invit-A-tions) — so "Send the invitations" fell through to false by accident.
   // /invit/ covers the whole family deliberately.
-  if (/invit|rsvp/.test(s)) {
-    if (event.invitesSentAt) return true;
-    return guests.some(g => rsvpHasResponded(g));
-  }
+  if (/invit|rsvp/.test(s)) return invitesOut(event);
 
   // ── BRUTAL AUDIT 2026-07-28: a MENTION may not satisfy a TASK ───────────────
   // The audit ran every playbook label against these rules and found the mention-
@@ -184,7 +210,18 @@ export function taskSatisfied(event, task) {
   // Venue: booking/choosing verbs only. Bare /location/ used to close safety rows
   // ("share live location", "Plan B location") off a typed venue name — class S3.
   if (/\b(book(ed)?|find|pick|choose|secure[d]?|reserve[d]?|lock(ed)?|scout)\b.{0,40}\b(venue|location|space|hall|room)\b|^venue\b|venue rfp/.test(s)) return hasVenue;
-  if (/\b(set|lock|plan|decide|map)\b.{0,20}\b(menu|spread)\b|\bmenu\b|food plan|what to (cook|serve|make)|plan the food/.test(s)) return hasFood;
+  // MENU STEPS CLOSE WHEN THE MENU DOES (single-source audit, 11/18/2026): one
+  // pick used to close every row containing "menu", while the hero still said
+  // "Decide what you're serving · 3 open". The open-questions rule is
+  // playbooks.openFoodChoices — the one phaseProgress uses. Shopping and
+  // counting rows that only mention the menu are not about deciding it.
+  if (/\b(set|lock|plan|decide|map)\b.{0,20}\b(menu|spread)\b|\bmenu\b|food plan|what to (cook|serve|make)|plan the food/.test(s)) {
+    if (/\b(buy|grocer|shop|count|serving dish|pick up)/.test(s)) return false;
+    if (!hasFood) return false;
+    let open = null;
+    try { open = openFoodChoices(event); } catch (_e) { open = null; }
+    return open == null ? true : open.filter((c) => !isDietaryChoice(c)).length === 0;
+  }
   return false;
 }
 
@@ -193,6 +230,32 @@ export function taskSatisfied(event, task) {
 // proves it handled. This is the bridge that retires manual checkoff as a source of truth.
 export function effectiveDone(event, task) {
   return !!(task && task.done) || taskSatisfied(event, task);
+}
+
+// ─── A TICK RECORDS WHAT IT STANDS FOR (owner, 11/18/2026) ───────────────────
+// The checklist reads section facts through taskSatisfied; this is the reverse,
+// and it is derived from the SAME rule rather than a second list of patterns:
+// ticking a step writes a fact only when taskSatisfied says that fact is what
+// completes it. Ticking "Send the invite" records invitesSentAt, so the guest
+// sheet stops offering "I already sent it"; ticking "Collect dietary needs"
+// records dietaryNoted, so the food sheet stops saying "none yet". Only
+// "it happened" facts belong here — never a value (a date, a budget, a menu)
+// that a tick cannot know. Already-recorded facts are never overwritten.
+const TICK_FACTS = [
+  ['invitesSentAt', () => new Date().toISOString()],
+  ['dietaryNoted', () => true],
+];
+export function factsATickRecords(event, task) {
+  if (!event || !task) return {};
+  try {
+    if (taskSatisfied(event, task)) return {};
+    for (const [key, value] of TICK_FACTS) {
+      if (event[key]) continue;
+      const v = value();
+      if (taskSatisfied({ ...event, [key]: v }, task)) return { [key]: v };
+    }
+  } catch (_e) { /* a tick never fails on inference */ }
+  return {};
 }
 
 // HQ-2 P2: taskSatisfied() is a heuristic (regex-matched) inference, not a host

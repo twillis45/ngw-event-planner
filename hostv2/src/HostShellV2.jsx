@@ -69,7 +69,7 @@ import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — 
 import { boardDecisionND, foodDecisionND, blockerDecisionND, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
-import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
+import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
@@ -157,7 +157,7 @@ import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, readEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
 import { deleteAccount, isAccountDeletionAvailable } from '@app/lib/api/account';
-import { effectiveDone } from '@app/lib/taskEngine';
+import { effectiveDone, factsATickRecords, invitesOut } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
@@ -248,7 +248,7 @@ import { REFUND_LINE } from '@app/lib/refundRule';
 import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
-import { derivePlaceIntelligence } from '@app/lib/placeIntelligence';
+import { derivePlaceIntelligence, placeIsOutdoors, outdoorsGuess } from '@app/lib/placeIntelligence';
 import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote } from '@app/lib/budgetCopy';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
@@ -2007,7 +2007,7 @@ export default function HostShellV2() {
   // rather than quietly assuming the mild case.
   const claimFacts = useMemo(() => {
     let outdoor = false;
-    try { outdoor = isLikelyOutdoor(vf.name, event && event.notes); } catch (_e) { outdoor = false; }
+    try { outdoor = placeIsOutdoors(event || {}); } catch (_e) { outdoor = false; }
     return { setting: outdoor ? 'outdoor' : null };
   }, [vf, event]);
 
@@ -3413,7 +3413,7 @@ export default function HostShellV2() {
     (async () => {
       try {
         if (!isWeatherConfigured() || !event.date) return;
-        const out = isLikelyOutdoor(vf.name, event.notes);
+        const out = placeIsOutdoors(event);
         const past = isPastEvent(event);
         const d = daysUntil(event.date);
         // Span-aware window (P1 "weather range"): mid-event the START is past
@@ -3454,7 +3454,7 @@ export default function HostShellV2() {
     if (liveWx) return liveWx;
     if (isWeatherConfigured()) return null; // live mode: real data or nothing
     // Self-contained reads (this memo sits above the shared outdoor/days consts).
-    const out = (() => { try { return isLikelyOutdoor(vf.name, event.notes); } catch { return false; } })();
+    const out = (() => { try { return placeIsOutdoors(event); } catch { return false; } })();
     const past = (() => { try { return isPastEvent(event); } catch { return false; } })();
     const d = (() => { try { return daysUntil(event.date); } catch { return null; } })();
     // Same 14-day boundary as getEventWeatherRisk — no real forecast reaches
@@ -6524,6 +6524,9 @@ export default function HostShellV2() {
       // told. Null for every draft that has nothing to declare.
       notice: (d && typeof d === 'object' && d.notice) || null,
       vendorId: (opts && opts.vendorId) || null,
+      // THE INVITE ITSELF (owner, live, 11/18/2026): a send recorded from this
+      // draft also credits "Send the invite", which reads invitesSentAt alone.
+      sendsInvite: !!(opts && opts.sendsInvite),
       from: prev ? (prev.kind === 'draft' ? prev.from || null : prev) : null,
     }));
   };
@@ -6619,9 +6622,9 @@ export default function HostShellV2() {
     try { return inviteLinkUrl(); }
     catch { toast('Sharing is unavailable because the public link address is missing. Nothing was shared.'); return ''; }
   };
-  const openInviteDraft = async (title, build) => {
+  const openInviteDraft = async (title, build, opts) => {
     const url = await verifiedRsvpUrl();
-    openDraft(title, build(event, profile, { rsvpUrl: url }));
+    openDraft(title, build(event, profile, { rsvpUrl: url }), null, opts);
   };
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const showQr = async () => {
@@ -6655,7 +6658,7 @@ export default function HostShellV2() {
       // A copy is not a send, so the host says when it went out — one tap, and
       // only then is "Send the invite" credited (issue #100, D-10).
       toast('Invite link copied — guests can open it and reply.',
-        event.invitesSentAt ? null : { label: 'I sent it', fn: () => patchEvent({ invitesSentAt: new Date().toISOString() }, 'Invite marked as sent.') });
+        invitesOut(event) ? null : { label: 'I sent it', fn: () => patchEvent({ invitesSentAt: new Date().toISOString() }, 'Invite marked as sent.') });
       feedback('act');
     } catch { toast('Couldn’t copy on this browser — nothing was shared.'); }
   };
@@ -6673,7 +6676,9 @@ export default function HostShellV2() {
   // catching up genuinely closes the "Catch up on overdue planning" card.
   const toggleTask = (i) => {
     const tl = (event.timeline || []).map((t, ix) => ix === i ? { ...t, done: !t.done } : t);
-    const open = tl.filter(t => t && !t.done).length;
+    // Counted the way the checklist counts (single-source audit, 11/18/2026):
+    // a step the plan already proves is not "still open" in the toast either.
+    const open = tl.filter(t => t && !t.done && !isTimelineStepResolved(t)).length;
     // RAW FEEDS TRUTH, both directions: checking a buy/shop step is the host
     // asserting the purchases happened — write the raw layer (foodGot) so
     // "Still to get", totals, and the day-before brief all agree. Unchecking
@@ -6706,6 +6711,12 @@ export default function HostShellV2() {
           + (est > 0 ? ' (' + est + ' at an estimate — tap any to add the real price).' : '.');
       }
     }
+    // A TICK RECORDS WHAT IT STANDS FOR (owner, 11/18/2026): "Send the invite"
+    // writes invitesSentAt and "Collect dietary needs" writes dietaryNoted, so
+    // the guest and food sheets agree with the checklist. taskEngine decides,
+    // from the same rule that ticks the step when the section is done first.
+    // Checking only; unchecking never un-sends (asymmetric, like the buys above).
+    if (tl[i].done) extra = { ...extra, ...factsATickRecords(event, event.timeline[i]) };
     patchEvent({ timeline: tl, ...extra },
       (tl[i].done ? 'Done: ' : 'Reopened: ') + String(tl[i].task || '').slice(0, 50) + '… — ' + open + ' still open.' + boughtNote);
   };
@@ -7092,7 +7103,7 @@ export default function HostShellV2() {
 
   // Rain backup — the weather lib's real outdoor heuristic; the rainPlan field
   // is the same one the app's weather alert and Where & when read.
-  const outdoor = (() => { try { return isLikelyOutdoor(vf.name, event.notes || ''); } catch { return false; } })();
+  const outdoor = (() => { try { return placeIsOutdoors(event); } catch { return false; } })();
 
   // Shopping check-off writes the same foodGot flags the money engine reads —
   // buying an item literally moves real dollars from committed to spent. (This
@@ -8288,7 +8299,10 @@ export default function HostShellV2() {
 
   // guestCountSource:'host' — this write IS the host answering, so it clears any
   // 'playbook-typical' the creation seam recorded and unblocks the outward drafts.
-  const setGuests = (n) => patchEvent({ guestEstimate: n, guestCountSource: 'host' }, 'Planning around ' + n + ' now — the plan just recomputed.');
+  // A LOCKED COUNT MOVES WITH THE HOST'S EDIT (single-source audit 11/18/2026):
+  // guestCountFor reads guestCount first, so writing only the estimate left a
+  // locked 40 on screen under a toast saying 41.
+  const setGuests = (n) => patchEvent({ guestEstimate: n, guestCountSource: 'host', ...(Number(event.guestCount) > 0 ? { guestCount: n } : null) }, 'Planning around ' + n + ' now — the plan just recomputed.');
   // The count RESOLUTION rows — shared by the 'count' editor and the guests
   // editor's drift bridge (W14): when the caterer's number and the confirmed
   // yeses disagree, the fix is one of these two taps, wherever the host is.
@@ -12161,6 +12175,25 @@ export default function HostShellV2() {
                              now, so the four render sites can't drift apart again. */
                           : ctaLabelFor(a.cta, a.route, event)
                         }</button>; })()}
+                        {/* MARK IT DONE WHERE IT IS SHOWN (owner, live, 11/18/2026: "Can't
+                            get past this screen"). 692 of 813 playbook steps can only be
+                            completed by a tick (no plan field satisfies them — taskEngine),
+                            and a board card only routed: its button opened a section that
+                            could not complete the step, and the tick lived in the checklist
+                            sheet. A card that IS an open checklist step now ticks it here,
+                            through the same toggleTask the checklist uses. */}
+                        {(() => {
+                          if (decHeroActions || coiHero || coiTaskDone) return null;
+                          const norm = (x) => String(x || '').toLowerCase().replace(/\s+/g, ' ').trim();
+                          // By id when the action names its step (tier 2's taskId, a route's
+                          // taskId); else by the card's title, which may be cut short.
+                          const rid = a.taskId || (a.route && a.route.taskId);
+                          const head = norm(a.title).replace(/[.…]+$/, '');
+                          const ti = (event.timeline || []).findIndex((t) => t && !t.done
+                            && ((rid && t.id === rid) || (head.length >= 12 && norm(t.task).startsWith(head))));
+                          if (ti < 0) return null;
+                          return <button className="mini" data-mark-step-done onClick={() => toggleTask(ti)}>Mark done</button>;
+                        })()}
                         {/* SNOOZE — set it down without losing it. The reason a zero state can
                             be believed: a host who has decided to leave a thing can SAY so, and
                             the list actually empties. The grounded proposal (computed above) is
@@ -14317,7 +14350,16 @@ export default function HostShellV2() {
                 const rc = (() => { try { return playbookDayOfChecklist(event); } catch { return null; } })();
                 if (!rc || !rc.items || !rc.items.length) return null;
                 const checked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
-                const done = rc.items.filter((p) => checked[p.key]).length;
+                // ONE RAIN PLAN (single-source audit, 11/18/2026): the 'weather'
+                // row was its own tick in safetyChecked while the rain section and
+                // readiness read event.rainPlan, so "If it rains: garage" could sit
+                // beside an unconfirmed "Rain / heat plan". The row now reads the
+                // saved plan, and with none saved a tap opens the rain editor —
+                // where the answer lives — instead of storing a second one.
+                const rainHas = (() => { try { return rainPlanStatus(event).hasPlan; } catch { return false; } })();
+                const isRainRow = (p) => p.key === 'weather';
+                const isChecked = (p) => (isRainRow(p) && rainHas) || !!checked[p.key];
+                const done = rc.items.filter(isChecked).length;
                 const toggle = (key) => {
                   const next = { ...checked };
                   if (next[key]) delete next[key]; else next[key] = true;
@@ -14341,9 +14383,9 @@ export default function HostShellV2() {
                       </p>
                     )}
                     {rc.items.map((p, i) => (
-                      <button key={p.key} className={'frow' + (checked[p.key] ? ' got' : '')}
-                        style={{ animation: rowEnter(i) }}
-                        onClick={() => toggle(p.key)}>
+                      <button key={p.key} className={'frow' + (isChecked(p) ? ' got' : '')}
+                        style={{ animation: rowEnter(i) }} data-dayof-item={p.key}
+                        onClick={() => (isRainRow(p) && (rainHas || !checked[p.key]) ? setSheet({ kind: 'rain' }) : toggle(p.key))}>
                         <span className="fcheck" aria-hidden="true" />
                         <span className="f-main">
                           <span className="f-name">{p.label}</span>
@@ -15722,34 +15764,73 @@ export default function HostShellV2() {
               </>
             )}
             {sheet.kind === 'space' && (() => {
-              // Hero copy (host request 2026-07-11): the helpers count is the
-              // star. Real fields only — deriveHelperResponsibilities' deduped
-              // people list and the venue name; nothing sized or claimed beyond them.
-              const n = helperPeople.length;
+              // THE HERO FOLLOWS THE ORDER (owner ruling 11/18/2026). Since the
+              // 2026-07-11 request the star was the helper count — "No helpers
+              // yet" — while the helpers list sat at the bottom, under the place
+              // checks and What to bring. The sheet opens on the place, so the
+              // hero speaks to the place: how many of its checks are settled
+              // (derivePlaceIntelligence, 'na' suppressed exactly as the rows
+              // below suppress it) and which are still open. The helper count
+              // moved to the "Who's helping" label, next to the helpers.
               const venue = vf.name;
               // AN ADDRESS IS A PLACE (run 2, R2-10): with only a street given,
               // this said "No venue named yet" directly above "Venue / location —
               // Set: 12 Sample Rd". The street she typed is the place.
               const street = String(vf.address || '').trim();
               const venuePhrase = venue
-                ? `${/^(the|a|an)\s/i.test(venue) ? '' : 'The '}${venue} is set — arrival, parking, and the rain plan live here.`
+                ? `${/^(the|a|an)\s|^\d/i.test(venue) ? '' : 'The '}${venue} is set — arrival, parking, and the rain plan live here.`
                 : street
                   ? `${street} is set — arrival, parking, and the rain plan live here.`
                   : 'No venue named yet — name it and arrival, parking, and the rain plan live here.';
-              // ONE SUBJECT PER LINE (host report 2026-07-28): the sub used to be
-              // the VENUE sentence under a HELPERS star — two different subjects
-              // glued together, so "No helpers yet / No venue named yet…" read as
-              // a non-sequitur. The guide voice now speaks to the star; the venue
-              // fact drops to the grounding line, which is what it is for.
+              let place = null; try { place = derivePlaceIntelligence(event); } catch { place = null; }
+              const rows = ((place && place.sections) || []).filter(r => r && r.state !== 'na');
+              const done = rows.filter(r => r.state === 'handled').length;
+              const open = rows.filter(r => r.state !== 'handled').map(r => r.label.toLowerCase());
               return (
                 <SheetHero
-                  eyebrow="Helping hands"
-                  star={n ? `${n} helping` : 'No helpers yet'}
-                  sub={n
-                    ? 'Everyone here has something with their name on it — they ride the day plan and the helper messages.'
-                    : 'Name someone and what they’ve got — it lands on the day plan and in their message.'}
+                  eyebrow="The place"
+                  star={rows.length ? `${done} of ${rows.length} set` : 'Not started'}
+                  sub={!rows.length ? 'Name the place and the arrival, parking, and rain checks follow.'
+                    : open.length ? `Still open: ${open.join(', ')}.`
+                      : 'Every place check is settled.'}
                   grounding={venuePhrase}
                 />
+              );
+            })()}
+            {sheet.kind === 'space' && (
+              // INDOORS OR OUTSIDE (owner, 11/18/2026: "App needs an indoor and
+              // outdoor"). hostv2 never asked, so the rain backup, the day-of rain
+              // row, the forecast and the safety plan all guessed from the venue
+              // name. event.indoorOutdoor is the field every reader already
+              // honors (placeIsOutdoors); the host's answer now beats the guess.
+              // Same control as the guest sheet's "counting:" row — one wrapping
+              // row of small chips, aria-pressed marking the answer.
+              <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
+                <span className="of">indoors or outside:</span>
+                {[['indoor', 'Indoors'], ['outdoor', 'Outside'], ['both', 'Both']].map(([v, label]) => (
+                  <button key={v} className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }}
+                    data-indoor-outdoor={v} aria-pressed={event.indoorOutdoor === v}
+                    onClick={() => patchEvent({ indoorOutdoor: event.indoorOutdoor === v ? null : v },
+                      event.indoorOutdoor === v ? 'Cleared — the plan will go by the venue again.'
+                        : v === 'indoor' ? 'Indoors — no rain backup needed.'
+                          : 'Noted — a rain backup is on your list.')}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {sheet.kind === 'space' && (() => {
+              // DIFM (owner, 11/18/2026): the app's own inference — an outdoor
+              // venue, an outdoor word in the name or notes, a usually-outdoor
+              // event type — is proposed with its reason and taken in one tap.
+              // Nothing is stored until she taps; once she answers, it is gone.
+              const g = (() => { try { return outdoorsGuess(event); } catch { return null; } })();
+              if (!g) return null;
+              return (
+                <div className="actions-row" data-outdoors-guess style={{ margin: '-4px 0 10px', alignItems: 'center' }}>
+                  <span className="grounding" style={{ margin: 0 }}>Looks like it’s outside — {g.because}.</span>
+                  <button className="mini" onClick={() => patchEvent({ indoorOutdoor: 'outdoor' }, 'Outside — a rain backup is on your list.')}>Yes, outside</button>
+                </div>
               );
             })()}
             {sheet.kind === 'space' && (
@@ -16113,7 +16194,7 @@ export default function HostShellV2() {
                 {(
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>Who’s helping</span>
+                      <span>Who’s helping{helperPeople.length ? ` · ${helperPeople.length}` : ''}</span>
                       {(helperData.helpers || []).length > 0 && (
                         <button className="mini" onClick={startHelperMessages}>Draft helper messages</button>
                       )}
@@ -20212,7 +20293,15 @@ export default function HostShellV2() {
                   logVendorContact(sheet.vendorId, channel === 'copy' ? 'drafted' : 'host-logged');
                   return;
                 }
-                patchEvent({ sendLedger: led }, 'Noted — the plan remembers this went out.');
+                // SENT, MARKED, AND STILL ASKED FOR (owner, live, 11/18/2026): the
+                // invite draft's Share / Text it / WhatsApp / "Mark it sent" wrote
+                // only the ledger, while "Send the invite" is credited by
+                // invitesSentAt alone (taskEngine), so the board kept leading with
+                // it. A real send of the invite now credits it too. Copying is not
+                // a send (the clipboard proves a draft, not delivery).
+                const invited = sheet.sendsInvite && channel !== 'copy' && !event.invitesSentAt
+                  ? { invitesSentAt: new Date().toISOString() } : {};
+                patchEvent({ sendLedger: led, ...invited }, 'Noted — the plan remembers this went out.');
               };
               const sendEntry = sendStateFor(event.sendLedger, sheet.title);
               const sendChip = sendStateLine(sendEntry, Date.now());
@@ -25466,7 +25555,19 @@ export default function HostShellV2() {
               // host-supplied media pipeline is not authorized, so this reads a
               // field that does not exist yet and never writes one. The fixture
               // override is review-only, never persisted, and labelled on screen.
+              // "I ALREADY SENT IT" (owner, live, 11/18/2026: "Can't get past this
+              // screen after completing the invite info"). "Send the invite" is
+              // credited only by invitesSentAt, written by a completed share sheet
+              // or a recorded send. A host who sent it another way had no way to
+              // say so here, and the board led with the invite forever. A record,
+              // not an act — the same attestation as "Mark it sent — I sent it
+              // myself" — shown only until it is recorded.
+              const markInviteSent = invitesOut(event) ? null : {
+                label: 'I already sent it',
+                onClick: () => patchEvent({ invitesSentAt: new Date().toISOString() }, 'Invite marked as sent — the plan moves on.'),
+              };
               const countInviteTools = (<>
+                    {markInviteSent && <button className="mini" data-invite-sent onClick={markInviteSent.onClick}>{markInviteSent.label}</button>}
                     <button className="mini" onClick={shareInviteLink}>Check and share link</button>
                     <button className="mini" onClick={copyInviteLink}>Copy the link</button>
                     <button className="mini" onClick={showQr}>Check and show QR</button>
@@ -25489,7 +25590,7 @@ export default function HostShellV2() {
                 link:    { label: 'Copy the link', onClick: copyInviteLink },
                 qr:      { label: 'Check and show QR', onClick: showQr },
                 preview: { label: 'Preview on this device', onClick: () => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} } },
-                copy:    { label: 'Copy the invite', onClick: () => openInviteDraft('Your invite', draftInvite) },
+                copy:    { label: 'Copy the invite', onClick: () => openInviteDraft('Your invite', draftInvite, { sendsInvite: true }) },
                 brief:   { label: 'Draft the guest brief', onClick: () => openInviteDraft('The guest brief', draftGuestBrief) },
                 update:  { label: 'Update everyone', onClick: () => { try { openDraft('Update to everyone', draftGuestUpdate(event, {}, profile)); } catch { toast('Couldn\u2019t draft it.'); } } },
                 // WAS "Nudge the quiet ones", which promised the app would go
@@ -25502,7 +25603,7 @@ export default function HostShellV2() {
               const _chasing = _outstanding > 0 || !(event.guests || []).length;
               const inviteTiers = _chasing ? {
                 primary: _inviteActs.share,
-                secondary: [_inviteActs.link, _inviteActs.qr, _inviteActs.nudge].filter(Boolean),
+                secondary: [markInviteSent, _inviteActs.link, _inviteActs.qr, _inviteActs.nudge].filter(Boolean),
                 more: [_inviteActs.preview, _inviteActs.copy, _inviteActs.brief, _inviteActs.update],
               } : {
                 primary: _inviteActs.update,
@@ -25521,6 +25622,7 @@ export default function HostShellV2() {
                     <button className="mini" onClick={_inviteActs.brief.onClick}>Draft the guest brief</button>
                     <button className="mini" onClick={_inviteActs.update.onClick}>Update everyone</button>
                     {_inviteActs.nudge && <button className="mini" onClick={_inviteActs.nudge.onClick}>Write a nudge to send</button>}
+                    {markInviteSent && <button className="mini" data-invite-sent onClick={markInviteSent.onClick}>{markInviteSent.label}</button>}
                   </div>
               </>);
               // ── THE GUEST DETAIL, HOISTED (owner §26) ───────────────────
