@@ -51,3 +51,19 @@ test('the budget does not jump its own prerequisites: an open guest count stays 
   expect(gi).toBeGreaterThanOrEqual(0);
   expect(gi).toBeLessThan(bi);
 });
+
+// SOLEMN GATHERINGS ARE EXEMPT (owner ruling 11/18/2026). On a repast the open
+// question is who carries the meal (church, repast committee, neighbors), and
+// that decides whether there is any cost at all. A grieving family is not
+// asked for a number first.
+// The exemption removes the FORCED promotion only; plain scoring still orders
+// the rest. Same repast as decisionIdentity.spec's solemn control.
+test('a repast with no budget leads with who carries the meal, not the budget', () => {
+  const d = new Date(NOW); d.setDate(d.getDate() + 4);
+  const ev = { id: 'rp', name: 'Repast for Deacon Willie Hayes', type: 'repast', guestMode: 'count', guestCount: 50,
+    venueKind: 'venue', venue: 'Mount Zion Baptist Church — Fellowship Hall', guests: [], vendors: [], timeline: [], budget: [],
+    date: localIso(d), startTime: '15:00' };
+  const acts = eventPlan(ev).nextActions;
+  expect(acts[0].domain).not.toBe('budget');
+  expect(acts[0].title).toMatch(/provides the food/i);
+});

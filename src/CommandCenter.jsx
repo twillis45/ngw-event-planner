@@ -25,6 +25,7 @@
 // independently scannable + actionable. VAR A and VAR C are exploration
 // artifacts retained in Figma for future iteration; not shipped on purpose.
 
+import { isSolemnEvent } from './lib/solemn';
 import { guestCountFor } from './lib/guestCountFor';
 import { useState, useEffect, useMemo } from 'react';
 import { color, space, type, radius, elevation, edge } from './design/tokens';
@@ -2839,7 +2840,11 @@ export function eventPlan(event, ctx = null) {
   {
     const dOut = event.date ? daysFrom(event.date) : null;
     const bi = nextActions.findIndex((a) => a && a.domain === 'budget' && !a.done);
-    if (bi >= 0 && (dOut == null || dOut >= 1)) {
+    // SOLEMN GATHERINGS ARE EXEMPT (owner ruling 11/18/2026): on a repast,
+    // memorial or homegoing the open question is who carries the meal, which
+    // decides whether there is any cost at all; plain scoring orders them.
+    const solemn = isSolemnEvent(event);
+    if (bi >= 0 && !solemn && (dOut == null || dOut >= 1)) {
       const BEFORE_BUDGET = new Set(['date', 'guests']);
       let slot = 0;
       for (let k = 0; k < bi; k++) {
@@ -2847,7 +2852,7 @@ export function eventPlan(event, ctx = null) {
         if (a && (a.level === 'critical' || BEFORE_BUDGET.has(a.domain))) slot = k + 1;
       }
       if (bi > slot) { const [b] = nextActions.splice(bi, 1); nextActions.splice(slot, 0, b); }
-    } else if (bi >= 0 && dOut === 0) {
+    } else if (bi >= 0 && !solemn && dOut === 0) {
       let lastDay = -1;
       nextActions.forEach((a, i) => { if (a && a.domain === 'day') lastDay = i; });
       if (lastDay > bi) { const [b] = nextActions.splice(bi, 1); nextActions.splice(lastDay, 0, b); }
