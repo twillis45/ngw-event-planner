@@ -40,6 +40,19 @@ export const PLACE_TARGETS = {
 
 const has = (v) => !!String(v || '').trim();
 
+// ─── IS ANY OF IT OUTSIDE? — ONCE (11/18/2026) ───────────────────────────────
+// The place checks' own outdoors rule, published so the day-of list asks the
+// same question instead of depending on which playbook was authored with a
+// weather row (6 of 46 were). Existing fields only: an outdoor venue kind, the
+// host's indoor/outdoor answer, or an outdoor word in the venue name or notes.
+export function placeIsOutdoors(event = {}) {
+  const vf = venueFor(event || {});
+  return vf.kind === 'outdoor'
+    || event.indoorOutdoor === 'outdoor'
+    || event.indoorOutdoor === 'both'
+    || (!event.indoorOutdoor && isLikelyOutdoor(vf.name, event.notes || ''));
+}
+
 export function derivePlaceIntelligence(event = {}) {
   // ONE venue reader (venueFor) — kind rule, at-home carve-out, and the
   // CITY-LEAK gate all live there now instead of a local copy.
@@ -48,10 +61,7 @@ export function derivePlaceIntelligence(event = {}) {
   const atHome = vf.isHome;
   const venueResolved = vf.isSet;
   const hasAddress = !!vf.address;
-  const outdoors = kind === 'outdoor'
-    || event.indoorOutdoor === 'outdoor'
-    || event.indoorOutdoor === 'both'
-    || (!event.indoorOutdoor && isLikelyOutdoor(vf.name, event.notes || ''));
+  const outdoors = placeIsOutdoors(event);
   const indoorOnly = event.indoorOutdoor === 'indoor';
   const hasVendors = (event.vendors || []).some((v) => v && has(v.name));
   const rain = rainPlanStatus(event);

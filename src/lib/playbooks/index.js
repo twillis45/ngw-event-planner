@@ -96,6 +96,7 @@ import { normalizeCategory } from '../vendorAccountability/playbooks.js';
 import { vendorDisplayName } from '../vendorDisplayName';
 import { destinationContextFor, isGroundedDestination } from '../knowledge/destinationContext';
 import { venueFor } from '../venueFor';
+import { placeIsOutdoors } from '../placeIntelligence';
 import { effectiveAccessibility, isGroundedAccessibility } from '../knowledge/accessibilityContext';
 import { isGroundedCost } from '../knowledge/costProvenance';
 import { isGroundedItemQty } from '../knowledge/quantityProvenance';
@@ -2912,6 +2913,7 @@ const DAYOF_RANK = { critical: 0, high: 1, med: 2, medium: 2, low: 3 };
 // Universal fallback — true for ANY hosted gathering, with no hazard that might
 // not apply (no grill/fire, no canopy/weather, no alcohol assumption). Honest
 // floor; type playbooks add the specific items their event actually carries.
+const DAYOF_RAIN_ROW = { id: 'weather', label: 'Rain / heat plan', detail: 'Where does everyone go if the weather turns? Cover or an indoor fallback ready before guests arrive.', severity: 'high' };
 const DEFAULT_DAYOF_CHECKLIST = [
   { id: 'food', label: 'Food safety', detail: 'Keep cold food cold and hot food hot; nothing perishable sitting out more than ~2 hours. Cook anything to safe internal temps.', severity: 'high' },
   { id: 'cleanup', label: 'Trash + cleanup ready', detail: 'Trash and recycling bags staged, paper towels out, and a spot to swap a full bag before it overflows.', severity: 'med' },
@@ -2983,7 +2985,14 @@ export function playbookDayOfChecklist(event) {
   const milItems = mil
     ? mil.protocol.filter((p) => p && p.id && p.label && p.lead === 'days').map((p) => ({ id: `mil_${p.id}`, label: p.label, detail: p.note || '', severity: 'med' }))
     : [];
-  const items = normalizeDayOfItems([...source, ...milItems]);
+  // THE RAIN ROW FOLLOWS THE PLACE, NOT THE TYPE (owner ruling 11/18/2026).
+  // Only 6 playbooks authored a 'weather' row, so a fish fry, a crab feast or a
+  // birthday in a park reached the day with no rain check. Any event the place
+  // checks call outdoors gets one; it reads the same saved rain plan.
+  const rainRow = !source.some((it) => it && it.id === 'weather')
+    && (() => { try { return placeIsOutdoors(event); } catch (_e) { return false; } })()
+    ? [DAYOF_RAIN_ROW] : [];
+  const items = normalizeDayOfItems([...source, ...rainRow, ...milItems]);
   if (!items.length) return null;
   const isDefault = !(authored && authored.length) && !milItems.length;
   const typeWord = String(event.type || 'event').toLowerCase();
