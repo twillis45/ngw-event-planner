@@ -27,6 +27,7 @@
 
 import { isSolemnEvent } from './lib/solemn';
 import { guestCountFor } from './lib/guestCountFor';
+import { budgetFor } from './lib/budgetFor';
 import { useState, useEffect, useMemo } from 'react';
 import { color, space, type, radius, elevation, edge } from './design/tokens';
 // Sprint 57f.1: derive compression urgency from the event's own timeline so
@@ -1502,8 +1503,8 @@ export function _eventFoundationActions(event) {
   // uses. A host with no date still sees "Set the date." exactly as before.
   const timeOk = (() => { try { return startTimeIsConfirmed(event); } catch (_e) { return false; } })();
   const whenSet = dateSet && timeOk;
-  const budgetIsSet = (event.budget || []).reduce((s, r) => s + (Number(r && r.budgeted) || 0), 0) > 0
-    || Number(event.totalBudget) > 0;
+  const budgetNow = budgetFor(event);   // the one budget reader (lib/budgetFor)
+  const budgetIsSet = budgetNow.isSet;
   // Food is "sourced" once the host has made any food/sourcing choice, self-provides
   // (cook/potluck), or a named vendor exists. Inlined (vs importing the taskEngine
   // predicates) to avoid a lint/circular-import edge in this module.
@@ -1596,7 +1597,7 @@ export function _eventFoundationActions(event) {
       cta: 'Set budget', route: { tab: 'Budget', focusField: 'hsp-budget' },
       done: budgetIsSet,
       handledFact: budgetIsSet
-        ? (Number(event.totalBudget) > 0 ? `Budget set · ${fmtMoney0(Number(event.totalBudget))}` : 'Budget set')
+        ? `Budget set · ${fmtMoney0(budgetNow.total)}`
         : null,
     },
     // ── LODGING — a destination domino, ahead of the menu ───────────────────
@@ -3152,8 +3153,7 @@ export function _selectEventNextActionInner(event) {
   // A host sets a single "What's your budget?" number (event.totalBudget); a planner
   // builds category rows. Either counts as the budget being set — so the spine
   // advances off "Set your budget" the moment they enter one.
-  const budgetIsSet = (event.budget || []).reduce((s, r) => s + (Number(r.budgeted) || 0), 0) > 0
-    || Number(event.totalBudget) > 0;
+  const budgetIsSet = budgetFor(event).isSet;
   if (hasGuestSignal && !budgetIsSet && (days === null || days >= 0)) {
     return {
       level: 'attention',

@@ -101,3 +101,41 @@ test('NEGATIVE CONTROL: the notice is STICKY — it survives, it does not flash'
   await page.waitForTimeout(6000);   // well past any ordinary toast lifetime
   await expect(page.getByText(/Add it, then come back/)).toBeVisible();
 });
+
+// ── IT HAS TO OPEN THE STORE (owner, 11/18/2026: "check the instacart button
+// in app and make sure it works") ─────────────────────────────────────────
+//
+// Every check above reads the toast, and the toast is written BEFORE the
+// handler opens Instacart. The open called `icSearchTerm`, which was never
+// defined (since 9/25), so every tap threw a ReferenceError between the toast
+// and the tab: the host got "1 of 11 — …" and no store. These checks require
+// the tab itself, with a search in it, and no page error on the way.
+const opened = async (page, sheet, click) => {
+  const urls = [];
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e && e.message)));
+  await page.context().route('**instacart.com/**', (r) => { urls.push(r.request().url()); return r.abort(); });
+  await click();
+  await settled(page);
+  await expect.poll(() => urls.length, { timeout: 5000 }).toBeGreaterThan(0);
+  return { urls, errors };
+};
+
+test('THE TAP OPENS INSTACART with a search for the first item, and nothing throws', async ({ page }) => {
+  const sheet = await boot(page);
+  const { urls, errors } = await opened(page, sheet,
+    () => sheet.getByRole('button', { name: /Search Instacart/i }).click());
+  expect(errors).toEqual([]);
+  expect(urls[0]).toMatch(/^https:\/\/www\.instacart\.com\/store\/s\?k=.+/);
+  expect(decodeURIComponent(urls[0].split('?k=')[1])).not.toBe('grocery');
+});
+
+test('"Next" opens the next item\'s search', async ({ page }) => {
+  const sheet = await boot(page);
+  const { urls, errors } = await opened(page, sheet,
+    () => sheet.getByRole('button', { name: /Search Instacart/i }).click());
+  await page.getByRole('button', { name: /^Next: / }).first().click();
+  await expect.poll(() => urls.length, { timeout: 5000 }).toBeGreaterThan(1);
+  expect(errors).toEqual([]);
+  expect(urls[1]).not.toBe(urls[0]);
+});

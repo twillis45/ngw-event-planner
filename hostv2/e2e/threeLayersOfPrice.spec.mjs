@@ -358,3 +358,45 @@ test('TOWN: a town picked from the list finds stores near it, with its state enf
   expect(asked.geo).toMatch(/q=Oxon%20Hill%2C%20MD%2C%20US&state=MD/);
   expect(asked.loc).toMatch(/lat=38\.803384&lon=-76\.9896507/);
 });
+
+// THE WAIT IS VISIBLE (owner, 11/18/2026: "I need the looking notification to
+// be more attention grabbing. Pulsing or something"). Both waits — finding
+// stores, then checking prices at the one picked — show one pulsing status
+// line that names what it is doing. The routes are held open so the line can
+// be read mid-wait; releasing them must clear it.
+test('WAITING: a pulsing status line names the store search, then the price check', async ({ page }) => {
+  let releaseLoc; const locHeld = new Promise((r) => { releaseLoc = r; });
+  let releasePrices; const pricesHeld = new Promise((r) => { releasePrices = r; });
+  await page.route('**/api/shopping/kroger/locations**', async (r) => {
+    await locHeld;
+    await r.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ configured: true, locations: [{ locationId: '01400943', name: 'Harris Teeter — Bel Air', address: '5 Bel Air S Pkwy' }] }) });
+  });
+  await page.route('**/api/shopping/kroger/search-list', async (r) => {
+    await pricesHeld;
+    const names = (JSON.parse(r.request().postData() || '{}').items || []).map(i => i.name);
+    await r.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ configured: true, results: names.map((name) => ({ name, matched: false })) }) });
+  });
+  await openList(page, '21014');
+  test.skip(!(await storeLayerOffered(page)), 'store layer not configured in this bundle');
+  await tapText(page, 'Check store prices');
+  await page.waitForTimeout(300);
+  await tapText(page, 'Find stores');
+
+  const busy = page.locator('[data-store-busy]');
+  await expect(busy).toBeVisible();
+  await expect(busy).toHaveAttribute('role', 'status');
+  await expect(busy).toContainText(/Looking for stores near 21014/);
+  const pulse = await busy.locator('.store-busy-dot').evaluate((el) => getComputedStyle(el).animationName);
+  expect(pulse).toBe('storeping');
+
+  releaseLoc();
+  await expect(busy).toHaveCount(0);
+  await tapText(page, 'Harris Teeter');
+  await expect(busy).toBeVisible();
+  await expect(busy).toContainText(/Checking \d+ prices? at Harris Teeter — Bel Air/);
+
+  releasePrices();
+  await expect(busy).toHaveCount(0);
+});

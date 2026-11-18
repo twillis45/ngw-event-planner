@@ -40,7 +40,7 @@ export const US_STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA'
 // at-home event with nothing explicit. Returns '' only when truly nothing is known.
 export function eventGeoQuery(event, profile) {
   if (!event) return '';
-  const st = String(event.state || event.venueState || '').trim().toUpperCase();
+  const st = String(event.venueState || event.state || '').trim().toUpperCase();   // venueFor's order
   // CITY-LEAK-1: a polluted venueCity (a full venue string like
   // "VFW Post 3150 — Alexandria, VA") would build a garbage geocode query and
   // silently kill the weather outlook. Only use city fields that actually look

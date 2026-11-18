@@ -1,5 +1,13 @@
 # Where We Are -- live status board
 
+## November 18, 2026 (early morning) — the budget first, the menu before the shop, and a store found by town
+
+The owner ruled "budget always first" after hearing the costs. Two exceptions came out of testing. Solemn gatherings are exempt: on a repast, who carries the meal decides whether there is any cost at all. And on the event day, the day's own steps lead. A Friendsgiving three days out led with "Get the food" while its menu was still open. The shop's clock now belongs to the menu until the menu is decided.
+
+The Friendsgiving store check found 1 of 11 items because no curated search term had ever left the app. The shell's object lacked the field the term map is keyed by. Fixing that wire, and adding terms for Friendsgiving, took a live probe to 12 of 12. The store finder also takes a town from the app's one city list, and so do "Your area" and the lodging town field.
+
+The honest limit is the price source. Kroger's public API covers only Kroger's banners: Harris Teeter here, not Safeway or Giant.
+
 ## November 18, 2026 — status that moves; one answer per fact; indoors or outside
 
 - **The stuck board is fixed (#165).** A late checklist step showed up on the board with a "Decide" button that opened an empty "Calls to make", so a host who had already sent the invite could not get past it. The card now goes where the step is done, and has "Mark done".

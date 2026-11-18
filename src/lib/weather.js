@@ -41,7 +41,11 @@ export async function geocodeVenue(venue) {
   if (!venue || (!API_KEY && !PROXY)) return null;
   try {
     if (PROXY) {
-      const res = await fetch(`${PROXY}/api/weather/geocode?q=${encodeURIComponent(venue)}`);
+      // A "City, ST" (or "City, ST, US") query names its state, so the server
+      // keeps only a match in that state (limit=1 put Abbeville, LA in Alabama).
+      const m = /,\s*([A-Z]{2})\s*(,\s*US)?\s*$/.exec(String(venue));
+      const st = m ? `&state=${m[1]}` : '';
+      const res = await fetch(`${PROXY}/api/weather/geocode?q=${encodeURIComponent(venue)}${st}`);
       if (!res.ok) return null;
       const data = await res.json();
       return data?.result || null;

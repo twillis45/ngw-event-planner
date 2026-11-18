@@ -172,7 +172,8 @@ import { hostSpending } from '@app/lib/hostSpending';
 import { formatCurrency, roundCurrency } from '@app/lib/currency';
 import { publicAppUrl } from '@app/lib/publicAppUrl';
 import { budgetPaymentPatch, parseVendorCost, paymentAboveWholePlan } from '@app/lib/vendorMoney';
-import { budgetFor } from '@app/lib/budgetFor';
+import { budgetFor, budgetTotal } from '@app/lib/budgetFor';
+import { guestCountFor } from '@app/lib/guestCountFor';
 import { marketFor } from '@app/lib/marketFor';
 import { metroForPlace } from '@app/lib/metroForPlace';
 import CostSplitSheet, { splitRowSub } from './CostSplitSheet.jsx';
@@ -224,6 +225,12 @@ import { eventGeoQuery } from '@app/lib/eventGeoQuery';
 // in a shell scheduled for deletion. The engine is unchanged and shared; only
 // the button is new here.
 import { instacartCart, instacartConfigured, INSTACART_FALLBACK, instacartSearchUrl } from '@app/lib/instacart';
+import { storeSearchTerm } from '@app/lib/knowledge/storeUnitMap';
+// The Instacart search for one shopping line: the curated store term when the
+// line has one ("frozen whole turkey"), else null and the caller falls back to
+// the line's own name. It was CALLED from 9/25 and never DEFINED, so every tap
+// threw after the "1 of N" notice and before the tab opened (owner, 11/18/2026).
+const icSearchTerm = (line) => storeSearchTerm(line);
 import { parseSmartEventText, HOST_TYPES } from '@app/lib/smartParseEvent';
 import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcomeGate';
 // The engine's tuned haptic bands. Free to import — feedback.js has zero
@@ -5986,7 +5993,7 @@ export default function HostShellV2() {
     const known = new Set((event.lodgingOptions || []).map((o) => String(o.url || '').split('?')[0]));
     const fresh = cands.filter((c) => !known.has(c.url));
     let ranked = { ranked: fresh, clearing: fresh, considered: fresh.length };
-    try { ranked = rankCandidates(fresh, event, { budget: Number(event.totalBudget || 0) || 0 }); } catch (_e) { /* unranked still useful */ }
+    try { ranked = rankCandidates(fresh, event, { budget: budgetTotal(event) || 0 }); } catch (_e) { /* unranked still useful */ }
     setLodgeStaged({ ...ranked, source: cands.length ? (/airbnb/i.test(cands[0].url) ? 'Airbnb' : /vrbo/i.test(cands[0].url) ? 'Vrbo' : null) : null,
       linksOnly: false, dupes: cands.length - fresh.length, pick: new Set(ranked.clearing.map((c) => c.url)) });
     // NOT moved to goToLodgingCockpit (2026-08-05): the bookmarklet round-trips
@@ -16740,7 +16747,7 @@ export default function HostShellV2() {
                             The bookmarklet below removes even that paste. */}
                         {(() => {
                           const staged = lodgeStaged;
-                          const budget = Number(event.totalBudget || 0) || 0;
+                          const budget = budgetTotal(event) || 0;
                           // ONE PATH ONTO THE SHORTLIST — used by the confirm button AND by
                           // the single-link auto-add below, so the two can never diverge in
                           // what they write or what they let the host undo.
@@ -22308,9 +22315,9 @@ export default function HostShellV2() {
                             const find = async (v) => {
                               const q = v != null ? v : p.zip;
                               if (!parsePlace(q)) return;
-                              setStorePicker(m => ({ ...m, zip: q, busy: true, reason: null, stores: [] }));
+                              setStorePicker(m => ({ ...m, zip: q, busy: true, busyLabel: `Looking for stores near ${q}…`, reason: null, stores: [] }));
                               const r = await nearbyStores(q);
-                              setStorePicker(m => ({ ...m, busy: false, stores: r.stores, reason: r.reason }));
+                              setStorePicker(m => ({ ...m, busy: false, busyLabel: null, stores: r.stores, reason: r.reason }));
                             };
                             return (
                               <>
@@ -22322,7 +22329,7 @@ export default function HostShellV2() {
                                   onPick={v => setStorePicker(m => ({ ...m, zip: v, reason: null }))}
                                   onEnter={find} />
                                 <button className="mini" data-find-stores disabled={p.busy || !parsePlace(p.zip)} onClick={() => find()}>
-                                  {p.busy ? 'Looking…' : 'Find stores'}
+                                  {p.busy && !p.stores.length ? 'Looking…' : 'Find stores'}
                                 </button>
                               </>
                             );
@@ -22356,11 +22363,23 @@ export default function HostShellV2() {
                         <p className="grounding" style={{ margin: '3px 0 var(--sp-2)', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
                           Coverage is regional — there may be none near you. What it finds sits beside your estimate, never instead of it.
                         </p>
+                        {/* THE WAIT IS VISIBLE (owner, 11/18/2026: "I need the looking
+                            notification to be more attention grabbing. Pulsing or
+                            something"). Finding stores only changed a small
+                            button's text, and the price check after a store tap
+                            showed nothing for several seconds. One status line,
+                            announced to screen readers, with a pulsing mark. */}
+                        {p.busy && (
+                          <div className="store-busy" role="status" aria-live="polite" data-store-busy>
+                            <span className="store-busy-dot" aria-hidden="true" />
+                            <span>{p.busyLabel || 'Looking…'}</span>
+                          </div>
+                        )}
                         {p.stores.length > 0 && (
                           <div className="srctier-list">
                             {p.stores.map(s => (
-                              <button key={s.locationId} className="srctier" onClick={async () => {
-                                setStorePicker(m => ({ ...m, busy: true }));
+                              <button key={s.locationId} className="srctier" disabled={p.busy} onClick={async () => {
+                                setStorePicker(m => ({ ...m, busy: true, busyLabel: `Checking ${lines.length} price${lines.length === 1 ? '' : 's'} at ${s.name}…` }));
                                 // Sent as `{ name: it.item }` — the same string
                                 // priceLayers keys the index on, so the round trip
                                 // cannot drift into matching nothing.
@@ -23852,7 +23871,7 @@ export default function HostShellV2() {
                             <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + fmt12h(v.arrivalTime) : null,
                               // How this vendor prices (host report): a per-head figure for a caterer/bar
                               // ("$20/head"), "flat rate" / "per item" for the rest — from the one pricing-basis source.
-                              Number(v.cost) > 0 ? vendorPricingHint(v, Number(event.guestCount) || Number(event.guestEstimate) || 0) : null].filter(Boolean).join(' · ')}</div>
+                              Number(v.cost) > 0 ? vendorPricingHint(v, guestCountFor(event).count || 0) : null].filter(Boolean).join(' · ')}</div>
                           </div>
                           {Number(v.cost) > 0 && (
                             <div className="vc-amt">
