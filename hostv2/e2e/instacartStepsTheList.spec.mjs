@@ -26,7 +26,7 @@
 // trip to the store and back. The comment in HostShellV2 says exactly that:
 // "Toast BEFORE navigating ... the sticky notice has to already be in the DOM
 // so the bfcache restore brings it back with the host."
-import { test, expect, settled, dateIn } from './fixtures.mjs';
+import { test, expect, settled, dateIn, openSectionByName } from './fixtures.mjs';
 
 const EV = 'e2e-instacart-step';
 
@@ -46,8 +46,12 @@ const boot = async (page) => {
   }, [EV, dateIn(21)]);
   await page.goto('./');
   await settled(page);
-  // The host's real route: the board's food row, then the Shop tab.
-  await page.getByText('Plan the food', { exact: false }).first().click();
+  // The host's real route to the Shop tab. It used to click the board's
+  // "Plan the food" row, which at tablet widths sits inside the folded "rest of
+  // your plan" drawer: the click focused the row and only SOMETIMES opened the
+  // sheet (30 s timeouts at tablet / tablet-tall, 11/18/2026). The section door
+  // is the route a host takes at every size.
+  await openSectionByName(page, /spread/i);
   await settled(page);
   const sheet = page.locator('.sheet').last();
   const shop = sheet.locator('.fmode', { hasText: /^Shop$/ }).first();
@@ -138,4 +142,21 @@ test('"Next" opens the next item\'s search', async ({ page }) => {
   await expect.poll(() => urls.length, { timeout: 5000 }).toBeGreaterThan(1);
   expect(errors).toEqual([]);
   expect(urls[1]).not.toBe(urls[0]);
+});
+
+// ── AND FROM INSIDE THE LIST (owner, 11/18/2026: "Shop section will also need
+// instacart for the items on that screen"). "The list" had Copy only; the
+// button now sits there too and runs the same handler.
+test('"The list" has Search Instacart too, and it opens a search', async ({ page }) => {
+  const sheet = await boot(page);
+  await page.evaluate(() => {
+    const el = [...document.querySelectorAll('button,[role="button"],a')].find((b) => /The list[\s\S]*item/i.test(b.innerText || '') && b.getBoundingClientRect().height > 0);
+    if (el) el.click();
+  });
+  await settled(page);
+  const btn = page.locator('[data-list-instacart]');
+  await expect(btn).toBeVisible();
+  const { urls, errors } = await opened(page, sheet, () => btn.click());
+  expect(errors).toEqual([]);
+  expect(urls[0]).toMatch(/^https:\/\/www\.instacart\.com\/store\/s\?k=.+/);
 });

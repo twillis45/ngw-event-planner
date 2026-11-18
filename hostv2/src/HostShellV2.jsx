@@ -7171,6 +7171,184 @@ export default function HostShellV2() {
   // no engine change required. Cost is optional; blank/unparsed stays 0, the
   // honest "no cost yet / they're bringing it" framing (never a fake number).
   const FOOD_ADD_MAX = 120;
+  // SEARCH INSTACART, ONE HANDLER FOR BOTH DOORS (owner, 11/18/2026: "Shop
+  // section will also need instacart for the items on that screen"). The Shop
+  // summary had the button and "The list" had only Copy; both now call this.
+  const searchInstacart = async () => {
+                        if (sendingCart) return;
+                        // ── NO KEY? THEN NO AWAIT AT ALL. ─────────────────────────
+                        //
+                        // Driven on an iPhone: the tap opened Instacart in the SAME
+                        // tab, which tore this page down mid-`await instacartCart`.
+                        // The promise never settled, `setSendingCart(false)` never
+                        // ran, and coming back restored a cached page with the
+                        // button frozen on "Sending…". The fallback never executed,
+                        // so the host got a generic storefront instead of their
+                        // list — worse than the popup bug it replaced.
+                        //
+                        // `icReady` answers "is a real cart even possible" ONCE, on
+                        // mount. When it is not — which is every host today, the
+                        // key is unset — this whole branch is synchronous, runs
+                        // inside the tap, and navigates before anything can unload
+                        // it. Anything other than a definite `true` takes this path,
+                        // because the deep-link run works and a hung request does
+                        // not.
+                        if (icReady !== true) {
+                          const q = (foodPlan.list || []).filter(it => it && !it.skipped && it.item
+                            && !it.broughtByCommunity && !(event.foodGot || {})[it.id]);
+                          if (!q.length) { toast('Nothing left to buy.', null, 'ok'); return; }
+                          const step = (i) => {
+                            const line = q[i];
+                            if (!line) return;
+                            const term = icSearchTerm(line) || line.short || line.item;
+                            try { window.open(instacartSearchUrl(term), '_blank'); } catch (_e) { /* same-tab nav is fine */ }
+                            const nxt = q[i + 1];
+                            toast(
+                              `${i + 1} of ${q.length} — ${line.short || line.item}. Add it, then come back.`,
+                              nxt ? { label: `Next: ${nxt.short || nxt.item}`, fn: () => step(i + 1) } : null,
+                              null, { sticky: true },
+                            );
+                          };
+                          // Toast BEFORE navigating: on a same-tab open this page is
+                          // about to be unloaded, and the sticky notice has to
+                          // already be in the DOM so the bfcache restore brings it
+                          // back with the host.
+                          const first = q[0];
+                          toast(
+                            `1 of ${q.length} — ${first.short || first.item}. Add it, then come back.`,
+                            q[1] ? { label: `Next: ${q[1].short || q[1].item}`, fn: () => step(1) } : null,
+                            null, { sticky: true },
+                          );
+                          const t0 = icSearchTerm(first) || first.short || first.item;
+                          try { window.open(instacartSearchUrl(t0), '_blank'); } catch (_e) { /* nothing to do */ }
+                          return;
+                        }
+                        // ── THE CLIPBOARD WRITE HAPPENS BEFORE THE AWAIT ─────────
+                        //
+                        // It used to run AFTER `await instacartCart(...)`, and
+                        // that is a real defect on the path that executes 100% of
+                        // the time today, because the Instacart key is not set.
+                        // Safari grants clipboard access on TRANSIENT USER
+                        // ACTIVATION, and awaiting a network round-trip spends
+                        // it; the write can then be rejected. The failure is
+                        // silent by construction — the catch swallows it, the
+                        // store opens anyway, the toast still says "List copied",
+                        // and the host pastes nothing into Instacart's search box.
+                        //
+                        // So the list is built and written while the tap is still
+                        // live. The copy is wasted when a real cart comes back,
+                        // which costs nothing and happens never at present.
+                        setSendingCart(true);
+                        let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
+                        let listText = '';
+                        try {
+                          let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
+                          const d = draftShoppingList(event, profile, { items: shopItems, anchor });
+                          listText = typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n');
+                        } catch (_e) { listText = ''; }
+                        let copied = false;
+                        try { await navigator.clipboard.writeText(listText); copied = true; } catch (_e) { copied = false; }
+
+                        // ── AND THE TAB OPENS INSIDE THE TAP TOO ───────────────
+                        //
+                        // Host, 2026-09-24: "instacart button wasnt opening the
+                        // browser." Same defect as the clipboard write, one line
+                        // further down. `window.open` ran AFTER two awaits, so
+                        // Safari had already withdrawn the transient activation
+                        // and refused the popup — and the `catch` swallowed the
+                        // refusal, so the button did nothing, silently, forever.
+                        //
+                        // The window is opened NOW, synchronously, at the known
+                        // fallback. If a real cart comes back we redirect that
+                        // same tab. `noopener` is dropped deliberately, because
+                        // it nulls the handle we need for the redirect; the
+                        // opener reference is severed by hand instead.
+                        //
+                        // A blocked popup is now SAID OUT LOUD. It is the one
+                        // outcome the host cannot see for themselves.
+                        let win = null;
+                        try { win = window.open(INSTACART_FALLBACK, '_blank'); } catch (_e) { win = null; }
+                        try { if (win) win.opener = null; } catch (_e) { /* cross-origin, already safe */ }
+
+                        let url = INSTACART_FALLBACK; let realCart = false;
+                        try {
+                          const r = await instacartCart(`${event.name || 'Event'} shopping list`, shopItems);
+                          if (r && r.url) { url = r.url; realCart = true; }
+                        } catch (_e) { /* the fallback below is the honest path */ }
+                        if (!realCart) {
+                          // ── STEP THE LIST, DO NOT ASK FOR A PASTE THAT FAILS ────
+                          //
+                          // This used to say "List copied. Paste it into
+                          // Instacart." Measured: the clipboard holds a 30-line,
+                          // 1,208-character document (title, section headers,
+                          // "[ ]" boxes, quantities, a total) and Instacart's
+                          // search box takes ONE query. The instruction could not
+                          // succeed — the shape UX_07 forbids, a CTA naming an act
+                          // the host cannot complete.
+                          //
+                          // Driven on an iPhone instead: a `?k=<item>` link opens
+                          // real products at real stores with a green + on each,
+                          // and that + adds to the host's Instacart SESSION. So
+                          // stepping the list builds a genuine cart with no API
+                          // key. The paid Products Link API removes the tapping;
+                          // it is not what makes the cart possible.
+                          //
+                          // The toast's existing action slot IS the stepper — no
+                          // new chrome — and it stays put, because the host is in
+                          // another tab between taps.
+                          const icQueue = (foodPlan.list || []).filter(it => it && !it.skipped && it.item
+                            && !it.broughtByCommunity && !(event.foodGot || {})[it.id]);
+                          // The FIRST step reuses the tab already opened inside the
+                          // tap — opening another would leave the host with two,
+                          // one of them a generic search they did not ask for.
+                          // Later steps are driven by a toast tap, which is its own
+                          // fresh user gesture, so they may open normally.
+                          const icStep = (i, reuse) => {
+                            const line = icQueue[i];
+                            if (!line) return;
+                            const term = icSearchTerm(line) || line.short || line.item;
+                            const href = instacartSearchUrl(term);
+                            if (reuse) { try { reuse.location.replace(href); } catch (_e) { /* navigated away */ } }
+                            else { try { window.open(href, '_blank'); } catch (_e) { /* popup blocked; said below */ } }
+                            const nxt = icQueue[i + 1];
+                            toast(
+                              `${i + 1} of ${icQueue.length} — ${line.short || line.item}. Add it, then come back.`,
+                              nxt ? { label: `Next: ${nxt.short || nxt.item}`, fn: () => icStep(i + 1) } : null,
+                              null, { sticky: true },
+                            );
+                          };
+                          if (icQueue.length) icStep(0, win);
+                          else toast('Nothing left to buy.', null, 'ok');
+                        }
+                        setSendingCart(false);
+                        if (realCart) {
+                          // Point the tab we already opened at the real cart.
+                          if (win) { try { win.location.replace(url); } catch (_e) { /* it navigated away */ } }
+                          else { try { window.open(url, '_blank', 'noopener'); } catch (_e) { /* blocked; told below */ } }
+                        }
+                        if (!win) {
+                          toast(copied
+                            ? 'Your browser blocked the new tab. The list is copied — open instacart.com and search for each item.'
+                            : 'Your browser blocked the new tab. Use “Copy the shopping list”, then open instacart.com and search for each item.',
+                            null, null, { sticky: true });
+                        }
+                      /* SHORTENED 2026-09-26 (owner: "can it be condensed to save
+                         space?"). MEASURED at 390px, where the row has 350px:
+                         "Send the list to Instacart" / "Print the list" /
+                         "Email the list" are 194 + 113 + 117 and wrap to TWO
+                         rows. Shortening this label ALONE buys nothing — 146 +
+                         113 + 117 still wraps — so all three gave up "the
+                         list", and 146 + 65 + 69 fits one row.
+
+                         "the list" was the redundant half: these sit directly
+                         under a THE LIST header and the primary above them
+                         still says "Copy the shopping list" in full. The VERB
+                         stays on every one of them, which is the part the CTA
+                         rule is about (UX_05: buttons carry verbs about the
+                         work, not nouns) — a bare "Instacart" would have been
+                         93px and the wrong cut. */
+                      };
+
   // MORE THAN ONE AT A TIME (owner, 11/18/2026: "Allow more than one at a time
   // for add item under shop"). One item per line — typed or pasted — and the
   // form stays open after adding, cleared, so the next one goes straight in.
@@ -21979,180 +22157,7 @@ export default function HostShellV2() {
                         which is false exactly when the key is missing. Copy
                         only; the behavior is unchanged. */}
                     <button className="food-act" disabled={sendingCart}
-                      onClick={async () => {
-                        if (sendingCart) return;
-                        // ── NO KEY? THEN NO AWAIT AT ALL. ─────────────────────────
-                        //
-                        // Driven on an iPhone: the tap opened Instacart in the SAME
-                        // tab, which tore this page down mid-`await instacartCart`.
-                        // The promise never settled, `setSendingCart(false)` never
-                        // ran, and coming back restored a cached page with the
-                        // button frozen on "Sending…". The fallback never executed,
-                        // so the host got a generic storefront instead of their
-                        // list — worse than the popup bug it replaced.
-                        //
-                        // `icReady` answers "is a real cart even possible" ONCE, on
-                        // mount. When it is not — which is every host today, the
-                        // key is unset — this whole branch is synchronous, runs
-                        // inside the tap, and navigates before anything can unload
-                        // it. Anything other than a definite `true` takes this path,
-                        // because the deep-link run works and a hung request does
-                        // not.
-                        if (icReady !== true) {
-                          const q = (foodPlan.list || []).filter(it => it && !it.skipped && it.item
-                            && !it.broughtByCommunity && !(event.foodGot || {})[it.id]);
-                          if (!q.length) { toast('Nothing left to buy.', null, 'ok'); return; }
-                          const step = (i) => {
-                            const line = q[i];
-                            if (!line) return;
-                            const term = icSearchTerm(line) || line.short || line.item;
-                            try { window.open(instacartSearchUrl(term), '_blank'); } catch (_e) { /* same-tab nav is fine */ }
-                            const nxt = q[i + 1];
-                            toast(
-                              `${i + 1} of ${q.length} — ${line.short || line.item}. Add it, then come back.`,
-                              nxt ? { label: `Next: ${nxt.short || nxt.item}`, fn: () => step(i + 1) } : null,
-                              null, { sticky: true },
-                            );
-                          };
-                          // Toast BEFORE navigating: on a same-tab open this page is
-                          // about to be unloaded, and the sticky notice has to
-                          // already be in the DOM so the bfcache restore brings it
-                          // back with the host.
-                          const first = q[0];
-                          toast(
-                            `1 of ${q.length} — ${first.short || first.item}. Add it, then come back.`,
-                            q[1] ? { label: `Next: ${q[1].short || q[1].item}`, fn: () => step(1) } : null,
-                            null, { sticky: true },
-                          );
-                          const t0 = icSearchTerm(first) || first.short || first.item;
-                          try { window.open(instacartSearchUrl(t0), '_blank'); } catch (_e) { /* nothing to do */ }
-                          return;
-                        }
-                        // ── THE CLIPBOARD WRITE HAPPENS BEFORE THE AWAIT ─────────
-                        //
-                        // It used to run AFTER `await instacartCart(...)`, and
-                        // that is a real defect on the path that executes 100% of
-                        // the time today, because the Instacart key is not set.
-                        // Safari grants clipboard access on TRANSIENT USER
-                        // ACTIVATION, and awaiting a network round-trip spends
-                        // it; the write can then be rejected. The failure is
-                        // silent by construction — the catch swallows it, the
-                        // store opens anyway, the toast still says "List copied",
-                        // and the host pastes nothing into Instacart's search box.
-                        //
-                        // So the list is built and written while the tap is still
-                        // live. The copy is wasted when a real cart comes back,
-                        // which costs nothing and happens never at present.
-                        setSendingCart(true);
-                        let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
-                        let listText = '';
-                        try {
-                          let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
-                          const d = draftShoppingList(event, profile, { items: shopItems, anchor });
-                          listText = typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n');
-                        } catch (_e) { listText = ''; }
-                        let copied = false;
-                        try { await navigator.clipboard.writeText(listText); copied = true; } catch (_e) { copied = false; }
-
-                        // ── AND THE TAB OPENS INSIDE THE TAP TOO ───────────────
-                        //
-                        // Host, 2026-09-24: "instacart button wasnt opening the
-                        // browser." Same defect as the clipboard write, one line
-                        // further down. `window.open` ran AFTER two awaits, so
-                        // Safari had already withdrawn the transient activation
-                        // and refused the popup — and the `catch` swallowed the
-                        // refusal, so the button did nothing, silently, forever.
-                        //
-                        // The window is opened NOW, synchronously, at the known
-                        // fallback. If a real cart comes back we redirect that
-                        // same tab. `noopener` is dropped deliberately, because
-                        // it nulls the handle we need for the redirect; the
-                        // opener reference is severed by hand instead.
-                        //
-                        // A blocked popup is now SAID OUT LOUD. It is the one
-                        // outcome the host cannot see for themselves.
-                        let win = null;
-                        try { win = window.open(INSTACART_FALLBACK, '_blank'); } catch (_e) { win = null; }
-                        try { if (win) win.opener = null; } catch (_e) { /* cross-origin, already safe */ }
-
-                        let url = INSTACART_FALLBACK; let realCart = false;
-                        try {
-                          const r = await instacartCart(`${event.name || 'Event'} shopping list`, shopItems);
-                          if (r && r.url) { url = r.url; realCart = true; }
-                        } catch (_e) { /* the fallback below is the honest path */ }
-                        if (!realCart) {
-                          // ── STEP THE LIST, DO NOT ASK FOR A PASTE THAT FAILS ────
-                          //
-                          // This used to say "List copied. Paste it into
-                          // Instacart." Measured: the clipboard holds a 30-line,
-                          // 1,208-character document (title, section headers,
-                          // "[ ]" boxes, quantities, a total) and Instacart's
-                          // search box takes ONE query. The instruction could not
-                          // succeed — the shape UX_07 forbids, a CTA naming an act
-                          // the host cannot complete.
-                          //
-                          // Driven on an iPhone instead: a `?k=<item>` link opens
-                          // real products at real stores with a green + on each,
-                          // and that + adds to the host's Instacart SESSION. So
-                          // stepping the list builds a genuine cart with no API
-                          // key. The paid Products Link API removes the tapping;
-                          // it is not what makes the cart possible.
-                          //
-                          // The toast's existing action slot IS the stepper — no
-                          // new chrome — and it stays put, because the host is in
-                          // another tab between taps.
-                          const icQueue = (foodPlan.list || []).filter(it => it && !it.skipped && it.item
-                            && !it.broughtByCommunity && !(event.foodGot || {})[it.id]);
-                          // The FIRST step reuses the tab already opened inside the
-                          // tap — opening another would leave the host with two,
-                          // one of them a generic search they did not ask for.
-                          // Later steps are driven by a toast tap, which is its own
-                          // fresh user gesture, so they may open normally.
-                          const icStep = (i, reuse) => {
-                            const line = icQueue[i];
-                            if (!line) return;
-                            const term = icSearchTerm(line) || line.short || line.item;
-                            const href = instacartSearchUrl(term);
-                            if (reuse) { try { reuse.location.replace(href); } catch (_e) { /* navigated away */ } }
-                            else { try { window.open(href, '_blank'); } catch (_e) { /* popup blocked; said below */ } }
-                            const nxt = icQueue[i + 1];
-                            toast(
-                              `${i + 1} of ${icQueue.length} — ${line.short || line.item}. Add it, then come back.`,
-                              nxt ? { label: `Next: ${nxt.short || nxt.item}`, fn: () => icStep(i + 1) } : null,
-                              null, { sticky: true },
-                            );
-                          };
-                          if (icQueue.length) icStep(0, win);
-                          else toast('Nothing left to buy.', null, 'ok');
-                        }
-                        setSendingCart(false);
-                        if (realCart) {
-                          // Point the tab we already opened at the real cart.
-                          if (win) { try { win.location.replace(url); } catch (_e) { /* it navigated away */ } }
-                          else { try { window.open(url, '_blank', 'noopener'); } catch (_e) { /* blocked; told below */ } }
-                        }
-                        if (!win) {
-                          toast(copied
-                            ? 'Your browser blocked the new tab. The list is copied — open instacart.com and search for each item.'
-                            : 'Your browser blocked the new tab. Use “Copy the shopping list”, then open instacart.com and search for each item.',
-                            null, null, { sticky: true });
-                        }
-                      /* SHORTENED 2026-09-26 (owner: "can it be condensed to save
-                         space?"). MEASURED at 390px, where the row has 350px:
-                         "Send the list to Instacart" / "Print the list" /
-                         "Email the list" are 194 + 113 + 117 and wrap to TWO
-                         rows. Shortening this label ALONE buys nothing — 146 +
-                         113 + 117 still wraps — so all three gave up "the
-                         list", and 146 + 65 + 69 fits one row.
-
-                         "the list" was the redundant half: these sit directly
-                         under a THE LIST header and the primary above them
-                         still says "Copy the shopping list" in full. The VERB
-                         stays on every one of them, which is the part the CTA
-                         rule is about (UX_05: buttons carry verbs about the
-                         work, not nouns) — a bare "Instacart" would have been
-                         93px and the wrong cut. */
-                      }}>{sendingCart ? 'Opening…' : 'Search Instacart'}</button>
+                      onClick={searchInstacart}>{sendingCart ? 'Opening…' : 'Search Instacart'}</button>
                     {/* ── ONE TAP TO EVERY LIST APP THE HOST ALREADY HAS ──────
                         Host asked for print, email, and "integration with anylist
                         or other apps". Researched 2026-09-24, and the honest
@@ -22395,6 +22400,10 @@ export default function HostShellV2() {
                     let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
                     openDraft('Your shopping list', draftShoppingList(event, profile, { items: shopItems, anchor }));
                   }}>Copy the shopping list</button>
+                )}
+                {foodSect.list && !noKitchen && (
+                  <button className="food-act" data-list-instacart disabled={sendingCart} style={{ width: '100%', marginBottom: 'var(--sp-3)' }}
+                    onClick={searchInstacart}>{sendingCart ? 'Opening…' : 'Search Instacart'}</button>
                 )}
                 {/* Gated on the same condition as BOTH its children. Without
                     it the wrapper rendered on the summary tab as an empty grid
