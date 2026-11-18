@@ -21,7 +21,8 @@
 // readers, dayBefore-style vendor gaps, playbook plans) — not a new engine.
 
 import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, playbookDecisionBoard, openFoodChoices } from './playbooks';
-import { rainPlanStatus, isLikelyOutdoor } from './weather';
+import { rainPlanStatus } from './weather';
+import { placeIsOutdoors } from './placeIntelligence';
 import { spanNights } from './dates';
 import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
@@ -29,7 +30,6 @@ import { isVendorConfirmed } from './workstreams';
 import { vendorIsCommitted, vendorBalance } from './vendorMoney';
 import { hostSpending } from './hostSpending';
 import { daysUntil, spanEnd, getToday, localISO } from './dates';
-import { venueFor } from './venueFor';
 import { taskLeadDays } from './taskLead';
 import { budgetFor } from './budgetFor';
 import { startTimeIsConfirmed } from './startTime';
@@ -333,7 +333,10 @@ function preProgress(ev, phase, daysOut, now = new Date()) {
   }
 
   // Rain plan — outdoor-relevant events only.
-  const outdoor = OUTDOOR_TYPE.test(String(ev.type || '')) || (() => { try { return isLikelyOutdoor(venueFor(ev).name, ev.notes); } catch { return false; } })();
+  // The host's indoors/outside answer wins; the type and venue guess only
+  // fill in when she has not said (11/18/2026).
+  const outdoor = ev.indoorOutdoor ? placeIsOutdoors(ev)
+    : (OUTDOOR_TYPE.test(String(ev.type || '')) || (() => { try { return placeIsOutdoors(ev); } catch { return false; } })());
   if (outdoor && !noDate) {
     const rp = (() => { try { return rainPlanStatus(ev); } catch { return { hasPlan: false }; } })();
     add('rain', true, rp.hasPlan, 'Add a rain backup', { tab: 'Event Details', focusField: 'rain-plan' }, 5);

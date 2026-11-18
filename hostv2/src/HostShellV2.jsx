@@ -69,7 +69,7 @@ import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — 
 import { boardDecisionND, foodDecisionND, blockerDecisionND, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
-import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
+import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
@@ -248,7 +248,7 @@ import { REFUND_LINE } from '@app/lib/refundRule';
 import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
-import { derivePlaceIntelligence } from '@app/lib/placeIntelligence';
+import { derivePlaceIntelligence, placeIsOutdoors } from '@app/lib/placeIntelligence';
 import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote } from '@app/lib/budgetCopy';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
@@ -2007,7 +2007,7 @@ export default function HostShellV2() {
   // rather than quietly assuming the mild case.
   const claimFacts = useMemo(() => {
     let outdoor = false;
-    try { outdoor = isLikelyOutdoor(vf.name, event && event.notes); } catch (_e) { outdoor = false; }
+    try { outdoor = placeIsOutdoors(event || {}); } catch (_e) { outdoor = false; }
     return { setting: outdoor ? 'outdoor' : null };
   }, [vf, event]);
 
@@ -3413,7 +3413,7 @@ export default function HostShellV2() {
     (async () => {
       try {
         if (!isWeatherConfigured() || !event.date) return;
-        const out = isLikelyOutdoor(vf.name, event.notes);
+        const out = placeIsOutdoors(event);
         const past = isPastEvent(event);
         const d = daysUntil(event.date);
         // Span-aware window (P1 "weather range"): mid-event the START is past
@@ -3454,7 +3454,7 @@ export default function HostShellV2() {
     if (liveWx) return liveWx;
     if (isWeatherConfigured()) return null; // live mode: real data or nothing
     // Self-contained reads (this memo sits above the shared outdoor/days consts).
-    const out = (() => { try { return isLikelyOutdoor(vf.name, event.notes); } catch { return false; } })();
+    const out = (() => { try { return placeIsOutdoors(event); } catch { return false; } })();
     const past = (() => { try { return isPastEvent(event); } catch { return false; } })();
     const d = (() => { try { return daysUntil(event.date); } catch { return null; } })();
     // Same 14-day boundary as getEventWeatherRisk — no real forecast reaches
@@ -7103,7 +7103,7 @@ export default function HostShellV2() {
 
   // Rain backup — the weather lib's real outdoor heuristic; the rainPlan field
   // is the same one the app's weather alert and Where & when read.
-  const outdoor = (() => { try { return isLikelyOutdoor(vf.name, event.notes || ''); } catch { return false; } })();
+  const outdoor = (() => { try { return placeIsOutdoors(event); } catch { return false; } })();
 
   // Shopping check-off writes the same foodGot flags the money engine reads —
   // buying an item literally moves real dollars from committed to spent. (This
@@ -15797,6 +15797,28 @@ export default function HostShellV2() {
                 />
               );
             })()}
+            {sheet.kind === 'space' && (
+              // INDOORS OR OUTSIDE (owner, 11/18/2026: "App needs an indoor and
+              // outdoor"). hostv2 never asked, so the rain backup, the day-of rain
+              // row, the forecast and the safety plan all guessed from the venue
+              // name. event.indoorOutdoor is the field every reader already
+              // honors (placeIsOutdoors); the host's answer now beats the guess.
+              // Same control as the guest sheet's "counting:" row — one wrapping
+              // row of small chips, aria-pressed marking the answer.
+              <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
+                <span className="of">indoors or outside:</span>
+                {[['indoor', 'Indoors'], ['outdoor', 'Outside'], ['both', 'Both']].map(([v, label]) => (
+                  <button key={v} className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }}
+                    data-indoor-outdoor={v} aria-pressed={event.indoorOutdoor === v}
+                    onClick={() => patchEvent({ indoorOutdoor: event.indoorOutdoor === v ? null : v },
+                      event.indoorOutdoor === v ? 'Cleared — the plan will go by the venue again.'
+                        : v === 'indoor' ? 'Indoors — no rain backup needed.'
+                          : 'Noted — a rain backup is on your list.')}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
             {sheet.kind === 'space' && (
               // DESTINATION-1: a real toggle so the modifier can be set (or
               // unset) after creation too, not just guessed once from the

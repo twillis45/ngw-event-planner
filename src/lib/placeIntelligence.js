@@ -133,7 +133,9 @@ export function derivePlaceIntelligence(event = {}) {
   // 4 · Rain backup — indoor-only venues genuinely don't need one (na, not
   // failure). Everyone else: a saved plan is handled; outdoors without one
   // is a real risk; unknown gets an honest nudge, not a warning.
-  if (indoorOnly && !atHome) {
+  // The host's own "Indoors" answer (asked in hostv2 since 11/18/2026) holds at
+  // home too; before it was asked, a home event's rain need was only guessed.
+  if (indoorOnly) {
     add('rain', 'Rain backup', PLACE_STATES.NA, 'Indoor venue — a rain backup isn’t required.');
   } else if (rain.hasPlan) {
     add('rain', 'Rain backup', PLACE_STATES.HANDLED, 'Rain plan saved.');

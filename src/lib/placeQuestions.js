@@ -82,7 +82,7 @@
 // PURE: no I/O, no UI, no storage.
 import { venueFor } from './venueFor';
 import { accessNeedsFor } from './accessNeeds';
-import { isLikelyOutdoor } from './weather';
+import { placeIsOutdoors } from './placeIntelligence';
 import { attendanceBand } from './playbooks';
 
 /** The headcount at which a public/outdoor gathering starts needing a permit. */
@@ -174,12 +174,7 @@ export function placeQuestionsFor(event) {
   // refused is the app's own guess.
   const band = (() => { try { return attendanceBand(ev); } catch (_e) { return null; } })();
   const headcount = band && band.applicable && band.countFromHost ? Number(band.planning) || 0 : 0;
-  const outdoors = (() => {
-    if (ev.indoorOutdoor === 'indoor') return false;
-    if (ev.indoorOutdoor === 'outdoor' || ev.indoorOutdoor === 'both') return true;
-    if (vf && vf.kind === 'outdoor') return true;
-    try { return isLikelyOutdoor((vf && vf.name) || '', ev.notes || ''); } catch (_e) { return false; }
-  })();
+  const outdoors = (() => { try { return placeIsOutdoors(ev); } catch (_e) { return false; } })();
 
   if (outdoors && headcount >= PERMIT_THRESHOLD
       && !answered(ev, PLACE_QUESTION_FIELDS['outdoor-permit'])) {
