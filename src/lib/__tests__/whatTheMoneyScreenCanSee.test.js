@@ -120,7 +120,8 @@ describe('what the money screen can and cannot see', () => {
     // caterer for a host who is cooking.
     const { gated } = census();
     // +2 on 11/15/2026: Friendsgiving's main and potluck-vs-host sides are gated on who cooks.
-    expect(gated.length).toBe(38);
+    // +7 on 11/18/2026: Friendsgiving's one host-cooks sides line became eight (one per dish), all gated on who cooks.
+    expect(gated.length).toBe(45);
   });
 
   test('THE RED-PROOF, IN THE TEST: perturbing decor moves nothing, food moves a lot', () => {

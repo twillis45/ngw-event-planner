@@ -9,7 +9,7 @@ import { storeSearchTerm } from '../knowledge/storeUnitMap';
 import { getPlaybook } from '../playbooks';
 
 const EXPECT = {
-  p_turkey: 'frozen whole turkey', p_gravy: 'turkey gravy', p_main_alt: 'spiral ham', p_sides: 'stuffing mix',
+  p_turkey: 'frozen whole turkey', p_gravy: 'turkey gravy', p_main_alt: 'spiral ham', p_stuffing: 'stuffing mix',
   p_apps: 'cheese tray', p_drinks: 'sparkling water', p_ice: 'ice', p_labels: 'labels', p_serveware: 'paper plates',
   p_thermometer: 'meat thermometer', p_containers: 'to go containers', p_cleanup: 'trash bags',
 };
