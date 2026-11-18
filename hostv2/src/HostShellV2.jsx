@@ -3981,16 +3981,27 @@ export default function HostShellV2() {
    * long as the host is away. Used sparingly: a message that will not leave is
    * worse than one that leaves too early, unless the host has genuinely gone.
    */
+  // BUSY MODE (owner, 11/18/2026: waits need "more attention"): `opts.busy`
+  // holds the notice up with a pulsing mark and no button until the next
+  // toast replaces it, or endBusyToast() clears it when the wait ends quietly.
+  const busyToastRef = useRef(false);
   const toast = (msg, action, tone, opts) => {
+    const busy = !!(opts && opts.busy);
+    busyToastRef.current = busy;
     setToastMsg(msg);
-    setToastAction(action || ((opts && opts.sticky) ? { label: 'Got it', fn: dismissToast } : null));
+    setToastAction(busy ? null : (action || ((opts && opts.sticky) ? { label: 'Got it', fn: dismissToast } : null)));
     setToastTone(tone || null);   // 'ok' ⇒ green confirmation; else neutral
-    setToastMeta({ title: (opts && opts.title) || null, spotlight: !!(opts && opts.spotlight) });
+    setToastMeta({ title: (opts && opts.title) || null, spotlight: !!(opts && opts.spotlight), busy });
     clearTimeout(toastTimer.current);
-    if (opts && opts.sticky) return;
+    if (busy || (opts && opts.sticky)) return;
     // An actionable toast lingers a little longer — the host needs a beat to
     // read it AND decide; a plain notice keeps the original rhythm.
     toastTimer.current = setTimeout(() => { setToastMsg(null); setToastAction(null); setToastTone(null); }, action ? 6500 : 3400);
+  };
+  const endBusyToast = () => {
+    if (!busyToastRef.current) return;
+    busyToastRef.current = false;
+    setToastMsg(null); setToastAction(null); setToastTone(null); setToastMeta({});
   };
   // ── THE FIRST-OPEN ANALYTICS NOTICE (owner ruling 2026-11-02, option A) ──
   // One quiet line, once, after the splash — never a modal, never a gate. Shown
@@ -4060,7 +4071,7 @@ export default function HostShellV2() {
       // bought a "destination toolkit".
       const paidEv = (customs || []).find(c => c && c.id === paidEventId);
       let trip = false; try { trip = !!(paidEv && lockingReasons(paidEv).length > 0); } catch { trip = false; }
-      toast('The One-Event Pass is yours for this event — you can send every vendor the details' + (trip ? ', and the trip tools are unlocked.' : '.'));
+      toast('The One-Event Pass is yours for this event — you can send every vendor the details' + (trip ? ', and the trip tools are unlocked.' : '.'), null, 'ok', { sticky: true });
     };
 
     (async () => {
@@ -4074,13 +4085,16 @@ export default function HostShellV2() {
       // INDEPENDENTLY, so a "no" here is far more likely to be a webhook that
       // has not landed than a purchase that did not happen. It re-asks on a
       // bounded backoff before believing it — see `refreshEventPass`.
+      // THE WAIT IS SHOWN (attention audit 11/18/2026): refreshEventPass re-asks
+      // on a backoff and can take several seconds, and nothing said so.
+      toast('Confirming your pass with your account…', null, null, { busy: true });
       if (kind === 'pass') {
         await refreshEventPass(paidEventId, { claimed: true });
         if (serverPassHeld(paidEventId) === true) { unlocked(); return; }
         // Says what we know — the pass has not reached this event — and never
         // that money moved: the redirect is not evidence of a payment (Nielsen
         // re-run N8, 2026-11-02; thePassSurvivesTheWebhookRace).
-        toast('We haven’t seen the pass reach this event yet. If you completed checkout it usually lands within a few seconds — reopen the event to check, and your Stripe receipt email has the details.');
+        toast('We haven’t seen the pass reach this event yet. If you completed checkout it usually lands within a few seconds — reopen the event to check, and your Stripe receipt email has the details.', null, null, { sticky: true });
         return;
       }
 
@@ -4089,7 +4103,7 @@ export default function HostShellV2() {
       // before: the redirect params only say WHAT to check.
       if (!sessionId) {
         reportFailure('pass_verify', { where: 'hostv2.pass-return', reason: 'missing-session', eventId: paidEventId });
-        toast('Almost there — we couldn’t confirm the payment from this link. If you paid, reopen the app from your Stripe receipt email.');
+        toast('Almost there — we couldn’t confirm the payment from this link. If you paid, reopen the app from your Stripe receipt email.', null, null, { sticky: true });
         return;
       }
       let v = null;
@@ -4097,7 +4111,7 @@ export default function HostShellV2() {
       const paid = !!(v && v.payment_status === 'paid' && String(v.fee_id || '') === feeId);
       if (!paid) {
         reportFailure('pass_verify', { where: 'hostv2.pass-return', reason: 'unconfirmed', eventId: paidEventId });
-        toast('We couldn’t confirm that payment with Stripe just now — nothing was unlocked. If you were charged, try reloading; the receipt link always works.');
+        toast('We couldn’t confirm that payment with Stripe just now — nothing was unlocked. If you were charged, try reloading; the receipt link always works.', null, null, { sticky: true });
         return;
       }
       unlocked();
@@ -6593,14 +6607,25 @@ export default function HostShellV2() {
   const rsvpUnavailable = (result) => result.reason === 'unavailable'
     ? 'Couldn’t verify this RSVP link. Nothing was shared. Check your connection and try again.'
     : 'Online RSVPs are not available for this event. Copy a plain invitation and collect replies yourself.';
+  // THE CHECK IS SHOWN, AND RUNS ONCE (attention audit 11/18/2026): every
+  // share button first asks the server whether the RSVP link works (up to 8 s),
+  // with nothing on screen, so a host tapped again and again. A second tap
+  // while it runs does nothing (null), and the notice names the wait.
+  const rsvpChecking = useRef(false);
   const verifiedRsvpUrl = async () => {
-    const result = await checkRsvpCapability(event);
+    if (rsvpChecking.current) return null;
+    rsvpChecking.current = true;
+    toast('Checking your invite link…', null, null, { busy: true });
+    let result;
+    try { result = await checkRsvpCapability(event); } finally { rsvpChecking.current = false; }
+    endBusyToast();
     if (!result.ready) { toast(rsvpUnavailable(result)); return ''; }
     try { return inviteLinkUrl(); }
     catch { toast('Sharing is unavailable because the public link address is missing. Nothing was shared.'); return ''; }
   };
   const openInviteDraft = async (title, build, opts) => {
     const url = await verifiedRsvpUrl();
+    if (url === null) return;   // a check is already running
     openDraft(title, build(event, profile, { rsvpUrl: url }), null, opts);
   };
   const [qrDataUrl, setQrDataUrl] = useState(null);
@@ -27100,6 +27125,7 @@ export default function HostShellV2() {
       {toastMsg && (
         <div className={'toast on' + (toastTone === 'ok' ? ' ok' : '') + (toastMeta.spotlight ? ' spot' : '')} role="status" aria-live="polite">
           {toastMeta.title && <div className="toast-eye" data-toast-title>{toastMeta.title}</div>}
+          {toastMeta.busy && <span className="busy-dot" aria-hidden="true" data-toast-busy />}
           {toastMeta.title ? <div>{toastMsg}</div> : toastMsg}
           {toastAction && (
             <button className="toast-undo" onClick={() => {
