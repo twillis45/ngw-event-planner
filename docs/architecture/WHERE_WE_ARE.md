@@ -1,5 +1,19 @@
 # Where We Are -- live status board
 
+## November 18, 2026 (afternoon) — what the owner saw, fixed where they saw it
+
+The day ran on the owner's own Friendsgiving, on an iPad.
+
+**Instacart.** The button had been dead since September: it called a function that was never written. The test checked only the notice that appeared before the crash, so it kept passing. On iOS the app now takes the link in the same tab.
+
+**Waits and errors.** Waits that showed nothing now show a status line, and failures say what happened where the host is looking.
+
+**Seating, from people.** Tables now count from people: two tables of eight for fifteen, not fifteen tables or one buffet table. The meal asks sit-down or buffet.
+
+**Sides.** The sides are real dishes with sourced amounts. In a potluck they are friends' dishes: listed under Bringing, $0 to the host, and out of what the host has to buy.
+
+**Past due.** The board said "8 things are past due — in the list below" with no list below it. Now it names them, and the bar under it no longer says "All quiet".
+
 ## November 18, 2026 (early morning) — the budget first, the menu before the shop, and a store found by town
 
 The owner ruled "budget always first" after hearing the costs. Two exceptions came out of testing. Solemn gatherings are exempt: on a repast, who carries the meal decides whether there is any cost at all. And on the event day, the day's own steps lead. A Friendsgiving three days out led with "Get the food" while its menu was still open. The shop's clock now belongs to the menu until the menu is decided.
