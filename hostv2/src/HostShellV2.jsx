@@ -224,6 +224,12 @@ import { eventGeoQuery } from '@app/lib/eventGeoQuery';
 // in a shell scheduled for deletion. The engine is unchanged and shared; only
 // the button is new here.
 import { instacartCart, instacartConfigured, INSTACART_FALLBACK, instacartSearchUrl } from '@app/lib/instacart';
+import { storeSearchTerm } from '@app/lib/knowledge/storeUnitMap';
+// The Instacart search for one shopping line: the curated store term when the
+// line has one ("frozen whole turkey"), else null and the caller falls back to
+// the line's own name. It was CALLED from 9/25 and never DEFINED, so every tap
+// threw after the "1 of N" notice and before the tab opened (owner, 11/18/2026).
+const icSearchTerm = (line) => storeSearchTerm(line);
 import { parseSmartEventText, HOST_TYPES } from '@app/lib/smartParseEvent';
 import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcomeGate';
 // The engine's tuned haptic bands. Free to import — feedback.js has zero
