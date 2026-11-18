@@ -543,14 +543,22 @@ jobs:
   webkit-critical:
     name: WebKit critical journeys
     runs-on: ubuntu-latest
-    # 25 -> 45 (11/18/2026). The suite itself takes ~12 min (95 tests). The
-    # `--with-deps webkit` install took 18 and 15 min on two consecutive runs of
-    # main dcc28456, waiting on the runner image's own background apt-get
-    # ("Could not get lock ... held by process 2694 (apt-get)"), so the job hit
-    # 25 minutes mid-suite with every test so far passing (59/59), was
-    # CANCELLED, and the Pages deploy — gated on Checks — was skipped. 45 covers
-    # a slow install plus the suite with room; a real hang still ends the job.
-    timeout-minutes: 45
+    # IN PLAYWRIGHT'S OWN IMAGE (11/18/2026). `playwright install --with-deps
+    # webkit` installs WebKit's system libraries with apt-get, and on a fresh
+    # runner it waits behind the image's own background apt-get ("Could not get
+    # lock ... held by process 2694 (apt-get)"): 18 and 15 min on main dcc28456,
+    # 28 min on main 2ad61dd0 — the longest job in Checks, so every release
+    # waited on it. The official image ships WebKit and its libraries already
+    # installed, so there is no apt step left to wait on. The tag MUST equal the
+    # locked @playwright/test version (a mismatched image has no matching
+    # browser build); src/lib/__tests__/theWebkitImageMatchesTheLock pins it.
+    # Root in the container is fine for WebKit (Firefox is the browser that
+    # needs a non-root HOME, and it does not run here).
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+    # 45 -> 30: the suite itself takes ~13 min (95 tests); with no install
+    # left, 30 is the suite plus checkout, two npm ci and the build, with room.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -562,22 +570,6 @@ jobs:
             hostv2/package-lock.json
       - run: npm ci
       - run: npm ci
-        working-directory: hostv2
-      # The same two guards the e2e shards carry (see the chromium install
-      # above): drop the image's stale Google Chrome apt repo before
-      # --with-deps runs apt-get update, and retry a transient mirror failure.
-      # Without them this step hung to the 25-minute job limit twice on
-      # 2026-11-06 with zero code changes between attempts. One line on
-      # purpose — see the seamRunsInCi note above.
-      - run: sudo rm -f /etc/apt/sources.list.d/google-chrome*
-        working-directory: hostv2
-      # `timeout 600` stops npx, not the apt-get it started: on 2026-11-06 a
-      # slow mirror outlived the timeout and that orphan held the dpkg lock,
-      # so attempts 2-4 each failed in one second ("Could not get lock ...
-      # held by process 3002 (apt-get)"). Let a retry wait for the lock (the
-      # orphan finishes the same install) instead of failing on it.
-      - run: echo 'DPkg::Lock::Timeout "900";' | sudo tee /etc/apt/apt.conf.d/90-ngw-lock-timeout
-      - run: s=1; for i in 1 2 3 4; do timeout 600 npx playwright install --with-deps webkit && s=0 && break; s=1; echo "playwright install failed (attempt $i/4)"; sleep $((i * 30)); done; exit $s
         working-directory: hostv2
       - run: npm run e2e:build
         working-directory: hostv2

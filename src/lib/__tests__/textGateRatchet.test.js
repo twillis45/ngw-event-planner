@@ -408,7 +408,13 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // anywhere fires it. The behavior half is real e2e:
 // hostv2/e2e/featureUseIsCounted.spec.mjs opens the Calendar, adds the plan to
 // a calendar, and reads the recorded events (kind only) from the dev tap.
-const MAX_HOSTV2_TEXT_GATES = 60;
+//
+// 60 → 61 (11/18/2026): theWebkitImageMatchesTheLock.test.js. It reads
+// hostv2/package-lock.json, not hostv2 source: the claim is that the WebKit CI
+// job's Playwright image tag equals the locked @playwright/test version. That
+// is two files agreeing, a config fact no browser run can check — a mismatch
+// shows up only as a CI failure ("Executable doesn't exist"), after the push.
+const MAX_HOSTV2_TEXT_GATES = 61;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;
