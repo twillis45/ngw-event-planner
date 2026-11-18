@@ -543,7 +543,14 @@ jobs:
   webkit-critical:
     name: WebKit critical journeys
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # 25 -> 45 (11/18/2026). The suite itself takes ~12 min (95 tests). The
+    # `--with-deps webkit` install took 18 and 15 min on two consecutive runs of
+    # main dcc28456, waiting on the runner image's own background apt-get
+    # ("Could not get lock ... held by process 2694 (apt-get)"), so the job hit
+    # 25 minutes mid-suite with every test so far passing (59/59), was
+    # CANCELLED, and the Pages deploy — gated on Checks — was skipped. 45 covers
+    # a slow install plus the suite with room; a real hang still ends the job.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
