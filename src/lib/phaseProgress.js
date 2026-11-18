@@ -247,12 +247,27 @@ function preProgress(ev, phase, daysOut, now = new Date()) {
           extra: null,
         }
         : { label: null, route: null, extra: null };
+  // THE SHOP CLOCK, read once for both rows below (issue #100 D-11): the
+  // playbook's own open shop step carries the lead. Only in the final week.
+  const shopWeek = !noDate && daysOut != null && daysOut <= 7 && usesFood && hasCount;
+  const shopTask = shopWeek ? ((Array.isArray(ev.timeline) ? ev.timeline : [])
+    .filter((t) => t && !t.done && /\bshop(ping)?\b/i.test(String(t.task || '')))
+    .map((t) => ({ t, lead: taskLeadDays(t) }))
+    .filter((x) => x.lead != null)
+    .sort((a, b) => a.lead - b.lead)[0] || null) : null;
+  // DECIDE THE MENU BEFORE THE SHOP (owner, 11/18/2026, a live Friendsgiving 3
+  // days out: "Why does the CTA go to shop and not plan first"). The shopping
+  // list is built FROM these choices, so while any is open the shop's closing
+  // window belongs to the decision: it is what has to happen before the shop
+  // can. Shopping keeps its row and count, without the clock it cannot use yet.
+  const menuGatesShop = !!shopTask && activeChoices.length > 0;
   add('food', usesFood && hasCount, foodHandled,
-    foodCue.label, foodCue.route, 6, foodCue.extra);
+    foodCue.label, foodCue.route, 6,
+    menuGatesShop ? { ...(foodCue.extra || {}), leadDays: shopTask.lead, closingWindow: true } : foodCue.extra);
 
   // Shopping only becomes an essential inside the final week — a full cart in
   // month two is not a readiness gap.
-  if (!noDate && daysOut != null && daysOut <= 7 && usesFood && hasCount) {
+  if (shopWeek) {
     const got = (ev.foodGot && typeof ev.foodGot === 'object') ? ev.foodGot : {};
     const unboughtItems = plan.list.filter(i => i && !i.skipped && !got[i.id]);
     const unbought = unboughtItems.length;
@@ -263,14 +278,10 @@ function preProgress(ev, phase, daysOut, now = new Date()) {
     // event after it — which is exactly what the 2026-09-23 closing-window
     // ruling says a raise must DECLARE rather than leave to inference. Only
     // while a shop task is still open; no task, no clock, no claim.
-    const shopTask = (Array.isArray(ev.timeline) ? ev.timeline : [])
-      .filter((t) => t && !t.done && /\bshop(ping)?\b/i.test(String(t.task || '')))
-      .map((t) => ({ t, lead: taskLeadDays(t) }))
-      .filter((x) => x.lead != null)
-      .sort((a, b) => a.lead - b.lead)[0] || null;
+    // (The clock is read once, above the food row; see menuGatesShop.)
     add('shopping', true, unbought === 0, `Buy the remaining items · ${unbought} left`,
       unbought ? { tab: 'Planning', foodFocus: unboughtItems[0].id } : { tab: 'Planning', focusField: 'food-plan' }, 6,
-      unbought && shopTask ? { leadDays: shopTask.lead, closingWindow: true } : null);
+      unbought && shopTask && !menuGatesShop ? { leadDays: shopTask.lead, closingWindow: true } : null);
   }
 
   // ── LODGING — destination events only ───────────────────────────────────────

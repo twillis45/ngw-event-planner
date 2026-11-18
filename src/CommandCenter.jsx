@@ -2302,7 +2302,24 @@ export function eventPlan(event, ctx = null) {
       .sort((a, b) => (a.priority || 9) - (b.priority || 9));
     for (const i of openPhase) {
       const domain = PHASE_TO_DOMAIN[i.id] || i.id;
-      if (seen.has(domain)) continue;   // the foundation or the reactive top already says it
+      if (seen.has(domain)) {
+        // the foundation or the reactive top already says it — but a CLOSING
+        // WINDOW the phase row declares must not be dropped with the duplicate
+        // (owner, 11/18/2026: a Friendsgiving 3 days out led with the shop
+        // because the menu decision's clock vanished here, merged into "Plan
+        // the food." with no clock). The action that stays carries it.
+        if (i.closingWindow === true) {
+          const twin = nextActions.find((a) => a && a.domain === domain);
+          if (twin && twin.closingWindow !== true) {
+            twin.closingWindow = true;
+            if (twin.leadDays == null && Number.isFinite(i.leadDays)) {
+              twin.leadDays = i.leadDays;
+              twin.dueInDays = _dueFromLead(i.leadDays);
+            }
+          }
+        }
+        continue;
+      }
       if (seenTitles.has(titleKey(i.cueLabel))) continue;   // same task, different engine
       // ── WAVE-6 RECORD-LEVEL DEDUP ────────────────────────────────────────────
       // The food cue ("Decide what you're serving · 3 open") COUNTS choice records
