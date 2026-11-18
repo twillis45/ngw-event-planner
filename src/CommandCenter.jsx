@@ -25,6 +25,7 @@
 // independently scannable + actionable. VAR A and VAR C are exploration
 // artifacts retained in Figma for future iteration; not shipped on purpose.
 
+import { guestCountFor } from './lib/guestCountFor';
 import { useState, useEffect, useMemo } from 'react';
 import { color, space, type, radius, elevation, edge } from './design/tokens';
 // Sprint 57f.1: derive compression urgency from the event's own timeline so
@@ -1582,7 +1583,10 @@ export function _eventFoundationActions(event) {
       cta: 'Add guests', route: { tab: 'Guests', focusField: 'guests-entry' },
       done: hasGuestSignal,
       handledFact: hasGuestSignal
-        ? `${guests.filter(g => g && g.rsvp === 'Yes').length || Number(event.guestCount) || Number(event.guestEstimate) || guests.length} guests`
+        // ONE COUNT (single-source audit 11/18/2026): this row put the yes
+        // replies first, so a host planning for 40 with 3 yeses saw "3 guests"
+        // handled while every other tile said 40. guestCountFor is the count.
+        ? `${guestCountFor(event).count || guests.length} guests`
         : null,
     },
     {
