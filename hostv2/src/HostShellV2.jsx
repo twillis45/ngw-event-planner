@@ -172,7 +172,8 @@ import { hostSpending } from '@app/lib/hostSpending';
 import { formatCurrency, roundCurrency } from '@app/lib/currency';
 import { publicAppUrl } from '@app/lib/publicAppUrl';
 import { budgetPaymentPatch, parseVendorCost, paymentAboveWholePlan } from '@app/lib/vendorMoney';
-import { budgetFor } from '@app/lib/budgetFor';
+import { budgetFor, budgetTotal } from '@app/lib/budgetFor';
+import { guestCountFor } from '@app/lib/guestCountFor';
 import { marketFor } from '@app/lib/marketFor';
 import { metroForPlace } from '@app/lib/metroForPlace';
 import CostSplitSheet, { splitRowSub } from './CostSplitSheet.jsx';
@@ -5992,7 +5993,7 @@ export default function HostShellV2() {
     const known = new Set((event.lodgingOptions || []).map((o) => String(o.url || '').split('?')[0]));
     const fresh = cands.filter((c) => !known.has(c.url));
     let ranked = { ranked: fresh, clearing: fresh, considered: fresh.length };
-    try { ranked = rankCandidates(fresh, event, { budget: Number(event.totalBudget || 0) || 0 }); } catch (_e) { /* unranked still useful */ }
+    try { ranked = rankCandidates(fresh, event, { budget: budgetTotal(event) || 0 }); } catch (_e) { /* unranked still useful */ }
     setLodgeStaged({ ...ranked, source: cands.length ? (/airbnb/i.test(cands[0].url) ? 'Airbnb' : /vrbo/i.test(cands[0].url) ? 'Vrbo' : null) : null,
       linksOnly: false, dupes: cands.length - fresh.length, pick: new Set(ranked.clearing.map((c) => c.url)) });
     // NOT moved to goToLodgingCockpit (2026-08-05): the bookmarklet round-trips
@@ -16746,7 +16747,7 @@ export default function HostShellV2() {
                             The bookmarklet below removes even that paste. */}
                         {(() => {
                           const staged = lodgeStaged;
-                          const budget = Number(event.totalBudget || 0) || 0;
+                          const budget = budgetTotal(event) || 0;
                           // ONE PATH ONTO THE SHORTLIST — used by the confirm button AND by
                           // the single-link auto-add below, so the two can never diverge in
                           // what they write or what they let the host undo.
@@ -23858,7 +23859,7 @@ export default function HostShellV2() {
                             <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + fmt12h(v.arrivalTime) : null,
                               // How this vendor prices (host report): a per-head figure for a caterer/bar
                               // ("$20/head"), "flat rate" / "per item" for the rest — from the one pricing-basis source.
-                              Number(v.cost) > 0 ? vendorPricingHint(v, Number(event.guestCount) || Number(event.guestEstimate) || 0) : null].filter(Boolean).join(' · ')}</div>
+                              Number(v.cost) > 0 ? vendorPricingHint(v, guestCountFor(event).count || 0) : null].filter(Boolean).join(' · ')}</div>
                           </div>
                           {Number(v.cost) > 0 && (
                             <div className="vc-amt">
