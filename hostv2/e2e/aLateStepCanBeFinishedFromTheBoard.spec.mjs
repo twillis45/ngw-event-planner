@@ -9,7 +9,7 @@
 //
 // Now the card's button goes where the step is done (checklistRouteFor), and a
 // "Mark done" on the card ticks the step itself.
-import { test, expect, settled, dateIn } from './fixtures.mjs';
+import { test, expect, settled, dateIn, openSectionByName } from './fixtures.mjs';
 
 const STEP_ID = 'pbt-e2e-late-t_invite';
 const INVITE = 'Send the invite with date, time, and a one-line "what we are playing"; ask for a rough RSVP to size food/seats';
@@ -62,4 +62,23 @@ test('THE FIX: "Mark done" on the card ticks the step and the board moves on', a
   const done = await page.evaluate((id) => (JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].timeline || [])
     .find((t) => t.id === id)?.done, STEP_ID);
   expect(done).toBe(true);
+});
+
+// A TICK RECORDS WHAT IT STANDS FOR (owner, 11/18/2026): ticking the invite
+// step is the same fact as "I already sent it", so the guest list stops asking.
+test('ticking the invite step tells the guest list it went out', async ({ page }) => {
+  const card = await openBoard(page);
+  await card.locator('[data-mark-step-done]').click();
+  await expect(card).toHaveCount(0);
+  const sent = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].invitesSentAt);
+  expect(sent).toBeTruthy();
+  await openSectionByName(page, 'Guests');
+  await expect(page.locator('.sheet').last()).toBeVisible();
+  await expect(page.locator('[data-invite-sent]')).toHaveCount(0);
+});
+
+test('(premise) before the tick, the guest list does offer "I already sent it"', async ({ page }) => {
+  await openBoard(page);
+  await openSectionByName(page, 'Guests');
+  await expect(page.locator('[data-invite-sent]').first()).toBeVisible();
 });

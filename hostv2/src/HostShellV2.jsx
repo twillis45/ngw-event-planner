@@ -157,7 +157,7 @@ import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, readEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
 import { deleteAccount, isAccountDeletionAvailable } from '@app/lib/api/account';
-import { effectiveDone } from '@app/lib/taskEngine';
+import { effectiveDone, factsATickRecords } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
@@ -6709,6 +6709,12 @@ export default function HostShellV2() {
           + (est > 0 ? ' (' + est + ' at an estimate — tap any to add the real price).' : '.');
       }
     }
+    // A TICK RECORDS WHAT IT STANDS FOR (owner, 11/18/2026): "Send the invite"
+    // writes invitesSentAt and "Collect dietary needs" writes dietaryNoted, so
+    // the guest and food sheets agree with the checklist. taskEngine decides,
+    // from the same rule that ticks the step when the section is done first.
+    // Checking only; unchecking never un-sends (asymmetric, like the buys above).
+    if (tl[i].done) extra = { ...extra, ...factsATickRecords(event, event.timeline[i]) };
     patchEvent({ timeline: tl, ...extra },
       (tl[i].done ? 'Done: ' : 'Reopened: ') + String(tl[i].task || '').slice(0, 50) + '… — ' + open + ' still open.' + boughtNote);
   };

@@ -34,6 +34,8 @@ export function hasNamedVendor(event) {
 // taskSatisfied(event, task) → boolean. `task` may be a timeline task ({task}) or a
 // subtask ({text}). Keyword-matched against the same domains the next-step engine routes
 // on, so the surfaces can never disagree about whether a task is handled.
+const DIETARY_STEP = /\b(collect|ask|count|note|gather)\b[^;]*\b(dietary|allerg)/;
+
 export function taskSatisfied(event, task) {
   if (!event || !task) return false;
   const s = String(task.task || task.text || '').toLowerCase();
@@ -61,6 +63,14 @@ export function taskSatisfied(event, task) {
   // bundled string never lingers in a "what's left" list once event.date exists. FIRST so it
   // wins over the generic headcount match below.
   if (/^set\b.*\bdate\b/.test(s) || /\bset (the |a )?date\b/.test(s))         return dateSet;
+
+  // DIETARY NEEDS COLLECTED (11/18/2026): "Collect dietary needs", "Ask every
+  // guest for allergies", "note any dietary needs" are the step the food
+  // sheet's "Dietary needs noted" answers. Additive: when the host has not
+  // noted them, the step falls through to whatever else it is about. An
+  // invite that only ASKS about diets is excluded — sending the ask is not
+  // having the answers.
+  if (event.dietaryNoted && DIETARY_STEP.test(s) && !/\b(invit|send)|chase|nudge/.test(s)) return true;
 
   // ── BRUTAL AUDIT 2026-07-28 GUARDS — these run before every domain rule ─────
   // A this-or-that question is a DECISION — no stored fact proves a choice was
@@ -193,6 +203,32 @@ export function taskSatisfied(event, task) {
 // proves it handled. This is the bridge that retires manual checkoff as a source of truth.
 export function effectiveDone(event, task) {
   return !!(task && task.done) || taskSatisfied(event, task);
+}
+
+// ─── A TICK RECORDS WHAT IT STANDS FOR (owner, 11/18/2026) ───────────────────
+// The checklist reads section facts through taskSatisfied; this is the reverse,
+// and it is derived from the SAME rule rather than a second list of patterns:
+// ticking a step writes a fact only when taskSatisfied says that fact is what
+// completes it. Ticking "Send the invite" records invitesSentAt, so the guest
+// sheet stops offering "I already sent it"; ticking "Collect dietary needs"
+// records dietaryNoted, so the food sheet stops saying "none yet". Only
+// "it happened" facts belong here — never a value (a date, a budget, a menu)
+// that a tick cannot know. Already-recorded facts are never overwritten.
+const TICK_FACTS = [
+  ['invitesSentAt', () => new Date().toISOString()],
+  ['dietaryNoted', () => true],
+];
+export function factsATickRecords(event, task) {
+  if (!event || !task) return {};
+  try {
+    if (taskSatisfied(event, task)) return {};
+    for (const [key, value] of TICK_FACTS) {
+      if (event[key]) continue;
+      const v = value();
+      if (taskSatisfied({ ...event, [key]: v }, task)) return { [key]: v };
+    }
+  } catch (_e) { /* a tick never fails on inference */ }
+  return {};
 }
 
 // HQ-2 P2: taskSatisfied() is a heuristic (regex-matched) inference, not a host
