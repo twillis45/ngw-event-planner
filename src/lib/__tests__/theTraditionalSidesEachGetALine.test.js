@@ -104,6 +104,8 @@ describe('Friendsgiving potluck: the sides are assigned, not bought', () => {
       expect(r.friendBrings).toBe(true);
       expect([r.low, r.high]).toEqual([0, 0]);
     }
+    // …and off the Shop bar's count too (live 11/18/2026: "0 of 22 bought").
+    expect(plan.shoppingCount).toBe((plan.list || []).filter((r) => !r.skipped && !r.friendBrings).length);
     expect(plan.itemCount).toBe((plan.list || []).filter((r) => !r.skipped && !r.friendBrings && ['Food', 'Drinks', 'Dessert'].includes(r.group)).length);
   });
   test('ordered in — no side at all', () => {
