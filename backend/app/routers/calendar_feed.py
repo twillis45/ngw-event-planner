@@ -48,6 +48,26 @@ def _fold(line: str) -> str:
     return "\r\n".join(out)
 
 
+def _when(it: dict, d: date) -> list:
+    """The event day at the start time the host set ("start": "HH:MM", with an
+    optional run length in "minutes"), as a floating local time — the app only
+    sends a start once the host has confirmed it. Anything else is all-day."""
+    start = str(it.get("start") or "") if it.get("kind") == "event" else ""
+    try:
+        h, m = (int(x) for x in start.split(":")) if len(start) == 5 and start[2] == ":" else (None, None)
+    except ValueError:
+        h, m = None, None
+    if h is None or not (0 <= h <= 23 and 0 <= m <= 59):
+        return ["DTSTART;VALUE=DATE:" + d.strftime("%Y%m%d"),
+                "DTEND;VALUE=DATE:" + (d + timedelta(days=1)).strftime("%Y%m%d")]
+    begin = datetime(d.year, d.month, d.day, h, m)
+    out = ["DTSTART:" + begin.strftime("%Y%m%dT%H%M%S")]
+    mins = it.get("minutes")
+    if isinstance(mins, int) and not isinstance(mins, bool) and 0 < mins <= 24 * 60 * 14:
+        out.append("DTEND:" + (begin + timedelta(minutes=mins)).strftime("%Y%m%dT%H%M%S"))
+    return out
+
+
 def feed_ics(data: dict, now: datetime | None = None) -> str:
     """The saved feed as an iCalendar document. PURE."""
     name = str(data.get("name") or "The event").strip()[:120]
@@ -73,9 +93,7 @@ def feed_ics(data: dict, now: datetime | None = None) -> str:
         summary = label if kind == "event" else ("Vendor: " if kind == "vendor" else "To do: ") + label
         lines += ["BEGIN:VEVENT",
                   "UID:" + _esc(f"{data.get('id') or 'event'}-{str(it.get('id') or label)[:120]}@ngw-plan"),
-                  "DTSTAMP:" + stamp,
-                  "DTSTART;VALUE=DATE:" + d.strftime("%Y%m%d"),
-                  "DTEND;VALUE=DATE:" + (d + timedelta(days=1)).strftime("%Y%m%d"),
+                  "DTSTAMP:" + stamp] + _when(it, d) + [
                   "SUMMARY:" + _esc(summary),
                   "DESCRIPTION:" + _esc(f"From your plan for {name}."),
                   "TRANSP:TRANSPARENT",

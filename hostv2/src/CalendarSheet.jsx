@@ -16,11 +16,15 @@ const VIEW_KEY = 'ngw-calendar-view';
 const readView = () => { try { return localStorage.getItem(VIEW_KEY) === 'month' ? 'month' : 'week'; } catch { return 'week'; } };
 const dayName = (iso, opts) => new Date(iso + 'T00:00:00').toLocaleDateString('en-US', opts);
 
-function Item({ it }) {
+function Item({ it, forecast }) {
+  const wx = forecast && it.kind === 'event' && forecast.date === it.date ? forecast.line : '';
   return (
     <li className={'cal-item cal-' + it.kind + (it.done ? ' is-done' : '') + (it.overdue ? ' is-late' : '')} data-kind={it.kind}>
       <span className="cal-dot" aria-hidden="true" />
-      <span className="cal-text">{it.label}</span>
+      <span className="cal-text">{it.label}{wx ? <span className="cal-wx" data-cal-wx>{wx}</span> : null}</span>
+      {/* The event's hour (owner, 11/18/2026: "Calendar should show on day and
+          time of event"). A time the app set is marked as its suggestion. */}
+      {it.time ? <span className="cal-tag cal-time" data-cal-time>{it.time}{it.timeSuggested ? ' · suggested' : ''}</span> : null}
       {it.done ? <span className="cal-tag">Done</span> : it.overdue ? <span className="cal-tag">Overdue</span> : null}
     </li>
   );
@@ -87,7 +91,7 @@ function Subscribe({ event, signedIn, onSave, onLine }) {
   );
 }
 
-export default function CalendarSheet({ event, onOpenChecklist, signedIn = false, onSave, onLine = () => {} }) {
+export default function CalendarSheet({ event, forecast = null, onOpenChecklist, signedIn = false, onSave, onLine = () => {} }) {
   const today = localISO(getToday());
   const { items, undated } = useMemo(() => calendarItems(event), [event]);
   const byDate = useMemo(() => {
@@ -149,7 +153,7 @@ export default function CalendarSheet({ event, onOpenChecklist, signedIn = false
                 {d === today && <span className="cal-today">Today</span>}
               </div>
               {(byDate[d] || []).length
-                ? <ul className="cal-items">{byDate[d].map((it) => <Item key={it.id} it={it} />)}</ul>
+                ? <ul className="cal-items">{byDate[d].map((it) => <Item key={it.id} it={it} forecast={forecast} />)}</ul>
                 : <p className="cal-empty">Nothing due</p>}
             </li>
           ))}
@@ -182,7 +186,7 @@ export default function CalendarSheet({ event, onOpenChecklist, signedIn = false
           <div className="cal-picked" data-cal-picked>
             <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 var(--sp-2)' }}>{dayName(picked, { weekday: 'long', month: 'long', day: 'numeric' })}</div>
             {(byDate[picked] || []).length
-              ? <ul className="cal-items">{byDate[picked].map((it) => <Item key={it.id} it={it} />)}</ul>
+              ? <ul className="cal-items">{byDate[picked].map((it) => <Item key={it.id} it={it} forecast={forecast} />)}</ul>
               : <p className="cal-empty">Nothing due that day.</p>}
           </div>
         </>

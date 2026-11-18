@@ -538,3 +538,24 @@ export function computeRainWindow(hourly, eventDateIso, tzOffsetSec) {
     label: start === end ? `around ${fmtH(start)}` : `${fmtH(start)}\u2013${fmtH(end + 1)}`,
   };
 }
+
+/**
+ * forecastLine — the day's forecast as plain facts, for ANY event (owner,
+ * 11/18/2026: "weather should be wherever else in the app it's preferred
+ * and/or needed"). assessForecastDay's `summary` is written for an outdoor
+ * event ("rain plan required", "ice, shade, and water"); this line says only
+ * what the sky is doing, so it fits an indoor dinner as well as a picnic.
+ * A sample row gives no line: a forecast shown as the real sky must be real.
+ * Returns '' when there is nothing real to say.
+ */
+export function forecastLine(row) {
+  if (!row || row._sample || !row.temp) return '';
+  const cond = String(row.conditions || '').trim();
+  const parts = [];
+  if (cond) parts.push(cond.charAt(0).toUpperCase() + cond.slice(1));
+  const lo = Number(row.temp.min); const hi = Number(row.temp.max);
+  if (Number.isFinite(lo) && Number.isFinite(hi)) parts.push(lo === hi ? `${hi}°F` : `${lo}°–${hi}°F`);
+  const pop = Number(row.precipitation);
+  if (Number.isFinite(pop)) parts.push(`${pop}% chance of rain or snow`);
+  return parts.join(' · ');
+}

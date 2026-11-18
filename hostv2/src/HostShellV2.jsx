@@ -71,7 +71,7 @@ import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — 
 import { boardDecisionND, foodDecisionND, blockerDecisionND, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
-import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
+import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine } from '@app/lib/weather';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
@@ -3391,10 +3391,19 @@ export default function HostShellV2() {
   // fallback could contradict the real sky.
   const [liveWx, setLiveWx] = useState(null);
   const [liveWxSpan, setLiveWxSpan] = useState(null);
+  // THE DAY'S FORECAST FOR EVERY EVENT (owner, 11/18/2026: "weather should be
+  // wherever else in the app it's preferred and/or needed"). An indoor dinner
+  // had no forecast anywhere, though guests still drive through the snow. The
+  // same one fetch now runs for any event in the 14-day window; `liveWx` (the
+  // outdoor alerts, the rain plan, the pill) stays outdoor-only, and this is
+  // the plain forecast the Calendar and Date & time show. Live only — never
+  // the sample, which describes no real sky.
+  const [dayWx, setDayWx] = useState(null);
   useEffect(() => {
     let dead = false;
     setLiveWx(null);
     setLiveWxSpan(null);
+    setDayWx(null);
     (async () => {
       try {
         if (!isWeatherConfigured() || !event.date) return;
@@ -3405,7 +3414,7 @@ export default function HostShellV2() {
         // (d < 0) but the remaining days are still forecastable — gate on the
         // LAST day instead. Single-day events: daysUntilEnd === d, unchanged.
         const dEnd = (() => { try { return daysUntilEnd(event); } catch { return d; } })();
-        if (!out || past || d == null || d > 14 || (dEnd == null ? d < 0 : dEnd < 0)) return;
+        if (past || d == null || d > 14 || (dEnd == null ? d < 0 : dEnd < 0)) return;
         // A bare home word ("Backyard") geocodes to junk — the town is the
         // real locator for at-home events; skip entirely when neither exists.
         const homeish = /^(backyard|back\s?yard|home|house|my place)$/i.test(vf.name);
@@ -3426,6 +3435,8 @@ export default function HostShellV2() {
         if (dead || !coords) return;
         const span = await getEventWeatherSpan(coords.lat, coords.lon, event);
         if (!dead && span) {
+          setDayWx(span.primary);
+          if (!out) return;
           setLiveWx(span.primary);
           // Per-day rows are a multi-day surface: one row would just repeat
           // the headline, so the panel list renders only from 2 days up.
@@ -15427,6 +15438,11 @@ export default function HostShellV2() {
             {sheet.kind === 'date' && (
               <div style={{ padding: 'var(--sp-2) 0' }}>
                 <p className="v-meta" style={{ margin: '0 0 var(--sp-3)' }}>Change the day or the arrival time — every countdown, deadline, and shopping window in the plan counts back from it.</p>
+                {dayWx && forecastLine(dayWx) && (
+                  <p className="grounding" data-day-forecast style={{ margin: '0 0 var(--sp-3)' }}>
+                    Forecast for {new Date(dayWx.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}: {forecastLine(dayWx)}.
+                  </p>
+                )}
                 {renderEditor({ domain: 'date' })}
               </div>
             )}
@@ -16569,7 +16585,7 @@ export default function HostShellV2() {
                 onLeft={() => { try { window.location.reload(); } catch { /* the next load drops it */ } }} />
             )}
             {sheet.kind === 'calendar' && (
-              <CalendarSheet event={event} onOpenChecklist={() => setSheet({ kind: 'tasks' })}
+              <CalendarSheet event={event} forecast={dayWx && forecastLine(dayWx) ? { date: dayWx.date, line: forecastLine(dayWx) } : null} onOpenChecklist={() => setSheet({ kind: 'tasks' })}
                 signedIn={Boolean(session)} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} />
             )}
             {sheet.kind === 'family' && (

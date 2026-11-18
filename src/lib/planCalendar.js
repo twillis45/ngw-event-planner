@@ -16,12 +16,33 @@
 import { localISO, getToday } from './dates';
 import { taskLeadDays, taskIsOverdue } from './taskLead';
 import { inferPromisesFromVendor, promiseNeedsHost } from './vendorAccountability/derive';
+import { typicalDurationHours } from './startTime';
 
 const DAY = (iso) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
   return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
 };
 const plus = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+
+// THE EVENT'S HOUR (owner, 11/18/2026: "Calendar should show on day and time
+// of event"). startTime is "16:00" (the app's own clock) or what the host typed
+// ("4:00 PM", "4 pm"). Anything that is not a clock gives no hour — never a guess.
+const clockMinutes = (s) => {
+  const m = /^(\d{1,2})(?::(\d{2}))?\s*([ap])\.?\s*m?\.?$/i.exec(String(s || '').trim()) || /^(\d{1,2}):(\d{2})()$/.exec(String(s || '').trim());
+  if (!m) return null;
+  let h = Number(m[1]); const min = Number(m[2] || 0);
+  if (min > 59) return null;
+  if (m[3]) { if (h < 1 || h > 12) return null; h = (h % 12) + (/p/i.test(m[3]) ? 12 : 0); } else if (h > 23) return null;
+  return h * 60 + min;
+};
+const pad2 = (n) => String(n).padStart(2, '0');
+const clockLabel = (mins) => `${(Math.floor(mins / 60) % 12) || 12}:${pad2(mins % 60)} ${mins >= 720 ? 'PM' : 'AM'}`;
+// Start in minutes, and whether the host set it (a 'derived' hour is the app's
+// suggestion: shown in the app as one, never written into a calendar as fact).
+const eventStart = (ev) => {
+  const mins = clockMinutes(ev.startTime);
+  return mins == null ? null : { mins, suggested: String(ev.startTimeSource || '') === 'derived' };
+};
 
 /**
  * @returns {{ items: Array<{date,kind,label,done,overdue,id}>, undated: number }}
@@ -34,9 +55,11 @@ export function calendarItems(event, now) {
   let undated = 0;
   if (start) {
     const end = DAY(ev.endDate) && DAY(ev.endDate) > start ? DAY(ev.endDate) : start;
+    const at = eventStart(ev);
     for (let d = start, i = 1; d <= end; d = plus(d, 1), i += 1) {
       items.push({ id: 'event-' + i, date: localISO(d), kind: 'event',
-        label: end > start ? `${ev.name || 'The event'} — day ${i}` : (ev.name || 'The event'), done: false, overdue: false });
+        label: end > start ? `${ev.name || 'The event'} — day ${i}` : (ev.name || 'The event'), done: false, overdue: false,
+        ...(i === 1 && at ? { time: clockLabel(at.mins), timeSuggested: at.suggested } : {}) });
     }
   }
   for (const t of Array.isArray(ev.timeline) ? ev.timeline : []) {
@@ -121,6 +144,22 @@ const fold = (line) => {
 };
 const compact = (iso) => String(iso).slice(0, 10).replace(/-/g, '');
 
+// The event day at the hour the HOST set (a suggested hour stays all-day), as a
+// floating local time — the calendar shows it at that clock time wherever the
+// host's calendar is. It ends after the playbook's authored run length; with
+// none authored it has a start and no end, rather than an invented length.
+function timedEntry(ev, it) {
+  if (it.kind !== 'event' || !it.time || it.timeSuggested) return null;
+  const at = eventStart(ev); const day = DAY(it.date);
+  if (!at || !day) return null;
+  const stampOf = (d) => `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}T${pad2(d.getHours())}${pad2(d.getMinutes())}00`;
+  const begin = new Date(day.getFullYear(), day.getMonth(), day.getDate(), Math.floor(at.mins / 60), at.mins % 60);
+  const hours = typicalDurationHours(ev);
+  const lines = ['DTSTART:' + stampOf(begin)];
+  if (hours) lines.push('DTEND:' + stampOf(new Date(begin.getTime() + hours * 3600000)));
+  return { lines, start: `${pad2(Math.floor(at.mins / 60))}:${pad2(at.mins % 60)}`, minutes: hours ? Math.round(hours * 60) : null };
+}
+
 export function calendarIcs(event, now) {
   const ev = event || {};
   const { items } = calendarItems(ev, now);
@@ -134,11 +173,11 @@ export function calendarIcs(event, now) {
     const day = DAY(it.date);
     if (!day) continue;
     const next = localISO(plus(day, 1));
+    const when = timedEntry(ev, it);
     lines.push('BEGIN:VEVENT',
       'UID:' + icsText(`${ev.id || 'event'}-${it.id}@ngw-plan`),
       'DTSTAMP:' + stamp,
-      'DTSTART;VALUE=DATE:' + compact(it.date),
-      'DTEND;VALUE=DATE:' + compact(next),
+      ...(when ? when.lines : ['DTSTART;VALUE=DATE:' + compact(it.date), 'DTEND;VALUE=DATE:' + compact(next)]),
       'SUMMARY:' + icsText(it.kind === 'event' ? it.label : (it.kind === 'vendor' ? 'Vendor: ' : 'To do: ') + it.label),
       'DESCRIPTION:' + icsText(`From your plan for ${name}.`),
       'TRANSP:TRANSPARENT',
@@ -157,7 +196,11 @@ export function calendarIcs(event, now) {
 export function calendarFeedItems(event, now) {
   return calendarItems(event, now).items
     .filter((it) => !it.done)
-    .map((it) => ({ id: it.id, date: it.date, kind: it.kind, label: it.label }));
+    .map((it) => {
+      const when = timedEntry(event || {}, it);
+      return { id: it.id, date: it.date, kind: it.kind, label: it.label,
+        ...(when ? { start: when.start, ...(when.minutes ? { minutes: when.minutes } : {}) } : {}) };
+    });
 }
 
 /** The plan as it should be saved: with the feed list while the feed is on, without it otherwise. */
