@@ -101,6 +101,12 @@ export default function CalendarSheet({ event, onOpenChecklist, signedIn = false
   const pick = (v) => { setView(v); try { localStorage.setItem(VIEW_KEY, v); } catch { /* a convenience only */ } };
   const move = (n) => { const a = shiftAnchor(anchor, view, n); setAnchor(a); if (view === 'month') setPicked(a); };
   const goToday = () => { setAnchor(today); setPicked(today); };
+  // PAST DUE IS LISTED, NOT ONLY COUNTED (owner, 11/18/2026: "shows 8 overdue
+  // but no list below"). Late steps sit on the past days their lead gave them,
+  // so the month showed red counts on Nov 7, 14, 16, 17 while the list under it
+  // was today's, and the week view never showed earlier weeks at all. Every
+  // open late step is listed here, with its date, in both views.
+  const late = useMemo(() => items.filter((it) => it.overdue && !it.done).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)), [items]);
 
   return (
     <div data-calendar>
@@ -116,6 +122,22 @@ export default function CalendarSheet({ event, onOpenChecklist, signedIn = false
         <strong className="cal-range" data-cal-range aria-live="polite">{rangeLabel(anchor, view)}</strong>
         <button className="mini" aria-label={view === 'month' ? 'Next month' : 'Next week'} onClick={() => move(1)}>›</button>
       </div>
+
+      {late.length > 0 && (
+        <div className="cal-late" data-cal-late>
+          <div className="shelf-label" style={{ margin: 'var(--sp-3) 0 var(--sp-2)' }}>Past due · {late.length}</div>
+          <ul className="cal-items">
+            {late.map((it) => (
+              <li key={'late-' + it.id} className={'cal-item cal-' + it.kind + ' is-late'} data-kind={it.kind}>
+                <span className="cal-dot" aria-hidden="true" />
+                <span className="cal-text">{it.label}</span>
+                <span className="cal-tag">{dayName(it.date, { month: 'short', day: 'numeric' })}</span>
+              </li>
+            ))}
+          </ul>
+          {onOpenChecklist && <button className="mini" style={{ marginTop: 'var(--sp-2)' }} onClick={onOpenChecklist}>Catch up in the checklist</button>}
+        </div>
+      )}
 
       {view === 'week' ? (
         <ol className="cal-week" data-cal-week>
