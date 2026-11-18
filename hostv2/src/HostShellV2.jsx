@@ -71,7 +71,7 @@ import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — 
 import { boardDecisionND, foodDecisionND, blockerDecisionND, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
-import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind } from '@app/lib/weather';
+import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, travelHazard, guestTravelMessage } from '@app/lib/weather';
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
@@ -3466,6 +3466,16 @@ export default function HostShellV2() {
       _sample: true,
     };
   }, [event, liveWx]);
+  // SNOW AND ICE HEADS-UP (owner, 11/18/2026: "Yes add the snow and ice
+  // heads-up"). An INDOOR event needs no rain plan, so the outdoor alert stays
+  // off it, but snow, sleet / freezing rain and thunderstorms still decide how
+  // guests get there. Live forecast only (dayWx is never the sample); outdoor
+  // events keep their own alert, which already covers snow and storms.
+  const travelWx = useMemo(() => {
+    if (!dayWx) return null;
+    try { if (placeIsOutdoors(event)) return null; } catch { return null; }
+    try { return travelHazard(dayWx); } catch { return null; }
+  }, [event, dayWx]);
   const wxImpact = useMemo(() => {
     if (!wx) return null;
     try { const im = weatherImpactByEventPhase(event, wx); return im && im.hasImpact ? im : null; } catch { return null; }
@@ -10263,7 +10273,7 @@ export default function HostShellV2() {
       {/* has-nextbar: the .next-bar is absolutely positioned over the scroll area,
           so the container reserves room for it exactly while it shows — same
           condition as its render below. See the note at .next-bar in styles.css. */}
-      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + (wxImpact && stage === 'plan' ? ' has-wxpill' : '') + (stage === 'plan' && !heroInView ? ' has-nextbar' : '')} id="app" ref={appRef} inert={splash !== 'gone'}
+      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + ((wxImpact || travelWx) && stage === 'plan' ? ' has-wxpill' : '') + (stage === 'plan' && !heroInView ? ' has-nextbar' : '')} id="app" ref={appRef} inert={splash !== 'gone'}
         data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'}>
         {/* dash-hold: same mechanism as .welcome.splash-hold — any one-shot
             entrance animation in here (sweepcard's cardin, etc.) pauses at
@@ -27091,6 +27101,30 @@ export default function HostShellV2() {
           below it. Elegant retires the dock, and the v2 dock auto-hides — raising to
           the dock-clearing height while no dock shows left the pill floating mid-list
           over content. -mid clears the NEXT bar only; -raised clears the visible dock. */}
+      {/* The indoor heads-up rides the same pill (one weather surface on the
+          board): a guest-travel headline, the plain forecast, and a drafted
+          note to guests. No rain-plan prompt: indoors there is nothing to move. */}
+      {!wxImpact && travelWx && stage === 'plan' && (
+        <div className={'wxpill' + (wxOpen ? ' open' : '') + (!heroInView ? ((elegantMode || dockHidden) ? ' wxpill-mid' : ' wxpill-raised') : '')} data-wx-travel={travelWx.kind}>
+          <button className="wxpill-head" onClick={() => { setWxOpen(o => !o); feedback('tick'); }} aria-expanded={wxOpen}>
+            <span className="wx-glyph" aria-hidden="true">{weatherGlyph(travelWx.glyph, { mono: true })}</span>
+            <span className="wx-line">{wxOpen ? 'Getting here on your day' : travelWx.headline}</span>
+            <span className="chev" aria-hidden="true" style={{ position: 'static' }}>{wxOpen ? '▾' : '›'}</span>
+          </button>
+          {wxOpen && (
+            <div className="wx-body">
+              <p className="wx-headline">{travelWx.headline}</p>
+              {forecastLine(dayWx) && <p className="grounding wx-line-g" style={{ margin: 'var(--sp-1) 0 0' }}>{weatherGlyph(travelWx.glyph)}{forecastLine(dayWx)}.</p>}
+              <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>{travelWx.advice}</p>
+              <div className="actions-row" style={{ marginTop: 10 }}>
+                <button className="cta" data-wx-travel-note onClick={() => { setWxOpen(false); try { openDraft('Weather note to guests', guestTravelMessage(event, travelWx)); } catch { toast('Couldn’t draft the note.'); } }}>Draft a note to guests</button>
+              </div>
+              <p className="grounding" style={{ marginTop: 10, opacity: .7 }}>Live forecast for {vf.city || vf.name}.</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {wxImpact && stage === 'plan' && (
         <div className={'wxpill' + (wxOpen ? ' open' : '') + (!heroInView ? ((elegantMode || dockHidden) ? ' wxpill-mid' : ' wxpill-raised') : '')}>
           <button className="wxpill-head" onClick={() => { setWxOpen(o => !o); feedback('tick'); }} aria-expanded={wxOpen}>

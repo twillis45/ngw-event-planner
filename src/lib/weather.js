@@ -587,3 +587,49 @@ export function skyKind(row) {
   if (/clear|sun/.test(words)) return 'clear';
   return 'cloudy';
 }
+
+/**
+ * travelHazard — the guest-travel heads-up for an INDOOR event (owner,
+ * 11/18/2026: "Yes add the snow and ice heads-up"). Indoors, rain needs no
+ * backup plan, but snow, ice and thunderstorms still decide whether guests get
+ * there on time and safely. Returns null unless the LIVE forecast for the day
+ * shows one of those three at 30% or more — below that the plain forecast line
+ * says enough, and an alert on every flurry would teach the host to ignore it.
+ * Never from the sample: a heads-up about invented snow would be a lie.
+ *
+ * @returns {{kind:'snow'|'ice'|'storm', glyph:string, pop:number, headline:string, advice:string}|null}
+ */
+export function travelHazard(row) {
+  if (!row || row._sample) return null;
+  const pop = Number(row.precipitation);
+  if (!Number.isFinite(pop) || pop < 30) return null;
+  const sky = skyKind(row);
+  const kind = sky === 'snow' ? 'snow' : sky === 'sleet' ? 'ice' : sky === 'storm' ? 'storm' : null;
+  if (!kind) return null;
+  const day = (() => { try { return new Date(String(row.date) + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }); } catch { return ''; } })();
+  const onDay = day ? `${day} (your event day)` : 'your event day';
+  const what = { snow: 'Snow', ice: 'Sleet or freezing rain', storm: 'Thunderstorms' }[kind];
+  return {
+    kind, glyph: sky, pop,
+    headline: `${what} forecast for ${onDay}, ${pop}% chance — guests may need extra time to get there`,
+    advice: {
+      snow: 'Roads and walks can be slow. A note to guests now lets them plan the drive, and a cleared, salted path to the door helps at the end of it.',
+      ice: 'Roads, steps and the walk to the door can be slick. A note to guests now lets them plan the drive; salt the steps before anyone arrives.',
+      storm: 'Storms can slow the drive and soak the walk in. A note to guests now lets them leave a little early; keep a spot by the door for wet coats and umbrellas.',
+    }[kind],
+  };
+}
+
+/** The guest note the heads-up drafts. Names the day and the weather, never an hour (the host may not have set one). */
+export function guestTravelMessage(event, hazard) {
+  if (!hazard) return '';
+  const name = String((event && event.name) || 'the party').trim();
+  const day = (() => { try { return new Date(String((event && event.date) || '') + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }); } catch { return ''; } })() || 'the day';
+  const sky = { snow: 'snow', ice: 'sleet or freezing rain', storm: 'thunderstorms' }[hazard.kind];
+  const tip = {
+    snow: 'Leave a little extra time to get here and take it slow on the roads.',
+    ice: 'Leave a little extra time, and watch your step on the roads and walks.',
+    storm: 'Leave a little extra time to get here, and bring an umbrella.',
+  }[hazard.kind];
+  return `Heads-up for ${name} on ${day}: the forecast shows ${sky}. ${tip} If the weather changes our plans, I'll let you know. See you there!`;
+}
