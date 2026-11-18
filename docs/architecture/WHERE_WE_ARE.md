@@ -1,5 +1,13 @@
 # Where We Are -- live status board
 
+## November 18, 2026 — status that moves; one answer per fact; indoors or outside
+
+- **The stuck board is fixed (#165).** A late checklist step showed up on the board with a "Decide" button that opened an empty "Calls to make", so a host who had already sent the invite could not get past it. The card now goes where the step is done, and has "Mark done".
+- **Checkboxes and sections now agree both ways.** Doing something in a section ticks the checklist, and ticking the checklist records the fact for the sections (the invite went out; dietary needs collected). Steps that name a real screen link to it.
+- **One answer per fact.** A review found 12 places where one fact had two answers on different screens. The 7 a host could see are fixed: the guest count, the menu, the invite, the rain plan and the open-step count. 5 low-risk ones are listed.
+- **Indoors or outside is now asked** on the Space sheet, and the answer drives the rain backup, the day-of rain check, the forecast and the safety plan. When the host has not said, the app still infers it from the venue and offers its guess with the reason, for one tap.
+- **Owner next:** decide on the section-heading fix (headings are smaller than the rows under them at phone width); CAPTCHA on sign-in; the 11/20 items.
+
 ## November 17, 2026 — a security self-test instead of a pentest firm; WebKit measured
 
 - **The owner chose a self-test over hiring a firm.** Scans plus a route-by-route read of the backend, payments, email, the database rules and the browser code found two High holes, both fixed and merged (#159): any signed-in account could send email to anyone from our domain, and a deleted event's id could be retaken to read its guests' RSVPs (migration 029). One anonymous write and outdated image/web libraries were fixed with them. The four Mediums followed in #161 (migration 030): the trip pass can't be dodged by editing the event, AI help has a daily cap, co-host invite emails are capped, and an invitation can't make someone an owner. Not independent — the board is asked to amend SEC-4 to "self-test plus one independent check before paid promotion".
