@@ -238,7 +238,7 @@ import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices'
 // Northeast that never throws and never looks wrong. `layerForLine` reads the
 // decision the engine recorded (`geoBasis`) instead of re-deriving it.
 import { layerForLine, storePriceIndex, layerCoverage, coverageNote } from '@app/lib/priceLayers';
-import { isStorePricesConfigured, nearbyStores, storePrices, STORE_FAMILY, STORE_FAMILY_SHORT, STORE_FAMILY_TEACH } from '@app/lib/storePrices';
+import { isStorePricesConfigured, nearbyStores, parsePlace, storePrices, STORE_FAMILY, STORE_FAMILY_SHORT, STORE_FAMILY_TEACH } from '@app/lib/storePrices';
 import { quickAccountabilityForVendor, inferPromisesFromVendor, promiseNeedsHost } from '@app/lib/vendorAccountability/derive';
 import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
 import { conflictsToActionItems, deriveResolution } from '@app/lib/vendorAccountability/actionItems';
@@ -22335,17 +22335,36 @@ export default function HostShellV2() {
                     const p = storePicker;
                     return (
                       <div style={{ margin: '0 0 var(--sp-3)' }}>
-                        <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
-                          <input className="field" inputMode="numeric" maxLength={5} placeholder="ZIP code"
-                            aria-label="ZIP code to find a store near"
-                            style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
-                            value={p.zip}
-                            onChange={e => setStorePicker(m => ({ ...m, zip: e.target.value.replace(/\D/g, '').slice(0, 5), reason: null }))} />
-                          <button className="mini" disabled={p.busy || !/^\d{5}$/.test(p.zip)} onClick={async () => {
-                            setStorePicker(m => ({ ...m, busy: true, reason: null, stores: [] }));
-                            const r = await nearbyStores(p.zip);
-                            setStorePicker(m => ({ ...m, busy: false, stores: r.stores, reason: r.reason }));
-                          }}>{p.busy ? 'Looking…' : 'Find stores'}</button>
+                        <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'flex-start' }}>
+                          {/* A ZIP OR A TOWN (owner, 11/18/2026: "Zip input should
+                              also take city state and use the other city state
+                              lookup list we use in the app"). CityField is that
+                              list (lib/usCitiesFull) with the dropdown that works
+                              on phones; nearbyStores places a "City, ST" with its
+                              state enforced before asking for stores near it. */}
+                          {(() => {
+                            const find = async (v) => {
+                              const q = v != null ? v : p.zip;
+                              if (!parsePlace(q)) return;
+                              setStorePicker(m => ({ ...m, zip: q, busy: true, reason: null, stores: [] }));
+                              const r = await nearbyStores(q);
+                              setStorePicker(m => ({ ...m, busy: false, stores: r.stores, reason: r.reason }));
+                            };
+                            return (
+                              <>
+                                <CityField value={p.zip} placeholder="ZIP or town, e.g. Oxon Hill, MD"
+                                  ariaLabel="ZIP code or town to find a store near"
+                                  style={{ maxWidth: 260 }}
+                                  inputStyle={{ fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
+                                  onChange={v => setStorePicker(m => ({ ...m, zip: v, reason: null }))}
+                                  onPick={v => setStorePicker(m => ({ ...m, zip: v, reason: null }))}
+                                  onEnter={find} />
+                                <button className="mini" data-find-stores disabled={p.busy || !parsePlace(p.zip)} onClick={() => find()}>
+                                  {p.busy ? 'Looking…' : 'Find stores'}
+                                </button>
+                              </>
+                            );
+                          })()}
                           <button className="mini" onClick={() => setStorePicker(null)}>Cancel</button>
                         </div>
                         {/* ── SAY THE LIMIT BEFORE THEY DO THE WORK ─────────
@@ -22419,9 +22438,10 @@ export default function HostShellV2() {
                             collapsed into a spinner that stops. */}
                         {!p.busy && p.reason && (
                           <Grounding gap={3}>{
-                            p.reason === 'none-nearby' ? `No ${STORE_FAMILY_SHORT} near that ZIP — coverage is regional, and plenty of the map has none. The estimate stands.`
+                            p.reason === 'none-nearby' ? `No ${STORE_FAMILY_SHORT} near there — coverage is regional, and plenty of the map has none. The estimate stands.`
                               : p.reason === 'no-keys' ? 'Store pricing is not switched on for this deployment.'
-                                : p.reason === 'no-zip' ? 'That ZIP does not look right — five digits.'
+                                : p.reason === 'no-zip' ? 'Type a five-digit ZIP, or pick a town from the list (City, ST).'
+                                  : p.reason === 'no-place' ? 'Could not find that town in that state — try its ZIP.'
                                   : 'Could not reach the store service just now. The estimate stands.'
                           }</Grounding>
                         )}
@@ -22441,7 +22461,7 @@ export default function HostShellV2() {
                   // rather than losing an assertion. Board D carries no
                   // explainer here at all; this keeps every fact and moves it.
                   return (
-                    <button className="mini" onClick={() => setStorePicker({ zip: venueFor(event).zip, stores: [], busy: false, reason: null })}>
+                    <button className="mini" onClick={() => setStorePicker({ zip: (() => { const vf = venueFor(event); return vf.zip || (vf.city && vf.state ? `${vf.city}, ${vf.state}` : ''); })(), stores: [], busy: false, reason: null })}>
                       Check store prices
                     </button>
                   );

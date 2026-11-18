@@ -57,7 +57,7 @@ import time
 from typing import List, Optional
 
 import httpx
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 
 log = logging.getLogger("ngw.kroger")
@@ -436,8 +436,13 @@ async def kroger_search_list(req: SearchListRequest):
 
 
 @router.get("/kroger/locations")
-async def kroger_locations(zip: str):
-    """Find up to 3 nearby Kroger stores by ZIP so the client can pick one.
+async def kroger_locations(zip: Optional[str] = None,
+                           lat: Optional[float] = Query(None, ge=-90, le=90),
+                           lon: Optional[float] = Query(None, ge=-180, le=180)):
+    """Find up to 3 nearby Kroger stores by ZIP, or near a point, so the client can pick one.
+
+    A point comes from a "City, ST" the host picked (owner, 11/18/2026); the
+    client geocodes it with the state enforced. A ZIP wins when both are sent.
 
     Returns [{locationId, name, address}]. The chosen locationId can be passed
     back into /kroger/search-list for store-specific product matches.
@@ -450,11 +455,15 @@ async def kroger_locations(zip: str):
         return {"configured": True, "error": "auth_failed", "locations": []}
 
     zip_code = (zip or "").strip()
-    if not zip_code:
+    if zip_code:
+        near = {"filter.zipCode.near": zip_code}
+    elif lat is not None and lon is not None:
+        near = {"filter.latLong.near": f"{lat},{lon}"}
+    else:
         return {"configured": True, "locations": [], "error": "no_zip"}
 
     url = f"{KROGER_API_BASE.rstrip('/')}/v1/locations"
-    params = {"filter.zipCode.near": zip_code, "filter.limit": 3}
+    params = {**near, "filter.limit": 3}
     headers = {
         "Authorization": f"Bearer {token}",
         "Accept": "application/json",
