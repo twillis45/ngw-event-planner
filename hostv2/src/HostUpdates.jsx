@@ -11,6 +11,7 @@
 import { useEffect, useState } from 'react';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 import { listAnnouncements, postAnnouncement, removeAnnouncement, isAnnouncementsApiConfigured } from '@app/lib/api/announcements';
+import BusyLine from './BusyLine.jsx';
 
 const when = (iso) => {
   try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return ''; }
@@ -97,6 +98,7 @@ export default function HostUpdates({ eventId }) {
             </button>
             {confirm && <button className="mini" onClick={() => setConfirm(false)}>Not yet</button>}
           </div>
+          {busy === 'post' && <BusyLine>{emailN > 0 ? `Posting, and emailing ${guests(emailN)}…` : 'Posting the update…'}</BusyLine>}
           {confirm && <p className="of" style={{ margin: '4px 0 0' }}>An email can’t be taken back once it’s sent.</p>}
         </>
       ) : (

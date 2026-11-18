@@ -34,6 +34,7 @@ import { Fragment, useMemo, useState, useEffect, useLayoutEffect, useRef, useCal
 import { createPortal } from 'react-dom';
 import PhotoStrip from './PhotoStrip.jsx';
 import CityField from './CityField.jsx';
+import BusyLine from './BusyLine.jsx';
 import { currentTheme, setStoredTheme } from './theme.js';
 import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaRow, TierRow, SettledRow, SettledCard, OptionList, ASK_RHYTHM, ASK_COMPACT } from './parity/askKit';
 // PEOPLE/ATTENDANCE REDESIGN — composition only; every rule lives in
@@ -458,6 +459,7 @@ function VendorReplyParserV2({ vendor, event, writeVendor, signedIn, onSignIn })
         <button className="mini" onClick={analyze} disabled={busy || !replyText.trim()}>{busy ? 'Reading…' : 'Read the message'}</button>
         {err && err !== 'signed-out' && <span style={{ fontSize: 12, color: 'var(--warn)' }}>{err}</span>}
       </div>
+      {busy && <BusyLine>Reading the message{vendor.name ? ' from ' + vendor.name : ''} — this can take a few seconds…</BusyLine>}
       {err === 'signed-out' && (
         <div data-reply-signin style={{ fontSize: 12, color: 'var(--carbon-muted)', marginTop: 8, lineHeight: 1.5 }}>
           Sign in to have it read the message. Nothing was saved, and your pasted text is still here.{' '}
@@ -2015,6 +2017,9 @@ export default function HostShellV2() {
   // signing in anywhere on this origin signs in everywhere on it).
   const [session, setSession] = useState(null);
   const [authBusy, setAuthBusy] = useState(false);
+  // A sign-in failure is said UNDER THE FORM, where the host is looking (attention
+  // audit 11/18/2026) — it used to be only a 3.4 s toast.
+  const [authErr, setAuthErr] = useState('');
   const [authEmail, setAuthEmail] = useState('');
   const [authSent, setAuthSent] = useState(false);
   const [authCode, setAuthCode] = useState('');
@@ -2348,8 +2353,8 @@ export default function HostShellV2() {
   useEffect(() => installProfileOnlineFlush(r => { if (r && r.ok && r.profile) setProfileState(r.profile); }), []);
   const sendMagicLink = async () => {
     const em = authEmail.trim();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { toast('A real email address — the sign-in link goes there.'); return; }
-    setAuthBusy(true);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { setAuthErr('A real email address — the sign-in link goes there.'); return; }
+    setAuthBusy(true); setAuthErr('');
     try {
       const { error } = await supabase.auth.signInWithOtp({ email: em, options: { emailRedirectTo: authRedirectUrl() } });
       if (error) throw error;
@@ -2358,7 +2363,7 @@ export default function HostShellV2() {
       // Real error text when Supabase gives us one (rate limit, invalid
       // domain, etc.) instead of one blanket message for every failure mode —
       // a host stuck here has no other signal of what actually went wrong.
-      toast((e && e.message) || 'Couldn’t send the link — try again in a minute.');
+      setAuthErr((e && e.message) || 'Couldn’t send the link — try again in a minute.');
     }
     setAuthBusy(false);
   };
@@ -2366,7 +2371,7 @@ export default function HostShellV2() {
   // once set, the sheet was stuck on "Check your email" for the rest of the
   // session — no resend, no "wrong address, try again," no way out short of
   // reloading the app. This is the only place authSent is ever reset.
-  const resetAuthSent = () => { setAuthSent(false); setAuthCode(''); };
+  const resetAuthSent = () => { setAuthSent(false); setAuthCode(''); setAuthErr(''); };
   // ONE SIGN-IN FORM, TWO PLACES (owner, 11/16/2026): the account sheet and the
   // inline "sign in to send" panel on a vendor card share this exact form and
   // its state, so a host never meets two different sign-ins.
@@ -2374,11 +2379,12 @@ export default function HostShellV2() {
                     <>
                       <p className="grounding" style={{ margin: 0 }}>Check your email. Type the code from it here to sign in on this browser, where this plan is. A link tapped in a mail app can open a different browser that doesn’t have your plan.</p>
                       <input className="field" style={{ maxWidth: 'none', marginTop: 'var(--sp-2)' }} inputMode="numeric" autoComplete="one-time-code" placeholder="Code from the email"
-                        value={authCode} onChange={e => setAuthCode(e.target.value)} aria-label="Sign-in code from the email"
+                        value={authCode} onChange={e => { setAuthCode(e.target.value); setAuthErr(''); }} aria-label="Sign-in code from the email"
                         onKeyDown={e => { if (e.key === 'Enter') signInWithCode(); }} />
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="cta" disabled={authBusy || !signInCode(authCode)} onClick={signInWithCode}>{authBusy ? 'Signing in…' : 'Sign in with the code'}</button>
                       </div>
+                      {authErr && <p className="grounding" role="alert" data-auth-err style={{ margin: 'var(--sp-2) 0 0', color: 'var(--danger)', fontWeight: 600 }}>{authErr}</p>}
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="mini" onClick={resetAuthSent}>Use a different email</button>
                         <button className="mini" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Send a new code'}</button>
@@ -2387,10 +2393,11 @@ export default function HostShellV2() {
                   ) : (
                     <>
                       <input className="field" style={{ maxWidth: 'none' }} type="email" placeholder="you@example.com" value={authEmail}
-                        onChange={e => setAuthEmail(e.target.value)} aria-label="Email for sign-in link" />
+                        onChange={e => { setAuthEmail(e.target.value); setAuthErr(''); }} aria-label="Email for sign-in link" />
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
                       </div>
+                      {authErr && <p className="grounding" role="alert" data-auth-err style={{ margin: 'var(--sp-2) 0 0', color: 'var(--danger)', fontWeight: 600 }}>{authErr}</p>}
                       <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', opacity: .75 }}>No password — the email has a code to type here. One account, both apps, this device and your others.</p>
                       <PolicyLinks prefix="Signing in means you agree to:" style={{ margin: 'var(--sp-1) 0 0', opacity: .75 }} />
                     </>
@@ -2401,14 +2408,14 @@ export default function HostShellV2() {
   // signs in THIS browser, where the plan already is.
   const signInWithCode = async () => {
     const code = signInCode(authCode);
-    if (!code) { toast('Type the code from the email — 6 digits.'); return; }
-    setAuthBusy(true);
+    if (!code) { setAuthErr('Type the code from the email — 6 digits.'); return; }
+    setAuthBusy(true); setAuthErr('');
     try {
       const { error } = await supabase.auth.verifyOtp({ email: authEmail.trim(), token: code, type: 'email' });
       if (error) throw error;
       setAuthCode('');
     } catch (e) {
-      toast((e && e.message) || 'That code didn’t work — check it, or send a new one.');
+      setAuthErr((e && e.message) || 'That code didn’t work — check it, or send a new one.');
     }
     setAuthBusy(false);
   };
@@ -24569,11 +24576,15 @@ export default function HostShellV2() {
                                       const file = e.target.files && e.target.files[0]; if (!file) return;
                                       const val = validateFile(file); if (!val.ok) { toast(val.error || 'That file won’t work.'); e.target.value = ''; return; }
                                       setContractUploading(m => ({ ...m, [v.id]: true }));
+                                      setContractExtractErr(m => ({ ...m, [v.id]: null }));
+                                      // A failed upload is said ON THE CARD (attention audit
+                                      // 11/18/2026), where the contract row is — not only in a toast.
+                                      const failed = (msg) => { setContractExtractErr(m => ({ ...m, [v.id]: msg })); toast(msg); };
                                       try {
                                         const r = await uploadFile({ file, eventId: event.id || 'unknown', category: inferCategory(file), userId: (session && session.user && session.user.id) || null });
                                         if (r && r.ok) writeVendor(v.id, { contractStoragePath: r.path, contractFileName: file.name, contractUrl: r.url }, file.name + ' attached — the paper trail’s clean.');
-                                        else toast((r && r.error) || 'Upload failed — try again.');
-                                      } catch { toast('Upload failed — try again.'); }
+                                        else failed((r && r.error) || 'The contract didn’t upload — try again.');
+                                      } catch { failed('The contract didn’t upload — try again.'); }
                                       finally { setContractUploading(m => ({ ...m, [v.id]: false })); e.target.value = ''; }
                                     }} />
                                 </label>
@@ -24587,6 +24598,8 @@ export default function HostShellV2() {
                               )}
                             </div>
                           )}
+                          {contractExtracting[v.id] && <BusyLine>Reading the contract — this can take up to half a minute…</BusyLine>}
+                          {contractUploading[v.id] && <BusyLine>Uploading the contract…</BusyLine>}
                           {/* AI-extracted contract summary — labeled, dismissible, review-required
                               (no auto-write; the app never invents facts from a document scan). */}
                           {contractExtractErr[v.id] && (

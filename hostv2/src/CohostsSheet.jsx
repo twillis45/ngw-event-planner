@@ -9,12 +9,14 @@
 import { useEffect, useState } from 'react';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 import { listCohosts, inviteCohost, removeCohost, leaveCohostedEvent, isCohostApiConfigured } from '@app/lib/api/cohosts';
+import BusyLine from './BusyLine.jsx';
 
 export default function CohostsSheet({ event, signedIn, onLine, onLeft }) {
   const isCohost = Boolean(event._cohostOf);
   const [state, setState] = useState(undefined);      // undefined · { cohosts } · { error }
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState('');
+  const [warn, setWarn] = useState('');
   const [confirm, setConfirm] = useState('');
   const [err, setErr] = useState('');
 
@@ -51,13 +53,16 @@ export default function CohostsSheet({ event, signedIn, onLine, onLeft }) {
   const send = async () => {
     const v = email.trim();
     if (!v) return;
-    setBusy('invite'); setErr('');
+    setBusy('invite'); setErr(''); setWarn('');
     const r = await inviteCohost(event.id, v);
     setBusy('');
     if (!r.ok) { setErr(r.status === 404 || r.status === 403 || r.status === 422 || r.status === 429 || r.status === 503 ? r.reason : 'The invite didn’t go through. Try again.'); return; }
     setEmail('');
     setState({ cohosts: r.cohosts || [] });
     if (!r.already_invited) { try { trackEvent(ANALYTICS.COHOST_INVITED, { emailed: !!r.emailed }); } catch (_e) { /* counter only */ } }
+    // A half-success stays on screen (attention audit 11/18/2026): the invite
+    // exists but the email did not go, and the host has to tell them.
+    if (!r.already_invited && !r.emailed) setWarn(`Invited, but the invite email didn’t go out — tell ${v.toLowerCase()} to sign in with that email.`);
     onLine(r.already_invited ? 'They’re already invited.'
       : r.emailed ? `Invite sent to ${v.toLowerCase()}.`
         : `Invited — tell ${v.toLowerCase()} to sign in with that email. (The invite email didn’t go out.)`);
@@ -84,7 +89,9 @@ export default function CohostsSheet({ event, signedIn, onLine, onLeft }) {
               onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') send(); }} />
             <button className="mini" data-cohost-invite disabled={!email.trim() || busy === 'invite'} onClick={send}>{busy === 'invite' ? 'Inviting…' : 'Invite'}</button>
           </div>
+          {busy === 'invite' && <BusyLine>Inviting {email.trim()}, and emailing them the link…</BusyLine>}
           {err && <p className="grounding" role="alert" style={{ margin: 'var(--sp-2) 0 0', color: 'var(--danger)' }}>{err}</p>}
+          {warn && <p className="grounding" role="status" data-cohost-warn style={{ margin: 'var(--sp-2) 0 0', color: 'var(--warn)', fontWeight: 600 }}>{warn}</p>}
           {state === undefined ? <p className="grounding" style={{ margin: 'var(--sp-3) 0 0' }}>Loading co-hosts…</p>
             : state.error ? <p className="grounding" style={{ margin: 'var(--sp-3) 0 0' }}>{state.error === 'unavailable' ? 'Co-hosts didn’t load. Check your connection.' : state.error}</p>
               : state.cohosts.length > 0 && (

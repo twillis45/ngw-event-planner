@@ -187,3 +187,24 @@ test('a deleted account\'s events do not come back from the account cache', asyn
   await page.waitForTimeout(2000);
   expect(await page.locator('body').innerText()).not.toMatch(/Cached Account Night/i);
 });
+
+// THE ERROR IS UNDER THE FORM (attention audit, 11/18/2026): a wrong or
+// expired code was said only in a 3.4 s toast, away from the code field.
+test('a code that does not work says so under the code field, and stays until it is retyped', async ({ page }) => {
+  await install(page, { signedIn: false, locals: [ev('ev-mine', 'My Game Night')] });
+  await page.route(`${PROJECT}/auth/v1/verify**`, (route) => route.fulfill({ status: 403, contentType: 'application/json',
+    body: JSON.stringify({ code: 403, error_code: 'otp_expired', msg: 'Token has expired or is invalid' }) }));
+  await boot(page);
+  await openSettings(page);
+  await page.getByLabel('Email for sign-in link').fill('harness@example.invalid');
+  await page.getByRole('button', { name: 'Email me a sign-in link' }).click();
+  const code = page.getByLabel('Sign-in code from the email');
+  await code.fill('111 111');
+  await page.getByRole('button', { name: 'Sign in with the code' }).click();
+  const err = page.locator('[data-auth-err]');
+  await expect(err).toContainText(/expired or is invalid/i);
+  await page.waitForTimeout(4000);   // past a toast's lifetime
+  await expect(err).toBeVisible();
+  await code.fill('222 222');
+  await expect(err).toHaveCount(0);
+});

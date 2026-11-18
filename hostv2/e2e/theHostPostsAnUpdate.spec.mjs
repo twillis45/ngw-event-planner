@@ -160,3 +160,23 @@ test('one guest who asked for email reads in the singular', async ({ page }) => 
   await box.locator('[data-update-post]').click();
   await expect(box.locator('[data-update-status]')).toHaveText('Posted — it’s on every invite, and 1 guest gets it by email.');
 });
+
+// THE WAIT IS SHOWN (attention audit, 11/18/2026): posting emails every
+// opted-in guest and took seconds behind a button that only said "Posting…".
+test('while the update posts, a status line says who is being emailed', async ({ page }) => {
+  await boot(page);
+  await serveHost(page);
+  let release; const held = new Promise((r) => { release = r; });
+  await page.route(`${API}/api/events/${EVENT_ID}/announcements`, async (r) => {
+    if (r.request().method() === 'POST') await held;
+    return r.fallback();
+  });
+  const box = await openGuestList(page);
+  await box.getByRole('textbox', { name: 'Your update to every guest' }).fill('Parking is on Elm after 5.');
+  await box.locator('[data-update-post]').click();
+  await box.locator('[data-update-post]').click();
+  await expect(box.locator('[data-busy-line]')).toHaveText('Posting, and emailing 2 guests…');
+  release();
+  await expect(box.locator('[data-busy-line]')).toHaveCount(0);
+  await expect(box.locator('[data-update-status]')).toHaveText('Posted — it’s on every invite, and 2 guests get it by email.');
+});
