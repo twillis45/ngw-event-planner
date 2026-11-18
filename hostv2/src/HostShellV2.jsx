@@ -7174,6 +7174,24 @@ export default function HostShellV2() {
   // SEARCH INSTACART, ONE HANDLER FOR BOTH DOORS (owner, 11/18/2026: "Shop
   // section will also need instacart for the items on that screen"). The Shop
   // summary had the button and "The list" had only Copy; both now call this.
+  // THE APP TAKES THE LINK, AND LEAVES NO BLANK TAB (owner, 11/18/2026: "When
+  // user has the instacart app. Clicking the instacart button loads a blank web
+  // page"). On iPhone and iPad an instacart.com link is handed to the installed
+  // app; opened as a NEW tab, Safari keeps that tab — empty. So on Apple touch
+  // devices the search opens in THIS tab: with the app, iOS hands it straight
+  // over; without it, Instacart's page loads here and Back returns to the list,
+  // where the sticky "1 of N" notice is already waiting (it is written first).
+  // iPadOS reports itself as a Mac, so a Mac with a touch screen counts too.
+  const appleTouch = () => {
+    try {
+      return /iPhone|iPad|iPod/.test(navigator.userAgent || '')
+        || (/Macintosh/.test(navigator.userAgent || '') && Number(navigator.maxTouchPoints) > 1);
+    } catch { return false; }
+  };
+  const openInstacart = (url) => {
+    if (appleTouch()) { try { window.location.assign(url); return; } catch (_e) { /* fall back to a tab */ } }
+    try { window.open(url, '_blank'); } catch (_e) { /* same-tab nav is fine */ }
+  };
   const searchInstacart = async () => {
                         if (sendingCart) return;
                         // ── NO KEY? THEN NO AWAIT AT ALL. ─────────────────────────
@@ -7201,7 +7219,7 @@ export default function HostShellV2() {
                             const line = q[i];
                             if (!line) return;
                             const term = icSearchTerm(line) || line.short || line.item;
-                            try { window.open(instacartSearchUrl(term), '_blank'); } catch (_e) { /* same-tab nav is fine */ }
+                            openInstacart(instacartSearchUrl(term));
                             const nxt = q[i + 1];
                             toast(
                               `${i + 1} of ${q.length} — ${line.short || line.item}. Add it, then come back.`,
@@ -7220,7 +7238,7 @@ export default function HostShellV2() {
                             null, { sticky: true },
                           );
                           const t0 = icSearchTerm(first) || first.short || first.item;
-                          try { window.open(instacartSearchUrl(t0), '_blank'); } catch (_e) { /* nothing to do */ }
+                          openInstacart(instacartSearchUrl(t0));
                           return;
                         }
                         // ── THE CLIPBOARD WRITE HAPPENS BEFORE THE AWAIT ─────────

@@ -28,6 +28,12 @@
 // so the bfcache restore brings it back with the host."
 import { test, expect, settled, dateIn, openSectionByName } from './fixtures.mjs';
 
+// These checks drive the NEW-TAB path (Android, desktop). On iPhone and iPad the
+// search opens in this tab instead, so the app can take the link without
+// leaving a blank tab — that path has its own checks at the bottom. The
+// mobile project's default user agent is an iPhone, so it is replaced here.
+test.use({ userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36' });
+
 const EV = 'e2e-instacart-step';
 
 const boot = async (page) => {
@@ -159,4 +165,29 @@ test('"The list" has Search Instacart too, and it opens a search', async ({ page
   const { urls, errors } = await opened(page, sheet, () => btn.click());
   expect(errors).toEqual([]);
   expect(urls[0]).toMatch(/^https:\/\/www\.instacart\.com\/store\/s\?k=.+/);
+});
+
+// ── ON AN iPAD THE SEARCH OPENS IN THIS TAB (owner, 11/18/2026: "When user has
+// the instacart app. Clicking the instacart button loads a blank web page").
+// iOS hands an instacart.com link to the installed app; opened as a NEW tab,
+// Safari keeps that tab, empty. On iPhone and iPad it now opens here. iPadOS
+// reports a Mac user agent, so that is what this emulates.
+for (const [device, ua] of [
+  ['an iPad', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15'],
+  ['an iPhone', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1'],
+]) test.describe(`on ${device}`, () => {
+  test.use({ userAgent: ua, hasTouch: true });
+  test('Search Instacart opens in this tab, with no new tab', async ({ page }) => {
+    // A real iPad reports 5 touch points with its Mac user agent.
+    await page.addInitScript(() => { Object.defineProperty(Navigator.prototype, 'maxTouchPoints', { get: () => 5, configurable: true }); });
+    const sheet = await boot(page);
+    expect(await page.evaluate(() => navigator.maxTouchPoints)).toBe(5);
+    let popups = 0;
+    page.context().on('page', () => { popups += 1; });
+    const nav = page.waitForRequest((r) => /instacart\.com\/store\/s\?k=/.test(r.url()) && r.frame() === page.mainFrame(), { timeout: 8000 });
+    await page.context().route('**instacart.com/**', (r) => r.abort());
+    await sheet.getByRole('button', { name: /Search Instacart/i }).click();
+    await nav;
+    expect(popups).toBe(0);
+  });
 });
