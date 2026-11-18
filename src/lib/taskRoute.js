@@ -125,6 +125,14 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // "Open the parking note" on a row about reserving a pavilion. A leading
   // reserve/book verb wins; a row that is only about parking still lands here.
   const RESERVES_A_SPACE = /\b(reserve|book|secure|lock in)\b[^.;]{0,40}\b(hall|space|room|pavilion|shelter|site|center|centre|venue|park)\b/;
+  // THE WALK-THROUGH IS THE PLACE, NOT THE PARKING (owner screenshot, 11/18/2026:
+  // "Should parking note be here"). Friendsgiving's "walk the kitchen with
+  // whoever lives there: oven size, refrigerator space, serving dishes, and
+  // parking" opened the parking note — parking is the last of four things to
+  // check. A walk / tour / check of a place whose list includes parking lands
+  // on the place sheet, where the parking note is one of its notes.
+  if (/\b(walk|tour|visit|check)\b[^.;]{0,60}:\s*[^.;]*,[^.;]*\bparking\b/.test(t))
+    return { label: 'Open the place notes', route: { tab: 'Event Details', focusField: 'space' } };
   if (/\bparking\b/.test(t) && !RESERVES_A_SPACE.test(t))
     return { label: 'Open the parking note', route: { focusField: 'parking-notes' } };
   // Crabs have their own planning surface in the resolver's vocabulary.
