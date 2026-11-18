@@ -16,6 +16,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 
 import httpx
+from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 
 log = logging.getLogger("ngw.weather")
@@ -68,13 +69,37 @@ async def weather_status():
     return {"configured": _configured()}
 
 
+# OpenWeather names the state in full ("Louisiana"); the app's city list writes
+# "City, ST". Used only to check a candidate is in the state that was asked for.
+_STATE_NAMES = {
+    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas", "CA": "California",
+    "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware", "DC": "District of Columbia",
+    "FL": "Florida", "GA": "Georgia", "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois",
+    "IN": "Indiana", "IA": "Iowa", "KS": "Kansas", "KY": "Kentucky", "LA": "Louisiana",
+    "ME": "Maine", "MD": "Maryland", "MA": "Massachusetts", "MI": "Michigan", "MN": "Minnesota",
+    "MS": "Mississippi", "MO": "Missouri", "MT": "Montana", "NE": "Nebraska", "NV": "Nevada",
+    "NH": "New Hampshire", "NJ": "New Jersey", "NM": "New Mexico", "NY": "New York",
+    "NC": "North Carolina", "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma", "OR": "Oregon",
+    "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina", "SD": "South Dakota",
+    "TN": "Tennessee", "TX": "Texas", "UT": "Utah", "VT": "Vermont", "VA": "Virginia",
+    "WA": "Washington", "WV": "West Virginia", "WI": "Wisconsin", "WY": "Wyoming",
+}
+
+
 @router.get("/geocode")
-async def geocode(q: str = Query(..., min_length=1, max_length=120)):
+async def geocode(q: str = Query(..., min_length=1, max_length=120),
+                  state: Optional[str] = Query(None, min_length=2, max_length=2)):
+    # A STATE, WHEN GIVEN, IS ENFORCED (11/18/2026). With limit=1 OpenWeather
+    # answered "Abbeville,LA,US" with Abbeville, ALABAMA — probed live. So a
+    # caller that knows the state asks for several candidates and gets only one
+    # in that state, or none; a neighbor's coordinates are never returned as
+    # the place asked for. Without `state` the route is unchanged.
+    want = _STATE_NAMES.get((state or "").upper()) if state else None
     if not _configured():
         raise HTTPException(status_code=503, detail="Weather not configured — set OPENWEATHER_KEY on the server")
     try:
         async with httpx.AsyncClient(timeout=12) as client:
-            r = await client.get(GEO_URL, params={"q": q, "limit": 1, "appid": OPENWEATHER_KEY})
+            r = await client.get(GEO_URL, params={"q": q, "limit": 5 if state else 1, "appid": OPENWEATHER_KEY})
             r.raise_for_status()
             data = r.json()
     except httpx.HTTPStatusError as e:
@@ -82,10 +107,13 @@ async def geocode(q: str = Query(..., min_length=1, max_length=120)):
         raise HTTPException(status_code=502, detail="Weather service error")
     except Exception:
         raise HTTPException(status_code=503, detail="Weather service unavailable")
+    if state:
+        data = [g for g in (data or []) if want and str(g.get("state") or "") == want]
     if not data:
         return {"ok": True, "result": None}
     g = data[0]
-    return {"ok": True, "result": {"lat": g.get("lat"), "lon": g.get("lon"), "name": g.get("name")}}
+    return {"ok": True, "result": {"lat": g.get("lat"), "lon": g.get("lon"), "name": g.get("name"),
+                                   **({"state": g.get("state")} if g.get("state") else {})}}
 
 
 @router.get("/onecall")

@@ -135,7 +135,7 @@ test('PICKER: opens with the venue ZIP prefilled', async ({ page }) => {
   await tapText(page, 'Check store prices');
   await page.waitForTimeout(400);
   const zip = await page.evaluate(() => {
-    const i = document.querySelector('input[aria-label="ZIP code to find a store near"]');
+    const i = document.querySelector('input[aria-label="ZIP code or town to find a store near"]');
     return i ? i.value : 'NO INPUT';
   });
   console.log('PREFILLED ZIP:', zip);
@@ -229,7 +229,8 @@ test('NO STORE NEARBY: named, not a spinner that stops', async ({ page }) => {
   // COPY CHANGED 2026-09-24: "Kroger and its sister stores" put Kroger
   // ALONGSIDE the others, so a host with no Kroger nearby would not learn that
   // their Harris Teeter is one. The short form is now the ownership adjective.
-  expect(t).toMatch(/No Kroger-owned store near that ZIP/);
+  // "near there" since 11/18/2026: the box takes a town as well as a ZIP.
+  expect(t).toMatch(/No Kroger-owned store near there/);
   expect(t).toMatch(/coverage is regional, and plenty of the map has none\. The estimate stands\./);
 });
 
@@ -327,4 +328,33 @@ test('A LINE TOTAL, WITH ITS ARITHMETIC — and a reference where the units do n
   console.log('COVERAGE NOTES:', JSON.stringify(notes));
   expect(notes.length, 'no element mentions the store subtotal at all').toBeGreaterThan(0);
   expect(notes.join(' || ')).toMatch(/convert to a line total/);
+});
+
+// ─── A TOWN, NOT ONLY A ZIP (owner, 11/18/2026) ─────────────────────────────
+// "Zip input should also take city state and use the other city state lookup
+// list we use in the app." The box is the app's CityField; a picked "City, ST"
+// is placed by the geocoder WITH ITS STATE, then stores are found near it.
+test('TOWN: a town picked from the list finds stores near it, with its state enforced', async ({ page }) => {
+  const asked = { geo: null, loc: null };
+  await page.route('**/api/weather/geocode**', (r) => {
+    asked.geo = r.request().url();
+    return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, result: { lat: 38.803384, lon: -76.9896507, name: 'Oxon Hill', state: 'Maryland' } }) });
+  });
+  await page.route('**/api/shopping/kroger/locations**', (r) => {
+    asked.loc = r.request().url();
+    return r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ configured: true, locations: [
+      { locationId: '09700398', name: 'Harris Teeter - Old Town Alexandria', address: '735 N Saint Asaph St' },
+    ] }) });
+  });
+  await openList(page, '21014');
+  test.skip(!(await storeLayerOffered(page)), 'unconfigured bundle');
+  await tapText(page, 'Check store prices');
+  const box = page.locator('input[aria-label="ZIP code or town to find a store near"]');
+  await box.fill('Oxon Hi');
+  await page.getByRole('button', { name: 'Oxon Hill, MD' }).first().click();   // from the app's own city list
+  await expect(box).toHaveValue('Oxon Hill, MD');
+  await page.locator('[data-find-stores]').click();
+  await expect(page.getByText('Harris Teeter - Old Town Alexandria')).toBeVisible();
+  expect(asked.geo).toMatch(/q=Oxon%20Hill%2C%20MD%2C%20US&state=MD/);
+  expect(asked.loc).toMatch(/lat=38\.803384&lon=-76\.9896507/);
 });

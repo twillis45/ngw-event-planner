@@ -80,15 +80,48 @@ export function isStorePricesConfigured() {
 const EMPTY = Object.freeze({ configured: false, results: [], reason: 'no-backend' });
 
 /**
- * Stores near a postal code. The host picks one; its `locationId` is what makes
- * a price possible.
+ * A ZIP, or a "City, ST" — the shape the app's city list (lib/usCitiesFull, via
+ * CityField) emits. Anything else is null: a bare "Springfield" is not guessed.
  */
-export async function nearbyStores(zip) {
+export function parsePlace(input) {
+  const s = String(input || '').trim();
+  if (/^\d{5}$/.test(s)) return { zip: s };
+  const m = /^(.+?),\s*([A-Za-z]{2})$/.exec(s);
+  return m ? { city: m[1].trim(), state: m[2].toUpperCase() } : null;
+}
+
+/**
+ * Stores near a ZIP or a town. The host picks one; its `locationId` is what
+ * makes a price possible.
+ *
+ * A TOWN (owner, 11/18/2026: "Zip input should also take city state"). Kroger
+ * finds stores by ZIP or by a point, so a "City, ST" is placed first, through
+ * the geocoder the weather already uses, WITH ITS STATE ENFORCED: probed live,
+ * "Abbeville,LA,US" alone came back as Abbeville, Alabama. A town the geocoder
+ * cannot place in its own state is 'no-place', never a neighbor's stores.
+ */
+export async function nearbyStores(place) {
   if (!BASE) return { configured: false, stores: [], reason: 'no-backend' };
-  const z = String(zip || '').trim();
-  if (!/^\d{5}$/.test(z)) return { configured: true, stores: [], reason: 'no-zip' };
+  const p = parsePlace(place);
+  if (!p) return { configured: true, stores: [], reason: 'no-zip' };
+  let near;
+  if (p.zip) {
+    near = `zip=${encodeURIComponent(p.zip)}`;
+  } else {
+    try {
+      const g = await fetch(`${BASE}/api/weather/geocode?q=${encodeURIComponent(`${p.city}, ${p.state}, US`)}&state=${p.state}`);
+      const d = g.ok ? await g.json() : null;
+      const pt = d && d.result;
+      if (!pt || !Number.isFinite(Number(pt.lat)) || !Number.isFinite(Number(pt.lon))) {
+        return { configured: true, stores: [], reason: 'no-place' };
+      }
+      near = `lat=${Number(pt.lat)}&lon=${Number(pt.lon)}`;
+    } catch (_e) {
+      return { configured: true, stores: [], reason: 'unavailable' };
+    }
+  }
   try {
-    const res = await fetch(`${BASE}/api/shopping/kroger/locations?zip=${encodeURIComponent(z)}`);
+    const res = await fetch(`${BASE}/api/shopping/kroger/locations?${near}`);
     if (!res.ok) return { configured: true, stores: [], reason: 'unavailable' };
     const d = await res.json();
     if (d && d.configured === false) return { configured: false, stores: [], reason: 'no-keys' };
@@ -146,7 +179,11 @@ export async function storePrices(items, locationId, assetId) {
     .map((i) => ({ i, name: String((i && (i.name || i.item)) || '').trim() }))
     .filter((x) => x.name)
     .map(({ i, name }) => {
-      const term = storeSearchTerm(i && i.line ? i.line : i);
+      // The shell sends `{ name: it.item, id }`; the curated map is keyed by
+      // `item`, which that object lacks, so no term ever went out from the app
+      // (owner, 11/18/2026: "1 of 11 items is found. Not even the turkey").
+      // The name IS the plan's item text, so it is the item to look up.
+      const term = storeSearchTerm(i && i.line ? i.line : { ...i, item: (i && i.item) || name });
       // The corpus row id, when the caller has one. `id` is what the food plan
       // already carries per line (`p_ice`, `p_crabs`); a line without one — an
       // added or ad-hoc row — simply goes unattributed rather than guessed at.

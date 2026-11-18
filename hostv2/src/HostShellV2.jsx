@@ -33,6 +33,7 @@ import { reportFailure, recordPassFunnel } from '@app/lib/failureTelemetry';
 import { Fragment, useMemo, useState, useEffect, useLayoutEffect, useRef, useCallback, useSyncExternalStore, cloneElement } from 'react';
 import { createPortal } from 'react-dom';
 import PhotoStrip from './PhotoStrip.jsx';
+import CityField from './CityField.jsx';
 import { currentTheme, setStoredTheme } from './theme.js';
 import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaRow, TierRow, SettledRow, SettledCard, OptionList, ASK_RHYTHM, ASK_COMPACT } from './parity/askKit';
 // PEOPLE/ATTENDANCE REDESIGN — composition only; every rule lives in
@@ -238,7 +239,7 @@ import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices'
 // Northeast that never throws and never looks wrong. `layerForLine` reads the
 // decision the engine recorded (`geoBasis`) instead of re-deriving it.
 import { layerForLine, storePriceIndex, layerCoverage, coverageNote } from '@app/lib/priceLayers';
-import { isStorePricesConfigured, nearbyStores, storePrices, STORE_FAMILY, STORE_FAMILY_SHORT, STORE_FAMILY_TEACH } from '@app/lib/storePrices';
+import { isStorePricesConfigured, nearbyStores, parsePlace, storePrices, STORE_FAMILY, STORE_FAMILY_SHORT, STORE_FAMILY_TEACH } from '@app/lib/storePrices';
 import { quickAccountabilityForVendor, inferPromisesFromVendor, promiseNeedsHost } from '@app/lib/vendorAccountability/derive';
 import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
 import { conflictsToActionItems, deriveResolution } from '@app/lib/vendorAccountability/actionItems';
@@ -827,62 +828,31 @@ function AddressField({ value, onChange, onPick, onEnter, placeholder, ariaLabel
   );
 }
 
-// City / ZIP field with its own key-less suggestion dropdown. V2 had autocomplete
-// on the VENUE field but not on the CITY field beside it — so the moment the app
-// BLOCKED the host for a missing town, it stopped helping them type one. Worse,
-// saveCity() rejects a bare city outright ("Springfield" could be any state), so
-// the host was blocked, unaided, and then refused. Suggestions emit "City, ST",
-// which is exactly the shape saveCity accepts.
-//
-// Ported from the legacy CityField (App.js): the ~29.7k-entry US city list in
-// lib/usCitiesFull, lazy-loaded so it never bloats the bundle, and a CUSTOM
-// dropdown rather than a native <datalist> — the native one is unreliable on
-// mobile (host report 2026-06-12: "autocomplete not working on mobile").
-// A ZIP still passes through as free text; the parse/reject rule is unchanged.
-function CityField({ value, onChange, onPick, onEnter, placeholder, ariaLabel, style, inputStyle }) {
-  const [cities, setCities] = useState(null);
-  const [open, setOpen] = useState(false);
-  const load = () => {
-    if (cities) return;
-    import('@app/lib/usCitiesFull').then(m => setCities(m.default || m)).catch(() => setCities([]));
+// CityField lives in ./CityField.jsx — one city list for every place the app asks for a town.
+
+// YOUR AREA (owner, 11/18/2026: "List for city state should be in app
+// elsewhere"). It was a bare input; it now uses the same city list as every
+// other town field. Saves on pick, Enter, or leaving the field — the blur save
+// waits a beat so a tap on a suggestion (which blurs first) saves the pick,
+// not the half-typed text.
+function AreaField({ profile, patchProfile, toast }) {
+  const saved = (profile && profile.city) || '';
+  const [draft, setDraft] = useState(saved);
+  const last = useRef(saved);
+  const cur = useRef(saved);
+  const set = (v) => { cur.current = v; setDraft(v); };
+  const commit = (raw) => {
+    const v = String(raw || '').trim();
+    if (v === last.current) return;
+    if (v && !isPlausibleCityText(v)) { toast('A town name — “Annapolis” or “Silver Spring, MD”.'); return; }
+    last.current = v;
+    const m = /,\s*([A-Za-z]{2})\s*$/.exec(v);
+    patchProfile({ city: v, ...(m ? { state: m[1].toUpperCase() } : {}) }, v ? 'Area saved — local prices and weather line up to it.' : 'Area cleared.');
   };
-  const q = String(value || '').trim().toLowerCase();
-  const matches = useMemo(() => {
-    // 2-char floor: below that every list entry matches and the dropdown is noise.
-    if (!cities || q.length < 2 || /^\d/.test(q)) return [];   // a ZIP needs no list
-    const out = [];
-    for (const c of cities) {
-      if (c.toLowerCase().startsWith(q)) { out.push(c); if (out.length >= 8) break; }
-    }
-    // Fall back to substring so "annap" and "md" both find something.
-    if (out.length < 8) {
-      for (const c of cities) {
-        if (out.length >= 8) break;
-        if (!out.includes(c) && c.toLowerCase().includes(q)) out.push(c);
-      }
-    }
-    return out;
-  }, [cities, q]);
-  const show = open && matches.length > 0 && matches[0].toLowerCase() !== q;
   return (
-    <div style={{ position: 'relative', flex: 1, ...style }}>
-      <input className="field" style={inputStyle} value={value} placeholder={placeholder}
-        aria-label={ariaLabel} autoComplete="off"
-        onFocus={() => { load(); setOpen(true); }}
-        onChange={e => { load(); setOpen(true); onChange(e.target.value); }}
-        onKeyDown={e => { if (e.key === 'Enter' && onEnter) { setOpen(false); onEnter(e.target.value); } }} />
-      {show && (
-        <div style={{ marginTop: 6 }}>
-          {matches.map((c, si) => (
-            <button key={si} type="button" className="later-row"
-              style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '7px 2px' }}
-              onClick={() => { setOpen(false); onPick ? onPick(c) : onChange(c); }}>
-              <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{c}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+    <CityField value={draft} onChange={set} onPick={(c) => { set(c); commit(c); }} onEnter={commit}
+      onBlur={() => setTimeout(() => commit(cur.current), 200)}
+      inputStyle={{ maxWidth: 'none' }} placeholder="Town or city — “Annapolis, MD”" ariaLabel="Your area" />
   );
 }
 
@@ -19886,15 +19856,7 @@ export default function HostShellV2() {
                     defaultValue={(profile && profile.name) || ''} aria-label="Your name"
                     onBlur={e => { const v = e.target.value.trim(); if (v !== ((profile && profile.name) || '')) patchProfile({ name: v }, v ? 'Your notes now sign as ' + v + '.' : 'Signature cleared.'); }} />
                   <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Your area</div>
-                  <input className="field" style={{ maxWidth: 'none' }} placeholder="Town or city — “Annapolis, MD”"
-                    defaultValue={(profile && profile.city) || ''} aria-label="Your area"
-                    onBlur={e => {
-                      const v = e.target.value.trim();
-                      if (v === ((profile && profile.city) || '')) return;
-                      if (v && !isPlausibleCityText(v)) { toast('A town name — “Annapolis” or “Silver Spring, MD”.'); return; }
-                      const m = /,\s*([A-Za-z]{2})\s*$/.exec(v);
-                      patchProfile({ city: v, ...(m ? { state: m[1].toUpperCase() } : {}) }, v ? 'Area saved — local prices and weather line up to it.' : 'Area cleared.');
-                    }} />
+                  <AreaField profile={profile} patchProfile={patchProfile} toast={toast} />
                   <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>Used for local food prices and as the weather fallback when an event has no town of its own.</p>
 
                   <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>Your plan</div>
@@ -22335,17 +22297,36 @@ export default function HostShellV2() {
                     const p = storePicker;
                     return (
                       <div style={{ margin: '0 0 var(--sp-3)' }}>
-                        <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
-                          <input className="field" inputMode="numeric" maxLength={5} placeholder="ZIP code"
-                            aria-label="ZIP code to find a store near"
-                            style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
-                            value={p.zip}
-                            onChange={e => setStorePicker(m => ({ ...m, zip: e.target.value.replace(/\D/g, '').slice(0, 5), reason: null }))} />
-                          <button className="mini" disabled={p.busy || !/^\d{5}$/.test(p.zip)} onClick={async () => {
-                            setStorePicker(m => ({ ...m, busy: true, reason: null, stores: [] }));
-                            const r = await nearbyStores(p.zip);
-                            setStorePicker(m => ({ ...m, busy: false, stores: r.stores, reason: r.reason }));
-                          }}>{p.busy ? 'Looking…' : 'Find stores'}</button>
+                        <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'flex-start' }}>
+                          {/* A ZIP OR A TOWN (owner, 11/18/2026: "Zip input should
+                              also take city state and use the other city state
+                              lookup list we use in the app"). CityField is that
+                              list (lib/usCitiesFull) with the dropdown that works
+                              on phones; nearbyStores places a "City, ST" with its
+                              state enforced before asking for stores near it. */}
+                          {(() => {
+                            const find = async (v) => {
+                              const q = v != null ? v : p.zip;
+                              if (!parsePlace(q)) return;
+                              setStorePicker(m => ({ ...m, zip: q, busy: true, reason: null, stores: [] }));
+                              const r = await nearbyStores(q);
+                              setStorePicker(m => ({ ...m, busy: false, stores: r.stores, reason: r.reason }));
+                            };
+                            return (
+                              <>
+                                <CityField value={p.zip} placeholder="ZIP or town, e.g. Oxon Hill, MD"
+                                  ariaLabel="ZIP code or town to find a store near"
+                                  style={{ maxWidth: 260 }}
+                                  inputStyle={{ fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
+                                  onChange={v => setStorePicker(m => ({ ...m, zip: v, reason: null }))}
+                                  onPick={v => setStorePicker(m => ({ ...m, zip: v, reason: null }))}
+                                  onEnter={find} />
+                                <button className="mini" data-find-stores disabled={p.busy || !parsePlace(p.zip)} onClick={() => find()}>
+                                  {p.busy ? 'Looking…' : 'Find stores'}
+                                </button>
+                              </>
+                            );
+                          })()}
                           <button className="mini" onClick={() => setStorePicker(null)}>Cancel</button>
                         </div>
                         {/* ── SAY THE LIMIT BEFORE THEY DO THE WORK ─────────
@@ -22419,9 +22400,10 @@ export default function HostShellV2() {
                             collapsed into a spinner that stops. */}
                         {!p.busy && p.reason && (
                           <Grounding gap={3}>{
-                            p.reason === 'none-nearby' ? `No ${STORE_FAMILY_SHORT} near that ZIP — coverage is regional, and plenty of the map has none. The estimate stands.`
+                            p.reason === 'none-nearby' ? `No ${STORE_FAMILY_SHORT} near there — coverage is regional, and plenty of the map has none. The estimate stands.`
                               : p.reason === 'no-keys' ? 'Store pricing is not switched on for this deployment.'
-                                : p.reason === 'no-zip' ? 'That ZIP does not look right — five digits.'
+                                : p.reason === 'no-zip' ? 'Type a five-digit ZIP, or pick a town from the list (City, ST).'
+                                  : p.reason === 'no-place' ? 'Could not find that town in that state — try its ZIP.'
                                   : 'Could not reach the store service just now. The estimate stands.'
                           }</Grounding>
                         )}
@@ -22441,7 +22423,7 @@ export default function HostShellV2() {
                   // rather than losing an assertion. Board D carries no
                   // explainer here at all; this keeps every fact and moves it.
                   return (
-                    <button className="mini" onClick={() => setStorePicker({ zip: venueFor(event).zip, stores: [], busy: false, reason: null })}>
+                    <button className="mini" onClick={() => setStorePicker({ zip: (() => { const vf = venueFor(event); return vf.zip || (vf.city && vf.state ? `${vf.city}, ${vf.state}` : ''); })(), stores: [], busy: false, reason: null })}>
                       Check store prices
                     </button>
                   );

@@ -307,6 +307,25 @@ const SEARCH_ONLY = Object.freeze([
   { id: 'p_cups', item: 'Disposable cups (self-serve drinks)', term: 'disposable cups' }, // Smart Way Translucent Cups $3.79 · 80 ct
   { id: 'p_napkins', item: 'Cloth or premium paper napkins', term: 'paper napkins' },     // Bounty White Paper Napkins $4.99 · 200 ct
   { id: 'p_napkins', item: 'Napkins (cloth or premium paper)', term: 'paper napkins' },   // same
+  // ── FRIENDSGIVING (owner, 11/18/2026, ZIP 20744: "1 of 11 items is found. Not
+  // even the turkey"). Probed live at Harris Teeter Old Town Alexandria, the
+  // nearest Kroger-family store to 20744: display text matched 1 of 13 lines;
+  // these match 12/12 there and at Foxchase, 11/12 at The Yards (no to-go
+  // containers). Search-only: these lines are bundles ("stock, a thickener, and
+  // a jar") or kits, so the shelf price is a reference, never a multiplied total.
+  // p_rolls is absent on purpose: "Dinner rolls & butter" already matches.
+  { id: 'p_turkey', item: 'Turkey (whole bird, or a breast for a small table)', term: 'frozen whole turkey' }, // HT Frozen Turkey (16-20 lb) $2.49/lb
+  { id: 'p_gravy', item: 'Gravy makings (stock, a thickener, and a jar as backup)', term: 'turkey gravy' },   // Heinz HomeStyle Turkey Gravy $3.99 · 12 oz
+  { id: 'p_main_alt', item: 'The main (ham, roast chicken, or a big vegetarian main)', term: 'spiral ham' },   // Smithfield Spiral Sliced Ham $3.99/lb
+  { id: 'p_sides', item: 'Sides you cook (potatoes, stuffing, a green vegetable, cranberry, a real vegan dish)', term: 'stuffing mix' }, // Stove Top $3.59 · 6 oz
+  { id: 'p_apps', item: 'Snacks while dishes arrive (cheese, crackers, crudités)', term: 'cheese tray' },     // Boar's Head Charcuterie & Cheese Tray $18.99
+  { id: 'p_drinks', item: 'Drinks the host covers (sparkling water, cider, one alcohol-free option)', term: 'sparkling water' }, // HT Traders 12 pk $6.49
+  { id: 'p_ice', item: 'Bagged ice for the drinks cooler', term: 'ice' },                                     // Reddy Ice 7 lb $2.99
+  { id: 'p_labels', item: 'Dish labels and a marker (what it is, who made it, the big allergens)', term: 'labels' }, // Avery round labels $1.79 ("food labels" returned baby food)
+  { id: 'p_serveware', item: 'Plates, cups, napkins, and spare serving spoons', term: 'paper plates' },       // Dixie 10" plates $9.99 · 86 ct
+  { id: 'p_thermometer', item: 'Instant-read meat thermometer', term: 'meat thermometer' },                    // GoodCook meat thermometer $9.99
+  { id: 'p_containers', item: 'Leftover containers to send home', term: 'to go containers' },                // Good To Go container set $4.99 · 16 pc ("food storage containers" returned Pyrex glass)
+  { id: 'p_cleanup', item: 'Cleanup kit (trash bags, dish soap, paper towels)', term: 'trash bags' },         // HT 13 gal drawstring $8.99 · 45 ct
 ]);
 
 const key = (id, item) => `${String(id || '').trim()}\u0000${String(item || '').trim()}`;
