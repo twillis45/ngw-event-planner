@@ -1831,6 +1831,24 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
    print. Lit to the primary ink 2026-09-27 (host) — same change as the
    cockpit's .lc-label, because the two carry the same job on two surfaces. */
 .shelf-label{font-size:var(--t-caption); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--ink); margin-bottom:var(--sp-2)}
+/* SECTION TITLES INSIDE A SHEET (owner ruling 11/18/2026: "AB-1", chosen from
+   rendered options on the real Space, Guests and Money sheets at 390px).
+   Measured before: the 11.5px caps title sat under 15-16px rows, 38px above it
+   against 33px between rows (16px on Guests), no divider, nine different inline
+   margins. Now: bold caps at row size, a --break-section gap above and a hairline
+   under, so a host sees where one part ends. The !important on margin is
+   deliberate and scoped to sheets: 58 call sites set their own inline margins and
+   this rule is the one place the rhythm is decided (sheetSectionsStandOut.spec
+   guards it). The sections rail (.srail-t) keeps its own small label. */
+.sheet .shelf-label:not(.srail-t){
+  font-size:var(--t-body-s); font-weight:700; letter-spacing:var(--tracking-2); text-transform:uppercase; color:var(--ink);
+  margin:var(--break-section) 0 var(--sp-3) !important;
+  padding-bottom:var(--sp-2); border-bottom:1px solid var(--line);
+}
+.sheet .shelf-label:not(.srail-t):first-child{margin-top:var(--sp-2) !important}
+/* Field labels are labels, not headings: plain text, so only section titles
+   read as section titles ("WHO" under "WHO'S HELPING" read as a third title). */
+.sheet .lodge-f .of{text-transform:none; letter-spacing:0; font-size:var(--t-row-sub); font-weight:550}
 .shelf{
   display:flex; flex-wrap:wrap; gap:var(--gap-chip);
 }
@@ -2914,6 +2932,12 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .fstat + .fstat{border-top:1px solid var(--line)}
 .fstat-l{font-size:var(--t-row); font-weight:600; color:var(--ink)}
 .fstat-v{display:flex; align-items:center; gap:6px; font-size:var(--t-row-sub); color:var(--steel-soft)}
+/* TOTALS STAY ON ONE LINE (owner, 11/18/2026): "$8–\n$12" and "still need\n8"
+   broke at the end of the row at 390px. The value column never wraps or
+   shrinks; the item name wraps instead, and its "need 8" note stays whole. */
+.fstat-l{min-width:0}
+.fstat-l .of{white-space:nowrap}
+.fstat-v{white-space:nowrap; flex-shrink:0}
 .fstat-chev{color:var(--faint)}
 /* Sourcing tiers as bordered cards (378:94): active one tinted + steel border. */
 .srctier-list{display:flex; flex-direction:column; gap:var(--sp-2); margin-bottom:var(--sp-2)}

@@ -25,6 +25,7 @@
 // independently scannable + actionable. VAR A and VAR C are exploration
 // artifacts retained in Figma for future iteration; not shipped on purpose.
 
+import { isSolemnEvent } from './lib/solemn';
 import { guestCountFor } from './lib/guestCountFor';
 import { useState, useEffect, useMemo } from 'react';
 import { color, space, type, radius, elevation, edge } from './design/tokens';
@@ -2302,7 +2303,24 @@ export function eventPlan(event, ctx = null) {
       .sort((a, b) => (a.priority || 9) - (b.priority || 9));
     for (const i of openPhase) {
       const domain = PHASE_TO_DOMAIN[i.id] || i.id;
-      if (seen.has(domain)) continue;   // the foundation or the reactive top already says it
+      if (seen.has(domain)) {
+        // the foundation or the reactive top already says it — but a CLOSING
+        // WINDOW the phase row declares must not be dropped with the duplicate
+        // (owner, 11/18/2026: a Friendsgiving 3 days out led with the shop
+        // because the menu decision's clock vanished here, merged into "Plan
+        // the food." with no clock). The action that stays carries it.
+        if (i.closingWindow === true) {
+          const twin = nextActions.find((a) => a && a.domain === domain);
+          if (twin && twin.closingWindow !== true) {
+            twin.closingWindow = true;
+            if (twin.leadDays == null && Number.isFinite(i.leadDays)) {
+              twin.leadDays = i.leadDays;
+              twin.dueInDays = _dueFromLead(i.leadDays);
+            }
+          }
+        }
+        continue;
+      }
       if (seenTitles.has(titleKey(i.cueLabel))) continue;   // same task, different engine
       // ── WAVE-6 RECORD-LEVEL DEDUP ────────────────────────────────────────────
       // The food cue ("Decide what you're serving · 3 open") COUNTS choice records
@@ -2806,6 +2824,40 @@ export function eventPlan(event, ctx = null) {
   // the real thing (see its own note — an inlined comparator here is exactly how
   // a band-0 test passed against reverted code).
   nextActions.sort((a, b) => compareBandedActions(a, b, _severityBand));
+
+  // ── THE BUDGET COMES FIRST (owner ruling 11/18/2026) ────────────────────────
+  // Chosen after the cons were laid out (a budget never expires; it re-opens the
+  // 11/5 "budget led a shop due tomorrow" case; it invites made-up numbers): with
+  // no budget set, "Set your budget." leads at any distance — above a closing
+  // menu or shop window, which follow it. Three exceptions. A CRITICAL action (a
+  // real emergency) keeps its place above it. The budget's own PREREQUISITES —
+  // the date and the guest count, the rungs above it on the foundation ladder
+  // (date → guests → budget) — stay above it: the suggested number is sized from
+  // the count, so asking for it first would be asking for a guess. And ON THE
+  // EVENT DAY the day's own steps lead: before this, plain scoring put the
+  // budget over "Next up at 12:00 PM — turkey into the oven" on the morning of
+  // a Friendsgiving.
+  {
+    const dOut = event.date ? daysFrom(event.date) : null;
+    const bi = nextActions.findIndex((a) => a && a.domain === 'budget' && !a.done);
+    // SOLEMN GATHERINGS ARE EXEMPT (owner ruling 11/18/2026): on a repast,
+    // memorial or homegoing the open question is who carries the meal, which
+    // decides whether there is any cost at all; plain scoring orders them.
+    const solemn = isSolemnEvent(event);
+    if (bi >= 0 && !solemn && (dOut == null || dOut >= 1)) {
+      const BEFORE_BUDGET = new Set(['date', 'guests']);
+      let slot = 0;
+      for (let k = 0; k < bi; k++) {
+        const a = nextActions[k];
+        if (a && (a.level === 'critical' || BEFORE_BUDGET.has(a.domain))) slot = k + 1;
+      }
+      if (bi > slot) { const [b] = nextActions.splice(bi, 1); nextActions.splice(slot, 0, b); }
+    } else if (bi >= 0 && !solemn && dOut === 0) {
+      let lastDay = -1;
+      nextActions.forEach((a, i) => { if (a && a.domain === 'day') lastDay = i; });
+      if (lastDay > bi) { const [b] = nextActions.splice(bi, 1); nextActions.splice(lastDay, 0, b); }
+    }
+  }
 
   // ── WAVE-6: ONE POST-SNOOZE TRUTH ───────────────────────────────────────────
   // Snooze applies HERE, inside the single source — `nextActions` is post-snooze

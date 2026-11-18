@@ -18,7 +18,6 @@ const GOT = Object.fromEntries(['p_batch', 'p_beer_wine', 'p_board', 'p_cups_pla
   'p_napkins', 'p_salsa', 'p_scorepad', 'p_snacks', 'p_soda', 'p_trash'].map((k) => [k, true]));
 
 const openBoard = async (page) => {
-  await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript((e) => {
     if (sessionStorage.getItem('seeded')) return;
     sessionStorage.setItem('seeded', '1');
