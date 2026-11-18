@@ -93,8 +93,9 @@ export const WEATHER_GLYPH_KINDS = Object.keys(G);
 // COLOR (owner, 11/18/2026: "Ok for some color"). Two tones from the existing
 // vocabulary — no new hue: the cloud, mist and wind keep the line's own ink;
 // what the sky is DOING takes color — the sun and the lightning amber
-// (--warn), rain, drizzle, snow and sleet steel (--steel-soft, the steel the
-// theme already tunes per mode to read on the page; plain --steel runs about
+// (--wx-sun), rain, drizzle, snow and sleet steel (--wx-fall). Both are set in
+// theme.js per mode: the palette's amber and steel hues, saturated for a
+// graphic's 3:1 floor rather than darkened for text (plain --steel runs about
 // 2.9:1 on the dark ground). Identification like the event-type dot, not a
 // status signal, so it does not count against UX_02's 3-color budget. `mono`
 // keeps one tone where the glyph sits inside a status surface (the weather
