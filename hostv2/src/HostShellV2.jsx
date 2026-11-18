@@ -6524,6 +6524,9 @@ export default function HostShellV2() {
       // told. Null for every draft that has nothing to declare.
       notice: (d && typeof d === 'object' && d.notice) || null,
       vendorId: (opts && opts.vendorId) || null,
+      // THE INVITE ITSELF (owner, live, 11/18/2026): a send recorded from this
+      // draft also credits "Send the invite", which reads invitesSentAt alone.
+      sendsInvite: !!(opts && opts.sendsInvite),
       from: prev ? (prev.kind === 'draft' ? prev.from || null : prev) : null,
     }));
   };
@@ -6619,9 +6622,9 @@ export default function HostShellV2() {
     try { return inviteLinkUrl(); }
     catch { toast('Sharing is unavailable because the public link address is missing. Nothing was shared.'); return ''; }
   };
-  const openInviteDraft = async (title, build) => {
+  const openInviteDraft = async (title, build, opts) => {
     const url = await verifiedRsvpUrl();
-    openDraft(title, build(event, profile, { rsvpUrl: url }));
+    openDraft(title, build(event, profile, { rsvpUrl: url }), null, opts);
   };
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const showQr = async () => {
@@ -20212,7 +20215,15 @@ export default function HostShellV2() {
                   logVendorContact(sheet.vendorId, channel === 'copy' ? 'drafted' : 'host-logged');
                   return;
                 }
-                patchEvent({ sendLedger: led }, 'Noted — the plan remembers this went out.');
+                // SENT, MARKED, AND STILL ASKED FOR (owner, live, 11/18/2026): the
+                // invite draft's Share / Text it / WhatsApp / "Mark it sent" wrote
+                // only the ledger, while "Send the invite" is credited by
+                // invitesSentAt alone (taskEngine), so the board kept leading with
+                // it. A real send of the invite now credits it too. Copying is not
+                // a send (the clipboard proves a draft, not delivery).
+                const invited = sheet.sendsInvite && channel !== 'copy' && !event.invitesSentAt
+                  ? { invitesSentAt: new Date().toISOString() } : {};
+                patchEvent({ sendLedger: led, ...invited }, 'Noted — the plan remembers this went out.');
               };
               const sendEntry = sendStateFor(event.sendLedger, sheet.title);
               const sendChip = sendStateLine(sendEntry, Date.now());
@@ -25466,7 +25477,19 @@ export default function HostShellV2() {
               // host-supplied media pipeline is not authorized, so this reads a
               // field that does not exist yet and never writes one. The fixture
               // override is review-only, never persisted, and labelled on screen.
+              // "I ALREADY SENT IT" (owner, live, 11/18/2026: "Can't get past this
+              // screen after completing the invite info"). "Send the invite" is
+              // credited only by invitesSentAt, written by a completed share sheet
+              // or a recorded send. A host who sent it another way had no way to
+              // say so here, and the board led with the invite forever. A record,
+              // not an act — the same attestation as "Mark it sent — I sent it
+              // myself" — shown only until it is recorded.
+              const markInviteSent = event.invitesSentAt ? null : {
+                label: 'I already sent it',
+                onClick: () => patchEvent({ invitesSentAt: new Date().toISOString() }, 'Invite marked as sent — the plan moves on.'),
+              };
               const countInviteTools = (<>
+                    {markInviteSent && <button className="mini" data-invite-sent onClick={markInviteSent.onClick}>{markInviteSent.label}</button>}
                     <button className="mini" onClick={shareInviteLink}>Check and share link</button>
                     <button className="mini" onClick={copyInviteLink}>Copy the link</button>
                     <button className="mini" onClick={showQr}>Check and show QR</button>
@@ -25489,7 +25512,7 @@ export default function HostShellV2() {
                 link:    { label: 'Copy the link', onClick: copyInviteLink },
                 qr:      { label: 'Check and show QR', onClick: showQr },
                 preview: { label: 'Preview on this device', onClick: () => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} } },
-                copy:    { label: 'Copy the invite', onClick: () => openInviteDraft('Your invite', draftInvite) },
+                copy:    { label: 'Copy the invite', onClick: () => openInviteDraft('Your invite', draftInvite, { sendsInvite: true }) },
                 brief:   { label: 'Draft the guest brief', onClick: () => openInviteDraft('The guest brief', draftGuestBrief) },
                 update:  { label: 'Update everyone', onClick: () => { try { openDraft('Update to everyone', draftGuestUpdate(event, {}, profile)); } catch { toast('Couldn\u2019t draft it.'); } } },
                 // WAS "Nudge the quiet ones", which promised the app would go
@@ -25502,7 +25525,7 @@ export default function HostShellV2() {
               const _chasing = _outstanding > 0 || !(event.guests || []).length;
               const inviteTiers = _chasing ? {
                 primary: _inviteActs.share,
-                secondary: [_inviteActs.link, _inviteActs.qr, _inviteActs.nudge].filter(Boolean),
+                secondary: [markInviteSent, _inviteActs.link, _inviteActs.qr, _inviteActs.nudge].filter(Boolean),
                 more: [_inviteActs.preview, _inviteActs.copy, _inviteActs.brief, _inviteActs.update],
               } : {
                 primary: _inviteActs.update,
@@ -25521,6 +25544,7 @@ export default function HostShellV2() {
                     <button className="mini" onClick={_inviteActs.brief.onClick}>Draft the guest brief</button>
                     <button className="mini" onClick={_inviteActs.update.onClick}>Update everyone</button>
                     {_inviteActs.nudge && <button className="mini" onClick={_inviteActs.nudge.onClick}>Write a nudge to send</button>}
+                    {markInviteSent && <button className="mini" data-invite-sent onClick={markInviteSent.onClick}>{markInviteSent.label}</button>}
                   </div>
               </>);
               // ── THE GUEST DETAIL, HOISTED (owner §26) ───────────────────
