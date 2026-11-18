@@ -71,7 +71,8 @@ import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — 
 import { boardDecisionND, foodDecisionND, blockerDecisionND, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
-import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
+import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind } from '@app/lib/weather';
+import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
@@ -3391,10 +3392,19 @@ export default function HostShellV2() {
   // fallback could contradict the real sky.
   const [liveWx, setLiveWx] = useState(null);
   const [liveWxSpan, setLiveWxSpan] = useState(null);
+  // THE DAY'S FORECAST FOR EVERY EVENT (owner, 11/18/2026: "weather should be
+  // wherever else in the app it's preferred and/or needed"). An indoor dinner
+  // had no forecast anywhere, though guests still drive through the snow. The
+  // same one fetch now runs for any event in the 14-day window; `liveWx` (the
+  // outdoor alerts, the rain plan, the pill) stays outdoor-only, and this is
+  // the plain forecast the Calendar and Date & time show. Live only — never
+  // the sample, which describes no real sky.
+  const [dayWx, setDayWx] = useState(null);
   useEffect(() => {
     let dead = false;
     setLiveWx(null);
     setLiveWxSpan(null);
+    setDayWx(null);
     (async () => {
       try {
         if (!isWeatherConfigured() || !event.date) return;
@@ -3405,7 +3415,7 @@ export default function HostShellV2() {
         // (d < 0) but the remaining days are still forecastable — gate on the
         // LAST day instead. Single-day events: daysUntilEnd === d, unchanged.
         const dEnd = (() => { try { return daysUntilEnd(event); } catch { return d; } })();
-        if (!out || past || d == null || d > 14 || (dEnd == null ? d < 0 : dEnd < 0)) return;
+        if (past || d == null || d > 14 || (dEnd == null ? d < 0 : dEnd < 0)) return;
         // A bare home word ("Backyard") geocodes to junk — the town is the
         // real locator for at-home events; skip entirely when neither exists.
         const homeish = /^(backyard|back\s?yard|home|house|my place)$/i.test(vf.name);
@@ -3426,6 +3436,8 @@ export default function HostShellV2() {
         if (dead || !coords) return;
         const span = await getEventWeatherSpan(coords.lat, coords.lon, event);
         if (!dead && span) {
+          setDayWx(span.primary);
+          if (!out) return;
           setLiveWx(span.primary);
           // Per-day rows are a multi-day surface: one row would just repeat
           // the headline, so the panel list renders only from 2 days up.
@@ -7796,6 +7808,7 @@ export default function HostShellV2() {
   // Until she chooses, every save of this event is refused (the lib holds the
   // version she loaded), so nothing is overwritten behind her back either way.
   const [resolvingConflict, setResolvingConflict] = useState(false);
+  const [syncRetrying, setSyncRetrying] = useState(false);   // "Retry now" in flight (attention audit 11/18/2026)
   const putCustom = (ev) => {
     if (!ev || !ev.id) return;
     const next = customs.map(c => (c && c.id === ev.id) ? ev : c);
@@ -15426,6 +15439,12 @@ export default function HostShellV2() {
             {sheet.kind === 'date' && (
               <div style={{ padding: 'var(--sp-2) 0' }}>
                 <p className="v-meta" style={{ margin: '0 0 var(--sp-3)' }}>Change the day or the arrival time — every countdown, deadline, and shopping window in the plan counts back from it.</p>
+                {dayWx && forecastLine(dayWx) && (
+                  <p className="grounding wx-line-g" data-day-forecast style={{ margin: '0 0 var(--sp-3)' }}>
+                    {weatherGlyph(skyKind(dayWx))}
+                    Forecast for {new Date(dayWx.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}: {forecastLine(dayWx)}.
+                  </p>
+                )}
                 {renderEditor({ domain: 'date' })}
               </div>
             )}
@@ -16568,7 +16587,7 @@ export default function HostShellV2() {
                 onLeft={() => { try { window.location.reload(); } catch { /* the next load drops it */ } }} />
             )}
             {sheet.kind === 'calendar' && (
-              <CalendarSheet event={event} onOpenChecklist={() => setSheet({ kind: 'tasks' })}
+              <CalendarSheet event={event} forecast={dayWx && forecastLine(dayWx) ? { date: dayWx.date, line: forecastLine(dayWx), kind: skyKind(dayWx) } : null} onOpenChecklist={() => setSheet({ kind: 'tasks' })}
                 signedIn={Boolean(session)} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} />
             )}
             {sheet.kind === 'family' && (
@@ -19474,7 +19493,7 @@ export default function HostShellV2() {
                         </>
                       )}
                       {askLLM && askLLM.loading && !askLLM.partial && (
-                        <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>Taking a broader look — I read your numbers, never invent them…</p>
+                        <BusyLine>Taking a broader look — I read your numbers, never invent them. This can take up to 15 seconds…</BusyLine>
                       )}
                       {/* The answer as it's written. Deliberately NOT styled as the
                           finished answer (f-name): it's still being checked, so it
@@ -20130,10 +20149,12 @@ export default function HostShellV2() {
                                   setCustoms(readCustomEventsSafe());
                                   setDataTick(t => t + 1);
                                   saveChangedToAccount(before);
-                                  toast(`${res.added} added · ${res.updated} updated · ${res.skipped} kept`,
-                                    !overwriteExisting && res.skipped > 0
-                                      ? { label: 'Replace matching events', fn: () => applyImport(true) }
-                                      : null);
+                                  // Says WHY "Replace" is offered (attention audit 11/18/2026): the
+                                  // bare counts did not say any of her events were left as they are.
+                                  const offerReplace = !overwriteExisting && res.skipped > 0;
+                                  toast(`${res.added} added · ${res.updated} updated · ${res.skipped} kept`
+                                    + (offerReplace ? ` — ${res.skipped === 1 ? 'one of your events matched' : res.skipped + ' of your events matched'} and ${res.skipped === 1 ? 'was' : 'were'} left as they are.` : ''),
+                                    offerReplace ? { label: 'Replace matching events', fn: () => applyImport(true) } : null);
                                 };
                                 applyImport();
                               };
@@ -20380,14 +20401,22 @@ export default function HostShellV2() {
                             </span>
                           )}
                           {showRetry && (
-                            <button className="mini" onClick={() => {
+                            <button className="mini" disabled={syncRetrying} onClick={() => {
+                              if (syncRetrying) return;
+                              setSyncRetrying(true);
                               flushSync().then(res => {
                                 if (res && res.flushed > 0) toast((res.flushed === 1 ? 'This change' : res.flushed + ' changes') + ' synced to your account.');
                                 else toast('Still couldn’t reach the cloud — we’ll keep trying.');
-                              }).catch(() => toast('Still couldn’t reach the cloud — we’ll keep trying.'));
-                            }}>Retry now</button>
+                              }).catch(() => toast('Still couldn’t reach the cloud — we’ll keep trying.'))
+                                .finally(() => setSyncRetrying(false));
+                            }}>{syncRetrying ? 'Syncing…' : 'Retry now'}</button>
                           )}
                         </div>
+                        {/* THE WAIT IS SHOWN (attention audit, 11/18/2026): both of these
+                            reach the account and took a second or two with nothing on
+                            screen but a disabled button. */}
+                        {resolvingConflict && <BusyLine>Saving your choice to your account…</BusyLine>}
+                        {syncRetrying && <BusyLine>Syncing this event with your account…</BusyLine>}
                       </>
                     );
                   })()}
@@ -24666,13 +24695,23 @@ export default function HostShellV2() {
                                       let win = null;
                                       try { win = window.open('', '_blank'); } catch (_e) { win = null; }
                                       try { if (win) win.opener = null; } catch (_e) { /* already safe */ }
+                                      // NOT A BLANK TAB (attention audit, 11/18/2026): the tab opens
+                                      // inside the tap and waits for a fresh link, so it says so.
+                                      try {
+                                        if (win && win.document) {
+                                          win.document.title = 'Getting the contract…';
+                                          win.document.body.style.cssText = 'font:16px -apple-system,system-ui,sans-serif;background:#16181b;color:#e8ebee;display:flex;align-items:center;justify-content:center;height:100vh;margin:0';
+                                          win.document.body.textContent = 'Getting the contract…';
+                                        }
+                                      } catch (_e) { /* a cross-origin or closed tab: nothing to write */ }
+                                      toast('Getting ' + (v.contractFileName || 'the contract') + '…', null, null, { busy: true });
                                       const r = await contractUrlFor(v);
                                       if (!r.ok) {
                                         try { if (win) win.close(); } catch (_e) { /* already gone */ }
                                         toast('Couldn’t open ' + (v.contractFileName || 'the contract') + ' — we couldn’t get a fresh link to the file. Check you’re online and signed in, then tap Open the contract again.', null, null, { sticky: true });
                                         return;
                                       }
-                                      if (win) { try { win.location.replace(r.url); } catch (_e) { /* it navigated away */ } }
+                                      if (win) { endBusyToast(); try { win.location.replace(r.url); } catch (_e) { /* it navigated away */ } }
                                       else toast('Your browser blocked the new tab.', { label: 'Open the contract', fn: () => { try { window.open(r.url, '_blank', 'noopener'); } catch (_e) { /* blocked again */ } } }, null, { sticky: true });
                                     }}>Open the contract</button>
                                   ) : v.contractUrl ? (
@@ -27055,15 +27094,10 @@ export default function HostShellV2() {
       {wxImpact && stage === 'plan' && (
         <div className={'wxpill' + (wxOpen ? ' open' : '') + (!heroInView ? ((elegantMode || dockHidden) ? ' wxpill-mid' : ' wxpill-raised') : '')}>
           <button className="wxpill-head" onClick={() => { setWxOpen(o => !o); feedback('tick'); }} aria-expanded={wxOpen}>
-            {/* Real stroke SVG (matches the shared Icon component's style) — was a
-                ☂ text dingbat, which the no-emoji doctrine bans in UI. aria-hidden;
-                the wx-line text carries the meaning. */}
-            <span className="wx-glyph" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
-                <path d="M7 16.5a4.5 4.5 0 0 1-.5-8.97 5 5 0 0 1 9.8-1.2A3.75 3.75 0 0 1 17 16.5Z" />
-                <path d="M8.5 19l-1 2M12 19l-1 2M15.5 19l-1 2" />
-              </svg>
-            </span>
+            {/* The day's own sky (weatherGlyphs, 11/18/2026), drawn in the rail's
+                stroke family — it was one rain cloud for every alert, heat
+                included. aria-hidden; the wx-line text carries the meaning. */}
+            <span className="wx-glyph" aria-hidden="true">{weatherGlyph(skyKind(wx), { mono: true })}</span>
             <span className="wx-line">
               {/* The sample marker rides the COLLAPSED line — the only line most
                   hosts read. A forecast claim may never outrun its source. */}

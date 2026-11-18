@@ -327,4 +327,25 @@ test.describe('a refused save is not called saved — the shell half', () => {
     await expect(page.locator('.later-row').filter({ hasText: CONFLICT_ROW })).toHaveCount(0);
     await expect(page.locator('.later-row').filter({ hasText: /^Synced/ }).first()).toBeVisible({ timeout: 5000 });
   });
+
+  // ── 7 · THE CHOICE SHOWS ITS WAIT (attention audit, 11/18/2026) ──────────
+  // "Keep mine" reaches the account and took a second or two behind a
+  // disabled button. While it saves, a status line says so, and it clears.
+  test('"Keep mine" shows a status line while it saves, and the line clears', async ({ page }) => {
+    await install(page, { mode: 'resolvable' });
+    await boot(page);
+    await makeAnEdit(page);
+    await openSettings(page);
+    let release; const held = new Promise((r) => { release = r; });
+    await page.route(`${PROJECT}/rest/v1/events**`, async (route) => {
+      if (route.request().method() === 'PATCH') await held;
+      return route.fallback();
+    });
+    await conflictRow(page).getByRole('button', { name: 'Keep mine' }).click();
+    const busy = page.locator('[data-busy-line]', { hasText: 'Saving your choice' });
+    await expect(busy).toBeVisible();
+    release();
+    await expect(page.locator('div.toast')).toContainText(/Your version is now the one in your account/i, { timeout: 5000 });
+    await expect(busy).toHaveCount(0);
+  });
 });

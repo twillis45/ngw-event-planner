@@ -267,6 +267,19 @@ export function applyStudioMatte(override) {
   // Audit I2: was α 0.15 while --ok-tint/--danger-tint are 0.10 — amber chips
   // rendered visibly denser than green/red beside them. Normalized to 0.10.
   set('--warn-tint', tint(bundle.amber, 0.10));
+  // WEATHER GLYPH TONES (owner, 11/18/2026: "Color on light is dirty or
+  // muted", then "Still a bit dark"; picked B from a four-step ladder). The
+  // glyphs first borrowed --warn and --steel-soft, which light mode darkens
+  // for TEXT (4.5:1): a brown amber and a slate steel. On light they now take
+  // the same two hues bright: #E89A2C amber (2.17:1 on --bg) and #5294BF steel
+  // (3.11:1). The amber sits under the 3:1 graphics floor (WCAG 1.4.11) on
+  // purpose: the color is not what carries the meaning — every glyph is
+  // aria-hidden beside words that say the forecast, and its cloud and
+  // outlines stay in --muted (5.11:1), so the shape reads without the color.
+  // Dark keeps the amber and the light steel it already reads in (8.46 /
+  // 6.91 on --bg). Glyphs only: never text, never a status fill.
+  set('--wx-sun', isLight ? '#E89A2C' : bundle.amber);
+  set('--wx-fall', isLight ? '#5294BF' : dsColor.text.onTint);
   // --danger is the danger TEXT/accent color (severity tags, alert headlines,
   // risk labels, the danger pill). dangerRed was lightened in the palette so
   // this clears 4.5:1 on --danger-tint and on the card. --danger-solid keeps the

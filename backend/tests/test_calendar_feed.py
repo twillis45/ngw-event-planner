@@ -91,3 +91,22 @@ def test_it_parses_as_icalendar():
     got = [(str(e.get("dtstart").dt), str(e.get("summary"))) for e in cal.walk("VEVENT")]
     assert got[0] == ("2026-11-21", "Vida’s Friendsgiving")
     assert str(cal.get("X-WR-CALNAME")) == "Vida’s Friendsgiving at Pine Street — plan"
+
+
+def test_the_event_day_has_the_start_time_the_host_set():
+    """Owner, 11/18/2026: "Calendar should show on day and time of event." The
+    app sends "start" only for a time the host set; the feed puts the event in
+    at that local clock time, ending after the run length it was given."""
+    stamp = datetime(2026, 11, 16, tzinfo=timezone.utc)
+    timed = {**EVENT, "calendarFeed": [{"id": "event-1", "date": "2026-11-21", "kind": "event", "label": "Vida’s Friendsgiving",
+                                        "start": "16:00", "minutes": 300}]}
+    out = cf.feed_ics(timed, stamp)
+    assert "DTSTART:20261121T160000\r\n" in out and "DTEND:20261121T210000\r\n" in out
+    assert "VALUE=DATE" not in out
+    # No run length: a start and no invented end. A bad clock, or a start on a
+    # step, stays all-day.
+    no_len = cf.feed_ics({**EVENT, "calendarFeed": [{"id": "event-1", "date": "2026-11-21", "kind": "event", "label": "x", "start": "09:30"}]}, stamp)
+    assert "DTSTART:20261121T093000\r\n" in no_len and "DTEND" not in no_len
+    for bad in [{"kind": "event", "start": "25:00"}, {"kind": "event", "start": "4pm"}, {"kind": "task", "start": "16:00"}]:
+        o = cf.feed_ics({**EVENT, "calendarFeed": [{"id": "x", "date": "2026-11-21", "label": "x", **bad}]}, stamp)
+        assert "DTSTART;VALUE=DATE:20261121\r\n" in o
