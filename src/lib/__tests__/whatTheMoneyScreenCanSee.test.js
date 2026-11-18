@@ -121,7 +121,9 @@ describe('what the money screen can and cannot see', () => {
     const { gated } = census();
     // +2 on 11/15/2026: Friendsgiving's main and potluck-vs-host sides are gated on who cooks.
     // +7 on 11/18/2026: Friendsgiving's one host-cooks sides line became eight (one per dish), all gated on who cooks.
-    expect(gated.length).toBe(45);
+    // -8 later on 11/18/2026: under the default potluck those eight sides are no longer held out —
+    // they show as friends' dishes at $0 (friendsBringWhen), so they price nothing the host did not pick.
+    expect(gated.length).toBe(37);
   });
 
   test('THE RED-PROOF, IN THE TEST: perturbing decor moves nothing, food moves a lot', () => {

@@ -21047,7 +21047,14 @@ export default function HostShellV2() {
                     <Eyebrow>Not yours to buy</Eyebrow>
                     <BigValue>{rows.length === 1 ? 'One dish' : `${rows.length} dishes`}</BigValue>
                     <GuideLine>
-                      {`${who} is carrying the food. You are buying the table around it.`}
+                      {/* Some of the food or all of it: a Friendsgiving potluck's host still
+                          buys the turkey (owner, 11/18/2026). Plural names take "are". */}
+                      {(() => {
+                        const are = /\b(friends|neighbors|families)\b/i.test(who) ? 'are' : 'is';
+                        const allOfIt = !(foodPlan.list || []).some((i) => i && !i.broughtByCommunity && i.group === 'Food');
+                        return allOfIt ? `${who} ${are} carrying the food. You are buying the table around it.`
+                          : `${who} ${are} bringing these dishes. You are buying the rest.`;
+                      })()}
                     </GuideLine>
                     {/* THE COUNT MOVED TO THE PINNED BAR (2026-09-27), so this
                         line stops saying it. Driven on a Repast the moment the

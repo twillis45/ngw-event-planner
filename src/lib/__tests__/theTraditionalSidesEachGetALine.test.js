@@ -91,8 +91,23 @@ describe.each(CASES)('%s, host cooking for 15', (type, picks) => {
 });
 
 describe('Friendsgiving potluck: the sides are assigned, not bought', () => {
-  test.each([HOST_MAIN, ALL_ASSIGNED, ORDERED])('%s — no side is a host purchase', (model) => {
-    const ids = rows(ev('Friendsgiving', { hosting_model: model })).map((r) => r.id);
+  // AMENDED 11/18/2026: under a potluck each side stays on the list as a dish a
+  // friend brings — $0 to the host, nameable in the Bringing tab — rather than
+  // disappearing. It is still not a host purchase.
+  test.each([HOST_MAIN, ALL_ASSIGNED])('%s — every side is a friend\'s dish, $0 and out of the buy count', (model) => {
+    const e = ev('Friendsgiving', { hosting_model: model });
+    const plan = playbookFoodPlan(e);
+    const mine = (plan.list || []).filter((r) => IDS.includes(r.id));
+    expect(mine.map((r) => r.id).sort()).toEqual([...IDS].sort());
+    for (const r of mine) {
+      expect(r.broughtByCommunity).toBe(true);
+      expect(r.friendBrings).toBe(true);
+      expect([r.low, r.high]).toEqual([0, 0]);
+    }
+    expect(plan.itemCount).toBe((plan.list || []).filter((r) => !r.skipped && !r.friendBrings && ['Food', 'Drinks', 'Dessert'].includes(r.group)).length);
+  });
+  test('ordered in — no side at all', () => {
+    const ids = rows(ev('Friendsgiving', { hosting_model: ORDERED })).map((r) => r.id);
     for (const id of IDS) expect(ids).not.toContain(id);
   });
 

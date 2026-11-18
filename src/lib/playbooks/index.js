@@ -5355,6 +5355,24 @@ export function playbookFoodPlan(event, opts = {}) {
     }
   }
 
+  // ONE DISH, ONE FRIEND (owner, 11/18/2026: Friendsgiving "need[s] more
+  // traditional sides"). The whole-meal rule above is for a community carrying
+  // ALL the food (a repast). In a Friendsgiving potluck the host still buys the
+  // turkey while each side is a friend's: a purchase that authors
+  // `friendsBringWhen` is marked the same way — listed, $0 to the host, and
+  // nameable in the Bringing tab — only when that choice is made.
+  const _purchaseById = new Map((playbook.purchases || []).filter(Boolean).map((p) => [p.id, p]));
+  for (const it of list) {
+    if (!it || it.broughtByCommunity) continue;
+    const p = _purchaseById.get(it.id);
+    if (!p || !p.friendsBringWhen || !choiceShown(event, p.friendsBringWhen)) continue;
+    it.broughtByCommunity = true;
+    it.broughtByLabel = 'Your friends';
+    it.friendBrings = true;   // not the host's to buy: off "N of M bought" too
+    it.low = 0;
+    it.high = 0;
+  }
+
   // Food-approach: caterer chosen → inject the per-guest catering line (the homemade food rows
   // were dropped by hostCooksIt above). Same row shape as a host-added dish, so it flows into the
   // food total, the Food group, and effectiveItems like any other line. pf = regional factor.
@@ -5509,7 +5527,10 @@ export function playbookFoodPlan(event, opts = {}) {
   // is what connects the food plan to the budget: spent updates as items are ticked.
   const got = (event.foodGot && typeof event.foodGot === 'object') ? event.foodGot : {};
   const gotSum = (k) => list.filter((i) => got[i.id] && !i.skipped && isFood(i)).reduce((s, i) => s + eff(i, k), 0);
-  const boughtCount = list.filter((i) => got[i.id] && !i.skipped && isFood(i)).length;
+  // A dish a friend brings is not the host's to buy, so it is out of the count
+  // the shop, the phase meter and the buy step read (friendsBringWhen, 11/18/2026).
+  const hostBuys = (i) => !i.friendBrings;
+  const boughtCount = list.filter((i) => got[i.id] && !i.skipped && isFood(i) && hostBuys(i)).length;
 
   // Supplies — the 'Supplies' group of the list. Derived totals mirror the food
   // ones (eff() so a locked supply is a fixed cost; got tracks check-offs).
@@ -5585,7 +5606,7 @@ export function playbookFoodPlan(event, opts = {}) {
     spentLow: Math.max(0, Math.round(gotSum('low') / 5) * 5),
     spentHigh: Math.max(0, Math.round(gotSum('high') / 5) * 5),
     boughtCount,
-    itemCount: list.filter((i) => !i.skipped && isFood(i)).length,
+    itemCount: list.filter((i) => !i.skipped && isFood(i) && hostBuys(i)).length,
     // ── THE WHOLE SHOPPING LIST, AS ONE FIELD (2026-10-06) ─────────────────
     // ADDITIVE ON PURPOSE. `itemCount` above means "the food is shopped" to
     // the readiness gate, to dayBefore's RECON-I5 and to the nav row, and

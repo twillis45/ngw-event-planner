@@ -104,7 +104,10 @@ describe('angle 3 — who cooks what', () => {
     expect(foodIds(e)).toEqual(expect.arrayContaining(['p_turkey', 'p_gravy', 'p_labels']));
     // Review finding 11/15/2026: a "Guests bring" line was still a host buy-task
     // and a host cost. The dishes friends carry live in the assignment task.
-    expect(foodIds(e)).not.toContain('p_stuffing');   // the sides are one line per dish since 11/18/2026
+    // AMENDED 11/18/2026: each side is listed as a friend's dish — not a host buy,
+    // not a host cost — so the review finding above still holds.
+    const stuffing = playbookFoodPlan(e).list.find((i) => i.id === 'p_stuffing');
+    expect(stuffing).toEqual(expect.objectContaining({ friendBrings: true, broughtByCommunity: true, low: 0, high: 0 }));
     expect(foodIds(e)).not.toContain('p_desserts');
     expect(taskIds(e)).toEqual(expect.arrayContaining(['t_assign', 't_buy_bird', 't_thaw', 't_transport_note', 't_oven_slots']));
   });
