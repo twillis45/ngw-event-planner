@@ -2824,6 +2824,36 @@ export function eventPlan(event, ctx = null) {
   // a band-0 test passed against reverted code).
   nextActions.sort((a, b) => compareBandedActions(a, b, _severityBand));
 
+  // ── THE BUDGET COMES FIRST (owner ruling 11/18/2026) ────────────────────────
+  // Chosen after the cons were laid out (a budget never expires; it re-opens the
+  // 11/5 "budget led a shop due tomorrow" case; it invites made-up numbers): with
+  // no budget set, "Set your budget." leads at any distance — above a closing
+  // menu or shop window, which follow it. Three exceptions. A CRITICAL action (a
+  // real emergency) keeps its place above it. The budget's own PREREQUISITES —
+  // the date and the guest count, the rungs above it on the foundation ladder
+  // (date → guests → budget) — stay above it: the suggested number is sized from
+  // the count, so asking for it first would be asking for a guess. And ON THE
+  // EVENT DAY the day's own steps lead: before this, plain scoring put the
+  // budget over "Next up at 12:00 PM — turkey into the oven" on the morning of
+  // a Friendsgiving.
+  {
+    const dOut = event.date ? daysFrom(event.date) : null;
+    const bi = nextActions.findIndex((a) => a && a.domain === 'budget' && !a.done);
+    if (bi >= 0 && (dOut == null || dOut >= 1)) {
+      const BEFORE_BUDGET = new Set(['date', 'guests']);
+      let slot = 0;
+      for (let k = 0; k < bi; k++) {
+        const a = nextActions[k];
+        if (a && (a.level === 'critical' || BEFORE_BUDGET.has(a.domain))) slot = k + 1;
+      }
+      if (bi > slot) { const [b] = nextActions.splice(bi, 1); nextActions.splice(slot, 0, b); }
+    } else if (bi >= 0 && dOut === 0) {
+      let lastDay = -1;
+      nextActions.forEach((a, i) => { if (a && a.domain === 'day') lastDay = i; });
+      if (lastDay > bi) { const [b] = nextActions.splice(bi, 1); nextActions.splice(lastDay, 0, b); }
+    }
+  }
+
   // ── WAVE-6: ONE POST-SNOOZE TRUTH ───────────────────────────────────────────
   // Snooze applies HERE, inside the single source — `nextActions` is post-snooze
   // and `setAside` carries what the host set down (with its comeback date), so
