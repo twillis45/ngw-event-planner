@@ -5128,11 +5128,14 @@ export default function HostShellV2() {
       // the first thing a screen reader says on a brand-new device.
       if (welcome) document.title = base;
       else if (stage === 'plan' && askMode && heroAskText) document.title = heroAskText + ' — ' + base;
-      else if (stage === 'plan' && listIsCalm) document.title = 'All quiet — ' + base;
+      // Not "All quiet" while steps are past due (owner screenshot 11/18/2026:
+      // the tab read "All quiet" over "8 things are past due"). mayBeCalm is the
+      // veto-aware calm the board itself uses.
+      else if (stage === 'plan' && mayBeCalm) document.title = 'All quiet — ' + base;
       else document.title = base;
     } catch { /* title is cosmetic */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, askMode, listIsCalm, heroAskText, queue.length && queue[0] && queue[0].id, event.id, welcome]);
+  }, [stage, askMode, listIsCalm, mayBeCalm, heroAskText, queue.length && queue[0] && queue[0].id, event.id, welcome]);
   useEffect(() => {
     try {
       const crit = queue.filter(a => a && a.level === 'critical').length;
@@ -27121,19 +27124,23 @@ export default function HostShellV2() {
           same onCta path the named card uses), or scrolls to the full list when calm. */}
       {stage === 'plan' && !heroInView && (
         <button
-          className={'next-bar' + ((queue.length === 0 || listIsCalm) ? ' allset' : '')}
+          /* NOT "ALL QUIET" OVER LATE STEPS (owner screenshot 11/18/2026: the bar
+             read "Next · All quiet" on a board whose top said "8 things are past
+             due"). With an empty queue but a calm veto, the bar says the veto and
+             takes the host to the hero, where the late steps are now listed. */
+          className={'next-bar' + (((queue.length === 0 || listIsCalm) && !calmVeto) ? ' allset' : '')}
           /* The bar's title ellipsizes on long asks — the full text must survive
              somewhere reachable (audit cleanup 2026-07-22: truncation-without-title). */
-          title={days === 0 ? 'Run the day' : (listIsCalm ? 'All quiet' : String(queue[0].title || ''))}
+          title={days === 0 ? 'Run the day' : (listIsCalm ? (calmVeto ? calmVeto.label : 'All quiet') : String(queue[0].title || ''))}
           onClick={() => {
             if (days === 0) { setStage('day'); return; }
-            if (queue.length && !listIsCalm) { try { heroZoneRef.current && heroZoneRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* no hero zone */ } return; }
+            if ((queue.length && !listIsCalm) || calmVeto) { try { heroZoneRef.current && heroZoneRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* no hero zone */ } return; }
             document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' });
           }}
           aria-label="Next thing that needs you"
         >
           <span className="nb-label">Next</span>
-          <span className="nb-title">{days === 0 ? 'Run the day' : (listIsCalm ? 'All quiet' : String(queue[0].title || '').replace(/\.+$/, ''))}</span>
+          <span className="nb-title">{days === 0 ? 'Run the day' : (listIsCalm ? (calmVeto ? calmVeto.label : 'All quiet') : String(queue[0].title || '').replace(/\.+$/, ''))}</span>
           {days !== 0 && !listIsCalm && queue.length > 1 && (
             /* LABEL THE COUNT, DO NOT RENUMBER IT (both panels ruled, 2026-07-30).
                This badge counts QUEUE ITEMS while the sentence beside it counts
