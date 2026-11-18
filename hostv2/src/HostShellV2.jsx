@@ -16097,6 +16097,34 @@ export default function HostShellV2() {
                     the right. The dense have/helper inputs + retail links reveal
                     on tap. At 12 items this stays a calm column instead of 12
                     stacked 3-line input+chip clusters. */}
+                {/* SEATING WITHOUT NAMES (owner approved 11/18/2026). "Who sits where"
+                    opens only once guests have said yes, so a Friendsgiving planned
+                    by headcount never learned whether 15 people fit. The same count
+                    the seating sheet uses, with where it came from, and the ± that
+                    sets the host's own number. */}
+                {(() => {
+                  const gc = (() => { try { return guestCountFor(event).count; } catch { return null; } })();
+                  if (!gc || !seating) return null;
+                  const n = seating.tableCount;
+                  const basis = (() => { try { return tableCountBasis(event); } catch { return 'default'; } })();
+                  const tables = n + (n === 1 ? ' table' : ' tables');
+                  const why = basis === 'host' ? `${tables} — your number, for ${gc} guests.`
+                    : basis === 'playbook' ? `${tables} for ${gc} guests — what ${aOccasion(event.type || 'event')} this size usually needs.`
+                      : basis === 'headcount' ? `About ${tables} of 8 for ${gc} guests — a standard round or banquet table seats 8.`
+                        : `${tables} — a starting point, not a read of your room.`;
+                  return (
+                    <div data-seat-check style={{ margin: '0 0 var(--sp-3)' }}>
+                      <div className="shelf-label" style={{ margin: '2px 0 var(--sp-1)' }}>Seating</div>
+                      <div className="actions-row" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ flex: 1, minWidth: 0 }}>{why}</span>
+                        <button className="mini" aria-label="One fewer table" disabled={n <= 1}
+                          onClick={() => patchEvent({ tables: clampTableCount(n - 1) })}>−</button>
+                        <button className="mini" aria-label="One more table"
+                          onClick={() => patchEvent({ tables: clampTableCount(n + 1) })}>+</button>
+                      </div>
+                    </div>
+                  );
+                })()}
                 {capacity && (capacity.items || []).filter(it => it && !it.skipped).length > 0 && (
                   <>
                     <div className="shelf-label" style={{ margin: '2px 0 var(--sp-1)' }}>What to bring</div>
@@ -18324,7 +18352,9 @@ export default function HostShellV2() {
                           {/* "1 tables" (host report 2026-07-28) — the plural was hard-coded. */}
                           {basis === 'playbook'
                             ? `${sp.tables.length} ${sp.tables.length === 1 ? 'table' : 'tables'} — what ${aOccasion(event.type || 'event')} this size usually needs. Use the ± to change it.`
-                            : `${sp.tables.length} ${sp.tables.length === 1 ? 'table' : 'tables'} — a starting point, not a read of your room. Use the ± to change it.`}
+                            : basis === 'headcount'
+                              ? `About ${sp.tables.length} ${sp.tables.length === 1 ? 'table' : 'tables'} of 8 for your headcount — a standard round or banquet table seats 8. Use the ± to change it.`
+                              : `${sp.tables.length} ${sp.tables.length === 1 ? 'table' : 'tables'} — a starting point, not a read of your room. Use the ± to change it.`}
                         </p>
                       );
                     })()}
