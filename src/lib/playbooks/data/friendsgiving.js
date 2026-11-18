@@ -145,6 +145,22 @@ const friendsgiving = {
       why: 'Everything is planned backward from this hour: when the bird goes in, when friends should arrive with their dishes, and when the oven has to be free for their reheating. Tell guests both times: when to arrive and when you eat.',
     },
     {
+      // SIT-DOWN OR BUFFET (owner, 11/18/2026). Decides whether the seating line
+      // counts tables for everyone or seats for everyone; this playbook's own run
+      // of show already serves from a buffet.
+      id: 'service_style',
+      label: 'Sit-down or buffet?',
+      options: ['Buffet — fill a plate, sit where there is room', 'Sit-down — everyone at the table'],
+      default: 'Buffet — fill a plate, sit where there is room',
+      defaultWhy: 'Buffet is the default because a potluck arrives as a dozen dishes, and this plan already sets them out on a buffet. Change it to sit-down if your table, with a leaf or a folding table added, seats everyone.',
+      when: 'T-7d',
+      blocks: ['seating'],
+      noCostEffect: true,
+      weight: 'low', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive',
+      priorityBasis: { rationale: 'It decides how many chairs and tables to find; a week out is time to borrow them.', tier: 'reasoned' },
+      why: 'A sit-down meal needs a seat at a table for everyone; a buffet needs a seat for everyone, not all at the table. Count chairs either way.',
+    },
+    {
       id: 'dietary_table',
       label: 'Who has an allergy or dietary need to plan around?',
       options: ['Nobody at this table', 'One or two needs — label dishes and plan a safe plate', 'Several — plan dishes everyone can eat'],

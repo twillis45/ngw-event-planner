@@ -175,6 +175,7 @@ import { publicAppUrl } from '@app/lib/publicAppUrl';
 import { budgetPaymentPatch, parseVendorCost, paymentAboveWholePlan } from '@app/lib/vendorMoney';
 import { budgetFor, budgetTotal } from '@app/lib/budgetFor';
 import { guestCountFor } from '@app/lib/guestCountFor';
+import { serviceStyle } from '@app/lib/serviceStyle';
 import { marketFor } from '@app/lib/marketFor';
 import { metroForPlace } from '@app/lib/metroForPlace';
 import CostSplitSheet, { splitRowSub } from './CostSplitSheet.jsx';
@@ -16108,6 +16109,17 @@ export default function HostShellV2() {
                   const n = seating.tableCount;
                   const basis = (() => { try { return tableCountBasis(event); } catch { return 'default'; } })();
                   const tables = n + (n === 1 ? ' table' : ' tables');
+                  // Sit-down or buffet (owner, 11/18/2026): a buffet needs a seat for
+                  // everyone, not a place at a table for everyone.
+                  const style = (() => { try { return serviceStyle(event); } catch { return null; } })();
+                  if (style === 'buffet') {
+                    return (
+                      <div data-seat-check data-service-style="buffet" style={{ margin: '0 0 var(--sp-3)' }}>
+                        <div className="shelf-label" style={{ margin: '2px 0 var(--sp-1)' }}>Seating</div>
+                        <span>Buffet — a seat for each of {gc} guests, not all at a table: chairs, the couch, a folding table. The food goes on the buffet.</span>
+                      </div>
+                    );
+                  }
                   const why = basis === 'host' ? `${tables} — your number, for ${gc} guests.`
                     : basis === 'playbook' ? `${tables} for ${gc} guests — what ${aOccasion(event.type || 'event')} this size usually needs.`
                       : basis === 'headcount' ? `About ${tables} of 8 for ${gc} guests — a standard round or banquet table seats 8.`

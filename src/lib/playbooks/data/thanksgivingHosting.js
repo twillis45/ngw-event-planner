@@ -60,6 +60,22 @@ const thanksgivingHosting = {
 
   decisions: [
     {
+      // SIT-DOWN OR BUFFET (owner, 11/18/2026). Decides whether the seating line
+      // counts tables for everyone or seats for everyone; this playbook's tasks
+      // set the table and sit everyone down.
+      id: 'service_style',
+      label: 'Sit-down or buffet?',
+      options: ['Buffet — fill a plate, sit where there is room', 'Sit-down — everyone at the table'],
+      default: 'Sit-down — everyone at the table',
+      defaultWhy: 'Sit-down is the default because this plan sets the table and brings everything to it at once. Change it to buffet if the table, even with a leaf or a folding table added, cannot seat everyone.',
+      when: 'T-7d',
+      blocks: ['seating'],
+      noCostEffect: true,
+      weight: 'low', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive',
+      priorityBasis: { rationale: 'It decides how many chairs and tables to find; a week out is time to borrow them.', tier: 'reasoned' },
+      why: 'A sit-down meal needs a seat at a table for everyone; a buffet needs a seat for everyone, not all at the table. Count chairs either way.',
+    },
+    {
       id: 'hosting_model',
       label: 'Are you cooking the whole meal, or is it a potluck?',
       options: ['Host cooks the whole meal', 'Host cooks the turkey and core dishes, guests bring sides and desserts', 'Full potluck — Friendsgiving style, host assigns dishes', 'Ordered — a market or restaurant cooks, host reheats and serves'],

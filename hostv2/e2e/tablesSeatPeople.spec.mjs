@@ -6,7 +6,7 @@
 // how many tables of 8 the headcount needs, and the ± sets the host's number.
 import { test, expect, settled, dateIn, openSectionByName } from './fixtures.mjs';
 
-const boot = async (page) => {
+const boot = async (page, foodChoices = { service_style: 'Sit-down — everyone at the table' }) => {
   await page.addInitScript((e) => {
     if (sessionStorage.getItem('seeded')) return;
     sessionStorage.setItem('seeded', '1');
@@ -18,7 +18,7 @@ const boot = async (page) => {
   }, {
     id: 'e2e-seats', name: 'My Friendsgiving', type: 'Friendsgiving', date: dateIn(10), startTime: '16:00',
     venue: "Vida's", venueCity: 'Baltimore', venueState: 'MD', guestMode: 'count', guestEstimate: 15, guestCountSource: 'host',
-    guests: [], vendors: [], budget: [], timeline: [],
+    guests: [], vendors: [], budget: [], timeline: [], foodChoices,
   });
   await page.goto('?elegant=1');
   await settled(page);
@@ -34,4 +34,14 @@ test('15 guests, no names: about 2 tables of 8, and the ± sets her own number',
   await line.getByRole('button', { name: 'One more table' }).click();
   await expect(line).toContainText('3 tables — your number, for 15 guests.');
   expect(await stored(page)).toBe(3);
+});
+
+// SIT-DOWN OR BUFFET (owner, 11/18/2026): a Friendsgiving defaults to the buffet
+// its run of show already uses, and a buffet needs a seat for everyone, not a
+// place at a table for everyone.
+test('a buffet says seats for everyone, not tables for everyone', async ({ page }) => {
+  await boot(page, {});
+  const line = page.locator('[data-seat-check]');
+  await expect(line).toHaveAttribute('data-service-style', 'buffet');
+  await expect(line).toContainText('Buffet — a seat for each of 15 guests, not all at a table');
 });
