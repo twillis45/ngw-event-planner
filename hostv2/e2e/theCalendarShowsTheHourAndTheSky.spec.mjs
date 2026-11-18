@@ -51,6 +51,9 @@ test('the event day shows the hour the host set, and an indoor event gets the fo
   const day = await eventDayInCalendar(page);
   await expect(day.locator('[data-cal-time]')).toHaveText('4:00 PM');
   await expect(day.locator('[data-cal-wx]')).toHaveText('Scattered clouds · 41°–55°F · 10% chance of rain or snow');
+  // The day's own sky, drawn (owner, 11/18: "beautiful glyphs for weather"):
+  // OpenWeather's 03d is scattered clouds.
+  await expect(day.locator('[data-cal-wx] [data-wx-glyph]')).toHaveAttribute('data-wx-glyph', 'cloudy');
   expect(calls).toEqual(expect.arrayContaining(['geocode', 'onecall']));
   // Indoor: the outdoor alert stays off.
   await expect(page.locator('.wxpill')).toHaveCount(0);
@@ -71,4 +74,5 @@ test('Date & time shows the forecast for the day', async ({ page }) => {
   const sheet = page.getByRole('dialog', { name: 'Date & time' });
   await expect(sheet).toBeVisible();
   await expect(sheet.locator('[data-day-forecast]')).toContainText('Scattered clouds · 41°–55°F · 10% chance of rain or snow');
+  await expect(sheet.locator('[data-day-forecast] [data-wx-glyph]')).toHaveAttribute('data-wx-glyph', 'cloudy');
 });

@@ -71,7 +71,8 @@ import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — 
 import { boardDecisionND, foodDecisionND, blockerDecisionND, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
-import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine } from '@app/lib/weather';
+import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind } from '@app/lib/weather';
+import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
@@ -15439,7 +15440,8 @@ export default function HostShellV2() {
               <div style={{ padding: 'var(--sp-2) 0' }}>
                 <p className="v-meta" style={{ margin: '0 0 var(--sp-3)' }}>Change the day or the arrival time — every countdown, deadline, and shopping window in the plan counts back from it.</p>
                 {dayWx && forecastLine(dayWx) && (
-                  <p className="grounding" data-day-forecast style={{ margin: '0 0 var(--sp-3)' }}>
+                  <p className="grounding wx-line-g" data-day-forecast style={{ margin: '0 0 var(--sp-3)' }}>
+                    {weatherGlyph(skyKind(dayWx))}
                     Forecast for {new Date(dayWx.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}: {forecastLine(dayWx)}.
                   </p>
                 )}
@@ -16585,7 +16587,7 @@ export default function HostShellV2() {
                 onLeft={() => { try { window.location.reload(); } catch { /* the next load drops it */ } }} />
             )}
             {sheet.kind === 'calendar' && (
-              <CalendarSheet event={event} forecast={dayWx && forecastLine(dayWx) ? { date: dayWx.date, line: forecastLine(dayWx) } : null} onOpenChecklist={() => setSheet({ kind: 'tasks' })}
+              <CalendarSheet event={event} forecast={dayWx && forecastLine(dayWx) ? { date: dayWx.date, line: forecastLine(dayWx), kind: skyKind(dayWx) } : null} onOpenChecklist={() => setSheet({ kind: 'tasks' })}
                 signedIn={Boolean(session)} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} />
             )}
             {sheet.kind === 'family' && (
@@ -27092,15 +27094,10 @@ export default function HostShellV2() {
       {wxImpact && stage === 'plan' && (
         <div className={'wxpill' + (wxOpen ? ' open' : '') + (!heroInView ? ((elegantMode || dockHidden) ? ' wxpill-mid' : ' wxpill-raised') : '')}>
           <button className="wxpill-head" onClick={() => { setWxOpen(o => !o); feedback('tick'); }} aria-expanded={wxOpen}>
-            {/* Real stroke SVG (matches the shared Icon component's style) — was a
-                ☂ text dingbat, which the no-emoji doctrine bans in UI. aria-hidden;
-                the wx-line text carries the meaning. */}
-            <span className="wx-glyph" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
-                <path d="M7 16.5a4.5 4.5 0 0 1-.5-8.97 5 5 0 0 1 9.8-1.2A3.75 3.75 0 0 1 17 16.5Z" />
-                <path d="M8.5 19l-1 2M12 19l-1 2M15.5 19l-1 2" />
-              </svg>
-            </span>
+            {/* The day's own sky (weatherGlyphs, 11/18/2026), drawn in the rail's
+                stroke family — it was one rain cloud for every alert, heat
+                included. aria-hidden; the wx-line text carries the meaning. */}
+            <span className="wx-glyph" aria-hidden="true">{weatherGlyph(skyKind(wx))}</span>
             <span className="wx-line">
               {/* The sample marker rides the COLLAPSED line — the only line most
                   hosts read. A forecast claim may never outrun its source. */}

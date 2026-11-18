@@ -559,3 +559,31 @@ export function forecastLine(row) {
   if (Number.isFinite(pop)) parts.push(`${pop}% chance of rain or snow`);
   return parts.join(' · ');
 }
+
+/**
+ * skyKind — which weather glyph (hostv2/src/weatherGlyphs.jsx) draws this
+ * forecast day. OpenWeather's icon code is the sky the provider itself drew
+ * (01 clear, 02 a few clouds, 03/04 clouds, 09 showers, 10 rain, 11
+ * thunderstorm, 13 snow, 50 mist/fog); the words refine it where the code
+ * lumps two skies together (sleet and freezing rain file under 13). With no
+ * code (the sample, older rows) the words alone decide. Never null: an
+ * unreadable sky draws the plain cloud, which claims nothing.
+ */
+export function skyKind(row) {
+  const words = `${(row && row.conditions) || ''}`.toLowerCase();
+  const code = String((row && row.icon) || '').slice(0, 2);
+  if (/sleet|freezing|ice pellet/.test(words)) return 'sleet';
+  if (/squall|tornado|gale|windy/.test(words)) return 'wind';
+  const byCode = { '01': 'clear', '02': 'partly', '03': 'cloudy', '04': 'cloudy', '09': 'drizzle', '10': 'rain', '11': 'storm', '13': 'snow', '50': 'fog' }[code];
+  if (byCode === 'drizzle' && !/drizzle|light/.test(words) && /rain|shower/.test(words)) return 'rain';
+  if (byCode) return byCode;
+  if (/thunder/.test(words)) return 'storm';
+  if (/snow/.test(words)) return 'snow';
+  if (/drizzle/.test(words)) return 'drizzle';
+  if (/rain|shower/.test(words)) return 'rain';
+  if (/mist|fog|haze|smoke/.test(words)) return 'fog';
+  if (/few clouds|scattered|partly/.test(words)) return 'partly';
+  if (/cloud|overcast/.test(words)) return 'cloudy';
+  if (/clear|sun/.test(words)) return 'clear';
+  return 'cloudy';
+}

@@ -7718,7 +7718,10 @@ button.vc-pill::after{
 .cal-dot{ flex:0 0 8px; height:8px; border-radius:50%; background:var(--muted); transform:translateY(-1px); }
 .cal-event .cal-dot{ background:var(--steel, #4a6b7c); }
 .cal-event .cal-text{ font-weight:750; }
-.cal-wx{ display:block; margin-top:2px; font-size:var(--t-meta); font-weight:500; color:var(--muted); }
+.cal-wx{ display:flex; align-items:center; gap:var(--sp-1); margin-top:2px; font-size:var(--t-meta); font-weight:500; color:var(--muted); }
+/* Weather glyphs (weatherGlyphs.jsx): inline, muted with their line, never shrink. */
+.wx-g{ flex:0 0 auto; display:block; }
+.wx-line-g{ display:flex; align-items:center; gap:var(--sp-2); }
 .cal-time{ color:var(--ink); }
 .cal-vendor .cal-dot{ background:var(--hue-deep, #9a6a3a); }
 .cal-item.is-done .cal-text{ color:var(--muted); text-decoration:line-through; }
