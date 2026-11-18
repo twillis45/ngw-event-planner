@@ -4774,6 +4774,14 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
 .stagewrap[data-rail="1"] .next-bar{
   left:calc(var(--rail-w) + var(--sp-5) + var(--sp-4));
 }
+/* The weather pill has the same anchor and had the same fault (found
+   11/18/2026 building the snow and ice heads-up): opened at 1440 it ran from
+   x=39 under the 200px rail, which cut off its text and ate every click on its
+   buttons ("srail-l intercepts pointer events") — the rain backup and guest
+   note for an outdoor alert included. It now starts where the main column does. */
+.stagewrap[data-rail="1"] .wxpill{
+  left:calc(var(--rail-w) + var(--sp-5) + var(--sp-4));
+}
 
 
 /* ── The `data` surfaces at desktop — Budget and Guests ──────────────────────
