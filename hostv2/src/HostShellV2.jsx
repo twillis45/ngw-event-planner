@@ -193,6 +193,7 @@ import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePar
 import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
 import { BRAND } from '@app/lib/brand';
+import { readArrival, rememberArrival, arrivalFor, spendArrival, exampleSentenceFor } from '@app/lib/acquisition';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_NUDGE } from '@app/lib/knowledge/geoCostIndex';
 import { firstStoreIn, storesIn } from '@app/lib/communitySource';
@@ -1434,6 +1435,11 @@ export default function HostShellV2() {
   // Create — ONE smart input; the real resolvers parse it. Form fields exist
   // only as corrections layered over the parse (host-shell logic, not a form).
   const [smartText, setSmartText] = useState(bootDraft);
+  // Arrived from a guest invite or a vendor brief's "plan yours" link
+  // (lib/acquisition): read once off the URL, first touch kept 30 days.
+  const [arrival, setArrival] = useState(() => {
+    try { const a = readArrival(window.location.search); if (a) rememberArrival(window.localStorage, a); return arrivalFor(window.localStorage); } catch { return null; }
+  });
   // SMALL INTAKE (host ruling 2026-07-23, Figma 626:61 link + 626:78 screen): a
   // guided alternative to the free-text field. The three taps COMPOSE the same
   // sentence the host would have typed, into the SAME smartText -> parser path —
@@ -9508,8 +9514,12 @@ export default function HostShellV2() {
     // Signed out with accounts on: the plan is shown, not kept (see draftEvent).
     // A correction to an event already in the store stays an edit of it.
     const holdAsDraft = isSupabaseConfigured() && !session && !(redoId && (customs || []).some((c) => c && c.id === redoId));
+    // Where this host came from (lib/acquisition), carried by the first event
+    // they create after arriving from an invite or a vendor brief, then spent.
+    const arrivedFrom = !redoId ? arrival : null;
     const ev = {
       id: newId, rsvpCode: priorCode || mintRsvpToken(),
+      ...(arrivedFrom ? { acquisitionSource: { from: arrivedFrom.from, ...(arrivedFrom.kind ? { kind: arrivedFrom.kind } : {}), at: arrivedFrom.at } } : {}),
       createdAt: new Date().toISOString(), // overdue-on-creation fix: the board needs to know the runway existed
       // A HOST WHO NAMED HERSELF GETS HER NAME ON IT (owner acceptance run,
       // 11/5/2026): "Vida is hosting a girls' game night" saved as "My Game
@@ -9714,7 +9724,8 @@ export default function HostShellV2() {
       // `is_first` is read from the events that existed BEFORE this one, which is
       // the same population passVerdictAtCreation just judged against — measuring
       // it after the state update would count this event and never report a first.
-      try { trackEvent(ANALYTICS.EVENT_CREATED, { is_first: (customs || []).length === 0, event_type: ev && ev.type }); } catch (_e) { /* a counter never blocks a creation */ }
+      try { trackEvent(ANALYTICS.EVENT_CREATED, { is_first: (customs || []).length === 0, event_type: ev && ev.type, ...(arrivedFrom ? { came_from: arrivedFrom.from } : {}) }); } catch (_e) { /* a counter never blocks a creation */ }
+      if (arrivedFrom) { try { spendArrival(window.localStorage); } catch { /* spent or not, the event already carries it */ } setArrival(null); }
       setEventId(newId); setRevealed(true);
       try { localStorage.setItem(LS_WELCOMED, '1'); } catch { /* private mode — the welcome may show once more; never blocks */ }
     }
@@ -10443,7 +10454,7 @@ export default function HostShellV2() {
                       meet. */}
                   {smartText.trim() === '' && (
                     <p className="grounding">
-                      Like “Mom’s 80th in Santa Fe, 30 people, June 14”.
+                      Like “{exampleSentenceFor(arrival)}”.
                     </p>
                   )}
                   {/* ── RETURN DID NOTHING, AND THE ONE BUTTON WAS A MIC ────────

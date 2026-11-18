@@ -11,6 +11,7 @@
 // it"). No fake AI, no invented data: everything shown comes off the event.
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { BRAND } from '@app/lib/brand';
+import { recruitHref } from '@app/lib/acquisition';
 import PhotoStrip from './PhotoStrip.jsx';
 import PolicyLinks from './PolicyLinks.jsx';
 import { photoList, STAY_FROM_PICK, STAY_FROM_PLAN } from '@app/lib/lodgingIntel';
@@ -1565,7 +1566,12 @@ export default function InviteV2({ code }) {
           {!isPast && !/repast|memorial|funeral|celebration of life|wake|shiva|homegoing/i.test(String((event && event.type) || '')) && (
             <p className="grounding" style={{ marginTop: 16, textAlign: 'center' }}>
               <a
-                href={typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '/'}
+                // The link says where it came from (Marketing & Pricing board,
+                // 11/18/2026): the invite, and the event KIND only, so the new
+                // host lands on an example for that kind and a later pass can be
+                // traced to this page. Nothing about this event or guest travels.
+                href={typeof window !== 'undefined' ? recruitHref(window.location.origin + window.location.pathname, { from: 'invite', kind: event && event.type }) : '/'}
+                data-plan-yours
                 onClick={() => { try { trackInvite(INVITE_EVENTS.PLAN_YOURS_TAPPED, { event_type: event && event.type, surface: 'invite_footer_v2' }); } catch (_e) { /* a counter never blocks a guest */ } }}
                 className="tap-44" style={{ color: 'inherit', fontWeight: 650, textDecoration: 'none' }}>
                 Planning something of your own? Make it with {BRAND.full} →
