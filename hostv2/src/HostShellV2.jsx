@@ -34,6 +34,7 @@ import { Fragment, useMemo, useState, useEffect, useLayoutEffect, useRef, useCal
 import { createPortal } from 'react-dom';
 import PhotoStrip from './PhotoStrip.jsx';
 import CityField from './CityField.jsx';
+import BusyLine from './BusyLine.jsx';
 import { currentTheme, setStoredTheme } from './theme.js';
 import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaRow, TierRow, SettledRow, SettledCard, OptionList, ASK_RHYTHM, ASK_COMPACT } from './parity/askKit';
 // PEOPLE/ATTENDANCE REDESIGN — composition only; every rule lives in
@@ -458,6 +459,7 @@ function VendorReplyParserV2({ vendor, event, writeVendor, signedIn, onSignIn })
         <button className="mini" onClick={analyze} disabled={busy || !replyText.trim()}>{busy ? 'Reading…' : 'Read the message'}</button>
         {err && err !== 'signed-out' && <span style={{ fontSize: 12, color: 'var(--warn)' }}>{err}</span>}
       </div>
+      {busy && <BusyLine>Reading the message{vendor.name ? ' from ' + vendor.name : ''} — this can take a few seconds…</BusyLine>}
       {err === 'signed-out' && (
         <div data-reply-signin style={{ fontSize: 12, color: 'var(--carbon-muted)', marginTop: 8, lineHeight: 1.5 }}>
           Sign in to have it read the message. Nothing was saved, and your pasted text is still here.{' '}
@@ -2015,6 +2017,9 @@ export default function HostShellV2() {
   // signing in anywhere on this origin signs in everywhere on it).
   const [session, setSession] = useState(null);
   const [authBusy, setAuthBusy] = useState(false);
+  // A sign-in failure is said UNDER THE FORM, where the host is looking (attention
+  // audit 11/18/2026) — it used to be only a 3.4 s toast.
+  const [authErr, setAuthErr] = useState('');
   const [authEmail, setAuthEmail] = useState('');
   const [authSent, setAuthSent] = useState(false);
   const [authCode, setAuthCode] = useState('');
@@ -2348,8 +2353,8 @@ export default function HostShellV2() {
   useEffect(() => installProfileOnlineFlush(r => { if (r && r.ok && r.profile) setProfileState(r.profile); }), []);
   const sendMagicLink = async () => {
     const em = authEmail.trim();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { toast('A real email address — the sign-in link goes there.'); return; }
-    setAuthBusy(true);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { setAuthErr('A real email address — the sign-in link goes there.'); return; }
+    setAuthBusy(true); setAuthErr('');
     try {
       const { error } = await supabase.auth.signInWithOtp({ email: em, options: { emailRedirectTo: authRedirectUrl() } });
       if (error) throw error;
@@ -2358,7 +2363,7 @@ export default function HostShellV2() {
       // Real error text when Supabase gives us one (rate limit, invalid
       // domain, etc.) instead of one blanket message for every failure mode —
       // a host stuck here has no other signal of what actually went wrong.
-      toast((e && e.message) || 'Couldn’t send the link — try again in a minute.');
+      setAuthErr((e && e.message) || 'Couldn’t send the link — try again in a minute.');
     }
     setAuthBusy(false);
   };
@@ -2366,7 +2371,7 @@ export default function HostShellV2() {
   // once set, the sheet was stuck on "Check your email" for the rest of the
   // session — no resend, no "wrong address, try again," no way out short of
   // reloading the app. This is the only place authSent is ever reset.
-  const resetAuthSent = () => { setAuthSent(false); setAuthCode(''); };
+  const resetAuthSent = () => { setAuthSent(false); setAuthCode(''); setAuthErr(''); };
   // ONE SIGN-IN FORM, TWO PLACES (owner, 11/16/2026): the account sheet and the
   // inline "sign in to send" panel on a vendor card share this exact form and
   // its state, so a host never meets two different sign-ins.
@@ -2374,11 +2379,12 @@ export default function HostShellV2() {
                     <>
                       <p className="grounding" style={{ margin: 0 }}>Check your email. Type the code from it here to sign in on this browser, where this plan is. A link tapped in a mail app can open a different browser that doesn’t have your plan.</p>
                       <input className="field" style={{ maxWidth: 'none', marginTop: 'var(--sp-2)' }} inputMode="numeric" autoComplete="one-time-code" placeholder="Code from the email"
-                        value={authCode} onChange={e => setAuthCode(e.target.value)} aria-label="Sign-in code from the email"
+                        value={authCode} onChange={e => { setAuthCode(e.target.value); setAuthErr(''); }} aria-label="Sign-in code from the email"
                         onKeyDown={e => { if (e.key === 'Enter') signInWithCode(); }} />
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="cta" disabled={authBusy || !signInCode(authCode)} onClick={signInWithCode}>{authBusy ? 'Signing in…' : 'Sign in with the code'}</button>
                       </div>
+                      {authErr && <p className="grounding" role="alert" data-auth-err style={{ margin: 'var(--sp-2) 0 0', color: 'var(--danger)', fontWeight: 600 }}>{authErr}</p>}
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="mini" onClick={resetAuthSent}>Use a different email</button>
                         <button className="mini" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Send a new code'}</button>
@@ -2387,10 +2393,11 @@ export default function HostShellV2() {
                   ) : (
                     <>
                       <input className="field" style={{ maxWidth: 'none' }} type="email" placeholder="you@example.com" value={authEmail}
-                        onChange={e => setAuthEmail(e.target.value)} aria-label="Email for sign-in link" />
+                        onChange={e => { setAuthEmail(e.target.value); setAuthErr(''); }} aria-label="Email for sign-in link" />
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
                       </div>
+                      {authErr && <p className="grounding" role="alert" data-auth-err style={{ margin: 'var(--sp-2) 0 0', color: 'var(--danger)', fontWeight: 600 }}>{authErr}</p>}
                       <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', opacity: .75 }}>No password — the email has a code to type here. One account, both apps, this device and your others.</p>
                       <PolicyLinks prefix="Signing in means you agree to:" style={{ margin: 'var(--sp-1) 0 0', opacity: .75 }} />
                     </>
@@ -2401,14 +2408,14 @@ export default function HostShellV2() {
   // signs in THIS browser, where the plan already is.
   const signInWithCode = async () => {
     const code = signInCode(authCode);
-    if (!code) { toast('Type the code from the email — 6 digits.'); return; }
-    setAuthBusy(true);
+    if (!code) { setAuthErr('Type the code from the email — 6 digits.'); return; }
+    setAuthBusy(true); setAuthErr('');
     try {
       const { error } = await supabase.auth.verifyOtp({ email: authEmail.trim(), token: code, type: 'email' });
       if (error) throw error;
       setAuthCode('');
     } catch (e) {
-      toast((e && e.message) || 'That code didn’t work — check it, or send a new one.');
+      setAuthErr((e && e.message) || 'That code didn’t work — check it, or send a new one.');
     }
     setAuthBusy(false);
   };
@@ -3981,16 +3988,27 @@ export default function HostShellV2() {
    * long as the host is away. Used sparingly: a message that will not leave is
    * worse than one that leaves too early, unless the host has genuinely gone.
    */
+  // BUSY MODE (owner, 11/18/2026: waits need "more attention"): `opts.busy`
+  // holds the notice up with a pulsing mark and no button until the next
+  // toast replaces it, or endBusyToast() clears it when the wait ends quietly.
+  const busyToastRef = useRef(false);
   const toast = (msg, action, tone, opts) => {
+    const busy = !!(opts && opts.busy);
+    busyToastRef.current = busy;
     setToastMsg(msg);
-    setToastAction(action || ((opts && opts.sticky) ? { label: 'Got it', fn: dismissToast } : null));
+    setToastAction(busy ? null : (action || ((opts && opts.sticky) ? { label: 'Got it', fn: dismissToast } : null)));
     setToastTone(tone || null);   // 'ok' ⇒ green confirmation; else neutral
-    setToastMeta({ title: (opts && opts.title) || null, spotlight: !!(opts && opts.spotlight) });
+    setToastMeta({ title: (opts && opts.title) || null, spotlight: !!(opts && opts.spotlight), busy });
     clearTimeout(toastTimer.current);
-    if (opts && opts.sticky) return;
+    if (busy || (opts && opts.sticky)) return;
     // An actionable toast lingers a little longer — the host needs a beat to
     // read it AND decide; a plain notice keeps the original rhythm.
     toastTimer.current = setTimeout(() => { setToastMsg(null); setToastAction(null); setToastTone(null); }, action ? 6500 : 3400);
+  };
+  const endBusyToast = () => {
+    if (!busyToastRef.current) return;
+    busyToastRef.current = false;
+    setToastMsg(null); setToastAction(null); setToastTone(null); setToastMeta({});
   };
   // ── THE FIRST-OPEN ANALYTICS NOTICE (owner ruling 2026-11-02, option A) ──
   // One quiet line, once, after the splash — never a modal, never a gate. Shown
@@ -4060,7 +4078,7 @@ export default function HostShellV2() {
       // bought a "destination toolkit".
       const paidEv = (customs || []).find(c => c && c.id === paidEventId);
       let trip = false; try { trip = !!(paidEv && lockingReasons(paidEv).length > 0); } catch { trip = false; }
-      toast('The One-Event Pass is yours for this event — you can send every vendor the details' + (trip ? ', and the trip tools are unlocked.' : '.'));
+      toast('The One-Event Pass is yours for this event — you can send every vendor the details' + (trip ? ', and the trip tools are unlocked.' : '.'), null, 'ok', { sticky: true });
     };
 
     (async () => {
@@ -4074,13 +4092,16 @@ export default function HostShellV2() {
       // INDEPENDENTLY, so a "no" here is far more likely to be a webhook that
       // has not landed than a purchase that did not happen. It re-asks on a
       // bounded backoff before believing it — see `refreshEventPass`.
+      // THE WAIT IS SHOWN (attention audit 11/18/2026): refreshEventPass re-asks
+      // on a backoff and can take several seconds, and nothing said so.
+      toast('Confirming your pass with your account…', null, null, { busy: true });
       if (kind === 'pass') {
         await refreshEventPass(paidEventId, { claimed: true });
         if (serverPassHeld(paidEventId) === true) { unlocked(); return; }
         // Says what we know — the pass has not reached this event — and never
         // that money moved: the redirect is not evidence of a payment (Nielsen
         // re-run N8, 2026-11-02; thePassSurvivesTheWebhookRace).
-        toast('We haven’t seen the pass reach this event yet. If you completed checkout it usually lands within a few seconds — reopen the event to check, and your Stripe receipt email has the details.');
+        toast('We haven’t seen the pass reach this event yet. If you completed checkout it usually lands within a few seconds — reopen the event to check, and your Stripe receipt email has the details.', null, null, { sticky: true });
         return;
       }
 
@@ -4089,7 +4110,7 @@ export default function HostShellV2() {
       // before: the redirect params only say WHAT to check.
       if (!sessionId) {
         reportFailure('pass_verify', { where: 'hostv2.pass-return', reason: 'missing-session', eventId: paidEventId });
-        toast('Almost there — we couldn’t confirm the payment from this link. If you paid, reopen the app from your Stripe receipt email.');
+        toast('Almost there — we couldn’t confirm the payment from this link. If you paid, reopen the app from your Stripe receipt email.', null, null, { sticky: true });
         return;
       }
       let v = null;
@@ -4097,7 +4118,7 @@ export default function HostShellV2() {
       const paid = !!(v && v.payment_status === 'paid' && String(v.fee_id || '') === feeId);
       if (!paid) {
         reportFailure('pass_verify', { where: 'hostv2.pass-return', reason: 'unconfirmed', eventId: paidEventId });
-        toast('We couldn’t confirm that payment with Stripe just now — nothing was unlocked. If you were charged, try reloading; the receipt link always works.');
+        toast('We couldn’t confirm that payment with Stripe just now — nothing was unlocked. If you were charged, try reloading; the receipt link always works.', null, null, { sticky: true });
         return;
       }
       unlocked();
@@ -6593,14 +6614,25 @@ export default function HostShellV2() {
   const rsvpUnavailable = (result) => result.reason === 'unavailable'
     ? 'Couldn’t verify this RSVP link. Nothing was shared. Check your connection and try again.'
     : 'Online RSVPs are not available for this event. Copy a plain invitation and collect replies yourself.';
+  // THE CHECK IS SHOWN, AND RUNS ONCE (attention audit 11/18/2026): every
+  // share button first asks the server whether the RSVP link works (up to 8 s),
+  // with nothing on screen, so a host tapped again and again. A second tap
+  // while it runs does nothing (null), and the notice names the wait.
+  const rsvpChecking = useRef(false);
   const verifiedRsvpUrl = async () => {
-    const result = await checkRsvpCapability(event);
+    if (rsvpChecking.current) return null;
+    rsvpChecking.current = true;
+    toast('Checking your invite link…', null, null, { busy: true });
+    let result;
+    try { result = await checkRsvpCapability(event); } finally { rsvpChecking.current = false; }
+    endBusyToast();
     if (!result.ready) { toast(rsvpUnavailable(result)); return ''; }
     try { return inviteLinkUrl(); }
     catch { toast('Sharing is unavailable because the public link address is missing. Nothing was shared.'); return ''; }
   };
   const openInviteDraft = async (title, build, opts) => {
     const url = await verifiedRsvpUrl();
+    if (url === null) return;   // a check is already running
     openDraft(title, build(event, profile, { rsvpUrl: url }), null, opts);
   };
   const [qrDataUrl, setQrDataUrl] = useState(null);
@@ -7127,23 +7159,41 @@ export default function HostShellV2() {
   // no engine change required. Cost is optional; blank/unparsed stays 0, the
   // honest "no cost yet / they're bringing it" framing (never a fake number).
   const FOOD_ADD_MAX = 120;
+  // MORE THAN ONE AT A TIME (owner, 11/18/2026: "Allow more than one at a time
+  // for add item under shop"). One item per line — typed or pasted — and the
+  // form stays open after adding, cleared, so the next one goes straight in.
+  // Lines, not commas: an item's own name can carry a comma.
+  const foodAddNames = () => {
+    const seen = new Set();
+    return String(foodAddName || '').split(/\r?\n/).map(x => x.trim()).filter(x => {
+      const k = x.toLowerCase();
+      if (!x || seen.has(k)) return false;
+      seen.add(k); return true;
+    });
+  };
   const commitFoodAdd = () => {
-    const name = foodAddName.trim();
-    if (!name) return;
+    const names = foodAddNames();
+    if (!names.length) return;
     // A LINE IS A LINE, NOT A PARAGRAPH (run 2: a 900-character item was saved).
-    if (name.length > FOOD_ADD_MAX) { toast('Keep it under ' + FOOD_ADD_MAX + ' characters — a short name reads best on the list.'); return; }
+    const long = names.find(n => n.length > FOOD_ADD_MAX);
+    if (long) { toast('Keep each item under ' + FOOD_ADD_MAX + ' characters — a short name reads best on the list.'); return; }
     // ALREADY ON THE LIST IS SAID, NOT REFUSED (run 2, R2-21).
-    const twin = similarPlanLine(name, (foodPlan && foodPlan.list) || []);
-    const id = 'add-' + Date.now().toString(36);
-    const guess = guessFoodCategory(name);
-    patchEvent({
-      foodAdd: [...(event.foodAdd || []), {
-        id, name, owner: foodAddOwner.trim(),
-        cost: Math.max(0, Math.round(Number(foodAddCost) || 0)),
-        group: foodAddGroup || guess.group, cat: guess.cat,
-      }],
-    }, name + ' added to the plan.' + (twin ? ' Your list already has “' + twin + '” — remove one if they’re the same.' : ''));
-    setFoodAddName(''); setFoodAddOwner(''); setFoodAddCost(''); setFoodAddGroup(null); setFoodAddOpen(false);
+    const twins = names.map(n => similarPlanLine(n, (foodPlan && foodPlan.list) || [])).filter(Boolean);
+    const stamp = Date.now().toString(36);
+    // The cost belongs to ONE item; with several, it would be a guess which.
+    const cost = names.length === 1 ? Math.max(0, Math.round(Number(foodAddCost) || 0)) : 0;
+    const added = names.map((name, i) => {
+      const guess = guessFoodCategory(name);
+      return {
+        id: 'add-' + stamp + (names.length > 1 ? '-' + i : ''), name, owner: foodAddOwner.trim(),
+        cost, group: foodAddGroup || guess.group, cat: guess.cat,
+      };
+    });
+    patchEvent({ foodAdd: [...(event.foodAdd || []), ...added] },
+      (names.length === 1 ? names[0] + ' added to the plan.' : names.length + ' items added to the plan.')
+      + (twins.length ? ' Your list already has “' + twins[0] + '”' + (twins.length > 1 ? ' and ' + (twins.length - 1) + ' more like these' : '') + ' — remove one if they’re the same.' : ''));
+    setFoodAddName(''); setFoodAddCost(''); setFoodAddGroup(null);
+    try { setTimeout(() => { const el = document.querySelector('[data-food-add-name]'); if (el) el.focus(); }, 0); } catch { /* focus is a nicety */ }
   };
 
   // Roster quick-add: paste names, one per line — a REAL guest list, which is
@@ -16047,6 +16097,34 @@ export default function HostShellV2() {
                     the right. The dense have/helper inputs + retail links reveal
                     on tap. At 12 items this stays a calm column instead of 12
                     stacked 3-line input+chip clusters. */}
+                {/* SEATING WITHOUT NAMES (owner approved 11/18/2026). "Who sits where"
+                    opens only once guests have said yes, so a Friendsgiving planned
+                    by headcount never learned whether 15 people fit. The same count
+                    the seating sheet uses, with where it came from, and the ± that
+                    sets the host's own number. */}
+                {(() => {
+                  const gc = (() => { try { return guestCountFor(event).count; } catch { return null; } })();
+                  if (!gc || !seating) return null;
+                  const n = seating.tableCount;
+                  const basis = (() => { try { return tableCountBasis(event); } catch { return 'default'; } })();
+                  const tables = n + (n === 1 ? ' table' : ' tables');
+                  const why = basis === 'host' ? `${tables} — your number, for ${gc} guests.`
+                    : basis === 'playbook' ? `${tables} for ${gc} guests — what ${aOccasion(event.type || 'event')} this size usually needs.`
+                      : basis === 'headcount' ? `About ${tables} of 8 for ${gc} guests — a standard round or banquet table seats 8.`
+                        : `${tables} — a starting point, not a read of your room.`;
+                  return (
+                    <div data-seat-check style={{ margin: '0 0 var(--sp-3)' }}>
+                      <div className="shelf-label" style={{ margin: '2px 0 var(--sp-1)' }}>Seating</div>
+                      <div className="actions-row" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span style={{ flex: 1, minWidth: 0 }}>{why}</span>
+                        <button className="mini" aria-label="One fewer table" disabled={n <= 1}
+                          onClick={() => patchEvent({ tables: clampTableCount(n - 1) })}>−</button>
+                        <button className="mini" aria-label="One more table"
+                          onClick={() => patchEvent({ tables: clampTableCount(n + 1) })}>+</button>
+                      </div>
+                    </div>
+                  );
+                })()}
                 {capacity && (capacity.items || []).filter(it => it && !it.skipped).length > 0 && (
                   <>
                     <div className="shelf-label" style={{ margin: '2px 0 var(--sp-1)' }}>What to bring</div>
@@ -18274,7 +18352,9 @@ export default function HostShellV2() {
                           {/* "1 tables" (host report 2026-07-28) — the plural was hard-coded. */}
                           {basis === 'playbook'
                             ? `${sp.tables.length} ${sp.tables.length === 1 ? 'table' : 'tables'} — what ${aOccasion(event.type || 'event')} this size usually needs. Use the ± to change it.`
-                            : `${sp.tables.length} ${sp.tables.length === 1 ? 'table' : 'tables'} — a starting point, not a read of your room. Use the ± to change it.`}
+                            : basis === 'headcount'
+                              ? `About ${sp.tables.length} ${sp.tables.length === 1 ? 'table' : 'tables'} of 8 for your headcount — a standard round or banquet table seats 8. Use the ± to change it.`
+                              : `${sp.tables.length} ${sp.tables.length === 1 ? 'table' : 'tables'} — a starting point, not a read of your room. Use the ± to change it.`}
                         </p>
                       );
                     })()}
@@ -20967,7 +21047,14 @@ export default function HostShellV2() {
                     <Eyebrow>Not yours to buy</Eyebrow>
                     <BigValue>{rows.length === 1 ? 'One dish' : `${rows.length} dishes`}</BigValue>
                     <GuideLine>
-                      {`${who} is carrying the food. You are buying the table around it.`}
+                      {/* Some of the food or all of it: a Friendsgiving potluck's host still
+                          buys the turkey (owner, 11/18/2026). Plural names take "are". */}
+                      {(() => {
+                        const are = /\b(friends|neighbors|families)\b/i.test(who) ? 'are' : 'is';
+                        const allOfIt = !(foodPlan.list || []).some((i) => i && !i.broughtByCommunity && i.group === 'Food');
+                        return allOfIt ? `${who} ${are} carrying the food. You are buying the table around it.`
+                          : `${who} ${are} bringing these dishes. You are buying the rest.`;
+                      })()}
                     </GuideLine>
                     {/* THE COUNT MOVED TO THE PINNED BAR (2026-09-27), so this
                         line stops saying it. Driven on a Repast the moment the
@@ -23460,10 +23547,12 @@ export default function HostShellV2() {
                   {foodAddOpen ? (
                     <div className="brow" style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 'var(--sp-3)' }}>
                       <div className="shelf-label" style={{ marginBottom: 'var(--sp-2)' }}>Add your own item</div>
-                      <input className="field" style={{ maxWidth: 'none' }} autoFocus
-                        placeholder="e.g. Aunt Carol's potato salad, extra ice"
+                      <textarea className="field" style={{ maxWidth: 'none', resize: 'vertical', fontFamily: 'inherit' }} autoFocus rows={2}
+                        data-food-add-name aria-label="Items to add, one per line"
+                        placeholder={'e.g. Aunt Carol\'s potato salad\nExtra ice'}
                         value={foodAddName} onChange={e => setFoodAddName(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') commitFoodAdd(); }} />
+                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitFoodAdd(); } }} />
+                      <p className="of" style={{ margin: 'var(--sp-1) 0 0' }}>One per line — paste a list to add several. Enter adds; Shift+Enter starts a new line.</p>
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'wrap' }}>
                         <input className="field" style={{ maxWidth: 220, flex: 1 }} placeholder="Who's bringing it (optional)"
                           value={foodAddOwner} onChange={e => setFoodAddOwner(e.target.value)}
@@ -23496,11 +23585,11 @@ export default function HostShellV2() {
                         })}
                       </div>
                       <div className="actions-row" style={{ marginTop: 10 }}>
-                        <button className="cta" disabled={!foodAddName.trim()} style={!foodAddName.trim() ? { opacity: .45 } : undefined}
-                          onClick={commitFoodAdd}>Add to the plan</button>
-                        <button className="mini" onClick={() => { setFoodAddOpen(false); setFoodAddName(''); setFoodAddOwner(''); setFoodAddCost(''); setFoodAddGroup(null); }}>Cancel</button>
+                        <button className="cta" data-food-add-commit disabled={!foodAddName.trim()} style={!foodAddName.trim() ? { opacity: .45 } : undefined}
+                          onClick={commitFoodAdd}>{foodAddNames().length > 1 ? `Add ${foodAddNames().length} to the plan` : 'Add to the plan'}</button>
+                        <button className="mini" onClick={() => { setFoodAddOpen(false); setFoodAddName(''); setFoodAddOwner(''); setFoodAddCost(''); setFoodAddGroup(null); }}>Done</button>
                       </div>
-                      <p className="grounding" style={{ marginTop: 'var(--sp-2)' }}>Cost is optional — leave it blank if you don’t know it yet, or if someone else is bringing it.</p>
+                      <p className="grounding" style={{ marginTop: 'var(--sp-2)' }}>Cost is optional — leave it blank if you don’t know it yet, or if someone else is bringing it.{foodAddNames().length > 1 ? ' With several items, add each cost on its own line in the list.' : ''}</p>
                     </div>
                   ) : (
                     sheet.kind === 'foodplan' ? null : (
@@ -24544,11 +24633,15 @@ export default function HostShellV2() {
                                       const file = e.target.files && e.target.files[0]; if (!file) return;
                                       const val = validateFile(file); if (!val.ok) { toast(val.error || 'That file won’t work.'); e.target.value = ''; return; }
                                       setContractUploading(m => ({ ...m, [v.id]: true }));
+                                      setContractExtractErr(m => ({ ...m, [v.id]: null }));
+                                      // A failed upload is said ON THE CARD (attention audit
+                                      // 11/18/2026), where the contract row is — not only in a toast.
+                                      const failed = (msg) => { setContractExtractErr(m => ({ ...m, [v.id]: msg })); toast(msg); };
                                       try {
                                         const r = await uploadFile({ file, eventId: event.id || 'unknown', category: inferCategory(file), userId: (session && session.user && session.user.id) || null });
                                         if (r && r.ok) writeVendor(v.id, { contractStoragePath: r.path, contractFileName: file.name, contractUrl: r.url }, file.name + ' attached — the paper trail’s clean.');
-                                        else toast((r && r.error) || 'Upload failed — try again.');
-                                      } catch { toast('Upload failed — try again.'); }
+                                        else failed((r && r.error) || 'The contract didn’t upload — try again.');
+                                      } catch { failed('The contract didn’t upload — try again.'); }
                                       finally { setContractUploading(m => ({ ...m, [v.id]: false })); e.target.value = ''; }
                                     }} />
                                 </label>
@@ -24562,6 +24655,8 @@ export default function HostShellV2() {
                               )}
                             </div>
                           )}
+                          {contractExtracting[v.id] && <BusyLine>Reading the contract — this can take up to half a minute…</BusyLine>}
+                          {contractUploading[v.id] && <BusyLine>Uploading the contract…</BusyLine>}
                           {/* AI-extracted contract summary — labeled, dismissible, review-required
                               (no auto-write; the app never invents facts from a document scan). */}
                           {contractExtractErr[v.id] && (
@@ -27100,6 +27195,7 @@ export default function HostShellV2() {
       {toastMsg && (
         <div className={'toast on' + (toastTone === 'ok' ? ' ok' : '') + (toastMeta.spotlight ? ' spot' : '')} role="status" aria-live="polite">
           {toastMeta.title && <div className="toast-eye" data-toast-title>{toastMeta.title}</div>}
+          {toastMeta.busy && <span className="busy-dot" aria-hidden="true" data-toast-busy />}
           {toastMeta.title ? <div>{toastMsg}</div> : toastMsg}
           {toastAction && (
             <button className="toast-undo" onClick={() => {

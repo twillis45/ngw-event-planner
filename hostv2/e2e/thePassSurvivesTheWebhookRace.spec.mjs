@@ -332,3 +332,31 @@ test('back from a checkout that did not finish: "nothing was charged", once', as
   const after = await page.evaluate(() => window.__toastsSeen);
   expect(after.filter((t) => /Checkout closed/.test(t)), JSON.stringify(after)).toHaveLength(0);
 });
+
+// THE WAIT AND THE RESULT ARE SHOWN (attention audit, 11/18/2026). Coming back
+// from Stripe, refreshEventPass can re-ask for several seconds with nothing on
+// screen, and the $39 outcome then sat in a toast for 3.4 s. The wait now
+// names itself with a busy notice, and the result stays until the host
+// dismisses it.
+test('a checkout return shows the check, then a result that stays', async ({ page }) => {
+  await stubPass(page, [false, true]);
+  await page.addInitScript(([e, lastId]) => {
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
+    localStorage.setItem('ngw-hostv2-last-event', lastId);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1');
+    localStorage.setItem('ngw-v2-welcomed', '1');
+    window.__toastsSeen = [];
+    setInterval(() => {
+      const n = document.querySelector('div.toast');
+      const t = n ? ((n.querySelector('[data-toast-busy]') ? '[busy] ' : '') + (n.innerText || '').replace(/\s+/g, ' ').trim()) : '';
+      if (t && !window.__toastsSeen.includes(t)) window.__toastsSeen.push(t);
+    }, 50);
+  }, [eventFixture(), EVENT_ID]);
+  await page.goto(`${BASE}?pass_paid=1&event_id=${encodeURIComponent(EVENT_ID)}`, { waitUntil: 'load' });
+  await expect(page.locator('div.toast')).toContainText(/pass is yours/i, { timeout: 15000 });
+  const seen = await page.evaluate(() => window.__toastsSeen);
+  expect(seen.some((t) => /^\[busy\] Confirming your pass/.test(t)), JSON.stringify(seen)).toBe(true);
+  await page.waitForTimeout(5000);   // past the old 3.4 s lifetime
+  await expect(page.locator('div.toast')).toContainText(/pass is yours/i);
+});

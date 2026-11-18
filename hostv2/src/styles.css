@@ -7793,7 +7793,8 @@ button.vc-pill::after{
    or something"). A steel-tinted status line with a pulsing ring on its mark:
    the pulse is the loading signal UX_01 allows; it stops under reduced motion. */
 .store-busy{display:flex;align-items:center;gap:var(--sp-3);margin:var(--sp-3) 0;padding:var(--sp-3) var(--sp-4);border-radius:var(--r-md);border:1px solid color-mix(in srgb, var(--steel-soft) 45%, transparent);background:color-mix(in srgb, var(--steel-soft) 14%, transparent);color:var(--ink);font-weight:600;font-size:var(--t-body-s);animation:storebusy 1.6s ease-in-out infinite}
-.store-busy-dot{width:10px;height:10px;border-radius:999px;background:var(--steel-soft);flex:0 0 auto;animation:storeping 1.2s ease-out infinite}
+.store-busy-dot,.busy-dot{width:10px;height:10px;border-radius:999px;background:var(--steel-soft);flex:0 0 auto;animation:storeping 1.2s ease-out infinite}
 @keyframes storeping{0%{box-shadow:0 0 0 0 color-mix(in srgb, var(--steel-soft) 70%, transparent)}100%{box-shadow:0 0 0 10px transparent}}
 @keyframes storebusy{0%,100%{border-color:color-mix(in srgb, var(--steel-soft) 45%, transparent)}50%{border-color:color-mix(in srgb, var(--steel-soft) 85%, transparent)}}
-@media (prefers-reduced-motion: reduce){ .store-busy,.store-busy-dot{animation:none} }
+@media (prefers-reduced-motion: reduce){ .store-busy,.store-busy-dot,.busy-dot{animation:none} }
+.toast .busy-dot{display:inline-block;vertical-align:middle;margin-right:var(--sp-3)}

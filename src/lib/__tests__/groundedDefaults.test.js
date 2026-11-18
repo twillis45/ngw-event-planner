@@ -32,11 +32,17 @@ describe('the table count comes from the playbook, not a bare 5', () => {
     expect(tableCountBasis(feast({ tables: 9 }))).toBe('host');
   });
 
+  // AMENDED 11/18/2026 (owner approved the seating fix): with no table row the
+  // count is no longer the bare 5 — it is the headcount at the standard table
+  // of 8 (a published seating capacity, TABLE_TYPE_SOURCES), disclosed as
+  // 'headcount'. The bare 5 survives only when there is no headcount at all.
   test('a playbook with no table row does NOT get an invented count — it gets a disclosed fallback', () => {
     const noTables = feast({ type: 'Book Club' });
     expect(playbookTableCount(noTables)).toBeNull();
-    expect(tableCountOf(noTables)).toBe(DEFAULT_TABLE_COUNT);
-    expect(tableCountBasis(noTables)).toBe('default');   // the surface says "a starting point"
+    expect(tableCountBasis(noTables)).toBe('headcount');
+    const noCount = feast({ type: 'Book Club', guestCount: 0, guestEstimate: 0, guests: [] });
+    expect(tableCountOf(noCount)).toBe(DEFAULT_TABLE_COUNT);
+    expect(tableCountBasis(noCount)).toBe('default');   // the surface says "a starting point"
   });
 });
 

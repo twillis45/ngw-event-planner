@@ -478,7 +478,7 @@ describe('a term buys a shelf reference, never a total', () => {
 
   test('the multiply allowlist is UNCHANGED by any of it', () => {
     // 41 entries, pinned separately above. The term map is strictly larger.
-    expect(SEARCH_TERM_LINES).toBe(UNIT_MAPPED_LINES + 23);   // +12 Friendsgiving (11/18/2026, friendsgivingFindsTheStore)
+    expect(SEARCH_TERM_LINES).toBe(UNIT_MAPPED_LINES + 32);   // +12 Friendsgiving (11/18/2026, friendsgivingFindsTheStore); +9 sides one line per dish (11/18/2026: −p_sides, +10 side entries; traditionalSides.test)
     // …and an allowlisted line still gets its own term from the same accessor.
     expect(storeSearchTerm({ id: 'p_ice', item: 'Ice' })).toBe('ice');
   });

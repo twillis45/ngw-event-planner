@@ -138,3 +138,38 @@ test('native sharing requires a configured public web destination', async ({ pag
     expect(await page.evaluate(() => [window.__rsvpShares.length, window.__rsvpCopies.length])).toEqual([0, 0]);
   }
 });
+
+// THE CHECK IS SHOWN, AND RUNS ONCE (attention audit, 11/18/2026). Each share
+// button first asks the server whether the RSVP link works — up to 8 seconds —
+// and nothing on screen said so, so a host tapped again and again. While the
+// check runs, a busy notice names it, and a second tap starts no second check.
+test('while the link is checked, a busy notice says so, and a second tap does nothing', async ({ page }) => {
+  let release; const held = new Promise((r) => { release = r; });
+  let asked = 0;
+  await page.addInitScript(event => {
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1');
+    localStorage.setItem('ngw-v2-welcomed', '1');
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([event]));
+    localStorage.setItem('ngw-hostv2-last-event', event.id);
+    window.__rsvpShares = [];
+    Object.defineProperty(navigator, 'share', { configurable: true, value: async data => { window.__rsvpShares.push(data); } });
+  }, EVENT);
+  await page.route(API + '/api/public/invite/**', async (route) => {
+    asked += 1; await held;
+    await route.fulfill({ status: 200, json: { ok: true, event: EVENT } });
+  });
+  await page.goto('?elegant=1');
+  await settled(page);
+  await openSectionByName(page, 'Guests');
+  await shareButton(page).click();
+  const notice = page.locator('.toast');
+  await expect(notice).toContainText('Checking your invite link');
+  await expect(notice.locator('[data-toast-busy]')).toHaveCount(1);
+  await shareButton(page).click();
+  await page.waitForTimeout(400);
+  expect(asked).toBe(1);
+  release();
+  await expect(notice.locator('[data-toast-busy]')).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => window.__rsvpShares.length)).toBe(1);
+});

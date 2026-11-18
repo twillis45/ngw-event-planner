@@ -162,3 +162,24 @@ test('when the guest asked for email, the host is told the reply is emailed', as
   await section.getByRole('button', { name: 'Send reply' }).click();
   await expect(section.locator('[data-reply-status]')).toHaveText('Sent — it shows on Ana’s invite, and Ana gets it by email.');
 });
+
+// THE WAIT AND THE OUTCOME SIT IN THE THREAD (attention audit, 11/18/2026):
+// a reply sends an email and reloads twice behind "Sending…", and its result
+// used to land under the whole question list.
+test('while a reply sends, the thread says so, and the result shows in the thread', async ({ page }) => {
+  await boot(page);
+  await mock(page);
+  let release; const held = new Promise((r) => { release = r; });
+  await page.route(`${API}/api/events/${EVENT_ID}/guest-threads/${T1}/reply`, async (r) => { await held; return r.fallback(); });
+  await home(page);
+  await page.locator('[data-who-questions]').click();
+  await sheetSettled(page);
+  const section = page.locator('[data-host-questions]');
+  await section.getByRole('button', { name: 'Answer Ana' }).click();
+  await section.getByRole('textbox', { name: 'Your reply to Ana Ruiz' }).fill('Street parking on Pine.');
+  await section.getByRole('button', { name: 'Send reply' }).click();
+  const thread = section.locator('li', { has: page.getByRole('textbox', { name: 'Your reply to Ana Ruiz' }) });
+  await expect(thread.locator('[data-busy-line]')).toHaveText('Sending your reply to Ana…');
+  release();
+  await expect(thread.locator('[data-reply-status]')).toHaveText('Sent — it shows on Ana’s invite.');
+});

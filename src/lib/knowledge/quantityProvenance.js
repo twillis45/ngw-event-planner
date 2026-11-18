@@ -144,6 +144,46 @@ export const QTY_SOURCES = {
     claimType: 'planning_guidance',
     claim: 'Party ice runs 1-3 lb per guest and the figure is set by EVENT TYPE, not by guest count. Indoor dinner party 1 lb; casual party or cookout 1.5 lb; cocktail party, wedding or GAME DAY 2 lb (Summer & Cinnamon). LoveMyDrink puts a typical indoor party at 1.5 lb, a warm outdoor one at 2 lb, and 2.5 lb when bottles and cans also need chilling. Both place an air-conditioned indoor room at the LOW end and add 25-30% above 80F. THE DISTINCTION MOST GUIDES BURY: serving ice (in the glass, about half a pound per iced drink) and chilling ice (around cans in a cooler, about a pound a guest) are separate jobs, and Summer & Cinnamon states plainly that a published "1 lb per person" usually covers one job or the other, not both. Both publishers add a 15-20% melt buffer on top.',
   },
+  // ─── 2026-11-18 PASS: THANKSGIVING SIDES, ONE LINE PER DISH. Owner: "Friendsgiving
+  // and like events need more traditional sides." Registered to ground the separate
+  // side lines in friendsgiving.js and thanksgivingHosting.js. All four pages were read
+  // on 11/18/2026; each claim below is what that page says, not a summary of a summary.
+  // The UF/IFAS sheet is the only one stated as PURCHASE amounts; the other three give
+  // prepared portions, which is why the cooked-cup lines (stuffing, cranberry) are in
+  // cups and the produce lines are in pounds.
+  'ufifas-holiday-meal-2026': {
+    org: 'University of Florida IFAS Extension — "Stress Free Holiday Meal" (amounts to purchase per person for traditional holiday food items)',
+    url: 'https://subscribe.ifas.ufl.edu/media/Stress Free Holiday Meal5.pdf',
+    fetched: '2026-11-18',
+    sourceClass: 'independent',
+    claimType: 'planning_guidance',
+    claim: 'Purchase amounts per person for a traditional holiday meal: mashed potatoes, one pound of raw potatoes for each three people; vegetable casserole, sweet potato casserole or vegetable sides, 1/2 cup or 4 ounces per serving for EACH vegetable; dressing or stuffing 1/2 to 3/4 cup per person or 6 ounces; gravy 1/4 to 1/3 cup; homemade cranberry relish, 1 pound of cranberries per 5 to 6 people; rolls 1 1/2 per person; garden, gelatin or fruit salad 1/2 cup; macaroni and cheese, macaroni or rice sides 1/2 cup per person; whole turkey 1 lb uncooked per person.',
+  },
+  'almanac-party-planner-2026': {
+    org: 'The Old Farmer\'s Almanac — Party Planner Serving-Size Calculator; Quantity & Portion Chart of Estimates (Catherine Boeckmann, November 5, 2026)',
+    url: 'https://www.almanac.com/party-planner-cooking-crowd',
+    fetched: '2026-11-18',
+    sourceClass: 'independent',
+    claimType: 'planning_guidance',
+    claim: 'Per person: potatoes 1/3 to 1/2 lb (36 lb for 100); mixed vegetables 1/4 to 1/3 lb; asparagus 1/4 to 1/3 lb; carrots 1/4 lb; Brussels sprouts 1/4 lb; dry pasta 1/4 lb, about 1 cup cooked; stuffing 3/4 cup (75 cups for 100); cranberry sauce 1/2 cup (50 cups for 100); gravy 1/3 cup; rolls 2 per person. Corn, cornbread and macaroni and cheese are not listed.',
+  },
+  'foodnetwork-portion-planner-2026': {
+    org: 'Food Network — Thanksgiving Dinner Portion Planner',
+    url: 'https://www.foodnetwork.com/thanksgiving/thanksgiving-entertaining/thanksgiving-dinner-portion-planner0',
+    fetched: '2026-11-18',
+    sourceClass: 'commercial_practitioner',
+    claimType: 'planning_guidance',
+    claim: 'Per guest: about 3/4 cup of mashed potatoes, from one large Yukon gold potato per guest; stuffing about 3/4 cup cooked; cranberry sauce 1/3 to 1/2 cup; about 4 ounces of vegetables in total; about 1 ounce of salad greens; rolls 6 for 4 guests and 12 for 8 (about 1 1/2 each). Cornbread is mentioned only as a heartier substitute for rolls, with no amount; sweet potatoes, mac and cheese and corn are not given amounts.',
+  },
+  'surlatable-thanksgiving-2026': {
+    org: 'Sur La Table — How to Plan Your Thanksgiving Menu (per-person amounts)',
+    url: 'https://learn.surlatable.com/thanksgiving-prep-menu-planning/',
+    fetched: '2026-11-18',
+    sourceClass: 'commercial_practitioner',
+    claimType: 'planning_guidance',
+    limitations: ['commercial_interest_disclosed'],
+    claim: 'Per person: stuffing 1/2 to 3/4 cup (3/4 to 1 cup for leftovers); mashed potatoes 1/3 to 1/2 cup (1/2 to 3/4 for potato lovers); cranberry sauce 1/3 to 1/2 cup; gravy 1/3 to 1/2 cup; green beans, asparagus, Brussels sprouts and similar vegetables 3 to 4 oz, or 1/3 to 1/2 cup; green bean casserole 1/3 to 1/2 cup; corn on the cob 1/2 cob; rolls 1 to 2. A cookware retailer; it sells the pans, not the food.',
+  },
 };
 
 // A quantity provenance is GROUNDED only when it is tier:'researched' AND cites >=1 real

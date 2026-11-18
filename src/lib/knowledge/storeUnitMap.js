@@ -317,7 +317,22 @@ const SEARCH_ONLY = Object.freeze([
   { id: 'p_turkey', item: 'Turkey (whole bird, or a breast for a small table)', term: 'frozen whole turkey' }, // HT Frozen Turkey (16-20 lb) $2.49/lb
   { id: 'p_gravy', item: 'Gravy makings (stock, a thickener, and a jar as backup)', term: 'turkey gravy' },   // Heinz HomeStyle Turkey Gravy $3.99 · 12 oz
   { id: 'p_main_alt', item: 'The main (ham, roast chicken, or a big vegetarian main)', term: 'spiral ham' },   // Smithfield Spiral Sliced Ham $3.99/lb
-  { id: 'p_sides', item: 'Sides you cook (potatoes, stuffing, a green vegetable, cranberry, a real vegan dish)', term: 'stuffing mix' }, // Stove Top $3.59 · 6 oz
+  // THE SIDES, ONE LINE PER DISH (11/18/2026). Friendsgiving's lumped p_sides
+  // line ("stuffing mix", probed above) and Thanksgiving's p_sides_veg became eight lines in Friendsgiving and Thanksgiving Hosting. NOT PROBED LIVE:
+  // these are plain grocery searches for what each line buys (fresh potatoes are
+  // "russet potatoes", not "instant mashed potatoes"), and like the rest of this
+  // block they are search-only, never multiplied. The two stuffing and two
+  // cranberry entries are the two playbooks' item texts.
+  { id: 'p_potatoes', item: 'Potatoes, butter & cream (the mash)', term: 'russet potatoes' },
+  { id: 'p_stuffing', item: 'Stuffing or dressing (bread cubes or a boxed mix, stock, aromatics)', term: 'stuffing mix' },
+  { id: 'p_stuffing', item: 'Stuffing or dressing (bread cubes or a boxed mix, stock, aromatics; sausage or none)', term: 'stuffing mix' },
+  { id: 'p_green_beans', item: 'Green beans (for the casserole, or roasted)', term: 'green beans' },
+  { id: 'p_sweet_potatoes', item: 'Sweet potatoes or yams (the casserole or candied yams)', term: 'sweet potatoes' },
+  { id: 'p_cranberry', item: 'Cranberry sauce (fresh berries or the can)', term: 'cranberry sauce' },
+  { id: 'p_cranberry', item: 'Cranberry sauce (fresh berries or the can both have partisans)', term: 'cranberry sauce' },
+  { id: 'p_mac', item: 'Mac and cheese (elbow macaroni, plus cheddar and milk)', term: 'elbow macaroni' },
+  { id: 'p_corn', item: 'Corn (frozen or canned kernels, or corn pudding)', term: 'frozen corn' },
+  { id: 'p_roast_veg', item: 'Roasted vegetables in oil, no butter (Brussels sprouts or squash: the real vegan dish)', term: 'brussels sprouts' },
   { id: 'p_apps', item: 'Snacks while dishes arrive (cheese, crackers, crudités)', term: 'cheese tray' },     // Boar's Head Charcuterie & Cheese Tray $18.99
   { id: 'p_drinks', item: 'Drinks the host covers (sparkling water, cider, one alcohol-free option)', term: 'sparkling water' }, // HT Traders 12 pk $6.49
   { id: 'p_ice', item: 'Bagged ice for the drinks cooler', term: 'ice' },                                     // Reddy Ice 7 lb $2.99

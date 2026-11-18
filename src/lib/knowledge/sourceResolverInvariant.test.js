@@ -189,8 +189,12 @@ describe('1 — the source universe is what we think it is', () => {
     // sources: `wellsfargo-thanksgiving-2025` and `chime-talker-thanksgiving-2025`
     // in COST_SOURCES, `evite-friendsgiving` and `foodnetwork-friendsgiving` in
     // TIMING_SOURCES, `fare-teal-thanksgiving` in DIETARY_SOURCES.)
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(423);
-    expect(unionIds().size).toBe(423);        // therefore every id is globally unique
+    // (427 since 11/18/2026 registered four QTY_SOURCES for the Thanksgiving
+    // sides, one line per dish: `ufifas-holiday-meal-2026`,
+    // `almanac-party-planner-2026`, `foodnetwork-portion-planner-2026`,
+    // `surlatable-thanksgiving-2026`, each page read that day.)
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(427);
+    expect(unionIds().size).toBe(427);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {

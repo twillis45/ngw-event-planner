@@ -47,6 +47,7 @@
 import { playbookCapacity } from './playbooks';
 import { seatsForTable, tableTypeOf } from './tableTypes';
 import { guestNeedsStepFree } from './accessNeeds';
+import { guestCountFor } from './guestCountFor';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
@@ -63,7 +64,30 @@ const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
  */
 export const DEFAULT_TABLE_COUNT = 5;
 
-const TABLE_ROW = /table/i;
+// A SEATING row names tables as the thing itself ("Long folding tables", "Card
+// tables (seats 4)"), within its first few words. `/table/` alone matched
+// "Extra chairs + a table leaf" (Thanksgiving: 15 tables for 15 guests, the
+// chair count), "A folding table for the buffet" (Friendsgiving: 1 table for
+// 15) and "Folding tables — food + gift table" (Birthday). Measured 11/18/2026.
+const TABLE_ROW = /^\s*(?:[\w"'-]+\s+){0,2}tables?\b/i;
+// …and nothing in it says the table is for something other than sitting.
+const NOT_SEATING = /\b(?:food|gift|bar|buffet|drinks?|cake|dessert|photo|display|stations?|serving|dump|fry(?:er|ing)|cocktail|high-?tops?|leaf|chairs?|light|lamp|cover|cloths?|accents?|tents?|numbers?|signage|props?|registration|check-?in|welcome|craft)\b/i;
+const isSeatingRow = (i) => !!i && TABLE_ROW.test(String(i.short || i.item || ''))
+  && !NOT_SEATING.test(`${i.item || ''} ${i.short || ''} ${i.note || ''}`);
+
+/**
+ * The standard seated table: a 60-inch round or an 8-foot banquet table seats 8
+ * (TABLE_TYPE_SOURCES['rental-standard-seating']). Used only when neither the
+ * host nor the playbook says how many tables — never instead of either.
+ */
+export const SEATS_PER_TABLE_DEFAULT = 8;
+
+/** Tables of 8 for the event's planning headcount, or null with no headcount. */
+export function headcountTableCount(event) {
+  let n = 0;
+  try { n = num(guestCountFor(event).count); } catch (_e) { n = 0; }
+  return n > 0 ? Math.ceil(n / SEATS_PER_TABLE_DEFAULT) : null;
+}
 
 /**
  * Tables the PLAYBOOK says this event needs, from its own authored rentals factor × the real
@@ -79,7 +103,7 @@ export function playbookTableCount(event) {
     // (running under Jest/CJS, where require works) passed. The tests said one thing and the
     // running app did another; only opening the sheet caught it.
     const cap = playbookCapacity(event);
-    const row = ((cap && cap.items) || []).find((i) => i && TABLE_ROW.test(String(i.short || i.item || '')));
+    const row = ((cap && cap.items) || []).find(isSeatingRow);
     const qty = row && Number(row.qty);
     return Number.isFinite(qty) && qty > 0 ? qty : null;
   } catch (_e) { return null; }
@@ -105,13 +129,17 @@ export function tableCountOf(event) {
   if (own) return Math.max(1, Math.ceil(own));
   // Otherwise the playbook's real factor, not a bare 5.
   const derived = playbookTableCount(event);
-  return derived ? Math.max(1, Math.ceil(derived)) : DEFAULT_TABLE_COUNT;
+  if (derived) return Math.max(1, Math.ceil(derived));
+  // Otherwise the headcount at the standard table of 8.
+  const byHead = headcountTableCount(event);
+  return byHead || DEFAULT_TABLE_COUNT;
 }
 
 /** Where the table count came from, so a surface can say so instead of drawing it as fact. */
 export function tableCountBasis(event) {
   if (num(event && event.tables)) return 'host';
-  return playbookTableCount(event) ? 'playbook' : 'default';
+  if (playbookTableCount(event)) return 'playbook';
+  return headcountTableCount(event) ? 'headcount' : 'default';
 }
 
 /**

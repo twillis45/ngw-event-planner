@@ -29,6 +29,7 @@ import { sortThreads, questionsWaiting, openedLine, openDayLine } from '@app/lib
 import { PhotoShareControls } from './GuestPhotosV2.jsx';
 import PhotoViewer from './PhotoViewer.jsx';
 import { instagramTagUrl } from '@app/lib/photoShare';
+import BusyLine from './BusyLine.jsx';
 
 const first = (n) => String(n || '').trim().split(/\s+/)[0] || 'this guest';
 const why = (reason, what) => (reason === 'signed-out'
@@ -40,7 +41,7 @@ export function HostQuestions({ eventId, onWaiting }) {
   const [rows, setRows] = useState(undefined);    // undefined loading · array · { failed }
   const [open, setOpen] = useState(null);          // { id, thread, messages } | null
   const [draft, setDraft] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState('');
   const [line, setLine] = useState('');
   const [err, setErr] = useState('');
 
@@ -64,7 +65,7 @@ export function HostQuestions({ eventId, onWaiting }) {
   const reply = async () => {
     const body = draft.trim();
     if (!body || busy || !open) return;
-    setBusy(true); setErr(''); setLine('');
+    setBusy('reply'); setErr(''); setLine('');
     try {
       await replyToGuestThread(eventId, open.id, body);
       try { trackEvent(ANALYTICS.GUEST_ANSWERED, { emailed: !!open.thread.email_notices }); } catch (_e) { /* counter only */ }
@@ -78,18 +79,18 @@ export function HostQuestions({ eventId, onWaiting }) {
       setErr(e && e.status === 409 ? 'This guest is blocked. Unblock them to reply.'
         : e && e.status === 422 ? 'Plain text only, up to 1,000 characters.'
         : 'Your reply didn’t send. Check your connection and try again.');
-    } finally { setBusy(false); }
+    } finally { setBusy(''); }
   };
   const block = async (blocked) => {
     if (!open || busy) return;
-    setBusy(true); setErr('');
+    setBusy(blocked ? 'block' : 'unblock'); setErr('');
     try {
       await blockGuestThread(eventId, open.id, blocked);
       setLine(blocked ? `${first(open.thread.guest_name)} can’t send more questions.` : `${first(open.thread.guest_name)} can ask again.`);
       await openThread(open.id, true);
       await load();
     } catch { setErr('That didn’t save. Try again.'); }
-    finally { setBusy(false); }
+    finally { setBusy(''); }
   };
 
   return (
@@ -136,6 +137,11 @@ export function HostQuestions({ eventId, onWaiting }) {
                       </button>
                       <button className="mini" onClick={() => { setOpen(null); setLine(''); setErr(''); }}>Close</button>
                     </div>
+                    {busy && <BusyLine>{busy === 'reply' ? `Sending your reply to ${first(t.guest_name)}…` : 'Saving…'}</BusyLine>}
+                    {/* The outcome sits in the thread it belongs to (attention audit
+                        11/18/2026) — it used to land under the whole list. */}
+                    {err && <p className="grounding" role="alert" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>{err}</p>}
+                    {line && <p className="grounding" role="status" data-reply-status style={{ margin: '6px 0 0' }}>{line}</p>}
                   </div>
                 ) : (
                   <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
@@ -146,8 +152,8 @@ export function HostQuestions({ eventId, onWaiting }) {
             ))}
           </ul>
         )}
-      {err && <p className="grounding" role="alert" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>{err}</p>}
-      {line && <p className="grounding" role="status" data-reply-status style={{ margin: '6px 0 0' }}>{line}</p>}
+      {!open && err && <p className="grounding" role="alert" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>{err}</p>}
+      {!open && line && <p className="grounding" role="status" data-reply-status style={{ margin: '6px 0 0' }}>{line}</p>}
     </section>
   );
 }
