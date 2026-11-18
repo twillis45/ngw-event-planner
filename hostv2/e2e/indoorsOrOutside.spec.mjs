@@ -5,7 +5,6 @@
 import { test, expect, settled, dateIn, openSectionByName } from './fixtures.mjs';
 
 const openSpace = async (page) => {
-  await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript((e) => {
     if (sessionStorage.getItem('seeded')) return;
     sessionStorage.setItem('seeded', '1');
@@ -48,7 +47,6 @@ test('"Outside" makes the rain backup a risk, and a second tap clears the answer
 
 // DIFM (owner, 11/18/2026): the inference is kept and offered, not removed.
 test('a park venue: the app proposes "outside" with its reason, and one tap takes it', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript((e) => {
     if (sessionStorage.getItem('seeded')) return;
     sessionStorage.setItem('seeded', '1');

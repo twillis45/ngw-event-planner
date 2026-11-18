@@ -6,7 +6,6 @@
 import { test, expect, settled, dateIn } from './fixtures.mjs';
 
 const boot = async (page, extra) => {
-  await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(([e]) => {
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');

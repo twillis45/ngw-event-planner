@@ -8,7 +8,6 @@
 import { test, expect, settled, dateIn, openSectionByName } from './fixtures.mjs';
 
 test('after the count is locked, + still changes the number the plan uses', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript((e) => {
     if (sessionStorage.getItem('seeded')) return;
     sessionStorage.setItem('seeded', '1');

@@ -21,7 +21,6 @@ const seed = (page) => page.addInitScript((e) => {
 });
 
 const open = async (page, name) => {
-  await page.setViewportSize({ width: 390, height: 844 });
   await seed(page);
   await page.goto('?elegant=1');
   await settled(page);

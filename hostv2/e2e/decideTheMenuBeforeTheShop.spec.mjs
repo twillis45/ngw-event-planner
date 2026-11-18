@@ -11,7 +11,6 @@ import { test, expect, settled, dateIn } from './fixtures.mjs';
 const md = (iso) => { const [, m, d] = iso.split('-').map(Number); return `${m}/${d}`; };
 
 const createAndOpen = async (page, line) => {
-  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('./?elegant=1');
   await page.getByRole('button', { name: 'Start my event' }).first().click();
   await expect(page.getByText(/what are we planning/i)).toBeVisible({ timeout: 20000 });
