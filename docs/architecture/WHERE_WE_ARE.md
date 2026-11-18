@@ -1,5 +1,13 @@
 # Where We Are -- live status board
 
+## November 18, 2026 (evening) — the weather reaches every event
+
+**The hour on the calendar.** The Calendar shows the event's start time. A host's own calendar gets the event at that hour, not as an all-day block. A time the app only suggested stays all-day there, so the app's guess is never written into someone's week as their plan.
+
+**A forecast for every event.** Weather used to belong to outdoor events, because it was built around the rain plan. An indoor Friendsgiving had no forecast anywhere, even though guests still drive through whatever falls. Now every event within two weeks gets the day's forecast as plain facts, with a glyph drawn in the app's own icon style. When snow, ice or a thunderstorm is likely, an indoor event gets a heads-up about getting there, with a note to guests ready to send, instead of a rain plan it has no use for.
+
+**A faster release, the same gate.** The Safari test job spent up to 28 minutes installing its browser. It now runs in Playwright's own image, and merge to live fell to about half an hour. The owner kept the full re-check on main before every deploy.
+
 ## November 18, 2026 (afternoon) — what the owner saw, fixed where they saw it
 
 The day ran on the owner's own Friendsgiving, on an iPad.
