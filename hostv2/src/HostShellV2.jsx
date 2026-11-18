@@ -15744,10 +15744,14 @@ export default function HostShellV2() {
               </>
             )}
             {sheet.kind === 'space' && (() => {
-              // Hero copy (host request 2026-07-11): the helpers count is the
-              // star. Real fields only — deriveHelperResponsibilities' deduped
-              // people list and the venue name; nothing sized or claimed beyond them.
-              const n = helperPeople.length;
+              // THE HERO FOLLOWS THE ORDER (owner ruling 11/18/2026). Since the
+              // 2026-07-11 request the star was the helper count — "No helpers
+              // yet" — while the helpers list sat at the bottom, under the place
+              // checks and What to bring. The sheet opens on the place, so the
+              // hero speaks to the place: how many of its checks are settled
+              // (derivePlaceIntelligence, 'na' suppressed exactly as the rows
+              // below suppress it) and which are still open. The helper count
+              // moved to the "Who's helping" label, next to the helpers.
               const venue = vf.name;
               // AN ADDRESS IS A PLACE (run 2, R2-10): with only a street given,
               // this said "No venue named yet" directly above "Venue / location —
@@ -15758,18 +15762,17 @@ export default function HostShellV2() {
                 : street
                   ? `${street} is set — arrival, parking, and the rain plan live here.`
                   : 'No venue named yet — name it and arrival, parking, and the rain plan live here.';
-              // ONE SUBJECT PER LINE (host report 2026-07-28): the sub used to be
-              // the VENUE sentence under a HELPERS star — two different subjects
-              // glued together, so "No helpers yet / No venue named yet…" read as
-              // a non-sequitur. The guide voice now speaks to the star; the venue
-              // fact drops to the grounding line, which is what it is for.
+              let place = null; try { place = derivePlaceIntelligence(event); } catch { place = null; }
+              const rows = ((place && place.sections) || []).filter(r => r && r.state !== 'na');
+              const done = rows.filter(r => r.state === 'handled').length;
+              const open = rows.filter(r => r.state !== 'handled').map(r => r.label.toLowerCase());
               return (
                 <SheetHero
-                  eyebrow="Helping hands"
-                  star={n ? `${n} helping` : 'No helpers yet'}
-                  sub={n
-                    ? 'Everyone here has something with their name on it — they ride the day plan and the helper messages.'
-                    : 'Name someone and what they’ve got — it lands on the day plan and in their message.'}
+                  eyebrow="The place"
+                  star={rows.length ? `${done} of ${rows.length} set` : 'Not started'}
+                  sub={!rows.length ? 'Name the place and the arrival, parking, and rain checks follow.'
+                    : open.length ? `Still open: ${open.join(', ')}.`
+                      : 'Every place check is settled.'}
                   grounding={venuePhrase}
                 />
               );
@@ -16135,7 +16138,7 @@ export default function HostShellV2() {
                 {(
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>Who’s helping</span>
+                      <span>Who’s helping{helperPeople.length ? ` · ${helperPeople.length}` : ''}</span>
                       {(helperData.helpers || []).length > 0 && (
                         <button className="mini" onClick={startHelperMessages}>Draft helper messages</button>
                       )}
