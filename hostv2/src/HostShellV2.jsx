@@ -4906,6 +4906,14 @@ export default function HostShellV2() {
   // policy, which forgives a snooze and an unreachable lead — while the sheet's
   // label derives from the raw due number and forgives neither. Green in jest,
   // nothing on the screen. Driving the real app is what caught it.
+  // The ROWS themselves, so the board can name them where it counts them.
+  const overdueRows = useMemo(() => {
+    try {
+      return (event.timeline || []).filter(t =>
+        taskWindowClosed(t, event) && !isTimelineStepResolved(t));
+    } catch (_e) { return []; }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event]);
   const overdueShown = useMemo(() => {
     try {
       return (event.timeline || []).filter(t =>
@@ -11616,7 +11624,32 @@ export default function HostShellV2() {
                      down; the ROWS are still late. This is the sentence that says
                      so, instead of the one that contradicts the list below it. */
                   : (calmVeto && calmVeto.kind === 'overdue-steps')
-                  ? `${calmVeto.label} — in the list below.`
+                  /* THE LIST IS HERE, NOT "BELOW" (owner, 11/18/2026, screenshot:
+                     "8 things are past due — in the list below" over an empty
+                     board). The rows sat folded inside "The rest of your plan", so
+                     the sentence pointed at nothing. It now names them, and each
+                     opens its step in the checklist. */
+                  ? (
+                    <div data-overdue-here>
+                      <div>{calmVeto.label}:</div>
+                      <ul style={{ listStyle: 'none', margin: 'var(--sp-2) 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)' }}>
+                        {overdueRows.slice(0, 5).map((t) => (
+                          <li key={t.id}>
+                            <button className="later-row" data-overdue-step={t.id}
+                              style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: 'var(--sp-1) 0' }}
+                              onClick={() => setSheet({ kind: 'tasks', focus: t.id })}>
+                              <span className="t" style={{ fontWeight: 550 }}>{t.task}</span>
+                              <span className="chev" aria-hidden="true">›</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      <button className="mini" style={{ marginTop: 'var(--sp-2)' }} data-overdue-all
+                        onClick={() => setSheet({ kind: 'tasks', focus: null })}>
+                        {overdueRows.length > 5 ? `See all ${overdueRows.length} in your checklist` : 'Open your checklist'}
+                      </button>
+                    </div>
+                  )
                   : worries.length
                   ? 'Nothing needs you right now — just the heads-ups below.'
                   : 'Nothing needs you right now — the basics are all settled.'}</div>
