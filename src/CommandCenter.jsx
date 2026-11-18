@@ -3502,6 +3502,7 @@ export function _selectEventNextActionInner(event) {
     // real route). If EVERY part is already done, it isn't a real do-now at all — fall
     // through to the next genuine tier so a satisfied bundle never reaches the hero/spine.
     let _skipCompression = false;
+    let _decomposed = false;   // led by a foundational domino, not a checklist step
     // WAVE-5 RANKING (2026-07-15): the lead of the ACTUAL task this action names,
     // for the snooze cap. Nulled when the composite decomposes to a foundational
     // domino below — the domino has no authored lead, and borrowing the bundle's
@@ -3510,7 +3511,7 @@ export function _selectEventNextActionInner(event) {
     if (_isSetCompositeTitle(firstText)) {
       const atomic = _eventFoundationActions(event).find((a) => !a.done);
       if (!atomic) _skipCompression = true;
-      else { firstText = atomic.title.replace(/[.\s]+$/, ''); firstRoute = atomic.route || firstRoute; firstLead = null; }
+      else { firstText = atomic.title.replace(/[.\s]+$/, ''); firstRoute = atomic.route || firstRoute; firstLead = null; _decomposed = true; }
     }
     // A food/menu lead task should DEEP-LINK to the menu the host actually makes (the "Your choices"
     // card focuses + scrolls to the open choice), not dump them on the generic tasks tab. When a
@@ -3549,6 +3550,10 @@ export function _selectEventNextActionInner(event) {
         primaryCta: routerHit.label,
         // Surfaced so the persona voice can lead with the action without re-deriving it.
         firstAction: firstText,
+        // The lead is a checklist STEP (not a "Set the date." domino). The hero's
+        // headline reads this so it never mines the step's prose for a topic
+        // (owner screenshot 11/18/2026: "Decide the menu." over the kitchen walk).
+        leadIsStep: !!firstText && !_decomposed,
         moreCount: more,
         primaryRoute: routerHit.route,
         // WAVE-5 RANKING (2026-07-15): built from a timeline task → carries its

@@ -52,6 +52,12 @@ export function heroAskFor(a, event) {
     // food branch below. A late step is not a menu, budget or guest question; its
     // card already names it. The headline says what kind of thing it is.
     if (a && a.taskId && a.category === 'decision') return 'Catch up on this step.';
+    // Same defect, second door (owner screenshot, 6:24 PM 11/18/2026): when time
+    // gets tight the late steps arrive bunched as ONE compression item led by the
+    // first step — the kitchen walk again, again "Decide the menu." on "serving".
+    // A bunch led by a step is asked as a step. A bunch that decomposed to "Set
+    // the date." / "Set your budget." carries no leadIsStep and falls through.
+    if (a && a.category === 'compression' && a.leadIsStep) return 'Catch up on this step.';
     const t = String((a && a.title) || '').replace(/\.+$/, '').trim();
     const d = String((a && a.domain) || '').toLowerCase();
     if (d === 'budget' || /budget/i.test(t)) return 'Set your budget.';
