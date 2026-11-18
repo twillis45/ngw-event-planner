@@ -146,7 +146,11 @@ export async function storePrices(items, locationId, assetId) {
     .map((i) => ({ i, name: String((i && (i.name || i.item)) || '').trim() }))
     .filter((x) => x.name)
     .map(({ i, name }) => {
-      const term = storeSearchTerm(i && i.line ? i.line : i);
+      // The shell sends `{ name: it.item, id }`; the curated map is keyed by
+      // `item`, which that object lacks, so no term ever went out from the app
+      // (owner, 11/18/2026: "1 of 11 items is found. Not even the turkey").
+      // The name IS the plan's item text, so it is the item to look up.
+      const term = storeSearchTerm(i && i.line ? i.line : { ...i, item: (i && i.item) || name });
       // The corpus row id, when the caller has one. `id` is what the food plan
       // already carries per line (`p_ice`, `p_crabs`); a line without one — an
       // added or ad-hoc row — simply goes unattributed rather than guessed at.
