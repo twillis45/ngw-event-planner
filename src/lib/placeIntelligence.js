@@ -40,6 +40,26 @@ export const PLACE_TARGETS = {
 
 const has = (v) => !!String(v || '').trim();
 
+// Event types that usually happen outside. ONE list: startTime and
+// phaseProgress each carried an identical private copy until 11/18/2026.
+export const OUTDOOR_TYPE = /cookout|bbq|barbecue|fish fry|crab feast|crawfish|boil|picnic|day party|block party|tailgate|luau|beach|garden party|graduation|juneteenth|family reunion|reunion/i;
+
+// ─── THE APP'S OWN GUESS, AS A PROPOSAL (owner, 11/18/2026: DIFM) ────────────
+// "Don't remove how we infer that it's outside. Should be part of DIFM." The
+// inference is offered to the host with its reason and accepted in one tap;
+// nothing is stored until she does. null once she has answered, or when
+// nothing about the event sounds outdoor.
+export function outdoorsGuess(event = {}) {
+  if (!event || event.indoorOutdoor) return null;
+  const vf = venueFor(event);
+  if (vf.kind === 'outdoor') return { guess: 'outdoor', because: `${vf.display || 'your venue'} is listed as an outdoor venue` };
+  if (vf.name && isLikelyOutdoor(vf.name, '')) return { guess: 'outdoor', because: `from the name “${vf.name}”` };
+  if (isLikelyOutdoor('', event.notes || '')) return { guess: 'outdoor', because: 'from your notes' };
+  const type = String(event.type || '').trim();
+  if (OUTDOOR_TYPE.test(type)) return { guess: 'outdoor', because: `${/^the\s/i.test(type) ? type.replace(/^the\s+/i, 'a ').toLowerCase() : 'a ' + type.toLowerCase()} usually is` };
+  return null;
+}
+
 // ─── IS ANY OF IT OUTSIDE? — ONCE (11/18/2026) ───────────────────────────────
 // The place checks' own outdoors rule, published so the day-of list asks the
 // same question instead of depending on which playbook was authored with a

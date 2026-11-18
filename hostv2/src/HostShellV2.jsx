@@ -248,7 +248,7 @@ import { REFUND_LINE } from '@app/lib/refundRule';
 import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
-import { derivePlaceIntelligence, placeIsOutdoors } from '@app/lib/placeIntelligence';
+import { derivePlaceIntelligence, placeIsOutdoors, outdoorsGuess } from '@app/lib/placeIntelligence';
 import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote } from '@app/lib/budgetCopy';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
@@ -15819,6 +15819,20 @@ export default function HostShellV2() {
                 ))}
               </div>
             )}
+            {sheet.kind === 'space' && (() => {
+              // DIFM (owner, 11/18/2026): the app's own inference — an outdoor
+              // venue, an outdoor word in the name or notes, a usually-outdoor
+              // event type — is proposed with its reason and taken in one tap.
+              // Nothing is stored until she taps; once she answers, it is gone.
+              const g = (() => { try { return outdoorsGuess(event); } catch { return null; } })();
+              if (!g) return null;
+              return (
+                <div className="actions-row" data-outdoors-guess style={{ margin: '-4px 0 10px', alignItems: 'center' }}>
+                  <span className="grounding" style={{ margin: 0 }}>Looks like it’s outside — {g.because}.</span>
+                  <button className="mini" onClick={() => patchEvent({ indoorOutdoor: 'outdoor' }, 'Outside — a rain backup is on your list.')}>Yes, outside</button>
+                </div>
+              );
+            })()}
             {sheet.kind === 'space' && (
               // DESTINATION-1: a real toggle so the modifier can be set (or
               // unset) after creation too, not just guessed once from the

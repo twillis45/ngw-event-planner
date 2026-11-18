@@ -22,7 +22,7 @@
 
 import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, playbookDecisionBoard, openFoodChoices } from './playbooks';
 import { rainPlanStatus } from './weather';
-import { placeIsOutdoors } from './placeIntelligence';
+import { placeIsOutdoors, OUTDOOR_TYPE } from './placeIntelligence';
 import { spanNights } from './dates';
 import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
@@ -39,7 +39,6 @@ const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const daysTo = (dateStr, now) => {
   return daysUntil(dateStr, now);
 };
-const OUTDOOR_TYPE = /cookout|bbq|barbecue|fish fry|crab feast|crawfish|boil|picnic|day party|block party|tailgate|luau|beach|garden party|graduation|juneteenth|family reunion|reunion/i;
 
 export function deriveEventPhaseProgress(event, now = new Date()) {
   const ev = event || {};
