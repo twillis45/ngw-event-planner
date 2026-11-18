@@ -40,6 +40,7 @@ import {
 } from '@app/lib/lodgingIntel';
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL } from '@app/lib/travelPlan';
 import MustHaves from './MustHaves';
+import CityField from './CityField.jsx';
 import { normalizeCvbContact } from '@app/lib/cvbIntel';
 import { draftLodgingNote } from '@app/lib/doItForMe';
 import { saveCustomEvents } from '@app/lib/customEventStore';
@@ -586,8 +587,8 @@ function NoTown({ event, patch }) {
         ? 'This is what the event already says — accept it or change it.'
         : 'Type the town or city. Everything else is already in hand.'}</p>
       <div className="lc-row-form">
-        <input className="lc-field" placeholder="Santa Fe, NM" value={town}
-          onChange={(e) => setTown(e.target.value)} aria-label="Town" />
+        <CityField className="lc-field" placeholder="Santa Fe, NM" value={town}
+          onChange={setTown} onPick={setTown} onEnter={save} ariaLabel="Town" />
         {/* NOT DISABLED. Reported as "not wired or working" — it was working;
             it was GREY, because the field was empty. A dimmed primary action
             with no stated reason reads as broken, so it stays live and focuses
