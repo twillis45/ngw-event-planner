@@ -42,7 +42,8 @@ describe('(premise) the mismatch was real and this is its size', () => {
     const all = uses();
     const raw = all.filter((b) => k.includes(b)).length;
     // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
-    expect(all.length).toBe(479);
+    // +2 on 11/18/2026: Friendsgiving and Thanksgiving Hosting gained `service_style` (sit-down or buffet).
+    expect(all.length).toBe(481);
     expect(raw).toBe(94);                       // 19%
   });
 });

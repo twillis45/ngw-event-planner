@@ -71,3 +71,30 @@ describe('the getting-here brief lands on travel, not the guest list', () => {
     }
   });
 });
+
+// ─── THE WALK-THROUGH IS THE PLACE, NOT THE PARKING ─────────────────────────
+//
+// Owner screenshot, 11/18/2026: Friendsgiving's late step "If it is not at your
+// place, walk the kitchen with whoever lives there: oven size, refrigerator
+// space, serving dishes, and parking" carried "Open the parking note". Parking
+// is the last of four things to check; the step is about the place.
+describe('a walk-through of the place opens the place, not the parking note', () => {
+  const { checklistRouteFor } = require('../taskRoute');
+  test('the Friendsgiving kitchen walk-through opens the place notes', () => {
+    const hit = checklistRouteFor('If it is not at your place, walk the kitchen with whoever lives there: oven size, refrigerator space, serving dishes, and parking', {}, null);
+    expect(hit).toBeTruthy();
+    expect(hit.label).toBe('Open the place notes');
+    expect(hit.route).toEqual({ tab: 'Event Details', focusField: 'space' });
+  });
+  test('the same step in every playbook that carries it', () => {
+    const { ALL_PLAYBOOKS } = require('../playbooks');
+    const rows = [];
+    for (const pb of ALL_PLAYBOOKS || []) {
+      for (const t of [...(pb.tasks || []), ...(pb.checklist || [])]) {
+        const label = String((t && (t.label || t.task)) || '');
+        if (/\b(walk|tour|visit|check)\b[^.;]{0,60}:\s*[^.;]*,[^.;]*\bparking\b/i.test(label)) rows.push(label);
+      }
+    }
+    for (const label of rows) expect(checklistRouteFor(label, {}, null).label).not.toBe('Open the parking note');
+  });
+});

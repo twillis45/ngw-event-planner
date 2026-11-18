@@ -5621,7 +5621,10 @@ export function playbookFoodPlan(event, opts = {}) {
     // shell-local memo cannot reach another module — the fix's SHAPE forbade
     // its fourth site.
     // Asked once, here, where every surface can read it.
-    shoppingCount: list.filter((i) => !i.skipped).length,
+    // Friends' dishes are not the host's to buy (friendsBringWhen): off the
+    // Shop bar's "N of M bought" too, not only off itemCount (live, 11/18/2026:
+    // "0 of 22 bought" counted the 8 sides friends are bringing).
+    shoppingCount: list.filter((i) => !i.skipped && hostBuys(i)).length,
     shoppingBought: boughtCount + supItems.filter((s) => got[s.id]).length,
     lockedTotal: Math.max(0, Math.round(lockedTotal)),
     lockedCount,

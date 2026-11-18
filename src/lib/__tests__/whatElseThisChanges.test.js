@@ -106,8 +106,9 @@ describe('COVERAGE — measured, not targeted', () => {
       if (decisionImpacts(d).length) withImpacts++;
     }
     // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
-    expect(total).toBe(267);
-    expect(withImpacts).toBe(234);  // all six Friendsgiving decisions have an impact
+    // +2 on 11/18/2026: Friendsgiving and Thanksgiving Hosting gained `service_style` (sit-down or buffet).
+    expect(total).toBe(269);
+    expect(withImpacts).toBe(236)   // +2 on 11/18/2026: service_style (sit-down or buffet) has an impact; its seating block is placed;  // all six Friendsgiving decisions have an impact
   });
 
   test('81% of block uses are placed, and 77 targets are deliberately not', () => {
@@ -118,8 +119,9 @@ describe('COVERAGE — measured, not targeted', () => {
         if (MAPPED_BLOCKS.includes(b)) placed++; else unmapped.add(b);
       }
     }
-    expect(uses).toBe(479);
-    expect(placed).toBe(387);
+    // +2 on 11/18/2026: Friendsgiving and Thanksgiving Hosting gained `service_style` (sit-down or buffet).
+    expect(uses).toBe(481);
+    expect(placed).toBe(389)   // +2 on 11/18/2026: service_style (sit-down or buffet) has an impact; its seating block is placed;
     expect(unmapped.size).toBe(77);
   });
 });

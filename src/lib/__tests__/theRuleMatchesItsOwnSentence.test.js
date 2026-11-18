@@ -130,9 +130,10 @@ describe('a derived rule matches its own sentence', () => {
       }
     }
     // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
-    expect(canDerive).toBe(132);
+    // +2 on 11/18/2026: Friendsgiving and Thanksgiving Hosting gained `service_style` (sit-down or buffet).
+    expect(canDerive).toBe(134);
     expect(`${moved.length} of ${canDerive} move: ${moved.sort().join(', ')}`).toBe(
-      `7 of 132 move: ${[
+      `7 of 134 move: ${[
         'Anniversary/help', 'Get-Together/food_style', 'Day Party/food',
         'Dinner Party/seating', 'Engagement Party/help', 'Holiday Party/food_format',
         'Retirement Party/help',
