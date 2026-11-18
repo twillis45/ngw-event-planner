@@ -7796,6 +7796,7 @@ export default function HostShellV2() {
   // Until she chooses, every save of this event is refused (the lib holds the
   // version she loaded), so nothing is overwritten behind her back either way.
   const [resolvingConflict, setResolvingConflict] = useState(false);
+  const [syncRetrying, setSyncRetrying] = useState(false);   // "Retry now" in flight (attention audit 11/18/2026)
   const putCustom = (ev) => {
     if (!ev || !ev.id) return;
     const next = customs.map(c => (c && c.id === ev.id) ? ev : c);
@@ -19474,7 +19475,7 @@ export default function HostShellV2() {
                         </>
                       )}
                       {askLLM && askLLM.loading && !askLLM.partial && (
-                        <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>Taking a broader look — I read your numbers, never invent them…</p>
+                        <BusyLine>Taking a broader look — I read your numbers, never invent them. This can take up to 15 seconds…</BusyLine>
                       )}
                       {/* The answer as it's written. Deliberately NOT styled as the
                           finished answer (f-name): it's still being checked, so it
@@ -20130,10 +20131,12 @@ export default function HostShellV2() {
                                   setCustoms(readCustomEventsSafe());
                                   setDataTick(t => t + 1);
                                   saveChangedToAccount(before);
-                                  toast(`${res.added} added · ${res.updated} updated · ${res.skipped} kept`,
-                                    !overwriteExisting && res.skipped > 0
-                                      ? { label: 'Replace matching events', fn: () => applyImport(true) }
-                                      : null);
+                                  // Says WHY "Replace" is offered (attention audit 11/18/2026): the
+                                  // bare counts did not say any of her events were left as they are.
+                                  const offerReplace = !overwriteExisting && res.skipped > 0;
+                                  toast(`${res.added} added · ${res.updated} updated · ${res.skipped} kept`
+                                    + (offerReplace ? ` — ${res.skipped === 1 ? 'one of your events matched' : res.skipped + ' of your events matched'} and ${res.skipped === 1 ? 'was' : 'were'} left as they are.` : ''),
+                                    offerReplace ? { label: 'Replace matching events', fn: () => applyImport(true) } : null);
                                 };
                                 applyImport();
                               };
@@ -20380,14 +20383,22 @@ export default function HostShellV2() {
                             </span>
                           )}
                           {showRetry && (
-                            <button className="mini" onClick={() => {
+                            <button className="mini" disabled={syncRetrying} onClick={() => {
+                              if (syncRetrying) return;
+                              setSyncRetrying(true);
                               flushSync().then(res => {
                                 if (res && res.flushed > 0) toast((res.flushed === 1 ? 'This change' : res.flushed + ' changes') + ' synced to your account.');
                                 else toast('Still couldn’t reach the cloud — we’ll keep trying.');
-                              }).catch(() => toast('Still couldn’t reach the cloud — we’ll keep trying.'));
-                            }}>Retry now</button>
+                              }).catch(() => toast('Still couldn’t reach the cloud — we’ll keep trying.'))
+                                .finally(() => setSyncRetrying(false));
+                            }}>{syncRetrying ? 'Syncing…' : 'Retry now'}</button>
                           )}
                         </div>
+                        {/* THE WAIT IS SHOWN (attention audit, 11/18/2026): both of these
+                            reach the account and took a second or two with nothing on
+                            screen but a disabled button. */}
+                        {resolvingConflict && <BusyLine>Saving your choice to your account…</BusyLine>}
+                        {syncRetrying && <BusyLine>Syncing this event with your account…</BusyLine>}
                       </>
                     );
                   })()}
@@ -24666,13 +24677,23 @@ export default function HostShellV2() {
                                       let win = null;
                                       try { win = window.open('', '_blank'); } catch (_e) { win = null; }
                                       try { if (win) win.opener = null; } catch (_e) { /* already safe */ }
+                                      // NOT A BLANK TAB (attention audit, 11/18/2026): the tab opens
+                                      // inside the tap and waits for a fresh link, so it says so.
+                                      try {
+                                        if (win && win.document) {
+                                          win.document.title = 'Getting the contract…';
+                                          win.document.body.style.cssText = 'font:16px -apple-system,system-ui,sans-serif;background:#16181b;color:#e8ebee;display:flex;align-items:center;justify-content:center;height:100vh;margin:0';
+                                          win.document.body.textContent = 'Getting the contract…';
+                                        }
+                                      } catch (_e) { /* a cross-origin or closed tab: nothing to write */ }
+                                      toast('Getting ' + (v.contractFileName || 'the contract') + '…', null, null, { busy: true });
                                       const r = await contractUrlFor(v);
                                       if (!r.ok) {
                                         try { if (win) win.close(); } catch (_e) { /* already gone */ }
                                         toast('Couldn’t open ' + (v.contractFileName || 'the contract') + ' — we couldn’t get a fresh link to the file. Check you’re online and signed in, then tap Open the contract again.', null, null, { sticky: true });
                                         return;
                                       }
-                                      if (win) { try { win.location.replace(r.url); } catch (_e) { /* it navigated away */ } }
+                                      if (win) { endBusyToast(); try { win.location.replace(r.url); } catch (_e) { /* it navigated away */ } }
                                       else toast('Your browser blocked the new tab.', { label: 'Open the contract', fn: () => { try { window.open(r.url, '_blank', 'noopener'); } catch (_e) { /* blocked again */ } } }, null, { sticky: true });
                                     }}>Open the contract</button>
                                   ) : v.contractUrl ? (
