@@ -22315,9 +22315,9 @@ export default function HostShellV2() {
                             const find = async (v) => {
                               const q = v != null ? v : p.zip;
                               if (!parsePlace(q)) return;
-                              setStorePicker(m => ({ ...m, zip: q, busy: true, reason: null, stores: [] }));
+                              setStorePicker(m => ({ ...m, zip: q, busy: true, busyLabel: `Looking for stores near ${q}…`, reason: null, stores: [] }));
                               const r = await nearbyStores(q);
-                              setStorePicker(m => ({ ...m, busy: false, stores: r.stores, reason: r.reason }));
+                              setStorePicker(m => ({ ...m, busy: false, busyLabel: null, stores: r.stores, reason: r.reason }));
                             };
                             return (
                               <>
@@ -22329,7 +22329,7 @@ export default function HostShellV2() {
                                   onPick={v => setStorePicker(m => ({ ...m, zip: v, reason: null }))}
                                   onEnter={find} />
                                 <button className="mini" data-find-stores disabled={p.busy || !parsePlace(p.zip)} onClick={() => find()}>
-                                  {p.busy ? 'Looking…' : 'Find stores'}
+                                  {p.busy && !p.stores.length ? 'Looking…' : 'Find stores'}
                                 </button>
                               </>
                             );
@@ -22363,11 +22363,23 @@ export default function HostShellV2() {
                         <p className="grounding" style={{ margin: '3px 0 var(--sp-2)', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>
                           Coverage is regional — there may be none near you. What it finds sits beside your estimate, never instead of it.
                         </p>
+                        {/* THE WAIT IS VISIBLE (owner, 11/18/2026: "I need the looking
+                            notification to be more attention grabbing. Pulsing or
+                            something"). Finding stores only changed a small
+                            button's text, and the price check after a store tap
+                            showed nothing for several seconds. One status line,
+                            announced to screen readers, with a pulsing mark. */}
+                        {p.busy && (
+                          <div className="store-busy" role="status" aria-live="polite" data-store-busy>
+                            <span className="store-busy-dot" aria-hidden="true" />
+                            <span>{p.busyLabel || 'Looking…'}</span>
+                          </div>
+                        )}
                         {p.stores.length > 0 && (
                           <div className="srctier-list">
                             {p.stores.map(s => (
-                              <button key={s.locationId} className="srctier" onClick={async () => {
-                                setStorePicker(m => ({ ...m, busy: true }));
+                              <button key={s.locationId} className="srctier" disabled={p.busy} onClick={async () => {
+                                setStorePicker(m => ({ ...m, busy: true, busyLabel: `Checking ${lines.length} price${lines.length === 1 ? '' : 's'} at ${s.name}…` }));
                                 // Sent as `{ name: it.item }` — the same string
                                 // priceLayers keys the index on, so the round trip
                                 // cannot drift into matching nothing.
