@@ -45,6 +45,13 @@ export function heroAskFor(a, event) {
     // reads it first. Structural, and it generalises: any future surface whose domain
     // and job differ authors one line instead of teaching this ladder a new regex.
     if (a && a.ask) return normalizeAsk(a.ask) || 'Your next step.';
+    // ── A LATE CHECKLIST STEP IS ASKED AS ONE (owner screenshot, 11/18/2026) ──
+    // The board led with the late Friendsgiving step "walk the kitchen …: oven
+    // size, refrigerator space, serving dishes, and parking" under the headline
+    // "Decide the menu." — the word "serving" sent the step's own prose into the
+    // food branch below. A late step is not a menu, budget or guest question; its
+    // card already names it. The headline says what kind of thing it is.
+    if (a && a.taskId && a.category === 'decision') return 'Catch up on this step.';
     const t = String((a && a.title) || '').replace(/\.+$/, '').trim();
     const d = String((a && a.domain) || '').toLowerCase();
     if (d === 'budget' || /budget/i.test(t)) return 'Set your budget.';
