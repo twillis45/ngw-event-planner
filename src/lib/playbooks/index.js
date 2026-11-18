@@ -887,6 +887,23 @@ export function decisionSettledByData(event, decision) {
   }
   return null;
 }
+// ─── THE OPEN MENU QUESTIONS, ONCE (single-source audit, 11/18/2026) ─────────
+// phaseProgress decided "is the food handled?" from this list, while
+// taskEngine credited every "menu" step after ONE pick — so the checklist said
+// "Write the full menu… handled by your plan" under a hero reading "Decide what
+// you're serving · 3 open". Both now ask here. A choice is open when the host
+// has not picked it, no booked vendor answers it, and it is not the dietary
+// question already settled elsewhere. null = no food plan to ask.
+const isDietaryChoice = (c) => c.id === 'dietary' || /dietary|allerg/i.test(c.label || '');
+export function openFoodChoices(event, plan) {
+  const p = plan !== undefined ? plan : (() => { try { return playbookFoodPlan(event); } catch (_e) { return null; } })();
+  if (!p) return null;
+  const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  const dietaryDone = !!p.dietaryResolved;
+  return (p.choices || []).filter((c) => c && !(dietaryDone && isDietaryChoice(c))
+    && picks[c.id] == null && !decisionSettledByData(event, c));
+}
+export { isDietaryChoice };
 export function choicePickFor(event, id) {
   if (!event || !id) return null;
   const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};

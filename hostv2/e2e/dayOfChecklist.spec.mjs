@@ -58,14 +58,17 @@ test('an authored type gets its own day-of list, and a confirmation survives a r
   // have been the weaker test and is what let a false defect stand: the write
   // lands even when the value is about to be destroyed, so the assertion has
   // to straddle a boot.
-  await rows.first().click();
+  // (The rain row is not a plain tick: it reads the saved rain plan and opens
+  // the rain editor — oneRainPlanOnTheDay. Confirm the first ordinary row.)
+  const plain = '.frow:not([data-dayof-item="weather"])';
+  await card.locator(plain).first().click();
   await settled(page);
-  await expect(rows.first()).toHaveClass(/got/);
+  await expect(card.locator(plain).first()).toHaveClass(/got/);
 
   await page.reload();
   await settled(page);
   await toTheDay(page);
-  await expect(page.locator('.dayof-card .frow').first()).toHaveClass(/got/);
+  await expect(page.locator('.dayof-card ' + plain).first()).toHaveClass(/got/);
 });
 
 test('an unauthored type gets the floor AND is told it is the floor', async ({ page }) => {

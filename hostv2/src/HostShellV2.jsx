@@ -157,7 +157,7 @@ import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, readEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
 import { deleteAccount, isAccountDeletionAvailable } from '@app/lib/api/account';
-import { effectiveDone, factsATickRecords } from '@app/lib/taskEngine';
+import { effectiveDone, factsATickRecords, invitesOut } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
@@ -6658,7 +6658,7 @@ export default function HostShellV2() {
       // A copy is not a send, so the host says when it went out — one tap, and
       // only then is "Send the invite" credited (issue #100, D-10).
       toast('Invite link copied — guests can open it and reply.',
-        event.invitesSentAt ? null : { label: 'I sent it', fn: () => patchEvent({ invitesSentAt: new Date().toISOString() }, 'Invite marked as sent.') });
+        invitesOut(event) ? null : { label: 'I sent it', fn: () => patchEvent({ invitesSentAt: new Date().toISOString() }, 'Invite marked as sent.') });
       feedback('act');
     } catch { toast('Couldn’t copy on this browser — nothing was shared.'); }
   };
@@ -6676,7 +6676,9 @@ export default function HostShellV2() {
   // catching up genuinely closes the "Catch up on overdue planning" card.
   const toggleTask = (i) => {
     const tl = (event.timeline || []).map((t, ix) => ix === i ? { ...t, done: !t.done } : t);
-    const open = tl.filter(t => t && !t.done).length;
+    // Counted the way the checklist counts (single-source audit, 11/18/2026):
+    // a step the plan already proves is not "still open" in the toast either.
+    const open = tl.filter(t => t && !t.done && !isTimelineStepResolved(t)).length;
     // RAW FEEDS TRUTH, both directions: checking a buy/shop step is the host
     // asserting the purchases happened — write the raw layer (foodGot) so
     // "Still to get", totals, and the day-before brief all agree. Unchecking
@@ -8297,7 +8299,10 @@ export default function HostShellV2() {
 
   // guestCountSource:'host' — this write IS the host answering, so it clears any
   // 'playbook-typical' the creation seam recorded and unblocks the outward drafts.
-  const setGuests = (n) => patchEvent({ guestEstimate: n, guestCountSource: 'host' }, 'Planning around ' + n + ' now — the plan just recomputed.');
+  // A LOCKED COUNT MOVES WITH THE HOST'S EDIT (single-source audit 11/18/2026):
+  // guestCountFor reads guestCount first, so writing only the estimate left a
+  // locked 40 on screen under a toast saying 41.
+  const setGuests = (n) => patchEvent({ guestEstimate: n, guestCountSource: 'host', ...(Number(event.guestCount) > 0 ? { guestCount: n } : null) }, 'Planning around ' + n + ' now — the plan just recomputed.');
   // The count RESOLUTION rows — shared by the 'count' editor and the guests
   // editor's drift bridge (W14): when the caterer's number and the confirmed
   // yeses disagree, the fix is one of these two taps, wherever the host is.
@@ -14345,7 +14350,16 @@ export default function HostShellV2() {
                 const rc = (() => { try { return playbookDayOfChecklist(event); } catch { return null; } })();
                 if (!rc || !rc.items || !rc.items.length) return null;
                 const checked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
-                const done = rc.items.filter((p) => checked[p.key]).length;
+                // ONE RAIN PLAN (single-source audit, 11/18/2026): the 'weather'
+                // row was its own tick in safetyChecked while the rain section and
+                // readiness read event.rainPlan, so "If it rains: garage" could sit
+                // beside an unconfirmed "Rain / heat plan". The row now reads the
+                // saved plan, and with none saved a tap opens the rain editor —
+                // where the answer lives — instead of storing a second one.
+                const rainHas = (() => { try { return rainPlanStatus(event).hasPlan; } catch { return false; } })();
+                const isRainRow = (p) => p.key === 'weather';
+                const isChecked = (p) => (isRainRow(p) && rainHas) || !!checked[p.key];
+                const done = rc.items.filter(isChecked).length;
                 const toggle = (key) => {
                   const next = { ...checked };
                   if (next[key]) delete next[key]; else next[key] = true;
@@ -14369,9 +14383,9 @@ export default function HostShellV2() {
                       </p>
                     )}
                     {rc.items.map((p, i) => (
-                      <button key={p.key} className={'frow' + (checked[p.key] ? ' got' : '')}
-                        style={{ animation: rowEnter(i) }}
-                        onClick={() => toggle(p.key)}>
+                      <button key={p.key} className={'frow' + (isChecked(p) ? ' got' : '')}
+                        style={{ animation: rowEnter(i) }} data-dayof-item={p.key}
+                        onClick={() => (isRainRow(p) && (rainHas || !checked[p.key]) ? setSheet({ kind: 'rain' }) : toggle(p.key))}>
                         <span className="fcheck" aria-hidden="true" />
                         <span className="f-main">
                           <span className="f-name">{p.label}</span>
@@ -25512,7 +25526,7 @@ export default function HostShellV2() {
               // say so here, and the board led with the invite forever. A record,
               // not an act — the same attestation as "Mark it sent — I sent it
               // myself" — shown only until it is recorded.
-              const markInviteSent = event.invitesSentAt ? null : {
+              const markInviteSent = invitesOut(event) ? null : {
                 label: 'I already sent it',
                 onClick: () => patchEvent({ invitesSentAt: new Date().toISOString() }, 'Invite marked as sent — the plan moves on.'),
               };
