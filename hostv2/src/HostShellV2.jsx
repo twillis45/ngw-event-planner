@@ -15754,7 +15754,7 @@ export default function HostShellV2() {
               // Set: 12 Sample Rd". The street she typed is the place.
               const street = String(vf.address || '').trim();
               const venuePhrase = venue
-                ? `${/^(the|a|an)\s/i.test(venue) ? '' : 'The '}${venue} is set — arrival, parking, and the rain plan live here.`
+                ? `${/^(the|a|an)\s|^\d/i.test(venue) ? '' : 'The '}${venue} is set — arrival, parking, and the rain plan live here.`
                 : street
                   ? `${street} is set — arrival, parking, and the rain plan live here.`
                   : 'No venue named yet — name it and arrival, parking, and the rain plan live here.';
