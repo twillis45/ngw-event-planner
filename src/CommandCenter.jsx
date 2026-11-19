@@ -2149,6 +2149,11 @@ export function eventPlan(event, ctx = null) {
     // venue gate as "Add the location." on an event whose town was already set.
     // Driven live; invisible to every test that reads the selector directly.
     ask: top.ask || null,
+    // THE SIXTH (owner's phone, 9:09 PM 11/19/2026). A bunch of late steps
+    // says it is led by a checklist step, so the headline asks it as a step
+    // ("Catch up on this step."). Dropped here, the headline fell to the CTA
+    // and read "Map the spread." over an allergy step.
+    leadIsStep: top.leadIsStep === true,
     consequence: top.consequence || null,
     cta: top.primaryCta || null,
     route: top.primaryRoute || null,

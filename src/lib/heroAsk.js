@@ -199,7 +199,11 @@ export function heroRecord(a, ask) {
     // Strip the leading verb AND the surrounding quotes: a decision-board "call" arrives
     // titled Resolve "the label", and dropping only the verb left the bare "quoted" name
     // showing in the hero (host "why is this in quotes" 2026-07-18).
-    const record = t.replace(/^(confirm|book|call|pay|chase|set|plan|add|decide|pick|reconfirm|nudge|ask|fix|buy|resolve|settle)\s+/i, '').replace(/^["“”"']+|["“”"']+$/g, '').trim();
+    const bare = t.replace(/^(confirm|book|call|pay|chase|set|plan|add|decide|pick|reconfirm|nudge|ask|fix|buy|resolve|settle)\s+/i, '');
+    // Only a WHOLLY quoted name loses its quotes. A title that ends in a quoted
+    // example keeps its closing mark (owner's phone, 11/19/2026: '…someone at
+    // the table is allergic' lost its close quote on the board).
+    const record = (/^["“'](.*)["”']$/.test(bare.trim()) ? bare.trim().slice(1, -1) : bare).trim();
     // BOTH sides normalize IDENTICALLY (ruling C, 2026-07-30). The ask was punctuation-
     // stripped and the record was not, so a record token still wearing its punctuation
     // ("outdoor?", "chicken,") could never match the clean ask token it duplicates —
