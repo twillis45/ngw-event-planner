@@ -74,3 +74,17 @@ it('an unacknowledged retry stays in the existing outbox', async () => {
   expect(JSON.parse(localStorage.getItem(key))).toEqual([expect.objectContaining({ idempotencyKey: 'same-key', _attempts: 1 })]);
   localStorage.removeItem(key);
 });
+
+// Found 11/19/2026 writing the WebKit offline-reply journey: a guest's lodging
+// preference saved while offline was dropped when the outbox sent the reply.
+it('a reply held offline keeps the guest’s lodging pick when it is sent', async () => {
+  jest.resetModules();
+  process.env.REACT_APP_API_BASE_URL = 'https://rsvp-test.invalid';
+  const { flushRsvpOutbox } = require('../rsvp');
+  const key = 'ngw-rsvp-queue-' + event.id;
+  localStorage.setItem(key, JSON.stringify([{ name: 'Guest', rsvp: 'Yes', lodgingPick: 'hotel-fera', idempotencyKey: 'k1', submittedAt: Date.now() }]));
+  const bodies = [];
+  global.fetch = jest.fn(async (_u, init) => { bodies.push(JSON.parse(init.body)); return { ok: true, json: async () => ({ ok: true }) }; });
+  await expect(flushRsvpOutbox(event.id, event.rsvpCode)).resolves.toEqual({ flushed: 1, remaining: 0 });
+  expect(bodies[0]).toMatchObject({ rsvp: 'Yes', lodging_pick: 'hotel-fera' });
+});
