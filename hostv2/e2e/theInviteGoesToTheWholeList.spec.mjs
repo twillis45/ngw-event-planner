@@ -89,3 +89,54 @@ test('the guest list is invited: email where it can go, one text at a time where
   expect(saved.guests.find((g) => g.id === 'g1').invitedAt).toBeUndefined();   // Maya: still to email
   expect(typeof saved.invitesSentAt).toBe('string');                          // "Send the invite" is credited
 });
+
+// Owner, 11/19/2026: "check copy for text, each version doesn't change much."
+// Each voice is now its own invite; Tighter used to drop the date and place.
+const openInvite = async (page, ev) => {
+  await page.route(`${API}/**`, (r) => r.fulfill({ status: 200, json: [] }));
+  await page.route(`${API}/api/public/invite/${ev.rsvpCode}`, (r) => r.fulfill({
+    status: 200, json: { ok: true, event: { id: ev.id, name: ev.name, type: ev.type, date: ev.date, rsvpCode: ev.rsvpCode, goingCount: 0 } },
+  }));
+  await page.addInitScript((e) => {
+    if (sessionStorage.getItem('seeded')) return;
+    sessionStorage.setItem('seeded', '1');
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
+    localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
+    localStorage.removeItem('ngw-hostv2-voice');
+  }, ev);
+  await page.goto(`${BASE}?elegant=1`);
+  await page.waitForFunction(() => (document.querySelector('.app')?.innerText || '').trim().length > 120, null, { timeout: 20_000 });
+  const tap = (re) => page.evaluate((s) => {
+    const el = [...document.querySelectorAll('button,[role="button"],a')].filter((x) => new RegExp(s).test((x.innerText || '').trim())).pop();
+    if (el) el.click();
+    return !!el;
+  }, re.source);
+  await tap(/^Menu$/); await page.waitForTimeout(400);
+  await tap(/^Jump to a section$/); await page.waitForTimeout(400);
+  await tap(/^Guests/); await page.waitForTimeout(900);
+  expect(await tap(/^Invite your guest list \(\d+\)$/)).toBe(true);
+  await expect(page.getByLabel('Edit the draft')).toBeVisible({ timeout: 10_000 });
+};
+
+test('each voice is its own invite, and none of them drops the day or the place', async ({ page }) => {
+  await openInvite(page, { ...hostEvent(), startTime: '16:00', venue: 'Vida’s place' });
+  const box = page.getByLabel('Edit the draft');
+  const seen = new Set();
+  for (const voice of ['As written', 'Tighter', 'Warmer', 'Playful', 'Formal']) {
+    await page.getByRole('radio', { name: voice, exact: true }).click();
+    const t = await box.inputValue();
+    expect(t, voice).toContain('4:00 PM');
+    expect(t, voice).toContain('Vida’s place');
+    expect(t, voice).toContain(`rsvp=${CODE}`);
+    seen.add(t.split('\n').find((l) => l.trim() && !/^(You’re invited|We’d love|Clear your|Invitation) —/.test(l)));
+  }
+  expect(seen.size).toBe(5);   // five different openings
+});
+
+test('a repast offers no Playful voice', async ({ page }) => {
+  await openInvite(page, { ...hostEvent(), id: 'e2e-invite-repast', name: 'Repast for Mr. Lewis', type: 'Repast', honoree: 'Mr. Lewis' });
+  await expect(page.getByRole('radio', { name: 'Formal', exact: true })).toBeVisible();
+  await expect(page.getByRole('radio', { name: 'Playful', exact: true })).toHaveCount(0);
+});

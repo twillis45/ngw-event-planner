@@ -75,7 +75,7 @@ import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAware
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/inviteBatch';
-import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
+import { draftInvite, inviteVoicesFor, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
 // dollars turned $0.20/lb of ice into "$0/lb" on 84 of the corpus's 440
 // per-unit lines. One definition, shared with the CRA food sheet.
@@ -6568,6 +6568,7 @@ export default function HostShellV2() {
       // THE INVITE ITSELF (owner, live, 11/18/2026): a send recorded from this
       // draft also credits "Send the invite", which reads invitesSentAt alone.
       sendsInvite: !!(opts && opts.sendsInvite),
+      voices: (opts && opts.voices) || null,
       from: prev ? (prev.kind === 'draft' ? prev.from || null : prev) : null,
     }));
   };
@@ -6642,7 +6643,9 @@ export default function HostShellV2() {
     }
     return b;
   };
-  const shownDraft = () => draftBody != null ? draftBody : toneBody(sheet && sheet.body, draftTone, {
+  const shownDraft = () => draftBody != null ? draftBody
+    : (sheet && sheet.voices) ? (sheet.voices[draftTone] || sheet.voices['as-written'])
+    : toneBody(sheet && sheet.body, draftTone, {
     title: sheet && sheet.title,
     vendor: (sheet && sheet.vendorId && (event.vendors || []).find(v => v && v.id === sheet.vendorId)) || null,
   });
@@ -6676,7 +6679,15 @@ export default function HostShellV2() {
   const openInviteDraft = async (title, build, opts) => {
     const url = await verifiedRsvpUrl();
     if (url === null) return;   // a check is already running
-    openDraft(title, build(event, profile, { rsvpUrl: url }), null, opts);
+    // The invite is written in each voice from the facts (doItForMe.inviteInVoice),
+    // so picking a voice shows that version, not a word swap on one draft.
+    const voices = build === draftInvite
+      ? Object.fromEntries(inviteVoicesFor(event).map((v) => {
+          const d = draftInvite(event, profile, { rsvpUrl: url, voice: v });
+          return [v, [d.subject, d.body].filter(Boolean).join('\n\n')];
+        }))
+      : null;
+    openDraft(title, build(event, profile, { rsvpUrl: url }), null, voices ? { ...(opts || {}), voices } : opts);
   };
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const showQr = async () => {
@@ -20743,7 +20754,7 @@ export default function HostShellV2() {
               // delivery answer). 429 is that cap; 403 an address the account
               // has not saved yet. Rules: lib/inviteBatch.js.
               const sendInviteTo = async (g) => {
-                const draftSubject = (draftInvite(event, profile) || {}).subject || 'You’re invited';
+                const draftSubject = (draftInvite(event, profile, { voice: (sheet.voices && sheet.voices[draftTone]) ? draftTone : 'as-written' }) || {}).subject || 'You’re invited';
                 const { subject, body } = inviteSubjectAndBody(shownDraft(), draftSubject);
                 try {
                   const res = await commApi.createMessage(event.id, 'CLIENT', {
@@ -20813,8 +20824,10 @@ export default function HostShellV2() {
                 <div style={{ marginBottom: 'var(--sp-3)' }}>
                   <div className="of" style={{ marginBottom: 4 }}>Voice</div>
                   <OptionList ariaLabel="Voice"
-                    options={[['as-written', 'As written'], ['tighter', 'Tighter'], ['warmer', 'Warmer'], ['playful', 'Playful'], ['formal', 'Formal']].map(([k, label]) => ({ label, value: k }))}
-                    value={draftBody == null ? draftTone : ''}
+                    options={[['as-written', 'As written'], ['tighter', 'Tighter'], ['warmer', 'Warmer'], ['playful', 'Playful'], ['formal', 'Formal']]
+                      .filter(([k]) => !sheet.voices || sheet.voices[k])   // a solemn invite offers no Playful
+                      .map(([k, label]) => ({ label, value: k }))}
+                    value={draftBody == null ? ((sheet.voices && !sheet.voices[draftTone]) ? 'as-written' : draftTone) : ''}
                     onPick={(k) => {
                       // Picking a voice still means "rewrite it" — but her typed words
                       // are no longer thrown away with no way back (Nielsen re-run N6,
