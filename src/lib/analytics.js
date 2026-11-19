@@ -223,6 +223,19 @@ export async function identifyAccount(user) {
   return label;
 }
 
+/**
+ * The pass price this device is shown (G86 price test), as a super property on
+ * every event once it is known. `register`, not `register_once`: the price is
+ * fixed per device while a test runs, but when the owner ends it the device's
+ * price returns to $39 and its events must say so.
+ */
+export async function registerPassPrice(cents) {
+  if (analyticsOptedOut() || !Number.isInteger(cents)) return;
+  const ph = await getPostHog();
+  if (!ph) return;
+  try { ph.register({ pass_price_cents: cents }); } catch { /* best-effort */ }
+}
+
 /** Sign-out: the next person on this browser is not counted as this one. */
 export async function resetAnalytics() {
   try { if (_ph) _ph.reset(); } catch { /* best-effort */ }

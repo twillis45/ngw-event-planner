@@ -9,6 +9,7 @@
 
 import { plannerAuthHeaders } from './commApi';
 import { publicAppUrl } from './publicAppUrl';
+import { devicePriceKey } from './passPrice';
 
 const BASE = process.env.REACT_APP_API_BASE_URL;
 
@@ -136,6 +137,11 @@ export const createSubscriptionSession = async ({ plan, email, studioId }) => {
  * It also stamps the tenant key into the session metadata, which is the only
  * way the webhook can know which studio to write the entitlement for: that
  * request arrives with a signature and nothing else, no principal.
+ *
+ * ── `price_key` IS NOT A PRICE (G86 price test, 11/19/2026) ────────────────
+ * It is this device's random key (lib/passPrice). The server re-runs the same
+ * rule on it to pick between the two prices the owner set; a malformed or
+ * missing key is charged $39. Still no amount leaves the browser.
  */
 export const createPassSession = async ({ eventId }) => {
   if (!BASE) throw new Error('No API backend configured (REACT_APP_API_BASE_URL).');
@@ -147,6 +153,7 @@ export const createPassSession = async ({ eventId }) => {
     headers: { 'Content-Type': 'application/json', ...(await plannerAuthHeaders()) },
     body: JSON.stringify({
       event_id: eventId,
+      price_key: devicePriceKey(),
       // `?pass_paid=1`, not the fee flow's `?stripe_paid=1&fee_id=…`: the pass
       // session's metadata carries `kind: 'pass'` and no fee_id, so the old
       // return shape has nothing to verify against. The session id still rides

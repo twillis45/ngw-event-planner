@@ -306,7 +306,9 @@ def test_the_pass_request_has_no_price_field_at_all():
     assert "amount_cents" not in fields
     assert "amount" not in fields
     assert "price" not in fields
-    assert fields == {"event_id", "success_url", "cancel_url"}
+    # `price_key` is the device's random price-test key (G86), not a price:
+    # the server derives the amount from it (tests/test_pass_price_test.py).
+    assert fields == {"event_id", "success_url", "cancel_url", "price_key"}
 
 
 def test_the_pass_price_is_a_server_constant():

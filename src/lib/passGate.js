@@ -59,6 +59,7 @@
 // either, copy first.
 import { spanIntel } from './eventSpan';
 import { serverPassHeld } from './passEntitlement';
+import { formatPassPrice, PASS_PRICE_CENTS } from './passPrice';
 
 // Reads env at CALL time, not import time — stripeApi captures its BASE const
 // on import, which is fine for the app but untestable and one restart stale.
@@ -216,13 +217,18 @@ export function passStatus(ev) {
  * and never softens). Returns null while billing is dormant: no boundary
  * exists yet, and claiming one would be invented urgency.
  */
-export function creationDisclosure(verdict) {
+//
+// PRICE AS A PARAMETER (G86 price test): `cents` is the device's price, from
+// lib/passPrice. Default $39; null means not yet known, and the copy then names
+// no price rather than one the server might not charge.
+export function creationDisclosure(verdict, cents = PASS_PRICE_CENTS) {
   if (!isBillingLive()) return null;
+  const pass = (formatPassPrice(cents) ? formatPassPrice(cents) + ' ' : '') + 'One-Event Pass';
   const r = lockingReasons(verdict);
   if (r.length > 0) {
-    return 'This is a ' + (r.includes('destination') ? 'destination' : 'multi-day') + ' event. Planning it is free. Its trip tools and sharing vendor briefs take the $39 One-Event Pass.';
+    return 'This is a ' + (r.includes('destination') ? 'destination' : 'multi-day') + ' event. Planning it is free. Its trip tools and sharing vendor briefs take the ' + pass + '.';
   }
-  return 'Planning this event is free, including sharing one vendor brief (that takes a free account). Sharing with more than one vendor, or a destination or multi-day event, takes the $39 One-Event Pass.';
+  return 'Planning this event is free, including sharing one vendor brief (that takes a free account). Sharing with more than one vendor, or a destination or multi-day event, takes the ' + pass + '.';
 }
 
 /**
@@ -232,18 +238,19 @@ export function creationDisclosure(verdict) {
  * destination/multi-day (`lockingReasons`). Anywhere else it is already open,
  * and naming it as a perk would sell something the host has for free.
  */
-export function passSheetCopy(ev) {
+export function passSheetCopy(ev, cents = PASS_PRICE_CENTS) {
   const trip = lockingReasons(ev).length > 0;
+  const price = formatPassPrice(cents);   // null while not known: say no price
   const perks = [
     // Wording C (owner, 11/16/2026): the button says "Send <name> the details",
     // so the sheet does too — "brief" and "say yes to you" confused 25 of 44
     // panel hosts who saw the old sheet (consumer panel round 3, simulated).
     ['Send every vendor the details', 'Plan every event free, including sending one vendor the details with a free account. The pass lets you send the details to every vendor on this event — each gets the same clean, honest text and link.'],
     ...(trip ? [['The full destination toolkit', 'Lodging coordination, group travel, and the multi-day program — the deep end of the planner, included.']] : []),
-    ['One event, one price', 'A single $39 for this event. No monthly fee, no auto-renew, nothing to cancel.'],
+    ['One event, one price', 'A single ' + (price || 'price') + ' for this event. No monthly fee, no auto-renew, nothing to cancel.'],
   ];
   return {
-    beforePaying: 'Planning stays free. Pay $39 once to send the details to all your vendors, not just the first' + (trip ? ', and get trip tools.' : '.'),
+    beforePaying: 'Planning stays free. Pay ' + (price ? price + ' ' : '') + 'once to send the details to all your vendors, not just the first' + (trip ? ', and get trip tools.' : '.'),
     perks,
     heldLine: (trip ? 'Sending the details to every vendor and the full destination toolkit are unlocked here.' : 'Sending the details to every vendor is unlocked here.')
       + ' Nothing more to pay on this event — the pass covers it.',

@@ -50,6 +50,8 @@ import { settleChoicePatch } from '@app/lib/choiceProvenance';
 import { spanNights } from '@app/lib/dates';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
 import { destinationLocked, isBillingLive, isUserCreatedEvent } from '@app/lib/passGate';
+import { withPassPrice } from '@app/lib/passPrice';
+import { getCapabilities, isCommApiConfigured } from '@app/lib/commApi';
 import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
 // The shell's own save path, session check and status reader — not a copy.
 import { isSupabaseConfigured, supabase } from '@app/lib/supabaseClient';
@@ -127,6 +129,15 @@ export default function LodgingCockpit() {
     if (!eventId || !isUserCreatedEvent({ id: eventId })) return;
     refreshEventPass(eventId, { claimed: passClaimed });
   }, [eventId, passClaimed]);
+  // The locked page's pass door shows this device's price (G86), which is not
+  // known until capabilities answer; the shell asks the same way.
+  const [, setPriceTick] = useState(0);
+  useEffect(() => {
+    if (!isBillingLive() || !isCommApiConfigured()) return undefined;
+    let live = true;
+    getCapabilities().then(() => { if (live) setPriceTick((t) => t + 1); }).catch(() => {});
+    return () => { live = false; };
+  }, []);
 
   // ── THE ACCOUNT HEARS ABOUT IT TOO (G10, 11/12/2026) ─────────────────────
   // `patch` used to write this browser only. A signed-in host's shortlist,
@@ -288,7 +299,7 @@ export default function LodgingCockpit() {
       <Frame><Solo>
         <p className="lc-eyebrow">WHERE EVERYONE STAYS</p>
         <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>Where everyone stays lives here — the stay, who needs a room, and the lodging plan for a multi-day event. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
-        <button className="cta" style={{ width: '100%' }} onClick={goSeePass}>See the One-Event Pass — $39</button>
+        <button className="cta" style={{ width: '100%' }} onClick={goSeePass}>{withPassPrice('See the One-Event Pass')}</button>
         <EventPicker events={events} eventId={eventId} onPick={(id) => { setEventId(id); setViewing(null); }} />
       </Solo></Frame>
     );
