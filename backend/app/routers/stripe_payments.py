@@ -49,6 +49,7 @@ from .. import config
 from ..auth import require_planner, require_fee_planner
 from ..app_origins import is_app_redirect
 from ..db import get_pool
+from ..analytics import capture, pass_purchase_payload
 
 log = logging.getLogger("ngw.stripe")
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
@@ -702,6 +703,10 @@ async def _grant_pass(meta: dict, session_data, sess_id, amount) -> None:
         log.warning("stripe: PASS BLOCKED event=%s session=%s reason=%s", event_id, sess_id, blocked)
     elif result == "INSERT 0 1":
         log.info("stripe: PASS GRANTED event=%s studio=%s session=%s amount=%s", event_id, studio_id, sess_id, amount)
+        # The purchase, with the amount Stripe took, joined to the hashed account
+        # that planned it (app/analytics.py). After the grant, fail-soft.
+        await capture(pass_purchase_payload(
+            meta, amount if amount is not None else PASS_AMOUNT_CENTS, session_data.get("currency") or "usd"))
     else:
         log.warning("stripe: DUPLICATE pass payment event=%s session=%s — no grant written", event_id, sess_id)
 

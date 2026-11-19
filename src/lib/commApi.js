@@ -164,4 +164,14 @@ export const commApi = {
   // Sprint 58P.4c — public portal verdict path; no planner auth.
   portalRespond,
   getCapabilities,
+  // The invitation as a picture, for the invite email (owner, 11/19/2026). The
+  // raw JPEG is the body; the server re-encodes it (backend invite_cards).
+  uploadInviteCard: async (eventId, blob) => {
+    if (!BASE) throw new Error('Comm API not configured');
+    const res = await fetch(`${BASE}/api/events/${encodeURIComponent(eventId)}/invite-card`, {
+      method: 'POST', headers: { 'Content-Type': 'image/jpeg', ...(await authHeaders()) }, body: blob,
+    });
+    if (!res.ok) throw new Error(`invite card → ${res.status}`);
+    return res.json();
+  },
 };

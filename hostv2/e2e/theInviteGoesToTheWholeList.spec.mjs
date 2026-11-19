@@ -90,6 +90,10 @@ test('the guest list is invited: email where it can go, one text at a time where
   expect(typeof jordan.invitedAt).toBe('string');
   expect(saved.guests.find((g) => g.id === 'g1').invitedAt).toBeUndefined();   // Maya: still to email
   expect(typeof saved.invitesSentAt).toBe('string');                          // "Send the invite" is credited
+  // Analytics (owner, 11/19/2026): the text is counted as an invite sent. On a
+  // local preview PostHog never loads; lib/analytics records to its dev tap.
+  const sent = await page.evaluate(() => (window.__NGW_TRACK__ || []).filter((t) => t.event === 'invite_sent'));
+  expect(sent).toEqual([{ event: 'invite_sent', via: 'text', count: 1 }]);
 });
 
 // Owner, 11/19/2026: "check copy for text, each version doesn't change much."

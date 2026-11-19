@@ -30,6 +30,7 @@ from .routers import vendor_brief
 from .routers import helper_link
 from .routers import guest_messages
 from .routers import guest_photos
+from .routers import invite_cards
 from .routers import family_view
 from .routers import calendar_feed
 from .routers import cohosts
@@ -279,6 +280,7 @@ app.include_router(vendor_brief.router)
 app.include_router(helper_link.router)
 app.include_router(guest_messages.router)
 app.include_router(guest_photos.router)
+app.include_router(invite_cards.router)           # the invitation as a picture, for the invite email
 app.include_router(family_view.router)
 app.include_router(calendar_feed.router)
 app.include_router(cohosts.router)

@@ -76,6 +76,8 @@ import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/inviteBatch';
 import { inviteGaps } from '@app/lib/inviteGaps';
+import { inviteCardModel, inviteCardKey } from '@app/lib/inviteCard';
+import SignInCheck, { signInCheckOn } from './SignInCheck';
 import { draftInvite, inviteVoicesFor, eventCulturalMeta, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
 // dollars turned $0.20/lb of ice into "$0/lb" on 84 of the corpus's 440
@@ -147,7 +149,7 @@ import { placeQuestionsFor, answerPlaceQuestionPatch } from '@app/lib/placeQuest
 
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia, isListingPhoto } from '@app/lib/lodgingBookmarklet';
-import { track as trackEvent, EVENTS as ANALYTICS, isAnalyticsOptedOut, setAnalyticsOptOut, shouldShowAnalyticsNotice, markAnalyticsNoticeSeen, analyticsNoticeAction } from '@app/lib/analytics';
+import { track as trackEvent, EVENTS as ANALYTICS, isAnalyticsOptedOut, setAnalyticsOptOut, shouldShowAnalyticsNotice, markAnalyticsNoticeSeen, analyticsNoticeAction, trackAccountSession, resetAnalytics, trackActivation } from '@app/lib/analytics';
 // Reasoning Continuity v1 — the ONE place a queue row's "why" is decided.
 import { getActionReason } from '@app/lib/actionReason';
 import { timeStatusLabel, PAST_WINDOW } from '@app/lib/timeStatusLabel';
@@ -1068,6 +1070,30 @@ export default function HostShellV2() {
   // EVERY event created here (array — creating a second never overwrites the
   // first). Each stores itself whole; edits land directly on the array entry.
   const [customs, setCustoms] = useState(CUSTOM_EVENTS_AT_LOAD);
+  // THE INVITATION AS A PICTURE (owner, 11/19/2026: "Build the invitation
+  // picture email"). Drawn and uploaded once per card (lib/inviteCard key), the
+  // first time an invite email goes out for it. Resolves to the stored version,
+  // or null when it could not be made: the email then carries its HTML card.
+  const inviteCardRef = useRef({});
+  const ensureInviteCard = (ev) => {
+    try {
+      const model = inviteCardModel(ev);
+      const key = inviteCardKey(model);
+      const m = inviteCardRef.current;
+      if (m[ev.id] && m[ev.id].key === key) return m[ev.id].p;
+      const p = (async () => {
+        const { drawInviteCard } = await import('./inviteCardImage');
+        const blob = await drawInviteCard(model);
+        const out = await commApi.uploadInviteCard(ev.id, blob);
+        return (out && out.version) || null;
+      })().catch(() => { delete m[ev.id]; return null; });
+      m[ev.id] = { key, p };
+      return p;
+    } catch (_e) { return Promise.resolve(null); }
+  };
+  // Real plans (a date and a head count) are counted once each, and a second one
+  // once: the activation milestones the legacy shell fired and this one did not.
+  useEffect(() => { try { trackActivation(customs); } catch (_e) { /* a counter never blocks a plan */ } }, [customs]);
   const isCustomEventId = (id) => customs.some(c => c && c.id === id);
   const activeCustom = customs.find(c => c && c.id === eventId) || null;
   // First-run welcome (one-time): a brand-new host — nothing real in
@@ -2350,12 +2376,21 @@ export default function HostShellV2() {
     };
     supabase.auth.getSession().then(({ data }) => {
       const s = data && data.session ? data.session : null;
-      if (!dead) { setSession(s); setAuthChecked(true); if (s) hydrate(); }
+      if (!dead) { setSession(s); setAuthChecked(true); if (s) { hydrate(); trackAccountSession(s.user).catch(() => {}); } }
     }).catch(() => { if (!dead) setAuthChecked(true); });
     // A plan made signed out moves into the store BEFORE hydrate reads it, so
     // the sign-in upload below sends it to the account like any other plan
     // that never reached one.
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { if (!dead) { setSession(s || null); if (s) { try { keepDraftOnSignIn.current(); } catch { /* the draft stays in memory */ } hydrate(); } } });
+    // Analytics (owner, 11/19/2026): a sign-in identifies the account by a one-way
+    // hash and records sign-up / return once; a sign-out resets, so the next
+    // person on this browser is not counted as this one.
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      if (dead) return;
+      setSession(s || null);
+      if (s) { try { keepDraftOnSignIn.current(); } catch { /* the draft stays in memory */ } hydrate(); }
+      if (_e === 'SIGNED_IN' && s) trackAccountSession(s.user).catch(() => {});
+      if (_e === 'SIGNED_OUT') resetAnalytics().catch(() => {});
+    });
     return () => { dead = true; try { sub && sub.subscription && sub.subscription.unsubscribe(); } catch { /* gone */ } };
   }, []);
   // SYNC-HONESTY-1: when the connection comes back, retry anything queued
@@ -2365,12 +2400,19 @@ export default function HostShellV2() {
   }), []); // eslint-disable-line react-hooks/exhaustive-deps
   // G19: the same moment retries profile fields the account never confirmed.
   useEffect(() => installProfileOnlineFlush(r => { if (r && r.ok && r.profile) setProfileState(r.profile); }), []);
+  // THE BOT CHECK (owner, 11/19/2026): with a Turnstile site key in the build,
+  // a sign-in email needs a fresh token (SignInCheck). Without one, nothing
+  // changes. Each token is used once, so the check resets after every send.
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaRound, setCaptchaRound] = useState(0);
   const sendMagicLink = async () => {
     const em = authEmail.trim();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { setAuthErr('A real email address — the sign-in link goes there.'); return; }
+    if (signInCheckOn() && !captchaToken) { setAuthErr('One moment — we’re checking this is a person, not a bot. Try again in a second.'); return; }
     setAuthBusy(true); setAuthErr('');
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email: em, options: { emailRedirectTo: authRedirectUrl() } });
+      const { error } = await supabase.auth.signInWithOtp({ email: em, options: { emailRedirectTo: authRedirectUrl(), ...(signInCheckOn() ? { captchaToken } : {}) } });
+      if (signInCheckOn()) setCaptchaRound((n) => n + 1);
       if (error) throw error;
       setAuthSent(true);
     } catch (e) {
@@ -2403,11 +2445,13 @@ export default function HostShellV2() {
                         <button className="mini" onClick={resetAuthSent}>Use a different email</button>
                         <button className="mini" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Send a new code'}</button>
                       </div>
+                      <SignInCheck onToken={setCaptchaToken} resetKey={'sent-' + captchaRound} />
                     </>
                   ) : (
                     <>
                       <input className="field" style={{ maxWidth: 'none' }} type="email" placeholder="you@example.com" value={authEmail}
                         onChange={e => { setAuthEmail(e.target.value); setAuthErr(''); }} aria-label="Email for sign-in link" />
+                      <SignInCheck onToken={setCaptchaToken} resetKey={'form-' + captchaRound} />
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
                       </div>
@@ -20783,8 +20827,12 @@ export default function HostShellV2() {
               const sendInviteTo = async (g) => {
                 const draftSubject = (draftInvite(event, profile, { voice: (sheet.voices && sheet.voices[draftTone]) ? draftTone : 'as-written' }) || {}).subject || 'You’re invited';
                 const { subject, body } = inviteSubjectAndBody(shownDraft(), draftSubject);
+                const cardVersion = await ensureInviteCard(event);
                 try {
                   const res = await commApi.createMessage(event.id, 'CLIENT', {
+                    // The picture just uploaded, by version: the server uses a stored
+                    // card only when it is THIS one, so a stale picture never goes out.
+                    ...(cardVersion ? { invite_card_version: cardVersion } : {}),
                     message_type: 'standard', author_role: 'planner',
                     author_name: (profile && profile.name) || 'Your host',
                     // invite: the email IS the invitation, its facts from the saved event (backend invite_email).
@@ -20808,6 +20856,7 @@ export default function HostShellV2() {
               };
               const reachInvite = (reached, via) => {
                 const at = new Date().toISOString();
+                try { trackEvent(ANALYTICS.INVITE_SENT, { via, count: (reached || []).length }); } catch (_e) { /* a counter never blocks an invite */ }
                 patchEvent({
                   guests: markInvited(event.guests || [], reached, via, at),
                   ...(event.invitesSentAt ? {} : { invitesSentAt: at }),
