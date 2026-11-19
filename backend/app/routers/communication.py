@@ -416,16 +416,24 @@ async def create_message(
         # Build a minimal but readable HTML body
         body_text = payload.body or ""
         body_html = _html.escape(body_text).replace("\n", "<br>")
-        sender = _one_line(payload.author_name) or "Your event planner"
+        sender = _one_line(payload.author_name) or "Your host"
         subj = _one_line(payload.subject) or f"Message from {sender}"
         greeting = f"<p>Hi {_html.escape(_one_line(payload.recipient_name))},</p>" if payload.recipient_name else ""
         html = f"{greeting}<div style=\"font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;\">{body_html}</div><p style=\"margin-top:24px;font-size:13px;color:#888;\">— Sent via NGW Events</p>"
 
+        # LOOKS LIKE THE EMAILS THAT ARRIVE (live alias check, 11/19/2026): the
+        # invite batch landed in Spam while the app's own notices to the same
+        # inbox arrived. Those go out as "<host> via No Guesswork"; this went out
+        # under the bare typed name, HTML only. It now names the service the same
+        # way and carries a plain-text part with the same words.
+        greeting_text = f"Hi {_one_line(payload.recipient_name)},\n\n" if payload.recipient_name else ""
+        body_plain = f"{greeting_text}{body_text}\n\n— Sent via No Guesswork Events"
         delivery_result = await send_thread_email(
             to=payload.recipient_email,
             subject=subj,
             body_html=html,
-            sender_name=sender,
+            body_text=body_plain,
+            sender_name=f"{sender} via No Guesswork",
             reply_to=reply_to,
         )
 

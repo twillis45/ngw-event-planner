@@ -159,3 +159,26 @@ def test_the_approval_email_html_escapes_what_the_host_typed():
         em._send_via_resend, em.is_email_configured = orig
     assert "<script>" not in seen["html"] and "&lt;script&gt;" in seen["html"]
     assert "<b>ev</b>" not in seen["html"] and '"><x' not in seen["html"]
+
+
+# ── LOOKS LIKE THE EMAILS THAT ARRIVE (live alias check, 11/19/2026) ──────────
+# The invite batch's emails reached Gmail and landed in Spam, while the app's
+# reply and update notices to the same inbox arrived. The notices go out as
+# "<host> via No Guesswork" with a plain-text part's worth of signal; the thread
+# email went out under the bare name the host typed ("Your host") with HTML
+# only. Both now match the notices' shape.
+
+def test_the_sender_reads_as_the_host_via_no_guesswork(env):
+    post(env, author_name="Vida Reyes")
+    assert env.sent[0][1]["sender_name"] == "Vida Reyes via No Guesswork"
+
+
+def test_no_name_on_the_profile_still_says_who_it_is_from(env):
+    post(env, author_name="")
+    assert env.sent[0][1]["sender_name"] == "Your host via No Guesswork"
+
+
+def test_every_email_carries_a_plain_text_part_with_the_same_words(env):
+    post(env, body="Can you do 3pm?\nThanks!", recipient_name="Rosa")
+    text = env.sent[0][1]["body_text"]
+    assert "Hi Rosa," in text and "Can you do 3pm?\nThanks!" in text and "<" not in text
