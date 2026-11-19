@@ -143,8 +143,8 @@ def test_an_invite_send_is_the_invitation_and_keeps_its_stop_link(env):
     assert r.status_code == 200
     k = env.sent[0]
     token = env.db["stops"][("ev1", GUEST)]["token"]
-    assert "An invitation" in k["body_html"] and "Yes, I’m in" in k["body_html"]
-    assert "Saturday, November 21" in k["body_html"] and "4:00 PM" in k["body_html"] and "?rsvp=Code123456789012" in k["body_html"]
+    assert "Open your invitation" in k["body_html"] and "Yes, I’m in" in k["body_html"]
+    assert "Saturday<br>November 21" in k["body_html"] and "4:00 PM" in k["body_html"] and "?rsvp=Code123456789012" in k["body_html"]
     assert f"/api/public/email/stop/{token}" in k["body_html"] and f"/api/public/email/stop/{token}" in k["body_text"]
     assert k["headers"]["List-Unsubscribe"].endswith(f"{token}>")
 

@@ -1,19 +1,17 @@
-"""The invite email IS the invitation (owner, 11/19/2026: "Put my studio matte
-and format emails for invite from batch. Can't the emails being sent include the
-actual invite in body of email message?" then "I need the html version to be
-what they see").
+"""The invite email is an ENVELOPE for the invitation (owner, 11/19/2026).
 
-It mirrors the guest invite page's card (hostv2 InviteV2, styles.css .inv2-*):
-the masthead with its rule and diamond, the event's name in the display serif,
-the italic deck line, the accent rule, WHEN / WHERE / HOSTED BY, then "The
-favor of a reply" with Yes / Can't make it / Maybe, then the host's note.
+History: the owner asked for the invite in the email body, then "I need the html
+version to be what they see". A copy of the invite page (its paper as an image,
+its display font) still differed per mail app: Gmail drops the font, Outlook on
+Windows drops the paper and the rounded corners. So the owner chose option C:
+the email does not imitate the invite, it delivers it.
 
-Mail apps strip the page's CSS paper (gradients, grain, inset shadows), so the
-paper is the page's own CSS rendered ONCE to an image (hostv2/public/email/
-invite-paper.jpg, served beside the app) and laid behind the card, with the
-same paper colour as the fallback where images are off. The text stays text,
-and each reply button opens the invite with that answer preselected (?reply=).
-The countdown is left out: an email cannot update itself, so it would go stale.
+A plain cream card that every mail app draws the same way: "You're invited",
+"<host> invites you to", the event's name in Georgia (a font every mail app
+has), When and Where side by side, one button "Open your invitation" (the real
+page), and "Or pick your answer": Yes / Can't make it / Maybe, each opening the
+page with that answer PRESELECTED (?reply=). Nothing is sent until the guest
+adds a name and taps send on the page. Then the host's note, then the footer.
 
 Facts come from the event the SERVER has saved (events.data), never from the
 request. A start time the host did not set (startTimeSource 'derived') is never
@@ -23,15 +21,13 @@ import html as _html
 import re
 from datetime import date as _date
 
-from .config import APP_BASE_URL
 from .guest_notices import invite_url
 
 SOMBRE = re.compile(r"funeral|memorial|shiva|celebration of life|life celebration|wake|remembrance|in memoriam|mourn|repast", re.I)
 _URL_LINE = re.compile(r"^\s*https?://\S+\s*$")
 _INTRO_LINE = re.compile(r":\s*$")     # "Let us know you're coming:" — it only introduced the link
 SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
-SERIF = "'Playfair Display',Georgia,'Times New Roman',serif"
-PAPER_URL = f"{APP_BASE_URL.rstrip('/')}/hostv2/email/invite-paper.jpg"
+SERIF = "Georgia,'Times New Roman',serif"
 
 
 def _when_parts(ev: dict):
@@ -48,14 +44,6 @@ def _when_parts(ev: dict):
         mt = re.match(r"^(\d{1,2}):(\d{2})$", t)
         time_label = f"{(int(mt.group(1)) % 12) or 12}:{mt.group(2)} {'PM' if int(mt.group(1)) >= 12 else 'AM'}" if mt else t
     return date_label, time_label
-
-
-def _month_year(ev: dict) -> str:
-    try:
-        y, m, dd = (int(x) for x in str(ev.get("date") or "")[:10].split("-"))
-        return _date(y, m, dd).strftime("%b %Y").upper()
-    except (ValueError, TypeError):
-        return ""
 
 
 def _note_lines(note: str, facts=()) -> list:
@@ -75,12 +63,12 @@ def _note_lines(note: str, facts=()) -> list:
     return out
 
 
-def compose_invite_email(ev: dict, note: str, recipient_name, sender: str, stop_url, deck: str = ""):
+def compose_invite_email(ev: dict, note: str, recipient_name, sender: str, stop_url):
     ev = ev or {}
     e = _html.escape
     solemn = bool(SOMBRE.search(str(ev.get("type") or "")) or SOMBRE.search(str(ev.get("name") or "")))
-    hue, hue_deep = ("#8a7a66", "#6f6152") if solemn else ("#D9622B", "#B84E1E")
-    ink, sub = "#241f18", "#62626d"
+    hue = "#6f6152" if solemn else "#B84E1E"
+    ink, sub, line = "#241f18", "#62626d", "#e2d6bf"
     name = str(ev.get("name") or "").strip() or "Our gathering"
     date_label, time_label = _when_parts(ev)
     when = " · ".join(x for x in (date_label, time_label) if x)
@@ -88,78 +76,64 @@ def compose_invite_email(ev: dict, note: str, recipient_name, sender: str, stop_
     address = str(ev.get("venueAddress") or "").strip()
     host = str(sender or "").strip()
     first = host.split(" ")[0] if host else "your host"
-    deck = re.sub(r"\s+", " ", str(deck or "")).strip()[:90]
     url = invite_url(str(ev.get("rsvpCode") or ev.get("id") or ""))
     hi = f"Hi {str(recipient_name).strip()}," if recipient_name and str(recipient_name).strip() else ""
-    note_lines = _note_lines(note, (when, date_label, place, address, deck, deck + '.' if deck else ''))
-    note_html = re.sub(r"(<br>){3,}", "<br><br>", "<br>".join(e(line) for line in note_lines).strip())
+    note_lines = _note_lines(note, (when, date_label, place, address))
+    note_html = re.sub(r"(<br>){3,}", "<br><br>", "<br>".join(e(x) for x in note_lines).strip())
 
-    def label(text, align="center", top=18):
-        return (f'<div style="margin:{top}px 0 0;text-align:{align};font:800 11px/1.3 {SANS};letter-spacing:.16em;'
-                f'text-transform:uppercase;color:{hue_deep};">{e(text)}</div>')
+    def label(text):
+        return (f'<div style="margin:0 0 6px;font:800 10.5px/1 {SANS};letter-spacing:.16em;'
+                f'text-transform:uppercase;color:{hue};">{e(text)}</div>')
 
-    def value(text, color=ink, weight=600):
-        return f'<div style="margin:4px 0 0;text-align:center;font:{weight} 16px/1.4 {SANS};color:{color};">{text}</div>'
-
-    facts = ""
-    if when:
-        when_html = e(date_label) + (f'<span style="font-weight:500;color:{sub};"> · {e(time_label)}</span>' if time_label and date_label else e(time_label) if time_label else "")
-        facts += label("When") + value(when_html)
+    cells = []
+    if date_label or time_label:
+        # The weekday on its own line, so "Thursday, November 26" never breaks mid-date.
+        d = e(date_label).replace(", ", "<br>", 1)
+        t = f'<span style="color:{sub};font-weight:500;">{e(time_label)}</span>' if time_label else ""
+        cells.append(label("When") + "<br>".join(x for x in (d, t) if x))
     if place or address:
-        facts += label("Where") + value(e(place or address))
-        if address and address != place:
-            facts += value(e(address), color=sub, weight=500)
-    if host:
-        facts += label("Hosted by") + value(e(host))
+        extra = f'<br><span style="color:{sub};font-weight:500;">{e(address)}</span>' if place and address and address != place else ""
+        cells.append(label("Where") + e(place or address) + extra)
+    facts = ""
+    if cells:
+        width = "50%" if len(cells) == 2 else "100%"
+        tds = "".join(
+            f'<td width="{width}" valign="top" style="padding:14px 6px;text-align:center;font:600 14.5px/1.4 {SANS};color:{ink};'
+            f'{f"border-left:1px solid {line};" if i else ""}">{c}</td>'
+            for i, c in enumerate(cells))
+        facts = (f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 0;'
+                 f'border-top:1px solid {line};border-bottom:1px solid {line};"><tr>{tds}</tr></table>')
 
-    def reply_btn(text, answer, filled):
-        style = (f"background:{hue_deep};color:#ffffff;border:1px solid {hue_deep};" if filled
-                 else f"background:#fbf7ee;color:{ink};border:1px solid #d9cdb6;")
-        return (f'<td style="padding:0 4px;" width="33%"><a href="{e(url)}&amp;reply={answer}" '
-                f'style="display:block;{style}text-decoration:none;text-align:center;font:700 14px/1.2 {SANS};'
-                f'padding:14px 4px;border-radius:12px;">{e(text)}</a></td>')
+    def pick(text, answer):
+        # Styled on the cell, so all three keep one height when one wraps on a small phone.
+        return (f'<td width="32%" valign="middle" style="background:#ffffff;border:1px solid #d9cdb6;border-radius:10px;text-align:center;">'
+                f'<a href="{e(url)}&amp;reply={answer}" style="display:block;color:{ink};text-decoration:none;'
+                f'font:600 13px/1.25 {SANS};padding:11px 2px;">{e(text)}</a></td>')
 
-    paper = (f"background-color:#f7f1e6;background-image:url('{PAPER_URL}');background-size:100% 100%;"
-             f"background-repeat:no-repeat;background-position:center top;")
-    html = f"""<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&amp;display=swap" rel="stylesheet">
-<div style="background:#efece6;padding:20px 12px;">
-{f'<p style="max-width:560px;margin:0 auto 12px;font:500 15px/1.5 {SANS};color:{ink};">{e(hi)}</p>' if hi else ''}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" background="{PAPER_URL}" style="max-width:560px;margin:0 auto;{paper}border:1px solid #e2d6bf;border-radius:22px;">
-<tr><td style="padding:26px 24px 24px;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-    <td style="white-space:nowrap;font:800 11px/1 {SANS};letter-spacing:.18em;text-transform:uppercase;color:{hue_deep};">An invitation</td>
-    <td width="100%" style="padding:0 10px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-      <td style="border-top:1px solid {hue};opacity:.55;font-size:0;line-height:0;">&nbsp;</td>
-      <td width="10" style="color:{hue};font:700 9px/1 {SANS};text-align:center;padding:0 2px;">&#9670;</td>
-      <td style="border-top:1px solid {hue};opacity:.55;font-size:0;line-height:0;">&nbsp;</td>
-    </tr></table></td>
-    <td style="white-space:nowrap;font:800 11px/1 {SANS};letter-spacing:.18em;color:{hue_deep};">{e(_month_year(ev))}</td>
-  </tr></table>
-  <h1 style="margin:26px 0 0;text-align:center;font:700 40px/1.08 {SERIF};letter-spacing:-.01em;color:{ink};text-shadow:0 2px 1px rgba(255,255,255,.9),0 -1.5px 1px rgba(90,62,32,.5);">{e(name)}</h1>
-  {f'<p style="margin:8px 0 0;text-align:center;font:italic 400 17px/1.4 {SERIF};color:{sub};">{e(deck)}</p>' if deck else ''}
-  <div style="width:44px;height:2px;background:{hue};margin:18px auto 4px;font-size:0;line-height:0;">&nbsp;</div>
+    invites = f"{e(host)} invites you to" if host else "You’re invited to"
+    html = f"""<div style="background:#efece6;padding:24px 12px;">
+{f'<p style="max-width:520px;margin:0 auto 12px;font:500 15px/1.5 {SANS};color:{ink};">{e(hi)}</p>' if hi else ''}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#f7f1e6;border:1px solid {line};border-radius:18px;">
+<tr><td style="padding:28px 22px 24px;text-align:center;">
+  <div style="font:800 11px/1 {SANS};letter-spacing:.18em;text-transform:uppercase;color:{hue};">You’re invited</div>
+  <div style="margin:14px 0 0;font:500 14px/1.4 {SANS};color:{sub};">{invites}</div>
+  <div style="margin:6px 0 0;font:700 30px/1.15 {SERIF};color:{ink};">{e(name)}</div>
   {facts}
-  {label("The favor of a reply", align="left", top=30)}
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:10px 0 0;"><tr>
-    {reply_btn("Yes, I’m in", "Yes", True)}{reply_btn("Can’t make it", "No", False)}{reply_btn("Maybe", "Maybe", False)}
-  </tr></table>
-  <p style="margin:12px 0 0;text-align:center;font:500 13px/1.5 {SANS};color:{sub};">Your reply goes straight to your host’s plan — nothing to install, no account. Only your host sees it; the guest list stays private.</p>
-  {f'<div style="margin:24px 0 0;padding:16px 0 0;border-top:1px solid #e2d6bf;">{label("A note from " + first, align="left", top=0)}<div style="margin:6px 0 0;font:400 15.5px/1.6 {SANS};color:{ink};">{note_html}</div></div>' if note_html else ''}
+  <a href="{e(url)}" style="display:block;margin:22px 0 0;background:{hue};color:#ffffff;text-decoration:none;border-radius:12px;font:700 16px/1.2 {SANS};padding:16px 10px;">Open your invitation</a>
+  <div style="margin:18px 0 2px;font:500 13px/1.4 {SANS};color:{sub};">Or pick your answer</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="6"><tr>{pick("Yes, I’m in", "Yes")}{pick("Can’t make it", "No")}{pick("Maybe", "Maybe")}</tr></table>
+  <p style="margin:12px 0 0;font:500 12.5px/1.5 {SANS};color:{sub};">No app, no account. Only {e(first)} sees your reply.</p>
 </td></tr></table>
-<p style="max-width:560px;margin:14px auto 0;text-align:center;font:500 12px/1.5 {SANS};color:#8a8478;">Sent by {e(host or "your host")} with No Guesswork Events.{f' <a href="{e(stop_url)}" style="color:#8a8478;">Stop emails about this event</a>.' if stop_url else ''}</p>
+{f'<div style="max-width:520px;margin:16px auto 0;padding:0 4px;">{label("A note from " + first)}<div style="font:400 15px/1.6 {SANS};color:{ink};">{note_html}</div></div>' if note_html else ''}
+<p style="max-width:520px;margin:18px auto 0;text-align:center;font:500 12px/1.5 {SANS};color:#8a8478;">Sent by {e(host or "your host")} with No Guesswork Events.{f' <a href="{e(stop_url)}" style="color:#8a8478;">Stop emails about this event</a>.' if stop_url else ''}</p>
 </div>"""
 
-    text_lines = [hi, "", "AN INVITATION", name]
-    if deck:
-        text_lines.append(deck)
-    text_lines.append("")
+    text_lines = [hi, "", "YOU’RE INVITED", f"{host} invites you to {name}" if host else name, ""]
     if when:
         text_lines.append(f"When: {when}")
     if place or address:
-        text_lines.append(f"Where: {place or address}" + (f", {address}" if address and address != place else ""))
-    if host:
-        text_lines.append(f"Hosted by: {host}")
-    text_lines += ["", f"Reply to the invite: {url}", ""]
+        text_lines.append(f"Where: {place or address}" + (f", {address}" if place and address and address != place else ""))
+    text_lines += ["", f"Open your invitation: {url}", ""]
     if note_lines:
         text_lines += [f"A note from {first}:", *note_lines, ""]
     text_lines.append(f"Sent by {host or 'your host'} with No Guesswork Events.")

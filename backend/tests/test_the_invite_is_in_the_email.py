@@ -1,12 +1,12 @@
-"""The invite email carries the invitation itself (owner, 11/19/2026: "Put my
-studio matte and format emails for invite from batch. Can't the emails being
-sent include the actual invite in body of email message?").
+"""The invite email is the envelope for the invitation (owner, 11/19/2026: "Go
+with C, use 'Or pick your answer'").
 
-Before: the batch sent the draft's words as plain paragraphs and a long link.
-Now an invite email is the invitation: the Studio Matte paper card (masthead,
-the event's name, WHEN and WHERE, one "Reply to the invite" button) with the
-host's note under it. The facts come from the event the SERVER has saved, never
-from the request; a time the host did not set is never stated.
+A plain cream card every mail app draws alike: "You're invited", "<host>
+invites you to", the event's name, When and Where, "Open your invitation" (the
+real page), then "Or pick your answer" with Yes / Can't make it / Maybe, each
+opening the page with that answer preselected. The host's note follows. The
+facts come from the event the SERVER has saved, never from the request; a time
+the host did not set is never stated.
 """
 from app.invite_email import compose_invite_email
 
@@ -17,14 +17,15 @@ NOTE = "We’d love to have you with us.\n\nLet us know you’re coming:\nhttps:
 
 def test_the_email_is_the_invitation():
     html, text = compose_invite_email(EV, NOTE, "Kesha", "Vida Reyes", None)
-    assert "An invitation" in html and "My Friendsgiving" in html
-    assert "Saturday, November 21" in html and "4:00 PM" in html
+    assert "You’re invited" in html and "Vida Reyes invites you to" in html and "My Friendsgiving" in html
+    assert "Saturday<br>November 21" in html and "4:00 PM" in html
     assert "Vida&#x27;s" in html and "12 Pine St, Baltimore, MD" in html
     assert "https://twillis45.github.io/ngw-event-planner/hostv2/?rsvp=Code123456789012" in html
-    assert "/hostv2/email/invite-paper.jpg" in html and "#f7f1e6" in html     # the page's paper, with its colour as the fallback
+    assert "Open your invitation" in html and "Or pick your answer" in html
+    assert "Or reply right now" not in html          # a tap here preselects; it does not send
+    assert "url(" not in html and "Playfair" not in html   # nothing a mail app may drop: no image, no web font
     assert "Yes, I’m in" in html and "Can’t make it" in html and "Maybe" in html
     assert '?rsvp=Code123456789012&amp;reply=Yes"' in html and '&amp;reply=No"' in html and '&amp;reply=Maybe"' in html
-    assert "Hosted by" in html and "Vida Reyes" in html
     assert "A note from Vida" in html and "We’d love to have you with us." in html
     assert "Hi Kesha," in html
 
@@ -44,12 +45,12 @@ def test_what_the_host_typed_is_text_not_markup():
 def test_a_time_the_host_never_set_is_never_stated():
     html, text = compose_invite_email({**EV, "startTimeSource": "derived"}, NOTE, None, "Vida Reyes", None)
     assert "4:00 PM" not in html and "4:00 PM" not in text
-    assert "Saturday, November 21" in html
+    assert "Saturday<br>November 21" in html
 
 
 def test_a_solemn_gathering_gets_the_quiet_card():
     html, _ = compose_invite_email({**EV, "name": "Repast for Mr. Lewis", "type": "Repast"}, "Please join us.", None, "The Lewis family", None)
-    assert "#8a7a66" in html and "#D9622B" not in html
+    assert "#6f6152" in html and "#B84E1E" not in html
 
 
 def test_the_plain_text_part_has_the_same_facts_and_the_stop_link():
@@ -65,12 +66,6 @@ def test_the_note_does_not_repeat_the_date_and_place_the_card_shows():
     assert "We’d love to have you." in text and "See you there!" in text
 
 
-def test_the_deck_line_the_page_shows_is_under_the_name():
-    html, text = compose_invite_email(EV, NOTE, None, "Vida Reyes", None, deck="It wouldn’t be the same without you")
-    assert "It wouldn’t be the same without you" in html and "It wouldn’t be the same without you" in text
-    assert html.index("My Friendsgiving") < html.index("It wouldn’t be the same without you") < html.index("When")
-
-
 def test_the_reply_buttons_can_wrap_on_a_small_phone():
     # Measured 11/19/2026: with nowrap, "Can’t make it" pushed a 320px screen
     # sideways. The buttons must be allowed to wrap their words.
@@ -78,3 +73,8 @@ def test_the_reply_buttons_can_wrap_on_a_small_phone():
     html, _ = compose_invite_email({"name": "X", "date": "2026-11-26", "rsvpCode": "abcdefghijklmnop1234"}, "", None, "Vida Reyes", None)
     for chunk in html.split("reply=")[1:]:
         assert "nowrap" not in chunk.split("</a>")[0]
+
+
+def test_without_a_place_the_date_takes_the_whole_row():
+    html, _ = compose_invite_email({**EV, "venue": "", "venueAddress": ""}, "", None, "Vida Reyes", None)
+    assert "Where" not in html and 'width="100%" valign="top"' in html

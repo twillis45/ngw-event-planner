@@ -75,7 +75,6 @@ import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAware
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/inviteBatch';
-import { deckLineFor } from '@app/lib/inviteDeck';
 import { draftInvite, inviteVoicesFor, eventCulturalMeta, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
 // dollars turned $0.20/lb of ice into "$0/lb" on 84 of the corpus's 440
@@ -20744,8 +20743,6 @@ export default function HostShellV2() {
                     author_name: (profile && profile.name) || 'Your host',
                     // invite: the email IS the invitation, its facts from the saved event (backend invite_email).
                     body, deliver_email: true, invite: true, recipient_email: g.email, recipient_name: g.name || undefined, subject,
-                    // The invitation's italic line, from the SAME function the guest page uses.
-                    invite_deck: (() => { try { return deckLineFor(event, !!(eventCulturalMeta(event) || {}).sombre, false); } catch { return ''; } })(),
                     ...(((session && session.user && session.user.email) || '').trim()
                       ? { reply_to: String(session.user.email).trim() } : {}),
                   });
