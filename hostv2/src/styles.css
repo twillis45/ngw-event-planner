@@ -6543,6 +6543,10 @@ button.vc-pill::after{
 .sheet > *{ flex-shrink:0; }
 .sheet::after{ content:''; flex:1 0 0; order:1; }
 .sheet > .ftotal{ order:2; }
+/* Anything the sheet scrolls to (focus, a scrolled-to control) stops above the
+   pinned bar instead of under it (11/18/2026 phone screenshot: the shopping
+   form's Add button sat beneath "0 of 11 bought"). Only sheets that carry it. */
+.sheet:has(> .ftotal){ scroll-padding-bottom:calc(64px + env(safe-area-inset-bottom, 0px)); }
 .ftotal{ position:sticky; bottom:calc((var(--sheet-pad-b) + env(safe-area-inset-bottom, 0px)) * -1);
   margin:var(--sp-4) calc(var(--sp-5) * -1) calc((var(--sheet-pad-b) + env(safe-area-inset-bottom, 0px)) * -1);
   padding:12px var(--sp-5) calc(12px + env(safe-area-inset-bottom, 0px));
