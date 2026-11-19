@@ -76,6 +76,7 @@ import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/inviteBatch';
 import { inviteGaps } from '@app/lib/inviteGaps';
+import SignInCheck, { signInCheckOn } from './SignInCheck';
 import { draftInvite, inviteVoicesFor, eventCulturalMeta, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
 // dollars turned $0.20/lb of ice into "$0/lb" on 84 of the corpus's 440
@@ -2377,12 +2378,19 @@ export default function HostShellV2() {
   }), []); // eslint-disable-line react-hooks/exhaustive-deps
   // G19: the same moment retries profile fields the account never confirmed.
   useEffect(() => installProfileOnlineFlush(r => { if (r && r.ok && r.profile) setProfileState(r.profile); }), []);
+  // THE BOT CHECK (owner, 11/19/2026): with a Turnstile site key in the build,
+  // a sign-in email needs a fresh token (SignInCheck). Without one, nothing
+  // changes. Each token is used once, so the check resets after every send.
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaRound, setCaptchaRound] = useState(0);
   const sendMagicLink = async () => {
     const em = authEmail.trim();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { setAuthErr('A real email address — the sign-in link goes there.'); return; }
+    if (signInCheckOn() && !captchaToken) { setAuthErr('One moment — we’re checking this is a person, not a bot. Try again in a second.'); return; }
     setAuthBusy(true); setAuthErr('');
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email: em, options: { emailRedirectTo: authRedirectUrl() } });
+      const { error } = await supabase.auth.signInWithOtp({ email: em, options: { emailRedirectTo: authRedirectUrl(), ...(signInCheckOn() ? { captchaToken } : {}) } });
+      if (signInCheckOn()) setCaptchaRound((n) => n + 1);
       if (error) throw error;
       setAuthSent(true);
     } catch (e) {
@@ -2415,11 +2423,13 @@ export default function HostShellV2() {
                         <button className="mini" onClick={resetAuthSent}>Use a different email</button>
                         <button className="mini" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Send a new code'}</button>
                       </div>
+                      <SignInCheck onToken={setCaptchaToken} resetKey={'sent-' + captchaRound} />
                     </>
                   ) : (
                     <>
                       <input className="field" style={{ maxWidth: 'none' }} type="email" placeholder="you@example.com" value={authEmail}
                         onChange={e => { setAuthEmail(e.target.value); setAuthErr(''); }} aria-label="Email for sign-in link" />
+                      <SignInCheck onToken={setCaptchaToken} resetKey={'form-' + captchaRound} />
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
                       </div>
