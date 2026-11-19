@@ -103,6 +103,11 @@ function subjectThing(event) {
   return name || `our ${type}`;
 }
 
+// The event's own name inside the host's sentence: "My Cookout" reads "our Cookout".
+function hostedName(event) {
+  return String((event && event.name) || '').trim().replace(/^my\s+/i, 'our ');
+}
+
 // Per-type warmth for the invite. Generic fallback always reads naturally.
 function inviteVoice(event) {
   const type = (event && event.type ? String(event.type) : '').toLowerCase();
@@ -135,7 +140,8 @@ function inviteVoice(event) {
     T(/(bridal ?shower|bachelorette)/, { emoji: '', head: 'You’re invited!', line: `We’re celebrating ${honoree || 'the bride-to-be'} — come join us!` }) ||
     T(/(retire)/, { emoji: '', head: 'You’re invited!', line: `We’re celebrating ${honoree ? honoree + '’s retirement' : 'a well-earned retirement'} — come raise a glass.` }) ||
     T(/(reunion)/, { emoji: '', head: 'You’re invited!', line: `It’s been too long — we’re getting everyone back together.` }) ||
-    T(/(dinner|cookout|bbq|barbecue|cocktail|party|gathering|housewarm)/, { emoji: '', head: 'You’re invited!', line: `We’re hosting and would love to have you over.` }) ||
+    // G83 (live invite, 11/19/2026): the note named nothing; it now names the event.
+    T(/(dinner|cookout|bbq|barbecue|cocktail|party|gathering|housewarm)/, { emoji: '', head: 'You’re invited!', line: hostedName(event) ? `We’re hosting ${hostedName(event)} and would love to have you over.` : `We’re hosting and would love to have you over.` }) ||
     T(/(holiday|christmas|thanksgiving|hanukkah|new ?year)/, { emoji: '', head: 'You’re invited!', line: `We’re gathering for the holidays and hope you’ll join us.` }) ||
     { emoji: '', head: 'You’re invited!', line: `We’re hosting ${subjectThing(event)} and would love you there.` }
   );
