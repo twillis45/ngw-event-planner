@@ -20,6 +20,7 @@ import { commApi, isCommApiConfigured, canAuthenticatePlanner, getCapabilities, 
 import { isRsvpApiConfigured, fetchPublicInvite, submitRsvp, fetchEventRsvps, rsvpIdempotencyKey, flushRsvpOutbox, purgeStaleOutbox } from './lib/api/rsvp';
 import { isVendorBriefApiConfigured, mintVendorBriefLink, fetchPublicVendorBrief, looksLikeBriefCode, submitVendorBriefConfirmation, vendorBriefIdempotencyKey } from './lib/api/vendorBrief';
 import { buildConfirmationPayload } from './lib/vendorBriefConfirm';
+import { snapshotStillLive } from './lib/vendorBriefSunset';
 import { HOME_ARRIVAL, focusTakeoverAllowed } from './lib/homeNav';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent } from './lib/demoSeed';
 import { isPlausibleCityText } from './lib/cityText';
@@ -31686,11 +31687,12 @@ function PublicVendorBriefRoute({ token }) {
       let b;
       try { b = JSON.parse(b64decode(token)); }
       catch { b = JSON.parse(atob(token)); } // older ASCII-only links
-      return (b && b.vendorName) ? b : null;
+      // G90 (owner ruling 11/19/2026): shown through its event date only.
+      return (b && b.vendorName) ? (snapshotStillLive(b) ? b : false) : null;
     } catch { return null; }
   }, [token]);
 
-  const isCode = !legacyBrief && looksLikeBriefCode(token);
+  const isCode = legacyBrief === null && looksLikeBriefCode(token);
   // undefined = resolving, null = not found, object = the live brief
   const [resolved, setResolved] = useState(isCode ? undefined : null);
   useEffect(() => {

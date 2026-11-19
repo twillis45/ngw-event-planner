@@ -8,8 +8,8 @@
 //   · TOKEN is a short server code (lib/api/vendorBrief looksLikeBriefCode) →
 //     resolved LIVE from GET /api/public/vendor-brief/{code}; or a legacy
 //     self-contained snapshot (the whole brief base64-encoded in the link) →
-//     decoded here, no server, works offline. The board ruled the snapshot
-//     can't be gated, so it keeps rendering.
+//     decoded here, no server, works offline. The snapshot can't be gated, so
+//     the owner sunset it (11/19/2026): it renders through its event date only.
 //   · Only the AUDITED WHITELIST renders (lib/vendorBrief.js buildVendorBriefPayload
 //     and its server mirror). Never brief.notes: old snapshots may still CARRY
 //     host-private bookkeeping there, and it is never displayed.
@@ -28,6 +28,7 @@ import { recruitHref } from '@app/lib/acquisition';
 import { invitePalette } from '@app/lib/inviteTone';
 import { fetchPublicVendorBrief, isVendorBriefApiConfigured, looksLikeBriefCode, submitVendorBriefConfirmation, vendorBriefIdempotencyKey } from '@app/lib/api/vendorBrief';
 import { buildConfirmationPayload } from '@app/lib/vendorBriefConfirm';
+import { snapshotStillLive } from '@app/lib/vendorBriefSunset';
 import { briefShowsHeadcount, briefFeedsGuests, briefDietLine } from '@app/lib/vendorBrief';
 import { formatPhoneUS } from '@app/lib/contactFormat';
 import { toneVarsFor } from './inviteShared.js';
@@ -105,8 +106,12 @@ function Holding({ title, body, busy }) {
 }
 
 export default function VendorBriefV2({ token }) {
-  const snapshot = useMemo(() => decodeSnapshot(token), [token]);
-  const isCode = !snapshot && looksLikeBriefCode(token);
+  const decoded = useMemo(() => decodeSnapshot(token), [token]);
+  // G90 (owner ruling 11/19/2026): an old self-contained link shows through its
+  // event date, then reads as not live (lib/vendorBriefSunset).
+  const expired = !!decoded && !snapshotStillLive(decoded);
+  const snapshot = expired ? null : decoded;
+  const isCode = !decoded && looksLikeBriefCode(token);
   // undefined = resolving, null = not found, object = the live brief
   const [resolved, setResolved] = useState(isCode ? undefined : null);
   useEffect(() => {

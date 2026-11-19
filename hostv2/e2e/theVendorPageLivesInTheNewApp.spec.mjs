@@ -186,6 +186,23 @@ test('the legacy self-contained link still renders, with no confirm form and no 
   expect(apiCalls, 'a self-contained link never asks the server').toBe(0);
 });
 
+// G90 (owner ruling 11/19/2026): the old link works until the event date.
+test('a legacy self-contained link is not live after its event', async ({ page }) => {
+  const legacy = { vendorName: 'Sweet Crumb Bakery — Alexandria', category: 'Cake', eventName: 'Retirement Cookout', eventDate: dateIn(-1), plannerName: 'Todd' };
+  const token = await page.evaluate((s) => {
+    const bytes = new TextEncoder().encode(s);
+    let bin = ''; bytes.forEach((b) => { bin += String.fromCharCode(b); });
+    return btoa(bin);
+  }, JSON.stringify(legacy));
+  let apiCalls = 0;
+  await page.route(`${API}/api/public/vendor-brief/**`, (route) => { apiCalls += 1; return route.fulfill({ status: 404, json: {} }); });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('?vendor=' + encodeURIComponent(token));
+  await expect(page.getByText('This link isn’t live anymore')).toBeVisible();
+  await expect(page.getByText('Sweet Crumb Bakery — Alexandria', { exact: true })).toHaveCount(0);
+  expect(apiCalls, 'an expired snapshot is not sent to the server as a code').toBe(0);
+});
+
 test('the host names a day-of contact in the share panel, and it is saved on the event', async ({ page }) => {
   const EVENT = { id: 'cust-brief-dayof', name: 'Backyard Birthday', type: 'Birthday Party', date: dateIn(40),
     guestEstimate: 20, guestMode: 'count', guestCountSource: 'host', passRequired: false, passReasons: [],
