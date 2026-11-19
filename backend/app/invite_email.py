@@ -81,7 +81,7 @@ def invite_gaps(ev: dict) -> list:
     return gaps
 
 
-def compose_invite_email(ev: dict, note: str, recipient_name, sender: str, stop_url):
+def compose_invite_email(ev: dict, note: str, recipient_name, sender: str, stop_url, card_url=None):
     ev = ev or {}
     e = _html.escape
     solemn = bool(SOMBRE.search(str(ev.get("type") or "")) or SOMBRE.search(str(ev.get("name") or "")))
@@ -131,14 +131,23 @@ def compose_invite_email(ev: dict, note: str, recipient_name, sender: str, stop_
                 f'font:600 13px/1.25 {SANS};padding:11px 2px;">{e(text)}</a></td>')
 
     invites = f"{e(host)} invites you to" if host else "You’re invited to"
+    # THE INVITATION AS A PICTURE (owner, 11/19/2026: "doesn't resemble my
+    # invitations"). A picture of the host's own card (src/lib/inviteCard.js),
+    # which no mail app recolors in dark mode. Its alt text carries the facts
+    # for a reader with pictures off. Without one, the HTML card stands in.
+    alt = ". ".join(x for x in (f"Invitation: {name}", when, place or address, f"Hosted by {host}" if host else "") if x)
+    top = (f'<a href="{e(url)}" style="display:block;text-decoration:none;"><img src="{e(card_url)}" width="520" alt="{e(alt)}" '
+           f'style="display:block;width:100%;max-width:520px;height:auto;border:0;border-radius:14px;margin:0 auto;"></a>'
+           if card_url else
+           f'<div style="font:800 11px/1 {SANS};letter-spacing:.18em;text-transform:uppercase;color:{hue};">You’re invited</div>'
+           f'<div style="margin:14px 0 0;font:500 14px/1.4 {SANS};color:{sub};">{invites}</div>'
+           f'<div style="margin:6px 0 0;font:700 30px/1.15 {SERIF};color:{ink};">{e(name)}</div>{facts}')
+    pad = "12px 12px 22px" if card_url else "28px 22px 24px"
     html = f"""<div style="background:#efece6;padding:24px 12px;">
 {f'<p style="max-width:520px;margin:0 auto 12px;font:500 15px/1.5 {SANS};color:{ink};">{e(hi)}</p>' if hi else ''}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#f7f1e6;border:1px solid {line};border-radius:18px;">
-<tr><td style="padding:28px 22px 24px;text-align:center;">
-  <div style="font:800 11px/1 {SANS};letter-spacing:.18em;text-transform:uppercase;color:{hue};">You’re invited</div>
-  <div style="margin:14px 0 0;font:500 14px/1.4 {SANS};color:{sub};">{invites}</div>
-  <div style="margin:6px 0 0;font:700 30px/1.15 {SERIF};color:{ink};">{e(name)}</div>
-  {facts}
+<tr><td style="padding:{pad};text-align:center;">
+  {top}
   <a href="{e(url)}" style="display:block;margin:22px 0 0;background:{hue};color:#ffffff;text-decoration:none;border-radius:12px;font:700 16px/1.2 {SANS};padding:16px 10px;">Open your invitation</a>
   <div style="margin:18px 0 2px;font:500 13px/1.4 {SANS};color:{sub};">Or pick your answer</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="6"><tr>{pick("Yes, I’m in", "Yes")}{pick("Can’t make it", "No")}{pick("Maybe", "Maybe")}</tr></table>

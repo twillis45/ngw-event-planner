@@ -21,6 +21,7 @@ from ..config import APP_BASE_URL, API_PUBLIC_BASE_URL
 from ..auth import require_planner
 from ..emailer import send_approval_email, send_thread_email, is_email_configured
 from ..invite_email import compose_invite_email, invite_gaps
+from .invite_cards import card_url, stored_card_version
 
 router = APIRouter(prefix="/api/events/{event_id}/communication", tags=["communication"])
 
@@ -57,6 +58,7 @@ class MessageCreate(BaseModel):
     subject: Optional[str] = None         # Email subject line (defaults to "Message from {author_name}")
     reply_to: Optional[str] = None        # Reply-to address (planner's email)
     invite: bool = False                  # the invite batch / one-guest send: the email is the invitation (11/19/2026)
+    invite_card_version: Optional[str] = None   # the invitation picture the host just uploaded (invite_cards); used only if it is the stored one
     # Sprint 58P.4c — portal-respond authorization
     portal_token: Optional[str] = None    # planner's event.portalToken; stored in metadata.portal_token
                                           # for approval_request messages so the public portal-respond
@@ -483,9 +485,15 @@ async def create_message(
         # the server (event_data), never from the request. Its own footer carries
         # the stop link. Every other email keeps the plain body above.
         if payload.invite:
+            # The host's invitation as a picture, when one is stored (invite_cards).
+            code = str((event_data or {}).get("rsvpCode") or "").strip()
+            want = str(payload.invite_card_version or "").strip()
+            v = await stored_card_version(event_id) if (code and want) else None
+            v = v if v and v == want else None   # never a stale picture
             html, body_plain = compose_invite_email(
                 event_data, body_text, payload.recipient_name, sender,
-                email_stop_url(stop_token) if stop_token else None)
+                email_stop_url(stop_token) if stop_token else None,
+                card_url=card_url(code, v) if v else None)
         delivery_result = await send_thread_email(
             to=payload.recipient_email,
             subject=subj,

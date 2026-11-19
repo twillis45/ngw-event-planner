@@ -76,6 +76,7 @@ import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/inviteBatch';
 import { inviteGaps } from '@app/lib/inviteGaps';
+import { inviteCardModel, inviteCardKey } from '@app/lib/inviteCard';
 import SignInCheck, { signInCheckOn } from './SignInCheck';
 import { draftInvite, inviteVoicesFor, eventCulturalMeta, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
@@ -1069,6 +1070,27 @@ export default function HostShellV2() {
   // EVERY event created here (array — creating a second never overwrites the
   // first). Each stores itself whole; edits land directly on the array entry.
   const [customs, setCustoms] = useState(CUSTOM_EVENTS_AT_LOAD);
+  // THE INVITATION AS A PICTURE (owner, 11/19/2026: "Build the invitation
+  // picture email"). Drawn and uploaded once per card (lib/inviteCard key), the
+  // first time an invite email goes out for it. Resolves to the stored version,
+  // or null when it could not be made: the email then carries its HTML card.
+  const inviteCardRef = useRef({});
+  const ensureInviteCard = (ev) => {
+    try {
+      const model = inviteCardModel(ev);
+      const key = inviteCardKey(model);
+      const m = inviteCardRef.current;
+      if (m[ev.id] && m[ev.id].key === key) return m[ev.id].p;
+      const p = (async () => {
+        const { drawInviteCard } = await import('./inviteCardImage');
+        const blob = await drawInviteCard(model);
+        const out = await commApi.uploadInviteCard(ev.id, blob);
+        return (out && out.version) || null;
+      })().catch(() => { delete m[ev.id]; return null; });
+      m[ev.id] = { key, p };
+      return p;
+    } catch (_e) { return Promise.resolve(null); }
+  };
   // Real plans (a date and a head count) are counted once each, and a second one
   // once: the activation milestones the legacy shell fired and this one did not.
   useEffect(() => { try { trackActivation(customs); } catch (_e) { /* a counter never blocks a plan */ } }, [customs]);
@@ -20805,8 +20827,12 @@ export default function HostShellV2() {
               const sendInviteTo = async (g) => {
                 const draftSubject = (draftInvite(event, profile, { voice: (sheet.voices && sheet.voices[draftTone]) ? draftTone : 'as-written' }) || {}).subject || 'You’re invited';
                 const { subject, body } = inviteSubjectAndBody(shownDraft(), draftSubject);
+                const cardVersion = await ensureInviteCard(event);
                 try {
                   const res = await commApi.createMessage(event.id, 'CLIENT', {
+                    // The picture just uploaded, by version: the server uses a stored
+                    // card only when it is THIS one, so a stale picture never goes out.
+                    ...(cardVersion ? { invite_card_version: cardVersion } : {}),
                     message_type: 'standard', author_role: 'planner',
                     author_name: (profile && profile.name) || 'Your host',
                     // invite: the email IS the invitation, its facts from the saved event (backend invite_email).
