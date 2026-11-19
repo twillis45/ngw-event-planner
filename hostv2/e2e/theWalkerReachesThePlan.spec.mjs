@@ -74,7 +74,9 @@ test('an access need stated at intake becomes a house requirement on screen', as
   // vocabulary is RENDERED as a choosable option whether or not it applies —
   // found by this file's own negative control, which failed on a bare
   // /Step-free access/ and was right to.
-  expect(body, 'and step-free is one the plan actually asked for').toMatch(/✓ Step-free access/);
+  // WebKit reads the check mark and its label with no space between ("✓Step-free
+  // access"), Chromium with one; \s* matches both, so neither engine passes vacuously.
+  expect(body, 'and step-free is one the plan actually asked for').toMatch(/✓\s*Step-free access/);
   // The reason is given in the host's terms, and attributed to a person we were
   // never told the name of — "Someone", not a guest invented off the roster.
   expect(body).toMatch(/Someone asked about stairs/i);
@@ -86,6 +88,6 @@ test('NEGATIVE CONTROL — the same event without the clause does not ask for on
   // house for a ground floor, which would make the whole feature meaningless.
   const body = await boot(page, SANTA_FE());
   expect(body, 'the requirements block still renders').toMatch(/WHAT THE HOUSE NEEDS/i);
-  expect(body, 'but nothing SELECTS a step-free need nobody stated').not.toMatch(/✓ Step-free access/);
+  expect(body, 'but nothing SELECTS a step-free need nobody stated').not.toMatch(/✓\s*Step-free access/);
   expect(body, 'and no reason is given for one').not.toMatch(/asked about stairs/i);
 });
