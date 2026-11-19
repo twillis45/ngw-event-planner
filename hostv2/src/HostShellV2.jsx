@@ -8779,7 +8779,9 @@ export default function HostShellV2() {
       const _dr = dietRowsFor(event, { expanded: showMoreDiets });
       const shown = [..._dr.active, ..._dr.quick];
       return (
-        <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
+        // minWidth/maxWidth: the column never grows past its card (owner's phone,
+        // 11/19/2026: the door's one long line pushed every + off the screen).
+        <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6, minWidth: 0, maxWidth: '100%' }}>
           {shown.map(k => (
             <div className="line" key={k} style={{ padding: '5px 0' }}>
               <span>{k}</span>
@@ -8791,7 +8793,8 @@ export default function HostShellV2() {
             </div>
           ))}
           {_dr.rest.length > 0 && (
-            <button className="mini" style={{ alignSelf: 'flex-start' }} onClick={() => setShowMoreDiets(true)}>
+            // .mini is nowrap; this label is a sentence, so it wraps inside the card.
+            <button className="mini" style={{ alignSelf: 'flex-start', whiteSpace: 'normal', maxWidth: '100%', textAlign: 'left' }} onClick={() => setShowMoreDiets(true)}>
               + {_dr.rest.length} more — {_dr.rest.slice(0, 4).join(' · ')}{_dr.rest.length > 4 ? ' …' : ''}
             </button>
           )}

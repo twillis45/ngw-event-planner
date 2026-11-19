@@ -117,3 +117,24 @@ test('NEGATIVE CONTROL: the food sheet still folds exactly as it did', async ({ 
   expect(t).toMatch(/Vegetarian/);
   expect(t).toMatch(/\+ 11 more/i);
 });
+
+// Owner's phone, 11/19/2026 (9:09 PM): "Copy and counters clipped." With two
+// tags answered, the door read "+ 9 more — Gluten-free · Dairy-free · Nut
+// allergy · Halal …" on ONE line it could not wrap (.mini is nowrap), so the
+// card grew past the screen and every + button, the "noted" button and the
+// note under them were cut off at the right. Measured at 390 and 412 wide.
+for (const width of [390, 412]) test(`at ${width}px nothing in the dietary card runs off the screen`, async ({ page }) => {
+  await openCalls(page, { Pescatarian: 1, Shellfish: 1 });
+  await page.setViewportSize({ width, height: 900 });
+  await page.waitForTimeout(300);
+  const over = await page.evaluate(() => {
+    const noted = [...document.querySelectorAll('button')].find((b) => /That’s everyone — noted/.test(b.innerText || ''));
+    const card = noted && noted.closest('.hc-row');
+    if (!card) return ['no card'];
+    const vw = document.documentElement.clientWidth;
+    return [...card.querySelectorAll('button, p, span')]
+      .filter((el) => el.getBoundingClientRect().width > 0 && el.getBoundingClientRect().right > vw + 0.5)
+      .map((el) => (el.getAttribute('aria-label') || el.innerText || el.tagName).trim().slice(0, 40));
+  });
+  expect(over, 'past the right edge of the screen').toEqual([]);
+});
