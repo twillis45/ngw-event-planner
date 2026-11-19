@@ -78,6 +78,7 @@ import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/in
 import { inviteGaps } from '@app/lib/inviteGaps';
 import { inviteCardModel, inviteCardKey } from '@app/lib/inviteCard';
 import SignInCheck, { signInCheckOn } from './SignInCheck';
+import { signUpData, MARKETING_OPT_IN_LABEL } from '@app/lib/marketingConsent';
 import { draftInvite, inviteVoicesFor, eventCulturalMeta, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
 // dollars turned $0.20/lb of ice into "$0/lb" on 84 of the corpus's 440
@@ -2405,13 +2406,16 @@ export default function HostShellV2() {
   // changes. Each token is used once, so the check resets after every send.
   const [captchaToken, setCaptchaToken] = useState('');
   const [captchaRound, setCaptchaRound] = useState(0);
+  // OFFERS AND NEWS (owner ruling 11/19/2026, G87): an UNTICKED box; only a
+  // tick records the opt-in on a new account (lib/marketingConsent).
+  const [offersOptIn, setOffersOptIn] = useState(false);
   const sendMagicLink = async () => {
     const em = authEmail.trim();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { setAuthErr('A real email address — the sign-in link goes there.'); return; }
     if (signInCheckOn() && !captchaToken) { setAuthErr('One moment — we’re checking this is a person, not a bot. Try again in a second.'); return; }
     setAuthBusy(true); setAuthErr('');
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email: em, options: { emailRedirectTo: authRedirectUrl(), ...(signInCheckOn() ? { captchaToken } : {}) } });
+      const { error } = await supabase.auth.signInWithOtp({ email: em, options: { emailRedirectTo: authRedirectUrl(), data: signUpData(offersOptIn), ...(signInCheckOn() ? { captchaToken } : {}) } });
       if (signInCheckOn()) setCaptchaRound((n) => n + 1);
       if (error) throw error;
       setAuthSent(true);
@@ -2451,6 +2455,10 @@ export default function HostShellV2() {
                     <>
                       <input className="field" style={{ maxWidth: 'none' }} type="email" placeholder="you@example.com" value={authEmail}
                         onChange={e => { setAuthEmail(e.target.value); setAuthErr(''); }} aria-label="Email for sign-in link" />
+                      <label className="grounding" data-offers-opt-in style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-start', margin: 'var(--sp-2) 0 0', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={offersOptIn} onChange={e => setOffersOptIn(e.target.checked)} style={{ marginTop: 4, flex: 'none' }} />
+                        <span>{MARKETING_OPT_IN_LABEL}</span>
+                      </label>
                       <SignInCheck onToken={setCaptchaToken} resetKey={'form-' + captchaRound} />
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
