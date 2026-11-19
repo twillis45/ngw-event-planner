@@ -1,5 +1,19 @@
 # Where We Are -- live status board
 
+## November 19, 2026 — the invite reaches the guest, and looks like the invitation
+
+**The whole guest list in one go.** A host invites everyone at once: an email to each guest with an address, and a prefilled text, one at a time, for guests with only a phone. One guest can be sent either or both.
+
+**The invite email is the invitation.** It took three tries, each on the owner's word. The first carried the draft's words and a link; the second copied the invite page in HTML, and in dark mode the Gmail app turned it black ("gross, doesn't resemble my invitations"). A mail app recolors HTML but never a picture, so the email now leads with a picture of the host's own invitation, drawn on the page's own paper, and the reply buttons under it open the invite with the answer picked. A real one reached the test inbox, not spam, and every email can be stopped by the guest.
+
+**Nothing goes out with a hole.** Before an invite is written, the app asks for the day, the hour the host chose and the place, right there; the server refuses an invite email that lacks them.
+
+**Cream by default.** The owner ruled that only formal events get the dark stationery; a 7 PM dinner at home is cream.
+
+**Measuring what matters.** PostHog can now follow one host across devices, by a one-way hash, from where they came from to sign-up, a real plan, invites sent, and the purchase with its amount, which the server records.
+
+**Owner next (11/20):** the privacy policy, the SEC-4 amendment with one independent check, and a timed restore drill. CAPTCHA goes on in Supabase once the live sign-in check passes.
+
 ## November 18, 2026 (evening) — the weather reaches every event
 
 **The hour on the calendar.** The Calendar shows the event's start time. A host's own calendar gets the event at that hour, not as an all-day block. A time the app only suggested stays all-day there, so the app's guess is never written into someone's week as their plan.
