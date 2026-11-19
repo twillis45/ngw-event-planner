@@ -20,8 +20,11 @@ def test_the_email_is_the_invitation():
     assert "An invitation" in html and "My Friendsgiving" in html
     assert "Saturday, November 21" in html and "4:00 PM" in html
     assert "Vida&#x27;s" in html and "12 Pine St, Baltimore, MD" in html
-    assert 'href="https://twillis45.github.io/ngw-event-planner/hostv2/?rsvp=Code123456789012"' in html
-    assert "Reply to the invite" in html
+    assert "https://twillis45.github.io/ngw-event-planner/hostv2/?rsvp=Code123456789012" in html
+    assert "/hostv2/email/invite-paper.jpg" in html and "#f7f1e6" in html     # the page's paper, with its colour as the fallback
+    assert "Yes, I’m in" in html and "Can’t make it" in html and "Maybe" in html
+    assert '?rsvp=Code123456789012&amp;reply=Yes"' in html and '&amp;reply=No"' in html and '&amp;reply=Maybe"' in html
+    assert "Hosted by" in html and "Vida Reyes" in html
     assert "A note from Vida" in html and "We’d love to have you with us." in html
     assert "Hi Kesha," in html
 
@@ -60,3 +63,9 @@ def test_the_note_does_not_repeat_the_date_and_place_the_card_shows():
     _, text = compose_invite_email(EV, note, None, "Vida Reyes", None)
     assert text.count("Saturday, November 21 · 4:00 PM") == 1 and text.count("Vida's") == 1
     assert "We’d love to have you." in text and "See you there!" in text
+
+
+def test_the_deck_line_the_page_shows_is_under_the_name():
+    html, text = compose_invite_email(EV, NOTE, None, "Vida Reyes", None, deck="It wouldn’t be the same without you")
+    assert "It wouldn’t be the same without you" in html and "It wouldn’t be the same without you" in text
+    assert html.index("My Friendsgiving") < html.index("It wouldn’t be the same without you") < html.index("When")

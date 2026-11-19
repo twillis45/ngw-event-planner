@@ -57,6 +57,7 @@ class MessageCreate(BaseModel):
     subject: Optional[str] = None         # Email subject line (defaults to "Message from {author_name}")
     reply_to: Optional[str] = None        # Reply-to address (planner's email)
     invite: bool = False                  # the invite batch / one-guest send: the email is the invitation (11/19/2026)
+    invite_deck: Optional[str] = None     # the invitation's italic line (lib/inviteDeck); decoration, escaped
     # Sprint 58P.4c — portal-respond authorization
     portal_token: Optional[str] = None    # planner's event.portalToken; stored in metadata.portal_token
                                           # for approval_request messages so the public portal-respond
@@ -477,7 +478,8 @@ async def create_message(
         if payload.invite:
             html, body_plain = compose_invite_email(
                 event_data, body_text, payload.recipient_name, sender,
-                email_stop_url(stop_token) if stop_token else None)
+                email_stop_url(stop_token) if stop_token else None,
+                deck=_one_line(payload.invite_deck or ""))
         delivery_result = await send_thread_email(
             to=payload.recipient_email,
             subject=subj,
