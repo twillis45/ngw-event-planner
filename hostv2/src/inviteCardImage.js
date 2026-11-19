@@ -1,8 +1,9 @@
 // inviteCardImage — draws the invitation card as a JPEG (owner, 11/19/2026:
 // "Build the invitation picture email"). WHAT it says is lib/inviteCard
 // (inviteCardModel); this is HOW it looks, measured from the guest invite
-// page's own stylesheet (styles.css .inv2-*): the page's paper (rendered once
-// from that CSS to public/email/invite-paper-{light,dark}.jpg), Playfair for
+// page's own stylesheet (styles.css .inv2-*): the page's paper (drawPaper,
+// below: its gradients, highlights and shading at the card's own size, and
+// its linen grain from public/email/invite-grain-{light,dark}.jpg), Playfair for
 // the name and deck line, the masthead with its rule and diamond, the accent
 // rule, and centered When / Where / Hosted by, each struck into the paper
 // with the page's letterpress shadows.
@@ -17,15 +18,92 @@ const PAD = 26;
 const SANS = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 const SERIF = "'Playfair Display', Georgia, 'Times New Roman', serif";
 
-const paperUrl = (kind) => `${import.meta.env.BASE_URL || '/'}email/invite-paper-${kind}.jpg`;
+const grainUrl = (kind) => `${import.meta.env.BASE_URL || '/'}email/invite-grain-${kind}.jpg`;
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('paper failed to load'));
+    img.onerror = () => reject(new Error('grain failed to load'));
     img.src = src;
   });
+}
+
+// ── THE PAGE'S PAPER, AT THE CARD'S OWN SIZE (owner, 11/19/2026: "I want same
+// paper color gradients etc") ─────────────────────────────────────────────
+// Each layer is the stylesheet's (styles.css .inv2-sheet, ::before, ::after,
+// and their .inv2-dark versions), value for value, laid out by the CSS rules
+// for gradient geometry, so a short card shades like the page and is not a
+// tall sheet squeezed. The grain (::before) is a texture rendered from the
+// page's own CSS, composited the way the page composites it.
+function cssLinear(ctx, w, h, deg, stops) {
+  const a = (deg * Math.PI) / 180;
+  const len = Math.abs(w * Math.sin(a)) + Math.abs(h * Math.cos(a));
+  const dx = (Math.sin(a) * len) / 2, dy = (-Math.cos(a) * len) / 2;
+  const g = ctx.createLinearGradient(w / 2 - dx, h / 2 - dy, w / 2 + dx, h / 2 + dy);
+  stops.forEach(([at, c]) => g.addColorStop(at, c));
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+}
+// radial-gradient(RX% RY% at CX% CY%, …): an ellipse, drawn as a circle in a
+// vertically scaled space.
+function cssRadial(ctx, w, h, rx, ry, cx, cy, stops) {
+  const R = rx * w, k = (ry * h) / R;
+  ctx.save();
+  ctx.translate(cx * w, cy * h); ctx.scale(1, k);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, R);
+  stops.forEach(([at, c]) => g.addColorStop(at, c));
+  ctx.fillStyle = g; ctx.fillRect(-cx * w, -cy * h / k, w, h / k);
+  ctx.restore();
+}
+// box-shadow: inset X Y BLUR COLOR, drawn as a strip along its edge.
+function insetEdge(ctx, w, h, side, size, blur, color) {
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, 0, w, h); ctx.clip();
+  ctx.fillStyle = color;
+  if (blur) ctx.filter = `blur(${blur}px)`;
+  if (side === 'top') ctx.fillRect(-4, -4, w + 8, 4 + size);
+  if (side === 'bottom') ctx.fillRect(-4, h - size, w + 8, size + 4);
+  if (side === 'left') ctx.fillRect(-4, -4, 4 + size, h + 8);
+  if (side === 'right') ctx.fillRect(w - size, -4, size + 4, h + 8);
+  ctx.restore();
+}
+
+// The page's sheet on a phone is calc(852px - 132px) tall (styles.css
+// .inv2-sheet min-height); the card shows its top part. So the paper is
+// computed at the sheet's height and the card is cut from its top: the light
+// falls exactly where it falls on the page, and the bottom shading, which on
+// the page sits far below the facts, is not pulled up under them.
+export const SHEET_H = 720;
+export function drawPaper(ctx, w, h, dark, grain) {
+  const card = h;
+  h = Math.max(h, SHEET_H);
+  ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, card); ctx.clip();
+  if (!dark) {
+    cssLinear(ctx, w, h, 168, [[0, '#fdfaf4'], [0.48, '#f9f4ea'], [1, '#f2ebdc']]);
+    cssRadial(ctx, w, h, 1.6, 1.2, 0.5, 1.18, [[0, 'rgba(226,213,192,.5)'], [0.46, 'rgba(240,232,218,0)'], [1, 'rgba(240,232,218,0)']]);
+    cssRadial(ctx, w, h, 1.3, 0.9, 0.32, -0.1, [[0, 'rgba(255,253,248,.98)'], [0.58, 'rgba(253,250,245,0)'], [1, 'rgba(253,250,245,0)']]);
+    insetEdge(ctx, w, card, 'bottom', 2, 3, 'rgba(140,110,70,.14)');
+    insetEdge(ctx, w, card, 'right', 1.5, 1, 'rgba(140,110,70,.12)');
+    insetEdge(ctx, w, card, 'left', 1.5, 0, 'rgba(255,255,255,.55)');
+    insetEdge(ctx, w, h, 'top', 2, 0, 'rgba(255,255,255,.95)');
+    ctx.save(); ctx.strokeStyle = 'rgba(196,178,148,.5)'; ctx.lineWidth = 1; ctx.strokeRect(0.5, 0.5, w - 1, card - 1); ctx.restore();
+    if (grain) { ctx.save(); ctx.globalCompositeOperation = 'multiply'; ctx.drawImage(grain, 0, 0, w * S, Math.min(card * S, grain.height), 0, 0, w, Math.min(card, grain.height / S)); ctx.restore(); }
+    cssLinear(ctx, w, h, 180, [[0, 'rgba(255,255,255,.28)'], [0.08, 'rgba(255,255,255,0)'], [1, 'rgba(255,255,255,0)']]);
+    cssLinear(ctx, w, h, 0, [[0, 'rgba(120,96,60,.09)'], [0.2, 'rgba(120,96,60,0)'], [1, 'rgba(120,96,60,0)']]);
+    cssRadial(ctx, w, h, 1.4, 1.05, 0.5, 0.45, [[0, 'rgba(0,0,0,0)'], [0.62, 'rgba(0,0,0,0)'], [1, 'rgba(110,85,50,.10)']]);
+    cssLinear(ctx, w, h, 118, [[0, 'rgba(255,255,255,.62)'], [0.26, 'rgba(255,255,255,.16)'], [0.42, 'rgba(255,255,255,0)'], [1, 'rgba(255,255,255,0)']]);
+  } else {
+    cssLinear(ctx, w, h, 168, [[0, '#191b1f'], [0.48, '#131518'], [1, '#0d0f11']]);
+    cssRadial(ctx, w, h, 1.6, 1.2, 0.5, 1.18, [[0, 'rgba(0,0,0,.55)'], [0.46, 'rgba(20,22,25,0)'], [1, 'rgba(20,22,25,0)']]);
+    cssRadial(ctx, w, h, 1.3, 0.9, 0.32, -0.1, [[0, 'rgba(44,47,52,.85)'], [0.58, 'rgba(22,24,27,0)'], [1, 'rgba(22,24,27,0)']]);
+    insetEdge(ctx, w, card, 'bottom', 2, 3, 'rgba(0,0,0,.5)');
+    insetEdge(ctx, w, h, 'top', 1.5, 0, 'rgba(255,246,230,.14)');
+    ctx.save(); ctx.strokeStyle = 'rgba(255,244,224,.09)'; ctx.lineWidth = 1; ctx.strokeRect(0.5, 0.5, w - 1, card - 1); ctx.restore();
+    if (grain) { ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.drawImage(grain, 0, 0, w * S, Math.min(card * S, grain.height), 0, 0, w, Math.min(card, grain.height / S)); ctx.restore(); }
+    cssRadial(ctx, w, h, 1.4, 1.05, 0.5, 0.45, [[0, 'rgba(0,0,0,0)'], [0.58, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,0,.4)']]);
+    cssLinear(ctx, w, h, 118, [[0, 'rgba(255,246,228,.10)'], [0.26, 'rgba(255,246,228,.03)'], [0.42, 'rgba(255,255,255,0)'], [1, 'rgba(255,255,255,0)']]);
+  }
+  ctx.restore();
 }
 
 async function fontsReady() {
@@ -81,7 +159,7 @@ export async function drawInviteCard(model) {
   await fontsReady();
   const dark = model.colors.paper === 'dark';
   const c = model.colors;
-  const paper = await loadImage(paperUrl(dark ? 'dark' : 'light'));
+  const grain = await loadImage(grainUrl(dark ? 'dark' : 'light')).catch(() => null);   // no grain: the gradients alone
   const inner = W - PAD * 2;
 
   const plan = (ctx) => {
@@ -116,12 +194,9 @@ export async function drawInviteCard(model) {
   const ctx = canvas.getContext('2d');
   ctx.scale(S, S);
 
-  // The paper, edge to edge, with the page's thin inner edge. Square: the
-  // email rounds its corners (border-radius on the image), so no corner color
-  // can show against a mail app's dark background.
-  ctx.drawImage(paper, 0, 0, W, h);
-  ctx.strokeStyle = dark ? 'rgba(255,244,224,.09)' : 'rgba(196,178,148,.5)'; ctx.lineWidth = 1;
-  ctx.strokeRect(0.5, 0.5, W - 1, h - 1);
+  // The paper, square: the email rounds its corners (border-radius on the
+  // image), so no corner color can show against a mail app's dark background.
+  drawPaper(ctx, W, h, dark, grain);
 
   ctx.textBaseline = 'alphabetic';
   for (const op of ops) {
