@@ -1,0 +1,74 @@
+"""Server-side product analytics: the one fact only the server knows for sure.
+
+A pass purchase (owner, 11/19/2026: "Build the PostHog fixes"). The browser's
+`pass_purchase_confirmed` fires only if the buyer comes back to the app, and it
+never knew the amount (the server charges it). So the purchase, with the amount
+Stripe actually took, is recorded HERE, where the pass is granted.
+
+Same rules as the app's own analytics (src/lib/analytics.js):
+  · the person is a ONE-WAY HASH of their account id (`host_` + 16 hex), the
+    same label the app identifies a signed-in host by, so the purchase joins
+    the person who planned. Never an email, a name or a raw id;
+  · the event is a hash too (`event_id_hash`, as failureTelemetry does);
+  · on only where Render runs this service (RENDER is set there), so tests and
+    local runs send nothing; POSTHOG_KEY overrides the public ingestion key;
+  · fail-soft: a short timeout, any failure logged without details and dropped.
+    Analytics never holds up or breaks a grant.
+"""
+import hashlib
+import logging
+import os
+
+import httpx
+
+log = logging.getLogger("ngw.analytics")
+
+# A PostHog project key (phc_…) is a PUBLIC, write-only ingestion key; the app
+# ships the same one in its bundle.
+POSTHOG_KEY = os.environ.get("POSTHOG_KEY", "phc_kViRwC7yZp9aAqfvqyKw7HJCBxuGqfCnzMAb7yZzgd9p")
+POSTHOG_HOST = os.environ.get("POSTHOG_HOST", "https://us.i.posthog.com").rstrip("/")
+
+
+def analytics_enabled() -> bool:
+    return bool(POSTHOG_KEY) and bool(os.environ.get("RENDER"))
+
+
+def _hash16(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def account_label(user_id) -> str | None:
+    uid = str(user_id or "").strip()
+    return ("host_" + _hash16(uid)) if uid else None
+
+
+def pass_purchase_payload(meta: dict, amount, currency) -> dict | None:
+    """The capture body for a granted pass, or None without a buyer. PURE."""
+    meta = meta or {}
+    who = account_label(meta.get("purchased_by"))
+    if not who:
+        return None
+    event_id = str(meta.get("event_id") or "").strip()
+    props = {
+        "amount_cents": int(amount) if isinstance(amount, (int, float)) else None,
+        "currency": str(currency or "usd").lower(),
+        "sku": str(meta.get("sku") or "one-event-pass"),
+        "source": "server",
+    }
+    if event_id:
+        props["event_id_hash"] = _hash16(event_id)
+    if meta.get("came_from"):
+        props["came_from"] = str(meta["came_from"])
+    if meta.get("came_from_kind"):
+        props["came_from_kind"] = str(meta["came_from_kind"])
+    return {"api_key": POSTHOG_KEY, "event": "pass_purchased", "distinct_id": who, "properties": props}
+
+
+async def capture(payload: dict | None) -> None:
+    if not payload or not analytics_enabled():
+        return
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            await client.post(f"{POSTHOG_HOST}/capture/", json=payload)
+    except Exception:  # noqa: BLE001 — analytics never breaks a grant
+        log.warning("analytics: capture failed (dropped)")

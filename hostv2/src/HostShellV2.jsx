@@ -147,7 +147,7 @@ import { placeQuestionsFor, answerPlaceQuestionPatch } from '@app/lib/placeQuest
 
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia, isListingPhoto } from '@app/lib/lodgingBookmarklet';
-import { track as trackEvent, EVENTS as ANALYTICS, isAnalyticsOptedOut, setAnalyticsOptOut, shouldShowAnalyticsNotice, markAnalyticsNoticeSeen, analyticsNoticeAction } from '@app/lib/analytics';
+import { track as trackEvent, EVENTS as ANALYTICS, isAnalyticsOptedOut, setAnalyticsOptOut, shouldShowAnalyticsNotice, markAnalyticsNoticeSeen, analyticsNoticeAction, trackAccountSession, resetAnalytics, trackActivation } from '@app/lib/analytics';
 // Reasoning Continuity v1 — the ONE place a queue row's "why" is decided.
 import { getActionReason } from '@app/lib/actionReason';
 import { timeStatusLabel, PAST_WINDOW } from '@app/lib/timeStatusLabel';
@@ -1068,6 +1068,9 @@ export default function HostShellV2() {
   // EVERY event created here (array — creating a second never overwrites the
   // first). Each stores itself whole; edits land directly on the array entry.
   const [customs, setCustoms] = useState(CUSTOM_EVENTS_AT_LOAD);
+  // Real plans (a date and a head count) are counted once each, and a second one
+  // once: the activation milestones the legacy shell fired and this one did not.
+  useEffect(() => { try { trackActivation(customs); } catch (_e) { /* a counter never blocks a plan */ } }, [customs]);
   const isCustomEventId = (id) => customs.some(c => c && c.id === id);
   const activeCustom = customs.find(c => c && c.id === eventId) || null;
   // First-run welcome (one-time): a brand-new host — nothing real in
@@ -2350,12 +2353,21 @@ export default function HostShellV2() {
     };
     supabase.auth.getSession().then(({ data }) => {
       const s = data && data.session ? data.session : null;
-      if (!dead) { setSession(s); setAuthChecked(true); if (s) hydrate(); }
+      if (!dead) { setSession(s); setAuthChecked(true); if (s) { hydrate(); trackAccountSession(s.user).catch(() => {}); } }
     }).catch(() => { if (!dead) setAuthChecked(true); });
     // A plan made signed out moves into the store BEFORE hydrate reads it, so
     // the sign-in upload below sends it to the account like any other plan
     // that never reached one.
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { if (!dead) { setSession(s || null); if (s) { try { keepDraftOnSignIn.current(); } catch { /* the draft stays in memory */ } hydrate(); } } });
+    // Analytics (owner, 11/19/2026): a sign-in identifies the account by a one-way
+    // hash and records sign-up / return once; a sign-out resets, so the next
+    // person on this browser is not counted as this one.
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      if (dead) return;
+      setSession(s || null);
+      if (s) { try { keepDraftOnSignIn.current(); } catch { /* the draft stays in memory */ } hydrate(); }
+      if (_e === 'SIGNED_IN' && s) trackAccountSession(s.user).catch(() => {});
+      if (_e === 'SIGNED_OUT') resetAnalytics().catch(() => {});
+    });
     return () => { dead = true; try { sub && sub.subscription && sub.subscription.unsubscribe(); } catch { /* gone */ } };
   }, []);
   // SYNC-HONESTY-1: when the connection comes back, retry anything queued
@@ -20808,6 +20820,7 @@ export default function HostShellV2() {
               };
               const reachInvite = (reached, via) => {
                 const at = new Date().toISOString();
+                try { trackEvent(ANALYTICS.INVITE_SENT, { via, count: (reached || []).length }); } catch (_e) { /* a counter never blocks an invite */ }
                 patchEvent({
                   guests: markInvited(event.guests || [], reached, via, at),
                   ...(event.invitesSentAt ? {} : { invitesSentAt: at }),

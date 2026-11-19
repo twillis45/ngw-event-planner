@@ -16,6 +16,8 @@
 // PostHog project keys (phc_…) are PUBLIC, write-only ingestion keys — designed to
 // ship in the client bundle. Hardcoded as a fallback so every prod build reports
 // without remembering an env prefix; an env var still overrides it.
+import { guestCountFor } from './guestCountFor';
+
 const PH_KEY    = process.env.REACT_APP_POSTHOG_KEY || 'phc_kViRwC7yZp9aAqfvqyKw7HJCBxuGqfCnzMAb7yZzgd9p';
 const PH_HOST   = process.env.REACT_APP_POSTHOG_HOST || 'https://us.i.posthog.com';
 // A Capacitor shell serves the bundle from localhost (capacitor://localhost, https://localhost)
@@ -86,6 +88,60 @@ async function oneWayLabel(text) {
 
 let _ph = null;
 
+// ── WHERE A VISITOR CAME FROM: CAMPAIGN TAGS (owner, 11/19/2026: "Build the
+// PostHog fixes") ──────────────────────────────────────────────────────────
+// PostHog loads lazily, at the first tracked action, so the landing URL's
+// utm_* tags and referrer could be gone by then. They are read at BOOT (this
+// module's import) and kept as the FIRST touch, then registered on every event
+// once PostHog starts. Kept: the five utm_* tags (trimmed, 80 characters) and
+// the referring SITE's host name only, never its path or query, and never this
+// app's own host. lib/acquisition keeps the invite/vendor arrival separately.
+export const FIRST_TOUCH_KEY = 'ngw-first-touch';
+const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+
+/** The campaign a landing URL carries, or null. PURE. */
+export function campaignFrom(search, referrer, ownHost) {
+  const out = {};
+  try {
+    const q = new URLSearchParams(String(search || ''));
+    UTM_KEYS.forEach((k) => {
+      const v = String(q.get(k) || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 80);
+      if (v) out[k] = v;
+    });
+  } catch { /* a malformed query is no campaign */ }
+  try {
+    const host = referrer ? new URL(String(referrer)).hostname : '';
+    if (host && host !== ownHost) out.referrer_host = host;
+  } catch { /* not a URL */ }
+  return Object.keys(out).length ? out : null;
+}
+
+/** The stored first touch, or null. */
+export function firstTouch(storage) {
+  try { const v = JSON.parse((storage && storage.getItem(FIRST_TOUCH_KEY)) || 'null'); return v && typeof v === 'object' ? v : null; } catch { return null; }
+}
+
+/** First touch wins: kept once, never overwritten. */
+export function rememberFirstTouch(storage, campaign, now = Date.now()) {
+  if (!storage || !campaign || firstTouch(storage)) return;
+  try { storage.setItem(FIRST_TOUCH_KEY, JSON.stringify({ ...campaign, at: new Date(now).toISOString() })); } catch { /* best-effort */ }
+}
+
+/** The first touch as event properties: first_utm_source, first_referrer_host… */
+export function firstTouchProps(storage) {
+  const t = firstTouch(storage);
+  if (!t) return {};
+  const out = {};
+  [...UTM_KEYS, 'referrer_host'].forEach((k) => { if (t[k]) out['first_' + k] = t[k]; });
+  return out;
+}
+
+try {
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    rememberFirstTouch(localStorage, campaignFrom(window.location.search, typeof document !== 'undefined' ? document.referrer : '', window.location.hostname));
+  }
+} catch { /* never break the app's boot */ }
+
 /** Lazy-load PostHog and initialize once. */
 async function getPostHog() {
   if (_ph) return _ph;
@@ -110,6 +166,8 @@ async function getPostHog() {
       },
     });
     _ph = posthog;
+    // Every event carries where this browser first came from (see FIRST_TOUCH_KEY).
+    try { const ft = firstTouchProps(localStorage); if (Object.keys(ft).length) posthog.register_once(ft); } catch { /* best-effort */ }
     return _ph;
   } catch {
     return null;
@@ -133,6 +191,93 @@ export async function identifyStudio(profile) {
   const ph = await getPostHog();
   if (!ph) return;
   ph.identify(`studio_${label}`, { role: profile.role || 'Owner' });
+}
+
+/**
+ * ONE PERSON ACROSS DEVICES (owner, 11/19/2026). A signed-in host is identified
+ * by a ONE-WAY HASH of their account id: `host_` plus 16 hex characters. Never
+ * the email, never the name, never the raw id. The server uses the same label
+ * for a purchase (backend analytics.account_label), so a pass bought on one
+ * device joins the person who planned on another. Opted out: nothing. A browser
+ * that cannot hash: not identified at all.
+ */
+export async function accountLabel(userId) {
+  const id = String(userId || '').trim();
+  if (!id) return null;
+  const h = await oneWayLabel(id);
+  return h ? 'host_' + h : null;
+}
+
+export async function identifyAccount(user) {
+  if (analyticsOptedOut() || !user || !user.id) return null;
+  const label = await accountLabel(user.id);
+  if (!label) return null;
+  const ph = await getPostHog();
+  if (!ph) return null;
+  try {
+    let ft = {};
+    try { ft = firstTouchProps(localStorage); } catch { /* none */ }
+    ph.identify(label, {}, ft);   // first touch as $set_once person properties
+  } catch { /* best-effort */ }
+  return label;
+}
+
+/** Sign-out: the next person on this browser is not counted as this one. */
+export async function resetAnalytics() {
+  try { if (_ph) _ph.reset(); } catch { /* best-effort */ }
+}
+
+/**
+ * The account's session signals (ported from the legacy shell's
+ * trackActivationSession, which the live app never had): signed_up once per
+ * account per browser, with whether the account is new, how they signed in and
+ * where they first came from; returned_d1 / returned_d7 from the account's own
+ * creation date. Ids stay in localStorage keys, never in what is sent.
+ */
+export async function trackAccountSession(user, now = Date.now()) {
+  if (!user || !user.id || analyticsOptedOut()) return;
+  await identifyAccount(user);
+  const createdT = Date.parse(user.created_at || '');
+  const days = Number.isNaN(createdT) ? null : Math.max(0, Math.floor((now - createdT) / 86400000));
+  let ft = {};
+  try { ft = firstTouchProps(localStorage); } catch { /* none */ }
+  trackOnce('ngw-evt-signed_up-' + user.id, EVENTS.SIGNED_UP, {
+    is_new_account: !Number.isNaN(createdT) && (now - createdT) < 10 * 60000,
+    auth_method: (user.app_metadata && user.app_metadata.provider) || 'unknown',
+    ...ft,
+  });
+  if (days != null && days >= 1) trackOnce('ngw-returned-d1-' + user.id, EVENTS.RETURNED_D1, { days_since_signup: days });
+  if (days != null && days >= 7) trackOnce('ngw-returned-d7-' + user.id, EVENTS.RETURNED_D7, { days_since_signup: days });
+}
+
+/**
+ * The events that count as REAL plans: a date and a head count (the legacy
+ * shell's EVENT_QUALIFIED bar, which the live app never fired). PURE.
+ */
+export function qualifiedEvents(events) {
+  return (events || []).filter((ev) => {
+    if (!ev || !ev.id) return false;
+    const hasDate = !!String(ev.date || '').trim();
+    // The head count through its one reader (theHeadcountHasOneCanonicalReader).
+    let hasCount = false;
+    try { const g = guestCountFor(ev); hasCount = !!(g && g.known && g.count > 0); } catch { /* no count */ }
+    return hasDate && hasCount;
+  });
+}
+
+/** Fire event_qualified once per event and second_event_created once. */
+export function trackActivation(events, now = Date.now()) {
+  if (analyticsOptedOut()) return;
+  const q = qualifiedEvents(events);
+  q.forEach((ev) => {
+    const created = Date.parse(ev.createdAt || '');
+    trackOnce('ngw-evt-qualified-' + ev.id, EVENTS.EVENT_QUALIFIED, {
+      event_type: ev.type || null,
+      acquisition_source: (ev.acquisitionSource && ev.acquisitionSource.from) || null,
+      days_since_event_created: Number.isNaN(created) ? null : Math.max(0, Math.floor((now - created) / 86400000)),
+    });
+  });
+  if (q.length >= 2) trackOnce('ngw-second-event-created', EVENTS.SECOND_EVENT_CREATED, { qualified_count: q.length });
 }
 
 /**
@@ -198,6 +343,7 @@ export const EVENTS = {
   // Invite growth loop — host shares their invite link → guest RSVPs back to host.
   // The two-step viral loop we instrument to measure invite-driven growth.
   INVITE_SHARED:          'invite_shared',          // host shares/copies invite link
+  INVITE_SENT:            'invite_sent',            // { via: 'email' | 'text', count } — the invite batch, the text queue, one guest at a time (11/19/2026)
   INVITE_VIEWED:          'invite_viewed',          // a guest OPENS the shared invite page (reach — did the share land?)
   INVITE_RSVP_SUBMITTED:  'invite_rsvp_submitted',  // a guest submits the RSVP on the invite page (conversion)
   GUEST_RSVP_RECEIVED:    'guest_rsvp_received',     // a guest RSVP arrives back to the host

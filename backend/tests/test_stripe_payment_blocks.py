@@ -162,3 +162,26 @@ def test_partial_refund_keeps_access_per_owner_policy(dev_webhook, ledger):
         'payment_intent':'pi_pass_1','amount':3900,'amount_refunded':3900,'refunded':True,
     }}})
     assert ledger.blocks == {'pi_pass_1':'refunded'}
+
+
+def test_a_granted_pass_is_recorded_once_and_a_blocked_or_duplicate_one_is_not(ledger, monkeypatch):
+    # Owner, 11/19/2026: "Build the PostHog fixes." The server records the
+    # purchase with its amount (app/analytics.py) only when a pass is GRANTED.
+    sent = []
+    async def fake_capture(payload): sent.append(payload)
+    monkeypatch.setattr(SP, 'capture', fake_capture)
+    async def scenario():
+        await grant(); await grant()          # the second is a duplicate: no second record
+    asyncio.run(scenario())
+    assert len(sent) == 1
+    assert sent[0]['event'] == 'pass_purchased' and sent[0]['properties']['amount_cents'] == 3900
+
+
+def test_a_blocked_payment_records_no_purchase(ledger, monkeypatch):
+    sent = []
+    async def fake_capture(payload): sent.append(payload)
+    monkeypatch.setattr(SP, 'capture', fake_capture)
+    async def scenario():
+        await block('refunded'); await grant()
+    asyncio.run(scenario())
+    assert sent == []
