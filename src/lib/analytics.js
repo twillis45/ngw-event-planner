@@ -105,7 +105,8 @@ export function campaignFrom(search, referrer, ownHost) {
   try {
     const q = new URLSearchParams(String(search || ''));
     UTM_KEYS.forEach((k) => {
-      const v = String(q.get(k) || '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 80);
+      // Control characters dropped by code point (a regex range of them trips no-control-regex).
+      const v = Array.from(String(q.get(k) || '')).filter((ch) => ch.charCodeAt(0) >= 32).join('').trim().slice(0, 80);
       if (v) out[k] = v;
     });
   } catch { /* a malformed query is no campaign */ }

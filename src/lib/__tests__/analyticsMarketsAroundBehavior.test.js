@@ -55,6 +55,11 @@ describe('campaign tags', () => {
     expect(JSON.stringify(c)).not.toContain('secret');            // the referrer's path and query are never kept
   });
 
+  test('control characters in a tag are dropped', () => {
+    const a = load();
+    expect(a.campaignFrom('?utm_source=news%00letter%0A', '', 'twillis45.github.io')).toEqual({ utm_source: 'newsletter' });
+  });
+
   test('this app’s own pages are not a referrer, and no tags is no campaign', () => {
     const a = load();
     expect(a.campaignFrom('', 'https://twillis45.github.io/ngw-event-planner/', 'twillis45.github.io')).toBeNull();
