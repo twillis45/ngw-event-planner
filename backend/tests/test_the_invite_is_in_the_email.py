@@ -78,3 +78,21 @@ def test_the_reply_buttons_can_wrap_on_a_small_phone():
 def test_without_a_place_the_date_takes_the_whole_row():
     html, _ = compose_invite_email({**EV, "venue": "", "venueAddress": ""}, "", None, "Vida Reyes", None)
     assert "Where" not in html and 'width="100%" valign="top"' in html
+
+
+def test_an_invite_without_the_day_the_hour_or_the_place_has_gaps():
+    # Owner, 11/19/2026: "Before sending invites app should verify if the
+    # important info is included." The server's own check on the SAVED event.
+    from app.invite_email import invite_gaps
+    assert invite_gaps(EV) == []
+    assert invite_gaps({**EV, "date": ""}) == ["date"]
+    assert invite_gaps({**EV, "startTimeSource": "derived"}) == ["time"]
+    assert invite_gaps({**EV, "startTime": ""}) == ["time"]
+    assert invite_gaps({**EV, "venue": "", "venueAddress": ""}) == ["place"]
+    assert invite_gaps({**EV, "venue": "", "venueAddress": "", "venueCity": "Baltimore"}) == []
+    assert invite_gaps({}) == ["date", "time", "place"]
+
+
+def test_an_at_home_event_named_only_by_its_town_says_the_town():
+    html, text = compose_invite_email({**EV, "venue": "", "venueAddress": "", "venueCity": "Baltimore", "venueState": "MD"}, "", None, "Vida Reyes", None)
+    assert "Baltimore, MD" in html and "Where: Baltimore, MD" in text

@@ -3,6 +3,8 @@ import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 const EVENT = {
   id: 'cust-rsvp-capability', rsvpCode: 'public-rsvp-capability-code',
   name: 'RSVP capability birthday', type: 'Birthday Party', date: '2027-06-19',
+  // A complete invite (day, host-set hour, place): the invite check (inviteGaps) stands aside.
+  startTime: '16:00', startTimeSource: 'host', venue: 'Denise’s place',
   guestEstimate: 25, guestMode: 'list', guests: [{ id: 'guest-1', name: 'Denise' }], vendors: [], budget: [], timeline: [],
 };
 const API = 'https://e2e-mock.invalid';

@@ -63,6 +63,24 @@ def _note_lines(note: str, facts=()) -> list:
     return out
 
 
+def invite_gaps(ev: dict) -> list:
+    """What an invite cannot go out without (owner, 11/19/2026: "Before sending
+    invites app should verify if the important info is included"): the day, an
+    hour the host set, and the place. The app asks for them before it writes the
+    invite (src/lib/inviteGaps.js); this is the server's own check on the SAVED
+    event, so an email never goes out with a hole even if the app's copy and the
+    saved one disagree."""
+    ev = ev or {}
+    gaps = []
+    if not re.match(r"^\d{4}-\d{2}-\d{2}", str(ev.get("date") or "")):
+        gaps.append("date")
+    if not str(ev.get("startTime") or "").strip() or str(ev.get("startTimeSource") or "") == "derived":
+        gaps.append("time")
+    if not any(str(ev.get(k) or "").strip() for k in ("venue", "venueAddress", "venueCity")):
+        gaps.append("place")
+    return gaps
+
+
 def compose_invite_email(ev: dict, note: str, recipient_name, sender: str, stop_url):
     ev = ev or {}
     e = _html.escape
@@ -74,6 +92,8 @@ def compose_invite_email(ev: dict, note: str, recipient_name, sender: str, stop_
     when = " · ".join(x for x in (date_label, time_label) if x)
     place = str(ev.get("venue") or "").strip()
     address = str(ev.get("venueAddress") or "").strip()
+    if not place and not address:   # an at-home event named only by its town
+        place = ", ".join(x for x in (str(ev.get("venueCity") or "").strip(), str(ev.get("venueState") or "").strip()) if x)
     host = str(sender or "").strip()
     first = host.split(" ")[0] if host else "your host"
     url = invite_url(str(ev.get("rsvpCode") or ev.get("id") or ""))

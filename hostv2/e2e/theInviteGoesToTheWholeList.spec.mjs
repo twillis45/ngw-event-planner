@@ -21,6 +21,8 @@ const CODE = 'e2einvitelist000001';   // checkRsvpCapability needs 16+ character
 const hostEvent = () => ({
   id: EVENT_ID, name: 'Vida’s Friendsgiving', type: 'Friendsgiving',
   date: dateIn(12), createdAt: new Date().toISOString(),
+  // A complete invite (day, host-set hour, place): the invite check (inviteGaps) stands aside.
+  startTime: '16:00', startTimeSource: 'host', venue: 'Vida’s place',
   rsvpCode: CODE, guestMode: 'list', guestEstimate: 6, guestCountSource: 'host',
   budget: [], vendors: [], timeline: [],
   guests: [
@@ -121,7 +123,7 @@ const openInvite = async (page, ev) => {
 };
 
 test('each voice is its own invite, and none of them drops the day or the place', async ({ page }) => {
-  await openInvite(page, { ...hostEvent(), startTime: '16:00', venue: 'Vida’s place' });
+  await openInvite(page, hostEvent());
   const box = page.getByLabel('Edit the draft');
   const seen = new Set();
   for (const voice of ['As written', 'Tighter', 'Warmer', 'Playful', 'Formal']) {

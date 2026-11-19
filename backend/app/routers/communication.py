@@ -20,7 +20,7 @@ from ..db import get_pool
 from ..config import APP_BASE_URL, API_PUBLIC_BASE_URL
 from ..auth import require_planner
 from ..emailer import send_approval_email, send_thread_email, is_email_configured
-from ..invite_email import compose_invite_email
+from ..invite_email import compose_invite_email, invite_gaps
 
 router = APIRouter(prefix="/api/events/{event_id}/communication", tags=["communication"])
 
@@ -411,6 +411,14 @@ async def create_message(
         event_data = {}
         if standard_email or approval_email_to:
             event_data = await _assert_email_send_allowed(conn, event_id, payload.recipient_email if standard_email else approval_email_to)
+        # An invite never goes out without the day, the hour and the place
+        # (owner, 11/19/2026), read from the SAVED event before anything is sent.
+        if payload.invite and standard_email:
+            missing = invite_gaps(event_data)
+            if missing:
+                words = {"date": "the date", "time": "the start time", "place": "the place"}
+                raise HTTPException(422, "This invite is missing " + " and ".join(words[m] for m in missing)
+                                    + ". Add it in the app, then send again.")
         stop_token = await _email_stop_token(conn, event_id, payload.recipient_email) if standard_email else None
         ch = await _channel(conn, event_id, channel_type)
 

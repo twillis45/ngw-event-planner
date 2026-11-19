@@ -114,7 +114,9 @@ test('the invite written and sent from its draft credits "Send the invite"', asy
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');
     localStorage.setItem('ngw-v2-welcomed', '1');
-  }, hostEvent());
+  // A complete invite (day, host-set hour, place): the invite check (inviteGaps,
+  // 11/19/2026) stands aside, and the draft itself is what this test opens.
+  }, { ...hostEvent(), startTime: '19:00', startTimeSource: 'host', venue: 'Ana’s place' });
   await page.goto(`${BASE}?elegant=1`);
   await page.waitForFunction(() => (document.querySelector('.app')?.innerText || '').trim().length > 120, null, { timeout: 20_000 });
   const tap = (re) => page.evaluate((s) => {
