@@ -42,7 +42,13 @@ test('the estimate toggle and the add-your-state link are at least 44px tall to 
 // "Use $300" link (plan costs above the planning number) and the Space sheet's
 // open rows ("Venue / location ›"), whose padding sat on a wrapper, not the button.
 const FG = { id: 'cust-taps-fg', name: 'My Friendsgiving', type: 'Friendsgiving', date: dateIn(6),
-  guestEstimate: 20, guestMode: 'count', guestCountSource: 'host', budget: [], vendors: [], guests: [], timeline: [] };
+  guestEstimate: 20, guestMode: 'count', guestCountSource: 'host',
+  // A booked $300 table rental puts the plan's own lines over the band on ANY
+  // date. Without it the plan sat at $375 against a $300 middle, and the link
+  // vanished the day this event's dateIn(6) landed in Thanksgiving week, when
+  // factors.usHolidays lifts the middle to $400 (CI, 11/19/2026): correct app
+  // behavior, a calendar-dependent fixture.
+  budget: [{ id: 'b-rent', category: 'Rentals', budgeted: 300 }], vendors: [], guests: [], timeline: [] };
 
 test('the "Use $…" link and the Space rows are big enough to tap', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

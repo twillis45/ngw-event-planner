@@ -172,11 +172,33 @@ export function isAtHome(event) {
 // so guests reply on the hosted page and the headcount flows back to the host (instead
 // of the host chasing replies in a group text). That's what turns the invite from a
 // dead-end message into the product's front door.
+// ── EACH VOICE IS ITS OWN INVITE (owner, 11/19/2026) ─────────────────────────
+// "Check copy for text, each version doesn't change much." The voices were word
+// swaps on one fixed draft, and Tighter dropped the date and the place. Each is
+// now written from the same facts: the day, the time, the place, the reply link
+// and the host. Nothing is invented and nothing is dropped. A solemn gathering
+// gets no festive voice: its versions stay quiet, and Playful is not offered.
+// A stored 24-hour time reads as a US guest says it: "16:00" is "4:00 PM"
+// (owner copy check, 11/19/2026: every invite printed "16:00"). Used by the
+// drafts that print the time as it stands: the invite, the guest brief, the
+// day-before details and the vendor reconfirm. timePhrase itself stays raw,
+// because helperAsk and the CRA shell format it themselves.
+const inviteTime = (event) => { const t = timePhrase(event); return fmtClock(t) || t; };
+export const INVITE_VOICES = ['as-written', 'tighter', 'warmer', 'playful', 'formal'];
+export function inviteVoicesFor(event) {
+  return inviteVoice(event).sombre ? INVITE_VOICES.filter((x) => x !== 'playful') : INVITE_VOICES;
+}
+
 export function draftInvite(event, profile, opts = {}) {
   if (!event) return { subject: '', body: '' };
+  const voice = (opts && opts.voice) || 'as-written';
+  if (voice !== 'as-written') {
+    const out = inviteInVoice(event, profile, opts, voice);
+    if (out) return out;
+  }
   const v = inviteVoice(event);
   const date = fmtLongDate(event.date);
-  const time = timePhrase(event);
+  const time = inviteTime(event);
   const place = placePhrase(event);
   const host = hostName(profile);
   const rsvpUrl = (opts && opts.rsvpUrl) ? String(opts.rsvpUrl).trim() : '';
@@ -200,6 +222,39 @@ export function draftInvite(event, profile, opts = {}) {
   return { subject, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
 }
 
+function inviteInVoice(event, profile, opts, voice) {
+  const v = inviteVoice(event);
+  const date = fmtLongDate(event.date);
+  const time = inviteTime(event);
+  const place = placePhrase(event);
+  const host = hostName(profile);
+  const url = (opts && opts.rsvpUrl) ? String(opts.rsvpUrl).trim() : '';
+  const thing = subjectThing(event);
+  const when = [date, time].filter(Boolean).join(' · ');
+  const facts = [when, place].filter(Boolean);
+  const honoree = (event.honoree || '').trim();
+  const join = (parts) => parts.filter((p) => p != null).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  if (v.sombre) {
+    const whom = honoree ? ` ${honoree}` : '';
+    if (voice === 'tighter') return { subject: `In remembrance${whom ? ' of' + whom : ''}`,
+      body: join([`We’re gathering to remember${whom || ' together'}.`, facts.length ? facts.join(', ') + '.' : '', url ? `Please let us know if you can come: ${url}` : '', host ? `— ${host}` : '']) };
+    if (voice === 'warmer') return { subject: `In remembrance${whom ? ' of' + whom : ''}`,
+      body: join([`We’d be grateful to have you with us as we remember${whom || ' and support one another'}.`, 'Your being there would mean a great deal to the family.', '', ...facts, '', url ? 'When you can, please let us know if you’ll join us:' : '', url, '', host ? `With love, ${host}` : '']) };
+    if (voice === 'formal') return { subject: `In remembrance${whom ? ' of' + whom : ''}`,
+      body: join([`You are invited to join us in remembering${whom || ' those we have lost'}.`, '', ...facts, '', url ? 'Kindly let us know whether you will attend:' : '', url, '', host ? `Respectfully, ${host}` : '']) };
+    return null;   // no playful voice for a solemn gathering: the invite as written
+  }
+  if (voice === 'tighter') return { subject: `You’re invited — ${thing}`,
+    body: join([facts.length ? `${thing}: ${facts.join(', ')}.` : `${thing}.`, url ? `Can you make it? ${url}` : 'Can you make it?', host ? `— ${host}` : '']) };
+  if (voice === 'warmer') return { subject: `We’d love to see you — ${thing}`,
+    body: join([`We’d love to have you with us for ${thing}.`, 'It wouldn’t be the same without you.', '', ...facts, '', url ? 'Let us know you’re coming, so we can save you a seat:' : 'Let us know you’re coming, so we can save you a seat.', url, '', host ? `Can’t wait to see you,\n${host}` : 'Can’t wait to see you!']) };
+  if (voice === 'playful') return { subject: `Clear your calendar — ${thing}`,
+    body: join([`Clear your calendar! ${thing} is happening, and you’re on the list.`, '', ...facts, '', url ? 'Tap here so we know to count you in:' : 'Tell us you’re in!', url, '', host ? `See you there!\n${host}` : 'See you there!']) };
+  if (voice === 'formal') return { subject: `Invitation — ${thing}`,
+    body: join([`You are cordially invited to ${thing}.`, '', ...facts, '', url ? 'Kindly reply at your earliest convenience:' : 'Kindly reply at your earliest convenience.', url, '', host ? `With warm regards,\n${host}` : 'With warm regards.']) };
+  return null;
+}
+
 // The gift-wish line, tone-aware. Somber events never say "registry"/"contribution".
 function giftWishLine(gw, v) {
   if (!gw || !gw.mode) return '';
@@ -221,7 +276,7 @@ export function draftGuestBrief(event, profile, opts = {}) {
   if (!event) return { subject: '', body: '' };
   const v = inviteVoice(event);
   const date = fmtLongDate(event.date);
-  const time = timePhrase(event);
+  const time = inviteTime(event);
   const place = placePhrase(event);
   const host = hostName(profile);
   const atHome = isAtHome(event);
@@ -795,7 +850,7 @@ export function draftDayBeforeDetails(event, profile, opts = {}) {
   const v = inviteVoice(event);
   const name = subjectThing(event);
   const date = fmtLongDate(event.date);
-  const time = timePhrase(event);
+  const time = inviteTime(event);
   const place = placePhrase(event);
   const host = hostName(profile);
   const when = [date, time].filter(Boolean).join(' · ');
@@ -818,7 +873,7 @@ export function draftVendorReconfirm(event, vendor, profile) {
   if (!event) return { subject: '', body: '' };
   const name = (vendor && vendor.name ? String(vendor.name) : '').trim();
   const date = fmtLongDate(event.date);
-  const time = timePhrase(event);
+  const time = inviteTime(event);
   const place = placePhrase(event);
   const host = hostName(profile);
   const arrival = String((vendor && (vendor.arrivalTime || vendor.loadIn || vendor.arrival)) || '').trim();

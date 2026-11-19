@@ -24,6 +24,7 @@
 // Light paper only (the guest invite's stationery), 390px-first, no host chrome.
 import { useEffect, useMemo, useState } from 'react';
 import { BRAND } from '@app/lib/brand';
+import { recruitHref } from '@app/lib/acquisition';
 import { invitePalette } from '@app/lib/inviteTone';
 import { fetchPublicVendorBrief, isVendorBriefApiConfigured, looksLikeBriefCode, submitVendorBriefConfirmation, vendorBriefIdempotencyKey } from '@app/lib/api/vendorBrief';
 import { buildConfirmationPayload } from '@app/lib/vendorBriefConfirm';
@@ -232,6 +233,18 @@ function BriefPage({ brief: b, briefCode }) {
             </div>
           </div>
           <p className="inv2-fine vb2-foot">{fromLine}</p>
+          {/* "Plan yours" (Marketing & Pricing board, 11/18/2026): vendors plan
+              their own family events too. The same quiet line as the invite's,
+              tagged as coming from a vendor brief; never on a solemn event (the
+              brief carries the event's name, not its type, so the name decides). */}
+          {!/repast|memorial|funeral|celebration of life|wake|shiva|homegoing/i.test(String(b.eventName || '')) && (
+            <p className="grounding" style={{ marginTop: 'var(--sp-3)', textAlign: 'center' }}>
+              <a data-plan-yours href={typeof window !== 'undefined' ? recruitHref(window.location.origin + window.location.pathname, { from: 'vendor' }) : '/'}
+                className="tap-44" style={{ color: 'inherit', fontWeight: 650, textDecoration: 'none' }}>
+                Hosting something of your own? Plan it free with {BRAND.full} →
+              </a>
+            </p>
+          )}
           <div className="inv2-wordmark">{BRAND.full}<span className="inv2-wm-dot" aria-hidden="true" /></div>
         </section>
       </div></div>

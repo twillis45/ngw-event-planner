@@ -74,7 +74,8 @@ import { showsReplyTracking } from '@app/lib/guestMode';
 import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, travelHazard, guestTravelMessage } from '@app/lib/weather';
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
-import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
+import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/inviteBatch';
+import { draftInvite, inviteVoicesFor, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
 // dollars turned $0.20/lb of ice into "$0/lb" on 84 of the corpus's 440
 // per-unit lines. One definition, shared with the CRA food sheet.
@@ -193,6 +194,9 @@ import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePar
 import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
 import { BRAND } from '@app/lib/brand';
+import BringerPicker from './BringerPicker';
+import InviteToTheList from './InviteToTheList';
+import { readArrival, rememberArrival, arrivalFor, spendArrival, exampleSentenceFor } from '@app/lib/acquisition';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_NUDGE } from '@app/lib/knowledge/geoCostIndex';
 import { firstStoreIn, storesIn } from '@app/lib/communitySource';
@@ -1434,6 +1438,11 @@ export default function HostShellV2() {
   // Create — ONE smart input; the real resolvers parse it. Form fields exist
   // only as corrections layered over the parse (host-shell logic, not a form).
   const [smartText, setSmartText] = useState(bootDraft);
+  // Arrived from a guest invite or a vendor brief's "plan yours" link
+  // (lib/acquisition): read once off the URL, first touch kept 30 days.
+  const [arrival, setArrival] = useState(() => {
+    try { const a = readArrival(window.location.search); if (a) rememberArrival(window.localStorage, a); return arrivalFor(window.localStorage); } catch { return null; }
+  });
   // SMALL INTAKE (host ruling 2026-07-23, Figma 626:61 link + 626:78 screen): a
   // guided alternative to the free-text field. The three taps COMPOSE the same
   // sentence the host would have typed, into the SAME smartText -> parser path —
@@ -6559,6 +6568,7 @@ export default function HostShellV2() {
       // THE INVITE ITSELF (owner, live, 11/18/2026): a send recorded from this
       // draft also credits "Send the invite", which reads invitesSentAt alone.
       sendsInvite: !!(opts && opts.sendsInvite),
+      voices: (opts && opts.voices) || null,
       from: prev ? (prev.kind === 'draft' ? prev.from || null : prev) : null,
     }));
   };
@@ -6633,7 +6643,9 @@ export default function HostShellV2() {
     }
     return b;
   };
-  const shownDraft = () => draftBody != null ? draftBody : toneBody(sheet && sheet.body, draftTone, {
+  const shownDraft = () => draftBody != null ? draftBody
+    : (sheet && sheet.voices) ? (sheet.voices[draftTone] || sheet.voices['as-written'])
+    : toneBody(sheet && sheet.body, draftTone, {
     title: sheet && sheet.title,
     vendor: (sheet && sheet.vendorId && (event.vendors || []).find(v => v && v.id === sheet.vendorId)) || null,
   });
@@ -6667,7 +6679,15 @@ export default function HostShellV2() {
   const openInviteDraft = async (title, build, opts) => {
     const url = await verifiedRsvpUrl();
     if (url === null) return;   // a check is already running
-    openDraft(title, build(event, profile, { rsvpUrl: url }), null, opts);
+    // The invite is written in each voice from the facts (doItForMe.inviteInVoice),
+    // so picking a voice shows that version, not a word swap on one draft.
+    const voices = build === draftInvite
+      ? Object.fromEntries(inviteVoicesFor(event).map((v) => {
+          const d = draftInvite(event, profile, { rsvpUrl: url, voice: v });
+          return [v, [d.subject, d.body].filter(Boolean).join('\n\n')];
+        }))
+      : null;
+    openDraft(title, build(event, profile, { rsvpUrl: url }), null, voices ? { ...(opts || {}), voices } : opts);
   };
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const showQr = async () => {
@@ -9508,8 +9528,12 @@ export default function HostShellV2() {
     // Signed out with accounts on: the plan is shown, not kept (see draftEvent).
     // A correction to an event already in the store stays an edit of it.
     const holdAsDraft = isSupabaseConfigured() && !session && !(redoId && (customs || []).some((c) => c && c.id === redoId));
+    // Where this host came from (lib/acquisition), carried by the first event
+    // they create after arriving from an invite or a vendor brief, then spent.
+    const arrivedFrom = !redoId ? arrival : null;
     const ev = {
       id: newId, rsvpCode: priorCode || mintRsvpToken(),
+      ...(arrivedFrom ? { acquisitionSource: { from: arrivedFrom.from, ...(arrivedFrom.kind ? { kind: arrivedFrom.kind } : {}), at: arrivedFrom.at } } : {}),
       createdAt: new Date().toISOString(), // overdue-on-creation fix: the board needs to know the runway existed
       // A HOST WHO NAMED HERSELF GETS HER NAME ON IT (owner acceptance run,
       // 11/5/2026): "Vida is hosting a girls' game night" saved as "My Game
@@ -9714,7 +9738,8 @@ export default function HostShellV2() {
       // `is_first` is read from the events that existed BEFORE this one, which is
       // the same population passVerdictAtCreation just judged against — measuring
       // it after the state update would count this event and never report a first.
-      try { trackEvent(ANALYTICS.EVENT_CREATED, { is_first: (customs || []).length === 0, event_type: ev && ev.type }); } catch (_e) { /* a counter never blocks a creation */ }
+      try { trackEvent(ANALYTICS.EVENT_CREATED, { is_first: (customs || []).length === 0, event_type: ev && ev.type, ...(arrivedFrom ? { came_from: arrivedFrom.from } : {}) }); } catch (_e) { /* a counter never blocks a creation */ }
+      if (arrivedFrom) { try { spendArrival(window.localStorage); } catch { /* spent or not, the event already carries it */ } setArrival(null); }
       setEventId(newId); setRevealed(true);
       try { localStorage.setItem(LS_WELCOMED, '1'); } catch { /* private mode — the welcome may show once more; never blocks */ }
     }
@@ -10443,7 +10468,7 @@ export default function HostShellV2() {
                       meet. */}
                   {smartText.trim() === '' && (
                     <p className="grounding">
-                      Like “Mom’s 80th in Santa Fe, 30 people, June 14”.
+                      Like “{exampleSentenceFor(arrival)}”.
                     </p>
                   )}
                   {/* ── RETURN DID NOTHING, AND THE ONE BUTTON WAS A MIC ────────
@@ -20723,6 +20748,38 @@ export default function HostShellV2() {
                 if (ok) { logVendorContact(sheet.vendorId); }
                 setSendingEmail(false);
               };
+              // ── THE INVITE TO THE WHOLE LIST (owner, 11/19/2026) ───────────
+              // One email per guest through the SAME guarded route as the send
+              // above (address saved on the event, per-event daily cap, real
+              // delivery answer). 429 is that cap; 403 an address the account
+              // has not saved yet. Rules: lib/inviteBatch.js.
+              const sendInviteTo = async (g) => {
+                const draftSubject = (draftInvite(event, profile, { voice: (sheet.voices && sheet.voices[draftTone]) ? draftTone : 'as-written' }) || {}).subject || 'You’re invited';
+                const { subject, body } = inviteSubjectAndBody(shownDraft(), draftSubject);
+                try {
+                  const res = await commApi.createMessage(event.id, 'CLIENT', {
+                    message_type: 'standard', author_role: 'planner',
+                    author_name: (profile && profile.name) || 'Your host',
+                    body, deliver_email: true, recipient_email: g.email, recipient_name: g.name || undefined, subject,
+                    ...(((session && session.user && session.user.email) || '').trim()
+                      ? { reply_to: String(session.user.email).trim() } : {}),
+                  });
+                  const d = res && res.metadata && res.metadata.delivery;
+                  return d && d.status === 'accepted' ? { ok: true } : { ok: false, error: (d && d.error) || 'no delivery confirmation' };
+                } catch (e) {
+                  const m = String((e && e.message) || '');
+                  if (/→ 429/.test(m)) return { ok: false, capped: true };
+                  if (/→ 403/.test(m)) return { ok: false, error: 'not saved to your account yet' };
+                  return { ok: false, error: 'request failed' };
+                }
+              };
+              const reachInvite = (reached, via) => {
+                const at = new Date().toISOString();
+                patchEvent({
+                  guests: markInvited(event.guests || [], reached, via, at),
+                  ...(event.invitesSentAt ? {} : { invitesSentAt: at }),
+                }, null, { noUndo: true });
+              };
               return (
               <>
                 {/* Host-attested state chip: RECORD-ONLY treatment (outline,
@@ -20767,8 +20824,10 @@ export default function HostShellV2() {
                 <div style={{ marginBottom: 'var(--sp-3)' }}>
                   <div className="of" style={{ marginBottom: 4 }}>Voice</div>
                   <OptionList ariaLabel="Voice"
-                    options={[['as-written', 'As written'], ['tighter', 'Tighter'], ['warmer', 'Warmer'], ['playful', 'Playful'], ['formal', 'Formal']].map(([k, label]) => ({ label, value: k }))}
-                    value={draftBody == null ? draftTone : ''}
+                    options={[['as-written', 'As written'], ['tighter', 'Tighter'], ['warmer', 'Warmer'], ['playful', 'Playful'], ['formal', 'Formal']]
+                      .filter(([k]) => !sheet.voices || sheet.voices[k])   // a solemn invite offers no Playful
+                      .map(([k, label]) => ({ label, value: k }))}
+                    value={draftBody == null ? ((sheet.voices && !sheet.voices[draftTone]) ? 'as-written' : draftTone) : ''}
                     onPick={(k) => {
                       // Picking a voice still means "rewrite it" — but her typed words
                       // are no longer thrown away with no way back (Nielsen re-run N6,
@@ -20859,6 +20918,11 @@ export default function HostShellV2() {
                       {sendingEmail ? 'Sending…' : `Send it to ${emailTarget.to}`}
                     </button>
                   </div>
+                )}
+                {sheet.sendsInvite && (
+                  <InviteToTheList guests={event.guests} draft={shownDraft()}
+                    canEmail={isCommApiConfigured() && !!session}
+                    sendOne={sendInviteTo} onReached={reachInvite} />
                 )}
                 {/* "Message all helpers": each person still gets reviewed and
                     sent individually through the real handoffs above — this
@@ -21375,8 +21439,8 @@ export default function HostShellV2() {
                     {rows.map((r) => {
                       const saved = String((event.foodOwner || {})[r.id] || r.owner || '').trim();
                       const editing = bringerEdit && bringerEdit.id === r.id;
-                      const commit = () => {
-                        const v = String((bringerEdit && bringerEdit.value) || '').trim();
+                      const commit = (val) => {
+                        const v = String((val !== undefined ? val : (bringerEdit && bringerEdit.value)) || '').trim();
                         const next = { ...(event.foodOwner || {}) };
                         if (v) next[r.id] = v; else delete next[r.id];
                         setBringerEdit(null);
@@ -21391,15 +21455,13 @@ export default function HostShellV2() {
                               style={{ display: 'block', marginBottom: 'var(--sp-1)' }}>
                               Who is bringing {r.short || r.item}?
                             </label>
-                            <input className="field" id={'bringer-' + r.id} autoFocus
-                              placeholder="A name, as you were told it"
+                            {/* From the guest list (owner, 11/18/2026): a dropdown of
+                                guests who haven't declined, or "Someone not on the
+                                list…" for the church kitchen or a neighbor. */}
+                            <BringerPicker guests={event.guests} id={'bringer-' + r.id} autoFocus
                               value={bringerEdit.value}
-                              onChange={(e) => setBringerEdit({ id: r.id, value: e.target.value })}
-                              onBlur={commit}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') commit();
-                                if (e.key === 'Escape') setBringerEdit(null);
-                              }} />
+                              onChange={(v) => setBringerEdit({ id: r.id, value: v })}
+                              onCommit={(v) => commit(v)} onCancel={() => setBringerEdit(null)} />
                           </div>
                         );
                       }
@@ -23665,12 +23727,17 @@ export default function HostShellV2() {
                         data-food-add-name aria-label="Items to add, one per line"
                         placeholder={'e.g. Aunt Carol\'s potato salad\nExtra ice'}
                         value={foodAddName} onChange={e => setFoodAddName(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitFoodAdd(); } }} />
-                      <p className="of" style={{ margin: 'var(--sp-1) 0 0' }}>One per line — paste a list to add several. Enter adds; Shift+Enter starts a new line.</p>
+                        /* RETURN IS A NEW LINE (owner, 11/18/2026: "Still can't add
+                           multiple"). Enter used to add and only Shift+Enter made a
+                           line, and a phone keyboard has no Shift: one item was all
+                           an iPhone could ever enter. Return now starts the next
+                           line everywhere; the button adds; Ctrl/Cmd+Return adds
+                           from a keyboard. */
+                        onKeyDown={e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); commitFoodAdd(); } }} />
+                      <p className="of" style={{ margin: 'var(--sp-1) 0 0' }}>One item per line — press Return for the next one, or paste a list. Then tap Add.</p>
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                        <input className="field" style={{ maxWidth: 220, flex: 1 }} placeholder="Who's bringing it (optional)"
-                          value={foodAddOwner} onChange={e => setFoodAddOwner(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') commitFoodAdd(); }} />
+                        <BringerPicker guests={event.guests} label="Who's bringing it (optional)" placeholder="Who's bringing it (optional)"
+                          style={{ maxWidth: 260, flex: 1 }} value={foodAddOwner} onChange={setFoodAddOwner} />
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', padding: '0 10px' }}>
                           <span className="of">$</span>
                           <input type="number" inputMode="decimal" min="0" placeholder="cost (optional)"
@@ -25819,11 +25886,18 @@ export default function HostShellV2() {
                 // faked a "sent" state. Offered only where reply tracking is on.
                 nudge:   showsReplyTracking(event) ? { label: 'Write a nudge to send', onClick: () => openInviteDraft('The RSVP nudge', draftRsvpChase) } : null,
               };
+              // THE INVITE TO THE WHOLE LIST (owner, 11/19/2026). Same draft as
+              // "Copy the invite", named for what it now does; shown while some
+              // guest can still be reached and has not been invited.
+              const _reachable = (() => { const r = inviteRecipients(event.guests); return r.email.length + r.text.length; })();
+              _inviteActs.list = _reachable > 0
+                ? { label: `Invite your guest list (${_reachable})`, onClick: () => openInviteDraft('Your invite', draftInvite, { sendsInvite: true }), data: 'invite-list' }
+                : null;
               const _outstanding = (event.guests || []).filter((g) => g && !String(g.rsvp || '').trim()).length;
               const _chasing = _outstanding > 0 || !(event.guests || []).length;
               const inviteTiers = _chasing ? {
                 primary: _inviteActs.share,
-                secondary: [markInviteSent, _inviteActs.link, _inviteActs.qr, _inviteActs.nudge].filter(Boolean),
+                secondary: [_inviteActs.list, markInviteSent, _inviteActs.link, _inviteActs.qr, _inviteActs.nudge].filter(Boolean),
                 more: [_inviteActs.preview, _inviteActs.copy, _inviteActs.brief, _inviteActs.update],
               } : {
                 primary: _inviteActs.update,
@@ -25838,6 +25912,7 @@ export default function HostShellV2() {
                     <button className="mini" onClick={_inviteActs.link.onClick}>Copy the link</button>
                     <button className="mini" onClick={_inviteActs.qr.onClick}>Check and show QR</button>
                     <button className="mini" onClick={_inviteActs.preview.onClick}>Preview on this device</button>
+                    {_inviteActs.list && <button className="mini" data-invite-list-open onClick={_inviteActs.list.onClick}>{_inviteActs.list.label}</button>}
                     <button className="mini" onClick={_inviteActs.copy.onClick}>Copy the invite</button>
                     <button className="mini" onClick={_inviteActs.brief.onClick}>Draft the guest brief</button>
                     <button className="mini" onClick={_inviteActs.update.onClick}>Update everyone</button>
