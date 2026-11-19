@@ -8,6 +8,7 @@ const critical = [
   '**/e2e/moneyHasOneOwner.spec.mjs',
   '**/e2e/rsvpCapability.spec.mjs',
   '**/e2e/rsvpLocalReply.spec.mjs',
+  '**/e2e/aReplySentOfflineSendsOnce.spec.mjs',
   '**/e2e/coreJourneyTruth.spec.mjs',
   '**/e2e/vendorRemovalUndo.spec.mjs',
   '**/e2e/aRefusedSaveIsNotCalledSaved.spec.mjs',
