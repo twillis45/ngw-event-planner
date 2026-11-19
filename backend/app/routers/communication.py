@@ -20,6 +20,7 @@ from ..db import get_pool
 from ..config import APP_BASE_URL, API_PUBLIC_BASE_URL
 from ..auth import require_planner
 from ..emailer import send_approval_email, send_thread_email, is_email_configured
+from ..invite_email import compose_invite_email
 
 router = APIRouter(prefix="/api/events/{event_id}/communication", tags=["communication"])
 
@@ -55,6 +56,7 @@ class MessageCreate(BaseModel):
     recipient_name: Optional[str] = None  # Display name in the email
     subject: Optional[str] = None         # Email subject line (defaults to "Message from {author_name}")
     reply_to: Optional[str] = None        # Reply-to address (planner's email)
+    invite: bool = False                  # the invite batch / one-guest send: the email is the invitation (11/19/2026)
     # Sprint 58P.4c — portal-respond authorization
     portal_token: Optional[str] = None    # planner's event.portalToken; stored in metadata.portal_token
                                           # for approval_request messages so the public portal-respond
@@ -84,7 +86,7 @@ def _addresses_in(node, out):
     return out
 
 
-async def _assert_email_send_allowed(conn, event_id: str, recipient: str) -> None:
+async def _assert_email_send_allowed(conn, event_id: str, recipient: str) -> dict:
     row = await conn.fetchrow("select data from public.events where id=$1", event_id)
     if row is None:
         raise HTTPException(409, "Save this event to your account before emailing from it.")
@@ -100,6 +102,7 @@ async def _assert_email_send_allowed(conn, event_id: str, recipient: str) -> Non
     )
     if (n or 0) >= EMAIL_SENDS_PER_EVENT_PER_DAY:
         raise HTTPException(429, "This event has sent its email for today. Try again tomorrow.")
+    return data or {}
 
 
 # ── A STOP LINK ON EVERY EMAIL (owner ruling 11/19/2026, decision 7) ──────────
@@ -405,8 +408,9 @@ async def create_message(
     async with pool.acquire() as conn:
         if principal:
             await _assert_event_access(conn, event_id, principal)
+        event_data = {}
         if standard_email or approval_email_to:
-            await _assert_email_send_allowed(conn, event_id, payload.recipient_email if standard_email else approval_email_to)
+            event_data = await _assert_email_send_allowed(conn, event_id, payload.recipient_email if standard_email else approval_email_to)
         stop_token = await _email_stop_token(conn, event_id, payload.recipient_email) if standard_email else None
         ch = await _channel(conn, event_id, channel_type)
 
@@ -466,6 +470,14 @@ async def create_message(
                      f"{_html.escape(sender)} sent it to you. <a href=\"{_html.escape(stop)}\">Stop emails about this event</a>.</p>")
             body_plain += f"\n\nYou're getting this because {sender} sent it to you. Stop emails about this event: {stop}"
             stop_headers = {"List-Unsubscribe": f"<{stop}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
+        # THE INVITE IS IN THE EMAIL (owner, 11/19/2026). An invite send is the
+        # Studio Matte invitation itself, its facts read from the event saved on
+        # the server (event_data), never from the request. Its own footer carries
+        # the stop link. Every other email keeps the plain body above.
+        if payload.invite:
+            html, body_plain = compose_invite_email(
+                event_data, body_text, payload.recipient_name, sender,
+                email_stop_url(stop_token) if stop_token else None)
         delivery_result = await send_thread_email(
             to=payload.recipient_email,
             subject=subj,

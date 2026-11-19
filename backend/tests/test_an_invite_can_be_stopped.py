@@ -132,3 +132,23 @@ def test_a_short_or_unknown_token_answers_the_same_page(env):
     assert env.c.get("/api/public/email/stop/short").status_code == 404
     r = env.c.post("/api/public/email/stop/" + "x" * 30)
     assert r.status_code == 200                                        # no oracle: same page, nothing stopped
+
+
+def test_an_invite_send_is_the_invitation_and_keeps_its_stop_link(env):
+    env.db["event"].update({"date": "2026-11-21", "startTime": "16:00", "startTimeSource": "host", "venue": "Vida's", "rsvpCode": "Code123456789012"})
+    r = env.c.post("/api/events/ev1/communication/channels/CLIENT/messages", json={
+        "message_type": "standard", "body": "We’d love to have you.", "deliver_email": True, "invite": True,
+        "recipient_email": GUEST, "recipient_name": "Guest One", "subject": "You’re invited — My Friendsgiving",
+        "author_name": "Vida Reyes"})
+    assert r.status_code == 200
+    k = env.sent[0]
+    token = env.db["stops"][("ev1", GUEST)]["token"]
+    assert "An invitation" in k["body_html"] and "Reply to the invite" in k["body_html"]
+    assert "Saturday, November 21 · 4:00 PM" in k["body_html"] and "?rsvp=Code123456789012" in k["body_html"]
+    assert f"/api/public/email/stop/{token}" in k["body_html"] and f"/api/public/email/stop/{token}" in k["body_text"]
+    assert k["headers"]["List-Unsubscribe"].endswith(f"{token}>")
+
+
+def test_a_note_to_a_vendor_is_not_dressed_as_an_invitation(env):
+    send(env)
+    assert "An invitation" not in env.sent[0]["body_html"]

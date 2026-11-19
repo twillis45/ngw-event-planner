@@ -20741,7 +20741,8 @@ export default function HostShellV2() {
                   const res = await commApi.createMessage(event.id, 'CLIENT', {
                     message_type: 'standard', author_role: 'planner',
                     author_name: (profile && profile.name) || 'Your host',
-                    body, deliver_email: true, recipient_email: g.email, recipient_name: g.name || undefined, subject,
+                    // invite: the email IS the invitation, its facts from the saved event (backend invite_email).
+                    body, deliver_email: true, invite: true, recipient_email: g.email, recipient_name: g.name || undefined, subject,
                     ...(((session && session.user && session.user.email) || '').trim()
                       ? { reply_to: String(session.user.email).trim() } : {}),
                   });
