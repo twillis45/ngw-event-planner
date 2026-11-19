@@ -8,6 +8,7 @@ import { supabase, isSupabaseConfigured, authRedirectUrl } from '../lib/supabase
 import { AuthCtx } from '../contexts/AuthContext';
 import SignInCheck, { signInCheckOn } from './SignInCheck';
 import { signInSendDecision, signInErrorText } from '../lib/signInCheckGate';
+import { signInCode } from '../lib/signInCode';
 import { carbonBody, carbonPanel, carbonBorder } from '../theme/palette';
 
 // Sprint 61.M — palette aligned to Studio Matte + No Guesswork Events steel-blue.
@@ -81,6 +82,26 @@ export function LoginScreen() {
   const [captchaToken, setCaptchaToken] = useState('');
   const [captchaFailed, setCaptchaFailed] = useState(false);
   const [captchaRound, setCaptchaRound] = useState(0);
+  // THE CODE KEEPS YOU HERE (owner, 11/19/2026: "?admin=1 doesn't take me to
+  // admin page"). The link returned to the site's root without ?admin=1, and a
+  // link tapped in a mail app opens that app's own browser. The email carries a
+  // code too: typed here, it signs in THIS page, which is still the console.
+  const [code, setCode] = useState('');
+  const [codeBusy, setCodeBusy] = useState(false);
+  const verifyCode = async (e) => {
+    e?.preventDefault?.();
+    const c = signInCode(code);
+    if (!c) { setErr('Type the code from the email — 6 digits.'); return; }
+    setCodeBusy(true); setErr('');
+    try {
+      const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: c, type: 'email' });
+      if (error) throw error;
+      setCode('');
+    } catch (e2) {
+      setErr((e2 && e2.message) || 'That code didn’t work — check it, or send a new one.');
+    }
+    setCodeBusy(false);
+  };
 
   // Sprint 51: redirect URL now comes from the shared lib/supabaseClient
   // helper so every auth endpoint (LoginScreen here + inviteStudioMember
@@ -103,7 +124,7 @@ export function LoginScreen() {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email: addr,
-        options: { emailRedirectTo: redirect(), shouldCreateUser: !inviteOnly, ...(signInCheckOn() && captchaToken ? { captchaToken } : {}) },
+        options: { emailRedirectTo: redirect() + (new URLSearchParams(window.location.search).get('admin') === '1' ? '?admin=1' : ''), shouldCreateUser: !inviteOnly, ...(signInCheckOn() && captchaToken ? { captchaToken } : {}) },
       });
       if (signInCheckOn()) setCaptchaRound((n) => n + 1);   // a token is single-use
       if (error) throw error;
@@ -144,9 +165,22 @@ export function LoginScreen() {
           <>
             <div style={{ fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', color: D.text, marginBottom: 8 }}>Check your email</div>
             <div style={{ fontSize: 13, color: D.muted, lineHeight: 1.6 }}>
-              We sent a sign-in link to <strong style={{ color: D.text }}>{email.trim()}</strong>. Open it on this device to continue.
+              We sent a sign-in code to <strong style={{ color: D.text }}>{email.trim()}</strong>. Type it here to sign in on this page.
             </div>
-            <button style={{ ...ls.btn('ghost'), marginTop: 18, fontSize: 12 }} onClick={() => setStatus('idle')}>
+            <form onSubmit={verifyCode} style={{ marginTop: 14 }}>
+              <input
+                inputMode="numeric" autoComplete="one-time-code" value={code} aria-label="Sign-in code from the email"
+                onChange={e => { setCode(e.target.value); setErr(''); }}
+                placeholder="Code from the email"
+                style={{ ...ls.input, width: '100%', fontSize: 14, marginBottom: 12 }}
+              />
+              <button type="submit" disabled={codeBusy || !signInCode(code)}
+                style={{ ...ls.btn('primary'), width: '100%', padding: '11px', fontSize: 14, opacity: codeBusy ? 0.6 : 1 }}>
+                {codeBusy ? 'Signing in…' : 'Sign in with the code'}
+              </button>
+            </form>
+            {err && <div role="alert" style={{ fontSize: 12, color: D.danger, marginTop: 12 }}>{err}</div>}
+            <button style={{ ...ls.btn('ghost'), marginTop: 18, fontSize: 12 }} onClick={() => { setStatus('idle'); setCode(''); setErr(''); }}>
               Use a different email
             </button>
           </>
