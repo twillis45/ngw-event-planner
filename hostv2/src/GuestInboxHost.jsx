@@ -131,13 +131,14 @@ export function HostQuestions({ eventId, onWaiting }) {
                       </>
                     )}
                     <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                      {!open.thread.blocked && <button className="cta" onClick={reply} disabled={busy || !draft.trim()} style={!draft.trim() ? { opacity: .45 } : undefined}>{busy ? 'Sending…' : 'Send reply'}</button>}
+                      {!open.thread.blocked && <button className="cta" onClick={reply} disabled={busy || !draft.trim()} style={!draft.trim() ? { opacity: .45 } : undefined}>{busy === 'reply' ? 'Sending…' : 'Send reply'}</button>}
                       <button className="mini" onClick={() => block(!open.thread.blocked)} disabled={busy}>
                         {open.thread.blocked ? `Unblock ${first(t.guest_name)}` : `Block ${first(t.guest_name)}’s questions`}
                       </button>
                       <button className="mini" onClick={() => { setOpen(null); setLine(''); setErr(''); }}>Close</button>
                     </div>
-                    {busy && <BusyLine>{busy === 'reply' ? `Sending your reply to ${first(t.guest_name)}…` : 'Saving…'}</BusyLine>}
+                    {busy && <BusyLine>{busy === 'reply' ? `Sending your reply to ${first(t.guest_name)}…`
+                      : busy === 'block' ? `Blocking ${first(t.guest_name)}’s questions…` : `Letting ${first(t.guest_name)} ask again…`}</BusyLine>}
                     {/* The outcome sits in the thread it belongs to (attention audit
                         11/18/2026) — it used to land under the whole list. */}
                     {err && <p className="grounding" role="alert" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>{err}</p>}
@@ -193,11 +194,12 @@ export function HostInviteOpens({ eventId }) {
 
 export function HostGuestPhotos({ eventId, event, onPhotos }) {
   const [state, setState] = useState(undefined);   // undefined · { photos } · { failed }
-  const [busy, setBusy] = useState('');
+  const [busy, setBusy] = useState('');             // photo id
+  const [doing, setDoing] = useState('');           // what that photo's wait is, in words
   const [confirmDel, setConfirmDel] = useState('');
   const [view, setView] = useState(null);           // index into photos | null
   const [line, setLine] = useState('');
-  const [err, setErr] = useState('');
+  const [err, setErr] = useState({ id: '', msg: '' });   // a failure, said on the photo it belongs to (G68)
   const load = async () => {
     const r = await fetchEventGuestPhotos(eventId);
     if (!r.ok) { setState({ failed: r.reason }); return; }
@@ -209,13 +211,21 @@ export function HostGuestPhotos({ eventId, event, onPhotos }) {
   useEffect(() => { if (isGuestPhotosApiConfigured()) load(); }, [eventId]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!isGuestPhotosApiConfigured()) return null;
 
-  const act = async (id, fn, done) => {
+  const act = async (id, fn, done, what) => {
     if (busy) return;
-    setBusy(id); setErr(''); setLine('');
+    setBusy(id); setDoing(what); setErr({ id: '', msg: '' }); setLine('');
     try { await fn(); setLine(done); await load(); }
-    catch (e) { setErr(e && e.status === 502 ? 'The photo wasn’t deleted. Try again.' : 'That didn’t save. Try again.'); }
+    catch (e) { setErr({ id, msg: e && e.status === 502 ? 'The photo wasn’t deleted. Try again.' : 'That didn’t save. Try again.' }); }
     finally { setBusy(''); setConfirmDel(''); }
   };
+  // THE WAIT AND THE FAILURE SIT ON THE PHOTO (G68): the buttons only greyed
+  // out, and a failure landed under the whole grid — or behind the viewer.
+  const outcome = (p) => (
+    <>
+      {busy === p.id && <BusyLine>{doing}</BusyLine>}
+      {err.id === p.id && <p className="grounding" role="alert" data-photo-err style={{ margin: '6px 0 0', color: 'var(--danger)', fontWeight: 600 }}>{err.msg}</p>}
+    </>
+  );
   const photos = (state && state.photos) || [];
   const waiting = photos.filter((p) => p.status === 'pending').length;
   return (
@@ -251,30 +261,30 @@ export function HostGuestPhotos({ eventId, event, onPhotos }) {
                     {p.status === 'approved' && !p.uploader_private && p.share_blocked ? ' · Sharing off' : ''}
                   </div>
                   <div className="actions-row photo-acts">
-                    {p.status !== 'approved' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => approveGuestPhoto(eventId, p.id).then((x) => { try { trackEvent(ANALYTICS.GUEST_PHOTO_APPROVED); } catch (_e) { /* counter only */ } return x; }), 'Approved — guests can see it now.')}>Approve</button>}
-                    {p.status !== 'hidden' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => hideGuestPhoto(eventId, p.id), 'Hidden from guests.')}>Hide</button>}
+                    {p.status !== 'approved' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => approveGuestPhoto(eventId, p.id).then((x) => { try { trackEvent(ANALYTICS.GUEST_PHOTO_APPROVED); } catch (_e) { /* counter only */ } return x; }), 'Approved — guests can see it now.', 'Approving the photo…')}>Approve</button>}
+                    {p.status !== 'hidden' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => hideGuestPhoto(eventId, p.id), 'Hidden from guests.', 'Hiding the photo from guests…')}>Hide</button>}
                     {p.status === 'approved' && !p.uploader_private && (
                       <button className="mini" data-photo-sharing disabled={busy === p.id}
-                        onClick={() => act(p.id, () => setGuestPhotoSharing(eventId, p.id, p.share_blocked), p.share_blocked ? 'Sharing allowed again.' : 'Sharing is off for this photo.')}>
+                        onClick={() => act(p.id, () => setGuestPhotoSharing(eventId, p.id, p.share_blocked), p.share_blocked ? 'Sharing allowed again.' : 'Sharing is off for this photo.', p.share_blocked ? 'Allowing sharing…' : 'Turning sharing off…')}>
                         {p.share_blocked ? 'Allow sharing' : 'Don’t allow sharing'}
                       </button>
                     )}
                     {p.shareable && <PhotoShareControls photo={p} event={event} index={i + 1} onLine={(l) => setLine(l || '')} />}
                     {confirmDel === p.id ? (
                       <>
-                        <button className="mini danger" disabled={busy === p.id} onClick={() => act(p.id, () => deleteGuestPhoto(eventId, p.id), 'Photo deleted.')}>Delete it for good</button>
+                        <button className="mini danger" disabled={busy === p.id} onClick={() => act(p.id, () => deleteGuestPhoto(eventId, p.id), 'Photo deleted.', 'Deleting the photo…')}>Delete it for good</button>
                         <button className="mini" onClick={() => setConfirmDel('')}>Keep it</button>
                       </>
                     ) : (
                       <button className="mini" onClick={() => setConfirmDel(p.id)}>Delete photo</button>
                     )}
                   </div>
+                  {outcome(p)}
                 </li>
               ))}
             </ul>
           </>
         )}
-      {err && <p className="grounding" role="alert" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>{err}</p>}
       {line && <p className="grounding" role="status" data-photos-status style={{ margin: '6px 0 0' }}>{line}</p>}
       {view != null && photos[view] && (
         <PhotoViewer photos={photos} index={view} onIndex={setView} onClose={() => setView(null)} onExpired={load}
@@ -282,8 +292,9 @@ export function HostGuestPhotos({ eventId, event, onPhotos }) {
           actions={(p) => (
             <>
               <span className="pv-note">From {p.guest_name} · {p.status === 'pending' ? 'Waiting for your approval' : p.status === 'approved' ? 'Guests can see it' : 'Hidden from guests'}</span>
-              {p.status !== 'approved' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => approveGuestPhoto(eventId, p.id).then((x) => { try { trackEvent(ANALYTICS.GUEST_PHOTO_APPROVED); } catch (_e) { /* counter only */ } return x; }), 'Approved — guests can see it now.')}>Approve</button>}
-              {p.status !== 'hidden' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => hideGuestPhoto(eventId, p.id), 'Hidden from guests.')}>Hide</button>}
+              {p.status !== 'approved' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => approveGuestPhoto(eventId, p.id).then((x) => { try { trackEvent(ANALYTICS.GUEST_PHOTO_APPROVED); } catch (_e) { /* counter only */ } return x; }), 'Approved — guests can see it now.', 'Approving the photo…')}>Approve</button>}
+              {p.status !== 'hidden' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => hideGuestPhoto(eventId, p.id), 'Hidden from guests.', 'Hiding the photo from guests…')}>Hide</button>}
+              {outcome(p)}
             </>
           )} />
       )}

@@ -148,3 +148,49 @@ test('the host taps a photo to see it full screen, and can approve it there', as
   await page.keyboard.press('Escape');
   await expect(viewer).toHaveCount(0);
 });
+
+// ── THE WAIT AND THE FAILURE SIT ON THE PHOTO (G68, 11/19/2026) ─────────────
+// Approve / Hide only greyed out while the server answered, and a failure was
+// said once, under the whole grid — or behind the viewer, where it was never
+// seen. Now the photo's own cell (and the viewer) says what is happening.
+test('while a photo is approved its cell says so and Approve is held; a failed Hide is said on that photo', async ({ page }) => {
+  await boot(page);
+  await mock(page, [photo('ok1', 'approved'), photo('wait1', 'pending')]);
+  let release; const held = new Promise((r) => { release = r; });
+  await page.route(`${API}/api/events/${EVENT_ID}/guest-photos/wait1/approve`, async (r) => { await held; return r.fallback(); });
+  await page.route(`${API}/api/events/${EVENT_ID}/guest-photos/ok1/hide`, (r) => r.fulfill({ status: 500, json: { ok: false } }));
+  const line = await openFromHome(page);
+  await line.click();
+  await sheetSettled(page);
+  const cell = page.locator('[data-host-photos] [data-photo="wait1"]');
+  await cell.getByRole('button', { name: 'Approve' }).click();
+  await expect(cell.locator('[data-busy-line]')).toHaveText('Approving the photo…');
+  await expect(cell.getByRole('button', { name: 'Approve' })).toBeDisabled();
+  release();
+  await expect(cell.locator('[data-busy-line]')).toHaveCount(0);
+  await expect(cell).toHaveAttribute('data-status', 'approved');
+
+  const ok = page.locator('[data-host-photos] [data-photo="ok1"]');
+  await ok.getByRole('button', { name: 'Hide' }).click();
+  await expect(ok.locator('[data-photo-err]')).toHaveText('That didn’t save. Try again.');
+  await expect(page.locator('[data-host-photos] [data-photo-err]')).toHaveCount(1);   // only on that photo
+});
+
+test('in the full-screen viewer, the wait and a failed Approve show under the photo', async ({ page }) => {
+  await boot(page);
+  await mock(page, [photo('wait1', 'pending')]);
+  let release; const held = new Promise((r) => { release = r; });
+  await page.route(`${API}/api/events/${EVENT_ID}/guest-photos/wait1/approve`, async (r) => { await held; return r.fulfill({ status: 500, json: { ok: false } }); });
+  const line = await openFromHome(page);
+  await line.click();
+  await sheetSettled(page);
+  await page.locator('[data-host-photos] [data-host-photo-open]').first().click();
+  const viewer = page.locator('[data-photo-viewer]');
+  await expect(viewer).toBeVisible();
+  await viewer.getByRole('button', { name: 'Approve' }).click();
+  await expect(viewer.locator('[data-busy-line]')).toHaveText('Approving the photo…');
+  await expect(viewer.getByRole('button', { name: 'Approve' })).toBeDisabled();
+  release();
+  await expect(viewer.locator('[data-photo-err]')).toHaveText('That didn’t save. Try again.');
+  await expect(viewer.locator('[data-photo-err]')).toBeInViewport();
+});

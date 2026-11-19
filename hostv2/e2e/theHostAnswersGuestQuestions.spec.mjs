@@ -183,3 +183,30 @@ test('while a reply sends, the thread says so, and the result shows in the threa
   release();
   await expect(thread.locator('[data-reply-status]')).toHaveText('Sent — it shows on Ana’s invite.');
 });
+
+// THE BLOCK SAYS WHAT IT IS DOING (G68, 11/19/2026): it read "Saving…", and the
+// reply button beside it read "Sending…" although nothing was being sent.
+test('while a block saves, the thread names it and the button is held; a failed block is said in the thread', async ({ page }) => {
+  await boot(page);
+  await mock(page);
+  let release; const held = new Promise((r) => { release = r; });
+  let fail = false;
+  await page.route(`${API}/api/events/${EVENT_ID}/guest-threads/${T1}/block`, async (r) => {
+    await held;
+    return fail ? r.fulfill({ status: 500, json: { ok: false } }) : r.fallback();
+  });
+  await home(page);
+  await page.locator('[data-who-questions]').click();
+  await sheetSettled(page);
+  const section = page.locator('[data-host-questions]');
+  await section.getByRole('button', { name: 'Answer Ana' }).click();
+  const thread = section.locator('li', { has: page.getByRole('textbox', { name: 'Your reply to Ana Ruiz' }) });
+  fail = true;
+  await thread.getByRole('button', { name: 'Block Ana’s questions' }).click();
+  await expect(thread.locator('[data-busy-line]')).toHaveText('Blocking Ana’s questions…');
+  await expect(thread.getByRole('button', { name: 'Block Ana’s questions' })).toBeDisabled();
+  await expect(thread.getByRole('button', { name: 'Send reply' })).toBeVisible();   // not "Sending…"
+  release();
+  await expect(thread.getByRole('alert')).toHaveText('That didn’t save. Try again.');
+  await expect(thread.locator('[data-busy-line]')).toHaveCount(0);
+});

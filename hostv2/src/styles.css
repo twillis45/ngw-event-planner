@@ -7803,6 +7803,10 @@ button.vc-pill::after{
   padding:12px 16px max(16px, env(safe-area-inset-bottom)); }
 .pv-acts .mini{ min-height:44px; background:rgba(255,255,255,.1); color:#f4f2ee; border-color:rgba(255,255,255,.22); }
 .pv-acts .pv-note{ font-size:14px; color:rgba(244,242,238,.8); }
+/* A wait or failure on the photo in the dark viewer (G68): its own line, light text. */
+.pv-acts .busy-line, .pv-acts [data-photo-err]{ flex-basis:100%; margin:0; text-align:center; justify-content:center; }
+.pv-acts .busy-line{ color:#f4f2ee; }
+.pv-acts [data-photo-err]{ color:#f4f2ee !important; }   /* the viewer is dark in both themes; light-theme --danger is not readable on it */
 @media (prefers-reduced-motion:reduce){ .pv-full, .photo-tile-btn img{ transition:none; } }
 .guest-photo-pick{ position:relative; cursor:pointer; }
 .guest-photo-pick[aria-disabled="true"]{ opacity:.6; cursor:default; }

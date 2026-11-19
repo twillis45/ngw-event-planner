@@ -3223,6 +3223,7 @@ export default function HostShellV2() {
   // settle-and-the-next-appears rhythm, one surface down.
   const [decOpenCard, setDecOpenCard] = useState(null);
   const [contractUploading, setContractUploading] = useState({}); // per-vendor contract-file upload state
+  const [contractOpening, setContractOpening] = useState({});   // per-vendor "Open the contract" fetching a fresh link (G68)
   // AI DOCUMENT EXTRACTION (2026-08-18): wires an already-real, already-tested
   // backend capability (/api/ai/extract-document, GPT-4o vision) that existed
   // only in the frozen legacy App.js shell — hostv2 never called it, same
@@ -7883,6 +7884,9 @@ export default function HostShellV2() {
   // version she loaded), so nothing is overwritten behind her back either way.
   const [resolvingConflict, setResolvingConflict] = useState(false);
   const [syncRetrying, setSyncRetrying] = useState(false);   // "Retry now" in flight (attention audit 11/18/2026)
+  // A failed choice is said under the two buttons (G68), not in a toast that
+  // leaves before she has read it.
+  const [conflictErr, setConflictErr] = useState('');
   const putCustom = (ev) => {
     if (!ev || !ev.id) return;
     const next = customs.map(c => (c && c.id === ev.id) ? ev : c);
@@ -7893,16 +7897,16 @@ export default function HostShellV2() {
     if (resolvingConflict) return;
     const hers = customs.find(c => c && c.id === eventId);
     if (!hers) return;
-    setResolvingConflict(true);
+    setResolvingConflict(true); setConflictErr('');
     let r = null;
     try { r = await resolveConflict(hers, choice); } catch { r = null; }
     setResolvingConflict(false);
     if (!r || !r.ok) {
       if (r && r.reason === 'conflict') {
         try { markEventConflict(hers.id); } catch { /* status is best-effort */ }
-        toast('It changed again just now — nothing was overwritten. Choose again when you’re ready.');
+        setConflictErr('It changed again just now — nothing was overwritten. Choose again when you’re ready.');
       } else {
-        toast('Couldn’t reach your account — nothing was changed. Try again in a moment.');
+        setConflictErr('Couldn’t reach your account — nothing was changed. Try again in a moment.');
       }
       return;
     }
@@ -20535,6 +20539,7 @@ export default function HostShellV2() {
                             reach the account and took a second or two with nothing on
                             screen but a disabled button. */}
                         {resolvingConflict && <BusyLine>Saving your choice to your account…</BusyLine>}
+                        {status === SYNC_STATUS.CONFLICT && conflictErr && <p className="grounding" role="alert" data-conflict-err style={{ margin: 'var(--sp-2) 0 0', color: 'var(--danger)', fontWeight: 600 }}>{conflictErr}</p>}
                         {syncRetrying && <BusyLine>Syncing this event with your account…</BusyLine>}
                       </>
                     );
@@ -24869,7 +24874,8 @@ export default function HostShellV2() {
                                       it arrives — a popup opened after an await is refused by Safari
                                       (the Instacart button's lesson, 2026-09-24). */}
                                   {v.contractStoragePath ? (
-                                    <button className="mini" onClick={async () => {
+                                    <button className="mini" disabled={!!contractOpening[v.id]} onClick={async () => {
+                                      if (contractOpening[v.id]) return;
                                       let win = null;
                                       try { win = window.open('', '_blank'); } catch (_e) { win = null; }
                                       try { if (win) win.opener = null; } catch (_e) { /* already safe */ }
@@ -24882,16 +24888,19 @@ export default function HostShellV2() {
                                           win.document.body.textContent = 'Getting the contract…';
                                         }
                                       } catch (_e) { /* a cross-origin or closed tab: nothing to write */ }
-                                      toast('Getting ' + (v.contractFileName || 'the contract') + '…', null, null, { busy: true });
-                                      const r = await contractUrlFor(v);
+                                      // The wait and a failure show ON THE CONTRACT ROW (G68), where she tapped.
+                                      setContractOpening(m => ({ ...m, [v.id]: true }));
+                                      setContractExtractErr(m => ({ ...m, [v.id]: null }));
+                                      let r;
+                                      try { r = await contractUrlFor(v); } finally { setContractOpening(m => ({ ...m, [v.id]: false })); }
                                       if (!r.ok) {
                                         try { if (win) win.close(); } catch (_e) { /* already gone */ }
-                                        toast('Couldn’t open ' + (v.contractFileName || 'the contract') + ' — we couldn’t get a fresh link to the file. Check you’re online and signed in, then tap Open the contract again.', null, null, { sticky: true });
+                                        setContractExtractErr(m => ({ ...m, [v.id]: 'Couldn’t open ' + (v.contractFileName || 'the contract') + ' — we couldn’t get a fresh link to the file. Check you’re online and signed in, then tap Open the contract again.' }));
                                         return;
                                       }
-                                      if (win) { endBusyToast(); try { win.location.replace(r.url); } catch (_e) { /* it navigated away */ } }
+                                      if (win) { try { win.location.replace(r.url); } catch (_e) { /* it navigated away */ } }
                                       else toast('Your browser blocked the new tab.', { label: 'Open the contract', fn: () => { try { window.open(r.url, '_blank', 'noopener'); } catch (_e) { /* blocked again */ } } }, null, { sticky: true });
-                                    }}>Open the contract</button>
+                                    }}>{contractOpening[v.id] ? 'Getting the contract…' : 'Open the contract'}</button>
                                   ) : v.contractUrl ? (
                                     <a className="mini" style={{ textDecoration: 'none' }} href={v.contractUrl} target="_blank" rel="noreferrer">Open the contract</a>
                                   ) : null}
@@ -24949,10 +24958,11 @@ export default function HostShellV2() {
                           )}
                           {contractExtracting[v.id] && <BusyLine>Reading the contract — this can take up to half a minute…</BusyLine>}
                           {contractUploading[v.id] && <BusyLine>Uploading the contract…</BusyLine>}
+                          {contractOpening[v.id] && <BusyLine>Opening {v.contractFileName || 'the contract'}…</BusyLine>}
                           {/* AI-extracted contract summary — labeled, dismissible, review-required
                               (no auto-write; the app never invents facts from a document scan). */}
                           {contractExtractErr[v.id] && (
-                            <p className="v-meta" style={{ color: 'var(--danger)', margin: 'var(--sp-1) 0' }}>{contractExtractErr[v.id]}</p>
+                            <p className="v-meta" role="alert" data-contract-err style={{ color: 'var(--danger)', margin: 'var(--sp-1) 0' }}>{contractExtractErr[v.id]}</p>
                           )}
                           {contractExtracted[v.id] && (() => {
                             const ex = contractExtracted[v.id];
