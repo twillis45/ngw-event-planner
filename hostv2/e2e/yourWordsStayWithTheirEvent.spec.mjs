@@ -81,7 +81,9 @@ test('picking a voice after typing can be undone, and her words come back', asyn
   await boot(page);
   const box = await openShoppingDraft(page);
   await box.fill(MARK);
-  await page.locator('.sheet').last().getByRole('radio', { name: 'Warmer' }).click();
+  // The shopping list is a note to herself, so it offers As written and Tighter
+  // only (lib/draftVoice, 11/19/2026); Tighter is the voice picked here.
+  await page.locator('.sheet').last().getByRole('radio', { name: 'Tighter' }).click();
   await expect(box, 'premise: picking a voice rewrites the draft').not.toHaveValue(MARK);
   await page.locator('.toast').getByRole('button', { name: 'Undo' }).click({ timeout: 5000 });
   await expect(box, 'her typed words did not come back').toHaveValue(MARK);

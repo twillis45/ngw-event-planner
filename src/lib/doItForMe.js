@@ -471,7 +471,8 @@ export function draftRsvpChase(event, profile, opts = {}) {
   const honoree = (event.honoree ? String(event.honoree) : '').trim();
   const type = (event.type ? String(event.type) : 'get-together').toLowerCase();
   const thing = honoree ? `${honoree}’s ${type}` : `our ${type}`;
-  const whenBit = date ? ` on ${date}${time ? ' ' + time : ''}` : '';
+  // "on Tuesday, December 1 at 4:00 PM", never "December 1 16:00" (owner copy check, 11/19/2026).
+  const whenBit = date ? ` on ${date}${time ? (fmtClock(time) ? ' at ' + fmtClock(time) : ' ' + time) : ''}` : '';
   const lines = [];
   if (v.sombre) {
     lines.push(`Hi — just a gentle note: we’re gathering for ${thing}${whenBit}.`);

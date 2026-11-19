@@ -75,7 +75,7 @@ import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAware
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/inviteBatch';
-import { draftInvite, inviteVoicesFor, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
+import { draftInvite, inviteVoicesFor, eventCulturalMeta, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
 // dollars turned $0.20/lb of ice into "$0/lb" on 84 of the corpus's 440
 // per-unit lines. One definition, shared with the CRA food sheet.
@@ -309,7 +309,7 @@ import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
 import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
 import { itemsBoughtByTask } from '@app/lib/shopTaskItems';
-import { warmerBody } from '@app/lib/warmClosing';
+import { voiceDraft, voicesFor, draftAudience } from '@app/lib/draftVoice';
 import { worryLabel } from '@app/lib/worryLabel';
 import { venueFor, setVenue, confirmVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
@@ -6569,6 +6569,7 @@ export default function HostShellV2() {
       // draft also credits "Send the invite", which reads invitesSentAt alone.
       sendsInvite: !!(opts && opts.sendsInvite),
       voices: (opts && opts.voices) || null,
+      subject: (d && typeof d === 'object' && d.subject) || '',
       from: prev ? (prev.kind === 'draft' ? prev.from || null : prev) : null,
     }));
   };
@@ -6609,46 +6610,23 @@ export default function HostShellV2() {
   };
   // Tone variants are DETERMINISTIC rewrites of the same facts — mechanical
   // tightening/warming, never invented content (no fake AI doctrine).
-  const toneBody = (body, tone, ctx) => {
-    let b = String(body);
-    if (tone === 'tighter') {
-      const ps = b.split('\n\n');
-      if (ps.length <= 2) return b;
-      const mid = ps.slice(1, -1).filter(p => p.includes('→') || /:$/m.test(p));
-      return [ps[0], ...mid, ps[ps.length - 1]].join('\n\n');
-    }
-    if (tone === 'warmer') {
-      // The closing fits who the note is for (lib/warmClosing, 11/16/2026): a
-      // vendor still quoting is thanked, not told they are part of it.
-      // …and it takes the place of a bare "Thanks so much!" rather than
-      // following it (live check 11/16: two thank-yous in a row).
-      return warmerBody(b, ctx || {});
-    }
-    if (tone === 'playful') {
-      const lines = b.split('\n');
-      if (lines[0] && !/[!?]$/.test(lines[0].trim())) lines[0] = lines[0].replace(/[.。]?\s*$/, '!');
-      b = lines.join('\n');
-      const kick = 'It’s going to be a good one.';
-      return b.includes(kick) ? b : b + '\n\n' + kick;
-    }
-    if (tone === 'formal') {
-      return b
-        .replace(/!/g, '.')
-        .replace(/\bWe're\b/g, 'We are').replace(/\bwe're\b/g, 'we are')
-        .replace(/\bWe’re\b/g, 'We are').replace(/\bwe’re\b/g, 'we are')
-        .replace(/\bdon['’]t\b/gi, 'do not').replace(/\bcan['’]t\b/gi, 'cannot')
-        .replace(/\bwon['’]t\b/gi, 'will not').replace(/\bI['’]ll\b/g, 'I will')
-        .replace(/\byou['’]ll\b/gi, 'you will').replace(/\bwe['’]ll\b/gi, 'we will')
-        .replace(/\bit['’]s\b/gi, 'it is').replace(/\bthat['’]s\b/gi, 'that is');
-    }
-    return b;
-  };
-  const shownDraft = () => draftBody != null ? draftBody
-    : (sheet && sheet.voices) ? (sheet.voices[draftTone] || sheet.voices['as-written'])
-    : toneBody(sheet && sheet.body, draftTone, {
+  // EVERY DRAFT'S VOICES (owner, 11/19/2026: "Rewrite the other drafts'
+  // voices the same way"). Each voice gives the draft its own greeting and
+  // closing for who it is for, Tighter takes out only pleasantries, and the
+  // facts in the middle are kept word for word (lib/draftVoice). The invite
+  // has its own text per voice (sheet.voices, doItForMe.inviteInVoice).
+  const toneBody = (body, tone, ctx) => voiceDraft(body, tone, ctx || {});
+  const draftVoiceCtx = () => ({
     title: sheet && sheet.title,
     vendor: (sheet && sheet.vendorId && (event.vendors || []).find(v => v && v.id === sheet.vendorId)) || null,
+    audience: draftAudience(sheet && sheet.title, sheet && sheet.vendorId),
+    sombre: !!(eventCulturalMeta(event) || {}).sombre,
+    host: String((profile && profile.name) || '').trim(),
+    subject: (sheet && sheet.subject) || '',
   });
+  const shownDraft = () => draftBody != null ? draftBody
+    : (sheet && sheet.voices) ? (sheet.voices[draftTone] || sheet.voices['as-written'])
+    : toneBody(sheet && sheet.body, draftTone, draftVoiceCtx());
   const copyDraft = async (body) => {
     try { await navigator.clipboard.writeText(body); toast('Copied — paste it anywhere.'); feedback('act'); }
     catch { toast('Couldn’t copy on this browser — long-press to select it.'); }
@@ -20825,9 +20803,15 @@ export default function HostShellV2() {
                   <div className="of" style={{ marginBottom: 4 }}>Voice</div>
                   <OptionList ariaLabel="Voice"
                     options={[['as-written', 'As written'], ['tighter', 'Tighter'], ['warmer', 'Warmer'], ['playful', 'Playful'], ['formal', 'Formal']]
-                      .filter(([k]) => !sheet.voices || sheet.voices[k])   // a solemn invite offers no Playful
+                      // The voices this draft offers: no Playful for a solemn gathering,
+                      // only As written / Tighter for a note to yourself.
+                      .filter(([k]) => (sheet.voices ? !!sheet.voices[k] : (() => { const c = draftVoiceCtx(); return voicesFor(c.audience, c.sombre).includes(k); })()))
                       .map(([k, label]) => ({ label, value: k }))}
-                    value={draftBody == null ? ((sheet.voices && !sheet.voices[draftTone]) ? 'as-written' : draftTone) : ''}
+                    value={draftBody == null ? ((() => {
+                      const c = draftVoiceCtx();
+                      const offered = sheet.voices ? !!sheet.voices[draftTone] : voicesFor(c.audience, c.sombre).includes(draftTone);
+                      return offered ? draftTone : 'as-written';
+                    })()) : ''}
                     onPick={(k) => {
                       // Picking a voice still means "rewrite it" — but her typed words
                       // are no longer thrown away with no way back (Nielsen re-run N6,
