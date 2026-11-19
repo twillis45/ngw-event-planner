@@ -79,6 +79,7 @@ import { inviteGaps } from '@app/lib/inviteGaps';
 import { inviteCardModel, inviteCardKey } from '@app/lib/inviteCard';
 import SignInCheck, { signInCheckOn } from './SignInCheck';
 import { signUpData, MARKETING_OPT_IN_LABEL } from '@app/lib/marketingConsent';
+import { domainMove, moveNotice } from '@app/lib/domainMove';
 import { draftInvite, inviteVoicesFor, eventCulturalMeta, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
 // dollars turned $0.20/lb of ice into "$0/lb" on 84 of the corpus's 440
@@ -1063,6 +1064,12 @@ function readCreateDraft() {
 // Ids of the older device-only plans already shown "Sign in to keep this
 // plan" (owner ruling, 11/12/2026: once per event, never a nag).
 const LS_KEEP_ASKED = 'ngw-hostv2-keep-asked';
+// THE MOVE (owner ruling 11/19/2026, option A; lib/domainMove): while a move to
+// our own address is set, the same ask says the day and the address. A new,
+// true reason, so an earlier "once" does not hide it; it stays until she signs
+// in or says "Not now" for that plan (recorded here).
+const LS_MOVE_ASKED = 'ngw-hostv2-move-asked';
+const MOVE_NOTICE = moveNotice(domainMove());
 
 export default function HostShellV2() {
   const [bootDraft] = useState(readCreateDraft);
@@ -9901,9 +9908,14 @@ export default function HostShellV2() {
   // stays on screen for this visit until she answers or closes it.
   const [keepAskedBefore] = useState(() => { try { return JSON.parse(localStorage.getItem(LS_KEEP_ASKED) || '[]') || []; } catch { return []; } });
   const [keepAskClosed, setKeepAskClosed] = useState([]);
+  const [moveAskedBefore] = useState(() => { try { return JSON.parse(localStorage.getItem(LS_MOVE_ASKED) || '[]') || []; } catch { return []; } });
+  const closeKeepAsk = (id) => {
+    setKeepAskClosed(c => [...c, id]);
+    if (MOVE_NOTICE) { try { const seen = JSON.parse(localStorage.getItem(LS_MOVE_ASKED) || '[]') || []; if (!seen.includes(id)) localStorage.setItem(LS_MOVE_ASKED, JSON.stringify([...seen, id])); } catch { /* private mode */ } }
+  };
   const keepAskEvent = (isSupabaseConfigured() && authChecked && !session && stage === 'plan' && !welcome
     && activeCustom && isRealHostEvent(activeCustom) && !isDemoEvent(activeCustom) && !activeCustom.demoSeed
-    && !keepAskedBefore.includes(activeCustom.id) && !keepAskClosed.includes(activeCustom.id)
+    && !(MOVE_NOTICE ? moveAskedBefore : keepAskedBefore).includes(activeCustom.id) && !keepAskClosed.includes(activeCustom.id)
     && splitAccountCopies([activeCustom]).deviceOnly.length > 0) ? activeCustom : null;
   useEffect(() => {
     const id = keepAskEvent && keepAskEvent.id;
@@ -11314,11 +11326,11 @@ export default function HostShellV2() {
               {plan._error && <div className="engine-error">Engine error: {plan._error}</div>}
 
               {keepAskEvent && (
-                <div className="grounding" data-keep-ask style={{ margin: '0 0 var(--sp-3)' }}>
-                  <p style={{ margin: '0 0 var(--sp-2)' }}>Sign in to keep this plan — it saves to your account so it can’t be lost.</p>
+                <div className="grounding" data-keep-ask data-move-notice={MOVE_NOTICE ? '' : undefined} style={{ margin: '0 0 var(--sp-3)' }}>
+                  <p style={{ margin: '0 0 var(--sp-2)' }}>{MOVE_NOTICE || 'Sign in to keep this plan — it saves to your account so it can’t be lost.'}</p>
                   <div className="actions-row">
                     <button className="mini" onClick={() => { setKeepAskClosed(c => [...c, keepAskEvent.id]); setSheet({ kind: 'settings', keep: true }); }}>Sign in</button>
-                    <button className="mini" onClick={() => setKeepAskClosed(c => [...c, keepAskEvent.id])}>Not now</button>
+                    <button className="mini" onClick={() => closeKeepAsk(keepAskEvent.id)}>Not now</button>
                   </div>
                 </div>
               )}

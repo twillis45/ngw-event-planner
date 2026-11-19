@@ -56,7 +56,13 @@ const boot = async (page, ev) => {
       .find((x) => (x.innerText || '').trim() === 'Travel & where everyone stays');
     if (el) el.click();
   });
-  await page.waitForTimeout(2000);
+  // On a trip the tap leaves for the stay page, a full page load: wait for it to
+  // finish, not a fixed 2 s ("Getting your plan…" was read on a slow runner, main
+  // 11/19/2026). A block that never renders still fails the assertions below.
+  await page.waitForFunction(() => {
+    const t = document.body.innerText || '';
+    return !/Getting your plan/.test(t) && /what the house needs/i.test(t);
+  }, null, { timeout: 20_000 }).catch(() => {});
   return page.evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' '));
 };
 

@@ -146,6 +146,9 @@ jobs:
       # The bot check on sign-in (hostv2 SignInCheck). A PUBLIC site key; the
       # secret lives only in Supabase. Empty: no widget, sign-in unchanged.
       REACT_APP_TURNSTILE_SITE_KEY: ${{ (inputs.release_profile || vars.DEFAULT_RELEASE_PROFILE) == 'live' && vars.REACT_APP_TURNSTILE_SITE_KEY || '' }}
+      # The move to our own address (owner ruling 11/19/2026): both set = the notice shows (lib/domainMove).
+      REACT_APP_DOMAIN_MOVE_HOST: ${{ vars.REACT_APP_DOMAIN_MOVE_HOST }}
+      REACT_APP_DOMAIN_MOVE_DATE: ${{ vars.REACT_APP_DOMAIN_MOVE_DATE }}
       REACT_APP_SENTRY_DSN: ${{ vars.REACT_APP_SENTRY_DSN }}
       REACT_APP_POSTHOG_KEY: ${{ vars.REACT_APP_POSTHOG_KEY }}
       REACT_APP_POSTHOG_HOST: ${{ vars.REACT_APP_POSTHOG_HOST }}
