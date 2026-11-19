@@ -15586,7 +15586,9 @@ export default function HostShellV2() {
                     // at 390px the button wrapped and left the "·" dangling.
                     <div className="grounding" data-venue-stay style={{ margin: '0 0 var(--sp-2)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 'var(--sp-2)', rowGap: 'var(--sp-2)' }}>
                       <span>Where everyone stays: <b>{stayName || 'not picked yet'}</b></span>
-                      <button className="mini" onClick={() => goToLodgingCockpit()}>{stayName ? 'Open it' : (vf.name && !vf.isHome ? 'Find places near the party' : 'Find places to stay')}</button>
+                      {/* G63 (owner ruling 11/19/2026): on a trip without the Pass the tap
+                          opens the Pass sheet, so the words say so instead of promising a search. */}
+                      <button className="mini" onClick={() => goToLodgingCockpit()}>{destinationLocked(event) ? 'Where everyone stays — with the Pass' : stayName ? 'Open it' : (vf.name && !vf.isHome ? 'Find places near the party' : 'Find places to stay')}</button>
                     </div>
                   );
                 })()}
