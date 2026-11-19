@@ -152,3 +152,17 @@ def test_an_invite_send_is_the_invitation_and_keeps_its_stop_link(env):
 def test_a_note_to_a_vendor_is_not_dressed_as_an_invitation(env):
     send(env)
     assert "An invitation" not in env.sent[0]["body_html"]
+
+
+def test_an_invite_missing_its_place_is_refused_and_nothing_is_sent(env):
+    # Owner, 11/19/2026: "Before sending invites app should verify if the
+    # important info is included." The saved event has a day and an hour, no place.
+    env.db["event"].update({"date": "2026-11-21", "startTime": "16:00", "startTimeSource": "host", "rsvpCode": "Code123456789012"})
+    for k in ("venue", "venueAddress", "venueCity"):
+        env.db["event"].pop(k, None)
+    r = env.c.post("/api/events/ev1/communication/channels/CLIENT/messages", json={
+        "message_type": "standard", "body": "We’d love to have you.", "deliver_email": True, "invite": True,
+        "recipient_email": GUEST, "recipient_name": "Guest One", "subject": "You’re invited — My Friendsgiving",
+        "author_name": "Vida Reyes"})
+    assert r.status_code == 422 and "missing the place" in r.json()["detail"]
+    assert env.sent == []

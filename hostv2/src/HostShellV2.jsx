@@ -75,6 +75,7 @@ import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAware
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/inviteBatch';
+import { inviteGaps } from '@app/lib/inviteGaps';
 import { draftInvite, inviteVoicesFor, eventCulturalMeta, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
 // dollars turned $0.20/lb of ice into "$0/lb" on 84 of the corpus's 440
@@ -1554,7 +1555,7 @@ export default function HostShellV2() {
       'Parked — the plan will stop leading with the venue.')}
     >I’ll sort this</button>
   );
-  const renderVenueCapture = ({ ctaClass = 'cta', wrapStyle = { display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }, wrapClass, autoFocus = false } = {}) => (
+  const renderVenueCapture = ({ ctaClass = 'cta', wrapStyle = { display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }, wrapClass, autoFocus = false, placeOnly = false } = {}) => (
     <>
       <div className={wrapClass} style={wrapStyle}>
         <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
@@ -1588,8 +1589,10 @@ export default function HostShellV2() {
           meter still shows the address as unhandled. The app does not learn
           where the event is; it stops being the one asked to find out. The
           parked state stays VISIBLE here and is one tap to undo, because a
-          stand-down nobody can see is how a host loses a step for good. */}
-      {venueParked(event) ? (
+          stand-down nobody can see is how a host loses a step for good.
+          placeOnly (the invite check): parking or an inquiry gives guests no
+          place, so neither is offered where only a place will do. */}
+      {placeOnly ? null : venueParked(event) ? (
         <div style={{ marginTop: 'var(--sp-2)' }}>
           <p className="grounding" style={{ margin: '0 0 var(--sp-1)' }}>
             Parked — you’re sorting the venue yourself, so the plan has stopped leading with it.
@@ -6655,6 +6658,14 @@ export default function HostShellV2() {
     catch { toast('Sharing is unavailable because the public link address is missing. Nothing was shared.'); return ''; }
   };
   const openInviteDraft = async (title, build, opts) => {
+    // WHAT AN INVITE CANNOT GO OUT WITHOUT (owner, 11/19/2026: "Before sending
+    // invites app should verify if the important info is included"). The day,
+    // the hour the host set, and the place are asked for FIRST, so the invite is
+    // written with them and no email, text, share or copy carries a hole.
+    if (build === draftInvite && inviteGaps(event).length) {
+      setSheet({ kind: 'invite-check', title, opts: opts || null });
+      return;
+    }
     const url = await verifiedRsvpUrl();
     if (url === null) return;   // a check is already running
     // The invite is written in each voice from the facts (doItForMe.inviteInVoice),
@@ -15420,7 +15431,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -15452,6 +15463,41 @@ export default function HostShellV2() {
             {/* Date & time area is a real door now (host report 2026-07-16: it was tappable
                 copy with no editor behind it). Reuses the same date+arrival-time editor the
                 action cards use — change the day or the time here. */}
+            {sheet.kind === 'invite-check' && (() => {
+              const gaps = inviteGaps(event);
+              const has = (k) => !gaps.includes(k);
+              return (
+                <div data-invite-check style={{ padding: 'var(--sp-2) 0' }}>
+                  <p className="v-meta" style={{ margin: '0 0 var(--sp-3)' }}>
+                    {gaps.length
+                      ? 'Guests need the day, the time and the place to come. Add what’s missing and your invite is written with it.'
+                      : 'That’s everything a guest needs. Your invite is written with it.'}
+                  </p>
+                  <ul style={{ listStyle: 'none', margin: '0 0 var(--sp-3)', padding: 0 }}>
+                    {[['date', 'The day'], ['time', 'The time guests arrive'], ['place', 'Where it is']].map(([k, label]) => (
+                      <li key={k} data-invite-check-item={k} data-ok={has(k) ? '1' : '0'} className="grounding" style={{ margin: '0 0 4px' }}>
+                        <b style={{ color: has(k) ? 'var(--ok)' : 'var(--warn)' }}>{has(k) ? '✓' : '•'}</b>{' '}
+                        {label}{has(k) ? '' : k === 'time' && String(event.startTime || '').trim() ? ': we suggested one, say if it’s right' : ': missing'}
+                      </li>
+                    ))}
+                  </ul>
+                  {(!has('date') || !has('time')) && renderEditor({ domain: 'date' })}
+                  {!has('place') && (
+                    <div style={{ marginTop: 'var(--sp-3)' }}>
+                      <div className="f-name">Where is it?</div>
+                      {renderVenueCapture({ ctaClass: 'mini', wrapClass: 'actions-row', wrapStyle: { alignItems: 'center', marginTop: 'var(--sp-2)' }, placeOnly: true })}
+                    </div>
+                  )}
+                  <div className="actions-row" style={{ marginTop: 'var(--sp-4)' }}>
+                    <button className="cta" data-invite-check-go disabled={gaps.length > 0}
+                      onClick={() => openInviteDraft(sheet.title, draftInvite, sheet.opts || undefined)}>
+                      Write the invite
+                    </button>
+                    <button className="mini" onClick={() => setSheet(null)}>Not now</button>
+                  </div>
+                </div>
+              );
+            })()}
             {sheet.kind === 'date' && (
               <div style={{ padding: 'var(--sp-2) 0' }}>
                 <p className="v-meta" style={{ margin: '0 0 var(--sp-3)' }}>Change the day or the arrival time — every countdown, deadline, and shopping window in the plan counts back from it.</p>
@@ -20753,6 +20799,10 @@ export default function HostShellV2() {
                   if (/→ 429/.test(m)) return { ok: false, capped: true };
                   if (/→ 403/.test(m)) return { ok: false, error: 'not saved to your account yet' };
                   if (/→ 410/.test(m)) return { ok: false, error: 'they asked not to get emails about this event — text them instead' };
+                  // The server read the SAVED event and found no day, hour or place
+                  // (backend invite_gaps). The app checked its own copy first, so this
+                  // is the saved copy lagging: it says so rather than "request failed".
+                  if (/→ 422/.test(m)) return { ok: false, error: 'the saved copy of your event is missing the day, time or place — give it a moment to save, then try again' };
                   return { ok: false, error: 'request failed' };
                 }
               };
