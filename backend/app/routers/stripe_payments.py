@@ -39,6 +39,7 @@ Stripe webhook endpoint to configure:
 
 import json
 import logging
+import re
 import stripe
 from fastapi import APIRouter, HTTPException, Request, Header
 from pydantic import BaseModel, Field
@@ -271,6 +272,31 @@ async def create_checkout_session(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+# ── WHERE THE BUYER CAME FROM (Marketing & Pricing Review Board, 11/18/2026) ──
+# Step 1 of the board's sequence: record the source on every Stripe checkout,
+# so a pass can be traced to the guest invite or vendor brief that brought the
+# host in. Read from the event's own saved `acquisitionSource`
+# (src/lib/acquisition.js), never from the request. It is host-written data, so
+# only the two sources the app writes and a plain type name travel; anything
+# else is dropped. Nothing about a person is in it.
+_ARRIVAL_SOURCES = {"invite", "vendor"}
+_ARRIVAL_KIND = re.compile(r"^[A-Za-z0-9\u2019'&/ .\-]{2,40}$")
+
+
+def _arrival_metadata(raw) -> dict:
+    try:
+        a = json.loads(raw) if isinstance(raw, str) else raw
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(a, dict) or a.get("from") not in _ARRIVAL_SOURCES:
+        return {}
+    out = {"came_from": a["from"]}
+    kind = str(a.get("kind") or "").strip()
+    if _ARRIVAL_KIND.match(kind):
+        out["came_from_kind"] = kind
+    return out
+
+
 class PassSessionRequest(BaseModel):
     event_id: str
     success_url: str            # app URL (may include {CHECKOUT_SESSION_ID})
@@ -327,6 +353,14 @@ async def create_pass_session(
                 detail="This event has a recorded purchase. If access was refunded or disputed, contact support before buying again.",
             )
 
+        # A source that cannot be read is a number not counted, never a
+        # checkout refused.
+        try:
+            arrival = _arrival_metadata(await conn.fetchval(
+                "select data->'acquisitionSource' from public.events where id=$1", body.event_id))
+        except Exception:  # noqa: BLE001 — attribution must not block a purchase
+            arrival = {}
+
     stripe.api_key = STRIPE_SECRET_KEY
     try:
         session = stripe.checkout.Session.create(
@@ -362,6 +396,7 @@ async def create_pass_session(
                 "event_id":    body.event_id,
                 "studio_id":   studio_id,
                 "purchased_by": principal.get("id") or "",
+                **arrival,
             },
         )
         log.info(

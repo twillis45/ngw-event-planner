@@ -559,3 +559,39 @@ def test_the_refund_block_reads_a_real_stripe_list(monkeypatch):
     assert blocks and "pi_pass_1" in blocks[0][1], "a full refund must record the block"
     remaps = [args for sql, args in conn.executed if "update public.event_passes" in sql]
     assert remaps and list(remaps[0][1]) == ["cs_pass_1"], "old receipts must be mapped to the payment"
+
+
+# ─── where the buyer came from (Marketing & Pricing Review Board, 11/18/2026) ─
+# Step 1 of the board's sequence: "record the source on every Stripe checkout".
+# The event's own saved `acquisitionSource` (lib/acquisition.js) is read
+# SERVER-SIDE here, never taken from the request, and only allowlisted values
+# travel: it is host-written data, so it is input, not a record.
+
+def _session_for(monkeypatch, source):
+    conn = FakeConn(vals={"studio_id from public.events": "studio-1",
+                          "from studio_members": 1,
+                          "acquisitionSource": source})
+    captured = {}
+    _call_create(monkeypatch, conn, captured)
+    return captured["metadata"]
+
+
+def test_a_pass_bought_on_an_event_that_came_from_an_invite_says_so(signed_in, monkeypatch):
+    meta = _session_for(monkeypatch, json.dumps({"from": "invite", "kind": "Friendsgiving", "at": "2026-11-18T12:00:00Z"}))
+    assert meta["came_from"] == "invite"
+    assert meta["came_from_kind"] == "Friendsgiving"
+
+
+def test_an_event_with_no_recorded_source_sends_none(signed_in, monkeypatch):
+    meta = _session_for(monkeypatch, None)
+    assert "came_from" not in meta and "came_from_kind" not in meta
+    assert meta["kind"] == "pass"          # the purchase itself is untouched
+
+
+def test_a_source_the_app_never_writes_is_dropped_not_carried(signed_in, monkeypatch):
+    meta = _session_for(monkeypatch, json.dumps({"from": "spam", "kind": "Wedding"}))
+    assert "came_from" not in meta
+    meta = _session_for(monkeypatch, {"from": "vendor", "kind": "<script>alert(1)</script>"})
+    assert meta["came_from"] == "vendor" and "came_from_kind" not in meta
+    meta = _session_for(monkeypatch, "not json at all")
+    assert "came_from" not in meta
