@@ -1,7 +1,8 @@
 // ─── Invite tone + palettes (extracted from App.js) ───────────────────────────
 // The guest invite speaks the EVENT'S mood, not the host's app theme (board
-// verdict): daytime/family/casual → light & warm paper (the category norm);
-// formal/evening → dark & elegant; somber (Repast) → quiet/muted. A host
+// verdict): light & warm paper by default (the category norm); formal types
+// → dark & elegant (owner ruling 11/19/2026: the hour no longer decides);
+// somber (Repast) → quiet/muted. A host
 // override (event.inviteStyle = 'bright' | 'elegant') ALWAYS wins, so the
 // engine never silently guesses the soul of the party wrong (Rams' dissent).
 // Used only on the guest-facing invite, never the app.
@@ -20,10 +21,13 @@ export const inviteTone = (event, opts = {}) => {
   if (event && event.inviteStyle === 'bright') return 'light';
   const isQuiet = opts.isQuiet || SOMBER_DEFAULT;
   if (isQuiet(event)) return 'muted';
+  // CREAM BY DEFAULT, DARK ONLY FOR FORMAL (owner ruling, 11/19/2026). The hour
+  // used to darken an invite too, so a 7 PM dinner at home went out on the
+  // black stationery ("That dark invite sent is gross"). Only a formal TYPE is
+  // dark now; a host who wants dark for anything else picks Elegant.
   const t = ((event && event.type) || '').toLowerCase();
-  const evening = !!event && (event.timeOfDay === 'evening' || event.timeOfDay === 'night');
-  const elegant = evening || /gala|client dinner|award|cocktail|board meeting|conference|product launch|networking|fundraiser|corporate/.test(t);
-  return elegant ? 'dark' : 'light';
+  const formal = /gala|client dinner|award|cocktail|board meeting|conference|product launch|networking|fundraiser|corporate/.test(t);
+  return formal ? 'dark' : 'light';
 };
 
 // Secondary/muted text values were darkened (light) / brightened (dark) to

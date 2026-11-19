@@ -1,12 +1,21 @@
 // Behavioral coverage for the invite tone engine both invite surfaces read
 // (production RSVPFormView and V2's InviteV2). Locks the ACTUAL precedence:
-// host inviteStyle override → somber (muted) → evening/formal (dark) → light.
+// host inviteStyle override → somber (muted) → formal (dark) → light.
+// Owner ruling 11/19/2026: "Cream by default, dark only for formal." The hour no
+// longer darkens an invitation; a 7 PM dinner at home is cream.
 import { inviteTone, invitePalette, deepenForLight } from '../inviteTone';
 
 describe('inviteTone — event mood rules', () => {
-  test('evening event → dark (elegant), regardless of casual type', () => {
-    expect(inviteTone({ type: 'Backyard BBQ', timeOfDay: 'evening' })).toBe('dark');
-    expect(inviteTone({ type: 'Backyard BBQ', timeOfDay: 'night' })).toBe('dark');
+  test('an evening is not formal: a casual event stays cream at any hour (owner, 11/19/2026)', () => {
+    expect(inviteTone({ type: 'Backyard BBQ', timeOfDay: 'evening' })).toBe('light');
+    expect(inviteTone({ type: 'Backyard BBQ', timeOfDay: 'night' })).toBe('light');
+    expect(inviteTone({ type: 'Dinner Party', timeOfDay: 'evening' })).toBe('light');
+    expect(inviteTone({ type: 'Friendsgiving', timeOfDay: 'evening' })).toBe('light');
+  });
+
+  test('a formal event is dark in the evening too', () => {
+    expect(inviteTone({ type: 'Gala', timeOfDay: 'evening' })).toBe('dark');
+    expect(inviteTone({ type: 'Awards Dinner', timeOfDay: 'evening' })).toBe('dark');
   });
 
   test('formal type → dark even in daytime', () => {
@@ -25,7 +34,7 @@ describe('inviteTone — event mood rules', () => {
     expect(inviteTone({ type: 'Dinner', name: 'Repast for Uncle Joe' })).toBe('muted');
   });
 
-  test('somber beats evening/formal when no override is set', () => {
+  test('somber beats formal when no override is set', () => {
     expect(inviteTone({ type: 'Memorial Service', timeOfDay: 'evening' })).toBe('muted');
   });
 
