@@ -271,7 +271,12 @@ export default function InviteV2({ code }) {
     [event],
   );
   const [guestName, setGuestName] = useState('');
-  const [rsvp, setRsvp] = useState('');
+  // A reply tapped in the invite EMAIL (backend invite_email: Yes / Can't make
+  // it / Maybe) arrives as ?reply=; it only PRESELECTS. Nothing is sent until
+  // the guest adds a name and taps send. Anything else picks nothing.
+  const [rsvp, setRsvp] = useState(() => {
+    try { const v = new URLSearchParams(window.location.search).get('reply'); return ['Yes', 'No', 'Maybe'].includes(v) ? v : ''; } catch { return ''; }
+  });
   const [meal, setMeal] = useState('Standard');
   const [allergensSel, setAllergensSel] = useState([]);
   const [rulesSel, setRulesSel] = useState([]);

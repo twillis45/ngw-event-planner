@@ -87,6 +87,8 @@ PUBLIC = {
     "GET /api/public/questions/unsubscribe/{token}": "shows a button only; no state change",
     "GET /api/public/announcements/{rsvp_code}": "the invite's host updates: body and time only, resolved from the code",
     "POST /api/public/questions/unsubscribe/{token}": "stop reply emails; the thread's emailed-link token (024 guest_token)",
+    "GET /api/public/email/stop/{token}": "shows a button only; no state change",
+    "POST /api/public/email/stop/{token}": "stop host emails about one event to one address; the emailed-link token (031 email_stops), same page whether or not it matched",
     "POST /api/public/invite/{rsvp_code}/opened": "invite code; records an open only for a device key already identified by a reply or a question",
     # Guest RSVP: guests never have accounts; the rsvp code is the credential.
     "GET /api/public/invite/{rsvp_code}": "guest-facing; code is the credential",

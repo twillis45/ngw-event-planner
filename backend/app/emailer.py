@@ -87,6 +87,7 @@ async def _send_via_resend(
     reply_to: Optional[str] = None,
     from_name: Optional[str] = None,
     headers: Optional[dict] = None,
+    text: Optional[str] = None,
 ) -> dict:
     """Low-level Resend POST. Returns the Resend response JSON on success,
     raises on failure so callers can decide fail-soft vs. raise."""
@@ -97,6 +98,8 @@ async def _send_via_resend(
         "subject": subject,
         "html": html,
     }
+    if text:
+        payload["text"] = text      # a plain-text part: the same words, no markup
     if reply_to:
         payload["reply_to"] = reply_to
     if headers:
@@ -160,6 +163,8 @@ async def send_thread_email(
     body_html: str,
     sender_name: Optional[str] = None,
     reply_to: Optional[str] = None,
+    body_text: Optional[str] = None,
+    headers: Optional[dict] = None,
 ) -> dict:
     """Sprint 58.2: send a composer-authored thread message via Resend.
 
@@ -183,6 +188,8 @@ async def send_thread_email(
             html=body_html,
             reply_to=reply_to,
             from_name=sender_name,
+            text=body_text,
+            headers=headers,
         )
         resend_id = result.get("id") if isinstance(result, dict) else None
         log.info("thread email sent resend_id=%s", resend_id)
