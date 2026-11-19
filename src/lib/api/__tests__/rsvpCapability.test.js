@@ -88,3 +88,19 @@ it('a reply held offline keeps the guest’s lodging pick when it is sent', asyn
   await expect(flushRsvpOutbox(event.id, event.rsvpCode)).resolves.toEqual({ flushed: 1, remaining: 0 });
   expect(bodies[0]).toMatchObject({ rsvp: 'Yes', lodging_pick: 'hotel-fera' });
 });
+
+// Found 11/19/2026 (WebKit offline journey): the flush on page load and the
+// one on `online` could overlap and send the same held reply twice.
+it('two flushes at once send a held reply once', async () => {
+  jest.resetModules();
+  process.env.REACT_APP_API_BASE_URL = 'https://rsvp-test.invalid';
+  const { flushRsvpOutbox } = require('../rsvp');
+  const key = 'ngw-rsvp-queue-' + event.id;
+  localStorage.setItem(key, JSON.stringify([{ name: 'Guest', rsvp: 'Yes', idempotencyKey: 'k2', submittedAt: Date.now() }]));
+  let posts = 0;
+  global.fetch = jest.fn(async () => { posts += 1; await new Promise((r) => setTimeout(r, 20)); return { ok: true, json: async () => ({ ok: true }) }; });
+  const [a, b] = await Promise.all([flushRsvpOutbox(event.id, event.rsvpCode), flushRsvpOutbox(event.id, event.rsvpCode)]);
+  expect(posts).toBe(1);
+  expect(a).toEqual({ flushed: 1, remaining: 0 });
+  expect(b).toEqual(a);
+});
