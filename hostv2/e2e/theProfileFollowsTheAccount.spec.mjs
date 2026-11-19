@@ -187,15 +187,17 @@ test.describe('preferences follow the account', () => {
     await sheet.getByRole('button', { name: /On — tap to mute/ }).click();
     await sheet.getByRole('button', { name: /On — tap to turn off/ }).click();
     await pa.waitForTimeout(800);
-    // The writing voice lives on a draft: the shopping list's.
+    // The writing voice lives on a draft: the shopping list's. A list is a note to
+    // yourself, so it offers As written and Tighter only (lib/draftVoice voicesFor,
+    // 11/19/2026); Tighter is the voice set here.
     await pa.keyboard.press('Escape');
     await pa.waitForTimeout(300);
     await pa.locator('.srail-row', { hasText: 'spread' }).first().click();
     await pa.locator('.sheet').last().getByText('Copy the shopping list').first().click({ timeout: 10000 });
-    await pa.locator('.sheet').last().getByRole('radio', { name: 'Warmer' }).click();
+    await pa.locator('.sheet').last().getByRole('radio', { name: 'Tighter' }).click();
     await pa.waitForTimeout(1200);
-    await expect.poll(() => account.profile && account.profile.draftTone, { timeout: 8000 }).toBe('warmer');
-    expect(account.profile).toMatchObject({ theme: 'light', messageSoundMuted: true, analyticsOff: true, draftTone: 'warmer' });
+    await expect.poll(() => account.profile && account.profile.draftTone, { timeout: 8000 }).toBe('tighter');
+    expect(account.profile).toMatchObject({ theme: 'light', messageSoundMuted: true, analyticsOff: true, draftTone: 'tighter' });
     await a.close();
 
     // ── Device B: a fresh browser on the same account, nothing set locally.
@@ -210,7 +212,7 @@ test.describe('preferences follow the account', () => {
       muted: localStorage.getItem('ngw-hostv2-muted'),
       optout: localStorage.getItem('ngw-analytics-optout'),
     }));
-    expect(stored).toEqual({ theme: 'light', voice: 'warmer', muted: '1', optout: '1' });
+    expect(stored).toEqual({ theme: 'light', voice: 'tighter', muted: '1', optout: '1' });
     const sb = pb.locator('.sheet').last();
     await expect(sb.getByRole('button', { name: /On — tap for dark/ })).toBeVisible();
     await expect(sb.getByRole('button', { name: /Muted — tap for sound/ })).toBeVisible();
