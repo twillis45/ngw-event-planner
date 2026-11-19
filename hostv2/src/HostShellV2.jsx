@@ -78,6 +78,7 @@ import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/in
 import { inviteGaps } from '@app/lib/inviteGaps';
 import { inviteCardModel, inviteCardKey } from '@app/lib/inviteCard';
 import SignInCheck, { signInCheckOn } from './SignInCheck';
+import { signInSendDecision, signInErrorText } from '@app/lib/signInCheckGate';
 import { signUpData, MARKETING_OPT_IN_LABEL } from '@app/lib/marketingConsent';
 import { domainMove, moveNotice } from '@app/lib/domainMove';
 import { draftInvite, inviteVoicesFor, eventCulturalMeta, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
@@ -2416,16 +2417,20 @@ export default function HostShellV2() {
   // changes. Each token is used once, so the check resets after every send.
   const [captchaToken, setCaptchaToken] = useState('');
   const [captchaRound, setCaptchaRound] = useState(0);
+  // Cloudflare failed this browser: send anyway, Supabase decides (lib/signInCheckGate).
+  const [captchaFailed, setCaptchaFailed] = useState(false);
+  const takeCaptchaToken = (t) => { setCaptchaToken(t); if (t) setCaptchaFailed(false); };
   // OFFERS AND NEWS (owner ruling 11/19/2026, G87): an UNTICKED box; only a
   // tick records the opt-in on a new account (lib/marketingConsent).
   const [offersOptIn, setOffersOptIn] = useState(false);
   const sendMagicLink = async () => {
     const em = authEmail.trim();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { setAuthErr('A real email address — the sign-in link goes there.'); return; }
-    if (signInCheckOn() && !captchaToken) { setAuthErr('One moment — we’re checking this is a person, not a bot. Try again in a second.'); return; }
+    const gate = signInSendDecision({ checkOn: signInCheckOn(), token: captchaToken, failed: captchaFailed });
+    if (!gate.send) { setAuthErr(gate.message); return; }
     setAuthBusy(true); setAuthErr('');
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email: em, options: { emailRedirectTo: authRedirectUrl(), data: signUpData(offersOptIn), ...(signInCheckOn() ? { captchaToken } : {}) } });
+      const { error } = await supabase.auth.signInWithOtp({ email: em, options: { emailRedirectTo: authRedirectUrl(), data: signUpData(offersOptIn), ...(signInCheckOn() && captchaToken ? { captchaToken } : {}) } });
       if (signInCheckOn()) setCaptchaRound((n) => n + 1);
       if (error) throw error;
       setAuthSent(true);
@@ -2433,7 +2438,7 @@ export default function HostShellV2() {
       // Real error text when Supabase gives us one (rate limit, invalid
       // domain, etc.) instead of one blanket message for every failure mode —
       // a host stuck here has no other signal of what actually went wrong.
-      setAuthErr((e && e.message) || 'Couldn’t send the link — try again in a minute.');
+      setAuthErr(signInErrorText(e));
     }
     setAuthBusy(false);
   };
@@ -2459,7 +2464,7 @@ export default function HostShellV2() {
                         <button className="mini" onClick={resetAuthSent}>Use a different email</button>
                         <button className="mini" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Send a new code'}</button>
                       </div>
-                      <SignInCheck onToken={setCaptchaToken} resetKey={'sent-' + captchaRound} />
+                      <SignInCheck onToken={takeCaptchaToken} onError={() => setCaptchaFailed(true)} resetKey={'sent-' + captchaRound} />
                     </>
                   ) : (
                     <>
@@ -2469,7 +2474,7 @@ export default function HostShellV2() {
                         <input type="checkbox" checked={offersOptIn} onChange={e => setOffersOptIn(e.target.checked)} style={{ marginTop: 4, flex: 'none' }} />
                         <span>{MARKETING_OPT_IN_LABEL}</span>
                       </label>
-                      <SignInCheck onToken={setCaptchaToken} resetKey={'form-' + captchaRound} />
+                      <SignInCheck onToken={takeCaptchaToken} onError={() => setCaptchaFailed(true)} resetKey={'form-' + captchaRound} />
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
                       </div>
