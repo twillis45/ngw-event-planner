@@ -7896,6 +7896,7 @@ export default function HostShellV2() {
   // version she loaded), so nothing is overwritten behind her back either way.
   const [resolvingConflict, setResolvingConflict] = useState(false);
   const [syncRetrying, setSyncRetrying] = useState(false);   // "Retry now" in flight (attention audit 11/18/2026)
+  const [syncRetryErr, setSyncRetryErr] = useState('');      // its failure, said under it (G68, 11/19/2026)
   // A failed choice is said under the two buttons (G68), not in a toast that
   // leaves before she has read it.
   const [conflictErr, setConflictErr] = useState('');
@@ -20543,11 +20544,12 @@ export default function HostShellV2() {
                           {showRetry && (
                             <button className="mini" disabled={syncRetrying} onClick={() => {
                               if (syncRetrying) return;
-                              setSyncRetrying(true);
+                              setSyncRetrying(true); setSyncRetryErr('');
+                              const failed = 'Still couldn’t reach your account — your changes are safe on this device, and we’ll keep trying.';
                               flushSync().then(res => {
                                 if (res && res.flushed > 0) toast((res.flushed === 1 ? 'This change' : res.flushed + ' changes') + ' synced to your account.');
-                                else toast('Still couldn’t reach the cloud — we’ll keep trying.');
-                              }).catch(() => toast('Still couldn’t reach the cloud — we’ll keep trying.'))
+                                else setSyncRetryErr(failed);
+                              }).catch(() => setSyncRetryErr(failed))
                                 .finally(() => setSyncRetrying(false));
                             }}>{syncRetrying ? 'Syncing…' : 'Retry now'}</button>
                           )}
@@ -20558,6 +20560,7 @@ export default function HostShellV2() {
                         {resolvingConflict && <BusyLine>Saving your choice to your account…</BusyLine>}
                         {status === SYNC_STATUS.CONFLICT && conflictErr && <p className="grounding" role="alert" data-conflict-err style={{ margin: 'var(--sp-2) 0 0', color: 'var(--danger)', fontWeight: 600 }}>{conflictErr}</p>}
                         {syncRetrying && <BusyLine>Syncing this event with your account…</BusyLine>}
+                        {showRetry && !syncRetrying && syncRetryErr && <p className="grounding" role="alert" data-retry-err style={{ margin: 'var(--sp-2) 0 0', color: 'var(--danger)', fontWeight: 600 }}>{syncRetryErr}</p>}
                       </>
                     );
                   })()}

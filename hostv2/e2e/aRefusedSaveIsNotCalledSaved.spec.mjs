@@ -374,4 +374,21 @@ test.describe('a refused save is not called saved — the shell half', () => {
     await expect(err).toBeVisible();
     await expect(conflictRow(page).getByRole('button', { name: 'Keep mine' })).toBeEnabled();
   });
+
+  // ── 9 · A FAILED RETRY IS SAID UNDER IT (G68 leftover, 11/19/2026) ───────
+  // "Retry now" answered a failure with a toast that left in seconds.
+  test('"Retry now" that still cannot reach the account says so under the button, and it stays', async ({ page }) => {
+    await install(page, { mode: 'ok' });
+    await boot(page);
+    await page.route(`${PROJECT}/rest/v1/events**`, (route) => (route.request().method() === 'GET' ? route.fallback() : route.abort('internetdisconnected')));
+    await makeAnEdit(page);
+    await openSettings(page);
+    const retry = page.getByRole('button', { name: 'Retry now' });
+    await expect(retry).toBeVisible({ timeout: 10000 });
+    await retry.click();
+    const err = page.locator('[data-retry-err]');
+    await expect(err).toContainText('Still couldn’t reach your account', { timeout: 10000 });
+    await page.waitForTimeout(4500);   // past a toast's lifetime: it is still there
+    await expect(err).toBeVisible();
+  });
 });
