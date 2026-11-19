@@ -5,8 +5,8 @@
 // below: its gradients, highlights and shading at the card's own size, and
 // its linen grain from public/email/invite-grain-{light,dark}.jpg), Playfair for
 // the name and deck line, the masthead with its rule and diamond, the accent
-// rule, and centered When / Where / Hosted by, each struck into the paper
-// with the page's letterpress shadows.
+// rule, the event's crest when it has one, and centered When / Where / Hosted
+// by, each struck into the paper with the page's letterpress shadows.
 //
 // Drawn on a canvas rather than photographed from the page: a canvas draws the
 // same on every browser (the page-capture libraries are unreliable on iPhone
@@ -160,12 +160,19 @@ export async function drawInviteCard(model) {
   const dark = model.colors.paper === 'dark';
   const c = model.colors;
   const grain = await loadImage(grainUrl(dark ? 'dark' : 'light')).catch(() => null);   // no grain: the gradients alone
+  // G83 (11/19/2026): the page's crest (InviteV2 markUrlFor) when the event has
+  // one and the host left it on. It failing to load leaves it out, as the page would.
+  const crest = model.crest ? await loadImage(model.crest).catch(() => null) : null;
   const inner = W - PAD * 2;
 
   const plan = (ctx) => {
     const ops = [];
     let y = 30;
     ops.push({ k: 'mast', y: y + 9 }); y += 14;
+    if (crest && crest.naturalWidth) {
+      const ch = 96 * (crest.naturalHeight / crest.naturalWidth);
+      y += 10; ops.push({ k: 'crest', y, h: ch }); y += ch;
+    }
     if (model.eyebrow) { y += 18; ops.push({ k: 'eyebrow', y: y + 9 }); y += 12; }
     ctx.font = `700 42px ${SERIF}`;
     const nameLines = wrap(ctx, model.name, inner);
@@ -208,6 +215,29 @@ export async function drawInviteCard(model) {
       const x0 = PAD + spacedWidth(ctx, left, sp) + 9, x1 = W - PAD - (right ? spacedWidth(ctx, right, sp) + 9 : 0);
       ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = c.hue; ctx.fillRect(x0, op.y - 4, x1 - x0, 1); ctx.restore();
       ctx.save(); ctx.translate((x0 + x1) / 2, op.y - 3.5); ctx.rotate(Math.PI / 4); ctx.fillStyle = c.hue; ctx.fillRect(-3, -3, 6, 6); ctx.restore();
+    } else if (op.k === 'crest') {
+      // .inv2-crest: two blurred silhouettes, light up-left and shade down-right,
+      // embossing the mark into the paper; the art multiplied in on cream.
+      const x = W / 2 - 48;
+      const shape = (color) => {
+        const off = document.createElement('canvas');
+        off.width = 96 * S; off.height = Math.ceil(op.h * S);
+        const o = off.getContext('2d');
+        o.drawImage(crest, 0, 0, off.width, off.height);
+        o.globalCompositeOperation = 'source-in'; o.fillStyle = color; o.fillRect(0, 0, off.width, off.height);
+        return off;
+      };
+      const layers = dark
+        ? [['rgba(255,246,230,.24)', -1.3, -1.3, 0.4], ['rgba(0,0,0,.62)', 1.7, 2.2, 0.9]]
+        : [['rgba(255,255,255,.92)', -1.3, -1.3, 0.4], ['rgba(110,80,45,.55)', 1.7, 2.2, 0.9]];
+      for (const [color, dx, dy, blur] of layers) {
+        ctx.save(); ctx.filter = `blur(${blur}px)`; ctx.drawImage(shape(color), x + dx, op.y + dy, 96, op.h); ctx.restore();
+      }
+      ctx.save();
+      if (!dark) ctx.globalCompositeOperation = 'multiply';
+      ctx.filter = dark ? 'saturate(.8) brightness(.93) contrast(1.02)' : 'saturate(.82) contrast(1.03)';
+      ctx.drawImage(crest, x, op.y, 96, op.h);
+      ctx.restore();
     } else if (op.k === 'eyebrow') {
       ctx.font = `800 11.5px ${SANS}`; ctx.fillStyle = c.hueDeep;
       struck(ctx, dark, false, () => drawSpaced(ctx, model.eyebrow.toUpperCase(), W / 2, op.y, 11.5 * 0.2, 'center'));

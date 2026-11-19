@@ -1079,6 +1079,9 @@ export default function HostShellV2() {
   const ensureInviteCard = (ev) => {
     try {
       const model = inviteCardModel(ev);
+      // The page's crest (InviteV2 markUrlFor): the event's artwork unless the host turned it off.
+      const crestFile = ev.inviteCrest === 'off' ? null : eventArtworkFile(ev);
+      if (crestFile) model.crest = import.meta.env.BASE_URL + crestFile;
       const key = inviteCardKey(model);
       const m = inviteCardRef.current;
       if (m[ev.id] && m[ev.id].key === key) return m[ev.id].p;
