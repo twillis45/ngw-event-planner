@@ -117,7 +117,7 @@ def compose_invite_email(ev: dict, note: str, recipient_name, sender: str, stop_
                  else f"background:#fbf7ee;color:{ink};border:1px solid #d9cdb6;")
         return (f'<td style="padding:0 4px;" width="33%"><a href="{e(url)}&amp;reply={answer}" '
                 f'style="display:block;{style}text-decoration:none;text-align:center;font:700 14px/1.2 {SANS};'
-                f'white-space:nowrap;padding:15px 4px;border-radius:12px;">{e(text)}</a></td>')
+                f'padding:14px 4px;border-radius:12px;">{e(text)}</a></td>')
 
     paper = (f"background-color:#f7f1e6;background-image:url('{PAPER_URL}');background-size:100% 100%;"
              f"background-repeat:no-repeat;background-position:center top;")

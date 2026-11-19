@@ -69,3 +69,12 @@ def test_the_deck_line_the_page_shows_is_under_the_name():
     html, text = compose_invite_email(EV, NOTE, None, "Vida Reyes", None, deck="It wouldn’t be the same without you")
     assert "It wouldn’t be the same without you" in html and "It wouldn’t be the same without you" in text
     assert html.index("My Friendsgiving") < html.index("It wouldn’t be the same without you") < html.index("When")
+
+
+def test_the_reply_buttons_can_wrap_on_a_small_phone():
+    # Measured 11/19/2026: with nowrap, "Can’t make it" pushed a 320px screen
+    # sideways. The buttons must be allowed to wrap their words.
+    from app.invite_email import compose_invite_email
+    html, _ = compose_invite_email({"name": "X", "date": "2026-11-26", "rsvpCode": "abcdefghijklmnop1234"}, "", None, "Vida Reyes", None)
+    for chunk in html.split("reply=")[1:]:
+        assert "nowrap" not in chunk.split("</a>")[0]
