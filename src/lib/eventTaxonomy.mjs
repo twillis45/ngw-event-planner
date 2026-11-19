@@ -198,7 +198,9 @@ const KEYWORDS = [
   [/bachelor\b|stag\b/, 'Bachelor Party'],
   [/proposal|will\s*you\s*marry/, 'Surprise Proposal'],
   [/gender\s*reveal|sex\s*reveal/, 'Gender Reveal'],
-  [/elope|micro.?wedding|minimony/, 'Elopement'],
+  // Whole words (live check, 11/19/2026): a bare /elope/ read "Envelope test
+  // dinner", "Penelope's 30th" and "Antelope Valley" as elopements.
+  [/\belop(?:e|ed|es|ing|ement|ements)\b|micro.?wedding|minimony/, 'Elopement'],
   [/destination\s*wedding/, 'Wedding'],
   [/wellness|yoga|sound\s*bath|breathwork|meditation\s*retreat|spa\s*retreat/, 'Wellness Retreat'],
   [/sweet\s*16|sweet\s*sixteen/, 'Sweet 16'],
