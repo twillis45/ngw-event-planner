@@ -74,6 +74,7 @@ import { showsReplyTracking } from '@app/lib/guestMode';
 import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, travelHazard, guestTravelMessage } from '@app/lib/weather';
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
+import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/inviteBatch';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
 // dollars turned $0.20/lb of ice into "$0/lb" on 84 of the corpus's 440
@@ -194,6 +195,7 @@ import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
 import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
+import InviteToTheList from './InviteToTheList';
 import { readArrival, rememberArrival, arrivalFor, spendArrival, exampleSentenceFor } from '@app/lib/acquisition';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_NUDGE } from '@app/lib/knowledge/geoCostIndex';
@@ -20735,6 +20737,38 @@ export default function HostShellV2() {
                 if (ok) { logVendorContact(sheet.vendorId); }
                 setSendingEmail(false);
               };
+              // ── THE INVITE TO THE WHOLE LIST (owner, 11/19/2026) ───────────
+              // One email per guest through the SAME guarded route as the send
+              // above (address saved on the event, per-event daily cap, real
+              // delivery answer). 429 is that cap; 403 an address the account
+              // has not saved yet. Rules: lib/inviteBatch.js.
+              const sendInviteTo = async (g) => {
+                const draftSubject = (draftInvite(event, profile) || {}).subject || 'You’re invited';
+                const { subject, body } = inviteSubjectAndBody(shownDraft(), draftSubject);
+                try {
+                  const res = await commApi.createMessage(event.id, 'CLIENT', {
+                    message_type: 'standard', author_role: 'planner',
+                    author_name: (profile && profile.name) || 'Your host',
+                    body, deliver_email: true, recipient_email: g.email, recipient_name: g.name || undefined, subject,
+                    ...(((session && session.user && session.user.email) || '').trim()
+                      ? { reply_to: String(session.user.email).trim() } : {}),
+                  });
+                  const d = res && res.metadata && res.metadata.delivery;
+                  return d && d.status === 'accepted' ? { ok: true } : { ok: false, error: (d && d.error) || 'no delivery confirmation' };
+                } catch (e) {
+                  const m = String((e && e.message) || '');
+                  if (/→ 429/.test(m)) return { ok: false, capped: true };
+                  if (/→ 403/.test(m)) return { ok: false, error: 'not saved to your account yet' };
+                  return { ok: false, error: 'request failed' };
+                }
+              };
+              const reachInvite = (reached, via) => {
+                const at = new Date().toISOString();
+                patchEvent({
+                  guests: markInvited(event.guests || [], reached, via, at),
+                  ...(event.invitesSentAt ? {} : { invitesSentAt: at }),
+                }, null, { noUndo: true });
+              };
               return (
               <>
                 {/* Host-attested state chip: RECORD-ONLY treatment (outline,
@@ -20871,6 +20905,11 @@ export default function HostShellV2() {
                       {sendingEmail ? 'Sending…' : `Send it to ${emailTarget.to}`}
                     </button>
                   </div>
+                )}
+                {sheet.sendsInvite && (
+                  <InviteToTheList guests={event.guests} draft={shownDraft()}
+                    canEmail={isCommApiConfigured() && !!session}
+                    sendOne={sendInviteTo} onReached={reachInvite} />
                 )}
                 {/* "Message all helpers": each person still gets reviewed and
                     sent individually through the real handoffs above — this
@@ -25834,11 +25873,18 @@ export default function HostShellV2() {
                 // faked a "sent" state. Offered only where reply tracking is on.
                 nudge:   showsReplyTracking(event) ? { label: 'Write a nudge to send', onClick: () => openInviteDraft('The RSVP nudge', draftRsvpChase) } : null,
               };
+              // THE INVITE TO THE WHOLE LIST (owner, 11/19/2026). Same draft as
+              // "Copy the invite", named for what it now does; shown while some
+              // guest can still be reached and has not been invited.
+              const _reachable = (() => { const r = inviteRecipients(event.guests); return r.email.length + r.text.length; })();
+              _inviteActs.list = _reachable > 0
+                ? { label: `Invite your guest list (${_reachable})`, onClick: () => openInviteDraft('Your invite', draftInvite, { sendsInvite: true }), data: 'invite-list' }
+                : null;
               const _outstanding = (event.guests || []).filter((g) => g && !String(g.rsvp || '').trim()).length;
               const _chasing = _outstanding > 0 || !(event.guests || []).length;
               const inviteTiers = _chasing ? {
                 primary: _inviteActs.share,
-                secondary: [markInviteSent, _inviteActs.link, _inviteActs.qr, _inviteActs.nudge].filter(Boolean),
+                secondary: [_inviteActs.list, markInviteSent, _inviteActs.link, _inviteActs.qr, _inviteActs.nudge].filter(Boolean),
                 more: [_inviteActs.preview, _inviteActs.copy, _inviteActs.brief, _inviteActs.update],
               } : {
                 primary: _inviteActs.update,
@@ -25853,6 +25899,7 @@ export default function HostShellV2() {
                     <button className="mini" onClick={_inviteActs.link.onClick}>Copy the link</button>
                     <button className="mini" onClick={_inviteActs.qr.onClick}>Check and show QR</button>
                     <button className="mini" onClick={_inviteActs.preview.onClick}>Preview on this device</button>
+                    {_inviteActs.list && <button className="mini" data-invite-list-open onClick={_inviteActs.list.onClick}>{_inviteActs.list.label}</button>}
                     <button className="mini" onClick={_inviteActs.copy.onClick}>Copy the invite</button>
                     <button className="mini" onClick={_inviteActs.brief.onClick}>Draft the guest brief</button>
                     <button className="mini" onClick={_inviteActs.update.onClick}>Update everyone</button>

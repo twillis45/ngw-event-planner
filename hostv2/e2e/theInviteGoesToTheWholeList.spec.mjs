@@ -1,0 +1,91 @@
+// ─── THE INVITE GOES TO THE WHOLE LIST (owner, 11/19/2026) ──────────────────
+// "Build the invite email batch and text queue." Guests now offers "Invite your
+// guest list (N)": the reviewed invite draft, then one email per guest with a
+// good address and, for guests with only a phone, one prefilled text at a time.
+// Declined guests and guests already invited are never counted.
+//
+// WHAT THIS CAN AND CANNOT SEE. It runs on the gold07 bundle (port 5255, mock
+// API), the one build with an RSVP API, which opening the invite needs. No e2e
+// bundle has both a signed-in session and the email API, so the EMAIL send is
+// proved in jest (src/lib/__tests__/theInviteGoesToTheWholeList.test.js) against
+// the same lib this screen calls; here the signed-out note is what renders.
+import { test, expect } from '@playwright/test';
+import { previewUrl } from '../deployBase.mjs';
+import { dateIn } from './fixtures.mjs';
+
+const BASE = previewUrl(5255);
+const API = 'https://gold07-mock.invalid';
+const EVENT_ID = 'e2e-invite-list';
+const CODE = 'e2einvitelist000001';   // checkRsvpCapability needs 16+ characters
+
+const hostEvent = () => ({
+  id: EVENT_ID, name: 'Vida’s Friendsgiving', type: 'Friendsgiving',
+  date: dateIn(12), createdAt: new Date().toISOString(),
+  rsvpCode: CODE, guestMode: 'list', guestEstimate: 6, guestCountSource: 'host',
+  budget: [], vendors: [], timeline: [],
+  guests: [
+    { id: 'g1', name: 'Maya Chen', email: 'maya@example.test', phone: '(410) 555-0101' },
+    { id: 'g2', name: 'Jordan Ellis', phone: '(410) 555-0102' },
+    { id: 'g3', name: 'Sam', email: 'sam@example.test', rsvp: 'No' },
+    { id: 'g4', name: 'Lee', email: 'lee@example.test', invitedAt: '2026-11-18T10:00:00.000Z', invitedVia: 'email' },
+  ],
+});
+
+test('the guest list is invited: email where it can go, one text at a time where it cannot', async ({ page }) => {
+  await page.route(`${API}/**`, (r) => r.fulfill({ status: 200, json: [] }));
+  await page.route(`${API}/api/public/invite/${CODE}`, (r) => r.fulfill({
+    status: 200, json: { ok: true, event: { id: EVENT_ID, name: 'Vida’s Friendsgiving', type: 'Friendsgiving', date: dateIn(12), rsvpCode: CODE, goingCount: 0 } },
+  }));
+  await page.addInitScript((e) => {
+    // An sms: link would leave the page; the handler on it is what is measured.
+    window.addEventListener('click', (ev) => {
+      const a = ev.target && ev.target.closest && ev.target.closest('a[href^="sms:"]');
+      if (a) ev.preventDefault();
+    }, true);
+    if (sessionStorage.getItem('seeded')) return;
+    sessionStorage.setItem('seeded', '1');
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
+    localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1');
+    localStorage.setItem('ngw-v2-welcomed', '1');
+  }, hostEvent());
+  await page.goto(`${BASE}?elegant=1`);
+  await page.waitForFunction(() => (document.querySelector('.app')?.innerText || '').trim().length > 120, null, { timeout: 20_000 });
+
+  const tap = (re) => page.evaluate((s) => {
+    const el = [...document.querySelectorAll('button,[role="button"],a')].filter((x) => new RegExp(s).test((x.innerText || '').trim())).pop();
+    if (el) el.click();
+    return !!el;
+  }, re.source);
+  await tap(/^Menu$/); await page.waitForTimeout(400);
+  await tap(/^Jump to a section$/); await page.waitForTimeout(400);
+  expect(await tap(/^Guests/)).toBe(true);
+  await page.waitForTimeout(900);
+
+  // Maya (email) and Jordan (phone only): 2. Sam declined; Lee is already invited.
+  expect(await tap(/^Invite your guest list \(2\)$/)).toBe(true);
+  const block = page.locator('[data-invite-list]');
+  await expect(block).toBeVisible({ timeout: 10_000 });
+  await expect(block).toContainText('Sign in to email 1 guest from here.');
+  await expect(block).toContainText('1 guest is already invited.');
+  await expect(block.locator('[data-invite-email]')).toHaveCount(0);   // signed out: no send control
+
+  await block.locator('[data-invite-texts]').click();
+  await expect(block.locator('[data-invite-text-queue]')).toContainText('1 of 1: Jordan Ellis');
+  const one = block.locator('[data-invite-text-one]');
+  const href = await one.getAttribute('href');
+  expect(href.startsWith('sms:4105550102?&body=')).toBe(true);
+  const body = decodeURIComponent(href.split('body=')[1]);
+  expect(body.startsWith('Hi Jordan, ')).toBe(true);
+  expect(body).toContain(`rsvp=${CODE}`);
+
+  await one.click();
+  await expect(block).toContainText('That’s everyone with only a phone number.');
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0]);
+  const jordan = saved.guests.find((g) => g.id === 'g2');
+  expect(jordan.invitedVia).toBe('text');
+  expect(typeof jordan.invitedAt).toBe('string');
+  expect(saved.guests.find((g) => g.id === 'g1').invitedAt).toBeUndefined();   // Maya: still to email
+  expect(typeof saved.invitesSentAt).toBe('string');                          // "Send the invite" is credited
+});
