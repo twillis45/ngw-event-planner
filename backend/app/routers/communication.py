@@ -22,6 +22,7 @@ from ..auth import require_planner
 from ..emailer import send_approval_email, send_thread_email, is_email_configured
 from ..invite_email import compose_invite_email, invite_gaps
 from .invite_cards import card_url, stored_card_version
+from .. import host_email
 
 router = APIRouter(prefix="/api/events/{event_id}/communication", tags=["communication"])
 
@@ -792,9 +793,27 @@ def _token(token: str) -> str:
     return t
 
 
+async def _account_kind(t: str) -> Optional[str]:
+    """'reminders' / 'promotions' when the token is a host's own account stop
+    (app/host_email.py), else None. An unknown token reads as an event stop."""
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if not await conn.fetchval("select to_regclass('public.email_stops')"):
+            return None
+        key = await conn.fetchval("select event_id from public.email_stops where token = $1", t)
+    return host_email.KIND_FOR_KEY.get(key or "")
+
+
 @public_router.get("/api/public/email/stop/{token}", response_class=HTMLResponse)
 async def email_stop_page(token: str):
     t = _token(token)
+    kind = await _account_kind(t)
+    if kind:
+        w = host_email.STOP_WORDS[kind]
+        return HTMLResponse(_STOP_PAGE.format(
+            title=w["ask"],
+            body=(f"<p>{w['explain']}</p>"
+                  f"<form method=post action=\"{_html.escape(t)}\"><button style=\"font:inherit;padding:.5rem 1rem\">{w['button']}</button></form>")))
     return HTMLResponse(_STOP_PAGE.format(
         title="Stop emails about this event?",
         body=(f"<p>You won't get emails from your host about this event. The invite link still works.</p>"
@@ -809,6 +828,10 @@ async def email_stop(token: str):
         if await conn.fetchval("select to_regclass('public.email_stops')"):
             await conn.execute(
                 "update public.email_stops set stopped_at = now() where token = $1 and stopped_at is null", t)
+    kind = await _account_kind(t)
+    if kind:
+        w = host_email.STOP_WORDS[kind]
+        return HTMLResponse(_STOP_PAGE.format(title=w["done"], body=f"<p>{w['after']}</p>"))
     # The same answer whether or not the token matched: no oracle.
     return HTMLResponse(_STOP_PAGE.format(
         title="You won't get emails about this event anymore",

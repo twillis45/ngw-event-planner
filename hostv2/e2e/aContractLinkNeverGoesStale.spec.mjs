@@ -141,11 +141,37 @@ test.describe('a stored contract is re-signed when the host opens it', () => {
     const view = await openContract(page);
     const popupP = page.waitForEvent('popup', { timeout: 5000 }).catch(() => null);
     await view.click();
-    await expect.poll(() => page.evaluate(() => window.__toastsSeen.join(' | ')), { timeout: 8000 })
-      .toMatch(/Couldn’t open Ironwood contract\.pdf.*fresh link.*tap Open the contract again/);
+    // Said on the contract row, where she tapped (G68), not in a toast.
+    await expect(page.locator('[data-contract-err]'))
+      .toHaveText(/Couldn’t open Ironwood contract\.pdf.*fresh link.*tap Open the contract again/, { timeout: 8000 });
+    await expect(page.locator('[data-contract-err]')).toBeVisible();
     expect(seen.signs.length, 'premise: the sign call went out').toBe(1);
     expect(seen.opened, 'something was opened although signing failed').toHaveLength(0);
     const popup = await popupP;
     if (popup) await expect.poll(() => popup.isClosed(), { timeout: 5000 }).toBe(true);
+  });
+
+  // THE WAIT SHOWS ON THE ROW (G68, 11/19/2026): a busy toast away from the
+  // card, and the button stayed live for a second tap.
+  test('while the fresh link is fetched, the row says so and the button is held', async ({ page }) => {
+    const seen = await install(page, { sign: 'ok' });
+    let release; const held = new Promise((r) => { release = r; });
+    await page.context().route(`${PROJECT}/storage/v1/object/sign/**`, async (route) => {
+      if (route.request().method() === 'POST') await held;
+      return route.fallback();
+    });
+    const view = await openContract(page);
+    const popupP = page.waitForEvent('popup');
+    await view.click();
+    const row = page.locator('[data-vaction="contract"]').first();
+    const busy = row.locator('xpath=following-sibling::*[@data-busy-line][1]');
+    await expect(busy).toHaveText('Opening Ironwood contract.pdf…');
+    const held1 = row.getByRole('button', { name: 'Getting the contract…' });
+    await expect(held1).toBeDisabled();
+    release();
+    const popup = await popupP;
+    await popup.waitForURL(new RegExp(FRESH_TOKEN), { timeout: 10_000 });
+    await expect(busy).toHaveCount(0);
+    expect(seen.signs.length, 'one tap, one signature').toBe(1);
   });
 });

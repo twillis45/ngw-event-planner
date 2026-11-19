@@ -19,6 +19,8 @@ import io
 import pathlib
 
 ROUTERS = pathlib.Path(__file__).resolve().parents[1] / "app" / "routers"
+APP = pathlib.Path(__file__).resolve().parents[1] / "app"
+HTTP_METHODS = {"get", "post", "put", "patch", "delete"}
 
 # route  ->  why it is allowed to be unauthenticated
 INTENTIONALLY_PUBLIC = {
@@ -52,13 +54,10 @@ INTENTIONALLY_PUBLIC = {
     ("POST", "/api/public/questions/unsubscribe/{token}"): "the thread's emailed-link guest_token, 22+ chars, exact match",
     ("POST", "/api/public/invite/{rsvp_code}/opened"): "rsvpCode; never creates an identity, answers the same for any key",
     ("POST", "/messages/{message_id}/portal-respond"): "per-message portal_token is checked",
-    # Client-portal reads — list_messages gates INTERNAL_TEAM only, deliberately
-    ("GET", "/channels"): "portal lists channels without a planner session; RECORDED as a finding, not endorsed",
     # OAuth + provider callbacks: cannot carry our auth by definition
     ("GET", "/connect"): "DocuSign OAuth start",
     ("GET", "/callback"): "DocuSign OAuth return",
     ("POST", "/webhook"): "provider-signed webhook — Stripe/DocuSign verify a signature instead",
-    ("GET", "/envelope/{envelope_id}"): "envelope id is the credential; RECORDED as a finding",
     # Outbound wrappers — no caller-supplied URL (verified: all build from env base constants)
     ("POST", "/instacart-cart"): "posts to INSTACART_API_BASE constant",
     ("POST", "/kroger/search-list"): "posts to KROGER_API_BASE constant",
@@ -68,24 +67,35 @@ INTENTIONALLY_PUBLIC = {
     # Guarded by safe_fetch rather than by auth
     ("GET", "/unfurl"): "caller URL, but routed through safe_fetch",
     ("GET", "/results"): "caller URL, but routed through safe_fetch",
+    # /channels, /envelope/{envelope_id} and /verify-session were listed here
+    # and have required sign-in since 2026-08-21; the stale check removed them.
     # create-checkout-session was here as "anonymous today, a product decision".
     # The board ruled 2026-08-07: require signed-in. The entry is DELETED rather
     # than reworded, so the sweep now fails if it ever goes public again.
-    ("GET", "/verify-session"): "keyed on an unguessable session id; carries auth from the client but not required server-side",
+    # Seen only once the sweep read every router object (SEC-4 board 11/19/2026, L10)
+    ("GET", "/api/public/email/stop/{token}"): "the emailed stop token (24 random bytes) is the credential; shows a button, changes nothing",
+    ("POST", "/api/public/email/stop/{token}"): "the same stop token; stops that one address, same answer for any token (no oracle)",
+    ("GET", "/health"): "liveness probe; returns a constant",
+    ("GET", "/api/capabilities"): "capability probe; booleans only, never secrets",
+    ("POST", "/api/resend-webhook"): "provider webhook: Svix signature checked when RESEND_WEBHOOK_SECRET is set; RECORDED: unverified without it (board C3)",
 }
 
 
 def unauthenticated_routes():
     found = []
-    for p in sorted(ROUTERS.glob("*.py")):
+    for p in sorted(ROUTERS.glob("*.py")) + [APP / "main.py"]:
         tree = ast.parse(io.open(p, encoding="utf-8").read())
         for n in ast.walk(tree):
             if not isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
             meth = path = None
             for d in n.decorator_list:
+                # ANY router object, not only one named `router` (SEC-4 board
+                # 11/19/2026, finding L10): `@public_router.get(...)` and
+                # `@app.post(...)` routes were invisible to this sweep.
                 if (isinstance(d, ast.Call) and isinstance(d.func, ast.Attribute)
-                        and isinstance(d.func.value, ast.Name) and d.func.value.id == "router"):
+                        and isinstance(d.func.value, ast.Name)
+                        and d.func.attr in HTTP_METHODS):
                     meth = d.func.attr.upper()
                     if d.args and isinstance(d.args[0], ast.Constant):
                         path = d.args[0].value
@@ -132,3 +142,11 @@ def test_the_scanner_still_sees_routes():
     # nothing — the exact vacuous-pass shape that wasted a day of this sprint.
     all_routes = unauthenticated_routes()
     assert len(all_routes) > 10, "scanner found almost nothing — it is broken, not the code"
+
+
+def test_no_declared_public_route_is_stale():
+    # SEC-4 board 11/19/2026 (L10): an entry for a route that no longer exists,
+    # or that now requires sign-in, is a reason nobody re-reads. It must go.
+    seen = {(m, pth) for m, pth, _f, _ln in unauthenticated_routes()}
+    stale = sorted(k for k in INTENTIONALLY_PUBLIC if k not in seen)
+    assert stale == [], "Declared public but not found unauthenticated; remove:\n  " + "\n  ".join(map(str, stale))

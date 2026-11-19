@@ -411,7 +411,9 @@ export default function InviteV2({ code }) {
   // the original's PublicRsvpRoute; a no-op while no backend is configured).
   useEffect(() => {
     if (!event || !isRsvpApiConfigured()) return undefined;
-    const flush = () => { flushRsvpOutbox(event.id, code).catch(() => {}); };
+    // An emptied outbox means the held reply reached the host: stop saying
+    // "not delivered" (it stayed on screen after a successful flush).
+    const flush = () => { flushRsvpOutbox(event.id, code).then((r) => { if (r && r.flushed && !r.remaining) setQueued(false); }).catch(() => {}); };
     flush();
     window.addEventListener('online', flush);
     return () => window.removeEventListener('online', flush);

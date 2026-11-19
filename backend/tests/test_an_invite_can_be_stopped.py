@@ -48,6 +48,8 @@ class Conn:
             return "email_stops"
         if "count(*) from event_messages" in q:
             return 0
+        if "select event_id from public.email_stops where token" in q:
+            return next((k[0] for k, r in self.db["stops"].items() if r["token"] == a[0]), None)
         raise AssertionError(q)
     async def execute(self, q, *a):
         if "update public.email_stops set stopped_at" in q:

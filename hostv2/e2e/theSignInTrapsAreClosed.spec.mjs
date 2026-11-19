@@ -31,7 +31,7 @@ const ev = (id, name) => ({ id, name, type: 'Game Night', date: '2027-03-06', cr
   guestMode: 'count', guestEstimate: 6, guestCountSource: 'host', budget: [], vendors: [], guests: [] });
 
 const install = async (page, { signedIn, locals, stamped = [], cloud = [], failUploads = [], cache = [] }) => {
-  const calls = { writes: [], verify: [], deleted: 0 };
+  const calls = { writes: [], verify: [], otp: [], deleted: 0 };
   await page.route(`${PROJECT}/**`, async (route) => {
     const req = route.request(); const url = req.url();
     const json = (body) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
@@ -45,7 +45,7 @@ const install = async (page, { signedIn, locals, stamped = [], cloud = [], failU
       }
       return json(cloud.map((e) => ({ id: e.id, data: e, updated_at: '2026-11-07T12:00:00.000000+00:00' })));
     }
-    if (url.includes('/auth/v1/otp')) return json({});
+    if (url.includes('/auth/v1/otp')) { calls.otp.push(req.postDataJSON()); return json({}); }
     if (url.includes('/auth/v1/verify')) { calls.verify.push(req.postDataJSON()); return json(session()); }
     if (url.includes('/auth/v1/')) return json({});
     return json([]);
@@ -207,4 +207,28 @@ test('a code that does not work says so under the code field, and stays until it
   await expect(err).toBeVisible();
   await code.fill('222 222');
   await expect(err).toHaveCount(0);
+});
+
+// OWNER RULING 11/19/2026 (plan G87): promotions only to people who tick an
+// UNCHECKED opt-in at sign-up. The box starts unticked; only a tick puts the
+// opt-in (when, and the words shown) on the sign-in request.
+test('offers and news start unticked, and only a tick asks for them', async ({ page }) => {
+  const calls = await install(page, { signedIn: false, locals: [ev('ev-mine', 'My Game Night')] });
+  await boot(page);
+  await openSettings(page);
+  const box = page.locator('[data-offers-opt-in] input[type=checkbox]');
+  await expect(box).not.toBeChecked();
+  await expect(page.locator('[data-offers-opt-in]')).toContainText('Email me offers and news from No Guesswork');
+  await page.getByLabel('Email for sign-in link').fill('harness@example.invalid');
+  await page.getByRole('button', { name: 'Email me a sign-in link' }).click();
+  await expect.poll(() => calls.otp.length).toBe(1);
+  expect(calls.otp[0].data || {}).not.toHaveProperty('marketing_opt_in');
+  await page.getByRole('button', { name: 'Use a different email' }).click();
+  await page.getByLabel('Email for sign-in link').fill('harness@example.invalid');
+  await page.locator('[data-offers-opt-in]').click();
+  await expect(box).toBeChecked();
+  await page.getByRole('button', { name: 'Email me a sign-in link' }).click();
+  await expect.poll(() => calls.otp.length).toBe(2);
+  expect(calls.otp[1].data.marketing_opt_in).toMatchObject({ version: 'v1-2026-11-19', text: expect.stringContaining('offers and news') });
+  expect(Date.parse(calls.otp[1].data.marketing_opt_in.at)).toBeGreaterThan(0);
 });

@@ -102,6 +102,18 @@ test.describe('no pass held: each surface the pass sells is teased with the pass
     await sheet(page).getByRole('button', { name: DOOR, exact: true }).click();
     await expect(page.locator('#sheet-title')).toHaveText('The One-Event Pass');
   });
+
+  // G63 (owner ruling 11/19/2026): "Find places near the party" sold the pass
+  // on tap. On a locked trip the Venue sheet's door now says what it opens.
+  test('the Venue sheet’s stay door says it comes with the Pass, and opens the locked sheet', async ({ page }) => {
+    await bootShell(page, { ...LOCKED, venue: 'House of Blues Anaheim', venueKind: 'venue' });
+    await openSectionByName(page, 'Venue');
+    const row = page.locator('[data-venue-stay]');
+    await expect(row.getByRole('button', { name: 'Find places near the party' })).toHaveCount(0);
+    await row.getByRole('button', { name: 'Where everyone stays — with the Pass', exact: true }).click();
+    await expect(page.locator('#sheet-title')).toHaveText('Where everyone stays');
+    await expect(sheet(page).getByText(LODGING_LOCK)).toBeVisible();
+  });
 });
 
 // The same three surfaces, open. Run twice: once because the server confirms
@@ -124,6 +136,12 @@ for (const [label, stamp, held] of [['pass held', LOCKED, true], ['stamped free 
       await use.scrollIntoViewIfNeeded();
       await expect(use).toBeVisible();
       await expect(sheet(page).getByText(DAYS_LOCK)).toHaveCount(0);
+    });
+
+    test('the Venue sheet’s stay door still promises the search it opens', async ({ page }) => {
+      await bootShell(page, { ...stamp, venue: 'House of Blues Anaheim', venueKind: 'venue' }, { held });
+      await openSectionByName(page, 'Venue');
+      await expect(page.locator('[data-venue-stay]').getByRole('button', { name: 'Find places near the party' })).toBeVisible();
     });
 
     test('who pays for what: the pool controls are there', async ({ page }) => {

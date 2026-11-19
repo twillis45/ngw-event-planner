@@ -348,4 +348,30 @@ test.describe('a refused save is not called saved — the shell half', () => {
     await expect(page.locator('div.toast')).toContainText(/Your version is now the one in your account/i, { timeout: 5000 });
     await expect(busy).toHaveCount(0);
   });
+
+  // ── 8 · A FAILED CHOICE IS SAID UNDER THE BUTTONS (G68, 11/19/2026) ──────
+  // It was a toast that left in seconds, away from the row she tapped. Held
+  // first, so the buttons are seen held against a second tap.
+  test('a choice that cannot reach the account is said under the two buttons, and they are held while it tries', async ({ page }) => {
+    await install(page, { mode: 'resolvable' });
+    await boot(page);
+    await makeAnEdit(page);
+    await openSettings(page);
+    let release; const held = new Promise((r) => { release = r; });
+    await page.route(`${PROJECT}/rest/v1/events**`, async (route) => {
+      if (route.request().method() === 'PATCH') { await held; return route.abort('internetdisconnected'); }
+      return route.fallback();
+    });
+    await conflictRow(page).getByRole('button', { name: 'Keep mine' }).click();
+    await expect(page.locator('[data-busy-line]', { hasText: 'Saving your choice' })).toBeVisible();
+    await expect(conflictRow(page).getByRole('button', { name: 'Keep mine' })).toBeDisabled();
+    await expect(conflictRow(page).getByRole('button', { name: 'Use the newer version' })).toBeDisabled();
+    release();
+    const err = page.locator('[data-conflict-err]');
+    await expect(err).toHaveText('Couldn’t reach your account — nothing was changed. Try again in a moment.');
+    await expect(err).toBeVisible();
+    await page.waitForTimeout(4500);   // past a toast's lifetime: it is still there
+    await expect(err).toBeVisible();
+    await expect(conflictRow(page).getByRole('button', { name: 'Keep mine' })).toBeEnabled();
+  });
 });

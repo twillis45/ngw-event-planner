@@ -78,6 +78,7 @@ import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/in
 import { inviteGaps } from '@app/lib/inviteGaps';
 import { inviteCardModel, inviteCardKey } from '@app/lib/inviteCard';
 import SignInCheck, { signInCheckOn } from './SignInCheck';
+import { signUpData, MARKETING_OPT_IN_LABEL } from '@app/lib/marketingConsent';
 import { draftInvite, inviteVoicesFor, eventCulturalMeta, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
 // dollars turned $0.20/lb of ice into "$0/lb" on 84 of the corpus's 440
@@ -1078,6 +1079,9 @@ export default function HostShellV2() {
   const ensureInviteCard = (ev) => {
     try {
       const model = inviteCardModel(ev);
+      // The page's crest (InviteV2 markUrlFor): the event's artwork unless the host turned it off.
+      const crestFile = ev.inviteCrest === 'off' ? null : eventArtworkFile(ev);
+      if (crestFile) model.crest = import.meta.env.BASE_URL + crestFile;
       const key = inviteCardKey(model);
       const m = inviteCardRef.current;
       if (m[ev.id] && m[ev.id].key === key) return m[ev.id].p;
@@ -2405,13 +2409,16 @@ export default function HostShellV2() {
   // changes. Each token is used once, so the check resets after every send.
   const [captchaToken, setCaptchaToken] = useState('');
   const [captchaRound, setCaptchaRound] = useState(0);
+  // OFFERS AND NEWS (owner ruling 11/19/2026, G87): an UNTICKED box; only a
+  // tick records the opt-in on a new account (lib/marketingConsent).
+  const [offersOptIn, setOffersOptIn] = useState(false);
   const sendMagicLink = async () => {
     const em = authEmail.trim();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { setAuthErr('A real email address — the sign-in link goes there.'); return; }
     if (signInCheckOn() && !captchaToken) { setAuthErr('One moment — we’re checking this is a person, not a bot. Try again in a second.'); return; }
     setAuthBusy(true); setAuthErr('');
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email: em, options: { emailRedirectTo: authRedirectUrl(), ...(signInCheckOn() ? { captchaToken } : {}) } });
+      const { error } = await supabase.auth.signInWithOtp({ email: em, options: { emailRedirectTo: authRedirectUrl(), data: signUpData(offersOptIn), ...(signInCheckOn() ? { captchaToken } : {}) } });
       if (signInCheckOn()) setCaptchaRound((n) => n + 1);
       if (error) throw error;
       setAuthSent(true);
@@ -2451,6 +2458,10 @@ export default function HostShellV2() {
                     <>
                       <input className="field" style={{ maxWidth: 'none' }} type="email" placeholder="you@example.com" value={authEmail}
                         onChange={e => { setAuthEmail(e.target.value); setAuthErr(''); }} aria-label="Email for sign-in link" />
+                      <label className="grounding" data-offers-opt-in style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-start', margin: 'var(--sp-2) 0 0', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={offersOptIn} onChange={e => setOffersOptIn(e.target.checked)} style={{ marginTop: 4, flex: 'none' }} />
+                        <span>{MARKETING_OPT_IN_LABEL}</span>
+                      </label>
                       <SignInCheck onToken={setCaptchaToken} resetKey={'form-' + captchaRound} />
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
@@ -3212,6 +3223,7 @@ export default function HostShellV2() {
   // settle-and-the-next-appears rhythm, one surface down.
   const [decOpenCard, setDecOpenCard] = useState(null);
   const [contractUploading, setContractUploading] = useState({}); // per-vendor contract-file upload state
+  const [contractOpening, setContractOpening] = useState({});   // per-vendor "Open the contract" fetching a fresh link (G68)
   // AI DOCUMENT EXTRACTION (2026-08-18): wires an already-real, already-tested
   // backend capability (/api/ai/extract-document, GPT-4o vision) that existed
   // only in the frozen legacy App.js shell — hostv2 never called it, same
@@ -7872,6 +7884,9 @@ export default function HostShellV2() {
   // version she loaded), so nothing is overwritten behind her back either way.
   const [resolvingConflict, setResolvingConflict] = useState(false);
   const [syncRetrying, setSyncRetrying] = useState(false);   // "Retry now" in flight (attention audit 11/18/2026)
+  // A failed choice is said under the two buttons (G68), not in a toast that
+  // leaves before she has read it.
+  const [conflictErr, setConflictErr] = useState('');
   const putCustom = (ev) => {
     if (!ev || !ev.id) return;
     const next = customs.map(c => (c && c.id === ev.id) ? ev : c);
@@ -7882,16 +7897,16 @@ export default function HostShellV2() {
     if (resolvingConflict) return;
     const hers = customs.find(c => c && c.id === eventId);
     if (!hers) return;
-    setResolvingConflict(true);
+    setResolvingConflict(true); setConflictErr('');
     let r = null;
     try { r = await resolveConflict(hers, choice); } catch { r = null; }
     setResolvingConflict(false);
     if (!r || !r.ok) {
       if (r && r.reason === 'conflict') {
         try { markEventConflict(hers.id); } catch { /* status is best-effort */ }
-        toast('It changed again just now — nothing was overwritten. Choose again when you’re ready.');
+        setConflictErr('It changed again just now — nothing was overwritten. Choose again when you’re ready.');
       } else {
-        toast('Couldn’t reach your account — nothing was changed. Try again in a moment.');
+        setConflictErr('Couldn’t reach your account — nothing was changed. Try again in a moment.');
       }
       return;
     }
@@ -15578,7 +15593,9 @@ export default function HostShellV2() {
                     // at 390px the button wrapped and left the "·" dangling.
                     <div className="grounding" data-venue-stay style={{ margin: '0 0 var(--sp-2)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 'var(--sp-2)', rowGap: 'var(--sp-2)' }}>
                       <span>Where everyone stays: <b>{stayName || 'not picked yet'}</b></span>
-                      <button className="mini" onClick={() => goToLodgingCockpit()}>{stayName ? 'Open it' : (vf.name && !vf.isHome ? 'Find places near the party' : 'Find places to stay')}</button>
+                      {/* G63 (owner ruling 11/19/2026): on a trip without the Pass the tap
+                          opens the Pass sheet, so the words say so instead of promising a search. */}
+                      <button className="mini" onClick={() => goToLodgingCockpit()}>{destinationLocked(event) ? 'Where everyone stays — with the Pass' : stayName ? 'Open it' : (vf.name && !vf.isHome ? 'Find places near the party' : 'Find places to stay')}</button>
                     </div>
                   );
                 })()}
@@ -20522,6 +20539,7 @@ export default function HostShellV2() {
                             reach the account and took a second or two with nothing on
                             screen but a disabled button. */}
                         {resolvingConflict && <BusyLine>Saving your choice to your account…</BusyLine>}
+                        {status === SYNC_STATUS.CONFLICT && conflictErr && <p className="grounding" role="alert" data-conflict-err style={{ margin: 'var(--sp-2) 0 0', color: 'var(--danger)', fontWeight: 600 }}>{conflictErr}</p>}
                         {syncRetrying && <BusyLine>Syncing this event with your account…</BusyLine>}
                       </>
                     );
@@ -24856,7 +24874,8 @@ export default function HostShellV2() {
                                       it arrives — a popup opened after an await is refused by Safari
                                       (the Instacart button's lesson, 2026-09-24). */}
                                   {v.contractStoragePath ? (
-                                    <button className="mini" onClick={async () => {
+                                    <button className="mini" disabled={!!contractOpening[v.id]} onClick={async () => {
+                                      if (contractOpening[v.id]) return;
                                       let win = null;
                                       try { win = window.open('', '_blank'); } catch (_e) { win = null; }
                                       try { if (win) win.opener = null; } catch (_e) { /* already safe */ }
@@ -24869,16 +24888,19 @@ export default function HostShellV2() {
                                           win.document.body.textContent = 'Getting the contract…';
                                         }
                                       } catch (_e) { /* a cross-origin or closed tab: nothing to write */ }
-                                      toast('Getting ' + (v.contractFileName || 'the contract') + '…', null, null, { busy: true });
-                                      const r = await contractUrlFor(v);
+                                      // The wait and a failure show ON THE CONTRACT ROW (G68), where she tapped.
+                                      setContractOpening(m => ({ ...m, [v.id]: true }));
+                                      setContractExtractErr(m => ({ ...m, [v.id]: null }));
+                                      let r;
+                                      try { r = await contractUrlFor(v); } finally { setContractOpening(m => ({ ...m, [v.id]: false })); }
                                       if (!r.ok) {
                                         try { if (win) win.close(); } catch (_e) { /* already gone */ }
-                                        toast('Couldn’t open ' + (v.contractFileName || 'the contract') + ' — we couldn’t get a fresh link to the file. Check you’re online and signed in, then tap Open the contract again.', null, null, { sticky: true });
+                                        setContractExtractErr(m => ({ ...m, [v.id]: 'Couldn’t open ' + (v.contractFileName || 'the contract') + ' — we couldn’t get a fresh link to the file. Check you’re online and signed in, then tap Open the contract again.' }));
                                         return;
                                       }
-                                      if (win) { endBusyToast(); try { win.location.replace(r.url); } catch (_e) { /* it navigated away */ } }
+                                      if (win) { try { win.location.replace(r.url); } catch (_e) { /* it navigated away */ } }
                                       else toast('Your browser blocked the new tab.', { label: 'Open the contract', fn: () => { try { window.open(r.url, '_blank', 'noopener'); } catch (_e) { /* blocked again */ } } }, null, { sticky: true });
-                                    }}>Open the contract</button>
+                                    }}>{contractOpening[v.id] ? 'Getting the contract…' : 'Open the contract'}</button>
                                   ) : v.contractUrl ? (
                                     <a className="mini" style={{ textDecoration: 'none' }} href={v.contractUrl} target="_blank" rel="noreferrer">Open the contract</a>
                                   ) : null}
@@ -24936,10 +24958,11 @@ export default function HostShellV2() {
                           )}
                           {contractExtracting[v.id] && <BusyLine>Reading the contract — this can take up to half a minute…</BusyLine>}
                           {contractUploading[v.id] && <BusyLine>Uploading the contract…</BusyLine>}
+                          {contractOpening[v.id] && <BusyLine>Opening {v.contractFileName || 'the contract'}…</BusyLine>}
                           {/* AI-extracted contract summary — labeled, dismissible, review-required
                               (no auto-write; the app never invents facts from a document scan). */}
                           {contractExtractErr[v.id] && (
-                            <p className="v-meta" style={{ color: 'var(--danger)', margin: 'var(--sp-1) 0' }}>{contractExtractErr[v.id]}</p>
+                            <p className="v-meta" role="alert" data-contract-err style={{ color: 'var(--danger)', margin: 'var(--sp-1) 0' }}>{contractExtractErr[v.id]}</p>
                           )}
                           {contractExtracted[v.id] && (() => {
                             const ex = contractExtracted[v.id];

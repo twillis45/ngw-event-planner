@@ -274,6 +274,7 @@ export async function flushRsvpOutbox(eventId, code) {
         access:          Array.isArray(item.access) && item.access.length ? item.access : undefined,
         picks_crabs:     typeof item.picksCrabs === 'boolean' ? item.picksCrabs : undefined,
         mailing_address: item.mailingAddress || undefined,
+        lodging_pick:    item.lodgingPick || undefined,   // dropped until 11/19/2026: an offline pick was lost
         phone:          item.phone,
         email:          item.email,
       });
