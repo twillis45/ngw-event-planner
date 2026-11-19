@@ -70,6 +70,12 @@ const req = async (method, path, body) => {
   return res.status === 204 ? null : res.json();
 };
 
+const withMetadata = (row) => {
+  if (!row || typeof row.metadata !== 'string') return row;
+  let md = {};
+  try { md = JSON.parse(row.metadata) || {}; } catch { md = {}; }
+  return { ...row, metadata: typeof md === 'object' ? md : {} };
+};
 const base = (eventId) => `/api/events/${encodeURIComponent(eventId)}/communication`;
 
 // ── Capabilities cache ───────────────────────────────────────────────────────
@@ -145,7 +151,11 @@ export const commApi = {
   listChannels:   (eventId)                       => req('GET',  `${base(eventId)}/channels`),
   ensureChannels: (eventId)                       => req('POST', `${base(eventId)}/channels/ensure`),
   listMessages:   (eventId, channelType, limit=100) => req('GET', `${base(eventId)}/channels/${mapChannel(channelType)}/messages?limit=${limit}`),
-  createMessage:  (eventId, channelType, msg)     => req('POST', `${base(eventId)}/channels/${mapChannel(channelType)}/messages`, msg),
+  // The row comes back with `metadata` as JSON TEXT (the server's pool has no
+  // jsonb codec), so `res.metadata.delivery` read undefined and every real
+  // email send showed as failed (live alias check, 11/19/2026). Decoded here,
+  // once, for every caller.
+  createMessage:  (eventId, channelType, msg)     => req('POST', `${base(eventId)}/channels/${mapChannel(channelType)}/messages`, msg).then(withMetadata),
   updateMessage:  (eventId, messageId, patch)     => req('PATCH', `${base(eventId)}/messages/${messageId}`, patch),
   deleteMessage:  (eventId, messageId)            => req('DELETE', `${base(eventId)}/messages/${messageId}`),
   pinMessage:     (eventId, messageId, opts={})   => req('POST', `${base(eventId)}/messages/${messageId}/pin`, opts),
