@@ -40,6 +40,8 @@ class Conn:
             return {"id": a[0], "metadata": json.dumps({"delivery": json.loads(a[1])})}
         raise AssertionError(q)
     async def fetchval(self, q, *a):
+        if "to_regclass('public.email_stops')" in q:
+            return None      # before 031: no stop links, and sends go as before
         if "count(*) from event_messages" in q:
             return self.db["sent_today"]
         raise AssertionError(q)

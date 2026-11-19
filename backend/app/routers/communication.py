@@ -8,14 +8,16 @@ planner provides a recipient email + `deliver_email: true`.
 """
 import html as _html
 import json
+import secrets
 from datetime import datetime
 from typing import Optional, Literal
 
-from fastapi import APIRouter, Header, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from ..db import get_pool
-from ..config import APP_BASE_URL
+from ..config import APP_BASE_URL, API_PUBLIC_BASE_URL
 from ..auth import require_planner
 from ..emailer import send_approval_email, send_thread_email, is_email_configured
 
@@ -98,6 +100,34 @@ async def _assert_email_send_allowed(conn, event_id: str, recipient: str) -> Non
     )
     if (n or 0) >= EMAIL_SENDS_PER_EVENT_PER_DAY:
         raise HTTPException(429, "This event has sent its email for today. Try again tomorrow.")
+
+
+# ── A STOP LINK ON EVERY EMAIL (owner ruling 11/19/2026, decision 7) ──────────
+# One random token per (event, address), migration 031. The link only SHOWS a
+# button (mail scanners open links, and must never stop anyone); the button and
+# a mail app's one-click List-Unsubscribe (RFC 8058) POST. Once stopped, this
+# route will not email that address about that event again. Before 031 the
+# table is absent and email goes out exactly as before, without the link.
+async def _email_stop_token(conn, event_id: str, recipient: str) -> Optional[str]:
+    if not await conn.fetchval("select to_regclass('public.email_stops')"):
+        return None
+    addr = (recipient or "").strip().lower()
+    row = await conn.fetchrow(
+        "select token, stopped_at from public.email_stops where event_id=$1 and email=$2", event_id, addr)
+    if row and row["stopped_at"]:
+        raise HTTPException(410, "This person asked not to get emails about this event. Text them instead.")
+    if row:
+        return row["token"]
+    row = await conn.fetchrow(
+        """insert into public.email_stops (event_id, email, token) values ($1, $2, $3)
+           on conflict (event_id, email) do update set email = excluded.email
+           returning token, stopped_at""",
+        event_id, addr, secrets.token_urlsafe(24))
+    return row["token"]
+
+
+def email_stop_url(token: str) -> str:
+    return f"{API_PUBLIC_BASE_URL.rstrip('/')}/api/public/email/stop/{token}"
 
 
 def _one_line(s: Optional[str]) -> str:
@@ -377,6 +407,7 @@ async def create_message(
             await _assert_event_access(conn, event_id, principal)
         if standard_email or approval_email_to:
             await _assert_email_send_allowed(conn, event_id, payload.recipient_email if standard_email else approval_email_to)
+        stop_token = await _email_stop_token(conn, event_id, payload.recipient_email) if standard_email else None
         ch = await _channel(conn, event_id, channel_type)
 
         # Build initial metadata. Sprint 58.2: delivery intent is recorded here
@@ -428,6 +459,13 @@ async def create_message(
         # way and carries a plain-text part with the same words.
         greeting_text = f"Hi {_one_line(payload.recipient_name)},\n\n" if payload.recipient_name else ""
         body_plain = f"{greeting_text}{body_text}\n\n— Sent via No Guesswork Events"
+        stop_headers = None
+        if stop_token:
+            stop = email_stop_url(stop_token)
+            html += (f"<p style=\"margin-top:8px;font-size:13px;color:#888;\">You're getting this because "
+                     f"{_html.escape(sender)} sent it to you. <a href=\"{_html.escape(stop)}\">Stop emails about this event</a>.</p>")
+            body_plain += f"\n\nYou're getting this because {sender} sent it to you. Stop emails about this event: {stop}"
+            stop_headers = {"List-Unsubscribe": f"<{stop}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
         delivery_result = await send_thread_email(
             to=payload.recipient_email,
             subject=subj,
@@ -435,6 +473,7 @@ async def create_message(
             body_text=body_plain,
             sender_name=f"{sender} via No Guesswork",
             reply_to=reply_to,
+            headers=stop_headers,
         )
 
         # Patch the message metadata with the delivery result.
@@ -709,3 +748,40 @@ async def mark_read(
             event_id, ch["id"], payload.reader_key)
         return {"ok": True}
 
+
+
+# ── THE STOP PAGE (public) ────────────────────────────────────────────────────
+public_router = APIRouter(tags=["communication-public"])
+_STOP_PAGE = ("<!doctype html><meta charset=utf-8><meta name=viewport content=\"width=device-width,initial-scale=1\">"
+              "<title>{title}</title><body style=\"font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:3rem auto;padding:0 1rem\">"
+              "<h1 style=\"font-size:1.25rem\">{title}</h1>{body}</body>")
+
+
+def _token(token: str) -> str:
+    t = (token or "")[:80]
+    if len(t) < 22:
+        raise HTTPException(404, "Not found")
+    return t
+
+
+@public_router.get("/api/public/email/stop/{token}", response_class=HTMLResponse)
+async def email_stop_page(token: str):
+    t = _token(token)
+    return HTMLResponse(_STOP_PAGE.format(
+        title="Stop emails about this event?",
+        body=(f"<p>You won't get emails from your host about this event. The invite link still works.</p>"
+              f"<form method=post action=\"{_html.escape(t)}\"><button style=\"font:inherit;padding:.5rem 1rem\">Stop emails about this event</button></form>")))
+
+
+@public_router.post("/api/public/email/stop/{token}", response_class=HTMLResponse)
+async def email_stop(token: str):
+    t = _token(token)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        if await conn.fetchval("select to_regclass('public.email_stops')"):
+            await conn.execute(
+                "update public.email_stops set stopped_at = now() where token = $1 and stopped_at is null", t)
+    # The same answer whether or not the token matched: no oracle.
+    return HTMLResponse(_STOP_PAGE.format(
+        title="You won't get emails about this event anymore",
+        body="<p>Your host can still reach you another way. The invite link still works.</p>"))

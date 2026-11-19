@@ -20751,6 +20751,7 @@ export default function HostShellV2() {
                   const m = String((e && e.message) || '');
                   if (/→ 429/.test(m)) return { ok: false, capped: true };
                   if (/→ 403/.test(m)) return { ok: false, error: 'not saved to your account yet' };
+                  if (/→ 410/.test(m)) return { ok: false, error: 'they asked not to get emails about this event — text them instead' };
                   return { ok: false, error: 'request failed' };
                 }
               };

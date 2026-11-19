@@ -262,6 +262,7 @@ async def _shutdown():
     await close_pool()
 
 app.include_router(communication.router)
+app.include_router(communication.public_router)   # the stop link on every email (031)
 app.include_router(docusign.router)
 app.include_router(ai.router)
 app.include_router(weather.router)

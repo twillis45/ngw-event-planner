@@ -164,6 +164,7 @@ async def send_thread_email(
     sender_name: Optional[str] = None,
     reply_to: Optional[str] = None,
     body_text: Optional[str] = None,
+    headers: Optional[dict] = None,
 ) -> dict:
     """Sprint 58.2: send a composer-authored thread message via Resend.
 
@@ -188,6 +189,7 @@ async def send_thread_email(
             reply_to=reply_to,
             from_name=sender_name,
             text=body_text,
+            headers=headers,
         )
         resend_id = result.get("id") if isinstance(result, dict) else None
         log.info("thread email sent resend_id=%s", resend_id)
