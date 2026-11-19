@@ -4,7 +4,7 @@
 // and has not been invited yet: by email where the guest has a good address
 // (one email each, through the same guarded route as every other send), else
 // into a one-at-a-time text queue. Nobody is invited twice.
-import { inviteRecipients, sendInviteEmails, markInvited, smsHref, inviteSubjectAndBody } from '../inviteBatch';
+import { inviteRecipients, sendInviteEmails, markInvited, smsHref, inviteSubjectAndBody, inviteContacts } from '../inviteBatch';
 
 const G = [
   { id: 'a', name: 'Maya Chen', email: 'maya@example.test', phone: '(410) 555-0101' },
@@ -77,4 +77,29 @@ test('the email subject is not said twice at the top of its own body', () => {
   expect(body).toBe('🍂 Come eat with us\n\nTap to reply: https://x.test/r');
   // a host who rewrote the top line keeps every word they wrote
   expect(inviteSubjectAndBody('Hey all!\n\nCome by.', 'You’re invited — X').body).toBe('Hey all!\n\nCome by.');
+});
+
+// Owner, 11/19/2026: "Host needs to be able to send both email and text to
+// individual guests." Beside the batch, every guest who has not declined is
+// listed with each way they can be reached, so the host can email one, text
+// one, or both, and see how each was already invited.
+
+test('each guest is listed with every way they can be reached, and how they were invited', () => {
+  const rows = inviteContacts(G);
+  expect(rows.map((r) => r.id)).toEqual(['a', 'b', 'd', 'e', 'f', 'g']);   // Sam declined
+  const maya = rows.find((r) => r.id === 'a');
+  expect(maya).toMatchObject({ email: 'maya@example.test', phone: '4105550101' });   // both: both offered
+  expect(rows.find((r) => r.id === 'b')).toMatchObject({ email: '', phone: '4105550102' });
+  expect(rows.find((r) => r.id === 'd')).toMatchObject({ email: '', phone: '' });     // nothing usable
+  expect(rows.find((r) => r.id === 'e').invitedVia).toBe('email');
+});
+
+test('sending one way and then the other keeps both on the guest', () => {
+  const at1 = '2026-11-19T15:00:00.000Z'; const at2 = '2026-11-19T15:05:00.000Z';
+  let next = markInvited(G, [{ id: 'a' }], 'email', at1);
+  next = markInvited(next, [{ id: 'a' }], 'text', at2);
+  const maya = next.find((g) => g.id === 'a');
+  expect(maya.invitedVia).toBe('email+text');
+  expect(maya.invitedAt).toBe(at1);                          // the first invite stays the first
+  expect(inviteContacts(next).find((r) => r.id === 'a').invitedVia).toBe('email+text');
 });

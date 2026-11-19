@@ -140,3 +140,29 @@ test('a repast offers no Playful voice', async ({ page }) => {
   await expect(page.getByRole('radio', { name: 'Formal', exact: true })).toBeVisible();
   await expect(page.getByRole('radio', { name: 'Playful', exact: true })).toHaveCount(0);
 });
+
+// Owner, 11/19/2026: "Host needs to be able to send both email and text to
+// individual guests." Maya has both, so the batch would only email her; her own
+// row lets the host text her too, and says how each guest was invited.
+test('one guest at a time: text a guest the batch would only email, and see how each was invited', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.addEventListener('click', (ev) => {
+      const a = ev.target && ev.target.closest && ev.target.closest('a[href^="sms:"]');
+      if (a) ev.preventDefault();
+    }, true);
+  });
+  await openInvite(page, hostEvent());
+  const block = page.locator('[data-invite-list]');
+  await block.locator('[data-invite-one-open]').click();
+  const list = block.locator('[data-invite-one]');
+  await expect(list.locator('[data-invite-guest]')).toHaveCount(3);          // Sam declined
+  await expect(list.locator('[data-invite-guest="g4"]')).toContainText('Invited by email');
+  const maya = list.locator('[data-invite-guest="g1"]');
+  await expect(maya).toContainText('Not invited yet');
+  const text = maya.locator('[data-invite-one-text]');
+  expect((await text.getAttribute('href')).startsWith('sms:4105550101?&body=')).toBe(true);
+  await text.click();
+  await expect(maya).toContainText('Invited by text');
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0]);
+  expect(saved.guests.find((g) => g.id === 'g1').invitedVia).toBe('text');
+});

@@ -60,7 +60,34 @@ export async function sendInviteEmails(list, send, onProgress) {
 export function markInvited(guests, reached, via, at) {
   const ids = new Set((reached || []).map((x) => x && x.id));
   if (!ids.size) return guests;
-  return (guests || []).map((g) => (g && ids.has(g.id) ? { ...g, invitedAt: at, invitedVia: via } : g));
+  return (guests || []).map((g) => {
+    if (!g || !ids.has(g.id)) return g;
+    // A guest emailed and then texted (or the other way) keeps both, in order,
+    // and the first invite stays the first.
+    const ways = String(g.invitedVia || '').split('+').filter(Boolean);
+    if (!ways.includes(via)) ways.push(via);
+    return { ...g, invitedAt: g.invitedAt || at, invitedVia: ways.join('+') };
+  });
+}
+
+/**
+ * One row per guest who has not declined, with every way they can be reached
+ * (owner, 11/19/2026: the host sends email AND text to individual guests).
+ * `email` is '' unless the address looks right; `phone` is digits or ''.
+ */
+export function inviteContacts(guests) {
+  return (Array.isArray(guests) ? guests : [])
+    .filter((g) => g && g.rsvp !== 'No')
+    .map((g) => {
+      const email = String(g.email || '').trim();
+      const phone = digitsOf(g.phone);
+      return {
+        id: g.id, name: String(g.name || '').trim(),
+        email: email && !isMalformedEmail(email) ? email : '',
+        phone: phone.replace(/\D/g, '').length >= 7 ? phone : '',
+        invitedVia: g.invitedVia || '',
+      };
+    });
 }
 
 const firstName = (name) => String(name || '').trim().split(/\s+/)[0] || '';

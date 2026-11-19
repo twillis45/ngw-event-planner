@@ -7,9 +7,12 @@
 // result is kept on the guest. The daily cap stops the run and says so.
 // TEXT: guests with only a phone, one prefilled text at a time. The app does
 // not send texts; the host's tap on "Text …" is recorded as handed off.
+// ONE GUEST (owner, 11/19/2026: "Host needs to be able to send both email and
+// text to individual guests"): every guest who has not declined, with Email
+// and Text wherever they have that contact, and how they were already invited.
 // The rules (who, how, nobody twice) are in lib/inviteBatch.js.
 import { useState } from 'react';
-import { inviteRecipients, sendInviteEmails, smsHref } from '@app/lib/inviteBatch';
+import { inviteRecipients, inviteContacts, sendInviteEmails, smsHref } from '@app/lib/inviteBatch';
 
 export default function InviteToTheList({ guests, draft, canEmail, sendOne, onReached }) {
   const r = inviteRecipients(guests);
@@ -18,10 +21,13 @@ export default function InviteToTheList({ guests, draft, canEmail, sendOne, onRe
   const [result, setResult] = useState(null);
   const [queueAt, setQueueAt] = useState(null);      // index into r.text while texting
   const [queue, setQueue] = useState([]);
+  const [oneOpen, setOneOpen] = useState(false);
+  const [oneState, setOneState] = useState({});      // guest id → 'sending' | 'sent' | error text
+  const rows = inviteContacts(guests);
 
   const emailCount = r.email.length;
   // No guest list to speak of: say nothing.
-  if (!emailCount && !r.text.length && !r.alreadyInvited && !r.unreachable.length && !result && queueAt == null) return null;
+  if (!rows.length) return null;
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
   const run = async () => {
@@ -33,6 +39,20 @@ export default function InviteToTheList({ guests, draft, canEmail, sendOne, onRe
     setResult(out);
     setStep('done');
   };
+
+  const emailOne = async (row) => {
+    setOneState((m) => ({ ...m, [row.id]: 'sending' }));
+    let out;
+    try { out = await sendOne(row); } catch (e) { out = { ok: false, error: 'request failed' }; }
+    if (out && out.ok) onReached([row], 'email');
+    const said = out && out.ok ? 'sent'
+      : out && out.capped ? 'This event has sent its email for today.'
+      : `Didn’t go out — ${(out && out.error) || 'not sent'}.`;
+    setOneState((m) => ({ ...m, [row.id]: said }));
+  };
+  const invitedLine = (via) => (via
+    ? 'Invited by ' + via.split('+').map((w) => (w === 'text' ? 'text' : 'email')).join(' and ')
+    : 'Not invited yet');
 
   const startTexts = () => { setQueue(r.text); setQueueAt(0); };
   const current = queueAt != null ? queue[queueAt] : null;
@@ -104,6 +124,41 @@ export default function InviteToTheList({ guests, draft, canEmail, sendOne, onRe
       )}
       {queueAt != null && !current && queue.length > 0 && (
         <p className="grounding" role="status" style={{ margin: 'var(--sp-2) 0 0' }}>That’s everyone with only a phone number.</p>
+      )}
+
+      {/* ── ONE GUEST, EITHER WAY OR BOTH ─────────────────────────────────── */}
+      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+        <button className="mini" data-invite-one-open aria-expanded={oneOpen} onClick={() => setOneOpen((o) => !o)}>
+          {oneOpen ? 'Hide the guest list' : `Send to one guest (${rows.length})`}
+        </button>
+      </div>
+      {oneOpen && (
+        <ul data-invite-one style={{ listStyle: 'none', margin: 'var(--sp-2) 0 0', padding: 0 }}>
+          {rows.map((g) => {
+            const st = oneState[g.id];
+            return (
+              <li key={g.id} data-invite-guest={g.id} style={{ padding: 'var(--sp-2) 0', borderTop: '1px solid var(--line)' }}>
+                <div className="f-name">{g.name || 'A guest'}</div>
+                <p className="of" style={{ margin: '2px 0 var(--sp-2)' }}>
+                  {st === 'sent' ? 'Emailed just now.' : (st && st !== 'sending') ? st : invitedLine(g.invitedVia)}
+                </p>
+                <div className="actions-row">
+                  {g.email && canEmail && (
+                    <button className="mini" data-invite-one-email disabled={st === 'sending' || st === 'sent'}
+                      onClick={() => emailOne(g)}>{st === 'sending' ? 'Sending…' : 'Email'}</button>
+                  )}
+                  {g.phone && (
+                    <a className="mini" style={{ textDecoration: 'none' }} data-invite-one-text
+                      href={smsHref(g, draft)} onClick={() => onReached([g], 'text')}>Text</a>
+                  )}
+                  {!g.phone && !(g.email && canEmail) && (
+                    <span className="of">{g.email ? 'Sign in to email them from here.' : 'No email or phone yet — add one in Guests.'}</span>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
 
       {(r.alreadyInvited > 0 || r.unreachable.length > 0) && (
