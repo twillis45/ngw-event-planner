@@ -77,7 +77,7 @@ import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMess
 import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/inviteBatch';
 import { inviteGaps } from '@app/lib/inviteGaps';
 import { inviteCardModel, inviteCardKey } from '@app/lib/inviteCard';
-import SignInCheck, { signInCheckOn } from './SignInCheck';
+import SignInCheck, { signInCheckOn } from '@app/components/SignInCheck';
 import { signInSendDecision, signInErrorText } from '@app/lib/signInCheckGate';
 import { signUpData, MARKETING_OPT_IN_LABEL } from '@app/lib/marketingConsent';
 import { domainMove, moveNotice } from '@app/lib/domainMove';
