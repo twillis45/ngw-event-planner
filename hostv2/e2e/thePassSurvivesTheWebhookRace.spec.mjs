@@ -78,6 +78,11 @@ const stubPass = async (page, answers) => {
   // Catch-all FIRST — everything else on the fake host fails fast rather than
   // hanging for the navigation timeout.
   await page.route(`${API}/**`, (route) => route.abort());
+  // Capabilities answer, as an older backend with no price test would (G86).
+  // While capabilities have NOT answered, a billing-live build cannot know the
+  // device's price and names none, by design (lib/passPrice), so FOR_SALE's
+  // "$39" needs a settled answer, not an aborted one.
+  await page.route(`${API}/api/capabilities`, (route) => route.fulfill({ status: 200, json: {} }));
   // Specific stub SECOND, so it is tried first and beats the catch-all.
   await page.route(`${API}/api/stripe/pass**`, async (route) => {
     const held = answers[Math.min(i, answers.length - 1)];

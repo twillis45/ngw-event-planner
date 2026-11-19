@@ -1,5 +1,13 @@
 # Where We Are -- live status board
 
+## November 19, 2026 (later) — the owner's rulings, built
+
+**Ten decisions in one sitting.** The owner approved every recommendation on the decisions list and the order to build them. The same day: offers and news go only to hosts who tick an unticked box, while plan reminders reach everyone with their own stop link; a locked trip's stay door says it comes with the Pass; the old self-contained vendor link ends after its event; and, ahead of the move to the company's own address, a host whose plan lives only on one device will be told to sign in before the day.
+
+**SEC-4 amended.** The board accepted the self-test in place of a firm, on conditions: one independent check booked by 11/20 and finished before paid promotion, and selling stops if it slips. The board's sweep of public routes found the auth test blind to two of the app's routers; it now reads them all.
+
+**The bot check, live.** The sign-in check went live and the live test found that it would have locked out anyone Cloudflare refused, while Supabase did not yet require it. Fixed the same hour: the form now lets Supabase decide.
+
 ## November 19, 2026 — the invite reaches the guest, and looks like the invitation
 
 **The whole guest list in one go.** A host invites everyone at once: an email to each guest with an address, and a prefilled text, one at a time, for guests with only a phone. One guest can be sent either or both.

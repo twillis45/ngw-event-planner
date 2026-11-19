@@ -211,6 +211,8 @@ export function HostGuestPhotos({ eventId, event, onPhotos }) {
   useEffect(() => { if (isGuestPhotosApiConfigured()) load(); }, [eventId]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!isGuestPhotosApiConfigured()) return null;
 
+  // One photo action at a time, and EVERY photo's buttons show it (11/19/2026):
+  // a tap on another photo while one saved used to do nothing and show nothing.
   const act = async (id, fn, done, what) => {
     if (busy) return;
     setBusy(id); setDoing(what); setErr({ id: '', msg: '' }); setLine('');
@@ -261,10 +263,10 @@ export function HostGuestPhotos({ eventId, event, onPhotos }) {
                     {p.status === 'approved' && !p.uploader_private && p.share_blocked ? ' · Sharing off' : ''}
                   </div>
                   <div className="actions-row photo-acts">
-                    {p.status !== 'approved' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => approveGuestPhoto(eventId, p.id).then((x) => { try { trackEvent(ANALYTICS.GUEST_PHOTO_APPROVED); } catch (_e) { /* counter only */ } return x; }), 'Approved — guests can see it now.', 'Approving the photo…')}>Approve</button>}
-                    {p.status !== 'hidden' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => hideGuestPhoto(eventId, p.id), 'Hidden from guests.', 'Hiding the photo from guests…')}>Hide</button>}
+                    {p.status !== 'approved' && <button className="mini" disabled={!!busy} onClick={() => act(p.id, () => approveGuestPhoto(eventId, p.id).then((x) => { try { trackEvent(ANALYTICS.GUEST_PHOTO_APPROVED); } catch (_e) { /* counter only */ } return x; }), 'Approved — guests can see it now.', 'Approving the photo…')}>Approve</button>}
+                    {p.status !== 'hidden' && <button className="mini" disabled={!!busy} onClick={() => act(p.id, () => hideGuestPhoto(eventId, p.id), 'Hidden from guests.', 'Hiding the photo from guests…')}>Hide</button>}
                     {p.status === 'approved' && !p.uploader_private && (
-                      <button className="mini" data-photo-sharing disabled={busy === p.id}
+                      <button className="mini" data-photo-sharing disabled={!!busy}
                         onClick={() => act(p.id, () => setGuestPhotoSharing(eventId, p.id, p.share_blocked), p.share_blocked ? 'Sharing allowed again.' : 'Sharing is off for this photo.', p.share_blocked ? 'Allowing sharing…' : 'Turning sharing off…')}>
                         {p.share_blocked ? 'Allow sharing' : 'Don’t allow sharing'}
                       </button>
@@ -272,7 +274,7 @@ export function HostGuestPhotos({ eventId, event, onPhotos }) {
                     {p.shareable && <PhotoShareControls photo={p} event={event} index={i + 1} onLine={(l) => setLine(l || '')} />}
                     {confirmDel === p.id ? (
                       <>
-                        <button className="mini danger" disabled={busy === p.id} onClick={() => act(p.id, () => deleteGuestPhoto(eventId, p.id), 'Photo deleted.', 'Deleting the photo…')}>Delete it for good</button>
+                        <button className="mini danger" disabled={!!busy} onClick={() => act(p.id, () => deleteGuestPhoto(eventId, p.id), 'Photo deleted.', 'Deleting the photo…')}>Delete it for good</button>
                         <button className="mini" onClick={() => setConfirmDel('')}>Keep it</button>
                       </>
                     ) : (
@@ -292,8 +294,8 @@ export function HostGuestPhotos({ eventId, event, onPhotos }) {
           actions={(p) => (
             <>
               <span className="pv-note">From {p.guest_name} · {p.status === 'pending' ? 'Waiting for your approval' : p.status === 'approved' ? 'Guests can see it' : 'Hidden from guests'}</span>
-              {p.status !== 'approved' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => approveGuestPhoto(eventId, p.id).then((x) => { try { trackEvent(ANALYTICS.GUEST_PHOTO_APPROVED); } catch (_e) { /* counter only */ } return x; }), 'Approved — guests can see it now.', 'Approving the photo…')}>Approve</button>}
-              {p.status !== 'hidden' && <button className="mini" disabled={busy === p.id} onClick={() => act(p.id, () => hideGuestPhoto(eventId, p.id), 'Hidden from guests.', 'Hiding the photo from guests…')}>Hide</button>}
+              {p.status !== 'approved' && <button className="mini" disabled={!!busy} onClick={() => act(p.id, () => approveGuestPhoto(eventId, p.id).then((x) => { try { trackEvent(ANALYTICS.GUEST_PHOTO_APPROVED); } catch (_e) { /* counter only */ } return x; }), 'Approved — guests can see it now.', 'Approving the photo…')}>Approve</button>}
+              {p.status !== 'hidden' && <button className="mini" disabled={!!busy} onClick={() => act(p.id, () => hideGuestPhoto(eventId, p.id), 'Hidden from guests.', 'Hiding the photo from guests…')}>Hide</button>}
               {outcome(p)}
             </>
           )} />

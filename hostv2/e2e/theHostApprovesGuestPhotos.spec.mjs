@@ -166,6 +166,8 @@ test('while a photo is approved its cell says so and Approve is held; a failed H
   await cell.getByRole('button', { name: 'Approve' }).click();
   await expect(cell.locator('[data-busy-line]')).toHaveText('Approving the photo…');
   await expect(cell.getByRole('button', { name: 'Approve' })).toBeDisabled();
+  // The other photo's buttons are held too, so a tap there is never silently dropped (11/19/2026).
+  await expect(page.locator('[data-host-photos] [data-photo="ok1"]').getByRole('button', { name: 'Hide' })).toBeDisabled();
   release();
   await expect(cell.locator('[data-busy-line]')).toHaveCount(0);
   await expect(cell).toHaveAttribute('data-status', 'approved');

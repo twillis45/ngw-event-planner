@@ -238,7 +238,19 @@ export function purgeStaleOutbox(queue, now = Date.now()) {
   });
 }
 
-export async function flushRsvpOutbox(eventId, code) {
+// One flush per event at a time (11/19/2026): the flush on page load and the
+// one on `online` could overlap and send the same held reply twice. A second
+// caller shares the first one's result.
+const flushing = new Map();
+export function flushRsvpOutbox(eventId, code) {
+  const k = String(eventId || '') + '|' + String(code || '');
+  if (flushing.has(k)) return flushing.get(k);
+  const p = flushOnce(eventId, code).finally(() => flushing.delete(k));
+  flushing.set(k, p);
+  return p;
+}
+
+async function flushOnce(eventId, code) {
   if (!BASE || !eventId || !code) return { flushed: 0, remaining: 0 };
   const key = `${OUTBOX_PREFIX}${eventId}`;
   let queue;

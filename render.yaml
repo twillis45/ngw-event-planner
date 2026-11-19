@@ -67,6 +67,15 @@ services:
       # pause set in the dashboard.
       - key: PASS_SALES_PAUSED
         sync: false
+      # The One-Event Pass price test (G86, owner 11/19/2026). Not secrets.
+      # Both unset (the default) charges every host $39. To run it, set the
+      # test price in cents (100–50000, not 3900; e.g. 4900) and the percent
+      # of devices that get it (1–100). sync:false so a Blueprint sync never
+      # ends or starts a test set in the dashboard.
+      - key: PASS_PRICE_TEST_CENTS
+        sync: false
+      - key: PASS_PRICE_TEST_SHARE
+        sync: false
       # Resend's own webhook verification (Svix HMAC-SHA256). config.py: "If
       # unset, verification is skipped (dev/testing only — set this in
       # production)." Same shape as the Stripe secret above, and it was missing

@@ -77,7 +77,7 @@ import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMess
 import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/inviteBatch';
 import { inviteGaps } from '@app/lib/inviteGaps';
 import { inviteCardModel, inviteCardKey } from '@app/lib/inviteCard';
-import SignInCheck, { signInCheckOn } from './SignInCheck';
+import SignInCheck, { signInCheckOn } from '@app/components/SignInCheck';
 import { signInSendDecision, signInErrorText } from '@app/lib/signInCheckGate';
 import { signUpData, MARKETING_OPT_IN_LABEL } from '@app/lib/marketingConsent';
 import { domainMove, moveNotice } from '@app/lib/domainMove';
@@ -152,7 +152,7 @@ import { placeQuestionsFor, answerPlaceQuestionPatch } from '@app/lib/placeQuest
 
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia, isListingPhoto } from '@app/lib/lodgingBookmarklet';
-import { track as trackEvent, EVENTS as ANALYTICS, isAnalyticsOptedOut, setAnalyticsOptOut, shouldShowAnalyticsNotice, markAnalyticsNoticeSeen, analyticsNoticeAction, trackAccountSession, resetAnalytics, trackActivation } from '@app/lib/analytics';
+import { track as trackEvent, EVENTS as ANALYTICS, isAnalyticsOptedOut, setAnalyticsOptOut, shouldShowAnalyticsNotice, markAnalyticsNoticeSeen, analyticsNoticeAction, trackAccountSession, resetAnalytics, trackActivation, registerPassPrice } from '@app/lib/analytics';
 // Reasoning Continuity v1 — the ONE place a queue row's "why" is decided.
 import { getActionReason } from '@app/lib/actionReason';
 import { timeStatusLabel, PAST_WINDOW } from '@app/lib/timeStatusLabel';
@@ -265,7 +265,9 @@ import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conf
 import { conflictsToActionItems, deriveResolution } from '@app/lib/vendorAccountability/actionItems';
 import { isStorageConfigured, uploadFile, validateFile, inferCategory } from '@app/lib/storage';
 import { contractUrlFor } from '@app/lib/contractLink';
-import { REFUND_LINE } from '@app/lib/refundRule';
+import { refundLine } from '@app/lib/refundRule';
+// The device's pass price (G86 price test): every place the pass's price shows reads it here.
+import { devicePassPriceCents, passPriceLabel, withPassPrice } from '@app/lib/passPrice';
 import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
@@ -3839,7 +3841,13 @@ export default function HostShellV2() {
   useEffect(() => {
     if (!isBillingLive() || !isCommApiConfigured()) return undefined;
     let live = true;
-    commApi.getCapabilities().then(() => { if (live) setCapsTick((t) => t + 1); }).catch(() => {});
+    commApi.getCapabilities().then(() => {
+      if (!live) return;
+      setCapsTick((t) => t + 1);
+      // The price this device is shown, on every analytics event (G86).
+      const cents = devicePassPriceCents();
+      if (cents) registerPassPrice(cents);
+    }).catch(() => {});
     return () => { live = false; };
   }, []);
 
@@ -7896,6 +7904,7 @@ export default function HostShellV2() {
   // version she loaded), so nothing is overwritten behind her back either way.
   const [resolvingConflict, setResolvingConflict] = useState(false);
   const [syncRetrying, setSyncRetrying] = useState(false);   // "Retry now" in flight (attention audit 11/18/2026)
+  const [syncRetryErr, setSyncRetryErr] = useState('');      // its failure, said under it (G68, 11/19/2026)
   // A failed choice is said under the two buttons (G68), not in a toast that
   // leaves before she has read it.
   const [conflictErr, setConflictErr] = useState('');
@@ -10314,7 +10323,7 @@ export default function HostShellV2() {
             </svg>
             <span className="srail-l">{railMin ? 'Widen' : 'Narrow'}</span>
           </button>
-          {sectionGroups({ event, travel, crab, outdoor }).map((g) => (
+          {sectionGroups({ event, travel, crab, outdoor, passCents: devicePassPriceCents() }).map((g) => (
             <div className="srail-g" key={g.title}>
               <div className="shelf-label srail-t">{g.title}</div>
               {g.rows.map((r) => {
@@ -11228,7 +11237,7 @@ export default function HostShellV2() {
                             try {
                               line = creationDisclosure(passVerdictAtCreation(
                                 { id: 'cust-draft', isDestination: !!effIsDestination, date: effDate || null, endDate: effEndDate || null, type: effType },
-                                customs));
+                                customs), devicePassPriceCents());
                             } catch { line = null; }
                             return line ? <p className="grounding" style={{ marginTop: 6 }}>{line}</p> : null;
                           })()}
@@ -11456,8 +11465,8 @@ export default function HostShellV2() {
                 if (!st || st.state !== 'needed') return null;
                 return (
                   <button type="button" className="pass-status pass-status-needed" onClick={() => setSheet({ kind: 'pass' })}
-                    aria-label={'This event takes the One-Event Pass, $39 once. ' + st.covers + ' See what it covers.'}>
-                    This event takes the One-Event Pass — $39 <span aria-hidden="true">›</span>
+                    aria-label={'This event takes the One-Event Pass' + (passPriceLabel() ? ', ' + passPriceLabel() + ' once. ' : '. ') + st.covers + ' See what it covers.'}>
+                    {withPassPrice('This event takes the One-Event Pass')} <span aria-hidden="true">›</span>
                   </button>
                 );
               })()}
@@ -16355,7 +16364,7 @@ export default function HostShellV2() {
                     <div id="space-days" className="shelf-label" style={{ marginTop: 'var(--sp-3)' }}>The weekend plan <span className="of">— what guests see, day by day</span></div>
                     <div style={{ padding: '2px 0' }}>
                       <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>The weekend plan lives here — what happens each day, written once and shown to guests on the invite. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
-                      <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>See the One-Event Pass — $39</button>
+                      <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>{withPassPrice('See the One-Event Pass')}</button>
                     </div>
                   </>
                 );
@@ -16752,7 +16761,7 @@ export default function HostShellV2() {
                 return (
                   <div style={{ padding: '2px 0' }}>
                     <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>Who pays for what lives here — everyone covering their own, or a shared pool with tiers for the trip. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event. Your budget stays open either way.</p>
-                    <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>See the One-Event Pass — $39</button>
+                    <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>{withPassPrice('See the One-Event Pass')}</button>
                   </div>
                 );
               }
@@ -16825,7 +16834,7 @@ export default function HostShellV2() {
                 return (
                   <div style={{ padding: '2px 0' }}>
                     <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>Where everyone stays lives here — the stay, who needs a room, and the lodging plan for a multi-day event. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
-                    <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>See the One-Event Pass — $39</button>
+                    <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>{withPassPrice('See the One-Event Pass')}</button>
                   </div>
                 );
               }
@@ -18191,7 +18200,7 @@ export default function HostShellV2() {
                 return (
                   <div style={{ padding: '2px 0' }}>
                     <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>Getting around lives here — the shuttle call, who’s driving, and the ride board for the day. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
-                    <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>See the One-Event Pass — $39</button>
+                    <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>{withPassPrice('See the One-Event Pass')}</button>
                   </div>
                 );
               }
@@ -18374,7 +18383,7 @@ export default function HostShellV2() {
                 return (
                   <div style={{ padding: '2px 0' }}>
                     <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>Getting here lives here — the airports worth flying into, land-by guidance off your real start time, and the arrivals board. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
-                    <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>See the One-Event Pass — $39</button>
+                    <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>{withPassPrice('See the One-Event Pass')}</button>
                   </div>
                 );
               }
@@ -19176,7 +19185,7 @@ export default function HostShellV2() {
               // Duplicate Surface Rule, and a claim (“a door to EVERY surface”)
               // only one list can keep. The sheet renders it below tablet-land,
               // the rail at and above; both call the same function.
-              const groups = sectionGroups({ event, travel, crab, outdoor });
+              const groups = sectionGroups({ event, travel, crab, outdoor, passCents: devicePassPriceCents() });
               return (
                 <>
                   {/* SAME HERO TREATMENT AS EVERY OTHER SHEET (host, 2026-08-07).
@@ -19372,13 +19381,13 @@ export default function HostShellV2() {
               //  · Trip wording only on a trip (consumer panel, 11/15/2026): the
               //    toolkit perk and "trip tools" show only where the toolkit is
               //    locked, so only where $39 actually buys it (lib/passGate).
-              const sheetCopy = passSheetCopy(event);
+              const sheetCopy = passSheetCopy(event, devicePassPriceCents());
               const perks = sheetCopy.perks;
               return (
                 <>
                   <div style={{ padding: '2px 0 8px' }}>
                     <div className="eyebrow">One event · one price</div>
-                    <div style={{ fontSize: 'var(--t-hero-star)', fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.05, margin: '6px 0 4px', color: 'var(--ink)' }}>$39</div>
+                    <div style={{ fontSize: 'var(--t-hero-star)', fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.05, margin: '6px 0 4px', color: 'var(--ink)' }} data-pass-price>{passPriceLabel() || '\u00a0'}</div>
                     <p className="grounding" data-before-paying style={{ margin: 0 }}>{sheetCopy.beforePaying}</p>
                     <p className="grounding" style={{ margin: '6px 0 0' }}>Your vendors pay us nothing — no lead fees, no pay-to-play placement, nothing baked into their quotes. That’s why the pass exists.</p>
                   </div>
@@ -19416,8 +19425,8 @@ export default function HostShellV2() {
                     <>
                       {/* THE REFUND RULE, BEFORE THE MONEY (owner ruling 11/12/2026,
                           lib/refundRule). Above the button, so it is read before paying. */}
-                      <p className="grounding" data-refund-rule style={{ margin: 'var(--sp-3) 0 0', textAlign: 'center' }}>{REFUND_LINE}</p>
-                      <button className="cta" style={{ marginTop: 'var(--sp-2)', width: '100%' }} onClick={buyPass} disabled={openingCheckout} aria-busy={openingCheckout}>{openingCheckout ? 'Opening checkout…' : 'Get the pass — $39'}</button>
+                      <p className="grounding" data-refund-rule style={{ margin: 'var(--sp-3) 0 0', textAlign: 'center' }}>{refundLine(devicePassPriceCents())}</p>
+                      <button className="cta" style={{ marginTop: 'var(--sp-2)', width: '100%' }} onClick={buyPass} disabled={openingCheckout} aria-busy={openingCheckout}>{openingCheckout ? 'Opening checkout…' : withPassPrice('Get the pass')}</button>
                       <p className="grounding" style={{ margin: '8px 0 0', textAlign: 'center', opacity: .75 }}>Secure checkout on Stripe. We never see your card.</p>
                       {/* BEFORE THE MONEY (stage 9, 11/11/2026): a person to ask, and the
                           policies once published. */}
@@ -19427,7 +19436,7 @@ export default function HostShellV2() {
                   ) : (
                     <div className="brow" style={{ borderTop: 'none', background: 'var(--ok-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginTop: 'var(--sp-3)' }}>
                       <p className="f-name" style={{ margin: '0 0 2px', color: 'var(--ok)' }}>Free while {BRAND.full} is in preview</p>
-                      <p className="grounding" style={{ margin: 0 }}>This event is fully unlocked right now — nothing to pay. When we launch, planning stays free, and the one-time $39 pass is for sharing with more than one vendor or for a destination or multi-day event. We’ll tell you before anything changes.</p>
+                      <p className="grounding" style={{ margin: 0 }}>This event is fully unlocked right now — nothing to pay. When we launch, planning stays free, and the one-time {passPriceLabel() ? passPriceLabel() + ' ' : ''}pass is for sharing with more than one vendor or for a destination or multi-day event. We’ll tell you before anything changes.</p>
                     </div>
                   )}
                 </>
@@ -19711,7 +19720,8 @@ export default function HostShellV2() {
                   {isBillingLive() && (() => {
                     let st = null;
                     try { st = passStatus(event); } catch { st = null; }
-                    const note = st && st.state === 'held' ? 'this event has it' : st && st.state === 'needed' ? '$39 · this event needs it' : '$39 · one event';
+                    const price = passPriceLabel();
+                    const note = st && st.state === 'held' ? 'this event has it' : (price ? price + ' · ' : '') + (st && st.state === 'needed' ? 'this event needs it' : 'one event');
                     return (
                       <button className="navrow nav-pass" onClick={() => setSheet({ kind: 'pass' })}>
                         <span className="nr-l">The One-Event Pass</span>
@@ -20353,7 +20363,7 @@ export default function HostShellV2() {
 
                   <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>Your plan</div>
                   <button className="later-row" style={{ width: '100%', textAlign: 'left', cursor: 'pointer', borderTop: 'none' }} onClick={() => setSheet({ kind: 'pass' })}>
-                    <span className="t" style={{ fontWeight: 550 }}>The One-Event Pass<span className="of" style={{ marginLeft: 6 }}>$39 · one event, no subscription</span></span>
+                    <span className="t" style={{ fontWeight: 550 }}>The One-Event Pass<span className="of" style={{ marginLeft: 6 }}>{passPriceLabel() ? passPriceLabel() + ' · one event, no subscription' : 'One event, no subscription'}</span></span>
                     <span className="chev" aria-hidden="true">›</span>
                   </button>
 
@@ -20543,11 +20553,12 @@ export default function HostShellV2() {
                           {showRetry && (
                             <button className="mini" disabled={syncRetrying} onClick={() => {
                               if (syncRetrying) return;
-                              setSyncRetrying(true);
+                              setSyncRetrying(true); setSyncRetryErr('');
+                              const failed = 'Still couldn’t reach your account — your changes are safe on this device, and we’ll keep trying.';
                               flushSync().then(res => {
                                 if (res && res.flushed > 0) toast((res.flushed === 1 ? 'This change' : res.flushed + ' changes') + ' synced to your account.');
-                                else toast('Still couldn’t reach the cloud — we’ll keep trying.');
-                              }).catch(() => toast('Still couldn’t reach the cloud — we’ll keep trying.'))
+                                else setSyncRetryErr(failed);
+                              }).catch(() => setSyncRetryErr(failed))
                                 .finally(() => setSyncRetrying(false));
                             }}>{syncRetrying ? 'Syncing…' : 'Retry now'}</button>
                           )}
@@ -20558,6 +20569,7 @@ export default function HostShellV2() {
                         {resolvingConflict && <BusyLine>Saving your choice to your account…</BusyLine>}
                         {status === SYNC_STATUS.CONFLICT && conflictErr && <p className="grounding" role="alert" data-conflict-err style={{ margin: 'var(--sp-2) 0 0', color: 'var(--danger)', fontWeight: 600 }}>{conflictErr}</p>}
                         {syncRetrying && <BusyLine>Syncing this event with your account…</BusyLine>}
+                        {showRetry && !syncRetrying && syncRetryErr && <p className="grounding" role="alert" data-retry-err style={{ margin: 'var(--sp-2) 0 0', color: 'var(--danger)', fontWeight: 600 }}>{syncRetryErr}</p>}
                       </>
                     );
                   })()}

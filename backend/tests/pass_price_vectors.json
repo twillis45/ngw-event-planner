@@ -1,0 +1,136 @@
+{
+ "_comment": "THE PASS PRICE TEST'S SHARED VECTORS (G86). Generated with Python hashlib. src/lib/passPrice.js (jest: passPrice.test.js) and stripe_payments.pass_price_for (pytest: test_pass_price_test.py) must both reproduce every row. bucket = int(sha256(key)[:8], 16) % 100; the test price applies when bucket < share. Malformed keys always get the control price.",
+ "test": {
+  "cents": 4900,
+  "share": 50
+ },
+ "keys": [
+  {
+   "key": "AAAAAAAAAAAAAAAAAAAAAA",
+   "sha256_8": "8a5bdb4c",
+   "bucket": 24,
+   "cents": 4900,
+   "variant": "test"
+  },
+  {
+   "key": "abcdefghijklmnopqrstuv",
+   "sha256_8": "f69f9b70",
+   "bucket": 52,
+   "cents": 3900,
+   "variant": "control"
+  },
+  {
+   "key": "Zz09_-Zz09_-Zz09_-Zz09_",
+   "sha256_8": "95470d0b",
+   "bucket": 79,
+   "cents": 3900,
+   "variant": "control"
+  },
+  {
+   "key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "sha256_8": "7ce10097",
+   "bucket": 35,
+   "cents": 4900,
+   "variant": "test"
+  },
+  {
+   "key": "DoBImwNM06AbauHWykK8yL",
+   "sha256_8": "dad5420f",
+   "bucket": 67,
+   "cents": 3900,
+   "variant": "control"
+  },
+  {
+   "key": "l9R_v22wZaFygovux03gV_",
+   "sha256_8": "3801bd85",
+   "bucket": 49,
+   "cents": 4900,
+   "variant": "test"
+  },
+  {
+   "key": "51HNBWMw-cBGEq6e4GnXqw",
+   "sha256_8": "34524888",
+   "bucket": 52,
+   "cents": 3900,
+   "variant": "control"
+  },
+  {
+   "key": "9c1XrEmLphBgguc7ln36q2",
+   "sha256_8": "03cfce55",
+   "bucket": 21,
+   "cents": 4900,
+   "variant": "test"
+  },
+  {
+   "key": "FIYXJ0DjG011gciR-GkyTb",
+   "sha256_8": "9b8d348d",
+   "bucket": 9,
+   "cents": 4900,
+   "variant": "test"
+  },
+  {
+   "key": "ZvUuFyFDNK4huUhRVqfNqJ",
+   "sha256_8": "055e3ef7",
+   "bucket": 83,
+   "cents": 3900,
+   "variant": "control"
+  },
+  {
+   "key": "EjSdkoQge_TPfQy5T-y1fr",
+   "sha256_8": "dac0c90a",
+   "bucket": 66,
+   "cents": 3900,
+   "variant": "control"
+  },
+  {
+   "key": "ffVpTu1J_Muz9hTePcknVR",
+   "sha256_8": "96d77a60",
+   "bucket": 68,
+   "cents": 3900,
+   "variant": "control"
+  },
+  {
+   "key": "7wkwkBS5HT5rRvQVQDxydW",
+   "sha256_8": "aa400962",
+   "bucket": 26,
+   "cents": 4900,
+   "variant": "test"
+  },
+  {
+   "key": "0ZrqTL9nM6BBv87oTK2HaN",
+   "sha256_8": "5b7e2c09",
+   "bucket": 65,
+   "cents": 3900,
+   "variant": "control"
+  },
+  {
+   "key": "ulSKIJmnxsfzufJ48BF_15",
+   "sha256_8": "990bb305",
+   "bucket": 73,
+   "cents": 3900,
+   "variant": "control"
+  },
+  {
+   "key": "E9k_aoz0pzyfwq3EieW8_z",
+   "sha256_8": "e2632409",
+   "bucket": 5,
+   "cents": 4900,
+   "variant": "test"
+  }
+ ],
+ "malformed": [
+  "",
+  "short",
+  "AAAAAAAAAAAAAAAAAAAAA",
+  "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "AAAAAAAAAAAAAAAAAAAAAA\n",
+  "AAAAAAAAAAA AAAAAAAAAA",
+  "AAAAAAAAAAAAAAAAAAAAA=",
+  "AAAAAAAAAAAAAAAAAAAAA\u00e9",
+  null,
+  4900,
+  [
+   "FIYXJ0DjG011gciR-GkyTb"
+  ]
+ ]
+}

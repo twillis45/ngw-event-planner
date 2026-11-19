@@ -12,11 +12,18 @@
 //
 // One constant, shown before the money on the pass sheet. The price in it is
 // held to the server's price by thePassPriceIsTheServersPrice.
+import { formatPassPrice, PASS_PRICE_CENTS } from './passPrice';
+
 export const REFUND_WINDOW_DAYS = 14;
 
 // REWORDED 11/15/2026, same rule. The first wording put the condition last
 // ("...if you have not sent a new vendor brief") and read as a trap: use what
 // you bought and lose the refund. The condition now leads, framed as what it
 // is — a change of mind before the pass is used.
-export const REFUND_LINE =
-  `Changed your mind? If you haven’t sent the details to another vendor yet, get all $39 back within ${REFUND_WINDOW_DAYS} days.`;
+//
+// THE PRICE IS THE DEVICE'S (G86 price test): `refundLine(cents)` with the
+// price from lib/passPrice. null (not yet known) names no amount. REFUND_LINE
+// is the $39 line, kept for the callers and tests that read it.
+export const refundLine = (cents = PASS_PRICE_CENTS) =>
+  `Changed your mind? If you haven’t sent the details to another vendor yet, get ${formatPassPrice(cents) ? 'all ' + formatPassPrice(cents) : 'your money'} back within ${REFUND_WINDOW_DAYS} days.`;
+export const REFUND_LINE = refundLine();

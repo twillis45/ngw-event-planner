@@ -26,6 +26,7 @@
 import { BRAND } from './brand';
 import { moneyDatesFor } from './moneyDates';
 import { spanNights } from './dates';
+import { formatPassPrice, PASS_PRICE_CENTS } from './passPrice';
 
 /**
  * sectionGroups({ event, travel, crab, outdoor }) -> [{ title, rows: [{k, label, sub}] }]
@@ -57,7 +58,9 @@ export function sectionGroups(state) {
   // `state || {}` rather than a default parameter: a default only covers
   // `undefined`, so destructuring a NULL state would throw. Nav policy must
   // never be the thing that crashes a render.
-  const { event, travel, crab, outdoor } = (state || {});
+  // `passCents`: the device's pass price (lib/passPrice; G86 price test).
+  // Absent → $39; null → not yet known, so the row names no price.
+  const { event, travel, crab, outdoor, passCents = PASS_PRICE_CENTS } = (state || {});
   const ev = event || {};
 
   return [
@@ -146,7 +149,7 @@ export function sectionGroups(state) {
       // PER-EVENT CO-HOST (owner, 11/16/2026): plan this one event with someone.
       { k: 'cohosts', label: 'Co-hosts', sub: ev._cohostOf ? 'You’re co-hosting this event' : 'Plan this event with someone' },
       { k: 'ask', label: ASK_LABEL, sub: 'A question, answered from your numbers' },
-      { k: 'pass', label: 'The One-Event Pass', sub: '$39 · one event, no subscription' },
+      { k: 'pass', label: 'The One-Event Pass', sub: formatPassPrice(passCents) ? formatPassPrice(passCents) + ' · one event, no subscription' : 'One event, no subscription' },
       // ONE NAME FOR THIS DESTINATION (host ruling, 2026-08-15). It read
       // "You & settings" on the phone row and "You & your account" everywhere
       // else — same sheet, two names, so a host could not tell they were the

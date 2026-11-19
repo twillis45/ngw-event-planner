@@ -61,6 +61,9 @@ def pass_purchase_payload(meta: dict, amount, currency) -> dict | None:
         props["came_from"] = str(meta["came_from"])
     if meta.get("came_from_kind"):
         props["came_from_kind"] = str(meta["came_from_kind"])
+    # The price test arm (G86). Only the two values the route writes travel.
+    if meta.get("price_variant") in ("control", "test"):
+        props["price_variant"] = meta["price_variant"]
     return {"api_key": POSTHOG_KEY, "event": "pass_purchased", "distinct_id": who, "properties": props}
 
 

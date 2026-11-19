@@ -79,6 +79,15 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET")
 # brief free — this flag exists so nobody has to pull that one.
 PASS_SALES_PAUSED = os.environ.get("PASS_SALES_PAUSED", "").strip().lower() in ("1", "true", "yes")
 
+# THE ONE-EVENT PASS PRICE TEST (plan item G86, owner approval 11/19/2026: "a
+# $49 test (second Stripe price)"). OFF unless BOTH are valid:
+#   PASS_PRICE_TEST_CENTS  the test price, an integer 100–50000 and not 3900
+#   PASS_PRICE_TEST_SHARE  the percent of devices that get it, an integer 1–100
+# Anything else (unset, empty, 0, malformed) means every host pays $39. Raw
+# strings here; `stripe_payments.pass_price_test()` validates at call time.
+PASS_PRICE_TEST_CENTS = os.environ.get("PASS_PRICE_TEST_CENTS", "").strip()
+PASS_PRICE_TEST_SHARE = os.environ.get("PASS_PRICE_TEST_SHARE", "").strip()
+
 # ── PostHog Query API (read-only analytics proxy) — ANALYTICS-1 ─────────────────
 # Server-side HogQL proxy so the admin console can render the behavioral funnel/
 # friction natively instead of linking out. The client SDK is write-only; this is the

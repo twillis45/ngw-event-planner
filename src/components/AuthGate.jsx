@@ -6,6 +6,8 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured, authRedirectUrl } from '../lib/supabaseClient';
 import { AuthCtx } from '../contexts/AuthContext';
+import SignInCheck, { signInCheckOn } from './SignInCheck';
+import { signInSendDecision, signInErrorText } from '../lib/signInCheckGate';
 import { carbonBody, carbonPanel, carbonBorder } from '../theme/palette';
 
 // Sprint 61.M — palette aligned to Studio Matte + No Guesswork Events steel-blue.
@@ -69,10 +71,16 @@ const ls = {
   }),
 };
 
-function LoginScreen() {
+export function LoginScreen() {
   const [email,  setEmail]  = useState('');
   const [status, setStatus] = useState('idle'); // idle | sending | sent | error
   const [err,    setErr]    = useState('');
+  // THE BOT CHECK HERE TOO (11/19/2026): with Supabase CAPTCHA on, a sign-in
+  // email without a Turnstile token is refused, and this is the admin console's
+  // sign-in. Same rules as the host app (lib/signInCheckGate).
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaFailed, setCaptchaFailed] = useState(false);
+  const [captchaRound, setCaptchaRound] = useState(0);
 
   // Sprint 51: redirect URL now comes from the shared lib/supabaseClient
   // helper so every auth endpoint (LoginScreen here + inviteStudioMember
@@ -89,12 +97,15 @@ function LoginScreen() {
     e?.preventDefault?.();
     const addr = email.trim();
     if (!addr || status === 'sending') return;
+    const gate = signInSendDecision({ checkOn: signInCheckOn(), token: captchaToken, failed: captchaFailed });
+    if (!gate.send) { setStatus('error'); setErr(gate.message); return; }
     setStatus('sending'); setErr('');
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email: addr,
-        options: { emailRedirectTo: redirect(), shouldCreateUser: !inviteOnly },
+        options: { emailRedirectTo: redirect(), shouldCreateUser: !inviteOnly, ...(signInCheckOn() && captchaToken ? { captchaToken } : {}) },
       });
+      if (signInCheckOn()) setCaptchaRound((n) => n + 1);   // a token is single-use
       if (error) throw error;
       setStatus('sent');
     } catch (e2) {
@@ -107,7 +118,7 @@ function LoginScreen() {
       setStatus('error');
       setErr(notAllowed
         ? "That email isn't on the access list. Ask your admin to add you."
-        : (e2?.message || 'Could not send the sign-in link.'));
+        : /captcha/i.test(e2?.message || '') ? signInErrorText(e2) : (e2?.message || 'Could not send the sign-in link.'));
     }
   };
 
@@ -171,6 +182,9 @@ function LoginScreen() {
                 placeholder="you@email.com"
                 style={{ ...ls.input, width: '100%', fontSize: 14, marginBottom: 12 }}
               />
+              <div style={{ marginBottom: 12 }}>
+                <SignInCheck onToken={(t) => { setCaptchaToken(t); if (t) setCaptchaFailed(false); }} onError={() => setCaptchaFailed(true)} resetKey={'admin-' + captchaRound} />
+              </div>
               <button type="submit" disabled={status === 'sending' || !email.trim()}
                 style={{ ...ls.btn('primary'), width: '100%', padding: '11px', fontSize: 14, opacity: status === 'sending' ? 0.6 : 1 }}>
                 {status === 'sending' ? 'Sending…' : 'Email me a sign-in link'}

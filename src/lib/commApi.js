@@ -10,6 +10,7 @@
 // until Supabase Auth is wired. It is sent as X-Planner-Token.
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import { setStripeConfigured, setStripeCanHonourPurchases, setPassSalesPaused } from './stripeApi';
+import { setPassPriceTest } from './passPrice';
 
 const BASE  = process.env.REACT_APP_API_BASE_URL;
 const TOKEN = process.env.REACT_APP_PLANNER_TOKEN; // transition fallback only
@@ -107,6 +108,10 @@ export const getCapabilities = async () => {
       if (typeof data.pass_sales_paused === 'boolean') {
         setPassSalesPaused(data.pass_sales_paused);
       }
+      // The price test (G86): any SUCCESSFUL answer settles the price. A
+      // backend without the key has no test, and charges $39. A failed fetch
+      // settles nothing, so a billing-live build keeps showing no price.
+      setPassPriceTest(data.pass_price_test);
       return data;
     } catch {
       return { email_configured: false };

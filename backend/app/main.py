@@ -255,6 +255,10 @@ async def capabilities():
         "stripe_can_honour_purchases": bool(STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET)
                                        and not stripe_payments.pass_sales_paused(),
         "pass_sales_paused": stripe_payments.pass_sales_paused(),
+        # The One-Event Pass price test (G86): {cents, share} while on, else
+        # null. The browser computes its own device's price from this and its
+        # key with the rule the checkout route re-runs (src/lib/passPrice.js).
+        "pass_price_test": stripe_payments.pass_price_test(),
         "service": "ngw-events-api",
     }
 

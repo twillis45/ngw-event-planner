@@ -88,7 +88,16 @@ describe('the pass checkout sends no price', () => {
     }
     // Named exhaustively AND shape-checked, so a differently-spelled money
     // field (`cents`, `total`) fails too rather than slipping past the list.
-    expect(Object.keys(body).sort()).toEqual(['cancel_url', 'event_id', 'success_url']);
+    // `price_key` (G86 price test) is this device's random key, not money:
+    // the server derives the price from it, and the key is checked below.
+    expect(Object.keys(body).sort()).toEqual(['cancel_url', 'event_id', 'price_key', 'success_url']);
+  });
+
+  test('the price key is the device\'s random key, and nothing numeric', async () => {
+    localStorage.clear();
+    await createPassSession({ eventId: 'cust-abc123' });
+    expect(body.price_key).toMatch(/^[A-Za-z0-9_-]{22,64}$/);
+    expect(body.price_key).toBe(localStorage.getItem('ngw-pass-price-key'));
   });
 
   test('it posts to create-pass-session, with planner auth', async () => {
@@ -149,7 +158,8 @@ describe('…and the shell does not reach for the helper that accepts one', () =
     expect(sheet).not.toMatch(/amountCents\s*:/);
     expect(sheet).not.toMatch(/amount_cents\s*:/);
     expect(sheet).not.toMatch(/\b3900\b/);
-    expect(passSheet()).toContain('$39');    // the price still gets SHOWN
+    // The price still gets SHOWN — the device's, through lib/passPrice (G86).
+    expect(sheet).toMatch(/passPriceLabel\(\)/);
   });
 
   test('(premise) the fee helper is still live where a caller DOES set the price', () => {
@@ -193,7 +203,7 @@ describe('the sheet never offers to sell a pass the event already owns', () => {
     // Without this, the ordering assertions above would keep passing on a sheet
     // that had lost one of the branches entirely.
     const sheet = passSheet();
-    expect(sheet).toContain('Get the pass — $39');
+    expect(sheet).toContain("withPassPrice('Get the pass')");
     expect(sheet).toMatch(/Free while .* is in preview/);
   });
 });

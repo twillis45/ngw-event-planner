@@ -46,9 +46,36 @@ test('the server charges a whole-dollar price', () => {
   expect(serverCents() % 100).toBe(0);
 });
 
-test.each(Object.keys(surfaces()))('%s shows only the server\'s price', (name) => {
-  const text = surfaces()[name];
-  const prices = [...text.matchAll(/\$(\d+(?:\.\d{2})?)/g)].map((m) => Math.round(Number(m[1]) * 100));
-  expect(prices.length).toBeGreaterThan(0);   // premise: this surface still shows a price
-  for (const cents of prices) expect(cents).toBe(serverCents());
+// ── SINCE THE PRICE TEST (G86, 11/19/2026) THE PRICE IS NOT LITERAL COPY ────
+// A device may be charged a test price, so a typed "$39" on any of these
+// surfaces would be a price the server might not charge. Every one of them now
+// reads the device's price through lib/passPrice (passPriceLabel /
+// withPassPrice / devicePassPriceCents), whose control price is the server's
+// constant (passPrice.test.js) and whose test price is the server's rule on
+// the same key (the shared vectors).
+test.each(Object.keys(surfaces()))('%s types no price of its own', (name) => {
+  expect(surfaces()[name]).not.toMatch(/\$\d/);
+});
+
+test('the shell reads the device\'s price on every pass surface', () => {
+  const sheet = code(passSheet());
+  expect(sheet).toMatch(/passSheetCopy\(event, devicePassPriceCents\(\)\)/);
+  expect(sheet).toMatch(/refundLine\(devicePassPriceCents\(\)\)/);
+  expect(sheet).toMatch(/withPassPrice\('Get the pass'\)/);
+  expect(sheet).toMatch(/data-pass-price>\{passPriceLabel\(\)/);
+  const shell = code(read('hostv2/src/HostShellV2.jsx'));
+  expect((shell.match(/withPassPrice\('See the One-Event Pass'\)/g) || []).length).toBeGreaterThanOrEqual(5);
+  expect(code(read('hostv2/src/LodgingCockpit.jsx'))).toMatch(/withPassPrice\('See the One-Event Pass'\)/);
+  expect(code(read('hostv2/src/LodgingCockpit.jsx'))).not.toMatch(/\$\d/);
+});
+
+test('with no test running, the pure libs say the server\'s price', () => {
+  const { refundLine } = require('../refundRule');
+  const { passSheetCopy } = require('../passGate');
+  const { sectionGroups } = require('../sectionDirectory');
+  const dollars = '$' + serverCents() / 100;
+  expect(refundLine()).toContain('all ' + dollars + ' back');
+  expect(passSheetCopy({ id: 'cust-1' }).beforePaying).toContain('Pay ' + dollars + ' once');
+  const row = sectionGroups({ event: {} }).flatMap((g) => g.rows).find((r) => r.k === 'pass');
+  expect(row.sub).toBe(dollars + ' · one event, no subscription');
 });

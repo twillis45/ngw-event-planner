@@ -37,13 +37,14 @@ Stripe webhook endpoint to configure:
           charge.refunded, charge.dispute.created
 """
 
+import hashlib
 import json
 import logging
 import re
 import stripe
 from fastapi import APIRouter, HTTPException, Request, Header
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Any, Optional
 from ..config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
 from .. import config
 from ..auth import require_planner, require_fee_planner
@@ -75,6 +76,52 @@ PASS_LABEL = "No Guesswork Events — One-Event Pass"
 # it will not charge; the fourth sitting's standing commitments (no vendor-side
 # fees while that sentence ships) are governed the same way — copy first.
 PASS_METADATA_KIND = "pass"        # how the webhook tells a pass from a fee
+
+
+# ─── THE PRICE TEST (plan item G86, owner approval 11/19/2026) ───────────────
+#
+# A second price for some DEVICES, never chosen by the caller. The browser mints
+# a random key once (localStorage `ngw-pass-price-key`) and sends it with the
+# checkout; the server recomputes the price from it with the SAME rule as
+# `src/lib/passPrice.js`:
+#
+#     bucket = int(sha256(key).hexdigest()[:8], 16) % 100
+#     test price when bucket < share, else PASS_AMOUNT_CENTS
+#
+# Per device, not per account, because a signed-out host sees the price before
+# signing in, and the price must never change after sign-in.
+# `backend/tests/pass_price_vectors.json` holds the vectors both sides are held
+# to. A missing or malformed key gets PASS_AMOUNT_CENTS.
+#
+# A buyer who forges a key can only choose between the two prices the owner
+# set, never name a third. Accepted for a test.
+_PRICE_KEY = re.compile(r"[A-Za-z0-9_-]{22,64}")   # fullmatch: `$` would pass a trailing newline
+
+
+def pass_price_test() -> Optional[dict]:
+    """{cents, share} while the test is on, else None. Read at call time."""
+    try:
+        cents = int(str(config.PASS_PRICE_TEST_CENTS))
+        share = int(str(config.PASS_PRICE_TEST_SHARE))
+    except (TypeError, ValueError):
+        return None
+    if not 100 <= cents <= 50_000 or cents == PASS_AMOUNT_CENTS:
+        return None
+    if not 1 <= share <= 100:
+        return None
+    return {"cents": cents, "share": share}
+
+
+def pass_price_bucket(key: str) -> int:
+    return int(hashlib.sha256(key.encode("ascii")).hexdigest()[:8], 16) % 100
+
+
+def pass_price_for(key, test: Optional[dict]) -> tuple:
+    """(cents, variant) for a device key. PURE. Variant is control or test."""
+    if test and isinstance(key, str) and _PRICE_KEY.fullmatch(key) \
+            and pass_price_bucket(key) < test["share"]:
+        return test["cents"], "test"
+    return PASS_AMOUNT_CENTS, "control"
 
 
 async def _studio_for_event(conn, event_id: str, principal: dict) -> str:
@@ -304,6 +351,11 @@ class PassSessionRequest(BaseModel):
     cancel_url: str
     # NOTE what is absent: no amount, no label. Both are set server-side. The
     # caller names WHICH EVENT it is buying for and nothing about the price.
+    # `price_key` is the device's random price-test key (see pass_price_for),
+    # not a price: the server derives the amount from it, and anything that
+    # is not a well-formed key is charged PASS_AMOUNT_CENTS.
+    # Any, not str: a malformed key is charged $39, never refused with a 422.
+    price_key: Any = None
 
 
 @router.post("/create-pass-session")
@@ -362,6 +414,10 @@ async def create_pass_session(
         except Exception:  # noqa: BLE001 — attribution must not block a purchase
             arrival = {}
 
+    # The price this DEVICE was shown, recomputed here from its key. Never an
+    # amount from the caller (see pass_price_for).
+    price_cents, price_variant = pass_price_for(body.price_key, pass_price_test())
+
     stripe.api_key = STRIPE_SECRET_KEY
     try:
         session = stripe.checkout.Session.create(
@@ -369,7 +425,7 @@ async def create_pass_session(
                 "price_data": {
                     "currency": "usd",
                     "product_data": {"name": PASS_LABEL},
-                    "unit_amount": PASS_AMOUNT_CENTS,     # server-set, not caller-set
+                    "unit_amount": price_cents,           # server-set, not caller-set
                 },
                 "quantity": 1,
             }],
@@ -397,12 +453,14 @@ async def create_pass_session(
                 "event_id":    body.event_id,
                 "studio_id":   studio_id,
                 "purchased_by": principal.get("id") or "",
+                "price_cents":   str(price_cents),
+                "price_variant": price_variant,
                 **arrival,
             },
         )
         log.info(
-            "stripe: pass session created id=%s event=%s studio=%s",
-            session.id, body.event_id, studio_id,
+            "stripe: pass session created id=%s event=%s studio=%s price=%d (%s)",
+            session.id, body.event_id, studio_id, price_cents, price_variant,
         )
         return {"url": session.url, "session_id": session.id}
 
