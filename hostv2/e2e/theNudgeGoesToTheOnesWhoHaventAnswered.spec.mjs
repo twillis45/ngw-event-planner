@@ -141,6 +141,14 @@ test('the batch emails the unanswered, skips the recently nudged, and texts go i
   await one.click();
   await expect(block).toContainText('That’s everyone with only a phone number.');
 
+  // Counted (owner, 11/20/2026: the six events), from the dev tap: one
+  // nudge_sent for the run with counts only, one nudge_text_sent per text.
+  const tapped = await page.evaluate(() => (window.__NGW_TRACK__ || []).filter((t) => /^nudge_/.test(t.event)));
+  expect(tapped).toEqual([
+    { event: 'nudge_sent', emailed: 2, email_failed: 0, capped: false, texts_queued: 1, skipped_recent: 1 },
+    { event: 'nudge_text_sent' },
+  ]);
+
   const ev = await saved(page);
   const by = Object.fromEntries(ev.guests.map((g) => [g.id, g]));
   expect(by.g1.nudgedVia).toBe('email');
@@ -172,6 +180,8 @@ test('a capped answer stops the run, and the sheet says the rest go tomorrow', a
   const ev = await saved(page);
   expect(ev.guests.find((g) => g.id === 'g1').nudgedVia).toBe('email');
   expect(ev.guests.find((g) => g.id === 'g5').nudgedAt).toBeUndefined();   // capped: not nudged
+  expect(await page.evaluate(() => (window.__NGW_TRACK__ || []).filter((t) => t.event === 'nudge_sent')))
+    .toEqual([{ event: 'nudge_sent', emailed: 1, email_failed: 0, capped: true, texts_queued: 1, skipped_recent: 1 }]);
 });
 
 test('the board asks 3 days before the host’s reply-by date, and its row opens the nudge', async ({ page }) => {

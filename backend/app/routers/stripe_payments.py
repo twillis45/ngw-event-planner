@@ -50,7 +50,7 @@ from .. import config
 from ..auth import require_planner, require_fee_planner
 from ..app_origins import is_app_redirect
 from ..db import get_pool
-from ..analytics import capture, pass_purchase_payload
+from ..analytics import analytics_enabled, capture, pass_purchase_payload, pass_reversal_payload
 
 log = logging.getLogger("ngw.stripe")
 router = APIRouter(prefix="/api/stripe", tags=["stripe"])
@@ -683,6 +683,10 @@ async def stripe_webhook(
         # refunded flag becomes true only after the charge is fully refunded.
         elif session_data.get("refunded") is True:
             await _block_pass_payment(session_data, "refunded", event.get("id"))
+        if verified:
+            # pass_refunded / pass_disputed, after the block (partial refunds
+            # too). Fail-soft: it never turns a handled webhook into a retry.
+            await _count_reversal(event_type, session_data)
 
     return {"ok": True}
 
@@ -767,6 +771,41 @@ async def _grant_pass(meta: dict, session_data, sess_id, amount) -> None:
             meta, amount if amount is not None else PASS_AMOUNT_CENTS, session_data.get("currency") or "usd"))
     else:
         log.warning("stripe: DUPLICATE pass payment event=%s session=%s — no grant written", event_id, sess_id)
+
+
+async def _count_reversal(event_type: str, obj) -> None:
+    """pass_refunded / pass_disputed (app/analytics.py), joined to the hashed
+    account that bought the pass, read from the pass row for this payment. A
+    payment with no pass row (a fee, or a pass never granted) sends nothing.
+
+    charge.refunded carries the CHARGE: `amount_refunded` is everything
+    refunded on it so far, and `refunded` is true once it is all refunded.
+    charge.dispute.created carries the DISPUTE: `amount` is what is disputed,
+    full when it reaches what the pass was sold for."""
+    if not analytics_enabled():
+        return
+    try:
+        payment_intent = obj.get("payment_intent")
+        if not isinstance(payment_intent, str) or not payment_intent:
+            return
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """select purchased_by, amount_cents from public.event_passes
+                   where stripe_payment_intent=$1 order by purchased_at limit 1""", payment_intent)
+        if not row:
+            return
+        if event_type == "charge.refunded":
+            payload = pass_reversal_payload("pass_refunded", row["purchased_by"], obj.get("amount_refunded"),
+                                            obj.get("currency"), obj.get("refunded") is True)
+        else:
+            amount = obj.get("amount")
+            sold = row["amount_cents"]
+            full = isinstance(amount, int) and isinstance(sold, int) and amount >= sold
+            payload = pass_reversal_payload("pass_disputed", row["purchased_by"], amount, obj.get("currency"), full)
+        await capture(payload)
+    except Exception:  # noqa: BLE001 — analytics never breaks a webhook
+        log.warning("stripe: reversal analytics dropped")
 
 
 async def _block_pass_payment(payment, reason: str, stripe_event_id) -> None:

@@ -17,6 +17,7 @@ import { fetchPublicHelperLink, isHelperLinkApiConfigured, submitHelperAnswer, h
 import { fmtLongDate } from '@app/lib/doItForMe';
 import { toneVarsFor } from './inviteShared.js';
 import { clock12 } from '@app/lib/clock';
+import { trackHelperAnswered } from '@app/lib/flowAnalytics';
 
 const TONE = toneVarsFor(invitePalette('light'));
 
@@ -103,6 +104,9 @@ function AnswerBlock({ code, to, prior }) {
       await submitHelperAnswer(code, { idempotency_key: helperIdempotencyKey(code), state, note: n || null });
       setAnswer({ state, note: n || null });
       setMode('done');
+      // Yes or no, after the server took it; never the note. Through track(),
+      // so the same opt-out as the guest invite page's invite_viewed applies.
+      trackHelperAnswered(state);
     } catch {
       setMode('error');
     }

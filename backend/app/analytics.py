@@ -67,6 +67,76 @@ def pass_purchase_payload(meta: dict, amount, currency) -> dict | None:
     return {"api_key": POSTHOG_KEY, "event": "pass_purchased", "distinct_id": who, "properties": props}
 
 
+# ── The server-only events (owner, 11/20/2026: "Yes, build the six events") ──
+# Same rules as pass_purchased: the person is the studio owner's hashed account
+# label, the properties are counts, booleans and fixed enums, and no payload is
+# built without a person to join it to. Never an address, a name or a subject.
+
+
+def host_reminder_payload(owner_user_id, catch_up: bool = False) -> dict | None:
+    """One week-before reminder email that went out (host_reminders). PURE."""
+    who = account_label(owner_user_id)
+    if not who:
+        return None
+    return {"api_key": POSTHOG_KEY, "event": "host_reminder_sent", "distinct_id": who,
+            "properties": {"catch_up": bool(catch_up), "source": "server"}}
+
+
+# The Resend webhook's statuses that are a delivery outcome. "accepted" and
+# "opened" are not: the first is the send itself, the second a mail app's read.
+DELIVERY_STATUS = {
+    "email-delivered": "delivered",
+    "email-bounced": "bounced",
+    "email-complained": "complained",
+    "email-deferred": "delayed",
+}
+
+
+def email_kind(delivery: dict | None) -> str:
+    """What the event_messages row says it was. PURE. The week-before reminder,
+    announcements and reply notices write no such row today, so they cannot
+    appear here until they do."""
+    d = delivery or {}
+    kind = str(d.get("kind") or "")
+    intent = str(d.get("intent") or "")
+    if kind in ("invite", "helper", "announcement", "reply_notice", "reminder"):
+        return kind
+    if intent == "cohost_invite":
+        return "cohost"
+    if intent == "approval_email":
+        return "approval"
+    if intent == "email":
+        return "message"
+    return "other"
+
+
+def email_delivery_payload(owner_user_id, new_status: str, delivery: dict | None) -> dict | None:
+    """One delivery-status change on an app-sent email (main.resend_webhook).
+    None for a status that is not an outcome, or with no studio owner. PURE."""
+    status = DELIVERY_STATUS.get(str(new_status or ""))
+    who = account_label(owner_user_id)
+    if not status or not who:
+        return None
+    return {"api_key": POSTHOG_KEY, "event": "email_delivery", "distinct_id": who,
+            "properties": {"status": status, "kind": email_kind(delivery), "source": "server"}}
+
+
+def pass_reversal_payload(event: str, purchased_by, amount, currency, full: bool) -> dict | None:
+    """pass_refunded / pass_disputed, shaped like pass_purchased (stripe_payments). PURE."""
+    if event not in ("pass_refunded", "pass_disputed"):
+        return None
+    who = account_label(purchased_by)
+    if not who:
+        return None
+    return {"api_key": POSTHOG_KEY, "event": event, "distinct_id": who,
+            "properties": {
+                "amount_cents": int(amount) if isinstance(amount, (int, float)) and not isinstance(amount, bool) else None,
+                "currency": str(currency or "usd").lower(),
+                "full_or_partial": "full" if full else "partial",
+                "source": "server",
+            }}
+
+
 async def capture(payload: dict | None) -> None:
     if not payload or not analytics_enabled():
         return

@@ -161,6 +161,9 @@ test.describe('the helper answers', () => {
     await page.getByRole('button', { name: 'Send to Casey', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('can’t make it');
     expect(calls.answer[0]).toMatchObject({ state: 'declined', note: 'Out of town that week' });
+    // Counted on the helper's page: no or yes, never the note (11/20/2026).
+    expect(await page.evaluate(() => (window.__NGW_TRACK__ || []).filter((t) => t.event === 'helper_answered')))
+      .toEqual([{ event: 'helper_answered', answer: 'no' }]);
 
     await boot(page);
     await mockHost(page, [{ helper_key: 'g-jordan', state: 'declined', note: 'Out of town that week', submitted_at: new Date().toISOString(), updated_at: null }]);
@@ -187,6 +190,7 @@ test.describe('the helper answers', () => {
     await page.getByRole('button', { name: 'Send to Casey', exact: true }).click();
     await expect(page.getByRole('alert')).toContainText('That didn’t go through.');
     await expect(page.getByLabel('Note')).toHaveValue('Maybe next time');
+    expect(await page.evaluate(() => (window.__NGW_TRACK__ || []).filter((t) => t.event === 'helper_answered'))).toEqual([]);
   });
 
   test('a code that does not resolve is a dead link, said plainly', async ({ page }) => {

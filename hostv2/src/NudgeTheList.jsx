@@ -11,6 +11,7 @@
 import { useState } from 'react';
 import { sendInviteEmails, smsHref } from '@app/lib/inviteBatch';
 import { nudgeRecipients, nudgeCount, NUDGE_GAP_DAYS } from '@app/lib/replyNudge';
+import { trackNudgeRun, trackNudgeText } from '@app/lib/flowAnalytics';
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
@@ -34,13 +35,14 @@ export default function NudgeTheList({ event, textBody, canEmail, sendOne, onRea
     setProgress([0, list.length]);
     const out = await sendInviteEmails(list, sendOne, (k, total) => setProgress([k, total]));
     if (out.sent.length) onReached(out.sent, 'email');
+    trackNudgeRun(out, r);   // once per run, counts only (lib/flowAnalytics)
     setResult(out);
     setStep('done');
   };
 
   const startTexts = () => { setQueue(r.text); setQueueAt(0); };
   const current = queueAt != null ? queue[queueAt] : null;
-  const textedOne = () => { onReached([current], 'text'); setQueueAt((i) => i + 1); };
+  const textedOne = () => { onReached([current], 'text'); trackNudgeText(); setQueueAt((i) => i + 1); };
 
   return (
     <div data-nudge-list style={{ marginTop: 'var(--sp-4)', paddingTop: 'var(--sp-3)', borderTop: '1px solid var(--line)' }}>

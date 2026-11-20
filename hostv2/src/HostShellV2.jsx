@@ -206,6 +206,7 @@ import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
 import InviteToTheList from './InviteToTheList';
 import NudgeTheList from './NudgeTheList';
+import { trackHelperEmail, takeReminderTag, trackPlanDrafted, trackKeepPrompt, trackSignInCodeRequested } from '@app/lib/flowAnalytics';
 import { readArrival, rememberArrival, arrivalFor, spendArrival, exampleSentenceFor } from '@app/lib/acquisition';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_NUDGE } from '@app/lib/knowledge/geoCostIndex';
@@ -947,6 +948,13 @@ const PASS_CANCEL_RETURN = (() => {
     return true;
   } catch { return false; }
 })();
+
+// ── OPENED FROM THE WEEK-BEFORE REMINDER (owner, 11/20/2026: the six events) ─
+// The reminder's "Open your plan" carries `?from=reminder`
+// (backend host_reminders.plan_url). Read once at module scope, sent once as
+// plan_opened_from_reminder, and removed from the address bar so a refresh or
+// a bookmark never counts it again (lib/flowAnalytics.takeReminderTag).
+takeReminderTag();
 
 // ── THE COCKPIT'S PASS DOOR LANDS HERE (gap H1, 11/12/2026) ────────────────
 // LodgingCockpit.jsx is its own page, so when it is reached on a locked event
@@ -1854,7 +1862,7 @@ export default function HostShellV2() {
   // unsaved, so she lands back on her own words.
   const [draftEvent, setDraftEvent] = useState(null);
   const draftRef = useRef(null);
-  const keepIntentRef = useRef(null);   // where she was going: 'plan' | 'invite'
+  const keepIntentRef = useRef(null);   // where she was going: 'plan' | 'invite' | 'device_plan' (the keep-ask banner; no draft, so nothing to route)
   // Keep (or clear) the creation draft — see readCreateDraft.
   useEffect(() => {
     try {
@@ -2442,6 +2450,9 @@ export default function HostShellV2() {
     try {
       const { error } = await supabase.auth.signInWithOtp({ email: em, options: { emailRedirectTo: authRedirectUrl(), data: signUpData(offersOptIn), ...(signInCheckOn() && captchaToken ? { captchaToken } : {}) } });
       if (signInCheckOn()) setCaptchaRound((n) => n + 1);
+      // Asked for, and whether the service took it; never the address. A keep
+      // prompt still pending says this request came from "Keep this plan".
+      trackSignInCodeRequested(!error, Boolean(keepIntentRef.current));
       if (error) throw error;
       setAuthSent(true);
     } catch (e) {
@@ -6110,7 +6121,8 @@ export default function HostShellV2() {
     // 'days' is the span-gated "Your days" door (sectionDirectory) — a second
     // honest door onto the space sheet's programme block, not a new surface.
     if (kind === 'days') { setSheet({ kind: 'space', focus: 'days' }); return; }
-    setSheet({ kind });
+    // Which door opened Messages travels with the sheet (messages_view_opened).
+    setSheet(kind === 'messages' ? { kind, entry: 'section_list' } : { kind });
   };
   // Rental shortlist add-form (host directive 2026-07-28) — host-typed listing facts only.
   const [rentalForm, setRentalForm] = useState({ url: '', label: '', sleeps: '', total: '', fees: '', photo: '', notes: '', cancel: '' });
@@ -6617,6 +6629,7 @@ export default function HostShellV2() {
     // carried through only for vendor routes (money/insurance sub-sections).
     const s = { kind: r.kind, focus: r.focus != null ? r.focus : null };
     if (r.vendorSection !== undefined) s.vendorSection = r.vendorSection || null;
+    if (r.kind === 'messages') s.entry = 'route';   // messages_view_opened's door
     setSheet(s);
     return true;
   };
@@ -8488,6 +8501,7 @@ export default function HostShellV2() {
     if (!resp || (helperEmail && helperEmail.busy)) return;
     setHelperEmail({ taskId, busy: true });
     const r = await emailHelperJob(event.id, resp.helperName);
+    trackHelperEmail(r);   // ok, or the failure's kind; never who (lib/flowAnalytics)
     setHelperEmail({ taskId, ...r });
     if (r.ok && resp.helperId) {
       try {
@@ -9887,6 +9901,10 @@ export default function HostShellV2() {
     try { Object.assign(ev, passVerdictAtCreation(ev, customs), { briefSharedVendorIds: [] }); } catch { /* engine absent — event stays unstamped, i.e. free */ }
     if (holdAsDraft) {
       draftRef.current = ev; setDraftEvent(ev); setRevealed(true);
+      // The signed-out funnel's missing step (owner, 11/20/2026): a plan built
+      // and shown, not yet kept. event_created waits for sign-in, so without
+      // this everyone who stops at sign-in is invisible. Once per draft.
+      trackPlanDrafted(ev, arrivedFrom);
     } else {
       setCustoms(list => list.some(c => c && c.id === newId) ? list.map(c => (c && c.id === newId) ? ev : c) : [...list, ev]);
       // `is_first` is read from the events that existed BEFORE this one, which is
@@ -9974,7 +9992,7 @@ export default function HostShellV2() {
   const revealEv = draftEvent || activeCustom;
   // The reveal's "keep it" steps, signed out: open You & settings on the
   // existing sign-in, with the review board's line.
-  const askToKeep = (intent) => { keepIntentRef.current = intent; setSheet({ kind: 'settings', keep: true }); };
+  const askToKeep = (intent) => { keepIntentRef.current = intent; setSheet({ kind: 'settings', keep: true }); trackKeepPrompt(intent); };
   // On sign-in the draft joins the store (written straight through, so the
   // hydrate that follows in the same tick reads it and uploads it), and she
   // lands where she was going.
@@ -11425,7 +11443,7 @@ export default function HostShellV2() {
                 <div className="grounding" data-keep-ask data-move-notice={MOVE_NOTICE ? '' : undefined} style={{ margin: '0 0 var(--sp-3)' }}>
                   <p style={{ margin: '0 0 var(--sp-2)' }}>{MOVE_NOTICE || 'Sign in to keep this plan — it saves to your account so it can’t be lost.'}</p>
                   <div className="actions-row">
-                    <button className="mini" onClick={() => { setKeepAskClosed(c => [...c, keepAskEvent.id]); setSheet({ kind: 'settings', keep: true }); }}>Sign in</button>
+                    <button className="mini" onClick={() => { setKeepAskClosed(c => [...c, keepAskEvent.id]); keepIntentRef.current = 'device_plan'; setSheet({ kind: 'settings', keep: true }); trackKeepPrompt('device_plan'); }}>Sign in</button>
                     <button className="mini" onClick={() => closeKeepAsk(keepAskEvent.id)}>Not now</button>
                   </div>
                 </div>
@@ -16818,7 +16836,7 @@ export default function HostShellV2() {
                 onLeft={() => { try { window.location.reload(); } catch { /* the next load drops it */ } }} />
             )}
             {sheet.kind === 'messages' && (
-              <MessagesSheet event={event} helperAnswers={helperAnswers}
+              <MessagesSheet event={event} helperAnswers={helperAnswers} entry={sheet.entry} signedIn={Boolean(session)}
                 helpers={(helperData.responsibilities || []).map(r => ({ id: r.helperId, name: r.helperName }))}
                 onOpenGuests={() => setSheet({ kind: 'guests' })} />
             )}
@@ -27709,7 +27727,7 @@ export default function HostShellV2() {
           { label: 'Guest list', sub: 'guests & replies', go: () => setSheet({ kind: 'guests' }) },
           { label: 'Your checklist', sub: 'tasks', go: () => setSheet({ kind: 'tasks' }) },
           { label: 'Calendar', sub: 'the plan by week or month', go: () => setSheet({ kind: 'calendar' }) },
-          { label: 'Messages', sub: 'what you’ve sent, and what came of it', go: () => setSheet({ kind: 'messages' }) },
+          { label: 'Messages', sub: 'what you’ve sent, and what came of it', go: () => setSheet({ kind: 'messages', entry: 'jump' }) },
           { label: 'Calls to make', sub: 'decisions', go: () => setSheet({ kind: 'decisions' }) },
           { label: 'What could go wrong', sub: 'risks', go: () => setSheet({ kind: 'risks' }) },
           { label: 'Make it yours', sub: 'the meaning', go: () => setSheet({ kind: 'meaning' }) },

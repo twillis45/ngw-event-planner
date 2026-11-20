@@ -475,6 +475,21 @@ export const EVENTS = {
   // cannot support.
   ROW_WITH_REASON_CLICKED: 'row_with_reason_clicked',
   ACTION_COMPLETED_WITH_REASON: 'action_completed_with_reason',
+
+  // The flows shipped 11/19–11/20 (owner, 11/20/2026: "Yes, build the six
+  // events"). Sent through lib/flowAnalytics; counts, booleans and enums only.
+  NUDGE_SENT:              'nudge_sent',               // { emailed, email_failed, capped, texts_queued, skipped_recent }
+  NUDGE_TEXT_SENT:         'nudge_text_sent',          // {} — one per text the host marks sent
+  MESSAGES_VIEW_OPENED:    'messages_view_opened',     // { entry, emails, handoffs, cohost, helper, signed_in }
+  HELPER_EMAIL_SENT:       'helper_email_sent',        // { ok, reason? }
+  HELPER_ANSWERED:         'helper_answered',          // { answer: 'yes' | 'no' } — from the helper's page
+  PLAN_OPENED_FROM_REMINDER: 'plan_opened_from_reminder', // {} — the reminder's "Open your plan"
+  // The signed-out funnel (owner, 11/20/2026: "we are missing activity in posthog").
+  PLAN_DRAFTED:            'plan_drafted',             // { event_type, is_destination, has_date, has_headcount, came_from? }
+  KEEP_PROMPT_SHOWN:       'keep_prompt_shown',        // { intent }
+  SIGN_IN_CODE_REQUESTED:  'sign_in_code_requested',   // { success, after_keep_prompt }
+  // Server-only (backend/app/analytics.py), listed so the catalog is one table:
+  // host_reminder_sent, email_delivery, pass_refunded, pass_disputed, pass_purchased.
 };
 
 /**

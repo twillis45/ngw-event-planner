@@ -65,6 +65,8 @@ test('it says what it does, shows its wait, and says "Emailed" only once the ser
   await expect(button(page)).toBeEnabled();
   // The client named the helper; the server finds the address.
   expect(calls).toEqual([{ helper_name: 'Jordan Avery' }]);
+  // Counted (11/20/2026): ok only, never who.
+  expect(await page.evaluate(() => (window.__NGW_TRACK__ || []).filter((t) => t.event === 'helper_email_sent'))).toEqual([{ event: 'helper_email_sent', ok: true }]);
   await expect(page.locator('.assign-row, .row-assign').filter({ hasText: /\bSent\b/ })).toHaveCount(0);
 });
 
@@ -78,6 +80,7 @@ test('a failure shows in place and never says "Emailed" or "Sent"', async ({ pag
   await expect(line).toHaveAttribute('role', 'alert');
   await expect(button(page)).toHaveText('Email Jordan their job');
   await expect(page.locator('.row-assign').filter({ hasText: /Emailed|\bSent\b/ })).toHaveCount(0);
+  expect(await page.evaluate(() => (window.__NGW_TRACK__ || []).filter((t) => t.event === 'helper_email_sent'))).toEqual([{ event: 'helper_email_sent', ok: false, reason: 'refused' }]);
 });
 
 test('the day’s cap is a refusal said plainly, in place', async ({ page }) => {
@@ -86,5 +89,6 @@ test('the day’s cap is a refusal said plainly, in place', async ({ page }) => 
   release();
   await expect(page.locator('.helper-email-line'))
     .toHaveText('This event has sent its email for today. Try again tomorrow. The email didn’t go out.');
+  expect(await page.evaluate(() => (window.__NGW_TRACK__ || []).filter((t) => t.event === 'helper_email_sent'))).toEqual([{ event: 'helper_email_sent', ok: false, reason: 'capped' }]);
   await expect(page.locator('.row-assign').filter({ hasText: /Emailed|\bSent\b/ })).toHaveCount(0);
 });

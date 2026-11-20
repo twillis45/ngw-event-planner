@@ -6,9 +6,10 @@
 // No resend and no compose: those live on the draft sheet and the guest list,
 // and a second copy here would be a duplicate surface. The one action is the
 // app's existing way to start: the guest list, where the invite is sent.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { listSentMessages } from '@app/lib/commApi';
 import { buildMessageTimeline, filterTimeline, groupsPresent, EMPTY_LINE } from '@app/lib/messageTimeline';
+import { trackMessagesViewOpened } from '@app/lib/flowAnalytics';
 
 const TONE = {
   ok: { color: 'var(--ok)' },
@@ -19,7 +20,7 @@ const TONE = {
   attested: { color: 'var(--steel-soft)' },
 };
 
-export default function MessagesSheet({ event, helpers, helperAnswers, onOpenGuests }) {
+export default function MessagesSheet({ event, helpers, helperAnswers, onOpenGuests, entry, signedIn }) {
   const [server, setServer] = useState({ status: 'loading' });
   const [group, setGroup] = useState('all');
   useEffect(() => {
@@ -32,6 +33,15 @@ export default function MessagesSheet({ event, helpers, helperAnswers, onOpenGue
   const { entries, note, empty } = buildMessageTimeline({ event, server, helpers, helperAnswers });
   const groups = groupsPresent(entries);
   const shown = filterTimeline(entries, groups.some(([k]) => k === group) ? group : 'all');
+
+  // messages_view_opened, once per opening, after the server's answer is in so
+  // the counts are what the host was shown (kinds and counts only).
+  const counted = useRef(false);
+  useEffect(() => {
+    if (counted.current || server.status === 'loading') return;
+    counted.current = true;
+    trackMessagesViewOpened(entries, entry, signedIn);
+  }, [server.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div data-messages>

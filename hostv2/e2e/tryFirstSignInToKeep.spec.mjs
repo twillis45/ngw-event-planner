@@ -139,6 +139,16 @@ test.describe('try first, sign in to keep', () => {
     await expect(page.getByRole('button', { name: 'Keep this plan' })).toHaveCount(0);
     await expect(page.locator('.reveal-stage')).toHaveCount(0);
     await expect.poll(() => page.evaluate(() => window.__toasts.join(' | '))).toContain('Your event is on your account now.');
+    // The signed-out funnel, in order, from the dev tap (owner, 11/20/2026:
+    // "we are missing activity in posthog"): drafted, asked to keep, the code
+    // asked for, then created. Shapes only: no address, no name.
+    const funnel = await page.evaluate(() => (window.__NGW_TRACK__ || [])
+      .filter((t) => ['plan_drafted', 'keep_prompt_shown', 'sign_in_code_requested', 'event_created'].includes(t.event)));
+    expect(funnel.map((t) => t.event)).toEqual(['plan_drafted', 'keep_prompt_shown', 'sign_in_code_requested', 'event_created']);
+    expect(Object.keys(funnel[0]).sort()).toEqual(['event', 'event_type', 'has_date', 'has_headcount', 'is_destination']);
+    expect(funnel[1]).toEqual({ event: 'keep_prompt_shown', intent: 'plan' });
+    expect(funnel[2]).toEqual({ event: 'sign_in_code_requested', success: true, after_keep_prompt: true });
+    expect(JSON.stringify(funnel)).not.toMatch(/@|harness/);
   });
 
   test('declining keeps nothing on this device, and the plan stays on screen until she signs in', async ({ page }) => {
@@ -202,6 +212,8 @@ test.describe('try first, sign in to keep', () => {
     await expect(page.locator('#sheet-title')).toHaveText('You & settings', { timeout: 8000 });
     await expect(page.locator('[data-keep-signin]')).toHaveText(LINE);
     await expect(page.getByLabel('Email for sign-in link')).toBeVisible();
+    expect(await page.evaluate(() => (window.__NGW_TRACK__ || []).filter((t) => t.event === 'keep_prompt_shown')))
+      .toEqual([{ event: 'keep_prompt_shown', intent: 'device_plan' }]);
   });
 
   test('the guest invite opens with no session and never asks anyone to sign in', async ({ page }) => {
