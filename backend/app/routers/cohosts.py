@@ -11,6 +11,7 @@ co-hosts; a co-host can remove themselves. The claim binds to the email in
 auth.users and only once it is confirmed, never an email the browser sends.
 """
 import html
+import json
 import logging
 import re
 from typing import Optional
@@ -66,6 +67,31 @@ async def _list(conn, event_id):
     return [_view(r) for r in rows]
 
 
+# ── THE INVITE EMAIL IS RECORDED (Messages view, owner 11/20/2026) ───────────
+# The send was never kept anywhere: only the event_cohosts row, which says who
+# was invited and whether they joined, not whether an email went. It is now
+# written where every other email the app sends is written (event_messages,
+# metadata.delivery), with Resend's id, so the delivery webhook updates it the
+# same way. Recorded at send time only; nothing earlier is back-filled.
+# Fail-soft: a record that cannot be written never undoes the invite.
+async def _record_invite_email(event_id: str, email: str, subject: str, ok: bool, result) -> None:
+    from .communication import _channel   # late: communication imports rsvp, and so on
+    delivery = {"intent": "cohost_invite", "recipient_email": email, "subject": subject,
+                "status": "accepted" if ok else "failed", "provider": "resend"}
+    if ok and isinstance(result, dict) and result.get("id"):
+        delivery["resend_id"] = result["id"]
+    try:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            ch = await _channel(conn, event_id, "INTERNAL_TEAM")
+            await conn.execute(
+                """insert into event_messages (event_id, channel_id, message_type, author_role, body, metadata)
+                   values ($1, $2, 'operational_update', 'system', $3, $4)""",
+                event_id, ch["id"], subject, json.dumps({"delivery": delivery}))
+    except Exception as e:  # noqa: BLE001
+        log.error("cohost invite record failed event=%s error=%s", event_id, failure_reason(e))
+
+
 @router.get("/api/events/{event_id}/cohosts")
 async def list_cohosts(event_id: str, authorization: Optional[str] = Header(default=None),
                        x_planner_token: Optional[str] = Header(default=None)):
@@ -108,10 +134,12 @@ async def invite_cohost(event_id: str, payload: CohostInvite, authorization: Opt
     emailed = False
     if created and is_email_configured():
         name = (ev["name"] or "an event").strip()
+        subject = f"You're invited to co-host {name[:80]}"
+        result = None
         try:
-            await _send_via_resend(
+            result = await _send_via_resend(
                 to=email,
-                subject=f"You're invited to co-host {name[:80]}",
+                subject=subject,
                 html=(f"<p>You've been invited to co-host <strong>{html.escape(name)}</strong> on No Guesswork Events.</p>"
                       f"<p><a href=\"{html.escape(APP_BASE_URL)}\">Open the app</a> and sign in with this email address "
                       f"({html.escape(email)}). The plan will be there for you to see and change.</p>"
@@ -120,6 +148,7 @@ async def invite_cohost(event_id: str, payload: CohostInvite, authorization: Opt
             emailed = True
         except Exception as e:  # noqa: BLE001 — the invite stands; the host can tell them directly
             log.error("cohost invite email failed event=%s error=%s", event_id, failure_reason(e))
+        await _record_invite_email(event_id, email, subject, emailed, result)
     return {"ok": True, "cohosts": cohosts, "emailed": emailed, "already_invited": not created}
 
 

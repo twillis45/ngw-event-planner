@@ -179,6 +179,8 @@ describe('every backend route has someone who calls it', () => {
     // feature as dead. This is the test that keeps it honest.
     expect(CALLED('/api/events/{event_id}/communication/channels')).toBe(true);
     expect(CALLED('/api/events/{event_id}/communication/channels/{channel_type}/read')).toBe(true);
+    // The Messages view's read (11/20/2026), called by commApi.listSentMessages.
+    expect(CALLED('/api/events/{event_id}/communication/sent')).toBe(true);
   });
 
   test('(premise) …and is not so eager that everything looks called', () => {

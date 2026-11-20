@@ -51,6 +51,8 @@ const P = {
   decisions: <><path d="M8 1.8v3.1" /><circle cx="8" cy="6.6" r="1.7" /><path d="M6.5 7.9L3.2 13.9" /><path d="M9.5 7.9l3.3 6" /></>,
 
   // Keep it on track
+  // Messages (11/20/2026): an envelope.
+  messages:  <><rect x="1.8" y="3.4" width="12.4" height="9.2" rx="1.4" /><path d="M2.2 4.4L8 8.8l5.8-4.4" /></>,
   risks:     <><path d="M8 2.2l6 10.4H2z" /><path d="M8 6.4v3" /><path d="M8 11.4h.01" /></>,
   rain:      <><path d="M4.6 9.4a3.1 3.1 0 0 1 .4-6.1 4 4 0 0 1 7.5 1.3 2.6 2.6 0 0 1-.6 4.8" /><path d="M5.6 11.6l-.8 2.2" /><path d="M8.3 11.6l-.8 2.2" /><path d="M11 11.6l-.8 2.2" /></>,
   lodging:   <><path d="M1.9 13.6V7.2L8 2.4l6.1 4.8v6.4" /><path d="M6.1 13.6V9.4h3.8v4.2" /></>,

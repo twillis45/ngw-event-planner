@@ -88,6 +88,10 @@ export function sectionGroups(state) {
     { title: 'Keep it on track', rows: [
       { k: 'risks', label: 'What could go wrong', sub: 'The risks the plan is watching' },
       ...(outdoor ? [{ k: 'rain', label: 'If it rains', sub: 'Your weather backup' }] : []),
+      // MESSAGES (owner, 11/20/2026): read-only — what went out, to whom, how,
+      // and its real status. Always a door: "did that go out?" is asked of a
+      // calm event as much as a busy one, and the empty sheet says so honestly.
+      { k: 'messages', label: 'Messages', sub: 'What you’ve sent, and what came of it' },
       // Money-Safe Date Chain: in elegant mode this Sections row is the travel
       // wayfinding, so a closing money deadline surfaces HERE — the one fact
       // that can cost real dollars this week leads the sub.

@@ -22,6 +22,7 @@ from ..auth import require_planner
 from ..emailer import send_approval_email, send_thread_email, is_email_configured
 from ..invite_email import compose_invite_email, invite_gaps
 from .invite_cards import card_url, stored_card_version
+from .rsvp import _assert_event_studio_read
 from .. import host_email
 
 router = APIRouter(prefix="/api/events/{event_id}/communication", tags=["communication"])
@@ -98,8 +99,11 @@ async def _assert_email_send_allowed(conn, event_id: str, recipient: str) -> dic
         data = json.loads(data or "{}")
     if (recipient or "").strip().lower() not in _addresses_in(data or {}, set()):
         raise HTTPException(403, "Only an address saved on this event can be emailed.")
+    # A co-host invite is recorded here too (Messages view, 11/20/2026) but it
+    # has its own daily cap in cohosts.py, so it does not spend this one.
     n = await conn.fetchval(
         "select count(*) from event_messages where event_id=$1 and metadata ? 'delivery'"
+        " and coalesce(metadata->'delivery'->>'intent', '') <> 'cohost_invite'"
         " and created_at > now() - interval '1 day'",
         event_id,
     )
@@ -373,6 +377,75 @@ async def list_messages(
         return [dict(r) for r in rows]
 
 
+# ── 3b. GET /sent — the host's Messages view (owner, 11/20/2026) ──────────────
+# READ-ONLY. Every email the app sent on this event's behalf (any row carrying
+# metadata.delivery: an invite, the one-guest email, "Send it to" a vendor, a
+# co-host invite), newest first, with the delivery status the Resend webhook
+# last wrote. Plus, for the HOST only, the event's co-host invitations.
+#
+# Why not list_messages above: it is one channel at a time, it CLAIMS an
+# unowned event on a read (_assert_event_access, claim=True), it admits no
+# co-host, and it returns the whole row (portal_token, resend_id). This uses
+# the shared non-claiming read check (_assert_event_studio_read): the event's
+# own studio, or a claimed co-host of this one event, and nobody else.
+_SENT_DELIVERY_KEYS = ("intent", "status", "recipient_name", "recipient_email", "subject", "kind", "provider_event")
+
+
+def _as_dict(v) -> dict:
+    if isinstance(v, str):
+        try:
+            v = json.loads(v or "{}")
+        except ValueError:
+            v = {}
+    return v if isinstance(v, dict) else {}
+
+
+@router.get("/sent")
+async def list_sent(
+    event_id: str,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    principal = await require_planner(authorization, x_planner_token)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await _assert_event_studio_read(conn, event_id, principal)
+        rows = await conn.fetch(
+            """select id, created_at, updated_at, metadata->'delivery' as delivery
+                 from event_messages
+                where event_id=$1 and deleted_at is null and metadata ? 'delivery'
+                order by created_at desc limit 300""",
+            event_id,
+        )
+        emails = []
+        for r in rows:
+            d = _as_dict(r["delivery"])
+            emails.append({
+                "id": str(r["id"]),
+                "created_at": r["created_at"].isoformat() if r["created_at"] else None,
+                "updated_at": r["updated_at"].isoformat() if r["updated_at"] else None,
+                "delivery": {k: d.get(k) for k in _SENT_DELIVERY_KEYS if d.get(k) is not None},
+            })
+        # Co-host invitations: the host's to see (cohosts.list_cohosts is
+        # host-only too); a co-host reading this gets null, not someone's list.
+        cohosts = None
+        uid = (principal or {}).get("id")
+        if uid and (principal or {}).get("via") != "dev_token" and await conn.fetchval(
+                "select to_regclass('public.event_cohosts') is not null"):
+            studio = await conn.fetchval("select studio_id from public.events where id=$1", event_id)
+            if studio is not None and await conn.fetchval(
+                    "select 1 from studio_members where studio_id=$1 and user_id=$2", studio, uid):
+                crow = await conn.fetch(
+                    "select email, created_at, accepted_at from public.event_cohosts where event_id=$1 order by created_at",
+                    event_id)
+                cohosts = [{
+                    "email": c["email"],
+                    "invited_at": c["created_at"].isoformat() if c["created_at"] else None,
+                    "joined_at": c["accepted_at"].isoformat() if c["accepted_at"] else None,
+                } for c in crow]
+    return {"emails": emails, "cohosts": cohosts}
+
+
 # ── 4. POST /channels/{channel_type}/messages ──────────────────────────────────
 @router.post("/channels/{channel_type}/messages")
 async def create_message(
@@ -516,7 +589,12 @@ async def create_message(
             "recipient_name":  payload.recipient_name,
             "status":          "accepted" if delivery_result.get("ok") else "failed",
             "provider":        delivery_result.get("provider"),
+            # What it was, for the Messages view (11/20/2026). The subject was
+            # sent and never kept, so earlier rows cannot say; these can.
+            "subject":         subj,
         }
+        if payload.invite:
+            delivery_meta["kind"] = "invite"
         if delivery_result.get("ok"):
             delivery_meta["resend_id"] = delivery_result.get("resend_id")
         else:
