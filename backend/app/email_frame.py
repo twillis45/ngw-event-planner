@@ -21,6 +21,8 @@ look for it to prove an email wears the frame.
 import html as _html
 import re
 
+from .config import APP_BASE_URL
+
 SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 SERIF = "Georgia,'Times New Roman',serif"
 
@@ -36,7 +38,20 @@ SOMBRE_HUE = "#6f6152"
 
 SOMBRE = re.compile(r"funeral|memorial|shiva|celebration of life|life celebration|wake|remembrance|in memoriam|mourn|repast", re.I)
 
-MARK = f"background:{PAPER};border:1px solid {LINE};border-radius:18px;"
+# THE CARD IS PAPER (owner, 11/19/2026, on the first reminder in a dark-mode
+# inbox: "Needs image for paper like the other emails"). A mail app in dark
+# mode repaints a background COLOR (the cream came out brown) but not a picture,
+# so the card carries paper-cream.jpg: the invite's own linen grain
+# (invite-grain-light.jpg) multiplied over the cream, as the invite card draws
+# it, made once because mail apps cannot blend. The cream stays as the fallback
+# when images are off, and the email declares itself light-only (Apple Mail,
+# Spark).
+PAPER_IMAGE = APP_BASE_URL.rstrip("/") + "/hostv2/email/paper-cream.jpg"
+LIGHT_ONLY = ('<meta name="color-scheme" content="light only">'
+              '<meta name="supported-color-schemes" content="light only">'
+              '<style>:root{color-scheme:light only;supported-color-schemes:light only;}</style>')
+MARK = (f"background:{PAPER} url('{PAPER_IMAGE}') center / cover;"
+        f"border:1px solid {LINE};border-radius:18px;")
 
 
 def hue_for(*words) -> str:
@@ -127,9 +142,9 @@ def frame(*, hue=HUE, greeting=None, top_html=None, eyebrow=None, lede=None, tit
     note = (f'<div style="max-width:520px;margin:16px auto 0;padding:0 4px;">{label_html(note_label or "", hue)}'
             f'<div style="font:400 15px/1.6 {SANS};color:{INK};">{note_html}</div></div>' if note_html else '')
     stop = f' <a href="{e(stop_url)}" style="color:{FOOT};">{e(stop_label)}</a>.' if stop_url else ''
-    html = f"""<div style="background:{PAGE};padding:24px 12px;">
+    html = f"""{LIGHT_ONLY}<div style="background:{PAGE};padding:24px 12px;">
 {hi}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;{MARK}">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" background="{e(PAPER_IMAGE)}" bgcolor="{PAPER}" style="max-width:520px;margin:0 auto;{MARK}">
 <tr><td style="padding:{pad};text-align:center;">
   {card}
 </td></tr></table>

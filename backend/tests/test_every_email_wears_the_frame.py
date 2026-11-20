@@ -38,7 +38,11 @@ EVENT = {"name": "My Friendsgiving", "type": "Friendsgiving", "date": "2026-11-2
 
 
 def framed(html):
-    return ef.MARK in html
+    # The card is PAPER, like the invite's picture: the linen grain image behind
+    # it, and the light-only color scheme so a dark-mode mail app (Spark, Apple
+    # Mail) does not repaint it brown (owner, 11/19/2026, on the reminder).
+    return (ef.MARK in html and ef.PAPER_IMAGE in html
+            and 'name="color-scheme" content="light only"' in html)
 
 
 # ── each email: the frame, the sender line, its stop link ────────────────────
