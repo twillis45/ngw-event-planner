@@ -66,6 +66,7 @@ import { evidenceFromDecisionRow } from './decisionEvidence';
 import { daysUntil, isEventDay, isPastEvent, daysUntilEnd, rsvpDeadlineFor } from './dates';
 import { placeQuestionsFor } from './placeQuestions';
 import { rsvpHasResponded } from './rsvp';
+import { nudgeBoardItem, wasInvited } from './replyNudge';
 import { buildVendorPlan } from './vendorPlan';
 import { venueFor } from './venueFor';
 import { isVendorBooked } from './workstreams';
@@ -488,6 +489,31 @@ export const SURFACES = [
     bundleTitle: (n) => `${n} guests still have not replied`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
+      // ── THE NUDGE'S CLOCK (owner ruling, 11/20/2026) ───────────────────
+      // Once any guest's invite is on record (the invite batch, or the host
+      // marked them told), this row IS the nudge's prompt and follows its
+      // timing rule (lib/replyNudge.nudgeBoardItem): 3 days before the
+      // host's reply-by date, and again from the day after it passes while
+      // anyone invited is unanswered and not nudged in the last 3 days. It
+      // opens the nudge; nothing sends without the host's tap. One row, the
+      // same key, so a snooze and the ranking follow it. A list with no
+      // invite records has nobody the nudge can reach and keeps the rule below.
+      const roster = Array.isArray(event && event.guests) ? event.guests : [];
+      if (roster.some((g) => wasInvited(event, g))) {
+        let item = null;
+        try { item = nudgeBoardItem(event); } catch (_e) { item = null; }
+        if (!item) return [];
+        return [{
+          severity: 'attention',
+          title: item.title,
+          why: item.why,
+          ask: item.count === 1 ? 'Nudge the 1 who hasn’t answered.' : `Nudge the ${item.count} who haven’t answered.`,
+          route: { tab: 'Guests', focusField: 'rsvp-nudge' },
+          key: 'rsvp-chase',
+          dueInDays: item.days,
+          leadDays: null,
+        }];
+      }
       let dl = null;
       try { dl = rsvpDeadlineFor(event); } catch (_e) { return []; }
       if (!dl || dl.hard !== true) return [];              // only a date the host actually set

@@ -7,6 +7,7 @@
 
 import { isVendorBooked } from './workstreams';
 import { venueFor } from './venueFor';
+import { showsReplyTracking } from './guestMode';
 
 // The first vendor row still needing the host — the row-level rule the
 // Vendors deep-link doctrine requires (not the sheet top).
@@ -52,6 +53,11 @@ export function milestoneActionRoute(label, event, timelineId) {
  */
 export function checklistRouteFor(task, meta = {}, event = null) {
   const t = String(task || '').toLowerCase();
+  // THE CHASE STEP OPENS THE NUDGE (owner ruling, 11/20/2026): without a
+  // reply-by date set, this step is the nudge's prompt. Only where replies are
+  // tracked; a headcount-only event is never nudged and falls through.
+  if (/\bchase\b[^;]{0,30}\b(non-?responders|rsvps?|repl)/.test(t) && event && showsReplyTracking(event))
+    return { label: 'Open the nudge', route: { tab: 'Guests', focusField: 'rsvp-nudge' } };
   const wk = String((meta && meta.week) || '').toLowerCase();
   const dayOf = (meta && meta.category) === 'event-day' || /day of\b|day-of/.test(wk);
   if (dayOf || /\bfire[s]? the pit|light the pit|set up (the )?canop|set out (foil|to-go)|\bserved?\b|bless the food|scrape the grill|pack (up|leftovers|the)|fold (the )?canopies|works batches\b/.test(t))

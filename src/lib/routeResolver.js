@@ -78,6 +78,9 @@ export function resolveRoute(route) {
   // dropping the focus these emitters promise (6+ sites across 5 files).
   if (ff === 'guests-entry') return { kind: 'guests', focus: 'entry' };
   if (/^guests-invites/.test(ff)) return { kind: 'guests', focus: 'invites' };
+  // The nudge (owner ruling, 11/20/2026): the board's reply-by row and the
+  // chase step land on the one action, "Nudge the N who haven't answered".
+  if (ff === 'rsvp-nudge') return { kind: 'guests', focus: 'nudge' };
   if (route.tab === 'Guests') return { kind: 'guests', focus: null };
   // Food — a foodFocus id or a foodrow- focusField lands on the exact line.
   if (route.tab === 'Planning' && (route.foodFocus || /food/i.test(ff))) {
