@@ -27,6 +27,10 @@ const openNote = async (page, ev) => {
 test('a vendor with a number: Text it is addressed to them', async ({ page }) => {
   const link = await openNote(page, EV('(410) 555-0142'));
   await expect(link).toHaveAttribute('href', /^sms:4105550142\?&body=./);
+  // The help line names "Share…" only when that button is on screen (11/20/2026).
+  const sheet = page.locator('.sheet').last();
+  const hasShare = await sheet.getByRole('button', { name: 'Share…' }).count();
+  if (!hasShare) await expect(sheet).not.toContainText('Share…');
 });
 
 test('no number on file: no recipient, the host picks', async ({ page }) => {
