@@ -44,7 +44,7 @@ test.each([
   const a = at(href, true);
   expect(a.isAnalyticsConfigured()).toBe(true);
   await a.track('pass_sheet_viewed', { surface: 'test' });
-  expect(calls.capture.map((c) => c.e)).toEqual(['pass_sheet_viewed']);
+  expect(calls.capture.map((c) => c.e)).toEqual(['pass_sheet_viewed', '$pageview']);   // the pass sheet is a page (11/20/2026)
 });
 
 test.each([

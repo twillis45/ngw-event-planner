@@ -169,9 +169,13 @@ async function getPostHog() {
       // callback; posthog-js deprecated it for before_send (11/16/2026).
       before_send: (ev) => {
         if (!ev || !ev.properties) return ev;
-        const properties = { ...ev.properties };
+        const properties = scrubUrls({ ...ev.properties });
         ['email', 'name', 'phone', '$email', '$name'].forEach(k => delete properties[k]);
-        return { ...ev, properties };
+        const out = { ...ev, properties };
+        // Person properties set alongside (e.g. $initial_current_url) get the same scrub.
+        if (ev.$set) out.$set = scrubUrls({ ...ev.$set });
+        if (ev.$set_once) out.$set_once = scrubUrls({ ...ev.$set_once });
+        return out;
       },
     });
     _ph = posthog;
@@ -320,6 +324,55 @@ export async function track(event, properties = {}) {
     name: undefined,
     phone: undefined,
   });
+  const page = pageFor(event, properties);
+  if (page) { try { ph.capture('$pageview', { page }); } catch { /* best-effort */ } }
+}
+
+// ── PAGE VIEWS (owner, 11/20/2026) ─────────────────────────────────────────
+// PostHog's Web analytics tab counts only `$pageview`, which was off, so it
+// showed nothing. Automatic page views stay off (they would send whole
+// addresses); instead each screen-level event below also records one
+// `$pageview` naming the page. Every address PostHog sees goes through
+// cleanUrl first, so invite, helper, vendor and family codes, event ids and
+// sign-in tokens never leave the browser.
+const PAGE_FOR = {
+  host_home_viewed: () => 'board',
+  section_opened: (p) => 'section/' + String((p && p.section) || 'unknown').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40),
+  invite_viewed: () => 'invite',
+  pass_sheet_viewed: () => 'pass',
+  messages_view_opened: () => 'messages',
+};
+/** The page a screen-level event stands for, or null. PURE. */
+export function pageFor(event, properties) {
+  const f = PAGE_FOR[event];
+  return f ? f(properties || {}) : null;
+}
+
+/**
+ * An address as PostHog may see it. PURE. Ours (the app's own host): origin and
+ * path, plus only utm_* campaign tags; every other query value and the #hash
+ * (where sign-in links carry tokens) dropped. Anyone else's (a referrer): its
+ * origin only, never the page. Anything that is not an http(s) address: as is.
+ */
+export function cleanUrl(value, ownHost) {
+  if (typeof value !== 'string' || !/^https?:\/\//i.test(value)) return value;
+  let u;
+  try { u = new URL(value); } catch { return value; }
+  const own = ownHost
+    || (typeof window !== 'undefined' && window.location ? window.location.host : '');
+  const isOwn = u.host === own || /(^|\.)noguessworksystems\.com$/i.test(u.hostname) || /\.github\.io$/i.test(u.hostname);
+  if (!isOwn) return u.origin + '/';
+  const keep = new URLSearchParams();
+  u.searchParams.forEach((v, k) => { if (/^utm_[a-z_]+$/i.test(k)) keep.append(k, v); });
+  const q = keep.toString();
+  return u.origin + u.pathname + (q ? '?' + q : '');
+}
+
+/** Every string value that is an address, cleaned. PURE (returns a copy). */
+export function scrubUrls(obj, ownHost) {
+  const out = { ...(obj || {}) };
+  Object.keys(out).forEach((k) => { out[k] = cleanUrl(out[k], ownHost); });
+  return out;
 }
 
 // ── Pre-defined events (keeps tracking consistent) ─────────────────────────

@@ -257,7 +257,11 @@ your questions and the host's replies at once. ⟶ `POST
   ⟶ `src/lib/sentry.js:25` (`sendDefaultPii: false`), `:23` ⟵
 - To learn which parts of the app help: product analytics go to **PostHog**
   with automatic click and form capture **off**, session recording **off**, and
-  page views tracked by hand. A signed-in host is identified only by a one-way
+  page views tracked by hand: each one names the part of the app you opened
+  (such as "guest list" or "invite") and its web address with every code
+  from a link removed (invitation, helper, vendor and family codes, event
+  ids and sign-in tokens never leave your browser); the address of a site
+  that sent you is reduced to its domain. A signed-in host is identified only by a one-way
   scrambled code (a hash) of the account's internal id, so your visits on
   different devices count as one person, never by your email, your name, or
   your business name. Name, email and phone fields are stripped before any
@@ -265,7 +269,7 @@ your questions and the host's replies at once. ⟶ `POST
   brought you to the app (such as `utm_source`), the name of the website that
   referred you (its host name only, never the page), and the pass price your
   device was shown. ⟶ `src/lib/analytics.js` (`getPostHog` settings and
-  `before_send` stripping; `accountLabel` / `identifyAccount`: `host_` plus 16
+  `before_send` stripping, `cleanUrl` / `scrubUrls`, `pageFor`; `accountLabel` / `identifyAccount`: `host_` plus 16
   hex characters of SHA-256; `campaignFrom` / `firstTouchProps`;
   `registerPassPrice`) ⟵
 - **Turning analytics off.** You can turn analytics off any time in **You &
