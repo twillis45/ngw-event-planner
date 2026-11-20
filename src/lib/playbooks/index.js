@@ -5312,8 +5312,8 @@ export function playbookFoodPlan(event, opts = {}) {
   // crabs -> shellfish" and "Steamed shrimp -> shellfish" the moment the SAME
   // restriction arrives through either of the other two doors.
   //
-  // On the decision whose own `why` reads "One guest with an allergy needs a
-  // separate plate kept away from the crab steam and the tools."
+  // On the decision whose own `why` reads "A guest with an allergy needs a
+  // separate plate kept away from the crab steam and tools."
   //
   // Read through `answerList` so a pick-one string and a multi list both land,
   // and kept as a FLAG source only — chips say WHICH restrictions exist, never

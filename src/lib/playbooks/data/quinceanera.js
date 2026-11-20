@@ -58,7 +58,7 @@ const quinceanera = {
       difmCapable: 'needs-host',
       priorityBasis: { rationale: 'The Mass-or-secular choice defines the shape of the whole day and belongs to the family\'s faith and tradition — the first and most defining call.', tier: 'reasoned' },
       culturalContext: { tradition: 'The quinceañera (a girl\'s 15th-birthday rite of passage into womanhood) is both religious and social; it traditionally opens with a Catholic Mass (misa) attended by family and godparents before the reception — a form thought to blend Spanish Catholicism with Indigenous Mesoamerican coming-of-age custom.', constraint: 'Whether the day includes the Mass defines its whole shape and belongs to the family\'s faith and tradition; Mexican, Central American, Caribbean and South American families handle it differently, so it is confirmed with the family, never assumed.', tier: 'established-consensus', sources: ['britannica-quinceanera'], verificationStatus: 'researched' },
-      why: 'This is the first and most defining choice, and it belongs to the family. A full Mass means booking the parish and priest early (popular churches book a year out), arranging readings, padrinos, and sometimes pre-Cana-style preparation, and building the day as church-then-reception. A blessing is lighter; a secular quince skips the church entirely. Mexican, Central American, Caribbean and South American families handle this differently — confirm the family\'s tradition rather than assuming.',
+      why: 'The first and most defining choice, and it belongs to the family. A full Mass means booking the parish and priest early (popular churches book a year out), arranging readings, padrinos, and sometimes pre-Cana-style preparation, then church-then-reception; a blessing is lighter, and a secular quince skips the church. Mexican, Central American, Caribbean, and South American families handle this differently, so confirm the family\'s tradition rather than assuming.',
     },
     {
       id: 'venue',
@@ -73,7 +73,7 @@ const quinceanera = {
       emotionalWeight: 'low',
       difmCapable: 'needs-host',
       priorityBasis: { rationale: 'The salón sets capacity, catering, and the date, and the best halls book far in advance — lock it first because it is the hardest to undo.', tier: 'reasoned' },
-      why: 'A quince is a large seated event; the venue sets capacity, whether tables, chairs, linens and a dance floor are included, parking, the curfew, and whether you can bring your own caterer or must use theirs. Salones that host quinces book the best Saturdays a year ahead — lock this first, right alongside the church if there is a Mass.',
+      why: 'A quince is a large seated event: the venue sets capacity, whether tables, chairs, linens, and a dance floor are included, parking, curfew, and whether you can bring your own caterer. Salones that host quinces book the best Saturdays a year ahead, so lock this first, alongside the church if there is a Mass.',
     },
     {
       id: 'court_size',
@@ -88,7 +88,7 @@ const quinceanera = {
       difmCapable: 'needs-host',
       priorityBasis: { rationale: 'The court dances the vals at her side and drives the attire, choreography, and months of rehearsal — a deeply personal choice only the family can make.', tier: 'reasoned' },
       culturalContext: { tradition: 'The court of honor is the quinceañera\'s damas (maids) and chambelanes (escorts); the traditional court is 14 damas and 14 chambelanes who, with the quinceañera herself, represent the fifteen years of her childhood, and they dance the choreographed vals (waltz) at her side.', constraint: 'The court is a deeply personal, tradition-rooted choice tied to the years-of-childhood symbolism; many families choose a smaller court, but who is in it is the family\'s call, not a sizing default.', tier: 'established-consensus', sources: ['britannica-quinceanera'], verificationStatus: 'researched' },
-      why: 'The court (corte de honor) walks with the quinceañera and dances the vals. Tradition is 14 damas and 14 chambelanes (with her completing fifteen), but many families choose a smaller court — picking members who will actually commit to months of rehearsals is famously the hardest part of planning. Court size drives attire counts, the choreography, and the rehearsal schedule, so settle it early.',
+      why: 'The court (corte de honor) walks with the quinceañera and dances the vals. Tradition is 14 damas and 14 chambelanes (with her completing fifteen), but many families choose a smaller court, and finding members who will commit to months of rehearsals is famously the hardest part. Court size drives attire counts, choreography, and rehearsals, so settle it early.',
     },
     {
       id: 'dress',
@@ -106,7 +106,7 @@ const quinceanera = {
       emotionalWeight: 'high',
       difmCapable: 'needs-host',
       priorityBasis: { rationale: 'The ballgown is the centerpiece she will remember and the longest-lead purchase — a late or ill-fitting gown cannot be undone in time.', tier: 'reasoned' },
-      why: 'The ballgown is the centerpiece and the longest-lead item — custom gowns take months to make and every gown needs fittings and alterations. Order ~6-8 months out so there is room for the final fitting close to the date. The court\'s dresses and the chambelanes\' suits should be coordinated to the gown\'s color story and ordered in the same window.',
+      why: 'The ballgown is the centerpiece and the longest-lead item: custom gowns take months, and every gown needs fittings and alterations. Order ~6-8 months out to leave room for a final fitting near the date, and order the court\'s dresses and chambelanes\' suits in the same window, coordinated to the gown\'s colors.',
     },
     {
       id: 'theme_colors',
@@ -121,7 +121,7 @@ const quinceanera = {
       emotionalWeight: 'med',
       difmCapable: 'needs-host',
       priorityBasis: { rationale: 'The color story ties the gown, flowers, and décor together and is hers to own, but it is set early with room to adjust.', tier: 'reasoned' },
-      why: 'The color story ties the gown, the court attire, the flowers, the linens, the cake, and the invitations together. Let the quinceañera own this — it is her celebration and the choice she will care about most. Decide it before ordering attire and booking the florist so everything matches.',
+      why: 'The color story ties together the gown, court attire, flowers, linens, cake, and invitations. Let the quinceañera own it (it is her celebration and the choice she\'ll care about most), and decide before ordering attire or booking the florist.',
     },
     {
       id: 'vals_song',
@@ -137,7 +137,7 @@ const quinceanera = {
       difmCapable: 'needs-host',
       priorityBasis: { rationale: 'The vals is the emotional heart of the reception — the song she and her court rehearse for months becomes the one moment everyone remembers.', tier: 'reasoned' },
       culturalContext: { tradition: 'The vals is the choreographed waltz the quinceañera performs with her court and often her father — a central, emotional moment of the reception marking her step into adulthood; many families add a high-energy surprise dance (baile sorpresa) right after.', constraint: 'The vals is the tradition-bearing heart of the reception the court rehearses for months, so the song is the quinceañera\'s and family\'s own choice — not a default the app should pick.', tier: 'established-consensus', sources: ['britannica-quinceanera'], verificationStatus: 'researched' },
-      why: 'The vals song sets the choreography the court rehearses for months, and many quinces add a high-energy surprise dance (baile sorpresa) right after. Choosing the song early gives the choreographer and the court time to learn it. It also shapes the music plan — a DJ spinning cumbia, banda, and reggaetón, a live banda or mariachi for key moments, or both.',
+      why: 'The vals song sets the choreography the court rehearses for months, and many quinces add a high-energy surprise dance (baile sorpresa) right after. Choose it early so the choreographer and court can learn it; it also shapes the music plan: a DJ spinning cumbia, banda, and reggaetón, a live banda or mariachi for key moments, or both.',
     },
     {
       id: 'padrinos',
@@ -155,7 +155,7 @@ const quinceanera = {
       emotionalWeight: 'high',
       difmCapable: 'needs-host',
       priorityBasis: { rationale: 'Padrino sponsorship is a genuine tradition that changes who is buying what and by when, but only the family knows which padrinos are participating and for which items, so the app cannot default this.', tier: 'reasoned' },
-      why: 'Padrinos and madrinas (godparents/sponsors) traditionally sponsor specific elements of a quinceañera — the cake, the dress, the music, the recuerdos — as an honor and a way the wider family participates. Knowing which padrinos are covering which pieces early changes the shopping and budget plan directly: a padrino covering the cake means the family is not the one placing that order or carrying that cost.',
+      why: 'Padrinos and madrinas (godparents/sponsors) traditionally sponsor specific elements of a quinceañera (the cake, the dress, the music, the recuerdos) as an honor and a way the wider family takes part. Knowing early who covers which piece changes the shopping and budget: a padrino covering the cake means the family isn\'t placing that order or carrying that cost.',
     },
   ],
 

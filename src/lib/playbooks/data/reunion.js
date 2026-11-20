@@ -53,16 +53,16 @@ const reunion = {
       options: ['Potluck (assigned by household)', 'Host-cooked BBQ', 'BBQ catered / food truck'],
       default: 'Potluck (assigned by household)',
       defaultWhy:
-        'Potluck is the default because it is the cheapest way to feed a multi-household reunion and it spreads the cooking across the family instead of onto you. Change it if people are travelling too far to bring a dish, or if you would rather buy the day back with a caterer.',
+        'Potluck is the default: it\'s the cheapest way to feed a multi-household reunion and spreads the cooking across the family. Change it if people are traveling too far to bring a dish, or you\'d rather buy the day back with a caterer.',
       when: 'T-60d',
       blocks: ['food-purchases', 'catering-vendor', 'potluck-signup'],
       weight: 'high',
       reversibility: 'costly',
       emotionalWeight: 'low',
       difmCapable: 'can-derive',
-      priorityBasis: { rationale: 'The food model drives the entire shopping list and rental list and everything downstream stalls behind it, and once a catering deposit is paid it is costly to undo — but a coordinated potluck is a safe default the app can start from.', tier: 'reasoned' },
+      priorityBasis: { rationale: 'The food model drives the whole shopping and rental list, and a paid catering deposit is costly to undo.', tier: 'reasoned' },
       why:
-        'Potluck is the cheapest and most traditional for a big multi-household reunion, but it only works if dishes are assigned by category and household so the table is balanced and hot/cold/dessert all show up. Host-cooked BBQ gives you control but puts ~0.5 lb of protein per guest and all the grilling on you. Catering or a food truck buys back the day for ~$15-30/guest. Decide early because it drives the entire shopping list and the rental list.',
+        'Potluck is the cheapest and most traditional for a big reunion, but only works if dishes are assigned by category and household. Host-cooked BBQ gives control but puts ~0.5 lb of protein per guest and all the grilling on you; catering or a food truck buys back the day for ~$15-30/guest.',
     },
     {
       id: 'potluck-coordination',
@@ -70,7 +70,7 @@ const reunion = {
       options: ['By category (apps/sides/mains/dessert/drinks)', 'By last-name letter', 'Free-for-all'],
       default: 'By category (apps/sides/mains/dessert/drinks)',
       defaultWhy:
-        'Assigning by category is the default because it is the only one of these that guarantees a hot entree, sides and a dessert all actually arrive — a free-for-all is how you get four pasta salads and no main. Change it to last-name letter if that is the system your family already recognizes.',
+        'Assigning by category is the default: it\'s the only way to guarantee a hot entree, sides, and dessert all arrive. Change it to last-name letter if that\'s the system your family already knows.',
       when: 'T-45d',
       dependsOn: ['food-model'],
       // Coherence (audit F1): this ask only exists while the food IS a potluck —
@@ -81,9 +81,9 @@ const reunion = {
       reversibility: 'reversible',
       emotionalWeight: 'low',
       difmCapable: 'can-derive',
-      priorityBasis: { rationale: 'How dishes are assigned is what keeps the table balanced instead of four pasta salads and no hot entree, but it is a coordination method that adjusts freely and the by-category default is the safe, groundable choice.', tier: 'reasoned' },
+      priorityBasis: { rationale: 'How dishes are assigned keeps the table balanced, and the method adjusts freely.', tier: 'reasoned' },
       why:
-        'A free-for-all is how you get four pasta salads and no hot entree. Assign categories on a shared sign-up (a simple sheet or SignUpGenius), or split by last-name letter (A-H mains, I-P sides, Q-Z dessert) so each household knows its lane. The host always covers the staples nobody volunteers for: ice, drinks, paper goods, and the grill protein if any.',
+        'A free-for-all gets you four pasta salads and no hot entree. Assign categories on a shared sign-up (a simple sheet or SignUpGenius) or by last-name letter (A-H mains, I-P sides, Q-Z dessert), and cover the staples yourself: ice, drinks, paper goods, and any grill protein.',
     },
     {
       id: 'venue-setting',
@@ -96,9 +96,9 @@ const reunion = {
       reversibility: 'locked',
       emotionalWeight: 'low',
       difmCapable: 'needs-host',
-      priorityBasis: { rationale: 'The venue makes weather the single biggest risk and drives shade, restrooms, and the rain plan, and popular pavilions book well ahead so a reserved date is effectively locked — securing a real space is something only the host can do.', tier: 'reasoned' },
+      priorityBasis: { rationale: 'The venue sets your weather risk, shade, restrooms, and rain plan, and popular pavilions book well ahead, so a reserved date is effectively locked.', tier: 'reasoned' },
       why:
-        'Outdoor is the reunion default and the cheapest, but it makes weather your single biggest risk and forces decisions about shade, restrooms, and trash that an indoor hall solves for you. A reserved park pavilion (often $100-500/day) gives you a roof, tables, and usually grills and parking. If you go outdoor, you need a real rain plan committed by the week before — a backup indoor space or a tent on hold, not a hope.',
+        'Outdoor is the reunion default and cheapest, but makes weather your biggest risk and adds shade, restrooms, and trash that an indoor hall solves. A reserved park pavilion (often $100-500/day) gives a roof, tables, and usually grills and parking; outdoors, commit a real rain plan by the week before, a backup indoor space or a tent on hold.',
     },
     {
       id: 'group-photo',
@@ -106,7 +106,7 @@ const reunion = {
       options: ['Assign a family member + set a time', 'Hire a photographer for 1 hour', 'Skip / candids only'],
       default: 'Assign a family member + set a time',
       defaultWhy:
-        'A named person at a fixed time is the default because this photo is lost to drift, not to camera quality — once the family starts leaving there is no retake. Change it to a hired photographer for a milestone year, or if you would rather be in the picture than behind it.',
+        'A named family member at a set time is the default: this photo is lost to drift, not camera quality, and there\'s no retake once people leave. Change it to a hired photographer for a milestone year, or if you\'d rather be in the picture.',
       when: 'T-14d',
       blocks: ['photo-slot'],
       weight: 'med',
@@ -114,9 +114,9 @@ const reunion = {
       emotionalWeight: 'high',
       difmCapable: 'can-derive',
       deliversHeartMoment: true,
-      priorityBasis: { rationale: 'The whole-group photo is the one artifact people actually keep from a reunion, yet it is the thing most reunions forget to schedule and lose when the family drifts off — so putting a named shooter and a fixed time on the run-of-show is what protects the moment.', tier: 'reasoned' },
+      priorityBasis: { rationale: 'The group photo is the one artifact people keep, and a named shooter at a fixed time is what keeps it from being lost to drift.', tier: 'reasoned' },
       why:
-        'The one artifact people actually keep from a reunion is the whole-group photo, and it is the thing most reunions forget to schedule — so half the family has wandered off before anyone calls it. Pick a named person to shoot it and put it on the run-of-show at a fixed time (early-to-mid afternoon, before anyone leaves and while the light is good). A paid photographer for one hour is worth it for a milestone reunion.',
+        'The whole-group photo is the one thing people keep, and most reunions forget to schedule it until half the family has wandered off. Name a shooter and put it on the run of show at a fixed time (early-to-mid afternoon, before anyone leaves); a paid photographer for an hour is worth it for a milestone reunion.',
     },
     {
       id: 'kids-plan',
@@ -124,7 +124,7 @@ const reunion = {
       options: ['Lawn games + open play', 'Hired entertainer / bounce house', 'No dedicated kids plan'],
       default: 'Lawn games + open play',
       defaultWhy:
-        'Lawn games and open grass are the default because they cover most of the afternoon cheaply and need nobody to run them. Change it if the venue has no open space, or if you want the adults to get a calm hour — that is what a bounce house or a hired entertainer buys.',
+        'Lawn games and open play are the default: they cover most of the afternoon cheaply with no one running them. Change it if the venue has no open space, or you want the adults to get a calm hour from a bounce house or entertainer.',
       when: 'T-30d',
       blocks: ['kids-purchases'],
       weight: 'low',
@@ -133,7 +133,7 @@ const reunion = {
       difmCapable: 'can-derive',
       priorityBasis: { rationale: 'Unoccupied kids become every parent\'s problem at once, but a bin of lawn games and open grass covers most of it cheaply and swaps easily — a low-stakes call with a safe default.', tier: 'reasoned' },
       why:
-        'A reunion is all-ages and multi-household, so unoccupied kids become every parent’s problem at once. A bin of lawn games (cornhole, frisbee, bubbles, a few balls) and an open grassy area covers most of it cheaply. A bounce house or hired entertainer is a splurge that buys the adults a calm hour.',
+        'Unoccupied kids become every parent\'s problem at once. A bin of lawn games (cornhole, frisbee, bubbles, a few balls) and open grass covers most of it cheaply; a bounce house or hired entertainer buys the adults a calm hour.',
     },
     {
       id: 'planning-team',
@@ -146,9 +146,9 @@ const reunion = {
       reversibility: 'reversible',
       emotionalWeight: 'med',
       difmCapable: 'needs-host',
-      priorityBasis: { rationale: 'A multi-household reunion is too much work and too much family politics for one person past a few households, but only the host knows whether there are relatives willing to own a lane — and a solo host with a small local crowd is a perfectly safe default.', tier: 'reasoned' },
+      priorityBasis: { rationale: 'A multi-household reunion is too much work and family politics for one person past a few households, but a solo host with a small local crowd is a safe default.', tier: 'reasoned' },
       why:
-        'Past a few households, a reunion is a committee-sized job: food, where everyone stays, the program, and the money each want an owner, and a shared load is also how the family politics stay manageable — nobody argues with a plan four branches built together. One relative per branch of the family, three to six people total, works well. Solo is fine for a smaller local crowd; the app assumes solo until you say otherwise.',
+        'Past a few households a reunion is a committee job: food, lodging, the program, and money each want an owner, and a plan four branches built together keeps family politics calm. One relative per branch, three to six people, works well; solo is fine for a smaller local crowd, and the app assumes solo until you say otherwise.',
       // "THE APP ASSUMES SOLO UNTIL YOU SAY OTHERWISE" — and the host HAD said otherwise, in
       // two places the app already stores: hostCapacity:'has_help', and named people on their
       // own food / timeline / supply rows. The sentence was literally an admission that this
@@ -165,12 +165,12 @@ const reunion = {
       copyWhen: [
         {
           when: { hostCapacity: { eq: 'has_help' } },
-          why: 'Past a few households, a reunion is a committee-sized job: food, where everyone stays, the program, and the money each want an owner, and a shared load is also how the family politics stay manageable — nobody argues with a plan four branches built together. One relative per branch of the family, three to six people total, works well. Solo is fine for a smaller local crowd. You have said you have help on this one — if those people are relatives willing to own a lane, say so here and the plan splits into lanes for them.',
+          why: 'Past a few households a reunion is a committee job: food, lodging, the program, and money each want an owner. One relative per branch, three to six people, works well; you\'ve said you have help, so if they are relatives willing to own a lane, say so here and the plan splits into lanes.',
           rationale: 'A multi-household reunion is too much work and too much family politics for one household to carry past a few branches, and only you know whether the people helping are relatives willing to own a lane — which is why this call stays yours rather than the app\'s.',
         },
         {
           when: { helperCount: { gte: 1 } },
-          why: 'Past a few households, a reunion is a committee-sized job: food, where everyone stays, the program, and the money each want an owner, and a shared load is also how the family politics stay manageable — nobody argues with a plan four branches built together. One relative per branch of the family, three to six people total, works well. Solo is fine for a smaller local crowd. You have already named people helping — if they are relatives willing to own a lane, say so here and the plan splits into lanes for them.',
+          why: 'Past a few households a reunion is a committee job: food, lodging, the program, and money each want an owner. One relative per branch, three to six people, works well; you\'ve named people helping, so if they are relatives willing to own a lane, say so here and the plan splits into lanes.',
           rationale: 'A multi-household reunion is too much work and too much family politics for one household to carry past a few branches, and only you know whether the people helping are relatives willing to own a lane — which is why this call stays yours rather than the app\'s.',
         },
       ],
@@ -186,9 +186,9 @@ const reunion = {
       reversibility: 'costly',
       emotionalWeight: 'med',
       difmCapable: 'needs-host',
-      priorityBasis: { rationale: 'The span decides the venue days, whether anyone needs a bed, and how much program there is to plan — everything travel-shaped hangs off it, and once out-of-town family books flights around a weekend it is effectively locked. Only the host knows how far the family is coming.', tier: 'reasoned' },
+      priorityBasis: { rationale: 'The span sets venue days, beds, and how much to plan, and once family books flights around a weekend it\'s effectively locked; only you know how far they\'re coming.', tier: 'reasoned' },
       why:
-        'When family flies or drives in from out of town, a single afternoon is not worth the trip — the common shape is a weekend: an easy arrival evening, the big reunion day, and a goodbye breakfast before everyone hits the road. A weekend changes almost everything downstream: the venue is needed across days, people need beds, arrivals need collecting, and each day wants its own simple plan. Set the end date on the event too, so the day-by-day tools know the real span.',
+        'When family travels in, one afternoon isn\'t worth the trip; the usual shape is a weekend: an arrival evening, the big day, and a goodbye breakfast. A weekend means venue days, beds, arrivals to collect, and a plan per day, so set the end date on the event too.',
     },
     {
       id: 'cost-share',
@@ -201,9 +201,9 @@ const reunion = {
       reversibility: 'reversible',
       emotionalWeight: 'med',
       difmCapable: 'needs-host',
-      priorityBasis: { rationale: 'Money is the fastest way a reunion turns sour, and the fix is structural, not personal: a stated amount, a real deadline, and one treasurer. But whether the family chips in at all is a family-culture call only the host can make.', tier: 'reasoned' },
+      priorityBasis: { rationale: 'Money is the fastest way a reunion sours; the fix is a stated amount, a real deadline, and one treasurer, and whether the family chips in at all is your call.', tier: 'reasoned' },
       why:
-        'A potluck covers the food, but the pavilion, the meat, the shirts, and the paper goods still cost real money — and at reunion scale most families split it with a set chip-in per household, announced with the invitation so nobody is surprised. Whatever the model, the rule that keeps the peace is the same: one treasurer touches the money, the amount and what it covers are stated plainly, and the ledger is visible to anyone who asks.',
+        'Potluck covers food, but the pavilion, meat, shirts, and paper goods cost real money, and most families split it with a set chip-in per household announced with the invitation. Whatever the model, one treasurer touches the money, the amount and what it covers are stated plainly, and the ledger is open to anyone who asks.',
     },
     {
       id: 'reunion-shirts',
@@ -216,9 +216,9 @@ const reunion = {
       reversibility: 'costly',
       emotionalWeight: 'med',
       difmCapable: 'needs-host',
-      priorityBasis: { rationale: 'Shirts are the reunion signature and the group photo is better for them, but they carry the longest hard deadline on the list — sizes collected by household, then one bulk order weeks ahead that cannot be topped up in time. A no costs nothing; a late yes fails.', tier: 'reasoned' },
+      priorityBasis: { rationale: 'Shirts carry the longest hard deadline on the list: sizes by household, then one bulk order weeks ahead with no time to top up. A no costs nothing; a late yes fails.', tier: 'reasoned' },
       why:
-        'The matching shirt is a reunion signature — it makes the group photo, doubles as the year\'s keepsake, and marks who belongs to the family at a public park. The catch is lead time: sizes have to come in by household with the RSVPs, and bulk printers need two to three weeks, so the order goes in about a month out and a reorder never arrives in time. Skipping shirts is a fine call; deciding late is the only wrong one.',
+        'The matching shirt makes the group photo, doubles as the keepsake, and marks the family at a public park. Sizes come in by household with the RSVPs and bulk printers need two to three weeks, so order about a month out; a reorder never arrives in time, so skip shirts or decide early.',
     },
   ],
 

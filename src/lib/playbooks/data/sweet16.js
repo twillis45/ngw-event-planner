@@ -31,7 +31,7 @@ const sweet16 = {
   ],
 
   decisions: [
-    { id: 'food_style', label: 'How is the food handled?', options: ['Order pizza / trays', 'Drop-off catering', 'Host + family cook', 'Food truck / caterer'], default: 'Order pizza / trays', defaultWhy: 'Ordering pizza or trays is the default because it takes cooking for a crowd of hungry teens off your day-of list, which is where this party is most likely to come apart. Change it if family genuinely wants to cook and someone other than the host is running that kitchen.', when: 'T-21d', blocks: ['food', 'vendors'], costViaApproach: true, weight: 'med', reversibility: 'costly', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'Feeding a crowd of hungry teens matters, but trays or a drop-off are a safe default and easy to arrange.', tier: 'reasoned' }, why: 'Teens eat casually and a lot — trays or a drop-off removes the riskiest day-of cooking for a crowd of 20–40.' },
+    { id: 'food_style', label: 'How is the food handled?', options: ['Order pizza / trays', 'Drop-off catering', 'Host + family cook', 'Food truck / caterer'], default: 'Order pizza / trays', defaultWhy: 'Ordering pizza or trays is the default: cooking for a crowd of hungry teens is where this party most often comes apart. Change it if family genuinely wants to cook and someone other than you runs that kitchen.', when: 'T-21d', blocks: ['food', 'vendors'], costViaApproach: true, weight: 'med', reversibility: 'costly', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'Feeding a crowd of hungry teens matters, but trays or a drop-off are a safe default and easy to arrange.', tier: 'reasoned' }, why: 'Teens eat casually and a lot — trays or a drop-off removes the riskiest day-of cooking for a crowd of 20–40.' },
     {
       id: 'venue_type',
       label: 'Where is the party?',
@@ -44,7 +44,7 @@ const sweet16 = {
       emotionalWeight: 'low',
       difmCapable: 'needs-host',
       priorityBasis: { rationale: 'The venue caps the guest count, the rentals, and the sound and curfew limits — the hardest call to reverse, and one the host must make.', tier: 'reasoned' },
-      why: 'Venue sets capacity, whether tables/chairs/restrooms come included, sound/curfew limits, and how much you rent versus what the venue provides. A hall is the common middle ground — more room than home for a dance floor, cheaper than a full venue.',
+      why: 'Venue sets capacity, whether tables, chairs, and restrooms are included, sound and curfew limits, and how much you rent. A hall is the common middle ground: more room than home for a dance floor, cheaper than a full venue.',
     },
     {
       id: 'guest_count',
@@ -89,14 +89,14 @@ const sweet16 = {
       emotionalWeight: 'high',
       difmCapable: 'needs-host',
       priorityBasis: { rationale: 'Music runs the floor and MCs the grand entrance — the beat the birthday teen walks into and the moment the room remembers.', tier: 'reasoned' },
-      why: 'Music IS the party. A DJ runs the floor, MCs the grand entrance and cake, and reads the room; a curated playlist on a rented PA is the budget path but needs an adult assigned to run it. Book a DJ ~3 months out — good ones go early.',
+      why: 'Music IS the party: a DJ runs the floor, MCs the grand entrance and cake, and reads the room, while a playlist on a rented PA is the budget path but needs an assigned adult. Book a DJ ~3 months out; good ones go early.',
     },
     {
       id: 'food_menu',
       label: 'What food are you serving?',
       options: ['Pizza + sides', 'Slider/burger bar', 'Taco / build-your-own bar', 'Light bites + dessert table only'],
       default: 'Pizza + sides',
-      defaultWhy: 'Pizza and sides is the default because it matches the ordering path above, it is food teens actually eat, and the adults eat the same thing so you plan one menu instead of two. Change it if you want a bar guests build themselves — sliders or tacos do that, with more setup and more to hold hot across a four-hour window.',
+      defaultWhy: 'Pizza and sides is the default: it matches the ordering plan, teens actually eat it, and adults eat the same, so you plan one menu. Change it if you want a build-your-own bar; sliders or tacos mean more setup and more to hold hot for four hours.',
       when: 'T-30d',
       dependsOn: ['food_style'],
       blocks: ['purchases', 'rentals', 'catering_style'],
@@ -119,7 +119,7 @@ const sweet16 = {
       emotionalWeight: 'low',
       difmCapable: 'needs-host',
       priorityBasis: { rationale: 'The supervision plan is the line between a fun night and an incident — a real safety call the host must own.', tier: 'reasoned' },
-      why: 'A Sweet 16 needs at least one adult per ~10-12 teens, a no-alcohol/no-leave-and-return rule, and a named adult on the door and on the bar. This is the difference between a fun party and an incident — decide it on purpose.',
+      why: 'A Sweet 16 needs at least one adult per ~10-12 teens, a no-alcohol, no-leave-and-return rule, and a named adult on the door and the bar. It\'s the difference between a fun party and an incident.',
     },
     {
       id: 'entrance_style',
@@ -148,7 +148,7 @@ const sweet16 = {
         'A designated photographer, guests asked to stay off phones',
       ],
       default: 'Open — guests post live all night',
-      defaultWhy: 'Open is the default because teens will be on their phones either way, and a night built for posting is easier to run than one you have to police. Change it if the entrance is the moment you want the room watching instead of filming.',
+      defaultWhy: 'Open is the default: teens will be on their phones anyway, and a night built for posting is easier to run than one you police. Change it if you want the room watching the entrance instead of filming it.',
       when: 'T-14d',
       blocks: ['photobooth_props'],
       weight: 'low',
@@ -156,7 +156,7 @@ const sweet16 = {
       emotionalWeight: 'med',
       difmCapable: 'can-derive',
       priorityBasis: { rationale: 'A planned phone/social moment is named in the product summary as part of what this playbook covers, and it is a cheap, easily-changed style call rather than a logistics or budget decision.', tier: 'reasoned' },
-      why: 'Teens will be on their phones regardless — deciding whether that is embraced (a live hashtag, a photo booth built for posting) or dialed back for the entrance moment sets the tone without costing anything extra.',
+      why: 'Teens will be on their phones regardless; embracing it (a live hashtag, a photo booth built for posting) or dialing it back for the entrance sets the tone at no cost.',
     },
   ],
 

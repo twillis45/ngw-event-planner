@@ -59,7 +59,7 @@ const theCookout = {
       costFactors: { 'Hire a pitmaster / caterer': 1.4 },
       costFactorProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'researched', sources: ['catering-perperson-2026'], note: 'Grounded to catering-perperson-2026: hired pitmaster vs family grill master is the caterer-vs-DIY labor-tier ratio the source establishes.', claim: 'Hiring a pitmaster adds approximately 40% to total food cost vs using a family grill master', sufficientWhen: '≥2 pitmaster or BBQ catering quotes confirm a premium of ~35–45% over the raw protein cost of a self-run grill' },
       affects: ['p_ribs', 'p_chicken', 'p_burgers_dogs'],
-      why: 'The grill master is a real, named role — the person trusted with the meat. Naming them early sets who buys fuel, who fires up the pit, and frees the host to host. At scale (40+) one person on the grill all day is a lot; confirm a backup.',
+      why: 'The grill master is a real, named role: the person trusted with the meat. Name them early so fuel and firing up the pit are covered and you\'re free to host; at 40+ guests, confirm a backup.',
     },
     {
       id: 'cooking_model',
@@ -72,7 +72,7 @@ const theCookout = {
       costFactors: { 'Host cooks everything': 1.3, 'Potluck — assign dishes': 0.55 },
       costFactorProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'researched', sources: ['catering-perperson-2026'], note: 'Grounded to catering-perperson-2026: host-cooks-all vs split vs full potluck are the labor-driven service-tier ratios the source establishes.', claim: 'Having the host cook all sides adds ~30% to the food budget vs a split model; a full potluck saves ~45%', sufficientWhen: 'Ingredient cost estimate for a host-cooked full spread vs a potluck spread at same headcount confirms the ~30% and ~45% spread' },
       affects: ['p_mac', 'p_potato_salad', 'p_beans', 'p_greens', 'p_cornbread', 'p_slaw', 'p_dessert'],
-      why: 'The single biggest effort lever. The cookout runs on a coordinated spread — and on trust: people bring the dish they are KNOWN for, and the potato salad is claimed by the one person everybody trusts to make it. Assign on purpose so you get one great version of each side, not three mediocre potato salads and no greens.',
+      why: 'The biggest effort lever, and it runs on trust: people bring the dish they\'re KNOWN for, and the potato salad goes to the one person everybody trusts with it. Assign on purpose so you get one great version of each side, not three potato salads and no greens.',
     },
     {
       id: 'drinks',
@@ -82,13 +82,13 @@ const theCookout = {
       options: ['Red drink + soda + water (family-friendly)', 'Add a grown-folks section (brown liquor + mixers, beer)', 'Full bar + punch'],
       default: 'Add a grown-folks section (brown liquor + mixers, beer)',
       defaultWhy:
-        'The grown-folks section is the default because keeping the adults\' drinks clearly separate from the red drink, soda and water is what lets a cookout be family-safe and still be a grown folks\' day. Change it to the family-friendly setup if this one belongs to the kids, or if nobody at your cookout drinks.',
+        'The grown-folks section is the default: keeping adult drinks apart from the red drink, soda, and water lets a cookout be family-safe and still a grown folks\' day. Change it to the family-friendly setup if this one belongs to the kids, or nobody drinks.',
       when: 'T-10d',
       blocks: ['beverage'],
       costFactors: { 'Red drink + soda + water (family-friendly)': 0.2, 'Full bar + punch': 1.4 },
       costFactorProvenance: { tier: 'synthesized', confidence: 'medium', verificationStatus: 'synthesized', note: 'Cost factor heuristics need verification against actual pricing.', claim: 'A family-friendly drinks setup costs ~80% less than a grown-folks default; upgrading to a full bar adds ~40% vs the grown-folks section', sufficientWhen: 'Spirit + mixer + beer pricing at ≥1 retailer compared across all three drink setups confirms the ~80% save and ~40% add' },
       affects: ['p_grown_folks'],
-      why: 'A cookout needs a red drink (Kool-Aid / punch), soda, and plenty of water for everybody — kids and elders included — AND a clearly separate grown-folks section (brown liquor + mixers, beer). Keeping them separate keeps it family-safe and lets the adults have theirs.',
+      why: 'A cookout needs a red drink (Kool-Aid or punch), soda, and plenty of water for everybody, kids and elders included, AND a clearly separate grown-folks section (brown liquor, mixers, beer). Keeping them apart keeps it family-safe and lets the adults have theirs.',
     },
     {
       id: 'music',
@@ -98,10 +98,10 @@ const theCookout = {
       options: ['Curated playlist + good speaker', 'Hire a DJ', 'Designate a family DJ on the aux'],
       default: 'Curated playlist + good speaker',
       defaultWhy:
-        'A curated playlist is the default because it costs nothing, runs all day without anybody minding it, and lets you decide in advance what plays instead of fighting over the aux. Change it if you want a DJ or a live band — in the DMV a Go-Go set is the homegrown heartbeat of the day.',
+        'A curated playlist is the default: it costs nothing, runs all day unattended, and settles what plays before anyone fights over the aux. Change it if you want a DJ or live band; in the DMV a Go-Go set is the homegrown heartbeat of the day.',
       when: 'T-10d',
       blocks: ['logistics'],
-      why: 'Music is not optional — it is half of what makes it a cookout. Old-school R&B and soul (Frankie Beverly & Maze is practically required), the line dances (Electric Slide, Cupid Shuffle, Cha Cha Slide), and grown-folks slow jams. In the DMV (DC/Maryland/Virginia), a Go-Go set or a live band — Chuck Brown, "the pocket," call-and-response — is the homegrown heartbeat and reads the cookout better than a DJ. Decide whether you are renting a DJ/band or building a real playlist now, and protect the aux.',
+      why: 'Music is half of what makes it a cookout: old-school R&B and soul (Frankie Beverly & Maze is practically required), line dances (Electric Slide, Cupid Shuffle, Cha Cha Slide), and grown-folks slow jams. In the DMV (DC/Maryland/Virginia), a Go-Go set or live band (Chuck Brown, "the pocket," call-and-response) is the homegrown heartbeat; decide now on a DJ or band versus a real playlist, and protect the aux.',
     },
     {
       id: 'game_day',
@@ -110,10 +110,10 @@ const theCookout = {
       options: ['No — cookout only', 'Yes — TV/screen for the game', 'Yes — TV inside + speaker outside so nobody misses either'],
       default: 'No — cookout only',
       defaultWhy:
-        'Cookout only is the default because whether a game is on is something you know and the app does not, so it assumes nothing. Change it the moment there is one, and plan the screen and the sound alongside the music so the two never end up fighting over the same speaker.',
+        'Cookout only is the default: only you know whether a game is on. Change it the moment there is one, and plan the screen and sound with the music so they don\'t fight over one speaker.',
       when: 'T-10d',
       blocks: ['logistics'],
-      why: 'A screen people can actually see from the yard turns the cookout into the game-day spread too. Set the TV/streaming and sound plan at the same time as the music so the two never end up fighting over the same speaker — this is a logistics call, not a food one, so it does not resize the protein order on its own; if you want wings for the game, add them from the chicken alternatives below.',
+      why: 'A screen people can see from the yard makes the cookout the game-day spread too. Plan the TV, streaming, and sound with the music so they don\'t fight over one speaker; it doesn\'t resize the protein order, so add wings from the chicken alternatives if you want them.',
     },
     {
       id: 'shade_seating',
