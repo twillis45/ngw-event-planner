@@ -184,3 +184,11 @@ def test_every_email_carries_a_plain_text_part_with_the_same_words(env):
     post(env, body="Can you do 3pm?\nThanks!", recipient_name="Rosa")
     text = env.sent[0][1]["body_text"]
     assert "Hi Rosa," in text and "Can you do 3pm?\nThanks!" in text and "<" not in text
+
+
+def test_the_subject_and_invite_are_kept_for_the_messages_view(env):
+    # Messages view (11/20/2026): what an email was is kept with its status.
+    r = post(env, subject="Lunch on the 28th")
+    d = r.json()["metadata"]
+    d = (json.loads(d) if isinstance(d, str) else d)["delivery"]
+    assert d["subject"] == "Lunch on the 28th" and "kind" not in d

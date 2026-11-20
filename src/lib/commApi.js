@@ -152,6 +152,30 @@ export const portalRespond = async (eventId, messageId, payload) => {
   return res.json();
 };
 
+// ── The Messages view's one read (owner, 11/20/2026) ─────────────────────────
+// GET …/communication/sent: every email the app sent for this event, with its
+// delivery status, and (host only) the co-host invitations. A NAMED result, so
+// a refused read is never shown as an empty list: 401 → signed-out, any other
+// failure → unavailable. `delivery` may arrive as JSON text (the pool has no
+// jsonb codec — see withMetadata); it is decoded here.
+export const listSentMessages = async (eventId) => {
+  if (!BASE) return { status: 'not-configured' };
+  try {
+    const res = await fetch(`${BASE}${base(eventId)}/sent`, { headers: await authHeaders() });
+    if (res.status === 401) return { status: 'signed-out' };
+    if (!res.ok) return { status: 'unavailable' };
+    const data = await res.json();
+    const emails = (Array.isArray(data && data.emails) ? data.emails : []).map((m) => {
+      let d = m && m.delivery;
+      if (typeof d === 'string') { try { d = JSON.parse(d); } catch { d = {}; } }
+      return { ...m, delivery: d && typeof d === 'object' ? d : {} };
+    });
+    return { status: 'ok', emails, cohosts: Array.isArray(data && data.cohosts) ? data.cohosts : null };
+  } catch {
+    return { status: 'unavailable' };
+  }
+};
+
 export const commApi = {
   listChannels:   (eventId)                       => req('GET',  `${base(eventId)}/channels`),
   ensureChannels: (eventId)                       => req('POST', `${base(eventId)}/channels/ensure`),
@@ -169,6 +193,7 @@ export const commApi = {
   // Sprint 58P.4c — public portal verdict path; no planner auth.
   portalRespond,
   getCapabilities,
+  listSentMessages,
   // The invitation as a picture, for the invite email (owner, 11/19/2026). The
   // raw JPEG is the body; the server re-encodes it (backend invite_cards).
   uploadInviteCard: async (eventId, blob) => {

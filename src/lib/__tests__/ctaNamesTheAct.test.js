@@ -389,7 +389,41 @@ describe('the unwired chip tells the truth', () => {
     expect(resolveRoute({ tab: 'Event Details', focusField: 'space' })).toBeTruthy();
     // Travel — the previous drift, kept as a regression guard.
     expect(resolveRoute({ tab: 'Travel' })).toBeTruthy();
-    // …and the deliberately-unroutable one still is, so the chip stays honest.
-    expect(resolveRoute({ tab: 'Communication' })).toBeNull();
+    // Communication lands on the Messages sheet since 11/20/2026 (it was
+    // deliberately unroutable while hostv2 had no such surface)…
+    expect(resolveRoute({ tab: 'Communication' })).toEqual({ kind: 'messages', focus: null });
+    // …but never a "Reply to <one message>": the sheet is read-only.
+    expect(resolveRoute({ tab: 'Communication', commId: 'c1' })).toBeNull();
+    // …and a tab the resolver does not know still is, so the chip stays honest.
+    expect(resolveRoute({ tab: 'Documents' })).toBeNull();
+  });
+});
+
+// ── NO REPLY OR NUDGE LANDS ON A READ-ONLY VIEW (coordinator, 11/20/2026) ─────
+// The Messages sheet shows what went out and cannot reply, nudge or compose.
+// Two hostv2 paths reach 'Communication': the engine's inbound-message action
+// ("Reply to …", primaryCta 'Reply') and the day-of approvals alert ("Nudge
+// them so the day-of plan can lock."). Both must keep their truthful toast.
+describe('a Reply or Nudge never lands on the read-only Messages sheet', () => {
+  const shell = require('fs').readFileSync(require('path').join(__dirname, '..', '..', '..', 'hostv2/src/HostShellV2.jsx'), 'utf8');
+  test("the engine's inbound-message action does not resolve to a landing", () => {
+    const { resolveRoute } = require('../routeResolver');
+    const { eventPlan } = require('../../CommandCenter');
+    const d = new Date(); d.setDate(d.getDate() + 20);
+    const ev = { id: 'p', name: 'P', type: 'Gathering', date: d.toISOString().slice(0, 10), startTime: '18:00', startTimeSource: 'host',
+      venue: 'Vida’s place', guestEstimate: 8, guestCountSource: 'host', totalBudget: 800, guests: [], vendors: [], budget: [], timeline: [],
+      commClient: [{ id: 'c1', direction: 'inbound', channel: 'vendor', senderName: 'Rosa', body: 'Can we move to 3pm?', createdAt: new Date().toISOString() }] };
+    const reply = (eventPlan(ev).nextActions || []).find((a) => a.route && a.route.tab === 'Communication');
+    // Premise: the action really is in the queue, as a Reply.
+    expect(reply).toBeTruthy();
+    expect(reply.cta).toBe('Reply');
+    expect(resolveRoute(reply.route)).toBeNull();
+  });
+
+  test('the day-of approvals alert keeps its toast and opens no sheet', () => {
+    const branch = /if \(\/communication\/i\.test\(to\)\) \{([^}]*)\}/.exec(shell);
+    expect(branch).toBeTruthy();
+    expect(branch[1]).toMatch(/toast\(/);
+    expect(branch[1]).not.toMatch(/setSheet|routeSheet|kind: 'messages'/);
   });
 });

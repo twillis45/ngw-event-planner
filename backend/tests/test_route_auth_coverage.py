@@ -137,6 +137,14 @@ def test_the_channel_write_is_gated():
     assert ("POST", "/channels/ensure") not in pub
 
 
+def test_the_messages_view_is_gated():
+    # Messages view (11/20/2026): every email and co-host invite on an event.
+    # Two-sided, like the checkout: the sweep fails if it goes public, and so
+    # does this even if someone argues it onto the allowlist.
+    pub = {(m, pth) for m, pth, _f, _ln in unauthenticated_routes()}
+    assert ("GET", "/sent") not in pub
+
+
 def test_the_scanner_still_sees_routes(): 
     # Premise guard. If the AST walk breaks, every test above passes by finding
     # nothing — the exact vacuous-pass shape that wasted a day of this sprint.

@@ -25,7 +25,7 @@
 //
 //   kind         a sheet kind ('vendors','seating','budget','guests','food',
 //                'rain','crabs','ground','air','lodging','space','tasks',
-//                'costshare',
+//                'costshare','messages',
 //                'risks','decisions') OR a stage landing ('stage:plan',
 //                'stage:day') — the surfaces whose target is a full-screen stage,
 //                not a sheet (the plan editor, the day-of run of show).
@@ -148,8 +148,15 @@ export function resolveRoute(route) {
   if (route.tab === 'Event Day Schedule' || /^ros-/.test(ff)) {
     return { kind: 'stage:day', focus: null };
   }
-  // NB: 'Communication' is deliberately unroutable — V2 has no messages surface,
-  // so there is nowhere honest to land. Falls to null → a truthful toast.
+  // Communication → the Messages sheet (owner, 11/20/2026): the read-only
+  // timeline of what went out. It was unroutable while V2 had no such surface.
+  // A route that names ONE message (`commId`) is a "Reply to …" — the engine's
+  // inbound-message action (CommandCenter tier 6, primaryCta 'Reply'). The
+  // sheet cannot reply and does not even hold inbound messages, so that route
+  // stays unroutable: the caller's truthful "Not wired here yet" toast and the
+  // "in the full app" tag stand, rather than a Reply landing on a read-only
+  // view (coordinator ruling, 11/20/2026).
+  if (route.tab === 'Communication') return route.commId ? null : { kind: 'messages', focus: null };
   return null;
 }
 
@@ -160,7 +167,7 @@ export function resolveRoute(route) {
 export const ROUTESHEET_TABS = Object.freeze([
   'Vendors', 'Seating', 'Budget', 'Guests', 'Planning', 'Travel',
   'Event Details', 'Planning Tasks', 'Timeline', 'Risks', 'Decisions',
-  'Event Day Schedule',
+  'Event Day Schedule', 'Communication',
 ]);
 
 // Date and venue sheets are dedicated editors; unlike a general food sheet,

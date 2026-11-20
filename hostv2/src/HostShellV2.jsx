@@ -190,6 +190,7 @@ import CostSplitSheet, { splitRowSub } from './CostSplitSheet.jsx';
 import FamilyLinkSheet from './FamilyLinkSheet.jsx';
 import CalendarSheet from './CalendarSheet.jsx';
 import CohostsSheet from './CohostsSheet.jsx';
+import MessagesSheet from './MessagesSheet.jsx';
 import { claimCohostInvites } from '@app/lib/api/cohosts';
 import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
@@ -290,6 +291,7 @@ import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, 
 import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent, listedSamples } from '@app/lib/demoSeed';
 import { recordHandoff, recordEmailSend, sendStateFor, sendStateLine, isVerifiedState } from '@app/lib/sendLedger';
+import { helperAskTitle } from '@app/lib/messageTimeline';
 import { commApi, isCommApiConfigured } from '@app/lib/commApi';
 import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
@@ -6569,9 +6571,10 @@ export default function HostShellV2() {
   // effects the descriptor names; every landing (kinds, focus, order) is
   // resolveRoute's, unchanged.
   //
-  // 'Communication' is still deliberately unroutable (resolveRoute returns
-  // null) — V2 has no messages surface, so there is nowhere honest to land;
-  // the caller falls to onCta's truthful "Not wired here yet" toast.
+  // A bare 'Communication' route lands on the Messages sheet (owner,
+  // 11/20/2026), the read-only timeline of what went out. A "Reply to …" route
+  // (one message, commId) still resolves to null — the sheet cannot reply — so
+  // it falls to onCta's truthful "Not wired here yet" toast.
   const routeSheet = (route) => {
     const r = resolveRoute(route);
     if (!r) {
@@ -8412,17 +8415,34 @@ export default function HostShellV2() {
       : email ? 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent(`Your job for ${event.name || 'the party'}`) + '&body=' + encodeURIComponent(body)
         : null;
     setHelperSend({ taskId, href, first, body, channel: digits ? 'text' : email ? 'email' : 'share' });
+    // THE HANDOFF IS RECORDED (Messages view, owner 11/20/2026): the send
+    // ledger's host-attested `handed_off`, at the moment the host's own phone
+    // takes the message — the composer opened, the share sheet completed, or
+    // the clipboard took it. Never "Sent", and a cancelled share records
+    // nothing. Before this, a helper ask left no record but helperLinkIds.
+    const handoff = (channel) => ({ sendLedger: recordHandoff(event.sendLedger, helperAskTitle(resp.helperName), channel,
+      new Date().toISOString(), { kind: 'helper', id: resp.helperId }) });
     // The ledger: which helpers have a link. Silent, deduped, and true whether
     // or not the host goes on to send — a link exists either way.
+    let linkPatch = {};
     try {
       const cur = Array.isArray(event.helperLinkIds) ? event.helperLinkIds : [];
-      if (resp.helperId && !cur.includes(resp.helperId)) patchEvent({ helperLinkIds: [...cur, resp.helperId] });
+      if (resp.helperId && !cur.includes(resp.helperId)) linkPatch = { helperLinkIds: [...cur, resp.helperId] };
     } catch { /* best-effort; the link itself already exists */ }
-    if (href) { try { window.location.href = href; } catch { /* the visible link below still works */ } return; }
+    if (href) {
+      try { patchEvent({ ...linkPatch, ...(resp.helperId ? handoff(digits ? 'sms' : 'email') : {}) }); } catch { /* the record is best-effort */ }
+      try { window.location.href = href; } catch { /* the visible link below still works */ }
+      return;
+    }
+    if (Object.keys(linkPatch).length) { try { patchEvent(linkPatch); } catch { /* best-effort */ } }
     try {
-      if (navigator.share) { await navigator.share({ text: body }); return; }
+      if (navigator.share) { await navigator.share({ text: body }); if (resp.helperId) patchEvent(handoff('share')); return; }
     } catch { /* cancelled or unsupported — fall through to copy */ }
-    try { await navigator.clipboard.writeText(body); toast(`Copied — paste it to ${first} however you reach them. Nothing was sent from here.`); }
+    try {
+      await navigator.clipboard.writeText(body);
+      if (resp.helperId) patchEvent(handoff('copy'));
+      toast(`Copied — paste it to ${first} however you reach them. Nothing was sent from here.`);
+    }
     catch { /* the message is on screen to copy by hand */ }
   };
 
@@ -12356,7 +12376,7 @@ export default function HostShellV2() {
                 // 'Decisions' and 'Event Day Schedule' now have real routeSheet branches, so
                 // they must stop wearing the honest "in the app" tag — the tag exists to warn
                 // a host that a CTA does not land HERE, and these now do. ('Communication'
-                // stays off the list: V2 has no messages surface, so its tag is still true.)
+                // joined them 11/20/2026, when the Messages sheet gave it somewhere to land.)
                 // 'Travel' added 2026-07-28: resolveRoute has handled tab:'Travel'
                 // (→ the lodging sheet) since the resolver was written, but this
                 // allowlist never learned it. So a hero routed to Travel rendered
@@ -12373,10 +12393,10 @@ export default function HostShellV2() {
                 // at a CTA that named a real act and did nothing.
                 // A list that mirrors the resolver can always fall behind it, which is
                 // the precise bug-factory lib/routeResolver was written to kill. So ASK
-                // THE RESOLVER: if it can land the route, the CTA lands. 'Communication'
-                // still resolves to null, so its honest tag survives — the tag now means
-                // exactly what it says (hostv2 has no surface for this) instead of
-                // meaning "nobody added this tab to a list yet".
+                // THE RESOLVER: if it can land the route, the CTA lands. A route that
+                // resolves to null keeps its honest tag — the tag means exactly what it
+                // says (hostv2 has no surface for this) instead of meaning "nobody added
+                // this tab to a list yet".
                 const lands = wired || (() => {
                   try { return !!resolveRoute(a.route); } catch (_e) { return false; }
                 })();
@@ -15524,7 +15544,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -16742,6 +16762,11 @@ export default function HostShellV2() {
             {sheet.kind === 'cohosts' && (
               <CohostsSheet event={event} signedIn={Boolean(session)} onLine={(l) => toast(l)}
                 onLeft={() => { try { window.location.reload(); } catch { /* the next load drops it */ } }} />
+            )}
+            {sheet.kind === 'messages' && (
+              <MessagesSheet event={event} helperAnswers={helperAnswers}
+                helpers={(helperData.responsibilities || []).map(r => ({ id: r.helperId, name: r.helperName }))}
+                onOpenGuests={() => setSheet({ kind: 'guests' })} />
             )}
             {sheet.kind === 'calendar' && (
               <CalendarSheet event={event} forecast={dayWx && forecastLine(dayWx) ? { date: dayWx.date, line: forecastLine(dayWx), kind: skyKind(dayWx) } : null} onOpenChecklist={() => setSheet({ kind: 'tasks' })}
@@ -20762,7 +20787,10 @@ export default function HostShellV2() {
               // off", never "Sent" (an sms: tap proves the composer opened,
               // nothing more). A DECLINED share sheet records nothing.
               const recordSend = (channel) => {
-                const led = recordHandoff(event.sendLedger, sheet.title, channel, new Date().toISOString());
+                // `about`: who the draft was for, as this sheet KNOWS it — the
+                // Messages view groups by it (owner, 11/20/2026). Never inferred.
+                const about = sheet.vendorId ? { kind: 'vendor', id: sheet.vendorId } : sheet.sendsInvite ? { kind: 'guests' } : null;
+                const led = recordHandoff(event.sendLedger, sheet.title, channel, new Date().toISOString(), about);
                 if (sheet.vendorId) {
                   // Vendor-directed draft: the handoff IS the outreach. The
                   // ledger write goes quiet (the chip confirms it) and the
@@ -27508,6 +27536,7 @@ export default function HostShellV2() {
           { label: 'Guest list', sub: 'guests & replies', go: () => setSheet({ kind: 'guests' }) },
           { label: 'Your checklist', sub: 'tasks', go: () => setSheet({ kind: 'tasks' }) },
           { label: 'Calendar', sub: 'the plan by week or month', go: () => setSheet({ kind: 'calendar' }) },
+          { label: 'Messages', sub: 'what you’ve sent, and what came of it', go: () => setSheet({ kind: 'messages' }) },
           { label: 'Calls to make', sub: 'decisions', go: () => setSheet({ kind: 'decisions' }) },
           { label: 'What could go wrong', sub: 'risks', go: () => setSheet({ kind: 'risks' }) },
           { label: 'Make it yours', sub: 'the meaning', go: () => setSheet({ kind: 'meaning' }) },

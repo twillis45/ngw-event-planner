@@ -28,11 +28,16 @@ const CHANNEL_LABEL = {
   copy: 'copied to send', email: 'by email', other: 'yourself',
 };
 
+/** "by text", "on WhatsApp"… for a handoff channel (the Messages view reads it). */
+export const handoffVia = (channel) => CHANNEL_LABEL[channel] || CHANNEL_LABEL.other;
+
 /**
  * Record a host-attested handoff. Pure: returns the next ledger.
  * A declined share never reaches here — callers only record on completion.
+ * `about` (optional, Messages view 11/20/2026): who the draft was for, as the
+ * caller KNOWS it — { kind: 'vendor'|'guests'|'helper', id? }. Never inferred.
  */
-export function recordHandoff(ledger, title, channel, nowIso) {
+export function recordHandoff(ledger, title, channel, nowIso, about) {
   const key = sendKey(title);
   const prev = (ledger && typeof ledger === 'object') ? ledger : {};
   return {
@@ -42,6 +47,7 @@ export function recordHandoff(ledger, title, channel, nowIso) {
       attested: true,
       channel: CHANNEL_LABEL[channel] ? channel : 'other',
       at: nowIso || null,
+      ...(about && about.kind ? { about: { kind: about.kind, ...(about.id != null ? { id: String(about.id) } : {}) } } : {}),
     },
   };
 }
