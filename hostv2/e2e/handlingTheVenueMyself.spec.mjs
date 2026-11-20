@@ -11,7 +11,7 @@
 // only the frozen CRA shell ever set it. Engine proof:
 // src/lib/__tests__/notThroughYouImHandlingTheVenue.test.js. This drives the
 // round trip, because the whole point is a control a host can reach.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, dateIn } from './fixtures.mjs';
 
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
@@ -27,10 +27,13 @@ const bodyText = (page) => page.evaluate(() => (document.body.innerText || '').r
 
 const openBoard = async (page) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.addInitScript(() => {
+  // A FIXED NUMBER OF DAYS OUT, not a fixed date (CI, 11/20/2026): at 209 days
+  // the "How are guests staying?" call passes its window and rightly leads the
+  // board, so a fixed June 2027 date aged out of the scenario this file tests.
+  await page.addInitScript(([start, end]) => {
     const ev = {
       id: 'e2e-venue', name: 'Mom’s 80th', type: 'Birthday',
-      date: '2027-06-17', endDate: '2027-06-21',
+      date: start, endDate: end,
       isDestination: true, venueCity: 'Santa Fe', state: 'NM',
       guestMode: 'count', guestCount: 10, totalBudget: 4000,
       budget: [], vendors: [], guests: [],
@@ -40,7 +43,7 @@ const openBoard = async (page) => {
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');
     localStorage.setItem('ngw-v2-welcomed', '1');
-  });
+  }, [dateIn(240), dateIn(244)]);
   await page.goto('?elegant=1');
   await settled(page);
 };
