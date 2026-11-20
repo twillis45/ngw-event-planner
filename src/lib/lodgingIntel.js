@@ -37,6 +37,7 @@ import { googleTravelTs } from './googleTravelTs';
 // dragged the entire 1.4MB playbook corpus onto the guest invite path,
 // because InviteV2 imports this module. See destLodgingOptions.js.
 import { DEST_LODGING_OPTIONS } from './destLodgingOptions';
+import { buildTravelPlan } from './travelPlan';
 // LOCAL calendar date, from the canonical formatter in ./dates. `toISOString()`
 // is UTC and slides a day whenever the two calendars disagree — measured at
 // TZ=Pacific/Kiritimati (UTC+14) on 2026-09-26.
@@ -3401,6 +3402,12 @@ export const STAY_FROM_PLAN = 'the plan, not booked yet';
  *
  * Choosing is not booking. One predicate, so nothing can claim otherwise again.
  */
+// ── A STAY IS DONE WHEN IT IS BOOKED (owner ruling, 11/20/2026) ──────────────
+// This predicate IS the lodging part's "done": the plan's ledger, the hero's
+// ask, the sheet hero's green and the board row all read it. A pick or a plan
+// (STAY_FROM_PICK / STAY_FROM_PLAN) is not done, and neither is a roster whose
+// guests each say they have a room; the surfaces that read "The stay is set" or
+// "Everyone has a room" off those were overclaiming and now ask for the booking.
 export function lodgingIsHeld(event) {
   const ev = event || {};
   const stay = (ev.lodging && typeof ev.lodging === 'object') ? ev.lodging : {};
@@ -3430,7 +3437,41 @@ export function lodgingIsHeld(event) {
   // the only answer that does not silently un-hold somebody's existing stay.
   const bookingCode = String(stay.code || stay.bookingCode || '').trim();
   return !!(namedOffConfirmation || bookingCode
-    || String(md.refundDeadline || '').trim() || String(md.installmentDue || '').trim());
+    || String(md.refundDeadline || '').trim() || String(md.installmentDue || '').trim()
+    || selfBookRoster(ev).allRoomed);
+}
+
+// ── GUESTS BOOK ON THEIR OWN (owner ruling, 11/20/2026) ──────────────────────
+// The same booked-is-done rule, per guest. When the host TOLD us guests book
+// their own rooms (dest_lodging), there is no one booking code to file: the
+// stay is held once every guest on the roster has a booked room — the roster's
+// own per-guest status, booked or confirmed (travelPlan's notBookedCount). An
+// empty roster is not done: nobody has said they have a room. Read by
+// lodgingIsHeld above and by lodgingAsk below, so the ledger, the queue and the
+// sheet hero cannot disagree.
+const SELF_BOOK = DEST_LODGING_OPTIONS[2]; // 'Guests book on their own'
+export function selfBookRoster(event) {
+  const ev = event || {};
+  const picks = (ev.foodChoices && typeof ev.foodChoices === 'object') ? ev.foodChoices : {};
+  if (String(picks.dest_lodging || '').trim() !== SELF_BOOK) return { selfBook: false, allRoomed: false, left: null, total: 0 };
+  let lg = null;
+  try { const tp = buildTravelPlan(ev); lg = tp && tp.relevant ? tp.lodging : null; } catch (_e) { lg = null; }
+  const total = lg && Array.isArray(lg.roster) ? lg.roster.length : 0;
+  const left = lg && lg.notBookedCount != null ? lg.notBookedCount : null;
+  return { selfBook: true, allRoomed: total > 0 && left === 0, left, total };
+}
+
+// THE ONE LODGING ASK, NAMING THE ACT (owner rulings, 11/20/2026). null when held.
+export function lodgingAsk(event) {
+  if (lodgingIsHeld(event)) return null;
+  const sb = selfBookRoster(event);
+  if (sb.selfBook) {
+    return sb.total > 0 && sb.left > 0
+      ? `${sb.left} ${sb.left === 1 ? 'guest still needs' : 'guests still need'} a room`
+      : 'Check who still needs a room';
+  }
+  const name = String((event && event.lodging && event.lodging.hotelName) || '').trim();
+  return name ? `Book ${name}` : 'Sort where everyone stays';
 }
 
 export function stayFromPick(event, intel) {

@@ -71,8 +71,30 @@ export function perUnitRate(n) {
  * is not optional: "$0.20–$0.40" with nothing after it invites a host to read
  * it as the cost of the LINE, which for 30 lb of ice is off by thirty times.
  */
+// ONE OF THE UNIT, NOT THE LINE'S UNIT PHRASE (11/20/2026). `unitBase` is the
+// authored unit, which can be plural ("rolls"), carry a per-N rule ("pie per 6
+// guests", "bottle per 4 guests") or a parenthetical — so the sheet printed
+// "$0.30–$0.80/rolls" and "$6–$20/pie per 6 guests". A rate is the price of one
+// thing: the rule and the note are dropped and the leading noun is singular.
+// "lbs"→"lb", "loaves"→"loaf", "batches"→"batch"; "glass" and "cans/bottles"'s
+// slash pair are each handled on their own.
+const singular = (w) => {
+  if (/(?:ss|us|is)$/i.test(w)) return w;                  // glass, bus, …
+  if (/ves$/i.test(w)) return w.replace(/ves$/i, 'f');     // loaves → loaf
+  if (/(?:x|z|ch|sh|ss)es$/i.test(w)) return w.replace(/es$/i, '');   // batches, glasses
+  if (/s$/i.test(w) && w.length > 2) return w.replace(/s$/i, '');
+  return w;
+};
+export function unitEach(unitBase) {
+  const u = String(unitBase || '').split('(')[0].split(/\s+per\s+/i)[0].trim();
+  if (!u) return '';
+  const words = u.split(/\s+/);
+  words[0] = words[0].split('/').map(singular).join('/');
+  return words.join(' ');
+}
+
 export function perUnitBand(low, high, unitBase) {
-  const unit = String(unitBase || '').trim();
+  const unit = unitEach(unitBase);
   if (!unit) return null;
   const lo = perUnitRate(low);
   if (!lo) return null;

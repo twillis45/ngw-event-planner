@@ -143,7 +143,7 @@ import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import MustHaves from './MustHaves';
-import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded } from '@app/lib/lodgingIntel';
+import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded, lodgingIsHeld } from '@app/lib/lodgingIntel';
 import { heardAccessNeeds, accessNeedsFor } from '@app/lib/accessNeeds';
 import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch, heardVendorIntents } from '@app/lib/heardClauses';
 import { heardFoods, uncoveredFoods, similarPlanLine } from '@app/lib/heardFoods';
@@ -168,7 +168,7 @@ import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, readEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
 import { deleteAccount, isAccountDeletionAvailable } from '@app/lib/api/account';
-import { effectiveDone, factsATickRecords, invitesOut } from '@app/lib/taskEngine';
+import { effectiveDone, factsATickRecords, invitesOut, timelineStepResolved } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
@@ -198,7 +198,7 @@ import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
 import { expectedFromPlanned, likelyAttendancePhrase } from '@app/lib/attendanceModel';
-import { estimateTotalRange, notIncludedFor } from '@app/lib/budgetEstimator';
+import { estimateTotalRange, notIncludedFor, notIncludedSummary } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
 import { venueLeadsStay } from '@app/lib/venueLeadsStay'; // owner ruling 11/20/2026: the venue leads the stay
 import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
@@ -234,7 +234,7 @@ import {
   getHostVendorChallenges, getHostVendorReadiness, getVendorNextAction,
   getHostHighestRiskVendor,
 } from '@app/lib/vendorIntelligence';
-import { isVendorBooked, isVendorConfirmed } from '@app/lib/workstreams';
+import { isVendorBooked, isVendorConfirmed, vendorDepositOwed } from '@app/lib/workstreams';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { isPlausibleCityText, parseVenueLocation, proposeTownFromHeard } from '@app/lib/cityText';
 import { foodShopItems } from '@app/lib/foodShopItems';
@@ -2587,7 +2587,9 @@ export default function HostShellV2() {
     }, 1500);
     return () => clearTimeout(t);
   }, [smartText, revealed]); // eslint-disable-line react-hooks/exhaustive-deps
-  const ctx = useMemo(() => { try { return buildExperienceContext(event, profile, 1); } catch { return null; } }, [event, profile]); // eslint-disable-line react-hooks/exhaustive-deps
+  // `prices` rides on ctx so eventPlan's Budget part prices the host's lines the
+  // way her money sheet does (hero-clears sweep, 11/20/2026).
+  const ctx = useMemo(() => { try { const c = buildExperienceContext(event, profile, 1); return c ? { ...c, prices: foodPP } : c; } catch { return null; } }, [event, profile, foodPP]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── THE REAL ENGINE ──
   const plan = useMemo(() => {
@@ -2619,16 +2621,17 @@ export default function HostShellV2() {
   // the food plan already trusts). No profile / cold-start host ⇒ board is byte-identical.
   const decisionBoard = useMemo(() => {
     try {
-      const b = playbookDecisionBoard(event, undefined, profile) || { open: [], locked: [] };
-      // GROUNDED (dogfood 2026-07-19): once the host has SET a venue, the "at home / restaurant /
-      // hall" venue-KIND decision is already answered by the real venue — surfacing it (with a
-      // static playbook default that can CONTRADICT the set venue, e.g. proposing "Restaurant
-      // private room" over a booked banquet hall) violates the grounding doctrine. Drop it from
-      // the open board when a venue is on file; the venue is the source of truth.
-      if (b && Array.isArray(b.open) && vf.name) {
-        return { ...b, open: b.open.filter(d => !(d && (d.id === 'venue' || /at home.*(restaurant|venue|workplace)/i.test(String(d.label || '')))) ) };
-      }
-      return b;
+      // ONE RULE FOR THE VENUE CALL, THE ENGINE'S (hero-clears sweep, 11/20/2026).
+      // This used to drop the "at home / restaurant / hall" call from the open board
+      // whenever a venue NAME was on file (dogfood 2026-07-19). The engine has since
+      // learned the same fact with the owner's narrower rule — a BOOKED venue vendor
+      // answers the call (decisionSettledByData, 11/15/2026) — and the surfaceRegistry
+      // raiser reads the engine's board, not this one. So a named-but-unbooked venue
+      // put the call in the hero ("past its window") while this board, the Calls sheet
+      // and the hero's own answer panel all left it out: an ask with nowhere to answer
+      // it, which never cleared. The board now carries what the engine carries, and
+      // the call is answered in a tap like every other one.
+      return playbookDecisionBoard(event, undefined, profile) || { open: [], locked: [] };
     } catch { return { open: [], locked: [] }; }
   }, [event, profile]);
   // "show the rest" for a paced calls board — mirrors queueOpen's expander pattern.
@@ -2733,7 +2736,7 @@ export default function HostShellV2() {
   };
   // The essentials rail (phaseProgress), tight-timeline summary, and the
   // playbook's heart moments — the last of the audit list.
-  const phaseCues = useMemo(() => { try { return deriveEventPhaseProgress(event); } catch { return null; } }, [event]);
+  const phaseCues = useMemo(() => { try { return deriveEventPhaseProgress(event, undefined, foodPP); } catch { return null; } }, [event, foodPP]);
   const compression = useMemo(() => { try { return deriveEventCompressionSummary(event, daysUntil); } catch { return null; } }, [event]);
   const heartMoments = useMemo(() => { try { return playbookHeartMoments(event) || []; } catch { return []; } }, [event]);
   const crab = useMemo(() => { try { return buildCrabPlan(event); } catch { return { relevant: false }; } }, [event]);
@@ -2795,42 +2798,13 @@ export default function HostShellV2() {
   // closes once every active line is actually bought. General by subject-matching,
   // not any one label — so a resolved decision drops out of "Coming up" everywhere
   // it applies, the same way it already does in the checklist's "tap to confirm" tag.
-  const isTimelineStepResolved = (t) => {
-    if (!t) return false;
-    // A RETIRED row is off the open list by definition: the gate that authored
-    // it has closed, so it is no longer work this event needs. It is resolved
-    // here rather than filtered at each call site because "open task" is asked
-    // in five places (the Coming-up feed, two open-task counts, the hero's
-    // N-of-M, the done fold) and a retired row leaking into any one of them
-    // would put a task the host can never finish into their count forever.
-    if (t.retired) return true;
-    try { if (effectiveDone(event, t)) return true; } catch {}
-    // DESTINATION-2 slice 3: "Build the arrivals/departures grid" (dest_t_grid)
-    // resolves once the grid actually holds real entries — a roster traveler
-    // with flight info on the board. Same derive-don't-store predicate as the
-    // buy/shop branch below: subject-matched, proven by event state, never a
-    // second stored flag. Headcount mode never resolves it (no honest entries).
-    if (/arrivals?\s*\/\s*departures/i.test(String(t.task || ''))) {
-      try {
-        return !!(travel.relevant && travel.rosterMode
-          && (travel.air.roster || []).some(r => r.hasFlightInfo));
-      } catch { return false; }
-    }
-    // Scoped to FOOD purchases (brutal audit 2026-07-28, class S9): this rule
-    // proves against the GROCERY list, and it's the one inference that WRITES
-    // done:true — so "buy the linens" / "alcohol + decor run" must never ride
-    // a fully-ticked food list. Food context required.
-    if (/\b(buy|shop)\b.{0,50}\b(food|grocer|ingredient|ice|drink|produce|meat|snack)\b|grocery|shopping list|food shop/i.test(String(t.task || ''))) {
-      try {
-        const fp = playbookFoodPlan(event);
-        const active = ((fp && fp.list) || []).filter(it => it && !it.skipped);
-        if (!active.length) return false;
-        const got = event.foodGot || {};
-        return active.every(it => got[it.id] === true);
-      } catch { return false; }
-    }
-    return false;
-  };
+  // ONE ANSWER, IN THE ENGINE (hero-clears sweep, 11/20/2026). This predicate
+  // (retired · effectiveDone · the arrivals grid · a bought food shop) lived here
+  // alone, so the checklist said "Every step is handled" while the overdue policy
+  // behind the hero — which knew only effectiveDone — said "overdue by 5 days"
+  // about a retired step. It now lives in lib/taskEngine (timelineStepResolved),
+  // read by this checklist and by taskLead.taskIsOverdue alike.
+  const isTimelineStepResolved = (t) => timelineStepResolved(event, t);
 
   // "Coming up" — the human-intelligence layer for CALM states: name what's
   // next and WHEN IT'S DUE even when nothing is urgent. Sources: the decision
@@ -4480,6 +4454,15 @@ export default function HostShellV2() {
       : name + ' — agreed price cleared.');
     if (result && result.ok) setVendorCostDraft(null);
   };
+  const markDepositPaid = (v) => {
+    const name = v.name || v.category || 'This vendor';
+    const result = writeVendor(v.id, { depositPaid: true });
+    if (!result || !result.ok) return;
+    toast(name + '’s deposit marked paid.', {
+      label: 'Undo',
+      fn: () => writeVendor(v.id, { depositPaid: false }, name + ' — deposit back to not paid.'),
+    });
+  };
   const toggleVendorPaid = (v) => {
     const prev = !!v.balancePaid;
     const name = v.name || v.category || 'This vendor';
@@ -4646,7 +4629,7 @@ export default function HostShellV2() {
   };
   const spend = useMemo(() => {                          // lib/hostSpending — budget single-source
     try { return hostSpending(event, foodPP.priceFactor, foodPP.itemFactors); } catch { return { total: 0, spent: 0, committed: 0 }; }
-  }, [event, foodPP.priceFactor]); // was missing priceFactor — the budget recovery panel below re-derives
+  }, [event, foodPP.priceFactor, foodPP.itemFactors]); // was missing priceFactor — the budget recovery panel below re-derives
     // the same total unmemoized (always fresh), so once regional pricing
     // resolved async after mount, this stale figure and the recovery panel's
     // fresh one could show two different "how far over" dollar amounts on
@@ -6971,7 +6954,7 @@ export default function HostShellV2() {
     // a per-item regional band while the budget rollup used the basket mean for
     // the same line. One source, one set of numbers.
     try { return playbookFoodPlan(event, { priceFactor: foodPP.priceFactor, itemFactors: foodPP.itemFactors }); } catch { return null; }
-  }, [event, foodPP.priceFactor]); // same missing-dependency bug as `spend` above
+  }, [event, foodPP.priceFactor, foodPP.itemFactors]); // same missing-dependency bug as `spend` above
 
   // ── ONE PLACE ANSWERS "IS THERE ANYWHERE TO PUT THE SHOPPING" ────────────
   // `foodSpanNote` owns it. The first cut of the kitchen gate read it inside
@@ -9608,11 +9591,12 @@ export default function HostShellV2() {
               try { return notIncludedFor(event.type, { isDestination: !!event.isDestination }); } catch (_e) { return []; }
             })();
             if (!excl.length) return null;
-            const lead = est && est.destinationAdjusted ? 'travel and lodging' : 'gifts and the cake';
+            // Named from THIS list (lib notIncludedSummary, 11/20/2026) — it
+            // said "gifts and the cake" on a Board Meeting and a Thanksgiving.
             return (
               <details className="excl-fold" style={{ marginTop: 8 }}>
                 <summary className="grounding" style={{ cursor: 'pointer' }}>
-                  {`${excl.length} things this number leaves out — ${lead} among them`}
+                  {notIncludedSummary(excl)}
                 </summary>
                 <p className="grounding" style={{ margin: '6px 0 0' }}>{excl.join(' · ')}</p>
               </details>
@@ -10908,7 +10892,9 @@ export default function HostShellV2() {
                       <div className="chips heard" style={{ marginTop: 14 }}>
                         <button className="chip" aria-pressed={!!effType}
                           onClick={() => { setCreateEdit(createEdit === 'type' ? null : 'type'); setTypeOpen(true); setTypeQuery(''); }}>
-                          {effType ? effType.replace(' Party', '') : 'Which occasion?'}
+                          {/* The type's own name (11/20/2026): dropping " Party" read
+                              "Holiday", "Day" and "Card" for three different events. */}
+                          {effType || 'Which occasion?'}
                         </button>
                         <button className="chip" onClick={() => setCreateEdit(createEdit === 'count' ? null : 'count')}>
                           {effGuests ? '~' + effGuests + (fGuests == null && parsed.guests == null ? ' · typical' : '') : 'How many?'}
@@ -14466,8 +14452,12 @@ export default function HostShellV2() {
                             : (travel.lodging.notBookedCount != null && travel.lodging.roster.length > 0
                               ? (travel.lodging.notBookedCount > 0
                                   ? travel.lodging.notBookedCount + ' of ' + travel.lodging.roster.length + ' have no room yet'
-                                  : 'everyone has a room lined up')
-                              : (travel.lodging.hotelName || 'no place picked yet')),
+                                  : (lodgingIsHeld(event) ? 'everyone has a room' : 'everyone has a room lined up · stay not booked'))
+                              // A PICK IS NOT A BOOKING (owner ruling, 11/20/2026): the
+                              // name alone read as a settled stay over an open part.
+                              : (travel.lodging.hotelName
+                                  ? (lodgingIsHeld(event) ? travel.lodging.hotelName : travel.lodging.hotelName + ' · picked, not booked yet')
+                                  : 'no place picked yet')),
                           // WAVE-6 (one number per row): raises here are aggregates —
                           // the sub carries the real fact. Tint only, no ledger badge.
                           attn: (raised['lodging'] || 0) + (raised['money-dates'] || 0) > 0,
@@ -16069,7 +16059,7 @@ export default function HostShellV2() {
                           onClick={() => { setDecOpenCard(r.id); setDecExplain(null); }}
                           aria-expanded={false}>
                           <span className="f-main">
-                            <span className="f-name">{r.label}
+                            <span className="f-name">{r.title || r.label}
                               {lateChip}
                               {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                             </span>
@@ -16082,7 +16072,7 @@ export default function HostShellV2() {
                       <div key={r.id || i} data-flip={String(r.id || i)} className={'frow frow-decision' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), cursor: 'default', ...heartStyle }}
                         ref={scrollIntoViewOnOpen(focused)}>
                         <span className="f-main">
-                          <span className="f-name">{r.label}
+                          <span className="f-name">{r.title || r.label}
                             {lateChip}
                             {/* Wave-2b short-runway escalation: a subtle time-sensitive cue in
                                 the existing tag vocabulary (warn), only when not already overdue. */}
@@ -16150,7 +16140,7 @@ export default function HostShellV2() {
                         <div className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), width: '100%' }}
                           ref={scrollIntoViewOnOpen(focused)}>
                           <span className="f-main">
-                            <span className="f-name">{r.label}
+                            <span className="f-name">{r.title || r.label}
                               {lateChip}
                               {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                             </span>
@@ -16173,7 +16163,7 @@ export default function HostShellV2() {
                         ref={scrollIntoViewOnOpen(focused)}
                         onClick={() => { if (r.route && routeSheet(r.route)) return; toast(r.because || r.label); }}>
                         <span className="f-main">
-                          <span className="f-name">{r.label}
+                          <span className="f-name">{r.title || r.label}
                             {lateChip}
                             {/* Wave-2b short-runway escalation: a subtle time-sensitive cue in
                                 the existing tag vocabulary (warn), only when not already overdue. */}
@@ -18058,7 +18048,16 @@ export default function HostShellV2() {
                       screen. Renders precisely when the block above does not: the
                       weighing machinery OR the stay/money-dates half, never both,
                       never neither (bar the local-event early return above). */}
-                  {!onWeighingSide && (travel.rosterMode && lg.roster.length > 0 ? (
+                  {/* A STAY IS DONE WHEN IT IS BOOKED (owner ruling, 11/20/2026).
+                      Both heroes below used to read done off a NAME — "The stay is
+                      set" over a pick, "Everyone has a room" over guests' own
+                      say-so — while the plan's lodging part (lodgingIsHeld) stayed
+                      open and the hero kept asking. Green and "set" land only when
+                      the stay is held: a booking code, a refund date or an
+                      installment on file. A pick reads as a pick, in neutral ink. */}
+                  {!onWeighingSide && (() => {
+                    const held = lodgingIsHeld(event);
+                    return travel.rosterMode && lg.roster.length > 0 ? (
                     /* SAY WHAT THIS NUMBER COUNTS (host 2026-07-28: "difference between
                        booked and confirmed"). notBookedCount counts ONLY 'not_started'
                        — its own comment says "booked here means booked OR confirmation
@@ -18069,21 +18068,26 @@ export default function HostShellV2() {
                     <SheetHero
                       eyebrow="Rooms lined up"
                       star={`${lg.roster.length - (lg.notBookedCount || 0)} of ${lg.roster.length} have a room`}
-                      tone={lg.notBookedCount === 0 ? 'ok' : undefined}
+                      tone={lg.notBookedCount === 0 && held ? 'ok' : undefined}
                       sub={lg.notBookedCount > 0
                         ? `${lg.notBookedCount} ${lg.notBookedCount === 1 ? 'has no room' : 'have no room'} yet — tap a name each time you hear where they stand.`
-                        : 'Everyone has a room lined up — tap a name if anything changes.'}
+                        : held
+                          ? 'Everyone has a room — tap a name if anything changes.'
+                          : 'Everyone says they have a room. Add the booking code or the refund date below and the stay is booked.'}
                     />
                   ) : (
                     <SheetHero
                       eyebrow="The stay"
-                      star={lg.hotelName ? 'The stay is set' : 'No place picked yet'}
-                      tone={lg.hotelName ? 'ok' : undefined}
-                      sub={lg.hotelName
-                        ? `${lg.hotelName} is the plan — the details below feed the where-to-stay note.`
-                        : 'Name the place below and the where-to-stay note writes itself.'}
+                      star={!lg.hotelName ? 'No place picked yet' : held ? 'The stay is booked' : `Picked ${lg.hotelName}, not booked yet`}
+                      tone={lg.hotelName && held ? 'ok' : undefined}
+                      sub={!lg.hotelName
+                        ? 'Name the place below and the where-to-stay note writes itself.'
+                        : held
+                          ? `${lg.hotelName} is booked — the details below feed the where-to-stay note.`
+                          : `Book ${lg.hotelName}, then add the booking code or the refund date below — that is what marks the stay booked.`}
                     />
-                  ))}
+                  );
+                  })()}
                   {/* The one dated fact on this card, said plainly — never "cutoff". */}
                   {lg.deadline && (() => {
                     let dd = null; try { dd = daysUntil(lg.deadline); } catch { dd = null; }
@@ -24200,7 +24204,7 @@ export default function HostShellV2() {
                       CONFIRMED === total (below), so the colour was already honest —
                       it was the label that overreached. */}
                   <Eyebrow>Booked so far</Eyebrow>
-                  <BigValue style={{ fontVariantNumeric: 'tabular-nums', ...((rc.total > 0 && (rc.confirmed || 0) >= rc.total) ? { color: 'var(--ok)' } : null) }}>
+                  <BigValue style={{ fontVariantNumeric: 'tabular-nums', ...((rc.total > 0 && (rc.confirmed || 0) >= rc.total && !(event.vendors || []).some(vendorDepositOwed)) ? { color: 'var(--ok)' } : null) }}>
                     {rc.ready} of {rc.total}
                   </BigValue>
                   <GuideLine>
@@ -24212,9 +24216,15 @@ export default function HostShellV2() {
                       if (rc.ready < rc.total) return `${rc.total - rc.ready} not booked yet — their cards below say which.`;
                       const confirmed = (event.vendors || []).filter(isVendorConfirmed).length;
                       const toConfirm = Math.max(0, rc.ready - confirmed);
+                      // A DEPOSIT OWED IS NOT "ALL SET" (hero-clears sweep, 11/20/2026).
+                      // The Vendors part stays open while one is owed (isVendorSettled);
+                      // this line used to say "paperwork all set" over it.
+                      const owed = (event.vendors || []).filter(v => isVendorConfirmed(v) && vendorDepositOwed(v)).length;
                       return toConfirm > 0
                         ? `All booked — ${toConfirm} still to confirm before the day.`
-                        : 'Everyone’s locked in — confirms, times, and paperwork all set.';
+                        : owed > 0
+                          ? `All locked in — ${owed === 1 ? 'one deposit' : owed + ' deposits'} still to pay.`
+                          : 'Everyone’s locked in — confirms, times, and paperwork all set.';
                     })()}
                   </GuideLine>
                 </div>
@@ -24962,6 +24972,14 @@ export default function HostShellV2() {
                                   </p>
                                 );
                               })()}
+                              {/* THE DEPOSIT CAN BE SAID PAID (hero-clears sweep, 11/20/2026). A
+                                  recorded deposit held the Vendors part open and nothing in
+                                  this app wrote `depositPaid`, so the part could never close. */}
+                              {vendorDepositOwed(v) ? (
+                                <button data-vaction="money" className="chip" aria-pressed={false} onClick={() => markDepositPaid(v)}>
+                                  Mark deposit paid
+                                </button>
+                              ) : null}
                               <button data-vaction="money" className="chip" aria-pressed={!!v.balancePaid} onClick={() => toggleVendorPaid(v)}>
                                 {v.balancePaid ? 'Paid in full' : 'Mark paid in full'}
                               </button>
@@ -25463,7 +25481,7 @@ export default function HostShellV2() {
               const hostRows = hostRowsGo();
               const manualRows = (event.budget || []).filter(r => hostRows.some(c => c.source === 'budget' && c.budgetRowIds.includes(r.id)));
               const payment = paymentEntry && paymentEntry.eventId === event.id ? paymentEntry : null;
-              let heroCopy = null; try { heroCopy = budgetHeroCopy(event, foodPP.priceFactor); } catch { heroCopy = null; }
+              let heroCopy = null; try { heroCopy = budgetHeroCopy(event, foodPP.priceFactor, foodPP.itemFactors); } catch { heroCopy = null; }
               // Queue item 7 — the recovery engine: source-backed ways OUT of
               // an overage (safe cuts / tradeoffs / protected), never invented $.
               let recovery = null;

@@ -155,5 +155,24 @@ export function notIncludedFor(familyOrType, opts = {}) {
   ];
 }
 
+// The one-line summary over the fold: how many lines, and the first two of
+// THEM by name (11/20/2026). It said "gifts and the cake" for every event,
+// including a Board Meeting whose list has neither, and a destination event
+// swapped in "travel and lodging" by a separate test. Each named item is now
+// the lead words of a line on this list, so the summary can only name what
+// the fold underneath it says. A CONDITIONAL line ("Alcohol if guests bring
+// their own", "Cake / dessert when not included…") is never named: its lead
+// words alone ("alcohol") would claim the number leaves out something it may
+// well include.
+const leadWords = (line) => String(line || '')
+  .split(/,|\(|\s\/\s|\s(?:and|beyond|for)\s/i)[0].trim().toLowerCase();
+export function notIncludedSummary(lines) {
+  const l = (Array.isArray(lines) ? lines : []).filter(Boolean);
+  if (!l.length) return null;
+  const named = l.filter((x) => !/\b(?:if|when|unless|not)\b/i.test(x)).slice(0, 2).map(leadWords).filter(Boolean);
+  const count = `${l.length} ${l.length === 1 ? 'thing' : 'things'} this number leaves out`;
+  return named.length ? `${count} — ${named.join(' and ')} among them` : count;
+}
+
 // Back-compat default (full_service) for any caller still importing the constant.
 export const NOT_INCLUDED = NOT_INCLUDED_BY_FAMILY.full_service;

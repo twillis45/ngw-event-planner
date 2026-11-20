@@ -5,7 +5,8 @@ import { budgetIsSet } from './budgetFor';
 import { rsvpHasResponded } from './rsvp';
 import { chaseAnsweredOrNudged } from './replyNudge';
 // Live binding, read only at call time: playbooks imports this module too.
-import { openFoodChoices, isDietaryChoice } from './playbooks';
+import { openFoodChoices, isDietaryChoice, playbookFoodPlan, hostBuysLine } from './playbooks';
+import { buildTravelPlan } from './travelPlan';
 
 // Single source of truth for "is this planning task already handled by real event state?"
 //
@@ -237,6 +238,48 @@ export function taskSatisfied(event, task) {
 // proves it handled. This is the bridge that retires manual checkoff as a source of truth.
 export function effectiveDone(event, task) {
   return !!(task && task.done) || taskSatisfied(event, task);
+}
+
+// ─── IS THIS CHECKLIST STEP HANDLED? ONE ANSWER (hero-clears sweep, 11/20/2026) ──
+// The checklist sheet answered this in the shell (isTimelineStepResolved) and
+// the overdue policy every engine reads (taskLead.taskIsOverdue → the board's
+// "Catch up on this step", getEventReadiness, the ladder's "Catch up on overdue
+// planning tasks") answered it with effectiveDone alone. So the checklist said
+// "Every step is handled — 3 no longer needed" while the hero said "Order the
+// balloons — overdue by 5 days" about a step the plan had retired. Moved here,
+// unchanged in meaning except one line (below), and read by both.
+//
+// A step is handled when it is ticked or proven by event state (effectiveDone);
+// RETIRED (its gate closed — no longer work this event needs); the arrivals /
+// departures grid holding a real flight; or a FOOD shop whose list is bought.
+// The shop rule now counts only the lines the host buys (hostBuysLine,
+// 11/20/2026) — a dish a friend brings no longer holds the host's shop open.
+const ARRIVALS_GRID_RE = /arrivals?\s*\/\s*departures/i;
+// Scoped to FOOD purchases (brutal audit 2026-07-28, class S9): "buy the linens"
+// must never ride a fully-ticked grocery list.
+const FOOD_SHOP_RE = /\b(buy|shop)\b.{0,50}\b(food|grocer|ingredient|ice|drink|produce|meat|snack)\b|grocery|shopping list|food shop/i;
+export function timelineStepResolved(event, task) {
+  if (!task) return false;
+  if (task.retired) return true;
+  try { if (effectiveDone(event, task)) return true; } catch (_e) { /* fall through */ }
+  const label = String(task.task || '');
+  if (ARRIVALS_GRID_RE.test(label)) {
+    try {
+      const travel = buildTravelPlan(event);
+      return !!(travel.relevant && travel.rosterMode
+        && ((travel.air && travel.air.roster) || []).some((r) => r.hasFlightInfo));
+    } catch (_e) { return false; }
+  }
+  if (FOOD_SHOP_RE.test(label)) {
+    try {
+      const fp = playbookFoodPlan(event);
+      const active = ((fp && fp.list) || []).filter((it) => it && !it.skipped && hostBuysLine(it));
+      if (!active.length) return false;
+      const got = (event && event.foodGot) || {};
+      return active.every((it) => got[it.id] === true);
+    } catch (_e) { return false; }
+  }
+  return false;
 }
 
 // ─── A TICK RECORDS WHAT IT STANDS FOR (owner, 11/18/2026) ───────────────────

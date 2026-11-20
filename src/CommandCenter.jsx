@@ -87,7 +87,7 @@ import { buildExperienceContext } from './lib/experienceContext';
 import { deriveDecisionBlockers, buildBlockerStage } from './lib/assembleRevealEngines';
 // The ONE place reader — used here only to name the town in the venue ask.
 import { venueFor as venueForEvent } from './lib/venueFor';
-import { lodgingIsHeld } from './lib/lodgingIntel';
+import { lodgingIsHeld, lodgingAsk } from './lib/lodgingIntel';
 import { daysUntil } from './lib/dates';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
@@ -1626,7 +1626,12 @@ export function _eventFoundationActions(event) {
     // toward WITHOUT it counting as settled. Re-deriving the predicate here
     // threw that away.
     ...(event && event.isDestination === true ? [{
-      id: 'lodging', domain: 'lodging', title: 'Sort where everyone stays.',
+      // NAME THE ACT (owner ruling, 11/20/2026): a picked or planned place
+      // that is not yet booked is asked to be BOOKED, by name — the same words
+      // the readiness ledger uses (phaseProgress), so the hero and "Then, in
+      // order" cannot ask two different things about one stay.
+      id: 'lodging', domain: 'lodging',
+      title: `${(!lodgingSettled && (() => { try { return lodgingAsk(event); } catch (_e) { return null; } })()) || 'Sort where everyone stays'}.`,
       consequence: 'Rooms sell out and group rates expire — this one has a deadline the rest of the plan does not.',
       cta: 'Sort lodging', route: { tab: 'Travel', focusField: 'lodging' },
       done: lodgingSettled,
@@ -2070,7 +2075,10 @@ export function eventPlan(event, ctx = null) {
   // The SAME ledger the "Where you stand" tile counts — read once, here, so the action
   // list and the progress tile cannot form independent opinions. (See "ONE LEDGER" below.)
   let phaseProgressForPlan = null;
-  try { phaseProgressForPlan = deriveEventPhaseProgress(event); } catch (_e) { phaseProgressForPlan = null; }
+  // ctx.prices: the regional price context the host's money sheet uses, when the
+  // caller holds one (hero-clears sweep, 11/20/2026) — see phaseProgress.
+  const _prices = (ctx && ctx.prices) || null;
+  try { phaseProgressForPlan = deriveEventPhaseProgress(event, undefined, _prices); } catch (_e) { phaseProgressForPlan = null; }
   const progress = {
     done: foundation.filter(a => a.done).length,
     total: foundation.length,
@@ -2085,7 +2093,7 @@ export function eventPlan(event, ctx = null) {
   // Decompose a stale "Set date, headcount, menu" composite into the atomic remaining
   // domino BEFORE it becomes the hero — the doctrine's single-source decomposition.
   const top = decomposeSetComposite(
-    (() => { try { return _selectEventNextActionInner(event); } catch { return null; } })(),
+    (() => { try { return _selectEventNextActionInner(event, _prices); } catch { return null; } })(),
     event,
   );
   // WAVE-6: days-to-event, read once — dueInDays for any action carrying a real
@@ -3114,7 +3122,7 @@ export function nextStepOwner(na) {
   }
 }
 
-export function _selectEventNextActionInner(event) {
+export function _selectEventNextActionInner(event, prices = null) {
   if (!event) return null;
   const d = deriveCommandCenterData(event);
   const days = daysFrom(event.date);
@@ -3776,7 +3784,7 @@ export function _selectEventNextActionInner(event) {
   // becomes the hero title, so the header cue's wording-yield hides itself
   // (one telling, hero wins).
   try {
-    const _pp = deriveEventPhaseProgress(event);
+    const _pp = deriveEventPhaseProgress(event, undefined, prices);
     if (_pp && _pp.phase === 'pre_event' && _pp.nextCue) {
       return {
         level: 'neutral',

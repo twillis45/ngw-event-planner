@@ -11,7 +11,7 @@
 // sections with nothing open say so calmly (stop worrying about it); every
 // row's route obeys the deep-link doctrine (first-undone anchors); the guest
 // final-details message is LINKED, never embedded (host plan ≠ guest copy).
-import { playbookFoodPlan, playbookCapacity, effectiveRos, guestCountResolved } from './playbooks';
+import { playbookFoodPlan, playbookCapacity, effectiveRos, guestCountResolved, hostBuysLine } from './playbooks';
 import { rainPlanStatus, RAIN_PLAN_TARGET } from './weather';
 import { deriveHelperResponsibilities } from './helperResponsibility';
 import { isVendorConfirmed } from './workstreams';
@@ -54,7 +54,7 @@ export function buildDayBeforePlan(event, now = new Date()) {
   try {
     const plan = playbookFoodPlan(ev);
     if (plan && Array.isArray(plan.list)) {
-      const unboughtList = plan.list.filter(i => i && !i.skipped && !((ev.foodGot || {})[i.id]));
+      const unboughtList = plan.list.filter(i => hostBuysLine(i) && !i.skipped && !((ev.foodGot || {})[i.id]));
       const unboughtFoodList = unboughtList.filter(i => i.group !== 'Supplies');
       unboughtFood = unboughtFoodList.length;
       unboughtListSupplies = unboughtList.length - unboughtFood;

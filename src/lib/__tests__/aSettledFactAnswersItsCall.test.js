@@ -123,3 +123,31 @@ describe('item 22 — engine copy reads as plain words', () => {
     expect(playbookRunOfShow(demo()).map((r) => r.segment).join(' ')).not.toMatch(/≤36" reach/);
   });
 });
+
+// ── HERO-CLEARS SWEEP (11/20/2026) ───────────────────────────────────────────
+// The shell used to hide the venue call whenever any venue was named; with that
+// filter gone (one rule, the engine's), the at-home case has to be answered
+// here, because "at home" is a fact the event already holds. A named place with
+// no booked venue vendor still asks — that is the 11/15 rule, unchanged.
+describe('hero-clears — the venue call and the host’s own place', () => {
+  const civilian = (patch) => ({
+    id: 'hc-venue', type: 'Retirement Party', name: 'Pat’s send-off',
+    date: '2026-12-20', guestEstimate: 30, vendors: [], ...patch,
+  });
+  test('a home venue answers the venue call with the home option', () => {
+    const ev = civilian({ venue: 'Home', venueCity: 'Austin, TX' });
+    const s = decisionSettledByData(ev, dec('venue'));
+    expect(s).toEqual(expect.objectContaining({ pick: 'Host home', because: 'Your place' }));
+    expect(rows(playbookDecisionBoard(ev, asOf)).map((r) => r.id)).not.toContain('venue');
+    expect(choicePickFor(ev, 'venue')).toBe('Host home');
+  });
+  test('control: a named place with no venue vendor still asks', () => {
+    const ev = civilian({ venue: 'VFW Post 12', venueAddress: '12 Oak St, Austin, TX' });
+    expect(decisionSettledByData(ev, dec('venue'))).toBeNull();
+    expect(rows(playbookDecisionBoard(ev, asOf)).map((r) => r.id)).toContain('venue');
+  });
+  test('control: the host’s own answer still wins over the home fact', () => {
+    const ev = { ...civilian({ venue: 'Home', venueCity: 'Austin, TX' }), foodChoices: { venue: 'Backyard / outdoor' } };
+    expect(choicePickFor(ev, 'venue')).toBe('Backyard / outdoor');
+  });
+});

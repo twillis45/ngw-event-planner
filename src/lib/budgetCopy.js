@@ -27,8 +27,10 @@ export function unpricedVendorCount(event) {
 
 // Returns { state, title, line, caveat|null, numbers } — plain strings.
 // States: unset | waiting | under | near | over
-export function budgetHeroCopy(event, priceFactor) {
-  const sp = hostSpending(event, priceFactor);
+// `itemFactors` rides with `priceFactor` (hero-clears sweep, 11/20/2026): this
+// copy dropped it, so the sheet's star and its own headline priced lines two ways.
+export function budgetHeroCopy(event, priceFactor, itemFactors) {
+  const sp = hostSpending(event, priceFactor, itemFactors);
   const { total, spent, committed } = sp;
   const unpriced = unpricedVendorCount(event);
   const caveat = [

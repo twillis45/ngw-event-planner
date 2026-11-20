@@ -678,8 +678,15 @@ export function parseSmartEventText(text, opts = {}) {
   // A vendor role before a possessive is evidence of a supplier, not an honoree.
   // So is "at" (11/15/2026): "Friendsgiving at Vida's" is dinner at her place,
   // not a party for her — atSomeonesIsAPlace.test.js.
+  // A HOLIDAY'S POSSESSIVE IS NOT A PERSON (11/20/2026): "New Year's Eve party
+  // December 31 for 20" took "New Year" as the honoree, so the plan was named
+  // "New Year's New Year's Eve" and the chips read "For New Year". NOT_WHO
+  // already guards "X's Day"; these are the holidays whose own name carries the
+  // possessive whatever word follows it.
+  const HOLIDAY_POSSESSOR = /^(?:new\s+year|valentine|saint\s+patrick|st\.?\s+patrick|april\s+fool)$/i;
   const matchPerson = (pattern) => [...t.matchAll(new RegExp(pattern.source, pattern.flags + 'g'))]
-    .find((m) => !/\b(?:caterer|vendor|photographer|DJ)\s*$/i.test(t.slice(0, m.index))
+    .find((m) => !HOLIDAY_POSSESSOR.test(String(m[1] || '').trim())
+      && !/\b(?:caterer|vendor|photographer|DJ)\s*$/i.test(t.slice(0, m.index))
       && !/\bat\s+(?:my\s+|our\s+)?$/i.test(t.slice(0, m.index))
       && !/^(?:caterer|vendor|photographer|DJ)\s/i.test(m[1])) || null;
   const hm = (() => {

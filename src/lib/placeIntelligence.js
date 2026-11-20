@@ -42,7 +42,9 @@ const has = (v) => !!String(v || '').trim();
 
 // Event types that usually happen outside. ONE list: startTime and
 // phaseProgress each carried an identical private copy until 11/18/2026.
-export const OUTDOOR_TYPE = /cookout|bbq|barbecue|fish fry|crab feast|crawfish|boil|picnic|day party|block party|tailgate|luau|beach|garden party|graduation|juneteenth|family reunion|reunion/i;
+// Whole words (11/20/2026): a bare "day party" made every Holiday Party an
+// outdoor event, so a party at home was told to add a rain backup.
+export const OUTDOOR_TYPE = /\b(?:cookout|bbq|barbecue|fish fry|crab feast|crawfish|boil|picnic|day party|block party|tailgate|luau|beach|garden party|graduation|juneteenth|family reunion|reunion)\b/i;
 
 // ─── THE APP'S OWN GUESS, AS A PROPOSAL (owner, 11/18/2026: DIFM) ────────────
 // "Don't remove how we infer that it's outside. Should be part of DIFM." The

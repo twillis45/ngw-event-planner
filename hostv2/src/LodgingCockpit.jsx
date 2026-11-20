@@ -35,7 +35,7 @@ import {
   warmUnfurl,
   LODGING_PLATFORM_LABELS,
   lodgingTitleFor, lodgingTitleIsReal, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
-  STAY_FROM_CONFIRMATION, STAY_FROM_PLAN,
+  STAY_FROM_CONFIRMATION, STAY_FROM_PLAN, lodgingIsHeld,
   lookupTargets, needsLookup, isLiveOption,
 } from '@app/lib/lodgingIntel';
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL } from '@app/lib/travelPlan';
@@ -3268,8 +3268,10 @@ function WhosBooked({ event, patch, focus }) {
           "Group rate ends — N of M have no room yet" from it). Without this
           list the deadline had nobody attached to it. */}
       <p className="lc-note">
+        {/* "Everyone has a room" only once the stay is HELD (owner ruling,
+            11/20/2026): guests' say-so is not a booking on file. */}
         {left === 0
-          ? 'Everyone has a room.'
+          ? (lodgingIsHeld(event) ? 'Everyone has a room.' : 'Everyone says they have a room — the stay is not booked yet.')
           : `${left} of ${roster.length} still need a room${String(stayDeadline(event)).trim() ? ' before the rate ends' : ''}.`}
       </p>
       {roster.map((r, i) => (

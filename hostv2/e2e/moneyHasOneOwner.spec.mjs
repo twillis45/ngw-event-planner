@@ -77,7 +77,9 @@ test('the audited default sample keeps its contract total when the caterer is pa
   await openSectionByName(page, 'Your money');
   await expect(page.locator('.sheet').last()).toContainText('$10,210 spoken for');
   await expect(page.locator('.sheet').last()).toContainText('$4,660 actually spent');
-  await expect(page.locator('.sheet').last()).toContainText('$13,561 expected in total');
+  // $13,561 → $13,568 on 11/20/2026 (seasonal accuracy, bug 6): counted drinks
+  // round UP to whole units, so Bar / Beverage reads ~$244 instead of ~$237.
+  await expect(page.locator('.sheet').last()).toContainText('$13,568 expected in total');
   await page.screenshot({ path: testInfo.outputPath('sample-before-payment.png'), fullPage: true });
   await page.getByRole('button', { name: 'Review vendor payments' }).click();
   const card = page.locator('.vcard').filter({ hasText: 'Hearthstone Catering Co.' });
