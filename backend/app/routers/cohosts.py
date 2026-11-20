@@ -23,6 +23,7 @@ from ..auth import require_planner
 from ..config import APP_BASE_URL
 from ..db import get_pool
 from ..email_frame import frame, hue_for
+from ..email_pictures import with_picture
 from ..emailer import _send_via_resend, failure_reason, is_email_configured
 from ..rate_counter import bump
 
@@ -102,7 +103,7 @@ def compose_cohost_invite(name: str, email: str, host=None) -> tuple[str, str]:
     words = (f"Open the app and sign in with this email address ({email}). "
              "The plan will be there for you to see and change.")
     return frame(
-        hue=hue_for(name), eyebrow="You’re invited to co-host", title=name,
+        kind="cohost_invite", hue=hue_for(name), eyebrow="You’re invited to co-host", title=name,
         blocks=[(_html.escape(words), words)],
         primary=("Open the app", APP_BASE_URL),
         fine="If you weren't expecting this, ignore it. Nothing happens unless you sign in.",
@@ -154,7 +155,7 @@ async def invite_cohost(event_id: str, payload: CohostInvite, authorization: Opt
         subject = f"You're invited to co-host {name[:80]}"
         result = None
         try:
-            body, text = compose_cohost_invite(name, email, ev.get("host"))
+            body, text = await with_picture(*compose_cohost_invite(name, email, ev.get("host")))
             result = await _send_via_resend(to=email, subject=subject, html=body, text=text)
             emailed = True
         except Exception as e:  # noqa: BLE001 — the invite stands; the host can tell them directly

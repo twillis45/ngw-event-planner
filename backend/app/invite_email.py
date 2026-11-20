@@ -120,7 +120,7 @@ def compose_invite_email(ev: dict, note: str, recipient_name, sender: str, stop_
     picks = [("Yes, I’m in", f"{e(url)}&amp;reply=Yes"), ("Can’t make it", f"{e(url)}&amp;reply=No"),
              ("Maybe", f"{e(url)}&amp;reply=Maybe")]
     return frame(
-        hue=hue, greeting=hi, top_html=top,
+        kind="invite", hue=hue, greeting=hi, top_html=top,
         eyebrow="You’re invited", lede=f"{host} invites you to" if host else "You’re invited to", title=name,
         text_title=f"{host} invites you to {name}" if host else name,
         facts=facts, primary=("Open your invitation", url),

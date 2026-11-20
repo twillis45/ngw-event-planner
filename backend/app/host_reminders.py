@@ -42,6 +42,7 @@ from zoneinfo import ZoneInfo
 from . import host_email
 from .config import APP_BASE_URL
 from .email_frame import frame, hue_for
+from .email_pictures import with_picture
 from .emailer import ResendRejected, SenderMisconfigured, _send_via_resend, failure_reason, is_email_configured
 
 log = logging.getLogger("ngw.host_reminders")
@@ -109,9 +110,9 @@ def compose_week_before(event_name, day: _dt.date, stop_token: str) -> tuple[str
     subject = f"One week until {name}"
     words = "A good moment to look over your plan and settle anything still open."
     body, text = frame(
-        hue=hue_for(name), eyebrow="One week to go", title=name,
+        kind="week_before", hue=hue_for(name), eyebrow="One week to go", title=name,
         facts=[("When", html.escape(when).replace(", ", ",<br>", 1), when)],
-        blocks=[(html.escape(words), words)],
+        fixed=[(html.escape(words), words)],
         primary=("Open your plan", plan_url()),
         footer=(f"Sent by No Guesswork Events. You're getting this because you're planning {name} "
                 "with No Guesswork. We send one reminder a week before each event you plan."),
@@ -173,6 +174,7 @@ async def send_week_before(conn, today: Optional[_dt.date] = None, cap: int = MA
                 counts["already"] += 1
                 continue
             subject, body, text = compose_week_before(data.get("name"), target, token)
+            body, text = await with_picture(body, text)     # one picture per email; never raises
             await send(to=row["email"], subject=subject, html=body, text=text,
                        headers=host_email.headers(token))
             counts["sent"] += 1
