@@ -179,13 +179,17 @@ If you confirm back through that link, we store your confirmation.
 If a host sends you your job by link ("you're bringing the stuffing"), the
 link shows who is asking, the event's name, date, start time and place, and
 only the jobs assigned to you, built from the host's current plan through a
-fixed list of fields. It shows no other guest's details. The host's message
-itself is sent from the host's own phone or email, not by us.
+fixed list of fields. It shows no other guest's details. The host either
+shares the link themselves, from their own phone or email, or asks us to email
+it to you (section 3, "Email we send").
 ⟶ `supabase/migrations/023_helper_links.sql`, `backend/app/routers/helper_link.py` ⟵
 
 If you answer through that link ("I've got it" or "I can't", with an optional
-note), we store your answer and show it to the host.
-⟶ `supabase/migrations/023_helper_links.sql` ⟵
+note), we store your answer and show it to the host. The only analytics event
+your answer sends is whether you said yes or no, never your note, and the same
+"turn analytics off" setting described in section 3 applies on that page.
+⟶ `supabase/migrations/023_helper_links.sql`; `src/lib/flowAnalytics.js`
+(`trackHelperAnswered`), called from `HelperLinkV2.jsx` ⟵
 
 ### Guests who ask the host a question
 
@@ -274,11 +278,21 @@ your questions and the host's replies at once. ⟶ `POST
   a pass is bought, our server also records the purchase in PostHog: the amount
   and whether it was the regular price or a test price, a scrambled code for
   the event, the same scrambled account code, and whether the event began from
-  an invitation or a vendor brief. The server cannot see
-  the switch in your browser, so it records the purchase either way.
+  an invitation or a vendor brief. The server also records, under the same
+  scrambled account code: when a pass payment is refunded or disputed (the
+  amount, the currency, and whether it was all or part of the payment); each
+  week-before reminder email we send you; and, when the mail service reports
+  what happened to an email the app sent for you, the outcome (delivered,
+  bounced, marked as spam, or delayed) and what kind of email it was (such as
+  an invitation, a message or a helper's job). These never include the
+  recipient's address, anyone's name, or the email's words. The server cannot
+  see the switch in your browser, so it records these either way.
   ⟶ `analytics.js` (`setAnalyticsOptOut`, `analyticsNoticeAction`);
-  `backend/app/analytics.py` (`pass_purchase_payload`; on only where Render
-  runs; no opt-out input), called from `stripe_payments.py` after the grant ⟵
+  `backend/app/analytics.py` (`pass_purchase_payload`, `pass_reversal_payload`,
+  `host_reminder_payload`, `email_delivery_payload`; on only where Render runs;
+  no opt-out input), called from `stripe_payments.py` after the grant and on
+  refund and dispute webhooks, from `host_reminders.py` after each reminder is
+  sent, and from the Resend webhook in `main.py` ⟵
 - **We do not sell personal data, we do not run advertising, and we do not
   share your data with data brokers.** ⟶ no such code path exists ⟵
 
@@ -289,8 +303,8 @@ Every email below goes through **Resend** (section 4).
 - **Sign-in.** The link and code you asked for. These have no stop link,
   because you asked for each one.
 - **Emails a host sends through the app:** invitations, a message to one guest,
-  a brief or message to a vendor, an approval request, and co-host
-  invitations. Invitations come from "your host's name via No Guesswork." Each
+  a brief or message to a vendor, a helper's job, an approval request, and
+  co-host invitations. Invitations come from "your host's name via No Guesswork." Each
   invitation and guest or vendor message has a "Stop emails about this event"
   link; after someone uses it, the app does not email that address about that
   event again. ⟶ `backend/app/routers/communication.py`,

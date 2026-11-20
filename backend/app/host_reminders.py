@@ -39,7 +39,7 @@ import re
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-from . import host_email
+from . import analytics, host_email
 from .config import APP_BASE_URL
 from .email_frame import frame, hue_for
 from .email_pictures import with_picture
@@ -104,7 +104,9 @@ def today_eastern(now: Optional[_dt.datetime] = None) -> _dt.date:
 # ── the email ────────────────────────────────────────────────────────────────
 
 def plan_url() -> str:
-    return f"{APP_BASE_URL.rstrip('/')}/hostv2/"
+    # `?from=reminder` lets the app count plan_opened_from_reminder once, then
+    # strip it (src/lib/flowAnalytics.takeReminderTag). Opens the same page.
+    return f"{APP_BASE_URL.rstrip('/')}/hostv2/?from=reminder"
 
 
 def compose_week_before(event_name, day: _dt.date, stop_token: str, days_out: int = DAYS_BEFORE) -> tuple[str, str, str]:
@@ -131,10 +133,10 @@ def compose_week_before(event_name, day: _dt.date, stop_token: str, days_out: in
 # ── the daily run ────────────────────────────────────────────────────────────
 
 _DUE = """
-select e.id, e.data, h.email
+select e.id, e.data, h.email, h.owner_id
   from public.events e
   join lateral (
-        select u.email from public.studio_members m
+        select u.email, u.id as owner_id from public.studio_members m
           join auth.users u on u.id = m.user_id
          where m.studio_id = e.studio_id and m.role = 'owner' and u.email is not null
          order by m.user_id limit 1) h on true
@@ -192,6 +194,7 @@ async def send_week_before(conn, today: Optional[_dt.date] = None, cap: int = MA
             counts["sent"] += 1
             if day == catch_up:
                 counts["catch_up"] += 1
+            await _count_sent(row, catch_up=(day == catch_up))
         except Exception as e:  # noqa: BLE001 — fail-soft per host
             counts["failed"] += 1
             log.error("host reminder failed error=%s", failure_reason(e))
@@ -205,6 +208,17 @@ async def send_week_before(conn, today: Optional[_dt.date] = None, cap: int = MA
     log.info("host reminders for %s (catch-up %s): %s", target.isoformat(), catch_up.isoformat(),
              " ".join(f"{k}={v}" for k, v in counts.items()))
     return counts
+
+
+async def _count_sent(row, catch_up: bool = False) -> None:
+    """host_reminder_sent, after the email went (app/analytics.py): the owner's
+    hashed label, nothing else. Never raises, never touches the counts; capture
+    itself is off outside Render and gives up after a short timeout."""
+    try:
+        owner = row.get("owner_id") if hasattr(row, "get") else None
+        await analytics.capture(analytics.host_reminder_payload(owner, catch_up=catch_up))
+    except Exception:  # noqa: BLE001 — analytics never breaks a reminder
+        log.warning("host reminder: analytics dropped")
 
 
 async def run(get_pool) -> dict:

@@ -1,6 +1,7 @@
 """NGW Events API — FastAPI entrypoint.
 Run locally:  uvicorn app.main:app --reload --port 8000
 """
+import json
 import logging
 import os
 
@@ -12,6 +13,7 @@ import base64
 import hashlib
 import hmac
 from .config import ALLOWED_ORIGINS, ALLOWED_ORIGIN_REGEX
+from . import analytics
 from .db import close_pool
 from .routers import communication, lodging
 from .routers import docusign
@@ -217,6 +219,10 @@ async def resend_webhook(request: Request):
         from .db import get_pool
         pool = await get_pool()
         async with pool.acquire() as conn:
+            # email_delivery (app/analytics.py): read what the row was BEFORE
+            # this write, so only a real change counts. Its own fail-soft step:
+            # it can never stop the write below.
+            changes = await _delivery_changes(conn, resend_id, new_status)
             # Update the delivery status; also store the event type for audit
             result = await conn.execute(
                 """update event_messages
@@ -229,10 +235,47 @@ async def resend_webhook(request: Request):
                 new_status, resend_id, event_type,
             )
             log.info("resend_webhook: %s id=%s → %s (%s)", event_type, resend_id, new_status, result)
+        for change in changes:
+            await analytics.capture(change)      # fail-soft, short timeout, off outside Render
     except Exception as e:
         log.error("resend_webhook error: %s", e)
 
     return {"ok": True}
+
+
+# The rows a webhook will change, with their studio owner, read before the
+# write. Only when analytics is on and the status is a delivery outcome, so a
+# deployment without analytics runs exactly the one statement it always did.
+_DELIVERY_ROWS = """
+select m.metadata->'delivery' as delivery,
+       (select sm.user_id from public.events e
+          join public.studio_members sm on sm.studio_id = e.studio_id and sm.role = 'owner'
+         where e.id = m.event_id order by sm.user_id limit 1) as owner_id
+  from event_messages m
+ where m.metadata->'delivery'->>'resend_id' = $1
+"""
+
+
+async def _delivery_changes(conn, resend_id: str, new_status: str) -> list:
+    """email_delivery payloads for this status change, or []. Never raises."""
+    if not analytics.analytics_enabled() or new_status not in analytics.DELIVERY_STATUS:
+        return []
+    out = []
+    try:
+        for row in await conn.fetch(_DELIVERY_ROWS, resend_id):
+            d = row["delivery"]
+            if isinstance(d, str):              # jsonb arrives as text (no codec is set)
+                d = json.loads(d or "{}")
+            d = d if isinstance(d, dict) else {}
+            if d.get("status") == new_status:   # a replayed callback is not a change
+                continue
+            p = analytics.email_delivery_payload(row["owner_id"], new_status, d)
+            if p:
+                out.append(p)
+    except Exception:  # noqa: BLE001 — analytics never breaks the webhook
+        logging.getLogger("ngw.resend_webhook").warning("resend_webhook: analytics lookup dropped")
+        return []
+    return out
 
 @app.get("/api/capabilities")
 async def capabilities():
