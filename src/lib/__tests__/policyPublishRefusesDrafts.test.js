@@ -1,43 +1,32 @@
 // The policy publisher (scripts/publish-policies.mjs) must never put an
 // unreviewed draft on a public page. Stage 9, LEGAL-1 (11/11/2026).
 //
-// Red-proofed two ways: (1) with marker detection disabled in findProblems,
-// the first test goes red (the drafts publish); (2) with stripScaffolding made
-// a no-op, the fixture test goes red (code citations reach the HTML).
+// Red-proofed (11/11): with stripScaffolding made a no-op, the fixture test goes
+// red (code citations reach the HTML). Refusal on a marker is held by the
+// fixture tests below; the first test guards the published pages (11/20).
 const fs = require('fs');
 const path = require('path');
 const { POLICIES, publishPolicies, buildPage, formatProblem } = require('../../../scripts/policy-publish-core.js');
 
 const ROOT = path.resolve(__dirname, '../../..');
 const drafts = () => POLICIES.map((p) => ({ ...p, source: fs.readFileSync(path.join(ROOT, p.file), 'utf8') }));
-const lineOf = (source, needle) => source.split('\n').findIndex((l) => l.includes(needle)) + 1;
 
-test('today\'s drafts are refused, nothing is produced, and each placeholder is named by file:line', () => {
-  const sources = drafts();
-  const result = publishPolicies(sources);
-  expect(result.ok).toBe(false);
-  expect(result.pages).toEqual([]);
-
-  const report = result.problems.map(formatProblem);
-  const [privacy, terms, refunds] = sources;
-  const expectAt = (doc, needle, marker) => {
-    const line = lineOf(doc.source, needle);
-    expect(line).toBeGreaterThan(0);
-    expect(report).toContainEqual(expect.stringContaining(`${doc.file}:${line}  ${marker}`));
-  };
-  expectAt(privacy, '[OWNER: effective date]', '[OWNER:');
-  expectAt(privacy, '[OWNER: governing state]', '[OWNER:');
-  expectAt(terms, '[OWNER: minimum age', '[OWNER:');
-  expectAt(terms, '**COUNSEL:** Is incorporation by reference', 'COUNSEL');
-  // The refund rule itself was ruled 11/12/2026; the draft still carries
-  // owner fields and counsel questions, so it is still refused.
-  expectAt(refunds, '[OWNER: effective date]', '[OWNER:');
-  expectAt(refunds, '**COUNSEL — the chosen rule', 'COUNSEL');
-  for (const doc of sources) expectAt(doc, '**DRAFT ', 'DRAFT');
-
-  // Every ⟶ citation in the drafts is closed, so once the markers are gone the
-  // only thing left between a draft and a page is the review itself.
-  expect(result.problems.filter((p) => p.marker === 'citation')).toEqual([]);
+// Published 11/20/2026 (owner ruling: publish now, revise after the attorney).
+// The drafts carry no marker now, so the guard is the other half of the rule:
+// the committed pages are exactly what the script builds from today's sources.
+// An edit to a draft without re-running `npm run policies:publish` (or a hand
+// edit to a page) fails here. Red-proofed: a one-word change to a draft, not
+// republished, turns this red.
+test('today\'s policies publish cleanly, and each committed page is exactly what the script builds', () => {
+  const result = publishPolicies(drafts());
+  expect(result.problems.map(formatProblem)).toEqual([]);
+  expect(result.ok).toBe(true);
+  for (const page of result.pages) {
+    const committed = fs.readFileSync(path.join(ROOT, 'hostv2', 'public', 'legal', `${page.slug}.html`), 'utf8');
+    expect(committed).toBe(page.html);
+    expect(page.effective).toBe('November 20, 2026');
+    for (const scaffold of ['⟶', '⟵', '[OWNER', 'COUNSEL', 'VERIFY:']) expect(page.html).not.toContain(scaffold);
+  }
 });
 
 const FIXTURE = `# Fixture Policy — Test Co

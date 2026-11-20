@@ -3,10 +3,15 @@
 import { publishedPolicies } from '../policyLinks';
 import { BRAND } from '../brand';
 
-test('nothing is published today, so nothing links', () => {
-  // Flip this when the owner publishes: the URL goes in brand.js, not here.
-  expect(BRAND.policies).toEqual({ privacy: null, terms: null, refunds: null });
-  expect(publishedPolicies()).toEqual([]);
+test('the three published policies link, from brand.js (published 11/20/2026)', () => {
+  // The URLs live in brand.js; this pins them to the pages publish-policies.mjs writes.
+  const base = 'https://twillis45.github.io/ngw-event-planner/hostv2/legal/';
+  expect(BRAND.policies).toEqual({ privacy: base + 'privacy.html', terms: base + 'terms.html', refunds: base + 'refunds.html' });
+  expect(publishedPolicies().map((p) => [p.label, p.url])).toEqual([
+    ['Privacy', base + 'privacy.html'],
+    ['Terms', base + 'terms.html'],
+    ['Refunds', base + 'refunds.html'],
+  ]);
 });
 
 test('a published https policy links, in a fixed order', () => {

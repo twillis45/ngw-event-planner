@@ -1,17 +1,7 @@
 # Terms of Service — No Guesswork Events
 
-> **DRAFT 2026-11-11 — not yet reviewed by an attorney, not yet in effect, not
-> yet linked from the product. Nothing here is legal advice.** Written from what
-> the code does; every factual statement cites the file that makes it true in a
-> margin note (`⟶ … ⟵`), and those notes are removed before publication.
-> `[OWNER: …]` items are facts only the owner can supply (collected in
-> `OWNER_FILL_SHEET.md`). **`COUNSEL:`** notes mark the points an attorney must
-> decide; they are questions, not answers, and are removed before publication.
-> The terms only become linkable when `BRAND.policies.terms` is set to the
-> published URL (`src/lib/brand.js:151`).
-
-**Effective:** `[OWNER: effective date]`
-**Provider:** No Guesswork Systems LLC (“we,” “us”), `[OWNER: mailing address]`
+**Effective:** November 20, 2026
+**Provider:** No Guesswork Systems LLC (“we,” “us”), a Maryland limited liability company, 306 W Redwood St, Ste 201, Baltimore, MD 21201
 **Contact:** events@noguessworksystems.com ⟶ `src/lib/brand.js:145` (owner decision 11/11/2026) ⟵
 
 ---
@@ -31,15 +21,10 @@ Our **Privacy Policy** (what we collect and who sees it) and **Refund Policy**
 (the One-Event Pass) are part of these terms. Where they say something more
 specific about their subject, they control.
 
-> **COUNSEL:** Is incorporation by reference of the privacy and refund policies
-> appropriate, or should the privacy policy stand alone (some state laws treat a
-> privacy notice as a disclosure, not a contract term)? Which document controls
-> on conflict?
-
 ## 2. Eligibility
 
-You must be at least `[OWNER: minimum age — e.g. 18]` to create an account or
-buy the pass. The app is built for adults planning events; it has no age check,
+You must be at least 18 to create an account or buy the pass.
+⟶ owner ruling 11/20/2026 ⟵ The app is built for adults planning events; it has no age check,
 so this is a promise you make by using it. ⟶ no age gate exists in
 `hostv2/src/HostShellV2.jsx` sign-in (`:2117-2147`); `PRIVACY_POLICY_DRAFT.md` §7 ⟵
 
@@ -47,20 +32,16 @@ Guests replying to an invitation do not create an account. A host may record a
 child's name and needs on a guest list; that is the host's data about their
 guest (section 6).
 
-> **COUNSEL:** Minimum age for hosts (18 vs. age of majority vs. 13 with
-> parental consent), and whether guests replying through a link — who never see
-> these terms before replying — are bound by them at all, or only by a short
-> notice on the invitation (`hostv2/src/InviteV2.jsx` footer, per `README.md`
-> wiring item 3).
-
 ## 3. Accounts and sign-in
 
 - **You can use the app without an account.** Plans made while signed out live
   only in that browser's storage on that device. ⟶ `PRIVACY_POLICY_DRAFT.md` §2
   (`ngw-events`, `ngw-hostv2-custom-events` in `localStorage`) ⟵
-- **Signing in is by email.** We send a one-time sign-in link and code to the
-  address you give; there is no password. ⟶ `HostShellV2.jsx:2122`
-  (`signInWithOtp`), `:2147` (`verifyOtp`); sign-in is run by Supabase. ⟵
+- **Signing in is by email.** We send a sign-in link and code to the address
+  you give; use either one. There is no password. A bot check from Cloudflare
+  runs on the sign-in form first. ⟶ `HostShellV2.jsx:2435`
+  (`signInWithOtp`), `:2497` (`verifyOtp`); sign-in is run by Supabase;
+  `src/components/SignInCheck.jsx` (Turnstile) ⟵
 - **Keep your email account secure.** Anyone who can read that inbox can sign
   in as you. You are responsible for what happens under your account, and you
   should tell us promptly at events@noguessworksystems.com if you think someone
@@ -126,22 +107,17 @@ can need the pass. ⟶ `passGate.js:19-22, 134` ⟵
   you already bought.
 - **Payment is taken by Stripe** on its hosted checkout page. We never see or
   store your card number. ⟶ `stripe_payments.py:319-333`; `HostShellV2.jsx:17962` ⟵
-- **Taxes:** `[OWNER: sales-tax treatment — whether the $39 includes tax, is
-  tax-exempt where you are, or has tax added at checkout]`. Checkout does not
-  calculate tax today: Stripe's merchant-of-record option is turned off and no
-  tax is added to the line item. ⟶ `stripe_payments.py:329-333`
-  (`managed_payments={"enabled": False}`, owner choice 11/10/2026) ⟵
+- **Taxes:** No sales tax is added to the $39 at checkout. The price shown in
+  the app is the whole amount you are charged. ⟶ `stripe_payments.py`
+  `create_pass_session` (`:423-437`): one line item with `price_data` and
+  `unit_amount` only, no tax rate, no automatic tax, and
+  `managed_payments={"enabled": False}` (owner choice 11/10/2026); no
+  `automatic_tax`, `tax_rates` or `tax_code` anywhere in `backend/app/`.
+  Owner ruling 11/20/2026: state what checkout does today. ⟵
 - **Preview period.** While billing is switched off, every event is fully
   unlocked and nothing is charged; the app says so on the pass sheet and tells
   you before that changes. ⟶ `passGate.js:36-39, 54-56`;
   `HostShellV2.jsx:17970-17974` ⟵
-
-> **COUNSEL:** (a) Sales-tax treatment of a one-time digital service sold to
-> US consumers, given Managed Payments is off — which states, if any, require
-> collection at this volume, and does the price need to say "plus tax"? (b) Is
-> "we may change the price for future purchases" sufficient, or is a notice
-> period needed? (c) Does the preview-period promise ("we'll tell you before
-> anything changes") create an obligation that needs defining here?
 
 ## 5. Refunds, disputes, and revocation
 
@@ -164,10 +140,6 @@ What happens mechanically:
 - **Buying again after a refund or dispute** goes through support, not
   checkout: the app refuses a second purchase on an event with a recorded one.
   ⟶ `stripe_payments.py:306-315` ⟵
-
-> **COUNSEL:** Confirm that suspending access on a dispute (before it is
-> decided) is enforceable and fairly disclosed, and whether a won dispute
-> should restore access by default.
 
 ## 6. Hosts: your responsibilities for other people's information
 
@@ -196,13 +168,6 @@ you are the one collecting it, and you are responsible for having the right to.
 - **Shared studios.** Anyone you add to your studio can see and change its
   events, including guest details.
 
-> **COUNSEL:** (a) Under state privacy laws, is the host a separate controller
-> of guest data, with us as their service provider — and does that need a
-> processor/service-provider clause here? (b) Does a host sending invitations
-> through the app make us, the host, or both the "sender" for CAN-SPAM and
-> state anti-spam purposes? (c) Is an indemnity from hosts for data they had no
-> right to enter appropriate for a consumer product?
-
 ## 7. Vendor-brief links
 
 - A vendor brief is a link a host shares with one vendor. It shows a fixed,
@@ -223,10 +188,6 @@ you are the one collecting it, and you are responsible for having the right to.
 - The free tier includes one vendor-brief loop per free event; more vendors
   take the pass (section 4).
 
-> **COUNSEL:** Are vendors who open a brief and confirm through it bound by
-> these terms (they never agreed to them)? If not, does the acceptable-use
-> section need a short notice on the brief page itself?
-
 ## 8. Acceptable use
 
 Do not use the app to:
@@ -245,10 +206,6 @@ Do not use the app to:
 - misuse the AI drafting features. They run on prompts our server writes; you
   cannot send a free-form prompt, and they are rate-limited. ⟶
   `backend/app/routers/ai.py:12-15, 113-147` ⟵
-
-> **COUNSEL:** Whether to reserve a right to remove content or suspend accounts
-> for violations — the app has no suspension mechanism today (section 12), so
-> any such right would be exercised by hand.
 
 ## 9. Your content, and the license you give us
 
@@ -271,13 +228,6 @@ Do not use the app to:
   design belong to No Guesswork Systems LLC. These terms do not give you any
   right to them beyond using the app.
 
-> **COUNSEL:** (a) Scope and duration of the content license (does it need to
-> survive deletion for backups, receipts, and shared-studio content that is
-> retained — see section 12?). (b) Ownership of AI output. (c) The name is not
-> trademark-cleared — `src/lib/brand.js:22-24, 62-64, 66-78` records that no
-> USPTO search has been run and that "No Guesswork" is in use by another party
-> in another class. Confirm the "belongs to" wording is not overclaiming.
-
 ## 10. Availability and no warranty
 
 The app is run by a small company on third-party services — hosting (Render),
@@ -296,24 +246,16 @@ To the fullest extent the law allows, the app is provided **“as is” and “a
 available,”** without warranties of any kind, express or implied, including
 merchantability, fitness for a particular purpose, and non-infringement.
 
-> **COUNSEL:** Disclaimer wording and conspicuousness for the governing state;
-> whether allergy/food-safety content needs a stronger, separate disclaimer
-> given that guests' allergies flow through the app.
-
 ## 11. Limitation of liability
 
 To the fullest extent the law allows, we are not liable for indirect,
 incidental, special, consequential, or punitive damages, or for lost profits,
 lost data, or a missed or disrupted event, arising from the app. Our total
 liability for any claim is limited to the greater of what you paid us in the
-12 months before the claim or `[OWNER: dollar floor — e.g. $100]`.
+12 months before the claim or $100. ⟶ owner ruling 11/20/2026 ⟵
 
 Some states do not allow some of these limits; where they do not, they apply
 only as far as the law allows.
-
-> **COUNSEL:** The cap and floor amount; carve-outs required by the governing
-> state; whether a consumer-facing cap tied to a $39 purchase is enforceable;
-> whether to add an indemnity from hosts (section 6(c)).
 
 ## 12. Ending your use, and deleting your account
 
@@ -353,19 +295,14 @@ files to an event someone else still has (transfer or remove them). ⟶
 `account.py:56-61, 76-77` ⟵
 
 **We may suspend or end your access** if you break these terms or the law, or
-if we stop offering the app. `[OWNER: notice period and what happens to a paid
-pass if we end the service — e.g. 30 days' notice and a refund of passes for
-events not yet held]`. ⟶ no suspension mechanism exists in the code today;
-any suspension would be done by hand. ⟵
+if we stop offering the app. If we shut the app down, or suspend it for
+everyone, we will tell you at least 30 days before, and we will refund the
+pass for any event that has not yet been held. ⟶ owner ruling 11/20/2026. No
+suspension mechanism exists in the code today; any suspension would be done by
+hand. ⟵
 
 Sections 6, 9 (feedback and our ownership), 10, 11, 13, and 14 survive the end
 of your use.
-
-> **COUNSEL:** (a) Retention of "security and administrative records" is named
-> in code (`account.py:105`) but not itemized — confirm the description is
-> adequate. (b) What a pass holder is owed if we discontinue the service.
-> (c) `PRIVACY_POLICY_DRAFT.md` §6 describes the same deletion (corrected
-> 2026-11-11); the two must stay in agreement before either is published.
 
 ## 13. Changes to these terms
 
@@ -376,25 +313,17 @@ A change never takes away a pass you already bought, and the refund rule in
 force when you bought a pass is the one that applies to it. ⟶ mirrors
 `PRIVACY_POLICY_DRAFT.md` §9 and `REFUND_POLICY_DRAFT.md` §7 ⟵
 
-> **COUNSEL:** Is in-app notice to signed-in hosts enough, given there is no
-> email-notice mechanism for policy changes and signed-out hosts get none?
-
 ## 14. Governing law and disputes
 
-These terms are governed by the laws of `[OWNER: governing state]`, United
-States, without regard to its conflict-of-law rules. Any dispute that is not
-resolved informally will be heard in the state or federal courts located in
-`[OWNER: county and state for venue]`, unless the law where you live gives you
-the right to bring it elsewhere.
+These terms are governed by the laws of the State of Maryland, United States,
+without regard to its conflict-of-law rules. Any dispute that is not resolved
+informally will be heard in the state and federal courts located in the State
+of Maryland, unless the law where you live gives you the right to bring it
+elsewhere. ⟶ owner ruling 11/20/2026: No Guesswork Systems LLC is a Maryland
+LLC; no county is named ⟵
 
 Before filing anything, please write to us at events@noguessworksystems.com —
 almost every problem with a $39 product is faster to fix by email.
-
-> **COUNSEL:** (a) Courts vs. binding arbitration, and if arbitration, a
-> class-action waiver and small-claims carve-out — and whether either is worth
-> its cost at this price point. (b) Consumer-protection overrides in states
-> where hosts live. (c) Whether an informal-resolution period should be
-> mandatory before suit.
 
 ## 15. Everything else
 
@@ -402,11 +331,12 @@ These terms, with the Privacy Policy and Refund Policy, are the whole agreement
 between you and us about the app. If a part is found unenforceable, the rest
 still applies. If we do not enforce a part right away, we have not given it up.
 You may not transfer these terms; we may transfer them to a successor to the
-business. ⟶ `COUNSEL:` standard boilerplate — confirm each clause for the
-governing state. ⟵
+business.
 
 ## 16. Contact
 
 No Guesswork Systems LLC
-`[OWNER: mailing address]`
+
+306 W Redwood St, Ste 201, Baltimore, MD 21201
+
 events@noguessworksystems.com ⟶ `src/lib/brand.js:145` ⟵

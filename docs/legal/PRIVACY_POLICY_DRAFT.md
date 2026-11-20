@@ -1,12 +1,7 @@
 # Privacy Policy — No Guesswork Events
 
-> **DRAFT 2026-11-02 — not yet reviewed by an attorney, not yet in effect, not
-> yet linked from the product.** Bracketed `[OWNER: …]` items are facts only
-> the owner can supply. Every other statement is written from the code and
-> cites it in the margin notes (`⟶ … ⟵`), which are removed before publication.
-
-**Effective:** `[OWNER: effective date]`
-**Who we are:** No Guesswork Systems LLC (“we,” “us”), `[OWNER: mailing address]`.
+**Effective:** November 20, 2026
+**Who we are:** No Guesswork Systems LLC (“we,” “us”), a Maryland limited liability company, 306 W Redwood St, Ste 201, Baltimore, MD 21201.
 **How to reach us about privacy:** events@noguessworksystems.com. ⟶ `src/lib/brand.js:145` (owner decision 11/11/2026) ⟵
 
 No Guesswork Events (“the app”) helps a person plan an event — a wedding, a
@@ -21,9 +16,19 @@ version is at the end.
 
 ### Hosts (the person planning the event)
 
-- **Your email address**, when you sign in. Sign-in is by a one-time link sent
-  to that address; there is no password. ⟶ `supabase.auth.signInWithOtp`,
-  `HostShellV2.jsx:2073` ⟵
+- **Your email address**, when you sign in. Sign-in is by a link or a code we
+  email to that address; there is no password. ⟶ `supabase.auth.signInWithOtp`
+  and `supabase.auth.verifyOtp`, `hostv2/src/HostShellV2.jsx:2435, 2497` ⟵
+  Before the email is sent, Cloudflare's bot check runs on the sign-in form
+  (section 4). ⟶ `src/components/SignInCheck.jsx` (Turnstile, on while
+  `REACT_APP_TURNSTILE_SITE_KEY` is set; set 11/19/2026, `HANDOFF.md:34`) ⟵
+- **Whether you asked for offers and news.** The sign-in form has a box, "Email
+  me offers and news from No Guesswork," that starts unticked. If you tick it
+  when you create your account, we store that you did, when, and the words you
+  agreed to. ⟶ `src/lib/marketingConsent.js` (`signUpData`: choice, time,
+  exact words, version; Supabase keeps it only when it creates the account) ⟵
+- **The email addresses of co-hosts you invite** to an event, so we can send
+  them the invitation. ⟶ `backend/app/routers/cohosts.py` ⟵
 - **Your studio or business name and role**, if you enter them in your profile.
   ⟶ `ngw-profile` ⟵
 - **Your event plans:** the event name, date, type, venue and town, guest count,
@@ -72,7 +77,10 @@ fields); `supabase/migrations/009_rsvp_submissions.sql:25-33`;
   `InviteV2.jsx:669-671` ⟵
 
 **Who sees your reply.** The host of the event sees everything above, and so
-does anyone the host shares the event's studio with (section 2). ⟶
+does anyone the host shares the event's studio with (section 2) or adds as a
+co-host of that event. ⟶ `cohosts.py` (a co-host reads the event's replies,
+questions and photos like the host); `supabase/migrations/026_event_cohosts.sql` ⟵
+⟶
 `backend/app/routers/rsvp.py:18-22` (public resolver returns whitelisted display
 fields only; host read-back requires sign-in and studio access) ⟵ Other guests
 do not. An invitation shows other guests only how many people have said yes:
@@ -92,17 +100,10 @@ event a reply sends is your Yes / No / Maybe and the type of event. They are
 never shared with vendors unless the host chooses to pass them on. ⟶ `009:28-33`
 and `015:13-16` (marked sensitive; host read-back only); `rsvp.py:186-191`;
 `InviteV2.jsx:733` (analytics payload); `src/lib/vendorBrief.js` (vendor payload
-is an explicit whitelist) ⟵
-
-> **COUNSEL:** Access needs (step-free or wheelchair access, an accessible
-> seat) can describe a disability, and allergies and diets can reveal health
-> conditions or religion (halal, kosher). Under state privacy laws that treat
-> health, disability, or religious data as "sensitive" (for example Virginia,
-> Colorado, Connecticut, or California's "sensitive personal information"), do
-> we need opt-in consent at the point of collection on the invite form, a
-> specific notice there, or a limit-use right? Is "the host only, never
-> analytics, never vendors unless the host passes it on" adequate handling, given
-> the host, not us, decides what happens next?
+is an explicit whitelist) ⟵ When you reply, the host gets a short email saying
+who answered and how (Yes, No, or Maybe), never your needs, contact details, or
+note. ⟶ `backend/app/host_alerts.py` ("never the answer's body"); called from
+`rsvp.py:413` ⟵
 
 You do not create an account, and we do not set an identity on you. Your
 reply is tied to the invitation code and an idempotency key your browser
@@ -129,7 +130,7 @@ After the event, a guest can share photos from the invitation link.
   `backend/tests/test_guest_photos.py` (a photo with GPS goes in, none comes
   out) ⟵
 - **Who sees it:** the host (and anyone the host shares the event's studio
-  with) sees every photo with the name you gave. Other guests see a photo only
+  with, and the event's co-hosts) sees every photo with the name you gave. Other guests see a photo only
   after the host approves it, and they see the photo alone, without your name.
   The host can hide or delete any photo. ⟶ `guest_photos.py` (`guest_approved_photos`
   returns id, link, time and whether it may be shared, only) ⟵
@@ -191,12 +192,22 @@ note), we store your answer and show it to the host.
 From your invitation you can ask the host a question, and the host can reply.
 We store your name, your questions, and the host's replies, as plain text.
 If you choose, we also store an email address you type and whether you ticked
-the box to be emailed; that box starts unticked, and nothing is emailed yet.
-⟶ `supabase/migrations/024_guest_messages.sql`,
-`backend/app/routers/guest_messages.py` ⟵
+the box to be emailed; that box starts unticked. ⟶
+`supabase/migrations/024_guest_messages.sql`,
+`backend/app/routers/guest_messages.py` (`email_opt_in`: "explicit tick only;
+never assumed") ⟵ If you tick it, we email you when the host answers your
+question and when the host posts an update for everyone on the invitation.
+Each of those emails has a link that stops them; stopping also removes the
+email address you gave. ⟶ `backend/app/guest_notices.py`
+(`notify_guest_of_reply`, `notify_guests_of_announcement`; stop link and
+List-Unsubscribe on every email); `guest_messages.py:597` (stop clears the
+address and the tick) ⟵ When you ask a question, the host gets a short email
+saying that you asked, never the question itself. ⟶ `host_alerts.py`, called
+from `guest_messages.py:318` ⟵
 
-**Who sees it.** The host of the event, and anyone the host shares the event's
-studio with (section 2). Other guests never see your questions or your name.
+**Who sees it.** The host of the event, anyone the host shares the event's
+studio with (section 2), and the event's co-hosts. Other guests never see your
+questions or your name.
 The host does not see your email address, only whether you asked to be
 emailed. You never see the host's email address. ⟶ `guest_messages.py`
 (`_guest_view`, `_host_view`: fixed lists of fields) ⟵
@@ -241,17 +252,66 @@ your questions and the host's replies at once. ⟶ `POST
   disabled by default and a 10% sample of performance traces.
   ⟶ `src/lib/sentry.js:25` (`sendDefaultPii: false`), `:23` ⟵
 - To learn which parts of the app help: product analytics go to **PostHog**
-  with automatic click and form capture **off**, session recording **off**,
-  page views tracked by hand, and the identity set to a one-way hash of your
-  business name — never the name itself, your email, or your personal name.
-  Name, email and phone fields are stripped before any event is sent. You can
-  turn analytics off any time in **You & settings → Help improve the app**.
-  ⟶ `src/lib/analytics.js:47` (opt-out), `:65` (hash), `:85-89`, `:114`
-  (identify), `:139-141` (stripping)
-  *(Rewritten 2026-11-02 after the fix: until then the identity carried the
-  readable business name and the only opt-out was a URL flag.)* ⟵
+  with automatic click and form capture **off**, session recording **off**, and
+  page views tracked by hand. A signed-in host is identified only by a one-way
+  scrambled code (a hash) of the account's internal id, so your visits on
+  different devices count as one person, never by your email, your name, or
+  your business name. Name, email and phone fields are stripped before any
+  event is sent. Events also carry the campaign tags in the link that first
+  brought you to the app (such as `utm_source`), the name of the website that
+  referred you (its host name only, never the page), and the pass price your
+  device was shown. ⟶ `src/lib/analytics.js` (`getPostHog` settings and
+  `before_send` stripping; `accountLabel` / `identifyAccount`: `host_` plus 16
+  hex characters of SHA-256; `campaignFrom` / `firstTouchProps`;
+  `registerPassPrice`) ⟵
+- **Turning analytics off.** You can turn analytics off any time in **You &
+  settings → Help improve the app**, or with the first-open notice's "Turn this
+  off." That stops everything the app sends to PostHog from that browser. When
+  a pass is bought, our server also records the purchase in PostHog: the amount
+  and whether it was the regular price or a test price, a scrambled code for
+  the event, the same scrambled account code, and whether the event began from
+  an invitation or a vendor brief. The server cannot see
+  the switch in your browser, so it records the purchase either way.
+  ⟶ `analytics.js` (`setAnalyticsOptOut`, `analyticsNoticeAction`);
+  `backend/app/analytics.py` (`pass_purchase_payload`; on only where Render
+  runs; no opt-out input), called from `stripe_payments.py` after the grant ⟵
 - **We do not sell personal data, we do not run advertising, and we do not
   share your data with data brokers.** ⟶ no such code path exists ⟵
+
+### Email we send
+
+Every email below goes through **Resend** (section 4).
+
+- **Sign-in.** The link and code you asked for. These have no stop link,
+  because you asked for each one.
+- **Emails a host sends through the app:** invitations, a message to one guest,
+  a brief or message to a vendor, an approval request, and co-host
+  invitations. Invitations come from "your host's name via No Guesswork." Each
+  invitation and guest or vendor message has a "Stop emails about this event"
+  link; after someone uses it, the app does not email that address about that
+  event again. ⟶ `backend/app/routers/communication.py`,
+  `backend/app/invite_email.py`, `backend/app/routers/cohosts.py`;
+  `supabase/migrations/031_email_stops.sql` (one stop per event and address) ⟵
+- **Alerts to the host** when a guest replies or asks a question, or a vendor
+  answers a brief: who answered and what kind of answer, never what they wrote,
+  at most one an hour for each event. The host can turn these off for each
+  event in its guest list. ⟶ `backend/app/host_alerts.py` (`compose`,
+  `WINDOW_SECONDS`, `hostAlerts: false`) ⟵
+- **Emails to a guest who asked for them** (section 1): the host's answers and
+  the host's updates, each with a stop link. ⟶ `backend/app/guest_notices.py` ⟵
+- **Plan reminders to a host.** We may email you reminders about your own
+  plans, such as a note the week before your event. Each one has a link to stop
+  plan reminders.
+- **Offers and news**, only if you ticked "Email me offers and news from No
+  Guesswork" when you created your account. Each one has its own stop link.
+  Stopping offers does not stop plan reminders, and stopping plan reminders
+  does not stop offers. ⟶ `backend/app/host_email.py` is the gate every
+  reminder or offer must pass: reminders unless stopped; offers only with the
+  sign-up tick, not stopped, and with a postal address configured for the
+  footer; a separate stop token and one-click List-Unsubscribe header for each
+  kind. As of 11/20/2026 nothing on `main` sends either kind; the week-before
+  reminder (`backend/app/host_reminders.py`) is on an unmerged branch. Hence
+  "may" and "only if." ⟵
 
 ---
 
@@ -261,12 +321,15 @@ These are the services the app calls. Each sees only what the row says.
 
 | Service | What it receives | Why |
 |---|---|---|
-| Supabase (US) | Everything in section 2 that is synced; your sign-in email | Database and sign-in |
+| Supabase (US) | Everything in section 2 that is synced; your sign-in email; whether you ticked "Email me offers and news," when, and its words | Database and sign-in ⟶ `src/lib/marketingConsent.js` ⟵ |
+| Cloudflare (Turnstile) | When you sign in, your browser's visit to Cloudflare's bot check, including your IP address and browser details, as with any site your browser loads | Keeping bots from sending sign-in emails ⟶ `src/components/SignInCheck.jsx` (script from `challenges.cloudflare.com`; the token goes to Supabase with the sign-in request, `HostShellV2.jsx:2435`) ⟵ |
 | Render (US) | API requests from the app | Hosts our server |
 | GitHub Pages | Your browser's request for the app itself | Serves the app |
-| Stripe | The pass's fixed price and label; the event id and your studio id as metadata; whatever you type on Stripe's own checkout page | Payment. Card details go to Stripe directly and never to us ⟶ `stripe_payments.py` ⟵ |
-| Resend | The address, subject and body of an email the app sends on your behalf (an invitation, a vendor message, an approval request) | Sending email ⟶ `backend/app/emailer.py` ⟵ |
-| OpenWeather | The venue's latitude and longitude (never its name) and the event date | Forecast for outdoor events ⟶ `routers/weather.py:92-98` ⟵ |
+| Stripe | The pass's price and label; as metadata, the event id, your studio id, your account id, the price and whether it was a test price, and whether the event began from an invitation or a vendor brief; whatever you type on Stripe's own checkout page | Payment. Card details go to Stripe directly and never to us ⟶ `stripe_payments.py` (`create_pass_session` metadata: `event_id`, `studio_id`, `purchased_by`, `price_cents`, `price_variant`, `came_from`, `came_from_kind`) ⟵ |
+| PostHog (US) | Product analytics events, as described in section 3, under PostHog's random id for your browser or, once you sign in, a scrambled code; never a name or email | Learning which parts of the app help ⟶ `src/lib/analytics.js` (`us.i.posthog.com`); `backend/app/analytics.py` ⟵ |
+| Sentry | Error reports and a 10% sample of performance traces, with personal data off | Fixing what breaks ⟶ `src/lib/sentry.js` ⟵ |
+| Resend | The address, subject and body of each email in section 3 ("Email we send") | Sending email ⟶ `backend/app/emailer.py`, `host_alerts.py`, `guest_notices.py`, `invite_email.py`, `routers/cohosts.py` ⟵ |
+| OpenWeather | The venue's latitude and longitude (never its name) and the event date | The event day's forecast ⟶ `routers/weather.py:92-98`; since 11/18/2026 the forecast runs for any event within 14 days that has a town, not only outdoor ones (`HANDOFF.md:68`) ⟵ |
 | OpenStreetMap (Nominatim), or Google Places if you supply your own key | The venue text you typed, US-restricted | Turning a venue into a map point ⟶ `HostShellV2.jsx:712-727` ⟵ |
 | Instacart | The shopping-list item names and quantities | Building a cart when you ask ⟶ `routers/instacart.py` ⟵ |
 | Kroger | Item names | Grocery price estimates ⟶ `routers/kroger.py` ⟵ |
@@ -296,19 +359,19 @@ receives. We do not send them more than the row says.
   codes are kept only for one day's count and deleted after two days.
   **When the host deletes the event, its guest questions, the email
   addresses guests gave for answers, and its invitation opens are deleted
-  with it, at once** (owner ruling 11/16/2026; migration 028 applied and
-  attested in production 11/16/2026, 0 FAIL / 206 PASS).
-  ⟶ `purge_old_guest_activity`, `024_guest_messages.sql`;
+  with it, at once.**
+  ⟶ owner ruling 11/16/2026; migration 028 applied and attested in production
+  11/16/2026, 0 FAIL / 206 PASS. `purge_old_guest_activity`, `024_guest_messages.sql`;
   `events_drop_guest_activity`, `028_event_delete_drops_guest_activity.sql` ⟵
 - **Guest photos:** we intend to delete photos, and the record of who shared
   them, 90 days after the event's last day, and **when the host deletes the
   event, its photos go within a day** (they can't be opened from the moment
-  the event is gone). A nightly job does this; it is written into the hosting
-  setup but not yet switched on, and this sentence will change when the owner
-  confirms it is running. Posts someone made on Instagram or Facebook are not
-  ours to delete (section 1). ⟶ `backend/scripts/purge_guest_photos.py`;
-  `guest_photos_due_for_purge`, `025`; the `ngw-guest-photo-purge` cron service
-  in `render.yaml` ⟵
+  the event is gone). A nightly job does this. Posts someone made on Instagram
+  or Facebook are not ours to delete (section 1).
+  ⟶ `backend/scripts/purge_guest_photos.py`; `guest_photos_due_for_purge`,
+  `025`; the `ngw-guest-photo-purge` cron service in `render.yaml`, created in
+  Render with a successful test run (`HANDOFF.md:346`) and reported running by
+  the owner 11/19/2026 (`HANDOFF.md:35`) ⟵
 - **Pass purchases:** kept as a record of what you bought; required for
   refunds and disputes. The receipt survives account deletion, with the link
   to your account removed (section 6). ⟶ `021_account_deletion.sql:71-75` ⟵
@@ -424,4 +487,4 @@ change takes effect.
 - Nothing is sold, nothing is advertised.
 - Email events@noguessworksystems.com to see, fix or delete your data.
 
-**Governing law:** `[OWNER: governing state]`, United States.
+**Governing law:** Maryland, United States.

@@ -414,7 +414,13 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // job's Playwright image tag equals the locked @playwright/test version. That
 // is two files agreeing, a config fact no browser run can check — a mismatch
 // shows up only as a CI failure ("Executable doesn't exist"), after the push.
-const MAX_HOSTV2_TEXT_GATES = 61;
+//
+// 61 → 62 (11/20/2026): policyPublishRefusesDrafts.test.js. It reads
+// hostv2/public/legal/*.html, the static policy pages, not hostv2 source: the
+// claim is that each committed page is byte-for-byte what
+// scripts/publish-policies.mjs builds from docs/legal/. That is two files
+// agreeing, and no browser run can see a draft edited without republishing.
+const MAX_HOSTV2_TEXT_GATES = 62;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;
