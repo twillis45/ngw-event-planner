@@ -3616,7 +3616,10 @@ function EventPicker({ events, eventId, onPick }) {
 const CSS = `
 /* ground + bloom come from .app.app-elegant — not restated here */
 .lc-wrap{color:var(--ink);font:400 15px/1.5 Inter,system-ui,sans-serif;
-  padding:clamp(20px,4vw,40px) clamp(16px,5vw,48px) calc(48px + env(safe-area-inset-bottom,0px));}
+  padding:clamp(20px,4vw,40px) clamp(16px,5vw,48px) calc(48px + env(safe-area-inset-bottom,0px));
+  /* a sideways notched phone: the gutter or the side inset, whichever is wider */
+  padding-left:max(clamp(16px,5vw,48px), var(--safe-l));
+  padding-right:max(clamp(16px,5vw,48px), var(--safe-r));}
 .lc-grid{width:min(100%,1180px);margin:0 auto;display:grid;grid-template-columns:1fr;gap:0;}
 .lc-main{min-width:0;max-width:68ch;}
 .lc-eyebrow{font:650 11px/1 Inter,sans-serif;letter-spacing:.09em;color:var(--muted);margin:0;}
@@ -3955,7 +3958,7 @@ const CSS = `
   -webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;}
 .lc-deck::-webkit-scrollbar{display:none;}
 .lc-card{scroll-snap-align:start;flex:0 0 88%;max-width:340px;min-width:0;
-  background:var(--sheen);border:1px solid var(--hair);border-radius:14px;overflow:hidden;}
+  background:var(--sheen);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
 /* Hero-sized (host, 2026-08-05): 172px read as a strip, not the dominant
    element on the card the swipe deck's own comment calls the primary act.
    clamp() keeps it real-estate-dominant across phone heights without ever
@@ -4005,7 +4008,7 @@ const CSS = `
 .lc-stayhero{border-radius:14px;overflow:hidden;height:clamp(200px,36vh,360px);margin-bottom:14px;}
 .lc-stayhero-flat{margin-bottom:14px;}
 .lc-stayhero-flat-sub{margin-top:4px;}
-.lc-card-photo{display:block;width:100%;height:100%;object-fit:cover;background:var(--hair);}
+.lc-card-photo{display:block;width:100%;height:100%;object-fit:cover;background:var(--line);}
 /* ── height:100% CLIPPED THE ONLY BUTTON THAT MATTERS (2026-08-06) ──────────
    Found by the board and reproduced by measurement. The photo branch overlays
    name/price/Pick ON the image (absolute, inside .lc-card-photo-wrap), so a
@@ -4025,7 +4028,7 @@ const CSS = `
    Bounded so the placeholder is a hero and not the whole card. Gated by an e2e
    assertion that the button is hit-testable on a photo-less card. */
 .lc-card-nophoto{height:clamp(120px,20vh,180px);width:100%;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:6px;background:var(--hair);border:none;cursor:pointer;
+  align-items:center;justify-content:center;gap:6px;background:var(--line);border:none;cursor:pointer;
   padding:0;font:inherit;}
 .lc-card-nophoto-add{font:600 16px/1.3 Inter,sans-serif;color:var(--steel-soft);}
 .lc-card-nophoto-sub{font:400 12px/1.3 Inter,sans-serif;color:var(--muted);}
@@ -4074,7 +4077,7 @@ const CSS = `
 /* The guest note, shown as written. Wraps rather than scrolls sideways:
    UX_03 rule 6 sanctions horizontal scroll for carousels, not for prose. */
 .lc-draft{white-space:pre-wrap;word-break:break-word;font:400 13px/1.55 Inter,sans-serif;
-  color:var(--ink);background:var(--sheen);border:1px solid var(--hair);border-radius:10px;
+  color:var(--ink);background:var(--sheen);border:1px solid var(--line);border-radius:10px;
   padding:12px;margin:0 0 10px;max-height:280px;overflow:auto;}
 .lc-card-price{font:600 17px/1.25 Inter,sans-serif;color:var(--ink);flex:0 0 auto;
   font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.5);}
@@ -4088,7 +4091,7 @@ const CSS = `
 .lc-card-was{font:400 12px/1.4 Inter,sans-serif;color:var(--muted);margin:4px 0 0;}
 .lc-chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0;}
 .lc-chip{font:400 12px/1 Inter,sans-serif;color:var(--ink-soft);padding:7px 10px;
-  border:1px solid var(--hair);border-radius:999px;}
+  border:1px solid var(--line);border-radius:999px;}
 .lc-card-eyebrow{font:500 11px/1.2 Inter,sans-serif;letter-spacing:.08em;color:var(--muted);
   margin:16px 0 2px;}
 /* ── WHERE THIS CAME FROM · the claim, the gaps, then the receipts ─────── */
@@ -4142,7 +4145,7 @@ const CSS = `
   font:650 var(--t-caption)/1.5 Inter,sans-serif;color:var(--muted);
   background:var(--bg-band);padding:2px var(--sp-2);border-radius:999px;white-space:nowrap;}
 .lc-pv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
-  padding:10px 0;border-top:1px solid var(--hair);}
+  padding:10px 0;border-top:1px solid var(--line);}
 .lc-pv-label{font:400 14px/1.35 Inter,sans-serif;color:var(--ink);min-width:0;
   display:flex;gap:var(--sp-2);align-items:baseline;flex-wrap:wrap;}
 /* The value leads; the field name labels it. Bolder than the label because
@@ -4199,10 +4202,10 @@ const CSS = `
 .lc-lead-each-unit{font:400 13px/1.25 Inter,sans-serif;color:var(--ink);opacity:.9;}
 .lc-pv-src{font:400 12px/1.35 Inter,sans-serif;color:var(--muted);flex:0 0 auto;}
 .lc-dots{display:flex;gap:6px;justify-content:center;margin:12px 0 4px;}
-.lc-dot{width:6px;height:3px;border-radius:2px;background:var(--hair);transition:width .18s ease;}
+.lc-dot{width:6px;height:3px;border-radius:2px;background:var(--line);transition:width .18s ease;}
 .lc-dot.is-on{width:16px;background:var(--ink-soft);}
 @media (prefers-reduced-motion:reduce){.lc-dot{transition:none;}.lc-deck{scroll-behavior:auto;}}
-.lc-thumb{width:56px;height:56px;flex:0 0 auto;border-radius:10px;object-fit:cover;background:var(--sheen);border:1px solid var(--hair);}
+.lc-thumb{width:56px;height:56px;flex:0 0 auto;border-radius:10px;object-fit:cover;background:var(--sheen);border:1px solid var(--line);}
 .lc-t-head{display:grid;column-gap:8px;align-items:end;}
 .lc-t-row{display:grid;column-gap:8px;border-top:1px solid var(--line);padding:10px 0;align-items:baseline;}
 .lc-col{font:650 var(--t-caption-min)/1.2 Inter,sans-serif;letter-spacing:.04em;color:var(--faint);text-align:right;

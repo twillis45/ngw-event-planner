@@ -5872,9 +5872,19 @@ export default function HostShellV2() {
   //
   // `auto`, not `smooth`: a switch should be instant. An animated scroll is
   // the bounce, just slower.
-  useEffect(() => {
+  //
+  // EVERY SHEET OPENS AT ITS TOP, NOT ONLY THE FOOD TABS (design audit 2,
+  // 11/20/2026). `.sheet` is one scroller reused across kinds, so a section
+  // opened from the Sections list inherited the list's scrollTop: measured at
+  // 844x390, 10 of 19 sections opened with their title, back link and Close
+  // above the screen (Calendar and Calls to make even at 390x844). A sheet that
+  // deep-links to a row (`sheet.focus`) keeps its landing: those scroll their
+  // anchor into view from a ref or a timeout, and the header stays reachable
+  // above it. Layout effect, so the inherited offset is never painted.
+  useLayoutEffect(() => {
     if (!sheet) return;
-    if (sheet.kind !== 'food' && sheet.kind !== 'foodplan' && sheet.kind !== 'bringing') return;
+    const foodTab = sheet.kind === 'food' || sheet.kind === 'foodplan' || sheet.kind === 'bringing';
+    if (!foodTab && sheet.focus != null) return;
     const el = sheetRef.current;
     if (el && typeof el.scrollTo === 'function') el.scrollTo({ top: 0, behavior: 'auto' });
     else if (el) el.scrollTop = 0;
@@ -15195,7 +15205,7 @@ export default function HostShellV2() {
                           ? { fontFamily: 'var(--serif-read)', fontWeight: 500, fontSize: 'var(--t-display-l)', letterSpacing: '-.01em', lineHeight: 1.12, margin: 'var(--sp-3) 0 0' }
                           : { fontFamily: 'var(--sans)', fontWeight: 750, fontSize: 'var(--t-display-l)', letterSpacing: '-.02em', lineHeight: 1.1, margin: 'var(--sp-3) 0 0' }}>{name}</h2>
                         {/* The guide sentence — the host GUIDE VOICE (Newsreader italic). */}
-                        {guide && <p style={{ fontFamily: 'var(--serif-read)', fontStyle: 'italic', color: 'var(--sec)', fontSize: 'var(--t-input)', lineHeight: 1.45, margin: 'var(--sp-2) 0 0' }}>{guide}</p>}
+                        {guide && <p style={{ fontFamily: 'var(--serif-read)', fontStyle: 'italic', color: 'var(--ink-soft)', fontSize: 'var(--t-input)', lineHeight: 1.45, margin: 'var(--sp-2) 0 0' }}>{guide}</p>}
                         {/* ONE honest line — owner · time. Set → the clock; unset → "Set a time ›" (no fake clock).
                             The full time+owner editor lives in Full agenda; Walk it stays calm. */}
                         <p className="meta" style={{ margin: 'var(--sp-4) 0 0', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -19633,7 +19643,7 @@ export default function HostShellV2() {
                     </>
                   )}
                   <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Have a specific question?</div>
-                  <button className="cta" style={{ background: 'var(--surface-2)', color: 'var(--ink)' }}
+                  <button className="cta" style={{ background: 'var(--bg-band)', color: 'var(--ink)' }}
                     onClick={() => { setAskQ(''); setAskResult(null); setAskLLM(null); setSheet({ kind: 'ask' }); }}>
                     {ASK_LABEL} — answered from your own numbers
                   </button>
@@ -25046,7 +25056,7 @@ export default function HostShellV2() {
                             try { coi = getVendorCOIState(v, event); } catch (_e) { coi = null; }
                             if (!coi || coi.status === 'not_required') return null;
                             try { next = coiNextAction(v, event, v.name || 'this vendor'); } catch (_e) { next = null; }
-                            const tone = coi.level === 'critical' ? 'var(--crit)' : coi.level === 'attention' ? 'var(--warn)' : 'var(--muted)';
+                            const tone = coi.level === 'critical' ? 'var(--danger-text)' : coi.level === 'attention' ? 'var(--warn)' : 'var(--muted)';
                             return (
                               <div id={'v-coi-' + v.id} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', flexWrap: 'wrap', gap: 6, scrollMarginTop: 12 }}>
                                 <span className="of" style={{ flexShrink: 0, color: tone }}>insurance</span>
