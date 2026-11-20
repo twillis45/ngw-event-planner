@@ -53,20 +53,31 @@ const measure = ([sel, scopeSel]) => {
     for (let n = el; n; n = n.parentElement) op *= Number(getComputedStyle(n).opacity);
     if (op < 0.02) continue;
     const layers = [];
-    let ground = [255, 255, 255];
+    let grounds = [[255, 255, 255]];
     for (let n = el; n; n = n.parentElement) {
-      const b = rgba(getComputedStyle(n).backgroundColor);
+      const ncs = getComputedStyle(n);
+      // A gradient fill (the primary button since 11/20/2026): every stop is a
+      // ground the label may sit on, and the WORST one counts (same rule as
+      // lightThemeContrast.spec.mjs).
+      const stops = /gradient/.test(ncs.backgroundImage) ? (ncs.backgroundImage.match(/rgba?\([^)]+\)/g) || []).map(rgba).filter((x) => x && x[3] === 1) : [];
+      if (stops.length) { grounds = stops.map((x) => x.slice(0, 3)); break; }
+      const b = rgba(ncs.backgroundColor);
       if (!b || b[3] === 0) continue;
-      if (b[3] === 1) { ground = b.slice(0, 3); break; }
+      if (b[3] === 1) { grounds = [b.slice(0, 3)]; break; }
       layers.push(b);
     }
-    for (const l of layers.reverse()) ground = over(l, ground);
     const c = rgba(cs.color);
-    const ink = over([c[0], c[1], c[2], c[3] * op], ground);
+    let worst = null;
+    for (let g of grounds) {
+      for (const l of layers.slice().reverse()) g = over(l, g);
+      const ink = over([c[0], c[1], c[2], c[3] * op], g);
+      const r = ratio(ink, g);
+      if (worst === null || r < worst) worst = r;
+    }
     const px = parseFloat(cs.fontSize);
     const large = px >= 24 || (px >= 18.66 && Number(cs.fontWeight) >= 700);
     out.push({ what: `${String(el.className) || el.tagName} "${text.slice(0, 30)}"`,
-      ratio: Math.round(ratio(ink, ground) * 100) / 100, floor: large ? 3 : 4.5 });
+      ratio: Math.round(worst * 100) / 100, floor: large ? 3 : 4.5 });
   }
   return out;
 };
