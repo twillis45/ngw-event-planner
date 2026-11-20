@@ -18,12 +18,12 @@ RULES
   · FAIL-SOFT. Called as a background task after the guest's request has
     returned; any failure is logged without the address and dropped.
 """
-import html
 import logging
 import time
 
 from .config import APP_BASE_URL
 from .db import get_pool
+from .email_frame import frame, hue_for, paragraphs_html
 from .emailer import _send_via_resend, failure_reason, is_email_configured
 
 log = logging.getLogger("ngw.host_alerts")
@@ -46,8 +46,10 @@ def _one_line(s: str, n: int = 80) -> str:
     return " ".join(str(s or "").split())[:n]
 
 
-def compose(kind: str, who: str, event_name: str, answer: str | None = None) -> tuple[str, str]:
-    """(subject, html) for one alert. Pure. Never includes an answer's body."""
+def compose(kind: str, who: str, event_name: str, answer: str | None = None) -> tuple[str, str, str]:
+    """(subject, html, text) for one alert. Pure. Never includes an answer's body.
+    In the shared frame (email_frame), without the invitation's parts: to the
+    host, about their own plan."""
     who = _one_line(who) or "Someone"
     name = _one_line(event_name) or "your event"
     if kind == "rsvp":
@@ -59,14 +61,16 @@ def compose(kind: str, who: str, event_name: str, answer: str | None = None) -> 
     else:
         raise ValueError(kind)
     subject = f"{what} — {name}"
-    body = (
-        f"<p>{html.escape(what)} for <strong>{html.escape(name)}</strong>.</p>"
-        f"<p><a href=\"{html.escape(APP_BASE_URL)}\">Open your plan</a> to see it.</p>"
-        "<p style=\"color:#666\">We send at most one of these an hour for each event, "
-        "so anything else that came in is waiting in the app. "
-        "To stop them, open the event's guest list and tap Turn off.</p>"
-    )
-    return subject, body
+    words = f"{what} for {name}."
+    html, text = frame(
+        hue=hue_for(name), eyebrow="Your plan", title=name,
+        blocks=[(paragraphs_html(words), words)],
+        primary=("Open your plan", APP_BASE_URL),
+        fine=("We send at most one of these an hour for each event, "
+              "so anything else that came in is waiting in the app. "
+              "To stop them, open the event's guest list and tap Turn off."),
+        footer="Sent by No Guesswork Events.")
+    return subject, html, text
 
 
 async def alert_host(event_id: str, kind: str, who: str, answer: str | None = None) -> None:
@@ -92,9 +96,9 @@ async def alert_host(event_id: str, kind: str, who: str, answer: str | None = No
                     "where e.id = $1 and v->>'id' = $2 limit 1", event_id, who) or "A vendor"
         if not to or not _claim(event_id):
             return
-        subject, body = compose(kind, who, row["name"], answer)
+        subject, body, text = compose(kind, who, row["name"], answer)
         try:
-            await _send_via_resend(to=to, subject=subject, html=body)
+            await _send_via_resend(to=to, subject=subject, html=body, text=text)
         except Exception:
             # A send that did not happen must not use up the hour (11/16/2026:
             # two hours of refused sends would each have blocked the next).

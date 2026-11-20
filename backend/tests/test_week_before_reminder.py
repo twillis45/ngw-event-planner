@@ -14,7 +14,9 @@ if "asyncpg" not in sys.modules:
 
 import asyncio
 import datetime as dt
+import html
 import json
+import re
 import logging
 
 import pytest
@@ -188,10 +190,13 @@ def test_the_email_has_the_stop_link_the_headers_and_only_saved_facts(monkeypatc
     assert m["subject"] == "One week until Ana's <40th>"
     assert m["headers"] == he.headers(token)
     assert m["headers"]["List-Unsubscribe-Post"] == "List-Unsubscribe=One-Click"
-    for part in (m["html"], m["text"]):
+    # The html as a reader sees it: the frame's own markup (its widths, its
+    # 30px title) is not a claim, and an apostrophe is escaped in the source.
+    seen = html.unescape(re.sub(r"<[^>]+>", " ", m["html"]))
+    assert "https://app.example.test/ngw/hostv2/" in m["html"] and "https://app.example.test/ngw/hostv2/" in m["text"]
+    for part in (seen, m["text"]):
         assert "Stop plan reminders" in part and "Open your plan" in part
-        assert "Thursday, November 26" in part
-        assert "https://app.example.test/ngw/hostv2/" in part
+        assert "Thursday, November 26" in " ".join(part.split())
         assert "You're getting this because" in part
         # Nothing the email cannot back with saved data: no progress, no count,
         # no place or hour, no vendor.

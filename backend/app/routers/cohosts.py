@@ -10,7 +10,7 @@ Only the host (a member of the event's own studio) can invite, list or remove
 co-hosts; a co-host can remove themselves. The claim binds to the email in
 auth.users and only once it is confirmed, never an email the browser sends.
 """
-import html
+import html as _html
 import json
 import logging
 import re
@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 from ..auth import require_planner
 from ..config import APP_BASE_URL
 from ..db import get_pool
+from ..email_frame import frame, hue_for
 from ..emailer import _send_via_resend, failure_reason, is_email_configured
 from ..rate_counter import bump
 
@@ -47,7 +48,9 @@ async def _assert_host(conn, event_id: str, principal: dict) -> dict:
     """The event's own studio, and the caller in it. Co-hosts are not hosts here."""
     if not principal or principal.get("via") == "dev_token":
         raise HTTPException(403, "Sign in as the host to manage co-hosts.")
-    ev = await conn.fetchrow("select studio_id, data->>'name' as name from public.events where id=$1", event_id)
+    ev = await conn.fetchrow(
+        "select studio_id, data->>'name' as name, coalesce(data->>'hostName', data->>'hostNames') as host "
+        "from public.events where id=$1", event_id)
     if not ev:
         raise HTTPException(404, "Save this plan first — co-hosts can only join a saved plan.")
     member = await conn.fetchval(
@@ -90,6 +93,20 @@ async def _record_invite_email(event_id: str, email: str, subject: str, ok: bool
                 event_id, ch["id"], subject, json.dumps({"delivery": delivery}))
     except Exception as e:  # noqa: BLE001
         log.error("cohost invite record failed event=%s error=%s", event_id, failure_reason(e))
+
+
+def compose_cohost_invite(name: str, email: str, host=None) -> tuple[str, str]:
+    """(html, text) in the shared frame (email_frame): to someone who will
+    plan with the host, so no RSVP parts."""
+    host = " ".join(str(host or "").split())[:80]
+    words = (f"Open the app and sign in with this email address ({email}). "
+             "The plan will be there for you to see and change.")
+    return frame(
+        hue=hue_for(name), eyebrow="You’re invited to co-host", title=name,
+        blocks=[(_html.escape(words), words)],
+        primary=("Open the app", APP_BASE_URL),
+        fine="If you weren't expecting this, ignore it. Nothing happens unless you sign in.",
+        footer=f"Sent by {host} with No Guesswork Events." if host else "Sent with No Guesswork Events.")
 
 
 @router.get("/api/events/{event_id}/cohosts")
@@ -137,14 +154,8 @@ async def invite_cohost(event_id: str, payload: CohostInvite, authorization: Opt
         subject = f"You're invited to co-host {name[:80]}"
         result = None
         try:
-            result = await _send_via_resend(
-                to=email,
-                subject=subject,
-                html=(f"<p>You've been invited to co-host <strong>{html.escape(name)}</strong> on No Guesswork Events.</p>"
-                      f"<p><a href=\"{html.escape(APP_BASE_URL)}\">Open the app</a> and sign in with this email address "
-                      f"({html.escape(email)}). The plan will be there for you to see and change.</p>"
-                      "<p style=\"color:#666\">If you weren't expecting this, ignore it. Nothing happens unless you sign in.</p>"),
-            )
+            body, text = compose_cohost_invite(name, email, ev.get("host"))
+            result = await _send_via_resend(to=email, subject=subject, html=body, text=text)
             emailed = True
         except Exception as e:  # noqa: BLE001 — the invite stands; the host can tell them directly
             log.error("cohost invite email failed event=%s error=%s", event_id, failure_reason(e))

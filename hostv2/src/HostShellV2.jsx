@@ -312,7 +312,8 @@ import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { buildVendorDetailsMessage, vendorGreetingName, detailsSmsHref, detailsMailtoHref } from '@app/lib/vendorDetailsMessage';
 import { summarizeWhoIsConfirmed, whoIsConfirmedLines } from '@app/lib/whoIsConfirmed';
 import { mintVendorBriefLinkResult, mintStatusClass, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
-import { mintHelperLinkResult, isHelperLinkApiConfigured, fetchHelperConfirmations } from '@app/lib/api/helperLink';
+import { mintHelperLinkResult, isHelperLinkApiConfigured, fetchHelperConfirmations, emailHelperJob, helperEmailWords } from '@app/lib/api/helperLink';
+import { appEmailWords, messageEmailResult } from '@app/lib/appEmail';
 import { buildHelperAsk } from '@app/lib/helperAsk';
 import PolicyLinks from './PolicyLinks.jsx';
 import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine } from '@app/lib/guestMerge';
@@ -8334,7 +8335,9 @@ export default function HostShellV2() {
   // (a mint needed the same credential, so it is never a request bound to 401).
   const [helperAnswers, setHelperAnswers] = useState([]);
   const [helperSend, setHelperSend] = useState(null);   // { taskId, href, first, body, busy, error }
-  useEffect(() => { setHelperSend(null); }, [eventId]);
+  const [helperEmail, setHelperEmail] = useState(null); // { taskId, busy } | { taskId, ...emailHelperJob result }
+  const [nudgeEmail, setNudgeEmail] = useState(null);   // { guestId, busy } | { guestId, ...messageEmailResult }
+  useEffect(() => { setHelperSend(null); setHelperEmail(null); setNudgeEmail(null); }, [eventId]);
   const helperLinked = Array.isArray(event.helperLinkIds) && event.helperLinkIds.length > 0;
   useEffect(() => {
     if (!isHelperLinkApiConfigured() || !ownsEvent || !helperLinked) { setHelperAnswers([]); return undefined; }
@@ -8410,11 +8413,13 @@ export default function HostShellV2() {
     });
     const guest = resp.guestId ? (event.guests || []).find(g => g && g.id === resp.guestId) : null;
     const digits = String((guest && guest.phone) || '').replace(/[^+\d]/g, '');
-    const email = String((guest && guest.email) || '').trim();
-    const href = digits ? 'sms:' + digits + '?&body=' + encodeURIComponent(body)
-      : email ? 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent(`Your job for ${event.name || 'the party'}`) + '&body=' + encodeURIComponent(body)
-        : null;
-    setHelperSend({ taskId, href, first, body, channel: digits ? 'text' : email ? 'email' : 'share' });
+    // EMAIL GOES FROM THE APP NOW (owner, 11/20/2026: the helper ask gets the
+    // invite's branded envelope). A helper with an email has its own button,
+    // "Email <name> their job" (emailHelperFor); this one is the phone's text,
+    // or the share sheet when there is no number.
+    const hasEmail = !!String((guest && guest.email) || '').trim();
+    const href = digits ? 'sms:' + digits + '?&body=' + encodeURIComponent(body) : null;
+    setHelperSend({ taskId, href, first, body, hasEmail, channel: digits ? 'text' : 'share' });
     // THE HANDOFF IS RECORDED (Messages view, owner 11/20/2026): the send
     // ledger's host-attested `handed_off`, at the moment the host's own phone
     // takes the message — the composer opened, the share sheet completed, or
@@ -8430,7 +8435,7 @@ export default function HostShellV2() {
       if (resp.helperId && !cur.includes(resp.helperId)) linkPatch = { helperLinkIds: [...cur, resp.helperId] };
     } catch { /* best-effort; the link itself already exists */ }
     if (href) {
-      try { patchEvent({ ...linkPatch, ...(resp.helperId ? handoff(digits ? 'sms' : 'email') : {}) }); } catch { /* the record is best-effort */ }
+      try { patchEvent({ ...linkPatch, ...(resp.helperId ? handoff('sms') : {}) }); } catch { /* the record is best-effort */ }
       try { window.location.href = href; } catch { /* the visible link below still works */ }
       return;
     }
@@ -8444,6 +8449,23 @@ export default function HostShellV2() {
       toast(`Copied — paste it to ${first} however you reach them. Nothing was sent from here.`);
     }
     catch { /* the message is on screen to copy by hand */ }
+  };
+  // THE APP EMAILS THE HELPER (owner, 11/20/2026). The server finds the
+  // helper's saved address, sends the ask in the invite's frame, and records
+  // it for Messages. The button says what it does, shows its wait, and a
+  // refusal or a failure in place; "Emailed" only when the server accepted it.
+  const emailHelperFor = async (taskId) => {
+    const resp = helperForTask(taskId);
+    if (!resp || (helperEmail && helperEmail.busy)) return;
+    setHelperEmail({ taskId, busy: true });
+    const r = await emailHelperJob(event.id, resp.helperName);
+    setHelperEmail({ taskId, ...r });
+    if (r.ok && resp.helperId) {
+      try {
+        const cur = Array.isArray(event.helperLinkIds) ? event.helperLinkIds : [];
+        if (!cur.includes(resp.helperId)) patchEvent({ helperLinkIds: [...cur, resp.helperId] });
+      } catch { /* best-effort; the server holds the link and the record */ }
+    }
   };
 
   // DEFINED HERE, AFTER `confirmationByVendor`, AND THAT PLACEMENT IS THE FIX.
@@ -21295,6 +21317,9 @@ export default function HostShellV2() {
                       : null;
                     const tFirst = owner.split(/\s+/)[0];
                     const tSend = helperSend && helperSend.taskId === t.id ? helperSend : null;
+                    const tMail = helperEmail && helperEmail.taskId === t.id ? helperEmail : null;
+                    const tHelperGuest = tHelper && tHelper.guestId ? (event.guests || []).find(g => g && g.id === tHelper.guestId) : null;
+                    const tHelperEmail = !!String((tHelperGuest && tHelperGuest.email) || '').trim();
                     // Nothing to hand off on a row the plan already handled, unless someone
                     // already holds it (owner, 11/16/2026: every CTA justified).
                     // THE ROW'S OWN ACTION ("Line them up →") — a real button and a
@@ -21325,6 +21350,22 @@ export default function HostShellV2() {
                             {tSend && tSend.busy ? 'Making the link…' : `Send ${tFirst} their job`}
                           </button>
                         )}
+                        {owner && !t.done && !tAnswer && tHelper && tHelperEmail && isHelperLinkApiConfigured() && (() => {
+                          const w = helperEmailWords(tFirst, tMail);
+                          return (
+                            <>
+                              <button className="mini rowlink helper-email" data-helper-email
+                                disabled={!!(tMail && tMail.busy)} aria-busy={tMail && tMail.busy ? 'true' : undefined}
+                                onClick={(e) => { e.stopPropagation(); emailHelperFor(t.id); }}>
+                                {w.button}
+                              </button>
+                              {w.line && (
+                                <span className={'v-meta helper-email-line' + (w.tone === 'danger' ? ' helper-send-error' : '')}
+                                  role={w.tone === 'danger' ? 'alert' : 'status'}>{w.line}</span>
+                              )}
+                            </>
+                          );
+                        })()}
                         {owner && !t.done && tAnswer && tAnswer.state !== 'confirmed' && (
                           <span className="v-meta helper-answer" data-answer="declined">
                             {`${tFirst} can’t do it${tAnswer.note ? ` — “${tAnswer.note}”` : '.'} It’s back on you to cover.`}
@@ -21339,8 +21380,8 @@ export default function HostShellV2() {
                           // did not, and the line says who sends it: the host.
                           <span className="v-meta helper-handoff">
                             {tSend.href
-                              ? <>{tSend.first}’s job is written — send it from your {tSend.channel === 'text' ? 'Messages' : 'mail'} app. Nothing is sent from here. <a className="mini" style={{ textDecoration: 'none' }} href={tSend.href}>{tSend.channel === 'text' ? `Text ${tSend.first}` : `Email ${tSend.first}`}</a></>
-                              : <>No number or email for {tSend.first} — share or paste it yourself. Nothing is sent from here.</>}
+                              ? <>{tSend.first}’s job is written — send it from your Messages app. Nothing is sent from here. <a className="mini" style={{ textDecoration: 'none' }} href={tSend.href}>{`Text ${tSend.first}`}</a></>
+                              : <>{tSend.hasEmail ? 'No number' : 'No number or email'} for {tSend.first} — share or paste it yourself. Nothing is sent from here.</>}
                           </span>
                         )}
                         {owner && !t.done && !tAnswer && (
@@ -26333,10 +26374,45 @@ export default function HostShellV2() {
                               };
                               const first = String(g.name || 'them').split(/\s+/)[0];
                               const digits = String(g.phone || '').replace(/[^+\d]/g, ''); // sms:/tel: want digits, not "(919) 555-…"
+                              // THE NUDGE BY EMAIL GOES FROM THE APP (owner, 11/20/2026: "And
+                              // other comms"): signed in, through the message route (address
+                              // saved on the event, the daily cap, the stop link) in the
+                              // invite's frame, and it shows in Messages. Signed out, the
+                              // route would refuse, so the mail app's link stays.
+                              const appNudge = !!(String(g.email || '').trim() && session && isCommApiConfigured());
+                              const myNudge = nudgeEmail && nudgeEmail.guestId === g.id ? nudgeEmail : null;
+                              const nudgeWords = appEmailWords(`Email ${first} the nudge`, first, myNudge);
+                              const emailNudge = async (click) => {
+                                click.stopPropagation();
+                                if (myNudge && myNudge.busy) return;
+                                setNudgeEmail({ guestId: g.id, busy: true });
+                                let r;
+                                try {
+                                  const url = await verifiedRsvpUrl();
+                                  const checked = draftRsvpChase(event, profile, { rsvpUrl: url });
+                                  const res = await commApi.createMessage(event.id, 'CLIENT', {
+                                    message_type: 'standard', author_role: 'planner',
+                                    author_name: (profile && profile.name) || 'Your host',
+                                    body: checked.body || [checked.subject, checked.body].filter(Boolean).join('\n\n'),
+                                    deliver_email: true, recipient_email: g.email.trim(), recipient_name: g.name || undefined,
+                                    subject: checked.subject || 'Can you make it?',
+                                    ...(((session && session.user && session.user.email) || '').trim()
+                                      ? { reply_to: String(session.user.email).trim() } : {}),
+                                  });
+                                  r = messageEmailResult(res, null);
+                                } catch (e) { r = messageEmailResult(null, e); }
+                                setNudgeEmail({ guestId: g.id, ...r });
+                              };
                               return (
+                                <>
                                 <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                                   {digits && <a className="mini" style={{ textDecoration: 'none' }} onClick={click => handoffNudge(click, 'sms')} href={'sms:' + digits + '?&body=' + encodeURIComponent(body)}>Text {first} the nudge</a>}
-                                  {String(g.email || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} onClick={click => handoffNudge(click, 'email')} href={'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(d.subject || 'Can you make it?') + '&body=' + encodeURIComponent(d.body || body)}>Email {first}</a>}
+                                  {String(g.email || '').trim() && !appNudge && <a className="mini" style={{ textDecoration: 'none' }} onClick={click => handoffNudge(click, 'email')} href={'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(d.subject || 'Can you make it?') + '&body=' + encodeURIComponent(d.body || body)}>Email {first}</a>}
+                                  {appNudge && (
+                                    <button className="mini rowlink nudge-email" data-nudge-email
+                                      disabled={!!(myNudge && myNudge.busy)} aria-busy={myNudge && myNudge.busy ? 'true' : undefined}
+                                      onClick={emailNudge}>{nudgeWords.button}</button>
+                                  )}
                                   {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + digits}>Call {first}</a>}
                                   {/* The record, beside the composers rather than
                                       after them: the app cannot know whether the
@@ -26355,6 +26431,11 @@ export default function HostShellV2() {
                                       : <span aria-hidden="true">Mark it sent to {first} — I sent it myself</span>}
                                   </button>
                                 </div>
+                                {myNudge && nudgeWords.line && (
+                                  <p className={'v-meta nudge-email-line' + (nudgeWords.tone === 'danger' ? ' helper-send-error' : '')}
+                                    role={nudgeWords.tone === 'danger' ? 'alert' : 'status'}>{nudgeWords.line}</p>
+                                )}
+                                </>
                               );
                             })()}
                             {(String(g.phone || '').trim() || String(g.email || '').trim()) && !(chase && !g.rsvp) && (() => {

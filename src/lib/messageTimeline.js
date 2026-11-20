@@ -88,6 +88,7 @@ export function handoffStatus(entry) {
 
 function groupForEmail(d, ev) {
   if (d.kind === 'invite') return 'guests';
+  if (d.kind === 'helper') return 'helpers';   // the app emailed a helper their job (helper_link.email_helper_job)
   const to = low(d.recipient_email);
   if (to && (ev.guests || []).some((g) => g && low(g.email) === to)) return 'guests';
   if (to && (ev.vendors || []).some((v) => v && low(v.email) === to)) return 'vendors';

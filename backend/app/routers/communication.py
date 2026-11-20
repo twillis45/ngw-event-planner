@@ -8,6 +8,7 @@ planner provides a recipient email + `deliver_email: true`.
 """
 import html as _html
 import json
+import re
 import secrets
 from datetime import datetime
 from typing import Optional, Literal
@@ -20,6 +21,7 @@ from ..db import get_pool
 from ..config import APP_BASE_URL, API_PUBLIC_BASE_URL
 from ..auth import require_planner
 from ..emailer import send_approval_email, send_thread_email, is_email_configured
+from ..email_frame import frame, hue_for, paragraphs_html
 from ..invite_email import compose_invite_email, invite_gaps
 from .invite_cards import card_url, stored_card_version
 from .rsvp import _assert_event_studio_read
@@ -142,6 +144,27 @@ def email_stop_url(token: str) -> str:
 
 def _one_line(s: Optional[str]) -> str:
     return " ".join(str(s or "").split())
+
+
+_GREETING = re.compile(r"^\s*(hi|hello|hey|dear|good (morning|afternoon|evening))\b", re.I)
+
+
+def compose_message_email(ev: dict, body: str, recipient_name, sender: str, stop_url):
+    """(html, text): one message from the host to one person on the event, in
+    the shared frame. Its title is the event's SAVED name; nothing else from
+    the event is stated (the host's words carry the facts they chose)."""
+    ev = ev or {}
+    name = " ".join(str(ev.get("name") or "").split())
+    who = _one_line(recipient_name)
+    words = str(body or "")
+    # A draft opens with its own greeting (lib/draftVoice); a second "Hi Rosa,"
+    # above it would read twice.
+    greets = bool(_GREETING.match(words))
+    return frame(
+        hue=hue_for(ev.get("type"), name), greeting=f"Hi {who}," if who and not greets else None,
+        eyebrow=f"A message from {sender}", title=name or None,
+        blocks=[(paragraphs_html(words), words)],
+        footer=f"Sent by {sender} with No Guesswork Events.", stop_url=stop_url)
 
 
 class PortalResponse(BaseModel):
@@ -532,32 +555,26 @@ async def create_message(
     # Sprint 58.2: general email delivery for standard messages.
     # The message is already persisted — email is a best-effort sidecar.
     if standard_email:
-        # Build a minimal but readable HTML body
+        # IN THE SHARED FRAME (email_frame, owner 11/20/2026: "And other
+        # comms"): the invite's cream card, the event's hue and name, the
+        # host's words, "Sent by <host> with No Guesswork Events" and the stop
+        # link. Named "<host> via No Guesswork" with a plain-text part, like
+        # the emails that arrive (live alias check, 11/19/2026: the invite
+        # batch landed in Spam under the bare typed name, HTML only).
         body_text = payload.body or ""
-        body_html = _html.escape(body_text).replace("\n", "<br>")
         sender = _one_line(payload.author_name) or "Your host"
         subj = _one_line(payload.subject) or f"Message from {sender}"
-        greeting = f"<p>Hi {_html.escape(_one_line(payload.recipient_name))},</p>" if payload.recipient_name else ""
-        html = f"{greeting}<div style=\"font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333;\">{body_html}</div><p style=\"margin-top:24px;font-size:13px;color:#888;\">— Sent via NGW Events</p>"
-
-        # LOOKS LIKE THE EMAILS THAT ARRIVE (live alias check, 11/19/2026): the
-        # invite batch landed in Spam while the app's own notices to the same
-        # inbox arrived. Those go out as "<host> via No Guesswork"; this went out
-        # under the bare typed name, HTML only. It now names the service the same
-        # way and carries a plain-text part with the same words.
-        greeting_text = f"Hi {_one_line(payload.recipient_name)},\n\n" if payload.recipient_name else ""
-        body_plain = f"{greeting_text}{body_text}\n\n— Sent via No Guesswork Events"
         stop_headers = None
         if stop_token:
             stop = email_stop_url(stop_token)
-            html += (f"<p style=\"margin-top:8px;font-size:13px;color:#888;\">You're getting this because "
-                     f"{_html.escape(sender)} sent it to you. <a href=\"{_html.escape(stop)}\">Stop emails about this event</a>.</p>")
-            body_plain += f"\n\nYou're getting this because {sender} sent it to you. Stop emails about this event: {stop}"
             stop_headers = {"List-Unsubscribe": f"<{stop}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
+        html, body_plain = compose_message_email(
+            event_data, body_text, payload.recipient_name, sender,
+            email_stop_url(stop_token) if stop_token else None)
         # THE INVITE IS IN THE EMAIL (owner, 11/19/2026). An invite send is the
         # Studio Matte invitation itself, its facts read from the event saved on
         # the server (event_data), never from the request. Its own footer carries
-        # the stop link. Every other email keeps the plain body above.
+        # the stop link. Every other email wears the message frame above.
         if payload.invite:
             # The host's invitation as a picture, when one is stored (invite_cards).
             code = str((event_data or {}).get("rsvpCode") or "").strip()
@@ -622,8 +639,11 @@ async def create_message(
         approval_recipient = payload.recipient_email or payload.notify_email
 
         link = f"{APP_BASE_URL}?event={event_id}"
+        # The event's SAVED name titles the email (found 11/20/2026: the id was
+        # passed here, so the client read the id as the title).
+        ev_name = " ".join(str((event_data or {}).get("name") or "").split()) or "your event"
         email_result = await send_approval_email(
-            approval_recipient, event_id, payload.approval_context or "", link
+            approval_recipient, ev_name, payload.approval_context or "", link
         )
 
         # Build delivery metadata so the planner can see notification status

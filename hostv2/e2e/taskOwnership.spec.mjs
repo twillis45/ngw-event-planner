@@ -88,11 +88,14 @@ test('the target really is 44px where a thumb lands', async ({ page }) => {
     const top = document.elementFromPoint(cx, r.y + r.height / 2 - 20);
     const bot = document.elementFromPoint(cx, r.y + r.height / 2 + 20);
     const hits = (n) => !!n && (n === el || el.contains(n) || n.contains(el));
-    return { top: hits(top), bot: hits(bot) };
+    // Name what IS there, so a red run says what covers the band (WebKit
+    // desktop went red 11/20 with nothing else to go on).
+    const name = (n) => (n ? `${n.tagName.toLowerCase()}.${String(n.className || '').split(' ').filter(Boolean).join('.')} "${(n.innerText || '').trim().slice(0, 40)}"` : 'nothing');
+    return { top: hits(top), bot: hits(bot), at: { top: name(top), bot: name(bot), rect: [Math.round(r.y), Math.round(r.height)] } };
   });
   // `el.contains(hit)` alone would count an ancestor and pass on a clipped
   // target — the failure this project has already paid for once.
-  expect(probe.top && probe.bot, 'the 44px band is clipped to the text box').toBe(true);
+  expect(probe.top && probe.bot, 'the 44px band is clipped to the text box: ' + JSON.stringify(probe.at)).toBe(true);
 });
 
 test('assigning earns NO readiness credit', async ({ page }) => {

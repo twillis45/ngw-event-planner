@@ -3305,6 +3305,10 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
 .helper-answer, .helper-handoff, .helper-send-error{ flex:0 0 100%; display:block; white-space:normal; }
 .helper-answer[data-answer="declined"], .helper-send-error{ color:var(--warn); }
 .helper-handoff .mini{ margin-left:var(--sp-2); }
+/* The app sends these two (owner, 11/20/2026): the wait shows on the button, the
+   answer on its own line under the row. */
+.helper-email:disabled, .nudge-email:disabled{ opacity:.6; cursor:progress; }
+.helper-email-line, .nudge-email-line{ flex:0 0 100%; display:block; white-space:normal; margin:0; }
 /* A retired row is a record, not a control — no checkbox, no press state, no
    cursor. It is there so the host can see what their answer removed and be
    sure nothing was lost, which is the whole reason retiring beats deleting. */

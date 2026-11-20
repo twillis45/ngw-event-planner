@@ -192,3 +192,13 @@ def test_the_subject_and_invite_are_kept_for_the_messages_view(env):
     d = r.json()["metadata"]
     d = (json.loads(d) if isinstance(d, str) else d)["delivery"]
     assert d["subject"] == "Lunch on the 28th" and "kind" not in d
+
+
+def test_the_approval_email_is_titled_with_the_events_name_not_its_id(env):
+    # Found 11/20/2026: the route passed the event id where the email takes the
+    # event's name, so the client read "ev1" as the title.
+    r = post(env, message_type="approval_request", body=None, deliver_email=False,
+             recipient_email=VENDOR, approval_context="Menu and budget")
+    assert r.status_code == 200, r.text
+    kind, k = env.sent[-1]
+    assert kind == "approval" and k["event_name"] == "Jordan’s 50th"
