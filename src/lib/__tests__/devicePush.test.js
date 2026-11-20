@@ -180,6 +180,32 @@ describe('turning it on and off', () => {
   });
 });
 
+describe('signing out takes the device with it (shared computers)', () => {
+  test('the device is dropped on the server and in the browser, before the sign-out', async () => {
+    const d = load();
+    const { env, calls } = makeEnv({ permission: 'granted', existing: true });
+    const order = [];
+    const log = [];
+    const fetchImpl = async (url, init) => { order.push('server-delete'); return keyFetch(200, log)(url, init); };
+    await d.signOutThisDevice(async () => { order.push('signOut'); }, { env, fetchImpl });
+    expect(order).toEqual(['server-delete', 'signOut']);
+    expect(log[0].headers.Authorization).toBe('Bearer t');
+    expect(calls.unsubscribed).toBe(1);
+  });
+
+  test('a failure dropping the device never blocks the sign-out', async () => {
+    const d = load();
+    const { env } = makeEnv({ permission: 'granted', existing: true });
+    let out = false;
+    await d.signOutThisDevice(async () => { out = true; }, { env, fetchImpl: async () => { throw new TypeError('offline'); } });
+    expect(out).toBe(true);
+    const bare = { navigator: {} };
+    let out2 = false;
+    await d.signOutThisDevice(async () => { out2 = true; }, { env: bare, fetchImpl: keyFetch() });
+    expect(out2).toBe(true);
+  });
+});
+
 // ── the words ──────────────────────────────────────────────────────────────
 
 describe('the line under the row', () => {

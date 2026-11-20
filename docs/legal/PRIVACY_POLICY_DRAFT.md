@@ -356,9 +356,10 @@ Android phones, not on iPhone or iPad.
   `_claim`); the worker's `push` handler, `hostv2/src/offline/swTemplate.js` ⟵
 - **Turning it off:** tap the same row on that device, or turn reply alerts
   off for one event in its guest list, which stops its emails and notifications
-  together. We delete a device's record when you turn it off there, when its
+  together. Signing out on a device turns them off there too. We delete a
+  device's record when you turn it off there, when you sign out there, when its
   browser stops accepting messages, or when you delete your account. ⟶
-  `routers/push.py` (`DELETE /api/push/subscribe`); `web_push.py` (404/410);
+  `routers/push.py` (`DELETE /api/push/subscribe`); `devicePush.signOutThisDevice`; `web_push.py` (404/410);
   033 (`on delete cascade`) ⟵
 
 ---

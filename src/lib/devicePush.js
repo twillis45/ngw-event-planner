@@ -164,3 +164,16 @@ export async function turnOffPush({ env = defaultEnv(), fetchImpl = defaultFetch
   try { await sub.unsubscribe(); } catch { /* already gone */ }
   return { ok: true };
 }
+
+/**
+ * Sign out, and take this device's notifications with the account. On a shared
+ * computer the next person must never see the last host's alerts (guest names).
+ * The device is dropped FIRST, while the request can still prove whose row it
+ * is. turnOffPush never throws, so a failure there never blocks the sign-out:
+ * the browser side is dropped regardless, and the push service's 410 clears
+ * the server's row on the next alert.
+ */
+export async function signOutThisDevice(signOut, opts = {}) {
+  await turnOffPush(opts);
+  return signOut();
+}

@@ -282,6 +282,7 @@ import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCos
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { deliverNotification, deliveryExcuse, notificationApiPresent, DELIVERY } from '@app/lib/notifyDelivery';
+import { signOutThisDevice } from '@app/lib/devicePush';
 import { lodgingBasisFor, budgetComparableTotal } from '@app/lib/knowledge/lodgingBasisLadder';
 import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
@@ -20566,7 +20567,7 @@ export default function HostShellV2() {
                         <p className="grounding" style={{ margin: '0 0 var(--sp-2)', opacity: .8 }}>You’re set up as a planner — this is the host view of your event. Your client roster and planner tools live in the full app.</p>
                       )}
                       <div className="actions-row">
-                        <button className="mini" onClick={async () => { try { await supabase.auth.signOut(); toast('Signed out — changes you make while signed out are kept here and saved to your account when you sign in again.'); } catch { toast('Couldn’t sign out.'); } }}>Sign out</button>
+                        <button className="mini" onClick={async () => { try { await signOutThisDevice(() => supabase.auth.signOut()); toast('Signed out — changes you make while signed out are kept here and saved to your account when you sign in again.'); } catch { toast('Couldn’t sign out.'); } }}>Sign out</button>
                       </div>
                       {isAccountDeletionAvailable() && !acctDelete && (
                         <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
