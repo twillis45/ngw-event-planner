@@ -10,6 +10,8 @@ helper a link, built exactly like the vendor brief (routers/vendor_brief.py):
   GET  /api/public/helper/{code}                 — public; this helper's jobs.
   POST /api/public/helper/{code}/answer          — public; "I've got it" / "I can't".
   GET  /api/events/{event_id}/helper-confirmations — planner read-back.
+  POST /api/events/{event_id}/helper-links/email — planner-only; the app emails
+                                                   the helper their job (section 5).
 
 Security model (the vendor brief's, unchanged):
   - Minting is gated by require_planner + studio-scoped event access. The
@@ -37,11 +39,13 @@ under-counts rather than invents.
 
 See supabase/migrations/023_helper_links.sql for the tables.
 """
+import html as _html
 import json
 import os
 import re
 import secrets
 import time
+from datetime import date as _date
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -49,6 +53,9 @@ from pydantic import BaseModel, Field
 
 from ..db import get_pool
 from ..auth import require_planner
+from ..config import APP_BASE_URL
+from ..email_frame import SUB, clock12, frame, hue_for, paragraphs_html
+from ..emailer import send_thread_email
 from .rsvp import _assert_event_studio_read, _client_ip
 
 router = APIRouter(tags=["helper-link"])
@@ -249,32 +256,38 @@ async def mint_helper_link(
         if key not in _jobs_by_helper(data):
             raise HTTPException(404, "helper not found on this event")
 
-        existing = await conn.fetchval(
-            """select code from public.helper_links
-               where event_id=$1 and helper_key=$2 and revoked_at is null limit 1""",
-            event_id, key,
-        )
-        if existing:
-            return {"ok": True, "code": existing, "helper_key": key}
-        # The partial unique index makes a concurrent double-mint safe: the
-        # loser's insert does nothing and it returns the winner's code.
-        inserted = await conn.fetchval(
-            """insert into public.helper_links (code, event_id, helper_key)
-               values ($1, $2, $3)
-               on conflict do nothing
-               returning code""",
-            secrets.token_urlsafe(16), event_id, key,
-        )
-        if inserted:
-            return {"ok": True, "code": inserted, "helper_key": key}
-        winner = await conn.fetchval(
-            """select code from public.helper_links
-               where event_id=$1 and helper_key=$2 and revoked_at is null limit 1""",
-            event_id, key,
-        )
-        if not winner:
-            raise HTTPException(500, "could not make the helper link")
-        return {"ok": True, "code": winner, "helper_key": key}
+        code = await _mint_or_reuse(conn, event_id, key)
+        return {"ok": True, "code": code, "helper_key": key}
+
+
+async def _mint_or_reuse(conn, event_id: str, key: str) -> str:
+    """THE active code for one helper on one event: the existing one, else a
+    new one. The partial unique index makes a concurrent double-mint safe: the
+    loser's insert does nothing and it returns the winner's code."""
+    existing = await conn.fetchval(
+        """select code from public.helper_links
+           where event_id=$1 and helper_key=$2 and revoked_at is null limit 1""",
+        event_id, key,
+    )
+    if existing:
+        return existing
+    inserted = await conn.fetchval(
+        """insert into public.helper_links (code, event_id, helper_key)
+           values ($1, $2, $3)
+           on conflict do nothing
+           returning code""",
+        secrets.token_urlsafe(16), event_id, key,
+    )
+    if inserted:
+        return inserted
+    winner = await conn.fetchval(
+        """select code from public.helper_links
+           where event_id=$1 and helper_key=$2 and revoked_at is null limit 1""",
+        event_id, key,
+    )
+    if not winner:
+        raise HTTPException(500, "could not make the helper link")
+    return winner
 
 
 # ── 2. Public resolve ──────────────────────────────────────────────────────────
@@ -380,3 +393,182 @@ async def list_helper_confirmations(
             event_id,
         )
         return [dict(r) for r in rows]
+
+
+# ── 5. The helper ask as an email the app sends (owner, 11/19–20/2026) ─────────
+# "There will be a branded envelope too" (the helper ask), then "And other
+# comms". Before this the ask was only text the host's own phone or mail app
+# sent (src/lib/helperAsk.js). When the helper has an email saved on the event
+# and the host taps "Email <name> their job", the server sends it in the shared
+# frame (email_frame), like the invite.
+#
+#   WHO MAY SEND: require_planner, then the event's own studio or a claimed
+#     co-host of this one event (_assert_event_studio_read) — the same people
+#     who may mint the link.
+#   TO WHOM: the address saved on the helper's own guest row. The client names
+#     the helper; it never supplies an address. A helper who is not a guest
+#     with an email gets 422 and nothing is sent.
+#   LIMITS: the message route's own rules (communication._assert_email_send_
+#     allowed): the address must be saved on the event, and the send counts
+#     against the event's one daily email cap. A stopped address is 410.
+#   RECORD: an event_messages row (metadata.delivery, kind "helper") written
+#     BEFORE the send and patched with Resend's answer, so the Messages view
+#     shows it and the Resend webhook updates its delivery.
+#   WHAT IT SAYS: the server's whitelist only (build_helper_payload): the
+#     event, its day and an hour the host set ("4:00 PM" and "16:00" both read
+#     4:00 PM, src/lib/clock.js), the place, and THIS helper's jobs, each on its
+#     own line. "I can do it" and "I can’t" both open the helper's own page
+#     (?helper=CODE), which takes the answer: that page reads no answer from
+#     its address, so neither button answers by itself, and the email says so.
+_GUEST_ALLERGEN = {"peanut": "nut", "tree nuts": "nut", "milk": "dairy", "egg": "egg", "fish": "fish",
+                   "shellfish": "shellfish", "soy": "soy", "wheat / gluten": "gluten", "sesame": "sesame"}
+_DIET_ALLERGEN = {"Nut allergy": "nut", "Shellfish": "shellfish", "Egg allergy": "egg", "Soy allergy": "soy"}
+
+
+def _join_and(xs: list) -> str:
+    if len(xs) <= 1:
+        return "".join(xs)
+    if len(xs) == 2:
+        return f"{xs[0]} and {xs[1]}"
+    return f"{', '.join(xs[:-1])}, and {xs[-1]}"
+
+
+def helper_allergy_note(data: dict) -> str:
+    """helperAsk.js helperAllergyNote: "keep it nut-free, a guest is allergic",
+    or '' when the plan knows of no allergy. Names the allergen, never the guest."""
+    words, guests_with, counted = set(), 0, 0
+    for g in data.get("guests") if isinstance(data.get("guests"), list) else []:
+        mine = [_GUEST_ALLERGEN.get(str(a or "").strip().lower()) for a in
+                (g.get("allergens") if isinstance(g, dict) and isinstance(g.get("allergens"), list) else [])]
+        mine = [w for w in mine if w]
+        if mine:
+            guests_with += 1
+        words.update(mine)
+    dc = data.get("dietCounts") if isinstance(data.get("dietCounts"), dict) else {}
+    for tag, word in _DIET_ALLERGEN.items():
+        try:
+            n = float(dc.get(tag) or 0)
+        except (TypeError, ValueError):
+            n = 0
+        if n > 0:
+            counted += n
+            words.add(word)
+    if not words:
+        return ""
+    people = max(guests_with, counted)
+    return f"keep it {_join_and([w + '-free' for w in sorted(words)])}, {'guests are' if people > 1 else 'a guest is'} allergic"
+
+
+def helper_page_url(code: str) -> str:
+    return f"{APP_BASE_URL.rstrip('/')}/hostv2/?helper={code}"
+
+
+def compose_helper_email(data: dict, helper: dict, page_url: str, stop_url):
+    """(subject, html, text). PURE. `helper` is build_helper_payload's whitelist."""
+    e = _html.escape
+    host = " ".join(str(helper.get("hostName") or "").split())[:80]
+    host_first = host.split(" ")[0] if host else ""
+    first = (str(helper.get("helperName") or "").strip().split() or ["there"])[0]
+    name = " ".join(str(helper.get("eventName") or "").split()) or "the party"
+    when_day = ""
+    try:
+        day = _date.fromisoformat(str(helper.get("eventDate") or "")[:10])
+        when_day = f"{day.strftime('%A')}, {day.strftime('%B')} {day.day}"
+    except ValueError:
+        pass
+    when_time = clock12(helper.get("startTime"))
+    place = str(helper.get("venue") or "").strip()
+    address = str(helper.get("venueAddress") or "").strip()
+    facts = []
+    if when_day or when_time:
+        h = "<br>".join(x for x in (e(when_day).replace(", ", "<br>", 1),
+                                     f'<span style="color:{SUB};font-weight:500;">{e(when_time)}</span>' if when_time else "") if x)
+        facts.append(("When", h, " · ".join(x for x in (when_day, when_time) if x)))
+    if place or address:
+        extra = f'<br><span style="color:{SUB};font-weight:500;">{e(address)}</span>' if place and address and address != place else ""
+        facts.append(("Where", e(place or address) + extra,
+                      (place or address) + (f", {address}" if place and address and address != place else "")))
+    allergy = helper_allergy_note(data)
+    lines = []
+    for j in helper.get("jobs") or []:
+        label = " ".join(str(j.get("label") or "").split())
+        if not label:
+            continue
+        notes = [allergy] if j.get("kind") == "food" and allergy else []
+        t = clock12(j.get("time"))
+        lines.append(f"• {label}" + (f" at {t}" if t else "") + (f" — {'; '.join(notes)}" if notes else ""))
+    jobs_text = "You’ve got:\n" + "\n".join(lines)
+    asks = f"{host_first} asked you to help" if host_first else "You’re asked to help"
+    subject = f"Your job for {name}"
+    html, text = frame(
+        hue=hue_for(name), greeting=f"Hi {first},", eyebrow=asks, title=name, facts=facts,
+        blocks=[(paragraphs_html(jobs_text), jobs_text)],
+        primary=("I can do it", page_url), secondary=[("I can’t", e(page_url))],
+        fine=f"Either one opens your page, where you tap your answer for {host_first or 'your host'}. No app, no account.",
+        footer=f"Sent by {host or 'your host'} with No Guesswork Events.", stop_url=stop_url)
+    return subject, html, text
+
+
+class HelperEmailRequest(BaseModel):
+    helper_name: str = Field(..., min_length=1, max_length=120)
+
+
+@router.post("/api/events/{event_id}/helper-links/email")
+async def email_helper_job(
+    event_id: str,
+    payload: HelperEmailRequest,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    """Email one helper their job from the app. Returns { ok, status, message_id }:
+    status is "accepted" only when Resend accepted it, else "failed"."""
+    from .communication import _assert_email_send_allowed, _channel, _email_stop_token, email_stop_url
+    principal = await require_planner(authorization, x_planner_token)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await _assert_event_studio_read(conn, event_id, principal)
+        row = await conn.fetchrow("select id, data from public.events where id=$1", event_id)
+        if not row:
+            raise HTTPException(409, "Save this event to your account before emailing from it.")
+        data = _event_data(row)
+        guests = data.get("guests") if isinstance(data.get("guests"), list) else []
+        if not _is_helper_name(payload.helper_name):
+            raise HTTPException(404, "helper not found on this event")
+        key, _ = _resolve(payload.helper_name, guests)
+        helper = build_helper_payload(data, key)
+        if not helper:
+            raise HTTPException(404, "helper not found on this event")
+        guest = next((g for g in guests if isinstance(g, dict) and str(g.get("id")) == key), None)
+        to = str((guest or {}).get("email") or "").strip()
+        if not to:
+            raise HTTPException(422, "There's no email saved for this helper.")
+        await _assert_email_send_allowed(conn, event_id, to)
+        stop_token = await _email_stop_token(conn, event_id, to)
+        code = await _mint_or_reuse(conn, event_id, key)
+        subject, body_html, body_text = compose_helper_email(
+            data, helper, helper_page_url(code), email_stop_url(stop_token) if stop_token else None)
+        ch = await _channel(conn, event_id, "CLIENT")
+        delivery = {"intent": "email", "kind": "helper", "recipient_email": to,
+                    "recipient_name": helper["helperName"], "subject": subject, "status": "pending"}
+        msg = await conn.fetchrow(
+            """insert into event_messages (event_id, channel_id, message_type, author_role, author_name, body, metadata)
+               values ($1, $2, 'standard', 'planner', $3, $4, $5) returning id""",
+            event_id, ch["id"], helper["hostName"] or None, body_text, json.dumps({"delivery": delivery}))
+    host = " ".join(str(helper["hostName"] or "").split())[:80] or "Your host"
+    stop_headers = None
+    if stop_token:
+        stop = email_stop_url(stop_token)
+        stop_headers = {"List-Unsubscribe": f"<{stop}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
+    result = await send_thread_email(to=to, subject=subject, body_html=body_html, body_text=body_text,
+                                     sender_name=f"{host} via No Guesswork", headers=stop_headers)
+    ok = bool(result.get("ok"))
+    delivery.update({"status": "accepted" if ok else "failed", "provider": result.get("provider")})
+    if ok:
+        delivery["resend_id"] = result.get("resend_id")
+    else:
+        delivery["error"] = result.get("error")
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """update event_messages set metadata = jsonb_set(coalesce(metadata, '{}'), '{delivery}', $2::jsonb)
+               where id=$1""", msg["id"], json.dumps(delivery))
+    return {"ok": ok, "status": delivery["status"], "message_id": str(msg["id"])}

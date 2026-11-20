@@ -7,6 +7,7 @@
 // Planner endpoints (the signed-in Supabase session):
 //   POST /api/events/{id}/helper-links          → mint-or-reuse a helper's code
 //   GET  /api/events/{id}/helper-confirmations  → the answers, newest first
+//   POST /api/events/{id}/helper-links/email    → the app emails the helper their job
 // Public endpoints (the unguessable code is the only credential):
 //   GET  /api/public/helper/{code}              → this helper's jobs
 //   POST /api/public/helper/{code}/answer       → "I've got it" / "I can't"
@@ -18,6 +19,7 @@
 // dev-token fallback of its own — authHeadersDoesNotGrowAgain.test.js holds the
 // line at nine copies, and this is not a tenth.
 import { authHeaders } from '../apiAuth';
+import { appEmailWords } from '../appEmail';
 
 const BASE = process.env.REACT_APP_API_BASE_URL;
 
@@ -58,6 +60,48 @@ export async function mintHelperLinkResult(eventId, helperName) {
     return { ok: false, kind: 'failed', status };
   }
 }
+
+// ── Planner: the app emails a helper their job (owner, 11/20/2026) ────────────
+// The server finds the helper's saved address, sends the ask in the invite's
+// frame and records it for the Messages view. Never throws.
+//   { ok: true,  status: 'accepted' }            — Resend accepted it
+//   { ok: false, kind: 'failed',     status }     — the server tried and Resend refused
+//   { ok: false, kind: 'signed-out', status: 401 }
+//   { ok: false, kind: 'refused',    status: 403 }  — not this event's host or co-host
+//   { ok: false, kind: 'not-found',  status: 404 }  — the saved plan has no job for them
+//   { ok: false, kind: 'unsaved',    status: 409 }
+//   { ok: false, kind: 'stopped',    status: 410 }  — they asked for no emails about this event
+//   { ok: false, kind: 'no-email',   status: 422 }
+//   { ok: false, kind: 'capped',     status: 429 }  — the event's emails for today are used
+//   { ok: false, kind: 'network' | 'not-configured', status: null }
+// No retry: a second POST could send a second email.
+const EMAIL_KINDS = { 401: 'signed-out', 403: 'refused', 404: 'not-found', 409: 'unsaved', 410: 'stopped', 422: 'no-email', 429: 'capped' };
+export async function emailHelperJob(eventId, helperName) {
+  if (!BASE || !eventId || !helperName) return { ok: false, kind: 'not-configured', status: null };
+  let res;
+  try {
+    res = await fetch(`${BASE}/api/events/${encodeURIComponent(eventId)}/helper-links/email`, {
+      method:  'POST',
+      headers: await authHeaders(),
+      body:    JSON.stringify({ helper_name: helperName }),
+    });
+  } catch {
+    return { ok: false, kind: 'network', status: null };
+  }
+  const status = res.status;
+  if (!res.ok) return { ok: false, kind: EMAIL_KINDS[status] || 'failed', status };
+  try {
+    const data = await res.json();
+    if (data && data.ok === true && data.status === 'accepted') return { ok: true, status: 'accepted' };
+  } catch { /* an unreadable answer is not an acceptance */ }
+  return { ok: false, kind: 'failed', status };
+}
+
+/** What the helper email button and its line say (lib/appEmail, shared with the RSVP nudge). */
+export const helperEmailWords = (first, r) => {
+  const who = String(first || '').trim() || 'them';
+  return appEmailWords(`Email ${who} their job`, who, r);
+};
 
 // ── Public: this helper's jobs, or null (not configured / not found / error) ──
 export async function fetchPublicHelperLink(code) {

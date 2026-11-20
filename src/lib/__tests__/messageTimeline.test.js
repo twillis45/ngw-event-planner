@@ -176,3 +176,15 @@ describe('the filter', () => {
     expect(filterTimeline(entries, 'all')).toBe(entries);
   });
 });
+
+describe('the helper email the app sent (owner, 11/20/2026)', () => {
+  test('it is filed under Helpers, by name, with the server’s own status', () => {
+    const server = { status: 'ok', cohosts: null, emails: [email('h1', 5, {
+      intent: 'email', kind: 'helper', recipient_email: 'Maya@example.test', recipient_name: 'Maya Chen',
+      subject: 'Your job for My Friendsgiving', status: 'accepted' })] };
+    const { entries } = buildMessageTimeline({ event: EVENT, server, opts });
+    const e = entries.find((x) => x.key === 'email-h1');
+    expect(e).toMatchObject({ group: 'helpers', who: 'Maya Chen', what: 'Your job for My Friendsgiving', how: 'by email' });
+    expect(e.status).toBe('Queued — the mail service took it; no delivery report yet');
+  });
+});

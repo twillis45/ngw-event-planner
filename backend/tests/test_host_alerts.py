@@ -18,17 +18,17 @@ import app.host_alerts as ha
 
 
 def test_compose_says_who_and_what_never_the_body():
-    s, body = ha.compose("rsvp", "Jordan Avery", "Friendsgiving", "Yes")
+    s, body, _t = ha.compose("rsvp", "Jordan Avery", "Friendsgiving", "Yes")
     assert s == "Jordan Avery replied Yes — Friendsgiving"
     assert "Open your plan" in body and "at most one of these an hour" in body
-    s, _ = ha.compose("question", "Jordan", "Friendsgiving")
+    s, *_ = ha.compose("question", "Jordan", "Friendsgiving")
     assert s == "Jordan asked you a question — Friendsgiving"
-    s, _ = ha.compose("vendor", "Oak Smoke BBQ", "Friendsgiving")
+    s, *_ = ha.compose("vendor", "Oak Smoke BBQ", "Friendsgiving")
     assert s == "Oak Smoke BBQ answered your vendor brief — Friendsgiving"
 
 
 def test_compose_escapes_and_flattens_guest_text():
-    s, body = ha.compose("rsvp", "<b>Eve</b>\nBcc: x@example.test", "Party", "Yes")
+    s, body, _t = ha.compose("rsvp", "<b>Eve</b>\nBcc: x@example.test", "Party", "Yes")
     assert "\n" not in s
     assert "<b>Eve</b>" not in body and "&lt;b&gt;Eve&lt;/b&gt;" in body
 

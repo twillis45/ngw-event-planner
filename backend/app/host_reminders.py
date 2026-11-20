@@ -41,6 +41,7 @@ from zoneinfo import ZoneInfo
 
 from . import host_email
 from .config import APP_BASE_URL
+from .email_frame import frame, hue_for
 from .emailer import ResendRejected, SenderMisconfigured, _send_via_resend, failure_reason, is_email_configured
 
 log = logging.getLogger("ngw.host_reminders")
@@ -100,30 +101,21 @@ def plan_url() -> str:
 
 
 def compose_week_before(event_name, day: _dt.date, stop_token: str) -> tuple[str, str, str]:
-    """(subject, html, text). Pure. States only the saved name and date."""
+    """(subject, html, text). Pure. States only the saved name and date. In the
+    shared frame (email_frame), without the invitation's parts."""
     name = " ".join(str(event_name or "").split())[:120] or "Your event"
     when = f"{day.strftime('%A')}, {day.strftime('%B')} {day.day}"
     stop = host_email.stop_url(stop_token)
-    url = plan_url()
-    e = html.escape
     subject = f"One week until {name}"
-    body = (
-        f"<p><strong>{e(name)}</strong> is one week away: {e(when)}.</p>"
-        "<p>A good moment to look over your plan and settle anything still open.</p>"
-        f"<p><a href=\"{e(url, quote=True)}\">Open your plan</a></p>"
-        "<p style=\"color:#666;font-size:13px\">You're getting this because you're planning "
-        f"{e(name)} with No Guesswork. We send one reminder a week before each event you plan. "
-        f"<a href=\"{e(stop, quote=True)}\" style=\"color:#666\">Stop plan reminders</a></p>"
-    )
-    text = (
-        f"{name} is one week away: {when}.\n\n"
-        "A good moment to look over your plan and settle anything still open.\n\n"
-        f"Open your plan: {url}\n\n"
-        "--\n"
-        f"You're getting this because you're planning {name} with No Guesswork. "
-        "We send one reminder a week before each event you plan.\n"
-        f"Stop plan reminders: {stop}\n"
-    )
+    words = "A good moment to look over your plan and settle anything still open."
+    body, text = frame(
+        hue=hue_for(name), eyebrow="One week to go", title=name,
+        facts=[("When", html.escape(when).replace(", ", ",<br>", 1), when)],
+        blocks=[(html.escape(words), words)],
+        primary=("Open your plan", plan_url()),
+        footer=(f"Sent by No Guesswork Events. You're getting this because you're planning {name} "
+                "with No Guesswork. We send one reminder a week before each event you plan."),
+        stop_url=stop, stop_label="Stop plan reminders")
     return subject, body, text
 
 

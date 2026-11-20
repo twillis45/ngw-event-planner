@@ -7,12 +7,12 @@ Two paths:
 Both are fail-soft: a failed email must never block message creation. The message
 is always persisted to Postgres first; email delivery is a best-effort sidecar.
 """
-import html as _html
 import logging
 import re
 from typing import Optional
 import httpx
 from .config import RESEND_API_KEY, COMMUNICATION_EMAIL_FROM, RESEND_FROM_NAME
+from .email_frame import frame, hue_for, paragraphs_html
 
 log = logging.getLogger("ngw.email")
 
@@ -118,6 +118,19 @@ async def _send_via_resend(
         return resp.json()
 
 
+def compose_approval_email(event_name, context, link) -> tuple[str, str]:
+    """(html, text) in the shared frame (email_frame). Escaped there (security
+    self-test, 11/17/2026): the event name and the context are typed by the
+    host; the link carries the event id."""
+    name = " ".join(str(event_name or "").split())
+    ctx = str(context or "")
+    return frame(
+        hue=hue_for(name), eyebrow="Approval needed", title=name or None,
+        blocks=[(f"An approval is requested:<br><br>{paragraphs_html(ctx)}", f"An approval is requested:\n\n{ctx}")],
+        primary=("Review & respond", str(link or "")),
+        footer="Sent with No Guesswork Events.")
+
+
 async def send_approval_email(to: str | None, event_name: str, context: str, link: str) -> dict:
     """Sprint 58 approval_request notification. Fail-soft.
 
@@ -138,16 +151,12 @@ async def send_approval_email(to: str | None, event_name: str, context: str, lin
         log.warning("approval email skipped: RESEND_API_KEY not set")
         return {"ok": False, "error": "email_not_configured", "provider": "resend"}
     try:
+        html, text = compose_approval_email(event_name, context, link)
         result = await _send_via_resend(
             to=to,
             subject=f"Approval needed — {' '.join(str(event_name or '').split())}",
-            # Escaped (security self-test, 11/17/2026): the event name and the
-            # context are typed by the host; the link carries the event id.
-            html=(
-                f"<p>An approval is requested for <strong>{_html.escape(str(event_name or ''))}</strong>:</p>"
-                f"<blockquote>{_html.escape(str(context or ''))}</blockquote>"
-                f"<p><a href=\"{_html.escape(str(link or ''), quote=True)}\">Review &amp; respond</a></p>"
-            ),
+            html=html,
+            text=text,
         )
         resend_id = result.get("id") if isinstance(result, dict) else None
         log.info("approval email sent resend_id=%s", resend_id)
