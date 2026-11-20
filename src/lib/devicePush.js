@@ -36,13 +36,13 @@ export const PUSH_LABEL = 'Notifications on this device';
 /** The one line under the row. PURE. */
 export function pushLine({ on, permission, outcome } = {}) {
   if (permission === 'denied' || outcome === 'denied') {
-    return 'Your browser is blocking notifications for this site. To allow them, open the site settings by the web address and set Notifications to Allow.';
+    return 'To allow them, open site settings (tap the icon by the address) and set Notifications to Allow.';
   }
   if (outcome === 'dismissed') return 'Your browser didn’t turn them on. Tap again and choose Allow.';
   if (outcome === 'no-worker') return 'This device couldn’t set them up. Reload the app and try again.';
   if (outcome === 'failed') return 'Couldn’t turn them on for this device. Try again in a moment.';
-  if (on) return 'On for this device. At most one an hour for each event, and none while the app is on screen. Turn one event off from its guest list.';
-  return 'A ping on this device when a guest replies or asks a question, or a vendor answers your brief. It says who, never what they wrote.';
+  if (on) return 'On. At most one an hour for each event, none while the app is on screen. Turn an event off from its guest list.';
+  return 'A ping when a guest replies or asks, or a vendor answers your brief. It says who, never what they wrote.';
 }
 
 /** The server's VAPID public key, or null (not configured: 503, unreachable, no API). */
