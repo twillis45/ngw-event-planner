@@ -18,7 +18,7 @@
 // Language: host-friendly only. Never "locked/blocked/overdue by N days";
 // "past its easy window" is the strongest phrasing.
 
-import { playbookDecisionBoard, playbookFoodPlan } from './playbooks';
+import { playbookDecisionBoard, playbookFoodPlan, hostBuysLine } from './playbooks';
 import { isSolemnEvent } from './solemn';
 import { daysUntil } from './dates';
 
@@ -70,7 +70,7 @@ export function planHeroCopy(event, priceFactor) {
       const runway = (Number.isFinite(d) && d >= 0) ? (d === 0 ? 'the day is here' : d === 1 ? '1 day to go' : `${d} days to go`) : '';
       return {
         state: 'settle_overdue',
-        title: endStop(first.label),
+        title: endStop(first.title || first.label),
         line: overdue.length === 1
           ? (runway ? `Still to sort — ${runway}.` : 'Still to sort.')
           : (runway ? `${overdue.length} still to sort — this one first, ${runway}.` : `${overdue.length} still to sort — this one first.`),
@@ -82,7 +82,7 @@ export function planHeroCopy(event, priceFactor) {
     }
     return {
       state: 'settle_overdue',
-      title: `Settle: ${endStop(first.label)}`,
+      title: `Settle: ${endStop(first.title || first.label)}`,
       line: overdue.length === 1
         ? 'It’s past its easy window — the spread and shopping list size from it.'
         : `${overdue.length} decisions are past their easy window — this one first. The spread and shopping list size from them.`,
@@ -97,7 +97,7 @@ export function planHeroCopy(event, priceFactor) {
   if (ready.length) {
     return {
       state: 'settle_ready',
-      title: `Good to settle: ${endStop(ready[0].label)}`,
+      title: `Good to settle: ${endStop(ready[0].title || ready[0].label)}`,
       line: open.length === 1
         ? 'No rush — it’s ready when you are.'
         : `No rush — ${open.length} open, each in its own time.`,
@@ -110,7 +110,7 @@ export function planHeroCopy(event, priceFactor) {
 
   // Board quiet (nothing overdue or ready) — shopping is the live work.
   const got = (ev.foodGot && typeof ev.foodGot === 'object') ? ev.foodGot : {};
-  const unbought = list.filter((i) => i && !i.skipped && !got[i.id]);
+  const unbought = list.filter((i) => hostBuysLine(i) && !i.skipped && !got[i.id]);
   if (unbought.length) {
     const low = unbought.reduce((s, i) => s + (Number(i.locked != null ? i.locked : i.low) || 0), 0);
     const high = unbought.reduce((s, i) => s + (Number(i.locked != null ? i.locked : i.high) || 0), 0);

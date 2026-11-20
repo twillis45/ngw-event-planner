@@ -42,11 +42,19 @@ const CLASS = {
 
 // Type → class. Keyword-matched, with a sensible middle default. A playbook can override
 // via meta.attendanceClass (one of the CLASS keys) or meta.attendanceFactors {low,high}.
+// WHOLE WORDS ONLY (11/20/2026). These were bare substrings, and "Holiday
+// Party" contains "day party": it matched casual_open before the rsvp_social
+// row ever saw it, so a 25-guest holiday party was sized for 29 walk-ins
+// (×1.15) instead of 26 (×1.05). Every alternative now sits between word
+// boundaries; the stems that are meant as prefixes say so with \w*.
 const KEY = [
-  [/wedding|quincea|vow ?renewal|gala|board meeting|conference|retirement|funeral|memorial/i, 'formal'],
-  [/cookout|bbq|barbecue|\bboil\b|fish fry|crab|crawfish|day party|block party|housewarming|watch party|reunion|repast|kwanzaa|pupusa|picnic|tailgate|fest/i, 'casual_open'],
-  [/dinner|shower|gender reveal|birthday|sweet ?16|graduation|holiday party|bachelor|bachelorette|engagement|anniversary|coffee ceremony|card party|proposal|elopement|brunch|game night/i, 'rsvp_social'],
+  [/\b(?:wedding|quincea\S*|vow ?renewal|gala|board meeting|conference|retirement|funeral|memorial)\b/i, 'formal'],
+  [/\b(?:cookout|bbq|barbecue|boil|fish fry|crab|crawfish|day party|block party|housewarming|watch party|reunion|repast|kwanzaa|pupusa|picnic|tailgate|\w*fest\w*)\b/i, 'casual_open'],
+  [/\b(?:dinner|shower|gender reveal|birthday|sweet ?16|graduation|holiday party|bachelor|bachelorette|engagement|anniversary|coffee ceremony|card party|proposal|elopement|brunch|game night)\b/i, 'rsvp_social'],
 ];
+
+// Read-only view of the rules, for the whole-word guard in the tests.
+export const ATTENDANCE_CLASS_RULES = KEY;
 
 export function attendanceClass(type, playbook) {
   const override = playbook && playbook.meta && playbook.meta.attendanceClass;

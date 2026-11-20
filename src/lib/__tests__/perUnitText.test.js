@@ -8,7 +8,7 @@
 // it prove the rule; the sweep proves the rule covers the REAL POPULATION, which
 // is the failure this programme keeps finding — a right detector pointed at the
 // wrong set.
-import { perUnitRate, perUnitBand } from '../perUnitText';
+import { perUnitRate, perUnitBand, unitEach } from '../perUnitText';
 import { playbookFoodPlan, ALL_PLAYBOOKS } from '../playbooks';
 
 describe('one rate, written as it actually is', () => {
@@ -46,7 +46,8 @@ describe('the band, and the unit it is a rate OF', () => {
   test('two bounds', () => {
     expect(perUnitBand(0.2, 0.4, 'lb')).toBe('$0.20–$0.40/lb');
     expect(perUnitBand(4, 7, 'lb')).toBe('$4–$7/lb');
-    expect(perUnitBand(1.88, 3.75, 'drinks')).toBe('$1.88–$3.75/drinks');
+    // One drink, not "drinks" (11/20/2026, seasonal accuracy bug 6): the rate is the price of one.
+    expect(perUnitBand(1.88, 3.75, 'drinks')).toBe('$1.88–$3.75/drink');
   });
 
   test('equal bounds are written ONCE — "$4–$4" is not a range', () => {
@@ -118,7 +119,9 @@ describe('THE REAL CORPUS', () => {
   test('every band names its unit and holds a real number', () => {
     for (const l of lines) {
       const s = perUnitBand(l.perUnitLow, l.perUnitHigh, l.unitBase);
-      expect(s.endsWith(`/${String(l.unitBase).trim()}`)).toBe(true);
+      // Names ONE of the unit (11/20/2026, bug 6): "/roll", not "/rolls" or "/pie per 6 guests".
+      expect(s.endsWith(`/${unitEach(l.unitBase)}`)).toBe(true);
+      expect(unitEach(l.unitBase)).not.toBe('');
       expect(s).toMatch(/^(\$[\d,]+(\.\d{2})?|<\$0\.01)(–(\$[\d,]+(\.\d{2})?|<\$0\.01))?\//);
     }
   });

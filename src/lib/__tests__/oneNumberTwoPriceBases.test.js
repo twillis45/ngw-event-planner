@@ -93,10 +93,14 @@ describe('no dollar moved', () => {
     // The whole point: this commit adds a FACT about the number, not a change
     // to it. Hardcoded from the measurement above.
     const s = hostSpending(COOKOUT(), 1.00);
-    expect(s.foodEstimate).toBe(5648);
+    // 5648 → 4628 and 7999 → 6979 on 11/20/2026, by the seasonal-accuracy drinks
+    // fix (bug 3), not by this disclosure: The Cookout's drinks decision authors
+    // its own costFactors, so the word-tier ×1.6 no longer stacks on them, and
+    // the tier no longer reprices the red drink and the soda (not bar lines).
+    expect(s.foodEstimate).toBe(4628);
     expect(s.suppliesEstimate).toBe(898);
     expect(s.capacityEstimate).toBe(1453);
-    expect(s.expected).toBe(7999);
+    expect(s.expected).toBe(6979);
     expect(s.committed).toBe(0);
   });
 });

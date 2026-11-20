@@ -109,7 +109,17 @@ describe('coverage floor across every playbook', () => {
     // unrouted pre-event rows are kitchen and real-world prep -- "mise en
     // place", "season the meat overnight" -- which have nowhere honest to land
     // and must never be given a courtesy destination to lift this number.
-    expect(preCta / preTotal).toBeGreaterThanOrEqual(0.87);
+    // 11/20/2026 (seasonal accuracy, bug 5): measured 582/669 = 86.996%, down
+    // from 586/669. Seven pre-event rows lost a CTA that pointed at the WRONG
+    // surface — "serve" in "serve time" sent two planning rows to the day
+    // board, "costume" matched the budget's "cost", "bites/guest" and "per
+    // guest" sent menu rows to the guest count — and three of them gained a
+    // real one (the oven map → the day's run of show, restrooms → the place
+    // notes, appetizer types → the spread). The other four (pumpkin carving,
+    // the photo corner, the host's costume, NYE's food-wave prep) are
+    // real-world work with nowhere honest to land, so per the rule above the
+    // floor follows the measurement instead of a courtesy destination.
+    expect(preCta / preTotal).toBeGreaterThanOrEqual(0.869);
     // Post-event is younger and thinner on routing by nature -- much of it is
     // work in the world, not in the app. It must not slide below what it is.
     expect(postTotal).toBeGreaterThan(50);

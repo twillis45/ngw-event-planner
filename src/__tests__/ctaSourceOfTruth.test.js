@@ -42,6 +42,12 @@ const STATIC_ANCHORS = new Set([
   'parking-notes', 'loadin-notes', 'venue-contact', 'house-rules',
   'vendor-add', 'vendor-list', 'food-plan', 'next-step-hero', 'ros-now',
   'host-decisions', 'guest-roster', 'crab-plan', 'crab-headcount',
+  // 'guests-invites' (11/20/2026): taskRoute's "Open the invite" has emitted it
+  // since the send-the-invites rule; lib/routeResolver consumes it
+  // (/^guests-invites/ → the guests sheet's invites block). No scenario's
+  // checklist reached that rule until rows that LEAD with "Invite…" were
+  // routed there instead of to the guest count (seasonal accuracy, bug 5).
+  'guests-invites',
 ]);
 // 'Risks' ships WITH its consumer (2026-07-14): routeSheet now has a real branch for it, and
 // the surface registry raises high-severity risks into the ranked list. Before this, the risk

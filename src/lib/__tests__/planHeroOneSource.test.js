@@ -98,7 +98,11 @@ describe('planHeroCopy — BUD-1 grammar for the Plan tab', () => {
     // which enshrined a defect: a label already ending in '?' ("How will you honor the
     // history?") rendered as "…history?." — the test was protecting the bug. The rule
     // is now: keep an existing ? or !, otherwise add a period.
-    const ender = /[?!]\s*$/.test(first.label) ? first.label.trim() : `${first.label}.`;
+    // 11/20/2026 (seasonal accuracy, bug 12): the board's short `label` drops
+    // the authored '?', so the hero now reads the row's `title`, which keeps it —
+    // "Settle: How will you honor the history?" rather than "…history."
+    const shown = first.title || first.label;
+    const ender = /[?!]\s*$/.test(shown) ? shown.trim() : `${shown}.`;
     expect(copy.title).toBe(`Settle: ${ender}`);
     expect(copy.title).not.toMatch(/[?!]\./);
     expect(copy.route).toEqual({ tab: 'Planning', focusField: 'host-decisions' });

@@ -198,7 +198,7 @@ import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
 import { expectedFromPlanned, likelyAttendancePhrase } from '@app/lib/attendanceModel';
-import { estimateTotalRange, notIncludedFor } from '@app/lib/budgetEstimator';
+import { estimateTotalRange, notIncludedFor, notIncludedSummary } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
 import { venueLeadsStay } from '@app/lib/venueLeadsStay'; // owner ruling 11/20/2026: the venue leads the stay
 import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
@@ -9608,11 +9608,12 @@ export default function HostShellV2() {
               try { return notIncludedFor(event.type, { isDestination: !!event.isDestination }); } catch (_e) { return []; }
             })();
             if (!excl.length) return null;
-            const lead = est && est.destinationAdjusted ? 'travel and lodging' : 'gifts and the cake';
+            // Named from THIS list (lib notIncludedSummary, 11/20/2026) — it
+            // said "gifts and the cake" on a Board Meeting and a Thanksgiving.
             return (
               <details className="excl-fold" style={{ marginTop: 8 }}>
                 <summary className="grounding" style={{ cursor: 'pointer' }}>
-                  {`${excl.length} things this number leaves out — ${lead} among them`}
+                  {notIncludedSummary(excl)}
                 </summary>
                 <p className="grounding" style={{ margin: '6px 0 0' }}>{excl.join(' · ')}</p>
               </details>
@@ -10908,7 +10909,9 @@ export default function HostShellV2() {
                       <div className="chips heard" style={{ marginTop: 14 }}>
                         <button className="chip" aria-pressed={!!effType}
                           onClick={() => { setCreateEdit(createEdit === 'type' ? null : 'type'); setTypeOpen(true); setTypeQuery(''); }}>
-                          {effType ? effType.replace(' Party', '') : 'Which occasion?'}
+                          {/* The type's own name (11/20/2026): dropping " Party" read
+                              "Holiday", "Day" and "Card" for three different events. */}
+                          {effType || 'Which occasion?'}
                         </button>
                         <button className="chip" onClick={() => setCreateEdit(createEdit === 'count' ? null : 'count')}>
                           {effGuests ? '~' + effGuests + (fGuests == null && parsed.guests == null ? ' · typical' : '') : 'How many?'}
@@ -16069,7 +16072,7 @@ export default function HostShellV2() {
                           onClick={() => { setDecOpenCard(r.id); setDecExplain(null); }}
                           aria-expanded={false}>
                           <span className="f-main">
-                            <span className="f-name">{r.label}
+                            <span className="f-name">{r.title || r.label}
                               {lateChip}
                               {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                             </span>
@@ -16082,7 +16085,7 @@ export default function HostShellV2() {
                       <div key={r.id || i} data-flip={String(r.id || i)} className={'frow frow-decision' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), cursor: 'default', ...heartStyle }}
                         ref={scrollIntoViewOnOpen(focused)}>
                         <span className="f-main">
-                          <span className="f-name">{r.label}
+                          <span className="f-name">{r.title || r.label}
                             {lateChip}
                             {/* Wave-2b short-runway escalation: a subtle time-sensitive cue in
                                 the existing tag vocabulary (warn), only when not already overdue. */}
@@ -16150,7 +16153,7 @@ export default function HostShellV2() {
                         <div className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: rowEnter(i), width: '100%' }}
                           ref={scrollIntoViewOnOpen(focused)}>
                           <span className="f-main">
-                            <span className="f-name">{r.label}
+                            <span className="f-name">{r.title || r.label}
                               {lateChip}
                               {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                             </span>
@@ -16173,7 +16176,7 @@ export default function HostShellV2() {
                         ref={scrollIntoViewOnOpen(focused)}
                         onClick={() => { if (r.route && routeSheet(r.route)) return; toast(r.because || r.label); }}>
                         <span className="f-main">
-                          <span className="f-name">{r.label}
+                          <span className="f-name">{r.title || r.label}
                             {lateChip}
                             {/* Wave-2b short-runway escalation: a subtle time-sensitive cue in
                                 the existing tag vocabulary (warn), only when not already overdue. */}

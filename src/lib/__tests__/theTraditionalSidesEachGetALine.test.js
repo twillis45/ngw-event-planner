@@ -135,8 +135,13 @@ describe('Thanksgiving Hosting: the hosting model still re-prices every side', (
     expect(d.affects).toEqual(expect.arrayContaining(IDS));
   });
   test('a full potluck halves the host\'s cost on a side', () => {
-    const host = row(ev('Thanksgiving Hosting', { hosting_model: 'Host cooks the turkey and core dishes, guests bring sides and desserts' }), 'p_green_beans');
+    // 11/20/2026 (seasonal accuracy, bug 7): the split model's sides are now the
+    // guests' to bring, $0 to the host, so the priced comparison is against the
+    // host cooking the whole meal (×1.3) — and the split's side is asserted at $0.
+    const split = row(ev('Thanksgiving Hosting', { hosting_model: 'Host cooks the turkey and core dishes, guests bring sides and desserts' }), 'p_green_beans');
+    const host = row(ev('Thanksgiving Hosting', { hosting_model: 'Host cooks the whole meal' }), 'p_green_beans');
     const pot = row(ev('Thanksgiving Hosting', { hosting_model: 'Full potluck — Friendsgiving style, host assigns dishes' }), 'p_green_beans');
+    expect(split.high).toBe(0);
     expect(pot.high).toBeLessThan(host.high);
   });
 });

@@ -20,7 +20,7 @@
 // Thin composition over existing single sources (guestCountResolved, weather
 // readers, dayBefore-style vendor gaps, playbook plans) — not a new engine.
 
-import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, playbookDecisionBoard, openFoodChoices } from './playbooks';
+import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, playbookDecisionBoard, openFoodChoices, hostBuysLine } from './playbooks';
 import { rainPlanStatus } from './weather';
 import { placeIsOutdoors, OUTDOOR_TYPE } from './placeIntelligence';
 import { spanNights } from './dates';
@@ -269,7 +269,7 @@ function preProgress(ev, phase, daysOut, now = new Date()) {
   // month two is not a readiness gap.
   if (shopWeek) {
     const got = (ev.foodGot && typeof ev.foodGot === 'object') ? ev.foodGot : {};
-    const unboughtItems = plan.list.filter(i => i && !i.skipped && !got[i.id]);
+    const unboughtItems = plan.list.filter(i => hostBuysLine(i) && !i.skipped && !got[i.id]);
     const unbought = unboughtItems.length;
     // THE SHOP IS A CLOSING WINDOW (issue #100, D-11). This row reached the
     // ranker with no clock and no consequence, so two days out "Set your

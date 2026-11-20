@@ -203,7 +203,7 @@ function culturalOverlay(pb, engines) {
 function weatherContingency(pb, engines) {
   const risks = pb.risks || [];
   const weatherRisk = risks.some((r) => (r.risk || r.trigger || r.description || r.label || '').toLowerCase().match(/weather|rain|wind|heat|cold|storm|outdoor/));
-  const hasOutdoor = (pb.type || '').toLowerCase().match(/cookout|barbecue|bbq|crab feast|crawfish|boil|fish fry|outdoor|backyard|pool|day party/);
+  const hasOutdoor = (pb.type || '').toLowerCase().match(/\b(?:cookout|barbecue|bbq|crab feast|crawfish|boil|fish fry|outdoor|backyard|pool|day party)\b/);
   if (!hasOutdoor) return { id: 'Weather contingency', status: 'n/a', reason: 'Not an outdoor event type', evidence: null, missingEvidence: null, recommendedKCRs: [], affectedEngines: engines, reviewInterval: 365 };
   const ok = weatherRisk;
   return {

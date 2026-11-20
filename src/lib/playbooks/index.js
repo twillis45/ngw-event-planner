@@ -390,9 +390,21 @@ function guestCountOf(event, playbook) {
 }
 
 // Buy quantity resolved from guest count. Supports per-guest, per-N, and flat.
+// WHOLE THINGS ARE BOUGHT WHOLE (11/20/2026): "19.5 rolls", "25.2 flutes",
+// "46.4 cans". A weight or a volume can be fractional — 19.5 lb of turkey is
+// a real bird — but a roll, a flute or a can is counted, so a per-guest count
+// rounds UP to the next whole one (rounding down would run short). The units
+// that MEASURE are listed; everything else is a count.
+const MEASURE_UNIT_RE = /^(lbs?|pounds?|oz|ounces?|kgs?|g|grams?|cups?|gal|gallons?|qt|quarts?|pints?|l|liters?|litres?|ml|fl oz|ft|feet|dozens?)\b/i;
+function isCountedUnit(unit) {
+  const u = String(unit || '').split('(')[0].trim();
+  return !!u && !MEASURE_UNIT_RE.test(u);
+}
 function resolveQuantity(p, guests) {
   if (typeof p.qtyPerGuest === 'number') {
-    return Math.round(p.qtyPerGuest * guests * 10) / 10; // 1.5 × 12 = 18 (integers stay clean)
+    const raw = p.qtyPerGuest * guests;
+    if (isCountedUnit(p.unit)) return Math.ceil(raw - 1e-9);
+    return Math.round(raw * 10) / 10; // 1.5 × 12 = 18 (integers stay clean)
   }
   if (typeof p.qtyFlat === 'number' && typeof p.qtyPer === 'number') {
     return Math.ceil(guests / p.qtyPer) * p.qtyFlat;
@@ -473,16 +485,28 @@ function shortItem(item) {
 
 // "lb" → "lbs"; "bottle (½ bottle/guest rule)" → "bottles"; "loaf per 4 guests" →
 // "loaves" (the per-N belongs to qtyPer, not the unit). Pluralized by qty.
+// A UNIT OF MEASURE LEADING A PHRASE IS THE WORD THAT PLURALIZES (11/20/2026):
+// "cups cooked" read "cups cookeds" and "lb dry pasta" read "lb dry pastas" —
+// the last word took the s. When the phrase opens with a measure ("cups",
+// "lb"), that word is the noun being counted and the rest describes it; any
+// other phrase ("snack serving") still pluralizes its last word.
 function shortUnit(unit, qty) {
   // strip a parenthetical rule-of-thumb AND a compound "per N guests" tail.
   let u = String(unit || '').split('(')[0].split(/\s+per\s+/i)[0].trim();
   if (!u) return '';
-  if (qty !== 1 && !/s$/i.test(u)) {
-    if (/(?:x|z|ch|sh)$/i.test(u)) u += 'es';            // batch → batches, box → boxes
-    else if (/f$/i.test(u)) u = u.replace(/f$/i, 'ves'); // loaf → loaves
-    else u += 's';
+  const plural = (w) => {
+    if (/s$/i.test(w)) return w;
+    if (/(?:x|z|ch|sh)$/i.test(w)) return w + 'es';            // batch → batches, box → boxes
+    if (/f$/i.test(w)) return w.replace(/f$/i, 'ves');          // loaf → loaves
+    return w + 's';
+  };
+  if (qty === 1) return u;
+  const words = u.split(/\s+/);
+  if (words.length > 1 && MEASURE_UNIT_RE.test(words[0])) {
+    words[0] = plural(words[0]);
+    return words.join(' ');
   }
-  return u;
+  return plural(u);
 }
 
 // ── Global buyable-unit guardrail ─────────────────────────────────────────────
@@ -3184,6 +3208,16 @@ function decisionShortLabel(label) {
   if (s.length > 52) s = s.slice(0, 50).trim() + '…';
   return s;
 }
+// The card TITLE keeps the author's question mark (11/20/2026). `label` is
+// the short noun form other sentences embed ("Waiting on …", "Settle: …"),
+// so it drops the '?'; the decisions sheet printed that short form as the
+// card's own heading, and "Are you cooking the whole meal, or is it a
+// potluck?" reached the host without its question mark. A label cut short by
+// the length cap ends in its ellipsis, not a mark.
+function decisionTitle(label) {
+  const short = decisionShortLabel(label);
+  return (authoredQuestion(label) && !/…$/.test(short)) ? `${short}?` : short;
+}
 function joinNouns(arr) {
   const a = arr.filter(Boolean);
   if (a.length === 0) return '';
@@ -3836,7 +3870,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
       // `answerText`, not `String` — a MULTI answer is stored as a list and
       // `String(['Vegetarian','Nut allergy'])` is "Vegetarian,Nut allergy" with
       // no space, which is what the board would have printed (2026-09-18).
-      locked.push({ id: d.id, label: decisionShortLabel(d.label), ask: d.ask || authoredQuestion(d.label), status: 'locked', because: answerText(val) || String(val), dueDate, daysOut, ...priority, ...derived, route });
+      locked.push({ id: d.id, label: decisionShortLabel(d.label), title: decisionTitle(d.label), ask: d.ask || authoredQuestion(d.label), status: 'locked', because: answerText(val) || String(val), dueDate, daysOut, ...priority, ...derived, route });
       continue;
     }
 
@@ -3940,7 +3974,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
     // sentence. authoredQuestion stays as the fallback, so every existing
     // question-authored label keeps working untouched and nothing is invented
     // where neither exists.
-    open.push({ id: d.id, label: decisionShortLabel(d.label), ask: d.ask || authoredQuestion(d.label), status, because, assurance, dueDate, daysOut, ...priority, ...derived, route });
+    open.push({ id: d.id, label: decisionShortLabel(d.label), title: decisionTitle(d.label), ask: d.ask || authoredQuestion(d.label), status, because, assurance, dueDate, daysOut, ...priority, ...derived, route });
   }
 
   // Wave-2a priority ordering (DECISION_SCHEMA_SPEC §4.A/§6). Every open row is
@@ -4474,8 +4508,15 @@ export function playbookBudgetCategories(eventType, guestCount) {
 const FOOD_GROUP = { food: 'Food', beverage: 'Drinks' };
 // Desserts get their own spread group (Figma 1583-3) instead of being lumped into FOOD —
 // classified by item name so authors don't need a new category. Still food-cost (isFood).
+// A SAVORY PUDDING IS NOT A DESSERT (11/20/2026): "Corn (frozen or canned
+// kernels, or corn pudding)" filed corn under Dessert on Thanksgiving and
+// Friendsgiving — Friendsgiving's Dessert group held corn and nothing else.
+// The whole item string is still read (that is where "Sweets (pound cake,
+// peach cobbler…)" says what it is), but the savory puddings are taken out
+// of it first, so `pudding` keeps meaning banana pudding.
 const DESSERT_RE = /\b(cake|cupcakes?|cobbler|pies?|brownies?|pudding|trifle|ice cream|gelato|cheesecake|desserts?|tarts?|do(?:ugh)?nuts?|banana pudding|sweet potato pie)\b/i;
-const foodGroupFor = (p) => (p && p.category === 'food' && DESSERT_RE.test(p.item || '')) ? 'Dessert' : FOOD_GROUP[p.category];
+const SAVORY_PUDDING_RE = /\b(?:corn|yorkshire|black|blood|savou?ry)\s+puddings?\b/gi;
+const foodGroupFor = (p) => (p && p.category === 'food' && DESSERT_RE.test(String(p.item || '').replace(SAVORY_PUDDING_RE, ''))) ? 'Dessert' : FOOD_GROUP[p.category];
 // opts.priceFactor (default 1) scales the synthesized national unit-cost ranges to
 // the event's local area when a real, current regional factor is supplied by the
 // backend (BLS Average Price). opts.priceContext carries { region, month, source }
@@ -4572,6 +4613,16 @@ export function normalizeAlternative(alt) {
   const name = s.split(/\s[—–]\s|\s*\(/)[0].trim();
   const note = s.slice(name.length).replace(/^\s*[—–(]\s*/, '').replace(/\)\s*$/, '').trim();
   return { name, note, full: s, unitCostRange: null, qtyPerGuest: null };
+}
+
+// IS THIS LINE THE HOST'S TO BUY? — one rule, read by every count of "what is
+// left to buy" (11/20/2026). The plan's own counts (itemCount, shoppingCount,
+// boughtCount) left out a dish a friend is bringing; the board's "Buy the
+// remaining items · N left", the hero's "Buy the remaining N items" and the
+// day-before "Still to get" each filtered the list themselves and did not,
+// so Friendsgiving's board said 19 left over a list of 11.
+export function hostBuysLine(i) {
+  return !!i && !i.friendBrings;
 }
 
 export function playbookFoodPlan(event, opts = {}) {
@@ -4731,14 +4782,43 @@ export function playbookFoodPlan(event, opts = {}) {
   // (no alcohol), a full/premium bar costs more, the default is the 1.0 baseline. Ice is
   // exempt (volume-driven, not bar-tier). One engine rule, every event type; an honest
   // estimate adjustment (the spread already shows a range), recomputed live from the choice.
-  const beverageFactor = (() => {
-    if (!_bevPick) return 1;
-    if (/\b(full bar|full cooler|premium|top-shelf|brown liquor|spirits?|whiskey|bourbon|signature cocktail|hired bartender)\b/.test(_bevPick)) return 1.6;
-    if (/\b(add a|punch|grown section|cocktail|wine \+|signature)\b/.test(_bevPick)) return 1.25;
-    if (/\b(dry|family-friendly|zero-proof|no alcohol|non-alcoholic|kids|light \/|pace-it)\b/.test(_bevPick)) return 0.6;
-    return 1;
+  //
+  // ── THREE RULES, EACH STATED, EACH CARRIED ON THE LINE (11/20/2026) ───────
+  // Measured on the seasonal guides: New Year's Eve priced its sparkling wine
+  // at 60% of the cited band, and a holiday party priced still water and
+  // coffee at 160% of theirs.
+  //  1. ONE MULTIPLIER, NEVER TWO. A drinks decision that authors its own
+  //     `costFactors` has said in data how each pick moves which line; the
+  //     word-tier below is the fallback for decisions that say nothing, not a
+  //     second factor on top. (NYE's toast decision authors its factors, and
+  //     the word "zero-proof" in its default made the word-tier call the whole
+  //     party dry on top of them.)
+  //  2. A DRY PARTY HAS NO ALCOHOL IN ITS PICK. "Sparkling wine plus a real
+  //     zero-proof sparkler" offers a zero-proof option; it is not dry.
+  //  3. THE TIER PRICES THE BAR. The pick says what kind of bar it is, so it
+  //     moves the lines that ARE the bar — the ones that name alcohol or bar
+  //     stock. Water, coffee, tea, ice and the alcohol-free drinks are priced
+  //     at their own cited bands whatever the bar is.
+  // The factors themselves are uncited engine estimates, so the line carries
+  // the rule that applied (costFactorApplied, unverified) and the badge reads
+  // it — the same treatment an authored synthesized factor gets.
+  const BEV_TIERS = [
+    { factor: 1.6, name: 'a full bar', re: /\b(full bar|full cooler|premium|top-shelf|brown liquor|spirits?|whiskey|bourbon|signature cocktail|hired bartender)\b/ },
+    { factor: 1.25, name: 'one added drink', re: /\b(add a|punch|grown section|cocktail|wine \+|signature)\b/ },
+    { factor: 0.6, name: 'a dry party', re: /\b(dry|family-friendly|zero-proof|no alcohol|non-alcoholic|kids|light \/|pace-it)\b/,
+      unless: /\b(wine|beer|bar|spirits?|liquor|cocktails?|champagne|prosecco|bubbly|bottle)\b/ },
+  ];
+  const beverageTier = (() => {
+    if (!_bevPick || (_bevDecision && _bevDecision.costFactors)) return null;
+    const t = BEV_TIERS.find((x) => x.re.test(_bevPick) && !(x.unless && x.unless.test(_bevPick)));
+    return t || null;
   })();
-  const bevFactorFor = (p) => (p.category === 'beverage' && !/\bice\b/i.test(p.item || '')) ? beverageFactor : 1;
+  const BAR_LINE_RE = /\b(beer|wine|spirits?|liquor|whiskey|bourbon|vodka|rum|tequila|gin|champagne|prosecco|bubbly|cocktails?|mixers?|bar|seltzer|alcohol)\b/i;
+  const bevFactorFor = (p) => (beverageTier && p.category === 'beverage' && BAR_LINE_RE.test(shortItem(p.item)))
+    ? beverageTier.factor : 1;
+  const bevTierNote = beverageTier
+    ? `The drinks pick "${pickFor(_bevDecision.id)}" reads as ${beverageTier.name}, so the bar lines are priced at ×${beverageTier.factor} of the cited band — an engine estimate, not a cited price.`
+    : '';
 
   // GENERAL choice→cost mechanism (single source of truth): any playbook decision can declare, in the
   // DATA, how a chosen option re-prices specific purchase lines — `costFactors: { '<option>': <mult> }`
@@ -5212,8 +5292,14 @@ export function playbookFoodPlan(event, opts = {}) {
         // What MOVED this price, carried out with it. `classifyClaim` reads it so
         // a sourced badge cannot go on vouching for a base rate after an
         // unverified multiplier has changed the number on screen.
-        costFactorApplied: _choiceBasis.factor !== 1
-          ? { factor: _choiceBasis.factor, unverified: _choiceBasis.unverified, note: _choiceBasis.note || '' }
+        // The drinks tier (bevFactorFor) moves the price too, so it rides here
+        // with the rule that applied — traceable, and marked unverified.
+        costFactorApplied: (_choiceBasis.factor !== 1 || _bev !== 1)
+          ? {
+            factor: Math.round(_choiceBasis.factor * _bev * 1000) / 1000,
+            unverified: _choiceBasis.unverified || _bev !== 1,
+            note: [_bev !== 1 ? bevTierNote : '', _choiceBasis.factor !== 1 ? (_choiceBasis.note || '') : ''].filter(Boolean).join(' '),
+          }
           : null,
         qtyGrounded: isGroundedItemQty(purchaseProvenance(playbook, p0)),
         governedFields: p._governed || [],
@@ -5368,7 +5454,9 @@ export function playbookFoodPlan(event, opts = {}) {
     const p = _purchaseById.get(it.id);
     if (!p || !p.friendsBringWhen || !choiceShown(event, p.friendsBringWhen)) continue;
     it.broughtByCommunity = true;
-    it.broughtByLabel = 'Your friends';
+    // Who brings it, in the playbook's own words: Thanksgiving's family table
+    // says "Your guests" (bringerLabel); a Friendsgiving potluck is friends.
+    it.broughtByLabel = p.bringerLabel || 'Your friends';
     it.friendBrings = true;   // not the host's to buy: off "N of M bought" too
     it.low = 0;
     it.high = 0;
@@ -5381,7 +5469,7 @@ export function playbookFoodPlan(event, opts = {}) {
     const [cgLow, cgHigh] = _cateringRate;
     list.unshift({
       id: 'fa-catering', group: 'Food', short: 'Catering (the food)',
-      item: 'Catering — the caterer provides the food', owner: '', qty: guests, unit: 'guest',
+      item: 'Catering — the caterer provides the food', owner: '', qty: guests, unit: shortUnit('guest', guests),
       essential: true, where: ['Caterer'], qtyOverridden: false, baseQty: guests,
       low: Math.round(guests * cgLow * pf), high: Math.round(guests * cgHigh * pf),
       units: guests, unitBase: '',
@@ -5530,7 +5618,7 @@ export function playbookFoodPlan(event, opts = {}) {
   const gotSum = (k) => list.filter((i) => got[i.id] && !i.skipped && isFood(i)).reduce((s, i) => s + eff(i, k), 0);
   // A dish a friend brings is not the host's to buy, so it is out of the count
   // the shop, the phase meter and the buy step read (friendsBringWhen, 11/18/2026).
-  const hostBuys = (i) => !i.friendBrings;
+  const hostBuys = hostBuysLine;
   const boughtCount = list.filter((i) => got[i.id] && !i.skipped && isFood(i) && hostBuys(i)).length;
 
   // Supplies — the 'Supplies' group of the list. Derived totals mirror the food

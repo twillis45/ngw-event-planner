@@ -27,17 +27,29 @@ const firstUndoneVendorRoute = (event) => {
  * Both names ride now so every reader lands on the exact row.
  */
 export function milestoneActionRoute(label, event, timelineId) {
-  const s = String(label || '').toLowerCase();
+  // A GUEST AS A UNIT OF MEASURE IS NOT GUEST WORK (11/20/2026). "Order the
+  // turkey — about a pound and a half per guest" opened the guest list: no
+  // rule above named a turkey, and the earliest domain word here was the
+  // "guest" in a portion rate. Rates and sizing phrases ("per guest",
+  // "~10-12 bites/guest", "size for headcount", "counted to the headcount")
+  // say how MUCH, not who; they are dropped before the domains are read.
+  // ("a guest book" and "each guest" are left alone: those are guest work.)
+  const s = String(label || '').toLowerCase()
+    .replace(/\bper\s+(?:guest|person|head)s?\b|\/(?:guest|person)s?\b/g, ' ')
+    .replace(/\b(?:size[ds]?|sized|counted|count)\s+(?:for|to|against)\s+(?:the\s+)?(?:final\s+)?head\s?count\b/g, ' ');
+  // WHOLE WORDS (11/20/2026): bare substrings sent "vegetable" to the tables
+  // list, "content"/"intent" to tents, "costume" to the budget and "workshop"
+  // to the food plan — the same collision class as "Holi-day party".
   const DOMAINS = [
-    { re: /guest|invite|rsvp|head\s?count|\bseat\b/, route: () => ({ tab: 'Guests', focusField: 'guests-entry' }) },
-    { re: /budget|deposit|payment|\bpay\b|\bcost|spend|quote|invoice/, route: () => ({ tab: 'Budget', focusField: 'hsp-budget' }) },
-    { re: /vendor|cater|venue|photograph|\bdj\b|florist|rental|baker|bartend|\bbook\b/, route: () => firstUndoneVendorRoute(event) },
-    { re: /food|menu|shop|grocer|drink|supplies|seating/, route: () => ({ tab: 'Planning', focusField: 'food-plan' }) },
+    { re: /\b(?:guests?|invit\w*|rsvps?|head\s?counts?|seat)\b/, route: () => ({ tab: 'Guests', focusField: 'guests-entry' }) },
+    { re: /\b(?:budget\w*|deposits?|payments?|pay|costs?|spend\w*|quotes?|invoices?)\b/, route: () => ({ tab: 'Budget', focusField: 'hsp-budget' }) },
+    { re: /\b(?:vendors?|cater\w*|venues?|photograph\w*|dj|florists?|rentals?|baker\w*|bartend\w*|book)\b/, route: () => firstUndoneVendorRoute(event) },
+    { re: /\b(?:food|menus?|shop\w*|grocer\w*|drinks?|supplies|seating)\b/, route: () => ({ tab: 'Planning', focusField: 'food-plan' }) },
     // Families the old V2-only keyword router had that this one lacked
     // (audit gap 2): weather → the rain plan; physical space/helpers → the
     // space sheet. Both are real resolver targets, not sheet-top guesses.
-    { re: /\bforecast|weather|rain\b/, route: () => ({ tab: 'Event Details', focusField: 'rain-plan' }) },
-    { re: /\bcanop|tent|chairs|tables?|shade\b|helper|point person|in charge/, route: () => ({ tab: 'Event Details', focusField: 'space' }) },
+    { re: /\b(?:forecast\w*|weather|rain)\b/, route: () => ({ tab: 'Event Details', focusField: 'rain-plan' }) },
+    { re: /\b(?:canop\w*|tents?|chairs|tables?|shade|helpers?|point person|in charge)\b/, route: () => ({ tab: 'Event Details', focusField: 'space' }) },
   ];
   const hits = DOMAINS.map((d) => ({ d, at: s.search(d.re) })).filter((x) => x.at >= 0).sort((a, b) => a.at - b.at);
   if (hits.length) return hits[0].d.route();
@@ -60,7 +72,14 @@ export function checklistRouteFor(task, meta = {}, event = null) {
     return { label: 'Open the nudge', route: { tab: 'Guests', focusField: 'rsvp-nudge' } };
   const wk = String((meta && meta.week) || '').toLowerCase();
   const dayOf = (meta && meta.category) === 'event-day' || /day of\b|day-of/.test(wk);
-  if (dayOf || /\bfire[s]? the pit|light the pit|set up (the )?canop|set out (foil|to-go)|\bserved?\b|bless the food|scrape the grill|pack (up|leftovers|the)|fold (the )?canopies|works batches\b/.test(t))
+  // THE ROW'S OWN CATEGORY OUTRANKS A DAY-OF WORD (11/20/2026). The engine
+  // stamps every row 'event-day' or 'planning'; the keyword list below is for
+  // rows that carry neither (host-added, legacy). It was also overriding
+  // 'planning': "Invite everyone with the date, the serve time…" and "Write the
+  // oven map: back-plan from serve time…" both opened the day-of schedule,
+  // because "serve" in "serve time" is a noun, not the act of serving.
+  const planningRow = (meta && meta.category) === 'planning';
+  if (dayOf || (!planningRow && /\bfire[s]? the pit|light the pit|set up (the )?canop|set out (foil|to-go)|\bserved?\b(?! time)|bless the food|scrape the grill|pack (up|leftovers|the)|fold (the )?canopies|works batches\b/.test(t)))
     // The resolver's day-stage vocabulary — `{ stage: 'day' }` was a shape
     // resolveRoute never understood (no tab, no focusField → null), so EVERY
     // "See the day plan" CTA dead-tapped into the toast fallback. Caught by the
@@ -70,7 +89,10 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // These land ABOVE the kitchen-prep null because none of them is ever a
   // cooking row — "prep the name tags" is guest-list work, and the /prep/ rule
   // below was swallowing it. Each destination is real resolver vocabulary.
-  if (/run[- ]of[- ]show|order of events|write the run\b/.test(t))
+  // The oven map is the day's own timetable — the run of show carries its
+  // turkey-in and side-rotation rows (11/20/2026: it was reaching the day
+  // plan only by the "serve" in "serve time", which no longer counts).
+  if (/run[- ]of[- ]show|order of events|write the run\b|oven map\b/.test(t))
     return { label: 'Build the day', route: { tab: 'Event Day Schedule' } };
   if (/every household|households\b|contact for each|sign-?in sheet|contact[- ]update|name tags?/.test(t))
     return { label: 'Open guests', route: { tab: 'Guests', focusField: 'guests-entry' } };
@@ -139,6 +161,10 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // on the place sheet, where the parking note is one of its notes.
   if (/\b(walk|tour|visit|check)\b[^.;]{0,60}:\s*[^.;]*,[^.;]*\bparking\b/.test(t))
     return { label: 'Open the place notes', route: { tab: 'Event Details', focusField: 'space' } };
+  // Restrooms are a fact about the place, like parking (11/20/2026: this row
+  // reached the place sheet only because "portable" contains "table").
+  if (/\brestrooms?\b|\bporta-?pott/.test(t))
+    return { label: 'Open the place notes', route: { tab: 'Event Details', focusField: 'space' } };
   if (/\bparking\b/.test(t) && !RESERVES_A_SPACE.test(t))
     return { label: 'Open the parking note', route: { focusField: 'parking-notes' } };
   // Crabs have their own planning surface in the resolver's vocabulary.
@@ -197,6 +223,11 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   if (/\bcaterer\b|vendor balance|remaining balance|pay (remaining|the) /.test(t))
     return { label: 'Line them up', route: firstUndoneVendorRoute(event) };
 
+  // ORDERING THE MAIN DISH IS SHOPPING (11/20/2026): "Order the turkey — about
+  // a pound and a half per guest…" opened the guest list. Ordering or
+  // reserving the bird, the ham, the cake or the pies is a line on the list.
+  if (/^(?:order|reserve|pre-?order|buy)\b[^.;:—]{0,24}\b(?:turkey|bird|ham|roast|brisket|cake|pies?)\b/.test(t))
+    return { label: 'Open the list', route: { tab: 'Planning', focusField: 'food-plan' } };
   if (/\b(marinate|season the|slow-cook|cook the|make-ahead|prep)\b/.test(t))
     return null;
   // Signage, badges and swag are a supply run like decor.
@@ -237,7 +268,10 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // share-and-invite block (guests-invites anchor), not the count stepper. Sits
   // above the generic guest-comms rule so it wins the more-specific match; the
   // chase/rsvp/headcount rows still land on the count entry below.
-  if (/send\s+(the\s+|out\s+)?invit/i.test(t))
+  // A row that LEADS with the verb "invite" is the same send ("Invite everyone
+  // with the date, the serve time…" — 11/20/2026, it opened the day plan and,
+  // once that was fixed, would have fallen to the guest COUNT below).
+  if (/send\s+(the\s+|out\s+)?invit|^invite\b/i.test(t))
     return { label: 'Open the invite', route: { focusField: 'guests-invites' } };
   if (/chase non-?responders|lock the count/i.test(t))
     return { label: 'Open guests', route: { tab: 'Guests', focusField: 'guests-entry' } };
@@ -247,9 +281,9 @@ export function checklistRouteFor(task, meta = {}, event = null) {
     return { label: 'Plan for weather', route: { tab: 'Event Details', focusField: 'rain-plan' } };
   if (/\b(spread the word|group text|flyer|invite|rsvp|headcount|who is coming|firm the (head)?count)\b/.test(t))
     return { label: 'Open guests', route: { tab: 'Guests', focusField: 'guests-entry' } };
-  if (/\b(spread|menu|dish(es)?|mac|potato salad|beans|greens|cornbread|slaw|dessert|meat|ribs|assign each|bringing what|claimed|potluck)\b/.test(t))
+  if (/\b(spread|menu|dish(es)?|appetizers?|mac|potato salad|beans|greens|cornbread|slaw|dessert|meat|ribs|assign each|bringing what|claimed|potluck)\b/.test(t))
     return { label: 'Map the spread', route: { tab: 'Planning', focusField: 'food-plan' } };
-  if (/\b(canop|chairs|tables?|seating|shade|spades table|tent)\b/.test(t))
+  if (/\b(canop\w*|chairs|tables?|seating|shade|spades table|tents?)\b/.test(t))
     return { label: 'Open the space list', route: { tab: 'Event Details', focusField: 'space' } };
   if (/\b(grill master|name the|point person|in charge|backup|helper)\b/.test(t))
     return { label: 'Assign it', route: { tab: 'Event Details', focusField: 'space' } };
