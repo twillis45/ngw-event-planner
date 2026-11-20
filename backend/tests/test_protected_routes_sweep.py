@@ -126,6 +126,8 @@ PUBLIC = {
     # bill or a provider ban ever shows up, the fix is a rate limit or a
     # require_planner gate here — not a quieter allowlist.
     "GET /api/weather/status": "config presence only",
+    "GET /api/relay/{path:path}": "PostHog relay: fixed upstream, no data of ours; the browser already sent these to PostHog directly",
+    "POST /api/relay/{path:path}": "PostHog relay: fixed upstream, 1 MB cap, cookies and auth stripped (test_analytics_relay)",
     "GET /api/weather/geocode": "public reference data; spends OUR OpenWeather quota",
     "GET /api/weather/onecall": "public reference data; spends OUR OpenWeather quota",
     "GET /api/food-prices/status": "config presence only",

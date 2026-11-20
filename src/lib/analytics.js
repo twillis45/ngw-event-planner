@@ -19,7 +19,14 @@
 import { guestCountFor } from './guestCountFor';
 
 const PH_KEY    = process.env.REACT_APP_POSTHOG_KEY || 'phc_kViRwC7yZp9aAqfvqyKw7HJCBxuGqfCnzMAb7yZzgd9p';
-const PH_HOST   = process.env.REACT_APP_POSTHOG_HOST || 'https://us.i.posthog.com';
+// Events go through our own API (/api/relay → PostHog) so tracker blockers that
+// list PostHog's address don't silently drop them. With no API configured, direct.
+export const posthogHostFor = (env) => env.REACT_APP_POSTHOG_HOST
+  || (env.REACT_APP_API_BASE_URL ? `${env.REACT_APP_API_BASE_URL.replace(/\/+$/, '')}/api/relay` : 'https://us.i.posthog.com');
+const PH_HOST   = posthogHostFor({
+  REACT_APP_POSTHOG_HOST: process.env.REACT_APP_POSTHOG_HOST,
+  REACT_APP_API_BASE_URL: process.env.REACT_APP_API_BASE_URL,
+});
 // A Capacitor shell serves the bundle from localhost (capacitor://localhost, https://localhost)
 // but is a real install, not dev (NAT-7). Same native check as publicAppUrl.js.
 const IS_NATIVE = typeof window !== 'undefined' && !!(window.Capacitor && window.Capacitor.isNativePlatform());
@@ -151,6 +158,7 @@ async function getPostHog() {
     const { default: posthog } = await import('posthog-js');
     posthog.init(PH_KEY, {
       api_host: PH_HOST,
+      ui_host: 'https://us.posthog.com', // toolbar links still open PostHog itself
       // Privacy defaults — coordinator data is sensitive
       autocapture: false,         // no automatic click/form capture
       capture_pageview: false,    // we track pages manually
