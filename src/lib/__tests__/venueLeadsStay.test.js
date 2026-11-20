@@ -92,3 +92,28 @@ describe('today\'s order stands', () => {
     expect(venueLeadsStayApplies(ev)).toBe(true);
   });
 });
+
+// The ruling moves the venue ahead of DECISIONS ("ahead of the stay, the travel
+// mix, and any other past-window decision"). Money that is due is not a
+// decision: the venue never jumps an item that is not one.
+describe('the venue passes decisions only', () => {
+  test('an overdue payment above the decisions stays first', () => {
+    const ev = santaFe(209);
+    const pay = { id: 'pay:deposit-overdue', title: 'Pay the caterer deposit', dueInDays: -2 };
+    const q = [pay, ...ranked(ev)];   // pay | stay | travel mix | venue | …
+    const after = venueLeadsStay(q, ev);
+    expect(after[0]).toBe(pay);
+    expect(isVenue(after[1])).toBe(true);
+    expect(after[2].id).toBe(STAY);
+  });
+
+  test('a payment between the decisions and the venue holds the venue below it', () => {
+    const ev = santaFe(209);
+    const pay = { id: 'pay:deposit-overdue', title: 'Pay the caterer deposit', dueInDays: -2 };
+    const before = ranked(ev);
+    const venue = before.find(isVenue);
+    const decisions = before.filter((a) => !isVenue(a));
+    const q = [...decisions, pay, venue];
+    expect(ids(venueLeadsStay(q, ev))).toEqual(ids(q));
+  });
+});

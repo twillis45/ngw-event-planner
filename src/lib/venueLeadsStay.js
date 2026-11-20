@@ -20,7 +20,8 @@
 // traveling in?" (the same T-210d window) leading the board at 209 days out.
 // The owner ruled the venue goes to the TOP of the queue — ahead of the stay,
 // the travel mix, and any other past-window decision. So:
-//   * the venue moves to position one; everything else keeps its order, so the
+//   * the venue moves ahead of the decisions above it (never past an item that
+//     is not a decision, such as a payment due); everything else keeps its order, so the
 //     stay and the travel mix still show beneath it with their window notes;
 //   * a parked venue ("I'll sort this") or a set venue: no change;
 //   * not a destination or trip: no change;
@@ -47,9 +48,16 @@ export function venueLeadsStayApplies(event) {
   try { return venueFor(event).isSet !== true; } catch { return false; }
 }
 
+const isDecision = (a) => !!a && /^(decision:|bundle:decisions$)/.test(String(a.id || ''));
+
 export function venueLeadsStay(queue, event) {
   if (!Array.isArray(queue) || !venueLeadsStayApplies(event)) return queue;
   const iv = queue.findIndex((a) => a && a.blockerType === VENUE_BLOCKER);
   if (iv <= 0) return queue;
-  return [queue[iv], ...queue.slice(0, iv), ...queue.slice(iv + 1)];
+  // It passes the decisions directly above it and stops at anything else:
+  // money that is due, for one, is not a decision and keeps its place.
+  let to = iv;
+  while (to > 0 && isDecision(queue[to - 1])) to -= 1;
+  if (to === iv) return queue;
+  return [...queue.slice(0, to), queue[iv], ...queue.slice(to, iv), ...queue.slice(iv + 1)];
 }
