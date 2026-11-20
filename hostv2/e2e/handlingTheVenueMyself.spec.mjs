@@ -25,7 +25,7 @@ const labels = (page) => page.evaluate(() => [...document.querySelectorAll('butt
   .map((x) => (x.innerText || '').trim().replace(/\s+/g, ' ')).filter(Boolean));
 const bodyText = (page) => page.evaluate(() => (document.body.innerText || '').replace(/\s+/g, ' '));
 
-const openBoard = async (page) => {
+const openBoard = async (page, days = 240) => {
   await page.setViewportSize({ width: 390, height: 844 });
   // A FIXED NUMBER OF DAYS OUT, not a fixed date (CI, 11/20/2026): at 209 days
   // the "How are guests staying?" call passes its window and rightly leads the
@@ -43,7 +43,7 @@ const openBoard = async (page) => {
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');
     localStorage.setItem('ngw-v2-welcomed', '1');
-  }, [dateIn(240), dateIn(244)]);
+  }, [dateIn(days), dateIn(days + 4)]);
   await page.goto('?elegant=1');
   await settled(page);
 };
@@ -120,4 +120,37 @@ test('naming the venue after parking it ends the parking', async ({ page }) => {
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]')[0] || {});
   expect(stored.venue).toBe('House of Blues Anaheim');
   expect((stored.decisionBlockerStatus || {})['venue-selection']).toBeUndefined();
+});
+
+
+// ── THE VENUE LEADS THE STAY (owner rulings 11/20/2026: "Approve", then
+// "Venue leads both") ─────────────────────────────────────────────────────────
+// At 209 days out "How are guests staying?" and "How many guests are traveling
+// in?" have both passed their T-210d window, and they used to lead the board
+// over the venue. While the venue is open it goes first; both decisions still
+// show beneath it with their window notes. Engine proof:
+// src/lib/__tests__/venueLeadsStay.test.js.
+test('past the stay window, an open venue still leads — the stay comes after', async ({ page }) => {
+  await openBoard(page, 209);
+  const h2 = (await page.locator('h2:visible').first().innerText()).trim();
+  expect(h2).toMatch(/Pick the place in Santa Fe/i);
+  const t = await bodyText(page);
+  expect(t).toMatch(/How are guests staying[^]*?past its window/i);
+  expect(t).toMatch(/How many guests are traveling in[^]*?past its window/i);
+  // The stay is the next row in "Then, in order".
+  const then = t.slice(t.search(/Then, in order/i));
+  expect(then.search(/How are guests staying/i)).toBeGreaterThan(-1);
+  expect(then.search(/How are guests staying/i)).toBeLessThan(then.search(/How many guests are traveling in/i));
+});
+
+test('once a venue is typed, the stay leads as before', async ({ page }) => {
+  await openBoard(page, 209);
+  const box = page.locator('article input[aria-label="Venue"]:visible').first();
+  await box.click(); await page.keyboard.type('La Fonda on the Plaza', { delay: 5 });
+  await box.locator('xpath=..').getByRole('button', { name: 'Save' }).click();
+  await page.waitForTimeout(1200);
+  await settled(page);
+  const h2 = (await page.locator('h2:visible').first().innerText()).trim();
+  expect(h2).toMatch(/How are guests staying/i);
+  expect(await bodyText(page)).not.toMatch(/Pick the place in Santa Fe/i);
 });

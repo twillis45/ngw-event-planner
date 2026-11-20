@@ -197,6 +197,7 @@ import { unfilledBlanks } from '@app/lib/guestFacing';
 import { expectedFromPlanned, likelyAttendancePhrase } from '@app/lib/attendanceModel';
 import { estimateTotalRange, notIncludedFor } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
+import { venueLeadsStay } from '@app/lib/venueLeadsStay'; // owner ruling 11/20/2026: the venue leads the stay
 import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
 import { BRAND } from '@app/lib/brand';
@@ -4948,11 +4949,18 @@ export default function HostShellV2() {
   // editor. The ruling names one action for this frame, setting the date, so the
   // plan's own date step leads the hero here. Nothing is invented and nothing is
   // dropped: the rest keep the plan's order beneath it.
+  // THE VENUE LEADS THE STAY (owner rulings 11/20/2026, "Approve" then "Venue
+  // leads both"): on a destination or trip whose venue is unset and not parked,
+  // the venue ask goes to the top, ahead of "How are guests staying?" and every
+  // past-window decision. One rule, in lib/venueLeadsStay, applied here so the
+  // hero and "Then, in order" read the same order. The date floor below still
+  // outranks it on an undated event.
   const queue = (() => {
-    if (!elegantMode || days !== null) return queueRanked;
-    const ix = queueRanked.findIndex((a) => a && (a.domain === 'date' || a.category === 'date')
+    const ordered = elegantMode ? venueLeadsStay(queueRanked, event) : queueRanked;
+    if (!elegantMode || days !== null) return ordered;
+    const ix = ordered.findIndex((a) => a && (a.domain === 'date' || a.category === 'date')
       && !/start time|the hour/i.test(String(a.title || '')));
-    return ix > 0 ? [queueRanked[ix], ...queueRanked.slice(0, ix), ...queueRanked.slice(ix + 1)] : queueRanked;
+    return ix > 0 ? [ordered[ix], ...ordered.slice(0, ix), ...ordered.slice(ix + 1)] : ordered;
   })();
 
   // ── WHERE ARE WE? (Phase 5G-C1 Parts 8-9) ─────────────────────────────────
