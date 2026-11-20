@@ -101,6 +101,24 @@ export function isVendorConfirmed(vendor) {
   return !!vendor && CONFIRMED_STATUSES.has(vendor.status);
 }
 
+// ── A DEPOSIT OWED, AND A VENDOR WITH NOTHING LEFT (hero-clears sweep, 11/20/2026) ──
+// The plan's Vendors part already held a vendor open while a recorded deposit
+// was unpaid (phaseProgress, inline), but the vendor sheet's hero counted only
+// the status ladder, so a Confirmed vendor with $200 still owed read "Everyone's
+// locked in — confirms, times, and paperwork all set" over a part the board
+// listed open. One rule for both now. A balance paid in full includes the
+// deposit, so it settles the deposit too — the only change to what "done"
+// meant for the part, and the honest one: nothing is owed.
+export function vendorDepositOwed(vendor) {
+  if (!vendor) return false;
+  const dep = Number(vendor.depositAmt);
+  return Number.isFinite(dep) && dep > 0 && vendor.depositPaid !== true && vendor.balancePaid !== true;
+}
+/** Locked in AND no deposit owed: the Vendors part's "handled" bar, per vendor. */
+export function isVendorSettled(vendor) {
+  return isVendorConfirmed(vendor) && !vendorDepositOwed(vendor);
+}
+
 // The rungs BEFORE any commitment — the host ladder's shopping phase. Named here
 // so intake has one place to ask "is this a status this app tracks at all",
 // rather than a second hand-kept list beside the first.

@@ -26,7 +26,7 @@ import { placeIsOutdoors, OUTDOOR_TYPE } from './placeIntelligence';
 import { spanNights } from './dates';
 import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
-import { isVendorConfirmed } from './workstreams';
+import { isVendorSettled } from './workstreams';
 import { vendorIsCommitted, vendorBalance } from './vendorMoney';
 import { hostSpending } from './hostSpending';
 import { daysUntil, spanEnd, getToday, localISO } from './dates';
@@ -335,8 +335,9 @@ function preProgress(ev, phase, daysOut, now = new Date()) {
     // The area dot is "handled" ONLY when the vendor is fully locked in (same
     // predicate the "Confirm vendor" action uses) — "Deposit Paid" is one rung
     // short, so it reads as open (grey), never green-with-a-pending-confirm.
-    const gap = vendors.find(v => !isVendorConfirmed(v)
-      || (num(v.depositAmt) > 0 && v.depositPaid !== true));
+    // The deposit half now lives in lib/workstreams (isVendorSettled), so the
+    // vendor sheet's hero reads the same bar (hero-clears sweep, 11/20/2026).
+    const gap = vendors.find(v => !isVendorSettled(v));
     // Route even when handled — the chip is also review-navigation to the area,
     // not only a fix-the-gap link (host: every area chip should open its area).
     add('vendors', true, !gap, gap ? `Follow up with ${gap.name}` : null, gap ? { tab: 'Vendors', vendorId: gap.id } : { tab: 'Vendors' }, 7);

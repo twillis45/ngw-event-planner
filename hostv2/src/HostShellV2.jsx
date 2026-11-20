@@ -234,7 +234,7 @@ import {
   getHostVendorChallenges, getHostVendorReadiness, getVendorNextAction,
   getHostHighestRiskVendor,
 } from '@app/lib/vendorIntelligence';
-import { isVendorBooked, isVendorConfirmed } from '@app/lib/workstreams';
+import { isVendorBooked, isVendorConfirmed, vendorDepositOwed } from '@app/lib/workstreams';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { isPlausibleCityText, parseVenueLocation, proposeTownFromHeard } from '@app/lib/cityText';
 import { foodShopItems } from '@app/lib/foodShopItems';
@@ -4480,6 +4480,15 @@ export default function HostShellV2() {
       ? name + ' — ' + n.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) + ' agreed.'
       : name + ' — agreed price cleared.');
     if (result && result.ok) setVendorCostDraft(null);
+  };
+  const markDepositPaid = (v) => {
+    const name = v.name || v.category || 'This vendor';
+    const result = writeVendor(v.id, { depositPaid: true });
+    if (!result || !result.ok) return;
+    toast(name + '’s deposit marked paid.', {
+      label: 'Undo',
+      fn: () => writeVendor(v.id, { depositPaid: false }, name + ' — deposit back to not paid.'),
+    });
   };
   const toggleVendorPaid = (v) => {
     const prev = !!v.balancePaid;
@@ -24204,7 +24213,7 @@ export default function HostShellV2() {
                       CONFIRMED === total (below), so the colour was already honest —
                       it was the label that overreached. */}
                   <Eyebrow>Booked so far</Eyebrow>
-                  <BigValue style={{ fontVariantNumeric: 'tabular-nums', ...((rc.total > 0 && (rc.confirmed || 0) >= rc.total) ? { color: 'var(--ok)' } : null) }}>
+                  <BigValue style={{ fontVariantNumeric: 'tabular-nums', ...((rc.total > 0 && (rc.confirmed || 0) >= rc.total && !(event.vendors || []).some(vendorDepositOwed)) ? { color: 'var(--ok)' } : null) }}>
                     {rc.ready} of {rc.total}
                   </BigValue>
                   <GuideLine>
@@ -24216,9 +24225,15 @@ export default function HostShellV2() {
                       if (rc.ready < rc.total) return `${rc.total - rc.ready} not booked yet — their cards below say which.`;
                       const confirmed = (event.vendors || []).filter(isVendorConfirmed).length;
                       const toConfirm = Math.max(0, rc.ready - confirmed);
+                      // A DEPOSIT OWED IS NOT "ALL SET" (hero-clears sweep, 11/20/2026).
+                      // The Vendors part stays open while one is owed (isVendorSettled);
+                      // this line used to say "paperwork all set" over it.
+                      const owed = (event.vendors || []).filter(v => isVendorConfirmed(v) && vendorDepositOwed(v)).length;
                       return toConfirm > 0
                         ? `All booked — ${toConfirm} still to confirm before the day.`
-                        : 'Everyone’s locked in — confirms, times, and paperwork all set.';
+                        : owed > 0
+                          ? `All locked in — ${owed === 1 ? 'one deposit' : owed + ' deposits'} still to pay.`
+                          : 'Everyone’s locked in — confirms, times, and paperwork all set.';
                     })()}
                   </GuideLine>
                 </div>
@@ -24966,6 +24981,14 @@ export default function HostShellV2() {
                                   </p>
                                 );
                               })()}
+                              {/* THE DEPOSIT CAN BE SAID PAID (hero-clears sweep, 11/20/2026). A
+                                  recorded deposit held the Vendors part open and nothing in
+                                  this app wrote `depositPaid`, so the part could never close. */}
+                              {vendorDepositOwed(v) ? (
+                                <button data-vaction="money" className="chip" aria-pressed={false} onClick={() => markDepositPaid(v)}>
+                                  Mark deposit paid
+                                </button>
+                              ) : null}
                               <button data-vaction="money" className="chip" aria-pressed={!!v.balancePaid} onClick={() => toggleVendorPaid(v)}>
                                 {v.balancePaid ? 'Paid in full' : 'Mark paid in full'}
                               </button>
