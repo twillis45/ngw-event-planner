@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 20, 2026 (evening) — the policies are public
+
+The app had been taking money for thirteen days with no privacy policy, terms or refund policy. The owner filled the last facts — a Maryland company, its registered agent's address, the usual defaults — and chose to publish now and revise after the attorney reads them, rather than keep charging with nothing published. The attorney's sixteen questions moved to a private list; the pages carry only what the product does today, checked against the code.
+
 ## November 20, 2026 — one clock, a trip of its own, and the first reminder
 
 **The morning that was an afternoon.** A helper's email asked them to arrive at 4:00 AM for a 4 PM Friendsgiving. A plan made from a sentence keeps its time as "4:00 PM", and five readers, copied from one another, took only the digits. They now share one reader, and each was shown failing first.
