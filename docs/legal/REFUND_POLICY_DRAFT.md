@@ -1,11 +1,7 @@
 # Refund Policy — the One-Event Pass
 
-> **DRAFT 2026-11-02 — not yet reviewed, not yet in effect, not yet linked from
-> the product.** The refund rule in section 3 was chosen by the owner on
-> 11/12/2026. `[OWNER: …]` items are the owner's to fill.
-
-**Effective:** `[OWNER: effective date]`
-**Seller:** No Guesswork Systems LLC, `[OWNER: mailing address]`
+**Effective:** November 20, 2026
+**Seller:** No Guesswork Systems LLC, a Maryland limited liability company, 306 W Redwood St, Ste 201, Baltimore, MD 21201
 **Questions and requests:** events@noguessworksystems.com ⟶ `src/lib/brand.js:145` (owner decision 11/11/2026) ⟵
 
 ---
@@ -80,21 +76,6 @@ These also apply:
 - **A refund turns the pass off for anything new. Vendor briefs you already
   sent keep working.** ⟶ the public brief page never checks the pass
   (`vendor_brief.py`), by design: a vendor mid-conversation is never cut off ⟵
-
-> **COUNSEL — the chosen rule against the code** (owner ruling 11/12/2026):
-> - **Partial refunds keep the pass,** and are not offered in this text. The
->   board recommended keeping them as a discretionary goodwill remedy for a
->   host who used the pass. Confirm leaving them out of the public policy.
-> - **No repurchase after a full refund** on the same event
->   (`stripe_payments.py:320-328`); support handles "refund, then come back"
->   by hand. Confirm the wording above.
-> - **A dispute switches the pass off before it is decided**, and a won
->   dispute does not restore it. Is that fair and adequately disclosed in §6?
-> - **"One refund per pass"** is enforced by Stripe (a fully refunded charge
->   cannot be refunded again), not by our code — confirm the sentence needs no
->   more.
-> - **Briefs sent through the old self-contained link** (before 11/11) are not
->   recorded, so the refund check cannot see them; support refunds when unsure.
 
 ## 4. When we refund regardless of the window
 

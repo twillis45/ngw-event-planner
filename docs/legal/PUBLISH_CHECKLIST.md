@@ -2,6 +2,8 @@
 
 Do these steps in order. **Do not start until you have the attorney's written approval of the final text** (`ATTORNEY_COVER_MEMO.md` §6). The publishing script checks only that no markers are left. It cannot check whether a lawyer approved the text, so removing the markers is your sign-off. Nothing here is legal advice.
 
+> **11/20/2026, owner ruling: publish now, revise after the attorney.** The first publication was made without the attorney's approval, with every `COUNSEL` note moved to `COUNSEL_QUESTIONS_OPEN.md`. Counsel's answers follow "Later changes to a published policy" below.
+
 ## The marker convention the script enforces
 
 | In the drafts | Meaning | On publish |

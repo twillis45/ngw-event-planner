@@ -21,7 +21,26 @@ published URL (`src/lib/brand.js:146-151`).
 |---|---|---|---|
 | Support email | events@noguessworksystems.com | Owner decision 11/11/2026, `src/lib/brand.js:145` | `PRIVACY_POLICY_DRAFT.md:10, 210, 304`; `REFUND_POLICY_DRAFT.md:11, 126`; written directly into `TERMS_OF_SERVICE_DRAFT.md:15, 66, 325, 389, 411`; `README.md:21-24` marked decided |
 
-## Open — in the order to do them
+## Filled 11/20/2026 — no `[OWNER: …]` slot remains
+
+Owner rulings of 11/20/2026, all applied to the three drafts, which were then
+published with the effective date **November 20, 2026** (publish now, revise
+after the attorney; the moved questions are in `COUNSEL_QUESTIONS_OPEN.md`):
+
+| # | Fact | Filled with |
+|---|---|---|
+| 2 | Governing state | Maryland (No Guesswork Systems LLC is a Maryland LLC) |
+| 3 | Venue | "the state and federal courts located in the State of Maryland" — no county named |
+| 4 | Mailing address | 306 W Redwood St, Ste 201, Baltimore, MD 21201 (the owner's Northwest Registered Agent address) |
+| 5 | Sales tax | Stated as what checkout does today: no sales tax is added (`stripe_payments.py` adds no tax line) |
+| 6 | Minimum age | 18 |
+| 7 | Liability floor | The greater of what the host paid in the 12 months before the claim, or $100 |
+| 8 | If the service ends | At least 30 days' notice before shutting down or suspending for everyone, and a refund of the pass for any event not yet held |
+| 9 | Effective date | November 20, 2026, on all three |
+
+The table below is the record of how each slot stood before 11/20.
+
+## Formerly open — in the order they were to be done
 
 | # | Fact (placeholder) | Appears at | What the owner supplies | Known from the repo |
 |---|---|---|---|---|
@@ -35,14 +54,14 @@ published URL (`src/lib/brand.js:146-151`).
 | 8 | **If the service ends** (`OWNER: notice period and what happens to a paid pass …`) | `TERMS_OF_SERVICE_DRAFT.md:355` | Notice you will give before shutting down or suspending, and what pass holders get (e.g. refund for events not yet held) | No suspension or shutdown mechanism exists in code. |
 | 9 | **Effective date** (`OWNER: effective date`) | `PRIVACY_POLICY_DRAFT.md:8`; `REFUND_POLICY_DRAFT.md:9`; `TERMS_OF_SERVICE_DRAFT.md:13` | The day each policy is published at its URL — not the day it was drafted (`README.md:28`) | **Last**, after counsel review and after #1–8. Setting it is the same act as setting `BRAND.policies.{privacy,terms,refunds}` (`src/lib/brand.js:151`). |
 
-## Stale claims found while filling — fix before counsel review
+## Stale claims found while filling — fixed 11/20/2026
 
 Not placeholders, but false or incomplete against today's code. Counsel should
 not review a draft that contradicts the product.
 
 | Where | Says | Code says |
 |---|---|---|
-| `PRIVACY_POLICY_DRAFT.md:24` | Sign-in "by a one-time link" | A link or a code: `signInWithOtp` (`HostShellV2.jsx:2122`) and `verifyOtp` (`:2147`). Minor. |
+| `PRIVACY_POLICY_DRAFT.md:24` | Sign-in "by a one-time link" | A link or a code: `signInWithOtp` (`HostShellV2.jsx:2122`) and `verifyOtp` (`:2147`). Minor. **Fixed 11/20/2026:** "a link or a code we email to that address" (privacy §1); terms §3 says "a sign-in link and code … use either one." |
 
 Fixed 11/11/2026 in a follow-up commit (removed from this list): self-serve
 account deletion now described in privacy §6 and the README; "can buy the pass

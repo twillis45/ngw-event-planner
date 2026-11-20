@@ -3,6 +3,8 @@
 **To:** `[OWNER: attorney name]` · **From:** Todd Willis, No Guesswork Systems LLC · **Date:** `[OWNER: date sent]`
 **Enclosed:** `PRIVACY_POLICY_DRAFT.md`, `TERMS_OF_SERVICE_DRAFT.md`, `REFUND_POLICY_DRAFT.md`, `CONSENT_AND_TRACKING_COPY_DRAFT.md`
 
+> **Update 11/20/2026:** the owner chose to publish before your review, because production has charged customers since 11/7 with no policies. The three policies are live with effective date November 20, 2026. The questions below are unchanged; their source text, by section, is now `COUNSEL_QUESTIONS_OPEN.md`, which also notes what the owner filled (Maryland law and courts, minimum age 18, $100 liability floor, 30 days' notice and refunds if the service ends, no sales tax added at checkout). Your answers become edits to the published text with a new effective date.
+
 The drafts were written from what the software actually does. Text between `⟶` and `⟵` cites the code that makes a statement true; it is for your review and is removed before publication. Nothing is published until you approve the final text. This memo states facts and questions; it is not legal advice and asks you for yours.
 
 ## 1. The product (facts)
