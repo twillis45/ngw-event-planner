@@ -45,6 +45,8 @@ class _Conn:
     def __init__(self, row, email="casey.host@example.test", vendor="Oak Smoke BBQ"):
         self.row, self.email, self.vendor = row, email, vendor
     async def fetchrow(self, q, *a):
+        if "auth.users" in q:   # the studio's owner: id and address
+            return {"id": "00000000-0000-0000-0000-0000000000a1", "email": self.email} if self.email else None
         return self.row
     async def fetchval(self, q, *a):
         return self.vendor if "jsonb_array_elements" in q else self.email

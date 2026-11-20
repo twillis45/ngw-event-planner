@@ -103,6 +103,7 @@ expected_tables (source, tbl, policies, alt_policies) as (values
   ('supabase/migrations', 'rate_counters',              array[]::text[], null),
   ('supabase/migrations', 'email_stops',                array[]::text[], null),
   ('supabase/migrations', 'host_reminders_sent',        array[]::text[], null),
+  ('supabase/migrations', 'push_subscriptions',         array['push_subscriptions_delete_own', 'push_subscriptions_insert_own', 'push_subscriptions_select_own'], null),
   -- backend/migrations (frozen legacy, hand-applied)
   ('backend/migrations', 'event_channels',      array[]::text[], null),
   ('backend/migrations', 'event_messages',      array[]::text[], null),

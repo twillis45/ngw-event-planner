@@ -175,7 +175,16 @@ test('every client name is in the one name table', () => {
   jest.resetModules();
   const { EVENTS } = require('../analytics');
   ['nudge_sent', 'nudge_text_sent', 'messages_view_opened', 'helper_email_sent', 'helper_answered',
-    'plan_opened_from_reminder', 'plan_drafted', 'keep_prompt_shown', 'sign_in_code_requested']
+    'plan_opened_from_reminder', 'plan_drafted', 'keep_prompt_shown', 'sign_in_code_requested',
+    'push_enabled', 'push_disabled']
     .forEach((name) => expect(Object.values(EVENTS)).toContain(name));
 });
 
+
+// ── 9. push_enabled / push_disabled (device notifications, 11/20/2026) ─────
+test('push_enabled / push_disabled: once each, no properties at all', async () => {
+  const f = load();
+  expect(await once('push_enabled', () => f.trackPushEnabled())).toEqual({});
+  expect(await once('push_disabled', () => f.trackPushDisabled())).toEqual({});
+});
+test('push_enabled: opted out sends nothing', async () => { const f = load(); await optedOut('push_enabled', () => f.trackPushEnabled()); });

@@ -99,3 +99,14 @@ PASS_PRICE_TEST_SHARE = os.environ.get("PASS_PRICE_TEST_SHARE", "").strip()
 POSTHOG_QUERY_API_KEY = os.environ.get("POSTHOG_QUERY_API_KEY")
 POSTHOG_PROJECT_ID    = os.environ.get("POSTHOG_PROJECT_ID")
 POSTHOG_QUERY_HOST    = os.environ.get("POSTHOG_QUERY_HOST", "https://us.posthog.com")
+
+# ── Device notifications (Web Push, owner decision "B", 11/20/2026) ────────────
+# The VAPID key pair (RFC 8292) that signs every push this server sends, and the
+# contact the push services see (a mailto: URL). All three, or push stays off:
+# GET /api/push/public-key answers 503 and the settings row stays hidden.
+# VAPID_PUBLIC_KEY:  base64url, uncompressed P-256 point (87 characters).
+# VAPID_PRIVATE_KEY: base64url, the raw 32-byte private scalar (43 characters).
+# Generate both with `npx web-push generate-vapid-keys` (docs/integrations/ENV_REFERENCE.md).
+VAPID_PUBLIC_KEY  = os.environ.get("VAPID_PUBLIC_KEY", "").strip()
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "").strip()
+VAPID_SUBJECT     = os.environ.get("VAPID_SUBJECT", "").strip()

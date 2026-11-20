@@ -29,6 +29,8 @@ cannot see the browser's opt-out switch; the privacy policy says so.
 | `plan_drafted` | A signed-out visitor's plan was built and shown (held as a draft); once per draft | `event_type`, `is_destination`, `has_date`, `has_headcount` (bools), `came_from` (only when the visitor arrived from an invite or vendor brief) |
 | `keep_prompt_shown` | The sign-in sheet opened to keep a plan | `intent`: `plan` / `invite` (the reveal's buttons) / `device_plan` (the "Sign in to keep this plan" banner on a plan made earlier on the device) |
 | `sign_in_code_requested` | The sign-in email (link and code) was asked for | `success` (bool: the service took the request), `after_keep_prompt` (bool) |
+| `push_enabled` | "Notifications on this device" turned on in You & settings: the browser allowed it and the server took the device (`DeviceNotificationsRow.jsx`) | none |
+| `push_disabled` | The same row turned off | none |
 
 ## Server events (`backend/app/analytics.py`)
 

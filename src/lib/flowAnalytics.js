@@ -142,3 +142,11 @@ export const trackKeepPrompt = (intent) =>
 /** After the sign-in email was asked for: whether the service took it, and whether a keep prompt led here. */
 export const trackSignInCodeRequested = (success, afterKeepPrompt) =>
   safe(() => track(EVENTS.SIGN_IN_CODE_REQUESTED, { success: success === true, after_keep_prompt: afterKeepPrompt === true }));
+
+// ── 9. Device notifications, on and off (owner decision "B", 11/20/2026) ────
+
+/** "Notifications on this device" turned on: the browser allowed it and the server took the device. */
+export const trackPushEnabled = () => safe(() => track(EVENTS.PUSH_ENABLED, {}));
+
+/** …and turned off. Nothing about the device or the host. */
+export const trackPushDisabled = () => safe(() => track(EVENTS.PUSH_DISABLED, {}));
