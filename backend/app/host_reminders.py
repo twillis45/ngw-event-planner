@@ -49,6 +49,12 @@ log = logging.getLogger("ngw.host_reminders")
 
 EASTERN = ZoneInfo("America/New_York")
 DAYS_BEFORE = 7
+# THE NEXT-DAY CATCH-UP (owner, 11/20/2026). A plan reaches the server only once
+# it saves to the account; one that lands after the 7-days-out run (the owner's
+# own test plan took ~3 minutes) was never reminded. The next day's run also
+# takes plans 6 days out that were not reminded, under the same once-only record
+# (KIND), and says what is true: "6 days until …", never "One week".
+CATCH_UP_DAYS = DAYS_BEFORE - 1
 KIND = "week_before"
 MAX_PER_RUN = 50     # Resend's daily quota is shared with invites; a run never takes more than this
 
@@ -101,21 +107,23 @@ def plan_url() -> str:
     return f"{APP_BASE_URL.rstrip('/')}/hostv2/"
 
 
-def compose_week_before(event_name, day: _dt.date, stop_token: str) -> tuple[str, str, str]:
+def compose_week_before(event_name, day: _dt.date, stop_token: str, days_out: int = DAYS_BEFORE) -> tuple[str, str, str]:
     """(subject, html, text). Pure. States only the saved name and date. In the
-    shared frame (email_frame), without the invitation's parts."""
+    shared frame (email_frame), without the invitation's parts. `days_out` is 7,
+    or 6 for the next-day catch-up, and only the true count is ever stated."""
     name = " ".join(str(event_name or "").split())[:120] or "Your event"
     when = f"{day.strftime('%A')}, {day.strftime('%B')} {day.day}"
     stop = host_email.stop_url(stop_token)
-    subject = f"One week until {name}"
+    week = days_out == DAYS_BEFORE
+    subject = f"One week until {name}" if week else f"{days_out} days until {name}"
     words = "A good moment to look over your plan and settle anything still open."
     body, text = frame(
-        kind="week_before", hue=hue_for(name), eyebrow="One week to go", title=name,
+        kind="week_before", hue=hue_for(name), eyebrow=("One week to go" if week else f"{days_out} days to go"), title=name,
         facts=[("When", html.escape(when).replace(", ", ",<br>", 1), when)],
         fixed=[(html.escape(words), words)],
         primary=("Open your plan", plan_url()),
         footer=(f"Sent by No Guesswork Events. You're getting this because you're planning {name} "
-                "with No Guesswork. We send one reminder a week before each event you plan."),
+                "with No Guesswork. We send one reminder about a week before each event you plan."),
         stop_url=stop, stop_label="Stop plan reminders")
     return subject, body, text
 
@@ -130,7 +138,7 @@ select e.id, e.data, h.email
           join auth.users u on u.id = m.user_id
          where m.studio_id = e.studio_id and m.role = 'owner' and u.email is not null
          order by m.user_id limit 1) h on true
- where left(e.data->>'date', 10) = $1
+ where left(e.data->>'date', 10) = any($1::text[])
    and not exists (select 1 from public.host_reminders_sent s where s.event_id = e.id and s.kind = $2)
  order by e.id
 """
@@ -139,7 +147,7 @@ select e.id, e.data, h.email
 async def send_week_before(conn, today: Optional[_dt.date] = None, cap: int = MAX_PER_RUN,
                            send=_send_via_resend) -> dict:
     """One run. Returns counts; never raises for one host's failure."""
-    counts = {"due": 0, "sent": 0, "not_a_plan": 0, "stopped": 0, "already": 0, "failed": 0, "over_cap": 0}
+    counts = {"due": 0, "sent": 0, "catch_up": 0, "not_a_plan": 0, "stopped": 0, "already": 0, "failed": 0, "over_cap": 0}
     if not await conn.fetchval("select to_regclass('public.host_reminders_sent')"):
         log.error("host reminders: migration 032 (host_reminders_sent) is missing; nothing sent")
         counts["blocked"] = "032_missing"
@@ -148,13 +156,16 @@ async def send_week_before(conn, today: Optional[_dt.date] = None, cap: int = MA
         log.error("host reminders: migration 031 (email_stops) is missing, so no stop link; nothing sent")
         counts["blocked"] = "031_missing"
         return counts
-    target = (today or today_eastern()) + _dt.timedelta(days=DAYS_BEFORE)
-    rows = await conn.fetch(_DUE, target.isoformat(), KIND)
+    day0 = today or today_eastern()
+    target = day0 + _dt.timedelta(days=DAYS_BEFORE)
+    catch_up = day0 + _dt.timedelta(days=CATCH_UP_DAYS)
+    rows = await conn.fetch(_DUE, [target.isoformat(), catch_up.isoformat()], KIND)
     for row in rows:
         data = row["data"]
         if isinstance(data, str):          # asyncpg returns jsonb as text (no codec is set)
             data = json.loads(data or "{}")
-        if not qualified(row["id"], data) or event_day(data) != target:
+        day = event_day(data)
+        if not qualified(row["id"], data) or day not in (target, catch_up):
             counts["not_a_plan"] += 1
             continue
         counts["due"] += 1
@@ -173,11 +184,14 @@ async def send_week_before(conn, today: Optional[_dt.date] = None, cap: int = MA
             if not claimed:
                 counts["already"] += 1
                 continue
-            subject, body, text = compose_week_before(data.get("name"), target, token)
+            days_out = (day - day0).days
+            subject, body, text = compose_week_before(data.get("name"), day, token, days_out)
             body, text = await with_picture(body, text)     # one picture per email; never raises
             await send(to=row["email"], subject=subject, html=body, text=text,
                        headers=host_email.headers(token))
             counts["sent"] += 1
+            if day == catch_up:
+                counts["catch_up"] += 1
         except Exception as e:  # noqa: BLE001 — fail-soft per host
             counts["failed"] += 1
             log.error("host reminder failed error=%s", failure_reason(e))
@@ -188,7 +202,7 @@ async def send_week_before(conn, today: Optional[_dt.date] = None, cap: int = MA
                         "delete from public.host_reminders_sent where event_id=$1 and kind=$2", row["id"], KIND)
                 except Exception as e2:  # noqa: BLE001
                     log.error("host reminder record not released error=%s", failure_reason(e2))
-    log.info("host reminders for %s: %s", target.isoformat(),
+    log.info("host reminders for %s (catch-up %s): %s", target.isoformat(), catch_up.isoformat(),
              " ".join(f"{k}={v}" for k, v in counts.items()))
     return counts
 
