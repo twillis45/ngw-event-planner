@@ -331,6 +331,37 @@ Every email below goes through **Resend** (section 4).
   reminder (`backend/app/host_reminders.py`) is on an unmerged branch. Hence
   "may" and "only if." ⟵
 
+### Device notifications
+
+If you turn on **You & settings → Notifications on this device**, that browser
+can show you a notification when a guest replies or asks a question, or a
+vendor answers your brief. It is off until you turn it on, on each device, and
+your browser asks your permission first. It is offered on computers and on
+Android phones, not on iPhone or iPad.
+
+- **What we store:** for each device you turn on, the web address your
+  browser's push service gave it and the two keys used to lock the message to
+  that browser, with your account and the time it was added and last worked.
+  Nothing else about the device. ⟶ `supabase/migrations/033_push_subscriptions.sql`;
+  `backend/app/routers/push.py` ⟵
+- **Who carries it:** the push service of your browser's maker — **Google**
+  (Chrome, and most Android browsers), **Mozilla** (Firefox), **Apple** (Safari
+  on a Mac) or **Microsoft** (Edge). The message is encrypted to your browser,
+  so that service carries it without being able to read it. ⟶
+  `backend/app/web_push.py` (`PUSH_HOSTS`, RFC 8291 encryption) ⟵
+- **What it says:** who answered and what kind of answer (for example, "Jordan
+  replied Yes") and the event's name — never what anyone wrote. At most one an
+  hour for each event, shared with the alert email, and none while the app is
+  on your screen. ⟶ `backend/app/host_alerts.py` (`push_payload`, the shared
+  `_claim`); the worker's `push` handler, `hostv2/src/offline/swTemplate.js` ⟵
+- **Turning it off:** tap the same row on that device, or turn reply alerts
+  off for one event in its guest list, which stops its emails and notifications
+  together. Signing out on a device turns them off there too. We delete a
+  device's record when you turn it off there, when you sign out there, when its
+  browser stops accepting messages, or when you delete your account. ⟶
+  `routers/push.py` (`DELETE /api/push/subscribe`); `devicePush.signOutThisDevice`; `web_push.py` (404/410);
+  033 (`on delete cascade`) ⟵
+
 ---
 
 ## 4. Who else sees data, and what they see
@@ -346,6 +377,7 @@ These are the services the app calls. Each sees only what the row says.
 | Stripe | The pass's price and label; as metadata, the event id, your studio id, your account id, the price and whether it was a test price, and whether the event began from an invitation or a vendor brief; whatever you type on Stripe's own checkout page | Payment. Card details go to Stripe directly and never to us ⟶ `stripe_payments.py` (`create_pass_session` metadata: `event_id`, `studio_id`, `purchased_by`, `price_cents`, `price_variant`, `came_from`, `came_from_kind`) ⟵ |
 | PostHog (US) | Product analytics events, as described in section 3, under PostHog's random id for your browser or, once you sign in, a scrambled code; never a name or email | Learning which parts of the app help ⟶ `src/lib/analytics.js` (`us.i.posthog.com`); `backend/app/analytics.py` ⟵ |
 | Sentry | Error reports and a 10% sample of performance traces, with personal data off | Fixing what breaks ⟶ `src/lib/sentry.js` ⟵ |
+| Google, Mozilla, Apple or Microsoft push service | Only if you turned on device notifications: each notification, encrypted so the service cannot read it, addressed to your browser | Delivering device notifications (section 3) ⟶ `backend/app/web_push.py` ⟵ |
 | Resend | The address, subject and body of each email in section 3 ("Email we send") | Sending email ⟶ `backend/app/emailer.py`, `host_alerts.py`, `guest_notices.py`, `invite_email.py`, `routers/cohosts.py` ⟵ |
 | OpenWeather | The venue's latitude and longitude (never its name) and the event date | The event day's forecast ⟶ `routers/weather.py:92-98`; since 11/18/2026 the forecast runs for any event within 14 days that has a town, not only outdoor ones (`HANDOFF.md:68`) ⟵ |
 | OpenStreetMap (Nominatim), or Google Places if you supply your own key | The venue text you typed, US-restricted | Turning a venue into a map point ⟶ `HostShellV2.jsx:712-727` ⟵ |

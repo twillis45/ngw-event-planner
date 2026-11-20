@@ -17,6 +17,12 @@ RULES
     with no synced row has no host to find, and nothing is sent.
   · FAIL-SOFT. Called as a background task after the guest's request has
     returned; any failure is logged without the address and dropped.
+  · DEVICE NOTIFICATIONS (owner decision "B", 11/20/2026) go out from HERE,
+    beside the email, under every rule above: the same hour (one claim covers
+    both), the same off switch, the same host, the same "who and what kind,
+    never the words". web_push only delivers; this function decides. A host
+    with no device turned on gets the email alone, and with email unset on the
+    server, the push alone.
 """
 import logging
 import time
@@ -26,6 +32,7 @@ from .db import get_pool
 from .email_frame import frame, hue_for, paragraphs_html
 from .email_pictures import with_picture
 from .emailer import _send_via_resend, failure_reason, is_email_configured
+from . import web_push
 
 log = logging.getLogger("ngw.host_alerts")
 
@@ -47,20 +54,36 @@ def _one_line(s: str, n: int = 80) -> str:
     return " ".join(str(s or "").split())[:n]
 
 
+def _what(kind: str, who: str, answer: str | None) -> str:
+    """Who answered and what kind of answer, for the email and the push alike.
+    An RSVP answer is shown only when it is one of the three fixed choices, so
+    no free text can ride in on it."""
+    who = _one_line(who) or "Someone"
+    if kind == "rsvp":
+        return f"{who} replied {answer}" if answer in ("Yes", "No", "Maybe") else f"{who} replied"
+    if kind == "question":
+        return f"{who} asked you a question"
+    if kind == "vendor":
+        return f"{who} answered your vendor brief"
+    raise ValueError(kind)
+
+
+def push_payload(kind: str, who: str, event_name: str, answer: str | None = None, event_id: str = "") -> dict:
+    """The device notification for one alert. Pure. Exactly three fields, all
+    fixed wording plus who answered and the event's name; never an answer's
+    body. The service worker opens the app itself, so no address rides here."""
+    return {"title": _what(kind, who, answer),
+            "body": _one_line(event_name) or "Your event",
+            # One notification per event on the device: a later one replaces it.
+            "tag": "ngw-alert-" + _one_line(event_id, 64)}
+
+
 def compose(kind: str, who: str, event_name: str, answer: str | None = None) -> tuple[str, str, str]:
     """(subject, html, text) for one alert. Pure. Never includes an answer's body.
     In the shared frame (email_frame), without the invitation's parts: to the
     host, about their own plan."""
-    who = _one_line(who) or "Someone"
     name = _one_line(event_name) or "your event"
-    if kind == "rsvp":
-        what = f"{who} replied {answer}" if answer in ("Yes", "No", "Maybe") else f"{who} replied"
-    elif kind == "question":
-        what = f"{who} asked you a question"
-    elif kind == "vendor":
-        what = f"{who} answered your vendor brief"
-    else:
-        raise ValueError(kind)
+    what = _what(kind, who, answer)
     subject = f"{what} — {name}"
     words = f"{what} for {name}."
     html, text = frame(
@@ -76,7 +99,8 @@ def compose(kind: str, who: str, event_name: str, answer: str | None = None) -> 
 
 async def alert_host(event_id: str, kind: str, who: str, answer: str | None = None) -> None:
     try:
-        if not is_email_configured() or not event_id:
+        email_on, push_on = is_email_configured(), web_push.is_configured()
+        if not (email_on or push_on) or not event_id:
             return
         pool = await get_pool()
         async with pool.acquire() as conn:
@@ -85,8 +109,8 @@ async def alert_host(event_id: str, kind: str, who: str, answer: str | None = No
                 "from public.events where id = $1", event_id)
             if not row or row["alerts"] == "false" or row["studio_id"] is None:
                 return
-            to = await conn.fetchval(
-                """select u.email from public.studio_members m
+            host = await conn.fetchrow(
+                """select u.id::text as id, u.email from public.studio_members m
                      join auth.users u on u.id = m.user_id
                     where m.studio_id = $1 and m.role = 'owner' and u.email is not null
                     order by m.user_id limit 1""",
@@ -95,17 +119,26 @@ async def alert_host(event_id: str, kind: str, who: str, answer: str | None = No
                 who = await conn.fetchval(
                     "select v->>'name' from public.events e, jsonb_array_elements(coalesce(e.data->'vendors','[]'::jsonb)) v "
                     "where e.id = $1 and v->>'id' = $2 limit 1", event_id, who) or "A vendor"
-        if not to or not _claim(event_id):
+        if not host or not host["email"] or not _claim(event_id):
             return
-        subject, body, text = compose(kind, who, row["name"], answer)
-        body, text = await with_picture(body, text)
-        try:
-            await _send_via_resend(to=to, subject=subject, html=body, text=text)
-        except Exception:
-            # A send that did not happen must not use up the hour (11/16/2026:
+        delivered, failure = False, None
+        if email_on:
+            try:
+                subject, body, text = compose(kind, who, row["name"], answer)
+                body, text = await with_picture(body, text)
+                await _send_via_resend(to=host["email"], subject=subject, html=body, text=text)
+                delivered = True
+                log.info("host alert sent event=%s kind=%s", event_id, kind)
+            except Exception as e:  # noqa: BLE001 — the push below still goes
+                failure = e
+        if push_on:
+            counts = await web_push.send_to_user(host["id"], push_payload(kind, who, row["name"], answer, event_id))
+            delivered = delivered or counts.get("sent", 0) > 0
+        if not delivered:
+            # Nothing reached the host, so nothing used up the hour (11/16/2026:
             # two hours of refused sends would each have blocked the next).
             _last_sent.pop(event_id, None)
-            raise
-        log.info("host alert sent event=%s kind=%s", event_id, kind)
+        if failure is not None:
+            raise failure
     except Exception as e:  # noqa: BLE001 — fail-soft by design
         log.error("host alert failed event=%s kind=%s error=%s", event_id, kind, failure_reason(e))

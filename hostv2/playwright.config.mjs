@@ -219,6 +219,11 @@ const VIEWPORT_INDEPENDENT = [
   // addresses 5266 directly, so a project on the shared preview would measure
   // a bundle with billing dormant.
   '**/aFailedBriefMakesNoLink.spec.mjs',
+  // ── DEVICE NOTIFICATIONS (owner decision "B", 11/20/2026) ─────────────
+  // Whether a settings row exists, what the browser was asked, and what the
+  // server was sent; no geometry. Sets its own user agent per test (the mobile
+  // project's iPhone UA would hide the row by design) and addresses 5277.
+  '**/theDeviceNotificationsRow.spec.mjs',
 ];
 
 const NON_RESPONSIVE = [...SELF_PINNED, ...VIEWPORT_INDEPENDENT];

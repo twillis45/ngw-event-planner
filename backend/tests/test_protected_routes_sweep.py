@@ -116,6 +116,10 @@ PUBLIC = {
     # ── main.py's own routes ────────────────────────────────────────────────
     "GET /health": "liveness probe — no data, no writes",
     "GET /api/capabilities": "booleans only (is X configured) — never a secret",
+    # Device notifications (033): the VAPID PUBLIC key is public by definition —
+    # every browser that subscribes is handed it, and it signs nothing. 503 when
+    # unset. Subscribing and unsubscribing are signed in (routers/push.py).
+    "GET /api/push/public-key": "the VAPID public key, public by design; no data, no writes",
     # ── Read-only reference feeds (board condition 6, 2026-11-02) ──────────
     # These serve no account data and write nothing, so there is no caller to
     # authenticate: the planner app calls them before and without sign-in.

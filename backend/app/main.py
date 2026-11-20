@@ -41,6 +41,7 @@ from .routers import cohosts
 from .routers import announcements
 from .routers import research
 from .routers import account
+from .routers import push
 from .emailer import is_email_configured
 from .config import STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, RESEND_WEBHOOK_SECRET
 
@@ -340,3 +341,4 @@ app.include_router(research.router)
 app.include_router(lodging.router)
 
 app.include_router(account.router)
+app.include_router(push.router)                   # device notifications (033)

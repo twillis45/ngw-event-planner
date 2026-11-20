@@ -192,6 +192,7 @@ import FamilyLinkSheet from './FamilyLinkSheet.jsx';
 import CalendarSheet from './CalendarSheet.jsx';
 import CohostsSheet from './CohostsSheet.jsx';
 import MessagesSheet from './MessagesSheet.jsx';
+import DeviceNotificationsRow from './DeviceNotificationsRow.jsx';
 import { claimCohostInvites } from '@app/lib/api/cohosts';
 import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
@@ -281,6 +282,7 @@ import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCos
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { deliverNotification, deliveryExcuse, notificationApiPresent, DELIVERY } from '@app/lib/notifyDelivery';
+import { signOutThisDevice } from '@app/lib/devicePush';
 import { lodgingBasisFor, budgetComparableTotal } from '@app/lib/knowledge/lodgingBasisLadder';
 import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
@@ -20330,6 +20332,11 @@ export default function HostShellV2() {
                         : 'Shares which features you use — never your guests, your plans’ contents, or anything you type.'}
                     </span>
                   </div>
+                  {/* DEVICE NOTIFICATIONS (owner decision "B", 11/20/2026). Same
+                      row shape as the three above. Renders nothing unless it
+                      can work on this device and the server is set up, and asks
+                      the browser for permission only when tapped on. */}
+                  <DeviceNotificationsRow signedIn={Boolean(session)} />
                   {/* ── YOUR DATA (2026-09-02, review board) ─────────────────
                       The board's ONE THING, named by six of ten seats. Four
                       recovery functions were implemented, guarded, unit-tested
@@ -20560,7 +20567,7 @@ export default function HostShellV2() {
                         <p className="grounding" style={{ margin: '0 0 var(--sp-2)', opacity: .8 }}>You’re set up as a planner — this is the host view of your event. Your client roster and planner tools live in the full app.</p>
                       )}
                       <div className="actions-row">
-                        <button className="mini" onClick={async () => { try { await supabase.auth.signOut(); toast('Signed out — changes you make while signed out are kept here and saved to your account when you sign in again.'); } catch { toast('Couldn’t sign out.'); } }}>Sign out</button>
+                        <button className="mini" onClick={async () => { try { await signOutThisDevice(() => supabase.auth.signOut()); toast('Signed out — changes you make while signed out are kept here and saved to your account when you sign in again.'); } catch { toast('Couldn’t sign out.'); } }}>Sign out</button>
                       </div>
                       {isAccountDeletionAvailable() && !acctDelete && (
                         <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
@@ -27337,11 +27344,13 @@ export default function HostShellV2() {
                       throttle). The switch is per event, stored in its own data. */}
                   {session && !isPast && (
                     <p className="grounding" data-host-alerts style={{ margin: 'var(--sp-2) 0 0' }}>
+                      {/* One switch for both (11/20/2026): it also stops the
+                          device notifications set in You & settings. */}
                       {event.hostAlerts === false
-                        ? 'Reply emails are off for this event. '
-                        : 'We email you when a guest replies or asks a question — at most once an hour. '}
+                        ? 'Reply alerts are off for this event, by email and on your devices. '
+                        : 'We tell you when a guest replies or asks a question, by email and on any device you turned notifications on for — at most once an hour. '}
                       <button className="mini" onClick={() => patchEvent({ hostAlerts: event.hostAlerts === false ? null : false },
-                        event.hostAlerts === false ? 'Reply emails are on.' : 'Reply emails are off for this event.')}>
+                        event.hostAlerts === false ? 'Reply alerts are on.' : 'Reply alerts are off for this event.')}>
                         {event.hostAlerts === false ? 'Turn on' : 'Turn off'}
                       </button>
                     </p>

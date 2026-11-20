@@ -12,3 +12,6 @@ sentry-sdk==2.73.0
 # Nothing already installed decodes images. HEIC is refused rather than adding
 # pillow-heif (a native libheif build).
 pillow==13.0.0
+# Device notifications (app/web_push.py): Web Push payload encryption (RFC 8291)
+# and VAPID signing (RFC 8292, via its py-vapid dependency); nothing installed did either.
+pywebpush==2.5.0

@@ -98,6 +98,18 @@ services:
       # Account deletion only — server secret, never a browser build variable.
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
+      # ── Device notifications (Web Push; owner decision "B", 11/20/2026) ──
+      # The VAPID key pair that signs every push, and the contact address the
+      # push services see. All three, or push stays off: /api/push/public-key
+      # answers 503 and the app hides the "Notifications on this device" row.
+      # Generate the pair once: `npx web-push generate-vapid-keys`. Never
+      # rotate casually — every device already turned on would need turning on again.
+      - key: VAPID_PUBLIC_KEY        # the "Public Key" line (87 characters)
+        sync: false
+      - key: VAPID_PRIVATE_KEY       # the "Private Key" line (43 characters) — a secret
+        sync: false
+      - key: VAPID_SUBJECT           # mailto: and the support address
+        sync: false
       # ── Non-secret config ──
       - key: PYTHON_VERSION          # pin a stable Python (3.14 has no pydantic-core wheels yet)
         value: 3.12.7

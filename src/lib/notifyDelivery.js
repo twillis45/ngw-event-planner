@@ -140,3 +140,45 @@ export function deliveryExcuse(outcome) {
       return null;
   }
 }
+
+// ─── DEVICE NOTIFICATIONS FROM THE SERVER (owner decision "B", 11/20/2026) ────
+//
+// The table above was measured 2026-09-19, when hostv2 registered no worker.
+// The offline-shell worker shipped 2026-09-27 (docs/audits/
+// 2026-08-16_OFFLINE_SHELL_BOARD.md), and server push now rides it: the worker's
+// `push` handler shows the alert (src/lib/devicePush.js, backend web_push.py).
+//
+// WHERE THAT CAN ACTUALLY WORK, and so where the settings row is shown at all:
+// a service worker, PushManager and Notification all present — desktop Chrome,
+// Edge, Firefox, Safari on a Mac, and Chrome on Android.
+//
+// NOT ON AN IPHONE OR IPAD, BY DECISION. There, web push reaches only a Home
+// Screen web app installed from a manifest, which a past board rejected and
+// this build does not have. The APIs can still be present in a Safari tab
+// (iOS 16.4+ exposes them), so presence alone would put a switch in front of
+// a host that can never fire. On those devices the row is simply not shown:
+// no promise, and, for the reason in the header, no Add to Home Screen hint.
+//
+// iPadOS Safari reports itself as a Mac ("Macintosh" in the user agent). The
+// touch-point count tells them apart: a Mac reports 0, an iPad 5.
+
+/** True for an iPhone, iPod or iPad, including an iPad whose Safari says "Macintosh". */
+export function isAppleTouchDevice(nav) {
+  const ua = String((nav && nav.userAgent) || '');
+  if (/\b(iPhone|iPad|iPod)\b/.test(ua)) return true;
+  return /\bMacintosh\b/.test(ua) && Number(nav && nav.maxTouchPoints) > 1;
+}
+
+/**
+ * Can this browser receive a device notification from the server?
+ * `{ ok: true }`, or `{ ok: false, reason }` with reason one of
+ * 'no-worker' | 'no-push' | 'no-api' | 'apple-touch'. Asks for nothing.
+ */
+export function pushSupport(env = (typeof window !== 'undefined' ? window : {})) {
+  const nav = env && env.navigator;
+  if (!nav || !('serviceWorker' in nav) || !nav.serviceWorker) return { ok: false, reason: 'no-worker' };
+  if (typeof env.PushManager === 'undefined') return { ok: false, reason: 'no-push' };
+  if (typeof env.Notification === 'undefined') return { ok: false, reason: 'no-api' };
+  if (isAppleTouchDevice(nav)) return { ok: false, reason: 'apple-touch' };
+  return { ok: true };
+}

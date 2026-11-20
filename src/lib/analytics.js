@@ -488,6 +488,9 @@ export const EVENTS = {
   PLAN_DRAFTED:            'plan_drafted',             // { event_type, is_destination, has_date, has_headcount, came_from? }
   KEEP_PROMPT_SHOWN:       'keep_prompt_shown',        // { intent }
   SIGN_IN_CODE_REQUESTED:  'sign_in_code_requested',   // { success, after_keep_prompt }
+  // Device notifications (owner decision "B", 11/20/2026): the settings row.
+  PUSH_ENABLED:            'push_enabled',             // {} — turned on for this device
+  PUSH_DISABLED:           'push_disabled',            // {} — turned off for this device
   // Server-only (backend/app/analytics.py), listed so the catalog is one table:
   // host_reminder_sent, email_delivery, pass_refunded, pass_disputed, pass_purchased.
 };

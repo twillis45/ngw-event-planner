@@ -57,6 +57,16 @@ Honored only when `ALLOW_DEV_TOKEN=true`. Deployed envs must leave this unset.
 | `ALLOWED_ORIGINS` | ✅ | Comma-separated allowed origins for CORS. `*` allowed. Default `https://twillis45.github.io,http://localhost:3000`. | `app/config.py:24` |
 | `ALLOWED_ORIGIN_REGEX` | optional | Regex of additional permitted origins. Defaults to localhost + private LAN IPs (any port) so device testing works. | `app/config.py:29` |
 
+### Device notifications (Web Push)
+
+Owner decision "B", 11/20/2026: the same alerts as the host alert email, on the desktop browsers and Android Chrome a host turns them on for. All three must be set, or push stays off: `GET /api/push/public-key` answers `503`, the app hides the "Notifications on this device" row, and `host_alerts` sends email only. Migration `033_push_subscriptions.sql` must also be applied; until then the routes answer `503` and nothing is sent.
+
+| Variable | Required | Meaning | Source |
+|---|---|---|---|
+| `VAPID_PUBLIC_KEY` | optional | VAPID public key, base64url (87 characters). Handed to every browser that subscribes; not a secret. Generate the pair with `npx web-push generate-vapid-keys` (the "Public Key" line). | `app/config.py`, `app/routers/push.py` |
+| `VAPID_PRIVATE_KEY` | optional (secret) | The matching private key, base64url raw (43 characters; the "Private Key" line). Signs every push. Rotating it means every host turns notifications on again. | `app/config.py`, `app/web_push.py` |
+| `VAPID_SUBJECT` | optional | The contact the push services see, as a `mailto:` URL with the support address (`mailto:events@noguessworksystems.com`). | `app/config.py`, `app/web_push.py` |
+
 ### Stripe (deposits / balances)
 
 | Variable | Required | Meaning | Source |

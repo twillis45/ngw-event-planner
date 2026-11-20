@@ -119,4 +119,40 @@ self.addEventListener('fetch', (e) => {
     })());
   }
 });
+
+// ── DEVICE NOTIFICATIONS (owner decision "B", 11/20/2026) ───────────────────
+// Two handlers and nothing else: they cache nothing, fetch nothing and change
+// none of the above. The server (backend host_alerts) decides when to send;
+// this only shows it. A killed worker shows nothing, and ?nosw=1 or
+// sw-kill.txt unregister the worker, which ends its push subscription with it.
+//
+// NOT ON THE DEVICE IN USE: when a window of this app is visible, the host is
+// looking at it already, so nothing is shown.
+self.addEventListener('push', (e) => {
+  if (KILLED) return;
+  let d = null;
+  try { d = e.data ? e.data.json() : null; } catch (_) { d = null; }
+  if (!d || typeof d.title !== 'string' || !d.title) return;
+  e.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    if (wins.some((w) => w.visibilityState === 'visible')) return;
+    await self.registration.showNotification(d.title.slice(0, 120), {
+      body: typeof d.body === 'string' ? d.body.slice(0, 120) : '',
+      tag: typeof d.tag === 'string' ? d.tag.slice(0, 80) : undefined,
+    });
+  })());
+});
+
+// A tap opens the app, or brings forward the window that already has it. The
+// address is this worker's own scope, never one carried in the push.
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const home = self.registration.scope;
+  e.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const open = wins.find((w) => typeof w.url === 'string' && w.url.indexOf(home) === 0);
+    if (open && typeof open.focus === 'function') return open.focus();
+    return self.clients.openWindow(home);
+  })());
+});
 `;
