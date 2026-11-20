@@ -46,6 +46,25 @@ Resend id: invites, messages, the helper ask, co-host invites and approvals.
 The week-before reminder, announcements and reply notices write no such row
 today, so their delivery is not reported.
 
+## Page views (11/20/2026)
+
+PostHog's Web analytics tab counts only `$pageview`. Automatic page views stay
+off; each screen-level event also records one `$pageview` with a `page`
+property (`pageFor` in `src/lib/analytics.js`):
+
+| Event | `page` |
+|---|---|
+| `host_home_viewed` | `board` |
+| `section_opened` | `section/<section>` |
+| `invite_viewed` | `invite` |
+| `pass_sheet_viewed` | `pass` |
+| `messages_view_opened` | `messages` |
+
+Every address PostHog sees (`$current_url`, `$referrer`, the `$initial_*`
+person properties) passes `cleanUrl` in `before_send`: ours keeps origin, path
+and `utm_*` only (no `?rsvp=`, `?helper=`, `?vendor=`, `?family=`, `?event=`,
+`?token=`, no `#hash`); anyone else's keeps its origin only.
+
 ## The signed-out funnel
 
 Before 11/20 a signed-out visitor's plan was held as a draft and
