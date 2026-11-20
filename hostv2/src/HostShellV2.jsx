@@ -315,7 +315,7 @@ import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced, markEventConflict, eventsToUploadOnSignIn, splitAccountCopies, forgetSyncState } from '@app/lib/api/syncState';
 import { signInCode } from '@app/lib/signInCode';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
-import { buildVendorDetailsMessage, vendorGreetingName, detailsSmsHref, detailsMailtoHref } from '@app/lib/vendorDetailsMessage';
+import { buildVendorDetailsMessage, vendorGreetingName, detailsSmsHref, detailsMailtoHref, draftSmsHref } from '@app/lib/vendorDetailsMessage';
 import { summarizeWhoIsConfirmed, whoIsConfirmedLines } from '@app/lib/whoIsConfirmed';
 import { mintVendorBriefLinkResult, mintStatusClass, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import { mintHelperLinkResult, isHelperLinkApiConfigured, fetchHelperConfirmations, emailHelperJob, helperEmailWords } from '@app/lib/api/helperLink';
@@ -21202,7 +21202,7 @@ export default function HostShellV2() {
                       Share…
                     </button>
                   )}
-                  <a className="mini" style={{ textDecoration: 'none' }} href={'sms:?&body=' + encodeURIComponent(shownDraft())} onClick={() => recordSend('sms')}>Text it</a>
+                  <a className="mini" style={{ textDecoration: 'none' }} href={draftSmsHref(sheet.vendorId ? (event.vendors || []).find(v => v && v.id === sheet.vendorId) : null, shownDraft())} onClick={() => recordSend('sms')}>Text it</a>
                   <a className="mini" style={{ textDecoration: 'none' }} href={'https://wa.me/?text=' + encodeURIComponent(shownDraft())} target="_blank" rel="noreferrer" onClick={() => recordSend('whatsapp')}>Open WhatsApp</a>
                   <button className="mini" onClick={() => { copyDraft(shownDraft()); recordSend('copy'); }}>Copy it</button>
                   {/* "I sent it earlier from my phone" — a RECORD, not an act
