@@ -266,7 +266,11 @@ your questions and the host's replies at once. ⟶ `POST
   `registerPassPrice`) ⟵
 - **Turning analytics off.** You can turn analytics off any time in **You &
   settings → Help improve the app**, or with the first-open notice's "Turn this
-  off." That stops everything the app sends to PostHog from that browser. When
+  off." That stops everything the app sends to PostHog from that browser.
+  Analytics events travel through our own server on the way to PostHog,
+  unchanged; our server passes along your IP address so PostHog can tell which
+  country a visit came from, as it could when the app sent to PostHog directly,
+  and keeps no copy. When
   a pass is bought, our server also records the purchase in PostHog: the amount
   and whether it was the regular price or a test price, a scrambled code for
   the event, the same scrambled account code, and whether the event began from
@@ -323,7 +327,7 @@ These are the services the app calls. Each sees only what the row says.
 |---|---|---|
 | Supabase (US) | Everything in section 2 that is synced; your sign-in email; whether you ticked "Email me offers and news," when, and its words | Database and sign-in ⟶ `src/lib/marketingConsent.js` ⟵ |
 | Cloudflare (Turnstile) | When you sign in, your browser's visit to Cloudflare's bot check, including your IP address and browser details, as with any site your browser loads | Keeping bots from sending sign-in emails ⟶ `src/components/SignInCheck.jsx` (script from `challenges.cloudflare.com`; the token goes to Supabase with the sign-in request, `HostShellV2.jsx:2435`) ⟵ |
-| Render (US) | API requests from the app | Hosts our server |
+| Render (US) | API requests from the app, including analytics events on their way to PostHog | Hosts our server |
 | GitHub Pages | Your browser's request for the app itself | Serves the app |
 | Stripe | The pass's price and label; as metadata, the event id, your studio id, your account id, the price and whether it was a test price, and whether the event began from an invitation or a vendor brief; whatever you type on Stripe's own checkout page | Payment. Card details go to Stripe directly and never to us ⟶ `stripe_payments.py` (`create_pass_session` metadata: `event_id`, `studio_id`, `purchased_by`, `price_cents`, `price_variant`, `came_from`, `came_from_kind`) ⟵ |
 | PostHog (US) | Product analytics events, as described in section 3, under PostHog's random id for your browser or, once you sign in, a scrambled code; never a name or email | Learning which parts of the app help ⟶ `src/lib/analytics.js` (`us.i.posthog.com`); `backend/app/analytics.py` ⟵ |

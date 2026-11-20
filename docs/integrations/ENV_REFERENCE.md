@@ -116,7 +116,7 @@ CRA reads `REACT_APP_*` at build time. Every variable below was found via `grep 
 | `REACT_APP_PLANNER_TOKEN` | dev only | Shared dev token sent as `X-Planner-Token`. Bypasses Supabase auth — never deploy. | `src/lib/commApi.js` |
 | `REACT_APP_SENTRY_DSN` | optional | Sentry error reporting DSN. When unset, `initSentry()` is a no-op. | `src/lib/sentry.js` |
 | `REACT_APP_POSTHOG_KEY` | optional | PostHog product analytics project key. | `src/App.js` |
-| `REACT_APP_POSTHOG_HOST` | optional | PostHog host (defaults to PostHog Cloud). | `src/App.js` |
+| `REACT_APP_POSTHOG_HOST` | optional | PostHog host. Defaults to our API's `/api/relay` (forwards to PostHog US, so tracker blockers don't drop events); PostHog Cloud directly when no API base is set. | `src/lib/analytics.js` |
 | `REACT_APP_OPENWEATHER_KEY` | optional | OpenWeather API key for event-day weather lookup. | `src/App.js` |
 | `REACT_APP_GOOGLE_MAPS_KEY` | optional | Google Maps key for venue map embed / directions. | `src/App.js` |
 | `REACT_APP_ENABLE_GOOGLE_AUTH` | optional | `true` to show the "Sign in with Google" button on the auth gate. Requires Supabase Google provider enabled in dashboard. | `src/App.js` |

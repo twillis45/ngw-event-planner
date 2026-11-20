@@ -17,6 +17,7 @@ from .routers import communication, lodging
 from .routers import docusign
 from .routers import ai
 from .routers import weather
+from .routers import analytics_relay
 from .routers import webhooks
 from .routers import stripe_payments
 from .routers import admin
@@ -272,6 +273,7 @@ app.include_router(communication.public_router)   # the stop link on every email
 app.include_router(docusign.router)
 app.include_router(ai.router)
 app.include_router(weather.router)
+app.include_router(analytics_relay.router)  # PostHog via our address (tracker blockers)
 app.include_router(webhooks.router)
 app.include_router(stripe_payments.router)
 app.include_router(admin.router)
