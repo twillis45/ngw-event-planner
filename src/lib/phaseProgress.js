@@ -33,7 +33,7 @@ import { daysUntil, spanEnd, getToday, localISO } from './dates';
 import { taskLeadDays } from './taskLead';
 import { budgetFor } from './budgetFor';
 import { startTimeIsConfirmed } from './startTime';
-import { lodgingIsHeld } from './lodgingIntel';
+import { lodgingIsHeld, lodgingAsk } from './lodgingIntel';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const daysTo = (dateStr, now) => {
@@ -329,9 +329,10 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   // NAME THE ACT (owner ruling, 11/20/2026): once a place is picked or planned,
   // the open ask is to BOOK it — "Sort where everyone stays" over a named pick
   // read as though nothing had been done.
-  const _pickedName = String((ev.lodging && ev.lodging.hotelName) || '').trim();
+  // Under a self-book plan the ask names how many guests still need a room.
+  // lodgingAsk (lib/lodgingIntel) owns the wording for every surface.
   add('lodging', ev.isDestination === true, _lodgingPicked,
-    _pickedName && !_lodgingPicked ? `Book ${_pickedName}` : 'Sort where everyone stays',
+    lodgingAsk(ev) || 'Sort where everyone stays',
     { tab: 'Travel', focusField: 'lodging' }, 4,
     { records: ['dest_lodging'] });
 

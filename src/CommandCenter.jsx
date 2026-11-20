@@ -87,7 +87,7 @@ import { buildExperienceContext } from './lib/experienceContext';
 import { deriveDecisionBlockers, buildBlockerStage } from './lib/assembleRevealEngines';
 // The ONE place reader — used here only to name the town in the venue ask.
 import { venueFor as venueForEvent } from './lib/venueFor';
-import { lodgingIsHeld } from './lib/lodgingIntel';
+import { lodgingIsHeld, lodgingAsk } from './lib/lodgingIntel';
 import { daysUntil } from './lib/dates';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
@@ -1631,9 +1631,7 @@ export function _eventFoundationActions(event) {
       // the readiness ledger uses (phaseProgress), so the hero and "Then, in
       // order" cannot ask two different things about one stay.
       id: 'lodging', domain: 'lodging',
-      title: (!lodgingSettled && event.lodging && String(event.lodging.hotelName || '').trim())
-        ? `Book ${String(event.lodging.hotelName).trim()}.`
-        : 'Sort where everyone stays.',
+      title: `${(!lodgingSettled && (() => { try { return lodgingAsk(event); } catch (_e) { return null; } })()) || 'Sort where everyone stays'}.`,
       consequence: 'Rooms sell out and group rates expire — this one has a deadline the rest of the plan does not.',
       cta: 'Sort lodging', route: { tab: 'Travel', focusField: 'lodging' },
       done: lodgingSettled,

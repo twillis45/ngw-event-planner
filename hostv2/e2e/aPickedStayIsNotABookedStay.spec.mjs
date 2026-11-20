@@ -58,3 +58,35 @@ test('a picked stay is asked to be booked, by name, until a booking code is on f
   expect(await stayPart(page)).toMatch(/handled/);
   expect(await boardText(page)).not.toMatch(/Book La Fonda|Sort where everyone stays/i);
 });
+
+// GUESTS BOOK ON THEIR OWN (owner ruling, 11/20/2026): the stay is done once
+// every guest on the roster has a booked room. Until then the board names how
+// many still need one; the host marks the last room on the roster and the part
+// closes.
+test('under a self-book plan the board names who still needs a room, and closes when the last is booked', async ({ page }) => {
+  await boot(page, {
+    ...TRIP, id: 'E2E_self_book', guestMode: 'list', lodging: undefined, lodgingOptions: [],
+    foodChoices: { dest_lodging: 'Guests book on their own' },
+    guests: [
+      { id: 'g0', name: 'Jordan Avery', rsvp: 'Yes', travel: { lodging: { status: 'booked' } } },
+      { id: 'g1', name: 'Riley Park', rsvp: 'Yes', travel: { lodging: { status: 'confirmed' } } },
+      { id: 'g2', name: 'Sam Okafor', rsvp: 'Yes' },
+    ],
+  });
+  expect(await stayPart(page)).toMatch(/still open/);
+  expect(await boardText(page)).toMatch(/1 guest still needs a room/);
+  await page.locator('.srail-row', { hasText: 'Travel & where everyone stays' }).first().click();
+  // The roster ("Who's booked a room") lives on the "On the books" step.
+  await page.getByRole('button', { name: /On the books/ }).first().click({ timeout: 15000 });
+  const sam = page.getByRole('button', { name: /^Sam Okafor — / }).first();
+  await sam.waitFor({ state: 'visible', timeout: 15000 });
+  await sam.click();
+  await expect.poll(() => page.evaluate(() => {
+    const g = JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].guests.find((x) => x.id === 'g2');
+    return g && g.travel && g.travel.lodging && g.travel.lodging.status;
+  })).toBe('booked');
+  await page.goto('?elegant=1');
+  await settled(page);
+  expect(await stayPart(page)).toMatch(/handled/);
+  expect(await boardText(page)).not.toMatch(/still needs? a room|Sort where everyone stays/i);
+});
