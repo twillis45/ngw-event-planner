@@ -336,5 +336,7 @@ business.
 ## 16. Contact
 
 No Guesswork Systems LLC
+
 306 W Redwood St, Ste 201, Baltimore, MD 21201
+
 events@noguessworksystems.com ⟶ `src/lib/brand.js:145` ⟵
