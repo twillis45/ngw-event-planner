@@ -2619,16 +2619,17 @@ export default function HostShellV2() {
   // the food plan already trusts). No profile / cold-start host ⇒ board is byte-identical.
   const decisionBoard = useMemo(() => {
     try {
-      const b = playbookDecisionBoard(event, undefined, profile) || { open: [], locked: [] };
-      // GROUNDED (dogfood 2026-07-19): once the host has SET a venue, the "at home / restaurant /
-      // hall" venue-KIND decision is already answered by the real venue — surfacing it (with a
-      // static playbook default that can CONTRADICT the set venue, e.g. proposing "Restaurant
-      // private room" over a booked banquet hall) violates the grounding doctrine. Drop it from
-      // the open board when a venue is on file; the venue is the source of truth.
-      if (b && Array.isArray(b.open) && vf.name) {
-        return { ...b, open: b.open.filter(d => !(d && (d.id === 'venue' || /at home.*(restaurant|venue|workplace)/i.test(String(d.label || '')))) ) };
-      }
-      return b;
+      // ONE RULE FOR THE VENUE CALL, THE ENGINE'S (hero-clears sweep, 11/20/2026).
+      // This used to drop the "at home / restaurant / hall" call from the open board
+      // whenever a venue NAME was on file (dogfood 2026-07-19). The engine has since
+      // learned the same fact with the owner's narrower rule — a BOOKED venue vendor
+      // answers the call (decisionSettledByData, 11/15/2026) — and the surfaceRegistry
+      // raiser reads the engine's board, not this one. So a named-but-unbooked venue
+      // put the call in the hero ("past its window") while this board, the Calls sheet
+      // and the hero's own answer panel all left it out: an ask with nowhere to answer
+      // it, which never cleared. The board now carries what the engine carries, and
+      // the call is answered in a tap like every other one.
+      return playbookDecisionBoard(event, undefined, profile) || { open: [], locked: [] };
     } catch { return { open: [], locked: [] }; }
   }, [event, profile]);
   // "show the rest" for a paced calls board — mirrors queueOpen's expander pattern.
