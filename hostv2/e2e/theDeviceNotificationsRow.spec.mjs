@@ -67,8 +67,13 @@ const boot = async (page, { keyStatus = 200, touchPoints = 0 } = {}) => {
     // What the page asks of the browser, counted. The answer to the prompt is
     // "Allow"; the push service is a stand-in (headless has none to reach).
     window.__askedPermission = 0;
+    // Start as a browser that has never been asked. Headless Chromium on CI
+    // reports 'denied' out of the box (locally 'default'), which is the
+    // blocked state, not the first-visit one this test is about.
+    window.__perm = 'default';
     try {
-      Notification.requestPermission = async () => { window.__askedPermission += 1; return 'granted'; };
+      Object.defineProperty(Notification, 'permission', { configurable: true, get: () => window.__perm });
+      Notification.requestPermission = async () => { window.__askedPermission += 1; window.__perm = 'granted'; return 'granted'; };
     } catch { /* no Notification: the row must not show, which the test sees */ }
     const sub = {
       endpoint: 'https://fcm.googleapis.com/fcm/send/e2e-device',
