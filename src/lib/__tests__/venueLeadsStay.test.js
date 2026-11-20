@@ -13,7 +13,9 @@ import { buildExperienceContext } from '../experienceContext';
 import { venueLeadsStay, venueLeadsStayApplies } from '../venueLeadsStay';
 import { parkVenuePatch, VENUE_BLOCKER } from '../venuePark';
 
-const dateIn = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+// The LOCAL calendar date n days on. toISOString() is the UTC date, a day off
+// at UTC-11 (CI runs TZ=Pacific/Midway), which put 209 days on the stay window's edge.
+const dateIn = (n) => { const d = new Date(); d.setDate(d.getDate() + n); const p = (x) => String(x).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
 const santaFe = (days, extra) => ({
   id: 'e2e-venue', name: 'Mom’s 80th', type: 'Birthday', date: dateIn(days), endDate: dateIn(days + 4),
   isDestination: true, venueCity: 'Santa Fe', state: 'NM', guestMode: 'count', guestCount: 10, totalBudget: 4000,
