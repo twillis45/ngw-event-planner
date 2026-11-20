@@ -37,11 +37,14 @@ EVENT = {"name": "My Friendsgiving", "type": "Friendsgiving", "date": "2026-11-2
          "hostName": "Casey Rivera"}
 
 
-def framed(html):
-    # The card is PAPER, like the invite's picture: the linen grain image behind
-    # it, and the light-only color scheme so a dark-mode mail app (Spark, Apple
-    # Mail) does not repaint it brown (owner, 11/19/2026, on the reminder).
-    return (ef.MARK in html and ef.PAPER_IMAGE in html
+def framed(html, theme="paper"):
+    # PAPER: the linen grain image behind the card, like the invite's picture.
+    # MATTE (the host's own emails): the app's flat charcoal card. Both declare
+    # the light-only color scheme so a dark-mode mail app (Spark, Apple Mail)
+    # does not repaint them (owner, 11/19/2026, on the reminder).
+    mark = ef.MARK in html and ef.PAPER_IMAGE in html
+    matte = ef.MATTE_MARK in html and ef.PAPER_IMAGE not in html
+    return ((mark if theme == "paper" else matte)
             and 'name="color-scheme" content="light only"' in html)
 
 
@@ -74,7 +77,7 @@ def test_the_reply_notice_and_the_announcement_wear_the_frame():
 
 def test_the_cohost_invite_wears_the_frame():
     html, text = co.compose_cohost_invite("My Friendsgiving", "sam.cohost@example.test", "Casey Rivera")
-    assert framed(html) and "Sent by Casey Rivera with No Guesswork Events." in html
+    assert framed(html, "matte") and "Sent by Casey Rivera with No Guesswork Events." in html
     assert "co-host" in html and "sam.cohost@example.test" in text
 
 
@@ -93,7 +96,7 @@ def test_the_approval_email_wears_the_frame(monkeypatch):
 def test_host_emails_wear_the_frame_without_the_invitation():
     _s, html, text = ha.compose("rsvp", "Jordan", "My Friendsgiving", "Yes")
     s2, html2, text2 = hr.compose_week_before("My Friendsgiving", dt.date(2026, 11, 21), "tok-r")
-    assert framed(html) and framed(html2)
+    assert framed(html, "matte") and framed(html2, "matte")
     assert "Sent by No Guesswork Events." in html and "Sent by No Guesswork Events." in html2
     assert he.stop_url("tok-r") in html2 and "Stop plan reminders" in html2
     for h in (html, html2):

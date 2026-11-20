@@ -13,6 +13,7 @@ from typing import Optional
 import httpx
 from .config import RESEND_API_KEY, COMMUNICATION_EMAIL_FROM, RESEND_FROM_NAME
 from .email_frame import frame, hue_for, paragraphs_html
+from .email_pictures import with_picture
 
 log = logging.getLogger("ngw.email")
 
@@ -125,7 +126,7 @@ def compose_approval_email(event_name, context, link) -> tuple[str, str]:
     name = " ".join(str(event_name or "").split())
     ctx = str(context or "")
     return frame(
-        hue=hue_for(name), eyebrow="Approval needed", title=name or None,
+        kind="approval", hue=hue_for(name), eyebrow="Approval needed", title=name or None,
         blocks=[(f"An approval is requested:<br><br>{paragraphs_html(ctx)}", f"An approval is requested:\n\n{ctx}")],
         primary=("Review & respond", str(link or "")),
         footer="Sent with No Guesswork Events.")
@@ -151,7 +152,7 @@ async def send_approval_email(to: str | None, event_name: str, context: str, lin
         log.warning("approval email skipped: RESEND_API_KEY not set")
         return {"ok": False, "error": "email_not_configured", "provider": "resend"}
     try:
-        html, text = compose_approval_email(event_name, context, link)
+        html, text = await with_picture(*compose_approval_email(event_name, context, link))
         result = await _send_via_resend(
             to=to,
             subject=f"Approval needed — {' '.join(str(event_name or '').split())}",

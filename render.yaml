@@ -163,6 +163,13 @@ services:
       # it this job would send as the code's default, "NGW Events".
       - key: RESEND_FROM_NAME
         fromService: { type: web, name: ngw-events-api, envVarKey: RESEND_FROM_NAME }
+      # The picture of each reminder's card (app/email_pictures.py) is stored in
+      # Storage with the service role. Without these the reminder still goes,
+      # with the HTML card instead of the picture.
+      - key: SUPABASE_URL
+        fromService: { type: web, name: ngw-events-api, envVarKey: SUPABASE_URL }
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        fromService: { type: web, name: ngw-events-api, envVarKey: SUPABASE_SERVICE_ROLE_KEY }
       - key: PYTHON_VERSION
         value: 3.12.7
       - key: APP_BASE_URL

@@ -20,6 +20,7 @@ import logging
 from .config import APP_BASE_URL, API_PUBLIC_BASE_URL
 from .db import get_pool
 from .email_frame import frame, hue_for, paragraphs_html
+from .email_pictures import with_picture
 from .emailer import _send_via_resend, failure_reason, is_email_configured
 
 log = logging.getLogger("ngw.guest_notices")
@@ -37,11 +38,11 @@ def unsubscribe_url(guest_token: str) -> str:
     return f"{API_PUBLIC_BASE_URL.rstrip('/')}/api/public/questions/unsubscribe/{guest_token}"
 
 
-def _notice(host, name, eyebrow, words, rsvp_code, guest_token, why):
+def _notice(kind, host, name, eyebrow, words, rsvp_code, guest_token, why):
     """(html, text) in the shared frame (email_frame), for a guest who opted in."""
     stop = unsubscribe_url(guest_token)
     return frame(
-        hue=hue_for(name), eyebrow=eyebrow, title=name,
+        kind=kind, hue=hue_for(name), eyebrow=eyebrow, title=name,
         blocks=[(paragraphs_html(str(words or "")[:1000]), str(words or "")[:1000])],
         primary=("Open your invite", invite_url(rsvp_code)),
         fine=f"Reply on your invite. Replies to this email don't reach {host}.",
@@ -55,7 +56,7 @@ def compose_reply_notice(host_first: str, event_name: str, reply: str, rsvp_code
     name = _one_line(event_name) or "the event"
     stop = unsubscribe_url(guest_token)
     subject = f"{host} answered your question — {name}"
-    body, text = _notice(host, name, f"{host} answered your question", reply, rsvp_code, guest_token,
+    body, text = _notice("reply_notice", host, name, f"{host} answered your question", reply, rsvp_code, guest_token,
                          f"You get this because you asked for email when {host} replies.")
     headers = {"List-Unsubscribe": f"<{stop}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
     return f"{host} via No Guesswork", subject, body, headers, text
@@ -81,6 +82,7 @@ async def notify_guest_of_reply(thread_id, reply: str) -> None:
         host_first = (str(row["host_name"] or "").split() or [""])[0]
         from_name, subject, body, headers, text = compose_reply_notice(
             host_first, row["event_name"], reply, row["rsvp_code"], row["guest_token"])
+        body, text = await with_picture(body, text)
         await _send_via_resend(to=row["guest_email"], subject=subject, html=body,
                                from_name=from_name, headers=headers, text=text)
         log.info("reply notice sent thread=%s", thread_id)
@@ -95,7 +97,7 @@ def compose_announcement(host_first: str, event_name: str, body: str, rsvp_code:
     name = _one_line(event_name) or "the event"
     stop = unsubscribe_url(guest_token)
     subject = f"Update from {host} — {name}"
-    html_body, text = _notice(host, name, f"An update from {host}", body, rsvp_code, guest_token,
+    html_body, text = _notice("announcement", host, name, f"An update from {host}", body, rsvp_code, guest_token,
                               f"You get this because you asked for email when {host} replies or posts an update.")
     headers = {"List-Unsubscribe": f"<{stop}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
     return f"{host} via No Guesswork", subject, html_body, headers, text
@@ -127,11 +129,13 @@ async def notify_guests_of_announcement(announcement_id) -> None:
                     order by lower(guest_email), created_at""", a["event_id"])
         host_first = (str(a["host_name"] or "").split() or [""])[0]
         sent = failed = 0
+        pictures = {}     # one picture for the whole batch: the card is the same for every guest
         for i, r in enumerate(rows):
             if i:
                 await asyncio.sleep(SEND_GAP_SECONDS)
             from_name, subject, body, headers, text = compose_announcement(
                 host_first, a["event_name"], a["body"], a["rsvp_code"], r["guest_token"])
+            body, text = await with_picture(body, text, pictures)
             try:
                 await _send_via_resend(to=r["guest_email"], subject=subject, html=body,
                                        from_name=from_name, headers=headers, text=text)

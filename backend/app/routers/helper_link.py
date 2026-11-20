@@ -55,6 +55,7 @@ from ..db import get_pool
 from ..auth import require_planner
 from ..config import APP_BASE_URL
 from ..email_frame import SUB, clock12, frame, hue_for, paragraphs_html
+from ..email_pictures import with_picture
 from ..emailer import send_thread_email
 from .rsvp import _assert_event_studio_read, _client_ip
 
@@ -501,8 +502,8 @@ def compose_helper_email(data: dict, helper: dict, page_url: str, stop_url):
     asks = f"{host_first} asked you to help" if host_first else "You’re asked to help"
     subject = f"Your job for {name}"
     html, text = frame(
-        hue=hue_for(name), greeting=f"Hi {first},", eyebrow=asks, title=name, facts=facts,
-        blocks=[(paragraphs_html(jobs_text), jobs_text)],
+        kind="helper_ask", hue=hue_for(name), greeting=f"Hi {first},", eyebrow=asks, title=name, facts=facts,
+        fixed=[(paragraphs_html(jobs_text), jobs_text)],     # the jobs are in the card's picture
         primary=("I can do it", page_url), secondary=[("I can’t", e(page_url))],
         fine=f"Either one opens your page, where you tap your answer for {host_first or 'your host'}. No app, no account.",
         footer=f"Sent by {host or 'your host'} with No Guesswork Events.", stop_url=stop_url)
@@ -554,6 +555,7 @@ async def email_helper_job(
             """insert into event_messages (event_id, channel_id, message_type, author_role, author_name, body, metadata)
                values ($1, $2, 'standard', 'planner', $3, $4, $5) returning id""",
             event_id, ch["id"], helper["hostName"] or None, body_text, json.dumps({"delivery": delivery}))
+    body_html, body_text = await with_picture(body_html, body_text)
     host = " ".join(str(helper["hostName"] or "").split())[:80] or "Your host"
     stop_headers = None
     if stop_token:

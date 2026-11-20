@@ -24,6 +24,7 @@ import time
 from .config import APP_BASE_URL
 from .db import get_pool
 from .email_frame import frame, hue_for, paragraphs_html
+from .email_pictures import with_picture
 from .emailer import _send_via_resend, failure_reason, is_email_configured
 
 log = logging.getLogger("ngw.host_alerts")
@@ -63,7 +64,7 @@ def compose(kind: str, who: str, event_name: str, answer: str | None = None) -> 
     subject = f"{what} — {name}"
     words = f"{what} for {name}."
     html, text = frame(
-        hue=hue_for(name), eyebrow="Your plan", title=name,
+        kind="host_alert", hue=hue_for(name), eyebrow="Your plan", title=name,
         blocks=[(paragraphs_html(words), words)],
         primary=("Open your plan", APP_BASE_URL),
         fine=("We send at most one of these an hour for each event, "
@@ -97,6 +98,7 @@ async def alert_host(event_id: str, kind: str, who: str, answer: str | None = No
         if not to or not _claim(event_id):
             return
         subject, body, text = compose(kind, who, row["name"], answer)
+        body, text = await with_picture(body, text)
         try:
             await _send_via_resend(to=to, subject=subject, html=body, text=text)
         except Exception:

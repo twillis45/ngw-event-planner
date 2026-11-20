@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from ..db import get_pool
 from ..config import APP_BASE_URL, API_PUBLIC_BASE_URL
 from ..auth import require_planner
+from ..email_pictures import with_picture
 from ..emailer import send_approval_email, send_thread_email, is_email_configured
 from ..email_frame import frame, hue_for, paragraphs_html
 from ..invite_email import compose_invite_email, invite_gaps
@@ -161,7 +162,7 @@ def compose_message_email(ev: dict, body: str, recipient_name, sender: str, stop
     # above it would read twice.
     greets = bool(_GREETING.match(words))
     return frame(
-        hue=hue_for(ev.get("type"), name), greeting=f"Hi {who}," if who and not greets else None,
+        kind="message", hue=hue_for(ev.get("type"), name), greeting=f"Hi {who}," if who and not greets else None,
         eyebrow=f"A message from {sender}", title=name or None,
         blocks=[(paragraphs_html(words), words)],
         footer=f"Sent by {sender} with No Guesswork Events.", stop_url=stop_url)
@@ -585,6 +586,10 @@ async def create_message(
                 event_data, body_text, payload.recipient_name, sender,
                 email_stop_url(stop_token) if stop_token else None,
                 card_url=card_url(code, v) if v else None)
+        # EVERY EMAIL'S CARD AS A PICTURE (owner, 11/20/2026: "Do picture for
+        # all emails"). An invite that leads with the host's own picture keeps
+        # it; otherwise the server's picture of the card stands in. Fail-soft.
+        html, body_plain = await with_picture(html, body_plain)
         delivery_result = await send_thread_email(
             to=payload.recipient_email,
             subject=subj,
