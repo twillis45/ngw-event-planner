@@ -3401,6 +3401,12 @@ export const STAY_FROM_PLAN = 'the plan, not booked yet';
  *
  * Choosing is not booking. One predicate, so nothing can claim otherwise again.
  */
+// ── A STAY IS DONE WHEN IT IS BOOKED (owner ruling, 11/20/2026) ──────────────
+// This predicate IS the lodging part's "done": the plan's ledger, the hero's
+// ask, the sheet hero's green and the board row all read it. A pick or a plan
+// (STAY_FROM_PICK / STAY_FROM_PLAN) is not done, and neither is a roster whose
+// guests each say they have a room; the surfaces that read "The stay is set" or
+// "Everyone has a room" off those were overclaiming and now ask for the booking.
 export function lodgingIsHeld(event) {
   const ev = event || {};
   const stay = (ev.lodging && typeof ev.lodging === 'object') ? ev.lodging : {};

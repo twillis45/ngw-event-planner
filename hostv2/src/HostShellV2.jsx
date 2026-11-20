@@ -143,7 +143,7 @@ import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import MustHaves from './MustHaves';
-import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded } from '@app/lib/lodgingIntel';
+import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded, lodgingIsHeld } from '@app/lib/lodgingIntel';
 import { heardAccessNeeds, accessNeedsFor } from '@app/lib/accessNeeds';
 import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch, heardVendorIntents } from '@app/lib/heardClauses';
 import { heardFoods, uncoveredFoods, similarPlanLine } from '@app/lib/heardFoods';
@@ -14452,8 +14452,12 @@ export default function HostShellV2() {
                             : (travel.lodging.notBookedCount != null && travel.lodging.roster.length > 0
                               ? (travel.lodging.notBookedCount > 0
                                   ? travel.lodging.notBookedCount + ' of ' + travel.lodging.roster.length + ' have no room yet'
-                                  : 'everyone has a room lined up')
-                              : (travel.lodging.hotelName || 'no place picked yet')),
+                                  : (lodgingIsHeld(event) ? 'everyone has a room' : 'everyone has a room lined up · stay not booked'))
+                              // A PICK IS NOT A BOOKING (owner ruling, 11/20/2026): the
+                              // name alone read as a settled stay over an open part.
+                              : (travel.lodging.hotelName
+                                  ? (lodgingIsHeld(event) ? travel.lodging.hotelName : travel.lodging.hotelName + ' · picked, not booked yet')
+                                  : 'no place picked yet')),
                           // WAVE-6 (one number per row): raises here are aggregates —
                           // the sub carries the real fact. Tint only, no ledger badge.
                           attn: (raised['lodging'] || 0) + (raised['money-dates'] || 0) > 0,
@@ -18044,7 +18048,16 @@ export default function HostShellV2() {
                       screen. Renders precisely when the block above does not: the
                       weighing machinery OR the stay/money-dates half, never both,
                       never neither (bar the local-event early return above). */}
-                  {!onWeighingSide && (travel.rosterMode && lg.roster.length > 0 ? (
+                  {/* A STAY IS DONE WHEN IT IS BOOKED (owner ruling, 11/20/2026).
+                      Both heroes below used to read done off a NAME — "The stay is
+                      set" over a pick, "Everyone has a room" over guests' own
+                      say-so — while the plan's lodging part (lodgingIsHeld) stayed
+                      open and the hero kept asking. Green and "set" land only when
+                      the stay is held: a booking code, a refund date or an
+                      installment on file. A pick reads as a pick, in neutral ink. */}
+                  {!onWeighingSide && (() => {
+                    const held = lodgingIsHeld(event);
+                    return travel.rosterMode && lg.roster.length > 0 ? (
                     /* SAY WHAT THIS NUMBER COUNTS (host 2026-07-28: "difference between
                        booked and confirmed"). notBookedCount counts ONLY 'not_started'
                        — its own comment says "booked here means booked OR confirmation
@@ -18055,21 +18068,26 @@ export default function HostShellV2() {
                     <SheetHero
                       eyebrow="Rooms lined up"
                       star={`${lg.roster.length - (lg.notBookedCount || 0)} of ${lg.roster.length} have a room`}
-                      tone={lg.notBookedCount === 0 ? 'ok' : undefined}
+                      tone={lg.notBookedCount === 0 && held ? 'ok' : undefined}
                       sub={lg.notBookedCount > 0
                         ? `${lg.notBookedCount} ${lg.notBookedCount === 1 ? 'has no room' : 'have no room'} yet — tap a name each time you hear where they stand.`
-                        : 'Everyone has a room lined up — tap a name if anything changes.'}
+                        : held
+                          ? 'Everyone has a room — tap a name if anything changes.'
+                          : 'Everyone says they have a room. Add the booking code or the refund date below and the stay is booked.'}
                     />
                   ) : (
                     <SheetHero
                       eyebrow="The stay"
-                      star={lg.hotelName ? 'The stay is set' : 'No place picked yet'}
-                      tone={lg.hotelName ? 'ok' : undefined}
-                      sub={lg.hotelName
-                        ? `${lg.hotelName} is the plan — the details below feed the where-to-stay note.`
-                        : 'Name the place below and the where-to-stay note writes itself.'}
+                      star={!lg.hotelName ? 'No place picked yet' : held ? 'The stay is booked' : `Picked ${lg.hotelName}, not booked yet`}
+                      tone={lg.hotelName && held ? 'ok' : undefined}
+                      sub={!lg.hotelName
+                        ? 'Name the place below and the where-to-stay note writes itself.'
+                        : held
+                          ? `${lg.hotelName} is booked — the details below feed the where-to-stay note.`
+                          : `Book ${lg.hotelName}, then add the booking code or the refund date below — that is what marks the stay booked.`}
                     />
-                  ))}
+                  );
+                  })()}
                   {/* The one dated fact on this card, said plainly — never "cutoff". */}
                   {lg.deadline && (() => {
                     let dd = null; try { dd = daysUntil(lg.deadline); } catch { dd = null; }

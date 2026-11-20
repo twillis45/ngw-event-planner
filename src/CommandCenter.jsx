@@ -1626,7 +1626,14 @@ export function _eventFoundationActions(event) {
     // toward WITHOUT it counting as settled. Re-deriving the predicate here
     // threw that away.
     ...(event && event.isDestination === true ? [{
-      id: 'lodging', domain: 'lodging', title: 'Sort where everyone stays.',
+      // NAME THE ACT (owner ruling, 11/20/2026): a picked or planned place
+      // that is not yet booked is asked to be BOOKED, by name — the same words
+      // the readiness ledger uses (phaseProgress), so the hero and "Then, in
+      // order" cannot ask two different things about one stay.
+      id: 'lodging', domain: 'lodging',
+      title: (!lodgingSettled && event.lodging && String(event.lodging.hotelName || '').trim())
+        ? `Book ${String(event.lodging.hotelName).trim()}.`
+        : 'Sort where everyone stays.',
       consequence: 'Rooms sell out and group rates expire — this one has a deadline the rest of the plan does not.',
       cta: 'Sort lodging', route: { tab: 'Travel', focusField: 'lodging' },
       done: lodgingSettled,

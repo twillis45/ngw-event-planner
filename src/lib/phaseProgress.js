@@ -326,8 +326,12 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   // the contradiction that shipped on 2026-08-06, where the hero led with
   // lodging while the board filed dest_lodging under "Comes up closer to the
   // date." See destinationOrderingContract / heroBoardAgreement.
+  // NAME THE ACT (owner ruling, 11/20/2026): once a place is picked or planned,
+  // the open ask is to BOOK it — "Sort where everyone stays" over a named pick
+  // read as though nothing had been done.
+  const _pickedName = String((ev.lodging && ev.lodging.hotelName) || '').trim();
   add('lodging', ev.isDestination === true, _lodgingPicked,
-    'Sort where everyone stays',
+    _pickedName && !_lodgingPicked ? `Book ${_pickedName}` : 'Sort where everyone stays',
     { tab: 'Travel', focusField: 'lodging' }, 4,
     { records: ['dest_lodging'] });
 
