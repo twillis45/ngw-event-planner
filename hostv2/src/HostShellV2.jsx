@@ -473,7 +473,7 @@ function VendorReplyParserV2({ vendor, event, writeVendor, signedIn, onSignIn })
         </div>
       ) : (<>
       <div style={{ fontSize: 12, color: 'var(--carbon-muted)', marginBottom: 8, lineHeight: 1.5 }}>
-        Paste their email or text — we’ll pull out times, contacts, counts and payment status for you to review. Nothing saves until you apply it.
+        Paste their email or text. We’ll pull out times, contacts, counts, and payment status to review; nothing saves until you apply it.
       </div>
       <textarea className="field" rows={3}
         style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 10px' }}
@@ -1739,7 +1739,7 @@ export default function HostShellV2() {
     // no error. Require "City, ST" or a ZIP; reject a bare city outright
     // rather than accept something the app can't actually locate.
     const parsed = parseVenueLocation(c);
-    if (!parsed) { toast('Add the state or ZIP too — “Annapolis, MD” or “21401” — a city name alone could be in any state.'); return; }
+    if (!parsed) { toast('Add the state or ZIP, like “Annapolis, MD” or “21401”. A city alone could be in any state.'); return; }
     patchEvent(
       parsed.zip ? { venueCity: parsed.zip } : { venueCity: parsed.city, venueState: parsed.state },
       'City noted — weather and the venue check now line up.'
@@ -1828,7 +1828,7 @@ export default function HostShellV2() {
       if (code === 'aborted') return;
       toast(
         code === 'not-allowed' || code === 'service-not-allowed'
-          ? 'Mic access is blocked — allow the microphone in your browser settings, or type it instead.'
+          ? 'Mic is blocked. Allow it in your browser settings, or type instead.'
         : code === 'audio-capture' ? 'No microphone found — type it instead.'
         : code === 'network' ? 'Voice needs a connection right now — type it instead.'
         : 'Couldn’t hear that — try again or type it.'
@@ -3161,7 +3161,7 @@ export default function HostShellV2() {
       const label = (FOOD_SOURCING_OPTIONS.find(([, val]) => val === v) || ['it'])[0];
       // Through the builder — a host tap on the food-sourcing control.
       patchEvent(settleChoicePatch(event, 'sourcing', v, 'host'),
-        'Food planned: ' + label.toLowerCase() + ' — the plan just recomputed.');
+        'Food planned: ' + label.toLowerCase() + '. Plan updated.');
       return;
     }
     if (/^blocker:/.test(String(nd.id || ''))) {
@@ -3719,7 +3719,7 @@ export default function HostShellV2() {
       reportFailure('save', { where: 'hostv2.patch', reason: 'write-failed', eventId });
       if (!saveFailedRef.current) {
         saveFailedRef.current = true;
-        toast('That change didn’t save on this device — storage is full. Free some space, then try the change again.');
+        toast('That change didn’t save on this device: storage is full. Free some space and try again.');
       }
       return { ok: false, reason: 'write-failed' };
     }
@@ -4255,7 +4255,7 @@ export default function HostShellV2() {
         // Says what we know — the pass has not reached this event — and never
         // that money moved: the redirect is not evidence of a payment (Nielsen
         // re-run N8, 2026-11-02; thePassSurvivesTheWebhookRace).
-        toast('We haven’t seen the pass reach this event yet. If you completed checkout it usually lands within a few seconds — reopen the event to check, and your Stripe receipt email has the details.', null, null, { sticky: true });
+        toast('The pass hasn’t reached this event yet. If you checked out, it usually lands within seconds; reopen the event to check. Your Stripe receipt email has the details.', null, null, { sticky: true });
         return;
       }
 
@@ -4264,7 +4264,7 @@ export default function HostShellV2() {
       // before: the redirect params only say WHAT to check.
       if (!sessionId) {
         reportFailure('pass_verify', { where: 'hostv2.pass-return', reason: 'missing-session', eventId: paidEventId });
-        toast('Almost there — we couldn’t confirm the payment from this link. If you paid, reopen the app from your Stripe receipt email.', null, null, { sticky: true });
+        toast('We couldn’t confirm the payment from this link. If you paid, reopen the app from your Stripe receipt email.', null, null, { sticky: true });
         return;
       }
       let v = null;
@@ -4272,7 +4272,7 @@ export default function HostShellV2() {
       const paid = !!(v && v.payment_status === 'paid' && String(v.fee_id || '') === feeId);
       if (!paid) {
         reportFailure('pass_verify', { where: 'hostv2.pass-return', reason: 'unconfirmed', eventId: paidEventId });
-        toast('We couldn’t confirm that payment with Stripe just now — nothing was unlocked. If you were charged, try reloading; the receipt link always works.', null, null, { sticky: true });
+        toast('Couldn’t confirm that payment with Stripe, so nothing was unlocked. If you were charged, reload; the receipt link always works.', null, null, { sticky: true });
         return;
       }
       unlocked();
@@ -4383,7 +4383,7 @@ export default function HostShellV2() {
       // the vendor, because nothing is known about them: the words may still be
       // sitting on a clipboard.
       drafted
-        ? `Copied — the note for ${name} is on your clipboard. Tap “Mark it sent” once it's actually gone.`
+        ? `Note for ${name} copied. Tap “Mark it sent” once you’ve sent it.`
         : `Noted — you reached out to ${name}. If they go quiet, this is what tells you.`);
   };
   // WAVE-B write path (a): booking status. The EXACT vocabulary every status
@@ -4555,7 +4555,7 @@ export default function HostShellV2() {
     if (isVendorBriefApiConfigured() && isSupabaseConfigured() && !session) { askSignInToSend(v); return; }
     let appUrl;
     try { appUrl = publicAppUrl(); }
-    catch { toast('Sharing is unavailable because the public link address is missing. Nothing was shared.'); return; }
+    catch { toast('Can’t share: the public link address is missing. Nothing was shared.'); return; }
     setVendorBrief({ vendorId: v.id, url: null, qrDataUrl: null, minting: true, copied: false });
     // NO SILENT LEGACY FALLBACK (stage 9 work order #13, S9-5 option B). With
     // the brief API configured, a failed mint used to fall through to the
@@ -5247,7 +5247,7 @@ export default function HostShellV2() {
     if (partsPrevRef.current != null && done > partsPrevRef.current && total) {
       setBeat(done >= total
         ? 'That was the last one — all ' + total + ' handled. The plan is quiet.'
-        : 'Handled — ' + done + ' of ' + total + '. The plan just got quieter.');
+        : 'Handled — ' + done + ' of ' + total + '.');
       const t = setTimeout(() => setBeat(null), 6000);
       partsPrevRef.current = done;
       return () => clearTimeout(t);
@@ -6082,12 +6082,12 @@ export default function HostShellV2() {
     const before = stillOpen(event.guests || []);
     const gs = autoAssignByGroup(event.guests || [], seating.tableCount);
     const placed = before - stillOpen(gs);
-    if (!placed) { toast('No one to place automatically — this works from each guest’s group, and nobody waiting has one.'); return; }
+    if (!placed) { toast('No one to place. This uses each guest’s group, and nobody waiting has one.'); return; }
     // HONEST: the engine spreads guests one-by-one across tables (legacy
     // behavior, preserved) — it balances the room, it does NOT keep groups
     // together. The toast says what actually happened.
     patchEvent({ guests: gs },
-      placed + (placed === 1 ? ' person' : ' people') + ' placed, spread evenly across the tables — groups don’t sit together this way. Tap a name, then a table, to adjust.');
+      placed + (placed === 1 ? ' person' : ' people') + ' placed evenly across the tables. Groups aren’t kept together; tap a name, then a table, to adjust.');
   };
   const [lodgeForm, setLodgeForm] = useState(null);
   const lodgeSheetOpen = !!(sheet && sheet.kind === 'lodging');
@@ -6788,7 +6788,7 @@ export default function HostShellV2() {
     endBusyToast();
     if (!result.ready) { toast(rsvpUnavailable(result)); return ''; }
     try { return inviteLinkUrl(); }
-    catch { toast('Sharing is unavailable because the public link address is missing. Nothing was shared.'); return ''; }
+    catch { toast('Can’t share: the public link address is missing. Nothing was shared.'); return ''; }
   };
   const openInviteDraft = async (title, build, opts) => {
     // WHAT AN INVITE CANNOT GO OUT WITHOUT (owner, 11/19/2026: "Before sending
@@ -7519,8 +7519,8 @@ export default function HostShellV2() {
                         }
                         if (!win) {
                           toast(copied
-                            ? 'Your browser blocked the new tab. The list is copied — open instacart.com and search for each item.'
-                            : 'Your browser blocked the new tab. Use “Copy the shopping list”, then open instacart.com and search for each item.',
+                            ? 'The new tab was blocked. The list is copied; open instacart.com and search for each item.'
+                            : 'The new tab was blocked. Tap “Copy the shopping list”, then search for each item on instacart.com.',
                             null, null, { sticky: true });
                         }
                       /* SHORTENED 2026-09-26 (owner: "can it be condensed to save
@@ -7640,7 +7640,7 @@ export default function HostShellV2() {
     try { localStorage.removeItem(importBatchesKey); } catch { /* private mode — state still clears */ }
     setImportBatches([]);
     setImportsOpen(false);
-    toast('Import history cleared — those snapshots are off this device, and undoing past imports is no longer possible. Your guest list is unchanged.');
+    toast('Import history cleared. Past imports can no longer be undone; your guest list is unchanged.');
   };
   // Export — the shared serializers (lib/csvParsers toCSV/COLUMNS/exportFileSlug
   // + lib/download), with V2's guest fields mapped back to the canonical
@@ -8041,7 +8041,7 @@ export default function HostShellV2() {
     if (res && res.reason === 'conflict') {
       if (!conflictCueShown.current) {
         conflictCueShown.current = true;
-        toast('This event changed somewhere else after you opened it. Your edit is saved on this device only — the newer version in your account was left alone.', toastActionRef.current);
+        toast('This event changed somewhere else after you opened it. Your edit is saved on this device only; your account keeps the newer version.', toastActionRef.current);
       }
       return;
     }
@@ -8193,7 +8193,7 @@ export default function HostShellV2() {
       setHeroReceipt(null);
       if (!saveFailedRef.current) {
         saveFailedRef.current = true;
-        toast('That change didn’t save on this device. Your previous saved version is still here — free some space and try again.');
+        toast('That change didn’t save on this device. Your last saved version is still here; free some space and try again.');
       }
       return { ok: false, reason: result && result.reason, error: 'That change was not saved. Try again after checking device storage.' };
     }
@@ -8324,7 +8324,7 @@ export default function HostShellV2() {
             const k = 'ngw-replies-unavailable-told-' + event.id;
             let told = false;
             try { told = sessionStorage.getItem(k) === '1'; sessionStorage.setItem(k, '1'); } catch { /* private mode — tell anyway */ }
-            if (!told) toast('Couldn’t load your guests’ replies right now — anyone shown as “No reply” may have answered. They’ll load the next time you open the plan.');
+            if (!told) toast('Couldn’t load your guests’ replies. Anyone shown as “No reply” may have answered; they’ll load next time you open the plan.');
           }
           return;
         }
@@ -8466,7 +8466,7 @@ export default function HostShellV2() {
     const r = await mintHelperLinkResult(event.id, resp.helperName);
     if (!r.ok) {
       const why = r.kind === 'signed-out' ? `Sign in to make ${first}'s link.`
-        : r.kind === 'not-found' ? `Your saved plan doesn't have ${first}'s job yet — give it a moment to save, then try again.`
+        : r.kind === 'not-found' ? `${first}'s job hasn't saved to your plan yet. Give it a moment, then try again.`
           : `Couldn't make ${first}'s link just now.`;
       setHelperSend({ taskId, error: `${why} Nothing was sent.` });
       return;
@@ -8512,7 +8512,7 @@ export default function HostShellV2() {
     try {
       await navigator.clipboard.writeText(body);
       if (resp.helperId) patchEvent(handoff('copy'));
-      toast(`Copied — paste it to ${first} however you reach them. Nothing was sent from here.`);
+      toast(`Copied. Send it to ${first} your usual way; nothing was sent from here.`);
     }
     catch { /* the message is on screen to copy by hand */ }
   };
@@ -8622,7 +8622,7 @@ export default function HostShellV2() {
       return;
     }
     patchEvent({ guestTold: recordTold(cur, guestId, channel, new Date().toISOString()) },
-      `Noted — you told ${first}. The app takes your word for it; nothing was sent from here.`);
+      `Noted: you told ${first}. Nothing was sent from here.`);
   };
 
   const confirmHelper = (itemId, name) => {
@@ -8769,7 +8769,7 @@ export default function HostShellV2() {
   // A LOCKED COUNT MOVES WITH THE HOST'S EDIT (single-source audit 11/18/2026):
   // guestCountFor reads guestCount first, so writing only the estimate left a
   // locked 40 on screen under a toast saying 41.
-  const setGuests = (n) => patchEvent({ guestEstimate: n, guestCountSource: 'host', ...(Number(event.guestCount) > 0 ? { guestCount: n } : null) }, 'Planning around ' + n + ' now — the plan just recomputed.');
+  const setGuests = (n) => patchEvent({ guestEstimate: n, guestCountSource: 'host', ...(Number(event.guestCount) > 0 ? { guestCount: n } : null) }, 'Planning around ' + n + ' now.');
   // The count RESOLUTION rows — shared by the 'count' editor and the guests
   // editor's drift bridge (W14): when the caterer's number and the confirmed
   // yeses disagree, the fix is one of these two taps, wherever the host is.
@@ -8975,7 +8975,7 @@ export default function HostShellV2() {
       const setD = (k, delta) => {
         const n = Math.max(0, (Number(dc[k]) || 0) + delta);
         patchEvent({ dietCounts: { ...dc, [k]: n } },
-          n ? k + ' × ' + n + ' — the spread just adjusted for it.' : k + ' cleared.');
+          n ? k + ' × ' + n + ' — spread adjusted.' : k + ' cleared.');
       };
       // ── TWO AND A DOOR, NOT THIRTEEN (host ask 2026-09-22) ──────────────
       // This mapped the whole vocabulary, so a host opening "Allergies and
@@ -9103,7 +9103,7 @@ export default function HostShellV2() {
         //
         // The datetime domino now stays open until she confirms the hour, which
         // is what an unconfirmed hour should look like.
-        patchEvent(patch, 'Date confirmed — every countdown, deadline, and shopping window just moved to it.');
+        patchEvent(patch, 'Date confirmed. Countdowns, deadlines, and shopping windows now count from it.');
         setDateDraft(null);
       };
       return (
@@ -9189,7 +9189,7 @@ export default function HostShellV2() {
                 ? <p className="grounding" style={{ width: '100%', margin: '6px 0 0' }}>{prop.why}</p>
                 : !String(event.startTime || '').trim()
                   ? <p className="grounding" style={{ width: '100%', margin: '6px 0 0' }}>
-                      Without this the day has an order but no clock, and nothing we send a vendor can name an hour.
+                      Without it, the day has no clock and no vendor message can name an hour.
                     </p>
                   : null}
             </>
@@ -10297,7 +10297,7 @@ export default function HostShellV2() {
       const el = document.getElementById('ros-now');
       if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
     }
-    toast('The day plan is on this screen, just below.');
+    toast('The day plan is below.');
   };
   // Handled whispers — ONLY facts the data proves (original Focus semantics).
   const dayWhispers = useMemo(() => {
@@ -11768,7 +11768,7 @@ export default function HostShellV2() {
                       statusNode = <p className="verdict">{solemn
                         ? 'Everything’s ready — nothing needs you today.'
                         : (worries.length
-                          ? 'All quiet — just the heads-ups below, when you have a minute.'
+                          ? 'All quiet — only the heads-ups below.'
                           : 'All quiet — you’re genuinely set for now.')}</p>;
                     } else {
                       statusNode = <p className="verdict">{solemn ? 'You’re ready — take it gently.' : 'On track — nothing is slipping.'}</p>;
@@ -12182,7 +12182,7 @@ export default function HostShellV2() {
                   shorter list with a reason reads as being taken care of. */}
               {queueFolded && !askMode && (
                 <p className="grounding" style={{ margin: '0 0 var(--sp-2)', color: 'var(--muted)' }}>
-                  That’s a lot with the clock ticking — just the first few here, the rest is a tap away when you’re ready.
+                  That’s a lot with the clock ticking. Here are the first few; the rest is a tap away.
                 </p>
               )}
               {/* When a bundle just cleared, the payoff OWNS the hero — suppress the queue
@@ -12602,7 +12602,7 @@ export default function HostShellV2() {
                           ? 'This is first because it can’t wait — everything else can.'
                           : is('date', /set the date|the event date/) ? 'This is first because every deadline in the plan counts back from it.'
                           : is('guests', /guest (list|count)|add your guests|headcount/) ? 'This is first because the food, the seats and the budget all size off the headcount.'
-                          : is('budget', /budget|spending plan/) ? 'This is first because every estimate below is guessing until it has a number to work against.'
+                          : is('budget', /budget|spending plan/) ? 'This is first because every estimate below needs a number to work against.'
                           : is('food', /serving|the food|menu|the spread/) ? 'This is first because the shopping list and the crab order both wait on it.'
                           : is('starttime', /start time/) ? 'This is first because the day has an order but no clock until you set it.'
                           : is('venue', /the location|the venue|where is the event/) ? 'This is first because vendors, weather and the timeline all hang off where it is.'
@@ -13881,9 +13881,8 @@ export default function HostShellV2() {
                     in order, starting with the one at the top.
                   </p>
                   <p className="grounding" style={{ margin: '0 0 12px' }}>
-                    They read from the same list, so they can’t contradict each other — but they won’t match, and
-                    they shouldn’t. A part can be settled and still have one loose end, and a single job can close
-                    two parts at once.
+                    They read from the same list but won’t match, and shouldn’t: a part can be settled with one
+                    loose end, and one job can close two parts.
                   </p>
                   {/* POP-1C consumer: the recommendation lifecycle is the one
                       source that classifies EVERY recommendation (foundation,
@@ -13929,7 +13928,7 @@ export default function HostShellV2() {
                       {/* RECON MODEL grounding: why this number and the inventories
                           below it can never be compared one-to-one. */}
                       <p className="grounding" style={{ margin: '0 0 6px' }}>
-                        Each part counts once here. The items inside a part — shopping items, people, steps — keep their own counts further down the page.
+                        Each part counts once here. Items inside a part keep their own counts further down.
                       </p>
                       {phaseCues.items.map((c, i) => c.handled ? (
                         <div key={c.id || i} className="line" style={{ padding: '5px 0' }}>
@@ -14908,7 +14907,7 @@ export default function HostShellV2() {
               <div className="eyebrow">{event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'No date'} · {isPast ? 'as it ran' : 'preview'}</div>
               {days === 0 && rosState === 'untimed' && (
                 <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', color: 'var(--carbon-muted)' }}>
-                  These moments don’t have times yet — the live clock takes over once times are set. Walking through by hand still records what’s done.
+                  No times are set yet, so there’s no live clock. Walking through by hand still records what’s done.
                 </p>
               )}
               {/* ── WHOSE DAY THIS RUN-OF-SHOW IS WRITTEN FOR (host ask 2026-09-23)
@@ -15511,7 +15510,7 @@ export default function HostShellV2() {
                           </span>
                         </div>
                       ))}
-                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>“Thanked” feeds the wrap-up meter up top; gifts are just for your memory — and the note below writes itself from what actually happened.</p>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>“Thanked” feeds the wrap-up meter up top. Gifts are for your memory; the note below is drafted from what happened.</p>
                     </div></div>
                   </>
                 );
@@ -15545,7 +15544,7 @@ export default function HostShellV2() {
                         } catch { toast('Couldn’t record it.'); }
                       }}>Record it</button>
                     </div>
-                    <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>One number, once — future plans quietly adjust to how your crowds really show.</p>
+                    <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>One number, once. Future plans adjust to how your crowds actually show.</p>
                   </div>
                 );
               })()}
@@ -15800,11 +15799,11 @@ export default function HostShellV2() {
                   const sub = openN
                     ? (overdueN
                       ? (overdueBlocked
-                        ? `${overdueN} ${overdueN === 1 ? 'is' : 'are'} past ${overdueN === 1 ? 'its' : 'their'} easy window — start there. Each one settles in a tap below; your answer reshapes the plan.`
-                        : `${overdueN} ${overdueN === 1 ? 'is' : 'are'} past ${overdueN === 1 ? 'its' : 'their'} easy window — the plan’s been running on our pick meanwhile. Settle ${overdueN === 1 ? 'it' : 'them'} in a tap below; your answer reshapes the plan.`)
-                      : 'Each one settles in a tap below — your answer reshapes the plan.')
+                        ? `${overdueN} ${overdueN === 1 ? 'is' : 'are'} past ${overdueN === 1 ? 'its' : 'their'} easy window — start there. Each settles in a tap below.`
+                        : `${overdueN} ${overdueN === 1 ? 'is' : 'are'} past ${overdueN === 1 ? 'its' : 'their'} easy window, so the plan is using our pick for now. Settle ${overdueN === 1 ? 'it' : 'them'} in a tap below.`)
+                      : 'Each one settles in a tap below and reshapes the plan.')
                     : (deferredN
-                      ? `${deferredN} ${deferredN === 1 ? 'decision comes' : 'decisions come'} up closer to the date — you’ll see ${deferredN === 1 ? 'it' : 'them'} here when the time’s right.${lockedN ? ` ${lockedN} already settled.` : ''}`
+                      ? `${deferredN} ${deferredN === 1 ? 'decision comes' : 'decisions come'} up closer to the date; ${deferredN === 1 ? 'it' : 'they'}’ll show here then.${lockedN ? ` ${lockedN} already settled.` : ''}`
                       : `All ${lockedN} ${lockedN === 1 ? 'call is' : 'calls are'} made — change any of them below.`);
                   return (
                     <SheetHero
@@ -15834,15 +15833,15 @@ export default function HostShellV2() {
                   // "just the first few" is true. Expanded (or nothing to fold) ⇒ the
                   // host is looking at the whole list, so say the honest thing instead.
                   if (callsFolded) {
-                    return <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>That’s a lot with the clock ticking — just the first few here, the rest comes back when you’re ready. You’ve got this.</p>;
+                    return <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>That’s a lot with the clock ticking. Here are the first few; the rest comes back when you’re ready.</p>;
                   }
                   if (ha && ha.overwhelm) {
-                    return <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>That’s a lot with the clock ticking — take them one at a time, in the order below. You’ve got this.</p>;
+                    return <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>That’s a lot with the clock ticking. Take them one at a time, in the order below.</p>;
                   }
                   // The engine's own band — one classifier, not a shell copy of it.
                   const band = ha && ha.difficultyBand;
                   const line = band === 'hard'
-                    ? 'This is a lot to pull off — take the calls one at a time. You don’t have to settle everything today; start at the top and work down.'
+                    ? 'This is a lot to pull off. Take the calls one at a time from the top; they don’t all need settling today.'
                     : band === 'easy' ? 'This is a light one — a few quick calls and you’re set.' : null;
                   if (line) return <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>{line}</p>;
                   // MOMENTUM (2026-08-18): the longitudinal read — only speaks when it has
@@ -15855,7 +15854,7 @@ export default function HostShellV2() {
                   // cover a genuinely growing pile; momentum would just repeat it.
                   if (momentum && momentum.sessionCount >= 2) {
                     if (momentum.trend === 'stalled' && typeof momentum.daysSinceLastSession === 'number' && momentum.daysSinceLastSession >= 7) {
-                      return <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>It’s been a bit since you were last in here — nothing’s wrong, just pick back up whenever you’re ready.</p>;
+                      return <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>It’s been a while. Nothing’s wrong; pick up where you left off.</p>;
                     }
                     if (momentum.trend === 'improving') {
                       return <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>You’re steadily working through this — keep going at your own pace.</p>;
@@ -16393,7 +16392,7 @@ export default function HostShellV2() {
                 <span>Destination event <span className="of">— guests traveling to a lodging/venue combo</span></span>
                 <button className="mini" style={event.isDestination ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
                   onClick={() => patchEvent({ isDestination: !event.isDestination },
-                    !event.isDestination ? 'Marked as a destination event — lodging, transport, and travel decisions just got added to your plan.' : 'Back to a local event — the travel decisions and vendor categories are removed.')}>
+                    !event.isDestination ? 'Marked as a destination event. Lodging, transport, and travel decisions are now in your plan.' : 'Back to a local event — the travel decisions and vendor categories are removed.')}>
                   {event.isDestination ? 'yes' : 'no'}
                 </button>
               </div>
@@ -19112,7 +19111,7 @@ export default function HostShellV2() {
                   star={riskCount ? `${riskCount} to know about` : 'All quiet'}
                   tone={riskCount ? undefined : 'ok'}
                   sub={riskCount
-                    ? 'None of these are happening — they’re the ones worth a plan. Clear any you’ve already got covered.'
+                    ? 'None of these are happening; they’re worth a plan. Clear any you’ve covered.'
                     : 'Everything flagged has a plan or got dismissed.'}
                 />
                 {/* ctx.activeRisks (PC-2): the reveal's risk deriver, already
@@ -19211,7 +19210,7 @@ export default function HostShellV2() {
                 <SheetHero
                   eyebrow="The heart of it"
                   star="What are we really protecting?"
-                  sub="The day-before brief, the run of show, and the toast all draw from your own words — nothing here is required."
+                  sub="The day-before brief, the run of show, and the toast draw from your words. Nothing here is required."
                 />
                 {/* MILITARY RETIREMENT intelligence (knowledge/militaryRetirement.js): when the
                     event is a military retirement, surface the real ceremony protocol — the
@@ -19451,7 +19450,7 @@ export default function HostShellV2() {
                   if (out && out.url) { window.location.assign(out.url); return; }
                   setOpeningCheckout(false);
                   reportFailure('pass_checkout', { where: 'hostv2.checkout', reason: 'missing-url', eventId: event.id });
-                  toast('Couldn’t open checkout just now — please try again.');
+                  toast('Couldn’t open checkout. Try again.');
                 } catch (e) {
                   setOpeningCheckout(false);
                   const why = String((e && e.message) || '');
@@ -19460,7 +19459,7 @@ export default function HostShellV2() {
                     return;
                   }
                   if (/synced/i.test(why)) {
-                    toast('This event hasn’t finished saving to your account yet — give it a moment and try again.');
+                    toast('This event is still saving to your account. Give it a moment and try again.');
                     return;
                   }
                   // SIGNED OUT (live smoke test, 11/9/2026): the pass belongs to the
@@ -20126,7 +20125,7 @@ export default function HostShellV2() {
                             }}>
                             {l.bought ? 'bought' : 'mark bought'}
                           </button>
-                          <button className="mini" aria-label="Remove line" onClick={() => writeCp({ lines: lines.filter((_, ix) => ix !== i) }, 'Line removed — the coverage math just recomputed.')}><span aria-hidden="true">×</span></button>
+                          <button className="mini" aria-label="Remove line" onClick={() => writeCp({ lines: lines.filter((_, ix) => ix !== i) }, 'Line removed. Coverage updated.')}><span aria-hidden="true">×</span></button>
                         </span>
                       </div>
                       <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -20190,7 +20189,7 @@ export default function HostShellV2() {
                       value={crabAdd.price} onChange={e => setCrabAdd(a => ({ ...a, price: e.target.value }))} />
                     <button className="cta" onClick={() => {
                       const l = { id: 'cl-' + lines.length + '-' + crabAdd.size + '-' + crabAdd.unit, size: crabAdd.size, unit: crabAdd.unit, quantity: crabAdd.qty, pricePerUnit: parseFloat(crabAdd.price) || undefined, estimatedCountPerUnit: defaultCountPerUnit(crabAdd.size, crabAdd.unit) || undefined };
-                      writeCp({ lines: [...lines, l] }, 'On the order — coverage and cost just recomputed.');
+                      writeCp({ lines: [...lines, l] }, 'On the order. Coverage and cost updated.');
                       setCrabAdd(a => ({ ...a, qty: 1, price: '' }));
                     }}>Add it</button>
                   </div>
@@ -20243,7 +20242,7 @@ export default function HostShellV2() {
                     tone={total > 0 && reconfirmedN === total ? 'ok' : undefined}
                     sub={reconfirmedN === total
                       ? 'That’s everyone — the day is set.'
-                      : 'Each note already knows their arrival time and your address. Send from your own thread — nothing goes out by itself.'}
+                      : 'Each note has their arrival time and your address. Send it from your own thread; nothing goes out by itself.'}
                   />
                   <div className="bar" aria-hidden style={{ marginBottom: 'var(--sp-3)' }}><i style={{ '--fill': pct / 100, background: 'var(--ok)' }} /></div>
                   {reconfirmables.map(v => {
@@ -20351,7 +20350,7 @@ export default function HostShellV2() {
                     <span className="v-meta" style={{ flexBasis: '100%', margin: '4px 0 0' }} data-analytics-line>
                       {analyticsOff
                         ? 'Off. Nothing about how you use the app is sent.'
-                        : 'Shares which features you use — never your guests, your plans’ contents, or anything you type.'}
+                        : 'Shares which features you use, never your guests, your plans’ contents, or anything you type.'}
                     </span>
                   </div>
                   {/* DEVICE NOTIFICATIONS (owner decision "B", 11/20/2026). Same
@@ -20423,11 +20422,11 @@ export default function HostShellV2() {
                                   try { res = importCustomEvents(payload, { reason: 'settings:import', overwriteExisting }); }
                                   catch {
                                     reportFailure('save', { where: 'hostv2.import', reason: 'unexpected-failure' });
-                                    toast('Nothing was restored — the file could not be applied on this device. Check the file and available storage, then try again.');
+                                    toast('Nothing was restored. Check the file and this device’s storage, then try again.');
                                     return;
                                   }
                                   if (!res || !res.ok) {
-                                    toast('Nothing was restored — the file could not be applied on this device. Check the file and available storage, then try again.');
+                                    toast('Nothing was restored. Check the file and this device’s storage, then try again.');
                                     return;
                                   }
                                   setCustoms(readCustomEventsSafe());
@@ -20524,7 +20523,7 @@ export default function HostShellV2() {
                       </div>
                     </>
                   ) : (
-                    <p className="grounding" style={{ margin: 0 }}>Nothing yet — after an event wraps, noting how it really went teaches the plans that follow.</p>
+                    <p className="grounding" style={{ margin: 0 }}>Nothing yet. After an event, note how it went and future plans learn from it.</p>
                   )}
 
                   {/* ── THE TWO THINGS THE ENGINE ASKED FOR AND NOBODY COLLECTED ──
@@ -20586,10 +20585,10 @@ export default function HostShellV2() {
                     <>
                       <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Signed in as <strong style={{ color: 'var(--ink-soft)' }}>{(session.user && session.user.email) || 'your account'}</strong> — your name, area, and what {BRAND.short} remembers sync to your account across devices.</p>
                       {profile && profile.accountType === 'planner' && (
-                        <p className="grounding" style={{ margin: '0 0 var(--sp-2)', opacity: .8 }}>You’re set up as a planner — this is the host view of your event. Your client roster and planner tools live in the full app.</p>
+                        <p className="grounding" style={{ margin: '0 0 var(--sp-2)', opacity: .8 }}>You’re set up as a planner. This is the host view; your client roster and planner tools are in the full app.</p>
                       )}
                       <div className="actions-row">
-                        <button className="mini" onClick={async () => { try { await signOutThisDevice(() => supabase.auth.signOut()); toast('Signed out — changes you make while signed out are kept here and saved to your account when you sign in again.'); } catch { toast('Couldn’t sign out.'); } }}>Sign out</button>
+                        <button className="mini" onClick={async () => { try { await signOutThisDevice(() => supabase.auth.signOut()); toast('Signed out. Changes you make here are kept and saved to your account when you sign in.'); } catch { toast('Couldn’t sign out.'); } }}>Sign out</button>
                       </div>
                       {isAccountDeletionAvailable() && !acctDelete && (
                         <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
@@ -20627,7 +20626,7 @@ export default function HostShellV2() {
                             switchEvent((kept[0] && kept[0].id) || (REAL_EVENTS[0] && REAL_EVENTS[0].id) || (ROSTER[0] && ROSTER[0].id) || BOOT_EVENT_ID);
                           }
                           toast(kept.length
-                            ? 'Your account is deleted, with its events. Plans saved only on this device are still here — remove them from this device any time.'
+                            ? 'Your account is deleted, with its events. Plans saved only on this device are still here.'
                             : 'Your account is deleted, with its events.');
                           // The boot-time event pool still holds the cached copies in
                           // memory; a fresh load reads the cleaned cache.
@@ -20803,7 +20802,7 @@ export default function HostShellV2() {
                 ) : (
                   <>
                     <p className="grounding" style={{ margin: '2px 0 var(--sp-3)' }}>
-                      Guests scan it and RSVP themselves — no app, no account. Screenshot it for the group chat, print it for the paper invite, tape it by the door.
+                      Guests scan it to RSVP. No app, no account. Screenshot it for the group chat, print it on the invite, or tape it by the door.
                     </p>
                     {qrDataUrl && (
                       <div style={{ background: '#ffffff', borderRadius: 'var(--r-lg)', padding: 18, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -21110,7 +21109,7 @@ export default function HostShellV2() {
                   <p className="v-meta" style={{ margin: '0 0 var(--sp-3)' }}>
                     {missingVendorEmail.malformed
                       ? `That address for ${missingVendorEmail.name} doesn't look right, so this can't send yet.`
-                      : `No email for ${missingVendorEmail.name} yet — hand it off below, or add one and you can send it from here.`}
+                      : `No email for ${missingVendorEmail.name} yet. Hand it off below, or add one to send from here.`}
                     {' '}
                     <button className="mini rowlink" onClick={() => setSheet({ kind: 'vendors', focus: missingVendorEmail.id, from: sheet /* the WHOLE draft — a partial parent came back as "undefined" (Nielsen N1, 2026-11-02) */ })}>
                       {missingVendorEmail.malformed ? 'Fix their address' : 'Add their email'}
@@ -22226,12 +22225,12 @@ export default function HostShellV2() {
                   const setD = (k, delta) => {
                     const n = Math.max(0, (Number(dc[k]) || 0) + delta);
                     patchEvent({ dietCounts: { ...dc, [k]: n } },
-                      n ? k + ' × ' + n + ' — the spread just adjusted for it.' : k + ' cleared.');
+                      n ? k + ' × ' + n + ' — spread adjusted.' : k + ' cleared.');
                   };
                   const setCount = (k, n) => {
                     const next = { ...dc };
                     if (n > 0) next[k] = n; else delete next[k];
-                    patchEvent({ dietCounts: next }, n ? k + ' × ' + n + ' — the spread just adjusted for it.' : k + ' cleared.');
+                    patchEvent({ dietCounts: next }, n ? k + ' × ' + n + ' — spread adjusted.' : k + ' cleared.');
                   };
                   const dietOpen = !!foodSect.diet || sheet.focus === 'diet';
                   if (!dietOpen) {
@@ -23291,7 +23290,7 @@ export default function HostShellV2() {
                                 // symmetry legacy's toggleSkip uses (App.js:11145).
                                 if (it.skipped) {
                                   const m = { ...(event.foodSkip || {}) }; delete m[it.id];
-                                  patchEvent({ foodSkip: m }, (it.short || it.item) + ' is back — the total just picked it up again.');
+                                  patchEvent({ foodSkip: m }, (it.short || it.item) + ' is back in the total.');
                                   return;
                                 }
                                 toggleGot(it, cost);
@@ -23764,7 +23763,7 @@ export default function HostShellV2() {
                                   className="mini"
                                   onClick={() => patchEvent(
                                     { foodSkip: { ...(event.foodSkip || {}), [it.id]: true } },
-                                    (it.short || it.item) + ' skipped — the total just dropped it.',
+                                    (it.short || it.item) + ' skipped and out of the total.',
                                   )}
                                 >skip it</button>
                               </div>
@@ -23859,12 +23858,12 @@ export default function HostShellV2() {
                                   <span className="of">size:</span>
                                   <button className="mini" onClick={() => {
                                     const q = Math.max(0, (Number(it.qty) || 0) - 1);
-                                    patchEvent({ foodQty: { ...(event.foodQty || {}), [it.id]: q } }, 'Sized to ' + q + ' ' + (it.unit || '') + ' — the cost just moved.');
+                                    patchEvent({ foodQty: { ...(event.foodQty || {}), [it.id]: q } }, 'Sized to ' + q + ' ' + (it.unit || '') + ' — cost updated.');
                                   }}>−</button>
                                   <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>{it.qty} {it.unit}</span>
                                   <button className="mini" onClick={() => {
                                     const q = (Number(it.qty) || 0) + 1;
-                                    patchEvent({ foodQty: { ...(event.foodQty || {}), [it.id]: q } }, 'Sized to ' + q + ' ' + (it.unit || '') + ' — the cost just moved.');
+                                    patchEvent({ foodQty: { ...(event.foodQty || {}), [it.id]: q } }, 'Sized to ' + q + ' ' + (it.unit || '') + ' — cost updated.');
                                   }}>+</button>
                                   {/* Drift cue + reset (host request 2026-07-12): once a host
                                       steps the size off the recommended baseline (it.baseQty,
@@ -23885,9 +23884,9 @@ export default function HostShellV2() {
                                   <button className="mini" onClick={() => {
                                     if (it.skipped) {
                                       const m = { ...(event.foodSkip || {}) }; delete m[it.id];
-                                      patchEvent({ foodSkip: m }, (it.short || it.item) + ' is back — the total just picked it up again.');
+                                      patchEvent({ foodSkip: m }, (it.short || it.item) + ' is back in the total.');
                                     } else {
-                                      patchEvent({ foodSkip: { ...(event.foodSkip || {}), [it.id]: true } }, (it.short || it.item) + ' skipped — the total just dropped.');
+                                      patchEvent({ foodSkip: { ...(event.foodSkip || {}), [it.id]: true } }, (it.short || it.item) + ' skipped and out of the total.');
                                     }
                                   }}>{it.skipped ? 'restore it' : 'skip it'}</button>
                                 </div>
@@ -24579,7 +24578,7 @@ export default function HostShellV2() {
                               );
                             })}
                             <span className="grounding" style={{ flexBasis: '100%', margin: '2px 0 0', color: 'var(--faint)' }}>
-                              {v.status ? VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] || 'Tap where this vendor really is.' : 'Tap where this vendor really is — you can change it anytime.'}
+                              {v.status ? VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] || 'Tap where this vendor stands.' : 'Tap where this vendor stands. You can change it anytime.'}
                             </span>
                           </div>
                         )}
@@ -25996,8 +25995,8 @@ export default function HostShellV2() {
                     <button className="mini" onClick={clearImportHistory}>Clear import history</button>
                   </div>
                   <p className="grounding" style={{ margin: '6px 0 0' }}>
-                    Undo puts the list back the way it was before that import — anything you changed on the list since then goes with it. Only the latest import can be undone.
-                    {' '}Each past import keeps a copy of the list as it stood — names, emails, phones — so undo can work. Clearing the history deletes those copies from this device; your guest list stays, but past imports can no longer be undone.
+                    Undo restores the list to before the latest import and drops edits made since.
+                    {' '}Each import keeps a copy of the list (names, emails, phones) on this device so undo works. Clearing the history deletes those copies; your guest list stays.
                   </p>
                 </div>
               );
@@ -26133,7 +26132,7 @@ export default function HostShellV2() {
                       <span className="of">addresses:</span>
                       <button className="chip" style={chipSm} aria-pressed={!!event.collectAddresses}
                         onClick={() => patchEvent({ collectAddresses: !event.collectAddresses },
-                          !event.collectAddresses ? 'Yeses now get an optional mailing-address ask — framed as for thank-yous, never required.' : 'Address question removed from the RSVP page.')}>
+                          !event.collectAddresses ? 'Yeses now get an optional mailing-address question, for thank-yous.' : 'Address question removed from the RSVP page.')}>
                         {event.collectAddresses ? 'Collecting for thank-you mail' : 'collect for thank-you mail?'}
                       </button>
                     </div>
@@ -26162,7 +26161,7 @@ export default function HostShellV2() {
                         onChange={e => patchEvent({ giftWish: { mode: gw.mode, detail: e.target.value } }, null)}
                         aria-label="Gift note detail" />
                     )}
-                    <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>Leave anything unset and the invite simply won’t mention it.</p>
+                    <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>Anything left unset stays off the invite.</p>
                   </div>
                 );
               })();
@@ -26700,7 +26699,7 @@ export default function HostShellV2() {
                         )}
                         {!already && (
                           <p className="grounding" style={{ margin: '4px 2px 0', opacity: .8 }}>
-                            Your invite won’t show a reply-by date until you set one — we won’t put a deadline in your name that you didn’t choose.
+                            No reply-by date shows on your invite until you set one.
                           </p>
                         )}
                       </div>
@@ -27377,7 +27376,7 @@ export default function HostShellV2() {
                           device notifications set in You & settings. */}
                       {event.hostAlerts === false
                         ? 'Reply alerts are off for this event, by email and on your devices. '
-                        : 'We tell you when a guest replies or asks a question, by email and on any device you turned notifications on for — at most once an hour. '}
+                        : 'You hear when a guest replies or asks a question, by email and on devices with notifications on. At most once an hour. '}
                       <button className="mini" onClick={() => patchEvent({ hostAlerts: event.hostAlerts === false ? null : false },
                         event.hostAlerts === false ? 'Reply alerts are on.' : 'Reply alerts are off for this event.')}>
                         {event.hostAlerts === false ? 'Turn on' : 'Turn off'}
