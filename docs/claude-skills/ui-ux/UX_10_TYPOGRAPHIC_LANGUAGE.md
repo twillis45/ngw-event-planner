@@ -4,6 +4,16 @@ Status: drafted 2026-08-18 from an 8-seat review board (`convene-review-board`).
 Not yet ratified — this is the proposal the board's findings produced, for
 review before it becomes doctrine alongside UX_01–UX_09.
 
+> **Unified 11/20/2026 (see 02 § Decisions 11/20/2026).** This draft was
+> written against the CRA design-system tokens (`src/design/tokens.js`). Where
+> it conflicts with the owner rulings of 11/20/2026, the rulings win: the
+> font is **Inter**, with Playfair as an accent only (UX_01 § Font Stack),
+> which supersedes §6's "no webfont ships" as a target; and the floor is
+> **11px, with 12px for anything carrying meaning** (UX_01), which settles
+> §2's caption value at 12px for any caption stating a status, price, or date
+> and rules out the 9px and 10px sizes §5 audits. The host app's type scale
+> is UX_01's `--t-*` table, not §1's role table.
+
 ## Why this exists
 
 The type *scale* (`demo/src/design/tokens.js` → `type.size`, 13 steps) has

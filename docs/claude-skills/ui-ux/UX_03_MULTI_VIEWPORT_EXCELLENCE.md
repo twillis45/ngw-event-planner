@@ -68,13 +68,22 @@ Rules:
    `::after` tap expander in styles.css stretches the hit area on the VERTICAL
    axis only (`left:0; right:0` pins it to the control's own width), so it
    cannot rescue a narrow control. Narrow controls need real width.
+
+   Owner ruling 11/20/2026 confirms 44×44 on both axes and adds the one
+   exemption: **an inline text link within a sentence** is exempt, provided
+   no other tappable target is within 24px of it. Nothing else is exempt.
+
+   The floor is 44; what the shell ships is `--tap-min` 46px — two pixels of
+   deliberate headroom so sub-pixel rounding cannot drop a control under 44
+   (documented at the token in `hostv2/src/styles.css`). New controls consume
+   `--tap-min`; the doctrine floor stays 44.
 3. No hover-dependent interactions.
 4. Primary CTA visible without scrolling (above the fold).
 5. No information-dense tables. Use stacked card layouts.
 6. Horizontal scroll only for image carousels or explicitly designed swipe lanes (with scroll-snap).
 7. No side-by-side stat cards — stack vertically or use a 2-column mini grid.
 8. Cards: full-width minus page padding.
-9. Page padding: 12-16px.
+9. Page padding: 20px — what the app ships at every phone size (`.content` inline padding `--sp-5`); resolved by code 11/20/2026, was 12-16px.
 10. No floating action buttons overlapping content.
 
 **Mobile test: Can the planner tap the primary action with one thumb while holding the phone in the other hand?**
@@ -217,12 +226,13 @@ Before shipping any surface, verify at these exact sizes:
 6. **1280 x 800** — minimum desktop
 7. **1440 x 900** — standard desktop
 8. **1920 x 1080** — large desktop (catches stretched layouts)
+9. **1280 x 654** — `desktop-short`: the inner viewport of a stock 1280×800 laptop in Chrome (see "the QA matrix must include 1280×654 and 1024×768" above)
 
 At each viewport, check:
 - No horizontal overflow
 - Primary action visible above fold
 - Text is readable (not clipped, not overflowing)
-- Touch targets adequate on mobile/tablet
+- Touch targets 44×44 on mobile/tablet (rule 2)
 - Layout uses available space productively (not stretched, not cramped)
 
 ## The "Squished or Stretched" Test

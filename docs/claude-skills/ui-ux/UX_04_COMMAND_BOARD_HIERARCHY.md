@@ -21,8 +21,8 @@ Every command-level surface (Home, Events, Event Command, Vendor Detail) follows
 **Stat Card Rules:**
 | What | Size | Weight |
 |---|---|---|
-| Number | 22-28px | 700 |
-| Label | 10-11px | 500, uppercase, tracked |
+| Number | 24-38px (`--t-stat-sm` 24px to `--t-stat` 38px; UX_01) | 700 |
+| Label | 11px (the uppercase-label floor; UX_01) | 500, uppercase, tracked |
 | Card padding | 12-16px | — |
 | Card background | `C.card` | — |
 
@@ -78,7 +78,7 @@ Rule: Stat card numbers must be computed from real data. No placeholder numbers.
 - Type dot: 8px circle, `evtCLR` color.
 - Name: 14px, 600 weight, `C.fg`. Truncate with ellipsis.
 - Date/countdown: 12-13px, 400 weight, `C.muted`.
-- Status chip: 10-11px uppercase, tinted background.
+- Status chip: 12px minimum (a status carries meaning; UX_01 type floor), uppercase, tinted background.
 - Chevron: 14px, `C.muted`. Desktop may omit if right-rail preview exists.
 
 **List Row Anatomy (Mobile):**

@@ -140,7 +140,9 @@ Maximum text brightness: `C.fg` (which should be ~90-95% white, e.g., `#E8E8E8` 
 
 Every colored status must also have a text label. A green dot by itself means nothing to a colorblind user. "On Track" with a green dot communicates to everyone.
 
-## Color Review Checklist
+### Reviewed exception: the boot-splash sub-contrast wordmark (2026-07-11)
+
+The boot splash's neumorphic brand treatment sets the "Event Boss" wordmark at the field's exact tone — depth comes only from the tokenized light-catch/shadow pair, so the name deliberately sits far below the 4.5:1 text minimum. This is a reviewed art-direction decision, scoped strictly to the boot-splash moment: the splash is decorative brand choreography (`aria-hidden`, skippable by any input, auto-dismissing, conveying no information a host needs), not a working surface. The same treatment is NOT licensed for any interactive or informational surface — a heading, label, or control that "nearly disappears into the field" anywhere else is a defect, not a reference to this exception. Reduced-motion users get a 400ms settled still frame with the relief fully resolved (the highest-contrast frame of the sequence).
 
 Before shipping any surface, verify:
 
