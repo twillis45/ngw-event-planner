@@ -21437,6 +21437,9 @@ export default function HostShellV2() {
                     const tMail = helperEmail && helperEmail.taskId === t.id ? helperEmail : null;
                     const tHelperGuest = tHelper && tHelper.guestId ? (event.guests || []).find(g => g && g.id === tHelper.guestId) : null;
                     const tHelperEmail = !!String((tHelperGuest && tHelperGuest.email) || '').trim();
+                    // Call the helper from the job row (owner, 11/20/2026: "wire in phone
+                    // calls"). The phone's own dialer, the same rail as the guest list.
+                    const tHelperDial = String((tHelperGuest && tHelperGuest.phone) || '').replace(/[^+\d]/g, '');
                     // Nothing to hand off on a row the plan already handled, unless someone
                     // already holds it (owner, 11/16/2026: every CTA justified).
                     // THE ROW'S OWN ACTION ("Line them up →") — a real button and a
@@ -21483,6 +21486,10 @@ export default function HostShellV2() {
                             </>
                           );
                         })()}
+                        {owner && tHelperDial && (
+                          <a className="mini rowlink" data-helper-call style={{ textDecoration: 'none' }}
+                            href={'tel:' + tHelperDial} onClick={(e) => e.stopPropagation()}>{`Call ${tFirst}`}</a>
+                        )}
                         {owner && !t.done && tAnswer && tAnswer.state !== 'confirmed' && (
                           <span className="v-meta helper-answer" data-answer="declined">
                             {`${tFirst} can’t do it${tAnswer.note ? ` — “${tAnswer.note}”` : '.'} It’s back on you to cover.`}
