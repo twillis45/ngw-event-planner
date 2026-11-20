@@ -22,7 +22,7 @@ After building or modifying any surface:
 | 1.5 | All spacing multiples of 4px | |
 | 1.6 | No shadows on non-overlay elements | |
 | 1.7 | Border-radius consistent within the view | |
-| 1.8 | No font-size below 10px | |
+| 1.8 | No font-size below 11px; status, price, and date text 12px or larger (UX_01) | |
 | 1.9 | Desktop layout feels dense and productive, not stretched | |
 | 1.10 | The 5-second test: purpose, primary action, premium feel | |
 
@@ -47,7 +47,7 @@ After building or modifying any surface:
 | 3.1 | No horizontal page-level scroll at any breakpoint | |
 | 3.2 | Cards don't clip at viewport edges (test at 375px) | |
 | 3.3 | Mobile: single column layout | |
-| 3.4 | Mobile: touch targets minimum 44px | |
+| 3.4 | Mobile: touch targets minimum 44×44px, both axes (UX_03 rule 2) | |
 | 3.5 | Mobile: primary CTA visible above fold | |
 | 3.6 | Mobile: no hover-dependent interactions | |
 | 3.7 | Tablet: layout uses space (not squished mobile, not stretched desktop) | |

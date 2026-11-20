@@ -14,7 +14,7 @@ It is not a dark theme slapped on Bootstrap. It is not neon-on-black. It is not 
 
 | Layer | Token | Purpose | Rule |
 |---|---|---|---|
-| Canvas | `C.bg` | Page-level background | Deepest surface. Never place content directly on canvas without a container. |
+| Canvas | `C.bg` + `--canvas-glow` | Page-level background | Deepest surface. Never place content directly on canvas without a container. The canvas carries one steel glow from the top of the screen, a single token (`--canvas-glow`) sized to the screen height. Sheets and pages let it read through; only dense lists and tables sit on a flat panel for readability. (Owner ruling 11/20/2026; see 02 § Canvas glow.) |
 | Card / Panel | `C.card` | Content container surface | One step lighter than canvas. All information lives inside cards or panels. |
 | Elevated | `C.cardHover` or 1-2% lighter | Hover states, active selections, flyouts | Never more than 2 steps above canvas. |
 | Input | `C.inputBg` | Form fields, text areas, search bars | Recessed into the card. Darker than card surface. |
@@ -31,24 +31,48 @@ Not on modals, not on popovers, not on tooltips, not on form fields. Studio Matt
 
 ### Font Stack
 
-Primary: system sans-serif (`-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif`).
+*Owner rulings, 11/20/2026 (corrected the same day after measuring what ships). Supersedes the app repo's "no serif fonts."*
 
-No custom web fonts until performance budget allows it. No serif fonts. No monospace for UI labels.
+Primary: **the device's own system font** (`var(--sans)`: San Francisco on Apple, the platform UI font elsewhere), for everything that is read or tapped — controls, body, and numbers. No web font is loaded for it: no load time, nothing sent to a font host.
+
+Accent serifs, each with one job, never on buttons, on inputs, or on any text under 15px:
+
+- **Newsreader** (`var(--serif-read)`): the italic "why" / rationale lines.
+- **Playfair Display** (`var(--serif)`): display titles — the invite and email card titles, and display headings at 15px or larger.
+
+No other typeface. No monospace for UI labels.
 
 ### Type Scale (Operational Rules)
 
-| Role | Size | Weight | Tracking | When to Use |
-|---|---|---|---|---|
-| Page title | 20-24px | 700 | -0.3px | One per page. L1/L2 level headings only. |
-| Section title | 15-17px | 600 | -0.2px | Card headers, panel titles, zone labels. Max 4-6 per viewport. |
-| Body / row primary | 13-14px | 500-600 | 0 | Event names, vendor names, client names. The thing the user reads first in a row. |
-| Body secondary | 12-13px | 400 | 0 | Dates, types, secondary metadata. |
-| Caption / label | 10-11px | 500-600 | 0.5px uppercase | Status chips, column headers, section overlines. Uppercase + tracking = small-but-readable. |
-| Stat number | 22-28px | 700 | -0.5px | Stat cards only. Never more than 4-6 stat numbers visible without scrolling. |
+Scope: this scale is the HOST app (V2) standard — "modern, leaning larger, meant for mobile."
 
-### Rule: Never use font-size below 10px
+| Role | Size | Tokens | Weight | Tracking | When to Use |
+|---|---|---|---|---|---|
+| Display (serif) | clamp 30-48px | `--t-display-xl` clamp(36px,11cqw,48px), `--t-display-l` clamp(30px,9.5cqw,40px) | 800 | -0.015em | Playfair Display. Hero/welcome/reveal/after moments and invite name. One per screen. |
+| Page title | 22-26px | `--t-section` 22px (day-of "now" headline 26px is a listed literal exception) | 700 | -0.3px | One per page. L1/L2 level headings only. |
+| Section title | 17-19px | `--t-section` 22px section heads, `--t-card-title` 19px, `--t-sheet-title` 18px, `--t-sub` 17px | 600 | -0.2px | Card headers 19px, section heads 22px, panel titles, zone labels. Max 4-6 per viewport. |
+| Body / row primary | 15.5-16px | `--t-row` 16px, `--t-body` 15.5px, `--t-body-s` 15px, `--t-cta` 15px, `--t-cta-big` 17px, `--t-input` 16px, `--t-input-lg` 17px | 500-600 | 0 | Event names, vendor names, row leads, running prose. The thing the user reads first in a row. |
+| Body secondary | 13.5-14px | `--t-row-sub` 13.5px, `--t-meta` 14px, `--t-chip` 14px, `--t-toast` 14px, `--t-btn` 13.5px, `--t-pill` 13px, `--t-note` 13px | 400 | 0 | Dates, types, secondary metadata, row sub-lines. |
+| Caption / label | 11-12px | `--t-tag` 12px, `--t-overline` 12px, `--t-caption` 11.5px, `--t-caption-min` 11px | 500-600 | 0.5px uppercase | Status chips, column headers, section overlines. Uppercase + tracking = small-but-readable. |
+| Stat number | 24-38px | `--t-hero-star` 38px, `--t-stat` 38px, `--t-stat-sm` 24px | 700-800 | -0.5px | Stat cards only. Never more than 4-6 stat numbers visible without scrolling. |
 
-Nothing in the app renders below 10px. If it doesn't fit at 10px, the container is too small — fix the layout, not the font.
+Body line-height token: `--lh-body` 1.5.
+
+### Rule: Type is tokenized — consume the tokens
+
+The scale above lives as CSS custom properties in `demo/hostv2/src/styles.css`'s `:root` block — the single type source. New type in the host app consumes a `--t-*` token; a raw px font-size is a review flag. Deliberate literal exceptions (invite stationery engraving tiers, the print day sheet, the `.mega`/`.clock`/create-prompt display clamps, monogram badge glyphs, the brand wordmark) are annotated at their selectors.
+
+### Rule: Never use font-size below 11px — and 12px for anything that carries meaning
+
+*Owner ruling, 11/20/2026. Supersedes the app repo's 10px floor.*
+
+Nothing in the app renders below 11px. If it doesn't fit at 11px, the container is too small — fix the layout, not the font.
+
+Anything that carries meaning — a status, a price, a date — renders at 12px or larger. 11px (`--t-caption-min`) is legal only for uppercase labels and fine print. The Caption / label row above spans both: an 11–11.5px caption that states a status, price, or date is under the floor.
+
+### Rule: No form input below 16px
+
+Every input, textarea, and select renders at 16px or larger. iOS Safari auto-zooms the viewport on focus of any control below 16px, and the zoom-jump reads as a bug. Widen or wrap the row instead of shrinking the field.
 
 ### Rule: Page title appears exactly once
 
@@ -70,7 +94,7 @@ No 5px. No 7px. No 15px. No 18px. No 25px. If your spacing isn't a multiple of 4
 
 | Context | Padding | Gap |
 |---|---|---|
-| Page wrapper (mobile) | 12-16px | — |
+| Page wrapper (mobile) | 20px (shipped: `.content` inline padding `--sp-5`; resolved by code 11/20/2026) | — |
 | Page wrapper (tablet) | 16-20px | — |
 | Page wrapper (desktop) | 20-24px | — |
 | Card internal | 12-16px | 8-12px between sections |
@@ -92,11 +116,11 @@ If two adjacent cards have 40px+ of empty space between them, the layout is too 
 
 The minimalist budget — one loud thing per screen, roughly 45% deliberate emptiness — was calibrated on a 393×852 phone: about **150,000 px²**, and at that size it reads as composure. Held as a percentage it becomes **2.5× that area on a 1280×654 laptop and 6.2× at 1920×1080.** Emptiness does not scale as a feeling. Six times the void is not six times the calm; it is an unfinished page.
 
-- **The proportional budget applies to the phone tier only.** It also survives *inside the hero's own band* at every size — the hero's air is what makes this product not a CRM template, and this rule is not licence to fill it.
+- **The proportional budget applies to the phone tier only.** It also survives *inside the hero's own band* at every size — the hero's air is what makes this product not a CRM template, and this rule is not license to fill it.
 - **At tablet and above the budget is absolute and applies on BOTH axes:** no contiguous empty region exceeding **200px in height or 320px in width** within the content canvas. Height alone does not catch it — the worst void found on the command surface was 418px *wide*.
 - **The governing principle: void must be bounded by content on at least two sides.** Unbounded void running to a canvas edge is not composition.
 
-**Before theorising about a void, grep the literal numbers in the min-heights.** The 264px of dead air on this product's command surface was not a design choice at all: `.hero{ min-height:calc(852px - 64px - 88px) }` reserved 700px — *an iPhone viewport minus its chrome* — at every width. A phone frame nailed into a desktop composition looks exactly like a deliberate budget and is not one.
+**Before theorizing about a void, grep the literal numbers in the min-heights.** The 264px of dead air on this product's command surface was not a design choice at all: `.hero{ min-height:calc(852px - 64px - 88px) }` reserved 700px — *an iPhone viewport minus its chrome* — at every width. A phone frame nailed into a desktop composition looks exactly like a deliberate budget and is not one.
 
 ## Border and Divider Rules
 
@@ -121,7 +145,7 @@ Maximum border width is 2px, and only for active/selected states. No 3px, 4px, o
 | Element | Radius |
 |---|---|
 | Cards, panels, modals | 8-12px |
-| Buttons | 6-8px |
+| Buttons | 12px (`--r-md`, small utility `.mini`), 14px (`--r-row`, the `.cta` family), or pill (`--r-pill`) — resolved by code 11/20/2026 |
 | Chips / pills | 12-16px (pill shape) |
 | Inputs | 6-8px |
 | Avatars / thumbnails | 50% (circle) |

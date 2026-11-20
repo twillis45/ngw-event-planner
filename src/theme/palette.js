@@ -64,6 +64,10 @@ export const TOKENS = {
   steelBlueMuted:          { dark: '#6F8794', mid: '#6F8794', light: '#627884' },
   steelBlueGradientTop:    { dark: '#4E6877', mid: '#4E6877', light: '#4E6877' },
   steelBlueGradientBottom: { dark: '#3F5B6A', mid: '#3F5B6A', light: '#3F5B6A' },
+  // The primary button's light and deep stops around steelBlueGradientTop
+  // (owner chose the gradient from a rendered comparison, 11/20/2026).
+  steelBlueCtaLight:       { dark: '#57707E', mid: '#57707E', light: '#57707E' },  // the lightest stop that keeps the label ≥4.5:1 (4.57)
+  steelBlueCtaDeep:        { dark: '#44606F', mid: '#44606F', light: '#44606F' },
 
   // Status anchors -----------------------------------------------------
   // dangerRed is the danger TEXT/accent color. The dark/mid value was #E84036,
@@ -140,6 +144,8 @@ export const steelBlueDark           = TOKENS.steelBlueDark[ACTIVE_MODE];
 export const steelBlueMuted          = TOKENS.steelBlueMuted[ACTIVE_MODE];
 export const steelBlueGradientTop    = TOKENS.steelBlueGradientTop[ACTIVE_MODE];
 export const steelBlueGradientBottom = TOKENS.steelBlueGradientBottom[ACTIVE_MODE];
+export const steelBlueCtaLight       = TOKENS.steelBlueCtaLight[ACTIVE_MODE];
+export const steelBlueCtaDeep        = TOKENS.steelBlueCtaDeep[ACTIVE_MODE];
 
 export const dangerRed    = TOKENS.dangerRed[ACTIVE_MODE];
 export const amber        = TOKENS.amber[ACTIVE_MODE];
@@ -166,6 +172,8 @@ const bundleForMode = (mode) => ({
   steelBlueMuted:          TOKENS.steelBlueMuted[mode],
   steelBlueGradientTop:    TOKENS.steelBlueGradientTop[mode],
   steelBlueGradientBottom: TOKENS.steelBlueGradientBottom[mode],
+  steelBlueCtaLight:       TOKENS.steelBlueCtaLight[mode],
+  steelBlueCtaDeep:        TOKENS.steelBlueCtaDeep[mode],
   dangerRed:    TOKENS.dangerRed[mode],
   // dangerSolid was declared in TOKENS but never bundled here (found 2026-07-30),
   // so `dark.dangerSolid` was undefined and theme.js wrote the LITERAL STRING
@@ -238,7 +246,7 @@ export const palette = {
   // Active-mode shortcuts
   carbonBody, carbonPanel, carbonSurface, carbonSurface2, carbonBorder, carbonStrong,
   steelBlue, steelBlueDark, steelBlueMuted,
-  steelBlueGradientTop, steelBlueGradientBottom,
+  steelBlueGradientTop, steelBlueGradientBottom, steelBlueCtaLight, steelBlueCtaDeep,
   dangerRed, amber, successGreen,
   textPrimary, textSecondary, textMuted,
   // Brand presets

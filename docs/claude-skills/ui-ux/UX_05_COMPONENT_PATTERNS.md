@@ -9,7 +9,7 @@ Standard component patterns for NGW Event Planner. When building or modifying an
 - Background: `C.accent`
 - Text: white, 13-14px, 600 weight
 - Padding: 8-12px vertical, 16-24px horizontal
-- Border-radius: 6-8px
+- Border-radius: 14px (`--r-row`, the `.cta` family; UX_01 Border Radius)
 - Hover: lighten 10%
 - Active: darken 5%
 - Rule: Maximum ONE primary button per view section. If you have two primary buttons, one of them should be secondary.
@@ -39,7 +39,7 @@ Standard component patterns for NGW Event Planner. When building or modifying an
 
 ### Icon Button
 
-- Size: 32-36px square touch target
+- Size: 44×44px minimum touch target, both axes (UX_03 rule 2)
 - Icon: 16-18px
 - Background: transparent
 - Hover: `rgba(255,255,255,0.08)` circle
@@ -70,13 +70,13 @@ Standard component patterns for NGW Event Planner. When building or modifying an
 - Active: `C.accent` at 15% bg, `C.accent` text
 - Padding: 4-6px vertical, 10-14px horizontal
 - Border-radius: 14-16px (pill)
-- Tap area: minimum 32px height
+- Tap area: minimum 44×44px, both axes (UX_03 rule 2)
 - Use for: view filters (All, Upcoming, Past), category filters, type filters.
 
 ### Status Chip
 
 - Background: status color at 12-15% opacity
-- Text: status color at full intensity, 10-11px, 500 weight, uppercase
+- Text: status color at full intensity, 12px minimum (a status carries meaning; UX_01 type floor), 500 weight, uppercase
 - Padding: 2-4px vertical, 8-10px horizontal
 - Border-radius: 12px (pill)
 - Never interactive — display only. Clicking a status chip does nothing.
@@ -84,7 +84,7 @@ Standard component patterns for NGW Event Planner. When building or modifying an
 ### Count Badge
 
 - Background: `C.crit` or `C.warn` at full intensity
-- Text: white, 10px, 700 weight
+- Text: white, 12px minimum (a count carries meaning; UX_01 type floor), 700 weight
 - Size: 18-22px circle or pill (for 2+ digits)
 - Position: top-right of parent element, offset by -4px
 - Only show when count > 0. Hide the badge when count is 0, don't show "0".
@@ -122,8 +122,8 @@ text-align: left; (not center)
 ```
 
 Content:
-- Number: 22-28px, 700 weight, `C.fg`
-- Label: 10-11px, 500 weight, uppercase, `C.muted`
+- Number: 24-38px (`--t-stat-sm` 24px to `--t-stat` 38px; UX_01), 700 weight, `C.fg`
+- Label: 11px (the uppercase-label floor; UX_01), 500 weight, uppercase, `C.muted`
 - Optional: sub-label or trend indicator below number
 
 Rule: Stat numbers are LEFT aligned, not centered. Left-alignment creates a stronger visual column when multiple stat cards are side by side.
@@ -249,7 +249,7 @@ Same as text input, minimum height: 80px. Resize: vertical only.
 - Items: 14px text, 40px row height, 12px horizontal padding
 - Active item: `C.accent` left border + `C.accent` text + subtle bg tint
 - Hover: `rgba(255,255,255,0.04)` background
-- Group headers: 10-11px, uppercase, `C.muted`, 500 weight
+- Group headers: 11px (the uppercase-label floor; UX_01), uppercase, `C.muted`, 500 weight
 
 ### Tab Bar (L4 specialist tabs)
 
