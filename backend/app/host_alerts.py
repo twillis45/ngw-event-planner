@@ -26,6 +26,7 @@ RULES
 """
 import logging
 import time
+from urllib.parse import quote
 
 from .config import APP_BASE_URL
 from .db import get_pool
@@ -78,7 +79,15 @@ def push_payload(kind: str, who: str, event_name: str, answer: str | None = None
             "tag": "ngw-alert-" + _one_line(event_id, 64)}
 
 
-def compose(kind: str, who: str, event_name: str, answer: str | None = None) -> tuple[str, str, str]:
+def open_url(event_id: str = "") -> str:
+    """The app, opened on this event (the app checks it is the host's own).
+    PURE. Without an id, the app as before."""
+    base = f"{APP_BASE_URL.rstrip('/')}/hostv2/"
+    eid = _one_line(event_id, 64)
+    return f"{base}?event={quote(eid, safe='')}" if eid else base
+
+
+def compose(kind: str, who: str, event_name: str, answer: str | None = None, event_id: str = "") -> tuple[str, str, str]:
     """(subject, html, text) for one alert. Pure. Never includes an answer's body.
     In the shared frame (email_frame), without the invitation's parts: to the
     host, about their own plan."""
@@ -89,7 +98,7 @@ def compose(kind: str, who: str, event_name: str, answer: str | None = None) -> 
     html, text = frame(
         kind="host_alert", hue=hue_for(name), eyebrow="Your plan", title=name,
         blocks=[(paragraphs_html(words), words)],
-        primary=("Open your plan", APP_BASE_URL),
+        primary=("Open your plan", open_url(event_id)),
         fine=("We send at most one of these an hour for each event, "
               "so anything else that came in is waiting in the app. "
               "To stop them, open the event's guest list and tap Turn off."),
@@ -124,7 +133,7 @@ async def alert_host(event_id: str, kind: str, who: str, answer: str | None = No
         delivered, failure = False, None
         if email_on:
             try:
-                subject, body, text = compose(kind, who, row["name"], answer)
+                subject, body, text = compose(kind, who, row["name"], answer, event_id)
                 body, text = await with_picture(body, text)
                 await _send_via_resend(to=host["email"], subject=subject, html=body, text=text)
                 delivered = True

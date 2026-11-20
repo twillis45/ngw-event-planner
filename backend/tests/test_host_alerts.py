@@ -157,3 +157,13 @@ def test_a_failed_send_gives_the_hour_back(monkeypatch, sent):
     monkeypatch.setattr(ha, "_send_via_resend", ok)
     _run(monkeypatch, ROW, "ev1", "rsvp", "Sam", "No")
     assert sent == [("casey.host@example.test", "Sam replied No — Friendsgiving")]
+
+
+def test_the_email_opens_the_event_it_is_about():
+    _s, body, text = ha.compose("rsvp", "Jordan", "Friendsgiving", "Yes", "ev_9xK2")
+    url = ha.open_url("ev_9xK2")
+    assert url.endswith("/hostv2/?event=ev_9xK2")
+    assert url in body and url in text
+    # no id: the app as before; an id can never break out of the parameter
+    assert ha.open_url("").endswith("/hostv2/")
+    assert "?event=a%26b%3Dc" in ha.open_url("a&b=c")
