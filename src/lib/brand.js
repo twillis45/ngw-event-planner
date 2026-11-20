@@ -102,19 +102,18 @@
 // serves at the ROOT of its host, so either option moves the app's base path
 // from `/ngw-event-planner/` to `/`.
 //
-// Measured, that path is load-bearing in these places:
-//   hostv2/vite.config.js         the `base` option
-//   hostv2/index.html             manifest + apple-touch-icon hrefs
-//   hostv2/playwright*.mjs        baseURL and three webServer urls
-//   hostv2/e2e/, scripts/         crossDeviceSync, tabletCapture, device-preview
-//   src/App.js                    ~5 /ngw-event-planner/sample-contracts/ URLs
-//   package.json                  `homepage`, which sets PUBLIC_URL
-// plus a `public/CNAME` file, the registrar DNS record, and Pages settings.
-//
-// Order matters: DNS and Pages FIRST, code second. Flipping `homepage` before
-// the domain answers leaves the live site serving assets from a path that does
-// not exist yet. Nothing here has been changed — the app still deploys to
-// twillis45.github.io/ngw-event-planner.
+// UPDATE 11/20/2026 (branch domain-move): the move is now a settings change,
+// not a code change. The hostv2 build is RELATIVE (vite base './'), its service
+// worker derives its own directory at runtime, the CRA root builds with
+// `homepage: "."` (its sample-contract URLs already read PUBLIC_URL), and every
+// public link the app makes is built from the address it is running at
+// (lib/publicAppUrl, lib/policyLinks). The same artifact serves
+// twillis45.github.io/ngw-event-planner/ and events.noguessworksystems.com/,
+// so setting the custom domain in Pages settings is the whole switch. The
+// local preview harness still mounts at /ngw-event-planner/hostv2/
+// (hostv2/deployBase.mjs); that path names nothing in the shipped bundle.
+// hostv2/test/noHardcodedAppHost.test.mjs keeps the host and path out of
+// hostv2/src and src/lib. Backend env and Supabase settings are owner steps.
 //
 // CONFIRM AT A REGISTRAR BEFORE BUYING. Nothing here is a purchase, a
 // reservation, or a clearance, and none of it is a trademark check.
@@ -151,10 +150,14 @@ export const BRAND = Object.freeze({
   // before attorney review (owner ruling); the open questions are in
   // docs/legal/COUNSEL_QUESTIONS_OPEN.md. The pages ship in the same deploy as
   // these URLs (hostv2/public/legal/, built by npm run policies:publish).
+  // In-app pages are written relative to the app (`legal/<slug>.html`) and
+  // resolved against the address it is running at (lib/policyLinks), so the
+  // same build links correctly at both the github.io address and
+  // events.noguessworksystems.com (domain move, owner ruling 11/19/2026).
   policies: Object.freeze({
-    privacy: 'https://twillis45.github.io/ngw-event-planner/hostv2/legal/privacy.html',
-    terms:   'https://twillis45.github.io/ngw-event-planner/hostv2/legal/terms.html',
-    refunds: 'https://twillis45.github.io/ngw-event-planner/hostv2/legal/refunds.html',
+    privacy: 'legal/privacy.html',
+    terms:   'legal/terms.html',
+    refunds: 'legal/refunds.html',
   }),
   // Two stacked lines, big type. Joining them with a space must equal `full`,
   // and a test asserts exactly that — the split is a typographic decision, not

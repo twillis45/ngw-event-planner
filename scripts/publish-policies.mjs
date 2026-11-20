@@ -33,10 +33,11 @@ if (!result.ok) {
 }
 
 mkdirSync(OUT, { recursive: true });
-const homepage = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).homepage.replace(/\/$/, '');
 for (const page of result.pages) {
   writeFileSync(join(OUT, `${page.slug}.html`), page.html);
   console.log(`✓ hostv2/public/legal/${page.slug}.html — "${page.title}", effective ${page.effective}`);
-  console.log(`    after deploy: ${homepage}/hostv2/legal/${page.slug}.html`);
+  // The site address is not in the repo any more (homepage is "." since the
+  // domain move), so this names the path under whichever site serves it.
+  console.log(`    after deploy: <site>/hostv2/legal/${page.slug}.html`);
 }
-console.log('\nNext: set these URLs in BRAND.policies (src/lib/brand.js) and open a PR — docs/legal/PUBLISH_CHECKLIST.md.');
+console.log("\nNext: set 'legal/<slug>.html' in BRAND.policies (src/lib/brand.js) and open a PR — docs/legal/PUBLISH_CHECKLIST.md.");

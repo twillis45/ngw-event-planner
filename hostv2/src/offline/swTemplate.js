@@ -1,7 +1,7 @@
 // ─── THE SERVICE WORKER SOURCE, WHICH IS NOT HAND-MAINTAINED ───────────────
 //
-// This is a TEMPLATE. `vitePluginOfflineShell` fills __PRECACHE__ and
-// __BUILD_ID__ from the assets vite actually emitted, so the precache list
+// This is a TEMPLATE. `vitePluginOfflineShell` fills __PRECACHE__ (paths
+// relative to the bundle) and __BUILD_ID__ from the assets vite actually emitted, so the precache list
 // can never drift from the bundle — the 2026-08-16 board's first condition
 // for ever revisiting a worker ("a build-time precache manifest").
 //
@@ -10,8 +10,15 @@
 export const SW_TEMPLATE = `/* GENERATED — edit src/offline/swTemplate.js, not this file. */
 const BUILD = '__BUILD_ID__';
 const CACHE = 'ngw-shell-' + BUILD;
-const PRECACHE = __PRECACHE__;
-const KILL_URL = '__BASE__sw-kill.txt';
+// ── WHERE IT LIVES IS READ, NOT BAKED (domain move, 11/20/2026) ─────────────
+// The same build is served under two prefixes (the project-site path before
+// the custom domain, the bare /hostv2/ after it). This file always sits in the bundle's own
+// directory, so that directory is its own address minus 'sw.js'; the precache
+// list is relative to it, and the kill file is one level up, at the site root.
+const ROOT = new URL('./', self.location.href).pathname;
+const PRECACHE = __PRECACHE__.map((f) => ROOT + f);
+const SHELL = ROOT;
+const KILL_URL = new URL('__BASE__sw-kill.txt', self.location.href).href;
 
 // ── WHY NAVIGATION IS NETWORK-FIRST, AND WHY THAT IS THE WHOLE SAFETY CASE ──
 // The board that banned the last worker was persuaded by an asymmetry: an app
@@ -96,7 +103,7 @@ self.addEventListener('fetch', (e) => {
       } catch (_) {
         if (KILLED) return Response.error();
         const c = await caches.open(CACHE);
-        return (await c.match('__SHELL__')) || Response.error();
+        return (await c.match(SHELL)) || Response.error();
       }
     })());
     return;

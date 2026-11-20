@@ -35,9 +35,13 @@ API_PUBLIC_BASE_URL      = os.environ.get("API_PUBLIC_BASE_URL") or os.environ.g
 #   ALLOWED_ORIGIN_REGEX: also allow origins matching this regex. Defaults to
 #                    localhost + private LAN IPs (any port) so device/LAN testing
 #                    and local dev work without listing every address.
+#   The default carries BOTH app addresses (domain move, owner ruling
+#   11/19/2026): the same front end is served at twillis45.github.io until the
+#   Pages custom domain is set and at events.noguessworksystems.com after, so a
+#   checkout started at either must be allowed to return there.
 ALLOWED_ORIGINS = [o.strip() for o in os.environ.get(
     "ALLOWED_ORIGINS",
-    "https://twillis45.github.io,http://localhost:3000",
+    "https://twillis45.github.io,https://events.noguessworksystems.com,http://localhost:3000",
 ).split(",") if o.strip()]
 
 ALLOWED_ORIGIN_REGEX = os.environ.get(

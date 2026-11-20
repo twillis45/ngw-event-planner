@@ -14,15 +14,15 @@
 // address all three, which is why index.html's manifest href could not simply
 // be swapped for vite's own `%BASE_URL%`.
 //
-// TO MOVE TO A CUSTOM DOMAIN, CHANGE SITE_BASE TO '/' — that is the whole code
-// change, and everything below follows. But DO IT LAST: DNS and the Pages
-// custom-domain setting must answer first, because flipping this before the
-// domain resolves leaves the live site asking for assets at a path that does
-// not exist yet. `homepage` in package.json (which sets CRA's PUBLIC_URL) must
-// move in the same commit, and `public/CNAME` must carry the domain.
+// SINCE THE DOMAIN MOVE (11/20/2026) THE SHIPPED BUILD NAMES NO PREFIX AT ALL:
+// vite builds with base './', the worker reads its own directory at runtime,
+// and index.html reaches the site root as '../'. So one artifact serves both
+// /ngw-event-planner/hostv2/ (twillis45.github.io) and /hostv2/
+// (events.noguessworksystems.com). What is left here is only where the LOCAL
+// preview / e2e harness mounts dist, which stays the old prefix so the
+// harness keeps exercising the deep path.
 //
-// Overridable by env so a deploy can move without a code change at all:
-//   SITE_BASE=/ npm run build
+//   SITE_BASE=/ npx playwright test …   mounts the harness at /hostv2/ instead
 export const SITE_BASE = process.env.SITE_BASE || '/ngw-event-planner/';
 
 /** The hostv2 bundle's own base — always SITE_BASE + 'hostv2/'. */
