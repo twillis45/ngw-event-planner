@@ -26,6 +26,9 @@ ALLOWED = [
     "http://localhost:5199/ngw-event-planner/hostv2/?stripe_cancel=1",
     "http://127.0.0.1:5233/ngw-event-planner/hostv2/",
     "http://192.168.1.230:5199/",
+    # The domain move (owner ruling 11/19/2026): one build, both addresses.
+    "https://events.noguessworksystems.com/hostv2/?pass_paid=1&event_id=e1&session_id={CHECKOUT_SESSION_ID}",
+    "https://events.noguessworksystems.com/hostv2/?pass_cancel=1",
 ]
 
 REFUSED = [
@@ -40,6 +43,8 @@ REFUSED = [
     "https://evil.com/\r\nX-Injected: 1",
     "",
     "https://twillis45.github.io/" + "a" * 3000,
+    "https://events.noguessworksystems.com.evil.com/",
+    "http://events.noguessworksystems.com/hostv2/",   # scheme downgrade
 ]
 
 

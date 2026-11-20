@@ -2,7 +2,7 @@
   "name": "no-guesswork-events",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://twillis45.github.io/ngw-event-planner",
+  "homepage": ".",
   "dependencies": {
     "@sentry/react": "^8.55.2",
     "@supabase/supabase-js": "^2.106.1",

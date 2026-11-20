@@ -137,6 +137,37 @@ describe('THE SAFETY CASE — navigation is network-first', () => {
   });
 });
 
+describe('ONE BUILD, TWO ADDRESSES (domain move, 11/20/2026)', () => {
+  // The same bundle is served at /ngw-event-planner/hostv2/ (github.io) and at
+  // /hostv2/ (events.noguessworksystems.com). The worker must find its own
+  // directory, not carry one baked in.
+  const run = (swHref, files) => {
+    const opened = [];
+    const self = { addEventListener: () => {}, location: { href: swHref, origin: new URL(swHref).origin } };
+    const src = SW_TEMPLATE.replace('__BUILD_ID__', 't')
+      .replace('__PRECACHE__', JSON.stringify(precacheFor(files, '').urls))
+      .replace('__BASE__', '../') + '\n;return { PRECACHE, SHELL, KILL_URL };';
+    // eslint-disable-next-line no-new-func
+    return new Function('self', 'caches', 'fetch', src)(self, { open: async (k) => opened.push(k) }, async () => {});
+  };
+
+  test.each([
+    ['https://twillis45.github.io/ngw-event-planner/hostv2/sw.js', '/ngw-event-planner/hostv2/', 'https://twillis45.github.io/ngw-event-planner/sw-kill.txt'],
+    ['https://events.noguessworksystems.com/hostv2/sw.js', '/hostv2/', 'https://events.noguessworksystems.com/sw-kill.txt'],
+  ])('served from %s, it precaches its own directory and reads the kill file at that site root', (href, root, kill) => {
+    const w = run(href, ['index.html', 'assets/a-1.js', 'assets/b-2.css']);
+    expect(w.SHELL).toBe(root);
+    expect(w.PRECACHE).toEqual([root, `${root}assets/a-1.js`, `${root}assets/b-2.css`, `${root}index.html`]);
+    expect(w.KILL_URL).toBe(kill);
+  });
+
+  test('the generated list carries no absolute path, so nothing in it names a host or prefix', () => {
+    const { urls } = precacheFor(['index.html', 'assets/a.js'], '');
+    for (const u of urls) expect(u.startsWith('/')).toBe(false);
+    expect(SW_TEMPLATE).not.toMatch(/ngw-event-planner|github\.io|noguessworksystems/);
+  });
+});
+
 describe('IT CANNOT REACH THE FROZEN CRA SHELL', () => {
   test('the worker ships INSIDE the hostv2 bundle, so its scope stops there', () => {
     // A service worker's default scope is the directory it is served from.

@@ -21,7 +21,7 @@ function boot({ windows = [] } = {}) {
   const opened = [];
   const self = {
     addEventListener: (k, fn) => { listeners[k] = fn; },
-    location: { origin: 'https://example.test' },
+    location: { origin: 'https://example.test', href: SCOPE + 'sw.js' },
     registration: {
       scope: SCOPE,
       showNotification: async (title, opts) => { shown.push({ title, opts }); },
@@ -36,8 +36,7 @@ function boot({ windows = [] } = {}) {
   const src = SW_TEMPLATE
     .replace('__BUILD_ID__', 'test')
     .replace('__PRECACHE__', '[]')
-    .replace('__SHELL__', '/x/')
-    .replace('__BASE__', '/');
+    .replace('__BASE__', '../');
   // eslint-disable-next-line no-new-func
   new Function('self', 'caches', 'fetch', src)(self, {}, async () => { throw new Error('no network'); });
   const fire = async (type, event) => {

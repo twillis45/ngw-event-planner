@@ -15,58 +15,38 @@ import { SW_TEMPLATE } from './swTemplate.js';
 const SHELL_EXT = /\.(js|css|html|woff2?|png|svg|ico|webp)$/i;
 
 /**
- * @param {object} opts
- * @param {string} opts.base   the bundle's base path (HOSTV2_BASE)
- * @param {string} opts.siteBase  the site root, where sw-kill.txt lives
+ * @param {object} [opts]
+ * @param {string} [opts.siteBase]  the site root RELATIVE TO THE BUNDLE, where
+ *                                  sw-kill.txt lives (default '../')
  */
-export default function offlineShell({ base, siteBase }) {
-  // THE RESOLVED BASE, NOT THE CONSTANT. Caught by reading the emitted
-  // worker: a `--base=/` build (the local sim build does exactly that) still
-  // precached `/ngw-event-planner/hostv2/...`, so every entry 404'd, the
-  // install cached nothing, and the registration survived with an empty
-  // cache — the precise failure the per-URL catch below exists to soften.
-  // vite knows the real base; ask it rather than trusting what we passed in.
-  let resolvedBase = base;
-  let resolvedSite = siteBase;
+export default function offlineShell({ siteBase = '../' } = {}) {
+  // ── RELATIVE, SO ONE BUILD SERVES TWO ADDRESSES (domain move, 11/20/2026) ─
+  // The precache list used to carry the absolute base, `/ngw-event-planner/
+  // hostv2/...`. That once bit a `--base=/` build (every entry 404'd and the
+  // install cached nothing), and it would bite again at
+  // events.noguessworksystems.com/hostv2/, where the same bundle is served
+  // under a different prefix. So the list is now relative to the bundle and the
+  // worker prefixes it with its own directory at runtime (swTemplate ROOT).
+  // Whatever base vite was given, sw.js sits in the bundle directory, so that
+  // is always right.
+  //
+  // ── THE SHELL IS THE DIRECTORY URL, NOT index.html ─────────────────────
+  // Caught by the offline drive, which is the whole reason the board demanded
+  // one. A NAVIGATION requests the directory (`…/hostv2/`), not
+  // `…/hostv2/index.html`, so both are precached: '' (the directory, which the
+  // worker turns into ROOT) and 'index.html'.
   return {
     name: 'ngw-offline-shell',
     apply: 'build',
-    configResolved(config) {
-      if (config.base) {
-        resolvedBase = config.base.endsWith('/') ? config.base : `${config.base}/`;
-        // The kill file sits at the SITE root, one level above the bundle.
-        resolvedSite = resolvedBase.replace(/hostv2\/$/, '');
-      }
-    },
     generateBundle(_options, bundle) {
-      const base = resolvedBase;
-      const siteBase = resolvedSite;
-      const urls = Object.keys(bundle)
-        .filter((f) => SHELL_EXT.test(f))
-        .map((f) => base + f);
-      // ── THE SHELL IS THE DIRECTORY URL, NOT index.html ─────────────────
-      // Caught by the offline drive, which is the whole reason the board
-      // demanded one. The first cut precached and matched `<base>index.html`,
-      // and a NAVIGATION does not request that — it requests the directory,
-      // `/ngw-event-planner/hostv2/`. So the fallback had nothing to match
-      // and the offline reload failed, which is precisely how the previous
-      // attempt at this worker died.
-      //
-      // Both are precached: the directory is what a navigation asks for, and
-      // index.html is what a deep link to the file itself would ask for.
-      const shell = base;
-      for (const u of [base, `${base}index.html`]) if (!urls.includes(u)) urls.push(u);
-      urls.sort();
-
       // The build id IS the manifest's hash, so an identical bundle produces
       // an identical worker (no needless cache churn) and any change to the
       // shipped assets produces a new cache name. That is the update path.
-      const buildId = createHash('sha256').update(urls.join('\n')).digest('hex').slice(0, 12);
+      const { urls, buildId } = precacheFor(Object.keys(bundle), '');
 
       const source = SW_TEMPLATE
         .replace('__BUILD_ID__', buildId)
         .replace('__PRECACHE__', JSON.stringify(urls))
-        .replace('__SHELL__', shell)
         .replace('__BASE__', siteBase);
 
       this.emitFile({ type: 'asset', fileName: 'sw.js', source });
@@ -75,8 +55,8 @@ export default function offlineShell({ base, siteBase }) {
 }
 
 /**
- * The manifest logic on its own, so a test can assert what goes in the
- * worker without running a build. Same filter, same ordering, same id.
+ * The manifest logic, shared by the plugin (with base '') and the tests.
+ * Same filter, same ordering, same id.
  */
 export function precacheFor(fileNames, base) {
   const urls = fileNames.filter((f) => SHELL_EXT.test(f)).map((f) => base + f);

@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { SITE_BASE, HOSTV2_BASE } from './deployBase.mjs';
+import { HOSTV2_BASE } from './deployBase.mjs';
 import offlineShell from './src/offline/vitePluginOfflineShell.mjs';
 
 // ── __dirname, DERIVED RATHER THAN INHERITED ───────────────────────────────
@@ -38,7 +38,15 @@ export default defineConfig(({ command, mode }) => {
     // preview served dist at '/' while the BUILT index references the deep
     // base — every asset 404'd and the harness saw a blank mount (Layer-2
     // debugging, 2026-07-22). Set by playwright.config's webServer only.
-    base: command === 'build' || process.env.E2E_BASE ? HOSTV2_BASE : '/',
+    //
+    // THE BUILD IS RELATIVE (domain move, owner ruling 11/19/2026). One
+    // artifact must serve both twillis45.github.io/ngw-event-planner/hostv2/
+    // and events.noguessworksystems.com/hostv2/, so the built index, chunks,
+    // CSS and BASE_URL all resolve against the page rather than naming a
+    // prefix. `vite preview` (serve) still mounts dist at HOSTV2_BASE under
+    // E2E_BASE, which is the old prefix; the dual-prefix check serves the same
+    // dist at /hostv2/ too.
+    base: command === 'build' ? './' : process.env.E2E_BASE ? HOSTV2_BASE : '/',
     plugins: [
       react(),
       // ── THE OFFLINE SHELL (host ruling 2026-09-27) ────────────────────
@@ -47,21 +55,18 @@ export default defineConfig(({ command, mode }) => {
       // docs/audits/2026-08-16_OFFLINE_SHELL_BOARD.md before changing any
       // of it: a board banned a hand-rolled worker and named the three
       // conditions this one is built to.
-      offlineShell({ base: HOSTV2_BASE, siteBase: SITE_BASE }),
+      offlineShell({ siteBase: '../' }),
       // index.html's manifest and touch-icon live at the SITE root, one level
-      // ABOVE this bundle's base — so vite's own %BASE_URL% is the wrong value
-      // for them and they cannot be left hardcoded either. This substitutes the
-      // one owner instead. In `serve` (no E2E_BASE) the bundle is at '/', and
-      // the site root is too, so the token resolves to '/' and the dev server
-      // keeps working.
+      // ABOVE this bundle — so vite's own %BASE_URL% is the wrong value for
+      // them. In a build that is '../', relative like the rest of the bundle,
+      // so it is right under either prefix. In `serve` the bundle is at '/'
+      // and so is the site root, so the token resolves to '/' and the dev
+      // server keeps working.
       {
         name: 'ngw-site-base',
         transformIndexHtml: {
           order: 'pre',
-          handler: (html) => html.replaceAll(
-            '%SITE_BASE%',
-            command === 'build' || process.env.E2E_BASE ? SITE_BASE : '/',
-          ),
+          handler: (html) => html.replaceAll('%SITE_BASE%', command === 'build' ? '../' : '/'),
         },
       },
     ],
