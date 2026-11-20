@@ -96,7 +96,11 @@ describe('timing category resolver', () => {
     // event-specific CHOICE decisions (what to serve/theme) with no citable external lead
     // standard, so they remain honestly synthesized. Correctness + honest ceiling over count.
     expect(grounded).toBeGreaterThanOrEqual(22); // wave-2u added dietary-collection + menu-finalize actions
-    expect(grounded).toBeLessThan(32); // still conservative — no over-reach into choice decisions
+    // 11/19/2026 (G61): 31 -> 35. The four Group Trip decisions each AUTHOR a
+    // researched timingProvenance citing registered sources (the resolver did
+    // not reach for them), so the ceiling moves with authored grounding, not
+    // with resolver over-reach.
+    expect(grounded).toBeLessThan(36); // still conservative — no over-reach into choice decisions
   });
 });
 

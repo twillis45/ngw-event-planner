@@ -62,8 +62,9 @@ describe('(premise) the gap is real and has a real denominator', () => {
       if (!d.costFactors || !Object.keys(d.costFactors).length) without++;
     }
     // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
-    expect(candidates).toBe(158);
-    expect(without).toBe(106);
+    // 11/19/2026 (G61): the Group Trip playbook joined the corpus (47 types, 4 decisions); this count moved with it.
+    expect(candidates).toBe(160);
+    expect(without).toBe(108);   // +2 on 11/19/2026: Group Trip's money_plan and split_rule touch the budget and are noCostEffect by design (no sourced multiplier);
   });
 });
 
@@ -71,7 +72,8 @@ describe('the picker can now aim at them', () => {
   test('it offers 153 targets where it offered 51', () => {
     let offered = 0;
     for (const pb of ALL_PLAYBOOKS) offered += getFieldPaths(pb).filter((p) => p.kind === 'cost-factor').length;
-    expect(offered).toBe(158);
+    // 11/19/2026 (G61): the Group Trip playbook joined the corpus (47 types, 4 decisions); this count moved with it.
+    expect(offered).toBe(160);
   });
 
   test('and a target with nothing yet says so in its label', () => {

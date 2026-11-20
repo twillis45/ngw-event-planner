@@ -193,8 +193,13 @@ describe('1 — the source universe is what we think it is', () => {
     // sides, one line per dish: `ufifas-holiday-meal-2026`,
     // `almanac-party-planner-2026`, `foodnetwork-portion-planner-2026`,
     // `surlatable-thanksgiving-2026`, each page read that day.)
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(427);
-    expect(unionIds().size).toBe(427);        // therefore every id is globally unique
+    // (433 since 11/19/2026 registered the Group Trip playbook's six fetched
+    // sources: `golfthehighsierra-group-golf-2026`, `golfn-golf-trip-guide-2026`,
+    // `avantstay-group-checklist-2026`, `smartertravel-group-trip-2025` and
+    // `kayak-group-travel-2018` in TIMING_SOURCES, `ftc-travel-scams-2025` in
+    // BOOKING_RISK_SOURCES, each page read that day.)
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(433);
+    expect(unionIds().size).toBe(433);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {

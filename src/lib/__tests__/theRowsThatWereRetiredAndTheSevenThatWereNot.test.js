@@ -51,7 +51,8 @@ const checklistText = (type) => {
 describe('the dead rows are gone and what mattered in them is not', () => {
   test('(premise) the corpus is still the corpus — this is not a vacuous pass', () => {
     // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
-    expect(ALL_PLAYBOOKS.length).toBe(46);
+    // 11/19/2026 (G61): the Group Trip playbook joined the corpus (47 types, 4 decisions); this count moved with it.
+    expect(ALL_PLAYBOOKS.length).toBe(47);
     const rows = ALL_PLAYBOOKS.flatMap((pb) => READ_KEYS.flatMap((k) => (
       (pb.schedules && Array.isArray(pb.schedules[k])) ? pb.schedules[k] : [])));
     expect(rows.length).toBeGreaterThan(600);

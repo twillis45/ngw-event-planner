@@ -43,8 +43,9 @@ describe('(premise) the mismatch was real and this is its size', () => {
     const raw = all.filter((b) => k.includes(b)).length;
     // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
     // +2 on 11/18/2026: Friendsgiving and Thanksgiving Hosting gained `service_style` (sit-down or buffet).
-    expect(all.length).toBe(481);
-    expect(raw).toBe(94);                       // 19%
+    // 11/19/2026 (G61): the Group Trip playbook joined the corpus (47 types, 4 decisions); this count moved with it.
+    expect(all.length).toBe(483);
+    expect(raw).toBe(96);   // +2 on 11/19/2026: Group Trip's two `budget` blocks are keyed;                       // 19%
   });
 });
 

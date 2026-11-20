@@ -123,6 +123,45 @@ export const TIMING_SOURCES = {
     sourceClass: 'independent',
     claim: 'The host makes the turkey and gravy, because "nobody wants to transport 20-odd pounds of piping-hot poultry anywhere"; assign each guest a general category (potatoes, cranberries, stuffing, dessert); hold it earlier in the month as a trial run or the same weekend as Thanksgiving; guests who ask what to bring can bring ice, wine or napkins.',
   },
+  // Registered 11/19/2026 with the Group Trip playbook (G61). All five fetched
+  // and read the same day; quotes are verbatim. Four are commercial (a golf
+  // tour operator, a golf app, a group-rental company, a travel search site)
+  // and say so; SmarterTravel is editorial. They ground practice and timing,
+  // never prevalence, and none of them is cited for a price.
+  'golfthehighsierra-group-golf-2026': {
+    url: 'https://golfthehighsierra.com/how-to-plan-a-group-golf-trip/',
+    fetched: '2026-11-19',
+    sourceClass: 'commercial_practitioner',
+    limitations: ['commercial_interest_disclosed'],
+    claim: 'How to Plan a Group Golf Trip (Sean Schaeffer, Golf the High Sierra, a golf tour operator, May 2026). Order and timing: 4-6 months out "Lock headcount, collect deposits, choose destination and date range"; 3-4 months out "Book lodging first"; 2-3 months out "Finalize tee times. Build daily schedule around lodging"; 4-6 weeks out "Send trip details to all attendees. Confirm final headcount"; 1-2 weeks out "Confirm all reservations, share tee time sheet, collect remaining balances". Also: "Collect deposits before you book anything"; "Get a hard commitment from everyone" ("probably" does not count); "give yourself a range of 2-3 weekends if possible"; "Plan for 5-5.5 hours per round for a group of 12-20"; "Never book a 7:30 am round on Day 1 unless everyone is flying in the night before."',
+  },
+  'golfn-golf-trip-guide-2026': {
+    url: 'https://www.golfn.com/blogs-items/golf-trip-planning-guide',
+    fetched: '2026-11-19',
+    sourceClass: 'commercial_practitioner',
+    limitations: ['commercial_interest_disclosed'],
+    claim: 'Golf Trip Planning Guide (Brandon Tucker, GolfN, June 16, 2026): "Expect to plan at least 3-6 months farther in advance when you have a group of more than 8"; "getting blocks of tee times is more difficult" for a big group; "Ideally, your group should have an even number"; "I always like to get a deposit from people as early as possible"; after the trip, send a final bill for extras such as lunches.',
+  },
+  'avantstay-group-checklist-2026': {
+    url: 'https://avantstay.com/blog/group-trip-planning-checklist-vacation-homes-15-guests',
+    fetched: '2026-11-19',
+    sourceClass: 'commercial_practitioner',
+    limitations: ['commercial_interest_disclosed'],
+    claim: 'Group trip planning checklist for vacation homes (Danielle Vito, AvantStay, a group-rental company, November 3, 2026): "The best homes get booked 6 to 12 months out"; "Wait until three months out and you\'ll face slim pickings"; "Set a three-day deadline for the survey"; "Collect deposits within 48 hours of locking your dates"; "Ask for 50% upfront to secure the booking, with the balance due 30 days before check-in"; "Divide the total by the number of confirmed attendees and share the per-person number in writing"; equal splits when everyone stays the whole trip, per-night when arrivals differ, room-based pricing for private rooms; send a "short list of house norms" one week before check-in. Arrival: "Identify clusters landing within 90 minutes of each other to coordinate shared transportation"; "Designate one early arrival to handle key pickup, then share access codes with late arrivals"; "Stagger check-in if arrivals span six-plus hours"; "Shared grocery runs work when someone tracks the list and collects cash upfront."',
+  },
+  'smartertravel-group-trip-2025': {
+    url: 'https://www.smartertravel.com/ultimate-guide-planning-group-trip/',
+    fetched: '2026-11-19',
+    sourceClass: 'independent',
+    claim: 'The Ultimate Guide to Planning a Group Trip (Carol McPherson, SmarterTravel, March 19, 2025): "Before your trip, agree on which expenses will be shared and which will be individual"; "decide ahead of time whether you\'ll settle up at the end of each day or the end of the trip"; "Assign a leader for each task and agree on a due date"; "select a few tentpole events that everyone agrees to attend" and leave the rest free; keep early risers and night owls in separate rooms.',
+  },
+  'kayak-group-travel-2018': {
+    url: 'https://www.ca.kayak.com/news/10-rules-group-travel/',
+    fetched: '2026-11-19',
+    sourceClass: 'commercial_practitioner',
+    limitations: ['commercial_interest_disclosed'],
+    claim: '10 Rules for Planning a Great Group Trip (KAYAK, May 31, 2018): start planning as soon as the group decides to go; an optional budget pool everyone pays into before the trip; an equal vote on destination, dates and lodging except on a bachelor(ette) or birthday trip, where the honoree decides; draw lots for rooms; "it should be each individual\'s responsibility to book their own flight"; large groups should reserve dinners ahead; keep phones out of sight at the table; do not split off without a meet-up plan (location-sharing apps help); settle how the group gets around early.',
+  },
 };
 
 // Category → grounding. `pattern` matches the decision's id + label; `antiPattern`

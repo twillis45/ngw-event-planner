@@ -63,6 +63,8 @@ const TYPE_ESSENCE = {
   'thanksgiving hosting': 'Thanksgiving dinner',
   'pupusa gathering': 'a pupusa gathering',
   'client dinner': 'a dinner with clients',
+  // 11/19/2026 (G61): the Group Trip playbook joined the corpus.
+  'group trip': 'a trip with friends',
   // Type families / free-text fallbacks (soft contains-match below).
   graduation: 'a celebration of an achievement',
   retirement: 'recognition of a career and a new chapter',
@@ -128,6 +130,8 @@ const NO_HONOREE_TYPES = new Set([
   'friendsgiving', 'thanksgiving hosting', 'halloween party', "new year's eve party",
   'game night', 'watch party', 'card party', 'holiday party',
   'board meeting', 'conference', 'team retreat', 'pta / booster fundraiser',
+  // 11/19/2026 (G61): a friends' trip has no honoree; a host who names one keeps it.
+  'group trip',
 ]);
 export function honoreeApplies(type) {
   return !NO_HONOREE_TYPES.has(norm(type));
