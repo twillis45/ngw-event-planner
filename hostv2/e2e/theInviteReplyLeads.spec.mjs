@@ -30,7 +30,20 @@ const open = async (page, over = {}) => {
   await page.goto('?rsvp=' + EVENT().rsvpCode);
   // PREMISE: the reply buttons rendered, so the layout under test is the real one.
   await expect(page.getByRole('radio', { name: /Yes, I.m in/i }).first()).toBeVisible();
-  await page.waitForTimeout(2600);   // past the staged entrance
+  // PAST THE STAGED ENTRANCE, by its state rather than the clock. Every beat
+  // (.inv2 .rv) rises 10px as it fades in, and the reply block's beat ends
+  // about 2.4s after the page draws. A fixed 2600ms wait left ~200ms of margin,
+  // and a slow WebKit runner on CI (11/20/2026) read the Yes button while it was
+  // still rising: it "moved" exactly 10px (603 -> 593) with nothing tapped.
+  // toBeVisible() above does not wait for this: it ignores opacity.
+  await expect.poll(() => page.evaluate(() => {
+    const beats = [...document.querySelectorAll('.inv2 .rv')];
+    return beats.length > 0 && beats.every((el) => {
+      const cs = getComputedStyle(el);
+      return el.classList.contains('in') && cs.opacity === '1' && cs.transform === 'none'
+        && el.getAnimations().every((a) => a.playState !== 'running');
+    });
+  }), { message: 'the staged entrance never settled', timeout: 10_000 }).toBe(true);
 };
 
 const replyRow = (page) => page.evaluate(() => {
@@ -134,12 +147,54 @@ test('at 1024 and up the invite fills the window, and opening the form moves not
 // Every width: tapping a reply opens the form BELOW the buttons. It used to move
 // them, measured 115px on a phone (the countdown condensed on the first tap) and
 // 140px on a 768 tablet (the centered card lost its slack when the form outgrew it).
-test('tapping a reply moves nothing the guest is looking at', async ({ page }) => {
-  await open(page);
-  const before = await replyRow(page);
-  await page.getByRole('radio', { name: /Yes, I.m in/i }).first().click();
-  await expect(page.getByLabel(/Your name/i).first()).toBeVisible();
-  await page.waitForTimeout(700);
-  const after = await replyRow(page);
-  expect(Math.abs(after.yesY - before.yesY), 'the reply buttons jumped when the form opened').toBeLessThanOrEqual(2);
+//
+// STRICT, AND SAMPLED (11/20/2026). One reading 700ms after the tap, at a 2px
+// tolerance, could not tell a settled button from one caught mid-motion. Now the
+// Yes button's top is read in the page's own coordinates (its on-screen top plus
+// every scroll offset: window, document, .app and the card itself) before the
+// tap and every 100ms for 1.5s after it, through the whole open transition, and
+// the worst drift must be at most 1px. The card must also have grown, or the
+// test proves nothing. The mechanism it guards is the centered card
+// (theInviteSitsBalanced): when the form makes it taller, a centered column
+// re-centers and slides up under the guest's finger. InviteV2 pins the
+// content's offset on the first tap so the form grows downward only. Red-proofed
+// in Chromium with that pin removed: the 768x1024 tablet fails at 131px (light,
+// dark) and 10px (tall content).
+const yesTop = (page) => page.evaluate(() => {
+  const yes = [...document.querySelectorAll('.inv2-replies [role=radio]')].find((r) => /Yes, I.m in/i.test(r.textContent));
+  const sheet = document.querySelector('.inv2-sheet');
+  const app = document.querySelector('.app');
+  // window.scrollY is the document's scroll; body counts only when it is not
+  // the scrolling element itself (it would be counted twice).
+  const body = document.scrollingElement === document.body ? 0 : document.body.scrollTop;
+  return {
+    y: yes.getBoundingClientRect().top + window.scrollY + body + (app ? app.scrollTop : 0) + sheet.scrollTop,
+    sheetH: sheet.getBoundingClientRect().height,
+  };
 });
+const TALL = {
+  name: 'Margaret Adeyemi’s Retirement Dinner and Thirty-Year Celebration With the Whole Riverside Team',
+  venueName: 'The Willow Room at the Old Riverside Mill, Upstairs Gallery',
+  dressCode: 'Cocktail attire; the gallery is cool in the evening, so bring a layer',
+  bringNote: 'A favorite story about Margaret for the memory book, written on a card',
+  hostName: 'The Riverside Planning Committee',
+};
+for (const [label, over] of [['light', {}], ['dark', { inviteStyle: 'elegant' }], ['tall', TALL]]) {
+  test(`tapping a reply moves nothing the guest is looking at (${label})`, async ({ page }) => {
+    await open(page, over);
+    const before = await yesTop(page);
+    await page.getByRole('radio', { name: /Yes, I.m in/i }).first().click();
+    const ys = [];
+    let sheetH = 0;
+    for (let i = 0; i < 15; i++) {
+      await page.waitForTimeout(100);
+      const s = await yesTop(page);
+      ys.push(s.y); sheetH = s.sheetH;
+    }
+    await expect(page.getByLabel(/Your name/i).first()).toBeVisible();
+    // PREMISE: the form made the card taller; with no growth there is nothing to hold.
+    expect(sheetH, 'the card did not grow when the form opened').toBeGreaterThan(before.sheetH + 1);
+    const drift = Math.max(...ys.map((y) => Math.abs(y - before.y)));
+    expect(drift, `the reply buttons moved when the form opened: ${before.y} -> ${ys.map(Math.round).join(',')}`).toBeLessThanOrEqual(1);
+  });
+}
