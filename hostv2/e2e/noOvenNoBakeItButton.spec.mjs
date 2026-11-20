@@ -58,6 +58,14 @@ const openCalls = async (page, pick) => {
   // "Other ways \u25be" when it opens, so a selector on the bare words matches the
   // open one too and the next pass closes what the last one opened — measured,
   // after a loop that did exactly that and left the panel shut.
+  // A DECISION WITH TIME TO SPARE IS A COLLAPSED ROW. From 11/20/2026 the cake
+  // call on this June 2027 event reads "The cake — Ready when you are — plenty
+  // of time." with no options until it is opened, so every Bake-it check read an
+  // empty card (CI, #185). Open it when it shows its collapsed status line, and
+  // only then, so an already-open card is never toggled shut.
+  if (await tapText(page, '^The cake[\\s\\S]*(Ready when you are|plenty of time)')) {
+    await page.waitForTimeout(600);
+  }
   for (let i = 0; i < 6; i++) {
     if (!(await tapText(page, 'Other ways \u25b8'))) break;
     await page.waitForTimeout(600);

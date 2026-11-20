@@ -13,13 +13,23 @@ const boot = async (page, ev) => {
   await settled(page);
 };
 const saved = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]')[0]);
+// On a wide screen a tapped row may open a side pane first (its button opens the
+// editor) or go straight to the editor. Wait for whichever appears, instead of
+// deciding from the rail at the instant of the tap: WebKit desktop went straight
+// to the editor and the old check waited 30 s for a pane that never came
+// (#185 CI, 11/19/2026).
+const throughPane = async (page, target) => {
+  const cta = page.locator('.cpane-cta');
+  await cta.or(target).first().waitFor({ state: 'visible' });
+  if (await cta.isVisible()) await cta.click();
+};
 
 test('a Then start-time row opens a real time editor', async ({ page }, testInfo) => {
   await boot(page, base());
   const row = page.locator('.then-fold .ef-row').filter({ hasText: /start time/i }).first();
   await expect(row).toBeVisible();
   await row.click();
-  if (await page.locator('.srail-row').count()) await page.locator('.cpane-cta').click();
+  await throughPane(page, page.getByRole('dialog', { name: 'Date & time' }));
   await expect(page.getByRole('dialog', { name: 'Date & time' })).toBeVisible();
   await expect(page.getByRole('dialog').locator('input[type="time"]')).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('then-date-editor.png'), fullPage: true });
@@ -30,8 +40,8 @@ test('a Then accessibility question focuses its own answer and persists the answ
   const row = page.locator('.then-fold .ef-row').filter({ hasText: /step-free/i }).first();
   await expect(row).toBeVisible();
   await row.click();
-  if (await page.locator('.srail-row').count()) await page.locator('.cpane-cta').click();
   const answer = page.locator('#place-question-venue-step-free');
+  await throughPane(page, answer.getByRole('button', { name: 'Yes', exact: true }));
   await expect(answer.getByRole('button', { name: 'Yes', exact: true })).toBeFocused();
   await expect(answer.getByRole('button', { name: 'Yes', exact: true })).toBeInViewport();
   await page.screenshot({ path: testInfo.outputPath('then-place-answer.png'), fullPage: true });
