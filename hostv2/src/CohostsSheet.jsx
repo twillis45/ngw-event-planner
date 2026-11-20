@@ -5,13 +5,15 @@
 // host's: no other events, and they cannot delete this one or invite others
 // (supabase/migrations/026, backend/app/routers/cohosts.py).
 // A CO-HOST sees who they are here and can leave.
-// Signed out, or a plan not yet saved: the sheet says so and offers nothing.
+// Signed out, or a plan not yet saved: the sheet says so and offers the way in —
+// "Sign in" (onSignIn, the same sheet the keep-this-plan banner opens). It said
+// "Sign in … first" with no button to do it (design audit 11/20/2026).
 import { useEffect, useState } from 'react';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 import { listCohosts, inviteCohost, removeCohost, leaveCohostedEvent, isCohostApiConfigured } from '@app/lib/api/cohosts';
 import BusyLine from './BusyLine.jsx';
 
-export default function CohostsSheet({ event, signedIn, onLine, onLeft }) {
+export default function CohostsSheet({ event, signedIn, onLine, onLeft, onSignIn }) {
   const isCohost = Boolean(event._cohostOf);
   const [state, setState] = useState(undefined);      // undefined · { cohosts } · { error }
   const [email, setEmail] = useState('');
@@ -80,7 +82,10 @@ export default function CohostsSheet({ event, signedIn, onLine, onLeft }) {
         Invite someone to plan this event with you. When they sign in with that email, they can see and change this plan — not your other events, and they can’t delete it or invite others.
       </p>
       {!signedIn ? (
-        <p className="grounding" data-cohosts-signed-out style={{ margin: 0 }}>Sign in and keep this plan first — co-hosts join the saved plan.</p>
+        <>
+          <p className="grounding" data-cohosts-signed-out style={{ margin: '0 0 var(--sp-2)' }}>Sign in and keep this plan first — co-hosts join the saved plan.</p>
+          {onSignIn && <div className="actions-row"><button className="mini" data-signin-from-sheet onClick={onSignIn}>Sign in</button></div>}
+        </>
       ) : (
         <>
           <div className="actions-row" style={{ alignItems: 'center', flexWrap: 'wrap' }}>

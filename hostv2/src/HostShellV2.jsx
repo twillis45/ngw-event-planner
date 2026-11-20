@@ -1634,7 +1634,7 @@ export default function HostShellV2() {
               <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{sg.label}</span>
             </button>
           ))}
-          <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', opacity: .65 }}>
+          <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>
             {typeof window !== 'undefined' && window.google ? 'Suggestions by Google Places.' : 'Suggestions by OpenStreetMap — Google Places takes over when the API key lands.'}
           </p>
         </div>
@@ -2508,8 +2508,8 @@ export default function HostShellV2() {
                         <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
                       </div>
                       {authErr && <p className="grounding" role="alert" data-auth-err style={{ margin: 'var(--sp-2) 0 0', color: 'var(--danger)', fontWeight: 600 }}>{authErr}</p>}
-                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', opacity: .75 }}>No password — the email has a code to type here. One account, both apps, this device and your others.</p>
-                      <PolicyLinks prefix="Signing in means you agree to:" style={{ margin: 'var(--sp-1) 0 0', opacity: .75 }} />
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>No password — the email has a code to type here. One account, both apps, this device and your others.</p>
+                      <PolicyLinks prefix="Signing in means you agree to:" style={{ margin: 'var(--sp-1) 0 0' }} />
                     </>
                   ));
   // THE CODE KEEPS YOU HERE (live smoke test, 11/7/2026). A link tapped in a
@@ -10017,6 +10017,12 @@ export default function HostShellV2() {
   // The reveal's "keep it" steps, signed out: open You & settings on the
   // existing sign-in, with the review board's line.
   const askToKeep = (intent) => { keepIntentRef.current = intent; setSheet({ kind: 'settings', keep: true }); trackKeepPrompt(intent); };
+  // "Sign in and keep this plan first" on Co-hosts, Share with family and the
+  // calendar subscription had no button (design audit 11/20/2026). This is the
+  // keep-this-plan sign-in the banner opens — settings, scrolled to the email
+  // field — carrying the sheet it came from so Close returns there. Undefined
+  // when accounts are off: a "Sign in" that leads to "accounts aren't on" is not one.
+  const signInFromSheet = isSupabaseConfigured() ? () => setSheet(s => ({ kind: 'settings', keep: true, from: s })) : undefined;
   // On sign-in the draft joins the store (written straight through, so the
   // hydrate that follows in the same tick reads it and uploads it), and she
   // lands where she was going.
@@ -12250,7 +12256,7 @@ export default function HostShellV2() {
                         <div className="card-head">
                           {(it.detailShort || it.detail) && <p className="because">{it.detailShort || it.detail}</p>}
                           {/* why back to a visible line under the situation (host 2026-07-18) */}
-                          {it.why && <p className="grounding" style={{ margin: '6px 0 0', opacity: .8 }}>{it.why}</p>}
+                          {it.why && <p className="grounding" style={{ margin: '6px 0 0' }}>{it.why}</p>}
                           {inPlace ? (
                             <div className="conf-fixes">
                               {res.options.map((o, oi) => (
@@ -12607,7 +12613,7 @@ export default function HostShellV2() {
                           : is('starttime', /start time/) ? 'This is first because the day has an order but no clock until you set it.'
                           : is('venue', /the location|the venue|where is the event/) ? 'This is first because vendors, weather and the timeline all hang off where it is.'
                           : null;
-                        return why ? <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', opacity: .85 }}>{why}</p> : null;
+                        return why ? <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>{why}</p> : null;
                       })()}
                       {(editor === key || (isHero && !!wired && !decHeroActions)) && <div className="editor-slot">{renderEditor(a)}</div>}
                       {decHeroActions}
@@ -14814,7 +14820,7 @@ export default function HostShellV2() {
                         <strong style={{ color: 'var(--ink-soft)' }}>{l.label}</strong> — {l.text}
                       </p>
                     ))}
-                    <p className="grounding" style={{ marginTop: 10, opacity: .65 }}>
+                    <p className="grounding" style={{ marginTop: 10 }}>
                       Grounded to NIAAA, NHTSA, AHA, CPI, and the NDPA — {ip.boundary} Sources listed under You &amp; settings → Grounding.
                     </p>
                   </details>
@@ -15047,8 +15053,8 @@ export default function HostShellV2() {
                           )}
                         </div>
                         {derived && event.startTimeWhy
-                          ? <p className="grounding" style={{ margin: '6px 0 0', opacity: .85 }}>{event.startTimeWhy}</p>
-                          : prop && <p className="grounding" style={{ margin: '6px 0 0', opacity: .85 }}>{prop.why}</p>}
+                          ? <p className="grounding" style={{ margin: '6px 0 0' }}>{event.startTimeWhy}</p>
+                          : prop && <p className="grounding" style={{ margin: '6px 0 0' }}>{prop.why}</p>}
                       </div>
                     );
                   })()}
@@ -15544,7 +15550,7 @@ export default function HostShellV2() {
                         } catch { toast('Couldn’t record it.'); }
                       }}>Record it</button>
                     </div>
-                    <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>One number, once. Future plans adjust to how your crowds actually show.</p>
+                    <p className="grounding" style={{ margin: '6px 0 0' }}>One number, once. Future plans adjust to how your crowds actually show.</p>
                   </div>
                 );
               })()}
@@ -15623,10 +15629,20 @@ export default function HostShellV2() {
           <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabIndex={-1} ref={sheetRef}>
             <div className="sheet-head">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
-                {/* Audit #1: cross-nav — from ANY sheet, hop to the Sections
+                {/* Audit #1: cross-nav — from a SECTION sheet, hop to the Sections
                     directory (and from there to any other surface) instead of
-                    Close → re-open. Hidden on the directory itself. */}
-                {sheet.kind !== 'sections' && (
+                    Close → re-open. Hidden on the directory itself.
+                    ONE WAY BACK (design audit batch 1, 11/20/2026): measured, the
+                    draft note opened from People you’re hiring showed TWO backs —
+                    "‹ Sections" to the directory and a top-right "Back" to the
+                    vendor sheet. A sheet opened from inside another (`sheet.from`)
+                    now shows only the top-right control, labeled "Close" like every
+                    other sheet; closeSheet already returns it one level, to its
+                    parent. And "‹ Sections" only shows on a sheet that IS a section
+                    — a door in sectionGroups() — not on Jump to, Feeling stuck?,
+                    Your events or a draft, which the directory does not list. */}
+                {!sheet.from && sectionGroups({ event, travel, crab, outdoor, passCents: devicePassPriceCents() })
+                  .some(g => g.rows.some(r => r.k === (sheet.kind === 'bringing' || sheet.kind === 'foodplan' ? 'food' : sheet.kind))) && (
                   /* sheet-back: the 44px hit area comes from a ::after in the
                      stylesheet, NOT from padding or min-height here. Measured at
                      67x16 on a phone (2026-08-07 mobile sweep) — under half the
@@ -15665,7 +15681,7 @@ export default function HostShellV2() {
                     : started ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' }
                       : undefined;
                 }
-                return <button className="sheet-x" style={tone} onClick={closeSheet}>{sheet.from ? 'Back' : 'Close'}</button>;
+                return <button className="sheet-x" style={tone} onClick={closeSheet}>Close</button>;
               })()}
             </div>
             {/* Date & time area is a real door now (host report 2026-07-16: it was tappable
@@ -16855,7 +16871,7 @@ export default function HostShellV2() {
               </>
             )}
             {sheet.kind === 'cohosts' && (
-              <CohostsSheet event={event} signedIn={Boolean(session)} onLine={(l) => toast(l)}
+              <CohostsSheet event={event} signedIn={Boolean(session)} onLine={(l) => toast(l)} onSignIn={signInFromSheet}
                 onLeft={() => { try { window.location.reload(); } catch { /* the next load drops it */ } }} />
             )}
             {sheet.kind === 'messages' && (
@@ -16865,11 +16881,11 @@ export default function HostShellV2() {
             )}
             {sheet.kind === 'calendar' && (
               <CalendarSheet event={event} forecast={dayWx && forecastLine(dayWx) ? { date: dayWx.date, line: forecastLine(dayWx), kind: skyKind(dayWx) } : null} onOpenChecklist={() => setSheet({ kind: 'tasks' })}
-                signedIn={Boolean(session)} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} />
+                signedIn={Boolean(session)} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} onSignIn={signInFromSheet} />
             )}
             {sheet.kind === 'family' && (
               <FamilyLinkSheet event={event} signedIn={Boolean(session)} appUrl={publicAppUrl()}
-                onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} />
+                onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} onSignIn={signInFromSheet} />
             )}
             {sheet.kind === 'split' && (
               <CostSplitSheet event={event} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} />
@@ -18012,7 +18028,7 @@ export default function HostShellV2() {
                           )}
                         </div>
                         </details>
-                        <p className="grounding" style={{ marginTop: 'var(--sp-2)', opacity: .8 }}>
+                        <p className="grounding" style={{ marginTop: 'var(--sp-2)' }}>
                           Book through the platform’s own checkout — that’s where refunds and rebooking help live. Full sourced guidance rides the plan; sources under You &amp; settings → Grounding.
                         </p>
                         </>
@@ -19231,7 +19247,7 @@ export default function HostShellV2() {
                       <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 'var(--t-body-s)', color: 'var(--ink-soft)', lineHeight: 1.5 }}>
                         {mil.protocol.map((p) => <li key={p.id} style={{ margin: '4px 0' }}><b style={{ color: 'var(--ink)' }}>{p.label}.</b> {p.note}</li>)}
                       </ul>
-                      <p className="grounding" style={{ margin: 0, opacity: .8 }}>Grounded in Army protocol references — AR 600-25, DA PAM 600-60, the U.S. Flag Code, and Army Retirement Services.</p>
+                      <p className="grounding" style={{ margin: 0 }}>Grounded in Army protocol references — AR 600-25, DA PAM 600-60, the U.S. Flag Code, and Army Retirement Services.</p>
                     </div>
                   );
                 })()}
@@ -19555,11 +19571,11 @@ export default function HostShellV2() {
                           lib/refundRule). Above the button, so it is read before paying. */}
                       <p className="grounding" data-refund-rule style={{ margin: 'var(--sp-3) 0 0', textAlign: 'center' }}>{refundLine(devicePassPriceCents())}</p>
                       <button className="cta" style={{ marginTop: 'var(--sp-2)', width: '100%' }} onClick={buyPass} disabled={openingCheckout} aria-busy={openingCheckout}>{openingCheckout ? 'Opening checkout…' : withPassPrice('Get the pass')}</button>
-                      <p className="grounding" style={{ margin: '8px 0 0', textAlign: 'center', opacity: .75 }}>Secure checkout on Stripe. We never see your card.</p>
+                      <p className="grounding" style={{ margin: '8px 0 0', textAlign: 'center' }}>Secure checkout on Stripe. We never see your card.</p>
                       {/* BEFORE THE MONEY (stage 9, 11/11/2026): a person to ask, and the
                           policies once published. */}
-                      <p className="grounding" style={{ margin: '4px 0 0', textAlign: 'center', opacity: .75 }}>Questions about the pass or a charge? <a href={'mailto:' + BRAND.support}>{BRAND.support}</a></p>
-                      <PolicyLinks style={{ margin: '4px 0 0', textAlign: 'center', opacity: .75 }} />
+                      <p className="grounding" style={{ margin: '4px 0 0', textAlign: 'center' }}>Questions about the pass or a charge? <a href={'mailto:' + BRAND.support}>{BRAND.support}</a></p>
+                      <PolicyLinks style={{ margin: '4px 0 0', textAlign: 'center' }} />
                     </>
                   ) : (
                     <div className="brow" style={{ borderTop: 'none', background: 'var(--ok-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginTop: 'var(--sp-3)' }}>
@@ -19967,7 +19983,7 @@ export default function HostShellV2() {
                     <button className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: rowEnter(i, 30) }}
                       onClick={() => { switchEvent(e.id); setSheet(null); }}>
                       <span className="f-main">
-                        <span className="f-name">{label}{isSample ? <span style={{ fontSize: 'var(--t-caption)', fontWeight: 650, color: 'var(--ink-soft)', background: 'var(--bg-band)', border: '1px solid var(--line)', borderRadius: 'var(--r-pill)', padding: '1px 8px', marginLeft: 6, opacity: 0.7 }}>Sample</span> : null}{isActive ? <span className="tag plan">current</span> : null}</span>
+                        <span className="f-name">{label}{isSample ? <span className="eb-sample">Sample</span> : null}{isActive ? <span className="tag plan">current</span> : null}</span>
                         <span className="v-meta">{src.name === label ? '' : src.name}{src.venue ? (src.name === label ? '' : ' · ') + src.venue : ''}</span>
                       </span>
                       <span className="of" style={{ whiteSpace: 'nowrap' }}>{d === null ? 'no date' : d === 0 ? 'today' : d < 0 ? `${-d}d ago` : 'in ' + d + 'd'}</span>
@@ -20039,7 +20055,7 @@ export default function HostShellV2() {
                         </p>
                       )}
                       {proc.explanation.assumptions[0] && (
-                        <p className="grounding" style={{ margin: '6px 0 0', opacity: .8 }}>{proc.explanation.assumptions[0]} {proc.explanation.regionalFactors.note}</p>
+                        <p className="grounding" style={{ margin: '6px 0 0' }}>{proc.explanation.assumptions[0]} {proc.explanation.regionalFactors.note}</p>
                       )}
                       {proc.explanation.costReducers.length > 0 && (
                         <details style={{ marginTop: 'var(--sp-2)' }}>
@@ -20096,7 +20112,7 @@ export default function HostShellV2() {
                       <div className="card" style={{ marginBottom: 'var(--sp-3)', padding: '13px 15px' }}>
                         <div className="shelf-label" style={{ margin: 0 }}>A starting order</div>
                         <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>{rec.summary} — about {rec.totalCrabs} crabs.</p>
-                        <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', opacity: .85 }}>{rec.note}</p>
+                        <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>{rec.note}</p>
                         <button className="cta" style={{ marginTop: 10 }} onClick={() => {
                           const newLines = rec.lines.map((l, i) => ({ id: 'cl-rec-' + i + '-' + l.size + '-' + l.unit, ...l }));
                           writeCp({ lines: [...lines, ...newLines] }, 'Added — a real starting point, edit any line to match your vendor’s quote.');
@@ -20286,7 +20302,7 @@ export default function HostShellV2() {
                       <button className="mini" onClick={runSweepDrafts}>Draft the reconfirms</button>
                     </div>
                   )}
-                  <p className="grounding" style={{ marginTop: 10, opacity: .7 }}>Every note is built from what’s on file — their arrival time, your date and place. Nothing invented, nothing auto-sent.</p>
+                  <p className="grounding" style={{ marginTop: 10 }}>Every note is built from what’s on file — their arrival time, your date and place. Nothing invented, nothing auto-sent.</p>
                 </>
               );
             })()}
@@ -20492,7 +20508,7 @@ export default function HostShellV2() {
                     onBlur={e => { const v = e.target.value.trim(); if (v !== ((profile && profile.name) || '')) patchProfile({ name: v }, v ? 'Your notes now sign as ' + v + '.' : 'Signature cleared.'); }} />
                   <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Your area</div>
                   <AreaField profile={profile} patchProfile={patchProfile} toast={toast} />
-                  <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>Used for local food prices and as the weather fallback when an event has no town of its own.</p>
+                  <p className="grounding" style={{ margin: '6px 0 0' }}>Used for local food prices and as the weather fallback when an event has no town of its own.</p>
 
                   <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>Your plan</div>
                   <button className="later-row" style={{ width: '100%', textAlign: 'left', cursor: 'pointer', borderTop: 'none' }} onClick={() => setSheet({ kind: 'pass' })}>
@@ -20585,7 +20601,7 @@ export default function HostShellV2() {
                     <>
                       <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Signed in as <strong style={{ color: 'var(--ink-soft)' }}>{(session.user && session.user.email) || 'your account'}</strong> — your name, area, and what {BRAND.short} remembers sync to your account across devices.</p>
                       {profile && profile.accountType === 'planner' && (
-                        <p className="grounding" style={{ margin: '0 0 var(--sp-2)', opacity: .8 }}>You’re set up as a planner. This is the host view; your client roster and planner tools are in the full app.</p>
+                        <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>You’re set up as a planner. This is the host view; your client roster and planner tools are in the full app.</p>
                       )}
                       <div className="actions-row">
                         <button className="mini" onClick={async () => { try { await signOutThisDevice(() => supabase.auth.signOut()); toast('Signed out. Changes you make here are kept and saved to your account when you sign in.'); } catch { toast('Couldn’t sign out.'); } }}>Sign out</button>
@@ -20778,7 +20794,7 @@ export default function HostShellV2() {
                       </div>
                     );
                   })()}
-                  {queue.length > 1 && <p className="grounding" style={{ opacity: .7 }}>Up next: {queue.slice(1, 4).map(x => String(x.g.name || '').split(' ')[0]).join(', ')}{queue.length > 4 ? '…' : ''}</p>}
+                  {queue.length > 1 && <p className="grounding">Up next: {queue.slice(1, 4).map(x => String(x.g.name || '').split(' ')[0]).join(', ')}{queue.length > 4 ? '…' : ''}</p>}
                 </>
               );
             })()}
@@ -20838,7 +20854,7 @@ export default function HostShellV2() {
                       <button className="mini" onClick={() => openDraft('Heads-up for your helpers', rainNoteFor('helpers'))}>Helper heads-up</button>
                       {reconfirmables.length > 0 && <button className="mini" onClick={() => openDraft('Weather note to vendors', rainNoteFor('vendors'))}>Vendor heads-up</button>}
                     </div>
-                    <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>Three audiences, three notes — same facts, different job: guests get the call, helpers get the shift, vendors get the question. Each opens for editing before anything sends.</p>
+                    <p className="grounding" style={{ margin: '6px 0 0' }}>Three audiences, three notes — same facts, different job: guests get the call, helpers get the shift, vendors get the question. Each opens for editing before anything sends.</p>
                   </>
                 )}
                 {/* Watch the sky — device notifications while the app is open.
@@ -20857,7 +20873,7 @@ export default function HostShellV2() {
                         <button className="mini" onClick={askWxNotify}>Ping me if the forecast moves</button>
                       </div>
                     )}
-                    <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>While the app is open, your phone gets a heads-up the moment the risk or timing changes — with your backup named in the ping. Lock-screen alerts land when the installable app ships.</p>
+                    <p className="grounding" style={{ margin: '6px 0 0' }}>While the app is open, your phone gets a heads-up the moment the risk or timing changes — with your backup named in the ping. Lock-screen alerts land when the installable app ships.</p>
                   </>
                 )}
                 {/* weatherLogistics — the engine's day-of adjustments sized to
@@ -20872,7 +20888,7 @@ export default function HostShellV2() {
                       {tips.map(t => (
                         <p className="grounding" key={t.key} style={{ margin: 'var(--sp-1) 0 0' }}>{t.text}</p>
                       ))}
-                      {wx._sample && <p className="grounding" style={{ margin: '6px 0 0', opacity: .65 }}>Numbers from the sample forecast — live weather sharpens them once the key lands.</p>}
+                      {wx._sample && <p className="grounding" style={{ margin: '6px 0 0' }}>Numbers from the sample forecast — live weather sharpens them once the key lands.</p>}
                     </>
                   );
                 })()}
@@ -23362,7 +23378,7 @@ export default function HostShellV2() {
                                     if (it.swappedFrom) tags.push(<span key="swap" className="tag plan">swapped</span>);
                                     if (it.badge) tags.push(<span key="badge" className="tag plan">{String(it.badge).toLowerCase()}</span>);
                                     const shown = tags.slice(0, 2);
-                                    if (tags.length > 2) shown.push(<span key="more" className="tag plan" style={{ opacity: .7 }}>+{tags.length - 2}</span>);
+                                    if (tags.length > 2) shown.push(<span key="more" className="tag plan">+{tags.length - 2}</span>);
                                     return shown;
                                   })()}
                                 </span>
@@ -23490,7 +23506,7 @@ export default function HostShellV2() {
                                   const L = layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx });
                                   if (L.layer !== 'regional') return null;
                                   return (
-                                    <span className="v-meta" style={{ display: 'block', marginTop: 2, opacity: .8 }}>
+                                    <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
                                       {L.scopeLabel}
                                     </span>
                                   );
@@ -23521,7 +23537,7 @@ export default function HostShellV2() {
                                           for the number above, not a claim of
                                           its own. */}
                                       {L.product && (
-                                        <span className="v-meta" style={{ display: 'block', opacity: .8 }}>
+                                        <span className="v-meta" style={{ display: 'block' }}>
                                           {L.product}
                                         </span>
                                       )}
@@ -24915,7 +24931,7 @@ export default function HostShellV2() {
                                 const copy = row && row.estimateCopy;
                                 if (!copy || /from your quote/i.test(copy)) return null;
                                 return (
-                                  <p className="grounding" style={{ width: '100%', margin: 'var(--sp-1) 0 0', opacity: .85 }}>
+                                  <p className="grounding" style={{ width: '100%', margin: 'var(--sp-1) 0 0' }}>
                                     Expect {copy}
                                   </p>
                                 );
@@ -24926,7 +24942,7 @@ export default function HostShellV2() {
                                 const ask = (() => { try { return arrivalAsk(v, event); } catch (_e) { return null; } })();
                                 if (!ask) return null;
                                 return (
-                                  <p className="grounding" style={{ width: '100%', margin: 'var(--sp-1) 0 0', opacity: .85 }}>
+                                  <p className="grounding" style={{ width: '100%', margin: 'var(--sp-1) 0 0' }}>
                                     {ask.why}{' '}
                                     <span role="button" tabIndex={0} className="mini rowlink"
                                       onClick={(e) => { e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile), null, { vendorId: v.id }); }}
@@ -25006,7 +25022,7 @@ export default function HostShellV2() {
                                 </button>
                               </div>
                             )), more > 0 ? (
-                              <p key="more" className="vc-detail" style={{ opacity: .7 }}>+{more} more open — the vendor's own brief covers the rest.</p>
+                              <p key="more" className="vc-detail">+{more} more open — the vendor's own brief covers the rest.</p>
                             ) : null];
                           })()}
                           {/* ── THE COI ROW (host: "create the COI piece", 2026-07-29) ──────
@@ -25327,7 +25343,7 @@ export default function HostShellV2() {
                                           <button className="mini" onClick={() => logVendorContact(v.id, 'host-logged')}>Mark it sent</button>
                                         </div>
                                         {!sms && !mail && (
-                                          <p className="vc-detail" style={{ margin: 'var(--sp-1) 0 0', opacity: .75 }}>Add {who === 'them' ? 'their' : who + '’s'} phone or email on this card to send it in one tap.</p>
+                                          <p className="vc-detail" style={{ margin: 'var(--sp-1) 0 0' }}>Add {who === 'them' ? 'their' : who + '’s'} phone or email on this card to send it in one tap.</p>
                                         )}
                                       </div>
                                     );
@@ -25354,7 +25370,7 @@ export default function HostShellV2() {
                                     <input className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="their phone" type="tel"
                                       value={event.briefContactPhone || ''} onChange={e => patchEvent({ briefContactPhone: formatPhoneUS(e.target.value) })} aria-label="Day-of contact phone for vendor briefs" />
                                   </div>
-                                  <p className="vc-detail" style={{ margin: 'var(--sp-2) 0 0', opacity: .75 }}>{(v.name || 'They')} will see only their arrival time, your address, their part of the day, who to call, and — if they bring food, drink or rentals — your guest count. Nothing about budget, payments, guests’ names, or other vendors.</p>
+                                  <p className="vc-detail" style={{ margin: 'var(--sp-2) 0 0' }}>{(v.name || 'They')} will see only their arrival time, your address, their part of the day, who to call, and — if they bring food, drink or rentals — your guest count. Nothing about budget, payments, guests’ names, or other vendors.</p>
                                 </>
                               )}
                             </div>
@@ -25400,12 +25416,12 @@ export default function HostShellV2() {
                       the factor sentences rather than replacing them: the
                       factors say what moved, this says what it moved. */}
                   {vendorPlan.provenanceKeys && vendorDisclosure && vendorDisclosure.mustMark && (
-                    <p className="grounding" style={{ margin: '0 0 6px', opacity: .75 }}>
+                    <p className="grounding" style={{ margin: '0 0 6px' }}>
                       Planning ranges for this kind of event — not quotes, and not live market rates.
                     </p>
                   )}
                   {unbookedSuggestions[0] && unbookedSuggestions[0].factorsApplied.length > 0 && (
-                    <p className="grounding" style={{ margin: '0 0 10px', opacity: .75 }}>
+                    <p className="grounding" style={{ margin: '0 0 10px' }}>
                       Estimates below: {unbookedSuggestions[0].factorsApplied.map(f => f.explanation).join(' ')}
                     </p>
                   )}
@@ -25423,7 +25439,7 @@ export default function HostShellV2() {
                             with parenthetical examples should show in full, not clip. */}
                         <div className="vc-name" style={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{cat.category}</div>
                         {cat.estimateCopy && <p className="grounding" style={{ margin: '3px 0 0' }}>{cat.estimateCopy}</p>}
-                        {cat.altToDIY && <p className="grounding" style={{ margin: '2px 0 0', opacity: .75 }}>{cat.altToDIY}</p>}
+                        {cat.altToDIY && <p className="grounding" style={{ margin: '2px 0 0' }}>{cat.altToDIY}</p>}
                       </div>
                       <button className="mini" style={{ flexShrink: 0 }} onClick={() => addVendorCategory(cat.category)}>Add</button>
                     </div>
@@ -25795,7 +25811,7 @@ export default function HostShellV2() {
                         </p>
                       )}
                       {(recovery.protectedItems || []).length > 0 && (
-                        <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>Protected — not on the cut list: {(recovery.protectedItems || []).slice(0, 3).map(x => x.label || x).join(', ')}.</p>
+                        <p className="grounding" style={{ margin: '6px 0 0' }}>Protected — not on the cut list: {(recovery.protectedItems || []).slice(0, 3).map(x => x.label || x).join(', ')}.</p>
                       )}
                     </div>
                   )}
@@ -26698,7 +26714,7 @@ export default function HostShellV2() {
                           </p>
                         )}
                         {!already && (
-                          <p className="grounding" style={{ margin: '4px 2px 0', opacity: .8 }}>
+                          <p className="grounding" style={{ margin: '4px 2px 0' }}>
                             No reply-by date shows on your invite until you set one.
                           </p>
                         )}
@@ -27598,7 +27614,7 @@ export default function HostShellV2() {
               <div className="actions-row" style={{ marginTop: 10 }}>
                 <button className="cta" data-wx-travel-note onClick={() => { setWxOpen(false); try { openDraft('Weather note to guests', guestTravelMessage(event, travelWx)); } catch { toast('Couldn’t draft the note.'); } }}>Draft a note to guests</button>
               </div>
-              <p className="grounding" style={{ marginTop: 10, opacity: .7 }}>Live forecast for {vf.city || vf.name}.</p>
+              <p className="grounding" style={{ marginTop: 10 }}>Live forecast for {vf.city || vf.name}.</p>
             </div>
           )}
         </div>
@@ -27685,8 +27701,8 @@ export default function HostShellV2() {
                 })()}
               </div>
               {wx._sample
-                ? <p className="grounding" style={{ marginTop: 10, opacity: .7 }}>Sample forecast for this preview — live weather turns on with the API key.</p>
-                : <p className="grounding" style={{ marginTop: 10, opacity: .7 }}>Live forecast for {vf.city || vf.name}.</p>}
+                ? <p className="grounding" style={{ marginTop: 10 }}>Sample forecast for this preview — live weather turns on with the API key.</p>
+                : <p className="grounding" style={{ marginTop: 10 }}>Live forecast for {vf.city || vf.name}.</p>}
             </div>
           )}
         </div>
