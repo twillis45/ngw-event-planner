@@ -75,6 +75,7 @@ import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAware
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/inviteBatch';
+import { nudgeRecipients, nudgeCount, markNudged, nudgeRowLine, nudgeDeliveryFor, nudgeTextBody } from '@app/lib/replyNudge';
 import { inviteGaps } from '@app/lib/inviteGaps';
 import { inviteCardModel, inviteCardKey } from '@app/lib/inviteCard';
 import SignInCheck, { signInCheckOn } from '@app/components/SignInCheck';
@@ -204,6 +205,7 @@ import { rosBasisNote } from '@app/lib/rosBasis';
 import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
 import InviteToTheList from './InviteToTheList';
+import NudgeTheList from './NudgeTheList';
 import { readArrival, rememberArrival, arrivalFor, spendArrival, exampleSentenceFor } from '@app/lib/acquisition';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_NUDGE } from '@app/lib/knowledge/geoCostIndex';
@@ -292,7 +294,7 @@ import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@ap
 import { withDemoSeeded, withDemoRemoved, isDemoEvent, listedSamples } from '@app/lib/demoSeed';
 import { recordHandoff, recordEmailSend, sendStateFor, sendStateLine, isVerifiedState } from '@app/lib/sendLedger';
 import { helperAskTitle } from '@app/lib/messageTimeline';
-import { commApi, isCommApiConfigured } from '@app/lib/commApi';
+import { commApi, isCommApiConfigured, listSentMessages } from '@app/lib/commApi';
 import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { classifyClaim } from '@app/lib/knowledge/claimBasis';
@@ -630,6 +632,8 @@ function describeRoute(route, event) {
 function ctaLabelFor(cta, route, event, fallback = 'the plan') {
   const given = String(cta || '').trim();
   if (given && given !== 'Go') return given;
+  // The nudge opens a sheet where the host reviews and taps; nothing sends here.
+  if (route && route.focusField === 'rsvp-nudge') return 'Open the nudge';
   const where = String(describeRoute(route, event) || fallback)
     .replace(/^the\s+/i, '')
     .replace(/^[A-Z][a-z]*/, (m) => m.toLowerCase());
@@ -6608,6 +6612,7 @@ export default function HostShellV2() {
     // dispatcher underneath all of them, which is why "Open where everyone
     // stays" kept opening the old sheet through every rebuild.
     if (r.kind === 'lodging') { goToLodgingCockpit(r.focus); return true; }
+    if (r.kind === 'guests' && r.focus === 'nudge') { openNudge(); return true; }
     // Sheet landings: open the named sheet on its row/section. vendorSection is
     // carried through only for vendor routes (money/insurance sub-sections).
     const s = { kind: r.kind, focus: r.focus != null ? r.focus : null };
@@ -6659,6 +6664,9 @@ export default function HostShellV2() {
       // THE INVITE ITSELF (owner, live, 11/18/2026): a send recorded from this
       // draft also credits "Send the invite", which reads invitesSentAt alone.
       sendsInvite: !!(opts && opts.sendsInvite),
+      // THE NUDGE (owner ruling, 11/20/2026): this draft carries the one action,
+      // "Nudge the N who haven't answered" (NudgeTheList, lib/replyNudge).
+      sendsNudge: !!(opts && opts.sendsNudge),
       voices: (opts && opts.voices) || null,
       subject: (d && typeof d === 'object' && d.subject) || '',
       from: prev ? (prev.kind === 'draft' ? prev.from || null : prev) : null,
@@ -6765,6 +6773,15 @@ export default function HostShellV2() {
         }))
       : null;
     openDraft(title, build(event, profile, { rsvpUrl: url }), null, voices ? { ...(opts || {}), voices } : opts);
+  };
+  // ── THE NUDGE (owner ruling, 11/20/2026) ─────────────────────────────────
+  // One door for the board's reply-by row, the chase step, and the guest
+  // list's button: the RSVP nudge draft, checked link and all, with "Nudge the
+  // N who haven't answered" under it. A headcount-only event is never nudged,
+  // so its door is the guest list.
+  const openNudge = () => {
+    if (!showsReplyTracking(event)) { setSheet({ kind: 'guests' }); return; }
+    openInviteDraft('The RSVP nudge', draftRsvpChase, { sendsNudge: true });
   };
   const [qrDataUrl, setQrDataUrl] = useState(null);
   const showQr = async () => {
@@ -8338,6 +8355,18 @@ export default function HostShellV2() {
   const [helperEmail, setHelperEmail] = useState(null); // { taskId, busy } | { taskId, ...emailHelperJob result }
   const [nudgeEmail, setNudgeEmail] = useState(null);   // { guestId, busy } | { guestId, ...messageEmailResult }
   useEffect(() => { setHelperSend(null); setHelperEmail(null); setNudgeEmail(null); }, [eventId]);
+  // THE NUDGE'S DELIVERY, ON ITS GUEST'S ROW (owner ruling, 11/20/2026): the
+  // server's own report, read through the Messages view's one read, only while
+  // the guest list is open and only when some guest was nudged by email.
+  const [sentMail, setSentMail] = useState(null);
+  const emailNudged = (event.guests || []).some((g) => g && /email/.test(String(g.nudgedVia || '')));
+  const guestsOpen = !!(sheet && sheet.kind === 'guests');
+  useEffect(() => {
+    if (!guestsOpen || !emailNudged || !session || !isCommApiConfigured()) { setSentMail(null); return undefined; }
+    let dead = false;
+    listSentMessages(event.id).then((r) => { if (!dead) setSentMail(r); }).catch(() => {});
+    return () => { dead = true; };
+  }, [guestsOpen, emailNudged, session, event.id]);
   const helperLinked = Array.isArray(event.helperLinkIds) && event.helperLinkIds.length > 0;
   useEffect(() => {
     if (!isHelperLinkApiConfigured() || !ownsEvent || !helperLinked) { setHelperAnswers([]); return undefined; }
@@ -8620,6 +8649,9 @@ export default function HostShellV2() {
       }
       setEditor(key); spotlight(key); return;
     }
+    // The nudge's own route wins over the chase shortcut below: an overdue
+    // "Chase non-responders" step and the reply-by row both open the nudge.
+    if (a.route && a.route.focusField === 'rsvp-nudge') { openNudge(); return; }
     if (/chase|rsvp/i.test(String(a.cta || '') + ' ' + String(a.title || ''))) { setSheet({ kind: 'guests' }); return; }
     // ELEGANT (host "no take-me-to on the hero"): an overdue-payment task RESOLVES IN PLACE —
     // "Mark as paid" writes vendor.balancePaid (the exact field surfaceRegistry reads to clear
@@ -20959,6 +20991,38 @@ export default function HostShellV2() {
                   return { ok: false, error: 'request failed' };
                 }
               };
+              // ── THE NUDGE TO THE ONES WHO HAVEN'T ANSWERED (owner ruling, 11/20/2026)
+              // The same guarded route as the invite above and the per-guest
+              // "Email … the nudge": the reviewed words (draftRsvpChase, its link
+              // checked by verifiedRsvpUrl when this sheet opened), one email per
+              // guest, the 40-a-day cap (429 stops the run), a stopped address
+              // refused (410). The run itself is inviteBatch.sendInviteEmails.
+              const sendNudgeTo = async (g) => {
+                const draftSubject = (draftRsvpChase(event, profile) || {}).subject || 'Can you make it?';
+                const { subject, body } = inviteSubjectAndBody(shownDraft(), draftSubject);
+                try {
+                  const res = await commApi.createMessage(event.id, 'CLIENT', {
+                    message_type: 'standard', author_role: 'planner',
+                    author_name: (profile && profile.name) || 'Your host',
+                    body, deliver_email: true, recipient_email: g.email, recipient_name: g.name || undefined, subject,
+                    ...(((session && session.user && session.user.email) || '').trim()
+                      ? { reply_to: String(session.user.email).trim() } : {}),
+                  });
+                  const r = messageEmailResult(res, null);
+                  return r.ok ? { ok: true } : { ok: false, error: 'the email service didn’t take it' };
+                } catch (e) {
+                  const r = messageEmailResult(null, e);
+                  if (r.kind === 'capped') return { ok: false, capped: true };
+                  if (r.kind === 'stopped') return { ok: false, error: 'they asked not to get emails about this event — text them instead' };
+                  if (r.kind === 'refused') return { ok: false, error: 'not saved to your account yet' };
+                  return { ok: false, error: r.kind === 'network' ? 'no connection' : 'request failed' };
+                }
+              };
+              // Recorded on the guest: when, and how (an email the service took,
+              // or a text the host says they sent). Never a delivery claim.
+              const reachNudge = (reached, via) => {
+                patchEvent({ guests: markNudged(event.guests || [], reached, via, new Date().toISOString()) }, null, { noUndo: true });
+              };
               const reachInvite = (reached, via) => {
                 const at = new Date().toISOString();
                 try { trackEvent(ANALYTICS.INVITE_SENT, { via, count: (reached || []).length }); } catch (_e) { /* a counter never blocks an invite */ }
@@ -21116,6 +21180,12 @@ export default function HostShellV2() {
                   <InviteToTheList guests={event.guests} draft={shownDraft()}
                     canEmail={isCommApiConfigured() && !!session}
                     sendOne={sendInviteTo} onReached={reachInvite} />
+                )}
+                {sheet.sendsNudge && (
+                  <NudgeTheList event={event}
+                    textBody={nudgeTextBody(inviteSubjectAndBody(shownDraft(), (draftRsvpChase(event, profile) || {}).subject).body)}
+                    canEmail={isCommApiConfigured() && !!session}
+                    sendOne={sendNudgeTo} onReached={reachNudge} />
                 )}
                 {/* "Message all helpers": each person still gets reviewed and
                     sent individually through the real handoffs above — this
@@ -26101,7 +26171,14 @@ export default function HostShellV2() {
                 // and nudge them. It cannot: this bulk draft has no recipient
                 // list. The label was the only thing lying; the sheet never
                 // faked a "sent" state. Offered only where reply tracking is on.
-                nudge:   showsReplyTracking(event) ? { label: 'Write a nudge to send', onClick: () => openInviteDraft('The RSVP nudge', draftRsvpChase) } : null,
+                // THE ONE ACTION (owner ruling, 11/20/2026): "Nudge the N who
+                // haven't answered" — invited, unanswered, not nudged in the last
+                // 3 days (lib/replyNudge). With nobody to reach it is the plain
+                // draft it always was, and it still says so.
+                nudge:   showsReplyTracking(event) ? (() => {
+                  const n = nudgeCount(nudgeRecipients(event));
+                  return { label: n > 0 ? `Nudge the ${n} who ${n === 1 ? 'hasn’t' : 'haven’t'} answered` : 'Write a nudge to send', onClick: openNudge };
+                })() : null,
               };
               // THE INVITE TO THE WHOLE LIST (owner, 11/19/2026). Same draft as
               // "Copy the invite", named for what it now does; shown while some
@@ -26133,7 +26210,7 @@ export default function HostShellV2() {
                     <button className="mini" onClick={_inviteActs.copy.onClick}>Copy the invite</button>
                     <button className="mini" onClick={_inviteActs.brief.onClick}>Draft the guest brief</button>
                     <button className="mini" onClick={_inviteActs.update.onClick}>Update everyone</button>
-                    {_inviteActs.nudge && <button className="mini" onClick={_inviteActs.nudge.onClick}>Write a nudge to send</button>}
+                    {_inviteActs.nudge && <button className="mini" onClick={_inviteActs.nudge.onClick}>{_inviteActs.nudge.label}</button>}
                     {markInviteSent && <button className="mini" data-invite-sent onClick={markInviteSent.onClick}>{markInviteSent.label}</button>}
                   </div>
               </>);
@@ -26371,6 +26448,11 @@ export default function HostShellV2() {
                                 window.location.href = channel === 'sms'
                                   ? 'sms:' + digits + '?&body=' + encodeURIComponent(text)
                                   : 'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(checked.subject || 'Can you make it?') + '&body=' + encodeURIComponent(checked.body || text);
+                                // A text, as in the nudge's queue: the host's word that
+                                // they sent it, recorded on the guest (lib/replyNudge).
+                                // The mail app's link records nothing: the app cannot
+                                // say an email it never saw went out.
+                                if (channel === 'sms') patchEvent({ guests: markNudged(event.guests || [], [g], 'text', new Date().toISOString()) }, null, { noUndo: true });
                               };
                               const first = String(g.name || 'them').split(/\s+/)[0];
                               const digits = String(g.phone || '').replace(/[^+\d]/g, ''); // sms:/tel: want digits, not "(919) 555-…"
@@ -26402,6 +26484,9 @@ export default function HostShellV2() {
                                   r = messageEmailResult(res, null);
                                 } catch (e) { r = messageEmailResult(null, e); }
                                 setNudgeEmail({ guestId: g.id, ...r });
+                                // The same record the batch writes (lib/replyNudge):
+                                // only an email the service took counts as a nudge.
+                                if (r.ok) patchEvent({ guests: markNudged(event.guests || [], [g], 'email', new Date().toISOString()) }, null, { noUndo: true });
                               };
                               return (
                                 <>
@@ -27119,6 +27204,13 @@ export default function HostShellV2() {
                             contact fields and helper roles cannot drift apart
                             between the two expressions, and no guest ever has
                             two live copies of their own inputs. */}
+                        {/* "Nudged Nov 21 · emailed — Delivered" / "… · texted by you"
+                            (owner ruling, 11/20/2026; words in lib/replyNudge). */}
+                        {g.nudgedAt ? (
+                          <p className="of" data-guest-nudged={g.id} style={{ margin: '2px 0 0', paddingLeft: 'calc(32px + var(--sp-2))' }}>
+                            {nudgeRowLine(g, nudgeDeliveryFor(g, sentMail))}
+                          </p>
+                        ) : null}
                         {guestOpen === i && !peopleRailUp && guestDetail(g, i)}
                       </div>
                     );

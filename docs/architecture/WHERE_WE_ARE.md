@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 20, 2026 (night) — what went out, and who hasn't answered
+
+Each event now has one honest record of what it sent: emails with what the mail service reported, the host's own texts marked as handed off rather than sent, co-host invites, and helpers' answers. Every email the app sends now looks like the invitation, and the app sends the helper's ask itself. Then the owner approved the follow-through: one tap nudges everyone invited who hasn't answered, the board raises it from the reply-by date the host set, and the checklist step counts only when every guest has answered or been nudged.
+
 ## November 20, 2026 (evening) — the policies are public
 
 The app had been taking money for thirteen days with no privacy policy, terms or refund policy. The owner filled the last facts — a Maryland company, its registered agent's address, the usual defaults — and chose to publish now and revise after the attorney reads them, rather than keep charging with nothing published. The attorney's sixteen questions moved to a private list; the pages carry only what the product does today, checked against the code.

@@ -3,6 +3,7 @@ import { isVendorBooked } from './workstreams';
 import { venueFor } from './venueFor';
 import { budgetIsSet } from './budgetFor';
 import { rsvpHasResponded } from './rsvp';
+import { chaseAnsweredOrNudged } from './replyNudge';
 // Live binding, read only at call time: playbooks imports this module too.
 import { openFoodChoices, isDietaryChoice } from './playbooks';
 
@@ -159,7 +160,13 @@ export function taskSatisfied(event, task) {
   // Chasing is finished when nobody is left to chase — not when somebody answered.
   if (/chase|follow.?up on (repl|rsvp)|lock the count|nudge/.test(s)) {
     if (!guests.length) return false;               // nobody to chase yet — not "done"
-    return guests.every(g => rsvpHasResponded(g));  // everyone has answered, yes or no
+    if (guests.every(g => rsvpHasResponded(g))) return true;  // everyone has answered, yes or no
+    // THE CHASE STEP TELLS THE TRUTH (owner ruling, 11/20/2026): a chase step
+    // is also done when everyone INVITED has answered or been nudged — the act
+    // the step names, recorded on the guest by the nudge (lib/replyNudge).
+    // Opening the nudge sheet records nothing, so it credits nothing. A bare
+    // "lock the count" is not a chase and keeps the rule above.
+    return /chase|nudge|follow.?up on/.test(s) && chaseAnsweredOrNudged(event);
   }
 
   // Sending, on the other hand, IS evidenced by a single reply — someone could only have
