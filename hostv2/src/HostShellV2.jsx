@@ -21244,7 +21244,7 @@ export default function HostShellV2() {
                     </button>
                   </div>
                 )}
-                <p className="grounding" style={{ marginTop: 10 }}>“Share…” opens your phone’s own share sheet — pick Messages, WhatsApp, or anywhere else. Each voice changes how the note opens and closes, never the details in it — and you can edit every word above; your voice choice is remembered for every draft.</p>
+                <p className="grounding" style={{ marginTop: 10 }}>{typeof navigator !== 'undefined' && typeof navigator.share === 'function' ? '“Share…” opens your phone’s share sheet: Messages, WhatsApp, or anywhere else. ' : ''}Each voice changes how the note opens and closes, never its details. Edit any word above; your voice is remembered for every draft.</p>
               </>
               );
             })()}

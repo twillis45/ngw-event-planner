@@ -4327,17 +4327,20 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
    display:contents dissolves the two wrapper boxes, promoting .decopt-badge and
    .decopt-why to direct grid children of .decopt. The reasoning then takes a
    full-width second row, in flow, always visible — no gesture required, nothing
-   overlapping the next option, and no reliance on a tooltip a phone cannot summon. */
-@media (hover:none){
-  .app-elegant .decopt.pick{
+   overlapping the next option, and no reliance on a tooltip a phone cannot summon.
+   ON EVERY DEVICE AND EVERY SHEET (owner, 11/20/2026): with a mouse it floated over
+   the paragraph below it; and the old `.app-elegant` scope missed the "Calls to
+   make" sheet, where on a phone the reason could not be read at all. */
+@media all{
+  .decopt.pick{
     display:grid; grid-template-columns:1fr auto; align-items:center;
     column-gap:12px; row-gap:7px;
   }
-  .app-elegant .decopt.pick .decopt-right,
-  .app-elegant .decopt.pick .decopt-badge-wrap{ display:contents; }
-  .app-elegant .decopt.pick .decopt-main{ grid-column:1; grid-row:1; }
-  .app-elegant .decopt.pick .decopt-badge{ grid-column:2; grid-row:1; justify-self:end; }
-  .app-elegant .decopt.pick .decopt-why{
+  .decopt.pick .decopt-right,
+  .decopt.pick .decopt-badge-wrap{ display:contents; }
+  .decopt.pick .decopt-main{ grid-column:1; grid-row:1; }
+  .decopt.pick .decopt-badge{ grid-column:2; grid-row:1; justify-self:end; }
+  .decopt.pick .decopt-why{
     position:static; grid-column:1 / -1; grid-row:2;
     /* transition:none is load-bearing, not tidiness. The base rule animates opacity
        and visibility because there it IS a reveal. Here it is not — it is static row
