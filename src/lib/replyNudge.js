@@ -106,9 +106,9 @@ const monthDayOf = (iso) => new Date(String(iso).slice(0, 10) + 'T12:00:00').toL
 /**
  * THE TIMING RULE. The board item, or null.
  *   before: from 3 days before the host's reply-by date through that day —
- *           "Replies are due Friday — 3 haven't answered"
+ *           "3 haven't answered — replies due Friday"
  *   after:  from the day after it passes, while anyone invited is unanswered
- *           and not nudged in the last 3 days — "Replies were due Friday — …"
+ *           and not nudged in the last 3 days — "3 haven't answered — replies were due Friday"
  * Never for a derived date, a past event, a headcount-only event, or when
  * nobody is left to nudge.
  */
@@ -124,9 +124,11 @@ export function nudgeBoardItem(event, now) {
   const n = nudgeCount(r);
   if (!n) return null;
   const who = n === 1 ? '1 hasn’t answered' : `${n} haven’t answered`;
+  // COUNT FIRST (owner, 11/20/2026): a phone's "Then, in order" row keeps only
+  // what comes before " — ", so the count leads and survives the trim.
   const title = days >= 0
-    ? `Replies are due ${days === 0 ? 'today' : weekdayOf(dl.iso)} — ${who}`
-    : `Replies were due ${-days <= 6 ? weekdayOf(dl.iso) : monthDayOf(dl.iso)} — ${who}`;
+    ? `${who} — replies due ${days === 0 ? 'today' : weekdayOf(dl.iso)}`
+    : `${who} — replies were due ${-days <= 6 ? weekdayOf(dl.iso) : monthDayOf(dl.iso)}`;
   const why = [`${r.answered} of ${r.invited} invited have answered`,
     r.recentlyNudged ? `${plural(r.recentlyNudged, 'was', 'were')} nudged in the last ${NUDGE_GAP_DAYS} days` : null]
     .filter(Boolean).join(' · ');

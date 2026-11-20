@@ -178,15 +178,15 @@ test('the board asks 3 days before the host’s reply-by date, and its row opens
   const posts = await boot(page, [200]);
   // The compact "Then, in order" row keeps the title's lead (the board trims
   // an em-dash tail on every row); the full title is the item's own.
-  const row = page.getByRole('button', { name: /^Replies are due [A-Z][a-z]+day\b/ }).first();
+  const row = page.getByRole('button', { name: /^3 haven’t answered\b/ }).first();
   await expect(row).toBeVisible({ timeout: 15_000 });
   await row.click();
   // On a wide canvas a row selects, and its pane carries the full title and
   // the button; on a phone the row itself opens the nudge.
   const pane = page.getByRole('complementary', { name: 'Selected item' });
   if (await pane.count()) {
-    await expect(pane.getByRole('heading', { name: /^Replies are due [A-Z][a-z]+day — 3 haven’t answered$/ })).toBeVisible();
-    await pane.getByRole('button', { name: /^Replies are due [A-Z][a-z]+day — 3 haven’t answered$/ }).click();
+    await expect(pane.getByRole('heading', { name: /^3 haven’t answered — replies due [A-Z][a-z]+day$/ })).toBeVisible();
+    await pane.getByRole('button', { name: /^3 haven’t answered — replies due [A-Z][a-z]+day$/ }).click();
   }
   const block = page.locator('[data-nudge-list]');
   await expect(block).toBeVisible({ timeout: 15_000 });
