@@ -129,3 +129,14 @@ describe('and stays quiet everywhere else', () => {
     expect(() => raiseAll({ id: 'x', type: 'Wedding', date: isoIn(10), guests: null })).not.toThrow();
   });
 });
+
+// Found 11/20/2026 (the branded-email work): a plan made from a sentence keeps
+// "4:00 PM", and the nudge read only "16:00" — "on Saturday, November 21 4:00 PM",
+// with no "at". Both stored forms read the same.
+describe('the nudge names the hour the same way for both stored forms', () => {
+  const { draftRsvpChase } = require('../doItForMe');
+  test.each(['16:00', '4:00 PM'])('startTime %s → "at 4:00 PM"', (startTime) => {
+    const ev = { id: 'e1', name: 'My Friendsgiving', date: '2026-11-21', startTime, startTimeSource: 'host', guests: [] };
+    expect(draftRsvpChase(ev, {}, {}).body).toMatch(/on Saturday, November 21 at 4:00 PM/);
+  });
+});

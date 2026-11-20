@@ -8,6 +8,7 @@
 import { isVendorBooked } from './workstreams';
 import { transportDecision } from './travelPlan';
 import { venueFor } from './venueFor';
+import { clock12 } from './clock';
 import { guestSafeText } from './guestFacing';
 import { guestCountIsConfirmed, guestCountNotice } from './guestCountFor';
 import { STAY_FROM_PICK, STAY_FROM_PLAN } from './lodgingIntel';
@@ -494,15 +495,10 @@ export function draftRsvpChase(event, profile, opts = {}) {
   return { subject: v.sombre ? `A note about ${thing}` : `Quick RSVP nudge — ${thing}`, body: lines.join('\n').trim() };
 }
 
-// HH:MM (24h) → "12:00 PM". Blank/garbage → ''.
-function fmtClock(hhmm) {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '').trim());
-  if (!m) return '';
-  let h = Number(m[1]); const mm = m[2];
-  const ap = h >= 12 ? 'PM' : 'AM';
-  h = h % 12; if (h === 0) h = 12;
-  return `${h}:${mm} ${ap}`;
-}
+// "16:00" or "4:00 PM" → "4:00 PM"; blank or unreadable → ''. The shared
+// reader (lib/clock): this copy read only "16:00", so the RSVP nudge wrote
+// "November 21 4:00 PM" with no "at" for a plan made from a sentence.
+const fmtClock = clock12;
 
 // Day-of helper brief — from the run-of-show, the app writes "here's everyone's part"
 // the host drops in the group chat the night before. Grounded in the ROS owners + cues.

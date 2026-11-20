@@ -639,8 +639,11 @@ async def create_message(
         approval_recipient = payload.recipient_email or payload.notify_email
 
         link = f"{APP_BASE_URL}?event={event_id}"
+        # The event's SAVED name titles the email (found 11/20/2026: the id was
+        # passed here, so the client read the id as the title).
+        ev_name = " ".join(str((event_data or {}).get("name") or "").split()) or "your event"
         email_result = await send_approval_email(
-            approval_recipient, event_id, payload.approval_context or "", link
+            approval_recipient, ev_name, payload.approval_context or "", link
         )
 
         # Build delivery metadata so the planner can see notification status
