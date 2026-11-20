@@ -65,3 +65,32 @@ test('the hero that asks the venue call offers its answers in place', async ({ p
   await page.locator('.hero').first().locator('button').filter({ hasText: /our pick/ }).first().click();
   await expect.poll(() => ask(page).catch(() => '')).not.toMatch(VENUE_ASK);
 });
+
+// A party at the host's own place is not asked where it is: "at home" is a
+// fact the event already holds (decisionSettledByData, 11/20/2026). With the
+// shell's old filter gone this is the engine's answer, not a hidden row.
+test('a party at home is not asked "at home, a restaurant, or the workplace?"', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript((e) => {
+    if (localStorage.getItem('ngw-hostv2-last-event')) return;
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
+    localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-v2-welcomed', '1');
+    localStorage.setItem('ngw-welcomed', '1');
+  }, { ...EV, id: 'E2E_venue_home', venue: 'Home', venueKind: 'home' });
+  await page.goto('?elegant=1');
+  await settled(page);
+  const hero = await page.locator('.hero').first().innerText();
+  expect(hero.length).toBeGreaterThan(40);
+  expect(hero).not.toMatch(VENUE_ASK);
+  await page.locator('.srail-row', { hasText: 'Calls to make' }).first().click();
+  const sheet = page.locator('.sheet').last();
+  const rest = sheet.getByText(/show the rest/i);
+  if (await rest.count()) await rest.first().click();
+  // Not among the open calls; filed under Settled, answered by "Your place".
+  const text = await sheet.innerText();
+  const [openPart, settledPart = ''] = text.split(/\nSettled\n/i);
+  expect(openPart).not.toMatch(/At home, a restaurant, or the workplace/i);
+  expect(settledPart).toMatch(/Your place\s*\n?\s*At home, a restaurant, or the workplace/i);
+});

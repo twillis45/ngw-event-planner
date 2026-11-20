@@ -96,7 +96,7 @@ import { militaryDecisionsFor, isGroundedMilitary, militaryRetirementContext } f
 import { normalizeCategory } from '../vendorAccountability/playbooks.js';
 import { vendorDisplayName } from '../vendorDisplayName';
 import { destinationContextFor, isGroundedDestination } from '../knowledge/destinationContext';
-import { venueFor } from '../venueFor';
+import { venueFor, isHomeVenueName } from '../venueFor';
 import { placeIsOutdoors } from '../placeIntelligence';
 import { effectiveAccessibility, isGroundedAccessibility } from '../knowledge/accessibilityContext';
 import { isGroundedCost } from '../knowledge/costProvenance';
@@ -908,7 +908,17 @@ export function decisionSettledByData(event, decision) {
   }
   if (decision.id === 'venue') {
     const vf = (() => { try { return venueFor(event); } catch (_e) { return null; } })();
-    const place = vf && vf.isSet && !vf.isHome && !/^(tbd|tba)$/i.test(vf.name) ? bookedVendorIn(event, 'venue') : null;
+    // AT HOME IS AN ANSWER THE EVENT ALREADY HOLDS (hero-clears sweep, 11/20/2026).
+    // The shell used to hide this call whenever any venue was named; that filter is
+    // gone so the board, the Calls sheet and the hero read one rule — this one — and
+    // the home case has to be answered here or the host is asked where her own party
+    // is. A named place with no booked venue vendor still asks (the 11/15 rule).
+    // A bare "Home" typed before setVenue stamped venueKind reads home too.
+    if (vf && vf.isSet && (vf.isHome || isHomeVenueName(vf.name))) {
+      const homeOpt = decision.options.find((o) => /\bhome\b/i.test(String(o)));
+      if (homeOpt) return { pick: homeOpt, because: 'Your place' };
+    }
+    const place = vf && vf.isSet && !vf.isHome && !isHomeVenueName(vf.name) && !/^(tbd|tba)$/i.test(vf.name) ? bookedVendorIn(event, 'venue') : null;
     if (place) return { pick: null, because: `${vf.displayLine} — ${vendorStatusWord(place)}`, vendorId: place.id };
   }
   return null;
