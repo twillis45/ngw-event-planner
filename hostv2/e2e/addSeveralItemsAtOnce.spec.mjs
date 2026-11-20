@@ -5,13 +5,6 @@
 // pasted), adds them all, and stays open, cleared, for the next one.
 import { test, expect, settled, sheetSettled, openSectionByName } from './fixtures.mjs';
 
-const tapText = (page, src) => page.evaluate((s) => {
-  const re = new RegExp(s, 'i');
-  const el = [...document.querySelectorAll('button,[role="button"],a')].find((b) => re.test(b.innerText || '') && b.getBoundingClientRect().height > 0);
-  if (el) el.click();
-  return !!el;
-}, src);
-
 const openShop = async (page) => {
   await page.addInitScript(() => {
     if (sessionStorage.getItem('seeded')) return;
@@ -27,9 +20,13 @@ const openShop = async (page) => {
   });
   await page.goto('?elegant=1');
   await settled(page);
-  await tapText(page, 'what you.?re serving');
+  // By accessible name, not innerText: WebKit's innerText joins this button's
+  // pieces without spaces, so a text match found nothing there (full WebKit
+  // run 11/19; probe 11/20). The name is what VoiceOver reads. Clicked in the
+  // page, as before, so the sticky next-bar over a scrolled row does not catch it.
+  await page.getByRole('button', { name: /what you.?re serving/i }).first().evaluate((el) => el.click());
   await sheetSettled(page);
-  await tapText(page, 'The list[\\s\\S]*item');
+  await page.getByRole('button', { name: /The list.*item/i }).first().evaluate((el) => el.click());
   await sheetSettled(page);
   await page.getByRole('button', { name: /Add an item you/ }).first().click();
 };
