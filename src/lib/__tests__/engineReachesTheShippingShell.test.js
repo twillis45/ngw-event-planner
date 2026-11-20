@@ -333,7 +333,11 @@ const CRA_ONLY_BY_SURFACE = {
 
   // Plumbing and tooling, used by whichever shell asks.
   infra: ['analytics', 'sentry', 'clipboard', 'aiProxy', 'maps', 'weather',
-    'qaMemorySeed', 'severity', 'knowledge/groundingDoctrine', 'knowledge/groundingSources'],
+    'qaMemorySeed', 'severity', 'knowledge/groundingDoctrine', 'knowledge/groundingSources',
+    // `adminName` (11/20/2026): the admin console's name on its sign-in and tab.
+    // Read by index.js and AuthGate, which host ?admin=1 before the console
+    // loads; it moves with the console when the CRA entry goes.
+    'adminName'],
 };
 
 describe('an engine that reaches no host is not a working engine', () => {
