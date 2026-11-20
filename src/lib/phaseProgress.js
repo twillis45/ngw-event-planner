@@ -40,7 +40,11 @@ const daysTo = (dateStr, now) => {
   return daysUntil(dateStr, now);
 };
 
-export function deriveEventPhaseProgress(event, now = new Date()) {
+// `prices` (optional): the regional food-price context the host's money sheet
+// prices her lines at — { priceFactor, itemFactors } from lib/foodPrices. The
+// Budget part's "known costs" must be the same number the sheet prints
+// (hero-clears sweep, 11/20/2026); absent, the national baseline, as before.
+export function deriveEventPhaseProgress(event, now = new Date(), prices = null) {
   const ev = event || {};
   const d = daysTo(ev.date, now);
   const dEnd = daysTo(spanEnd(ev), now); // = d for single-day events
@@ -52,11 +56,11 @@ export function deriveEventPhaseProgress(event, now = new Date()) {
 
   if (phase === 'live_event') return liveProgress(ev, now);
   if (phase === 'post_event') return postProgress(ev);
-  return preProgress(ev, phase, d, now);
+  return preProgress(ev, phase, d, now, prices);
 }
 
 // ── Pre-event (and unknown-date) — applicable essentials only ─────────────────
-function preProgress(ev, phase, daysOut, now = new Date()) {
+function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   const noDate = phase === 'unknown';
   const items = [];
   // WAVE-6 (2026-07-15): `extra` lets an item name the RECORDS it summarizes
@@ -401,7 +405,12 @@ function preProgress(ev, phase, daysOut, now = new Date()) {
     const b = budgetFor(ev);
     const totalBudget = num(b.total);
     const budgetSet = b.isSet;
-    const money = (() => { try { return hostSpending(ev); } catch { return null; } })();
+    // THE SHEET'S PRICES (hero-clears sweep, 11/20/2026). This priced the host's
+    // bought lines at the national baseline while her money sheet priced them at
+    // her region's; where local prices run lower she read "left to spend" on the
+    // sheet and "Known costs are $N over your budget" from the hero. The caller
+    // that holds the price context passes it; nothing here guesses one.
+    const money = (() => { try { return hostSpending(ev, prices && prices.priceFactor, prices && prices.itemFactors); } catch { return null; } })();
     const knownCosts = money ? num(money.committed) : 0;
     const over = budgetSet ? Math.round(knownCosts - totalBudget) : 0;
     add('budget', true, budgetSet && over <= 0,

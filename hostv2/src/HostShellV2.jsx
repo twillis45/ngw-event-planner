@@ -2587,7 +2587,9 @@ export default function HostShellV2() {
     }, 1500);
     return () => clearTimeout(t);
   }, [smartText, revealed]); // eslint-disable-line react-hooks/exhaustive-deps
-  const ctx = useMemo(() => { try { return buildExperienceContext(event, profile, 1); } catch { return null; } }, [event, profile]); // eslint-disable-line react-hooks/exhaustive-deps
+  // `prices` rides on ctx so eventPlan's Budget part prices the host's lines the
+  // way her money sheet does (hero-clears sweep, 11/20/2026).
+  const ctx = useMemo(() => { try { const c = buildExperienceContext(event, profile, 1); return c ? { ...c, prices: foodPP } : c; } catch { return null; } }, [event, profile, foodPP]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── THE REAL ENGINE ──
   const plan = useMemo(() => {
@@ -2734,7 +2736,7 @@ export default function HostShellV2() {
   };
   // The essentials rail (phaseProgress), tight-timeline summary, and the
   // playbook's heart moments — the last of the audit list.
-  const phaseCues = useMemo(() => { try { return deriveEventPhaseProgress(event); } catch { return null; } }, [event]);
+  const phaseCues = useMemo(() => { try { return deriveEventPhaseProgress(event, undefined, foodPP); } catch { return null; } }, [event, foodPP]);
   const compression = useMemo(() => { try { return deriveEventCompressionSummary(event, daysUntil); } catch { return null; } }, [event]);
   const heartMoments = useMemo(() => { try { return playbookHeartMoments(event) || []; } catch { return []; } }, [event]);
   const crab = useMemo(() => { try { return buildCrabPlan(event); } catch { return { relevant: false }; } }, [event]);
@@ -4627,7 +4629,7 @@ export default function HostShellV2() {
   };
   const spend = useMemo(() => {                          // lib/hostSpending — budget single-source
     try { return hostSpending(event, foodPP.priceFactor, foodPP.itemFactors); } catch { return { total: 0, spent: 0, committed: 0 }; }
-  }, [event, foodPP.priceFactor]); // was missing priceFactor — the budget recovery panel below re-derives
+  }, [event, foodPP.priceFactor, foodPP.itemFactors]); // was missing priceFactor — the budget recovery panel below re-derives
     // the same total unmemoized (always fresh), so once regional pricing
     // resolved async after mount, this stale figure and the recovery panel's
     // fresh one could show two different "how far over" dollar amounts on
@@ -6952,7 +6954,7 @@ export default function HostShellV2() {
     // a per-item regional band while the budget rollup used the basket mean for
     // the same line. One source, one set of numbers.
     try { return playbookFoodPlan(event, { priceFactor: foodPP.priceFactor, itemFactors: foodPP.itemFactors }); } catch { return null; }
-  }, [event, foodPP.priceFactor]); // same missing-dependency bug as `spend` above
+  }, [event, foodPP.priceFactor, foodPP.itemFactors]); // same missing-dependency bug as `spend` above
 
   // ── ONE PLACE ANSWERS "IS THERE ANYWHERE TO PUT THE SHOPPING" ────────────
   // `foodSpanNote` owns it. The first cut of the kitchen gate read it inside
@@ -25461,7 +25463,7 @@ export default function HostShellV2() {
               const hostRows = hostRowsGo();
               const manualRows = (event.budget || []).filter(r => hostRows.some(c => c.source === 'budget' && c.budgetRowIds.includes(r.id)));
               const payment = paymentEntry && paymentEntry.eventId === event.id ? paymentEntry : null;
-              let heroCopy = null; try { heroCopy = budgetHeroCopy(event, foodPP.priceFactor); } catch { heroCopy = null; }
+              let heroCopy = null; try { heroCopy = budgetHeroCopy(event, foodPP.priceFactor, foodPP.itemFactors); } catch { heroCopy = null; }
               // Queue item 7 — the recovery engine: source-backed ways OUT of
               // an overage (safe cuts / tradeoffs / protected), never invented $.
               let recovery = null;
