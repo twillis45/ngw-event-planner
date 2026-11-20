@@ -63,7 +63,7 @@ const theCookout = {
     },
     {
       id: 'cooking_model',
-      weight: 'high', reversibility: 'costly', emotionalWeight: 'med', difmCapable: 'needs-host', priorityBasis: { rationale: 'The coordinated spread runs on who is trusted with which dish — the single biggest effort lever, and those personal assignments are the host\'s to make and awkward to unwind.', tier: 'reasoned' },
+      weight: 'high', reversibility: 'costly', emotionalWeight: 'med', difmCapable: 'needs-host', priorityBasis: { rationale: 'The spread runs on who is trusted with which dish: the biggest effort lever, and those personal assignments are yours to make and awkward to unwind.', tier: 'reasoned' },
       label: 'Host cooks the spread, or potluck?',
       options: ['Host cooks everything', 'Potluck — assign dishes', 'Host does meat + key sides, family brings the rest'],
       default: 'Host does meat + key sides, family brings the rest',
@@ -76,7 +76,7 @@ const theCookout = {
     },
     {
       id: 'drinks',
-      weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'A red drink for everyone plus a separate grown-folks section is what keeps it family-safe, but it is a cheap store call the app can default.', tier: 'reasoned' },
+      weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'A red drink for everyone plus a separate grown-folks section keeps it family-safe, and it\'s a cheap store call.', tier: 'reasoned' },
       label: 'Drinks — family + grown folks',
       ask: 'Red drink and sodas for everybody — and a grown section?',
       options: ['Red drink + soda + water (family-friendly)', 'Add a grown-folks section (brown liquor + mixers, beer)', 'Full bar + punch'],
@@ -92,7 +92,7 @@ const theCookout = {
     },
     {
       id: 'music',
-      weight: 'low', reversibility: 'reversible', emotionalWeight: 'high', difmCapable: 'can-derive', priorityBasis: { rationale: 'Music is half of what makes it a cookout — a curated playlist is a free, swappable default, yet getting it right carries the whole feeling of the day.', tier: 'reasoned' },
+      weight: 'low', reversibility: 'reversible', emotionalWeight: 'high', difmCapable: 'can-derive', priorityBasis: { rationale: 'Music is half of what makes it a cookout; a curated playlist is a free, swappable default, but getting it right carries the feeling of the day.', tier: 'reasoned' },
       label: 'Music — DJ or playlist',
       ask: 'Hire a DJ, or does somebody run the aux?',
       options: ['Curated playlist + good speaker', 'Hire a DJ', 'Designate a family DJ on the aux'],
@@ -105,7 +105,7 @@ const theCookout = {
     },
     {
       id: 'game_day',
-      weight: 'low', reversibility: 'reversible', emotionalWeight: 'med', difmCapable: 'can-derive', priorityBasis: { rationale: 'A cookout that lands on a game day is a watch party too — the screen and sound need a plan same as the grill, but it is a cheap, reversible call the app can default.', tier: 'reasoned' },
+      weight: 'low', reversibility: 'reversible', emotionalWeight: 'med', difmCapable: 'can-derive', priorityBasis: { rationale: 'A cookout on a game day is a watch party too: the screen and sound need a plan like the grill, but it\'s a cheap, reversible call.', tier: 'reasoned' },
       label: 'Is this cookout also a watch party?',
       options: ['No — cookout only', 'Yes — TV/screen for the game', 'Yes — TV inside + speaker outside so nobody misses either'],
       default: 'No — cookout only',
@@ -113,18 +113,18 @@ const theCookout = {
         'Cookout only is the default: only you know whether a game is on. Change it the moment there is one, and plan the screen and sound with the music so they don\'t fight over one speaker.',
       when: 'T-10d',
       blocks: ['logistics'],
-      why: 'A screen people can see from the yard makes the cookout the game-day spread too. Plan the TV, streaming, and sound with the music so they don\'t fight over one speaker; it doesn\'t resize the protein order, so add wings from the chicken alternatives if you want them.',
+      why: 'A screen people can see from the yard makes the cookout the game-day spread too. Plan the TV, streaming, and sound with the music so they don\'t fight over one speaker, and add wings from the chicken alternatives if you want them.',
     },
     {
       id: 'shade_seating',
-      weight: 'med', reversibility: 'costly', emotionalWeight: 'med', difmCapable: 'needs-host', priorityBasis: { rationale: 'Shade and comfortable seating for the elders is a point of respect, not an afterthought, and rentals book ahead — the host sizes it to their space.', tier: 'reasoned' },
+      weight: 'med', reversibility: 'costly', emotionalWeight: 'med', difmCapable: 'needs-host', priorityBasis: { rationale: 'Shade and comfortable seats for the elders are a point of respect, and rentals book ahead; size it to your space.', tier: 'reasoned' },
       label: 'Shade + seating for every age',
       ask: 'Where do the elders and the babies sit, out of the sun?',
       options: ['Existing patio/yard shade', 'Pop-up canopies + chairs', 'Rent tent + tables + chairs', 'Reserve a park shelter'],
       default: 'Pop-up canopies + chairs',
       when: 'T-10d',
       blocks: ['rental'],
-      why: 'Everybody from the babies to the elders needs somewhere to sit in the shade. Comfortable seating for the elders is a point of respect, not an afterthought — and the spades table needs its own setup.',
+      why: 'Everybody from the babies to the elders needs a seat in the shade. Comfortable seating for the elders is a point of respect, not an afterthought, and the spades table needs its own setup.',
     },
   ],
 

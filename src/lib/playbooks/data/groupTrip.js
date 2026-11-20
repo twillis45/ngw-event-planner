@@ -133,7 +133,7 @@ const groupTrip = {
       noCostEffect: true,
       weight: 'low', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive',
       priorityBasis: { rationale: 'Whoever books travel carries the money for it, so it is part of the money plan.', tier: 'reasoned' },
-      why: 'When one person books everyone\'s flights, they carry everyone\'s money and every change fee. Booking your own keeps travel out of the shared pot.',
+      why: 'When one person books everyone\'s flights, they carry everyone\'s money and change fees; booking your own keeps travel out of the shared pot.',
     },
     {
       id: 'golf',
