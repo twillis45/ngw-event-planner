@@ -27,7 +27,7 @@
 // to SHOW a host. Its sin was being load-bearing. It stays a label; it stops being data.
 
 import { daysUntil, getToday } from './dates';
-import { effectiveDone } from './taskEngine';
+import { timelineStepResolved } from './taskEngine';
 
 // The prose buckets taskPhaseLabel emits, mapped back to the lead they represent — the
 // fallback for tasks persisted before `leadDays` existed. Lowercased on lookup so the
@@ -166,7 +166,11 @@ export function taskIsOverdue(task, event, now) {
   // including the frozen planner calendars, which delegate to this function
   // through App.js's isTaskOverdue wrapper. Defensive: callers sometimes pass a
   // synthetic {date, type} event; a reader crash must never invent an overdue.
-  try { if (event && effectiveDone(event, task)) return false; } catch { /* fall through to timing */ }
+  // …and since 11/20/2026 (hero-clears sweep) the WHOLE "is this step handled"
+  // answer the checklist prints — retired, the arrivals grid, a bought food shop
+  // — so the hero never calls overdue a step the checklist calls handled.
+  if (task.retired) return false;
+  try { if (event && timelineStepResolved(event, task)) return false; } catch { /* fall through to timing */ }
   if (task.snoozedUntil && new Date(task.snoozedUntil + 'T00:00:00') > getToday(now)) return false;
   const due = taskDueInDays(task, event, now);
   if (due == null) return false;

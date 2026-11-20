@@ -168,7 +168,7 @@ import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, readEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
 import { deleteAccount, isAccountDeletionAvailable } from '@app/lib/api/account';
-import { effectiveDone, factsATickRecords, invitesOut } from '@app/lib/taskEngine';
+import { effectiveDone, factsATickRecords, invitesOut, timelineStepResolved } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
@@ -2796,42 +2796,13 @@ export default function HostShellV2() {
   // closes once every active line is actually bought. General by subject-matching,
   // not any one label — so a resolved decision drops out of "Coming up" everywhere
   // it applies, the same way it already does in the checklist's "tap to confirm" tag.
-  const isTimelineStepResolved = (t) => {
-    if (!t) return false;
-    // A RETIRED row is off the open list by definition: the gate that authored
-    // it has closed, so it is no longer work this event needs. It is resolved
-    // here rather than filtered at each call site because "open task" is asked
-    // in five places (the Coming-up feed, two open-task counts, the hero's
-    // N-of-M, the done fold) and a retired row leaking into any one of them
-    // would put a task the host can never finish into their count forever.
-    if (t.retired) return true;
-    try { if (effectiveDone(event, t)) return true; } catch {}
-    // DESTINATION-2 slice 3: "Build the arrivals/departures grid" (dest_t_grid)
-    // resolves once the grid actually holds real entries — a roster traveler
-    // with flight info on the board. Same derive-don't-store predicate as the
-    // buy/shop branch below: subject-matched, proven by event state, never a
-    // second stored flag. Headcount mode never resolves it (no honest entries).
-    if (/arrivals?\s*\/\s*departures/i.test(String(t.task || ''))) {
-      try {
-        return !!(travel.relevant && travel.rosterMode
-          && (travel.air.roster || []).some(r => r.hasFlightInfo));
-      } catch { return false; }
-    }
-    // Scoped to FOOD purchases (brutal audit 2026-07-28, class S9): this rule
-    // proves against the GROCERY list, and it's the one inference that WRITES
-    // done:true — so "buy the linens" / "alcohol + decor run" must never ride
-    // a fully-ticked food list. Food context required.
-    if (/\b(buy|shop)\b.{0,50}\b(food|grocer|ingredient|ice|drink|produce|meat|snack)\b|grocery|shopping list|food shop/i.test(String(t.task || ''))) {
-      try {
-        const fp = playbookFoodPlan(event);
-        const active = ((fp && fp.list) || []).filter(it => it && !it.skipped);
-        if (!active.length) return false;
-        const got = event.foodGot || {};
-        return active.every(it => got[it.id] === true);
-      } catch { return false; }
-    }
-    return false;
-  };
+  // ONE ANSWER, IN THE ENGINE (hero-clears sweep, 11/20/2026). This predicate
+  // (retired · effectiveDone · the arrivals grid · a bought food shop) lived here
+  // alone, so the checklist said "Every step is handled" while the overdue policy
+  // behind the hero — which knew only effectiveDone — said "overdue by 5 days"
+  // about a retired step. It now lives in lib/taskEngine (timelineStepResolved),
+  // read by this checklist and by taskLead.taskIsOverdue alike.
+  const isTimelineStepResolved = (t) => timelineStepResolved(event, t);
 
   // "Coming up" — the human-intelligence layer for CALM states: name what's
   // next and WHEN IT'S DUE even when nothing is urgent. Sources: the decision

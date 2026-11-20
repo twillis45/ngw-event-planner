@@ -1,5 +1,7 @@
 // demo/src/lib/workflowCompression.js
 import { taskLeadDays } from './taskLead';
+// Read at call time only (a cycle through playbooks, same as getPlaybook below).
+import { timelineStepResolved } from './taskEngine';
 // For the playbook's own lead when the table below has no row. A cycle in name
 // only: playbooks/index reads this module inside functions, never at load, and
 // this module reads getPlaybook only when a lead is asked for.
@@ -490,7 +492,11 @@ export const deriveEventCompressionSummary = (event, daysUntilFn, phaseOffset) =
   // planner may have changed the event date after intake, which would make
   // the snapshot stale. The stored field is a hint; the live classification
   // is the truth.
-  const open = (event.timeline || []).filter(t => !t.done);
+  // OPEN MEANS WHAT THE CHECKLIST MEANS (hero-clears sweep, 11/20/2026). This read
+  // `!t.done`, so a step the plan had RETIRED — filed by the checklist under "no
+  // longer needed" — still led the hero as "Catch up on this step. — Order the
+  // balloons" under a checklist reading "Every step is handled".
+  const open = (event.timeline || []).filter(t => t && !timelineStepResolved(event, t));
   const liveClassed = open.map(t => ({
     task: t,
     cls: classifyTemplateTaskUrgency(t, days, event.type, phaseOffset),
