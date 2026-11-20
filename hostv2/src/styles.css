@@ -1332,7 +1332,7 @@ button{font-family:inherit}
      §1; token flattened in theme.js). One 1px top hairline is the SAME detail
      .card, .tile-a and .tile-c already carry, so the primary now belongs to the
      surface family instead of simulating a raised plastic object of its own. */
-  box-shadow:inset 0 1px 0 var(--sheen);
+  box-shadow:var(--cta-lift);   /* the primary's edge: top highlight + small shadow (owner, 11/20/2026) */
   transition:filter var(--ms-press) var(--ease-out), transform var(--ms-press) var(--ease-out);
 }
 .cta:hover:not(:disabled){filter:brightness(1.07); transform:translateY(-1px)}
@@ -1348,6 +1348,8 @@ button{font-family:inherit}
    soft tier now speaks the same vocabulary instead of a third one, and contrast
    rises rather than falls. Ground is unchanged: no white surface. */
 .cta.soft{background:var(--steel-tint); color:var(--ink)}
+/* Soft and ghost stay flat: only the primary carries the lit gradient and its edge. */
+.cta.soft, .cta.ghost{box-shadow:inset 0 1px 0 var(--sheen)}
 .cta.soft:hover{filter:none}
 .hc-row{margin-top:var(--sp-3); display:flex; gap:var(--gap-chip); flex-wrap:wrap}
 

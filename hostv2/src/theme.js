@@ -238,15 +238,13 @@ export function applyStudioMatte(override) {
   // surfaces catch the canvas's top glow as a 1px top sheen. Derived from the
   // steel anchor — same light source as the .app background radial.
   set('--sheen', tint(bundle.steelBlueMuted, 0.10));
-  // ── THE PRIMARY IS FLAT ────────────────────────────────────────────────────
-  // Was linear-gradient(180deg, #4E6877 -> #3F5B6A) on every .cta and .tile-d;
-  // now the flat top stop. The rule this follows — banned 180deg ramp, allowed
-  // lateral sweep, --sheen unaffected — is doctrine, and lives in
-  // docs/claude-skills/02_STUDIO_MATTE_UI_STANDARD.md § "Gradients — the rule is
-  // the ANGLE, not the idea", with its evidence in the 2026-08-04 Mobbin read.
-  // It used to be stated here instead, which made a doctrine change visible only
-  // to someone reading this file. Amend the standard, not this comment.
-  set('--cta-grad', bundle.steelBlueGradientTop);
+  // ── THE PRIMARY IS LIT FROM THE TOP (owner, 11/20/2026) ─────────────────────
+  // The owner chose this over the flat fill from a rendered comparison on the
+  // live site. Doctrine: docs/claude-skills/02_STUDIO_MATTE_UI_STANDARD.md
+  // § "Gradients — exactly three, each a named token". Amend the standard, not
+  // this comment. --cta-lift is its edge: a top highlight and a small shadow.
+  set('--cta-grad', `linear-gradient(180deg, ${bundle.steelBlueCtaLight} 0%, ${bundle.steelBlueGradientTop} 52%, ${bundle.steelBlueCtaDeep} 100%)`);
+  set('--cta-lift', `inset 0 1px 0 ${tint(dark.textPrimary, 0.14)}, 0 1px 2px ${tint(bundle.carbonBody, 0.35)}`);
   // The LABEL on any steel fill (--cta-grad, --steel). Both fills are the same
   // in both themes, so their label must be too: the moded --carbon-text / --ink
   // went to #0d0f12 in light and read 3.26:1 on the primary (3.17 on --steel).

@@ -31,19 +31,16 @@ Not on modals, not on popovers, not on tooltips, not on form fields. Studio Matt
 
 ### Font Stack
 
-*Owner ruling, 11/20/2026. Supersedes "system sans-serif primary" and the app repo's "no custom web fonts, no serif fonts."*
+*Owner rulings, 11/20/2026 (corrected the same day after measuring what ships). Supersedes the app repo's "no serif fonts."*
 
-Primary: **Inter**, for everything that is read or tapped — controls, body, and numbers.
+Primary: **the device's own system font** (`var(--sans)`: San Francisco on Apple, the platform UI font elsewhere), for everything that is read or tapped — controls, body, and numbers. No web font is loaded for it: no load time, nothing sent to a font host.
 
-Accent serif: **Playfair Display** (`var(--serif)`) is an accent only. It is legal for exactly three jobs:
+Accent serifs, each with one job, never on buttons, on inputs, or on any text under 15px:
 
-- italic "why" / rationale lines,
-- invite and email card titles,
-- display headings at 15px or larger.
+- **Newsreader** (`var(--serif-read)`): the italic "why" / rationale lines.
+- **Playfair Display** (`var(--serif)`): display titles — the invite and email card titles, and display headings at 15px or larger.
 
-It never appears on buttons, on inputs, or on any text under 15px. No monospace for UI labels.
-
-(Code gap, recorded rather than resolved: `--sans` in `hostv2/src/styles.css` still resolves to the system stack and hostv2 does not load Inter, and the italic guide-voice lines currently set in Newsreader via `--serif-read`. The CSS lands in a later batch.)
+No other typeface. No monospace for UI labels.
 
 ### Type Scale (Operational Rules)
 

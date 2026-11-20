@@ -13,8 +13,8 @@ drifted apart, were merged. Each disagreement was settled one of three ways:
 matches what `hostv2/src/styles.css` ships today wins), or **union** (the rule
 existed on one side only and conflicts with nothing, so it is kept).
 
-1. **Fonts** — owner ruling, 11/20/2026: Inter for everything read or tapped; Playfair is an accent only (UX_01 § Font Stack). Supersedes "system sans primary" (workspace) and "no web fonts, no serif" (app repo).
-2. **Gradients** — owner ruling, 11/20/2026: exactly three, each a named token (§ Gradients below). Supersedes the 2026-08-18 "rule is the angle" amendment and the bare "fake gradients" line.
+1. **Fonts** — owner ruling, 11/20/2026, corrected the same day: the device's own system font for everything read or tapped (no web font loaded); two accent serifs, each with one job — Newsreader for the italic "why" lines, Playfair for display titles (UX_01 § Font Stack). The first draft named Inter and Playfair alone; measuring showed Inter is not loaded and the "why" lines are Newsreader, and the owner approved the correction.
+2. **Gradients** — owner ruling, 11/20/2026: exactly three, each a named token (§ Gradients below): `--canvas-glow`, `--cta-grad`, `--carbon-panel-grad`. The owner chose the primary-button gradient after a rendered flat-vs-gradient comparison on the live site: the same steel lit from the top, with a top highlight and a small shadow. Supersedes the 2026-08-18 "rule is the angle" amendment and the bare "fake gradients" line.
 3. **Tap targets** — owner ruling, 11/20/2026: 44×44, both axes; inline text links in a sentence are exempt when no other tappable target is within 24px (UX_03 rule 2). Supersedes "44px tall," and raises UX_05's 32–36px icon-button and 32px chip tap areas to 44×44.
 4. **Type floor** — owner ruling, 11/20/2026: 11px minimum; 12px for anything carrying meaning (status, price, date); 11px only for uppercase labels and fine print (UX_01). Supersedes the app repo's 10px floor; UX_04, UX_05, and UX_09 sizes below 12px on meaning-bearing text were raised to match.
 5. **Canvas glow** — owner ruling, 11/20/2026: new doctrine line, token `--canvas-glow` (§ Canvas glow below; UX_01 Canvas row).
@@ -108,10 +108,10 @@ governs; this section does.*
 The product has exactly three gradients, and each one is a named token:
 
 1. **The canvas glow** — `--canvas-glow` (see Canvas glow below).
-2. **The primary-button gradient** — `--cta-grad`.
-3. **The carbon (dark) panel** — the carbon/dark panel fill (today written inline
-   as `linear-gradient(150deg, var(--carbon-panel) 0%, var(--carbon) 70%)` on
-   `.day-node`; it gets its own named token when the CSS lands).
+2. **The primary-button gradient** — `--cta-grad`: the steel lit from the top (lighter at the top, a touch darker at the bottom), with a 1px top highlight and a small shadow, on the primary `.cta` only. Soft and ghost buttons stay flat. Label contrast ≥4.5:1 at EVERY stop, the lightest included (`steelBlueCtaLight` #57707E, 4.57:1 — the rendered draft's #5F7B8B measured 3.92 and was darkened to pass); `lightThemeContrast.spec.mjs` checks the worst stop.
+3. **The carbon (dark) panel** — `--carbon-panel-grad`
+   (`linear-gradient(150deg, var(--carbon-panel) 0%, var(--carbon) 70%)`, today
+   written inline on `.day-node`; the token replaces it when the CSS lands).
 
 **No other gradients anywhere.** A gradient that is not one of these three
 tokens is a defect, whatever its angle. Consuming a token is legal at any number
