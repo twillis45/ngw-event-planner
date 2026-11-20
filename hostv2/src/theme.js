@@ -175,7 +175,8 @@ export function applyStudioMatte(override) {
   // #686A6C measures 4.54:1 on the same composited ground — headroom over the
   // floor rather than sitting on it. Darkening can only raise contrast, so no
   // existing >=4.5 gate can regress on it.
-  set('--muted', isLight ? '#686A6C' : '#909296');
+  const mutedInk = isLight ? '#686A6C' : '#909296';
+  set('--muted', mutedInk);
   // --faint carries small text (section labels, form-field labels, chevrons). A
   // tint of the now-darker --muted base; α 0.98 keeps it AA on the tight band
   // (≈4.7:1) while sitting a hair below --muted. (The 4.5:1 floor on the band
@@ -194,6 +195,14 @@ export function applyStudioMatte(override) {
   set('--faint', isLight ? '#686A6C' : tint('#909296', 0.98));
   set('--line', c.border);
   set('--line-soft', tint(c.border, 0.55));
+  // ── The segmented switch (Jump to's Create / Plan / The Day / After) ──
+  // Its track and lit segment were hex in styles.css (#17181b, #33363b), so
+  // light theme kept a dark track under moded ink: "Plan" 1.58:1, the rest
+  // 3.27:1 (design audit 2, 11/20/2026). Both come from the neutral ramp now.
+  // Dark is within a step of what it painted; light is the recessive surface2
+  // track with a white lit segment, the same field -> panel order as the shell.
+  set('--seg-track', isLight ? carbonNeutral.light.surface2 : carbonNeutral.deep.panel);
+  set('--seg-on', isLight ? carbonNeutral.light.panel : carbonNeutral.softer.surface2);
 
   // ── Identity: locked steel-blue (mode-independent) + the CTA gradient ──
   set('--steel', bundle.steelBlue);
@@ -315,7 +324,10 @@ export function applyStudioMatte(override) {
   set('--carbon-panel', bundle.carbonPanel);
   set('--carbon-line', bundle.carbonBorder);
   set('--carbon-text', bundle.textPrimary);
-  set('--carbon-muted', bundle.textMuted);
+  // Light: The Day's eyebrows and "ongoing" read #6b6f74 on the light carbon
+  // body #e4ecf3, 4.24:1 (design audit 2). They take --muted's light ink,
+  // 4.55:1 there; dark is unchanged.
+  set('--carbon-muted', isLight ? mutedInk : bundle.textMuted);
   set('--steel-muted', bundle.steelBlueMuted);
   // Secondary text ON A FIXED CARBON STAGE — the creation reveal, whose ground
   // is #0d1014 in BOTH themes. Deliberately not moded: every moded text token

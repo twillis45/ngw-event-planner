@@ -1,0 +1,107 @@
+{
+  "totals": {
+    "color": 368,
+    "inline": 888
+  },
+  "files": {
+    "CalendarSheet.jsx": {
+      "inline": 2
+    },
+    "CityField.jsx": {
+      "inline": 2
+    },
+    "CostSplitSheet.jsx": {
+      "inline": 1
+    },
+    "DeviceNotificationsRow.jsx": {
+      "inline": 1
+    },
+    "ErrorBoundary.jsx": {
+      "color": 5,
+      "inline": 12
+    },
+    "EventHashtag.jsx": {
+      "inline": 3
+    },
+    "FamilyLinkSheet.jsx": {
+      "inline": 2
+    },
+    "FamilyViewV2.jsx": {
+      "inline": 5
+    },
+    "GuestAskV2.jsx": {
+      "inline": 14
+    },
+    "GuestInboxHost.jsx": {
+      "inline": 25
+    },
+    "GuestPhotosV2.jsx": {
+      "inline": 17
+    },
+    "GuestUpdatesV2.jsx": {
+      "inline": 6
+    },
+    "HelperLinkV2.jsx": {
+      "inline": 1
+    },
+    "HostShellV2.jsx": {
+      "color": 8,
+      "inline": 637
+    },
+    "HostUpdates.jsx": {
+      "inline": 12
+    },
+    "InviteToTheList.jsx": {
+      "inline": 4
+    },
+    "InviteV2.jsx": {
+      "color": 2,
+      "inline": 90
+    },
+    "LodgingCockpit.jsx": {
+      "color": 13,
+      "inline": 5
+    },
+    "MessagesSheet.jsx": {
+      "inline": 4
+    },
+    "MustHaves.jsx": {
+      "inline": 3
+    },
+    "NudgeTheList.jsx": {
+      "inline": 4
+    },
+    "PeopleSurface.jsx": {
+      "inline": 13
+    },
+    "PhotoStrip.jsx": {
+      "color": 8,
+      "inline": 13
+    },
+    "VendorBriefV2.jsx": {
+      "inline": 1
+    },
+    "inviteCardImage.js": {
+      "color": 58
+    },
+    "inviteShared.js": {
+      "color": 14
+    },
+    "main.jsx": {
+      "color": 1,
+      "inline": 2
+    },
+    "paletteAB.js": {
+      "color": 36
+    },
+    "parity/askKit.jsx": {
+      "inline": 9
+    },
+    "parity/check-parity.mjs": {
+      "color": 1
+    },
+    "styles.css": {
+      "color": 222
+    }
+  }
+}
