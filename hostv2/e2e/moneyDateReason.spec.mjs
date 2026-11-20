@@ -44,10 +44,14 @@ const boot = async (page, patch) => {
   // NOT `settled(page)`: on a patched boot it resolved against an empty body
   // (measured — 0 chars via settled, 2789 via a fixed wait). That is a latent
   // flake source in the helper, noted rather than worked around silently.
-  await page.waitForTimeout(3500);
+  // Wait for the board's own fold rather than a fixed 3.5 s.
+  await page.getByText(/The rest of your plan/i).first().waitFor({ timeout: 20000 }).catch(() => {});
   for (const rx of [/the rest of your list/i, /The rest of your plan/i]) {
     const el = page.getByText(rx).first();
-    if (await el.count()) { await el.click({ timeout: 2000 }).catch(() => {}); await page.waitForTimeout(800); }
+    // Clicked in the page: on WebKit's phone view a sticky bar covers this row,
+    // so a pointer click timed out silently and the fold stayed shut (the full
+    // WebKit run, 11/20 — the page snapshot shows the fold still closed).
+    if (await el.count()) { await el.evaluate((n) => n.click()).catch(() => {}); await page.waitForTimeout(800); }
   }
 };
 

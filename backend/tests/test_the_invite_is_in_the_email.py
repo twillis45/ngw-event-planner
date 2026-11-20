@@ -23,7 +23,13 @@ def test_the_email_is_the_invitation():
     assert "https://twillis45.github.io/ngw-event-planner/hostv2/?rsvp=Code123456789012" in html
     assert "Open your invitation" in html and "Or pick your answer" in html
     assert "Or reply right now" not in html          # a tap here preselects; it does not send
-    assert "url(" not in html and "Playfair" not in html   # nothing a mail app may drop: no image, no web font
+    # Nothing a mail app may drop is load-bearing: no web font, and the ONLY image
+    # is the paper grain behind the card (owner, 11/19/2026), which has the cream
+    # bgcolor beneath it, so a client that blocks images still shows the card.
+    import app.email_frame as _ef
+    assert "Playfair" not in html
+    assert html.count("url(") == 1 and f"url('{_ef.PAPER_IMAGE}')" in html
+    assert f'bgcolor="{_ef.PAPER}"' in html
     assert "Yes, I’m in" in html and "Can’t make it" in html and "Maybe" in html
     assert '?rsvp=Code123456789012&amp;reply=Yes"' in html and '&amp;reply=No"' in html and '&amp;reply=Maybe"' in html
     assert "A note from Vida" in html and "We’d love to have you with us." in html
