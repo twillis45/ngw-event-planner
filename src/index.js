@@ -1,5 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { ADMIN_TITLE } from './lib/adminName';
 import './index.css';
 import App from './App';
 import AuthGate from './components/AuthGate';
@@ -39,6 +40,7 @@ const SliceHarness =
 // Admin / Support console — additive, gated by ?admin=1. Wrapped in AuthGate so it
 // has the Supabase session; AdminConsole itself enforces app_metadata.role. App.js
 // is untouched, mirroring the slice-harness pattern.
+if (params.get('admin') === '1') document.title = ADMIN_TITLE;
 const AdminConsole =
   params.get('admin') === '1'
     ? React.lazy(() => import('./admin/AdminConsole'))

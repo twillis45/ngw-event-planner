@@ -4,6 +4,7 @@
 // circular-dependency issues. ThemeCtx lives in App.js, so this file must NOT
 // import it. The login screen is always dark — hardcoded palette below.
 import { useState, useEffect } from 'react';
+import { ADMIN_NAME, ADMIN_TITLE, isAdminPage } from '../lib/adminName';
 import { supabase, isSupabaseConfigured, authRedirectUrl } from '../lib/supabaseClient';
 import { AuthCtx } from '../contexts/AuthContext';
 import SignInCheck, { signInCheckOn } from './SignInCheck';
@@ -73,6 +74,8 @@ const ls = {
 };
 
 export function LoginScreen() {
+  const onAdmin = isAdminPage();
+  useEffect(() => { if (onAdmin) document.title = ADMIN_TITLE; }, [onAdmin]);
   const [email,  setEmail]  = useState('');
   const [status, setStatus] = useState('idle'); // idle | sending | sent | error
   const [err,    setErr]    = useState('');
@@ -159,7 +162,7 @@ export function LoginScreen() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: D.bg }}>
       <div style={{ ...ls.card, maxWidth: 380, width: '100%', padding: 28 }}>
-        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', color: D.accent, textTransform: 'uppercase', marginBottom: 8 }}>No Guesswork Events</div>
+        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', color: D.accent, textTransform: 'uppercase', marginBottom: 8 }}>{onAdmin ? ADMIN_NAME : 'No Guesswork Events'}</div>
 
         {status === 'sent' ? (
           <>

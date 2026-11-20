@@ -101,3 +101,20 @@ test('the brand reads No Guesswork Events, never with NGW in front', async () =>
   expect(host.textContent).toContain('No Guesswork Events');
   expect(host.textContent).not.toMatch(/NGW/);
 });
+
+// The owner, 11/19/2026: "Let's give it an admin name." At ?admin=1 the sign-in
+// and the browser tab say it is the admin; anywhere else, the plain name.
+test('at ?admin=1 it is named No Guesswork Events · Admin; elsewhere it is not', async () => {
+  mockMode = 'token';
+  window.history.pushState({}, '', '/?admin=1');
+  await mount();
+  expect(host.textContent).toContain('No Guesswork Events · Admin');
+  expect(document.title).toBe('Admin · No Guesswork Events');
+  await act(async () => root.unmount()); host.remove();
+  window.history.pushState({}, '', '/');
+  document.title = 'No Guesswork Events';
+  await mount();
+  expect(host.textContent).toContain('No Guesswork Events');
+  expect(host.textContent).not.toMatch(/Admin/);
+  expect(document.title).toBe('No Guesswork Events');
+});
