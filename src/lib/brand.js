@@ -144,11 +144,18 @@ export const BRAND = Object.freeze({
   // every "email us" in the app names the same inbox.
   support: 'events@noguessworksystems.com',
   // THE PUBLISHED POLICIES (stage 9, LEGAL-1). Each is the https URL of a
-  // policy that is LIVE and attorney-reviewed, or null. Nothing links to a
-  // policy until its URL is set here: a link to a draft, or to a page that
-  // 404s, would tell a buyer terms exist that nobody has agreed to. Drafts live
-  // in docs/legal/; setting a URL here is the whole wiring (lib/policyLinks).
-  policies: Object.freeze({ privacy: null, terms: null, refunds: null }),
+  // policy that is LIVE, or null. Nothing links to a policy until its URL is
+  // set here: a link to a draft, or to a page that 404s, would tell a buyer
+  // terms exist that nobody has agreed to. Sources live in docs/legal/; setting
+  // a URL here is the whole wiring (lib/policyLinks). Published 11/20/2026
+  // before attorney review (owner ruling); the open questions are in
+  // docs/legal/COUNSEL_QUESTIONS_OPEN.md. The pages ship in the same deploy as
+  // these URLs (hostv2/public/legal/, built by npm run policies:publish).
+  policies: Object.freeze({
+    privacy: 'https://twillis45.github.io/ngw-event-planner/hostv2/legal/privacy.html',
+    terms:   'https://twillis45.github.io/ngw-event-planner/hostv2/legal/terms.html',
+    refunds: 'https://twillis45.github.io/ngw-event-planner/hostv2/legal/refunds.html',
+  }),
   // Two stacked lines, big type. Joining them with a space must equal `full`,
   // and a test asserts exactly that — the split is a typographic decision, not
   // a second copy of the name.
