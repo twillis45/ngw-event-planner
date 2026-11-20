@@ -113,7 +113,9 @@ describe('THE DEFECT ITSELF, re-proved against the live corpus', () => {
     // Two playbooks have no researched price row at all. They previously showed
     // a confident "Jan 2026" over nothing; they now show no stamp. Named, so
     // that if one gains a priced row this count moves WITH a reason.
-    expect(noStamp.sort()).toEqual(['Client Dinner', 'Fundraiser / Gala']);
+    // 11/19/2026 (G61): Group Trip has no priced row at all (none had a source),
+    // so it stamps nothing rather than a date over nothing.
+    expect(noStamp.sort()).toEqual(['Client Dinner', 'Fundraiser / Gala', 'Group Trip']);
   });
 
 });

@@ -102,6 +102,7 @@ expected_tables (source, tbl, policies, alt_policies) as (values
   ('supabase/migrations', 'retired_event_ids',          array[]::text[], null),
   ('supabase/migrations', 'rate_counters',              array[]::text[], null),
   ('supabase/migrations', 'email_stops',                array[]::text[], null),
+  ('supabase/migrations', 'host_reminders_sent',        array[]::text[], null),
   -- backend/migrations (frozen legacy, hand-applied)
   ('backend/migrations', 'event_channels',      array[]::text[], null),
   ('backend/migrations', 'event_messages',      array[]::text[], null),

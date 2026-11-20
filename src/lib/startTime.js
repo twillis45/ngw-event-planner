@@ -49,6 +49,7 @@ import { aOccasion } from './occasionWords';
 import { getPlaybook } from './playbooks';
 import { ANCHOR_HOUR } from './eventWhen';
 import { OUTDOOR_TYPE } from './placeIntelligence';
+import { parseClock } from './clock';
 
 // Types that live outdoors — the same list phaseProgress uses to decide a rain plan matters.
 
@@ -89,19 +90,7 @@ const pretty = (min) => {
   return `${h12}:${pad(m)} ${ap}`;
 };
 
-/** "8:14 PM" → 1214. Null on anything else — we never guess at a time we cannot read. */
-export function parseClock(s) {
-  const t = String(s || '').trim();
-  let m = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(t);
-  if (m) {
-    let h = Number(m[1]) % 12;
-    if (/pm/i.test(m[3])) h += 12;
-    return h * 60 + Number(m[2]);
-  }
-  m = /^(\d{1,2}):(\d{2})$/.exec(t);
-  if (m) return Number(m[1]) * 60 + Number(m[2]);
-  return null;
-}
+export { parseClock, clock12 } from './clock';
 
 export function isOutdoorEvent(event) {
   const ev = event || {};

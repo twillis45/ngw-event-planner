@@ -73,6 +73,14 @@ const EVENT_TAXONOMY = {
   'PTA / Booster Fundraiser': { parent: 'Social & Fundraising', solveFamily: 'gala',       family: 'host_driven',  shareFamily: 'fallback' },
   'Networking Event':   { parent: 'Social & Fundraising', solveFamily: 'networking_event', family: 'corporate',    shareFamily: 'corporate' },
   'Wellness Retreat':   { parent: 'Social & Fundraising', solveFamily: 'wellness_retreat', family: 'travel_led',   shareFamily: 'fallback', travel: true, multiDay: true },
+  // Group Trip (G61, 11/19/2026, owner ruling 11/16/2026): a girls' trip, a golf
+  // weekend, a friends' trip — see data/groupTrip.js. The axes match Wellness
+  // Retreat, where "girls trip" resolved until now, so the budget family, the
+  // travel exclusions and the multi-day Pass stamp a host saw do not move.
+  // solveFamily 'bachelorette': that graph IS a friends' trip (dates and budget,
+  // group chat, destination, buy-in, lodging, travel, itinerary, balances);
+  // the wellness graph is a ticketed program with registration and COIs.
+  'Group Trip':         { parent: 'Social & Fundraising', solveFamily: 'bachelorette',     family: 'travel_led',   shareFamily: 'fallback', travel: true, multiDay: true },
   'Other':              { parent: 'Social & Fundraising', solveFamily: null,               family: 'host_driven',  shareFamily: 'fallback' },
 
   // ── At-Home Gatherings ────────────────────────────────────────────────────
@@ -202,6 +210,16 @@ const KEYWORDS = [
   // dinner", "Penelope's 30th" and "Antelope Valley" as elopements.
   [/\belop(?:e|ed|es|ing|ement|ements)\b|micro.?wedding|minimony/, 'Elopement'],
   [/destination\s*wedding/, 'Wedding'],
+  // ── Group trips (G61, 11/19/2026) — ahead of the corporate and at-home
+  // blocks, so "brunch", "bbq", "the Masters" or "cooking class" inside a
+  // trip sentence cannot take it, and ahead of the generic travel line, which
+  // owned "girls trip" / "guys trip" until now and sent them to a playbook-less
+  // Wellness Retreat. Named trips with friends only, WHOLE WORDS (the #178
+  // lesson): "trip" alone is a common word, so a business trip, a field trip, a
+  // road trip, a day trip and a school trip do not route here, and neither does
+  // a "golf outing" (one afternoon) or a "girls' night". Bachelor/bachelorette
+  // trips matched above and stay with their own playbooks.
+  [/\b(?:girls?|girlfriends?|ladies|guys?|boys|buddies|bros)['’]?\s*(?:trip|getaway)\b|\bgolf\s*(?:trip|weekend|getaway|vacation)\b|\bfriends?['’]?\s*(?:trip|getaway|vacation)\b|\bgroup\s*(?:trip|vacation)\b|\btrip\s+with\s+(?:my\s+|the\s+|our\s+)?(?:friends|girls|guys|girlfriends|boys)\b/, 'Group Trip'],
   [/wellness|yoga|sound\s*bath|breathwork|meditation\s*retreat|spa\s*retreat/, 'Wellness Retreat'],
   [/sweet\s*16|sweet\s*sixteen/, 'Sweet 16'],
   [/baby\s*shower|baby\s*sprinkle|sip\s*(and|&)\s*see/, 'Baby Shower'],
@@ -297,7 +315,7 @@ const KEYWORDS = [
   // that other type's own regex gets a chance. Only "destination trip/getaway/
   // vacation" (no other real subject) resolves here; "destination wedding" is
   // its own earlier, more specific rule above.
-  [/honeymoon|getaway|\bcruise\b|girls?\s*trip|guys?\s*trip|\bretreat\b|destination\s*(trip|getaway|vacation)\b/, 'Wellness Retreat'],
+  [/honeymoon|getaway|\bcruise\b|\bretreat\b|destination\s*(trip|getaway|vacation)\b/, 'Wellness Retreat'],
   // ── Generic celebrations (after specifics) ──
   [/wedding|nuptial|marriage|matrimony/, 'Wedding'],
   [/birthday|\bb.?day\b|milestone\s*birthday/, 'Birthday'],

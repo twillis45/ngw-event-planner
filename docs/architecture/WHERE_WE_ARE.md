@@ -1,5 +1,15 @@
 # Where We Are -- live status board
 
+## November 20, 2026 — one clock, a trip of its own, and the first reminder
+
+**The morning that was an afternoon.** A helper's email asked them to arrive at 4:00 AM for a 4 PM Friendsgiving. A plan made from a sentence keeps its time as "4:00 PM", and five readers, copied from one another, took only the digits. They now share one reader, and each was shown failing first.
+
+**Group Trip** became its own occasion, sourced like Friendsgiving: the firm yes and the deposit come before anything is booked, and the arrival day keeps its own schedule.
+
+**The first email to hosts** goes out a week before a planned event, once, with its own stop link. Offers and news still send nothing until the owner approves the words.
+
+**The venue leads a trip's board** until it is picked, ahead of the stay and the travel questions, never ahead of money that is due.
+
 ## November 19, 2026 (later) — the owner's rulings, built
 
 **Ten decisions in one sitting.** The owner approved every recommendation on the decisions list and the order to build them. The same day: offers and news go only to hosts who tick an unticked box, while plan reminders reach everyone with their own stop link; a locked trip's stay door says it comes with the Pass; the old self-contained vendor link ends after its event; and, ahead of the move to the company's own address, a host whose plan lives only on one device will be told to sign in before the day.

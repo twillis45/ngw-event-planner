@@ -141,7 +141,11 @@ describe('against the REAL corpus', () => {
 
   test('the corpus is large enough that a vacuous pass would be obvious', () => {
     expect(inv.total).toBeGreaterThan(500);
-    expect(inv.byPlaybook.length).toBe(ALL_PLAYBOOKS.length);
+    // 11/19/2026 (G61): Group Trip authors no purchase lines — no priced item it
+    // could buy had a source — so it has no inventory row. Every playbook that
+    // HAS lines still gets one.
+    expect(inv.byPlaybook.length).toBe(ALL_PLAYBOOKS.filter((pb) => (pb.purchases || []).length).length);
+    expect(ALL_PLAYBOOKS.length - inv.byPlaybook.length).toBe(1);
   });
 
   test('the grounded share is reported honestly against the FULL denominator', () => {

@@ -135,3 +135,35 @@ services:
         fromService: { type: web, name: ngw-events-api, envVarKey: SUPABASE_SERVICE_ROLE_KEY }
       - key: PYTHON_VERSION
         value: 3.12.7
+
+  # ── The week-before reminder to hosts, daily (plan G87, owner 11/19/2026) ──
+  # "Plan reminders go to all with one-click unsubscribe." Emails each host
+  # whose event is 7 days away (US Eastern date), once per event, with a "Stop
+  # plan reminders" link (backend/app/host_reminders.py). Sends NOTHING until
+  # migration 032 is applied. A NEW service: the owner approves it in Render on
+  # the next Blueprint sync. 14:23 UTC is 9:23 AM EST / 10:23 AM EDT, off the
+  # hour. Exits non-zero when it could send nothing at all.
+  - type: cron
+    name: ngw-host-reminders
+    runtime: python
+    rootDir: backend
+    plan: starter
+    schedule: "23 14 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/send_host_reminders.py
+    envVars:
+      # Read from the API service, so there is one copy of each secret.
+      - key: DATABASE_URL
+        fromService: { type: web, name: ngw-events-api, envVarKey: DATABASE_URL }
+      - key: RESEND_API_KEY
+        fromService: { type: web, name: ngw-events-api, envVarKey: RESEND_API_KEY }
+      - key: COMMUNICATION_EMAIL_FROM
+        fromService: { type: web, name: ngw-events-api, envVarKey: COMMUNICATION_EMAIL_FROM }
+      # The sender name set on the API service ("No Guesswork Events"); without
+      # it this job would send as the code's default, "NGW Events".
+      - key: RESEND_FROM_NAME
+        fromService: { type: web, name: ngw-events-api, envVarKey: RESEND_FROM_NAME }
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: APP_BASE_URL
+        value: https://twillis45.github.io/ngw-event-planner

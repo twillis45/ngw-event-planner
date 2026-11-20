@@ -6,6 +6,15 @@
 // rental-house intelligence engine (host directive 2026-07-28).
 
 export const BOOKING_RISK_SOURCES = {
+  // Registered 11/19/2026 with the Group Trip playbook (G61): the federal
+  // consumer-protection page for the rental a group pays for months ahead.
+  // Fetched and read verbatim the same day.
+  'ftc-travel-scams-2025': {
+    org: 'Federal Trade Commission — Avoid Scams When You Travel (September 2025)',
+    url: 'https://consumer.ftc.gov/articles/avoid-scams-when-you-travel',
+    fetched: '2026-11-19',
+    claim: '"Scammers say the only way to pay for your vacation rental is by" wire transfer, gift card, payment app, or cryptocurrency — "That\'s a scam, every time." Search the property\'s address plus the owner or rental company named: "If other ads come up for the same address, it\'s probably a scam", and check the rental company\'s own site for the listing.',
+  },
   'airbnb-host-cancel': {
     org: 'Airbnb — Fees and consequences when a Host cancels (help article 990)',
     url: 'https://www.airbnb.com/help/article/990',

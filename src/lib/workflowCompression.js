@@ -69,6 +69,7 @@ export const STANDARD_LEAD_DAYS = {
   'Client Dinner':      21, // 3 weeks
   'Crab Feast':         42, // 6 weeks — casual backyard gathering (see provenance)
   Friendsgiving:        21, // 3 weeks — the casual-dinner invite window (see provenance)
+  'Group Trip':        120, // 4 months — headcount and deposits before booking (see provenance)
   Other:                91, // 3 months default
 };
 
@@ -92,6 +93,19 @@ export const STANDARD_LEAD_SOURCES = {
     claim: 'Casual/dinner party invitations go out 2–4 weeks ahead; formal 8+ weeks; '
       + 'milestone birthdays 4–5 weeks; save-the-dates 6–9 months; RSVP 1–4 weeks before.',
   },
+  // 11/19/2026 (G61): the Group Trip runway. Same ids, URLs and dates as their
+  // TIMING_SOURCES entries (the paperlesspost-invites precedent above).
+  'golfthehighsierra-group-golf-2026': {
+    url: 'https://golfthehighsierra.com/how-to-plan-a-group-golf-trip/',
+    fetched: '2026-11-19',
+    claim: 'Group golf trip: lock headcount and collect deposits 4–6 months out; book lodging 3–4 months out; '
+      + 'tee times 2–3 months out; trip details 4–6 weeks out; confirmations and balances 1–2 weeks out.',
+  },
+  'avantstay-group-checklist-2026': {
+    url: 'https://avantstay.com/blog/group-trip-planning-checklist-vacation-homes-15-guests',
+    fetched: '2026-11-19',
+    claim: 'Group vacation homes book 6–12 months out; "Wait until three months out and you\'ll face slim pickings."',
+  },
   'partyguides-2026': {
     url: 'https://partygeniusai.com/birthday-party-planning-timeline',
     fetched: '2026-07-15',
@@ -113,6 +127,10 @@ export const STANDARD_LEAD_PROVENANCE = {
   // planned the day the What to Bring list goes out. Without this row it fell
   // to the 91-day default and a host six days out read as 85 days behind.
   Friendsgiving:      { tier: 'researched', sources: ['paperlesspost-invites'], verificationStatus: 'researched', claim: 'Casual dinner invitations go out 2–4 weeks ahead; 21d = 3 weeks, the middle of the sourced range.' },
+  // 11/19/2026 (G61): a group trip starts when the headcount and deposits are
+  // locked — 4-6 months out for a golf group, ahead of the lodging that books
+  // 3-4 months out; AvantStay calls three months out "slim pickings".
+  'Group Trip':       { tier: 'researched', sources: ['golfthehighsierra-group-golf-2026', 'avantstay-group-checklist-2026'], verificationStatus: 'researched', claim: 'Lock the headcount and collect deposits 4-6 months out (Golf the High Sierra); waiting until three months out leaves slim pickings (AvantStay). 120d = the 4-month edge.' },
   Reunion:            { tier: 'researched', sources: ['partyguides-2026'], verificationStatus: 'researched', claim: 'Large multi-household gathering, travel coordination; ~6 months.' },
   // synthesized — trade heuristic, not yet sourced per-type (the corporate/formal set)
   Corporate:          { tier: 'synthesized', sources: [], verificationStatus: 'synthesized', claim: '6-month heuristic for corporate events; not sourced per-type.' },

@@ -67,10 +67,6 @@ const NOT_IN_BLUEPRINT = {
   RENDER_EXTERNAL_URL:
     'Set BY RENDER on every web service, never by an operator: declaring it in '
     + 'the Blueprint would invite someone to type over the value Render provides.',
-  RESEND_FROM_NAME:
-    'Non-secret display string with a working default ("NGW Events"). Nothing '
-    + 'breaks unset, and a Blueprint prompt for a brand word is noise in a list '
-    + 'whose job is to collect credentials.',
   POSTHOG_QUERY_API_KEY:
     'Admin-console analytics read path (the server-side HogQL proxy). NOBODY '
     + 'HAS RECORDED whether this deployment uses it, and this entry exists to '

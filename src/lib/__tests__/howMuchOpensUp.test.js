@@ -133,7 +133,8 @@ describe('THE POPULATION — small, and that is the finding', () => {
       }
     }
     // +2 on 11/18/2026: Friendsgiving and Thanksgiving Hosting gained `service_style` (sit-down or buffet).
-    expect(total).toBe(269);
+    // 11/19/2026 (G61): the Group Trip playbook joined the corpus (47 types, 4 decisions); this count moved with it.
+    expect(total).toBe(273);
     expect(withDownstream).toBe(42);
   });
 });
@@ -224,7 +225,8 @@ describe('the inversion that is already shipping', () => {
       }
     }
     // +2 on 11/18/2026: Friendsgiving and Thanksgiving Hosting gained `service_style` (sit-down or buffet).
-    expect(total).toBe(269);
+    // 11/19/2026 (G61): the Group Trip playbook joined the corpus (47 types, 4 decisions); this count moved with it.
+    expect(total).toBe(273);
     expect(already).toBe(64);
     expect(wired).toBe(77);
   });
@@ -240,6 +242,7 @@ describe('the inversion that is already shipping', () => {
     }
     // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
     // 0: 225 -> 227 on 11/18/2026: the two new service_style decisions open nothing up.
-    expect(dist).toEqual({ 0: 227, 1: 28, 2: 5, 3: 4, 5: 4, 6: 1 });
+    // 0: 227 -> 231 on 11/19/2026: the four Group Trip decisions open nothing up.
+    expect(dist).toEqual({ 0: 231, 1: 28, 2: 5, 3: 4, 5: 4, 6: 1 });
   });
 });

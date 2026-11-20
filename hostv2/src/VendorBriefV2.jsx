@@ -32,6 +32,7 @@ import { snapshotStillLive } from '@app/lib/vendorBriefSunset';
 import { briefShowsHeadcount, briefFeedsGuests, briefDietLine } from '@app/lib/vendorBrief';
 import { formatPhoneUS } from '@app/lib/contactFormat';
 import { toneVarsFor } from './inviteShared.js';
+import { clock12 } from '@app/lib/clock';
 
 const TONE = toneVarsFor(invitePalette('light'));
 
@@ -50,12 +51,7 @@ function decodeSnapshot(token) {
   } catch { return null; }
 }
 
-const fmtTime12 = (t) => {
-  const m = /^(\d{1,2}):(\d{2})/.exec(String(t || ''));
-  if (!m) return '';
-  const h = Number(m[1]);
-  return `${h % 12 || 12}:${m[2]} ${h >= 12 ? 'PM' : 'AM'}`;
-};
+const fmtTime12 = clock12;
 const fmtDate = (d) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d || ''));
   if (!m) return String(d || '');

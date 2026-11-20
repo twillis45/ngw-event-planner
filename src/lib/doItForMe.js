@@ -140,6 +140,8 @@ function inviteVoice(event) {
     T(/(bridal ?shower|bachelorette)/, { emoji: '', head: 'You’re invited!', line: `We’re celebrating ${honoree || 'the bride-to-be'} — come join us!` }) ||
     T(/(retire)/, { emoji: '', head: 'You’re invited!', line: `We’re celebrating ${honoree ? honoree + '’s retirement' : 'a well-earned retirement'} — come raise a glass.` }) ||
     T(/(reunion)/, { emoji: '', head: 'You’re invited!', line: `It’s been too long — we’re getting everyone back together.` }) ||
+    // G61 (11/19/2026): a trip is not "hosted" — the generic line read "We’re hosting a group trip".
+    T(/(group ?trip)/, { emoji: '', head: 'You’re invited!', line: `We’re planning a trip together, and we want you on it.` }) ||
     // G83 (live invite, 11/19/2026): the note named nothing; it now names the event.
     T(/(dinner|cookout|bbq|barbecue|cocktail|party|gathering|housewarm)/, { emoji: '', head: 'You’re invited!', line: hostedName(event) ? `We’re hosting ${hostedName(event)} and would love to have you over.` : `We’re hosting and would love to have you over.` }) ||
     T(/(holiday|christmas|thanksgiving|hanukkah|new ?year)/, { emoji: '', head: 'You’re invited!', line: `We’re gathering for the holidays and hope you’ll join us.` }) ||

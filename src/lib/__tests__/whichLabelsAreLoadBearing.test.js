@@ -131,6 +131,9 @@ const PINNED = {
   'Engagement Party/invite': ["knowledge-context","route"],
   'Ethiopian Coffee Ceremony/fasting_spread': ["knowledge-context"],
   'Gender Reveal/venue': ["knowledge-context"],
+  // 11/19/2026 (G61): "How is the place to stay split?" names the stay, so a
+  // knowledge context reads it. Pinned deliberately.
+  'Group Trip/split_rule': ["knowledge-context"],
   'Get-Together/shade': ["knowledge-context"],
   'Halloween Party/drinks': ["knowledge-context"],
   'Holiday Party/alcohol_service': ["knowledge-context"],
