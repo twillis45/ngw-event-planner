@@ -53,7 +53,8 @@ class Conn:
         assert "from public.events" in q and "host_reminders_sent" in q
         out = []
         for eid, (data, email) in sorted(self.events.items()):
-            if email is None or str(data.get("date") or "")[:10] != a[0] or (eid, a[1]) in self.sent:
+            dates = a[0] if isinstance(a[0], (list, tuple)) else [a[0]]
+            if email is None or str(data.get("date") or "")[:10] not in dates or (eid, a[1]) in self.sent:
                 continue
             out.append({"id": eid, "data": json.dumps(data), "email": email})   # jsonb arrives as text
         return out
@@ -95,7 +96,7 @@ def run(conn, out, cap=hr.MAX_PER_RUN):
 def test_only_qualified_events_exactly_seven_days_out_with_a_host_email():
     conn = Conn({
         "e1": (plan(), "a@x.test"),
-        "e2": (plan(date="2026-11-25"), "b@x.test"),                      # 6 days
+        "e2": (plan(date="2026-11-24"), "b@x.test"),                      # 5 days
         "e3": (plan(date="2026-11-27"), "c@x.test"),                      # 8 days
         "e4": ({"name": "No count", "date": IN7}, "d@x.test"),            # not a plan
         "e5": ({"name": "Zero", "date": IN7, "guestCount": 0, "guests": []}, "e@x.test"),
@@ -287,3 +288,48 @@ def test_nothing_schedules_a_promotion():
     callers = [p.name for d in ("app", "scripts") for p in (root / d).rglob("*.py")
                if "compose_offer" in p.read_text() or "prepare_offer" in p.read_text()]
     assert callers == ["host_reminders.py"]                      # defined there, called nowhere
+
+
+# ── THE NEXT-DAY CATCH-UP (owner, 11/20/2026: "Add the next-day catch-up for
+# missed reminders"). A plan that reached the server after the 7-days-out run
+# (the owner's own test plan took ~3 minutes to save) gets its reminder the next
+# day, at 6 days out, worded truthfully, and still only once.
+IN6 = "2026-11-25"
+
+
+def test_a_plan_that_missed_its_day_is_reminded_the_next_day_and_says_six_days():
+    conn = Conn({"e1": (plan(name="Late Dinner", date=IN6), "a@x.test")})
+    out = Outbox()
+    counts = run(conn, out)
+    assert [m["to"] for m in out.mail] == ["a@x.test"]
+    m = out.mail[0]
+    assert m["subject"] == "6 days until Late Dinner"
+    for part in (m["html"], m["text"]):
+        assert "One week" not in part and "one week" not in part.lower().replace("about a week", "")
+    assert "6 days to go" in m["text"] or "6 DAYS TO GO" in m["text"]
+    assert counts["sent"] == 1 and counts["catch_up"] == 1
+
+
+def test_a_plan_reminded_on_its_day_is_not_reminded_again_the_next():
+    conn = Conn({"e1": (plan(), "a@x.test")})
+    out = Outbox()
+    run(conn, out)                                         # 11/19: 7 days out, sent
+    assert len(out.mail) == 1
+    asyncio.run(hr.send_week_before(conn, today=TODAY + dt.timedelta(days=1), send=out))
+    assert len(out.mail) == 1                              # 11/20: 6 days out, already sent
+
+
+def test_the_catch_up_is_one_day_only():
+    conn = Conn({"e5": (plan(date="2026-11-24"), "a@x.test"),     # 5 days: too late
+                 "e8": (plan(date="2026-11-27"), "b@x.test")})    # 8 days: not yet
+    out = Outbox()
+    run(conn, out)
+    assert out.mail == []
+
+
+def test_the_seven_day_email_still_says_one_week():
+    conn = Conn({"e1": (plan(name="On Time", date=IN7), "a@x.test")})
+    out = Outbox()
+    counts = run(conn, out)
+    assert out.mail[0]["subject"] == "One week until On Time"
+    assert counts["catch_up"] == 0
