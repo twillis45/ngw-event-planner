@@ -16,6 +16,7 @@
 // that field yet, so today it never does.
 import { fmtLongDate, timePhrase, placePhrase } from './doItForMe';
 import { venueFor } from './venueFor';
+import { clock12 } from './clock';
 
 // The invite's allergen chips (InviteV2 ALLERGENS) and the host's own diet
 // counts (dietRows DIET_TAGS), each to the word a cook uses. Diets that are
@@ -56,12 +57,7 @@ export function helperAllergyNote(event) {
 
 const CARRY = { hot: 'bring it hot, wrapped in towels', cold: 'bring it cold, in a cooler' };
 
-function clock(t) {
-  const m = /^(\d{1,2}):(\d{2})/.exec(String(t || ''));
-  if (!m) return '';
-  const h = Number(m[1]);
-  return `${h % 12 || 12}:${m[2]} ${h >= 12 ? 'PM' : 'AM'}`;
-}
+const clock = clock12;
 
 /**
  * buildHelperAsk({ event, hostName, helperName, jobs, url }) → the message.

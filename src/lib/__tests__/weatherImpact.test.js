@@ -77,3 +77,13 @@ test('clear forecast → no impact, no prompts', () => {
   expect(r.hasImpact).toBe(false);
   expect(r.affectedPhases).toEqual([]);
 });
+
+// Found 11/19/2026: a plan made from a sentence stores "2:00 PM". The digits-only
+// reader took that as 2 AM, so afternoon rain read as "after your 2 AM start".
+test('a start stored as "2:00 PM" is the same afternoon as "14:00"', () => {
+  const a = weatherImpactByEventPhase(ev(), wx({ rainWindow: win(16, 18) }));
+  const b = weatherImpactByEventPhase(ev({ startTime: '2:00 PM' }), wx({ rainWindow: win(16, 18) }));
+  expect(a.headline).toMatch(/2 ?PM/i);
+  expect(b.headline).toBe(a.headline);
+  expect(b.affectedPhases).toEqual(a.affectedPhases);
+});

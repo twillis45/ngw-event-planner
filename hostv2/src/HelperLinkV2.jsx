@@ -16,15 +16,11 @@ import { invitePalette } from '@app/lib/inviteTone';
 import { fetchPublicHelperLink, isHelperLinkApiConfigured, submitHelperAnswer, helperIdempotencyKey } from '@app/lib/api/helperLink';
 import { fmtLongDate } from '@app/lib/doItForMe';
 import { toneVarsFor } from './inviteShared.js';
+import { clock12 } from '@app/lib/clock';
 
 const TONE = toneVarsFor(invitePalette('light'));
 
-const fmtTime12 = (t) => {
-  const m = /^(\d{1,2}):(\d{2})/.exec(String(t || ''));
-  if (!m) return '';
-  const h = Number(m[1]);
-  return `${h % 12 || 12}:${m[2]} ${h >= 12 ? 'PM' : 'AM'}`;
-};
+const fmtTime12 = clock12;
 
 function Holding({ title, body, busy }) {
   return (

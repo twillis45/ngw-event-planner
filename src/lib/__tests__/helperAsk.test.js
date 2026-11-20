@@ -27,6 +27,17 @@ const ask = (over = {}) => buildHelperAsk({
 });
 
 describe('who, what, why', () => {
+  // Found live 11/19: a plan made from a sentence keeps "4:00 PM"; the ask read "4:00 AM".
+  test.each([
+    ['16:00', '4:00 PM'], ['4:00 PM', '4:00 PM'], ['4:00 pm', '4:00 PM'],
+    ['12:00 PM', '12:00 PM'], ['12:00 AM', '12:00 AM'], ['9:30 AM', '9:30 AM'], ['00:15', '12:15 AM'],
+  ])('the time %s reads %s, never the other half of the day', (stored, said) => {
+    const t = ask({ event: { ...EVENT, startTime: stored } });
+    expect(t).toContain(`at ${said}`);
+    const other = said.endsWith('PM') ? said.replace('PM', 'AM') : said.replace('AM', 'PM');
+    expect(t).not.toContain(other);
+  });
+
   test('WHO: the host by name, and the helper by first name', () => {
     const t = ask();
     expect(t).toMatch(/^Hi Jordan/);

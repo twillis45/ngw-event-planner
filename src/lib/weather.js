@@ -12,6 +12,7 @@
 import { daysUntil, spanEnd } from './dates';
 import { guestSafeText } from './guestFacing';
 import { venueFor } from './venueFor';
+import { parseClock } from './clock';
 
 const API_KEY = process.env.REACT_APP_OPENWEATHER_KEY;
 const BASE = 'https://api.openweathermap.org/data/3.0/onecall';
@@ -370,8 +371,8 @@ export function weatherImpactByEventPhase(event, wx) {
 
   // Start hour — ONLY from an explicit startTime; never inferred from buckets.
   const startHour = (() => {
-    const m = /^(\d{1,2}):(\d{2})/.exec(String(ev.startTime || '').trim());
-    return m ? Number(m[1]) + Number(m[2]) / 60 : null;
+    const min = parseClock(ev.startTime);   // "4:00 PM" as well as "16:00"
+    return min == null ? null : min / 60;
   })();
 
   // No usable hourly window (or non-rain risk like heat) → event-day copy.
