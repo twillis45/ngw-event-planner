@@ -315,7 +315,7 @@ import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced, markEventConflict, eventsToUploadOnSignIn, splitAccountCopies, forgetSyncState } from '@app/lib/api/syncState';
 import { signInCode } from '@app/lib/signInCode';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
-import { buildVendorDetailsMessage, vendorGreetingName, detailsSmsHref, detailsMailtoHref } from '@app/lib/vendorDetailsMessage';
+import { buildVendorDetailsMessage, vendorGreetingName, detailsSmsHref, detailsMailtoHref, draftSmsHref } from '@app/lib/vendorDetailsMessage';
 import { summarizeWhoIsConfirmed, whoIsConfirmedLines } from '@app/lib/whoIsConfirmed';
 import { mintVendorBriefLinkResult, mintStatusClass, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import { mintHelperLinkResult, isHelperLinkApiConfigured, fetchHelperConfirmations, emailHelperJob, helperEmailWords } from '@app/lib/api/helperLink';
@@ -21202,7 +21202,7 @@ export default function HostShellV2() {
                       Share…
                     </button>
                   )}
-                  <a className="mini" style={{ textDecoration: 'none' }} href={'sms:?&body=' + encodeURIComponent(shownDraft())} onClick={() => recordSend('sms')}>Text it</a>
+                  <a className="mini" style={{ textDecoration: 'none' }} href={draftSmsHref(sheet.vendorId ? (event.vendors || []).find(v => v && v.id === sheet.vendorId) : null, shownDraft())} onClick={() => recordSend('sms')}>Text it</a>
                   <a className="mini" style={{ textDecoration: 'none' }} href={'https://wa.me/?text=' + encodeURIComponent(shownDraft())} target="_blank" rel="noreferrer" onClick={() => recordSend('whatsapp')}>Open WhatsApp</a>
                   <button className="mini" onClick={() => { copyDraft(shownDraft()); recordSend('copy'); }}>Copy it</button>
                   {/* "I sent it earlier from my phone" — a RECORD, not an act
@@ -21437,6 +21437,9 @@ export default function HostShellV2() {
                     const tMail = helperEmail && helperEmail.taskId === t.id ? helperEmail : null;
                     const tHelperGuest = tHelper && tHelper.guestId ? (event.guests || []).find(g => g && g.id === tHelper.guestId) : null;
                     const tHelperEmail = !!String((tHelperGuest && tHelperGuest.email) || '').trim();
+                    // Call the helper from the job row (owner, 11/20/2026: "wire in phone
+                    // calls"). The phone's own dialer, the same rail as the guest list.
+                    const tHelperDial = String((tHelperGuest && tHelperGuest.phone) || '').replace(/[^+\d]/g, '');
                     // Nothing to hand off on a row the plan already handled, unless someone
                     // already holds it (owner, 11/16/2026: every CTA justified).
                     // THE ROW'S OWN ACTION ("Line them up →") — a real button and a
@@ -21483,6 +21486,10 @@ export default function HostShellV2() {
                             </>
                           );
                         })()}
+                        {owner && tHelperDial && (
+                          <a className="mini rowlink" data-helper-call style={{ textDecoration: 'none' }}
+                            href={'tel:' + tHelperDial} onClick={(e) => e.stopPropagation()}>{`Call ${tFirst}`}</a>
+                        )}
                         {owner && !t.done && tAnswer && tAnswer.state !== 'confirmed' && (
                           <span className="v-meta helper-answer" data-answer="declined">
                             {`${tFirst} can’t do it${tAnswer.note ? ` — “${tAnswer.note}”` : '.'} It’s back on you to cover.`}

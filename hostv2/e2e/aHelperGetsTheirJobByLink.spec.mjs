@@ -66,6 +66,8 @@ test.describe('the host sends it', () => {
     const calls = await mockHost(page);
     await openChecklist(page);
 
+    // A call goes straight to the helper's number (owner, 11/20/2026).
+    await expect(page.getByRole('link', { name: 'Call Jordan', exact: true })).toHaveAttribute('href', 'tel:5550100101');
     const send = page.getByRole('button', { name: 'Send Jordan their job', exact: true });
     await expect(send).toBeVisible();
     await send.click();

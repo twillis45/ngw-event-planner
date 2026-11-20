@@ -159,6 +159,14 @@ export function detailsSmsHref(phone, body) {
   return 'sms:' + digits + '?&body=' + encodeURIComponent(String(body || ''));
 }
 
+// A drafted message's "Text it": straight to the vendor when the draft is for
+// one with a number on file; otherwise the composer opens with no recipient
+// and the host picks one (owner, 11/20/2026).
+export function draftSmsHref(vendor, body) {
+  const v = vendor || {};
+  return detailsSmsHref(v.phone || v.dayOfPhone, body) || 'sms:?&body=' + encodeURIComponent(String(body || ''));
+}
+
 export function detailsMailtoHref(email, subject, body) {
   const to = clean(email);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return null;

@@ -142,3 +142,17 @@ describe('the channels are the phone’s own apps', () => {
     expect(vendorGreetingName({})).toBe('');
   });
 });
+
+describe('a drafted message\'s "Text it" goes to the vendor when it can', () => {
+  const { draftSmsHref } = require('../vendorDetailsMessage');
+  test('a vendor with a number: addressed to them, words filled in', () => {
+    expect(draftSmsHref({ phone: '(410) 555-0142' }, 'See you at 4')).toBe('sms:4105550142?&body=See%20you%20at%204');
+  });
+  test('the day-of number when that is the only one', () => {
+    expect(draftSmsHref({ dayOfPhone: '+1 410 555 0199' }, 'Hi')).toBe('sms:+14105550199?&body=Hi');
+  });
+  test('no vendor or no number: no recipient, the host picks', () => {
+    expect(draftSmsHref(null, 'Hi')).toBe('sms:?&body=Hi');
+    expect(draftSmsHref({ phone: '' }, 'Hi')).toBe('sms:?&body=Hi');
+  });
+});
