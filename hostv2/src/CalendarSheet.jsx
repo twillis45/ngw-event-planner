@@ -47,8 +47,9 @@ function addToCalendar(event) {
 
 // SUBSCRIBE (owner, 11/16/2026: "need subscription calendar"): one private
 // link the host's calendar app re-reads by itself. Needs a saved plan (the
-// feed reads it), so a signed-out host is told so and gets no link.
-function Subscribe({ event, signedIn, onSave, onLine }) {
+// feed reads it), so a signed-out host is told so, gets no link, and gets the
+// "Sign in" that instruction asks for (onSignIn).
+function Subscribe({ event, signedIn, onSave, onLine, onSignIn }) {
   const [confirmOff, setConfirmOff] = useState(false);
   const code = String(event.calendarCode || '').trim();
   if (!isCalendarFeedConfigured()) return null;
@@ -61,7 +62,10 @@ function Subscribe({ event, signedIn, onSave, onLine }) {
     <div className="cal-sub" data-cal-subscribe>
       <div className="shelf-label" style={{ margin: '0 0 var(--sp-1)' }}>Keep it in your calendar</div>
       {!signedIn ? (
-        <p className="grounding" data-cal-sub-signed-out style={{ margin: 0 }}>Sign in and keep this plan first — your calendar app reads the saved plan.</p>
+        <>
+          <p className="grounding" data-cal-sub-signed-out style={{ margin: '0 0 var(--sp-2)' }}>Sign in and keep this plan first — your calendar app reads the saved plan.</p>
+          {onSignIn && <div className="actions-row"><button className="mini" data-signin-from-sheet onClick={onSignIn}>Sign in</button></div>}
+        </>
       ) : !code ? (
         <>
           <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Subscribe once and your calendar app keeps these dates up to date as the plan changes.</p>
@@ -92,7 +96,7 @@ function Subscribe({ event, signedIn, onSave, onLine }) {
   );
 }
 
-export default function CalendarSheet({ event, forecast = null, onOpenChecklist, signedIn = false, onSave, onLine = () => {} }) {
+export default function CalendarSheet({ event, forecast = null, onOpenChecklist, signedIn = false, onSave, onLine = () => {}, onSignIn }) {
   const today = localISO(getToday());
   const { items, undated } = useMemo(() => calendarItems(event), [event]);
   const byDate = useMemo(() => {
@@ -206,7 +210,7 @@ export default function CalendarSheet({ event, forecast = null, onOpenChecklist,
             </p>
           </>
         )}
-        {onSave && <Subscribe event={event} signedIn={signedIn} onSave={onSave} onLine={onLine} />}
+        {onSave && <Subscribe event={event} signedIn={signedIn} onSave={onSave} onLine={onLine} onSignIn={onSignIn} />}
         {onOpenChecklist && <button className="mini" onClick={onOpenChecklist}>Open the checklist</button>}
       </div>
     </div>

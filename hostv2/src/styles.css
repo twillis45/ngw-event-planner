@@ -702,6 +702,10 @@ button{font-family:inherit}
    steel chip, never a warning color — it labels, it does not alarm. */
 .eb-sample{ flex:0 0 auto; font-size:11px; font-weight:700; letter-spacing:.09em; text-transform:uppercase;
   color:var(--steel-soft); background:var(--steel-tint); border-radius:var(--r-pill); padding:2px 8px; }
+/* The same chip on a Your events row (design audit batch 1, 11/20/2026): it was
+   an inline-styled pill dimmed to opacity .7 — 3.42:1. Reused here, in the row's
+   sentence case, so the row still reads "Sample" the way the header's chip is read. */
+.f-name > .eb-sample{ text-transform:none; letter-spacing:.01em; }
 .ev-eyebrow::after{ content:''; position:absolute; left:0; right:0; top:50%;
   transform:translateY(-50%); height:44px; }
 .ev-eyebrow:hover{ color:var(--steel-soft); }
@@ -891,12 +895,16 @@ button{font-family:inherit}
 /* REASONING CONTINUITY v1 (2026-07-31) — the row's one earned reason. Recedes:
    steel-soft, smaller, lighter than the title, so it reads as a note the row
    carries rather than a second instruction competing with it. Sits between the
-   title and the arrow, takes the leftover width, and truncates rather than
-   wrapping — a row that grows to two lines is the density the 2026-07-18 ruling
-   removed. Absent on most rows by design, which is what makes it mean something. */
+   title and the arrow and takes the leftover width. Absent on most rows by
+   design, which is what makes it mean something.
+   WRAPS, NEVER CUT (design audit batch 1, 11/20/2026): it used to truncate, and
+   at 390 the board read "past its w…" and "0 of 5 confirmed gue…" — the reason
+   cut mid-word while the title beside it wrapped to two full lines anyway. A
+   reason that cannot be read is not a reason. It now wraps at every width, the
+   way the desktop clause below already let it. */
 .hero.elegant .ef-row .ef-why{ flex:1 1 auto; min-width:0; text-align:right;
   font-size:12.5px; font-weight:500; color:var(--steel-soft); letter-spacing:.01em;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  white-space:normal; overflow-wrap:break-word; }
 /* Time pressure is the one reason kind that earns the urgency accent — the same
    amber the due chip uses, and the only colour this component introduces.
    TOKEN FIX 2026-07-31: this said `var(--amber, #d9a441)`. `--amber` is not a
@@ -6081,7 +6089,10 @@ button.vc-pill::after{
 
    The row moves to top alignment for the same reason `.watch-row` already does
    at :3877 — once a cell can wrap, centring it against a taller sibling is what
-   makes wrapped text look like a mistake. */
+   makes wrapped text look like a mistake.
+   (11/20/2026: the base `.ef-why` rule now wraps at EVERY width — the phone cut
+   "past its w…" mid-word too. The `.ef-why` clause here is kept, now redundant;
+   the top alignment stays desktop-only.) */
 .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .ef-row{
   align-items:flex-start;
 }

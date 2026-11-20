@@ -4,12 +4,13 @@
 // opening at once. Turning it on again makes a new link.
 //
 // The link reads the plan as SAVED to the server, so it needs a signed-in host
-// whose plan is kept; signed out, the sheet says so and offers nothing to copy.
+// whose plan is kept; signed out, the sheet says so, offers nothing to copy, and
+// offers "Sign in" (onSignIn) — the instruction used to have no button.
 import { useState } from 'react';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 import { newFamilyCode } from '@app/lib/api/familyView';
 
-export default function FamilyLinkSheet({ event, signedIn, appUrl, onSave, onLine }) {
+export default function FamilyLinkSheet({ event, signedIn, appUrl, onSave, onLine, onSignIn }) {
   const [confirmOff, setConfirmOff] = useState(false);
   const code = String(event.familyCode || '').trim();
   const url = code ? appUrl + '?family=' + encodeURIComponent(code) : '';
@@ -39,9 +40,12 @@ export default function FamilyLinkSheet({ event, signedIn, appUrl, onSave, onLin
       </div>
 
       {!signedIn ? (
-        <p className="grounding" data-family-signed-out style={{ margin: 'var(--sp-4) 0 0' }}>
-          Sign in and keep this plan first — the family link shows the plan as it’s saved.
-        </p>
+        <>
+          <p className="grounding" data-family-signed-out style={{ margin: 'var(--sp-4) 0 var(--sp-2)' }}>
+            Sign in and keep this plan first — the family link shows the plan as it’s saved.
+          </p>
+          {onSignIn && <div className="actions-row"><button className="mini" data-signin-from-sheet onClick={onSignIn}>Sign in</button></div>}
+        </>
       ) : !code ? (
         <button className="cta" style={{ width: '100%', marginTop: 'var(--sp-4)' }} data-family-on
           onClick={() => { onSave({ familyCode: newFamilyCode() }, 'The family link is on.'); try { trackEvent(ANALYTICS.FAMILY_LINK_ON); } catch (_e) { /* counter only */ } }}>
