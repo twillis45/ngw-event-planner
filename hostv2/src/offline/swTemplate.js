@@ -149,10 +149,18 @@ self.addEventListener('notificationclick', (e) => {
   e.notification.close();
   const home = self.registration.scope;
   e.waitUntil((async () => {
+    // Which event: read from the notification's own tag (ngw-alert-<id>), the
+    // same id the app keeps; still never an address carried in the push.
+    const tag = String((e.notification && e.notification.tag) || '');
+    const id = tag.indexOf('ngw-alert-') === 0 ? tag.slice(10) : '';
+    const ok = /^[A-Za-z0-9_.:-]{1,64}$/.test(id);
     const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const open = wins.find((w) => typeof w.url === 'string' && w.url.indexOf(home) === 0);
-    if (open && typeof open.focus === 'function') return open.focus();
-    return self.clients.openWindow(home);
+    if (open && typeof open.focus === 'function') {
+      if (ok && typeof open.postMessage === 'function') open.postMessage({ type: 'ngw-open-event', id });
+      return open.focus();
+    }
+    return self.clients.openWindow(ok ? home + '?event=' + encodeURIComponent(id) : home);
   })());
 });
 `;

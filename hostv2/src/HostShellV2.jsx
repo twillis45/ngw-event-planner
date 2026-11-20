@@ -207,6 +207,7 @@ import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
 import InviteToTheList from './InviteToTheList';
 import NudgeTheList from './NudgeTheList';
+import { takeEventLink, isOwnEvent } from '@app/lib/eventLink';
 import { trackHelperEmail, takeReminderTag, trackPlanDrafted, trackKeepPrompt, trackSignInCodeRequested } from '@app/lib/flowAnalytics';
 import { readArrival, rememberArrival, arrivalFor, spendArrival, exampleSentenceFor } from '@app/lib/acquisition';
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
@@ -957,6 +958,11 @@ const PASS_CANCEL_RETURN = (() => {
 // plan_opened_from_reminder, and removed from the address bar so a refresh or
 // a bookmark never counts it again (lib/flowAnalytics.takeReminderTag).
 takeReminderTag();
+
+// ── OPENED FROM AN ALERT (11/20/2026) ─────────────────────────────────────
+// An alert email or device notification links `?event=<id>`; read once here,
+// opened below only if it is one of the host's own events (lib/eventLink).
+const EVENT_LINK = takeEventLink();
 
 // ── THE COCKPIT'S PASS DOOR LANDS HERE (gap H1, 11/12/2026) ────────────────
 // LodgingCockpit.jsx is its own page, so when it is reached on a locked event
@@ -3884,6 +3890,22 @@ export default function HostShellV2() {
     didResume.current = true;
     if (session && id) { try { patchProfile({ lastEventId: id }); } catch { /* offline — localStorage profile holds it */ } }
   };
+  // The event an alert was about: from the link at load, or from the device
+  // notification's tap while the app is already open (offline/swTemplate.js).
+  // Waits until the host's events have arrived; anything not theirs is ignored.
+  const [openReq, setOpenReq] = useState(EVENT_LINK);
+  useEffect(() => {
+    const sw = typeof navigator !== 'undefined' && navigator.serviceWorker;
+    if (!sw || !sw.addEventListener) return undefined;
+    const onMsg = (m) => { const d = m && m.data; if (d && d.type === 'ngw-open-event' && typeof d.id === 'string') setOpenReq(d.id); };
+    sw.addEventListener('message', onMsg);
+    return () => sw.removeEventListener('message', onMsg);
+  }, []);
+  useEffect(() => {
+    if (!openReq || !isOwnEvent(openReq, customs, hydratedEvents, REAL_EVENTS)) return;
+    setOpenReq(null);
+    if (openReq !== eventId) switchEvent(openReq);
+  }, [openReq, customs, hydratedEvents]); // eslint-disable-line react-hooks/exhaustive-deps
   // ── DELETING AN EVENT, AND WHY IT NEEDS A TOMBSTONE (2026-08-08) ────────────
   // LIVE_MODE_READINESS section 5 asks for delete "verified end to end" and
   // section 8 for an account-deletion path. This shell had NO delete at all —

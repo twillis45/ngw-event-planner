@@ -106,6 +106,32 @@ describe('A TAP ON THE NOTIFICATION', () => {
   });
 });
 
+describe('A TAP OPENS THE EVENT IT IS ABOUT', () => {
+  const tapOn = (tag) => ({ notification: { close() {}, tag } });
+
+  test('no app window: opens the app at that event', async () => {
+    const w = boot();
+    await w.fire('notificationclick', tapOn('ngw-alert-ev_9xK2'));
+    expect(w.opened).toEqual([SCOPE + '?event=ev_9xK2']);
+  });
+
+  test('an app window open: tells it which event, then brings it forward', async () => {
+    const said = []; const focused = [];
+    const win = { url: SCOPE, focus: async () => { focused.push(1); }, postMessage: (m) => { said.push(m); } };
+    const w = boot({ windows: [win] });
+    await w.fire('notificationclick', tapOn('ngw-alert-ev_9xK2'));
+    expect(said).toEqual([{ type: 'ngw-open-event', id: 'ev_9xK2' }]);
+    expect(focused).toEqual([1]);
+    expect(w.opened).toEqual([]);
+  });
+
+  test('a tag that is not an event id is ignored: the plain app opens', async () => {
+    const w = boot();
+    await w.fire('notificationclick', tapOn('ngw-alert-../../evil?x=<b>'));
+    expect(w.opened).toEqual([SCOPE]);
+  });
+});
+
 describe('THE BOARD\'S CONDITIONS ARE UNTOUCHED', () => {
   test('the push handlers cache nothing and fetch nothing', () => {
     const tail = SW_TEMPLATE.slice(SW_TEMPLATE.indexOf("addEventListener('push'"));
