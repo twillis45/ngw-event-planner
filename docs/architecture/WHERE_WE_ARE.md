@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 20, 2026 (morning) — measuring the whole funnel, and reaching the host's devices
+
+The owner asked why PostHog showed so little. Two causes: tracker blockers dropped every event sent to PostHog's address, and a signed-out plan sent nothing until sign-in. Analytics now pass through our own server unchanged, and the signed-out steps (drafted, asked to keep, sign-in code) are counted. The week's new features gained their own events. Then the owner chose device notifications for computers and Android now, with iPhone and iPad later: the same alerts as the alert emails, never what anyone wrote, turned off by signing out. Texting from the app was planned for after the paid launch, starting with carrier verification.
+
 ## November 20, 2026 (night) — what went out, and who hasn't answered
 
 Each event now has one honest record of what it sent: emails with what the mail service reported, the host's own texts marked as handed off rather than sent, co-host invites, and helpers' answers. Every email the app sends now looks like the invitation, and the app sends the helper's ask itself. Then the owner approved the follow-through: one tap nudges everyone invited who hasn't answered, the board raises it from the reply-by date the host set, and the checklist step counts only when every guest has answered or been nudged.
