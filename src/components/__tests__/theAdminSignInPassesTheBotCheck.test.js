@@ -89,3 +89,15 @@ test('the link keeps ?admin=1, and the code from the email signs in here', async
   expect(mockVerify).toHaveBeenCalledWith({ email: 'admin@example.test', token: '482913', type: 'email' });
   window.history.pushState({}, '', '/');
 });
+
+// The owner, 11/19/2026, on the live screen ("NGW NO GUESSWORK EVENTS"): the
+// name is "No Guesswork Events", once — before and after the email is sent.
+test('the brand reads No Guesswork Events, never with NGW in front', async () => {
+  mockMode = 'token';
+  await mount();
+  expect(host.textContent).toContain('No Guesswork Events');
+  expect(host.textContent).not.toMatch(/NGW/);
+  await send();
+  expect(host.textContent).toContain('No Guesswork Events');
+  expect(host.textContent).not.toMatch(/NGW/);
+});

@@ -1,4 +1,4 @@
-// ─── Auth gate — NGW No Guesswork Events ──────────────────────────────────────────────
+// ─── Auth gate — No Guesswork Events ──────────────────────────────────────────────────
 // Handles session resolution, login screen, and splash.
 // Extracted from App.js to a standalone file so App.js can import it without
 // circular-dependency issues. ThemeCtx lives in App.js, so this file must NOT
@@ -159,7 +159,7 @@ export function LoginScreen() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: D.bg }}>
       <div style={{ ...ls.card, maxWidth: 380, width: '100%', padding: 28 }}>
-        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', color: D.accent, textTransform: 'uppercase', marginBottom: 8 }}>NGW No Guesswork Events</div>
+        <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', color: D.accent, textTransform: 'uppercase', marginBottom: 8 }}>No Guesswork Events</div>
 
         {status === 'sent' ? (
           <>
