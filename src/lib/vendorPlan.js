@@ -30,7 +30,14 @@ export function buildVendorPlan(event, opts = {}) {
   const base = (playbook && Array.isArray(playbook.vendors)) ? playbook.vendors.filter(Boolean) : [];
   const approach = foodApproach(ev);
   const picks = ev.foodChoices || {};
+  // HIRING ONE, NOT ORDERING ONE (50-host sweep, 11/20/2026). usesCaterer is
+  // true for any meal that arrives made — pizza, trays, takeout — because the
+  // grocery list must drop those lines. Borrowed here it made a caterer REQUIRED
+  // for "Order pizza/trays", and the hero said "Book your catering / food" over
+  // a plan whose every part read handled. Only a pick that names hiring someone
+  // obliges a booking.
   const catererChosen = approach.usesCaterer === true
+    && /cater|\bchef\b|drop-?off/i.test(String(approach.pick || ''))
     && !!(approach.decisionId ? picks[approach.decisionId] : picks.sourcing);
   // DESTINATION-1: additive on top of whatever base playbook is active — never
   // gated on type, only on the host-set isDestination modifier (same
