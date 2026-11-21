@@ -5,7 +5,7 @@ import { budgetIsSet } from './budgetFor';
 import { rsvpHasResponded } from './rsvp';
 import { chaseAnsweredOrNudged } from './replyNudge';
 // Live binding, read only at call time: playbooks imports this module too.
-import { openFoodChoices, isDietaryChoice, playbookFoodPlan, hostBuysLine, dietaryNoted, stepCallsAnswered } from './playbooks';
+import { openFoodChoices, isDietaryChoice, playbookFoodPlan, hostBuysLine, dietaryNoted, stepCalls, stepCallsAnswered } from './playbooks';
 import { buildTravelPlan } from './travelPlan';
 
 // Single source of truth for "is this planning task already handled by real event state?"
@@ -57,7 +57,11 @@ export function taskSatisfied(event, task) {
   // A STEP THAT IS A CALL is done when the call is answered (owner's iPad,
   // 11/21/2026): the pick is the fact. Before the "this or that?" guard below,
   // which is about steps no stored fact can prove.
-  if (stepCallsAnswered(event, task)) return true;
+  // The named calls are the WHOLE proof (11/21/2026): Wedding's "Agree total
+  // budget, who pays, and the guest-count target" names two, and a typed
+  // budget is one of them, not the step. So no keyword rule below may clear a
+  // step that names calls; it clears when every call it names is answered.
+  if (typeof task.id === 'string' && task.id.startsWith('pbt-') && stepCalls(event, task).length) return stepCallsAnswered(event, task);
   const guests     = Array.isArray(event.guests) ? event.guests : [];
   const hasGuests  = (Number(event.guestCount) || Number(event.guestEstimate) || guests.length) > 0;
   // ONE BUDGET READER (2026-09-18) — this rule was correct and was one of SIX
@@ -100,6 +104,14 @@ export function taskSatisfied(event, task) {
   // act guard below, so "I already sent it" said the plan moves on while the
   // row stayed open. Leading send verbs only; the chase rows keep their own rule.
   if (/^(text\/email |send( out)? )(the |your )?invit/.test(s)) return invitesOut(event);
+
+  // THE ALBUM LINK IS THE ALBUM SHARED (owner pick, 11/21/2026). "Share the …
+  // photos in one album link" is done by a saved link on the invite recap,
+  // which guests see when they reopen the invite: the same full-link test the
+  // invite applies before it shows one. Above the act guard, whose "share"
+  // would otherwise keep it open forever. Only rows that name the one album
+  // link: "start a shared album and send the link" is still an ask of people.
+  if (/^share\b[^.;]{0,80}\bin one album link\b/.test(s)) return /^https?:\/\//i.test(String(event.albumUrl || '').trim());
 
   // ACTS — calls, briefings, walk-throughs, physical work, ongoing collection —
   // are never proven by presence facts. "Recruit 3-5 volunteers" was marked done

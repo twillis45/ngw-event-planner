@@ -1,5 +1,13 @@
 # Where We Are -- live status board
 
+## November 21, 2026 (afternoon) — budgets follow the drinks pick, and four reminders get somewhere to go
+
+**A dry party no longer pays for a bar.** Choosing no alcohol now removes the beer, wine and spirits from the budget, as BYOB already did. Birthdays now assume beer and wine unless the host says otherwise.
+
+**The board has one lit button.** Only the next thing to do glows; the cards below it and the pinned "next" bar went quiet.
+
+**Four checklist rows now open the right place:** the photo album link, the group trip details (drafted from the trip's own data, and postable to every guest's invite), the round of booking confirmations, and four group-trip rows that used to open the wrong place.
+
 ## November 21, 2026 (morning) — the plan stops asking what it already knows
 
 **A host's own iPad showed the board asking "Who cooks" as overdue, with the answer already marked chosen.** Steps that are really decisions now know which decision they are, so making the call clears the step everywhere at once. An opened call now says "Chosen already."

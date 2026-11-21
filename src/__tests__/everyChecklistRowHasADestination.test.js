@@ -15,8 +15,15 @@ const { ALL_PLAYBOOKS, playbookChecklist, stepCalls } = require('../lib/playbook
 
 // The sheet kinds hostv2 renders (HostShellV2 `sheet.kind === …`) plus its two stages.
 const SHELL_KINDS = new Set(['air', 'budget', 'costshare', 'crabs', 'date', 'decisions', 'food', 'ground', 'guests',
-  'lodging', 'messages', 'rain', 'risks', 'seating', 'space', 'tasks', 'vendors', 'venue', 'stage:day', 'stage:plan']);
-const NO_DESTINATION_CEILING = 124;
+  'lodging', 'messages', 'rain', 'risks', 'seating', 'space', 'tasks', 'vendors', 'venue', 'stage:day', 'stage:plan',
+  // 11/21/2026: the album rows open After on the recap's album link; the trip
+  // details open their draft.
+  'stage:after', 'draft', 'sweep']);
+// 11/21/2026: 124 → 120. Halloween's and NYE's "Share the … photos in one album
+// link" now open After on the recap's "Photo album link" field; Group Trip's
+// "Send everyone the trip details" opens its draft, and "Confirm every
+// reservation" opens the reconfirm sweep as "Confirm every booking".
+const NO_DESTINATION_CEILING = 120;
 
 const ev = (type) => ({ id: 'dest', type, date: '2026-12-31', guestEstimate: 20, guestMode: 'count', guestCountSource: 'host',
   venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX' });
@@ -54,6 +61,18 @@ test("New Year's Eve: deciding whose midnight it is opens that call", () => {
   expect(r).toBeTruthy();
   expect(r.kind).toBe('decisions');
   expect(resolveRoute(r.hit.route).focus).toBe('midnight_model');
+});
+
+// Wedding's "Write the vision brief" (split from the budget step, 11/21/2026)
+// is not a call, but the style call ("Style + formality (the design brief)")
+// is where the brief's answer is kept, so the step opens it.
+test('Wedding: writing the vision brief opens the style call', () => {
+  const r = rows.find((x) => x.type === 'Wedding' && x.task === 'Write the vision brief');
+  expect(r).toBeTruthy();
+  expect(r.calls).toEqual([]);
+  expect(r.kind).toBe('decisions');
+  expect(resolveRoute(r.hit.route).focus).toBe('vision');
+  expect(r.hit.label).toBe('Pick the style');
 });
 
 test('rows with no button only get fewer', () => {

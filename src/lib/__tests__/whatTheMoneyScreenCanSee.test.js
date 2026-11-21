@@ -123,6 +123,10 @@ describe('what the money screen can and cannot see', () => {
     // +7 on 11/18/2026: Friendsgiving's one host-cooks sides line became eight (one per dish), all gated on who cooks.
     // -8 later on 11/18/2026: under the default potluck those eight sides are no longer held out —
     // they show as friends' dishes at $0 (friendsBringWhen), so they price nothing the host did not pick.
+    // +1 then -1 on 11/21/2026: a dry pick now drops the bar (aDryPartyBuysNoBar), which held out
+    // Birthday's beer/wine line under its old "No alcohol" default; the owner then made "Beer + wine"
+    // Birthday's default, so under the default that line is bought again and is not held out.
+    expect(gated).not.toContain('Birthday · p_alcohol');
     expect(gated.length).toBe(37);
   });
 

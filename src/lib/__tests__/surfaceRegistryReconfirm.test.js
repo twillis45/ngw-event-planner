@@ -5,6 +5,9 @@
 // counted it. The 'vendor-reconfirm' surface mirrors the shell's predicate — named
 // vendors, days 0..3, not yet `reconfirmed72` — with one deliberate divergence pinned
 // below: informal helpers never raise (host-appropriate vendor UI rule).
+// 11/21/2026: BOOKED vendors only (workstreams.isReconfirmable, shared with the
+// shell). A vendor still at "Inquired", or with no status, has nothing to
+// reconfirm; the "qualifying" fixtures below are booked for that reason.
 
 import { raiseAll } from '../surfaceRegistry';
 
@@ -31,6 +34,11 @@ describe('who qualifies — the shell predicate, not a guess', () => {
     expect(reconfirms(ev)).toEqual([]);
   });
 
+  test('a vendor not booked yet never raises — "Inquired" or no status has nothing to reconfirm (11/21/2026)', () => {
+    const ev = feast({ vendors: [{ id: 'v1', name: 'Biscuit Love brunch', category: 'Restaurant', status: 'Inquired' }, { id: 'v2', name: 'Sable & Sound', category: 'DJ' }] });
+    expect(reconfirms(ev)).toEqual([]);
+  });
+
   test('a vendor who already answered (reconfirmed72 truthy) never raises — the ask is done', () => {
     const ev = feast({ vendors: [{ id: 'v1', name: 'Sable & Sound', category: 'DJ', reconfirmed72: true }] });
     expect(reconfirms(ev)).toEqual([]);
@@ -42,8 +50,8 @@ describe('inside the window, one raise per vendor', () => {
     const ev = feast({
       date: iso(2),
       vendors: [
-        { id: 'v1', name: 'Sable & Sound', category: 'DJ' },
-        { id: 'v2', name: 'Bay Catering', category: 'Catering' },
+        { id: 'v1', name: 'Sable & Sound', category: 'DJ', status: 'Booked' },
+        { id: 'v2', name: 'Bay Catering', category: 'Catering', status: 'Confirmed' },
       ],
     });
     const raised = reconfirms(ev);
@@ -64,8 +72,8 @@ describe('inside the window, one raise per vendor', () => {
 
   test('answering clears exactly that vendor — the other ask stays', () => {
     const vendors = [
-      { id: 'v1', name: 'Sable & Sound', category: 'DJ', reconfirmed72: true },
-      { id: 'v2', name: 'Bay Catering', category: 'Catering' },
+      { id: 'v1', name: 'Sable & Sound', category: 'DJ', status: 'Booked', reconfirmed72: true },
+      { id: 'v2', name: 'Bay Catering', category: 'Catering', status: 'Booked' },
     ];
     const raised = reconfirms(feast({ vendors }));
     expect(raised.length).toBe(1);
@@ -75,17 +83,17 @@ describe('inside the window, one raise per vendor', () => {
 
 describe('outside the window, silence', () => {
   test('10 days out → nothing; the sweep exists only inside the last three days (0..3)', () => {
-    const ev = feast({ date: iso(10), vendors: [{ id: 'v1', name: 'Sable & Sound', category: 'DJ' }] });
+    const ev = feast({ date: iso(10), vendors: [{ id: 'v1', name: 'Sable & Sound', category: 'DJ', status: 'Booked' }] });
     expect(reconfirms(ev)).toEqual([]);
   });
 
   test('a past event raises nothing — no nagging about a party that already happened', () => {
-    const ev = feast({ date: iso(-2), vendors: [{ id: 'v1', name: 'Sable & Sound', category: 'DJ' }] });
+    const ev = feast({ date: iso(-2), vendors: [{ id: 'v1', name: 'Sable & Sound', category: 'DJ', status: 'Booked' }] });
     expect(reconfirms(ev)).toEqual([]);
   });
 
   test('no date at all → nothing; a window needs a day to count from', () => {
-    const ev = feast({ date: '', vendors: [{ id: 'v1', name: 'Sable & Sound', category: 'DJ' }] });
+    const ev = feast({ date: '', vendors: [{ id: 'v1', name: 'Sable & Sound', category: 'DJ', status: 'Booked' }] });
     expect(reconfirms(ev)).toEqual([]);
   });
 });
