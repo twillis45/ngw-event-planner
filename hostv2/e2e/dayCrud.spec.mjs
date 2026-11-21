@@ -111,4 +111,22 @@ test('adding a day OPENS the per-day programme', async ({ page }) => {
 
   expect((await doors()).some((d) => /Your days/i.test(d)),
     'the day count rose but the programme door never appeared').toBe(true);
+
+  // Space keeps one read-only row for the days, and it opens Your days, the
+  // sheet that holds them (owner, 11/21/2026: "Its own sheet").
+  await openSectionByName(page, 'Space, seats');
+  await settled(page);
+  const row = page.locator('.sheet').last().locator('[data-space-days]');
+  await row.scrollIntoViewIfNeeded();
+  await expect(row).toContainText('Your days');
+  await expect(row).toContainText('2 days · open');
+  await row.click();
+  await expect(page.locator('#sheet-title')).toHaveText('Your days');
+  await expect(page.locator('.sheet').last().locator('.day-crud')).toHaveCount(0);
+});
+
+test('a single-day event has no "Your days" row in Space', async ({ page }) => {
+  await boot(page, 'my-crab-feast');
+  await expect(page.locator('.day-crud')).toBeVisible();
+  await expect(page.locator('[data-space-days]')).toHaveCount(0);
 });

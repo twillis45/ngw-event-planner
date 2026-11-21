@@ -130,6 +130,8 @@ export function resolveRoute(route) {
   if (/^cap-hero/.test(ff)) return { kind: 'space', focus: null };
   // The borrowed list (owner pick B, 11/21/2026): Space, on "Borrowed · N of M back".
   if (ff === 'space-borrowed') return { kind: 'space', focus: 'borrowed' };
+  // Your days is its own sheet (owner, 11/21/2026): the trip's meal steps.
+  if (ff === 'your-days') return { kind: 'days' };
   if (/^space/.test(ff)) return { kind: 'space', focus: null };
   // Set-the-date foundation MUST branch before the tab:'Event Details' venue
   // catch-all below, else the #1 onboarding foundation scrolls to Venue instead

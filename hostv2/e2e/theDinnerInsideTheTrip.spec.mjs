@@ -12,12 +12,12 @@ const SANTA_FE = "Mom's 80th birthday in Santa Fe New Mexico on June 14 2027, ab
 const GROUP_TRIP = 'Girls trip to Nashville for 8 people flying in June 4 2027 for 3 nights';
 const API = 'https://e2e-mock.invalid';
 
-const create = async (page, sentence, { card = true } = {}) => {
+const create = async (page, sentence, { card = true, theme = null } = {}) => {
   await page.route(API + '/**', (r) => r.fulfill({ status: 200, json: { ok: true } }));
   await page.addInitScript(() => {
     try { if (!sessionStorage.getItem('seeded')) { localStorage.clear(); sessionStorage.setItem('seeded', '1'); } } catch { /* fresh */ }
   });
-  await page.goto('?elegant=1');
+  await page.goto('?elegant=1' + (theme ? '&theme=' + theme : ''));
   await page.getByRole('button', { name: 'Start my event' }).first().click();
   await page.getByPlaceholder(/crab feast/i).first().fill(sentence);
   await page.getByRole('button', { name: /^Put my plan together$/ }).click();
@@ -45,6 +45,7 @@ const openPlanTab = async (page) => {
 };
 const planMeals = async (page) => {
   await openSectionByName(page, 'Your days');
+  await expect(page.locator('#sheet-title')).toHaveText('Your days');
   const meals = sheet(page).locator('[data-trip-meals]');
   await meals.scrollIntoViewIfNeeded();
   await meals.getByRole('radio', { name: /A group dinner each night/ }).click();
@@ -62,6 +63,13 @@ test('the board carries the dinner as its own card, and its button asks the nigh
   await expect(card).toContainText('Night not picked');
   await expect(card).toContainText('an adobe courtyard');
   await expect(page.locator('[data-dinner-go]')).toHaveText('Pick the night of the dinner');
+  // The board's Your days row opens Your days, its own sheet.
+  await page.locator('[data-trip-days]').click();
+  await expect(page.locator('#sheet-title')).toHaveText('Your days');
+  await expect(sheet(page).locator('[data-meals-count]')).toHaveText('0 of 7');
+  await expect(sheet(page).locator('[data-days-dinner]')).toContainText('Mom’s 80th dinner');
+  await page.keyboard.press('Escape');
+  await settled(page);
   await openDinner(page);
   await expect(sheet(page).getByText('Which night is the dinner?')).toBeVisible();
   await expect(sheet(page).getByRole('radio', { name: /Tue, Jun 15 — suggested/ })).toBeVisible();
@@ -76,7 +84,9 @@ test('picking the night moves the dinner in Your days and on the invite', async 
   await pickNight(page, /Wed, Jun 16/);
   await expect(page.locator('#sheet-title')).toHaveText('Mom’s 80th dinner');
   await expect(sheet(page).locator('[data-dinner-night]')).toBeAttached();
-  await openSectionByName(page, 'Your days');
+  // The dinner sheet's own link opens Your days, its own sheet.
+  await sheet(page).locator('[data-dinner-sheet] .trip-link').click();
+  await expect(page.locator('#sheet-title')).toHaveText('Your days');
   const row = sheet(page).locator('[data-itin-celebration]');
   await row.scrollIntoViewIfNeeded();
   await expect(row).toContainText('Wednesday evening');
@@ -179,6 +189,12 @@ test('nothing known is re-asked, and the kitchen is asked once', async ({ page }
   expect(ev.foodChoices.dest_lodging).toBe('A host-arranged Airbnb');
   const days = await meals.innerText();
   for (const re of [/how many guests/i, /what date/i, /where is/i]) expect(days).not.toMatch(re);
+  // Your days reads the dates and never edits them.
+  await expect(sheet(page).locator('input[type="date"], .day-crud')).toHaveCount(0);
+  // One home: Space has a summary row, not a second editor of the days.
+  await openSectionByName(page, 'Space, seats');
+  await expect(sheet(page).locator('[data-trip-meals], #days-plan')).toHaveCount(0);
+  await expect(sheet(page).locator('[data-space-days]')).toContainText('4 days · open');
 });
 
 test('a Group Trip has no single celebration: it shows only the trip meals', async ({ page }) => {
@@ -188,7 +204,26 @@ test('a Group Trip has no single celebration: it shows only the trip meals', asy
   await openSectionByName(page, 'Your days');
   const meals = sheet(page).locator('[data-trip-meals]');
   await meals.scrollIntoViewIfNeeded();
-  await expect(meals).toContainText('Meals on the trip');
-  await expect(meals).toContainText('0 of 8 planned');
+  await expect(page.locator('#sheet-title')).toHaveText('Your days');
+  await expect(sheet(page).locator('[data-meals-count]')).toHaveText('0 of 8');
+  await expect(sheet(page)).toContainText('meals planned on the trip');
   await expect(meals.locator('[data-days-dinner]')).toHaveCount(0);
 });
+
+for (const theme of ['light', 'dark']) {
+  test(`Your days lights at most one button, and its controls clear the tap floor — ${theme}`, async ({ page }) => {
+    await create(page, SANTA_FE, { theme });
+    expect(await page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBe(theme);
+    await planMeals(page);
+    const r = await sheet(page).evaluate((root) => {
+      const probe = document.createElement('div'); probe.style.backgroundImage = 'var(--cta-grad)';
+      document.body.appendChild(probe); const g = getComputedStyle(probe).backgroundImage; probe.remove();
+      const lit = [...root.querySelectorAll('button')].filter((b) => b.getClientRects().length && getComputedStyle(b).backgroundImage === g).length;
+      const small = [...root.querySelectorAll('[data-days-sheet] .meal-seg, [data-days-sheet] .optrow, [data-days-sheet] .trip-link, [data-days-sheet] .meal-cel, [data-days-sheet] .trip-card-link')]
+        .map((b) => b.getBoundingClientRect()).filter((b) => b.height && b.height < 44).length;
+      return { lit, small };
+    });
+    expect(r.lit, 'lit buttons in Your days').toBeLessThanOrEqual(1);
+    expect(r.small, 'Your days controls under 44px tall').toBe(0);
+  });
+}

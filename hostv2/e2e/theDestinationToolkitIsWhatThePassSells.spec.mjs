@@ -79,16 +79,16 @@ test.describe('no pass held: each surface the pass sells is teased with the pass
     expect(new URL(page.url()).searchParams.get('open')).toBeNull();
   });
 
-  test('the weekend plan: teased in the space sheet, no editor', async ({ page }) => {
+  test('the weekend plan: teased in Your days, no editor', async ({ page }) => {
     await bootShell(page, LOCKED);
     await openSectionByName(page, 'Your days');
-    await expect(page.locator('#sheet-title')).toHaveText('Space, seats & helpers');
+    await expect(page.locator('#sheet-title')).toHaveText('Your days');
     const lock = sheet(page).getByText(DAYS_LOCK);
     await lock.scrollIntoViewIfNeeded();
     await expect(lock).toBeVisible();
     await expect(sheet(page).getByRole('button', { name: 'Use this plan' })).toHaveCount(0);
-    // Inward planning stays open: the span controls on the same sheet still work.
-    await expect(sheet(page).getByRole('button', { name: 'Add a day to this event' })).toBeVisible();
+    // Inward planning stays open: the dates are one tap away in Date & time.
+    await expect(sheet(page).getByRole('button', { name: /Change the dates in Date & time/ })).toBeVisible();
     await sheet(page).getByRole('button', { name: DOOR, exact: true }).click();
     await expect(page.locator('#sheet-title')).toHaveText('The One-Event Pass');
   });
@@ -131,7 +131,7 @@ for (const [label, stamp, held] of [['pass held', LOCKED, true], ['stamped free 
     test('the weekend plan: the editor is there', async ({ page }) => {
       await bootShell(page, stamp, { held });
       await openSectionByName(page, 'Your days');
-      await expect(page.locator('#sheet-title')).toHaveText('Space, seats & helpers');
+      await expect(page.locator('#sheet-title')).toHaveText('Your days');
       const use = sheet(page).getByRole('button', { name: 'Use this plan' });
       await use.scrollIntoViewIfNeeded();
       await expect(use).toBeVisible();

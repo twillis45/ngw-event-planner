@@ -5532,17 +5532,6 @@ export default function HostShellV2() {
       setPlaceNoteOpen(sheet.focus);
       setPlaceNoteDraft(String(event[PLACE_NOTE_FIELD[sheet.focus]] || ''));
     }
-    // "Your days" door (2026-08-21): the span-gated Sections row lands on the
-    // programme block, not the top of the furniture sheet — same anchor idiom
-    // as the guests rows below.
-    if (sheet && sheet.kind === 'space' && sheet.focus === 'days') {
-      setTimeout(() => {
-        try {
-          const el = document.getElementById('space-days');
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } catch { /* anchor is best-effort */ }
-      }, 60);
-    }
     // Make it yours on the event hashtag (11/21/2026): Sweet 16's "custom
     // hashtag" step lands on the hashtag block, below the invite's own words.
     if (sheet && sheet.kind === 'meaning' && sheet.focus === 'hashtag') {
@@ -6201,7 +6190,7 @@ export default function HostShellV2() {
     if (kind === 'ask') { setAskQ(''); setAskResult(null); setAskLLM(null); }
     // 'days' is the span-gated "Your days" door (sectionDirectory) — a second
     // honest door onto the space sheet's programme block, not a new surface.
-    if (kind === 'days') { setSheet({ kind: 'space', focus: 'days' }); return; }
+    if (kind === 'days') { setSheet({ kind: 'days' }); return; }
     // Which door opened Messages travels with the sheet (messages_view_opened).
     setSheet(kind === 'messages' ? { kind, entry: 'section_list' } : { kind });
   };
@@ -16196,7 +16185,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -17030,182 +17019,17 @@ export default function HostShellV2() {
                 </div>
               );
             })()}
-            {sheet.kind === 'space' && (() => {
-              // ── The weekend plan (Slice A): ONE schedule, guest projection.
-              // Proposal renders HERE for the host to accept — guests only ever
-              // see host-accepted rows (event.itinerary), never a raw proposal.
-              const it = guestItinerary(event, getPlaybook);
-              if (!it.relevant) return null;
-              // MODEL D visibility rule — see the lodging sheet's note. The
-              // multi-day program is destination toolkit the pass sells. Only
-              // the HOST's editor locks: a plan already accepted stays on the
-              // guest invite (InviteV2 reads event.itinerary, ungated).
-              if (destinationLocked(event)) {
-                return (
-                  <>
-                    <div id="space-days" className="shelf-label" style={{ marginTop: 'var(--sp-3)' }}>The weekend plan <span className="of">— what guests see, day by day</span></div>
-                    <div style={{ padding: '2px 0' }}>
-                      <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>The weekend plan lives here — what happens each day, written once and shown to guests on the invite. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
-                      <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>{withPassPrice('See the One-Event Pass')}</button>
-                    </div>
-                  </>
-                );
-              }
-              const days = Math.max(1, spanNights(event) + 1);
-              const writeRows = (rows, msg) => patchEvent({ itinerary: rows }, msg);
-              const SLOT_OPTS = ['', 'morning', 'midday', 'afternoon', 'evening', 'night'];
-              return (
-                <>
-                  <div id="space-days" className="shelf-label" style={{ marginTop: 'var(--sp-3)' }}>The weekend plan <span className="of">— what guests see, day by day</span></div>
-                  {it.source !== 'host' ? (
-                    <>
-                      {it.rows.map((r, i) => r.celebration ? (
-                        <button type="button" className="line trip-itin-cel" key={i} data-itin-celebration onClick={() => setSheet({ kind: 'celebration' })}>
-                          <span>{dayLabelFor(event, r.day)} evening — <strong>{r.title}</strong>{r.note ? <span className="of"> · {r.note}</span> : null}</span>
-                          <span className="of">{celebrationNight(event).picked ? 'the dinner ›' : 'pick the night ›'}</span>
-                        </button>
-                      ) : (
-                        <div className="line" key={i} style={{ padding: '2px 0 6px' }}>
-                          <span>{dayLabelFor(event, r.day)}{r.slot ? ' ' + r.slot : ''} — <strong>{r.title}</strong>{r.note ? <span className="of"> · {r.note}</span> : null}</span>
-                        </div>
-                      ))}
-                      {it.provenance && it.provenance.note ? (
-                        <p className="v-meta" style={{ padding: '0 2px 6px' }}>{it.source === 'proposed' ? 'A suggested shape — ' : ''}{it.provenance.note}</p>
-                      ) : null}
-                      <div className="actions-row" style={{ marginBottom: 'var(--sp-2)' }}>
-                        <button className="mini" onClick={() => writeRows(it.rows, 'Weekend plan set — it’s on the invite now, and it’s yours to edit.')}>Use this plan</button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {it.rows.map((r, i) => r.celebration ? (
-                        // The dinner's day is the night pick on its own sheet
-                        // (one source); here it reads, and the row opens it.
-                        <button type="button" className="line trip-itin-cel" key={i} data-itin-celebration onClick={() => setSheet({ kind: 'celebration' })}>
-                          <span>{dayLabelFor(event, r.day)} evening — <strong>{r.title}</strong>{r.note ? <span className="of"> · {r.note}</span> : null}</span>
-                          <span className="of">the dinner ›</span>
-                        </button>
-                      ) : (
-                        <div className="line" key={i} style={{ padding: '2px 0 6px', gap: 6 }}>
-                          <span style={{ display: 'flex', gap: 6, flex: 1, minWidth: 0, alignItems: 'center' }}>
-                            <select className="field" style={{ maxWidth: 64, padding: '6px 4px' }} value={r.day} aria-label="Day"
-                              onChange={(e) => { const rows = it.rows.map((x, j) => j === i ? { ...x, day: Number(e.target.value) } : x); writeRows(rows); }}>
-                              {Array.from({ length: days }, (_, d) => <option key={d + 1} value={d + 1}>{dayLabelFor(event, d + 1).slice(0, 3)}</option>)}
-                            </select>
-                            <select className="field" style={{ maxWidth: 104, padding: '6px 4px' }} value={r.slot || ''} aria-label="Time of day"
-                              onChange={(e) => { const rows = it.rows.map((x, j) => j === i ? { ...x, slot: e.target.value || null } : x); writeRows(rows); }}>
-                              {SLOT_OPTS.map((sl) => <option key={sl} value={sl}>{sl || '—'}</option>)}
-                            </select>
-                            <input className="field" style={{ flex: 1, minWidth: 0 }} value={r.title} aria-label="What's happening"
-                              onChange={(e) => { const rows = it.rows.map((x, j) => j === i ? { ...x, title: e.target.value } : x); writeRows(rows); }} />
-                          </span>
-                          <button className="mini" aria-label="Remove this line" onClick={() => writeRows(it.rows.filter((_, j) => j !== i), 'Line removed.')}>×</button>
-                        </div>
-                      ))}
-                      <div className="actions-row" style={{ marginBottom: 'var(--sp-2)' }}>
-                        <button className="mini" onClick={() => writeRows([...it.rows, { day: 1, slot: null, title: '' }])}>Add a line</button>
-                      </div>
-                    </>
-                  )}
-                </>
-              );
-            })()}
-            {sheet.kind === 'space' && trip && !destinationLocked(event) && (() => {
-              // ── THE MEALS AROUND THE DINNER, DAY BY DAY (owner, 11/21/2026) ──
-              // Your days carries the trip's meals. A starting point fills every
-              // meal; any meal can then be changed. The kitchen is asked once,
-              // here, and saved to the one "How are guests staying?" answer.
-              // Only "out together" meals add a step to the checklist; the
-              // group meals out reach the invite (itinerary.guestFacingDays).
-              const m = trip.meals;
-              const bySlot = new Map(m.slots.map((x) => [x.key, x]));
-              const payer = mealsOutPayer(event);
-              const n = trip.night;
-              const placeA = placeWithArticle(trip.place);
-              const first = trip.days[0];
-              const last = trip.days[trip.days.length - 1];
-              const roleNote = (d) => (d.role === 'arrival' ? 'Everyone arrives · keep it easy' : d.role === 'departure' ? 'Everyone leaves · a slow goodbye' : 'Full day');
-              const mealsOf = (d) => (d.role === 'arrival' ? ['dinner'] : d.role === 'departure' ? ['breakfast'] : ['breakfast', 'lunch', 'dinner']);
-              const cm = trip.tripMoney.celebration;
-              return (
-                <div data-trip-meals>
-                  <div className="shelf-label trip-shelf" style={{ marginTop: 'var(--sp-3)' }}>
-                    <span>{trip.cel ? 'Meals around the dinner' : 'Meals on the trip'}</span>
-                    <span className="of" data-meals-count>{m.planned} of {m.total} planned</span>
-                  </div>
-                  {trip.cel && (
-                    <button type="button" className="trip-card trip-card-link" data-days-dinner onClick={() => setSheet({ kind: 'celebration' })}>
-                      <span className="trip-card-h">
-                        <strong className="trip-card-t">{trip.title}</strong>
-                        {cm && cm.low != null ? <span className="trip-card-n">{fmt(cm.low)}–{fmt(cm.high)} ›</span> : <span className="trip-card-n">›</span>}
-                      </span>
-                      <span className="trip-card-sub">{[n.picked ? n.label : 'Night not picked', 'evening', placeA].filter(Boolean).join(' · ')}</span>
-                    </button>
-                  )}
-                  <div className="shelf-label">How do the other meals work?</div>
-                  <GuideLine>{`${m.total} meals ${trip.cel ? 'around the dinner' : 'on the trip'}, ${first.label} to ${last.label}. Pick a starting point, then change any meal.`}</GuideLine>
-                  <OptionList ariaLabel="How do the other meals work?" style={{ marginTop: 'var(--sp-2)' }}
-                    options={MEAL_PLANS.map((p) => ({ value: p.id, label: p.label, sub: p.id === 'own' && !trip.cel ? 'Nobody plans a group meal' : p.sub }))}
-                    value={m.plan} onPick={(id) => setTripMeals({ plan: id }, 'Meals set — change any one below.')} />
-                  {m.kitchen == null && (
-                    <div className="trip-card" data-kitchen-ask>
-                      <strong className="trip-card-t">Is there a kitchen?</strong>
-                      <GuideLine>Where everyone sleeps decides whether the food plan is a grocery run or a set of reservations.</GuideLine>
-                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                        {KITCHEN_ANSWERS.map((a) => (
-                          <button key={a.id} type="button" className="mini" onClick={() => patchEvent(
-                            settleChoicePatch(event, 'dest_lodging', a.pick, 'host'),
-                            a.kitchen ? 'A kitchen — house meals are on the table.' : 'No kitchen — the meals are out or on your own.')}>{a.label}</button>
-                        ))}
-                      </div>
-                      <p className="v-meta">Same answer as “How are guests staying?” — one question, saved once.</p>
-                    </div>
-                  )}
-                  {m.plan && (
-                    <div className="meal-days" data-meal-days>
-                      <div className="shelf-label trip-shelf"><span>Day by day</span><span className="of">House = at the rental · Own = each on their own</span></div>
-                      {trip.days.map((d) => (
-                        <div key={d.iso} className="meal-day" data-meal-day={d.iso}>
-                          <div className="meal-day-h"><strong>{d.label}</strong><span className="of">{roleNote(d)}</span></div>
-                          {mealsOf(d).map((meal) => {
-                            const key = `${d.iso}:${meal}`;
-                            const slot = bySlot.get(key);
-                            if (!slot) {
-                              return (
-                                <button key={key} type="button" className="meal-cel" data-meal-celebration onClick={() => setSheet({ kind: 'celebration' })}>
-                                  <span><span className="of">{MEAL_LABEL[meal]}</span><strong>{trip.title}</strong></span>
-                                  <span className="of">{n.picked ? (placeA || '') : 'suggested night'}</span>
-                                </button>
-                              );
-                            }
-                            return (
-                              <div key={key} className="meal-row" role="radiogroup" aria-label={`${d.label} ${MEAL_LABEL[meal]}`}>
-                                <span className="meal-row-l">{MEAL_LABEL[meal]}</span>
-                                {MEAL_MODES.map((mo) => (
-                                  <button key={mo.id} type="button" className="meal-seg" role="radio" aria-checked={slot.mode === mo.id}
-                                    onClick={() => setTripMeals({ meals: { ...(tripMealsNow.meals || {}), [key]: mo.id } })}>{mo.label}</button>
-                                ))}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {m.plan && m.counts.out > 0 && (
-                    <>
-                      <div className="shelf-label">Who pays for the meals out</div>
-                      <OptionList ariaLabel="Who pays for the meals out"
-                        options={MEAL_PAYERS.map((p) => ({ value: p.id, label: p.label, sub: p.sub }))}
-                        value={payer} onPick={(id) => setTripMeals({ payer: id }, 'Who pays for the meals out — saved.')} />
-                      <button type="button" className="spread-link trip-link" onClick={() => setSheet({ kind: 'costshare' })}>
-                        Who pays for what: {costSharingSummary(event).pooled ? 'a shared pool' : 'everyone covers their own'} ›
-                      </button>
-                    </>
-                  )}
-                </div>
-              );
-            })()}
+            {sheet.kind === 'space' && spanNights(event) >= 1 && (
+              // "Your days" is its own sheet (owner, 11/21/2026: "Its own
+              // sheet"). Space keeps one read-only row that opens it — never a
+              // second editor of the days.
+              <div className="fstat-list" style={{ marginTop: 'var(--sp-3)' }}>
+                <button type="button" className="fstat" data-space-days onClick={() => setSheet({ kind: 'days' })}>
+                  <span className="fstat-l">Your days</span>
+                  <span className="fstat-v">{spanNights(event) + 1} days · open<span className="fstat-chev" aria-hidden="true">›</span></span>
+                </button>
+              </div>
+            )}
             {sheet.kind === 'space' && (() => {
               // ONE Place Core (queue: untouched list) — venue/location states;
               // 'na' is suppression, never failure.
@@ -17596,6 +17420,210 @@ export default function HostShellV2() {
             {sheet.kind === 'split' && (
               <CostSplitSheet event={event} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} />
             )}
+            {sheet.kind === 'days' && (() => {
+              // ── YOUR DAYS, ITS OWN SHEET (owner, 11/21/2026: "Its own sheet") ──
+              // The single home of the day-by-day plan: the days, the dinner
+              // row, the meals around it, the kitchen question, who pays for
+              // meals out, and the plan guests see. It READS the date range and
+              // never edits it — the dates are set in Date & time only.
+              const nDays = Math.max(1, spanNights(event) + 1);
+              const fmtDay = (i) => { try { const d = new Date(String(event.date).slice(0, 10) + 'T12:00:00'); d.setDate(d.getDate() + i - 1); return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); } catch { return ''; } };
+              const meals = trip && !destinationLocked(event) ? trip.meals : null;
+              return (
+                <div data-days-sheet>
+                  <Panel on={panels}>
+                    <div className="trip-hero">
+                      <Eyebrow>{nDays} days{vf.city ? ` in ${vf.city}` : ''}</Eyebrow>
+                      {meals ? (
+                        <>
+                          <BigValue><span data-meals-count>{meals.planned} of {meals.total}</span></BigValue>
+                          <GuideLine>{trip.cel ? 'meals planned around the dinner · the dinner is its own plan' : 'meals planned on the trip'}</GuideLine>
+                        </>
+                      ) : (
+                        <BigValue>{`${nDays} days`}</BigValue>
+                      )}
+                      <Grounding gap={ASK_RHYTHM.valueToWhy}>{fmtDay(1)} to {fmtDay(nDays)}</Grounding>
+                      <button type="button" className="spread-link trip-link" data-days-dates onClick={() => setSheet({ kind: 'date' })}>Change the dates in Date &amp; time ›</button>
+                    </div>
+            {trip && !destinationLocked(event) && (() => {
+              // ── THE MEALS AROUND THE DINNER, DAY BY DAY (owner, 11/21/2026) ──
+              // Your days carries the trip's meals. A starting point fills every
+              // meal; any meal can then be changed. The kitchen is asked once,
+              // here, and saved to the one "How are guests staying?" answer.
+              // Only "out together" meals add a step to the checklist; the
+              // group meals out reach the invite (itinerary.guestFacingDays).
+              const m = trip.meals;
+              const bySlot = new Map(m.slots.map((x) => [x.key, x]));
+              const payer = mealsOutPayer(event);
+              const n = trip.night;
+              const placeA = placeWithArticle(trip.place);
+              const first = trip.days[0];
+              const last = trip.days[trip.days.length - 1];
+              const roleNote = (d) => (d.role === 'arrival' ? 'Everyone arrives · keep it easy' : d.role === 'departure' ? 'Everyone leaves · a slow goodbye' : 'Full day');
+              const mealsOf = (d) => (d.role === 'arrival' ? ['dinner'] : d.role === 'departure' ? ['breakfast'] : ['breakfast', 'lunch', 'dinner']);
+              const cm = trip.tripMoney.celebration;
+              return (
+                <div data-trip-meals>
+
+                  {trip.cel && (
+                    <button type="button" className="trip-card trip-card-link" data-days-dinner onClick={() => setSheet({ kind: 'celebration' })}>
+                      <span className="trip-card-h">
+                        <strong className="trip-card-t">{trip.title}</strong>
+                        {cm && cm.low != null ? <span className="trip-card-n">{fmt(cm.low)}–{fmt(cm.high)} ›</span> : <span className="trip-card-n">›</span>}
+                      </span>
+                      <span className="trip-card-sub">{[n.picked ? n.label : 'Night not picked', 'evening', placeA].filter(Boolean).join(' · ')}</span>
+                    </button>
+                  )}
+                  <div className="shelf-label">How do the other meals work?</div>
+                  <GuideLine>{`${m.total} meals ${trip.cel ? 'around the dinner' : 'on the trip'}, ${first.label} to ${last.label}. Pick a starting point, then change any meal.`}</GuideLine>
+                  <OptionList ariaLabel="How do the other meals work?" style={{ marginTop: 'var(--sp-2)' }}
+                    options={MEAL_PLANS.map((p) => ({ value: p.id, label: p.label, sub: p.id === 'own' && !trip.cel ? 'Nobody plans a group meal' : p.sub }))}
+                    value={m.plan} onPick={(id) => setTripMeals({ plan: id }, 'Meals set — change any one below.')} />
+                  {m.kitchen == null && (
+                    <div className="trip-card" data-kitchen-ask>
+                      <strong className="trip-card-t">Is there a kitchen?</strong>
+                      <GuideLine>Where everyone sleeps decides whether the food plan is a grocery run or a set of reservations.</GuideLine>
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'wrap' }}>
+                        {KITCHEN_ANSWERS.map((a) => (
+                          <button key={a.id} type="button" className="mini" onClick={() => patchEvent(
+                            settleChoicePatch(event, 'dest_lodging', a.pick, 'host'),
+                            a.kitchen ? 'A kitchen — house meals are on the table.' : 'No kitchen — the meals are out or on your own.')}>{a.label}</button>
+                        ))}
+                      </div>
+                      <p className="v-meta">Same answer as “How are guests staying?” — one question, saved once.</p>
+                    </div>
+                  )}
+                  {m.plan && (
+                    <div className="meal-days" data-meal-days>
+                      <div className="shelf-label trip-shelf"><span>Day by day</span><span className="of">House = at the rental · Own = each on their own</span></div>
+                      {trip.days.map((d) => (
+                        <div key={d.iso} className="meal-day" data-meal-day={d.iso}>
+                          <div className="meal-day-h"><strong>{d.label}</strong><span className="of">{roleNote(d)}</span></div>
+                          {mealsOf(d).map((meal) => {
+                            const key = `${d.iso}:${meal}`;
+                            const slot = bySlot.get(key);
+                            if (!slot) {
+                              return (
+                                <button key={key} type="button" className="meal-cel" data-meal-celebration onClick={() => setSheet({ kind: 'celebration' })}>
+                                  <span><span className="of">{MEAL_LABEL[meal]}</span><strong>{trip.title}</strong></span>
+                                  <span className="of">{n.picked ? (placeA || '') : 'suggested night'}</span>
+                                </button>
+                              );
+                            }
+                            return (
+                              <div key={key} className="meal-row" role="radiogroup" aria-label={`${d.label} ${MEAL_LABEL[meal]}`}>
+                                <span className="meal-row-l">{MEAL_LABEL[meal]}</span>
+                                {MEAL_MODES.map((mo) => (
+                                  <button key={mo.id} type="button" className="meal-seg" role="radio" aria-checked={slot.mode === mo.id}
+                                    onClick={() => setTripMeals({ meals: { ...(tripMealsNow.meals || {}), [key]: mo.id } })}>{mo.label}</button>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {m.plan && m.counts.out > 0 && (
+                    <>
+                      <div className="shelf-label">Who pays for the meals out</div>
+                      <OptionList ariaLabel="Who pays for the meals out"
+                        options={MEAL_PAYERS.map((p) => ({ value: p.id, label: p.label, sub: p.sub }))}
+                        value={payer} onPick={(id) => setTripMeals({ payer: id }, 'Who pays for the meals out — saved.')} />
+                      <button type="button" className="spread-link trip-link" onClick={() => setSheet({ kind: 'costshare' })}>
+                        Who pays for what: {costSharingSummary(event).pooled ? 'a shared pool' : 'everyone covers their own'} ›
+                      </button>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+                  </Panel>
+                  <Panel on={panels}>
+                    {(() => {
+              // ── The weekend plan (Slice A): ONE schedule, guest projection.
+              // Proposal renders HERE for the host to accept — guests only ever
+              // see host-accepted rows (event.itinerary), never a raw proposal.
+              const it = guestItinerary(event, getPlaybook);
+              if (!it.relevant) return null;
+              // MODEL D visibility rule — see the lodging sheet's note. The
+              // multi-day program is destination toolkit the pass sells. Only
+              // the HOST's editor locks: a plan already accepted stays on the
+              // guest invite (InviteV2 reads event.itinerary, ungated).
+              if (destinationLocked(event)) {
+                return (
+                  <>
+                    <div id="days-plan" className="shelf-label" style={{ marginTop: 'var(--sp-3)' }}>The weekend plan <span className="of">— what guests see, day by day</span></div>
+                    <div style={{ padding: '2px 0' }}>
+                      <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>The weekend plan lives here — what happens each day, written once and shown to guests on the invite. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
+                      <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>{withPassPrice('See the One-Event Pass')}</button>
+                    </div>
+                  </>
+                );
+              }
+              const days = Math.max(1, spanNights(event) + 1);
+              const writeRows = (rows, msg) => patchEvent({ itinerary: rows }, msg);
+              const SLOT_OPTS = ['', 'morning', 'midday', 'afternoon', 'evening', 'night'];
+              return (
+                <>
+                  <div id="days-plan" className="shelf-label" style={{ marginTop: 'var(--sp-3)' }}>The weekend plan <span className="of">— what guests see, day by day</span></div>
+                  {it.source !== 'host' ? (
+                    <>
+                      {it.rows.map((r, i) => r.celebration ? (
+                        <button type="button" className="line trip-itin-cel" key={i} data-itin-celebration onClick={() => setSheet({ kind: 'celebration' })}>
+                          <span>{dayLabelFor(event, r.day)} evening — <strong>{r.title}</strong>{r.note ? <span className="of"> · {r.note}</span> : null}</span>
+                          <span className="of">{celebrationNight(event).picked ? 'the dinner ›' : 'pick the night ›'}</span>
+                        </button>
+                      ) : (
+                        <div className="line" key={i} style={{ padding: '2px 0 6px' }}>
+                          <span>{dayLabelFor(event, r.day)}{r.slot ? ' ' + r.slot : ''} — <strong>{r.title}</strong>{r.note ? <span className="of"> · {r.note}</span> : null}</span>
+                        </div>
+                      ))}
+                      {it.provenance && it.provenance.note ? (
+                        <p className="v-meta" style={{ padding: '0 2px 6px' }}>{it.source === 'proposed' ? 'A suggested shape — ' : ''}{it.provenance.note}</p>
+                      ) : null}
+                      <div className="actions-row" style={{ marginBottom: 'var(--sp-2)' }}>
+                        <button className="mini" onClick={() => writeRows(it.rows, 'Weekend plan set — it’s on the invite now, and it’s yours to edit.')}>Use this plan</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {it.rows.map((r, i) => r.celebration ? (
+                        // The dinner's day is the night pick on its own sheet
+                        // (one source); here it reads, and the row opens it.
+                        <button type="button" className="line trip-itin-cel" key={i} data-itin-celebration onClick={() => setSheet({ kind: 'celebration' })}>
+                          <span>{dayLabelFor(event, r.day)} evening — <strong>{r.title}</strong>{r.note ? <span className="of"> · {r.note}</span> : null}</span>
+                          <span className="of">the dinner ›</span>
+                        </button>
+                      ) : (
+                        <div className="line" key={i} style={{ padding: '2px 0 6px', gap: 6 }}>
+                          <span style={{ display: 'flex', gap: 6, flex: 1, minWidth: 0, alignItems: 'center' }}>
+                            <select className="field" style={{ maxWidth: 64, padding: '6px 4px' }} value={r.day} aria-label="Day"
+                              onChange={(e) => { const rows = it.rows.map((x, j) => j === i ? { ...x, day: Number(e.target.value) } : x); writeRows(rows); }}>
+                              {Array.from({ length: days }, (_, d) => <option key={d + 1} value={d + 1}>{dayLabelFor(event, d + 1).slice(0, 3)}</option>)}
+                            </select>
+                            <select className="field" style={{ maxWidth: 104, padding: '6px 4px' }} value={r.slot || ''} aria-label="Time of day"
+                              onChange={(e) => { const rows = it.rows.map((x, j) => j === i ? { ...x, slot: e.target.value || null } : x); writeRows(rows); }}>
+                              {SLOT_OPTS.map((sl) => <option key={sl} value={sl}>{sl || '—'}</option>)}
+                            </select>
+                            <input className="field" style={{ flex: 1, minWidth: 0 }} value={r.title} aria-label="What's happening"
+                              onChange={(e) => { const rows = it.rows.map((x, j) => j === i ? { ...x, title: e.target.value } : x); writeRows(rows); }} />
+                          </span>
+                          <button className="mini" aria-label="Remove this line" onClick={() => writeRows(it.rows.filter((_, j) => j !== i), 'Line removed.')}>×</button>
+                        </div>
+                      ))}
+                      <div className="actions-row" style={{ marginBottom: 'var(--sp-2)' }}>
+                        <button className="mini" onClick={() => writeRows([...it.rows, { day: 1, slot: null, title: '' }])}>Add a line</button>
+                      </div>
+                    </>
+                  )}
+                </>
+              );
+            })()}
+                  </Panel>
+                </div>
+              );
+            })()}
             {sheet.kind === 'celebration' && (() => {
               // ── THE DINNER'S OWN SHEET (owner decision 11/21/2026, option B) ──
               // It ONLY LINKS OUT. Food, drinks, the cake, the place and the

@@ -215,3 +215,13 @@ describe('only meals out together add a step, labeled with their day', () => {
 test('the day everyone leaves is not a dinner night', () => {
   expect(celebrationNight(SF({ celebration: { night: '2027-06-17' } })).picked).toBe(false);
 });
+
+describe('Your days is its own sheet, and the meal steps open it', () => {
+  const { checklistRouteFor } = require('../taskRoute');
+  const { resolveRoute } = require('../routeResolver');
+  test('a "Reserve a table for the group dinner" step routes to Your days', () => {
+    const hit = checklistRouteFor('Wed, Jun 16 · Reserve a table for the group dinner', { category: 'planning' }, SF());
+    expect(hit && hit.route).toEqual({ focusField: 'your-days' });
+    expect(resolveRoute(hit.route)).toEqual({ kind: 'days' });
+  });
+});

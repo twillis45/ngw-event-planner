@@ -244,6 +244,10 @@ export function aroundMeals(event, { celebration = false } = {}) {
   return { plan, kitchen, slots, total: slots.length, planned: slots.filter((s) => s.mode).length, counts };
 }
 
+// The checklist step a meal out together adds (playbookChecklist). It opens
+// Your days, where the meal lives (taskRoute).
+export const TRIP_MEAL_STEP = /\breserve a table for the group (?:breakfast|lunch|dinner)\b/i;
+
 /** Itinerary rows for the planned shared meals (out together, at the house). */
 export function mealItineraryRows(event, { celebration = false, modes = ['out', 'house'] } = {}) {
   return aroundMeals(event, { celebration }).slots

@@ -14,6 +14,7 @@ import { GIFT_LOG_ROW } from './giftLog';
 import { BORROWED_ROW } from './borrowedList';
 import { ROOMS_ROW } from './roomPlan';
 import { SPONSOR_ASK_ROW, SPONSOR_LIST_ROW } from './sponsors';
+import { TRIP_MEAL_STEP } from './tripMeals';
 
 // The first vendor row still needing the host — the row-level rule the
 // Vendors deep-link doctrine requires (not the sheet top).
@@ -117,6 +118,9 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // the guest list.
   if (SPONSOR_ASK_ROW.test(t)) return { label: 'Draft the sponsor ask', route: { focusField: 'draft-sponsor-ask' } };
   if (SPONSOR_LIST_ROW.test(t)) return { label: 'Open your sponsors', route: { focusField: 'budget-sponsors' } };
+  // A MEAL OUT TOGETHER (owner, 11/21/2026): its "Reserve a table" step opens
+  // Your days, the one sheet that holds the trip's meals.
+  if (TRIP_MEAL_STEP.test(t)) return { label: 'Open Your days', route: { focusField: 'your-days' } };
   const wk = String((meta && meta.week) || '').toLowerCase();
   const dayOf = (meta && meta.category) === 'event-day' || /day of\b|day-of/.test(wk);
   // THE ROW'S OWN CATEGORY OUTRANKS A DAY-OF WORD (11/20/2026). The engine
