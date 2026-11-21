@@ -1,5 +1,13 @@
 # Where We Are -- live status board
 
+## November 21, 2026 (overnight) — one look, measured on every screen
+
+**The menu stops asking a question it already has the answer to.** The menu card now names the next open question ("How is the turkey cooked?") and moves on when it is answered. "Nobody has allergies" counts as an answer.
+
+**The iPad gets its own layout.** The board's summary sits beside the one ask, the progress bar runs across the top, and on any touch screen the app fills the screen with square corners. The sheets' running total is docked at the bottom, so it never covers a button.
+
+**The light theme was redone on the owner's pick.** The canvas is warm instead of blue-gray, and every section sits on a white panel, so sections no longer blend together. "Not saved yet" is one row, the same size in both themes. Every text color was measured against the new background before shipping, and none falls below the contrast floor.
+
 ## November 20, 2026 (evening) — the screens agree with each other, and the numbers with the holiday
 
 **The owner noticed sections that were finished while the board kept asking about them.** A code trace found six places where the section, the board's one ask and the section's own heading each decided "done" for themselves. The venue question was asked with no answer to tap. A deposit nobody could ever mark paid. A step the checklist called handled that the board called overdue. A budget the money screen priced at local prices and the board at national ones. A place picked to stay, shown in green, that was never booked. Each now reads one rule. The owner ruled that a stay counts only once it is booked, by the host or, when guests book their own, by every guest on the list.
