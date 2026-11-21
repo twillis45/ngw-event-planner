@@ -162,8 +162,13 @@ test('the home surface with the food decision UNSETTLED clears it too', async ({
     // control — it was measuring a surface the control was not on, which is the
     // exact failure this test exists to end. Hence the venue, and hence the
     // premise assertion below.
+    //
+    // Allergies noted (11/21/2026), as in spreadLinkTapFloor: unnoted, the hero
+    // is the allergy step ("Note dietary needs on the food plan"), answered at the
+    // allergy counts, which carries no spread link — the food decision never
+    // reaches the hero and the premise below fails for the same reason as above.
   }, { ...EV, id: 'E2E_unsettled', name: 'Unsettled', venue: 'The Lodge',
-       isDestination: false, endDate: undefined });
+       isDestination: false, endDate: undefined, dietaryNoted: true });
   await page.setViewportSize({ width: 393, height: 852 });
   await page.goto('./', { waitUntil: 'domcontentloaded' });
   await settled(page);
