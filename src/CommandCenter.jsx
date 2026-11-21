@@ -1836,6 +1836,11 @@ export function _topActionId(cmd) {
     const decRec = cmd.decisionId || r.decisionId || cmd.decision || r.foodFocus || null;
     if (decRec != null) return 'decision:' + String(decRec);
   }
+  // ONE ALLERGY STEP (owner ruling 2, 11/21/2026): a cue that declares the
+  // decision it asks (the food area's "Note dietary needs on the food plan" is
+  // the allergy gate's debt) keys that record whatever tier adopts it — the
+  // readiness tier used to slug its title, so a set-aside detached from the gate.
+  if (cmd.decision != null) return 'decision:' + String(cmd.decision);
   // WAVE-8 (2026-07-15): ONE canonical id for a vendor debt, whoever produces it —
   // mirroring the decision unification above. The registry raises a vendor debt as
   // 'surface:<vendor-surface>:<vendorId>' (vendor-payments / vendor-coi); the ladder
@@ -2358,9 +2363,15 @@ export function eventPlan(event, ctx = null) {
           claimed = remaining;
         }
       }
+      // ONE ALLERGY STEP (owner ruling 2, 11/21/2026): a cue that declares a
+      // decision record is that debt, under its canonical id. When the gate (or
+      // the registry) already raises it, it is already on the list — once.
+      const phaseId = i.decision ? 'decision:' + i.decision : 'phase:' + i.id;
+      if (i.decision && (seen.has(phaseId) || raisedDecisionKeys.has(i.decision))) continue;
+      if (i.decision) seen.add(phaseId);
       seen.add(domain); seenTitles.add(titleKey(cueLabel));
       nextActions.push({
-        id: 'phase:' + i.id,
+        id: phaseId,
         domain,
         title: cueLabel,
         // The phase engine's cue is the whole sentence; it has no separate consequence
@@ -3805,6 +3816,7 @@ export function _selectEventNextActionInner(event, prices = null) {
         // The records its "N open" counts (the food cue), as on the phase row.
         ...(Array.isArray(_pp.nextCue.records) ? { records: _pp.nextCue.records } : null),
         ...(_pp.nextCue.ask ? { ask: _pp.nextCue.ask } : null),
+        ...(_pp.nextCue.decision ? { decision: _pp.nextCue.decision } : null),
         contextLine: daysSub,
       };
     }

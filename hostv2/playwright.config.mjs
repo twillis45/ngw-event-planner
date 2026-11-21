@@ -30,6 +30,8 @@ const SELF_PINNED = [
   '**/heroVoid.spec.mjs',
   // Pins 1024x1366 in every test (menu hero, 11/21/2026): the owner's iPad.
   '**/theMenuHeroRollsToTheNextQuestion.spec.mjs',
+  // Pins 1024x1366 in both tests (one allergy step, owner ruling 2, 11/21/2026).
+  '**/oneAllergyStep.spec.mjs',
   // Each host pins its own viewport from its profile (hero-clears sweep, 11/20/2026).
   '**/fiftyHostsHeroClears.spec.mjs',
   // Pins 320x640 in its one test (run 2, R2-12).
