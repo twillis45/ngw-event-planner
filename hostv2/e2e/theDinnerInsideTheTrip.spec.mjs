@@ -210,6 +210,38 @@ test('a Group Trip has no single celebration: it shows only the trip meals', asy
   await expect(meals.locator('[data-days-dinner]')).toHaveCount(0);
 });
 
+// Moved from dayCrud.spec.mjs when the dates branch removed Space's day
+// controls (and that spec with them): Space keeps one read-only row for the
+// days, it opens Your days, and a single-day event has none.
+test('Space\'s "Your days" row opens the sheet, with no day controls; a single-day event has no row', async ({ page }) => {
+  await create(page, SANTA_FE);
+  await openSectionByName(page, 'Space, seats');
+  await settled(page);
+  const row = sheet(page).locator('[data-space-days]');
+  await row.scrollIntoViewIfNeeded();
+  await expect(row).toContainText('Your days');
+  await expect(row).toContainText('4 days · open');
+  await expect(sheet(page).locator('.day-crud')).toHaveCount(0);
+  await row.click();
+  await expect(page.locator('#sheet-title')).toHaveText('Your days');
+  await expect(sheet(page).locator('.day-crud')).toHaveCount(0);
+});
+
+test('a single-day event has no "Your days" row in Space', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1');
+    localStorage.setItem('ngw-v2-welcomed', '1');
+    localStorage.setItem('ngw-hostv2-last-event', 'my-crab-feast');
+  });
+  await page.goto('?elegant=1');
+  await settled(page);
+  await openSectionByName(page, 'Space, seats');
+  await settled(page);
+  await expect(sheet(page).locator('[data-space-dates]')).toBeVisible();
+  await expect(page.locator('[data-space-days]')).toHaveCount(0);
+});
+
 for (const theme of ['light', 'dark']) {
   test(`Your days lights at most one button, and its controls clear the tap floor — ${theme}`, async ({ page }) => {
     await create(page, SANTA_FE, { theme });
