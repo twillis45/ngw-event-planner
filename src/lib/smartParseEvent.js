@@ -44,6 +44,14 @@ const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 
 // Each season's canonical anchor month — a reasonable single month to suggest
 // Saturdays from (meteorological seasons, not exact solstice dates).
 const SEASON_MONTH = { winter: 0, spring: 3, summer: 6, fall: 9, autumn: 9 };
+// Weekday words for a "Thursday to Sunday" span, and their day index.
+const _WD_SPAN = '(sunday|saturday|thursday|wednesday|tuesday|monday|friday|sun|sat|thurs|thur|thu|wed|tues|tue|mon|fri)\\.?';
+const _dowOf = (w) => DAYS.findIndex((d) => d.startsWith(String(w).toLowerCase().replace(/\.$/, '').slice(0, 3)));
+// A month-day said as a weekend: "July 4th weekend", "Dec 5 weekend".
+const SAID_DAY_WEEKEND = /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?\s+weekend\b/i;
+// A trip that is not a friends' trip: business, a field trip, one day out.
+const TRIP_WORD = /\b(?:trip|getaway|vacation)\b/i;
+const NOT_A_GROUP_TRIP = /\b(?:business|work|field|school|class|day|shopping|grocery|supply)\s+trip\b/i;
 
 // ─── WORDS THAT ARE NEVER A PLACE ───────────────────────────────────────────
 // Months, weekdays, and the handful of determiners that sit where a town name
@@ -1520,9 +1528,26 @@ export function parseSmartEventText(text, opts = {}) {
       const d = parseInt(dayForm[1], 10);
       return d > 1 ? d - 1 : 0;     // 5 days is 4 nights
     }
+    // "THURSDAY TO SUNDAY" IS THREE NIGHTS EVEN WITHOUT A START (11/21/2026,
+    // aMultiDayTripIsHeardAtCreation). The weekday span block above only reads
+    // an END off a start some stricter matcher earned, so with no start the
+    // length was dropped too. The length is not ambiguous; which Thursday is,
+    // and that stays unresolved — `datesToConfirm` asks for it.
+    if (!date) {
+      const ws = t.match(new RegExp(`\\b${_WD_SPAN}\\s*(?:to|through|thru|until|-|–|—)\\s*${_WD_SPAN}\\b`, 'i'));
+      if (ws) {
+        const add = (_dowOf(ws[2]) - _dowOf(ws[1]) + 7) % 7;
+        if (_dowOf(ws[1]) >= 0 && _dowOf(ws[2]) >= 0 && add > 0) return add;
+      }
+    }
     // A plain "weekend" is two nights by near-universal use. "Long weekend" is
     // ambiguous and is left alone rather than guessed.
     if (/\blong\s+weekend\b/i.test(t)) return null;
+    // "JULY 4TH WEEKEND" IS NOT JULY 4 PLUS TWO NIGHTS (11/21/2026). The day she
+    // named sits somewhere inside the weekend — July 4, 2027 is a Sunday — so
+    // counting two nights forward from it invents a span. The day stands as the
+    // start she said; which days the weekend covers is asked.
+    if (date && !endDate && SAID_DAY_WEEKEND.test(t)) return null;
     // "THIS/NEXT WEEKEND" NAMES A DATE (11/15/2026, nextWeekendIsWhenNotHowLong
     // .test.js): "Friendsgiving next weekend Saturday" saved two nights and the
     // $39 pass for a one-evening dinner. With no trip or stay wording it is when,
@@ -1531,6 +1556,36 @@ export function parseSmartEventText(text, opts = {}) {
     if (/\bweekend\b/i.test(t)) return 2;
     return null;
   })();
+
+  // ── A MULTI-DAY TRIP IS A TRIP (owner report 11/21/2026, "Multi day trip
+  // not being picked up at creation") ──────────────────────────────────────
+  // "trip to Nashville Dec 3 – Dec 6 for 8" and "12/3-12/6 Nashville trip"
+  // heard both dates and no occasion, so "Put my plan together" never appeared
+  // and the host was sent to an occasion list that does not lead with Group
+  // Trip. The taxonomy refuses a bare "trip" on purpose (a business trip, a
+  // field trip, a day trip are not this), and that refusal stands for a trip
+  // with nothing else said. A trip the host says spans days — two dates, a
+  // night count, a weekend — is a group trip, and only when nothing more
+  // specific named the occasion ("bachelorette weekend", "NYE trip" keep
+  // theirs).
+  const _tripSaid = TRIP_WORD.test(t) && !NOT_A_GROUP_TRIP.test(t);
+  const _tripType = !type && _tripSaid && (endDate || nights > 0) ? 'Group Trip' : null;
+  const typeOut = type || _tripType;
+  const typeBasisOut = _tripType ? 'named' : typeBasis;
+
+  // ── THE DAYS ARE OWED, NOT GUESSED ──────────────────────────────────────
+  // True when the sentence clearly means more than one day and the last day
+  // was not said: a night count with no end, "a long weekend", a trip type
+  // with only a start. The creation flow writes it as `datesToConfirm` and the
+  // reveal and Date & time ask for the range ("Which dates?") instead of
+  // treating the event as one day. Never a span; never a date.
+  const datesToConfirm = !endDate && !!(
+    nights > 0
+    || /\blong\s+weekend\b/i.test(t)
+    || (date && SAID_DAY_WEEKEND.test(t))
+    || _tripSaid
+    || /^(?:Group Trip|Team Retreat|Wellness Retreat)$/.test(String(typeOut || ''))
+  );
 
   // ── WHAT KIND OF ROOF, NOT JUST THAT THERE IS ONE (2026-09-25) ────────────
   //
@@ -1924,7 +1979,7 @@ export function parseSmartEventText(text, opts = {}) {
 
   return {
     hostName,
-    type, typeBasis, typeHeard, secondaryType, theme, themeBasis, guests, guestPairs, budget, date, impossibleDate, endDate, monthYear, milestone, nights, lodgingKind, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
+    type: typeOut, typeBasis: typeBasisOut, typeHeard, secondaryType, theme, themeBasis, guests, guestPairs, budget, date, impossibleDate, endDate, datesToConfirm, monthYear, milestone, nights, lodgingKind, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
     healthNoted,
     startTime: startTimeParsed ? startTimeParsed.startTime : null,
     startTimeBasis: startTimeParsed ? startTimeParsed.startTimeBasis : null,

@@ -82,6 +82,11 @@ export const PARSER_FIELDS = [
   // `hostName` added 2026-11-05: "<Name> is hosting …" names the host (issue #100, D-2).
   'hostName',
   'type', 'typeBasis', 'typeHeard', 'secondaryType', 'theme', 'themeBasis', 'guests', 'guestPairs', 'budget', 'date', 'impossibleDate', 'endDate', 'monthYear', 'healthNoted',
+  // `datesToConfirm` added 2026-11-21 (owner report "Multi day trip not being
+  // picked up at creation"): the sentence means more than one day and did not
+  // say which ("a long weekend", "July 4th weekend", a trip with only a
+  // start). A question owed, never a date; see aMultiDayTripIsHeardAtCreation.
+  'datesToConfirm',
   // `nights` and `lodgingKind` added 2026-09-25, from a host-reported parse:
   // "50th birthday nov 2027 8 couples 5 nights Disneyland 2 excursions airbnb
   // accomodations". Measured, every duration phrase was discarded unless the
@@ -192,7 +197,7 @@ export const PARSE_CORPUS = [
   { text: "Bachelorette weekend trip to Nashville for 10 of us, $200 a person", from: 'regression sentence, host report 2026-07-27 (per-person money read as a total)', expect: { type: 'Bachelorette Party', guests: 10, budget: 2000, isDestination: true, destinationBasis: 'travel-language', venueCity: 'Nashville', venueState: null } },
   { text: "Destination 80th birthday celebration in Santa Fe, New Mexico, 10 of us", from: 'regression sentence, DESTINATION-1 + live drive 2026-08-04', expect: { type: 'Birthday', milestone: '80th', guests: 10, isDestination: true, destinationBasis: 'travel-language', venueCity: 'Santa Fe', venueState: 'NM' } },
   { text: "Family reunion at Deep Creek Lake for 30, 3 nights", from: 'regression sentence, host ask 2026-07-27 (a vacation AREA is not a City, ST)', expect: { type: 'Reunion', guests: 30, vacationArea: 'deep-creek', venue: 'Deep Creek Lake', venueCity: 'McHenry', venueState: 'MD', overnight: true, overnightBasis: 'said-so', isDestination: true } },
-  { text: "Beach house getaway for 12, 4 nights, driving down", from: 'derived variant — a rented roof is a venue, not home', expect: { type: null, guests: 12, travelMode: 'drive', overnight: true, overnightBasis: 'said-so', isDestination: true, destinationBasis: 'travel-language', venueKind: 'venue' } },
+  { text: "Beach house getaway for 12, 4 nights, driving down", from: 'derived variant — a rented roof is a venue, not home; AMENDED 2026-11-21: a getaway the host says spans nights is a Group Trip (owner report "Multi day trip not being picked up at creation")', expect: { type: 'Group Trip', datesToConfirm: true, guests: 12, travelMode: 'drive', overnight: true, overnightBasis: 'said-so', isDestination: true, destinationBasis: 'travel-language', venueKind: 'venue' } },
   { text: "Retirement party for 60, out-of-town guests flying in", from: 'regression sentence, live drive 2026-08-05 ("flying in" did not match the bare stem)', expect: { type: 'Retirement Party', guests: 60, travelMode: 'fly', isDestination: true, destinationBasis: 'travel-language' } },
   // AMENDED 2026-09-18 (CITY-SAID-1) — third of the three. Measured before:
   // venueCity null on an overnight event whose town was in the sentence.
