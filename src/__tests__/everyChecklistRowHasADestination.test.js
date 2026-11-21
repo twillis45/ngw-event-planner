@@ -32,7 +32,10 @@ const SHELL_KINDS = new Set(['air', 'budget', 'costshare', 'crabs', 'date', 'dec
 // 114 → 112 (11/21/2026, integration, measured): Group Trip's "Offer two or
 // three date ranges…" and Team Retreat's "Poll the team…" open Date & time on
 // "Dates to offer".
-const NO_DESTINATION_CEILING = 112;
+// 112 → 110 (11/21/2026, integration, measured): Birthday's "Record the cash
+// and gift cards…" and "Add the gifts that arrived by mail…" open After ›
+// Thank-yous & gifts.
+const NO_DESTINATION_CEILING = 110;
 
 const ev = (type) => ({ id: 'dest', type, date: '2026-12-31', guestEstimate: 20, guestMode: 'count', guestCountSource: 'host',
   venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX' });

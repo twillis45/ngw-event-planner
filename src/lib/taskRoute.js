@@ -10,6 +10,7 @@ import { venueFor } from './venueFor';
 import { showsReplyTracking } from './guestMode';
 import { stepCalls, getPlaybook } from './playbooks';
 import { DATE_POLL_ROW } from './datePoll';
+import { GIFT_LOG_ROW } from './giftLog';
 
 // The first vendor row still needing the host — the row-level rule the
 // Vendors deep-link doctrine requires (not the sheet top).
@@ -98,6 +99,9 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // "Offer two or three date ranges…" and Team Retreat's "Poll the team…"
   // open Date & time on "Dates to offer"; guests tick ranges on the invite.
   if (DATE_POLL_ROW.test(t)) return { label: 'Ask on the invite', route: { focusField: 'date-options' } };
+  // THE GIFT LOG LIVES ON THE GUEST ROWS (owner pick A, 11/21/2026): Birthday's
+  // cash, mailed-gift and go-through-the-gifts rows open After › Thank-yous & gifts.
+  if (GIFT_LOG_ROW.test(t)) return { label: 'Log gifts and cash', route: { focusField: 'after-gifts' } };
   const wk = String((meta && meta.week) || '').toLowerCase();
   const dayOf = (meta && meta.category) === 'event-day' || /day of\b|day-of/.test(wk);
   // THE ROW'S OWN CATEGORY OUTRANKS A DAY-OF WORD (11/20/2026). The engine

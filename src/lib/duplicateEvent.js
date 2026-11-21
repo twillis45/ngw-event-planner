@@ -29,7 +29,9 @@
 /** Fields that record what HAPPENED on the occurrence being copied. */
 const GUEST_STATE = ['rsvp', 'rsvpAt', 'checkedIn', 'seat', 'seatId', 'tableId', 'plusOneRsvp',
   // The date poll's ticks (11/21/2026) answered last time's ranges.
-  'datePicks'];
+  'datePicks',
+  // The gift log and the thank-yous (11/21/2026) are last time's.
+  'giftReceived', 'giftWhat', 'giftCash', 'thankYouSent', 'thankYouSkipped'];
 const VENDOR_STATE = ['depositPaid', 'balancePaid', 'contractSigned', 'costAgreed', 'coiStatus', 'coiVerified',
   'arrivalTime', 'paidAt', 'confirmedAt', 'reconfirmedAt', 'replyText', 'lastReplyAt'];
 const EVENT_STATE = ['id', 'createdAt', 'updatedAt', 'date', 'endDate',

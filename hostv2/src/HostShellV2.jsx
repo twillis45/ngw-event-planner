@@ -324,6 +324,7 @@ import { buildHelperAsk } from '@app/lib/helperAsk';
 import PolicyLinks from './PolicyLinks.jsx';
 import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine } from '@app/lib/guestMerge';
 import { MAX_DATE_OPTIONS, dateOptionsOf, datePollTally, dateOptionPatch, nextDateOptionId } from '@app/lib/datePoll';
+import { giftCashTotal, isAbsentGiver, thankYouGiftLine } from '@app/lib/giftLog';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
 import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
@@ -3428,7 +3429,9 @@ export default function HostShellV2() {
   // The checklist's "Add the album link" (owner pick, 11/21/2026) shows the
   // recap block before the day too, so the link can be ready in advance.
   const [albumAsked, setAlbumAsked] = useState(false);
-  useEffect(() => { setRecapDraft(String(event.recapNote || '')); setAlbumDraft(String(event.albumUrl || '')); setAlbumAsked(false); }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Birthday's gift rows (owner pick A, 11/21/2026) open the gift log before the day too.
+  const [giftsAsked, setGiftsAsked] = useState(false);
+  useEffect(() => { setRecapDraft(String(event.recapNote || '')); setAlbumDraft(String(event.albumUrl || '')); setAlbumAsked(false); setGiftsAsked(false); }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Event memory: the one persisted field the original uses (event.lessons).
   // Recall reads across the loaded events — a past event of the same type.
   const lastLesson = useMemo(() => {
@@ -6677,6 +6680,11 @@ export default function HostShellV2() {
     if (r.kind === 'stage:after') {
       setStage('after'); setSheet(null);
       if (r.focus === 'album') setAlbumAsked(true);
+      // The gift log (owner pick A, 11/21/2026): open Thank-yous & gifts.
+      if (r.focus === 'gifts') {
+        setGiftsAsked(true);
+        setTimeout(() => { try { const el = document.getElementById('after-gifts'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* After is still the right landing */ } }, 120);
+      }
       if (r.anchor) setTimeout(() => {
         try {
           const inp = document.querySelector('[aria-label="' + r.anchor + '"]');
@@ -15672,31 +15680,68 @@ export default function HostShellV2() {
               {/* Thank-yous & gifts — per-guest flags on the SAME roster rows the
                   wrap-up meter reads (phaseProgress post_event counts
                   thankYouSent), so thanking someone literally moves the meter. */}
-              {isPast && (event.guests || []).some(g => g && g.rsvp === 'Yes') && (() => {
-                const yesIdx = (event.guests || []).map((g, i) => ({ g, i })).filter(x => x.g && x.g.rsvp === 'Yes');
+              {(isPast || giftsAsked) && (event.guests || []).some(g => g && String(g.name || '').trim()) && (() => {
+                const all = (event.guests || []).map((g, i) => ({ g, i })).filter(x => x.g && String(x.g.name || '').trim());
+                const yesIdx = all.filter(x => x.g.rsvp === 'Yes');
+                // THE GIFT LOG (owner pick A, 11/21/2026): a received gift takes
+                // what it was and the cash or card amount, on the same row; guests
+                // who said No or Maybe join "Couldn't come, sent a gift" from the
+                // + chips. One list of people, never a second log.
+                const absent = all.filter(x => isAbsentGiver(x.g) && x.g.giftReceived);
+                const couldAdd = all.filter(x => isAbsentGiver(x.g) && !x.g.giftReceived && ['No', 'Maybe'].includes(x.g.rsvp));
                 const thanked = yesIdx.filter(x => x.g.thankYouSent === true).length;
+                const cash = giftCashTotal(event);
+                const row = ({ g, i }) => (
+                  <div key={i} data-gift-row={g.id || i} style={{ borderTop: '1px solid var(--line-soft)', padding: 'var(--sp-2) 0' }}>
+                    <div className="actions-row" style={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+                      <span>{g.name}{String(g.plusOne || '').trim() ? <span className="of"> +1</span> : null}</span>
+                      <span style={{ display: 'flex', gap: 6 }}>
+                        <button className="mini" style={g.giftReceived ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
+                          onClick={() => writeGuest(i, { giftReceived: !g.giftReceived }, null)}>
+                          {g.giftReceived ? 'gift received' : 'gift?'}
+                        </button>
+                        <button className="mini" style={g.thankYouSent ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
+                          onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? null : ((g.name || 'Guest') + ' thanked — the wrap-up meter keeps count.'))}>
+                          {g.thankYouSent ? 'thanked' : 'thank them'}
+                        </button>
+                      </span>
+                    </div>
+                    {g.giftReceived && (
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'nowrap' }}>
+                        <input className="field" style={{ flex: '1 1 auto', minWidth: 0, minHeight: 'var(--tap-min)', fontSize: 'var(--t-input)' }} maxLength={80}
+                          placeholder="What it was" aria-label={'What ' + g.name + ' gave'} defaultValue={g.giftWhat || ''}
+                          onBlur={(e) => { const v = e.target.value.trim(); if (v !== String(g.giftWhat || '')) writeGuest(i, { giftWhat: v }, null); }} />
+                        <input className="field" style={{ flex: '0 0 112px', width: 112, minHeight: 'var(--tap-min)', fontSize: 'var(--t-input)' }} type="number" min="0" step="1" inputMode="decimal"
+                          placeholder="$ cash/card" aria-label={'Cash or card amount from ' + g.name} defaultValue={Number(g.giftCash) > 0 ? String(g.giftCash) : ''}
+                          onBlur={(e) => { const n = Math.max(0, Number(e.target.value) || 0); if (n !== (Number(g.giftCash) || 0)) writeGuest(i, { giftCash: n }, null); }} />
+                      </div>
+                    )}
+                  </div>
+                );
                 return (
-                  <>
-                    <div className="sect"><h2>Thank-yous</h2><div className="rule" /><span className="when">{thanked} of {yesIdx.length} sent</span></div>
+                  <div id="after-gifts" data-gift-log>
+                    <div className="sect"><h2>Thank-yous &amp; gifts</h2><div className="rule" /><span className="when">{thanked} of {yesIdx.length} sent</span></div>
                     <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
-                      {yesIdx.map(({ g, i }) => (
-                        <div className="line" key={i} style={{ alignItems: 'center' }}>
-                          <span>{g.name}{String(g.plusOne || '').trim() ? <span className="of"> +1</span> : null}</span>
-                          <span style={{ display: 'flex', gap: 6 }}>
-                            <button className="mini" style={g.giftReceived ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
-                              onClick={() => writeGuest(i, { giftReceived: !g.giftReceived }, null)}>
-                              {g.giftReceived ? 'gift received' : 'gift?'}
-                            </button>
-                            <button className="mini" style={g.thankYouSent ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
-                              onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? null : ((g.name || 'Guest') + ' thanked — the wrap-up meter keeps count.'))}>
-                              {g.thankYouSent ? 'thanked' : 'thank them'}
-                            </button>
-                          </span>
-                        </div>
-                      ))}
-                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>“Thanked” feeds the wrap-up meter up top. Gifts are for your memory; the note below is drafted from what happened.</p>
+                      {yesIdx.map(row)}
+                      {absent.length > 0 && <div className="shelf-label" style={{ margin: 'var(--sp-3) 0 var(--sp-1)' }}>Couldn’t come, sent a gift</div>}
+                      {absent.map(row)}
+                      {couldAdd.length > 0 && (
+                        <>
+                          <p className="grounding" style={{ margin: 'var(--sp-2) 0 6px' }}>A gift by mail, or from someone who couldn’t come:</p>
+                          <div className="actions-row" style={{ flexWrap: 'wrap' }}>
+                            {couldAdd.map(({ g, i }) => (
+                              <button key={i} className="mini" style={{ minHeight: 'var(--tap-min)' }} onClick={() => writeGuest(i, { giftReceived: true }, null)}>+ {g.name}</button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                      <div className="line" data-gift-cash style={{ marginTop: 'var(--sp-2)' }}>
+                        <span>Cash and gift cards</span>
+                        <span className="amt">{fmt(cash.total)}{cash.from ? <span className="of"> from {cash.from}</span> : null}</span>
+                      </div>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>Your record, not a bank. “Thanked” feeds the wrap-up meter up top, and the thank-you note names what each person gave.</p>
                     </div></div>
-                  </>
+                  </div>
                 );
               })()}
               {/* The final number — teaches attendance learning (INTEL R1).
@@ -20982,7 +21027,7 @@ export default function HostShellV2() {
                 const first = String(g.name || '').trim().split(/\s+/)[0] || 'friend';
                 let base = { body: '' };
                 try { base = draftThankYou(event, profile); } catch { /* draft optional */ }
-                const gift = g.giftReceived ? ' And thank you for the gift — it meant a lot.' : '';
+                const gift = thankYouGiftLine(g);   // names the gift when the log says what it was (11/21/2026)
                 return (first + ' — ' + String(base.body || 'Thank you for celebrating with us.').replace(/^\s*(hi|hey|hello)[^,\n]*,?\s*/i, '')).trim() + gift;
               };
               return (

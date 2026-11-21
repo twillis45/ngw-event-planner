@@ -156,6 +156,8 @@ export function resolveRoute(route) {
   // Make it yours on the event hashtag (11/21/2026).
   if (ff === 'meaning-hashtag') return { kind: 'meaning', focus: 'hashtag' };
   if (ff === 'after-album') return { kind: 'stage:after', focus: 'album', anchor: 'Photo album link' };
+  // The gift log (owner pick A, 11/21/2026): After, on Thank-yous & gifts.
+  if (ff === 'after-gifts') return { kind: 'stage:after', focus: 'gifts' };
   // A drafted note (owner pick, 11/21/2026): the draft sheet, opened on the
   // named builder. Today one: the Group Trip's trip details.
   if (ff === 'draft-trip-details') return { kind: 'draft', focus: 'trip-details' };

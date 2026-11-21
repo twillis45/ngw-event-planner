@@ -9,6 +9,7 @@ import { openFoodChoices, isDietaryChoice, playbookFoodPlan, hostBuysLine, dieta
 import { buildTravelPlan } from './travelPlan';
 import { sendStateFor } from './sendLedger';
 import { DATE_POLL_ROW, datePollSettled } from './datePoll';
+import { giftRowSatisfied } from './giftLog';
 
 // The trip-details draft's title, which is also its send-ledger key: the
 // draft sheet records under it, and the checklist row reads it back.
@@ -134,6 +135,12 @@ export function taskSatisfied(event, task) {
   // group's answer, and "Use these dates" is the host acting on it. Above the
   // act guard, whose "check" / "poll" words would keep it open forever.
   if (DATE_POLL_ROW.test(s)) return datePollSettled(event);
+
+  // THE GIFT LOG (owner pick A, 11/21/2026): the cash row is done by a cash
+  // amount on the log, the mailed-gifts row by a gift from someone who did not
+  // come; "go through the gifts" is the host's tick (giftLog.giftRowSatisfied).
+  const gift = giftRowSatisfied(event, s);
+  if (gift !== null) return gift;
 
   // ACTS — calls, briefings, walk-throughs, physical work, ongoing collection —
   // are never proven by presence facts. "Recruit 3-5 volunteers" was marked done
