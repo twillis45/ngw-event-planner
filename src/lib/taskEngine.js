@@ -12,6 +12,7 @@ import { DATE_POLL_ROW, datePollSettled } from './datePoll';
 import { giftRowSatisfied } from './giftLog';
 import { BORROWED_ROW, borrowedAllBack } from './borrowedList';
 import { ROOMS_ROW, roomPlanSettled } from './roomPlan';
+import { SPONSOR_ASK_ROW, sponsorAskDone } from './sponsors';
 
 // The trip-details draft's title, which is also its send-ledger key: the
 // draft sheet records under it, and the checklist row reads it back.
@@ -154,6 +155,12 @@ export function taskSatisfied(event, task) {
   // WHO SLEEPS WHERE (owner pick "combine", 11/21/2026): done when everyone on
   // the trip is in a room of the room plan.
   if (ROOMS_ROW.test(s)) return roomPlanSettled(event);
+
+  // SPONSORS (owner pick, 11/21/2026): the ask is done once a sponsor is on
+  // the list. The thank / banner / recognition rows name volunteers, donors
+  // and proofs the list cannot witness, so they stay the host's tick (the act
+  // guard below keeps them open).
+  if (SPONSOR_ASK_ROW.test(s)) return sponsorAskDone(event);
 
   // ACTS — calls, briefings, walk-throughs, physical work, ongoing collection —
   // are never proven by presence facts. "Recruit 3-5 volunteers" was marked done

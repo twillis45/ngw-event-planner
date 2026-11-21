@@ -43,6 +43,8 @@ const EVENT_STATE = ['id', 'createdAt', 'updatedAt', 'date', 'endDate',
   'borrowed',
   // The room plan (11/21/2026): last trip's rooms and who slept in them.
   'roomPlan',
+  // Sponsors (11/21/2026): this occurrence's pledges, receipts and thanks.
+  'sponsors',
   'snoozed', 'snoozeUntil', 'deferred', 'satisfied', 'handled',
   'startTime', 'startTimeSource', 'startTimeWhy',
   // sendLedger records THIS event's handoffs (board ruling 2026-08-21). A copy

@@ -326,6 +326,7 @@ import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGu
 import { MAX_DATE_OPTIONS, dateOptionsOf, datePollTally, dateOptionPatch, nextDateOptionId } from '@app/lib/datePoll';
 import { giftCashTotal, isAbsentGiver, thankYouGiftLine } from '@app/lib/giftLog';
 import { borrowedList, markReturned, addBorrowed } from '@app/lib/borrowedList';
+import { SPONSOR_TYPES, sponsorsOf, sponsorTotals, addSponsor, markSponsor, draftSponsorAsk, draftSponsorReport } from '@app/lib/sponsors';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
 import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
@@ -6242,6 +6243,8 @@ export default function HostShellV2() {
   const [helperForm, setHelperForm] = useState({ name: '', job: '' });
   // The borrowed list's Add it (owner pick B, 11/21/2026).
   const [borrowForm, setBorrowForm] = useState({ what: '', from: '' });
+  // Money coming in · sponsors: the add form (owner pick B, 11/21/2026).
+  const [sponsorForm, setSponsorForm] = useState({ business: '', amount: '', recognition: '' });
   const [unfurling, setUnfurling] = useState(false);
   const addHelper = () => {
     const name = String(helperForm.name || '').trim();
@@ -6711,6 +6714,8 @@ export default function HostShellV2() {
     // are built at render, so they are ready the moment it opens.
     if (r.kind === 'sweep') { setSheet({ kind: 'sweep', focus: r.focus || null }); runSweepDrafts(); return true; }
     if (r.kind === 'draft') {
+      // The sponsor ask (owner pick, 11/21/2026): the existing draft sheet.
+      if (r.focus === 'sponsor-ask') { openDraft('The sponsor ask', draftSponsorAsk(event, profile)); return true; }
       if (r.focus !== 'trip-details') return false;
       openDraft(TRIP_DETAILS_DRAFT, draftTripDetails(event, profile), null, { postsToInvite: true });
       return true;
@@ -26067,6 +26072,70 @@ export default function HostShellV2() {
                     </form>
                   )}
                   </Panel>
+                  {/* MONEY COMING IN · SPONSORS (owner pick B, 11/21/2026). Pledged
+                      vs in hand, kept apart from what you spend: nothing here is
+                      read by hostSpending, so it never lowers a total above. */}
+                  {(() => {
+                    const list = sponsorsOf(event);
+                    const asked = sheet.focus === 'sponsors';
+                    if (!list.length && !asked && !SPONSOR_TYPES.includes(event.type)) return null;
+                    const tot = sponsorTotals(event);
+                    const add = () => {
+                      const next = addSponsor(event, sponsorForm);
+                      if (!next) { toast('Which business? Add its name first.'); return; }
+                      patchEvent({ sponsors: next }, sponsorForm.business.trim() + ' is on your sponsor list.');
+                      setSponsorForm({ business: '', amount: '', recognition: '' });
+                    };
+                    const fld = { minHeight: 'var(--tap-min)', fontSize: 'var(--t-input)', maxWidth: 'none' };
+                    return (
+                      <Panel on={panels}>
+                        <div id="budget-sponsors" data-sponsors ref={scrollIntoViewOnOpen(asked)}>
+                          <div className="shelf-label" style={{ margin: 'var(--sp-3) 0 var(--sp-2)' }}>Money coming in · sponsors</div>
+                          <div className="line" data-sponsor-totals>
+                            <span>Pledged</span>
+                            <span className="amt">{fmt(tot.pledged)} <span className="of">{fmt(tot.inHand)} in hand</span></span>
+                          </div>
+                          {list.map((s) => (
+                            <div key={s.id} data-sponsor={s.id} style={{ borderTop: '1px solid var(--line-soft)', padding: 'var(--sp-2) 0' }}>
+                              <div className="actions-row" style={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+                                <b>{s.business}</b>
+                                <span className="amt">{Number(s.amount) > 0 ? fmt(s.amount) : 'No amount yet'}</span>
+                              </div>
+                              {s.recognition ? <p className="grounding" style={{ margin: 'var(--sp-1) 0 var(--sp-2)' }}>{s.recognition}</p> : null}
+                              <div className="actions-row" style={{ flexWrap: 'wrap' }}>
+                                <button className="mini" style={{ minHeight: 'var(--tap-min)', ...(s.received ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : {}) }}
+                                  aria-label={(s.received ? 'Received: ' : 'Mark received: ') + s.business}
+                                  onClick={() => patchEvent({ sponsors: markSponsor(event, s.id, 'received', !s.received) }, s.received ? null : s.business + ' marked received.')}>
+                                  {s.received ? 'received' : 'Mark received'}
+                                </button>
+                                <button className="mini" style={{ minHeight: 'var(--tap-min)', ...(s.thanked ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : {}) }}
+                                  aria-label={(s.thanked ? 'Thanked: ' : 'Mark thanked: ') + s.business}
+                                  onClick={() => patchEvent({ sponsors: markSponsor(event, s.id, 'thanked', !s.thanked) }, s.thanked ? null : s.business + ' marked thanked.')}>
+                                  {s.thanked ? 'thanked' : 'Mark thanked'}
+                                </button>
+                                <button className="mini" style={{ minHeight: 'var(--tap-min)' }} aria-label={'Draft their report: ' + s.business}
+                                  onClick={() => openDraft('Report to ' + s.business, draftSponsorReport(event, s, profile))}>Draft their report</button>
+                              </div>
+                            </div>
+                          ))}
+                          <div className="lodge-form" style={{ marginTop: 'var(--sp-2)' }}>
+                            <label className="lodge-f"><span className="of">Business</span>
+                              <input className="field" style={fld} placeholder="Main St. Hardware" aria-label="Sponsor business" value={sponsorForm.business}
+                                onChange={(e) => setSponsorForm((f) => ({ ...f, business: e.target.value }))} /></label>
+                            <label className="lodge-f"><span className="of">Amount</span>
+                              <input className="field" style={fld} type="number" min="0" step="1" inputMode="decimal" placeholder="250" aria-label="Sponsor amount" value={sponsorForm.amount}
+                                onChange={(e) => setSponsorForm((f) => ({ ...f, amount: e.target.value }))} /></label>
+                          </div>
+                          <label className="lodge-f" style={{ display: 'block', marginTop: 'var(--sp-1)' }}><span className="of">What their name goes on</span>
+                            <input className="field" style={fld} placeholder="The banner and the program" aria-label="What their name goes on" value={sponsorForm.recognition}
+                              onChange={(e) => setSponsorForm((f) => ({ ...f, recognition: e.target.value }))}
+                              onKeyDown={(e) => { if (e.key === 'Enter') add(); }} /></label>
+                          <button className="mini" style={{ width: '100%', minHeight: 'var(--tap-min)', marginTop: 'var(--sp-2)' }} onClick={add}>Add a sponsor</button>
+                          <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>Money in, kept apart from what you spend. It never lowers the totals above.</p>
+                        </div>
+                      </Panel>
+                    );
+                  })()}
                   <Panel on={panels}>
                   {hostRows.length > 0 && (
                     <>

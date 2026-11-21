@@ -13,6 +13,7 @@ import { DATE_POLL_ROW } from './datePoll';
 import { GIFT_LOG_ROW } from './giftLog';
 import { BORROWED_ROW } from './borrowedList';
 import { ROOMS_ROW } from './roomPlan';
+import { SPONSOR_ASK_ROW, SPONSOR_LIST_ROW } from './sponsors';
 
 // The first vendor row still needing the host — the row-level rule the
 // Vendors deep-link doctrine requires (not the sheet top).
@@ -110,6 +111,12 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // WHO SLEEPS WHERE (owner pick "combine", 11/21/2026): Group Trip's room
   // row opens the room plan in Where everyone stays.
   if (ROOMS_ROW.test(t)) return { label: 'Plan who sleeps where', route: { focusField: 'lodging-rooms' } };
+  // SPONSORS (owner pick B + A's ask, 11/21/2026): the ask drafts the sponsor
+  // ask; the thank / banner / recognition / prospectus rows open "Money coming
+  // in · sponsors" in Your money. Above the thank-you rule, which sent them to
+  // the guest list.
+  if (SPONSOR_ASK_ROW.test(t)) return { label: 'Draft the sponsor ask', route: { focusField: 'draft-sponsor-ask' } };
+  if (SPONSOR_LIST_ROW.test(t)) return { label: 'Open your sponsors', route: { focusField: 'budget-sponsors' } };
   const wk = String((meta && meta.week) || '').toLowerCase();
   const dayOf = (meta && meta.category) === 'event-day' || /day of\b|day-of/.test(wk);
   // THE ROW'S OWN CATEGORY OUTRANKS A DAY-OF WORD (11/20/2026). The engine

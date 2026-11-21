@@ -41,7 +41,10 @@ const SHELL_KINDS = new Set(['air', 'budget', 'costshare', 'crabs', 'date', 'dec
 // that already opened Space).
 // 106 → 105 (11/21/2026, integration, measured): Group Trip's "Settle who
 // sleeps where" opens the room plan in Where everyone stays.
-const NO_DESTINATION_CEILING = 105;
+// 105 → 102 (11/21/2026, integration, measured): PTA's sponsor ask drafts
+// "The sponsor ask"; the Gala and Conference prospectus rows open "Money
+// coming in · sponsors".
+const NO_DESTINATION_CEILING = 102;
 
 const ev = (type) => ({ id: 'dest', type, date: '2026-12-31', guestEstimate: 20, guestMode: 'count', guestCountSource: 'host',
   venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX' });

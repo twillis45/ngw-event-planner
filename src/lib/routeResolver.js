@@ -73,6 +73,8 @@ export function resolveRoute(route) {
     return { kind: 'seating', focus: gid };
   }
   // Budget / Guests — whole-surface sheets, no row concept.
+  // Sponsors (owner pick B, 11/21/2026): Your money, on "Money coming in · sponsors".
+  if (ff === 'budget-sponsors') return { kind: 'budget', focus: 'sponsors' };
   if (route.tab === 'Budget' || ff === 'budget') return { kind: 'budget', focus: null };
   // Guests row-level landings (Up-Next #4, 2026-07-22): the count entry and the
   // invites block are real anchors now — the whole-sheet catch below kept
@@ -163,6 +165,8 @@ export function resolveRoute(route) {
   // A drafted note (owner pick, 11/21/2026): the draft sheet, opened on the
   // named builder. Today one: the Group Trip's trip details.
   if (ff === 'draft-trip-details') return { kind: 'draft', focus: 'trip-details' };
+  // The sponsor ask (owner pick, 11/21/2026), on the same draft sheet.
+  if (ff === 'draft-sponsor-ask') return { kind: 'draft', focus: 'sponsor-ask' };
   // The reconfirm sweep, opened for every booking (owner pick, 11/21/2026):
   // the stay's row first, then each booked vendor.
   if (ff === 'reconfirm-sweep') return { kind: 'sweep', focus: 'bookings' };

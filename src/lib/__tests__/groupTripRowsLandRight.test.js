@@ -46,7 +46,9 @@ test.each([
   ['Surprise Proposal', /^Book the dinner reservation/, 'Line them up', 'vendors'],
   ['Client Dinner', /^Book the private dining room/, 'Line them up', 'vendors'],
   // "program listings" is not a rental listing (caught by the route-map diff).
-  ['Fundraiser / Gala', /^Collect sponsor logos/, 'Open the list', 'food'],
+  // Since 11/21/2026 the row opens the sponsor list in Your money (owner pick,
+  // sponsors), which is where the recognition owed each sponsor is kept.
+  ['Fundraiser / Gala', /^Collect sponsor logos/, 'Open your sponsors', 'budget'],
 ])('neighbors keep their routes: %s', (type, re, label, kind) => {
   const got = land(type, re);
   expect(got.label).toBe(label);
