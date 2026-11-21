@@ -222,7 +222,8 @@ const shot = async (page, { ev, theme, img, palette, vp, name, scrollTo, scrollB
   }
   if (scrollBy) {
     await page.evaluate((px) => {
-      const sc = document.querySelector('.sheet');
+      // `.sheet-body` is the sheet's scroller since 11/21/2026 (the docked footer).
+      const sc = document.querySelector('.sheet > .sheet-body');
       if (sc) sc.scrollTop += px;
       else window.scrollBy(0, px);
     }, scrollBy);

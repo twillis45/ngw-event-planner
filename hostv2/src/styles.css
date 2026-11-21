@@ -76,10 +76,6 @@
      max(its gutter, the inset), so nothing moves where the inset is zero. */
   --safe-l:env(safe-area-inset-left, 0px);
   --safe-r:env(safe-area-inset-right, 0px);
-  /* The pinned running total on the food sheets (.ftotal): 12px padding each
-     side of one 14px line, plus the home indicator. Read by the sheet's scroll
-     padding so whatever it scrolls to stops above the bar, not under it. */
-  --ftotal-h:calc(var(--sp-3) * 2 + 20px + env(safe-area-inset-bottom, 0px));
   /* ONE SELECTED STATE (design audit round 1 #2, batch 4, 11/21/2026). A
      chosen chip, segment, tab, toggle or option row wears this and nothing
      else: the steel tint, a steel-soft edge, ink text. It is a CHOICE, so it is
@@ -1766,7 +1762,10 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
      page rather than a card pretending to be one; the internal scroller and the
      overflow-x guard below are unchanged. */
   position:absolute; left:0; right:0; top:0; bottom:0; z-index:50;
-  overflow-y:auto; overflow-x:clip; overscroll-behavior:contain; scrollbar-width:none;
+  /* The dialog is the FRAME; `.sheet-body` inside it is the scroller (11/21/
+     2026, the docked footer). `clip` keeps both axes guarded without making
+     the frame a scroll container of its own. */
+  overflow:clip;
   /* overflow-x:clip is the systemic guard: no sheet can ever bleed past the
      viewport horizontally (host-reported "screens too wide"). Root causes are
      still fixed per-element (min-width:0 / wrap) so nothing is actually clipped;
@@ -1780,9 +1779,10 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   background-color:var(--card); background-image:var(--canvas-glow); background-repeat:no-repeat; border-radius:0;
   /* Named once (2026-09-24) so the pinned total bar can cancel exactly this
      inset instead of repeating the literal — two copies of a layout constant
-     is how a footer ends up 4px off the edge on one surface and not another. */
+     is how a footer ends up 4px off the edge on one surface and not another.
+     (11/21/2026: the bar is docked now and cancels nothing; `.sheet-body`
+     reads this as its bottom padding.) */
   --sheet-pad-b: 28px;
-  padding:18px var(--sp-5) calc(var(--sheet-pad-b) + env(safe-area-inset-bottom, 0px));
   /* --sheet-ms is written per-open beside --from-y so a longer travel gets a
      longer duration and the rise holds a constant velocity; it falls back to
      the token for every path that sets no origin. */
@@ -1829,6 +1829,13 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
    it's tabIndex=-1 so keyboard users never land here directly — suppress the
    outline that programmatic focus would otherwise paint on the whole panel. */
 .sheet:focus{outline:none}
+/* THE SCROLLER (11/21/2026). Everything `.sheet` used to scroll — the head and
+   the content — scrolls here, with the same padding, the same overscroll
+   containment and the same hidden scrollbar. */
+.sheet-body{
+  overflow-y:auto; overflow-x:clip; overscroll-behavior:contain; scrollbar-width:none;
+  padding:18px var(--sp-5) calc(var(--sheet-pad-b) + env(safe-area-inset-bottom, 0px));
+}
 @media(min-width:700px){ .sheet{border-radius:26px 26px 46px 46px} }
 .sheet-head{display:flex; align-items:baseline; justify-content:space-between; padding-bottom:10px; border-bottom:1px solid var(--line-soft); margin-bottom:6px}
 .sheet-head strong{font-size:var(--t-sheet-title); font-weight:800; letter-spacing:-.02em}
@@ -2036,7 +2043,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .tag.essential{color:var(--warn); background:var(--warn-tint); font-size:var(--t-caption-min); padding:2px 7px}
 .tile-b, .tile-c{cursor:pointer}
 .tile-b:active, .tile-c:active{transform:scale(.98)}
-.sheet::-webkit-scrollbar{display:none}
+.sheet-body::-webkit-scrollbar{display:none}
 .field::placeholder{color:var(--faint)}
 
 /* ── Event switcher shelf: snap-scroll, countdown-badged chips ── */
@@ -4903,7 +4910,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
      So the main area is ONE column again. Prose and summary blocks keep a
      reading measure; row lists take the width, which is where density belongs.
      Kept as a block rather than deleted so the reasoning survives the change. */
-  .stagewrap--responsive-data > .sheet{
+  .stagewrap--responsive-data > .sheet > .sheet-body{
     display:block;
   }
   /* ONE CORNER (host, 2026-08-21). The sheet carried a PHONE bottom-sheet
@@ -4917,7 +4924,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
      below opt back out. Without this the guide line and the grounding
      paragraph run to 1358px, which is the "stretched single column" the whole
      viewport port exists to remove. */
-  .stagewrap--responsive-data > .sheet > *{ max-width:820px; }
+  .stagewrap--responsive-data > .sheet > .sheet-body > *{ max-width:820px; }
   /* ── ONE MEASURE ACROSS MODES (host, 2026-08-21) ────────────────────────
      Toggling Guests → The spread & shopping made "the app change width":
      measured at 1440, data-mode content sat at 820px and food-mode content at
@@ -4926,30 +4933,31 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
      Food now takes the same prose cap, and its own dense rows opt back out
      below exactly the way data mode's do — the cap is the parity, the
      exemptions are what keep the work full-width. */
-  .stagewrap--responsive-food > .sheet > *{ max-width:820px; }
-  .stagewrap--responsive-food > .sheet > .sheet-head,
-  .stagewrap--responsive-food > .sheet > .fstat-list,
-  .stagewrap--responsive-food > .sheet > .food-act,
-  .stagewrap--responsive-food > .sheet > .shelf,
-  .stagewrap--responsive-food > .sheet > .later-row,
-  .stagewrap--responsive-food > .sheet > .brow,
-  .stagewrap--responsive-food > .sheet > .frow,
-  .stagewrap--responsive-food > .sheet > div:has(> .later-row),
-  .stagewrap--responsive-food > .sheet > div:has(> .brow),
-  .stagewrap--responsive-food > .sheet > div:has(> .frow),
-  .stagewrap--responsive-food > .sheet > div:has(> .food-act){ max-width:none; }
+  .stagewrap--responsive-food > .sheet > .sheet-body > *,
+  .stagewrap--responsive-food > .sheet > .sheet-foot{ max-width:820px; }
+  .stagewrap--responsive-food > .sheet > .sheet-body > .sheet-head,
+  .stagewrap--responsive-food > .sheet > .sheet-body > .fstat-list,
+  .stagewrap--responsive-food > .sheet > .sheet-body > .food-act,
+  .stagewrap--responsive-food > .sheet > .sheet-body > .shelf,
+  .stagewrap--responsive-food > .sheet > .sheet-body > .later-row,
+  .stagewrap--responsive-food > .sheet > .sheet-body > .brow,
+  .stagewrap--responsive-food > .sheet > .sheet-body > .frow,
+  .stagewrap--responsive-food > .sheet > .sheet-body > div:has(> .later-row),
+  .stagewrap--responsive-food > .sheet > .sheet-body > div:has(> .brow),
+  .stagewrap--responsive-food > .sheet > .sheet-body > div:has(> .frow),
+  .stagewrap--responsive-food > .sheet > .sheet-body > div:has(> .food-act){ max-width:none; }
   /* The work itself takes the width. These are the same selectors the retired
      grid used to move into column 2, so the list of "what is a dense row" is
      unchanged and verified — only what happens to it is different. */
-  .stagewrap--responsive-data > .sheet > .sheet-head,
-  .stagewrap--responsive-data > .sheet > .brow,
-  .stagewrap--responsive-data > .sheet > .later-row,
-  .stagewrap--responsive-data > .sheet > .frow,
-  .stagewrap--responsive-data > .sheet > div:has(> .brow),
-  .stagewrap--responsive-data > .sheet > div:has(> .later-row),
-  .stagewrap--responsive-data > .sheet > div:has(> .frow),
-  .stagewrap--responsive-data > .sheet > div:has(> .vcard),
-  .stagewrap--responsive-data > .sheet > div:has(> .grow),
+  .stagewrap--responsive-data > .sheet > .sheet-body > .sheet-head,
+  .stagewrap--responsive-data > .sheet > .sheet-body > .brow,
+  .stagewrap--responsive-data > .sheet > .sheet-body > .later-row,
+  .stagewrap--responsive-data > .sheet > .sheet-body > .frow,
+  .stagewrap--responsive-data > .sheet > .sheet-body > div:has(> .brow),
+  .stagewrap--responsive-data > .sheet > .sheet-body > div:has(> .later-row),
+  .stagewrap--responsive-data > .sheet > .sheet-body > div:has(> .frow),
+  .stagewrap--responsive-data > .sheet > .sheet-body > div:has(> .vcard),
+  .stagewrap--responsive-data > .sheet > .sheet-body > div:has(> .grow),
   /* ── AND THE ROSTER, WHICH IS ONE LEVEL DEEPER (2026-08-07) ──────────────
      Every exemption above matches `:has(> X)` — a DIRECT child. The roster
      now wraps its rows in .roster, so .grow became a GRANDchild and the
@@ -4961,9 +4969,9 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
      by walking the ancestor chain in the live DOM and reading `maxWidth` off
      each one — after eliminating three candidate rules by reading, all wrong.
      A structural cap must be matched by structure, not by depth. */
-  .stagewrap--responsive-data > .sheet > .roster{ max-width:none; }
+  .stagewrap--responsive-data > .sheet > .sheet-body > .roster{ max-width:none; }
   /* The head names the surface and carries its close — it belongs to both. */
-  .stagewrap--responsive-data > .sheet > .sheet-head{ grid-column:1 / -1; }
+  .stagewrap--responsive-data > .sheet > .sheet-body > .sheet-head{ grid-column:1 / -1; }
   /* Column 1 is the DEFAULT, and only the row list is moved out of it.
      Written first as two enumerated lists of classes, which was wrong: the
      sheet's headline number is rendered by SheetHero, whose root element
@@ -4972,14 +4980,14 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
      the grid silently. Defaulting to column 1 means a child has to be named to
      leave it, so a future unclassed block lands somewhere sensible instead of
      disappearing. */
-  .stagewrap--responsive-data > .sheet > *{ grid-column:1; }
-  .stagewrap--responsive-data > .sheet > .shelf-label,
-  .stagewrap--responsive-data > .sheet > .brow,
-  .stagewrap--responsive-data > .sheet > .later-row,
-  .stagewrap--responsive-data > .sheet > .frow,
-  .stagewrap--responsive-data > .sheet > div:has(> .brow),
-  .stagewrap--responsive-data > .sheet > div:has(> .later-row),
-  .stagewrap--responsive-data > .sheet > div:has(> .frow),
+  .stagewrap--responsive-data > .sheet > .sheet-body > *{ grid-column:1; }
+  .stagewrap--responsive-data > .sheet > .sheet-body > .shelf-label,
+  .stagewrap--responsive-data > .sheet > .sheet-body > .brow,
+  .stagewrap--responsive-data > .sheet > .sheet-body > .later-row,
+  .stagewrap--responsive-data > .sheet > .sheet-body > .frow,
+  .stagewrap--responsive-data > .sheet > .sheet-body > div:has(> .brow),
+  .stagewrap--responsive-data > .sheet > .sheet-body > div:has(> .later-row),
+  .stagewrap--responsive-data > .sheet > .sheet-body > div:has(> .frow),
   /* ── THE TWO SHEETS THE MODE WAS BUILT FOR WERE THE TWO IT MISSED ─────────
      (2026-08-06, board, design seat.) Measured direct children per sheet at
      1440: tasks 3/8, risks 2/5, decisions 5/7, seating 4/3, budget 6/5 — all
@@ -4992,15 +5000,15 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
      The comment above already warned that an unclassed child "would have fallen
      out of the grid silently" — it was right, and the guest roster is the case
      it was describing. */
-  .stagewrap--responsive-data > .sheet > .vcard,
-  .stagewrap--responsive-data > .sheet > div:has(> .grow){
+  .stagewrap--responsive-data > .sheet > .sheet-body > .vcard,
+  .stagewrap--responsive-data > .sheet > .sheet-body > div:has(> .grow){
     grid-column:2;
   }
   /* Summary strips are about the WHOLE sheet, so they span both columns rather
      than being crushed into one — this is what was colliding on vendors. */
-  .stagewrap--responsive-data > .sheet > .fstat-list,
-  .stagewrap--responsive-data > .sheet > .wstrip,
-  .stagewrap--responsive-data > .sheet > .conflictbar{
+  .stagewrap--responsive-data > .sheet > .sheet-body > .fstat-list,
+  .stagewrap--responsive-data > .sheet > .sheet-body > .wstrip,
+  .stagewrap--responsive-data > .sheet > .sheet-body > .conflictbar{
     grid-column:1 / -1;
   }
 
@@ -5429,7 +5437,7 @@ button.vc-pill::after{
      class as the `.seclist`/`.statcard` names recorded at :3517 that matched no
      JSX. A rule that matches nothing is indistinguishable from a rule that
      works until you measure the box. */
-  .stagewrap[data-rail="1"]:not(.stagewrap--responsive-command):not(.stagewrap--responsive-food):not(.stagewrap--responsive-data) > .sheet > *{
+  .stagewrap[data-rail="1"]:not(.stagewrap--responsive-command):not(.stagewrap--responsive-food):not(.stagewrap--responsive-data) > .sheet > .sheet-body > *{
     /* 720 → 820 (host, 2026-08-21): measured at 1440, the three sheet modes
        opened their heroes at 820 / 1130 / 720 inside an identical 1170 frame,
        so moving between sections read as the app resizing itself. One measure
@@ -5438,7 +5446,7 @@ button.vc-pill::after{
     max-width:820px;
   }
   /* The head spans — it carries the sheet's name and its close. */
-  .stagewrap[data-rail="1"]:not(.stagewrap--responsive-command):not(.stagewrap--responsive-food):not(.stagewrap--responsive-data) > .sheet > .sheet-head{
+  .stagewrap[data-rail="1"]:not(.stagewrap--responsive-command):not(.stagewrap--responsive-food):not(.stagewrap--responsive-data) > .sheet > .sheet-body > .sheet-head{
     max-width:none;
   }
 }
@@ -6621,6 +6629,7 @@ button.vc-pill::after{
 .fmode:focus-visible{ outline:2px solid var(--steel-soft); outline-offset:-2px; }
 
 /* ── The running total, pinned (2026-09-24) ─────────────────────────────────
+   SUPERSEDED 11/21/2026: docked below the scroller, see "DOCKED, NOT PINNED".
    8 of 8 grocery-list leaders keep the money on screen; ours lived in the hero
    and scrolled away by the third row. `.sheet` is the scroller, so `sticky`
    pins this inside the sheet rather than over the whole app the way `fixed`
@@ -6652,18 +6661,26 @@ button.vc-pill::after{
    Verified both states: short sheet 761 -> 844 (flush), long sheet still
    scrolls (942 > 844) with the bar pinned and its 16px gap intact. */
 .sheet{ display:flex; flex-direction:column; }
-.sheet > *{ flex-shrink:0; }
-.sheet::after{ content:''; flex:1 0 0; order:1; }
-.sheet > .ftotal{ order:2; }
-/* Anything the sheet scrolls to (focus, a scrolled-to control) stops above the
-   pinned bar instead of under it (11/18/2026 phone screenshot: the shopping
-   form's Add button sat beneath "0 of 11 bought"). Only sheets that carry it. */
-.sheet:has(> .ftotal){ scroll-padding-bottom:calc(var(--ftotal-h) + var(--sp-4)); }
-.ftotal{ position:sticky; bottom:calc((var(--sheet-pad-b) + env(safe-area-inset-bottom, 0px)) * -1);
-  margin:var(--sp-4) calc(var(--sp-5) * -1) calc((var(--sheet-pad-b) + env(safe-area-inset-bottom, 0px)) * -1);
-  padding:12px var(--sp-5) calc(12px + env(safe-area-inset-bottom, 0px));
-  background:var(--bg); border-top:1px solid var(--line);
-  display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+.sheet-body > *{ flex-shrink:0; }
+/* ── DOCKED, NOT PINNED (owner, 11/21/2026) ─────────────────────────────────
+   The sticky bar above, and the `::after` spacer and `order` that sent it to
+   the foot of a short sheet, are retired. Sticky over a scroller always covers
+   the scroller's foot: at 860x430 and 1024x768 the running total sat over
+   "Copy the shopping list", "Search Instacart", "Print" and "+ Add an item
+   you're bringing" as the sheet opened, which no scroll padding can prevent.
+   The dialog is now a column: `.sheet-body` takes the free height and scrolls
+   (and shrinks to fit inside the tablet panel's max-height, hence min-height
+   0), and `.sheet-foot` follows it, so the scroller ends where the footer
+   begins. The spacer is no longer needed because the body's flex-grow does
+   its job: on a short sheet the footer still lands at the bottom edge.
+   The body gives up the home-indicator inset to the footer, which carries it,
+   and keeps the 16px the bar used to hold above itself as a margin. */
+.sheet-body{ display:flex; flex-direction:column; flex:1 1 auto; min-height:0; }
+.sheet:has(> .sheet-foot) > .sheet-body{ padding-bottom:var(--sp-4); }
+.sheet-foot{ flex-shrink:0;
+  padding:12px max(var(--sp-5), var(--safe-r)) calc(12px + env(safe-area-inset-bottom, 0px)) max(var(--sp-5), var(--safe-l));
+  background:var(--bg); border-top:1px solid var(--line); }
+.ftotal{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
 /* The bar baseline-aligns two runs of text; a button in the right slot has to
    centre against them instead, or it hangs low by its own descender space. */
 .ftotal-exit{ align-items:center; }

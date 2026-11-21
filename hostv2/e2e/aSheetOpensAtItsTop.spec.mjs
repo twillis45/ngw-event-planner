@@ -12,6 +12,11 @@
 // header's box against the sheet's and the viewport's, after the door the host
 // uses at this width was left scrolled to its end. Checked again after the
 // device turns.
+//
+// 11/21/2026 (owner: the running total becomes a docked footer): the sheet
+// scrolls by `.sheet-body` now, the scroller inside the `.sheet` dialog, so
+// that is what this file scrolls to the end and reads scrollTop from. The
+// claim is unchanged; only the element that holds the offset moved.
 import { test, expect, settled, sheetSettled, dateIn } from './fixtures.mjs';
 
 const EVENT = {
@@ -44,7 +49,7 @@ const boot = async (page) => {
 };
 
 const scrollSheetToEnd = (page) => page.evaluate(() => {
-  const sh = [...document.querySelectorAll('.sheet')].pop();
+  const sh = [...document.querySelectorAll('.sheet')].pop().querySelector(':scope > .sheet-body');
   sh.scrollTop = sh.scrollHeight;
   return sh.scrollTop;
 });
@@ -83,7 +88,7 @@ const header = (page) => page.evaluate(() => {
   const xr = x ? x.getBoundingClientRect() : null;
   const s = sh.getBoundingClientRect();
   return { title: Math.round(t.top), sheetTop: Math.round(s.top), close: xr ? Math.round(xr.top) : null,
-    closeBottom: xr ? Math.round(xr.bottom) : null, vh: innerHeight, scrollTop: Math.round(sh.scrollTop) };
+    closeBottom: xr ? Math.round(xr.bottom) : null, vh: innerHeight, scrollTop: Math.round(sh.querySelector(':scope > .sheet-body').scrollTop) };
 });
 
 const expectHeaderInView = (h, where) => {

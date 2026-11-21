@@ -7,10 +7,22 @@
 // never do is keep an action there. So, measured on both tabs:
 //   - the total is on screen at load, at the foot of the sheet;
 //   - every action, when it takes focus (keyboard, or a scroll-to), lands
-//     wholly above the bar: the sheet's scroll padding is the bar's own
-//     height, read from the --ftotal-h token, not a 64px guess;
-//   - scrolled to the end, every action sits clear of the bar.
+//     wholly above the bar;
+//   - scrolled to the end, every action sits clear of the bar;
+//   - and, as the sheet opens (batch 4, owner 11/20: the case batch 2 left),
+//     no action sits under the bar before the host has touched anything.
 // Then the phone turns and all three hold again.
+//
+// CONTRACT CHANGE, 11/21/2026 (owner: the total becomes a docked footer). The
+// bar is no longer a sticky child of the scrolling `.sheet`; it is the
+// dialog's footer, AFTER the scroller `.sheet-body`. So the sheet scrolls by
+// `.sheet-body`, and a control counts as under the bar only by the part of it
+// the scroller actually shows: a row the scroller has clipped below its own
+// bottom edge is out of view, not under anything. On the old structure the
+// scroller WAS the sheet and ran beneath the bar, so the clip removed nothing
+// and the same measure fails there (watched failing 11/21/2026 at 860x430 and
+// 1024x768). The `--ftotal-h` scroll padding this file used to name is gone
+// with the overlap it compensated for.
 import { test, expect, openSectionByName, dateIn } from './fixtures.mjs';
 
 const EVENT = {
@@ -40,25 +52,34 @@ const measure = () => {
   const sh = [...document.querySelectorAll('.sheet')].pop();
   const bar = sh.querySelector(':scope > .ftotal');
   if (!bar) return { bar: null };
+  const sc = sh.querySelector(':scope > .sheet-body');
+  // The part of a control the scroller shows, as [top, bottom]; empty when clipped away.
+  const seen = (e) => { const r = e.getBoundingClientRect(), v = sc.getBoundingClientRect();
+    return [Math.max(r.top, v.top), Math.min(r.bottom, v.bottom)]; };
+  const under = (e, b) => { const [t, bo] = seen(e); return bo > t && bo > b.top + 0.5 && t < b.bottom; };
   const controls = [...sh.querySelectorAll('button, a[href], input, select, textarea')]
     .filter((e) => !bar.contains(e) && !e.disabled && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden'
       && !e.closest('.sheet-head, [inert], [aria-hidden="true"]'));
   const label = (e) => (e.innerText || e.getAttribute('aria-label') || e.placeholder || e.tagName).replace(/\s+/g, ' ').trim().slice(0, 30);
-  sh.scrollTop = 0;
+  sc.scrollTop = 0;
   const b0 = bar.getBoundingClientRect(), s0 = sh.getBoundingClientRect();
   const atLoad = { top: b0.top, bottom: b0.bottom, sheetBottom: Math.min(s0.bottom, innerHeight), vh: innerHeight, text: bar.innerText };
+  // AT LOAD, AS OPENED (batch 4, 11/21/2026): nothing pressable sits under the
+  // bar before the host has scrolled or focused anything.
+  const underAtLoad = controls.filter((e) => under(e, b0))
+    .map((e) => `${label(e)} (${Math.round(e.getBoundingClientRect().top)}-${Math.round(e.getBoundingClientRect().bottom)} vs bar ${Math.round(b0.top)})`);
   const underOnFocus = [];
   for (const e of controls) {
     e.focus();
     const r = e.getBoundingClientRect(), b = bar.getBoundingClientRect();
-    if (document.activeElement === e && r.bottom > b.top + 0.5 && r.top < b.bottom) underOnFocus.push(`${label(e)} (bottom ${Math.round(r.bottom)} vs bar ${Math.round(b.top)})`);
+    if (document.activeElement === e && under(e, b)) underOnFocus.push(`${label(e)} (bottom ${Math.round(r.bottom)} vs bar ${Math.round(b.top)})`);
   }
-  sh.scrollTop = sh.scrollHeight;
+  sc.scrollTop = sc.scrollHeight;
   const be = bar.getBoundingClientRect();
-  const underAtEnd = controls.filter((e) => { const r = e.getBoundingClientRect(); return r.bottom > be.top + 0.5 && r.top < be.bottom; }).map(label);
-  sh.scrollTop = 0;
+  const underAtEnd = controls.filter((e) => under(e, be)).map(label);
+  sc.scrollTop = 0;
   if (document.activeElement && sh.contains(document.activeElement)) document.activeElement.blur();
-  return { bar: atLoad, n: controls.length, underOnFocus, underAtEnd };
+  return { bar: atLoad, n: controls.length, underAtLoad, underOnFocus, underAtEnd };
 };
 
 const check = (m, where) => {
@@ -68,6 +89,7 @@ const check = (m, where) => {
   expect(m.bar.top, `${where}: the total is on screen at load`).toBeGreaterThanOrEqual(0);
   expect(Math.abs(m.bar.bottom - m.bar.sheetBottom), `${where}: the total sits at the foot of the sheet`).toBeLessThanOrEqual(2);
   expect(m.n, `${where}: premise, actions were measured`).toBeGreaterThan(2);
+  expect(m.underAtLoad, `${where}: actions under the total as the sheet opens`).toEqual([]);
   expect(m.underOnFocus, `${where}: actions that land under the total when focused`).toEqual([]);
   expect(m.underAtEnd, `${where}: actions under the total at the end of the sheet`).toEqual([]);
 };
