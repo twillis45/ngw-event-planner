@@ -66,6 +66,12 @@ existed on one side only and conflicts with nothing, so it is kept).
       - Every touch screen, `(pointer: coarse)`, at any width or orientation, gets an edge-to-edge frame with square corners and no desktop inset, like a native iPad app.
       - A desktop with a mouse at 1280 and up keeps the inset card with rounded corners.
       - Inner panels keep their own radii.
+29. **Light theme: the board's ask is the steel primary, like the sheets** (owner ruling, 11/21/2026, made from a rendered comparison: "C: steel, like Your money").
+    - **What changes, light only.** The board hero's primary button (`.hero.elegant .cta`, every render branch) wears the same steel primary as every sheet's `.cta`: `--cta-grad` ground, `--on-steel` label. The label measures 4.57:1 on the lightest stop, 5.16:1 on the middle stop, and 5.85:1 on the deepest.
+    - **The keycap stays.** The button is still a raised key: a 3px bottom edge, 4px on hover, and pressed flat on tap. In light the edge is `--steel-dark` and the cast is the light `--panel-shadow`. The near-black `--key-edge` and its dark shadow read as a heavy slab on the warm canvas (ruling 25), so light does not use them.
+    - **Dark theme.** Dark is unchanged: the 7/31 soft tier (`--sheen` ground, `--ink` label, `--key-edge` keycap).
+    - **Secondaries.** Soft and ghost buttons inside the hero stay secondary. Only the primary ask turns steel.
+    - **Supersedes.** For light mode, this supersedes the 7/31 host ruling that the board's ask wears the soft tier. The parity gate (`hostv2/src/parity/check-parity.mjs`) pins the soft tier in dark and the steel in light, and `theBoardAskIsSteelInLight.spec.mjs` measures both themes at 390 and 1024.
 
 ## Studio Matte Means
 

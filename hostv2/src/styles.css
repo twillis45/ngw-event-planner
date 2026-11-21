@@ -864,7 +864,8 @@ button{font-family:inherit}
    because the hero CTA has several render branches with different classNames
    ("cta", "cta stay", …) and only one renders at a time; `.hero.elegant .cta` is
    the one selector that reliably reaches all of them. The parity gate pins these
-   two tokens so this cannot drift back into a fork. */
+   two tokens so this cannot drift back into a fork. DARK ONLY since owner ruling
+   29 (11/21/2026): light wears the steel primary, see STEEL IN LIGHT below. */
 .hero.elegant .cta{ background:var(--sheen); color:var(--ink); border-radius:var(--r-row); padding:15px 20px; min-height:54px;
   width:100%; justify-content:center; text-align:center; font-size:var(--t-cta-big);
   box-shadow:0 3px 0 var(--key-edge), 0 9px 22px -9px var(--shadow-60), inset 0 1px 0 var(--hair-07);
@@ -892,6 +893,20 @@ button{font-family:inherit}
   box-shadow:0 4px 0 var(--key-edge), 0 13px 26px -10px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.09); }
 .hero.elegant .cta:active{ transform:translateY(3px);
   box-shadow:0 0 0 var(--key-edge), 0 3px 9px -5px var(--shadow-50), inset 0 1px 0 var(--hair-05); }
+/* STEEL IN LIGHT (owner ruling 29, 11/21/2026: "C: steel, like Your money").
+   Supersedes the soft tier above for LIGHT only: the board's ask wears the
+   sheets' primary (--cta-grad, --on-steel label). The keycap stays (3px edge,
+   4 on hover, 0 on press) but the edge is --steel-dark and the cast is the
+   light --panel-shadow: --key-edge and --shadow-60 read as a near-black slab
+   on the warm canvas. Dark keeps the soft tier above untouched. Soft and ghost
+   are secondaries and stay as they are. Pinned by the parity gate and by
+   e2e/theBoardAskIsSteelInLight.spec.mjs. */
+:root[data-theme="light"] .hero.elegant .cta:not(.soft):not(.ghost){ background:var(--cta-grad); color:var(--on-steel);
+  box-shadow:0 3px 0 var(--steel-dark), var(--panel-shadow), inset 0 1px 0 var(--hair-14); }
+:root[data-theme="light"] .hero.elegant .cta:not(.soft):not(.ghost):hover:not(:disabled){
+  box-shadow:0 4px 0 var(--steel-dark), var(--panel-shadow), inset 0 1px 0 var(--hair-14); }
+:root[data-theme="light"] .hero.elegant .cta:not(.soft):not(.ghost):active{
+  box-shadow:0 0 0 var(--steel-dark), inset 0 1px 0 var(--hair-07); }
 /* DECLUTTERED CONFLICT (host 2026-07-18): tight situation with a quiet "why?" tap, and
    the fixes as compact tappable rows (no faked "our fix" — genuine either/or). */
 .hero.elegant .conf-sit{ display:flex; align-items:flex-start; gap:10px; }

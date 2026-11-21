@@ -82,12 +82,39 @@ const CSS_RULES = [
   // SOFT TIER, pinned (2026-07-31). The hero command wears .cta.soft's treatment.
   // Asserting the exact two tokens means a drift back to the primary gradient — or
   // to any third colour — fails here rather than shipping.
+  // DARK ONLY since owner ruling 29 (11/21/2026): this base rule is what dark
+  // paints; light overrides it below. The base must still never take the gradient.
   { sel: /\.hero\.elegant \.cta\{/, bad: /background:\s*var\(--cta-grad\)/,
-    label: 'the elegant hero .cta is back on the PRIMARY gradient — the host ruled it wears the soft tier: background:var(--sheen), with a var(--ink) label' },
+    label: 'the elegant hero .cta is back on the PRIMARY gradient — the host ruled it wears the soft tier in DARK: background:var(--sheen), with a var(--ink) label' },
+  // A `bad` check passes silently when its selector goes missing. These `must`
+  // checks fail instead, so the two-theme split cannot be deleted or forked.
+  // Soft tier in dark: the base rule keeps --sheen / --ink on the --key-edge keycap.
+  { sel: /^\.hero\.elegant \.cta\{/, block: true,
+    must: /background:var\(--sheen\);\s*color:var\(--ink\)[\s\S]*0 3px 0 var\(--key-edge\)/,
+    label: 'the elegant hero .cta base (dark) rule lost the soft tier — it must read background:var(--sheen); color:var(--ink) on a 0 3px 0 var(--key-edge) keycap (host ruling 2026-07-31)' },
+  // Steel in light (owner ruling 29): the sheets' primary, keycap on a steel edge.
+  { sel: /^:root\[data-theme="light"\] \.hero\.elegant \.cta:not\(\.soft\):not\(\.ghost\)\{/, block: true,
+    must: /background:var\(--cta-grad\);\s*color:var\(--on-steel\)[\s\S]*0 3px 0 var\(--steel-dark\)/, bad: /--key-edge|--shadow-\d/,
+    label: 'the LIGHT elegant hero .cta must wear the steel primary — background:var(--cta-grad); color:var(--on-steel) on a 0 3px 0 var(--steel-dark) keycap, never --key-edge or the dark --shadow-* cast (owner ruling 29, 11/21/2026)' },
+  { sel: /^:root\[data-theme="light"\] \.hero\.elegant \.cta:not\(\.soft\):not\(\.ghost\):hover:not\(:disabled\)\{/, block: true,
+    must: /0 4px 0 var\(--steel-dark\)/, bad: /--key-edge|--shadow-\d|rgba\(0,\s*0,\s*0/,
+    label: 'the LIGHT elegant hero .cta:hover must lift on a 0 4px 0 var(--steel-dark) edge, never --key-edge or a black cast (owner ruling 29)' },
+  { sel: /^:root\[data-theme="light"\] \.hero\.elegant \.cta:not\(\.soft\):not\(\.ghost\):active\{/, block: true,
+    must: /0 0 0 var\(--steel-dark\)/, bad: /--key-edge|--shadow-\d/,
+    label: 'the LIGHT elegant hero .cta:active must press onto a 0 0 0 var(--steel-dark) edge, never --key-edge or a dark cast (owner ruling 29)' },
 ];
+// The whole rule, from its selector line to the first line that closes it.
+const blockFor = (re) => {
+  const i = CSS_LINES.findIndex((l) => re.test(l));
+  if (i < 0) return '';
+  const out = [];
+  for (let j = i; j < CSS_LINES.length; j++) { out.push(CSS_LINES[j]); if (CSS_LINES[j].includes('}')) break; }
+  return out.join('\n');
+};
 for (const r of CSS_RULES) {
-  const line = lineFor(r.sel);
-  if (line && r.bad.test(line)) violations.push(`styles.css: ${r.label}.`);
+  const line = r.block ? blockFor(r.sel) : lineFor(r.sel);
+  if (r.must && !(line && r.must.test(line))) violations.push(`styles.css: ${r.label}.`);
+  else if (line && r.bad && r.bad.test(line)) violations.push(`styles.css: ${r.label}.`);
 }
 
 // ── NO WHITE SURFACES (host ruling 2026-07-28) ───────────────────────────────
