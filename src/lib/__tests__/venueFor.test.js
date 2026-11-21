@@ -10,7 +10,7 @@ describe('venueFor', () => {
     expect(v.isSet).toBe(true);
     expect(v.isHome).toBe(false);
     // The state shows (owner report, iPad, 11/21/2026: "the state is not being picked up").
-    expect(v.displayLine).toBe('VFW Post 3150, Alexandria, VA');
+    expect(v.displayLine).toBe('VFW Post 3150 · Alexandria, VA');
     expect(v.mapsQuery).toBe('VFW Post 3150, Alexandria, VA');
   });
 

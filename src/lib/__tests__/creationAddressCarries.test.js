@@ -67,7 +67,7 @@ describe('a street address is a location', () => {
     const v = venueFor({ venue: 'VFW Post 3150', venueCity: 'Alexandria', venueState: 'VA' });
     expect(v.isSet).toBe(true);
     // The name leads; the state now shows too (owner report, 11/21/2026).
-    expect(v.displayLine).toBe('VFW Post 3150, Alexandria, VA');
+    expect(v.displayLine).toBe('VFW Post 3150 · Alexandria, VA');
   });
 
   test('at-home with a city is unchanged — still "At home in", not an address', () => {

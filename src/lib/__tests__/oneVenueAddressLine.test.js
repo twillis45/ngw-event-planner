@@ -60,7 +60,7 @@ describe('formatVenueAddress', () => {
 
   test('a named venue shows its town with the state', () => {
     expect(formatVenueAddress({ venue: 'VFW Post 3150', venueCity: 'Alexandria', venueState: 'VA' }))
-      .toBe('VFW Post 3150, Alexandria, VA');
+      .toBe('VFW Post 3150 · Alexandria, VA');
   });
 
   test('a named venue with a street shows both', () => {

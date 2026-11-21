@@ -190,8 +190,11 @@ export function venueFor(event) {
   const displayLine = nameIsStreet
     ? fullAddress
     : name
-      ? (dashTail || (city && name.toLowerCase().includes(city.toLowerCase())) ? name
-        : (fullAddress ? `${name} · ${fullAddress}` : [name, townLine].filter(Boolean).join(', ')))
+      // A named place, then where it is: "VFW Post 3150 · Alexandria, VA",
+      // "The Boathouse · 9 Dock Rd, Annapolis, MD 21401". A name that already
+      // says its town and state ("VFW Post 3150 — Alexandria, VA") stands alone.
+      ? (!fullAddress && (dashTail || (carries(name, city) && (!state || carries(name, state)))) ? name
+        : [name, fullAddress || townLine].filter(Boolean).join(' · '))
       : (isHome && city && !address ? `At home in ${joinTown(city, state, '')}` : (fullAddress || townLine));
   const mapsQuery = fullAddress
     || (dashTail ? name : [name && !HOMEISH.test(name) ? name : '', city, state].filter(Boolean).join(', '));

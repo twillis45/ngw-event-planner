@@ -45,7 +45,7 @@ import CityField from './CityField.jsx';
 import { normalizeCvbContact } from '@app/lib/cvbIntel';
 import { draftLodgingNote } from '@app/lib/doItForMe';
 import { saveCustomEvents } from '@app/lib/customEventStore';
-import { venueFor } from '@app/lib/venueFor';
+import { venueFor, formatVenueAddress } from '@app/lib/venueFor';
 import { proposeTownFromHeard } from '@app/lib/cityText';
 import { settleChoicePatch } from '@app/lib/choiceProvenance';
 import { spanNights } from '@app/lib/dates';
@@ -470,7 +470,9 @@ export default function LodgingCockpit() {
             return (
               <>
                 <p className="lc-note" data-stay-party>
-                  The party: <b>{vf.isHome ? 'your place' : vf.display}</b>{vf.city ? ` · ${vf.city}${vf.state ? ', ' + vf.state : ''}` : ''}
+                  {/* The one place line (formatVenueAddress): a picked address already
+                      carries its town, so the town is not said twice. */}
+                  The party: <b>{vf.isHome ? 'your place' : formatVenueAddress(event)}</b>{vf.isHome && vf.townLine ? ` · ${vf.townLine}` : ''}
                   {' · '}<button type="button" className="lc-link tap-44" onClick={goAddVenue}>Change the venue</button>
                 </p>
                 {partyHotel && (
