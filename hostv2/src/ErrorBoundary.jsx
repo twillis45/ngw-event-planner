@@ -64,7 +64,7 @@ export default class ErrorBoundary extends Component {
             onClick={() => window.location.reload()}
             style={{
               marginTop: 4, padding: '10px 20px', borderRadius: 11, border: 'none',
-              background: '#4E6877', color: 'var(--on-steel)', fontWeight: 700, fontSize: 14.5, cursor: 'pointer',
+              background: 'var(--steel)', color: 'var(--on-steel)', fontWeight: 700, fontSize: 14.5, cursor: 'pointer',
             }}
           >
             {/* UX_07 / ctaNamesTheAct: "Reload" is the browser's word for

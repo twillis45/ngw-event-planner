@@ -32,6 +32,10 @@
 //               the key edge, the fixed carbon stage and its two quiet inks,
 //               the reveal bead and its shadows, text on a photo, and the
 //               mask stop. Zero pixels moved.
+//   11/21/2026  265 color, 883 inline (design batch 3b, item 2). #4E6877, two
+//               units from --steel (#4c6675) in every channel and theme, now
+//               reads --steel: the lit reveal bead (twice) and the error
+//               screen's button. Its label goes 5.16 -> 5.31:1.
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';

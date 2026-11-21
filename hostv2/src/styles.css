@@ -2182,7 +2182,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 @keyframes reveal-dot-drop{
   0%{opacity:0; transform:translateY(-14px); background-color:var(--bead); box-shadow:var(--bead-rest-shadow)}
   55%{opacity:1; transform:translateY(0); background-color:var(--bead); box-shadow:var(--bead-rest-shadow)}
-  100%{opacity:1; transform:translateY(0); background-color:#4E6877; box-shadow:var(--bead-lit-shadow)}
+  100%{opacity:1; transform:translateY(0); background-color:var(--steel); box-shadow:var(--bead-lit-shadow)}
 }
 @keyframes reveal-dot-breathe{
   0%{box-shadow:var(--bead-lit-shadow)}
@@ -2209,7 +2209,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .glow-once{animation:glowonce .9s var(--ease-out) 1}
 @media(prefers-reduced-motion:reduce){
   .rv-line,.title-drop,.pre,.reveal-stage{opacity:1!important; transform:none!important; filter:none!important; animation:none!important}
-  .reveal-dot{opacity:1!important; transform:none!important; background-color:#4E6877!important;
+  .reveal-dot{opacity:1!important; transform:none!important; background-color:var(--steel)!important;
     box-shadow:var(--bead-lit-shadow)!important}
 }
 
