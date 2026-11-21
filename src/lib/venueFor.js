@@ -122,9 +122,7 @@ export function venueFor(event) {
   const nameIsStreet = !!name && STREET_LINE.test(name);
   const address = String(ev.venueAddress || '').trim()
     || (street
-      ? [street,
-        city && state ? `${city}, ${state}` : (city || state),
-        String(ev.venueZip || '').trim()].filter(Boolean).join(', ')
+      ? [street, joinTown(city, state, String(ev.venueZip || '').trim())].filter(Boolean).join(', ')
       : (nameIsStreet ? name : ''));
   // The at-home carve-out, defined ONCE: a home host's location lives in
   // venueCity; a named-venue host's lives in venue. (Three engines used to
@@ -178,10 +176,24 @@ export function venueFor(event) {
   // Same finding as isSet: with no name, an event holding a real street had
   // nothing to show for itself but its town. Show the street the host typed —
   // it is the most specific thing known about where this is.
-  const displayLine = name
-    ? (dashTail || (city && name.toLowerCase().includes(city.toLowerCase())) ? name : [name, city].filter(Boolean).join(', '))
-    : (isHome && city ? `At home in ${city}` : (address || city));
-  const mapsQuery = address
+  // ── ONE ADDRESS LINE (owner report, iPad, 11/21/2026) ────────────────────
+  // "On space seats and helpers, the state is not being picked up. Also in
+  // invite not picking up all of address." The display line was [name, city]:
+  // a street typed as the venue read "100 Example Ln, Ft Washington" on Space
+  // and the invite, the state and ZIP dropped although the record held them.
+  // Every reader now takes the line composed here (formatVenueAddress below):
+  // street, City, ST ZIP when known. A part the line already carries is not
+  // repeated, and a part the record does not hold is never supplied.
+  const zipKnown = zipOf(ev, address);
+  const townLine = joinTown(city, state, zipKnown);
+  const fullAddress = address ? withMissingParts(address, city, state, zipKnown) : '';
+  const displayLine = nameIsStreet
+    ? fullAddress
+    : name
+      ? (dashTail || (city && name.toLowerCase().includes(city.toLowerCase())) ? name
+        : (fullAddress ? `${name} · ${fullAddress}` : [name, townLine].filter(Boolean).join(', ')))
+      : (isHome && city && !address ? `At home in ${joinTown(city, state, '')}` : (fullAddress || townLine));
+  const mapsQuery = fullAddress
     || (dashTail ? name : [name && !HOMEISH.test(name) ? name : '', city, state].filter(Boolean).join(', '));
   // ── THE ZIP, PUBLISHED (2026-09-23) ──────────────────────────────────────
   // `setVenue` below stores a bare ZIP in **venueCity**, because the city gate
@@ -196,15 +208,64 @@ export function venueFor(event) {
   // once and both consumers ask for it.
   //
   // '' when there is no ZIP. Never inferred from a city, never geocoded.
-  const zip = /^\d{5}$/.test(String(ev.venueZip || '').trim()) ? String(ev.venueZip).trim()
-    : (/^\d{5}$/.test(String(ev.venueCity || '').trim()) ? String(ev.venueCity).trim() : '');
+  // A ZIP at the end of the address line the host typed counts too (11/21/2026):
+  // it is on the record, read rather than looked up.
+  const zip = zipKnown;
   // `display`: what to SHOW for the place (owner acceptance run 11/5/2026,
   // issue #100 D-4). A street address from Creation with no venue name made
   // `isSet` true while the Venue sheet rendered "Currently:" only for a name.
   // `confirmed`: the host said so, as opposed to the plan having been told.
   const display = name || address;
   const confirmed = !!ev.venueConfirmed;
-  return { name, kind, isHome, city, state, zip, address, isSet, addressSettled, needsCityForWeather, displayLine, mapsQuery, display, confirmed };
+  return { name, kind, isHome, city, state, zip, address, fullAddress, townLine, isSet, addressSettled, needsCityForWeather, displayLine, mapsQuery, display, confirmed };
+}
+
+// ── The address helpers venueFor composes with ───────────────────────────────
+const escRe = (x) => String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// Does the line already carry this part, as a whole word? ("Pasadena MD" holds
+// both Pasadena and MD; "Mdina" holds neither.)
+const carries = (line, part) => !!part && new RegExp('(^|[\\s,])' + escRe(part) + '(?=$|[\\s,.])', 'i').test(line);
+function zipOf(ev, address) {
+  const z = String(ev.venueZip || '').trim();
+  if (/^\d{5}$/.test(z)) return z;
+  const c = String(ev.venueCity || '').trim();
+  if (/^\d{5}$/.test(c)) return c;
+  const m = /(?:^|[\s,])(\d{5})(?:-\d{4})?\s*$/.exec(String(address || ''));
+  // A trailing five digits after a comma or state, never a house number alone.
+  return m && /[a-z]/i.test(String(address).slice(0, m.index)) ? m[1] : '';
+}
+function joinTown(city, state, zip) {
+  const cs = city && state ? `${city}, ${state}` : (city || state || '');
+  return [cs, zip].filter(Boolean).join(' ');
+}
+function withMissingParts(line, city, state, zip) {
+  let out = String(line).trim();
+  if (city && !carries(out, city)) out += `, ${city}`;
+  if (state && !carries(out, state) && !carries(out, US_STATE_FULL[state] || '')) out += `, ${state}`;
+  if (zip && !carries(out, zip)) out += ` ${zip}`;
+  return out;
+}
+const US_STATE_FULL = {
+  AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California', CO: 'Colorado', CT: 'Connecticut',
+  DE: 'Delaware', DC: 'District of Columbia', FL: 'Florida', GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho', IL: 'Illinois',
+  IN: 'Indiana', IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine', MD: 'Maryland',
+  MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota', MS: 'Mississippi', MO: 'Missouri', MT: 'Montana',
+  NE: 'Nebraska', NV: 'Nevada', NH: 'New Hampshire', NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York',
+  NC: 'North Carolina', ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania',
+  RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas', UT: 'Utah',
+  VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming',
+};
+
+// ─── formatVenueAddress — THE one place line every reader shows ──────────────
+//   style 'line'    (default) what a person reads: the venue name with its
+//                   address, "street, City, ST ZIP", or "At home in City, ST"
+//   style 'address' the street line with its town, state and ZIP; '' with no street
+//   style 'town'    "City, ST ZIP"
+export function formatVenueAddress(event, { style = 'line' } = {}) {
+  const vf = venueFor(event);
+  if (style === 'address') return vf.fullAddress;
+  if (style === 'town') return vf.townLine;
+  return vf.displayLine;
 }
 
 // ─── setVenue — THE one venue WRITE path ─────────────────────────────────────
@@ -234,20 +295,62 @@ export const isHomeVenueName = (v) => HOME_NAME.test(String(v || '').trim().repl
 // What the OLD guess matched, kept only to recognize its mistakes on read.
 const OLD_HOME_GUESS = /backyard|house|home|yard|place|garden/i;
 
-export function setVenue(current, { name, locationText } = {}) {
+//   resolved      optional suggestion picked from the address lookup
+//                 (addressSuggest.nominatimToSuggestion): its street, town,
+//                 state, ZIP and coordinates are stored as given — a part the
+//                 lookup did not return is left empty, never filled in.
+export function setVenue(current, { name, locationText, resolved } = {}) {
+  const cur = current || {};
+  if (resolved && String(resolved.street || '').trim()) return resolvedVenuePatch(cur, resolved);
   const v = String(name || '').trim();
   const parsed = locationText
     ? (() => { try { return parseVenueLocation(String(locationText)); } catch { return null; } })()
     : null;
   return {
     venue: v,
-    venueKind: isHomeVenueName(v) ? 'home' : String((current || {}).venueKind || ''),
+    venueKind: isHomeVenueName(v) ? 'home' : String(cur.venueKind || ''),
     // A new place is a new question: the old answer to "is this a private home?"
     // was about a different address.
     venueConfirmed: false,
+    // The old place's street, ZIP and coordinates belonged to it (11/21/2026):
+    // a place saved as typed must not show the previous one's ZIP.
+    ...(cur.venueStreet || cur.venueZip || cur.venueAddress || cur.venueLat != null
+      ? { venueStreet: '', venueZip: '', venueAddress: '', venueLat: null, venueLon: null } : {}),
     ...(parsed
       ? (parsed.zip ? { venueCity: parsed.zip } : { venueCity: parsed.city, venueState: parsed.state })
       : {}),
+  };
+}
+
+const streetKey = (x) => String(x || '').toLowerCase().split(',')[0]
+  .replace(/\b(lane|ln)\b/g, 'ln').replace(/\b(street|st)\b/g, 'st').replace(/\b(road|rd)\b/g, 'rd')
+  .replace(/\b(avenue|ave)\b/g, 'ave').replace(/\b(drive|dr)\b/g, 'dr').replace(/\b(court|ct)\b/g, 'ct')
+  .replace(/\b(boulevard|blvd)\b/g, 'blvd').replace(/\b(place|pl)\b/g, 'pl').replace(/[^a-z0-9]+/g, ' ').trim();
+
+function resolvedVenuePatch(cur, r) {
+  const street = String(r.street).trim();
+  const state = /^[A-Z]{2}$/.test(String(r.stateCode || '')) ? r.stateCode : '';
+  const before = venueFor(cur);
+  // A lookup that names no town keeps the town the event already has, when it
+  // is in the same state: the host's own answer, not a guess.
+  const city = String(r.cityName || '').trim() || (state && before.state === state ? before.city : '');
+  const zip = /^\d{5}$/.test(String(r.zip || '')) ? r.zip : '';
+  const placeName = String(r.name || '').trim();
+  // Re-picking the street already on the plan (now with its ZIP) is the same
+  // place, so the host's "your home, confirmed" stands.
+  const samePlace = !!before.address && streetKey(before.address) === streetKey(street);
+  const lat = Number(r.lat), lon = Number(r.lon);
+  return {
+    venue: placeName,
+    venueKind: isHomeVenueName(placeName) ? 'home' : String(cur.venueKind || ''),
+    venueConfirmed: samePlace ? !!cur.venueConfirmed : false,
+    venueStreet: street,
+    venueCity: city,
+    venueState: state,
+    venueZip: zip,
+    venueAddress: withMissingParts(street, city, state, zip),
+    venueLat: Number.isFinite(lat) ? lat : null,
+    venueLon: Number.isFinite(lon) ? lon : null,
   };
 }
 

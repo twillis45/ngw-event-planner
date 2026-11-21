@@ -74,11 +74,15 @@ export function buildHelperAsk({ event, hostName, helperName, jobs, url }) {
   const tp = timePhrase(ev);
   const when = [date ? `on ${date}` : '', clock(tp) ? `at ${clock(tp)}` : tp].filter(Boolean).join(' ');
   const place = placePhrase(ev);
-  let address = '';
-  try { address = venueFor(ev).address || ''; } catch { address = ''; }
-  const where = place
+  // The whole address line, with its town, state and ZIP (formatVenueAddress).
+  // A street typed as the venue is that address, so it is said once.
+  let vfa = { address: '', fullAddress: '' };
+  try { vfa = venueFor(ev); } catch { /* no place */ }
+  const address = vfa.fullAddress || '';
+  const placeIsStreet = !!place && place === vfa.address;
+  const where = place && !placeIsStreet
     ? `at ${place}${address && address !== place ? ` (${address})` : ''}`
-    : (address ? `at ${address}` : '');
+    : (address ? `at ${address}` : (place ? `at ${place}` : ''));
 
   const allergy = helperAllergyNote(ev);
   const lines = (Array.isArray(jobs) ? jobs : [])

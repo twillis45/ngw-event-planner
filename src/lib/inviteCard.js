@@ -16,7 +16,7 @@
 import { inviteTone } from './inviteTone';
 import { deckLineFor } from './inviteDeck';
 import { eventStartLabel } from './eventWhen';
-import { venueFor } from './venueFor';
+import { formatVenueAddress } from './venueFor';
 import { spanEnd, daysUntilEnd } from './dates';
 
 // The page's stationery colors (hostv2 styles.css .inv2-sheet, .inv2-dark,
@@ -45,7 +45,7 @@ export function inviteCardModel(event) {
     try { const w = eventStartLabel(ev); time = (w && w.label) || ''; } catch { /* no hour */ }
     facts.push({ label: 'When', value: day, sub: time });
   }
-  const where = (() => { try { return venueFor(ev).displayLine || ''; } catch { return ''; } })();
+  const where = (() => { try { return formatVenueAddress(ev) || ''; } catch { return ''; } })();
   if (where) facts.push({ label: 'Where', value: where });
   const host = String(ev.hostName || ev.hostNames || '').trim();
   if (host && !past) facts.push({ label: 'Hosted by', value: host });

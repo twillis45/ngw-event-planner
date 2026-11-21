@@ -30,7 +30,7 @@ import { inviteTone, invitePalette } from '@app/lib/inviteTone';
 import { formatPhoneUS, isIncompletePhone, isValidPhone, isMalformedEmail, normalizePhone } from '@app/lib/contactFormat';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { hashtagLine } from '@app/lib/eventHashtag';
-import { venueFor } from '@app/lib/venueFor';
+import { venueFor, formatVenueAddress } from '@app/lib/venueFor';
 import { useBreakpoint } from '@app/lib/viewport';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
 // GUEST PAYLOAD: this page used buildExperienceContext for exactly ONE thing —
@@ -819,12 +819,15 @@ export default function InviteV2({ code }) {
   // Calendar location: name + GATED city from the constitution (a polluted
   // venueCity no longer rides into guests' calendars).
   const vfLoc = venueFor(event);
+  // The whole place, street, City, ST ZIP (formatVenueAddress), when there is a
+  // name or a street; a town alone is not a calendar location.
+  const calLoc = (vfLoc.name || vfLoc.address) ? formatVenueAddress(event).replace(' · ', ', ') : '';
   // The host's photo tag rides into the guest's calendar entry (11/16/2026).
   const calNote = hashtagLine(event);
   const gcalUrl = event.date
     ? 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(event.name || 'Event')
       + '&dates=' + calDate + '/' + calEnd
-      + (vfLoc.name ? '&location=' + encodeURIComponent(vfLoc.name + (vfLoc.city ? ', ' + vfLoc.city : '')) : '')
+      + (calLoc ? '&location=' + encodeURIComponent(calLoc) : '')
       + (calNote ? '&details=' + encodeURIComponent(calNote) : '')
     : null;
   const icsHref = event.date
@@ -833,7 +836,8 @@ export default function InviteV2({ code }) {
       'BEGIN:VEVENT', `UID:invite-${event.id}-${code}@ngw-events`,
       `DTSTART;VALUE=DATE:${calDate}`, `DTEND;VALUE=DATE:${calEnd}`,
       `SUMMARY:${String(event.name || 'Event').replace(/[,;]/g, ' ')}`,
-      ...(vfLoc.name ? [`LOCATION:${vfLoc.name.replace(/[,;]/g, ' ')}`] : []),
+      // RFC 5545 text: a comma or semicolon is escaped, so the address keeps them.
+      ...(calLoc ? [`LOCATION:${calLoc.replace(/([\\,;])/g, '\\$1')}`] : []),
       ...(calNote ? [`DESCRIPTION:${calNote.replace(/[,;\\]/g, ' ')}`] : []),
       'END:VEVENT', 'END:VCALENDAR'].join('\r\n'))
     : null;
@@ -952,8 +956,8 @@ export default function InviteV2({ code }) {
                     : null}
                   {whenLabel ? <span className="inv2-when-time"> · {whenLabel.label}</span> : null}
                 </div></>)}
-              {venueFor(event).displayLine && (<><div className="inv2-label lp">Where</div>
-                <div className="inv2-val lp">{venueFor(event).displayLine}</div></>)}
+              {formatVenueAddress(event) && (<><div className="inv2-label lp">Where</div>
+                <div className="inv2-val lp" data-invite-where>{formatVenueAddress(event)}</div></>)}
               {/* ── Trip Brief v0 (destination events) — host-authored stay +
                   airports, read-only. Renders on DATA presence, never on an
                   inferred flag; nothing here is guest data or money. */}
@@ -1503,7 +1507,7 @@ export default function InviteV2({ code }) {
           {days != null && days <= 0 && !isPast && venueFor(event).isSet && (
             <div className="card no-hover" style={{ marginTop: 14 }}><div className="card-head" style={{ cursor: 'default', padding: '14px 18px' }}>
               <div className="shelf-label" style={{ marginBottom: 4 }}>Getting there — it’s today</div>
-              <p className="grounding" style={{ margin: '0 0 8px' }}>{venueFor(event).displayLine}</p>
+              <p className="grounding" style={{ margin: '0 0 8px' }}>{formatVenueAddress(event)}</p>
               <div className="actions-row" style={{ marginTop: 0 }}>
                 <a className="mini" style={{ textDecoration: 'none' }} target="_blank" rel="noreferrer"
                   href={'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(venueFor(event).mapsQuery)}>

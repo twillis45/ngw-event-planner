@@ -9,7 +9,8 @@ describe('venueFor', () => {
     const v = venueFor({ venue: 'VFW Post 3150', venueCity: 'Alexandria', venueState: 'VA' });
     expect(v.isSet).toBe(true);
     expect(v.isHome).toBe(false);
-    expect(v.displayLine).toBe('VFW Post 3150, Alexandria');
+    // The state shows (owner report, iPad, 11/21/2026: "the state is not being picked up").
+    expect(v.displayLine).toBe('VFW Post 3150, Alexandria, VA');
     expect(v.mapsQuery).toBe('VFW Post 3150, Alexandria, VA');
   });
 
@@ -39,7 +40,7 @@ describe('venueFor', () => {
 
   test('phantom event.address is refused; structured parts compose', () => {
     const v = venueFor({ address: '99 Ghost Rd', venueStreet: '12 Elm St', venueCity: 'Decatur', venueState: 'GA', venueZip: '30030' });
-    expect(v.address).toBe('12 Elm St, Decatur, GA, 30030');
+    expect(v.address).toBe('12 Elm St, Decatur, GA 30030');
   });
 
   test('host_event records default to home', () => {
