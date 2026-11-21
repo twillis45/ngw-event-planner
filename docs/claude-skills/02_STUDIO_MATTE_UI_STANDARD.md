@@ -57,6 +57,15 @@ existed on one side only and conflicts with nothing, so it is kept).
     - **The shape.** From 1024 wide, where the side rail appears, every sheet fills the content column: one shape across the 1280 boundary, with no 680px panel jumping to a full column. This keeps the 8/3 and 8/21 rulings that a section fills the column at desktop.
     - **Height.** A sheet's frame is capped to the screen height, so its title and Close are always visible. Test it at 1280×654, where the shopping sheet once opened with both off-screen. The page behind the sheet must not scroll while it is open: use `overflow: clip`, never `hidden`, because `hidden` can still be scrolled from code.
     - **What was declined.** The audit's single centered 680px panel. It dropped the desktop list-with-detail layout, and it only fit at 1280×654 because of where the page happened to be scrolled.
+28. **On touch screens, the app frame is full-bleed with square corners** (owner ruling, 11/21/2026, after a report from the owner's iPad: "In tablet some of columns are rounded on different screens").
+    - **What was measured.** Every viewport had the same `.stagewrap` 20px radius.
+      - Below 1280, the frame fills the screen, so its rounded corners were clipped at the screen edge (an 11" iPad).
+      - At 1280 and up, the frame is inset as a floating card (a 13" iPad in landscape, at 1366).
+      - Two iPads showed two shapes.
+    - **The rule.**
+      - Every touch screen, `(pointer: coarse)`, at any width or orientation, gets an edge-to-edge frame with square corners and no desktop inset, like a native iPad app.
+      - A desktop with a mouse at 1280 and up keeps the inset card with rounded corners.
+      - Inner panels keep their own radii.
 
 ## Studio Matte Means
 
