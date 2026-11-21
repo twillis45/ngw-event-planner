@@ -875,8 +875,15 @@ button{font-family:inherit}
    when an arrow MAY appear — it never required one. Removing it satisfies the
    doctrine and the frames at the same time. Row-level chevrons elsewhere are a
    separate control and are untouched. */
-/* primary takes the full row; any secondary actions wrap quietly beneath it */
-.hero.elegant .hero-card .actions-row{ flex-wrap:wrap; row-gap:10px; }
+/* primary takes the full row; any secondary actions wrap quietly beneath it.
+   ROW-GAP 16, NOT 10 (11/21/2026). A `.mini` is 32px tall and its tap
+   expander (`::after`, min-height --tap-min, 46) overhangs 7px above and below,
+   so two wrapped rows of minis need at least 14px between them or the lower
+   row's expander takes the upper row's bottom edge. At 10 the hit area of
+   "Find venues near Washington" measured 42 (nothingPressableIsUnderTheFloor,
+   1024x768 and 1024x1366), once the narrower question column of ruling 26
+   wrapped the row in two. */
+.hero.elegant .hero-card .actions-row{ flex-wrap:wrap; row-gap:var(--sp-4); }
 .hero.elegant .hero-card .actions-row > .cta{ flex:1 1 100%; }
 /* MINI MOTION (host 2026-07-18): HOVER lifts the raised key a hair toward the finger —
    taller bottom edge, deeper cast, and the arrow leans in; PRESS collapses it into the
@@ -8008,8 +8015,13 @@ button.vc-pill::after{
   content:''; grid-column:1; grid-row:1 / span 3;
   min-height:calc(100dvh - 72px - env(safe-area-inset-bottom,0px));
 }
+/* The eyebrow spans the board with the bar under it: together they are the
+   header band, as at desktop, where both run the width of the work columns.
+   Held to the question column (433px at 1024) a long name wrapped it onto two
+   lines (CI, 11/21/2026: Game Night on the day), and that 16px pushed the fold
+   handle to y=774 on a 768-tall screen while the question itself still fit. */
 .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ev-eyebrow{
-  grid-column:1; grid-row:1; align-self:start;
+  grid-column:1 / -1; grid-row:1; align-self:start;
 }
 /* The desktop header placement ("THE ORDER, NOT THE COLUMNS"), one row under
    the eyebrow, 4px further down than desktop's 12px. This range is touch: the
