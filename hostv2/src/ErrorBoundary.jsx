@@ -31,7 +31,7 @@ export default class ErrorBoundary extends Component {
         <div style={{
           position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24,
-          textAlign: 'center', background: '#0d1014', color: '#eef0f4',
+          textAlign: 'center', background: '#0d1014', color: 'var(--carbon-ink)',
           fontFamily: '-apple-system, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
         }}
         >
@@ -64,7 +64,7 @@ export default class ErrorBoundary extends Component {
             onClick={() => window.location.reload()}
             style={{
               marginTop: 4, padding: '10px 20px', borderRadius: 11, border: 'none',
-              background: '#4E6877', color: '#eef0f4', fontWeight: 700, fontSize: 14.5, cursor: 'pointer',
+              background: '#4E6877', color: 'var(--on-steel)', fontWeight: 700, fontSize: 14.5, cursor: 'pointer',
             }}
           >
             {/* UX_07 / ctaNamesTheAct: "Reload" is the browser's word for

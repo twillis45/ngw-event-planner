@@ -18,6 +18,14 @@
 // rise. A count that falls passes, and prints the line to lower in the baseline.
 // To rewrite the baseline after a deliberate cleanup:
 //   UPDATE_TOKEN_BASELINE=1 npx vitest run test/tokenGate.test.mjs
+//
+// Baseline history:
+//   11/20/2026  368 color, 888 inline (design audit 2, first measurement).
+//   11/21/2026  366 color, 886 inline (design audit batch 3, item 1). Every
+//               counted literal was compared with every token's resolved value
+//               in BOTH themes; only two matched exactly (ErrorBoundary.jsx's
+//               #eef0f4, now --carbon-ink and --on-steel). Most tokens move with
+//               the theme while a literal does not, so nothing else qualified.
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
