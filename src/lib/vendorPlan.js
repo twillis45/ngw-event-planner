@@ -18,9 +18,26 @@
 
 import { getPlaybook, resolveAnsweredCopy, DESTINATION_VENDOR_CATEGORIES, foodApproach } from './playbooks';
 import { normalizeCategory } from './vendorAccountability/playbooks';
+import { isVendorBooked } from './workstreams';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const fmt = (n) => '$' + Math.round(Math.abs(n)).toLocaleString();
+
+// The caterer the host CHOSE to hire (requiredByChoice) and has not booked —
+// the row the hero's "Book your catering" raise reads (surfaceRegistry: no
+// matched vendor, or one isVendorBooked says is not booked). The phase ledger
+// reads it too, so the status line cannot say "Nothing is waiting on you" under
+// that ask (design batch 4, 11/21/2026). Returns the plan row, or null.
+export function chosenCatererUnbooked(event) {
+  const ev = event || {};
+  const row = (buildVendorPlan(ev).categories || []).find((c) => c && c.requiredByChoice);
+  if (!row) return null;
+  const vendors = Array.isArray(ev.vendors) ? ev.vendors : [];
+  const matched = row.vendorId ? vendors.find((v) => v && v.id === row.vendorId) : null;
+  let booked = false;
+  try { booked = !!(matched && isVendorBooked(matched)); } catch (_e) { booked = false; }
+  return booked ? null : row;
+}
 
 // buildVendorPlan(event, { metroFactor, metroLabel, rush }) → { relevant, categories, ... }
 // `rush` is the object returned by lib/vendorEstimator's getRushFactor(event.date).
