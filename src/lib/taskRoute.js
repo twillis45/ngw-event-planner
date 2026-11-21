@@ -199,6 +199,13 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // each booking", 11/21/2026): the stay and every booked vendor, one sheet.
   if (/^confirm every (?:reservation|booking)\b/.test(t))
     return { label: 'Reconfirm each booking', route: { focusField: 'reconfirm-sweep' } };
+  // A SHORT NOTE TO THE WHOLE GROUP IS AN UPDATE TO EVERYONE (11/21/2026).
+  // "Send a short list of house norms, including the booking site's rule
+  // against parties at a rental" opened People you're hiring: "rental" is a
+  // rentals vendor in the rule below. Updates to everyone, on the Guest list,
+  // posts the host's own words on every guest's invite.
+  if (/^(?:send|share|post)\b[^.;:]{0,30}\b(?:norms|ground rules)\b/.test(t))
+    return { label: 'Open updates to everyone', route: { tab: 'Guests', focusField: 'guests-updates' } };
   if (/^(?:send|share)\b[^.;:]{0,20}\btrip details\b/.test(t))
     return { label: 'Draft the trip details', route: { focusField: 'draft-trip-details' } };
   if (/getting[- ]here|travel (info|details|brief|plan)\b|how to get (here|there)|arrival info/.test(t)
@@ -227,6 +234,13 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   }
   if (/room block/.test(t))
     return { label: 'Open the stay', route: { focusField: 'lodging' } };
+  // A STAY IS BOOKED WHERE EVERYONE STAYS (11/21/2026). Group Trip's "Book the
+  // place: check its cancellation policy…" opened the add-a-vendor field (the
+  // vendor rule's "book the"), and "Before you pay, search the listing's
+  // address…" opened Your money (the domain fallback read "pay"). Booking a
+  // rental, and checking its listing, is the stay's own work.
+  if (/^(?:book|reserve|rent)\s+(?:the|a|your)\s+(?:place|house|rental|cabin|condo|villa|stay)\b(?!\s+for\b)|\bthe listing(?:'s)?\b/.test(t))
+    return { label: 'Open where everyone stays', route: { tab: 'Travel' } };
   if (/gift log|who-gave-what/.test(t))
     return { label: 'Open guests', route: { tab: 'Guests', focusField: 'guests-entry' } };
   if (/meaning moment/.test(t))
@@ -306,6 +320,14 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // vendor work and falls through to the rule below.
   if (/^(?:build|make|create|curate)\b[^.;]{0,30}\bplaylist\b/.test(t))
     return null;
+  // A DINNER RESERVATION IS A BOOKING, NOT FURNITURE (11/21/2026). "Reserve
+  // the group dinners. A table for the whole group needs a booking" opened the
+  // Space list, because "table" is the space rule's word below. Reservations
+  // are tracked with the people you're hiring (and reconfirmed from there).
+  // Below the hall rule above, so "Reserve the fellowship hall (or
+  // restaurant)" is still the venue.
+  if (/\b(?:reserve|book)\b[^.;]{0,30}\b(?:dinners?|brunch(?:es)?|lunch(?:es)?|restaurants?)\b/.test(t))
+    return { label: 'Line them up', route: firstUndoneVendorRoute(event) };
   if (/\b(dj|playlist|band|speaker|photographer|caterer|book the|rent(al)?|hire)\b/.test(t))
     return { label: 'Line them up', route: firstUndoneVendorRoute(event) };
   if (/\b(forecast|weather|rain plan|shade\/rain)\b/.test(t))

@@ -87,10 +87,10 @@ export default function HostUpdates({ eventId }) {
   if (!isAnnouncementsApiConfigured()) return null;
   const { st, emailN, confirm, setConfirm, busy, line, err } = u;
 
-  if (st === undefined) return <section data-host-updates style={{ marginTop: 'var(--sp-4)' }}><p className="grounding" style={{ margin: 0 }}>Loading updates…</p></section>;
+  if (st === undefined) return <section id="guests-updates-anchor" data-host-updates style={{ marginTop: 'var(--sp-4)' }}><p className="grounding" style={{ margin: 0 }}>Loading updates…</p></section>;
   if (st.failed) {
     return (
-      <section data-host-updates style={{ marginTop: 'var(--sp-4)' }}>
+      <section id="guests-updates-anchor" data-host-updates style={{ marginTop: 'var(--sp-4)' }}>
         <div className="shelf-label" style={{ marginBottom: 6 }}>Updates to everyone</div>
         <p className="grounding" style={{ margin: 0 }}>{failedLine(st)}</p>
       </section>
@@ -103,7 +103,7 @@ export default function HostUpdates({ eventId }) {
   const remove = u.remove;
 
   return (
-    <section data-host-updates aria-label="Updates to everyone" style={{ marginTop: 'var(--sp-4)' }}>
+    <section id="guests-updates-anchor" data-host-updates aria-label="Updates to everyone" style={{ marginTop: 'var(--sp-4)' }}>
       <div className="shelf-label" style={{ marginBottom: 6 }}>Updates to everyone</div>
       <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }} data-updates-reach>
         {reachLine(emailN)}

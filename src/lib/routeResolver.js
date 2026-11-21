@@ -82,6 +82,9 @@ export function resolveRoute(route) {
   // The nudge (owner ruling, 11/20/2026): the board's reply-by row and the
   // chase step land on the one action, "Nudge the N who haven't answered".
   if (ff === 'rsvp-nudge') return { kind: 'guests', focus: 'nudge' };
+  // Updates to everyone (11/21/2026): a short note for the whole group, posted
+  // on every guest's invite, lands on that box in the Guest list.
+  if (ff === 'guests-updates') return { kind: 'guests', focus: 'updates' };
   if (route.tab === 'Guests') return { kind: 'guests', focus: null };
   // Food — a foodFocus id or a foodrow- focusField lands on the exact line.
   if (route.tab === 'Planning' && (route.foodFocus || /food/i.test(ff))) {

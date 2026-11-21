@@ -5525,6 +5525,7 @@ export default function HostShellV2() {
         ? ['guests-entry-anchor', 'guests-counting-anchor']
         : sheet.focus === 'questions' ? ['guests-questions-anchor']
         : sheet.focus === 'photos' ? ['guests-photos-anchor']
+        : sheet.focus === 'updates' ? ['guests-updates-anchor']   // Updates to everyone (11/21/2026)
         : ['guests-invites-anchor'];
       // `guests-counting-anchor` is inside the §25 fold on the redesigned
       // surface, so the scroll below would land on a collapsed section. Open it
