@@ -5105,6 +5105,12 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
    headcount ask's "Start a guest list ›" text button, 18 tall. */
 @media (max-width: 480px), (pointer: coarse){
   .frow, .place-line { min-height: var(--tap-min); }
+  /* The tappable stat rows (Space's "Rent tables need 2", the food sheet's
+     "Your choices") stood 42-43 on CI's tablet project, where the runner's
+     fonts set them a line shorter than a dev machine does; the floor must not
+     ride on font metrics (11/21/2026). Buttons only: a non-tappable .fstat
+     summary row keeps its height. */
+  button.fstat { min-height: var(--tap-min); }
   /* "Rather track who's coming by name? Start a guest list ›" is a whole
      button, not a link inside a sentence, and stood 18px tall under the chips. */
   .ask-textlink { display: inline-flex; align-items: center; min-height: var(--tap-min); }
