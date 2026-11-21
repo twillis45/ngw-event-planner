@@ -24367,7 +24367,7 @@ export default function HostShellV2() {
                     onClick={() => setSheet(s => ({ ...s, focus: top.vendor.id }))}
                     aria-label={'Open ' + (top.vendor.name || 'this vendor') + ' — ' + (top.readiness.summary || top.readiness.label)}>
                     <span className="fstat-l" style={{ flex: '0 0 auto' }}>{top.vendor.name || 'A vendor'}</span>
-                    <span className="fstat-v" style={{ textAlign: 'right', display: 'block',
+                    <span className="fstat-v fstat-note" style={{ textAlign: 'right', display: 'block',
                       color: crit ? 'var(--warn)' : 'var(--faint)' }}>
                       {top.readiness.summary || top.readiness.label}
                       <span className="fstat-chev" aria-hidden="true"> ›</span>
@@ -24834,7 +24834,7 @@ export default function HostShellV2() {
                                 {axes.map(a => (
                                   <div className="fstat" key={a.key} style={{ alignItems: 'flex-start', gap: 10 }}>
                                     <span className="fstat-l" style={{ flex: '0 0 auto' }}>{LABEL[a.key] || a.key}</span>
-                                    <span className="fstat-v" style={{ textAlign: 'right', display: 'block',
+                                    <span className="fstat-v fstat-note" style={{ textAlign: 'right', display: 'block',
                                       color: tone(a.level) ? 'var(--warn)' : 'var(--faint)' }}>{a.note}</span>
                                   </div>
                                 ))}

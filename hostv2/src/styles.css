@@ -3036,6 +3036,11 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .fstat-l{min-width:0}
 .fstat-l .of{white-space:nowrap}
 .fstat-v{white-space:nowrap; flex-shrink:0}
+/* A SENTENCE WRAPS (11/21/2026). The rule above is for totals. Where the value
+   is a status sentence beside a name ("Booking in progress — not yet
+   confirmed." beside "Night Shift DJ"), nowrap ran it past a 390 screen;
+   the sentence takes the room left and wraps, as the board's reasons do. */
+.fstat-v.fstat-note{white-space:normal; flex:1 1 auto; min-width:0}
 .fstat-chev{color:var(--faint)}
 /* Sourcing tiers as bordered cards (378:94): active one tinted + steel border. */
 .srctier-list{display:flex; flex-direction:column; gap:var(--sp-2); margin-bottom:var(--sp-2)}
