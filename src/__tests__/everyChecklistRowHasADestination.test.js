@@ -39,7 +39,9 @@ const SHELL_KINDS = new Set(['air', 'budget', 'costshare', 'crabs', 'date', 'dec
 // "Borrowed · N of M back" on Space: Anniversary's projector and lent photos,
 // Retirement's platters, urn and chairs, Thanksgiving's pans (and five rows
 // that already opened Space).
-const NO_DESTINATION_CEILING = 106;
+// 106 → 105 (11/21/2026, integration, measured): Group Trip's "Settle who
+// sleeps where" opens the room plan in Where everyone stays.
+const NO_DESTINATION_CEILING = 105;
 
 const ev = (type) => ({ id: 'dest', type, date: '2026-12-31', guestEstimate: 20, guestMode: 'count', guestCountSource: 'host',
   venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX' });

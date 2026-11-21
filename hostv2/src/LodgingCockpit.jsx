@@ -39,6 +39,7 @@ import {
   lookupTargets, needsLookup, isLiveOption,
 } from '@app/lib/lodgingIntel';
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL } from '@app/lib/travelPlan';
+import { roomPlanPeople, roomPlanOf, startRoomPlan, setRoomCount, renameRoom, assignRoom, cycleHabit, drawLots, unplaced, roomListText, HABIT_MARK } from '@app/lib/roomPlan';
 import MustHaves from './MustHaves';
 import CityField from './CityField.jsx';
 import { normalizeCvbContact } from '@app/lib/cvbIntel';
@@ -3066,6 +3067,7 @@ function Booked({ event, patch, focus }) {
       </Panel>
       <StayContact event={event} patch={patch} />
       <Backups event={event} patch={patch} />
+      <RoomPlan event={event} patch={patch} focus={focus} />
       <WhosBooked event={event} patch={patch} focus={focus} />
       <GuestNote event={event} />
     </>
@@ -3221,6 +3223,93 @@ function Backups({ event, patch }) {
           Add another backup
         </button>
       )}
+    </Panel>
+  );
+}
+
+// ─── WHO SLEEPS WHERE (owner pick "combine", 11/21/2026) ─────────────────────
+// Group Trip's "Settle who sleeps where" lands here. event.roomPlan is the one
+// record: rooms ± and named, tap a name then a room, Draw lots (a real
+// shuffle; early risers fill rooms first and night owls last, and the copy
+// says so), Copy the room list. "Rooming with" on Who's booked a room below
+// is derived from it (travelPlan), never stored a second time.
+function RoomPlan({ event, patch, focus }) {
+  const [picked, setPicked] = useState(null);
+  const [said, setSaid] = useState('');
+  const people = roomPlanPeople(event);
+  if (!people.length) return null;
+  // Until the host touches it, the plan shown is a starting one (a room per
+  // two people); the first change saves it.
+  const ev = (event.roomPlan && Array.isArray(event.roomPlan.rooms) && event.roomPlan.rooms.length) ? event : { ...event, roomPlan: startRoomPlan(event) };
+  const plan = roomPlanOf(ev);
+  const write = (next) => patch({ roomPlan: next });
+  const nameOf = (id) => (people.find((p) => String(p.id) === String(id)) || {});
+  const mark = (id) => HABIT_MARK[plan.habits[String(id)]] || '';
+  const who = (id) => {
+    const p = nameOf(id);
+    const on = picked != null && String(picked) === String(id);
+    return (
+      <button key={String(id)} type="button" className={'lc-room-name' + (on ? ' is-on' : '')} aria-pressed={on}
+        onClick={() => setPicked(on ? null : id)} aria-label={`${p.name}${on ? ', picked: now tap a room' : ', tap then a room'}`}>
+        {p.name}{mark(id) ? ' ' + mark(id) : ''}
+      </button>
+    );
+  };
+  const left = unplaced(ev);
+  const pickedName = picked != null ? nameOf(picked).first : '';
+  const drawn = plan.rooms.some((r) => r.guestIds.length);
+  return (
+    <Panel label="WHO SLEEPS WHERE">
+      <div data-room-plan ref={(el) => { if (el && focus === 'rooms' && !el.dataset.landed) { el.dataset.landed = '1'; el.scrollIntoView({ block: 'start' }); } }}>
+        <p className="lc-note">Draw lots and it’s random — early risers (☀) fill rooms first and night owls (☾) last, so they mostly land apart. Tap a name, then a room, to move it.</p>
+        <div className="lc-room-count">
+          <span className="lc-row-label">{plan.rooms.length} {plan.rooms.length === 1 ? 'room' : 'rooms'}</span>
+          <button type="button" className="cta soft" aria-label="One fewer room" disabled={plan.rooms.length <= 1}
+            onClick={() => write(setRoomCount(ev, plan.rooms.length - 1))}>−</button>
+          <button type="button" className="cta soft" aria-label="One more room"
+            onClick={() => write(setRoomCount(ev, plan.rooms.length + 1))}>+</button>
+        </div>
+        {plan.rooms.map((r) => (
+          <div key={r.id} className="lc-room" data-room={r.id}>
+            <div className="lc-room-head">
+              <input className="lc-field lc-field-sm" value={r.name} aria-label={`Name of ${r.name || 'this room'}`} maxLength={40}
+                onChange={(e) => write(renameRoom(ev, r.id, e.target.value))} />
+              {picked != null && (
+                <button type="button" className="cta soft" onClick={() => { write(assignRoom(ev, picked, r.id)); setPicked(null); }}>
+                  Put {pickedName} here
+                </button>
+              )}
+            </div>
+            <div className="lc-room-people">{r.guestIds.length ? r.guestIds.map(who) : <span className="lc-note">Nobody yet</span>}</div>
+          </div>
+        ))}
+        {left.length > 0 && (
+          <div className="lc-room" data-room="none">
+            <p className="lc-row-label">No room yet</p>
+            <div className="lc-room-people">{left.map((p) => who(p.id))}</div>
+          </div>
+        )}
+        <p className="lc-row-label lc-room-gap">Mark a sleep habit (tap again to change):</p>
+        <div className="lc-room-people">
+          {people.map((p) => {
+            const h = plan.habits[String(p.id)];
+            return (
+              <button key={'h' + p.id} type="button" className={'lc-room-name' + (h ? ' is-on' : '')}
+                aria-label={`${p.name}: ${h === 'early' ? 'early riser' : h === 'late' ? 'night owl' : 'no habit marked'} — tap to change`}
+                onClick={() => write(cycleHabit(ev, p.id))}>
+                {p.first} {HABIT_MARK[h] || '·'}
+              </button>
+            );
+          })}
+        </div>
+        <div className="lc-ctas lc-room-gap">
+          <button type="button" className="cta soft" onClick={() => { write(drawLots(ev)); setPicked(null); setSaid(drawn ? 'Drawn again, at random.' : 'Drawn at random.'); }}>Draw lots</button>
+          <button type="button" className="cta soft" onClick={() => {
+            try { navigator.clipboard.writeText(roomListText(ev)); setSaid('Copied — paste it wherever your group talks.'); } catch { setSaid('Couldn’t copy — the list is above.'); }
+          }}>Copy the room list</button>
+        </div>
+        {said && <p className="lc-note" role="status">{said}</p>}
+      </div>
     </Panel>
   );
 }
@@ -4266,6 +4355,17 @@ const CSS = `
 .lc-p2-chip-s{flex:0 0 auto;color:var(--faint);font-weight:400;}
 .lc-p2-chip.is-on .lc-p2-chip-s{color:var(--ink-soft);}
 .lc-p2-chip.is-on{border-color:var(--steel);background:var(--sheen);color:var(--ink);}
+/* Who sleeps where (11/21/2026): the room plan's rooms and name chips. */
+.lc-room-count{display:flex;align-items:center;gap:8px;margin:8px 0;}
+.lc-room-count .cta{min-width:var(--tap-min);min-height:var(--tap-min);padding:0 12px;}
+.lc-room{border-top:1px solid var(--line);padding:10px 0;}
+.lc-room-gap{margin-top:12px;}
+.lc-room-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.lc-room-head .cta{min-height:var(--tap-min);}
+.lc-room-people{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.lc-room-name{min-height:var(--tap-min);padding:6px 12px;border-radius:var(--r-sm);border:1px solid var(--line);
+  background:var(--card);color:var(--ink);font:500 14px/1.3 Inter,sans-serif;cursor:pointer;}
+.lc-room-name.is-on{border-color:var(--steel);background:var(--sheen);}
 .lc-p2-grid{border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden;background:var(--card);}
 .lc-p2-head{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px;border-bottom:1px solid var(--line);}
 .lc-p2-col{display:flex;flex-direction:column;gap:6px;min-width:0;}

@@ -12,6 +12,7 @@ import { stepCalls, getPlaybook } from './playbooks';
 import { DATE_POLL_ROW } from './datePoll';
 import { GIFT_LOG_ROW } from './giftLog';
 import { BORROWED_ROW } from './borrowedList';
+import { ROOMS_ROW } from './roomPlan';
 
 // The first vendor row still needing the host — the row-level rule the
 // Vendors deep-link doctrine requires (not the sheet top).
@@ -106,6 +107,9 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // THE BORROWED LIST (owner pick B, 11/21/2026): every "return the borrowed /
   // what family lent" row opens "Borrowed · N of M back" on Space.
   if (BORROWED_ROW.test(t)) return { label: 'Open the borrowed list', route: { focusField: 'space-borrowed' } };
+  // WHO SLEEPS WHERE (owner pick "combine", 11/21/2026): Group Trip's room
+  // row opens the room plan in Where everyone stays.
+  if (ROOMS_ROW.test(t)) return { label: 'Plan who sleeps where', route: { focusField: 'lodging-rooms' } };
   const wk = String((meta && meta.week) || '').toLowerCase();
   const dayOf = (meta && meta.category) === 'event-day' || /day of\b|day-of/.test(wk);
   // THE ROW'S OWN CATEGORY OUTRANKS A DAY-OF WORD (11/20/2026). The engine

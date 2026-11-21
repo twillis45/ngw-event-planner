@@ -111,7 +111,7 @@ export function resolveRoute(route) {
   if (ff === 'cost-split') return { kind: 'split', focus: null };
   // Lodging — a guest's roster row, the deadline card, or the stay card itself.
   if (route.tab === 'Travel' || /^lodging/.test(ff)) {
-    return { kind: 'lodging', focus: gid != null ? gid : (ff === 'lodging-deadline' ? 'deadline' : null) };
+    return { kind: 'lodging', focus: gid != null ? gid : (ff === 'lodging-deadline' ? 'deadline' : ff === 'lodging-rooms' ? 'rooms' : null) };
   }
   if (/^fp-diet/.test(ff)) return { kind: 'food', focus: 'diet' };
   // Capacity / helper-supply rows both render on the space sheet. /^space MUST
