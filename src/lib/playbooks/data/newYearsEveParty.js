@@ -141,7 +141,7 @@ const newYearsEveParty = {
   ],
 
   tasks: [
-    { id: 't_model', milestoneId: 'ny_plan', phase: 'planning', label: 'Decide whose midnight it is: the late adult party, the family countdown at 9, or the early-then-late double', when: 'T-21d' },
+    { id: 't_model', answeredBy: ['midnight_model'], milestoneId: 'ny_plan', phase: 'planning', label: 'Decide whose midnight it is: the late adult party, the family countdown at 9, or the early-then-late double', when: 'T-21d' },
     { id: 't_invite', milestoneId: 'ny_invite', phase: 'guest', label: 'Send the invitation with the doors time, when the countdown happens, and the rides-and-couches ask built into the RSVP', when: 'T-21d' },
     { id: 't_neighbors', milestoneId: 'ny_neighbors', phase: 'planning', label: 'Give the near neighbors the date and the honest end time — or invite them, which retires the complaint entirely', when: 'T-10d' },
     { id: 't_countdown_test', milestoneId: 'ny_countdown', phase: 'planning', label: 'Test the countdown source on the actual screen and wifi it will use, and pick the backup now', when: 'T-7d', whenChoice: { id: 'countdown_source', in: ['A live broadcast on the TV', 'A streamed countdown on a tested screen'] } },

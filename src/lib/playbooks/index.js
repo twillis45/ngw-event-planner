@@ -964,6 +964,29 @@ export function openFoodChoices(event, plan) {
     && picks[c.id] == null && !decisionSettledByData(event, c));
 }
 export { isDietaryChoice };
+
+// ─── A CHOSEN CALL IS NOT A CATCH-UP (owner's iPad, 11/21/2026) ──────────────
+// A playbook call is answered when the host picked it, or a record settles it
+// (decisionSettledByData) — the test openFoodChoices applies above. The
+// authored default is not an answer. A checklist step that IS a call names it
+// (`answeredBy` on the authored task); the step is handled once every call it
+// names is answered, so "Decide who cooks" stops leading as "past its window"
+// over "Host cooks the whole meal · chosen". Engine rows only (`pbt-<event>-<task>`).
+export function decisionAnswered(event, id) {
+  if (!event || !id) return false;
+  const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  if (picks[id] != null && picks[id] !== '') return true;
+  const pb = getPlaybook(event.type);
+  const d = ((pb && pb.decisions) || []).find((x) => x && x.id === id);
+  return !!(d && decisionSettledByData(event, d));
+}
+export function stepCallsAnswered(event, task) {
+  if (!event || !task || typeof task.id !== 'string' || !task.id.startsWith('pbt-')) return false;
+  const pb = getPlaybook(event.type);
+  const t = ((pb && pb.tasks) || []).find((x) => x && task.id === `pbt-${event.id}-${x.id}`);
+  const ids = t && Array.isArray(t.answeredBy) ? t.answeredBy : [];
+  return ids.length > 0 && ids.every((id) => decisionAnswered(event, id));
+}
 export function choicePickFor(event, id) {
   if (!event || !id) return null;
   const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};

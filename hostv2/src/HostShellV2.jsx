@@ -3029,8 +3029,12 @@ export default function HostShellV2() {
     // + the CTA-consistency fix): the chosen row highlighted with a "chosen" badge, all still
     // tappable to switch. No disclosure, no collapse — one consistent row treatment.
     if (nd.selected != null && nd.options.some(o => o.value === nd.selected)) {
+      // "Say chosen already" (owner, 11/21/2026): a made call reads as made, not
+      // as a question still waiting; the rows below are how to change it.
+      const chosenLabel = (nd.options.find(o => o.value === nd.selected) || {}).label;
       return (
         <div className="decopts">
+          <p className="grounding decopts-chosen">Chosen already: {chosenLabel}. Pick another to change it.</p>
           {nd.options.map(o => {
             const isChosen = o.value === nd.selected;
             return (
@@ -16328,7 +16332,7 @@ export default function HostShellV2() {
                               <button type="button" onClick={() => setChoiceOpen(null)} aria-expanded="true"
                                 style={{ display: 'flex', width: '100%', textAlign: 'left', justifyContent: 'space-between', alignItems: 'center', gap: 12, background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'var(--ink)' }}>
                                 <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
-                                  <span style={{ fontSize: 'var(--t-row)', fontWeight: 650 }}>{r.because}</span>
+                                  <span style={{ fontSize: 'var(--t-row)', fontWeight: 650 }}>{canChange && ((event.foodChoices || {})[r.id] != null) ? 'Chosen already: ' + r.because : r.because}</span>
                                   <span style={{ fontSize: 'var(--t-row-sub)', color: 'var(--muted)', lineHeight: 1.36 }}>{r.label}</span>
                                 </span>
                                 <span className="fstat-chev" aria-hidden="true" style={{ transform: 'rotate(90deg)' }}>›</span>

@@ -980,6 +980,7 @@ button{font-family:inherit}
    for the existing atoms they were already approximating (measured live, deltas
    <=2 except where noted); no new atoms, no new geometry. */
 .decopts{ display:flex; flex-direction:column; gap:8px; margin-top:var(--sp-2); }
+.decopts-chosen{ margin:0; }
 /* ALIGNED TO THE .cta FAMILY (host ruling 2026-07-31, "align all"). Two values
    were out of step with every other action control in the app:
      radius     — var(--r-md) 12px, where the .cta family unified on
