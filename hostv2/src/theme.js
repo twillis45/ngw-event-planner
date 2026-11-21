@@ -136,6 +136,12 @@ export function applyStudioMatte(override) {
   // -> mid -> panel does in the dark.
   set('--field', isLight ? carbonNeutral.light.surface2 : carbonNeutral.deep.bg);
   set('--card', c.panel);
+  // ── PANELS ON A GROUND (owner ruling 25, 11/21/2026: "W1") ────────────────
+  // In light a sheet's ground is the page (--bg) and each section sits on a
+  // white --card panel with a soft warm shadow. Dark keeps its sheet on --card
+  // and casts no panel shadow, so dark renders as it did.
+  set('--sheet-ground', isLight ? c.bg : c.panel);
+  set('--panel-shadow', isLight ? `0 1px 2px ${tint('#281E14', 0.08)}, 0 4px 14px ${tint('#281E14', 0.05)}` : 'none');
   set('--ink', bundle.textPrimary);
   set('--ink-soft', bundle.textSecondary);
   // --muted was aliased to the SAME textSecondary as --ink-soft (and both

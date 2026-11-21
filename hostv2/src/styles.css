@@ -998,6 +998,34 @@ button{font-family:inherit}
    design audit 2). */
 .decopt-badge{ background:var(--card); color:var(--steel-soft); border-radius:999px; padding:3px 9px; font-size:11px; font-weight:650; letter-spacing:.3px; flex:0 0 auto; }
 .decopt-note{ font-size:13px; color:var(--muted); font-weight:400; }
+
+/* ── LIGHT: SECTIONS ON PANELS (owner ruling 25, 11/21/2026: "W1") ──────────
+   Doctrine 02, ruling 25. In light, every distinct block of a screen or sheet
+   sits on a white --card panel with a --line edge and a soft shadow, on the
+   page's warm --bg, so sections read as separate objects. Sheets group their
+   sections in markup (<Panel>, rendered in light only); the board's
+   below-fold blocks are single elements already and take the panel here.
+   Dark keeps today's look: none of these rules match there. */
+.panel{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg);
+  box-shadow:var(--panel-shadow); padding:var(--sp-4); margin:0 0 var(--sp-3); min-width:0;
+}
+.panel:empty, .panel:has(> :only-child:empty){ display:none; }
+.panel > :first-child{ margin-top:0 !important; }
+.panel > :last-child{ margin-bottom:0 !important; }
+:root[data-theme="light"] .hero.elegant .then-fold,
+:root[data-theme="light"] .hero.elegant .ef-watch,
+:root[data-theme="light"] .hero.elegant .bento,
+:root[data-theme="light"] [data-who-confirmed]{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg);
+  box-shadow:var(--panel-shadow); padding:var(--sp-4);
+}
+:root[data-theme="light"] .decopt.pick{ background:var(--card); }
+/* A vendor card is already its own object; in light it takes the panel's edge. */
+:root[data-theme="light"] .sheet .vcard{ border-color:var(--line); box-shadow:var(--panel-shadow); }
+/* Who's confirmed (the board's triage block): its frame moved out of an inline
+   style so the light panel above can replace it. Dark paints what it did. */
+.who-confirmed{ margin-top:var(--sp-3); padding:var(--sp-3); border:1px solid var(--line-soft); border-radius:var(--r-md); min-width:0; }
 .decopt-right{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
 /* WHY THIS PICK on hover of "our pick" (Figma combined design): a tooltip, not a line. */
 .decopt-badge-wrap{ position:relative; display:inline-flex; outline:none; }
@@ -1783,7 +1811,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
      clears the home indicator on a real handset. */
   /* The canvas glow reads through a sheet (doctrine 02 § Canvas glow). The
      sheet scrolls, the glow does not: it stays at the top of the screen. */
-  background-color:var(--card); background-image:var(--canvas-glow); background-repeat:no-repeat; border-radius:0;
+  background-color:var(--sheet-ground); background-image:var(--canvas-glow); background-repeat:no-repeat; border-radius:0;
   /* Named once (2026-09-24) so the pinned total bar can cancel exactly this
      inset instead of repeating the literal — two copies of a layout constant
      is how a footer ends up 4px off the edge on one surface and not another.

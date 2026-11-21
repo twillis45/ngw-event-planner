@@ -708,6 +708,17 @@ const fmt12h = (t) => {
   return (h % 12 || 12) + ':' + m[2] + (h >= 12 ? ' PM' : ' AM');
 };
 
+// ── A SECTION ON ITS OWN PANEL, IN LIGHT (owner ruling 25, 11/21/2026: "W1") ──
+// In light every distinct block of a sheet sits on a white --card panel with a
+// --line edge and a soft shadow, on the --bg ground. Dark keeps today's flat
+// column, so in dark this renders its children with no wrapper at all: the
+// dark DOM is unchanged, and so is every `.sheet-body > X` layout rule that
+// reads it. An empty panel (its only child rendered nothing) is hidden by
+// `.panel:empty`, so a conditional block can be wrapped where it stands.
+function Panel({ on, children }) {
+  return on ? <div className="panel">{children}</div> : <>{children}</>;
+}
+
 // ── Sheet hero (host request 2026-07-11) — the ONE pattern every count-bearing
 // sheet opens with: eyebrow, 38px star, warm honest mega-sub, optional grounding.
 // Markup matches the food/vendors/guests heroes exactly; figures always come
@@ -7795,6 +7806,7 @@ export default function HostShellV2() {
   // feature. Seeded from the same reader the boot path uses, so the row opens
   // showing what is actually on screen rather than a default.
   const [theme, setThemeState] = useState(() => { try { return currentTheme(); } catch { return 'dark'; } });
+  const panels = theme === 'light';   // ruling 25: sheet sections on panels, light only (see Panel)
   // The visible analytics opt-out (owner ruling 2026-11-02, option A).
   const [analyticsOff, setAnalyticsOff] = useState(() => { try { return isAnalyticsOptedOut(); } catch { return false; } });
   useEffect(() => { setMessageSoundMuted(muted); try { localStorage.setItem('ngw-hostv2-muted', muted ? '1' : '0'); } catch {} }, [muted]);
@@ -13844,7 +13856,7 @@ export default function HostShellV2() {
                 if (!l) l = { parts: [] };
                 const go = { vendors: () => setSheet({ kind: 'vendors' }), helpers: () => setSheet({ kind: 'space' }), guests: () => setSheet({ kind: 'guests' }) };
                 return (
-                  <section data-who-confirmed aria-label="Who’s confirmed" style={{ marginTop: 'var(--sp-3)', padding: 'var(--sp-3)', border: '1px solid var(--line-soft)', borderRadius: 'var(--r-md)', minWidth: 0 }}>
+                  <section data-who-confirmed className="who-confirmed" aria-label="Who’s confirmed">
                     <h2 className="shelf-label" style={{ margin: '0 0 var(--sp-1)' }}>Who’s confirmed</h2>
                     <div className="actions-row" style={{ flexWrap: 'wrap', marginTop: 0 }}>
                       {l.parts.map(p => (
@@ -16370,6 +16382,7 @@ export default function HostShellV2() {
                 )}
               </>
             )}
+            <Panel on={panels && sheet.kind === 'space'}>
             {sheet.kind === 'space' && (() => {
               // THE HERO FOLLOWS THE ORDER (owner ruling 11/18/2026). Since the
               // 2026-07-11 request the star was the helper count — "No helpers
@@ -16670,6 +16683,7 @@ export default function HostShellV2() {
                 </>
               ) : null;
             })()}
+            </Panel>
             {sheet.kind === 'space' && (
               <>
                 {/* WHAT TO BRING (Figma 433): each item folds to one settled
@@ -16682,6 +16696,7 @@ export default function HostShellV2() {
                     by headcount never learned whether 15 people fit. The same count
                     the seating sheet uses, with where it came from, and the ± that
                     sets the host's own number. */}
+                <Panel on={panels}>
                 {(() => {
                   const gc = (() => { try { return guestCountFor(event).count; } catch { return null; } })();
                   if (!gc || !seating) return null;
@@ -16716,6 +16731,8 @@ export default function HostShellV2() {
                     </div>
                   );
                 })()}
+                <Panel on={panels}>
+                </Panel>
                 {capacity && (capacity.items || []).filter(it => it && !it.skipped).length > 0 && (
                   <>
                     <div className="shelf-label" style={{ margin: '2px 0 var(--sp-1)' }}>What to bring</div>
@@ -16829,6 +16846,7 @@ export default function HostShellV2() {
                     </div>
                   </>
                 )}
+                </Panel>
                 {/* ALWAYS RENDERED (host report 2026-07-28: "doesn't have an
                     action to add helpers"). Helpers are DERIVED from owner names
                     on real items, so the empty state used to render nothing at
@@ -16837,6 +16855,7 @@ export default function HostShellV2() {
                     row with an owner, which is exactly what the derivation reads,
                     so a helper added here shows up on the day plan, in the helper
                     messages, and in the checklist — one write, every surface. */}
+                <Panel on={panels}>
                 {(
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -16905,9 +16924,12 @@ export default function HostShellV2() {
                     })}
                   </>
                 )}
+                <Panel on={panels}>
+                </Panel>
                 {!((capacity && (capacity.items || []).length) || helpers.length) && (
                   <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>Nothing to set up or borrow for this one.</div>
                 )}
+                </Panel>
               </>
             )}
             {sheet.kind === 'cohosts' && (
@@ -21332,6 +21354,7 @@ export default function HostShellV2() {
                   which playbook these steps came from and why it applies, and
                   can judge the borrow for themselves. Authored types never see
                   it — `isDefault` is only set on a borrow. */}
+              <Panel on={panels}>
               {(() => {
                 const pb = (() => { try { return getPlaybook(event.type); } catch { return null; } })();
                 if (!pb || !pb.isDefault) return null;
@@ -21342,8 +21365,10 @@ export default function HostShellV2() {
                   </p>
                 );
               })()}
+              </Panel>
               {(event.timeline || []).length ? (
                 <>
+                  <Panel on={panels}>
                   {(() => {
                     // taskEngine.effectiveDone: a step the event's own facts
                     // already prove handled (date set, caterer booked…) reads as
@@ -21378,9 +21403,11 @@ export default function HostShellV2() {
                       />
                     );
                   })()}
+                  </Panel>
                   {/* OPEN work gets the rows; DONE work minimizes into a green
                       report line (tap to review) — same green-dot semantics as
                       the handled sections everywhere else. */}
+                  <Panel on={panels}>
                   {(event.timeline || []).map((t, i) => {
                     // A RETIRED row is off the open list. The reconcile marks a
                     // row retired when the gate that authored it closes — pick
@@ -21666,6 +21693,7 @@ export default function HostShellV2() {
                       </Fragment>
                     );
                   })}
+                  </Panel>
                   {/* ── WORK YOUR ANSWERS TOOK OFF THE LIST ───────────────────
                       Retired rows fold rather than vanish. A list that silently
                       loses items is a list nobody trusts, and the host may have
@@ -21673,6 +21701,7 @@ export default function HostShellV2() {
                       mind — so the row keeps its state, keeps its reason, and
                       stays one tap away. Change the answer back and the same
                       row returns, still ticked. */}
+                  <Panel on={panels}>
                   {(event.timeline || []).some(t => t && t.retired) && (
                     <>
                       <button className="fold-btn" onClick={() => setRetiredOpen(o => !o)}>
@@ -21689,6 +21718,8 @@ export default function HostShellV2() {
                       ) : null)}
                     </>
                   )}
+                  <Panel on={panels}>
+                  </Panel>
                   {(event.timeline || []).some(t => t && t.done && !t.retired) && (
                     <>
                       <button className="fold-btn" style={{ color: 'var(--ok)' }} onClick={() => setDoneOpen(o => !o)}>
@@ -21706,11 +21737,14 @@ export default function HostShellV2() {
                       ) : null)}
                     </>
                   )}
+                  </Panel>
                 </>
               ) : (
                 <>
+                  <Panel on={panels}>
                   <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>No checklist yet. Draft one from the playbook:</div>
                   <button className="cta" onClick={draftTimeline}>Draft my checklist from the playbook</button>
+                  </Panel>
                 </>
               )}
               {/* ── WHAT YOUR VENDORS STILL OWE ────────────────────────────────
@@ -21743,6 +21777,7 @@ export default function HostShellV2() {
                   Each row shows its rule (UX_08 source #4: inference is allowed only
                   with the rule visible), and the whole group is silent when nothing
                   is owed. */}
+              <Panel on={panels}>
               {(() => {
                 const owed = (() => { try { return vendorObligations(event); } catch { return []; } })();
                 if (!owed.length) return null;
@@ -21772,6 +21807,7 @@ export default function HostShellV2() {
                   </div>
                 );
               })()}
+              </Panel>
             </>)}
             {/* ── THE THIRD MODE (host ruling 2026-09-24) ──────────────────────
                 When somebody else is carrying part of the meal, the host has TWO
@@ -21915,6 +21951,7 @@ export default function HostShellV2() {
                 {/* PRINCIPLES REDESIGN: summary before detail — the bought count
                     leads (the host's real question: "how much is left to do?"),
                     one grounding line carries the rest of the engine's math. */}
+                <Panel on={panels}>
                 {noKitchen ? (
                   /* THE HERO OBEYS THE GATE. With no kitchen the list below is
                      withheld, so a "Bought so far 0 of 4" count and a "one good
@@ -22284,8 +22321,10 @@ export default function HostShellV2() {
                       : null}
                   </>
                 )}
+                </Panel>
                 {/* Menu decisions — the playbook's real choices; picking one re-sizes
                     and re-prices the spread through the same engine. */}
+                <Panel on={panels}>
                 {(() => {
                   // Keys must match the engine's DIET_KEYWORDS table verbatim ('Shellfish',
                   // not 'Shellfish allergy') — dietCounts keys ARE the flag lookup keys.
@@ -22426,6 +22465,8 @@ export default function HostShellV2() {
                     </div>
                   );
                 })()}
+                <Panel on={panels}>
+                </Panel>
                 {(foodPlan.choices || []).length > 0 && (() => {
                   const openN = choicesTally.total - choicesTally.settled;
                   const open = !!foodSect.choices;
@@ -22513,6 +22554,8 @@ export default function HostShellV2() {
                     </div>
                   );
                 })()}
+                <Panel on={panels}>
+                </Panel>
                 {(foodPlan.choices || []).length > 0 && !!foodSect.choices && (
                   <>
                     <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)' }}>
@@ -22629,6 +22672,7 @@ export default function HostShellV2() {
                     })}
                   </>
                 )}
+                </Panel>
                 {/* Port of Figma 391:60 — ONE primary action on the calm summary
                     (full-width), plus the contextual tip. Both hidden while a
                     drill-in panel is open. The "Dietary note" drafter now lives
@@ -22643,6 +22687,7 @@ export default function HostShellV2() {
                     "Send the list to Instacart" are the aisle's two actions; on a
                     tab whose whole content is Your choices / Dietary needs / How
                     it's sourced they are answers to a question nobody asked. */}
+                <Panel on={panels}>
                 {sheet.kind !== 'foodplan' && !drillOpen && !noKitchen && (
                   <div className="shop-acts chips">
                     {/* NO INLINE WIDTH OR MARGIN ON THESE TWO (2026-09-26).
@@ -22792,9 +22837,11 @@ export default function HostShellV2() {
                     {nudgeFor('food')}
                   </div>
                 )}
+                </Panel>
                 {/* Sourcing tier — the plan's real cook/order axis; switching
                     re-prices proteins and changes where each line says to buy.
                     Drill-in (port of 391:60): gated behind the "How it's sourced" row. */}
+                <Panel on={panels}>
                 {foodSect.sourced && (foodPlan.sourcingTiers || []).length > 0 && (
                   <>
                     <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -22844,9 +22891,11 @@ export default function HostShellV2() {
                     <GuideLine gap={0} style={{ margin: '8px 0 10px' }}>Changing this re-prices the meat and fish and changes which store each item says to buy from.</GuideLine>
                   </>
                 )}
+                </Panel>
                 {/* The list drill-in (port of Figma 391:60) — the shopping list, the
                     store filter, per-item pricing, and add-item all live here, gated
                     behind the "The list" summary row so the calm screen stays calm. */}
+                <Panel on={panels}>
                 {foodSect.list && (
                   <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span>The list</span>
@@ -24114,15 +24163,19 @@ export default function HostShellV2() {
                     </>
                   );
                 })()}
+                <Panel on={panels}>
+                </Panel>
                 {(foodPlan.specialDiets || []).length > 0 && (
                   <p className="grounding" style={{ marginTop: 10 }}>
                     Dietary: {foodPlan.specialDiets.map(d => d.count + ' ' + d.diet).join(', ')} — a real named main is sized into the totals for them.
                   </p>
                 )}
+                </Panel>
                 {/* Add your own line — closes the remove/add asymmetry legacy already
                     fixed (App.js ~11415-11457): a dish someone's bringing, or anything
                     off-playbook the host is buying. Name required; who's bringing it +
                     cost both optional and honest — no invented number. */}
+                <Panel on={panels}>
                 <div style={{ marginTop: 'var(--sp-1)' }}>
                   {foodAddOpen ? (
                     <div className="brow" style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 'var(--sp-3)' }}>
@@ -24186,6 +24239,7 @@ export default function HostShellV2() {
                     )
                   )}
                 </div>
+                </Panel>
                 {/* ── THE MONEY STAYS ON SCREEN (review board, 2026-09-24) ──────
                     8 of 8 grocery-list leaders keep a running total pinned; this
                     sheet had it once, in the hero, where it scrolls away by the
@@ -24227,6 +24281,7 @@ export default function HostShellV2() {
               {/* Hero copy (host request 2026-07-11): the readiness count leads,
                   a warm honest line under it — same treatment as guests + food.
                   Counts come straight from the vendor readiness rollup. */}
+              <Panel on={panels}>
               {rc && (
                 <div style={{ padding: '2px 0 14px' }}>
                   {/* Port of Figma 416:60 — hero composes the parity kit
@@ -24363,8 +24418,10 @@ export default function HostShellV2() {
                   </div>
                 )
               )}
+              </Panel>
               {hasVendors ? (
                 <>
+                  <Panel on={panels}>
                   {showStreams && (
                     <div className="wstrip">
                       {streams.map(w => {
@@ -24410,6 +24467,7 @@ export default function HostShellV2() {
                       <p className="grounding" style={{ margin: '2px 0 0' }}>{c.explanation}{c.recommendedAction ? ' ' + c.recommendedAction : ''}</p>
                     </div>
                   ))}
+                  </Panel>
                   {/* ── THE VENDOR TOOLBAR (vendors ruling, sequence item 5) ─────
                       "Matters at 12+". Below that a host reads the list; past it
                       they are hunting, and hunting through nine identical cards
@@ -24422,6 +24480,7 @@ export default function HostShellV2() {
                       is clicked, which is the point of the count being on the
                       chip. It renders only when the list is long enough to need
                       it -- a filter over four cards is furniture. */}
+                  <Panel on={panels}>
                   {(event.vendors || []).length >= 6 && (() => {
                     // COUNTED AFTER THE SEARCH, BEFORE THE LENS. Counting the raw
                     // array made every chip stale the moment the host typed --
@@ -24466,6 +24525,7 @@ export default function HostShellV2() {
                       </div>
                     );
                   })()}
+                  </Panel>
                   {/* ── SETTLED VENDORS FOLD (vendors ruling clause 5) ────────────
                       A confirmed vendor with nothing owed, nothing flagged and no
                       paperwork outstanding is not news, and nine of them are a wall
@@ -24504,6 +24564,7 @@ export default function HostShellV2() {
                     return [live, rest];
                   })().map((group, gi) => (
                     <Fragment key={gi === 0 ? 'live' : 'settled'}>
+                    <Panel on={panels}>
                     {gi === 1 && group.length > 0 && (
                       <button className="fold-btn" style={{ color: 'var(--ok)' }}
                         onClick={(e) => { e.stopPropagation(); setSettledVendorsOpen(o => !o); }}>
@@ -24511,6 +24572,7 @@ export default function HostShellV2() {
                         <span className="chev" aria-hidden="true">{settledVendorsOpen ? '▾' : '›'}</span>
                       </button>
                     )}
+                    </Panel>
                     {(gi === 1 && !settledVendorsOpen ? [] : group).map(v => {
                     let acct = null;
                     try { acct = quickAccountabilityForVendor(v, event); } catch { acct = null; }
@@ -25447,6 +25509,7 @@ export default function HostShellV2() {
                     })}
                     </Fragment>
                   ))}
+                  <Panel on={panels}>
                   {nudgeFor('vendors')}
                   {/* Vendor export — the same shared serializers as the guest
                       list (toCSV + COLUMNS.vendors already define the format);
@@ -25454,10 +25517,12 @@ export default function HostShellV2() {
                   <button className="fold-btn" onClick={exportVendorsCsv}>
                     Download the vendor list (CSV)
                   </button>
+                  </Panel>
                 </>
               ) : null}
               {unbookedSuggestions.length > 0 ? (
                 <>
+                  <Panel on={panels}>
                   <div className="shelf-label" style={{ margin: hasVendors ? '16px 0 6px' : '0 0 6px' }}>
                     {hasVendors ? 'Other roles this kind of event usually needs' : 'People this kind of event usually needs'}
                   </div>
@@ -25510,8 +25575,9 @@ export default function HostShellV2() {
                       <button className="mini" style={{ flexShrink: 0 }} onClick={() => addVendorCategory(cat.category)}>Add</button>
                     </div>
                   ))}
+                  </Panel>
                 </>
-              ) : (!hasVendors && <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>No vendors on this event yet.</div>)}
+              ) : (!hasVendors && <Panel on={panels}><div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>No vendors on this event yet.</div></Panel>)}
               </>
               );
             })()}
@@ -25533,6 +25599,7 @@ export default function HostShellV2() {
                       the host's question is "am I OK?", so the STATE leads. One
                       narrative (the canonical engine copy), not three number
                       readouts of the same fact. */}
+                  <Panel on={panels}>
                   {money.planned ? (() => {
                     // DENOMINATORS-1: name the guest count this budget was sized
                     // against — the same band the Guests tile and food plan use,
@@ -25693,6 +25760,8 @@ export default function HostShellV2() {
                       <button className="mini" style={{ minHeight: 'var(--tap-min)' }} type="button" onClick={() => setPaymentEntry(null)}>Cancel</button>
                     </form>
                   )}
+                  </Panel>
+                  <Panel on={panels}>
                   {hostRows.length > 0 && (
                     <>
                       {/* BUDGET-CONTRADICTION FIX: "priced by your plan" reads as a
@@ -25855,6 +25924,8 @@ export default function HostShellV2() {
                       ) : null}
                     </>
                   )}
+                  </Panel>
+                  <Panel on={panels}>
                   {recovery && recovery.status === 'recovery_available' && (
                     <div style={{ marginTop: 'var(--sp-3)' }}>
                       <div className="shelf-label" style={{ margin: '0 0 var(--sp-1)', color: 'var(--warn)' }}>A way back under</div>
@@ -25881,6 +25952,7 @@ export default function HostShellV2() {
                       )}
                     </div>
                   )}
+                  </Panel>
                   {/* the editor is settled work once a number exists — it folds;
                       no number yet → it IS the ask, so it stays open.
                       ONE READER (2026-09-18): this asked the same question as
@@ -25888,6 +25960,7 @@ export default function HostShellV2() {
                       lines apart. Both now read the accessor, so the fold and
                       the block it folds can never disagree about which state
                       the host is in. */}
+                  <Panel on={panels}>
                   {budgetFor(event).hostSetTotal ? (
                     budgetFoldOpen ? (
                       // Fold-open = intent to change → open straight into the CHANGE drawer (its
@@ -25909,6 +25982,7 @@ export default function HostShellV2() {
                       {budgetEditorBlock()}
                     </div>
                   )}
+                  </Panel>
                 </>
               );
             })()}
@@ -26946,6 +27020,7 @@ export default function HostShellV2() {
                 <>
                   {peopleMode ? null : peoplePlate}
                   {peopleZone}
+                  <Panel on={panels && !peopleMode}>
                   {guestHero}
                   {/* A SHORT NAME IS ASKED ABOUT, NEVER ASSUMED (owner ruling,
                       11/5/2026): a reply signed "eve" came in as its own row; when
@@ -27032,6 +27107,7 @@ export default function HostShellV2() {
                       recommendation band. Unchanged otherwise, and still the
                       engine's — this moves it, it does not mute it. */}
                   {peopleMode ? null : nudgeFor('guests')}
+                  </Panel>
                   {/* The reference opens every operational section with a serif
                       heading and its one action. Without it the roster began
                       with a filter toolbar, which is how a page starts reading
@@ -27068,6 +27144,7 @@ export default function HostShellV2() {
                       arbitrary property. Each chip states its own count, so the
                       filter is also the rollup and there is no second number to keep
                       truthful. */}
+                  <Panel on={panels && !peopleMode}>
                   {(event.guests || []).length >= 8 && (() => {
                     // COUNTED AFTER THE SEARCH, like the vendor toolbar — the same
                     // fix, which had never been carried across. These chips counted
@@ -27394,6 +27471,7 @@ export default function HostShellV2() {
                       </div>
                     ))}</div>);
                   })()}
+                  </Panel>
                   <datalist id="v2-groups">
                     <option value="Family" /><option value="Friends" /><option value="Work" /><option value="Neighbors" />
                   </datalist>
@@ -27401,7 +27479,9 @@ export default function HostShellV2() {
                       this sheet. Burying it under the share/look/rules stack made "add who's
                       coming" feel like a dead end (host 2026-07-22). */}
                   {peopleMode ? nudgeFor('guests') : null}
+                  <Panel on={panels && !peopleMode}>
                   {quickAdd}
+                  </Panel>
                   {/* Share & invite settings — relocated here from above the roster
                       (audit S3: list-first). The roster now sits right under the hero;
                       sharing + look/artwork/rules/counting live below it. */}
@@ -27427,6 +27507,7 @@ export default function HostShellV2() {
                       thing: "Replies close November 27" over a fixture whose host
                       never picked a date. `replyBy` is passed ONLY when it is hers,
                       and `aReplyByDateIsHersOrItIsNotShown` holds it there. */}
+                  <Panel on={panels && !peopleMode}>
                   {peopleMode ? (
                     <div id="guests-invites-anchor" style={{ scrollMarginTop: 12 }}>
                       <GetResponses
@@ -27479,6 +27560,7 @@ export default function HostShellV2() {
                       </p>
                     );
                   })()}
+                  </Panel>
                   {/* ── §25 · SECONDARY MANAGEMENT, SUBORDINATED ─────────────
                       OWNER: *"Administrative capabilities such as Invite look,
                       invite rules, counting mode, CSV import, CSV export and
@@ -27509,7 +27591,9 @@ export default function HostShellV2() {
                       </div>) : null}
                     </div>
                   ) : (<>
+                    <Panel on={panels}>
                     {peopleAdmin}
+                    </Panel>
                   </>)}
 
                 </>
@@ -27517,6 +27601,7 @@ export default function HostShellV2() {
                 <>
                   {peopleMode ? null : peoplePlate}
                   {peopleZone}
+                  <Panel on={panels && !peopleMode}>
                   {guestHero}
                   <div className="v-meta" style={{ padding: '2px 2px var(--sp-1)' }}>
                     No list yet{guests ? ' — you’re planning around ' + guests + ' for now' : ''}. A real list is what unlocks RSVPs, the confirmed count, and checking the count with your caterer.
@@ -27560,11 +27645,13 @@ export default function HostShellV2() {
                       </div>
                     );
                   })()}
+                  </Panel>
                   {/* §10 on the HEADCOUNT branch. A host here has no roster, so
                       the outcome is not "chase 22 replies" — it is that nobody has
                       been asked yet and this link is how they get asked.
                       `GetResponses` says that itself from `invited: 0`; the three
                       controls below it are untouched. */}
+                  <Panel on={panels && !peopleMode}>
                   {peopleMode ? (
                     <div id="guests-invites-anchor" style={{ scrollMarginTop: 12 }}>
                       <GetResponses
@@ -27595,6 +27682,7 @@ export default function HostShellV2() {
                   {quickAdd}
                   {csvBlock}
                   {pastImports}
+                  </Panel>
                 </>
               );
               // ── §26 · THE SHEET IS THE GRID, NOT THE ROSTER ─────────────
@@ -27637,7 +27725,7 @@ export default function HostShellV2() {
                     {peoplePlate}
                     <div className="people-grid"><div className="people-main">{peopleBody}{guestComms}</div></div>
                   </>
-                ) : <>{peopleBody}{guestComms}</>;
+                ) : <>{peopleBody}<Panel on={panels}>{guestComms}</Panel></>;
               }
               const sel = guestOpen != null ? (event.guests || [])[guestOpen] : null;
               return (

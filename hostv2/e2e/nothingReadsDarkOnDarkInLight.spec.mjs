@@ -156,6 +156,34 @@ for (const theme of ['dark', 'light']) {
     premise(all, 'grounding', 'the sections');
   });
 
+  // Owner ruling 25 (11/21/2026): in light the board's below-fold blocks and
+  // every sheet section sit on white panels over the warm --bg, under the warm
+  // glow. Every text node there, not just a role list, is held to the floor.
+  test(`every line on the board's below-fold blocks and on two whole sheets meets the floor (${theme})`, async ({ page }) => {
+    await boot(page, theme);
+    const fold = page.locator('.efold');
+    if (await fold.isVisible().catch(() => false)) { await fold.click(); await page.waitForTimeout(700); }
+    // Each block is measured scrolled to the middle of the screen, at rest: a
+    // tile fades in as it scrolls into view (strataFocus, opacity .5 -> 1), and
+    // the floor is for what a host reads, not the frame it enters on.
+    const board = [];
+    for (const sel of ['.hero.elegant .then-fold', '.hero.elegant .ef-watch', '.hero.elegant .bento', '[data-who-confirmed]']) {
+      const el = page.locator(sel).first();
+      if (!(await el.count())) continue;
+      await el.evaluate((n) => n.scrollIntoView({ block: 'center' }));
+      await page.waitForTimeout(900);
+      board.push(...await page.evaluate(measure, [sel, null]));
+    }
+    for (const want of ['THEN, IN ORDER', 'WORTH HAVING', 'Who’s confirmed']) premise(board.map((r) => ({ what: r.what.toUpperCase() })), want.toUpperCase(), 'the board');
+    assertRows(board, `board below the fold (${theme})`);
+    for (const name of ['Your money', 'People you’re hiring']) {
+      await openSectionByName(page, name, { settle: 1000 });
+      const rows = await page.evaluate(measure, ['.sheet-body', '.sheet']);
+      expect(rows.length, `premise: ${name} has text`).toBeGreaterThan(20);
+      assertRows(rows, `${name}, whole sheet (${theme})`);
+    }
+  });
+
   test(`the reveal's "Skip ›" reads on its carbon stage (${theme})`, async ({ page }) => {
     await page.addInitScript((th) => {
       if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
