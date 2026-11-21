@@ -8137,3 +8137,30 @@ button.vc-pill::after{
   }
   .stagewrap[data-rail="1"] > .app{ height:100%; min-height:0; border-radius:0; }
 }
+
+/* ── THE HOST'S FIRST-RUN SCREENS TOO (owner, 11/21/2026: "host screens only")
+   The welcome gate has no rail (data-rail="0"), so the ruling 28 rules above
+   never reached it. Measured before: at 1366x1024 with touch it was an inset
+   1280x900 card with the 48px phone bezel, and from 700 wide the boot splash
+   painted 48px corners that the screen edge clipped (1180x820). On touch both
+   are now the screen, square, like the main frame.
+   SCOPED TO HOST SCREENS. Only the host shell writes `data-rail` on its
+   stagewrap; the guest pages (invite, helper, family, vendor brief) carry none,
+   so none of this reaches them. The invite is paper on a card, by design.
+   From 1280 the only rail-less host screen is the welcome (and the localhost
+   `?stage=phone` QA stage, which stays a phone), so the frame rule names it. */
+@media (pointer:coarse) and (max-width:1279px){
+  .stagewrap[data-rail="0"] > .splash{ border-radius:0; }
+}
+@media (pointer:coarse){
+  .stagewrap[data-rail="0"]:has(> .app > .content.welcome) > .splash{ border-radius:0; }
+  .stagewrap[data-rail="0"]:has(> .app > .content.welcome) > .app{ border-radius:0; box-shadow:none; }
+}
+@media (pointer:coarse) and (min-width:1280px){
+  .stagewrap[data-rail="0"]:has(> .app > .content.welcome){
+    width:auto; max-width:none;
+    height:100dvh; max-height:none;
+    margin:0; transform:none;
+  }
+  .stagewrap[data-rail="0"]:has(> .app > .content.welcome) > .app{ height:100%; min-height:0; }
+}

@@ -105,3 +105,113 @@ test.describe('mouse: the desktop card is unchanged', () => {
     });
   }
 });
+
+// ── The host's first-run screens (owner, 11/21/2026: "host screens only") ──
+// The welcome gate has no rail (data-rail="0"), so the frame rules above never
+// reached it: measured before, at 1366x1024 with touch it was an inset
+// 1280x900 card with a 48px phone bezel, and from 700 wide its boot splash
+// painted 48px corners that the screen edge clipped. On touch both are now the
+// screen, square, like the main frame. The guest pages (invite, helper, family,
+// vendor brief) are not host screens and keep their framed card.
+const firstRun = async (browser, w, h, hasTouch, { splash }) => {
+  const ctx = await browser.newContext({
+    baseURL: test.info().project.use.baseURL, viewport: { width: w, height: h }, hasTouch,
+  });
+  const page = await ctx.newPage();
+  await page.route('https://e2e-mock.invalid/**', (r) => r.fulfill({ status: 200, json: { ok: true } }));
+  // A fresh profile: no event, not welcomed. Without the splash flag the boot
+  // splash is up over the welcome; with it, the welcome itself is on screen.
+  if (!splash) await page.addInitScript(() => localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString()));
+  await page.goto('./?elegant=1');
+  await page.locator(splash ? '.splash' : '.content.welcome').first().waitFor({ state: 'visible', timeout: 15_000 });
+  return { ctx, page };
+};
+
+const box = (page, sel) => page.locator(sel).first().evaluate((el) => {
+  const r = el.getBoundingClientRect(); const cs = getComputedStyle(el);
+  return {
+    x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height),
+    radii: [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius],
+  };
+});
+const SQUARE = ['0px', '0px', '0px', '0px'];
+
+test.describe('touch: the welcome screen and the boot splash are full-bleed', () => {
+  for (const [w, h] of [[1180, 820], [1366, 1024]]) {
+    test(`${w}x${h} with touch — the welcome`, async ({ browser }) => {
+      const { ctx, page } = await firstRun(browser, w, h, true, { splash: false });
+      await expect(page.locator('.stagewrap')).toHaveAttribute('data-rail', '0');
+      const full = { x: 0, y: 0, w, h, radii: SQUARE };
+      expect(await box(page, '.stagewrap'), 'welcome frame').toEqual(full);
+      expect(await box(page, '.stagewrap > .app'), 'welcome screen').toEqual(full);
+      await ctx.close();
+    });
+
+    test(`${w}x${h} with touch — the boot splash`, async ({ browser }) => {
+      const { ctx, page } = await firstRun(browser, w, h, true, { splash: true });
+      expect(await box(page, '.splash'), 'splash').toEqual({ x: 0, y: 0, w, h, radii: SQUARE });
+      await ctx.close();
+    });
+  }
+});
+
+test.describe('mouse: the welcome screen and the splash are unchanged', () => {
+  // Measured on the build before the touch rule; a mouse must not move them.
+  const BEFORE = {
+    1280: { frame: { x: 24, y: 20, w: 1232, h: 740, radii: SQUARE }, app: { x: 24, y: 20, w: 1232, h: 740, radii: ['48px', '48px', '48px', '48px'] } },
+    1440: { frame: { x: 80, y: 20, w: 1280, h: 840, radii: SQUARE }, app: { x: 80, y: 20, w: 1280, h: 840, radii: ['48px', '48px', '48px', '48px'] } },
+  };
+  for (const [w, h] of MOUSE) {
+    test(`${w}x${h} without touch`, async ({ browser }) => {
+      const a = await firstRun(browser, w, h, false, { splash: false });
+      expect(await box(a.page, '.stagewrap'), 'welcome frame').toEqual(BEFORE[w].frame);
+      expect(await box(a.page, '.stagewrap > .app'), 'welcome screen').toEqual(BEFORE[w].app);
+      await a.ctx.close();
+      const b = await firstRun(browser, w, h, false, { splash: true });
+      expect(await box(b.page, '.splash'), 'splash').toEqual(BEFORE[w].app);
+      await b.ctx.close();
+    });
+  }
+});
+
+// The invite is designed as paper on a card, and the guest pages are out of
+// the ruling: touch must not move the card or change its corners.
+const INVITE = {
+  id: 'cust-touch-frame-invite', rsvpCode: 'touch-frame-invite-code',
+  name: 'My Game Night', type: 'Game Night', date: '2027-03-06', time: '19:00', venueName: 'Home',
+  guestEstimate: 6, guestMode: 'count', guests: [], vendors: [], budget: [], timeline: [],
+};
+const inviteCard = async (browser, w, h, hasTouch) => {
+  const ctx = await browser.newContext({
+    baseURL: test.info().project.use.baseURL, viewport: { width: w, height: h }, hasTouch,
+  });
+  const page = await ctx.newPage();
+  await page.addInitScript((e) => {
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
+    localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
+  }, INVITE);
+  await page.route('https://e2e-mock.invalid/**', (r) => r.fulfill({ status: 404, json: { detail: 'not found' } }));
+  await page.goto('?rsvp=' + INVITE.rsvpCode);
+  await expect(page.locator('.inv2-sheet').first()).toBeVisible();
+  await expect(page.getByRole('radio', { name: /Yes, I.m in/i }).first()).toBeVisible();
+  await page.waitForTimeout(600);   // past the entrance animation
+  const m = { stage: await box(page, '.stagewrap'), card: await box(page, '.inv2-sheet') };
+  await ctx.close();
+  return m;
+};
+
+test.describe('touch: the guest invite keeps its card', () => {
+  // From 1024 the invite is its own full-screen, square-cornered composition
+  // (the 11/11 ruling); below it, a 22px paper card. Both stay as they are.
+  for (const [w, h] of [[768, 1024], [1180, 820], [1366, 1024]]) {
+    test(`${w}x${h} — the invite card is the same with touch as with a mouse`, async ({ browser }) => {
+      const mouse = await inviteCard(browser, w, h, false);
+      const touch = await inviteCard(browser, w, h, true);
+      test.info().annotations.push({ type: 'invite', description: JSON.stringify({ mouse, touch }) });
+      expect(touch).toEqual(mouse);
+      if (w < 1024) expect(touch.card.radii, 'the paper card keeps its corners').toEqual(['22px', '22px', '22px', '22px']);
+    });
+  }
+});
