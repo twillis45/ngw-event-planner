@@ -59,7 +59,6 @@ const lineFor = (re) => CSS_LINES.find((l) => re.test(l)) || '';
 const CSS_RULES = [
   { sel: /\.hero\.elegant \.confrow\{/, bad: /#[0-9a-fA-F]{6}|13px 15px/, label: '.confrow uses a raw hex or 13px-15px pad — it is a TierRow parallel; use var(--card)/13px 16px/var(--r-md)' },
   { sel: /\.hero\.elegant \.confrow:hover\{/, bad: /#[0-9a-fA-F]{6}/, label: '.confrow:hover uses a raw hex — use var(--steel-tint)' },
-  { sel: /\.hero\.elegant \.whytog:hover\{/, bad: /#[0-9a-fA-F]{6}/, label: '.whytog:hover uses a raw hex — use var(--steel-tint)' },
   { sel: /\.hero\.elegant \.verdict\{/, bad: /color:\s*#[0-9a-fA-F]{6}/, label: 'the .verdict guide voice uses a raw hex color — use var(--ink-soft)' },
   // ONE DECISION-OPTION COMPONENT (2026-07-31). This rule used to read
   // `.app-elegant .decopt{` — when that duplicate was folded into the base

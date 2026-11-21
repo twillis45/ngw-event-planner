@@ -48,6 +48,9 @@
 //               pop-out window x2, the demo tools bar x10).
 //               parity/check-parity.mjs 1 -> 0: the one it counted sat inside a
 //               regex literal (line 124), not a string.
+//   11/21/2026  280 color, 883 inline (design batch 3c, item 21). The dead
+//               .hero.elegant .whytog rule, rendered nowhere, took its #20242a
+//               with it: styles.css 129 -> 128.
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';

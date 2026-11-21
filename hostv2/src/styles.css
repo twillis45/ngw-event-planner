@@ -896,8 +896,6 @@ button{font-family:inherit}
    the fixes as compact tappable rows (no faked "our fix" — genuine either/or). */
 .hero.elegant .conf-sit{ display:flex; align-items:flex-start; gap:10px; }
 .hero.elegant .conf-sit .because{ flex:1; margin:0; }
-.hero.elegant .whytog{ flex:0 0 auto; background:#20242a; color:var(--steel-soft); border:none; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:650; cursor:pointer; transition:background var(--ms-fast) var(--ease-out); }
-.hero.elegant .whytog:hover{ background:var(--steel-tint); }
 .hero.elegant .conf-fixes{ display:flex; flex-direction:column; gap:8px; margin-top:var(--sp-2); }
 /* Tokenized to the kit's TierRow geometry (padding 13px 16px, --r-md) — was raw hex + 13px 15px, a by-eye parallel of TierRow (parity audit 2026-07-19). */
 .hero.elegant .confrow{ display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; background:var(--card); border:none; border-radius:var(--r-md); padding:13px 16px; cursor:pointer; text-align:left; color:var(--ink); font:inherit; flex-wrap:wrap; transition:background var(--ms-fast) var(--ease-out), transform .1s var(--ease-out); }
@@ -4498,7 +4496,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
   .floor-addland:hover, .palette-row:hover, .decopt:hover,
   .app-elegant .decopt:hover, .app-elegant .decopt.pick:hover,
   .app-elegant .decopt-disc:hover, .hero.elegant .cta:hover:not(:disabled),
-  .hero.elegant .whytog:hover, .hero.elegant .confrow:hover,
+  .hero.elegant .confrow:hover,
   .hero.elegant .confrow.confrow-open:hover, .hero.elegant .ef-row:hover,
   .hero.elegant .bento .tile-b:hover, .hero.elegant .bento .tile-c:hover,
   .hero.elegant .cp-look:hover, .hero.elegant .ac-next:hover,
@@ -7181,9 +7179,9 @@ button.vc-pill::after{
 }
 .pr-acts > .mini{ flex:0 1 auto; }
 
-/* The reply-by control is a sentence the host can act on, not a button. Same
-   treatment as `.whytog` — the disclosure register this surface already uses —
-   so it cannot be mistaken for one of the tiered actions above it. */
+/* The reply-by control is a sentence the host can act on, not a button. A
+   quiet disclosure register, so it cannot be mistaken for one of the tiered
+   actions above it. */
 .pr-quiet{
   background:none; border:none; padding:var(--sp-2) 0;
   font:inherit; font-size:var(--t-pill); font-weight:650;
