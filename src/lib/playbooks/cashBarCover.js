@@ -13,9 +13,11 @@
 // as "Nothing"), and glassware is not here at all — it stays in Rentals. Any
 // other playbook with a cash-bar pick gets sets built from its own lines.
 //
-// WHICH CALL IS THE DRINKS CALL is read from the decision that OFFERS the
-// cash-bar pick, by its id: never "the first decision whose blocks name a
-// beverage" (the heuristic the pricing work is retiring).
+// WHICH CALL IS THE DRINKS CALL is the one the playbook names `drinksCall:
+// true` (A1, the pricing rewrite; playbookContract holds it to one per type),
+// the same decision playbookFoodPlan reads: never "the first decision whose
+// blocks name a beverage", and never a second guess of its own. The follow-up
+// is the ONLY cash-bar rule; the engine has no separate bare-"Cash bar" tier.
 
 export const BAR_COVER_ID = 'bar_cover';
 export const NOTHING = 'Nothing — the bar is fully cash';
@@ -61,13 +63,11 @@ function builtFrom(pb) {
   return [...out, [NOTHING, []]];
 }
 
-/** The drinks call that offers a cash/limited bar, and that pick — or null. */
+/** The named drinks call, when it offers a cash/limited bar, and that pick — or null. */
 export function cashBarParent(pb) {
-  for (const d of (pb && pb.decisions) || []) {
-    const pick = (d.options || []).find((o) => CASH_PICK.test(String(o)));
-    if (pick) return { decision: d, pick };
-  }
-  return null;
+  const d = ((pb && pb.decisions) || []).find((x) => x && x.drinksCall === true);
+  const pick = d && (d.options || []).find((o) => CASH_PICK.test(String(o)));
+  return pick ? { decision: d, pick } : null;
 }
 
 /** The option sets for this playbook: [[label, lineIds], …], or null. */

@@ -4731,15 +4731,16 @@ export function hostBuysLine(i) {
 // those 4"): it carried an uncited ×0.6 and still bought the beer and wine. It
 // has no factor now; its bar lines leave the list the way BYOB's drinks do
 // (`hostBuysIt` in playbookFoodPlan), and what is left prices at its cited band.
-// A CASH BAR (A1, 11/21/2026) is the guests buying every drink, so the bar
-// lines leave the host's list (`_drinkLeaves`), toast aside. Only the bare pick
-// "Cash bar": a limited bar or drink tickets is part hosted, and how much is the
-// host's follow-up answer, not a number this rule can know.
+// A CASH BAR IS NOT A TIER (integration, 11/21/2026). A1 gave the bare pick
+// "Cash bar" its own tier here (bar lines leave, toast kept) while the cash-bar
+// follow-up priced every other cash pick: two rules for one call. Every cash
+// pick on the drinks call — bare, limited or drink tickets — is now priced by
+// the follow-up's answer alone (`_cashKeeps` in playbookFoodPlan), whose first
+// set is what the bare tier kept on Wedding and the Gala.
 // "Light / pace-it" left the dry tier: a lighter-drinking crowd still drinks,
 // so Bachelor's pick drops the spirits line (a line rule), not the beer.
 // "Mocktails + soft drinks only" joined it: Gender Reveal's zero-proof pick.
 const BEV_TIERS = [
-  { cash: true, name: 'a cash bar', re: /^cash bar$/ },
   { factor: 1, name: 'a full bar', re: /\b(full (open )?bar|open bar|full cooler|premium|top-shelf|brown liquor|whiskey|bourbon|hired bartender)\b/ },
   { factor: 1, name: 'one added drink', re: /\b(add a|punch|grown section|cocktail|wine \+|signature)\b/ },
   { dry: true, name: 'a dry party', re: /\b(dry|family-friendly|zero-proof|no alcohol|non-alcoholic|kids|soft drinks only)\b/,
@@ -4877,26 +4878,24 @@ export function playbookFoodPlan(event, opts = {}) {
   const _pickHasFactor = !!(_bevDecision && _bevDecision.costFactors && _bevDecision.costFactors[_bevPickRaw] != null);
   const _dryTier = (_bevPick && !_pickHasFactor) ? beverageTierFor(_bevPick) : null;
   const _dry = !!(_dryTier && _dryTier.dry);
-  // A CASH BAR: the guests buy their own drinks, so the host buys no bar stock.
-  // The toast is the host's pour even then, so a toast line stays.
-  const _cashBar = !!(_dryTier && _dryTier.cash);
+  // A CASH OR LIMITED BAR BUYS ONLY WHAT THE HOST STILL COVERS (owner,
+  // 11/21/2026). ONE rule for every cash pick on the drinks call — "Cash bar",
+  // "Cash/limited bar", "Limited / cash bar", "Drink tickets / cash bar": the
+  // follow-up's answer (cashBarCover.js) names the drink lines kept, ice
+  // included or not, and the rest leave the spread and the budget. Before the
+  // host answers, the first set stands; for Wedding that is the toast and for
+  // the Gala the zero-proof drinks, what A1's bare-"Cash bar" rule kept.
+  const _cashKeeps = (() => { try { return cashBarKeeps(playbook, pickFor); } catch (_e) { return null; } })();
   // A line that says it is alcohol-free is never bar stock, whatever else it
   // names (Gender Reveal's "Mocktail / pink-or-blue punch mixers").
   const ZERO_PROOF_LINE_RE = /\b(mocktails?|zero-proof|non-alcoholic|alcohol-free)\b/i;
   const isBarLine = (p) => !ZERO_PROOF_LINE_RE.test(p.item || '') && BAR_LINE_RE.test(`${shortItem(p.item)} ${String(p.id || '').replace(/^p_/, '').replace(/_/g, ' ')}`);
-  const _isToast = (p) => /\btoast\b/i.test(`${p.item || ''} ${p.id || ''}`);
   const _drinkLeaves = (p) => {
     if (_byobHostMixers) return isBarLine(p) && !/\b(mixers?|soda)\b/i.test(p.item || '');
     if (_byob) return true;
     if (_dry) return isBarLine(p);
-    if (_cashBar) return isBarLine(p) && !_isToast(p);
     return false;
   };
-  // A CASH BAR BUYS ONLY WHAT THE HOST STILL COVERS (owner, 11/21/2026): the
-  // follow-up's answer names the drink lines kept (ice included or not); the
-  // rest leave the spread and the budget. Read from the decision that offers
-  // the cash-bar pick, by id (cashBarCover.js), not from _bevDecision.
-  const _cashKeeps = (() => { try { return cashBarKeeps(playbook, pickFor); } catch (_e) { return null; } })();
   const hostBuysIt = (p) => !(p.category === 'beverage'
     && (_cashKeeps ? !_cashKeeps.has(p.id) : (!/\bice\b/i.test(p.item || '') && _drinkLeaves(p))));
 

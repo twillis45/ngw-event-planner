@@ -64,3 +64,30 @@ test('another playbook with a cash bar gets sets from its own lines; a pick that
   expect(gala.map(([l]) => l)).toEqual(['The non-alcoholic drinks and ice', NOTHING]);
   expect(cashBarCoverSets(getPlaybook('Birthday'))).toBeNull();
 });
+
+// ONE CASH-BAR RULE (integration with the line-rule pricing, 11/21/2026). The
+// follow-up hangs off the decision tagged `drinksCall` — the one the plan
+// prices — and it is the only rule: no drinks tier reads a cash pick. Before
+// the host answers, Wedding's bare "Cash bar" keeps the toast and the Gala's
+// the zero-proof drinks, exactly what the retired bare-"Cash bar" tier kept.
+describe('one cash-bar rule, on the named drinks call', () => {
+  const { cashBarParent } = require('../playbooks/cashBarCover');
+  const { ALL_PLAYBOOKS, beverageTierFor } = require('../playbooks');
+  test('every cash-bar follow-up hangs off the drinks call', () => {
+    for (const pb of ALL_PLAYBOOKS) {
+      const p = cashBarParent(pb);
+      if (p) expect([pb.type, p.decision.drinksCall]).toEqual([pb.type, true]);
+    }
+  });
+  test('no drinks tier reads a cash pick', () => {
+    for (const pick of ['cash bar', 'cash/limited bar', 'limited / cash bar', 'drink tickets / cash bar']) expect(beverageTierFor(pick)).toBeNull();
+  });
+  test.each([
+    ['Wedding', 'bar', ['p_toast_champagne']],
+    ['Fundraiser / Gala', 'bar', ['p_nonalc']],
+  ])('%s: a bare cash bar, unanswered, keeps what the bare rule kept', (type, id, kept) => {
+    const ids = playbookFoodPlan(ev(type, { [id]: 'Cash bar' })).list.filter((l) => l.cat === 'beverage' && !l.skipped).map((l) => l.id);
+    expect(ids).toEqual(kept);
+    expect(playbookFoodPlan(ev(type, { [id]: 'Cash bar', [BAR_COVER_ID]: NOTHING })).list.filter((l) => l.cat === 'beverage' && !l.skipped)).toEqual([]);
+  });
+});
