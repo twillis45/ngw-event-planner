@@ -1449,10 +1449,10 @@ button{font-family:inherit}
    fold as well, in both themes. So every .cta on the board outside the hero
    wears the soft tier: same atom, no per-button class. Sheets are not inside
    .board and keep their own one-lit rule. Spec: oneLitButtonOnTheBoard. */
-.cta.soft, .board > :not(.hero) .cta:not(.ghost){background:var(--steel-tint); color:var(--ink)}
+.cta.soft, .board > :not(.hero):not(.keep-ask) .cta:not(.ghost){background:var(--steel-tint); color:var(--ink)}
 /* Soft and ghost stay flat: only the primary carries the lit gradient and its edge. */
-.cta.soft, .cta.ghost, .board > :not(.hero) .cta{box-shadow:inset 0 1px 0 var(--sheen)}
-.cta.soft:hover, .board > :not(.hero) .cta:hover{filter:none}
+.cta.soft, .cta.ghost, .board > :not(.hero):not(.keep-ask) .cta{box-shadow:inset 0 1px 0 var(--sheen)}
+.cta.soft:hover, .board > :not(.hero):not(.keep-ask) .cta:hover{filter:none}
 .hc-row{margin-top:var(--sp-3); display:flex; gap:var(--gap-chip); flex-wrap:wrap}
 
 .later-row{
