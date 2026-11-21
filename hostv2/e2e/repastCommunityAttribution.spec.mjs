@@ -115,6 +115,9 @@ const bootCookout = async (page) => {
       id: 'e2e-cookout-modes', name: 'The Cookout', type: 'The Cookout',
       date: '2027-06-17', venueCity: '21014',
       guestMode: 'count', guestCount: 20, totalBudget: 1200,
+      // The host cooks everything, so nothing is brought (11/21/2026: the
+      // default "family brings the rest" now hands the sides to the family).
+      foodChoices: { cooking_model: 'Host cooks everything' },
       budget: [], vendors: [], guests: [],
     }]));
     localStorage.setItem('ngw-hostv2-last-event', 'e2e-cookout-modes');
