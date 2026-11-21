@@ -7,6 +7,11 @@ import { chaseAnsweredOrNudged } from './replyNudge';
 // Live binding, read only at call time: playbooks imports this module too.
 import { openFoodChoices, isDietaryChoice, playbookFoodPlan, hostBuysLine, dietaryNoted, stepCalls, stepCallsAnswered } from './playbooks';
 import { buildTravelPlan } from './travelPlan';
+import { sendStateFor } from './sendLedger';
+
+// The trip-details draft's title, which is also its send-ledger key: the
+// draft sheet records under it, and the checklist row reads it back.
+export const TRIP_DETAILS_DRAFT = 'The trip details';
 
 // Single source of truth for "is this planning task already handled by real event state?"
 //
@@ -112,6 +117,16 @@ export function taskSatisfied(event, task) {
   // would otherwise keep it open forever. Only rows that name the one album
   // link: "start a shared album and send the link" is still an ask of people.
   if (/^share\b[^.;]{0,80}\bin one album link\b/.test(s)) return /^https?:\/\//i.test(String(event.albumUrl || '').trim());
+
+  // THE TRIP DETAILS WENT OUT (11/21/2026). Group Trip's "Send everyone the
+  // trip details…" opens their draft; posting it on everyone's invite or
+  // handing it off records it on the send ledger, and that record is the
+  // step done. Copying is not a send (the invite's rule above), and a server
+  // email that failed or is still in flight is not one either.
+  if (/^send everyone the trip details\b/.test(s)) {
+    const e = sendStateFor(event.sendLedger, TRIP_DETAILS_DRAFT);
+    return !!e && e.channel !== 'copy' && (e.status === 'handed_off' || e.status === 'accepted');
+  }
 
   // ACTS — calls, briefings, walk-throughs, physical work, ongoing collection —
   // are never proven by presence facts. "Recruit 3-5 volunteers" was marked done

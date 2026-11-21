@@ -26,6 +26,8 @@ export const sendKey = (title) => String(title || 'draft');
 const CHANNEL_LABEL = {
   sms: 'by text', whatsapp: 'on WhatsApp', share: 'from your share sheet',
   copy: 'copied to send', email: 'by email', other: 'yourself',
+  // Posted through Updates to everyone (11/21/2026): the server took it.
+  invite: 'on everyone’s invite',
 };
 
 /** "by text", "on WhatsApp"… for a handoff channel (the Messages view reads it). */
@@ -112,6 +114,8 @@ export function sendStateLine(entry, nowTs) {
   if (entry.status === 'accepted') return `Accepted by the mail service${age}`;
   if (entry.status === 'failed') return `The email didn’t go out${age} — nothing was sent`;
   if (entry.status !== 'handed_off') return null;
+  // A post on everyone's invite is the server's answer, not the host's word.
+  if (entry.channel === 'invite') return `Posted ${CHANNEL_LABEL.invite}${age}`;
   const via = CHANNEL_LABEL[entry.channel] || CHANNEL_LABEL.other;
   return `Handed off ${via}${age}`;
 }

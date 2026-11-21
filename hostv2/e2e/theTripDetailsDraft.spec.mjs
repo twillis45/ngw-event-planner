@@ -10,7 +10,7 @@
 // The signed-in post: theTripDetailsPostToEveryone.spec.mjs (5277 bundle).
 // Jest twin: src/lib/__tests__/draftTripDetails.test.js.
 import { test, expect, settled, sheetSettled, openSectionByName } from './fixtures.mjs';
-import { tripEvent, litButtons } from './tripDetailsFixture.mjs';
+import { tripEvent, litButtons, STEP } from './tripDetailsFixture.mjs';
 
 const ID = 'e2e-trip-details';
 
@@ -60,4 +60,35 @@ test('what is missing is left out and named to the host', async ({ page }) => {
   await expect(sheet).toContainText('No stay booked yet — add it in Where everyone stays.');
   await expect(sheet).toContainText('Nothing booked to do together yet — add it in People you’re hiring.');
   await expect(sheet).toContainText('No costs split yet — add them in Split the costs.');
+});
+
+// Marking it sent (or any handoff but Copy) is the send ledger's record, and
+// the ledger is the step's proof (taskEngine, 11/21/2026): the row reads
+// "done by your plan" instead of asking for the send again.
+test('marking it sent ticks “Send everyone the trip details”', async ({ page }) => {
+  const sheet = await boot(page, tripEvent(ID + '-marked'));
+  await sheet.getByRole('button', { name: 'Mark it sent — I sent it myself', exact: true }).click();
+  await expect(sheet).toContainText('Handed off yourself');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await openSectionByName(page, 'Your checklist');
+  await sheetSettled(page);
+  const row = page.locator('.sheet').last().locator('.frow').filter({ hasText: STEP.split(':')[0] });
+  await expect(row).toHaveClass(/\bgot\b/);
+  await expect(row).toContainText('done by your plan');
+});
+
+test('copying it is not sending it', async ({ page }) => {
+  const sheet = await boot(page, tripEvent(ID + '-copied'));
+  await sheet.getByRole('button', { name: 'Copy it', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await openSectionByName(page, 'Your checklist');
+  await sheetSettled(page);
+  const row = page.locator('.sheet').last().locator('.frow').filter({ hasText: STEP.split(':')[0] });
+  await expect(row).not.toHaveClass(/\bgot\b/);
 });

@@ -156,7 +156,7 @@ export default function HostUpdates({ eventId }) {
 // the list; otherwise it shows the one line saying why. The server's answer is
 // the only success it reports.
 const MAX_POST = 1000;
-export function PostToEveryone({ eventId, body }) {
+export function PostToEveryone({ eventId, body, onPosted }) {
   const u = useGuestUpdates(eventId);
   if (!isAnnouncementsApiConfigured()) return null;
   const { st, emailN, confirm, setConfirm, busy, line, err } = u;
@@ -170,7 +170,7 @@ export function PostToEveryone({ eventId, body }) {
       <p className="grounding" data-post-invite-reach>{reachLine(emailN)}</p>
       {canPost ? (
         <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'wrap', alignItems: 'center' }}>
-          <button className="cta" data-post-invite-btn onClick={() => u.post(text)} disabled={!text || tooLong || busy === 'post'}>
+          <button className="cta" data-post-invite-btn onClick={async () => { if (await u.post(text) && onPosted) onPosted(); }} disabled={!text || tooLong || busy === 'post'}>
             {busy === 'post' ? 'Posting…' : confirm ? `Post and email ${guests(emailN)}` : 'Post to everyone’s invite'}
           </button>
           {confirm && <button className="mini" onClick={() => setConfirm(false)}>Not yet</button>}

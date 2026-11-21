@@ -168,7 +168,7 @@ import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, readEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
 import { deleteAccount, isAccountDeletionAvailable } from '@app/lib/api/account';
-import { effectiveDone, factsATickRecords, invitesOut, timelineStepResolved } from '@app/lib/taskEngine';
+import { effectiveDone, factsATickRecords, invitesOut, timelineStepResolved, TRIP_DETAILS_DRAFT } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
@@ -6700,7 +6700,7 @@ export default function HostShellV2() {
     if (r.kind === 'sweep') { setSheet({ kind: 'sweep', focus: r.focus || null }); runSweepDrafts(); return true; }
     if (r.kind === 'draft') {
       if (r.focus !== 'trip-details') return false;
-      openDraft('The trip details', draftTripDetails(event, profile), null, { postsToInvite: true });
+      openDraft(TRIP_DETAILS_DRAFT, draftTripDetails(event, profile), null, { postsToInvite: true });
       return true;
     }
     // Sheet landings: open the named sheet on its row/section. vendorSection is
@@ -21066,7 +21066,7 @@ export default function HostShellV2() {
               const recordSend = (channel) => {
                 // `about`: who the draft was for, as this sheet KNOWS it — the
                 // Messages view groups by it (owner, 11/20/2026). Never inferred.
-                const about = sheet.vendorId ? { kind: 'vendor', id: sheet.vendorId } : sheet.sendsInvite ? { kind: 'guests' } : null;
+                const about = sheet.vendorId ? { kind: 'vendor', id: sheet.vendorId } : (sheet.sendsInvite || sheet.postsToInvite) ? { kind: 'guests' } : null;
                 const led = recordHandoff(event.sendLedger, sheet.title, channel, new Date().toISOString(), about);
                 if (sheet.vendorId) {
                   // Vendor-directed draft: the handoff IS the outreach. The
@@ -21089,7 +21089,8 @@ export default function HostShellV2() {
                 // a send (the clipboard proves a draft, not delivery).
                 const invited = sheet.sendsInvite && channel !== 'copy' && !event.invitesSentAt
                   ? { invitesSentAt: new Date().toISOString() } : {};
-                patchEvent({ sendLedger: led, ...invited }, 'Noted — the plan remembers this went out.');
+                // A post already says "Posted" in its own line; the toast would repeat it.
+                patchEvent({ sendLedger: led, ...invited }, channel === 'invite' ? null : 'Noted — the plan remembers this went out.');
               };
               const sendEntry = sendStateFor(event.sendLedger, sheet.title);
               const sendChip = sendStateLine(sendEntry, Date.now());
@@ -21387,7 +21388,9 @@ export default function HostShellV2() {
                     shows it is the sheet's one lit button: the only handoff the
                     app itself completes, reaching the whole group at once. */}
                 {invitePost && (invitePost.ok
-                  ? <PostToEveryone eventId={event.id} body={shownDraft()} />
+                  /* A post the server took is the trip details sent: the ledger
+                     records it, and that ticks "Send everyone the trip details". */
+                  ? <PostToEveryone eventId={event.id} body={shownDraft()} onPosted={() => recordSend('invite')} />
                   : <p className="grounding" data-post-invite-why style={{ marginTop: 'var(--sp-3)' }}>{invitePost.why}</p>)}
                 {/* Real handoffs: the native share sheet (iMessage/WhatsApp/etc.),
                     plus direct sms: and wa.me deep links — no fake "sent" states. */}
