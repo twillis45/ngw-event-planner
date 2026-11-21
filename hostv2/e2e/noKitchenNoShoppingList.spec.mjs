@@ -65,7 +65,9 @@ const openList = async (page, pick) => {
       isDestination: true, venueCity: 'Santa Fe', state: 'NM',
       guestMode: 'count', guestCount: 10, totalBudget: 4000,
       budget: [], vendors: [], guests: [],
-      ...(p ? { foodChoices: { dest_lodging: p } } : {}),
+      // "Beer + wine": Birthday's default is "No alcohol", and a dry pick buys
+      // no bar (aDryPartyBuysNoBar), so the three drink lines need a pick that pours.
+      foodChoices: { alcohol: 'Beer + wine', ...(p ? { dest_lodging: p } : {}) },
     };
     localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([ev]));
     localStorage.setItem('ngw-hostv2-last-event', 'e2e-kitchen');

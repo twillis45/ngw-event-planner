@@ -123,7 +123,10 @@ describe('what the money screen can and cannot see', () => {
     // +7 on 11/18/2026: Friendsgiving's one host-cooks sides line became eight (one per dish), all gated on who cooks.
     // -8 later on 11/18/2026: under the default potluck those eight sides are no longer held out —
     // they show as friends' dishes at $0 (friendsBringWhen), so they price nothing the host did not pick.
-    expect(gated.length).toBe(37);
+    // +1 on 11/21/2026: Birthday's default drinks pick is "No alcohol", and a dry pick now drops the
+    // bar (aDryPartyBuysNoBar), so its beer/wine line is held out by that decision.
+    expect(gated).toContain('Birthday · p_alcohol');
+    expect(gated.length).toBe(38);
   });
 
   test('THE RED-PROOF, IN THE TEST: perturbing decor moves nothing, food moves a lot', () => {
