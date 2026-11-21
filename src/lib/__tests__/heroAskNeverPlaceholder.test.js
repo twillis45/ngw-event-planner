@@ -103,8 +103,12 @@ describe('the hero always asks something real', () => {
 
   test('the retirement party asks its own authored question verbatim', () => {
     // The case heroAsk.js named. Its authored '?' label now reaches the hero.
-    const plan = eventPlan(EV('Retirement Party', 30));
-    expect(heroAskFor((plan.nextActions || [])[0])).toMatch(/at home, a restaurant, or the workplace/i);
+    // No venue named: "The Hall" is a hall, which now answers this call
+    // (nothingKnownIsAskedAgain.test.js). Unnamed, the call is still asked in
+    // its own authored words wherever it is raised.
+    const plan = eventPlan({ ...EV('Retirement Party', 30), venue: '' });
+    const venueCall = (plan.nextActions || []).find((a) => a && a.id === 'decision:venue');
+    expect(heroAskFor(venueCall)).toMatch(/at home, a restaurant, or the workplace/i);
   });
 
   test('a decision NAME is never punctuated into a fake question', () => {

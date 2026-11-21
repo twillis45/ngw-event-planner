@@ -89,9 +89,15 @@ describe('the authored ask survives to the board', () => {
   });
 
   test('every decision that authors an ask puts that exact string on a board row', () => {
-    const onBoard = new Set(allRows().map(({ type, row }) => `${type}::${row.id}::${row.ask || ''}`));
+    // A HALF-KNOWN call asks only its missing part (owner, 11/21/2026: "Don't
+    // keep asking host for the same information") — this sweep's event names
+    // "The Hall", 40 guests and $8,000 — so its row carries that narrowed ask,
+    // and `known`, by design (nothingKnownIsAskedAgain.test.js). So does a
+    // count confirm that carries her number ("Confirm 40 guests").
+    const onBoard = new Set(allRows().map(({ type, row }) => `${type}::${row.id}::${row.known ? '(half-known)' : (row.ask || '')}`));
+    const halfKnown = new Set(allRows().filter(({ row }) => row.known || row.confirm).map(({ type, row }) => `${type}::${row.id}`));
     const missing = authoredDecisions()
-      .filter(({ type, d }) => !onBoard.has(`${type}::${d.id}::${d.ask}`))
+      .filter(({ type, d }) => !onBoard.has(`${type}::${d.id}::${d.ask}`) && !halfKnown.has(`${type}::${d.id}`))
       .map(({ type, d }) => `${type}::${d.id}`);
     expect(missing).toEqual([]);
   });

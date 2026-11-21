@@ -51,8 +51,13 @@ describe('gateHolder is a fact, not a scoring mood', () => {
   test('THE DEFECT — dependents do not vanish when a decision goes late', () => {
     // The count of rows with real dependents is stable across the countdown;
     // only the FLAG used to disappear. Same fact, every distance.
-    const far = withDeps(400).length;
-    for (const d of [300, 120, 60, 30, 10]) expect(withDeps(d).length).toBe(far);
+    // Counted over the open AND parked rows: a row the horizon parks has not
+    // lost its dependents either. (The fixture's own count, budget and venue
+    // now half-answer or settle three Wedding calls — nothingKnownIsAskedAgain
+    // — which moved which rows the horizon parks at T-400, not the fact.)
+    const all = (days) => { const b = playbookDecisionBoard(EV(days)) || {}; return [...(b.open || []), ...(b.deferred || [])]; };
+    const far = all(400).filter((r) => (r._dependedOnCount || 0) > 0).length;
+    for (const d of [300, 120, 60, 30, 10]) expect(all(d).filter((r) => (r._dependedOnCount || 0) > 0).length).toBe(far);
   });
 
   test('AN OVERDUE GATE IS STILL FLAGGED — this was 0 before', () => {

@@ -40,7 +40,9 @@ const iso = (d) => { const x = new Date(); x.setDate(x.getDate() + d); return x.
 // snapshot. Shapes mirror hostv2/src/eventPool.js's test seeds.
 const EVENTS = [
   { id: 'hd-gn', name: 'Game Night', type: 'game night', date: iso(2), guestMode: 'count', guestCount: 12, venueKind: 'home', venueCity: 'Atlanta', venueState: 'GA', guests: [], vendors: [], timeline: [] },
-  { id: 'hd-re', name: 'Family Reunion', type: 'family reunion', date: iso(30), guestMode: 'count', guestCount: 45, venueKind: 'venue', venue: 'Fort Smallwood Park — Pasadena, MD', guests: [], vendors: [], timeline: [] },
+  // No venue named: a park ANSWERS the reunion's indoor/outdoor call now
+  // (nothingKnownIsAskedAgain.test.js), and this file needs that call asked.
+  { id: 'hd-re', name: 'Family Reunion', type: 'family reunion', date: iso(30), guestMode: 'count', guestCount: 45, venueKind: 'venue', venue: '', guests: [], vendors: [], timeline: [] },
   { id: 'hd-ck', name: 'Cookout', type: 'juneteenth cookout', date: iso(5), guestMode: 'count', guestCount: 30, venueKind: 'venue', venue: 'VFW Post 3150 — Alexandria, VA', guests: [], vendors: [], timeline: [] },
   { id: 'hd-rt', name: 'Retirement Party', type: 'retirement party', date: iso(30), guestMode: 'count', guestCount: 60, venueKind: 'venue', venue: 'The Ironwood Room at Maplewood Country Club', guests: [], vendors: [], timeline: [] },
   { id: 'hd-wd', name: 'Wedding', type: 'wedding', date: iso(72), guestMode: 'count', guestCount: 120, venueKind: 'venue', venue: 'Oxon Hill Manor — Oxon Hill, MD', guests: [], vendors: [], timeline: [] },

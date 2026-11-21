@@ -24,6 +24,7 @@ import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, p
 import { rainPlanStatus } from './weather';
 import { placeIsOutdoors, OUTDOOR_TYPE } from './placeIntelligence';
 import { spanNights } from './dates';
+import { allergyAsk } from './knownFacts';
 import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
 import { isVendorSettled } from './workstreams';
@@ -256,7 +257,7 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
           // gate's debt ("Collect dietary restrictions & allergies"), so it
           // declares that record and every tier keys it 'decision:dietary' —
           // set aside here or there, it is set aside in both.
-          extra: { ask: 'Who has a food allergy?', decision: 'dietary' },
+          extra: { ask: allergyAsk(ev), decision: 'dietary' },
         }
         : { label: null, route: null, extra: null };
   // THE SHOP CLOCK, read once for both rows below (issue #100 D-11): the
