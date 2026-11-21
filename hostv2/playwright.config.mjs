@@ -38,6 +38,7 @@ const SELF_PINNED = [
   // a different fold and this rule does not govern it.
   '**/foldAtTheFoot.spec.mjs',
   '**/theStatColumnStandsBesideTheQuestion.spec.mjs',
+  '**/aSheetFillsTheColumnAndTheScreen.spec.mjs',
   '**/statColumnChips.spec.mjs',
   '**/lodgingSpendGuard.spec.mjs',
   '**/regimeBoundary.spec.mjs',

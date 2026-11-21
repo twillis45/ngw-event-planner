@@ -4166,7 +4166,10 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
   .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) .ask{ font-size:64px; }
 }
 
-@media (min-width:640px) and (max-width:1279px) and (min-height:700px){
+/* STOPS AT 1023 (owner ruling 27, 11/21/2026): from 1024, where the rail
+   appears, every sheet fills the content column instead (see "SHEETS FROM 1024"
+   at the end of this file). The centered panel stays for 640-1023. */
+@media (min-width:640px) and (max-width:1023px) and (min-height:700px){
   /* Sheet ruling (host 2026-07-23, "go with panel option"): at tablet every sheet
      becomes a CENTERED FLOATING PANEL — the iPad-native modal read — instead of an
      edge-to-edge bottom sheet stretched across the full width. One overlay shadow
@@ -4598,8 +4601,9 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
 .stagewrap[data-bp="tablet"] > .sheet{
   max-width:720px; margin-inline:auto;
 }
-.stagewrap[data-bp="tablet-land"] > .app > .content,
-.stagewrap[data-bp="tablet-land"] > .sheet{
+/* The sheet left this rule 11/21/2026 (owner ruling 27): from 1024 a sheet
+   fills the content column, one shape across 1280, not an 860px measure. */
+.stagewrap[data-bp="tablet-land"] > .app > .content{
   max-width:860px; margin-inline:auto;
 }
 
@@ -5367,11 +5371,9 @@ button.vc-pill::after{
    exclude the very commit that caused it.
    Shifting the CENTRE by half the offset is the same intent the edge rule
    expresses, said in the idiom this breakpoint actually uses. */
-@media (min-width:640px) and (max-width:1279px) and (min-height:700px){
-  .stagewrap[data-rail="1"] .sheet{
-    left:calc(50% + (var(--rail-w) + var(--sp-5)) / 2);
-  }
-}
+/* RETIRED 11/21/2026 (owner ruling 27): the centered panel now stops at 1023
+   and the rail starts at 1024, so a railed sheet is never the panel and this
+   center shift had nothing left to move. The column rule above places it. */
 
 /* ── THE SECTION MARK ON THE PHONE (host, 2026-08-07) ───────────────────────
    The Sections sheet is the mobile equivalent of the rail — the same
@@ -8049,4 +8051,37 @@ button.vc-pill::after{
 }
 .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) .ask{
   font-size:clamp(40px,7.5cqw,56px);
+}
+
+/* ══ SHEETS FROM 1024: THE FULL COLUMN, NEVER TALLER THAN THE SCREEN ═════════
+   Owner ruling 27, 11/21/2026, made from rendered sheet-size comparisons: "B".
+   From 1024 wide, where the rail appears, every sheet fills the content column
+   (the rail rule's `left`, inset 0): the 680px centered panel now stops at 1023
+   and the 860px tablet-landscape measure no longer reaches sheets. One shape
+   across 1280, keeping the 8/3 and 8/21 rulings that a section fills the
+   column, and with it the desktop list-with-detail layout.
+
+   ONE CORNER from 1024 too (the 8/21 ruling, which was gated at 1280 and 700
+   tall): a railed sheet is a panel, so its corners are even, not the phone's
+   26/46 bottom-sheet radius. */
+.stagewrap[data-rail="1"] > .sheet{ border-radius:var(--r-xl); }
+/* NEVER TALLER THAN THE SCREEN. The sheet is inset 0 inside the stage, so its
+   frame is as tall as the stage. Below 1280, and on the data stage, the stage
+   is 100dvh. The command and food stages at 1280 and up are content-sized, so
+   a sheet opened over them was as tall as the board: measured at 1280x654, the
+   spread sheet was 1,298px tall and the page had scrolled 242px, which put its
+   title and Close at y=-179. While a sheet is open those stages are capped to
+   the window inside the frame's own margins (--sp-5 above, 40px below), so the
+   sheet frame fits the screen, `.sheet-body` flexes to take what is left and
+   the docked `.sheet-foot` stays at the bottom edge. The page then has nothing
+   to scroll. The stage keeps `overflow:clip` from the rail rule: NEVER
+   `hidden`, which is still a scroll container and can be scrolled from code,
+   carrying the sheet's head off the top. Lodging already carries this cap as
+   its own height. */
+@media (min-width:1280px){
+  .stagewrap--responsive-command[data-rail="1"]:has(> .sheet),
+  .stagewrap--responsive-food[data-rail="1"]:has(> .sheet){
+    max-height:calc(100dvh - var(--sp-5) - 40px);
+    overflow:clip;
+  }
 }
