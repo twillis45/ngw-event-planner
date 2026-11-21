@@ -29,7 +29,10 @@ const SHELL_KINDS = new Set(['air', 'budget', 'costshare', 'crabs', 'date', 'dec
 // 120 → 114 (11/21/2026, later): Group Trip's balance, Bachelor's buddy,
 // Repast's place and time, Sweet 16's hashtag, Quinceañera's delivery windows
 // and Team Retreat's arrival instructions now open the surface that does them.
-const NO_DESTINATION_CEILING = 114;
+// 114 → 112 (11/21/2026, integration, measured): Group Trip's "Offer two or
+// three date ranges…" and Team Retreat's "Poll the team…" open Date & time on
+// "Dates to offer".
+const NO_DESTINATION_CEILING = 112;
 
 const ev = (type) => ({ id: 'dest', type, date: '2026-12-31', guestEstimate: 20, guestMode: 'count', guestCountSource: 'host',
   venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX' });

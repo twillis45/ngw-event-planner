@@ -323,6 +323,7 @@ import { appEmailWords, messageEmailResult } from '@app/lib/appEmail';
 import { buildHelperAsk } from '@app/lib/helperAsk';
 import PolicyLinks from './PolicyLinks.jsx';
 import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine } from '@app/lib/guestMerge';
+import { MAX_DATE_OPTIONS, dateOptionsOf, datePollTally, dateOptionPatch, nextDateOptionId } from '@app/lib/datePoll';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
 import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
@@ -8417,6 +8418,8 @@ export default function HostShellV2() {
           // The rental pick rides the same rail (migration 016) — an opinion for
           // the host's shortlist, never a booking.
           lodgingPick: r.lodging_pick || undefined,
+          // The date poll's ticks (migration 034) ride the same rail.
+          datePicks: Array.isArray(r.date_picks) ? r.date_picks : undefined,
           phone: r.phone, email: r.email, mailingAddress: r.mailing_address,
           // Each reply's own time, so the merge applies a changed answer last.
           at: r.updated_at || r.submitted_at,
@@ -8933,6 +8936,78 @@ export default function HostShellV2() {
 
   // Inline editors, one per wired kind. Each writes the SAME fields the engine's
   // done-conditions read (_eventFoundationActions), so closing a gap closes the card.
+  // ── DATES TO OFFER: THE POLL ON THE INVITE (owner pick B, 11/21/2026) ──────
+  // Up to three ranges; guests tick the ones that work on the invite, before
+  // they answer; their ticks come back on the reply (migration 034). Shown on
+  // the two playbooks whose rows ask for it, once ranges exist, or when the
+  // row opened it. Signed out or offline, the poll cannot reach anyone: the
+  // sheet says so, and counts nothing.
+  const renderDatePoll = () => {
+    const raw = Array.isArray(event.dateOptions) ? event.dateOptions : [];
+    const asked = sheet && sheet.focus === 'options';
+    if (!raw.length && !asked && !['Group Trip', 'Team Retreat'].includes(event.type)) return null;
+    const live = !!session && isRsvpApiConfigured();
+    const offline = (() => { try { return navigator.onLine === false; } catch { return false; } })();
+    const tally = datePollTally(event);
+    const byId = Object.fromEntries(tally.rows.map((r) => [r.id, r]));
+    const complete = dateOptionsOf(event).length;
+    const write = (list, msg) => patchEvent({ dateOptions: list }, msg);
+    const setField = (id, k, v) => write(raw.map((o) => (o && o.id === id ? { ...o, [k]: v } : o)), null);
+    const top = Math.max(0, ...tally.rows.map((r) => r.count));
+    return (
+      <div id="date-options" data-date-poll style={{ marginTop: 'var(--sp-4)' }} ref={scrollIntoViewOnOpen(asked)}>
+        <div className="shelf-label" style={{ margin: '0 0 var(--sp-1)' }}>Dates to offer</div>
+        <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>
+          {!live
+            ? 'Guests tick the dates that work on their invite, and the answers come back through your account. Sign in to ask — until then nobody can answer, and nothing is counted.'
+            : offline
+              ? 'You’re offline. Answers already in are below; new ones load when you’re back online.'
+              : complete
+                ? <>On the invite: guests tick the dates that work when they open their link.{tally.asked ? <> <b>{tally.answered} of {tally.asked}</b> have answered.</> : ''}</>
+                : 'Add up to three date ranges. Guests tick every one that works on their invite, before they say if they’re coming.'}
+        </p>
+        {raw.slice(0, MAX_DATE_OPTIONS).map((o, i) => {
+          const t = byId[o.id];
+          const used = event.dateOptionUsed === o.id && event.date === o.start;
+          return (
+            <div key={o.id} data-date-option={o.id} style={{ borderTop: '1px solid var(--line-soft)', padding: 'var(--sp-2) 0' }}>
+              <div className="actions-row" style={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                <b>{String.fromCharCode(65 + i)}{t ? ' · ' + t.label : ''}</b>
+                {t && (used
+                  ? <span className="of" style={{ color: 'var(--ok)', fontWeight: 600 }}>Your dates</span>
+                  : <button className="mini" style={{ minHeight: 'var(--tap-min)' }}
+                      onClick={() => { const p = dateOptionPatch(event, o.id); if (p) patchEvent(p, 'Dates set: ' + t.label + ' — every countdown counts back from them now.'); }}>Use these dates</button>)}
+              </div>
+              <div className="actions-row" style={{ alignItems: 'center', marginTop: 'var(--sp-1)', flexWrap: 'nowrap' }}>
+                <input className="field" type="date" style={{ flex: '1 1 0', minWidth: 0, maxWidth: 190, minHeight: 'var(--tap-min)', padding: '0 var(--sp-2)' }} value={o.start || ''} aria-label={'Range ' + String.fromCharCode(65 + i) + ' starts'}
+                  onChange={(e) => setField(o.id, 'start', e.target.value)} />
+                <input className="field" type="date" style={{ flex: '1 1 0', minWidth: 0, maxWidth: 190, minHeight: 'var(--tap-min)', padding: '0 var(--sp-2)' }} value={o.end || ''} aria-label={'Range ' + String.fromCharCode(65 + i) + ' ends'}
+                  onChange={(e) => setField(o.id, 'end', e.target.value)} />
+                <button className="mini" style={{ minHeight: 'var(--tap-min)', minWidth: 'var(--tap-min)', flex: '0 0 auto' }} aria-label={'Remove range ' + String.fromCharCode(65 + i)}
+                  onClick={() => write(raw.filter((x) => x && x.id !== o.id), 'Range removed from the invite.')}>×</button>
+              </div>
+              {(live || tally.answered > 0) && t && (
+                <p className="grounding" data-date-tally style={{ margin: 'var(--sp-1) 0 0', ...(t.count && t.count === top ? { color: 'var(--ok)' } : {}) }}>
+                  {t.count ? t.count + ' can make it — ' + t.names.join(', ') : 'Nobody has ticked this one yet.'}
+                </p>
+              )}
+            </div>
+          );
+        })}
+        <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+          {raw.length < MAX_DATE_OPTIONS && (
+            <button className="mini" style={{ minHeight: 'var(--tap-min)' }}
+              onClick={() => write([...raw, { id: nextDateOptionId(raw), start: '', end: '' }], null)}>{raw.length ? 'Add another range' : 'Add a range'}</button>
+          )}
+          {raw.length > 0 && (
+            <button className="mini" style={{ minHeight: 'var(--tap-min)' }}
+              onClick={() => patchEvent({ dateOptions: [] }, 'The dates are off the invite.')}>Take it off the invite</button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderEditor = (a) => {
     const kind = wiredKind(a);
     if (kind === 'venue') {
@@ -15848,6 +15923,7 @@ export default function HostShellV2() {
                   </p>
                 )}
                 {renderEditor({ domain: 'date' })}
+                {renderDatePoll()}
               </div>
             )}
             {/* Venue area is a real door too (host request 2026-07-16, same dead-route class as

@@ -9,6 +9,7 @@ import { isVendorBooked } from './workstreams';
 import { venueFor } from './venueFor';
 import { showsReplyTracking } from './guestMode';
 import { stepCalls, getPlaybook } from './playbooks';
+import { DATE_POLL_ROW } from './datePoll';
 
 // The first vendor row still needing the host — the row-level rule the
 // Vendors deep-link doctrine requires (not the sheet top).
@@ -93,6 +94,10 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // tracked; a headcount-only event is never nudged and falls through.
   if (/\bchase\b[^;]{0,30}\b(non-?responders|rsvps?|repl)/.test(t) && event && showsReplyTracking(event))
     return { label: 'Open the nudge', route: { tab: 'Guests', focusField: 'rsvp-nudge' } };
+  // THE DATE POLL ASKS ON THE INVITE (owner pick B, 11/21/2026): Group Trip's
+  // "Offer two or three date ranges…" and Team Retreat's "Poll the team…"
+  // open Date & time on "Dates to offer"; guests tick ranges on the invite.
+  if (DATE_POLL_ROW.test(t)) return { label: 'Ask on the invite', route: { focusField: 'date-options' } };
   const wk = String((meta && meta.week) || '').toLowerCase();
   const dayOf = (meta && meta.category) === 'event-day' || /day of\b|day-of/.test(wk);
   // THE ROW'S OWN CATEGORY OUTRANKS A DAY-OF WORD (11/20/2026). The engine

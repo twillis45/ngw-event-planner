@@ -15,6 +15,7 @@ import { recruitHref } from '@app/lib/acquisition';
 import PhotoStrip from './PhotoStrip.jsx';
 import PolicyLinks from './PolicyLinks.jsx';
 import { photoList, STAY_FROM_PICK, STAY_FROM_PLAN } from '@app/lib/lodgingIntel';
+import { dateOptionsOf, rangeLabel } from '@app/lib/datePoll';
 import { guestSafeText } from '@app/lib/guestFacing';
 import { GUEST_DATA_NOTICE } from '@app/lib/guestDataNotice';
 import { track as trackInvite, EVENTS as INVITE_EVENTS } from '@app/lib/analytics';
@@ -258,6 +259,13 @@ export default function InviteV2({ code }) {
       note: String((o && o.notes) || '').trim(),
     }));
   }, [event]);
+  // ── WHICH DATES WORK FOR YOU (owner pick B, 11/21/2026, migration 034) ────
+  // The host offered up to three ranges; the guest ticks every one that works.
+  // Asked BEFORE attendance (the prototype asked after Yes): a guest who can't
+  // make one range may make another, and her answer depends on the dates.
+  // Rides the same per-guest upsert (`date_picks`); only offered ids are sent.
+  const [datePicks, setDatePicks] = useState([]);
+  const dateChoices = useMemo(() => dateOptionsOf(event).map((o) => ({ id: String(o.id), label: rangeLabel(o) })), [event]);
   const [note, setNote] = useState('');
   const [mailingAddress, setMailingAddress] = useState('');
   // Optional contact — phone OR email, both skippable. Never gates the reply:
@@ -298,13 +306,13 @@ export default function InviteV2({ code }) {
     setPlusOneMeal(MEALS.includes(r.plus_one_meal) ? r.plus_one_meal : 'Standard'); setPlusOneNeeds(r.plus_one_needs || '');
     setKids(Number(r.kids) || 0);
     setPicksCrabs(typeof r.picks_crabs === 'boolean' ? r.picks_crabs : null);
-    setLodgingPick(r.lodging_pick || ''); setNote(r.note || ''); setMailingAddress(r.mailing_address || '');
+    setLodgingPick(r.lodging_pick || ''); setDatePicks(Array.isArray(r.date_picks) ? r.date_picks.map(String) : []); setNote(r.note || ''); setMailingAddress(r.mailing_address || '');
     setContactPhone(r.phone || ''); setContactEmail(r.email || '');
   };
   const clearReplyForm = () => {
     setGuestName(''); setRsvp(''); setMeal('Standard'); setAllergensSel([]); setRulesSel([]); setAccessSel([]);
     setNeedsOther(''); setNeedsOpen(false); setHasPlusOne(false); setPlusOne(''); setPlusOneMeal('Standard');
-    setPlusOneNeeds(''); setKids(0); setPicksCrabs(null); setLodgingPick(''); setNote(''); setMailingAddress('');
+    setPlusOneNeeds(''); setKids(0); setPicksCrabs(null); setLodgingPick(''); setDatePicks([]); setNote(''); setMailingAddress('');
     setContactPhone(''); setContactEmail('');
   };
   useEffect(() => {
@@ -660,6 +668,9 @@ export default function InviteV2({ code }) {
       ...(rsvp === 'Yes' && isCrabEvent && picksCrabs !== null ? { picksCrabs } : {}),
       // Same rule as picksCrabs: only when they're actually coming AND they answered.
       ...(rsvp === 'Yes' && lodgingChoices.length && lodgingPick ? { lodgingPick } : {}),
+      // The date poll: whatever the answer — the ticks are why a Maybe is a Maybe.
+      ...(dateChoices.length && datePicks.some((id) => dateChoices.some((o) => o.id === id))
+        ? { datePicks: dateChoices.map((o) => o.id).filter((id) => datePicks.includes(id)) } : {}),
       note: note.trim(),
       ...(event.collectAddresses && mailingAddress.trim() ? { mailingAddress: mailingAddress.trim() } : {}),
       // Contact rides along ONLY when it's real: a complete US-shaped phone
@@ -698,6 +709,7 @@ export default function InviteV2({ code }) {
           ...(payload.mailingAddress ? { mailing_address: payload.mailingAddress } : {}),
           ...(payload.picksCrabs !== undefined ? { picks_crabs: payload.picksCrabs } : {}),
           ...(payload.lodgingPick ? { lodging_pick: payload.lodgingPick } : {}),
+          ...(payload.datePicks ? { date_picks: payload.datePicks } : {}),
           ...(payload.phone ? { phone: payload.phone } : {}),
           ...(payload.email ? { email: payload.email } : {}),
         });
@@ -1102,6 +1114,28 @@ export default function InviteV2({ code }) {
             ) : !submitted ? (
               <div {...rv('inv2-ask')}>
                 {deleteNote === 'done' && <p className="grounding" role="status" data-reply-deleted style={{ margin: '0 0 10px' }}>Your reply is deleted. Your host’s list drops it the next time they open their plan. You can reply again below.</p>}
+                {/* THE DATE POLL comes FIRST when the host offered ranges (owner
+                    pick B, 11/21/2026): which dates work decides whether she can come. */}
+                {dateChoices.length > 0 && (
+                  <div data-invite-dates className="inv2-dates">
+                    <div className="inv2-label lp">Which dates work for you?</div>
+                    <div className="inv2-dates-list" role="group" aria-label="Which dates work for you">
+                      {dateChoices.map((o) => {
+                        const on = datePicks.includes(o.id);
+                        const flip = () => setDatePicks((p) => (on ? p.filter((x) => x !== o.id) : [...p, o.id]));
+                        return (
+                          <button key={'date-' + o.id} type="button" className="lodge-opt" role="checkbox" aria-checked={on} onClick={flip}>
+                            <span aria-hidden="true" className={'inv2-datebox' + (on ? ' on' : '')}>{on ? '✓' : ''}</span>
+                            <strong style={{ fontWeight: 650 }}>{o.label}</strong>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="inv2-fine" aria-live="polite">
+                      Tick every one that works. Your host sees the answers and picks the dates.
+                    </p>
+                  </div>
+                )}
                 {/* THE ONE ASK — attendance alone; everything else is earned */}
                 <div className="inv2-label lp" style={{ textAlign: 'left', margin: '0 0 8px' }}>The favor of a reply</div>
                 {/* REPLY IS THE PRIMARY ACTION (owner, 11/11/2026): all three on one

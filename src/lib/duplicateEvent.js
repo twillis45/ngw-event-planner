@@ -27,12 +27,16 @@
 // timestamp, so this is testable and so the shell keeps owning persistence.
 
 /** Fields that record what HAPPENED on the occurrence being copied. */
-const GUEST_STATE = ['rsvp', 'rsvpAt', 'checkedIn', 'seat', 'seatId', 'tableId', 'plusOneRsvp'];
+const GUEST_STATE = ['rsvp', 'rsvpAt', 'checkedIn', 'seat', 'seatId', 'tableId', 'plusOneRsvp',
+  // The date poll's ticks (11/21/2026) answered last time's ranges.
+  'datePicks'];
 const VENDOR_STATE = ['depositPaid', 'balancePaid', 'contractSigned', 'costAgreed', 'coiStatus', 'coiVerified',
   'arrivalTime', 'paidAt', 'confirmedAt', 'reconfirmedAt', 'replyText', 'lastReplyAt'];
 const EVENT_STATE = ['id', 'createdAt', 'updatedAt', 'date', 'endDate',
   'rosDone', 'rosEdited', 'photos', 'thanks', 'thanksSent',
   'lodging', 'lodgingOptions', 'lodgingPick',
+  // The date poll (11/21/2026): ranges offered for the occurrence being copied.
+  'dateOptions', 'dateOptionUsed',
   'snoozed', 'snoozeUntil', 'deferred', 'satisfied', 'handled',
   'startTime', 'startTimeSource', 'startTimeWhy',
   // sendLedger records THIS event's handoffs (board ruling 2026-08-21). A copy

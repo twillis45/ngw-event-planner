@@ -126,6 +126,8 @@ export function resolveRoute(route) {
   // Set-the-date foundation MUST branch before the tab:'Event Details' venue
   // catch-all below, else the #1 onboarding foundation scrolls to Venue instead
   // of the date (host-reported wrong-field routing).
+  // The date poll (owner pick B, 11/21/2026): Date & time, on "Dates to offer".
+  if (ff === 'date-options') return { kind: 'date', focus: 'options' };
   if (ff === 'event-date' || ff === 'event-start') {
     // Both routes open the existing Date & time sheet. An off-hero row cannot
     // rely on the hero having mounted its inline input.

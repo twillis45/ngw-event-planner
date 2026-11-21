@@ -8,6 +8,7 @@ import { chaseAnsweredOrNudged } from './replyNudge';
 import { openFoodChoices, isDietaryChoice, playbookFoodPlan, hostBuysLine, dietaryNoted, stepCalls, stepCallsAnswered } from './playbooks';
 import { buildTravelPlan } from './travelPlan';
 import { sendStateFor } from './sendLedger';
+import { DATE_POLL_ROW, datePollSettled } from './datePoll';
 
 // The trip-details draft's title, which is also its send-ledger key: the
 // draft sheet records under it, and the checklist row reads it back.
@@ -127,6 +128,12 @@ export function taskSatisfied(event, task) {
     const e = sendStateFor(event.sendLedger, TRIP_DETAILS_DRAFT);
     return !!e && e.channel !== 'copy' && (e.status === 'handed_off' || e.status === 'accepted');
   }
+
+  // THE DATE POLL IS SETTLED WHEN THE HOST USES A RANGE (owner pick B,
+  // 11/21/2026). Offering ranges is half the step; the other half is the
+  // group's answer, and "Use these dates" is the host acting on it. Above the
+  // act guard, whose "check" / "poll" words would keep it open forever.
+  if (DATE_POLL_ROW.test(s)) return datePollSettled(event);
 
   // ACTS — calls, briefings, walk-throughs, physical work, ongoing collection —
   // are never proven by presence facts. "Recruit 3-5 volunteers" was marked done

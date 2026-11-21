@@ -48,6 +48,7 @@ MAX_CONTACT = 160   # guest-volunteered phone/email
 MAX_ADDR    = 300   # mailing address (host-requested)
 MAX_LIST    = 12    # structured dietary/access chips per list
 MAX_ITEM    = 60    # single chip length
+MAX_DATE_OPTIONS = 3  # the date poll offers at most three ranges
 
 # Minimum entropy floor for a public rsvp_code. New events mint a 22-char rsvpToken
 # (see rsvpToken() in src/App.js). A short/guessable/legacy code must NEVER be able to
@@ -110,6 +111,11 @@ PUBLIC_EVENT_FIELDS = (
     # event, shown quietly on the invite and in share captions. Host-chosen
     # display text, no PII; absent until the host sets one.
     "hashtag",
+    # dateOptions (owner pick 11/21/2026, "Ask on the invite"): up to three
+    # date ranges the HOST offers, so guests tick the ones that work. Display
+    # data the host wrote for guests; _resolve_event narrows each range to its
+    # id / start / end, so nothing else the host keeps beside them leaks.
+    "dateOptions",
 )
 
 # ── In-memory sliding-window rate limiter (mirrors routers/ai.py) ──────────────
@@ -176,6 +182,21 @@ def _clip(v: Optional[str], n: int) -> Optional[str]:
     return v[:n] if v else None
 
 
+def _date_options(raw):
+    """The host's offered date ranges as a guest may see them: id, start, end
+    only, complete ones only, at most MAX_DATE_OPTIONS."""
+    if not isinstance(raw, list):
+        return []
+    out = []
+    for o in raw:
+        if not isinstance(o, dict):
+            continue
+        oid, start, end = (str(o.get(k) or "").strip() for k in ("id", "start", "end"))
+        if oid and start and end:
+            out.append({"id": oid[:MAX_KEY], "start": start[:10], "end": end[:10]})
+    return out[:MAX_DATE_OPTIONS]
+
+
 # ── Schemas ────────────────────────────────────────────────────────────────────
 class RsvpSubmit(BaseModel):
     idempotency_key: str = Field(..., min_length=1)
@@ -206,6 +227,9 @@ class RsvpSubmit(BaseModel):
     # Rental-house shortlist reply (migration 016): the guest's preferred
     # lodgingOptions id — an opinion for the host, never a booking commitment.
     lodging_pick: Optional[str] = None
+    # The date poll (migration 034): ids of the host's dateOptions this guest
+    # said work. Kept only when they name a range the event offers.
+    date_picks: Optional[list[str]] = None
 
     @field_validator("name")
     @classmethod
@@ -255,6 +279,12 @@ async def _resolve_event(conn, rsvp_code: str):
     # this projection does not carry, so the derived hour stops here.
     if str(data.get("startTimeSource") or "") == "derived":
         public.pop("startTime", None)
+    # The date poll's ranges, narrowed to what a guest needs to tick one.
+    opts = _date_options(data.get("dateOptions"))
+    if opts:
+        public["dateOptions"] = opts
+    else:
+        public.pop("dateOptions", None)
     public["id"] = row["id"]
     # Anonymized social proof: the COUNT of confirmed guests only — never names,
     # emails, or the roster itself. Closes the invite's "zero social proof on
@@ -360,14 +390,19 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request, bac
             out = [s.strip()[:MAX_ITEM] for s in v if isinstance(s, str) and s.strip()]
             return out[:MAX_LIST] or None
 
+        # A tick counts only for a range THIS event offers: a forged or stale
+        # id is dropped, duplicates collapse, and nothing at all stores NULL.
+        offered = [o["id"] for o in _public.get("dateOptions") or []]
+        picks = [p for p in offered if isinstance(payload.date_picks, list) and p in payload.date_picks] or None
+
         row = await conn.fetchrow(
             """
             insert into public.rsvp_submissions
               (event_id, rsvp_code, idempotency_key, guest_name, rsvp, meal, needs,
                plus_one, plus_one_meal, plus_one_needs, kids, note,
                allergens, diets, access, picks_crabs, phone, email, mailing_address,
-               lodging_pick)
-            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+               lodging_pick, date_picks)
+            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
             on conflict (rsvp_code, idempotency_key) do update set
               guest_name     = excluded.guest_name,
               rsvp           = excluded.rsvp,
@@ -386,6 +421,7 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request, bac
               email           = excluded.email,
               mailing_address = excluded.mailing_address,
               lodging_pick    = excluded.lodging_pick,
+              date_picks      = excluded.date_picks,
               updated_at     = now()
             returning submitted_at
             """,
@@ -409,6 +445,7 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request, bac
             _clip(payload.email, MAX_CONTACT),
             _clip(payload.mailing_address, MAX_ADDR),
             _clip(payload.lodging_pick, MAX_KEY),
+            picks,
         )
     background.add_task(alert_host, event_id, "rsvp", _clip(payload.name, MAX_NAME), payload.rsvp)
     return {"ok": True, "submitted_at": row["submitted_at"].isoformat()}
@@ -443,7 +480,7 @@ class RsvpOwnKey(BaseModel):
 _OWN_FIELDS = (
     "guest_name, rsvp, meal, needs, plus_one, plus_one_meal, plus_one_needs, kids, note, "
     "allergens, diets, access, picks_crabs, phone, email, mailing_address, lodging_pick, "
-    "submitted_at, updated_at"
+    "date_picks, submitted_at, updated_at"
 )
 
 
@@ -490,6 +527,7 @@ async def public_rsvp_withdraw(rsvp_code: str, payload: RsvpOwnKey, request: Req
                  kids = 0, note = null,
                  allergens = null, diets = null, access = null, picks_crabs = null,
                  phone = null, email = null, mailing_address = null, lodging_pick = null,
+                 date_picks = null,
                  updated_at = now()
                where rsvp_code = $1 and idempotency_key = $2
                returning id""",
@@ -597,7 +635,7 @@ async def list_rsvps(
             """select id, event_id, rsvp_code, guest_name, rsvp, meal, needs,
                       plus_one, plus_one_meal, plus_one_needs, kids, note,
                       allergens, diets, access, picks_crabs, phone, email, mailing_address,
-                      lodging_pick,
+                      lodging_pick, date_picks,
                       submitted_at, updated_at
                from public.rsvp_submissions
                where event_id = $1

@@ -287,6 +287,7 @@ async function flushOnce(eventId, code) {
         picks_crabs:     typeof item.picksCrabs === 'boolean' ? item.picksCrabs : undefined,
         mailing_address: item.mailingAddress || undefined,
         lodging_pick:    item.lodgingPick || undefined,   // dropped until 11/19/2026: an offline pick was lost
+        date_picks:      Array.isArray(item.datePicks) && item.datePicks.length ? item.datePicks : undefined,   // the date poll (migration 034)
         phone:          item.phone,
         email:          item.email,
       });
