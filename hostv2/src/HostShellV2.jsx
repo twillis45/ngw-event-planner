@@ -6956,6 +6956,15 @@ export default function HostShellV2() {
     // the same line. One source, one set of numbers.
     try { return playbookFoodPlan(event, { priceFactor: foodPP.priceFactor, itemFactors: foodPP.itemFactors }); } catch { return null; }
   }, [event, foodPP.priceFactor, foodPP.itemFactors]); // same missing-dependency bug as `spend` above
+  // "Open the spread (N items) ›" — under EVERY menu question, on every route
+  // that shows one (owner ruling 3, 11/21/2026): the food editor had it, the
+  // elegant hero's in-place question dropped it. One control, both places.
+  // PARITY (Figma 369:60): a subtle steel-soft TEXT LINK, not a .chip pill — the
+  // options are the CTAs; opening the detail is secondary.
+  const spreadLink = () => (foodPlan ? (
+    <button className="spread-link" style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0, fontFamily: 'var(--sans)', fontSize: 'var(--t-meta)', fontWeight: 600, letterSpacing: 0, color: 'var(--steel-soft)', cursor: 'pointer' }}
+      onClick={() => setSheet({ kind: 'food' })}>Open the spread ({foodPlan.itemCount} items) ›</button>
+  ) : null);
 
   // ── ONE PLACE ANSWERS "IS THERE ANYWHERE TO PUT THE SHOPPING" ────────────
   // `foodSpanNote` owns it. The first cut of the kitchen gate read it inside
@@ -9225,12 +9234,7 @@ export default function HostShellV2() {
         <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 'var(--sp-3)' }}>
           {foodGuide && <GuideLine gap={0}>{foodGuide}</GuideLine>}
           {renderDecision(fnd)}
-          {foodPlan && (
-            // PARITY (Figma 369:60): a subtle steel-soft TEXT LINK, not a .chip pill — the options
-            // are the CTAs; opening the detail is secondary.
-            <button className="spread-link" style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0, fontFamily: 'var(--sans)', fontSize: 'var(--t-meta)', fontWeight: 600, letterSpacing: 0, color: 'var(--steel-soft)', cursor: 'pointer' }}
-              onClick={() => setSheet({ kind: 'food' })}>Open the spread ({foodPlan.itemCount} items) ›</button>
-          )}
+          {spreadLink()}
         </div>
       );
     }
@@ -12547,7 +12551,9 @@ export default function HostShellV2() {
                   // from the engine's own `unlocks`/`gateHolder` — never a guess.
                   // The food item is the exception: it re-derives with the next open
                   // menu question, and leaves the queue itself when none is left.
-                  return renderDecision({ ...nd, settle: (v) => { nd.settle(v); trackCompletion(a, getActionReason(a, { event }), 'settled'); if (!(a.id === 'phase:food' && Array.isArray(a.records))) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); } });
+                  const panel = renderDecision({ ...nd, settle: (v) => { nd.settle(v); trackCompletion(a, getActionReason(a, { event }), 'settled'); if (!(a.id === 'phase:food' && Array.isArray(a.records))) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); } });
+                  // A menu question carries the spread link here as in the food editor (ruling 3).
+                  return a.id === 'phase:food' ? <>{panel}{spreadLink()}</> : panel;
                 })() : null;
                 // GROUNDED COI STEP (host "Decide CTA should be the action" + "past its window
                 // AND overdue?", 2026-07-18): the COI-collection task shows the REAL first step
