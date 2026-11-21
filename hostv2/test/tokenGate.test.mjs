@@ -26,6 +26,12 @@
 //               in BOTH themes; only two matched exactly (ErrorBoundary.jsx's
 //               #eef0f4, now --carbon-ink and --on-steel). Most tokens move with
 //               the theme while a literal does not, so nothing else qualified.
+//   11/21/2026  268 color, 884 inline (design batch 3b, item 1). The file
+//               counts summed to 361, not the 366 the totals line said. Named
+//               at exact values in theme.js: a shadow scale, white hairlines,
+//               the key edge, the fixed carbon stage and its two quiet inks,
+//               the reveal bead and its shadows, text on a photo, and the
+//               mask stop. Zero pixels moved.
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';

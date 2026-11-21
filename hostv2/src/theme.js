@@ -376,6 +376,41 @@ export function applyStudioMatte(override) {
   set('--carbon-ink', dark.textPrimary);          // event name, primary button label
   set('--carbon-steel-soft', dsColor.text.onTint); // eyebrow, quiet button labels
 
+  // ── FIXED VALUES, NAMED AT WHAT THEY PAINT TODAY (design batch 3b, 11/21/2026)
+  // Each was a literal repeated across styles.css and the JSX, in one role. They
+  // are named at their exact values, so nothing on screen moved, and none is
+  // moded: every one painted the same in light and dark before it had a name.
+  // Change a value here and every site follows; do not add a near value beside
+  // one of these, snap to it.
+  //
+  // The shadow scale: black at the four alphas the drop and inner shadows use.
+  set('--shadow-40', 'rgba(0,0,0,.4)');
+  set('--shadow-50', 'rgba(0,0,0,.5)');
+  set('--shadow-55', 'rgba(0,0,0,.55)');
+  set('--shadow-60', 'rgba(0,0,0,.6)');
+  // White hairlines: a 1px light line or top highlight on a dark surface.
+  set('--hair-05', 'rgba(255,255,255,.05)');
+  set('--hair-07', 'rgba(255,255,255,.07)');
+  set('--hair-08', 'rgba(255,255,255,.08)');
+  set('--hair-14', 'rgba(255,255,255,.14)');
+  // The raised key's dark bottom edge (the board's primary and the pick).
+  set('--key-edge', '#06080b');
+  // The fixed carbon stage the welcome, the creation reveal and the error
+  // screen sit on, and the reveal's two quiet text tiers on it (the tier the
+  // color audit T1 kept as a locked brand surface: named, not changed).
+  set('--stage', '#0d1014');
+  set('--carbon-ink-quiet', '#9aa7b2');
+  set('--carbon-ink-faint', '#7a8792');
+  // The reveal's bead: its unlit surface and its two shadows, at rest and lit.
+  set('--bead', '#0a0d10');
+  set('--bead-rest-shadow', '-1.7px -2.5px 3.4px rgba(255,255,255,.05), 2.5px 3.4px 5px rgba(0,0,0,.5)');
+  set('--bead-lit-shadow', '-2.5px -3.4px 5.1px rgba(255,255,255,.3), 3.4px 5.1px 7.7px rgba(10,14,17,.44), 0 0 10px rgba(111,147,168,.32), 0 0 19px rgba(78,104,119,.18)');
+  // Text and controls on a photo, in the full-screen photo viewer.
+  set('--on-photo', '#f4f2ee');
+  // The opaque stop of an edge-fade mask. A mask reads alpha only; the color
+  // is never painted.
+  set('--mask-solid', '#000');
+
   // ── Motion: choreography timings, no bounce ever ──
   set('--ease-out', easings.out || 'cubic-bezier(0,0,.2,1)');
   set('--ease-standard', easings.standard || 'cubic-bezier(.2,0,0,1)');
