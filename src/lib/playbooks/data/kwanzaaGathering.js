@@ -64,7 +64,11 @@ const kwanzaaGathering = {
   ],
 
   tasks: [
-    { id: 't_program_plan', milestoneId: 'kw_program', phase: 'planning', label: 'Choose the night\'s principle (or the order across nights); print/save the reading + a question or two for discussion; ask the elder/host/children who will light the candle and pour the libation', when: 'T-18d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the call
+    // clears on the pick, and the work is its own step on the same milestone
+    // and due date, open until ticked.
+    { id: 't_program_plan', answeredBy: ['program'], milestoneId: 'kw_program', phase: 'planning', label: 'Decide who leads the principle discussion and the libation', when: 'T-18d' },
+    { id: 't_program_prep', milestoneId: 'kw_program', phase: 'planning', label: 'Choose the night\'s principle (or the order across nights); print/save the reading + a question or two for discussion; ask the elder/host/children who will light the candle and pour the libation', when: 'T-18d' },
     { id: 't_symbols_check', milestoneId: 'kw_symbols', phase: 'planning', label: 'Lay out the Seven Symbols you own (mkeka, kinara, unity cup); list what to buy — mishumaa saba candles, muhindi (corn), fresh mazao', when: 'T-14d' },
     { id: 't_gifts', milestoneId: 'kw_gifts', phase: 'planning', label: 'Plan zawadi — handmade, a heritage book/art, or sourced from Black-owned makers; start anything that needs making', when: 'T-14d' },
     { id: 't_invite', milestoneId: 'kw_invite', phase: 'guest', label: 'Send invites; note it\'s a Kwanzaa gathering and which principle/night; assign potluck heritage dishes if shared', when: 'T-14d' },

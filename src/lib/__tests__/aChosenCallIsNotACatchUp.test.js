@@ -73,6 +73,14 @@ describe('every step that names a call', () => {
       'Friendsgiving:t_money', 'Friendsgiving:t_model', "New Year's Eve Party:t_model",
       'Reunion:t-decide-food',
       'Sunday Dinner:t-pick-main', 'Thanksgiving Hosting:t_model', 'Wedding:t_budget',
+      // 11/21/2026, later: seven checklist calls the audit found, and fifteen
+      // decision steps linked or split (Halloween's and Vow Renewal's are in both).
+      'Card Party:t_rules', 'Client Dinner:t_objective', 'Day Party:t_food', 'Elopement:t_research_license',
+      'Fundraiser / Gala:t_target', 'Game Night:t_pick_games', 'Gender Reveal:t_reveal_safety',
+      'Halloween Party:t_contest_plan', 'Holiday Party:t_menu_lock', 'Kwanzaa Gathering:t_program_plan',
+      'PTA / Booster Fundraiser:t_goal', 'Quinceañera:t_budget', 'Quinceañera:t_vals_song',
+      'Retirement Party:t_menu_lock', 'Surprise Proposal:t_celebration', 'Sweet 16:t_menu',
+      'Team Retreat:t_agenda', 'Vow Renewal:t_rings',
     ].sort());
   });
 
@@ -193,5 +201,70 @@ describe('Reunion: the treasurer rule is not the cost-share call', () => {
     const t = step(ev, 't-committee-money');
     expect(t).toBeTruthy();
     expect(timelineStepResolved(ev, t)).toBe(false);
+  });
+});
+
+// THE 11/21 AUDIT BATCH: every step that was a call and its work in one row is
+// split the Reunion way. Each was checked against its call by label and
+// meaning: the pick answers the call row, and never the work row.
+const pick = (type, id, nth) => getPlaybook(type).decisions.find((d) => d.id === id).options[nth || 0];
+describe.each([
+  ['Fundraiser / Gala', 'target', 0, 't_target', 'Set the fundraising target and what it funds',
+    't_case', 'Write the case for support that every ask this year will use'],
+  ['Quinceañera', 'vals_song', 0, 't_vals_song', 'Choose the vals music plan',
+    't_vals_share', 'Finalize the vals song and any surprise-dance track, and share them with the choreographer'],
+  ['Client Dinner', 'objective', 0, 't_objective', 'Decide what this dinner is for',
+    't_objective_write', 'Write the one outcome this dinner is for, in a sentence, and name who owns it'],
+  ['Gender Reveal', 'reveal_method', 0, 't_reveal_safety', 'Pick a safe reveal method: no pyro, explosives, or hot smoke',
+    't_reveal_fire', 'Check fire conditions if the reveal is outdoors and it has been dry'],
+  ['Game Night', 'game_type', 0, 't_pick_games', 'Decide what kind of games to play',
+    't_pick_games_list', 'Pick 3-4 games spanning quick fillers to one longer headliner; add a 5-10 min filler for lulls'],
+  ['Vow Renewal', 'ceremony', 0, 't_rings', 'Decide the ceremony moment: vows, readings, and the ring or keepsake exchange',
+    't_rings_secure', 'Secure the rings/keepsake (new bands, upgraded ring, renewed-vows certificate) and decide the exchange wording'],
+  ['Elopement', 'license_jurisdiction', 0, 't_research_license', 'Decide which county or state issues your marriage license',
+    't_research_clerk', 'Look up the county clerk: waiting period, validity window, witness count, ID + fee, whether online-ordained officiants are accepted'],
+  ['PTA / Booster Fundraiser', 'fundraising_goal', 0, 't_goal', 'Set the fundraising goal and what it funds',
+    't_goal_budget', 'Set the expense budget the night can spend against the goal, and write the one sentence that says what the money funds'],
+  ['Card Party', 'game_format', 0, 't_rules', 'Pick the game: Spades, Bid Whist, both, or a bracket',
+    't_rules_post', 'Post the house rules: talking across the table (or not), renege calls, blind nil / Boston, and the cut'],
+  ['Halloween Party', 'costume_contest', 0, 't_contest_plan', 'Decide the costume contest: judged categories or one applause winner',
+    't_contest_prizes', 'Set the contest categories and judges, and buy prizes worth winning — one per category plus a spare'],
+  // The caterer pick: a host-run food level retires the caterer row, as it did before the split.
+  ['Day Party', 'food', 3, 't_food', 'Decide the food level: passed bites and grazing, light bites only, a food truck, or catered drop-off',
+    't_food_lock', 'Lock food: confirm the food truck or caterer window, or plan the passed bites + grazing table yourself'],
+  ['Kwanzaa Gathering', 'program', 0, 't_program_plan', 'Decide who leads the principle discussion and the libation',
+    't_program_prep', "Choose the night's principle (or the order across nights); print/save the reading + a question or two for discussion; ask the elder/host/children who will light the candle and pour the libation"],
+  ['Team Retreat', 'intensity', 0, 't_agenda', 'Decide how full the days are: light, balanced, or packed',
+    't_agenda_lock', 'Lock the daily flow with real downtime; prep slides/worksheets; assign session owners'],
+  ['Surprise Proposal', 'celebration_style', 0, 't_celebration', 'Decide how you celebrate after the yes',
+    't_celebration_book', 'Book the dinner reservation and/or stage family + friends at a nearby spot for the post-yes reveal'],
+  ['Sweet 16', 'food_menu', 0, 't_menu', 'Decide what food you’re serving',
+    't_menu_order', 'Finalize menu, count dietary needs, place food order/deposit'],
+  ['Quinceañera', 'padrinos', 0, 't_budget', 'Decide whether padrinos cover pieces of the celebration',
+    't_budget_set', 'Set the budget with the family, and line up the padrinos who may cover the cake, gown, flowers, or music'],
+])('%s: the %s call and its work are two steps', (type, callDec, nth, callId, callLabel, doId, doLabel) => {
+  splitCase(type, { [callDec]: pick(type, callDec, nth) }, callId, callLabel, doId, doLabel);
+});
+
+describe('Quinceañera: with no padrinos, the work is the budget alone', () => {
+  test('the work row drops the padrinos', () => {
+    const ev = seed('Quinceañera', { padrinos: 'No, the family covers everything directly' }, NO_BUDGET);
+    expect(step(ev, 't_budget_set').task).toBe('Set the budget with the family');
+  });
+});
+
+// Two steps ARE the call, so they are linked and not split: picking the menu
+// format is locking the menu, and the portions are the sizing that goes with it.
+describe.each([
+  ['Retirement Party', 'format', 't_menu_lock'],
+  ['Holiday Party', 'food_format', 't_menu_lock'],
+])('%s: %s is the step, so it is linked', (type, dec, id) => {
+  test('PREMISE: unpicked, the step is open', () => {
+    const ev = seed(type, {}, NO_BUDGET);
+    expect(timelineStepResolved(ev, step(ev, id))).toBe(false);
+  });
+  test('the pick clears it', () => {
+    const ev = seed(type, { [dec]: pick(type, dec) }, NO_BUDGET);
+    expect(timelineStepResolved(ev, step(ev, id))).toBe(true);
   });
 });

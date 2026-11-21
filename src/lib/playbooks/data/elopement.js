@@ -57,7 +57,11 @@ const elopement = {
   ],
 
   tasks: [
-    { id: 't_research_license', milestoneId: 'elope_license_research', phase: 'legal', label: 'Look up the county clerk: waiting period, validity window, witness count, ID + fee, whether online-ordained officiants are accepted', when: 'T-75d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the call
+    // clears on the pick, and the work is its own step on the same milestone
+    // and due date, open until ticked.
+    { id: 't_research_license', answeredBy: ['license_jurisdiction'], milestoneId: 'elope_license_research', phase: 'legal', label: 'Decide which county or state issues your marriage license', when: 'T-75d' },
+    { id: 't_research_clerk', milestoneId: 'elope_license_research', phase: 'legal', label: 'Look up the county clerk: waiting period, validity window, witness count, ID + fee, whether online-ordained officiants are accepted', when: 'T-75d' },
     { id: 't_book_photog', milestoneId: 'elope_book_photographer', phase: 'vendor', label: 'Book elopement photographer (and officiant); confirm they know the location + permit', when: 'T-75d' },
     // ── THE ORDER ACT THE PURCHASE ROW COULD ONLY MENTION (2026-09-23) ──────
     // `p_rings` has said "Order/size rings weeks ahead" since it was written,

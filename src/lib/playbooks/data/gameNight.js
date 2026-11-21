@@ -56,7 +56,11 @@ const gameNight = {
 
   tasks: [
     { id: 't_invite', milestoneId: 'gn_invite', phase: 'guest', label: 'Send the invite with date, time, and a one-line "what we are playing"; ask for a rough RSVP to size food/seats', when: 'T-7d' },
-    { id: 't_pick_games', milestoneId: 'gn_games', phase: 'plan', label: 'Pick 3-4 games spanning quick fillers to one longer headliner; add a 5-10 min filler for lulls', when: 'T-3d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the call
+    // clears on the pick, and the work is its own step on the same milestone
+    // and due date, open until ticked.
+    { id: 't_pick_games', answeredBy: ['game_type'], milestoneId: 'gn_games', phase: 'plan', label: 'Decide what kind of games to play', when: 'T-3d' },
+    { id: 't_pick_games_list', milestoneId: 'gn_games', phase: 'plan', label: 'Pick 3-4 games spanning quick fillers to one longer headliner; add a 5-10 min filler for lulls', when: 'T-3d' },
     { id: 't_split_teams', milestoneId: 'gn_games', phase: 'plan', label: 'Plan the teams: even sides, mix people who arrive together, and a quick re-split between games so no side runs away with the night', when: 'T-1d', whenChoice: { id: 'game_type', in: ['Team games'] } },
     { id: 't_check_games', milestoneId: 'gn_games', phase: 'plan', label: 'Open every game box to confirm all pieces/cards/dice; READ or queue the rules of any NEW game so you can teach it in 5 min', when: 'T-3d' },
     { id: 't_menu', milestoneId: 'gn_menu', phase: 'food', label: 'Lock low-mess, one-hand finger foods that will not grease up the cards; coordinate categories if potluck', when: 'T-3d' },

@@ -89,7 +89,11 @@ const clientDinner = {
   ],
 
   tasks: [
-    { id: 't_objective', milestoneId: 'cd_objective', phase: 'planning', label: 'Write the one outcome this dinner is for, in a sentence, and name who owns it', when: 'T-21d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the call
+    // clears on the pick, and the work is its own step on the same milestone
+    // and due date, open until ticked.
+    { id: 't_objective', answeredBy: ['objective'], milestoneId: 'cd_objective', phase: 'planning', label: 'Decide what this dinner is for', when: 'T-21d' },
+    { id: 't_objective_write', milestoneId: 'cd_objective', phase: 'planning', label: 'Write the one outcome this dinner is for, in a sentence, and name who owns it', when: 'T-21d' },
     { id: 't_guestlist', milestoneId: 'cd_guestlist', phase: 'guest', label: 'Build the guest list for both sides and ask the client to confirm who they are bringing', when: 'T-18d' },
     { id: 't_invite', milestoneId: 'cd_guestlist', phase: 'guest', label: 'Send the invitation with date, time, restaurant, dress, and the dietary and accessibility ask', when: 'T-18d' },
     { id: 't_reserve', milestoneId: 'cd_reserve', phase: 'venue', label: 'Book the private dining room and get the food-and-beverage minimum and cancellation terms in writing', when: 'T-18d', whenChoice: { id: 'venue_type', in: ['Private dining room', 'Reserved section of a restaurant', "Chef's table or tasting menu"] } },

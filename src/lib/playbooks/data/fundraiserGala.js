@@ -113,7 +113,11 @@ const fundraiserGala = {
   ],
 
   tasks: [
-    { id: 't_target', milestoneId: 'g_target', phase: 'planning', label: 'Set the fundraising target and write the case for support that every ask this year will use', when: 'T-270d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the call
+    // clears on the pick, and the work is its own step on the same milestone
+    // and due date, open until ticked.
+    { id: 't_target', answeredBy: ['target'], milestoneId: 'g_target', phase: 'planning', label: 'Set the fundraising target and what it funds', when: 'T-270d' },
+    { id: 't_case', milestoneId: 'g_target', phase: 'planning', label: 'Write the case for support that every ask this year will use', when: 'T-270d' },
     { id: 't_budget', milestoneId: 'g_target', phase: 'planning', label: 'Build the expense budget against the target, and agree with the board what ratio of cost to raise is acceptable', when: 'T-270d' },
     { id: 't_venue', milestoneId: 'g_venue', phase: 'venue', label: 'Tour and compare venues, then sign the contract and deposit; read the food-and-beverage minimum and the hard-out time before you sign', when: 'T-270d' },
     { id: 't_committee', milestoneId: 'g_target', phase: 'planning', label: 'Recruit the host committee and name who owns table sales, sponsorship, and auction procurement', when: 'T-260d' },

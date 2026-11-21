@@ -62,7 +62,11 @@ const cardParty = {
 
   tasks: [
     { id: 't_invite', milestoneId: 'cp_invite', phase: 'guest', label: 'Send the invite with date, time, and "we are playing Spades/Bid" — ask for a firm RSVP and count heads in fours so every table stays full (line up a fifth/spare to fill a no-show seat)', when: 'T-10d' },
-    { id: 't_rules', milestoneId: 'cp_rules', phase: 'plan', label: 'Set the format and post house rules: talking across the table (or not), renege calls, blind nil / Boston, and the cut. Pick Spades vs Bid per table and whether it is a bracket', when: 'T-7d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the call
+    // clears on the pick, and the work is its own step on the same milestone
+    // and due date, open until ticked.
+    { id: 't_rules', answeredBy: ['game_format'], milestoneId: 'cp_rules', phase: 'plan', label: 'Pick the game: Spades, Bid Whist, both, or a bracket', when: 'T-7d' },
+    { id: 't_rules_post', milestoneId: 'cp_rules', phase: 'plan', label: 'Post the house rules: talking across the table (or not), renege calls, blind nil / Boston, and the cut', when: 'T-7d' },
     { id: 't_kit', milestoneId: 'cp_rules', phase: 'plan', label: 'Confirm the kit: 2+ reliable, complete decks PER TABLE (one in play, one shuffling), jokers IN for Bid Whist / OUT for Spades, a score pad + pen per table', when: 'T-7d' },
     { id: 't_tables', milestoneId: 'cp_tables', phase: 'setup', label: 'Count card tables and chairs: one 34" square table + 4 chairs per group of four. Borrow or rent folding card tables if short; test bright, even light over every seat', when: 'T-5d' },
     { id: 't_menu', milestoneId: 'cp_menu', phase: 'food', label: 'Lock the grazing spread (one pot + finger foods + sweets); if potluck, assign categories by text so the proteins, sides, and desserts all get covered', when: 'T-5d' },

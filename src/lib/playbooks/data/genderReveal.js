@@ -166,7 +166,12 @@ const genderReveal = {
     { id: 't_invite', milestoneId: 'gr_invite', phase: 'guest', label: 'Send invites with RSVP-by, dietary ask, and "wear pink or blue" note', when: 'T-14d' },
     { id: 't_capture', milestoneId: 'gr_capture', phase: 'reveal', label: 'Assign a photographer/videographer; frame the parents + reveal in one shot; charge devices', when: 'T-10d' },
     { id: 't_rsvp', milestoneId: 'gr_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count', when: 'T-4d' },
-    { id: 't_reveal_safety', milestoneId: 'gr_reveal_pickup_plan', phase: 'reveal', label: 'Re-confirm SAFE method (no pyro/explosives/hot smoke); check fire conditions if outdoor + dry', when: 'T-3d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the call
+    // clears on the pick, and the work is its own step on the same milestone
+    // and due date, open until ticked.
+    // Every reveal_method option is a safe one, so the pick is the safe method.
+    { id: 't_reveal_safety', answeredBy: ['reveal_method'], milestoneId: 'gr_reveal_pickup_plan', phase: 'reveal', label: 'Pick a safe reveal method: no pyro, explosives, or hot smoke', when: 'T-3d' },
+    { id: 't_reveal_fire', milestoneId: 'gr_reveal_pickup_plan', phase: 'reveal', label: 'Check fire conditions if the reveal is outdoors and it has been dry', when: 'T-3d' },
     { id: 't_nonperish_shop', milestoneId: 'gr_shop_nonperish', phase: 'shopping', label: 'Decor, favors, guessing board, mocktail mixers, game + paper goods', when: 'T-3d' },
     { id: 't_fresh_shop', milestoneId: 'gr_shop_fresh', phase: 'shopping', label: 'Fresh snacks; pick up cake/reveal item; keep cake refrigerated', when: 'T-1d' },
     { id: 't_prep', milestoneId: 'gr_setup', phase: 'food', label: 'Prep make-ahead bites; batch the mocktail; assemble favors', when: 'T-1d evening' },

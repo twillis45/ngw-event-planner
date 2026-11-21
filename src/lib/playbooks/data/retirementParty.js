@@ -128,7 +128,8 @@ const retirementParty = {
         'Soft surprise (honoree knows, not the details)': 'Send invite: date, time, address, dress, "no gifts / cards welcome", dietary + accessibility ask, RSVP-by; note the arrival timing quietly',
       } } },
     { id: 't_memory_collect', milestoneId: 'rp_memory', phase: 'program', label: 'Set up a shared photo/notes drop (link or email) and ask coworkers + family for photos, stories, and well-wishes', when: 'T-28d' },
-    { id: 't_menu_lock', milestoneId: 'rp_menu', phase: 'food', label: 'Lock buffet (~0.5 lb protein/guest, 2-3 sides) or heavy apps (~10-12 bites/guest); always include a veg + GF option', when: 'T-21d' },
+    // Linked (owner, 11/21/2026): the step is the call, so the pick clears it.
+    { id: 't_menu_lock', answeredBy: ['format'], milestoneId: 'rp_menu', phase: 'food', label: 'Lock buffet (~0.5 lb protein/guest, 2-3 sides) or heavy apps (~10-12 bites/guest); always include a veg + GF option', when: 'T-21d' },
     { id: 't_fav_drink', milestoneId: 'rp_bar', phase: 'beverage', label: "Source the honoree's actual favorite drink; special-order if it's a specific scotch/wine/regional beer", when: 'T-18d' },
     { id: 't_book_vendors', milestoneId: 'rp_vendors', phase: 'logistics', label: 'Book bartender / caterer / photographer; confirm arrival window + insurance + a power outlet for AV', when: 'T-18d' },
     { id: 't_slideshow', milestoneId: 'rp_tribute_plan', phase: 'program', label: 'Build the career slideshow/video from collected photos; keep it ~4-6 min set to music', when: 'T-14d' },

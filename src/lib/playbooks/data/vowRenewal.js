@@ -79,7 +79,11 @@ const vowRenewal = {
     { id: 't_invite', milestoneId: 'vr_invite', phase: 'guest', label: 'Send invite with date, time, ceremony+reception location(s), dietary/accessibility/travel ask, RSVP-by', when: 'T-49d' },
     { id: 't_photog', milestoneId: 'vr_photographer', phase: 'memory', label: 'Book photographer; agree the coverage window (ceremony + toast + cake) and a shot list', when: 'T-45d' },
     { id: 't_writevows', milestoneId: 'vr_vows', phase: 'ceremony', label: 'Each partner writes their vows; choose any reading(s) + assign a reader; finalize the ceremony order with the officiant', when: 'T-35d' },
-    { id: 't_rings', milestoneId: 'vr_vows', phase: 'ceremony', label: 'Secure the rings/keepsake (new bands, upgraded ring, renewed-vows certificate) and decide the exchange wording', when: 'T-35d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the call
+    // clears on the pick, and the work is its own step on the same milestone
+    // and due date, open until ticked.
+    { id: 't_rings', answeredBy: ['ceremony'], milestoneId: 'vr_vows', phase: 'ceremony', label: 'Decide the ceremony moment: vows, readings, and the ring or keepsake exchange', when: 'T-35d' },
+    { id: 't_rings_secure', milestoneId: 'vr_vows', phase: 'ceremony', label: 'Secure the rings/keepsake (new bands, upgraded ring, renewed-vows certificate) and decide the exchange wording', when: 'T-35d' },
     { id: 't_cakeorder', milestoneId: 'vr_cake', phase: 'food', label: 'Order cake: flavor, size for headcount, message, pickup time', when: 'T-14d' },
     { id: 't_florals', milestoneId: 'vr_florals', phase: 'decor', label: 'Order florals + the focal arch/backdrop; confirm processional + reception music (playlist or a player/DJ)', when: 'T-21d' },
     { id: 't_rehearse', milestoneId: 'vr_rehearse', phase: 'ceremony', label: 'Walk the processional, the vows order, the ring/keepsake handoff, and the cue into the champagne toast', when: 'T-7d' },

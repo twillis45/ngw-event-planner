@@ -166,7 +166,11 @@ const ptaBoosterFundraiser = {
   ],
 
   tasks: [
-    { id: 't_goal', milestoneId: 'pb_kickoff', phase: 'planning', label: 'Set the fundraising goal, the expense budget the night can spend against it, and the one sentence that says what the money funds', when: 'T-120d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the call
+    // clears on the pick, and the work is its own step on the same milestone
+    // and due date, open until ticked.
+    { id: 't_goal', answeredBy: ['fundraising_goal'], milestoneId: 'pb_kickoff', phase: 'planning', label: 'Set the fundraising goal and what it funds', when: 'T-120d' },
+    { id: 't_goal_budget', milestoneId: 'pb_kickoff', phase: 'planning', label: 'Set the expense budget the night can spend against the goal, and write the one sentence that says what the money funds', when: 'T-120d' },
     { id: 't_committee', milestoneId: 'pb_kickoff', phase: 'planning', label: 'Recruit the committee and name who owns volunteers, sponsors, food, and the money', when: 'T-120d' },
     { id: 't_treasurer', milestoneId: 'pb_kickoff', phase: 'planning', label: 'Name the one treasurer who touches every dollar in and out, and keeps the ledger visible to the whole committee', when: 'T-118d' },
     { id: 't_facility', milestoneId: 'pb_facility', phase: 'venue', label: 'Submit the facility-use request to the school or district — the school is the venue, and its calendar fills first', when: 'T-120d' },

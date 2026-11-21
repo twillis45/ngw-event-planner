@@ -242,7 +242,11 @@ const sweet16 = {
     { id: 't_invites', milestoneId: 'theme_invites', phase: 'plan', label: 'Send invitations with RSVP date, drop-off/pickup times, and no-alcohol note', when: 'T-35d' },
     { id: 't_decor_order', milestoneId: 'book_photo_booth', phase: 'plan', label: 'Order themed decor, balloon arch, backdrop, and favors', when: 'T-30d' },
     { id: 't_social', milestoneId: 'book_photo_booth', phase: 'plan', label: 'Set up the social moment: custom hashtag + photo-booth frame/filter', when: 'T-28d' },
-    { id: 't_menu', milestoneId: 'confirm_catering', phase: 'plan', label: 'Finalize menu, count dietary needs, place food order/deposit', when: 'T-14d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the call
+    // clears on the pick, and the work is its own step on the same milestone
+    // and due date, open until ticked.
+    { id: 't_menu', answeredBy: ['food_menu'], milestoneId: 'confirm_catering', phase: 'plan', label: 'Decide what food you’re serving', when: 'T-14d' },
+    { id: 't_menu_order', milestoneId: 'confirm_catering', phase: 'plan', label: 'Finalize menu, count dietary needs, place food order/deposit', when: 'T-14d' },
     { id: 't_chaperones', milestoneId: 'finalize_headcount', phase: 'plan', label: 'Confirm chaperones, assign door + bar + floor watchers, set house rules', when: 'T-7d' },
     { id: 't_timeline', milestoneId: 'finalize_headcount', phase: 'plan', label: 'Write the run-of-show: arrivals, entrance, dinner, dance, cake, send-off', when: 'T-7d' },
     { id: 't_shop', milestoneId: 'shop_perishables', phase: 'prep', label: 'Buy mocktail mixers, soda, ice, cake, and fresh garnishes', when: 'T-1d' },

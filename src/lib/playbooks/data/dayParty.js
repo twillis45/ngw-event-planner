@@ -66,7 +66,11 @@ const dayParty = {
 
   tasks: [
     { id: 't_bookdj', milestoneId: 'dp_bookdj', phase: 'vendor', label: 'Book the DJ; share the vibe + a few must-play / do-not-play notes; confirm they bring speakers or you rent a PA', when: 'T-28d' },
-    { id: 't_food', milestoneId: 'dp_bookdj', phase: 'vendor', label: 'Lock food: confirm food truck/caterer window, or plan the passed bites + grazing table yourself', when: 'T-28d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the call
+    // clears on the pick, and the work is its own step on the same milestone
+    // and due date, open until ticked.
+    { id: 't_food', answeredBy: ['food'], milestoneId: 'dp_bookdj', phase: 'vendor', label: 'Decide the food level: passed bites and grazing, light bites only, a food truck, or catered drop-off', when: 'T-28d' },
+    { id: 't_food_lock', milestoneId: 'dp_bookdj', phase: 'vendor', label: 'Lock food: confirm the food truck or caterer window, or plan the passed bites + grazing table yourself', when: 'T-28d' },
     { id: 't_permit', milestoneId: 'dp_permit', phase: 'logistics', label: 'Check city noise ordinance / daytime decibel + permit rules; tell the neighbors the date and end time (invite one or two)', when: 'T-21d' },
     { id: 't_invite', milestoneId: 'dp_invite', phase: 'guest', label: 'Send the invite — dress code, start AND end time, address, "21+ / grown folks" if applicable', when: 'T-21d' },
     { id: 't_rsvp', milestoneId: 'dp_rsvp', phase: 'guest', label: 'Confirm headcount; check the forecast + shade/rain plan; remind guests to line up a ride / rideshare', when: 'T-5d' },

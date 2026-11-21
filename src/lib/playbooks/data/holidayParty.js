@@ -91,7 +91,8 @@ const holidayParty = {
 
   tasks: [
     { id: 't_invite', milestoneId: 'hp_invite', phase: 'guest', label: 'Send invite: date/time/venue, dress code, plus-one + dietary ask, soft RSVP-by date', when: 'T-28d' },
-    { id: 't_menu_lock', milestoneId: 'hp_catering', phase: 'food', label: 'Lock the menu: ~10-12 bites/guest across hot + cold + a veg + a sweet (or ~0.5 lb/guest buffet)', when: 'T-28d' },
+    // Linked (owner, 11/21/2026): the step is the call, so the pick clears it.
+    { id: 't_menu_lock', answeredBy: ['food_format'], milestoneId: 'hp_catering', phase: 'food', label: 'Lock the menu: ~10-12 bites/guest across hot + cold + a veg + a sweet (or ~0.5 lb/guest buffet)', when: 'T-28d' },
     { id: 't_bar_model', milestoneId: 'hp_bar', phase: 'beverage', label: 'Confirm bartender + service model; brief them to control the pour and ID/cut-off', when: 'T-21d' },
     { id: 't_playlist', milestoneId: 'hp_decor_music', phase: 'setup', label: 'Build a 4-hour festive playlist (arrival → peak → wind-down) or brief the DJ', when: 'T-14d' },
     { id: 't_decor_plan', milestoneId: 'hp_decor_music', phase: 'decor', label: 'Plan decor: lighting/string lights, greenery, candles, table accents, a photo moment', when: 'T-14d' },

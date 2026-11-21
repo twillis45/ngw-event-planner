@@ -66,7 +66,11 @@ const surpriseProposal = {
     { id: 't_book_photog', milestoneId: 'pr_photographer', phase: 'vendor', label: 'Book a proposal photographer (3-8 wk out); share the spot, the timing, and the cover story', when: 'T-30d' },
     { id: 't_permit', milestoneId: 'pr_permit', phase: 'logistics', label: 'Call the park/venue office — props/flowers/candles/signs and even photography often need a permit; ask about open flame (use LED)', when: 'T-25d' },
     { id: 't_cover', milestoneId: 'pr_coverstory', phase: 'planning', label: 'Write a simple, believable reason to be there + dressed up ("free mini-shoot", reservation, friend\'s thing); rehearse it', when: 'T-21d' },
-    { id: 't_celebration', milestoneId: 'pr_celebration', phase: 'planning', label: 'Book the dinner reservation and/or stage family + friends at a nearby spot for the post-yes reveal', when: 'T-14d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the call
+    // clears on the pick, and the work is its own step on the same milestone
+    // and due date, open until ticked.
+    { id: 't_celebration', answeredBy: ['celebration_style'], milestoneId: 'pr_celebration', phase: 'planning', label: 'Decide how you celebrate after the yes', when: 'T-14d' },
+    { id: 't_celebration_book', milestoneId: 'pr_celebration', phase: 'planning', label: 'Book the dinner reservation and/or stage family + friends at a nearby spot for the post-yes reveal', when: 'T-14d' },
     { id: 't_scout', milestoneId: 'pr_scout', phase: 'logistics', label: 'Walk the spot with the photographer; mark where partner stands/faces, where the photographer hides, gates/parking/closing times', when: 'T-7d' },
     { id: 't_pickup', milestoneId: 'pr_ringpickup', phase: 'planning', label: 'Pick up the ring; verify fit; add it to insurance/rider; have a secure pocket plan for the day', when: 'T-5d' },
     { id: 't_decor', milestoneId: 'pr_decor', phase: 'setup', label: 'Buy flowers + LED candles + a "Marry Me" sign; brief the ring-bearer / helper on exact cue + handoff', when: 'T-2d' },
