@@ -37,6 +37,13 @@ existed on one side only and conflicts with nothing, so it is kept).
 22. **UX_10 Typographic Language** — union, 11/20/2026: added from the app repo, still a draft; where it conflicts with rulings 1 and 4, the rulings win (noted at its top).
 23. **REVIEW_BOARD_ROSTER.md and NGW_10PLUS_MASTER_PROMPT.md** — union, 11/20/2026: each existed in one repo only; both now live in both.
 24. **The gradients that predate ruling 2** — owner ruling, 11/21/2026 ("Keep"): the 56 gradients in 37 rules that existed before the three-token rule (edge-fade masks, the dock glass, the creation reveal, the welcome and splash, the invitation paper, the done and spotlight effects, the People plate veil, the lodging photo scrim) stay as they are. `hostv2/test/gradientDoctrine.test.mjs` freezes each in its `KNOWN` table by rule and count, so none can grow and none can be added. Every NEW gradient is still one of the three tokens.
+25. **Light theme: a warm canvas, sections on white panels, a one-line sign-in.** Owner ruling, 11/21/2026, made from rendered full-scroll phone comparisons ("W1 and s2").
+    - **Light canvas.** The light canvas is warm, not steel. `--bg` is #F2F0EC; `--bg-band` and `--field` are #ECE9E4; `--line` is #D8D2CA; `--muted` is #5d5a56, which measures 6.0:1 on the page. The light canvas glow is a faint warm wash, still the one `--canvas-glow` token.
+    - **Steel stays.** Every accent and structure color stays steel: buttons, links, the Next bar, "our pick".
+    - **Panels.** Each distinct block of a screen or sheet sits on a white panel (`--card`, a `--line` edge, a soft shadow), so sections read as separate objects.
+    - **Dark theme.** The dark canvas stays steel.
+    - **Sign-in.** The sign-in prompt is ONE row in both themes, with the same dimensions in each: "**Not saved yet.** Sign in to keep it.", then a primary Sign in button, then a ✕ that does what "Not now" did. Every target is 44×44. This supersedes the two equal gray buttons, which gave no primary and whose copy measured 4.48–4.53:1 over the glow.
+    - **Supersedes.** For light mode, this supersedes the "steel glow" wording in ruling 5 and § Canvas glow.
 
 ## Studio Matte Means
 
