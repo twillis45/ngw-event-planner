@@ -945,7 +945,9 @@ button{font-family:inherit}
 .hero.elegant .ef-row .ef-r{ display:flex; align-items:center; gap:9px; flex:0 0 auto; }
 .hero.elegant .ef-cnt{ background:#1a2228; color:var(--steel-soft); border-radius:999px; padding:2px 8px; font-size:12px; font-weight:700; }
 .hero.elegant .ef-row .ef-g{ color:var(--faint); font-weight:800; }
-.hero.elegant .ef-row:hover{ opacity:.82; }
+/* Hover lights the arrow instead of dimming the row: .82 opacity took the arrow
+   under 4.5:1 in both themes (nothingReadsDarkOnDarkInLight, landscape, 11/21/2026). */
+.hero.elegant .ef-row:hover .ef-g{ color:var(--ink-soft); }
 /* Base .decopt — calm stacked action rows OUTSIDE elegant (the v2 count-fix hero
    uses these; the .app-elegant rules below are more specific and still win inside
    the elegant hero). Full-width tactile rows, not inline pills. */
@@ -1078,6 +1080,10 @@ button{font-family:inherit}
 .hero.elegant .watch-dot{ width:5px; height:5px; border-radius:999px; background:var(--steel); flex:0 0 auto; margin-top:7px; }
 .hero.elegant .watch-row .t{ font-size:13.5px; font-weight:400; color:var(--muted); line-height:1.42; }
 .hero.elegant .watch-row:hover .t{ color:#c7ced4; }
+/* #c7ced4 brightens muted text on the dark stage; on light's white panel it read
+   1.59:1. In light the same hover darkens to ink (11/21/2026). */
+:root[data-theme="light"] .hero.elegant .watch-row:hover .t,
+:root[data-theme="light"] .hero.elegant .watch-row:focus-visible .t{ color:var(--ink); }
 /* A · "since last login" quiet momentum line — a breathing done-dot + one muted line. */
 .hero.elegant .returnbeat{ display:flex; align-items:center; gap:8px; width:100%; background:none; border:none; text-align:left; cursor:pointer; padding:6px 0 0; font:inherit; }
 .hero.elegant .rb-dot{ width:5px; height:5px; border-radius:999px; background:var(--ok); flex:0 0 auto; animation:breathe 3.2s ease-in-out infinite; }
@@ -4501,6 +4507,8 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
   .efold:hover .efold-grab{ opacity:.55; width:44px; }
   .efold:hover .efold-label{ color:var(--faint); }
   .hero.elegant .watch-row:hover .t{ color:var(--muted); }
+  :root[data-theme="light"] .hero.elegant .watch-row:hover .t{ color:var(--muted); }
+  .hero.elegant .ef-row:hover .ef-g{ color:var(--faint); }
   .hero.elegant .returnbeat:hover .rb-t{ color:var(--muted); }
   .db-row:hover .db-lead{ color:var(--carbon-muted); }
   .qidx-row:hover .qidx-l{ color:var(--ink-soft); }
