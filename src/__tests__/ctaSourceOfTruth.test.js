@@ -161,6 +161,12 @@ function validateRoute(route, ev, producer) {
       const plan = safe(() => playbookFoodPlan(ev));
       const ok = plan && plan.list && plan.list.some((x) => x && !x.skipped && x.id === id);
       if (!ok) problems.push(`${producer}: foodrow target "${id}" not on the rendered plan`);
+    } else if (ff === 'bringing' || ff.startsWith('bringing-')) {
+      // The Bringing tab (11/21/2026), on a dish someone else is carrying.
+      const id = ff === 'bringing' ? null : ff.slice('bringing-'.length);
+      const plan = safe(() => playbookFoodPlan(ev));
+      const ok = plan && plan.list && (id == null || plan.list.some((x) => x && !x.skipped && x.broughtByCommunity && x.id === id));
+      if (!ok) problems.push(`${producer}: bringing target "${id}" not a brought dish on the plan`);
     } else if (ff.startsWith('caprow-')) {
       const key = ff.slice('caprow-'.length);
       const cap = safe(() => playbookCapacity(ev));

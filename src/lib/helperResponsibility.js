@@ -91,24 +91,29 @@ export function deriveHelperResponsibilities(event) {
   const guests = Array.isArray(ev.guests) ? ev.guests : [];
   const responsibilities = [];
 
-  // 1 · Food — dishes someone is bringing (foodAdd owner, surfaced through the
-  // SAME rendered list the Plan tab shows, so every route id is a real row).
+  // 1 · Food — dishes someone is bringing. The name is the food plan's
+  // `broughtBy`, resolved from the ONE record (`event.foodOwner`, which the
+  // Bringing tab, Shop and the add-a-dish form all write), so a name typed on
+  // any of them reaches this panel, the guest rows and the day-before list.
+  // It used to read host-added dishes' `owner` only, so a name written on
+  // Bringing for the playbook's own stuffing never reached a helper.
   try {
     const plan = playbookFoodPlan(ev);
     const got = (ev.foodGot && typeof ev.foodGot === 'object') ? ev.foodGot : {};
     for (const i of (plan && Array.isArray(plan.list) ? plan.list : [])) {
-      if (!i || i.skipped || !i.added || !isHelperName(i.owner)) continue;
+      if (!i || i.skipped || !isHelperName(i.broughtBy)) continue;
       const status = statusFor(ev, i.id, got[i.id] === true);
-      const who = resolveHelper(i.owner, guests);
+      const who = resolveHelper(i.broughtBy, guests);
       responsibilities.push({
         helperName: who.name, guestId: who.guestId,
         itemType: 'food', itemId: i.id, label: i.short || i.item,
         status,
         hostBackupNeeded: status === 'assigned',
         hostNextAction: nextActionFor(status, who.name, 'food'),
-        route: { tab: 'Planning', focusField: `foodrow-${i.id}` },
+        // The assignment itself: the dish's row on the Bringing tab.
+        route: { tab: 'Planning', focusField: `bringing-${i.id}` },
         anchor: `foodrow-${i.id}`,
-        source: 'foodAdd.owner',
+        source: 'foodOwner',
       });
     }
   } catch (e) { /* no plan — honest zero */ }

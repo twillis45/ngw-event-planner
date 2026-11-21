@@ -88,6 +88,10 @@ export function resolveRoute(route) {
   // on every guest's invite, lands on that box in the Guest list.
   if (ff === 'guests-updates') return { kind: 'guests', focus: 'updates' };
   if (route.tab === 'Guests') return { kind: 'guests', focus: null };
+  // Who brings a dish (owner's iPad, 11/21/2026): the Bringing tab of the
+  // spread, on that dish's row when the route names one. Before the food catch.
+  if (ff === 'bringing') return { kind: 'bringing', focus: null };
+  if (/^bringing-.+$/.test(ff)) return { kind: 'bringing', focus: ff.slice('bringing-'.length) };
   // Food — a foodFocus id or a foodrow- focusField lands on the exact line.
   if (route.tab === 'Planning' && (route.foodFocus || /food/i.test(ff))) {
     const rowId = /^foodrow-(.+)$/.exec(ff);

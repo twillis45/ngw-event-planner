@@ -21,7 +21,9 @@ const SHELL_KINDS = new Set(['air', 'budget', 'costshare', 'crabs', 'date', 'dec
   'stage:after', 'draft', 'sweep',
   // 11/21/2026: Group Trip's balance opens Split the costs; Sweet 16's hashtag
   // opens Make it yours.
-  'split', 'meaning']);
+  'split', 'meaning',
+  // 11/21/2026: "Assign every dish by name" opens the spread's Bringing tab.
+  'bringing']);
 // 11/21/2026: 124 → 120. Halloween's and NYE's "Share the … photos in one album
 // link" now open After on the recap's "Photo album link" field; Group Trip's
 // "Send everyone the trip details" opens its draft, and "Confirm every

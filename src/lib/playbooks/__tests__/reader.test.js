@@ -1018,15 +1018,24 @@ describe('board ruling — per-guest rate on food lines', () => {
 
 describe('#4 — add a dish (foodAdd)', () => {
   const base = { id: 'c', type: 'The Cookout', guestCount: 40, guests: [] };
-  test('an added dish becomes a real line item (owner carried, itemCount up)', () => {
+  test('an added dish becomes a real line item (itemCount up)', () => {
     const p0 = playbookFoodPlan(base);
-    const p1 = playbookFoodPlan({ ...base, foodAdd: [{ id: 'add-1', name: "Auntie's potato salad", owner: 'Auntie', cost: 0 }] });
+    const p1 = playbookFoodPlan({ ...base, foodAdd: [{ id: 'add-1', name: "Auntie's potato salad", cost: 0 }] });
     const line = p1.list.find(i => i.id === 'add-1');
     expect(line).toBeTruthy();
     expect(line.added).toBe(true);
     expect(line.item).toBe("Auntie's potato salad");
-    expect(line.owner).toBe('Auntie');
     expect(p1.itemCount).toBe(p0.itemCount + 1);
+  });
+  // ONE RECORD FOR WHO BRINGS IT (11/21/2026): a dish somebody else brings is
+  // listed with their name and is not on the host's "N of M bought".
+  test('an added dish somebody brings carries their name and is not the host\'s to buy', () => {
+    const p0 = playbookFoodPlan(base);
+    const p1 = playbookFoodPlan({ ...base, foodAdd: [{ id: 'add-1', name: "Auntie's potato salad", owner: 'Auntie', cost: 0 }] });
+    const line = p1.list.find(i => i.id === 'add-1');
+    expect(line.owner).toBe('Auntie');
+    expect(line.broughtBy).toBe('Auntie');
+    expect(p1.itemCount).toBe(p0.itemCount);
   });
   test('a $0 dish adds nothing to the total; a priced dish adds its cost', () => {
     const p0 = playbookFoodPlan(base);
