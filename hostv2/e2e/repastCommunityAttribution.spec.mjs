@@ -228,7 +228,9 @@ test('naming a bringer actually records one, and both surfaces agree', async ({ 
   // name survives anywhere at all — including in the Bringing panel behind it —
   // so it could go green while the Shop chip still said "The repast committee".
   // The claim is that THIS DISH, in the Shop list, names the person.
-  const chickenRow = page.locator('.fgroup .frow', { hasText: /chicken/i }).first();
+  // A brought dish is off the shelves, in its own "… bringing" group, read
+  // from the one record of who brings what (11/21/2026).
+  const chickenRow = page.locator('[data-brought-group] .fstat', { hasText: /chicken/i }).first();
   await expect(chickenRow).toBeVisible();
   const rowText = (await chickenRow.innerText()).replace(/\s+/g, ' ');
   expect(rowText).toMatch(/Sister Vaughn/);

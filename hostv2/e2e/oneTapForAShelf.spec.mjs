@@ -57,6 +57,10 @@ const openList = async (page) => {
   await settled(page);
   await tapText(page, "what you.?re serving");
   await sheetSettled(page);
+  // The menu door opens the spread on Plan while the menu is open (owner's
+  // iPad, 11/21/2026); the list is on Shop.
+  await tapText(page, '^Shop$');
+  await sheetSettled(page);
   await tapText(page, 'The list[\\s\\S]*item');
   await sheetSettled(page);
 };
