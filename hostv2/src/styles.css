@@ -80,6 +80,14 @@
      side of one 14px line, plus the home indicator. Read by the sheet's scroll
      padding so whatever it scrolls to stops above the bar, not under it. */
   --ftotal-h:calc(var(--sp-3) * 2 + 20px + env(safe-area-inset-bottom, 0px));
+  /* ONE SELECTED STATE (design audit round 1 #2, batch 4, 11/21/2026). A
+     chosen chip, segment, tab, toggle or option row wears this and nothing
+     else: the steel tint, a steel-soft edge, ink text. It is a CHOICE, so it is
+     neither the primary button's lit fill nor a status color (UX_05 Filter
+     Chip: active = accent at 15%, not solid). */
+  --sel-bg:var(--steel-tint);
+  --sel-line:var(--steel-soft);
+  --sel-ink:var(--ink);
   /* ── THE TAP FLOOR, AS A TOKEN (2026-09-27) ────────────────────────────
      UX_03 sets 44px and this file honoured it in a dozen places as a raw
      literal, so nothing could state the rule or be swept when it moved. It
@@ -442,7 +450,7 @@ button{font-family:inherit}
    272 baseline — exactly the two I added). 12 and 16 are on the ladder and give
    17+28 = 45px, still clear of the floor. */
 .spread-link{ padding-block:12px 16px !important; }
-.navseg-b.on{ background:var(--seg-on); color:var(--ink); font-weight:700; box-shadow:0 1px 2px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.05); }
+.navseg-b.on{ background:var(--sel-bg); color:var(--sel-ink); font-weight:700; box-shadow:inset 0 0 0 1px var(--sel-line); }
 .navrows{ margin-top:14px; }
 .navrow{ display:flex; align-items:center; justify-content:space-between; gap:14px; width:100%; text-align:left;
   background:none; border:none; border-top:1px solid var(--line-soft); cursor:pointer; font:inherit; padding:16px 2px; }
@@ -570,7 +578,7 @@ button{font-family:inherit}
 /* Selected state matches BOTH aria-pressed (toggle chips) AND aria-checked
    (radiogroup chips, e.g. the invite's Yes/Maybe/No) — without the aria-checked
    half, radio chips render identically selected vs unselected. */
-.chip[aria-pressed="true"], .chip[aria-checked="true"]{background:var(--steel); border-color:var(--steel); color:var(--on-steel)}
+.chip[aria-pressed="true"], .chip[aria-checked="true"]{background:var(--sel-bg); border-color:var(--sel-line); color:var(--sel-ink)}
 /* RECAP, NOT SELECTION (host 2026-08-04: "does the CTA stand out enough?").
    The intake recognition row states what was HEARD; every filled chip there wore
    solid --steel — the primary CTA's own weight — so five of them out-shouted the
@@ -2041,7 +2049,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .chip[aria-pressed="true"] .chip-sub{color:var(--ink); background:rgba(255,255,255,.16)}
 .tile-a{cursor:pointer}
 .tile-a:active{transform:scale(.99)}
-.chip[aria-pressed="true"] .chip-sub{color:var(--on-steel); background:rgba(0,0,0,.12)}
+.chip[aria-pressed="true"] .chip-sub{color:var(--sel-ink); background:var(--sel-bg)}
 
 /* ── Reveal: full-screen ceremonial takeover (host request 2026-07-11 —
    "the magic moment... has to be put back"; legacy's AssembleReveal is a
@@ -3031,12 +3039,13 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    on every one of its 11 call sites, and scoping the fix to my own would have
    left the same defect everywhere else while making the gate green. */
 .optrow{display:flex; align-items:center; gap:11px; width:100%; text-align:left; min-height:44px;
-  background:none; border:none; padding:11px 2px; font:inherit; cursor:pointer; color:var(--ink)}
+  background:none; border:none; padding:11px var(--sp-2); font:inherit; cursor:pointer; color:var(--ink)}
 .optrow + .optrow{border-top:1px solid var(--line)}
 .optdot{width:10px; height:10px; border-radius:50%; border:1.5px solid var(--muted); flex:0 0 auto}
-.optrow.on .optdot{background:var(--steel-soft); border-color:var(--steel-soft)}
+.optrow.on{background:var(--sel-bg); border-radius:var(--r-sm)}
+.optrow.on .optdot{background:var(--sel-line); border-color:var(--sel-line)}
 .optlabel{font-size:var(--t-row); color:var(--ink-soft)}
-.optrow.on .optlabel{color:var(--ink); font-weight:650}
+.optrow.on .optlabel{color:var(--sel-ink); font-weight:650}
 .optsub{margin-left:auto; font-size:var(--t-meta); color:var(--muted)}
 
 
@@ -5046,7 +5055,13 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
   }
 }
 
-@media (max-width: 480px){
+/* ── AND ON EVERY TOUCH SCREEN, NOT ONLY A NARROW ONE (batch 4, 11/21/2026) ──
+   Design audit 2 (#5, T3): tablets measured WORSE than the phone — 35 controls
+   under 44 per tablet size against 24 at 390 — because this floor was gated on
+   width alone. "6 / 8 / 12 / 20" were 34.8 wide, "+ Add a day" 32 tall, "Pin to
+   top" 41. Owner ruling 11/20/2026: 44x44 on both axes on touch. A coarse
+   pointer is a thumb at any width; a mouse at a desk is still not judged. */
+@media (max-width: 480px), (pointer: coarse){
   /* MEASURED, not assumed: a full sweep of every button/link/role=button on the
      home and create screens at 393px found these classes already clearing the
      floor. They are held here so they cannot regress, not because they were
@@ -5080,6 +5095,30 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
   /* Stacked pairs need real separation once they are both 44px, or the two
      targets read as one slab and a thumb lands between them. */
   .lc-ctas > * + * { margin-top: 8px; }
+}
+
+/* Full-width ROWS on the same touch range grow taller instead (they must keep
+   their left alignment, so not the inline-flex centering above): Who sits
+   where's .frow measured 43, the Space section's place lines 33, and the
+   policy links ("Privacy · Terms · Refunds") 17-41, three targets inside 24px
+   of each other, so the inline-link exemption does not reach them, and the
+   headcount ask's "Start a guest list ›" text button, 18 tall. */
+@media (max-width: 480px), (pointer: coarse){
+  .frow, .place-line { min-height: var(--tap-min); }
+  /* The tappable stat rows (Space's "Rent tables need 2", the food sheet's
+     "Your choices") stood 42-43 on CI's tablet project, where the runner's
+     fonts set them a line shorter than a dev machine does; the floor must not
+     ride on font metrics (11/21/2026). Buttons only: a non-tappable .fstat
+     summary row keeps its height. */
+  button.fstat { min-height: var(--tap-min); }
+  /* "Rather track who's coming by name? Start a guest list ›" is a whole
+     button, not a link inside a sentence, and stood 18px tall under the chips. */
+  .ask-textlink { display: inline-flex; align-items: center; min-height: var(--tap-min); }
+  /* The "what's counted" caret pulls 9px out of its header each way (negative
+     margins) and the tile below covered the overhang: hit 39 at 1024x1366. Its
+     header holds it whole. */
+  .hero.elegant .bento-head { display: flex; align-items: center; min-height: var(--tap-min); }
+  .policy-links a { display: inline-flex; align-items: center; min-height: var(--tap-min); padding-inline: var(--sp-1); }
 }
 
 /* ══ TOUCH TARGETS — Apple HIG 44pt / WCAG 2.5.5 ═══════════════════════════
@@ -6578,7 +6617,7 @@ button.vc-pill::after{
   background:none; border:none; border-radius:8px; padding:12px 8px; cursor:pointer;
   min-height:44px; transition:background .16s var(--ease-out), color .16s var(--ease-out); }
 .fmode:hover{ color:var(--ink); }
-.fmode.on{ background:var(--steel-soft); color:var(--bg); font-weight:600; }
+.fmode.on{ background:var(--sel-bg); color:var(--sel-ink); font-weight:600; box-shadow:inset 0 0 0 1px var(--sel-line); }
 .fmode:focus-visible{ outline:2px solid var(--steel-soft); outline-offset:-2px; }
 
 /* ── The running total, pinned (2026-09-24) ─────────────────────────────────
@@ -7789,7 +7828,7 @@ button.vc-pill::after{
 .cal-toggle{ display:inline-flex; gap:4px; padding:4px; border:1px solid var(--line-soft); border-radius:999px; }
 .cal-toggle .mini{ border:0; min-height:40px; }
 .cal-toggle .mini{ background:transparent; color:var(--muted); }
-.cal-toggle .mini.on{ background:var(--card); color:var(--ink); box-shadow:inset 0 0 0 1px var(--line); }
+.cal-toggle .mini.on{ background:var(--sel-bg); color:var(--sel-ink); box-shadow:inset 0 0 0 1px var(--sel-line); }
 .cal-bar .mini, .cal-nav .mini{ min-height:44px; min-width:44px; }
 .cal-range{ font-size:var(--t-body); font-weight:700; color:var(--ink); text-align:center; }
 .cal-week{ list-style:none; margin:0; padding:0; }

@@ -41,6 +41,8 @@ const SELF_PINNED = [
   '**/responsiveBaseline.spec.mjs',
   '**/tabletLandscapeSplit.spec.mjs',
   '**/tapTargets.spec.mjs',
+  // Drives its own three geometries (one lit button per sheet, batch 4, 11/21/2026).
+  '**/oneLitButtonPerSheet.spec.mjs',
   '**/mobileTapFloor.spec.mjs',
   '**/spreadLinkTapFloor.spec.mjs',
   '**/driftCapture.spec.mjs',

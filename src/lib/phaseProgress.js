@@ -27,6 +27,7 @@ import { spanNights } from './dates';
 import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
 import { isVendorSettled } from './workstreams';
+import { chosenCatererUnbooked } from './vendorPlan';
 import { vendorIsCommitted, vendorBalance } from './vendorMoney';
 import { hostSpending } from './hostSpending';
 import { daysUntil, spanEnd, getToday, localISO } from './dates';
@@ -338,7 +339,14 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
 
   // Vendors — only when the host uses vendors; first-undone routing.
   const vendors = (Array.isArray(ev.vendors) ? ev.vendors : []).filter(v => v && String(v.name || '').trim());
-  if (vendors.length) {
+  // A caterer the host chose to hire and has not booked is open here too, with
+  // or without vendor rows — the same row the hero asks about (design batch 4).
+  let caterer = null;
+  try { caterer = chosenCatererUnbooked(ev); } catch (_e) { caterer = null; }
+  if (caterer && !vendors.some(v => !isVendorSettled(v))) {
+    add('vendors', true, false, `Book your ${String(caterer.category).toLowerCase()}`,
+      caterer.vendorId ? { tab: 'Vendors', vendorId: caterer.vendorId } : { tab: 'Vendors' }, 7);
+  } else if (vendors.length) {
     // POP-1C: canonical status predicate (was a regex that missed 'Deposit
     // Paid'); the unpaid-deposit guard stays as this surface's extra concern.
     // The area dot is "handled" ONLY when the vendor is fully locked in (same
