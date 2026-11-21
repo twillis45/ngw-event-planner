@@ -78,6 +78,10 @@ existed on one side only and conflicts with nothing, so it is kept).
     - **The glow stays.** Softening it (option B) was rejected; the steel lift at the top of dark is kept.
     - **Tier step kept.** muted to ink-soft stays a real step (1.17, minimum 1.10, `lightModeClearsAA.test.js`).
     - **Gate.** The contrast specs now apply the every-gradient-stop rule in dark as well as light (`nothingReadsDarkOnDarkInLight`, `lightThemeContrast`).
+31. **One lit button per board, the NEXT bar included** (owner ruling, 11/21/2026, from a rendered before/after: "Yes, unlit").
+    - **What changes.** On the board, only the hero's ask may be lit. The cards below the fold (`.board > :not(.hero) .cta`) wear the `.cta.soft` values, and the pinned NEXT bar (`.next-bar`), which repeats the hero ask and scrolls back to it, sits on an opaque `--card` with `--ink` text, a `--line` hairline and a muted label. Its shape, position, behavior and the green "all set" state are unchanged.
+    - **Why.** The bar shows once the hero is 95% out of view, so a lit bar and the lit ask could be on screen together (860×430). In dark, where the ask keeps the 7/31 soft tier (ruling 29), the bar was the only lit thing on the board. On an empty event the board lit three at once.
+    - **Gate.** `oneLitButtonOnTheBoard.spec.mjs` scrolls every board to its end: nothing lit outside `.hero`, at most one lit in it, none in dark, and never two lit on screen at once.
 
 ## Studio Matte Means
 
