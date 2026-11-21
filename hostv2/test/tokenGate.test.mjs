@@ -51,6 +51,11 @@
 //   11/21/2026  280 color, 883 inline (design batch 3c, item 21). The dead
 //               .hero.elegant .whytog rule, rendered nowhere, took its #20242a
 //               with it: styles.css 129 -> 128.
+//   11/21/2026  272 color, 883 inline (design batch 3c, item 3; owner:
+//               "Snap + remove dead CSS"). styles.css 128 -> 120: .gav's
+//               #e8edf2 now reads --carbon-ink; the unrendered reveal rules
+//               took #f4f6f8 (.rv-mname), #f2f4f7 (.rv-card-what) and the five
+//               in @keyframes rvignite (.rv-name .rv-L) with them.
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';

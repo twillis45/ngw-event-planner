@@ -49,7 +49,10 @@ const LADDER = new Set([0, 1, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 56, 64, 80]);
 // 268 -> 266 on 2026-11-21: the dead `.hero.elegant .whytog` rule was deleted
 // (rendered nowhere in hostv2/src, src/ or the tests), and with it its
 // `padding:3px 10px`, two off-ladder values. A dead-code removal, not a respace.
-const BASELINE = 266;
+// 266 -> 264 on 2026-11-21: the unrendered reveal rules .rv-mname
+// (`margin:18px 0 0`) and .rv-card-what (`margin-top:14px`) were deleted
+// (owner: "Snap + remove dead CSS"). Dead code again, not a respace.
+const BASELINE = 264;
 
 const PROP = /\b(margin|padding|gap|row-gap|column-gap)(-top|-right|-bottom|-left|-block|-inline)?\s*:\s*([^;{}]+)/g;
 
