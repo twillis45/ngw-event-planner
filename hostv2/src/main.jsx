@@ -3,7 +3,12 @@ import ErrorBoundary from './ErrorBoundary.jsx';
 import { applyStudioMatte } from './theme.js';
 import { applyPaletteAB } from './paletteAB.js';
 import { initSentry, captureError } from '@app/lib/sentry';
+import { BUILD } from './BuildLine.jsx';
 import './styles.css';
+
+// Which commit is loaded, readable from the console after a deploy
+// (owner, 11/21/2026). The same value as <meta name="ngw-build">.
+window.__BUILD__ = BUILD;
 
 // ?vendor=TOKEN is a PUBLIC vendor brief — VB2 short code or legacy base64
 // snapshot — and it renders HERE, in its own chunk (VendorBriefV2.jsx), the

@@ -106,6 +106,22 @@ now four layers: the front end (GitHub Pages), the API (Render
 only the layer that broke, fastest first. **Written, never rehearsed:** run
 layers 1 and 2 once, deliberately, and record the times here.
 
+**Which commit is live** (added 11/21/2026). Read both after any deploy or
+rollback. They are separate deploys, so they can name different commits.
+```
+# API: the commit Render deployed (RENDER_GIT_COMMIT) and when the process started
+curl -s https://ngw-events-api.onrender.com/health
+# → {"ok":true,"service":"ngw-events-api","commit":"<sha>","started_at":"<utc>"}   "unknown" = Render set no commit
+
+# Front end: the commit hostv2 was built from (RELEASE_SHA in pages-from-source.yml)
+curl -s https://twillis45.github.io/ngw-event-planner/hostv2/ | grep -o '<meta name="ngw-build"[^>]*>'
+# → <meta name="ngw-build" content="<sha> <built-at, UTC>" />
+```
+In a browser, `window.__BUILD__` in the console gives the same value, and You &
+settings ends with "Version <first 7 of the sha> · <built-at>". "dev" means a
+local or e2e build, never a deploy: the Pages workflow refuses to publish a
+hostv2 page whose meta tag does not name the commit it built.
+
 **1. Front end: roll the site back to a good commit** (about 5 minutes, no
 downtime). `--ref` takes a branch, not a SHA, so point a branch at the good
 commit first. **Pass `live` explicitly:** a manual run defaults to `demo`, and

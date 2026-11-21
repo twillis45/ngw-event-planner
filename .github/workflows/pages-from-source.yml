@@ -258,6 +258,20 @@ jobs:
             *)        echo "::error::unknown release profile '${RELEASE_PROFILE}' — refusing to stamp a capability it cannot name"; exit 1 ;;
           esac
 
+      # ── the page says which commit it is (owner, 11/21/2026) ─────────────
+      # hostv2's vite.config.js bakes RELEASE_SHA into index.html as
+      # <meta name="ngw-build" content="<sha> <iso>"> (and window.__BUILD__ and
+      # the Version line in You & settings). A build that did not receive it
+      # says "dev", which would make the live page unverifiable, so it does not
+      # ship. Every profile. Pinned by src/__tests__/theDeployChecksTheBuildStamp.test.js.
+      - name: Verify hostv2 is stamped with this commit
+        run: |
+          set -euo pipefail
+          test -n "${RELEASE_SHA}" || { echo "::error::RELEASE_SHA is empty"; exit 1; }
+          grep -qF "<meta name=\"ngw-build\" content=\"${RELEASE_SHA} " build/hostv2/index.html \
+            || { echo "::error::build/hostv2/index.html has no ngw-build meta tag naming ${RELEASE_SHA}"; exit 1; }
+          echo "hostv2 stamped: $(grep -o '<meta name="ngw-build"[^>]*>' build/hostv2/index.html)"
+
       # ── prove BOTH bundles received the intended configuration ───────────
       # CRA and hostv2 are compiled by different toolchains from different
       # entry points. A release where one is configured and the other is not

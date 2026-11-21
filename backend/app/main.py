@@ -4,6 +4,7 @@ Run locally:  uvicorn app.main:app --reload --port 8000
 import json
 import logging
 import os
+from datetime import datetime, timezone
 
 import sentry_sdk
 from fastapi import FastAPI, Request
@@ -116,9 +117,22 @@ async def _error_capture(request: Request, call_next):
         return JSONResponse(status_code=500, content={"detail": "Internal server error"}, headers=headers)
 
 
+# When this process started, so /health can say which deploy is answering.
+_STARTED_AT = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 @app.get("/health")
 async def health():
-    return {"ok": True, "service": "ngw-events-api"}
+    # `commit` is the SHA Render deployed: RENDER_GIT_COMMIT is one of Render's
+    # default variables for git-backed services ("The commit SHA for a service
+    # or deploy", render.com/docs/environment-variables). Unset means "unknown",
+    # never a guess. Only these four keys; no other env reaches this body.
+    return {
+        "ok": True,
+        "service": "ngw-events-api",
+        "commit": os.environ.get("RENDER_GIT_COMMIT") or "unknown",
+        "started_at": _STARTED_AT,
+    }
 
 
 def _verify_resend_signature(body: bytes, svix_id: str, svix_timestamp: str, svix_signature: str) -> bool:

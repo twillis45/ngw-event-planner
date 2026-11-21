@@ -322,6 +322,7 @@ import { mintHelperLinkResult, isHelperLinkApiConfigured, fetchHelperConfirmatio
 import { appEmailWords, messageEmailResult } from '@app/lib/appEmail';
 import { buildHelperAsk } from '@app/lib/helperAsk';
 import PolicyLinks from './PolicyLinks.jsx';
+import BuildLine from './BuildLine.jsx';
 import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine } from '@app/lib/guestMerge';
 import { MAX_DATE_OPTIONS, dateOptionsOf, datePollTally, dateOptionPatch, nextDateOptionId } from '@app/lib/datePoll';
 import { giftCashTotal, isAbsentGiver, thankYouGiftLine } from '@app/lib/giftLog';
@@ -21074,6 +21075,8 @@ export default function HostShellV2() {
                       </>
                     );
                   })()}
+                  {/* Which commit this page is (owner, 11/21/2026): one quiet line, last. */}
+                  <BuildLine />
                 </>
               );
             })()}
