@@ -146,6 +146,9 @@ export function resolveRoute(route) {
   // The invite recap's album link, on the After stage (owner pick, 11/21/2026):
   // the album rows open After and focus the "Photo album link" field.
   if (ff === 'after-album') return { kind: 'stage:after', focus: 'album', anchor: 'Photo album link' };
+  // A drafted note (owner pick, 11/21/2026): the draft sheet, opened on the
+  // named builder. Today one: the Group Trip's trip details.
+  if (ff === 'draft-trip-details') return { kind: 'draft', focus: 'trip-details' };
   if (route.tab === 'Planning Tasks' || route.tab === 'Timeline' || route.tab === 'Planning') {
     return { kind: 'tasks', focus: route.taskId || null };
   }

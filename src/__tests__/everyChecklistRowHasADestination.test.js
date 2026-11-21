@@ -16,11 +16,13 @@ const { ALL_PLAYBOOKS, playbookChecklist, stepCalls } = require('../lib/playbook
 // The sheet kinds hostv2 renders (HostShellV2 `sheet.kind === …`) plus its two stages.
 const SHELL_KINDS = new Set(['air', 'budget', 'costshare', 'crabs', 'date', 'decisions', 'food', 'ground', 'guests',
   'lodging', 'messages', 'rain', 'risks', 'seating', 'space', 'tasks', 'vendors', 'venue', 'stage:day', 'stage:plan',
-  // 11/21/2026: the album rows open After on the recap's album link.
-  'stage:after']);
-// 11/21/2026: 124 → 122. Halloween's and NYE's "Share the … photos in one album
-// link" now open After on the recap's "Photo album link" field.
-const NO_DESTINATION_CEILING = 122;
+  // 11/21/2026: the album rows open After on the recap's album link; the trip
+  // details open their draft.
+  'stage:after', 'draft']);
+// 11/21/2026: 124 → 121. Halloween's and NYE's "Share the … photos in one album
+// link" now open After on the recap's "Photo album link" field; Group Trip's
+// "Send everyone the trip details" opens its draft.
+const NO_DESTINATION_CEILING = 121;
 
 const ev = (type) => ({ id: 'dest', type, date: '2026-12-31', guestEstimate: 20, guestMode: 'count', guestCountSource: 'host',
   venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX' });

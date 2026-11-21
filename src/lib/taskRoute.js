@@ -191,6 +191,12 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   //   · the brief itself — "getting-here info", "travel details", "how to get here"
   //   · a task naming the airport ALONGSIDE lodging or transport, which is the
   //     trip brief by description even when it isn't called one
+  // SENDING THE TRIP DETAILS IS A DRAFT (owner pick "Yes, combined",
+  // 11/21/2026): Group Trip's "Send everyone the trip details…" had no button.
+  // It opens the draft sheet on doItForMe.draftTripDetails, built from the
+  // dates, the booked stay, the booked plans and the split.
+  if (/^(?:send|share)\b[^.;:]{0,20}\btrip details\b/.test(t))
+    return { label: 'Draft the trip details', route: { focusField: 'draft-trip-details' } };
   if (/getting[- ]here|travel (info|details|brief|plan)\b|how to get (here|there)|arrival info/.test(t)
     || (/\bairport\b/.test(t) && /\b(hotel|lodging|transport|shuttle|stay)\b/.test(t)))
     return { label: 'Open travel & stays', route: { tab: 'Travel' } };

@@ -82,7 +82,7 @@ import SignInCheck, { signInCheckOn } from '@app/components/SignInCheck';
 import { signInSendDecision, signInErrorText } from '@app/lib/signInCheckGate';
 import { signUpData, MARKETING_OPT_IN_LABEL } from '@app/lib/marketingConsent';
 import { domainMove, moveNotice } from '@app/lib/domainMove';
-import { draftInvite, inviteVoicesFor, eventCulturalMeta, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
+import { draftInvite, inviteVoicesFor, eventCulturalMeta, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl, draftTripDetails } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
 // dollars turned $0.20/lb of ice into "$0/lb" on 84 of the corpus's 440
 // per-unit lines. One definition, shared with the CRA food sheet.
@@ -407,7 +407,8 @@ import { APP_EVENTS, LS_PATCH, LS_CUSTOMS, LS_LAST_EVENT, mintEventId, mintRsvpT
 // rulings A–E, 11/16/2026): sections of the existing Guest list and Make it
 // yours sheets, never a new tab.
 import { HostQuestions, HostInviteOpens, HostGuestPhotos } from './GuestInboxHost.jsx';
-import HostUpdates from './HostUpdates.jsx';
+import HostUpdates, { PostToEveryone } from './HostUpdates.jsx';
+import { isAnnouncementsApiConfigured } from '@app/lib/api/announcements';
 import EventHashtag from './EventHashtag.jsx';
 import { isGuestMessagesApiConfigured, fetchGuestThreads } from '@app/lib/api/guestMessages';
 import { isGuestPhotosApiConfigured, fetchEventGuestPhotos } from '@app/lib/api/guestPhotos';
@@ -6679,6 +6680,13 @@ export default function HostShellV2() {
     // stays" kept opening the old sheet through every rebuild.
     if (r.kind === 'lodging') { goToLodgingCockpit(r.focus); return true; }
     if (r.kind === 'guests' && r.focus === 'nudge') { openNudge(); return true; }
+    // A drafted note (owner pick, 11/21/2026): the trip details open the draft
+    // sheet with its handoffs, and "Post to everyone's invite" where it can.
+    if (r.kind === 'draft') {
+      if (r.focus !== 'trip-details') return false;
+      openDraft('The trip details', draftTripDetails(event, profile), null, { postsToInvite: true });
+      return true;
+    }
     // Sheet landings: open the named sheet on its row/section. vendorSection is
     // carried through only for vendor routes (money/insurance sub-sections).
     const s = { kind: r.kind, focus: r.focus != null ? r.focus : null };
@@ -6734,6 +6742,9 @@ export default function HostShellV2() {
       // THE NUDGE (owner ruling, 11/20/2026): this draft carries the one action,
       // "Nudge the N who haven't answered" (NudgeTheList, lib/replyNudge).
       sendsNudge: !!(opts && opts.sendsNudge),
+      // THE TRIP DETAILS (owner pick, 11/21/2026): this draft can also be
+      // posted on every guest's invite (HostUpdates' one post path).
+      postsToInvite: !!(opts && opts.postsToInvite),
       voices: (opts && opts.voices) || null,
       subject: (d && typeof d === 'object' && d.subject) || '',
       from: prev ? (prev.kind === 'draft' ? prev.from || null : prev) : null,
@@ -21039,6 +21050,15 @@ export default function HostShellV2() {
               };
               const sendEntry = sendStateFor(event.sendLedger, sheet.title);
               const sendChip = sendStateLine(sendEntry, Date.now());
+              // Whether this draft can be posted on every guest's invite, or
+              // the one reason it can't (owner pick, 11/21/2026).
+              const invitePost = !sheet.postsToInvite ? null
+                : !isAnnouncementsApiConfigured() ? { why: 'Posting on everyone’s invite isn’t switched on here.' }
+                  : !session ? { why: 'Sign in to post this on everyone’s invite.' }
+                    : !ownsEvent ? { why: 'Save this trip to your account to post it on everyone’s invite.' }
+                      : !(event.guests || []).some(g => g && String(g.name || '').trim())
+                        ? { why: 'Add the travelers to your guest list to post this on everyone’s invite.' }
+                        : { ok: true };
               // ── SLICE (b): the one send we actually perform ────────────────
               // Ruling clause 1(b): vendor-directed, KNOWN EMAIL, one at a
               // time, behind an explicit review-then-send. This sheet IS the
@@ -21315,11 +21335,22 @@ export default function HostShellV2() {
                 {sheet.notice ? (
                   <p className="grounding" style={{ margin: '10px 0 0' }}>{sheet.notice}</p>
                 ) : null}
+                {/* ── POST TO EVERYONE'S INVITE (owner pick, 11/21/2026) ─────
+                    The trip details only. It posts through Updates to everyone
+                    (every guest's invite, an email to those who asked, the
+                    3-a-day and 20-per-event caps), so it shows only when that
+                    path can work: signed in, the trip saved to the account, and
+                    travelers on the list. Otherwise one line says why. When it
+                    shows it is the sheet's one lit button: the only handoff the
+                    app itself completes, reaching the whole group at once. */}
+                {invitePost && (invitePost.ok
+                  ? <PostToEveryone eventId={event.id} body={shownDraft()} />
+                  : <p className="grounding" data-post-invite-why style={{ marginTop: 'var(--sp-3)' }}>{invitePost.why}</p>)}
                 {/* Real handoffs: the native share sheet (iMessage/WhatsApp/etc.),
                     plus direct sms: and wa.me deep links — no fake "sent" states. */}
                 <div className="actions-row" style={{ marginTop: 14 }}>
                   {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
-                    <button className="cta"
+                    <button className={invitePost && invitePost.ok ? 'mini' : 'cta'}
                       onClick={() => { navigator.share({ title: sheet.title || 'From your plan', text: shownDraft() }).then(() => { recordSend('share'); }).catch(() => { /* declined — records NOTHING, by ruling */ }); }}>
                       Share…
                     </button>
