@@ -4638,10 +4638,15 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
    flex-start. heroVoid is untouched and stays green on its own terms.
 
    `.ecenter`'s own base rule (~:638) is already `justify-content:center`, so
-   this restores the default rather than inventing a new alignment. */
+   this restores the default rather than inventing a new alignment.
+
+   AMENDED 11/21/2026 (owner ruling 26, "Narrow"): tablet-land (1024-1279) is
+   OUT of this rule. With the stat column beside the question, a screen 1000px
+   or taller puts the question at the TOP, so a 13-inch iPad in portrait keeps
+   the top-align above (`flex-start`, the clamp offset). The 768-wide portrait
+   tablet still centers. */
 @media (orientation: portrait) and (min-height: 1200px){
-  .stagewrap[data-bp="tablet"] .hero.elegant .escreen.on > .ecenter,
-  .stagewrap[data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{
+  .stagewrap[data-bp="tablet"] .hero.elegant .escreen.on > .ecenter{
     justify-content:center; padding-top:0;
   }
 }
@@ -5771,6 +5776,9 @@ button.vc-pill::after{
    ~700px content area left at 1024, wrapping "5 confirmed guests still need
    seats" onto four lines. It now carries [data-bp="desktop"] as well — >=1280,
    with no height condition — and tablet-land keeps the single-column lane.
+   (Amended 11/21/2026, owner ruling 26: tablet-land now places the stat
+   column beside the question; the work zones stay one column below the fold.
+   See the "iPAD BOARD" block at the end of this file.)
 
    So on any canvas at least 1280 wide and UNDER 700 tall the two gates
    disagree: the rail is up, this grid is on, and the handle is still visible.
@@ -6224,7 +6232,7 @@ button.vc-pill::after{
 
    Scoped to the rail composition ONLY. `:648` and `:902` stand for the phone,
    where the bento is a 2x2 grid and this tile really is a card. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a{
+.stagewrap--responsive-command[data-rail="1"]:is([data-bp="desktop"],[data-bp="tablet-land"]) .hero.elegant .bento .tile-a{
   display:flex !important;
   flex-direction:column; align-items:stretch; gap:6px;
   /* The elegant bento is a column of hairline rows, not cards — :1004's card
@@ -6235,7 +6243,7 @@ button.vc-pill::after{
 }
 /* :1005 sets a 48px jumbo numeral for the phone countdown tile. Beside two
    18px hairline figures that reads as a different component. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a .t-num{
+.stagewrap--responsive-command[data-rail="1"]:is([data-bp="desktop"],[data-bp="tablet-land"]) .hero.elegant .bento .tile-a .t-num{
   font-size:18px; font-weight:700; line-height:1.05;
 }
 /* ONE HEADER, NOT TWO. `.bento-head` was added (89063812) because tile-a was
@@ -6243,7 +6251,7 @@ button.vc-pill::after{
    "Where you stand" label — and that label also holds the "what's counted"
    caret, so it is the one that must survive. Rendering both is anti-pattern 5,
    the double header. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento-head{
+.stagewrap--responsive-command[data-rail="1"]:is([data-bp="desktop"],[data-bp="tablet-land"]) .hero.elegant .bento-head{
   display:none;
 }
 
@@ -6295,8 +6303,8 @@ button.vc-pill::after{
    The rule keeps the number (it owns the six segments that ARE the fraction);
    the tile keeps what only it has — the lifecycle sentence and the six NAMED,
    routed, dot-marked parts, which is the reason it was worth un-hiding. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a .t-num,
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a .t-sub{
+.stagewrap--responsive-command[data-rail="1"]:is([data-bp="desktop"],[data-bp="tablet-land"]) .hero.elegant .bento .tile-a .t-num,
+.stagewrap--responsive-command[data-rail="1"]:is([data-bp="desktop"],[data-bp="tablet-land"]) .hero.elegant .bento .tile-a .t-sub{
   display:none;
 }
 
@@ -6306,7 +6314,7 @@ button.vc-pill::after{
    reads fine; in this column the heading arrived SECOND, under a paragraph it
    is supposed to introduce. `.tile-a` is a flex column here, so one `order`
    puts the heading back on top without touching the markup. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a > .t-label{
+.stagewrap--responsive-command[data-rail="1"]:is([data-bp="desktop"],[data-bp="tablet-land"]) .hero.elegant .bento .tile-a > .t-label{
   order:-1;
 }
 
@@ -6526,7 +6534,7 @@ button.vc-pill::after{
    the surface rather than a panel dropped onto it. This is also the region the
    standing ruling at :3582 reserves for on-demand detail — bounding it now is
    what makes that build a fill rather than a re-zone. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .bento{
+.stagewrap--responsive-command[data-rail="1"]:is([data-bp="desktop"],[data-bp="tablet-land"]) .hero.elegant > .bento{
   border-left:1px solid var(--line);
   padding-left:20px;
 }
@@ -7950,3 +7958,95 @@ button.vc-pill::after{
 @keyframes storebusy{0%,100%{border-color:color-mix(in srgb, var(--steel-soft) 45%, transparent)}50%{border-color:color-mix(in srgb, var(--steel-soft) 85%, transparent)}}
 @media (prefers-reduced-motion: reduce){ .store-busy,.store-busy-dot,.busy-dot{animation:none} }
 .toast .busy-dot{display:inline-block;vertical-align:middle;margin-right:var(--sp-3)}
+
+/* ══ THE iPAD BOARD, 1024-1279: "WHERE YOU STAND" BESIDE THE QUESTION ═════════
+   Owner ruling 26, 11/21/2026, made from rendered Current / Narrow / Full
+   comparisons: "Narrow". Amends three earlier rulings FOR THIS RANGE ONLY: the
+   2026-08-07 single-column board, the fold rule (the stat column may now be in
+   the first screen; nothing else may), and the 2026-08-17 centering (edited in
+   place, above).
+
+   ONLY `.bento` moves. Every other board zone (the fold handle, "Then, in
+   order", "Worth keeping an eye on") stays below the fold, spanning both
+   columns. The full desktop board was considered and declined: at 1024 its
+   work columns are 179px and text breaks mid-word.
+
+   THE PROGRESS BAR SPANS THE BOARD and sits at the TOP, under the eyebrow, as at
+   desktop (owner, 11/21: "For narrow expand the progress bar" / "Lock in at the
+   top"). It lives INSIDE `.escreen`, which is a sibling of `.bento`, so a plain
+   two-column grid cannot give it both columns while keeping the stat column
+   below it. `.escreen` therefore spans both columns as a SUBGRID on both axes:
+   the eyebrow (row 1) and the bar (row 2) run the full width, the question
+   (row 3) takes column 1, and `.bento` drops into row 3, column 2 of the same
+   tracks. Row 3 is 1fr; the spacer below holds the first screen's height, so
+   the fold handle stays at the foot.
+
+   Gated on `.escreen.on`: without it `.escreen` is `display:contents` and its
+   children would auto-place into the two columns. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant:has(> .escreen.on){
+  max-width:none; margin-inline:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(253px,309px);
+  grid-template-rows:auto auto 1fr;
+  align-content:start;
+  column-gap:var(--sp-5);
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant > .escreen.on{
+  grid-column:1 / -1; grid-row:1 / span 3;
+  display:grid;
+  grid-template-columns:subgrid; grid-template-rows:subgrid;
+}
+/* THE FIRST SCREEN'S HEIGHT, HELD BY A SPACER. A subgrid takes its size from
+   the parent's tracks, so `.escreen`'s own viewport min-height (under "THE
+   RAIL RULE ABOVE IS GLOBAL") stops applying: measured, the handle rose from y=717 to y=700 at 1024x768 and sat
+   at y=726 on a 1366-tall screen. This empty item spans the same three rows
+   and carries the same min-height, so the 1fr row grows to fill the screen
+   and the handle returns to the foot. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant:has(> .escreen.on)::before{
+  content:''; grid-column:1; grid-row:1 / span 3;
+  min-height:calc(100dvh - 72px - env(safe-area-inset-bottom,0px));
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ev-eyebrow{
+  grid-column:1; grid-row:1; align-self:start;
+}
+/* The desktop header placement ("THE ORDER, NOT THE COLUMNS"), one row under
+   the eyebrow, 4px further down than desktop's 12px. This range is touch: the
+   eyebrow's 44px tap area reaches 6px below it, and a segment span in the bar
+   sits 7px above the bar, so at 12px they overlapped by a pixel and the
+   eyebrow measured 43px tall (everyTapIsFortyFourSquare, 1024x1366). */
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .eprog{
+  grid-column:1 / -1; grid-row:2;
+  align-self:start; margin-top:var(--sp-4); margin-bottom:var(--sp-4); padding-top:0;
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{
+  grid-column:1; grid-row:3; min-width:0;
+}
+/* The stat column: the desktop column's own rules ("THE RICHEST BLOCK", "ONE
+   FRACTION", "BOUND THE COLUMN" — now keyed to tablet-land too) style its
+   insides; this places it. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant > .bento{
+  grid-column:2; grid-row:3;
+  display:flex; flex-direction:column; gap:var(--sp-2);
+  align-self:start; margin-top:0;
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant:has(> .escreen.on) > :not(.escreen):not(.bento){
+  grid-column:1 / -1;
+}
+/* THE QUESTION | ANSWER SPLIT ("THE SPLIT ALSO HAS TO FIT", 1200-1279
+   landscape) DOES NOT FIT BESIDE THE STAT COLUMN. Its own 2026-08-06 gate is a
+   SIZE test: the split needs a 360px question, a 300px answer and an 88px gap,
+   748px. With the stat column beside it, the question column measures 501px at
+   1279x800. So the board keeps the single question column it already has from
+   1024 to 1199. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card){
+  flex-direction:column; align-items:stretch; column-gap:0;
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) > .hzone{
+  flex:0 1 auto; min-width:0;
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) > .eanswer{
+  display:contents;
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) .ask{
+  font-size:clamp(40px,7.5cqw,56px);
+}

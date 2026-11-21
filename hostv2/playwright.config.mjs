@@ -37,6 +37,7 @@ const SELF_PINNED = [
   // Drives its own four geometries below 1280; the >=1280 command layout composes
   // a different fold and this rule does not govern it.
   '**/foldAtTheFoot.spec.mjs',
+  '**/theStatColumnStandsBesideTheQuestion.spec.mjs',
   '**/statColumnChips.spec.mjs',
   '**/lodgingSpendGuard.spec.mjs',
   '**/regimeBoundary.spec.mjs',
