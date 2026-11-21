@@ -395,7 +395,9 @@ const reunion = {
     { id: 't-book-rentals', milestoneId: 'book-vendors', phase: 'planning', label: 'Reserve any tents, extra tables/chairs, or a bounce house', when: 'T-38d' },
     { id: 't-restroom-plan', milestoneId: 'book-vendors', phase: 'planning', label: 'Confirm restrooms — park facilities or order a portable unit for a remote site', when: 'T-36d' },
     { id: 't-chase-rsvps', milestoneId: 'collect-rsvps', phase: 'planning', label: 'Chase non-responders by household; lock an adult/kid headcount', when: 'T-21d' },
-    { id: 't-photographer', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Name the group-photo shooter and put the photo on the schedule at a fixed time', when: 'T-14d' },
+    { id: 't-photographer', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Name the group-photo shooter and put the photo on the schedule at a fixed time', when: 'T-14d',
+      // No group photo (owner, 11/21/2026): "Skip / candids only" retires the four group-photo steps.
+      whenChoice: { id: 'group-photo', not: ['Skip / candids only'] } },
     { id: 't-runofshow', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Write the run-of-show: arrival, photo, meal, games, cleanup — assign each to a volunteer', when: 'T-13d' },
     { id: 't-nametags', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Prep name tags, markers, and a sign-in / contact-update sheet for the registration table', when: 'T-12d' },
     { id: 't-weather-check', milestoneId: 'confirm-weather-plan', phase: 'planning', label: 'Check the 7-day forecast; confirm the rain backup (indoor space or tent on hold)', when: 'T-7d', whenChoice: { id: 'venue-setting', ask: 'Outside, inside, or outside with somewhere to move to?', in: ['Outdoor park pavilion', 'Backyard', 'Outdoor with indoor backup'] } },
@@ -405,7 +407,7 @@ const reunion = {
     { id: 't-set-tables', milestoneId: 'setup-day', phase: 'setup', label: 'Set tables, shade canopies, seating; stage the food/serving table', when: 'T0' },
     { id: 't-reg-table', milestoneId: 'setup-day', phase: 'setup', label: 'Set up the registration table: name tags, sign-in sheet, marker', when: 'T0' },
     { id: 't-trash-stations', milestoneId: 'setup-day', phase: 'setup', label: 'Place trash + recycling bins at multiple points with spare bags', when: 'T0' },
-    { id: 't-call-photo', milestoneId: 'setup-day', phase: 'execution', label: 'At the set time, call everyone in for the group photo before anyone leaves', when: 'T0' },
+    { id: 't-call-photo', milestoneId: 'setup-day', phase: 'execution', label: 'At the set time, call everyone in for the group photo before anyone leaves', when: 'T0', whenChoice: { id: 'group-photo', not: ['Skip / candids only'] } },
     { id: 't-cleanup-sweep', milestoneId: 'setup-day', phase: 'cleanup', label: 'Bag trash, collect rentals/coolers, walk the site for left items and litter', when: 'T0+5h' },
 
     // ── W1.3 enrichment — every row below is whenChoice-gated so the bare
@@ -446,9 +448,9 @@ const reunion = {
     { id: 't-shirt-handout', milestoneId: 'setup-day', phase: 'setup', label: 'Hand out shirts at the registration table, checked off by household', when: 'T0', whenChoice: { id: 'reunion-shirts', in: ['Yes — matching shirts'] } },
 
     // ── AFTER THE DAY — negative-offset milestones, see the block above ──
-    { id: 't-photo-send', milestoneId: 'share-group-photo', phase: 'photo', label: 'Send the full-resolution group photo to one contact in every household — the file itself, not a link that expires, because half the family will want it printed', when: 'T0 +3d' },
+    { id: 't-photo-send', milestoneId: 'share-group-photo', phase: 'photo', label: 'Send the full-resolution group photo to one contact in every household — the file itself, not a link that expires, because half the family will want it printed', when: 'T0 +3d', whenChoice: { id: 'group-photo', not: ['Skip / candids only'] } },
     { id: 't-photo-album', milestoneId: 'share-group-photo', phase: 'photo', label: 'Open one shared album and ask everyone to drop their phone photos in this week, while the day is still on the camera roll', when: 'T0 +3d' },
-    { id: 't-photo-mail', milestoneId: 'share-group-photo', phase: 'photo', label: 'Print the group photo for the elders and anyone who does not use a phone for pictures, and mail it', when: 'T0 +3d' },
+    { id: 't-photo-mail', milestoneId: 'share-group-photo', phase: 'photo', label: 'Print the group photo for the elders and anyone who does not use a phone for pictures, and mail it', when: 'T0 +3d', whenChoice: { id: 'group-photo', not: ['Skip / candids only'] } },
     { id: 't-return-rentals', milestoneId: 'return-borrowed', phase: 'cleanup', label: 'Return the tents, tables, chairs, and any bounce house by the time on the rental contract — late days bill as full days', when: 'T0 +2d' },
     { id: 't-return-family', milestoneId: 'return-borrowed', phase: 'cleanup', label: 'Get every borrowed cooler, canopy, roaster, and folding chair back to the household it came from, matched against the list you made loading in', when: 'T0 +2d' },
     { id: 't-settle-receipts', milestoneId: 'settle-shared-cost', phase: 'budget', label: 'Collect every receipt — pavilion fee, meat, ice, paper goods, shirts, rentals — and total what the day actually cost against what came in', when: 'T0 +7d' },

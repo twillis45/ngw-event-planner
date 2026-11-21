@@ -65,7 +65,9 @@ const dayParty = {
   ],
 
   tasks: [
-    { id: 't_bookdj', milestoneId: 'dp_bookdj', phase: 'vendor', label: 'Book the DJ; share the vibe + a few must-play / do-not-play notes; confirm they bring speakers or you rent a PA', when: 'T-28d' },
+    { id: 't_bookdj', milestoneId: 'dp_bookdj', phase: 'vendor', label: 'Book the DJ; share the vibe + a few must-play / do-not-play notes; confirm they bring speakers or you rent a PA', when: 'T-28d',
+      // A curated playlist hires no DJ (owner, 11/21/2026).
+      whenChoice: { id: 'music', in: ['Hire a DJ', 'DJ for peak hours + playlist on either side'] } },
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
