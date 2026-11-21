@@ -3120,8 +3120,8 @@ export default function HostShellV2() {
   // 2026-07-22, W8): when the playbook authors its own food-approach decision
   // (repast `food_source`) THAT decision IS the food decision, and settling it
   // writes the key foodApproach actually reads.
-  const foodND = () => {
-    const nd = foodDecisionND(event, guests, [...(decisionBoard.open || []), ...(decisionBoard.locked || [])]);
+  const foodND = (claimed) => {
+    const nd = foodDecisionND(event, guests, [...(decisionBoard.open || []), ...(decisionBoard.locked || [])], claimed);
     return { ...nd, settle: (v) => settleND(nd, v) };
   };
   // THE ONE WRITE PATH for any NormalizedDecision the shell renders. The generic
@@ -5150,7 +5150,7 @@ export default function HostShellV2() {
     return resolveSelection(q0, {
       boardRow: rungOwnsHero ? null : (idn) => open.find(r => r && String(r.id) === String(idn.decisionId)) || null,
       decisionND: rungOwnsHero ? null : (idn) => {
-        if (idn.decisionId === 'phase:food') return foodDecisionND(event, guests, [...open, ...(decisionBoard.locked || [])]);
+        if (idn.decisionId === 'phase:food') return foodDecisionND(event, guests, [...open, ...(decisionBoard.locked || [])], q0.records);
         if (idn.source === 'blocker') return blockerDecisionND((blockers || []).find(b => b && ('blocker:' + b.fieldKey) === idn.decisionId));
         const row = open.find(r => r && String(r.id) === String(idn.decisionId));
         return row ? boardDecisionND(event, row) : null;
@@ -8633,6 +8633,9 @@ export default function HostShellV2() {
   // Which engine actions have a real in-place edit here. Everything else stays an
   // honest route toast — never a button that pretends.
   const wiredKind = (a) => {
+    // The dietary note lives in the food domain but is answered at the allergy
+    // counts, not the food-approach panel (owner's iPad, 11/21/2026).
+    if (/^fp-diet/.test(String((a.route && a.route.focusField) || ''))) return 'diet';
     if (['date', 'guests', 'budget', 'food'].includes(a.domain)) return a.domain;
     if (a.domain === 'starttime' || a.domain === 'datetime') return 'date';   // day + hour share the date editor
     // Engine top actions carry their CATEGORY as domain ('start', 'readiness'…);
@@ -9200,7 +9203,8 @@ export default function HostShellV2() {
       // renderDecision(foodDecisionND()) — full-width option rows with our-pick (unsettled) or the
       // chosen row highlighted (settled) + notes, NOT a parallel inline-chip render. One source of
       // truth for the food decision; the "Open the spread" detail link stays as a subtle secondary.
-      const fndBase = foodND();
+      // The food cue's own records, so the question shown is one its "N open" counts.
+      const fndBase = foodND(a && a.records);
       // ADVANCE ON SELECTION (host ruling 2026-07-23 "once this is selection, go to
       // the next step"): the editor's settle used to write + receipt but leave the
       // editor open — a dead end after the choice. Now it mirrors the hero settle:
@@ -9209,7 +9213,9 @@ export default function HostShellV2() {
       const fnd = { ...fndBase, settle: (v) => {
         fndBase.settle(v);
         setEditor(null);
-        if (a && a.id != null) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]);
+        // A food cue re-derives with the next open menu question and leaves the
+        // queue on its own when none is left (owner's iPad, 11/21/2026).
+        if (a && a.id != null && !Array.isArray(a.records)) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]);
       } };
       // PARITY (Figma 369:60): the decision leads with the guide-voice grounding (Newsreader
       // italic) — the proposed "why" when we have a pick, else the ask-mode why. Was missing on
@@ -12509,7 +12515,16 @@ export default function HostShellV2() {
                 // second, independently-derived guess at it. Calling heroAskFor() here is the
                 // exact bug ruling C fixed: it has no decision branch, so it disagreed with the
                 // rendered h2 and the title double-spoke the ask on some events, not others.
-                const rec = isHero ? heroRecord(a, heroAskText) : null;
+                // The menu panel names the question it shows, beside the count it
+                // belongs to (owner's iPad, 11/21/2026): "How is the turkey cooked?
+                // · 2 open", never "What you're serving" over a different call.
+                const menuND = (isHero && Array.isArray(a.records) && a.records.length)
+                  ? (a.id === 'phase:food' ? heroDecisionND : (wired === 'food' ? foodND(a.records) : null))
+                  : null;
+                const menuAsk = (menuND && menuND.selected == null && menuND.ask) || null;
+                const rec = isHero
+                  ? (menuAsk ? `${String(menuAsk).replace(/\.+$/, '')} · ${a.records.length} open` : heroRecord(a, heroAskText))
+                  : null;
                 // SINGLE DECISION IN PLACE (host "replace take-me-to-it with action",
                 // 2026-07-18): once decisions thin out they stop bundling and a lone one
                 // becomes its own hero card — which used to route ("Take me to it"). Resolve
@@ -12530,7 +12545,9 @@ export default function HostShellV2() {
                   // so the hero advances even if its phase (food, etc.) still has other parts.
                   // COMPLETION REASONING v1: report what settling actually freed,
                   // from the engine's own `unlocks`/`gateHolder` — never a guess.
-                  return renderDecision({ ...nd, settle: (v) => { nd.settle(v); trackCompletion(a, getActionReason(a, { event }), 'settled'); setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); } });
+                  // The food item is the exception: it re-derives with the next open
+                  // menu question, and leaves the queue itself when none is left.
+                  return renderDecision({ ...nd, settle: (v) => { nd.settle(v); trackCompletion(a, getActionReason(a, { event }), 'settled'); if (!(a.id === 'phase:food' && Array.isArray(a.records))) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); } });
                 })() : null;
                 // GROUNDED COI STEP (host "Decide CTA should be the action" + "past its window
                 // AND overdue?", 2026-07-18): the COI-collection task shows the REAL first step

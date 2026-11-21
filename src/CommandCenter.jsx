@@ -2175,6 +2175,9 @@ export function eventPlan(event, ctx = null) {
     // ticks it in place. decisionId keeps the action's record id through the rebuild.
     ...(top.taskId ? { taskId: top.taskId } : null),
     ...(top.decisionId ? { decisionId: top.decisionId } : null),
+    // THE SEVENTH (owner's iPad, 11/21/2026): the records a summary cue counts,
+    // so the hero can offer one of exactly those under its "N open".
+    ...(Array.isArray(top.records) ? { records: top.records } : null),
     // RE-AUDIT F1 (fresh-eyes, 2026-07-14): `level` was DROPPED here. The selector stamps
     // level:'critical' on overdue payments, decisions and COI — and this rebuild threw the
     // stamp away, so canSnooze() saw no 'critical' and rendered "not now" on "Send payment
@@ -2345,12 +2348,14 @@ export function eventPlan(event, ctx = null) {
       // surface's bundle below, while the summary can only land on the plan top; a
       // list must never bill one record twice across a summary and its own row.
       let cueLabel = i.cueLabel;
+      let claimed = Array.isArray(i.records) ? i.records : null;
       if (Array.isArray(i.records) && i.records.length && raisedDecisionKeys.size) {
         const remaining = i.records.filter((id) => !raisedDecisionKeys.has(String(id)));
         if (remaining.length === 0) continue;              // every record is individually raised
         if (remaining.length < i.records.length) {
           // The summary keeps only the records nobody else raises — recount honestly.
           cueLabel = String(i.cueLabel).replace(/·\s*\d+\s+open/, `· ${remaining.length} open`);
+          claimed = remaining;
         }
       }
       seen.add(domain); seenTitles.add(titleKey(cueLabel));
@@ -2383,6 +2388,10 @@ export function eventPlan(event, ctx = null) {
         category: 'phase',
         done: false,
         source: 'phaseProgress',
+        // The records its "N open" counts, so the hero can offer one of exactly
+        // those (owner's iPad, 11/21/2026) — never one billed to another card.
+        ...(claimed ? { records: claimed } : {}),
+        ...(i.ask ? { ask: i.ask } : {}),
         // WAVE-5 RANKING (2026-07-15): the snooze lead cap (lib/snooze.js) reads
         // opts.leadDays off the action. A phase item maps to its underlying
         // timeline task's authored lead WHERE ONE EXISTS (a route naming a task);
@@ -3793,6 +3802,9 @@ export function _selectEventNextActionInner(event, prices = null) {
         consequence: `The last of the planning essentials — ${_pp.completedCount} of ${_pp.totalCount} are already handled. After this, the plan really is quiet.`,
         primaryCta: cueActionLabel(_pp.nextCue),
         primaryRoute: _pp.nextCue.route,
+        // The records its "N open" counts (the food cue), as on the phase row.
+        ...(Array.isArray(_pp.nextCue.records) ? { records: _pp.nextCue.records } : null),
+        ...(_pp.nextCue.ask ? { ask: _pp.nextCue.ask } : null),
         contextLine: daysSub,
       };
     }

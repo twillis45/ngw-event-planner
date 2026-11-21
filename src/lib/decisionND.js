@@ -14,7 +14,7 @@
 //
 //   NormalizedDecision = { id, options:[{value,label,note?}], proposed:{value,why}|null,
 //                          selected?:string|null, why?:string }
-import { playbookDecisionOptions, foodApproach } from './playbooks';
+import { playbookDecisionOptions, foodApproach, openFoodChoices } from './playbooks';
 import { decisionApproach } from './doItForMe';
 
 // A playbook `decision:*` board row → its authored options, notes and grounded
@@ -61,13 +61,39 @@ const FOOD_SOURCING_NOTES = {
 //   • Otherwise the generic trio, keyed foodChoices.sourcing.
 // `selected` is carried in both cases: a food decision the host already answered
 // is a RECORD, and callers need to be able to tell that from an open question.
-export function foodDecisionND(event, guests, boardRows) {
+//
+// THE NEXT OPEN MENU QUESTION (owner's iPad, 11/21/2026). Once the approach is
+// answered, the food item still counts the menu questions left ("2 open"), so
+// it offers the first of THOSE, from openFoodChoices — the list the count reads
+// — not the settled approach. `claimed` is the record ids the food action
+// counts; some are raised as their own cards and are not its to show, and an
+// action that claims none (the dietary note) has no menu question to offer.
+// Only a question with a board row is offered, so it has a write path.
+export function nextOpenFoodChoiceRow(event, boardRows, claimed) {
+  if (!Array.isArray(claimed) || !claimed.length) return null;
+  const open = (() => { try { return openFoodChoices(event) || []; } catch { return []; } })();
+  const claim = new Set(claimed.map(String));
+  for (const c of open) {
+    if (!claim.has(String(c.id))) continue;
+    const row = (boardRows || []).find(x => x && x.id === c.id);
+    if (row) return row;
+  }
+  return null;
+}
+export function foodDecisionND(event, guests, boardRows, claimed) {
+  const picks = (event && event.foodChoices) || {};
+  const approachSettled = (id) => (id ? picks[id] != null : picks.sourcing != null);
   try {
     const fa = foodApproach(event);
+    if (approachSettled(fa && fa.decisionId)) {
+      const next = nextOpenFoodChoiceRow(event, boardRows, claimed);
+      const nd = next ? boardDecisionND(event, next) : null;
+      if (nd) return { ...nd, selected: null, ask: next.ask || null };
+    }
     if (fa && fa.decisionId) {
       const row = (boardRows || []).find(x => x && x.id === fa.decisionId);
       const nd = row ? boardDecisionND(event, row) : null;
-      if (nd) return { ...nd, selected: ((event && event.foodChoices) || {})[fa.decisionId] || null };
+      if (nd) return { ...nd, selected: picks[fa.decisionId] || null, ask: row.ask || null };
     }
   } catch { /* fall through to the generic trio */ }
   const gn = Number(guests) || 0;

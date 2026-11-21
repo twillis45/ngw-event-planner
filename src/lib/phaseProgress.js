@@ -249,7 +249,10 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
         ? {
           label: 'Note dietary needs on the food plan',
           route: { tab: 'Planning', focusField: `fp-diet-${ev.id}` },
-          extra: null,
+          // Its own question, the one the allergy step asks (owner's iPad,
+          // 11/21/2026): under the food domain the hero otherwise read
+          // "Decide the menu." over a menu that was already decided.
+          extra: { ask: 'Who has a food allergy?' },
         }
         : { label: null, route: null, extra: null };
   // THE SHOP CLOCK, read once for both rows below (issue #100 D-11): the
@@ -547,6 +550,7 @@ function pickCue(items) {
     // helper was silently comparing an empty list. Carried through now, so the
     // hero can be checked against the board it is supposed to agree with.
     ...(Array.isArray(best.records) && best.records.length ? { records: best.records } : null),
+    ...(best.ask ? { ask: best.ask } : null),
   };
 }
 
