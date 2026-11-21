@@ -69,7 +69,7 @@ import { rsvpHasResponded } from './rsvp';
 import { nudgeBoardItem, wasInvited } from './replyNudge';
 import { buildVendorPlan } from './vendorPlan';
 import { venueFor } from './venueFor';
-import { isVendorBooked } from './workstreams';
+import { isVendorBooked, isReconfirmable } from './workstreams';
 import { buildSeatingPlan } from './seatingPlan';
 import { buildTravelPlan } from './travelPlan';
 import { moneyDatesFor } from './moneyDates';
@@ -219,7 +219,8 @@ export const SURFACES = [
   // ── T-72h reconfirm sweep ──────────────────────────────────────────────────
   // HostShellV2 computes `reconfirmables` locally (HostShellV2.jsx ~1505) and renders a
   // banner only — a host who never saw the banner never learned, and the ranked list never
-  // counted it. Same predicate as the shell: a NAMED vendor, inside the last three days
+  // counted it. Same predicate as the shell (workstreams.isReconfirmable): a NAMED,
+  // BOOKED vendor, inside the last three days
   // (days 0..3), who hasn't answered yet (`reconfirmed72` truthy = answered, same truthy
   // read as the shell's own skip at ~1635). Informal helpers (`isInformal`) never raise —
   // a friend bringing the cooler is not put through a paid-vendor reconfirm ask
@@ -242,7 +243,8 @@ export const SURFACES = [
         : days === 1 ? 'your event is tomorrow'
         : `the event is ${days} days out`;
       return vendors
-        .filter((v) => v && v.id && String(v.name || '').trim() && !v.isInformal && !v.reconfirmed72)
+        // Booked only (11/21/2026): an "Inquired" vendor has nothing to reconfirm.
+        .filter((v) => v && v.id && isReconfirmable(v) && !v.reconfirmed72)
         .map((v) => ({
           severity: 'attention',
           title: `Reconfirm ${v.name} for the day`,

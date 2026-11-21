@@ -97,9 +97,12 @@ test('3 · drink prices: a zero-proof option does not make a party dry, and the 
   expect(cook().perUnitLow).toBe(authored('The Cookout', 'p_grown_folks').unitCostRange[0]);
   expect(cook('Full bar + punch').perUnitLow).toBeCloseTo(authored('The Cookout', 'p_grown_folks').unitCostRange[0] * 1.4, 2);
 
-  // A party that IS dry still prices as one.
+  // A party that IS dry buys no bar (owner approval, 11/21/2026: the ×0.6 is
+  // gone, and the wine leaves the list the way BYOB's drinks do); its water
+  // still prices at the cited band. aDryPartyBuysNoBar holds the rest.
   const dry = playbookFoodPlan(ev('Dinner Party', '2026-12-12', 10, { foodChoices: { alcohol: 'Zero-proof / dry' } }));
-  expect(line(dry, 'p_wine').costFactorApplied).toEqual(expect.objectContaining({ factor: 0.6 }));
+  expect(line(dry, 'p_wine')).toBeUndefined();
+  expect(line(dry, 'p_water').costFactorApplied).toBeNull();
 });
 
 // ── 4 ──────────────────────────────────────────────────────────────────────

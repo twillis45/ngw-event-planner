@@ -90,7 +90,10 @@ const wedding = {
   ],
 
   tasks: [
-    { id: 't_budget', milestoneId: 'w_budget', phase: 'planning', label: 'Agree total budget + who pays; set guest-count target; write the vision brief', when: 'T-365d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the two calls
+    // clear it once both are picked, and the brief is its own step, due the same day.
+    { id: 't_budget', answeredBy: ['budget', 'guestcount'], milestoneId: 'w_budget', phase: 'planning', label: 'Agree total budget, who pays, and the guest-count target', when: 'T-365d' },
+    { id: 't_vision_brief', milestoneId: 'w_budget', phase: 'planning', label: 'Write the vision brief', when: 'T-365d' },
     { id: 't_venue', milestoneId: 'w_venue', phase: 'venue', label: 'Tour, compare, sign venue contract + deposit; lock the date', when: 'T-365d' },
     { id: 't_keyvendors', milestoneId: 'w_keyvendors', phase: 'vendor', label: 'Sign planner, photographer, caterer, band/DJ (these book a year out)', when: 'T-300d' },
     { id: 't_attire', milestoneId: 'w_attire', phase: 'planning', label: 'Order dress/attire; schedule alterations runway', when: 'T-240d' },

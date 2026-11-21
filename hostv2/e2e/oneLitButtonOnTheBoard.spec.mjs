@@ -1,0 +1,152 @@
+// ─── ONE LIT BUTTON ON THE BOARD (owner: "Do those 4", 11/21/2026) ───────────
+//
+// UX_05 Primary Button: "Maximum ONE primary button per view section." Ruling
+// 29 names whose it is on the board: the hero's ask. `oneLitButtonPerSheet`
+// walks the sheets only, so the board itself was unguarded, and an EMPTY event
+// rendered two lit `.cta`s below the fold at once — the venue card's "Save"
+// and the headcount card's "Confirm the headcount" — with the light hero's ask
+// as a third, at every size and in both themes.
+//
+// "Lit" is the same measure `oneLitButtonPerSheet` uses: a rendered control
+// whose computed background-image IS the resolved --cta-grad. Counted over the
+// FULL board, below the fold included: the board's scroller is walked to its
+// end and every lit control seen on the way is collected. Sheets are excluded
+// (their own spec owns them).
+//
+// The rule asserted: nothing outside `.hero` is lit, the hero holds at most
+// one lit control, and no scroll stop shows two lit controls at once. In light
+// the hero's ask is that one (ruling 29); in dark it wears the soft tier, so
+// the dark board shows none.
+//
+// THE NEXT BAR COUNTS. `.next-bar` (host request 7/16/2026) is the hero ask
+// echoed and pinned to the frame bottom once the hero scrolls away. It wore
+// --cta-grad, so an empty event showed THREE lit primaries over a scroll
+// (hero ask in light, Save, Confirm the headcount, plus the bar), and at
+// 860x430 in light the bar and the lit ask shared the screen. It is counted
+// like any other board control, outside the hero, so it must not be lit.
+// The walk also records whether the bar was seen, so a run that never
+// scrolled far enough to show it says so.
+//
+// Runs on the full project matrix (every geometry, landscape included), on an
+// empty event, a plan under way, and four seeded boardMatrix states.
+import { test, expect, settled, dateIn } from './fixtures.mjs';
+
+const EMPTY = { id: 'board-lit-empty', name: 'Sam’s Graduation', type: 'Graduation', createdAt: '2026-11-01',
+  date: dateIn(30), guests: [], vendors: [], budget: [], timeline: [] };
+
+const UNDER_WAY = {
+  id: 'board-lit-underway', name: 'Maya’s 40th Birthday', type: 'Birthday', createdAt: '2026-11-01',
+  date: dateIn(9), startTime: '18:00', startTimeSource: 'host',
+  venue: 'The Ironwood Room', venueAddress: '41 Market St, Annapolis, MD', venueCity: 'Annapolis, MD',
+  guestMode: 'list', guestEstimate: 14, guestCountSource: 'host',
+  guests: [{ id: 'g1', name: 'Jordan Avery', rsvp: 'Yes' }, { id: 'g2', name: 'Riley Park', rsvp: 'Maybe' }],
+  vendors: [{ id: 'v-cat', name: 'Harvest Table Catering', category: 'Catering', status: 'Considering', cost: 2400, budgetCategory: 'Food' }],
+  budget: [{ id: 'food', category: 'Food', budgeted: 2500, actual: 0 }],
+  timeline: [{ id: 't1', task: 'Confirm final headcount with caterer', week: 'This week' }],
+};
+
+// Seeded demo events, as boardMatrix boots them (id + optional patch).
+const VENUE = { venue: 'The Ironwood Room', venueCity: 'Annapolis, MD' };
+const STATES = [
+  { label: 'an empty event', custom: EMPTY },
+  { label: 'a plan under way', custom: UNDER_WAY },
+  { label: 'Game Night T-2', id: 'test-two-days', patch: VENUE },
+  { label: 'Dinner T-1, vendors', id: 'test-day-before-vendors' },
+  { label: 'Wanda far-out', id: 'ev-x-wanda' },
+  { label: 'Graduation (past)', id: 'ev-x-graduation' },
+];
+
+const boot = async (page, state, theme) => {
+  await page.addInitScript(([s, th]) => {
+    if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
+    if (s.custom) {
+      localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([s.custom]));
+      localStorage.setItem('ngw-hostv2-last-event', s.custom.id);
+    } else {
+      localStorage.setItem('ngw-hostv2-last-event', s.id);
+      if (s.patch) localStorage.setItem('ngw-hostv2-patch-' + s.id, JSON.stringify(s.patch));
+    }
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
+    localStorage.setItem('ngw-theme', th);
+  }, [state, theme]);
+  await page.goto(`?elegant=1&theme=${theme}`);
+  await settled(page);
+  await page.waitForTimeout(400);
+};
+
+// Runs in the page: the lit controls on the board right now (outside sheets),
+// each tagged with whether it sits in the hero and whether it is on screen.
+const litOnBoard = () => {
+  const probe = document.createElement('div');
+  probe.style.backgroundImage = 'var(--cta-grad)';
+  document.body.appendChild(probe);
+  const lit = getComputedStyle(probe).backgroundImage;
+  probe.remove();
+  const found = [...document.querySelectorAll('button, a, [role="button"]')].filter((e) => {
+    if (!e.getClientRects().length || e.closest('.sheet, [inert], [aria-hidden="true"], details:not([open]) > :not(summary)')) return false;
+    const cs = getComputedStyle(e);
+    return cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0.01 && cs.backgroundImage === lit;
+  }).map((e) => {
+    const b = e.getBoundingClientRect();
+    return {
+      label: (e.innerText || e.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim().slice(0, 40),
+      hero: !!e.closest('.hero'),
+      onScreen: b.bottom > 0 && b.top < innerHeight && b.right > 0 && b.left < innerWidth,
+    };
+  });
+  return { lit, found };
+};
+
+// Walk every scroller on the board (the phone scrolls `.app`, wider frames
+// scroll inner columns) from top to bottom, collecting lit controls as it goes.
+const walkBoard = async (page) => {
+  const seen = new Map();
+  const together = [];
+  let barSeen = false;
+  const take = async () => {
+    const r = await page.evaluate(litOnBoard);
+    expect(r.lit, 'premise: --cta-grad resolves to a gradient').toMatch(/gradient/);
+    if (!barSeen) barSeen = await page.locator('.next-bar').isVisible();
+    for (const f of r.found) seen.set(`${f.hero ? 'hero' : 'board'}:${f.label}`, f);
+    const onScreen = r.found.filter((f) => f.onScreen);
+    if (onScreen.length > 1) together.push(onScreen.map((f) => f.label).join(' + '));
+  };
+  await take();
+  for (let i = 0; i < 40; i++) {
+    const moved = await page.evaluate(() => {
+      let any = false;
+      const scrollers = [document.scrollingElement, ...document.querySelectorAll('*')].filter((el) => {
+        if (!el || el.closest('.sheet')) return false;
+        const cs = el === document.scrollingElement ? null : getComputedStyle(el);
+        if (cs && !/(auto|scroll)/.test(cs.overflowY)) return false;
+        return el.scrollHeight - el.clientHeight > 4;
+      });
+      for (const el of scrollers) {
+        const before = el.scrollTop;
+        el.scrollTop = Math.min(el.scrollHeight, before + Math.max(200, el.clientHeight * 0.8));
+        if (el.scrollTop !== before) any = true;
+      }
+      return any;
+    });
+    await page.waitForTimeout(120);
+    await take();
+    if (!moved) break;
+  }
+  return { lit: [...seen.values()], together, barSeen };
+};
+
+for (const theme of ['light', 'dark'])
+for (const state of STATES)
+test(`the board shows at most one lit primary, and only in the hero — ${state.label}, ${theme}`, async ({ page }) => {
+  test.setTimeout(60_000);
+  await boot(page, state, theme);
+  const { lit, together, barSeen } = await walkBoard(page);
+  test.info().annotations.push({ type: 'lit', description: JSON.stringify(lit) });
+  test.info().annotations.push({ type: 'next-bar seen', description: String(barSeen) });
+  expect(lit.filter((f) => !f.hero).map((f) => f.label), 'lit primaries outside the hero (the board\'s lit button is the hero ask)').toEqual([]);
+  const heroLit = lit.filter((f) => f.hero).map((f) => f.label);
+  expect(heroLit.length, `lit primaries in the hero: ${heroLit.join(' | ')}`).toBeLessThanOrEqual(1);
+  if (theme === 'dark') expect(heroLit, 'the dark hero ask wears the soft tier (ruling 29)').toEqual([]);
+  expect(together, 'two lit controls on screen at once').toEqual([]);
+});

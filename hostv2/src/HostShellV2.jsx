@@ -82,7 +82,7 @@ import SignInCheck, { signInCheckOn } from '@app/components/SignInCheck';
 import { signInSendDecision, signInErrorText } from '@app/lib/signInCheckGate';
 import { signUpData, MARKETING_OPT_IN_LABEL } from '@app/lib/marketingConsent';
 import { domainMove, moveNotice } from '@app/lib/domainMove';
-import { draftInvite, inviteVoicesFor, eventCulturalMeta, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl } from '@app/lib/doItForMe';
+import { draftInvite, inviteVoicesFor, eventCulturalMeta, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach, draftVenueInquiry, venueSearchUrl, draftTripDetails } from '@app/lib/doItForMe';
 // A PER-UNIT RATE IS NOT FORMATTED BY `fmt`. See src/lib/perUnitText.js: whole
 // dollars turned $0.20/lb of ice into "$0/lb" on 84 of the corpus's 440
 // per-unit lines. One definition, shared with the CRA food sheet.
@@ -234,7 +234,7 @@ import {
   getHostVendorChallenges, getHostVendorReadiness, getVendorNextAction,
   getHostHighestRiskVendor,
 } from '@app/lib/vendorIntelligence';
-import { isVendorBooked, isVendorConfirmed, vendorDepositOwed } from '@app/lib/workstreams';
+import { isVendorBooked, isVendorConfirmed, vendorDepositOwed, isReconfirmable } from '@app/lib/workstreams';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { isPlausibleCityText, parseVenueLocation, proposeTownFromHeard } from '@app/lib/cityText';
 import { foodShopItems } from '@app/lib/foodShopItems';
@@ -407,7 +407,8 @@ import { APP_EVENTS, LS_PATCH, LS_CUSTOMS, LS_LAST_EVENT, mintEventId, mintRsvpT
 // rulings A–E, 11/16/2026): sections of the existing Guest list and Make it
 // yours sheets, never a new tab.
 import { HostQuestions, HostInviteOpens, HostGuestPhotos } from './GuestInboxHost.jsx';
-import HostUpdates from './HostUpdates.jsx';
+import HostUpdates, { PostToEveryone } from './HostUpdates.jsx';
+import { isAnnouncementsApiConfigured } from '@app/lib/api/announcements';
 import EventHashtag from './EventHashtag.jsx';
 import { isGuestMessagesApiConfigured, fetchGuestThreads } from '@app/lib/api/guestMessages';
 import { isGuestPhotosApiConfigured, fetchEventGuestPhotos } from '@app/lib/api/guestPhotos';
@@ -3423,7 +3424,10 @@ export default function HostShellV2() {
   // event date (the recap state), and only when set — never fabricated.
   const [recapDraft, setRecapDraft] = useState('');
   const [albumDraft, setAlbumDraft] = useState('');
-  useEffect(() => { setRecapDraft(String(event.recapNote || '')); setAlbumDraft(String(event.albumUrl || '')); }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The checklist's "Add the album link" (owner pick, 11/21/2026) shows the
+  // recap block before the day too, so the link can be ready in advance.
+  const [albumAsked, setAlbumAsked] = useState(false);
+  useEffect(() => { setRecapDraft(String(event.recapNote || '')); setAlbumDraft(String(event.albumUrl || '')); setAlbumAsked(false); }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Event memory: the one persisted field the original uses (event.lessons).
   // Recall reads across the loaded events — a past event of the same type.
   const lastLesson = useMemo(() => {
@@ -3467,7 +3471,11 @@ export default function HostShellV2() {
     // External grounded destinations (the CVB search link): a real new-tab
     // open, glyph-earning navigation — never a toast pretending to be one.
     if (hit.href) return { label: hit.label, go: () => { try { window.open(hit.href, '_blank', 'noopener'); } catch { toast('Couldn’t open the link.'); } } };
-    return { label: hit.label, go: () => { if (!routeSheet(hit.route)) toast(hit.label); } };
+    // The album rows (owner pick, 11/21/2026) carry a quiet second line when
+    // guests' photos wait for approval; the row says which one it is.
+    const res = (() => { try { return resolveRoute(hit.route); } catch { return null; } })();
+    const albumRow = !!(res && res.kind === 'stage:after' && res.focus === 'album');
+    return { label: hit.label, albumRow, go: () => { if (!routeSheet(hit.route)) toast(hit.label); } };
   };
   // Split a run-on step into a bold lead action + the detail that follows the
   // first separator, so the row is scannable ("Map the spread" over the list of
@@ -4273,7 +4281,9 @@ export default function HostShellV2() {
   // answered. Informal helpers (a friend bringing the cooler) are excluded —
   // same host-appropriate rule the registry raiser applies (surfaceRegistry
   // vendor-reconfirm); the banner counting them was the last divergence.
-  const reconfirmables = useMemo(() => (event.vendors || []).filter(v => v && String(v.name || '').trim() && !v.isInformal), [event]);
+  // BOOKED ONLY (11/21/2026): the sweep drafted "just confirming we're all set"
+  // to vendors still at "Inquired". The banner and the sheet both read this list.
+  const reconfirmables = useMemo(() => (event.vendors || []).filter(isReconfirmable), [event]);
   // GROUNDED ACTION LOOP (the conflict mapper): the SAME cross-vendor conflicts
   // the engine only ever counted, turned into per-item ActionItems the elegant
   // hero renders as the grounded action itself (ask · detail · why · the two
@@ -5515,6 +5525,7 @@ export default function HostShellV2() {
         ? ['guests-entry-anchor', 'guests-counting-anchor']
         : sheet.focus === 'questions' ? ['guests-questions-anchor']
         : sheet.focus === 'photos' ? ['guests-photos-anchor']
+        : sheet.focus === 'updates' ? ['guests-updates-anchor']   // Updates to everyone (11/21/2026)
         : ['guests-invites-anchor'];
       // `guests-counting-anchor` is inside the §25 fold on the redesigned
       // surface, so the scroll below would land on a collapsed section. Open it
@@ -6649,6 +6660,20 @@ export default function HostShellV2() {
       return true;
     }
     if (r.kind === 'stage:day') { setStage('day'); setSheet(null); return true; }
+    // The wrap-up (owner pick, 11/21/2026): the album rows land on the invite
+    // recap's "Photo album link" field, shown even before the day so the link
+    // can be ready (guests see it only once the party is over).
+    if (r.kind === 'stage:after') {
+      setStage('after'); setSheet(null);
+      if (r.focus === 'album') setAlbumAsked(true);
+      if (r.anchor) setTimeout(() => {
+        try {
+          const inp = document.querySelector('[aria-label="' + r.anchor + '"]');
+          if (inp) { inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { inp.focus({ preventScroll: true }); } catch { /* focus is best-effort */ } }
+        } catch { /* After is still the right landing */ }
+      }, 120);
+      return true;
+    }
     // THE ACTUAL MISSED WIRE (host, 2026-08-05: caught by real clicks, not the
     // 4 literal `setSheet({kind:'lodging'})` call sites this file already had
     // fixed). Every route-driven CTA — the essentials hero on this exact
@@ -6658,6 +6683,16 @@ export default function HostShellV2() {
     // stays" kept opening the old sheet through every rebuild.
     if (r.kind === 'lodging') { goToLodgingCockpit(r.focus); return true; }
     if (r.kind === 'guests' && r.focus === 'nudge') { openNudge(); return true; }
+    // A drafted note (owner pick, 11/21/2026): the trip details open the draft
+    // sheet with its handoffs, and "Post to everyone's invite" where it can.
+    // The reconfirm sweep for every booking (owner pick, 11/21/2026): its notes
+    // are built at render, so they are ready the moment it opens.
+    if (r.kind === 'sweep') { setSheet({ kind: 'sweep', focus: r.focus || null }); runSweepDrafts(); return true; }
+    if (r.kind === 'draft') {
+      if (r.focus !== 'trip-details') return false;
+      openDraft('The trip details', draftTripDetails(event, profile), null, { postsToInvite: true });
+      return true;
+    }
     // Sheet landings: open the named sheet on its row/section. vendorSection is
     // carried through only for vendor routes (money/insurance sub-sections).
     const s = { kind: r.kind, focus: r.focus != null ? r.focus : null };
@@ -6713,6 +6748,9 @@ export default function HostShellV2() {
       // THE NUDGE (owner ruling, 11/20/2026): this draft carries the one action,
       // "Nudge the N who haven't answered" (NudgeTheList, lib/replyNudge).
       sendsNudge: !!(opts && opts.sendsNudge),
+      // THE TRIP DETAILS (owner pick, 11/21/2026): this draft can also be
+      // posted on every guest's invite (HostUpdates' one post path).
+      postsToInvite: !!(opts && opts.postsToInvite),
       voices: (opts && opts.voices) || null,
       subject: (d && typeof d === 'object' && d.subject) || '',
       from: prev ? (prev.kind === 'draft' ? prev.from || null : prev) : null,
@@ -11489,7 +11527,9 @@ export default function HostShellV2() {
 
           {/* ══════════ PLAN ══════════ */}
           {stage === 'plan' && (
-            <section role="main">
+            /* `.board` scopes the one-lit-button rule (styles.css, ".board >
+               :not(.hero) .cta"): outside the hero, the board's buttons are soft. */
+            <section role="main" className="board">
               {/* Event switching lives in the app-bar switcher (events sheet) —
                   the always-on shelf drew more attention than the plan itself. */}
 
@@ -15627,9 +15667,9 @@ export default function HostShellV2() {
                   shared link after the event, it becomes a recap. The host's note
                   and a real photo-album URL land there. Both optional; blank ones
                   simply don't show (the recap never fabricates content). */}
-              {isPast && (
+              {(isPast || albumAsked) && (
                 <div style={{ marginTop: 'var(--sp-4)' }}>
-                  <div className="shelf-label" style={{ marginBottom: 6 }}>On your invite link — guests see this when they reopen it</div>
+                  <div className="shelf-label" style={{ marginBottom: 6 }}>{isPast ? 'On your invite link — guests see this when they reopen it' : 'On your invite link — guests see this once the party’s over'}</div>
                   <textarea className="field" style={{ maxWidth: 'none', minHeight: 52, resize: 'vertical', fontSize: 'var(--t-input)' }}
                     placeholder="A note to everyone — “What a day. Thank you all for coming.”"
                     value={recapDraft} onChange={e => setRecapDraft(e.target.value)} aria-label="Recap note for guests" />
@@ -15715,7 +15755,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -20340,11 +20380,38 @@ export default function HostShellV2() {
                     eyebrow="Answered so far"
                     star={`${reconfirmedN} of ${total}`}
                     tone={total > 0 && reconfirmedN === total ? 'ok' : undefined}
-                    sub={reconfirmedN === total
-                      ? 'That’s everyone — the day is set.'
-                      : 'Each note has their arrival time and your address. Send it from your own thread; nothing goes out by itself.'}
+                    sub={total === 0
+                      ? 'Nothing booked to reconfirm yet.'
+                      : reconfirmedN === total
+                        ? 'That’s everyone — the day is set.'
+                        // Says only what draftVendorReconfirm writes (11/21/2026): the
+                        // date always; an arrival time and the place when on file.
+                        : 'Each note has your date, plus their arrival time and your place when they’re on file. Send it from your own thread; nothing goes out by itself.'}
                   />
                   <div className="bar" aria-hidden style={{ marginBottom: 'var(--sp-3)' }}><i style={{ '--fill': pct / 100, background: 'var(--ok)' }} /></div>
+                  {/* THE STAY COMES FIRST (owner pick "A: Reconfirm each booking",
+                      11/21/2026): opened from "Confirm every reservation", the
+                      sweep leads with the place to stay, its booked state from
+                      lodgingIsHeld, and the way to it. The stay is confirmed in
+                      Where everyone stays; this row does not attest it. */}
+                  {sheet.focus === 'bookings' && (() => {
+                    const stayName = String(((event.lodging && typeof event.lodging === 'object') ? event.lodging : {}).hotelName || '').trim();
+                    const held = lodgingIsHeld(event);
+                    return (
+                      <div className={'sweep-row ' + (held ? 'answered' : 'waiting')} data-sweep-stay>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-2)', alignItems: 'flex-start' }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div className="f-name">{stayName || 'The place to stay'}</div>
+                            <div className="sv-meta">Where everyone stays</div>
+                          </div>
+                          <span className="sweep-state">{held ? 'booked' : stayName ? 'not booked yet' : 'nothing on file'}</span>
+                        </div>
+                        <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                          <button className="mini" onClick={() => goToLodgingCockpit()}>Open the stay</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {reconfirmables.map(v => {
                     const st = v.reconfirmed72 ? 'answered' : (sweepState[v.id] || 'waiting');
                     const d = draftVendorReconfirm(event, v, profile);
@@ -21016,6 +21083,15 @@ export default function HostShellV2() {
               };
               const sendEntry = sendStateFor(event.sendLedger, sheet.title);
               const sendChip = sendStateLine(sendEntry, Date.now());
+              // Whether this draft can be posted on every guest's invite, or
+              // the one reason it can't (owner pick, 11/21/2026).
+              const invitePost = !sheet.postsToInvite ? null
+                : !isAnnouncementsApiConfigured() ? { why: 'Posting on everyone’s invite isn’t switched on here.' }
+                  : !session ? { why: 'Sign in to post this on everyone’s invite.' }
+                    : !ownsEvent ? { why: 'Save this trip to your account to post it on everyone’s invite.' }
+                      : !(event.guests || []).some(g => g && String(g.name || '').trim())
+                        ? { why: 'Add the travelers to your guest list to post this on everyone’s invite.' }
+                        : { ok: true };
               // ── SLICE (b): the one send we actually perform ────────────────
               // Ruling clause 1(b): vendor-directed, KNOWN EMAIL, one at a
               // time, behind an explicit review-then-send. This sheet IS the
@@ -21292,11 +21368,22 @@ export default function HostShellV2() {
                 {sheet.notice ? (
                   <p className="grounding" style={{ margin: '10px 0 0' }}>{sheet.notice}</p>
                 ) : null}
+                {/* ── POST TO EVERYONE'S INVITE (owner pick, 11/21/2026) ─────
+                    The trip details only. It posts through Updates to everyone
+                    (every guest's invite, an email to those who asked, the
+                    3-a-day and 20-per-event caps), so it shows only when that
+                    path can work: signed in, the trip saved to the account, and
+                    travelers on the list. Otherwise one line says why. When it
+                    shows it is the sheet's one lit button: the only handoff the
+                    app itself completes, reaching the whole group at once. */}
+                {invitePost && (invitePost.ok
+                  ? <PostToEveryone eventId={event.id} body={shownDraft()} />
+                  : <p className="grounding" data-post-invite-why style={{ marginTop: 'var(--sp-3)' }}>{invitePost.why}</p>)}
                 {/* Real handoffs: the native share sheet (iMessage/WhatsApp/etc.),
                     plus direct sms: and wa.me deep links — no fake "sent" states. */}
                 <div className="actions-row" style={{ marginTop: 14 }}>
                   {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
-                    <button className="cta"
+                    <button className={invitePost && invitePost.ok ? 'mini' : 'cta'}
                       onClick={() => { navigator.share({ title: sheet.title || 'From your plan', text: shownDraft() }).then(() => { recordSend('share'); }).catch(() => { /* declined — records NOTHING, by ruling */ }); }}>
                       Share…
                     </button>
@@ -21552,8 +21639,19 @@ export default function HostShellV2() {
                     // role=button span INSIDE the row's <button>, which a screen
                     // reader cannot reach as a button). Same left edge as Assign,
                     // so the 11/16 "CTAs balanced" rule still holds.
+                    // THE GUEST PHOTOS LINE (owner pick, 11/21/2026, "Combine A + B
+                    // line"): under "Add the album link", only when guests'
+                    // uploads wait for approval. The count is the server's own
+                    // list (guestPhotoList, the After line's source); signed out
+                    // or unreadable it is empty, and the line says nothing.
+                    const photosLine = action && action.albumRow ? photosWaitingLine(guestPhotoList) : null;
                     const actionEl = action ? (
-                      <span className="row-act"><button type="button" className="mini rowlink" data-row-action onClick={() => action.go()}>{action.label} →</button></span>
+                      <>
+                        <span className="row-act"><button type="button" className="mini rowlink" data-row-action onClick={() => action.go()}>{action.label} →</button></span>
+                        {photosLine && (
+                          <span className="row-act"><button type="button" className="mini rowlink row-quiet" data-row-photos onClick={() => setSheet({ kind: 'guests', focus: 'photos' })}>{photosLine} →</button></span>
+                        )}
+                      </>
                     ) : null;
                     const assignEl = assignablePeople.length && !(inferred && !owner) ? (
                       <div className="row-assign" key={(t.id || i) + '-assign'}>

@@ -56,7 +56,9 @@ const bachelorParty = {
 
   tasks: [
     { id: 't_groomcheck', milestoneId: 'bp_setdate', phase: 'planning', label: 'Confirm with the GROOM: what he actually wants + any hard no\'s', when: 'T-30d' },
-    { id: 't_split', milestoneId: 'bp_setdate', phase: 'planning', label: 'Agree the budget cap + cost-split method; groom is comped', when: 'T-30d' },
+    // The step IS the call (owner, 11/21/2026): the cap, the split method and
+    // the comped groom are all the costsplit answer, so it is linked, not split.
+    { id: 't_split', answeredBy: ['costsplit'], milestoneId: 'bp_setdate', phase: 'planning', label: 'Agree the budget cap + cost-split method; groom is comped', when: 'T-30d' },
     { id: 't_book', milestoneId: 'bp_book', phase: 'logistics', label: 'Book tee time / table / suite / tickets; get confirmations in writing', when: 'T-21d' },
     { id: 't_rides', milestoneId: 'bp_transport', phase: 'logistics', label: 'Lock the safe-rides plan: DD or pre-booked rideshare/van + the cash for it', when: 'T-14d' },
     { id: 't_buddy', milestoneId: 'bp_transport', phase: 'planning', label: 'Name a buddy for the groom + a sober point-person; share the plan in the group chat', when: 'T-14d' },

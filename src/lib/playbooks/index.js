@@ -4704,12 +4704,14 @@ export function hostBuysLine(i) {
 // "None — beer/wine/spirits only" is a plain bar. "Full open bar" joined them.
 // ONE ADDED DRINK IS ×1 TOO, for the same reason: uncited, and once a full bar
 // was ×1 its ×1.25 priced "Beer + wine + one signature cocktail only" above a
-// hosted full bar. The dry party's ×0.6 is the one factor left; it is an uncited
-// engine estimate and the line says so (bevTierNote).
+// hosted full bar. A DRY PARTY BUYS NO BAR (owner approval, 11/21/2026: "Do
+// those 4"): it carried an uncited ×0.6 and still bought the beer and wine. It
+// has no factor now; its bar lines leave the list the way BYOB's drinks do
+// (`hostBuysIt` in playbookFoodPlan), and what is left prices at its cited band.
 const BEV_TIERS = [
   { factor: 1, name: 'a full bar', re: /\b(full (open )?bar|open bar|full cooler|premium|top-shelf|brown liquor|whiskey|bourbon|hired bartender)\b/ },
   { factor: 1, name: 'one added drink', re: /\b(add a|punch|grown section|cocktail|wine \+|signature)\b/ },
-  { factor: 0.6, name: 'a dry party', re: /\b(dry|family-friendly|zero-proof|no alcohol|non-alcoholic|kids|light \/|pace-it)\b/,
+  { dry: true, name: 'a dry party', re: /\b(dry|family-friendly|zero-proof|no alcohol|non-alcoholic|kids|light \/|pace-it)\b/,
     unless: /\b(wine|beer|bar|spirits?|liquor|cocktails?|champagne|prosecco|bubbly|bottle)\b/ },
 ];
 /** The drinks tier a lowercased pick reads as, or null for the cited baseline. */
@@ -4824,7 +4826,16 @@ export function playbookFoodPlan(event, opts = {}) {
     Array.isArray(d.blocks) && d.blocks.some((b) => /beverage/.test(String(b))));
   const _bevPick = (_bevDecision ? (pickFor(_bevDecision.id) || '') : '').toLowerCase();
   const _byob = /\b(byob|bring your own|guests bring|everyone brings)\b/.test(_bevPick);
-  const hostBuysIt = (p) => !(_byob && p.category === 'beverage' && !/\bice\b/i.test(p.item || ''));
+  // A DRY PICK DROPS THE BAR by the same rule (owner approval, 11/21/2026): the
+  // lines that name alcohol or bar stock leave, by their item or their id (Client
+  // Dinner's "A bottle brought for the table" is p_wine). Water, coffee, soda,
+  // ice and the zero-proof lines stay. A decision that authors its own
+  // costFactors is priced by them alone, so the word-tier never reads it.
+  const BAR_LINE_RE = /\b(beer|wine|spirits?|liquor|whiskey|bourbon|vodka|rum|tequila|gin|champagne|prosecco|bubbly|cocktails?|mixers?|bar|seltzer|alcohol)\b/i;
+  const _dryTier = (_bevPick && !(_bevDecision && _bevDecision.costFactors)) ? beverageTierFor(_bevPick) : null;
+  const _dry = !!(_dryTier && _dryTier.dry);
+  const isBarLine = (p) => BAR_LINE_RE.test(`${shortItem(p.item)} ${String(p.id || '').replace(/^p_/, '').replace(/_/g, ' ')}`);
+  const hostBuysIt = (p) => !(p.category === 'beverage' && !/\bice\b/i.test(p.item || '') && (_byob || (_dry && isBarLine(p))));
 
   // Food-approach → budget. When the host chose a CATERER (vs cooking), they aren't buying the
   // homemade FOOD lines — the caterer brings them — so those drop here (mirrors the BYOB rule
@@ -4870,44 +4881,6 @@ export function playbookFoodPlan(event, opts = {}) {
   })();
   const _catVendor = _usesCaterer ? (playbook.vendors || []).find((v) => v && /cater/i.test(String(v.category)) && /guest/i.test(String(v.costUnit || ''))) : null;
   const _cateringRate = _catVendor && Array.isArray(_catVendor.costRange) ? _catVendor.costRange : (_usesCaterer ? [15, 35] : null);
-
-  // EVERY beverage choice moves the budget, not just BYOB. The drinks/bar pick scales the
-  // beverage line cost by a tier factor read from its words: a dry/family spread is cheaper
-  // (no alcohol), one added drink costs more, a full bar and the default are the cited
-  // baseline (BEV_TIERS above playbookFoodPlan, owner ruling 11/21/2026). Ice is
-  // exempt (volume-driven, not bar-tier). One engine rule, every event type; an honest
-  // estimate adjustment (the spread already shows a range), recomputed live from the choice.
-  //
-  // ── THREE RULES, EACH STATED, EACH CARRIED ON THE LINE (11/20/2026) ───────
-  // Measured on the seasonal guides: New Year's Eve priced its sparkling wine
-  // at 60% of the cited band, and a holiday party priced still water and
-  // coffee at 160% of theirs.
-  //  1. ONE MULTIPLIER, NEVER TWO. A drinks decision that authors its own
-  //     `costFactors` has said in data how each pick moves which line; the
-  //     word-tier below is the fallback for decisions that say nothing, not a
-  //     second factor on top. (NYE's toast decision authors its factors, and
-  //     the word "zero-proof" in its default made the word-tier call the whole
-  //     party dry on top of them.)
-  //  2. A DRY PARTY HAS NO ALCOHOL IN ITS PICK. "Sparkling wine plus a real
-  //     zero-proof sparkler" offers a zero-proof option; it is not dry.
-  //  3. THE TIER PRICES THE BAR. The pick says what kind of bar it is, so it
-  //     moves the lines that ARE the bar — the ones that name alcohol or bar
-  //     stock. Water, coffee, tea, ice and the alcohol-free drinks are priced
-  //     at their own cited bands whatever the bar is.
-  // The factors themselves are uncited engine estimates, so the line carries
-  // the rule that applied (costFactorApplied, unverified) and the badge reads
-  // it — the same treatment an authored synthesized factor gets.
-  const beverageTier = (() => {
-    if (!_bevPick || (_bevDecision && _bevDecision.costFactors)) return null;
-    return beverageTierFor(_bevPick);
-  })();
-  const BAR_LINE_RE = /\b(beer|wine|spirits?|liquor|whiskey|bourbon|vodka|rum|tequila|gin|champagne|prosecco|bubbly|cocktails?|mixers?|bar|seltzer|alcohol)\b/i;
-  const bevFactorFor = (p) => (beverageTier && p.category === 'beverage' && BAR_LINE_RE.test(shortItem(p.item)))
-    ? beverageTier.factor : 1;
-  // Said only when the tier moved a price: a full bar (×1) moves nothing.
-  const bevTierNote = beverageTier && beverageTier.factor !== 1
-    ? `The drinks pick "${pickFor(_bevDecision.id)}" reads as ${beverageTier.name}, so the bar lines are priced at ×${beverageTier.factor} of the cited band — an engine estimate, not a cited price.`
-    : '';
 
   // GENERAL choice→cost mechanism (single source of truth): any playbook decision can declare, in the
   // DATA, how a chosen option re-prices specific purchase lines — `costFactors: { '<option>': <mult> }`
@@ -5234,10 +5207,6 @@ export function playbookFoodPlan(event, opts = {}) {
       let [uLow, uHigh] = (swapAlt && Array.isArray(swapAlt.unitCostRange))
         ? swapAlt.unitCostRange
         : (_tierRange || (Array.isArray(p.unitCostRange) ? p.unitCostRange : [0, 0]));
-      // Beverage tier factor — applied at the unit-cost level so the line total, the per-unit
-      // breakdown, and the budget all derive consistently from the drinks choice. Single source.
-      const _bev = bevFactorFor(p);
-      if (_bev !== 1) { uLow *= _bev; uHigh *= _bev; }
       // Sourcing tier factor — protein lines re-price with how the host is getting them.
       const _src = srcFactorFor(p);
       if (_src !== 1) { uLow *= _src; uHigh *= _src; }
@@ -5381,13 +5350,11 @@ export function playbookFoodPlan(event, opts = {}) {
         // What MOVED this price, carried out with it. `classifyClaim` reads it so
         // a sourced badge cannot go on vouching for a base rate after an
         // unverified multiplier has changed the number on screen.
-        // The drinks tier (bevFactorFor) moves the price too, so it rides here
-        // with the rule that applied — traceable, and marked unverified.
-        costFactorApplied: (_choiceBasis.factor !== 1 || _bev !== 1)
+        costFactorApplied: (_choiceBasis.factor !== 1)
           ? {
-            factor: Math.round(_choiceBasis.factor * _bev * 1000) / 1000,
-            unverified: _choiceBasis.unverified || _bev !== 1,
-            note: [_bev !== 1 ? bevTierNote : '', _choiceBasis.factor !== 1 ? (_choiceBasis.note || '') : ''].filter(Boolean).join(' '),
+            factor: Math.round(_choiceBasis.factor * 1000) / 1000,
+            unverified: _choiceBasis.unverified || false,
+            note: _choiceBasis.note || '',
           }
           : null,
         qtyGrounded: isGroundedItemQty(purchaseProvenance(playbook, p0)),

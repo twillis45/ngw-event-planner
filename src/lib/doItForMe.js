@@ -11,7 +11,8 @@ import { venueFor } from './venueFor';
 import { clock12 } from './clock';
 import { guestSafeText } from './guestFacing';
 import { guestCountIsConfirmed, guestCountNotice } from './guestCountFor';
-import { STAY_FROM_PICK, STAY_FROM_PLAN } from './lodgingIntel';
+import { STAY_FROM_PICK, STAY_FROM_PLAN, lodgingIsHeld } from './lodgingIntel';
+import { readSplit, settle, formatCents } from './costSplit';
 import { normalizeCvbContact } from './cvbIntel';
 import { incidentPlanFor } from './knowledge/incidentContext';
 // vendorDetailsMessage imports fmtLongDate from here; both sides only call the
@@ -1330,6 +1331,54 @@ export function draftGettingHereNote(event, profile = null) {
   const host = hostName(profile);
   if (host) blocks.push(`— ${host}`);
   return { subject: `Getting here${forName}`, body: blocks.join('\n\n').trim() };
+}
+
+// ── THE TRIP DETAILS (owner pick "Yes, combined", 11/21/2026) ─────────────────
+// Group Trip's "Send everyone the trip details: the dates, the address, the
+// few things everyone does together, and what each person owes". Guest-facing
+// DRAFT (UX_07 Level 5): the host reviews it and hands it off or posts it.
+// Built ONLY from what is on file: the date window; the BOOKED stay
+// (lodgingIsHeld) by name and town, because no street address is stored and
+// none is written; the BOOKED plans (isVendorBooked, so an "Inquired" brunch is
+// not on it); and each person's share from Split the costs. A missing piece is
+// left out and named in `notice`, which the draft sheet shows the host. No
+// facts at all → an empty body (the sheet's "nothing to draft yet").
+export function draftTripDetails(event, profile = null) {
+  const ev = event || {};
+  const missing = [];
+  const blocks = [];
+  const start = (() => { try { return fmtLongDate(ev.date); } catch { return ''; } })();
+  const end = (() => { try { return fmtLongDate(ev.endDate); } catch { return ''; } })();
+  if (start && end && end !== start) blocks.push(`When: ${start} through ${end}.`);
+  else if (start) blocks.push(`When: ${start}.`);
+  else missing.push('No dates yet — set them in Date & time.');
+  const stay = (ev.lodging && typeof ev.lodging === 'object') ? ev.lodging : {};
+  const hotel = String(stay.hotelName || '').trim();
+  if (hotel && lodgingIsHeld(ev)) {
+    const vf = venueFor(ev);
+    const town = [vf.city, vf.state].map((x) => String(x || '').trim()).filter(Boolean).join(', ');
+    blocks.push(`Where we’re staying: ${hotel}${town ? `, ${town}` : ''}.`);
+  } else missing.push('No stay booked yet — add it in Where everyone stays.');
+  const plans = (Array.isArray(ev.vendors) ? ev.vendors : [])
+    .filter((v) => v && isVendorBooked(v) && String(v.name || '').trim());
+  if (plans.length) blocks.push(['What’s booked for the group:', ...plans.map((v) => `- ${String(v.name).trim()}`)].join('\n'));
+  else missing.push('Nothing booked to do together yet — add it in People you’re hiring.');
+  const r = settle(readSplit(ev));
+  if (r.people.length > 1 && r.total > 0) {
+    const even = r.people.every((p) => p.share === r.each);
+    blocks.push(even
+      ? `Each person’s share: ${formatCents(r.each)} each (${formatCents(r.total)} split ${r.people.length} ways).`
+      : ['Each person’s share:', ...r.people.map((p) => `- ${p.name}: ${formatCents(p.share)}`)].join('\n'));
+  } else missing.push('No costs split yet — add them in Split the costs.');
+  const notice = missing.length ? missing.join(' ') : null;
+  if (!blocks.length) return { subject: '', body: '', notice };
+  const name = String(ev.name || '').trim();
+  const forName = name ? ` for ${name}` : '';
+  blocks.unshift(`Hi everyone — here are the trip details${forName}:`);
+  blocks.push('Questions? Just reply here.');
+  const host = hostName(profile);
+  if (host) blocks.push(`— ${host}`);
+  return { subject: `Trip details${forName}`, body: blocks.join('\n\n').trim(), notice };
 }
 
 // ── DIFM-PROPOSE-1 — difmCapable → propose-vs-ask (DECISION_SCHEMA_SPEC §4.C) ──

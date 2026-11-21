@@ -60,7 +60,10 @@ const bacheloretteParty = {
   ],
 
   tasks: [
-    { id: 't_costsplit', milestoneId: 'bp_setdate', phase: 'planning', label: 'Agree the per-person number + "we cover the bride" rule in writing', when: 'T-30d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the call
+    // clears on the pick, and writing it down is its own step, due the same day.
+    { id: 't_costsplit', answeredBy: ['costsplit'], milestoneId: 'bp_setdate', phase: 'planning', label: "Agree the per-person number and the 'we cover the bride' rule", when: 'T-30d' },
+    { id: 't_costsplit_write', milestoneId: 'bp_setdate', phase: 'planning', label: 'Put the money rule in writing for the group', when: 'T-30d' },
     { id: 't_book', milestoneId: 'bp_book', phase: 'logistics', label: 'Book lodging, dinner reservation (deposit/card), party bus or pre-stage rideshare', when: 'T-21d' },
     { id: 't_invite', milestoneId: 'bp_invite', phase: 'guest', label: 'Send itinerary + cost-split + RSVP-by + dietary/no-alcohol ask; collect deposits via app', when: 'T-18d' },
     { id: 't_safety', milestoneId: 'bp_safety', phase: 'safety', label: 'Name a sober point person, set a buddy system + meetup spot, pre-load rideshare, share live location, save the Airbnb/hotel address in everyone\'s phone', when: 'T-7d' },
