@@ -907,6 +907,8 @@ button{font-family:inherit}
 .hero.elegant .confrow .g{ color:var(--faint); font-weight:800; flex:0 0 auto; }
 .hero.elegant .confrow.confrow-open{ cursor:default; flex-direction:column; align-items:stretch; }
 .hero.elegant .confrow.confrow-open:hover{ background:#20242a; }
+/* Light: the dark literal above put dark --ink on #20242a (1.23:1); hold the open row on its resting fill. */
+@media (hover:hover){ :root[data-theme="light"] .hero.elegant .confrow.confrow-open:hover{ background:var(--card); } }
 /* BELOW-FOLD "Then, in order" (host redesign 2026-07-18): one section header, hairline-
    ruled rows (order by position, no repeated "then" eyebrow), a bundle keeps its count. */
 .hero.elegant .then-fold.ef-do{ margin-top:22px; }
