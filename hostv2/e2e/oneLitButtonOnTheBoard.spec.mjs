@@ -47,6 +47,11 @@ const UNDER_WAY = {
 
 // Seeded demo events, as boardMatrix boots them (id + optional patch).
 const VENUE = { venue: 'The Ironwood Room', venueCity: 'Annapolis, MD' };
+// The dinner inside the trip (11/21/2026): its board card's button is soft.
+const TRIP = { id: 'board-lit-trip', name: 'Mom’s 80th Birthday', honoree: 'Mom', type: 'Birthday', createdAt: '2026-11-01',
+  date: dateIn(200), endDate: dateIn(203), isDestination: true, destinationBasis: 'travel-language', guestsStayOvernight: true,
+  travelMode: 'fly', venueCity: 'Santa Fe', venueState: 'NM', guestMode: 'count', guestEstimate: 30, guestCountSource: 'host',
+  celebration: { place: 'adobe courtyard' }, guests: [], vendors: [], budget: [], timeline: [] };
 const STATES = [
   { label: 'an empty event', custom: EMPTY },
   { label: 'a plan under way', custom: UNDER_WAY },
@@ -56,6 +61,7 @@ const STATES = [
   { label: 'Dinner T-1, vendors', id: 'test-day-before-vendors' },
   { label: 'Wanda far-out', id: 'ev-x-wanda' },
   { label: 'Graduation (past)', id: 'ev-x-graduation' },
+  { label: 'a destination trip with its dinner', custom: TRIP },
 ];
 
 const boot = async (page, state, theme, elegant = '1') => {
