@@ -55,16 +55,14 @@ const measure = ([sel, scopeSel]) => {
     const layers = [];
     let grounds = [[255, 255, 255]];
     // A translucent gradient (the canvas glow on .app and .sheet; owner ruling
-    // 25's warm wash) is a ground at EVERY stop in light: each stop composited
-    // over the opaque ground beneath it is measured, and the worst counts.
-    // Light only: the ruling moved the light ground. Dark's steel glow is
-    // unchanged by it, and at its top stop dark muted text reads 3.8:1 (a
-    // standing dark finding, reported to the owner 11/21/2026, not this gate).
+    // 25's warm wash in light, the steel glow in dark) is a ground at EVERY
+    // stop, in both themes: each stop composited over the opaque ground beneath
+    // it is measured, and the worst counts. (Until 11/21/2026 this ran in light
+    // only; dark muted text read 3.8:1 under the steel glow's top stop.)
     let wash = null;
-    const lightTheme = document.documentElement.getAttribute('data-theme') === 'light';
     for (let n = el; n; n = n.parentElement) {
       const ncs = getComputedStyle(n);
-      if (lightTheme && !wash && /gradient/.test(ncs.backgroundImage)) {
+      if (!wash && /gradient/.test(ncs.backgroundImage)) {
         const all = (ncs.backgroundImage.match(/rgba?\([^)]+\)/g) || []).map(rgba).filter(Boolean);
         if (all.length && all.every((x) => x[3] < 1)) wash = all;
       }

@@ -485,7 +485,7 @@ button{font-family:inherit}
    this costs and should not be shrunk. Initials go 11 -> 12px to match. */
 .gav{display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px;
   border-radius:50%; font-size:12px; font-weight:700; letter-spacing:.02em; flex-shrink:0;
-  color:#e8edf2; box-shadow:inset 0 1px 0 var(--hair-08)}
+  color:var(--carbon-ink); box-shadow:inset 0 1px 0 var(--hair-08)}
 /* Seating floor plan — a responsive canvas with draggable table pucks (MVP).
    touch-action:none so a drag doesn't scroll the sheet underneath. */
 .floorplan{position:relative; width:100%; aspect-ratio:4/3; margin:var(--sp-2) 0 6px; border-radius:var(--r-lg);
@@ -864,7 +864,8 @@ button{font-family:inherit}
    because the hero CTA has several render branches with different classNames
    ("cta", "cta stay", …) and only one renders at a time; `.hero.elegant .cta` is
    the one selector that reliably reaches all of them. The parity gate pins these
-   two tokens so this cannot drift back into a fork. */
+   two tokens so this cannot drift back into a fork. DARK ONLY since owner ruling
+   29 (11/21/2026): light wears the steel primary, see STEEL IN LIGHT below. */
 .hero.elegant .cta{ background:var(--sheen); color:var(--ink); border-radius:var(--r-row); padding:15px 20px; min-height:54px;
   width:100%; justify-content:center; text-align:center; font-size:var(--t-cta-big);
   box-shadow:0 3px 0 var(--key-edge), 0 9px 22px -9px var(--shadow-60), inset 0 1px 0 var(--hair-07);
@@ -892,12 +893,24 @@ button{font-family:inherit}
   box-shadow:0 4px 0 var(--key-edge), 0 13px 26px -10px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.09); }
 .hero.elegant .cta:active{ transform:translateY(3px);
   box-shadow:0 0 0 var(--key-edge), 0 3px 9px -5px var(--shadow-50), inset 0 1px 0 var(--hair-05); }
+/* STEEL IN LIGHT (owner ruling 29, 11/21/2026: "C: steel, like Your money").
+   Supersedes the soft tier above for LIGHT only: the board's ask wears the
+   sheets' primary (--cta-grad, --on-steel label). The keycap stays (3px edge,
+   4 on hover, 0 on press) but the edge is --steel-dark and the cast is the
+   light --panel-shadow: --key-edge and --shadow-60 read as a near-black slab
+   on the warm canvas. Dark keeps the soft tier above untouched. Soft and ghost
+   are secondaries and stay as they are. Pinned by the parity gate and by
+   e2e/theBoardAskIsSteelInLight.spec.mjs. */
+:root[data-theme="light"] .hero.elegant .cta:not(.soft):not(.ghost){ background:var(--cta-grad); color:var(--on-steel);
+  box-shadow:0 3px 0 var(--steel-dark), var(--panel-shadow), inset 0 1px 0 var(--hair-14); }
+:root[data-theme="light"] .hero.elegant .cta:not(.soft):not(.ghost):hover:not(:disabled){
+  box-shadow:0 4px 0 var(--steel-dark), var(--panel-shadow), inset 0 1px 0 var(--hair-14); }
+:root[data-theme="light"] .hero.elegant .cta:not(.soft):not(.ghost):active{
+  box-shadow:0 0 0 var(--steel-dark), inset 0 1px 0 var(--hair-07); }
 /* DECLUTTERED CONFLICT (host 2026-07-18): tight situation with a quiet "why?" tap, and
    the fixes as compact tappable rows (no faked "our fix" — genuine either/or). */
 .hero.elegant .conf-sit{ display:flex; align-items:flex-start; gap:10px; }
 .hero.elegant .conf-sit .because{ flex:1; margin:0; }
-.hero.elegant .whytog{ flex:0 0 auto; background:#20242a; color:var(--steel-soft); border:none; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:650; cursor:pointer; transition:background var(--ms-fast) var(--ease-out); }
-.hero.elegant .whytog:hover{ background:var(--steel-tint); }
 .hero.elegant .conf-fixes{ display:flex; flex-direction:column; gap:8px; margin-top:var(--sp-2); }
 /* Tokenized to the kit's TierRow geometry (padding 13px 16px, --r-md) — was raw hex + 13px 15px, a by-eye parallel of TierRow (parity audit 2026-07-19). */
 .hero.elegant .confrow{ display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; background:var(--card); border:none; border-radius:var(--r-md); padding:13px 16px; cursor:pointer; text-align:left; color:var(--ink); font:inherit; flex-wrap:wrap; transition:background var(--ms-fast) var(--ease-out), transform .1s var(--ease-out); }
@@ -967,6 +980,7 @@ button{font-family:inherit}
    for the existing atoms they were already approximating (measured live, deltas
    <=2 except where noted); no new atoms, no new geometry. */
 .decopts{ display:flex; flex-direction:column; gap:8px; margin-top:var(--sp-2); }
+.decopts-chosen{ margin:0; }
 /* ALIGNED TO THE .cta FAMILY (host ruling 2026-07-31, "align all"). Two values
    were out of step with every other action control in the app:
      radius     — var(--r-md) 12px, where the .cta family unified on
@@ -2220,31 +2234,12 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    choreography: eyebrow tracks in → the name arrives from infinity on one
    precision curve (the period bead ignites as it lands) → one lens glint →
    focus racks to the verbatim listing, one row per 900ms, name lands last. */
-.rv-meyebrow{text-align:center; font-size:var(--t-overline); font-weight:650; color:var(--muted);
-  letter-spacing:8px; opacity:0; transition:letter-spacing 1.4s var(--ease-out), opacity 1.2s var(--ease-out)}
-.reveal-stage.rv-intro .rv-meyebrow,.reveal-stage.rv-zoom .rv-meyebrow,.reveal-stage.rv-glint .rv-meyebrow{opacity:.7; letter-spacing:3px}
-.rv-mwrap{position:absolute; left:24px; right:24px; top:30%; text-align:center; overflow:visible; z-index:3; pointer-events:none}
-/* Host ruling 2026-07-27: the reveal name wears the APP'S display voice
-   (the welcome/splash sans at 800) — Playfair stays stationery-only. */
-.rv-mname{font-family:var(--sans); font-weight:800; font-size:var(--t-display-l); line-height:1.05;
-  letter-spacing:-.03em; color:#f4f6f8; margin:18px 0 0; display:block;
-  transform:scale(.06); opacity:0;
-  transition:transform 2.4s cubic-bezier(.16,1,.3,1), opacity .9s var(--ease-out)}
-.reveal-stage.rv-zoom .rv-mname,.reveal-stage.rv-glint .rv-mname{transform:scale(1); opacity:1}
-/* the locked period bead drops + ignites exactly as the zoom lands */
-.reveal-stage.rv-zoom .rv-mname .reveal-dot,.reveal-stage.rv-glint .rv-mname .reveal-dot{
-  animation:reveal-dot-drop .6s cubic-bezier(.5,0,1,.6) 2s both, reveal-dot-breathe 3400ms var(--ease-in-out) 2.85s infinite}
 .rv-mglint{position:absolute; top:-30%; bottom:-30%; width:46px; left:-70px; pointer-events:none;
   background:linear-gradient(90deg, transparent, rgba(255,255,255,.75), transparent);
   transform:rotate(-16deg); opacity:0; mix-blend-mode:screen}
 .reveal-stage.rv-glint .rv-mglint{animation:rvmglint 1s cubic-bezier(.4,0,.2,1) .1s both}
 @keyframes rvmglint{0%{opacity:0; transform:rotate(-16deg) translateX(0)} 12%{opacity:1}
   100%{opacity:0; transform:rotate(-16deg) translateX(520px)}}
-/* RACK-OUT (concept B fidelity): the name DISSOLVES FORWARD — blur + scale
-   toward the lens — while the plan wall sharpens behind it. */
-.reveal-stage.rv-rack .rv-mwrap .rv-meyebrow{opacity:0; transition:opacity .5s var(--ease-out)}
-.reveal-stage.rv-rack .rv-mname{animation:rvmrackout 1.15s cubic-bezier(.6,0,.8,.4) both}
-@keyframes rvmrackout{from{opacity:1; transform:scale(1); filter:blur(0)} to{opacity:0; transform:scale(1.42); filter:blur(10px)}}
 /* (Concept B's white-pill CTA was tried and REVERTED by host ruling
    2026-07-27 — UX_01's no-white rule holds even here; the ask stays steel.) */
 /* rack focus: the listing sharpens in slowly enough to READ — 1.35s per row
@@ -2297,11 +2292,6 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   transform:translate(-50%,-50%); border-radius:50%; pointer-events:none; z-index:-1;
   background:radial-gradient(closest-side, rgba(78,104,119,.34), transparent 70%); filter:blur(44px)}
 @keyframes rvcardin{from{opacity:0; transform:scale(.975); filter:blur(4px)} to{opacity:1; transform:none; filter:blur(0)}}
-.rv-card-kicker{font-size:var(--t-overline); font-weight:650; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--steel-soft); animation:rvcardbit .8s cubic-bezier(.33,0,.2,1) .2s both}
-.rv-card-what{font-family:var(--sans); font-weight:800; font-size:clamp(30px,8.6cqw,40px); line-height:1.14;
-  letter-spacing:-.025em; color:#f2f4f7; margin-top:14px; text-wrap:balance;
-  animation:rvcardbit .9s cubic-bezier(.33,0,.2,1) .35s both}
 .rv-card-why{font-size:var(--t-body-s); line-height:1.5; color:var(--carbon-ink-quiet); margin-top:14px; max-width:30ch;
   animation:rvcardbit .85s cubic-bezier(.33,0,.2,1) .62s both}
 .rv-card-prov{font-size:var(--t-caption-min); font-weight:600; letter-spacing:.04em; color:var(--carbon-ink-faint);
@@ -2316,7 +2306,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .reveal-stage.rv-settle .rv-slowrows .rv-line::before{animation:rvracktick 1s var(--ease-out) both; animation-delay:calc(var(--i, 0)*.12s)}
 @keyframes rvcompose{from{opacity:0} to{opacity:1}}
 @media(prefers-reduced-motion:reduce){
-  .rv-card, .rv-card-kicker, .rv-card-what, .rv-card-why, .rv-card-prov{animation:none!important; opacity:1!important; transform:none!important; filter:none!important}
+  .rv-card, .rv-card-why, .rv-card-prov{animation:none!important; opacity:1!important; transform:none!important; filter:none!important}
 }
 /* THE PLAN AT A GLANCE (host ruling 2026-07-27: "no payoff below the fold"):
    the resolved plan is a 2-col tile grid that BUILDS live beneath the takeover
@@ -2325,7 +2315,6 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    listing lives on the board. */
 .rv-cardzone{position:relative; flex:1; min-height:220px}
 .rv-cardzone .rv-card{position:absolute; inset:0; padding:0 8px}
-.rv-cardzone .rv-card-what{font-size:clamp(24px,7cqw,32px)}
 .rv-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px}
 .rv-tile{background:color-mix(in srgb, var(--card) 82%, transparent); border:1px solid var(--line);
   border-radius:10px; padding:8px 10px; opacity:0; transform:scale(.965)}
@@ -2360,7 +2349,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   100%{background:rgba(78,104,119,.35); box-shadow:none}}
 @keyframes rvrackrow{from{opacity:0; transform:translateY(6px); filter:blur(12px)} to{opacity:1; transform:none; filter:blur(0)}}
 @media(prefers-reduced-motion:reduce){
-  .rv-meyebrow,.rv-mname,.rv-slowrows .rv-line,.rv-slowrows .rv-why,.rv-slowrows .grounding,.rv-slowrows .rv-prov{opacity:1!important; transform:none!important; filter:none!important; animation:none!important; transition:none!important}
+  .rv-slowrows .rv-line,.rv-slowrows .rv-why,.rv-slowrows .grounding,.rv-slowrows .rv-prov{opacity:1!important; transform:none!important; filter:none!important; animation:none!important; transition:none!important}
   .rv-mglint{display:none!important}
 }
 
@@ -2472,18 +2461,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   transform:translateY(9px) scale(.9); animation:none;
   transition:transform .15s ease-in; box-shadow:0 0 24px 5px rgba(78,104,119,.8)}
 @keyframes rvbreathe{0%,100%{transform:scale(1)} 50%{transform:scale(1.35)}}
-/* the name — letters ignite ember → hot → ink, riding a 26ms stagger */
 .rv-namewrap{position:relative; text-align:center; margin-top:36vh}
-.rv-name{font-family:var(--serif); font-weight:800; font-size:var(--t-display-l);
-  line-height:1.1; letter-spacing:-.015em; margin:0; color:var(--ink)}
-.rv-name .rv-L{display:inline-block; opacity:0; transform:translateY(30px); filter:blur(6px);
-  animation:rvignite .38s cubic-bezier(.34,1.4,.64,1) both; animation-delay:calc(var(--i, 0)*26ms)}
-@keyframes rvignite{
-  0%{opacity:0; transform:translateY(30px); filter:blur(6px); color:#3d525f; text-shadow:none}
-  62%{opacity:1; color:#d7e2ea; text-shadow:0 0 20px rgba(138,163,176,.85)}
-  100%{opacity:1; transform:none; filter:blur(0); color:#f2f4f7; text-shadow:0 0 6px rgba(138,163,176,.22)}}
-/* the period ignites right behind the last letter (the traveling bead WAS the drop) */
-.rv-name .reveal-dot{animation:reveal-dot-drop .4s cubic-bezier(.5,0,1,.6) .22s both, reveal-dot-breathe 3400ms var(--ease-in-out) .8s infinite}
 /* sparks — arc out of the period under drag + gravity */
 .rv-sparks{position:relative; display:inline-block; width:0; height:0; vertical-align:baseline}
 .rv-sparks i{position:absolute; left:0; top:-6px; width:3px; height:3px; border-radius:50%;
@@ -2514,7 +2492,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   100%{opacity:1; transform:none; background:transparent}}
 @media(prefers-reduced-motion:reduce){
   .rv-fx,.rv-bloom,.rv-bead,.rv-trail,.rv-sparks{display:none!important}
-  .rv-t-title,.rv-t-what,.rv-t-why,.rv-think,.rv-name .rv-L,.rv-cascade .rv-line,.rv-idline{animation:none!important; opacity:1!important; transform:none!important; filter:none!important}
+  .rv-t-title,.rv-t-what,.rv-t-why,.rv-think,.rv-cascade .rv-line,.rv-idline{animation:none!important; opacity:1!important; transform:none!important; filter:none!important}
 }
 
 /* ── First-run welcome: lines settle in top-to-bottom, ease-out, no bounce ── */
@@ -3058,6 +3036,11 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .fstat-l{min-width:0}
 .fstat-l .of{white-space:nowrap}
 .fstat-v{white-space:nowrap; flex-shrink:0}
+/* A SENTENCE WRAPS (11/21/2026). The rule above is for totals. Where the value
+   is a status sentence beside a name ("Booking in progress — not yet
+   confirmed." beside "Night Shift DJ"), nowrap ran it past a 390 screen;
+   the sentence takes the room left and wraps, as the board's reasons do. */
+.fstat-v.fstat-note{white-space:normal; flex:1 1 auto; min-width:0}
 .fstat-chev{color:var(--faint)}
 /* Sourcing tiers as bordered cards (378:94): active one tinted + steel border. */
 .srctier-list{display:flex; flex-direction:column; gap:var(--sp-2); margin-bottom:var(--sp-2)}
@@ -4498,7 +4481,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
   .floor-addland:hover, .palette-row:hover, .decopt:hover,
   .app-elegant .decopt:hover, .app-elegant .decopt.pick:hover,
   .app-elegant .decopt-disc:hover, .hero.elegant .cta:hover:not(:disabled),
-  .hero.elegant .whytog:hover, .hero.elegant .confrow:hover,
+  .hero.elegant .confrow:hover,
   .hero.elegant .confrow.confrow-open:hover, .hero.elegant .ef-row:hover,
   .hero.elegant .bento .tile-b:hover, .hero.elegant .bento .tile-c:hover,
   .hero.elegant .cp-look:hover, .hero.elegant .ac-next:hover,
@@ -7181,9 +7164,9 @@ button.vc-pill::after{
 }
 .pr-acts > .mini{ flex:0 1 auto; }
 
-/* The reply-by control is a sentence the host can act on, not a button. Same
-   treatment as `.whytog` — the disclosure register this surface already uses —
-   so it cannot be mistaken for one of the tiered actions above it. */
+/* The reply-by control is a sentence the host can act on, not a button. A
+   quiet disclosure register, so it cannot be mistaken for one of the tiered
+   actions above it. */
 .pr-quiet{
   background:none; border:none; padding:var(--sp-2) 0;
   font:inherit; font-size:var(--t-pill); font-weight:650;

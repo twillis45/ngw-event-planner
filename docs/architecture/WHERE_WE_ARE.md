@@ -1,5 +1,13 @@
 # Where We Are -- live status board
 
+## November 21, 2026 (morning) — the plan stops asking what it already knows
+
+**A host's own iPad showed the board asking "Who cooks" as overdue, with the answer already marked chosen.** Steps that are really decisions now know which decision they are, so making the call clears the step everywhere at once. An opened call now says "Chosen already."
+
+**The look, settled on rendered comparisons.** In light, the board's main button is the same steel as every sheet's. In dark, secondary text was brightened just enough to read under the steel glow. The glow itself stays.
+
+**Drink budgets no longer use an unsourced multiplier.** Bar lines now price at their own cited ranges. Several party budgets came down, and two picks that were misread are now read correctly.
+
 ## November 21, 2026 (overnight) — one look, measured on every screen
 
 **The menu stops asking a question it already has the answer to.** The menu card now names the next open question ("How is the turkey cooked?") and moves on when it is answered. "Nobody has allergies" counts as an answer.

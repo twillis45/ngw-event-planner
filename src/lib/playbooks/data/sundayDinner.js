@@ -220,7 +220,7 @@ const sundayDinner = {
   ],
 
   tasks: [
-    { id: 't-pick-main', milestoneId: 'm-menu-set', phase: 'planning', label: 'Decide the main and confirm who cooks it', when: 'T-4d' },
+    { id: 't-pick-main', answeredBy: ['the-main', 'who-cooks-what'], milestoneId: 'm-menu-set', phase: 'planning', label: 'Decide the main and confirm who cooks it', when: 'T-4d' },
     { id: 't-assign-sides', milestoneId: 'm-menu-set', phase: 'planning', label: 'Assign sides, bread, and dessert across the family so nothing doubles up', when: 'T-4d' },
     { id: 't-headcount', milestoneId: 'm-menu-set', phase: 'planning', label: 'Confirm headcount including elders and kids; note any dietary needs', when: 'T-4d' },
     { id: 't-shop', milestoneId: 'm-shopping', phase: 'logistics', label: 'Buy the bird/roast, greens, mac ingredients, cornbread/biscuit fixings, dessert, sweet tea and lemonade', when: 'T-2d' },

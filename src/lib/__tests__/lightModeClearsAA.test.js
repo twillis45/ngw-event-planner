@@ -143,8 +143,13 @@ describe('the gray tiers rank by luminance, not by hue', () => {
     expect((hi + 0.05) / (lo + 0.05)).toBeGreaterThanOrEqual(1.10);
   });
 
+  // Owner, 11/21/2026 (option C, the dark steel glow): the host shell's dark
+  // --muted is #a0a2a6 and --ink-soft #98b2cc, set in hostv2/src/theme.js (the
+  // shared palette's #849eb8 stays for the CRA shell). Read the shipped pair.
   test('dark: muted sits a real step darker than ink-soft', () => {
-    expect(lum('#909296')).toBeLessThan(lum(dark.textSecondary));
+    expect(lum('#a0a2a6')).toBeLessThan(lum('#98b2cc'));
+    // The same real step light holds (1.17 here; the old pair was 1.12).
+    expect((lum('#98b2cc') + 0.05) / (lum('#a0a2a6') + 0.05)).toBeGreaterThanOrEqual(1.10);
   });
 
   test('and primary outranks secondary in both', () => {

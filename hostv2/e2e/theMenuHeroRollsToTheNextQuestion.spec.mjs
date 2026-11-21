@@ -134,8 +134,8 @@ for (const route of ['?elegant=1', '?elegant=0']) {
       },
     }), route);
     expect(await heroId(page)).toBe('card-phase:food');
-    // Each question is known by its own lead option: the v2 panel heads the card
-    // "What you're serving · N open" and does not print the question itself.
+    // Each question is known by its own lead option (both routes also name it in
+    // the heading; the test below holds that).
     for (const [lead, pick] of [['Roasted in the oven', 'Smoked'], ['One or two needs — adjust dishes and label them', 'Nobody — the traditional menu works for everyone']]) {
       await expect(option(page, lead)).toBeVisible();
       await expectSpreadLink(page);
@@ -145,6 +145,29 @@ for (const route of ['?elegant=1', '?elegant=0']) {
     }
     // Both answered: no menu question is left on the hero to carry a link.
     await expect(heroCard(page).locator('button.decopt').filter({ hasText: 'One or two needs' })).toHaveCount(0);
+  });
+}
+// THE PLAIN VIEW NAMES THE QUESTION TOO (11/21/2026). With the elegant style
+// off the food card's heading read "What you're serving · 2 open" over the
+// turkey question. Both routes now head the card with the open question, from
+// the same list the count reads (openFoodChoices).
+for (const route of ['?elegant=1', '?elegant=0']) {
+  test(`Thanksgiving (${route}): the heading names the open menu question`, async ({ page }) => {
+    await boot(page, seed('Thanksgiving Hosting', 'E2E_menu_heading' + route.slice(-1), {
+      snoozed: SET_ASIDE,
+      foodChoices: {
+        hosting_model: 'Host cooks the whole meal',
+        service_style: 'Sit-down — everyone at the table',
+        serve_time: 'Late afternoon, around 4 or 5',
+        overnight_guests: 'No — everyone is local',
+      },
+    }), route);
+    expect(await heroId(page)).toBe('card-phase:food');
+    await expect.poll(() => menuHeading(page)).toBe('How is the turkey cooked? · 2 open');
+    const disc = heroCard(page).locator('button.decopt-disc').filter({ hasText: 'Other ways' }).first();
+    if (await disc.count()) await disc.click();
+    await option(page, 'Smoked').click();
+    await expect.poll(() => menuHeading(page)).toBe('Who at the table has a dietary need to cook for? · 1 open');
   });
 }
 test('the spread link opens the spread', async ({ page }) => {

@@ -1,0 +1,61 @@
+// ─── EVERY CHECKLIST ROW HAS A DESTINATION, OR SAYS WHY NOT (11/21/2026) ─────
+//
+// Every playbook's checklist, row by row, through the real checklistRouteFor
+// and resolveRoute:
+//   • every emitted route lands on a sheet or stage the host shell renders;
+//   • every row that IS a playbook call (`answeredBy`) has a destination, and
+//     with no other rule it opens Calls to make on that call: "Decide whose
+//     midnight it is…" had no button while midnight_model sat on that sheet;
+//   • the rows with no button are real-world work (cook, thaw, wash, text a
+//     friend), and their count may only fall. checklistDestinationTruth holds
+//     why a kitchen row honestly has none.
+const { checklistRouteFor } = require('../lib/taskRoute');
+const { resolveRoute } = require('../lib/routeResolver');
+const { ALL_PLAYBOOKS, playbookChecklist, stepCalls } = require('../lib/playbooks');
+
+// The sheet kinds hostv2 renders (HostShellV2 `sheet.kind === …`) plus its two stages.
+const SHELL_KINDS = new Set(['air', 'budget', 'costshare', 'crabs', 'date', 'decisions', 'food', 'ground', 'guests',
+  'lodging', 'messages', 'rain', 'risks', 'seating', 'space', 'tasks', 'vendors', 'venue', 'stage:day', 'stage:plan']);
+const NO_DESTINATION_CEILING = 124;
+
+const ev = (type) => ({ id: 'dest', type, date: '2026-12-31', guestEstimate: 20, guestMode: 'count', guestCountSource: 'host',
+  venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX' });
+const rows = [];
+for (const pb of ALL_PLAYBOOKS) {
+  const e = ev(pb.type);
+  for (const r of (playbookChecklist(e, '2026-10-01') || [])) {
+    const hit = checklistRouteFor(r.task, { week: r.week, category: r.category }, e);
+    const kind = !hit ? null : hit.href ? 'external' : ((resolveRoute(hit.route) || {}).kind || 'UNRESOLVED');
+    rows.push({ type: pb.type, id: r.id, task: r.task, hit, kind, calls: stepCalls(e, { task: r.task }) });
+  }
+}
+
+test('every emitted route lands on a surface the host shell renders', () => {
+  const bad = rows.filter((r) => r.kind && r.kind !== 'external' && !SHELL_KINDS.has(r.kind))
+    .map((r) => `${r.type}: ${r.task.slice(0, 60)} → ${r.kind}`);
+  expect(bad).toEqual([]);
+});
+
+test('every row that is a call has a destination', () => {
+  // An authored keyword rule may already send it where the call is made too
+  // (the spread's "Your choices", the money agreement); otherwise it opens
+  // Calls to make on that call.
+  const callRows = rows.filter((r) => r.calls.length);
+  expect(callRows.length).toBeGreaterThan(0);
+  for (const r of callRows) {
+    expect(r.hit).toBeTruthy();
+    expect(SHELL_KINDS.has(r.kind)).toBe(true);
+    if (r.kind === 'decisions') expect(resolveRoute(r.hit.route).focus).toBe(r.calls[0]);
+  }
+});
+
+test("New Year's Eve: deciding whose midnight it is opens that call", () => {
+  const r = rows.find((x) => x.type === "New Year's Eve Party" && /^Decide whose midnight/.test(x.task));
+  expect(r).toBeTruthy();
+  expect(r.kind).toBe('decisions');
+  expect(resolveRoute(r.hit.route).focus).toBe('midnight_model');
+});
+
+test('rows with no button only get fewer', () => {
+  expect(rows.filter((r) => !r.hit).length).toBeLessThanOrEqual(NO_DESTINATION_CEILING);
+});

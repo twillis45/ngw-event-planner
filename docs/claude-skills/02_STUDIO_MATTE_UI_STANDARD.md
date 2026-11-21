@@ -66,6 +66,18 @@ existed on one side only and conflicts with nothing, so it is kept).
       - Every touch screen, `(pointer: coarse)`, at any width or orientation, gets an edge-to-edge frame with square corners and no desktop inset, like a native iPad app.
       - A desktop with a mouse at 1280 and up keeps the inset card with rounded corners.
       - Inner panels keep their own radii.
+29. **Light theme: the board's ask is the steel primary, like the sheets** (owner ruling, 11/21/2026, made from a rendered comparison: "C: steel, like Your money").
+    - **What changes, light only.** The board hero's primary button (`.hero.elegant .cta`, every render branch) wears the same steel primary as every sheet's `.cta`: `--cta-grad` ground, `--on-steel` label. The label measures 4.57:1 on the lightest stop, 5.16:1 on the middle stop, and 5.85:1 on the deepest.
+    - **The keycap stays.** The button is still a raised key: a 3px bottom edge, 4px on hover, and pressed flat on tap. In light the edge is `--steel-dark` and the cast is the light `--panel-shadow`. The near-black `--key-edge` and its dark shadow read as a heavy slab on the warm canvas (ruling 25), so light does not use them.
+    - **Dark theme.** Dark is unchanged: the 7/31 soft tier (`--sheen` ground, `--ink` label, `--key-edge` keycap).
+    - **Secondaries.** Soft and ghost buttons inside the hero stay secondary. Only the primary ask turns steel.
+    - **Supersedes.** For light mode, this supersedes the 7/31 host ruling that the board's ask wears the soft tier. The parity gate (`hostv2/src/parity/check-parity.mjs`) pins the soft tier in dark and the steel in light, and `theBoardAskIsSteelInLight.spec.mjs` measures both themes at 390 and 1024.
+30. **Dark theme: secondary text clears 4.5:1 under the steel glow** (owner ruling, 11/21/2026, made from a rendered comparison of three options: "C: brighter secondary text").
+    - **What changes, dark only.** In the host shell, `--muted` goes #909296 → #a0a2a6 (`--faint` follows it at 98%), `--ink-soft` #849eb8 → #98b2cc, and `--steel-soft` #8AA3B0 → #8BA4B1, all set in `hostv2/src/theme.js`. The shared palette (`src/theme/palette.js`, `src/design/tokens.js`) is not changed, because it also feeds the frozen CRA shell.
+    - **Why.** Under the glow's top stop (`--canvas-glow`), muted read 3.80:1 on a sheet and 4.21:1 on the board. Now it reads 4.63 and 5.13, and every secondary tier clears 4.5 on its worst ground.
+    - **The glow stays.** Softening it (option B) was rejected; the steel lift at the top of dark is kept.
+    - **Tier step kept.** muted to ink-soft stays a real step (1.17, minimum 1.10, `lightModeClearsAA.test.js`).
+    - **Gate.** The contrast specs now apply the every-gradient-stop rule in dark as well as light (`nothingReadsDarkOnDarkInLight`, `lightThemeContrast`).
 
 ## Studio Matte Means
 

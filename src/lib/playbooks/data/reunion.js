@@ -385,7 +385,10 @@ const reunion = {
     { id: 't-list-households', milestoneId: 'build-guest-list', phase: 'planning', label: 'List every household and a contact for each; flag out-of-town travelers', when: 'T-70d' },
     { id: 't-recruit-volunteers', milestoneId: 'build-guest-list', phase: 'planning', label: 'Recruit 3-5 volunteers (setup, grill, registration table, kids, cleanup)', when: 'T-66d' },
     { id: 't-send-invite', milestoneId: 'send-save-the-dates', phase: 'planning', label: 'Send save-the-date / invite with date, place, time, and what to bring', when: 'T-56d' },
-    { id: 't-decide-food', milestoneId: 'choose-food-model', phase: 'planning', label: 'Decide potluck vs host-cooked BBQ vs catered and tell guests', when: 'T-55d' },
+    // Split in two (owner ruling, 11/21/2026): the call clears on the pick, and
+    // telling guests is its own step, due the same day, open until ticked.
+    { id: 't-decide-food', answeredBy: ['food-model'], milestoneId: 'choose-food-model', phase: 'planning', label: 'Decide potluck vs host-cooked BBQ vs catered', when: 'T-55d' },
+    { id: 't-tell-food', milestoneId: 'choose-food-model', phase: 'guest', label: 'Tell guests the food plan', when: 'T-55d' },
     { id: 't-signup-categories', milestoneId: 'open-potluck-signup', phase: 'planning', label: 'Set up the dish sign-up by category (or last-name letter) and share the link', when: 'T-42d', whenChoice: { id: 'food-model', in: ['Potluck (assigned by household)'] } },
     { id: 't-host-staples', milestoneId: 'open-potluck-signup', phase: 'planning', label: 'Claim the host staples nobody signs up for: ice, drinks, paper goods, condiments', when: 'T-40d', whenChoice: { id: 'food-model', in: ['Potluck (assigned by household)'] } },
     { id: 't-book-catering', milestoneId: 'book-vendors', phase: 'planning', label: 'If catering/food truck: book and pay deposit, confirm headcount window', when: 'T-40d' },

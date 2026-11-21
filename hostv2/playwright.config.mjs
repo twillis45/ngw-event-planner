@@ -52,6 +52,8 @@ const SELF_PINNED = [
   '**/oneLitButtonPerSheet.spec.mjs',
   // Drives 390, 768 and 1280 in both themes (one-row sign-in, owner ruling 25, 11/21/2026).
   '**/theSignInIsOneRow.spec.mjs',
+  // Drives 390x844 and 1024x1366 in both themes (the board's ask is steel in light, owner ruling 29, 11/21/2026).
+  '**/theBoardAskIsSteelInLight.spec.mjs',
   '**/mobileTapFloor.spec.mjs',
   '**/spreadLinkTapFloor.spec.mjs',
   '**/driftCapture.spec.mjs',

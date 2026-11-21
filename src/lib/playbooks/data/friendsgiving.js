@@ -207,8 +207,8 @@ const friendsgiving = {
   ],
 
   tasks: [
-    { id: 't_model', milestoneId: 'fg_plan', phase: 'planning', label: 'Decide who cooks what: you make the main and friends bring dishes, everything assigned, you cook most of it, or the group orders in', when: 'T-21d' },
-    { id: 't_money', milestoneId: 'fg_plan', phase: 'planning', label: 'Decide how money works, so you can say it on the invitation instead of after dinner', when: 'T-21d' },
+    { id: 't_model', answeredBy: ['hosting_model'], milestoneId: 'fg_plan', phase: 'planning', label: 'Decide who cooks what: you make the main and friends bring dishes, everything assigned, you cook most of it, or the group orders in', when: 'T-21d' },
+    { id: 't_money', answeredBy: ['cost_split'], milestoneId: 'fg_plan', phase: 'planning', label: 'Decide how money works, so you can say it on the invitation instead of after dinner', when: 'T-21d' },
     { id: 't_invite', milestoneId: 'fg_invite', phase: 'guest', label: 'Send the invitation with the date, the arrive and eat times, the questions "What would you like to bring?" and "Any allergies or dietary needs?", and when dishes will be assigned', when: 'T-21d' },
     { id: 't_assign', milestoneId: 'fg_assign', phase: 'food', label: 'Assign each friend a dish by name: mashed potatoes, stuffing, green bean casserole, sweet potatoes, cranberry sauce, mac and cheese, corn, a real vegan dish, rolls, dessert. Nothing twice, nothing missing', when: 'T-14d', whenChoice: { id: 'hosting_model', in: [HOST_MAIN, ALL_ASSIGNED] } },
     { id: 't_assign_main', milestoneId: 'fg_assign', phase: 'food', label: 'Ask one friend to own the main, and agree on its size and when it arrives', when: 'T-14d', whenChoice: { id: 'hosting_model', in: [ALL_ASSIGNED] } },

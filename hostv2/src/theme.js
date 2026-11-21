@@ -143,7 +143,12 @@ export function applyStudioMatte(override) {
   set('--sheet-ground', isLight ? c.bg : c.panel);
   set('--panel-shadow', isLight ? `0 1px 2px ${tint('#281E14', 0.08)}, 0 4px 14px ${tint('#281E14', 0.05)}` : 'none');
   set('--ink', bundle.textPrimary);
-  set('--ink-soft', bundle.textSecondary);
+  // DARK UNDER THE STEEL GLOW (owner, 11/21/2026, option C "brighter secondary
+  // text"): every stop of --canvas-glow is a ground. At its top stop
+  // (α .30 steel over the sheet's #1E1F22) #849eb8 read 4.26, and 3.59 on the
+  // amber chip tint; #98b2cc is 5.40 and 4.54. Host shell only: the shared
+  // palette's textSecondary (CRA, DOCTRINE LOCKED in tokens.js) is untouched.
+  set('--ink-soft', isLight ? bundle.textSecondary : '#98b2cc');
   // --muted was aliased to the SAME textSecondary as --ink-soft (and both
   // sit in the steel-blue hue family) — indistinguishable from each other
   // and from the identity accent everywhere they appear together (e.g. the
@@ -185,7 +190,11 @@ export function applyStudioMatte(override) {
   // WARM GROUND (owner ruling 25, 11/21/2026): light --muted is #5d5a56, a warm
   // gray at 6.03:1 on the new --bg #F2F0EC, 5.66 on --bg-band, 5.46 on the light
   // glow's top stop. #686A6C was solved against the old cool --bg.
-  const mutedInk = isLight ? '#5d5a56' : '#909296';
+  // DARK UNDER THE STEEL GLOW (owner, 11/21/2026, option C): #909296 read 3.80
+  // at the glow's top stop over a sheet, 4.21 over the board; #a0a2a6 is 4.63
+  // and 5.13. It still sits a real step under the new --ink-soft #98b2cc
+  // (1.17 by luminance, was 1.12).
+  const mutedInk = isLight ? '#5d5a56' : '#a0a2a6';
   set('--muted', mutedInk);
   // --faint carries small text (section labels, form-field labels, chevrons). A
   // tint of the now-darker --muted base; α 0.98 keeps it AA on the tight band
@@ -202,7 +211,7 @@ export function applyStudioMatte(override) {
   // It was written out as #707274 rather than referencing the base, so
   // darkening --muted above silently split the two apart and left --faint
   // alone at 4.04:1 on the card. Same value, stated once.
-  set('--faint', isLight ? mutedInk : tint('#909296', 0.98));
+  set('--faint', isLight ? mutedInk : tint(mutedInk, 0.98));
   set('--line', c.border);
   set('--line-soft', tint(c.border, 0.55));
   // ── The segmented switch (Jump to's Create / Plan / The Day / After) ──
@@ -237,7 +246,10 @@ export function applyStudioMatte(override) {
   // cleared the tint by 0.02, which is a rounding error, not a floor.
   // Warm ground (ruling 25): #455d6a read 4.45 on its tint over the light
   // glow's top stop; #435a67 is 4.62 there, 6.36 on --bg.
-  set('--steel-soft', isLight ? '#435a67' : dsColor.text.onTint);
+  // Dark (owner, 11/21/2026, option C): #8AA3B0 read 4.48 at the steel glow's
+  // top stop over a sheet; one unit up, #8BA4B1, is 4.53. Only --steel-soft
+  // moves: dsColor.text.onTint stays for its other consumers.
+  set('--steel-soft', isLight ? '#435a67' : '#8BA4B1');
   // Light takes a lighter wash (owner ruling 25, warm ground): the identity
   // steel on its own α .16 tint read 4.31:1 over the warm --bg; α .12 is 4.55
   // there and 5.14 on a white panel. The steel itself does not move.

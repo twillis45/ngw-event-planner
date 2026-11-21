@@ -5,7 +5,7 @@ import { budgetIsSet } from './budgetFor';
 import { rsvpHasResponded } from './rsvp';
 import { chaseAnsweredOrNudged } from './replyNudge';
 // Live binding, read only at call time: playbooks imports this module too.
-import { openFoodChoices, isDietaryChoice, playbookFoodPlan, hostBuysLine, dietaryNoted } from './playbooks';
+import { openFoodChoices, isDietaryChoice, playbookFoodPlan, hostBuysLine, dietaryNoted, stepCallsAnswered } from './playbooks';
 import { buildTravelPlan } from './travelPlan';
 
 // Single source of truth for "is this planning task already handled by real event state?"
@@ -54,6 +54,10 @@ export function taskSatisfied(event, task) {
   if (!event || !task) return false;
   const s = String(task.task || task.text || '').toLowerCase();
   if (!s) return false;
+  // A STEP THAT IS A CALL is done when the call is answered (owner's iPad,
+  // 11/21/2026): the pick is the fact. Before the "this or that?" guard below,
+  // which is about steps no stored fact can prove.
+  if (stepCallsAnswered(event, task)) return true;
   const guests     = Array.isArray(event.guests) ? event.guests : [];
   const hasGuests  = (Number(event.guestCount) || Number(event.guestEstimate) || guests.length) > 0;
   // ONE BUDGET READER (2026-09-18) — this rule was correct and was one of SIX

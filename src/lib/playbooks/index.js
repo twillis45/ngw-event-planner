@@ -949,7 +949,12 @@ export function decisionSettledByData(event, decision) {
 // you're serving · 3 open". Both now ask here. A choice is open when the host
 // has not picked it, no booked vendor answers it, and it is not the dietary
 // question already settled elsewhere. null = no food plan to ask.
-const isDietaryChoice = (c) => c.id === 'dietary' || /dietary|allerg/i.test(c.label || '');
+// The dietary question is known by its id (`dietary`, Thanksgiving's and
+// Friendsgiving's `dietary_table`), not by a label that mentions diets: "Invite
+// + RSVP + dietary/allergy ask", "Confirm guest count + collect dietary…" and
+// Bachelorette's "Drinking mix + dietary/no-alcohol needs" are other questions
+// (11/21/2026; isDietaryChoiceIsTheDietaryQuestion.test.js lists them).
+const isDietaryChoice = (c) => /^dietary(_|$)/.test(String((c && c.id) || ''));
 export function openFoodChoices(event, plan) {
   const p = plan !== undefined ? plan : (() => { try { return playbookFoodPlan(event); } catch (_e) { return null; } })();
   if (!p) return null;
@@ -959,6 +964,40 @@ export function openFoodChoices(event, plan) {
     && picks[c.id] == null && !decisionSettledByData(event, c));
 }
 export { isDietaryChoice };
+
+// ─── A CHOSEN CALL IS NOT A CATCH-UP (owner's iPad, 11/21/2026) ──────────────
+// A playbook call is answered when the host picked it, or a record settles it
+// (decisionSettledByData) — the test openFoodChoices applies above. The
+// authored default is not an answer. A checklist step that IS a call names it
+// (`answeredBy` on the authored task); the step is handled once every call it
+// names is answered, so "Decide who cooks" stops leading as "past its window"
+// over "Host cooks the whole meal · chosen". Engine rows only (`pbt-<event>-<task>`).
+export function decisionAnswered(event, id) {
+  if (!event || !id) return false;
+  const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  if (picks[id] != null && picks[id] !== '') return true;
+  const pb = getPlaybook(event.type);
+  const d = ((pb && pb.decisions) || []).find((x) => x && x.id === id);
+  return !!(d && decisionSettledByData(event, d));
+}
+// The calls a checklist step stands for: by its engine row id, or (for a
+// caller holding only the row's words, like the checklist's button) by the
+// authored label it was drafted from. [] when it names none.
+export function stepCalls(event, task) {
+  if (!event || !task) return [];
+  const pb = getPlaybook(event.type);
+  const tasks = (pb && pb.tasks) || [];
+  const id = typeof task.id === 'string' && task.id.startsWith('pbt-') ? task.id : null;
+  const words = String(task.task || '').trim();
+  const t = id ? tasks.find((x) => x && id === `pbt-${event.id}-${x.id}`)
+    : (words ? tasks.find((x) => x && x.label === words) : null);
+  return t && Array.isArray(t.answeredBy) ? t.answeredBy : [];
+}
+export function stepCallsAnswered(event, task) {
+  if (!event || !task || typeof task.id !== 'string' || !task.id.startsWith('pbt-')) return false;
+  const ids = stepCalls(event, task);
+  return ids.length > 0 && ids.every((id) => decisionAnswered(event, id));
+}
 export function choicePickFor(event, id) {
   if (!event || !id) return null;
   const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
@@ -4654,6 +4693,32 @@ export function hostBuysLine(i) {
   return !!i && !i.friendBrings;
 }
 
+// ─── THE DRINKS TIER, READ FROM THE PICK'S WORDS ─────────────────────────────
+// Fallback for a drinks decision that authors no costFactors (playbookFoodPlan,
+// rule 1). FIRST MATCH WINS. A FULL BAR IS ×1 (owner ruling, 11/21/2026: "Set to
+// 1, fix misreads"): the ×1.6 it carried had no source, and the playbooks that
+// offer a full bar already list its spirits and mixers as lines of their own, so
+// it priced the spirits twice. It is still classified, so a full-bar pick never
+// falls through to a tier below it. "Signature cocktail" and "spirits" left its
+// words: "Beer + wine + one signature cocktail only" is one added drink, and
+// "None — beer/wine/spirits only" is a plain bar. "Full open bar" joined them.
+// ONE ADDED DRINK IS ×1 TOO, for the same reason: uncited, and once a full bar
+// was ×1 its ×1.25 priced "Beer + wine + one signature cocktail only" above a
+// hosted full bar. The dry party's ×0.6 is the one factor left; it is an uncited
+// engine estimate and the line says so (bevTierNote).
+const BEV_TIERS = [
+  { factor: 1, name: 'a full bar', re: /\b(full (open )?bar|open bar|full cooler|premium|top-shelf|brown liquor|whiskey|bourbon|hired bartender)\b/ },
+  { factor: 1, name: 'one added drink', re: /\b(add a|punch|grown section|cocktail|wine \+|signature)\b/ },
+  { factor: 0.6, name: 'a dry party', re: /\b(dry|family-friendly|zero-proof|no alcohol|non-alcoholic|kids|light \/|pace-it)\b/,
+    unless: /\b(wine|beer|bar|spirits?|liquor|cocktails?|champagne|prosecco|bubbly|bottle)\b/ },
+];
+/** The drinks tier a lowercased pick reads as, or null for the cited baseline. */
+export function beverageTierFor(pick) {
+  const p = String(pick || '').toLowerCase();
+  if (!p) return null;
+  return BEV_TIERS.find((x) => x.re.test(p) && !(x.unless && x.unless.test(p))) || null;
+}
+
 export function playbookFoodPlan(event, opts = {}) {
   if (!event) return null;
   const pf = Number(opts.priceFactor) > 0 ? Number(opts.priceFactor) : 1;
@@ -4808,7 +4873,8 @@ export function playbookFoodPlan(event, opts = {}) {
 
   // EVERY beverage choice moves the budget, not just BYOB. The drinks/bar pick scales the
   // beverage line cost by a tier factor read from its words: a dry/family spread is cheaper
-  // (no alcohol), a full/premium bar costs more, the default is the 1.0 baseline. Ice is
+  // (no alcohol), one added drink costs more, a full bar and the default are the cited
+  // baseline (BEV_TIERS above playbookFoodPlan, owner ruling 11/21/2026). Ice is
   // exempt (volume-driven, not bar-tier). One engine rule, every event type; an honest
   // estimate adjustment (the spread already shows a range), recomputed live from the choice.
   //
@@ -4831,21 +4897,15 @@ export function playbookFoodPlan(event, opts = {}) {
   // The factors themselves are uncited engine estimates, so the line carries
   // the rule that applied (costFactorApplied, unverified) and the badge reads
   // it — the same treatment an authored synthesized factor gets.
-  const BEV_TIERS = [
-    { factor: 1.6, name: 'a full bar', re: /\b(full bar|full cooler|premium|top-shelf|brown liquor|spirits?|whiskey|bourbon|signature cocktail|hired bartender)\b/ },
-    { factor: 1.25, name: 'one added drink', re: /\b(add a|punch|grown section|cocktail|wine \+|signature)\b/ },
-    { factor: 0.6, name: 'a dry party', re: /\b(dry|family-friendly|zero-proof|no alcohol|non-alcoholic|kids|light \/|pace-it)\b/,
-      unless: /\b(wine|beer|bar|spirits?|liquor|cocktails?|champagne|prosecco|bubbly|bottle)\b/ },
-  ];
   const beverageTier = (() => {
     if (!_bevPick || (_bevDecision && _bevDecision.costFactors)) return null;
-    const t = BEV_TIERS.find((x) => x.re.test(_bevPick) && !(x.unless && x.unless.test(_bevPick)));
-    return t || null;
+    return beverageTierFor(_bevPick);
   })();
   const BAR_LINE_RE = /\b(beer|wine|spirits?|liquor|whiskey|bourbon|vodka|rum|tequila|gin|champagne|prosecco|bubbly|cocktails?|mixers?|bar|seltzer|alcohol)\b/i;
   const bevFactorFor = (p) => (beverageTier && p.category === 'beverage' && BAR_LINE_RE.test(shortItem(p.item)))
     ? beverageTier.factor : 1;
-  const bevTierNote = beverageTier
+  // Said only when the tier moved a price: a full bar (×1) moves nothing.
+  const bevTierNote = beverageTier && beverageTier.factor !== 1
     ? `The drinks pick "${pickFor(_bevDecision.id)}" reads as ${beverageTier.name}, so the bar lines are priced at ×${beverageTier.factor} of the cited band — an engine estimate, not a cited price.`
     : '';
 

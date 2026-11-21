@@ -3029,8 +3029,12 @@ export default function HostShellV2() {
     // + the CTA-consistency fix): the chosen row highlighted with a "chosen" badge, all still
     // tappable to switch. No disclosure, no collapse — one consistent row treatment.
     if (nd.selected != null && nd.options.some(o => o.value === nd.selected)) {
+      // "Say chosen already" (owner, 11/21/2026): a made call reads as made, not
+      // as a question still waiting; the rows below are how to change it.
+      const chosenLabel = (nd.options.find(o => o.value === nd.selected) || {}).label;
       return (
         <div className="decopts">
+          <p className="grounding decopts-chosen">Chosen already: {chosenLabel}. Pick another to change it.</p>
           {nd.options.map(o => {
             const isChosen = o.value === nd.selected;
             return (
@@ -12535,8 +12539,11 @@ export default function HostShellV2() {
                 // The menu panel names the question it shows, beside the count it
                 // belongs to (owner's iPad, 11/21/2026): "How is the turkey cooked?
                 // · 2 open", never "What you're serving" over a different call.
+                // The plain view (?elegant=0) carries no heroDecisionND (its rung owns
+                // the hero), so it asks the same builder the panel would: foodND reads
+                // openFoodChoices, the list the count reads (11/21/2026).
                 const menuND = (isHero && Array.isArray(a.records) && a.records.length)
-                  ? (a.id === 'phase:food' ? heroDecisionND : (wired === 'food' ? foodND(a.records) : null))
+                  ? (a.id === 'phase:food' ? (heroDecisionND || (!elegantMode ? foodND(a.records) : null)) : (wired === 'food' ? foodND(a.records) : null))
                   : null;
                 const menuAsk = (menuND && menuND.selected == null && menuND.ask) || null;
                 const rec = isHero
@@ -16325,7 +16332,7 @@ export default function HostShellV2() {
                               <button type="button" onClick={() => setChoiceOpen(null)} aria-expanded="true"
                                 style={{ display: 'flex', width: '100%', textAlign: 'left', justifyContent: 'space-between', alignItems: 'center', gap: 12, background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'var(--ink)' }}>
                                 <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
-                                  <span style={{ fontSize: 'var(--t-row)', fontWeight: 650 }}>{r.because}</span>
+                                  <span style={{ fontSize: 'var(--t-row)', fontWeight: 650 }}>{canChange && ((event.foodChoices || {})[r.id] != null) ? 'Chosen already: ' + r.because : r.because}</span>
                                   <span style={{ fontSize: 'var(--t-row-sub)', color: 'var(--muted)', lineHeight: 1.36 }}>{r.label}</span>
                                 </span>
                                 <span className="fstat-chev" aria-hidden="true" style={{ transform: 'rotate(90deg)' }}>›</span>
@@ -24360,7 +24367,7 @@ export default function HostShellV2() {
                     onClick={() => setSheet(s => ({ ...s, focus: top.vendor.id }))}
                     aria-label={'Open ' + (top.vendor.name || 'this vendor') + ' — ' + (top.readiness.summary || top.readiness.label)}>
                     <span className="fstat-l" style={{ flex: '0 0 auto' }}>{top.vendor.name || 'A vendor'}</span>
-                    <span className="fstat-v" style={{ textAlign: 'right', display: 'block',
+                    <span className="fstat-v fstat-note" style={{ textAlign: 'right', display: 'block',
                       color: crit ? 'var(--warn)' : 'var(--faint)' }}>
                       {top.readiness.summary || top.readiness.label}
                       <span className="fstat-chev" aria-hidden="true"> ›</span>
@@ -24827,7 +24834,7 @@ export default function HostShellV2() {
                                 {axes.map(a => (
                                   <div className="fstat" key={a.key} style={{ alignItems: 'flex-start', gap: 10 }}>
                                     <span className="fstat-l" style={{ flex: '0 0 auto' }}>{LABEL[a.key] || a.key}</span>
-                                    <span className="fstat-v" style={{ textAlign: 'right', display: 'block',
+                                    <span className="fstat-v fstat-note" style={{ textAlign: 'right', display: 'block',
                                       color: tone(a.level) ? 'var(--warn)' : 'var(--faint)' }}>{a.note}</span>
                                   </div>
                                 ))}
