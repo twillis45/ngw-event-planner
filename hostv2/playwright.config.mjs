@@ -50,6 +50,8 @@ const SELF_PINNED = [
   '**/tapTargets.spec.mjs',
   // Drives its own three geometries (one lit button per sheet, batch 4, 11/21/2026).
   '**/oneLitButtonPerSheet.spec.mjs',
+  // Drives 390, 768 and 1280 in both themes (one-row sign-in, owner ruling 25, 11/21/2026).
+  '**/theSignInIsOneRow.spec.mjs',
   '**/mobileTapFloor.spec.mjs',
   '**/spreadLinkTapFloor.spec.mjs',
   '**/driftCapture.spec.mjs',

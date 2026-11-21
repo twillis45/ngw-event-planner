@@ -11492,12 +11492,13 @@ export default function HostShellV2() {
               {plan._error && <div className="engine-error">Engine error: {plan._error}</div>}
 
               {keepAskEvent && (
-                <div className="grounding" data-keep-ask data-move-notice={MOVE_NOTICE ? '' : undefined} style={{ margin: '0 0 var(--sp-3)' }}>
-                  <p style={{ margin: '0 0 var(--sp-2)' }}>{MOVE_NOTICE || 'Sign in to keep this plan — it saves to your account so it can’t be lost.'}</p>
-                  <div className="actions-row">
-                    <button className="mini" onClick={() => { setKeepAskClosed(c => [...c, keepAskEvent.id]); keepIntentRef.current = 'device_plan'; setSheet({ kind: 'settings', keep: true }); trackKeepPrompt('device_plan'); }}>Sign in</button>
-                    <button className="mini" onClick={() => closeKeepAsk(keepAskEvent.id)}>Not now</button>
-                  </div>
+                /* ONE ROW, BOTH THEMES, ONE SIZE (owner ruling 25, 11/21/2026: "s2").
+                   The line, a primary Sign in, and a ✕ that is exactly the old
+                   "Not now" (closeKeepAsk, no analytics). Doctrine 02, ruling 25. */
+                <div className="keep-ask" data-keep-ask data-move-notice={MOVE_NOTICE ? '' : undefined}>
+                  <p className="keep-ask-t">{MOVE_NOTICE || <><b>Not saved yet.</b> Sign in to keep it.</>}</p>
+                  <button className="cta" onClick={() => { setKeepAskClosed(c => [...c, keepAskEvent.id]); keepIntentRef.current = 'device_plan'; setSheet({ kind: 'settings', keep: true }); trackKeepPrompt('device_plan'); }}>Sign in</button>
+                  <button className="keep-ask-x" aria-label="Dismiss" onClick={() => closeKeepAsk(keepAskEvent.id)}>✕</button>
                 </div>
               )}
 

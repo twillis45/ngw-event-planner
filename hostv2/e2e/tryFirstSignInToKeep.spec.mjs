@@ -13,7 +13,7 @@
 //   3. closing the ask keeps nothing on this device — the plan stays on screen
 //      in memory (a later sign-in still keeps it), and a reload brings back
 //      her sentence, not an event;
-//   4. a plan made before this change gets "Sign in to keep this plan" once,
+//   4. a plan made before this change gets "Not saved yet. Sign in to keep it." once,
 //      and signing in uploads it;
 //   5. the guest invite opens with no session and no sign-in ask.
 //
@@ -187,7 +187,8 @@ test.describe('try first, sign in to keep', () => {
     const calls = await install(page, { locals: [older()] });
     await boot(page);
     const ask = page.locator('[data-keep-ask]');
-    await expect(ask).toContainText('Sign in to keep this plan — it saves to your account so it can’t be lost.', { timeout: 8000 });
+    // One row since owner ruling 25 (11/21/2026); theSignInIsOneRow holds its shape.
+    await expect(ask).toContainText('Not saved yet. Sign in to keep it.', { timeout: 8000 });
     // Nothing deleted, nothing sent while signed out.
     expect(await stored(page)).toEqual(['Sunday Brunch']);
     expect(calls.writes).toHaveLength(0);

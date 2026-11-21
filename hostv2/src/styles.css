@@ -1021,6 +1021,26 @@ button{font-family:inherit}
   box-shadow:var(--panel-shadow); padding:var(--sp-4);
 }
 :root[data-theme="light"] .decopt.pick{ background:var(--card); }
+/* ── THE SIGN-IN, ONE ROW (owner ruling 25, 11/21/2026: "s2") ────────────────
+   "Not saved yet. Sign in to keep it.", a primary Sign in, and a ✕ that does
+   what "Not now" did. Every target is 44x44, and every dimension below is a
+   token or a fixed size, so the row has the same box in dark and light; only
+   its colors follow the theme (theSignInIsOneRow measures both). */
+.keep-ask{
+  display:flex; align-items:center; gap:var(--sp-2); margin:0 0 var(--sp-3);
+  /* On the spacing ladder: the S2 mock's 6px inset and 10px gap are 4 and 8. */
+  padding:4px 4px 4px 16px; border:1px solid var(--line); border-radius:var(--r-pill);
+  background:var(--card); box-shadow:var(--panel-shadow);
+  font-size:var(--t-meta); line-height:1.35; color:var(--muted);
+}
+.keep-ask-t{ flex:1 1 auto; min-width:0; margin:0; }
+.keep-ask-t b{ color:var(--ink); font-weight:700; }
+.keep-ask .cta{ flex:0 0 auto; min-height:44px; padding:0 16px; border-radius:var(--r-pill); }
+.keep-ask-x{
+  flex:0 0 auto; width:44px; height:44px; padding:0; border:0; border-radius:var(--r-pill);
+  background:none; color:var(--muted); font-size:var(--t-body-s); line-height:1; cursor:pointer;
+}
+.keep-ask-x:focus-visible{ outline:2px solid var(--steel); outline-offset:-2px; }
 /* A vendor card is already its own object; in light it takes the panel's edge. */
 :root[data-theme="light"] .sheet .vcard{ border-color:var(--line); box-shadow:var(--panel-shadow); }
 /* Who's confirmed (the board's triage block): its frame moved out of an inline
