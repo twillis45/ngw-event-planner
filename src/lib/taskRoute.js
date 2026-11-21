@@ -214,6 +214,10 @@ export function checklistRouteFor(task, meta = {}, event = null) {
     return { label: 'Open guests', route: { tab: 'Guests', focusField: 'guests-entry' } };
   if (/meaning moment/.test(t))
     return { label: 'Plan the tribute', route: { tab: 'Decisions', decisionId: 'tribute' } };
+  // Wedding's vision brief (11/21/2026): its answer is the style call, "Style +
+  // formality (the design brief)", so the step opens that call.
+  if (/\bvision brief\b/.test(t))
+    return { label: 'Pick the style', route: { tab: 'Decisions', decisionId: 'vision' } };
   if (/\bkeynotes?\b|\bav\b\/?|production rider|av rider/.test(t))
     return { label: 'Line them up', route: firstUndoneVendorRoute(event) };
 

@@ -34,7 +34,7 @@ describe('each routing family lands on its own surface', () => {
     ['Prep name tags, markers, and a sign-in / contact-update sheet', 'guests'],
     ['Check whether a reservation permit, alcohol rule, or amplified-sound rule applies', 'space'],
     ['Write the safe-rides plan: rideshare codes, designated-driver asks', 'ground'],
-    ['Agree the per-person number + "we cover the bride" rule in writing', 'budget'],
+    ['Agree the per-person number and the \'we cover the bride\' rule', 'budget'],
     ['Confirm chaperones, assign door + bar + floor watchers, set house rules', 'space'],
     ['Decor, favors, mocktail mixers, games, paper goods', 'food'],
     ['Proteins, buns, produce, condiments', 'food'],

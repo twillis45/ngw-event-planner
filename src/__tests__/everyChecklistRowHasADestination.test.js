@@ -56,6 +56,18 @@ test("New Year's Eve: deciding whose midnight it is opens that call", () => {
   expect(resolveRoute(r.hit.route).focus).toBe('midnight_model');
 });
 
+// Wedding's "Write the vision brief" (split from the budget step, 11/21/2026)
+// is not a call, but the style call ("Style + formality (the design brief)")
+// is where the brief's answer is kept, so the step opens it.
+test('Wedding: writing the vision brief opens the style call', () => {
+  const r = rows.find((x) => x.type === 'Wedding' && x.task === 'Write the vision brief');
+  expect(r).toBeTruthy();
+  expect(r.calls).toEqual([]);
+  expect(r.kind).toBe('decisions');
+  expect(resolveRoute(r.hit.route).focus).toBe('vision');
+  expect(r.hit.label).toBe('Pick the style');
+});
+
 test('rows with no button only get fewer', () => {
   expect(rows.filter((r) => !r.hit).length).toBeLessThanOrEqual(NO_DESTINATION_CEILING);
 });
