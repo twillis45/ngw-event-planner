@@ -329,12 +329,12 @@ import { borrowedList, markReturned, addBorrowed } from '@app/lib/borrowedList';
 import { BAR_COVER_ID } from '@app/lib/playbooks/cashBarCover';
 import { SPONSOR_TYPES, sponsorsOf, sponsorTotals, addSponsor, markSponsor, draftSponsorAsk, draftSponsorReport } from '@app/lib/sponsors';
 import { detectCoupleNames } from '@app/lib/guestSplit';
-import { knownStateCode, preferState } from '@app/lib/addressSuggest';
+import { knownStateCode, preferState, nominatimToSuggestion } from '@app/lib/addressSuggest';
 import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
 import { itemsBoughtByTask } from '@app/lib/shopTaskItems';
 import { voiceDraft, voicesFor, draftAudience } from '@app/lib/draftVoice';
 import { worryLabel } from '@app/lib/worryLabel';
-import { venueFor, setVenue, confirmVenue } from '@app/lib/venueFor';
+import { venueFor, setVenue, confirmVenue, formatVenueAddress } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
 import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
@@ -837,14 +837,9 @@ export async function fetchAddressSuggestions(query, { state } = {}) {
     const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=us&q=' + encodeURIComponent(q));
     const j = await r.json();
     // The host's state first (lib/addressSuggest): "Pasadena" otherwise offers
-    // California to a host planning in Maryland.
-    return preferState((Array.isArray(j) ? j : []).map(x => {
-      const a = x.address || {};
-      const city = a.city || a.town || a.village || a.hamlet || '';
-      const short = String(x.display_name || '').split(',').slice(0, 3).join(',');
-      const iso = String(a['ISO3166-2-lvl4'] || '');
-      return { label: short, city: city + (a.state ? ', ' + a.state : ''), stateCode: /^US-[A-Z]{2}$/.test(iso) ? iso.slice(3) : '' };
-    }), state);
+    // California to a host planning in Maryland. Each result is read whole —
+    // street, town, state, ZIP, coordinates (nominatimToSuggestion, 11/21/2026).
+    return preferState((Array.isArray(j) ? j : []).map(nominatimToSuggestion), state);
   } catch { return []; }
 }
 
@@ -1564,6 +1559,8 @@ export default function HostShellV2() {
   const [cityDraft, setCityDraft] = useState('');
   const [addrSugs, setAddrSugs] = useState([]);
   const [pendingCity, setPendingCity] = useState('');
+  // The suggestion the host picked, held until Save writes its parts.
+  const [pendingPick, setPendingPick] = useState(null);
   const addrTimer = useRef(null);
   useEffect(() => {
     // Google Places upgrades this input automatically when a key is present
@@ -1588,8 +1585,9 @@ export default function HostShellV2() {
     }, 380);
   };
   const pickAddr = (sug) => {
-    setVenueDraft(sug.label);
+    setVenueDraft(sug.line || sug.label);
     setPendingCity(sug.city || '');
+    setPendingPick(sug.street ? sug : null);
     setAddrSugs([]);
   };
   const saveVenue = () => {
@@ -1600,9 +1598,16 @@ export default function HostShellV2() {
     // path) owns kind inference + the strict city gate for it.
     // Naming the place ends "I'll sort this" (50-host run, 11/16/2026): a host
     // who parked the venue and later typed it kept the parked flag in her data.
-    patchEvent({ ...setVenue(event, { name: v, locationText: pendingCity }), ...(venueParked(event) ? unparkVenuePatch(event) : {}) },
-      'Venue on the plan — invites, maps, and the rain note now carry it.');
-    setVenueErr(null); setVenueDraft(''); setPendingCity(''); setAddrSugs([]);
+    // A PICKED ADDRESS IS STORED WHOLE (owner report, iPad, 11/21/2026): its
+    // street, town, state, ZIP and coordinates. A street saved as typed is
+    // saved, and the host is told plainly the ZIP was not found; none is made up.
+    const patch = pendingPick ? setVenue(event, { resolved: pendingPick }) : setVenue(event, { name: v, locationText: pendingCity });
+    const after = venueFor({ ...event, ...patch });
+    const msg = pendingPick
+      ? (after.zip ? `Address on the plan: ${after.fullAddress}.` : `Address on the plan: ${after.fullAddress}. The lookup had no ZIP for it.`)
+      : (after.address && !after.zip ? 'Saved as typed — we couldn’t find the ZIP.' : 'Venue on the plan — invites, maps, and the rain note now carry it.');
+    patchEvent({ ...patch, ...(venueParked(event) ? unparkVenuePatch(event) : {}) }, msg);
+    setVenueErr(null); setVenueDraft(''); setPendingCity(''); setPendingPick(null); setAddrSugs([]);
   };
   // ── ONE VENUE CAPTURE, FOUR DOORS (board wave 2, 2026-08-07) ───────────────
   // The identical control was hand-inlined at FOUR call sites: the hero's wired
@@ -1640,15 +1645,15 @@ export default function HostShellV2() {
     <>
       <div className={wrapClass} style={wrapStyle}>
         <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
-          value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" autoFocus={autoFocus} />
+          value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); setPendingPick(null); fetchAddrSugs(e.target.value); }} aria-label="Venue" autoFocus={autoFocus} />
         <button className={ctaClass} onClick={saveVenue}>Save</button>
       </div>
       {addrSugs.length > 0 && (
         <div style={{ marginTop: 6 }}>
           {addrSugs.map((sg, si) => (
-            <button key={si} className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '7px 2px' }}
+            <button key={si} className="later-row" data-venue-suggestion style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '7px 2px' }}
               onClick={() => pickAddr(sg)}>
-              <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{sg.label}</span>
+              <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{sg.line || sg.label}</span>
             </button>
           ))}
           <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>
@@ -15995,7 +16000,7 @@ export default function HostShellV2() {
                     11/5/2026, issue #100 D-4): an address from Creation rendered as an empty box
                     here while HostHome called it handled. No business search is ever required. */}
                 {vf.display && (
-                  <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Currently: <b>{vf.display}</b>{vf.city ? ` · ${vf.city}${vf.state ? ', ' + vf.state : ''}` : ''}{vf.confirmed ? (vf.isHome ? ' · your home, confirmed' : ' · confirmed') : ''}. Enter a new place to change it.</p>
+                  <p className="grounding" data-venue-currently style={{ margin: '0 0 var(--sp-2)' }}>Currently: <b>{formatVenueAddress(event)}</b>{vf.confirmed ? (vf.isHome ? ' · your home, confirmed' : ' · confirmed') : ''}. Enter a new place to change it.</p>
                 )}
                 {/* WHERE EVERYONE STAYS, FROM THE VENUE (owner, 11/16/2026: "Venue
                     is related to where everyone stays"). On a trip the two are one
