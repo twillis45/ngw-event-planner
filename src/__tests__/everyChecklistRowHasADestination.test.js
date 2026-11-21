@@ -35,7 +35,11 @@ const SHELL_KINDS = new Set(['air', 'budget', 'costshare', 'crabs', 'date', 'dec
 // 112 → 110 (11/21/2026, integration, measured): Birthday's "Record the cash
 // and gift cards…" and "Add the gifts that arrived by mail…" open After ›
 // Thank-yous & gifts.
-const NO_DESTINATION_CEILING = 110;
+// 110 → 106 (11/21/2026, integration, measured): the return rows open
+// "Borrowed · N of M back" on Space: Anniversary's projector and lent photos,
+// Retirement's platters, urn and chairs, Thanksgiving's pans (and five rows
+// that already opened Space).
+const NO_DESTINATION_CEILING = 106;
 
 const ev = (type) => ({ id: 'dest', type, date: '2026-12-31', guestEstimate: 20, guestMode: 'count', guestCountSource: 'host',
   venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX' });

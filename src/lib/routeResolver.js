@@ -122,6 +122,8 @@ export function resolveRoute(route) {
   // the capacity/supplies surface = the space sheet. Without this it fell through
   // to the tab:'Planning' tasks catch below — the wrong sheet (audit 2026-07-21).
   if (/^cap-hero/.test(ff)) return { kind: 'space', focus: null };
+  // The borrowed list (owner pick B, 11/21/2026): Space, on "Borrowed · N of M back".
+  if (ff === 'space-borrowed') return { kind: 'space', focus: 'borrowed' };
   if (/^space/.test(ff)) return { kind: 'space', focus: null };
   // Set-the-date foundation MUST branch before the tab:'Event Details' venue
   // catch-all below, else the #1 onboarding foundation scrolls to Venue instead

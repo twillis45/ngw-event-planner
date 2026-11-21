@@ -10,6 +10,7 @@ import { buildTravelPlan } from './travelPlan';
 import { sendStateFor } from './sendLedger';
 import { DATE_POLL_ROW, datePollSettled } from './datePoll';
 import { giftRowSatisfied } from './giftLog';
+import { BORROWED_ROW, borrowedAllBack } from './borrowedList';
 
 // The trip-details draft's title, which is also its send-ledger key: the
 // draft sheet records under it, and the checklist row reads it back.
@@ -141,6 +142,13 @@ export function taskSatisfied(event, task) {
   // come; "go through the gifts" is the host's tick (giftLog.giftRowSatisfied).
   const gift = giftRowSatisfied(event, s);
   if (gift !== null) return gift;
+
+  // THE BORROWED LIST (owner pick B, 11/21/2026): a return row is done when
+  // something is on the list and all of it is marked returned. Above the act
+  // guard, whose "give" would keep "Give back what family lent you" open.
+  // A row that also asks to SEND something (Anniversary's originals: "…and
+  // send them the digital copies") is not proven by the list alone.
+  if (BORROWED_ROW.test(s)) return !/\band send\b/.test(s) && borrowedAllBack(event);
 
   // ACTS — calls, briefings, walk-throughs, physical work, ongoing collection —
   // are never proven by presence facts. "Recruit 3-5 volunteers" was marked done

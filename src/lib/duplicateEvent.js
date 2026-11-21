@@ -39,6 +39,8 @@ const EVENT_STATE = ['id', 'createdAt', 'updatedAt', 'date', 'endDate',
   'lodging', 'lodgingOptions', 'lodgingPick',
   // The date poll (11/21/2026): ranges offered for the occurrence being copied.
   'dateOptions', 'dateOptionUsed',
+  // The borrowed list (11/21/2026): who lent what, and what went back.
+  'borrowed',
   'snoozed', 'snoozeUntil', 'deferred', 'satisfied', 'handled',
   'startTime', 'startTimeSource', 'startTimeWhy',
   // sendLedger records THIS event's handoffs (board ruling 2026-08-21). A copy

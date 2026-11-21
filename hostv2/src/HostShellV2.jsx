@@ -325,6 +325,7 @@ import PolicyLinks from './PolicyLinks.jsx';
 import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine } from '@app/lib/guestMerge';
 import { MAX_DATE_OPTIONS, dateOptionsOf, datePollTally, dateOptionPatch, nextDateOptionId } from '@app/lib/datePoll';
 import { giftCashTotal, isAbsentGiver, thankYouGiftLine } from '@app/lib/giftLog';
+import { borrowedList, markReturned, addBorrowed } from '@app/lib/borrowedList';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
 import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
@@ -6239,6 +6240,8 @@ export default function HostShellV2() {
   // Writes a real timeline row with an owner — the shape deriveHelperResponsibilities
   // already reads (source: 'timeline.owner'), so one write reaches every surface.
   const [helperForm, setHelperForm] = useState({ name: '', job: '' });
+  // The borrowed list's Add it (owner pick B, 11/21/2026).
+  const [borrowForm, setBorrowForm] = useState({ what: '', from: '' });
   const [unfurling, setUnfurling] = useState(false);
   const addHelper = () => {
     const name = String(helperForm.name || '').trim();
@@ -17032,6 +17035,52 @@ export default function HostShellV2() {
                   </>
                 )}
                 </Panel>
+                {/* BORROWED · N OF M BACK (owner pick B, 11/21/2026). The return
+                    rows land here. What a helper brings on What to bring appears
+                    on its own; anything else is added by hand; each is marked
+                    returned; the last line says who is still owed what. */}
+                {(() => {
+                  const names = Object.fromEntries(((capacity && capacity.items) || []).filter(Boolean).map((it) => [it.key, it.short || it.item]));
+                  const b = borrowedList(event, names);
+                  const asked = sheet.focus === 'borrowed';
+                  if (!b.total && !asked) return null;
+                  const add = () => {
+                    const next = addBorrowed(event, borrowForm.what, borrowForm.from);
+                    if (!next) { toast('What was borrowed? Add it first.'); return; }
+                    patchEvent({ borrowed: next }, borrowForm.what.trim() + ' is on the borrowed list.');
+                    setBorrowForm({ what: '', from: '' });
+                  };
+                  return (
+                    <Panel on={panels}>
+                      <div id="space-borrowed" data-borrowed ref={scrollIntoViewOnOpen(asked)}>
+                        <div className="shelf-label" style={{ margin: 'var(--sp-3) 0 var(--sp-1)' }}>Borrowed · {b.back} of {b.total} back</div>
+                        {b.rows.map((r) => (
+                          <div key={r.id} data-borrowed-row={r.id} className="actions-row" style={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'nowrap', borderTop: '1px solid var(--line-soft)', padding: 'var(--sp-1) 0' }}>
+                            <span style={{ minWidth: 0 }}><b>{r.what}</b>{r.from ? <span className="of"> from {r.from}</span> : null}</span>
+                            <button className="mini" style={{ minHeight: 'var(--tap-min)', flex: '0 0 auto', ...(r.returned ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : {}) }}
+                              aria-label={(r.returned ? 'Returned: ' : 'Mark returned: ') + r.what}
+                              onClick={() => patchEvent({ borrowed: markReturned(event, r, !r.returned) }, r.returned ? null : r.what + ' marked returned.')}>
+                              {r.returned ? 'returned' : 'Mark returned'}
+                            </button>
+                          </div>
+                        ))}
+                        <div className="lodge-form" style={{ marginTop: 'var(--sp-2)' }}>
+                          <label className="lodge-f"><span className="of">What</span>
+                            <input className="field" style={{ ...HELPER_FLD, minHeight: 'var(--tap-min)' }} placeholder="Coffee urn" value={borrowForm.what} aria-label="What was borrowed"
+                              onChange={(e) => setBorrowForm((f) => ({ ...f, what: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') add(); }} /></label>
+                          <label className="lodge-f"><span className="of">From whom</span>
+                            <input className="field" style={{ ...HELPER_FLD, minHeight: 'var(--tap-min)' }} placeholder="Aunt Rose" value={borrowForm.from} aria-label="Borrowed from whom"
+                              onChange={(e) => setBorrowForm((f) => ({ ...f, from: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') add(); }} /></label>
+                        </div>
+                        <button className="mini" style={{ width: '100%', minHeight: 'var(--tap-min)', marginTop: 'var(--sp-1)' }} onClick={add}>Add it</button>
+                        <p className="grounding" data-borrowed-owed style={{ margin: 'var(--sp-2) 0 0' }}>
+                          {b.total === 0 ? 'Nothing borrowed yet. What a helper brings on What to bring shows up here on its own.'
+                            : b.stillToGo ? 'Still to go back: ' + b.stillToGo : 'Everything borrowed is back.'}
+                        </p>
+                      </div>
+                    </Panel>
+                  );
+                })()}
                 {/* ALWAYS RENDERED (host report 2026-07-28: "doesn't have an
                     action to add helpers"). Helpers are DERIVED from owner names
                     on real items, so the empty state used to render nothing at
