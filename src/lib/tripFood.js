@@ -37,7 +37,8 @@ export const RESTAURANT_DINNER = { low: 25, high: 75, source: 'boxedlunch-restau
 /** The dinner is at a restaurant when the place she named, or the venue, says so. */
 export function celebrationAtRestaurant(event) {
   const ev = event || {};
-  const words = `${celebrationPlace(ev) || ''} ${ev.venue || ''} ${ev.venueKind === 'restaurant' ? 'restaurant' : ''}`;
+  const vf = (() => { try { return venueFor(ev); } catch { return null; } })();
+  const words = `${celebrationPlace(ev) || ''} ${(vf && vf.name) || ''} ${vf && vf.kind === 'restaurant' ? 'restaurant' : ''}`;
   return /\b(restaurant|bistro|steakhouse|trattoria|brasserie|tavern|cantina|supper club)\b/i.test(words);
 }
 
@@ -139,7 +140,7 @@ export function dinnerParts(event) {
 
   const parts = [
     { id: 'night', label: 'The night', set: night.picked, goes: 'night' },
-    { id: 'place', label: 'The place', set: !!(vf && vf.isSet && ev.venueKind !== 'home'), goes: 'venue', sub: place ? `You wrote “${placeWithArticle(place)}” — which one?` : null },
+    { id: 'place', label: 'The place', set: !!(vf && vf.isSet && !vf.isHome), goes: 'venue', sub: place ? `You wrote “${placeWithArticle(place)}” — which one?` : null },
     foodId ? { id: 'food', label: 'Who makes the dinner', set: decisionAnswered(ev, foodId), goes: 'foodplan', decision: foodId } : null,
     drinks ? { id: 'drinks', label: 'Drinks', set: decisionAnswered(ev, drinks.id), goes: 'foodplan', decision: drinks.id } : null,
     cake ? { id: 'cake', label: cake.label || 'The cake', set: decisionAnswered(ev, cake.id), goes: 'foodplan', decision: cake.id } : null,
