@@ -41,9 +41,19 @@ const AA = 4.5;
 // (surface2) is the >=1024 gutter behind the stage and carries none, so
 // holding tokens to it would be inventing a requirement — the same mistake as
 // tuning to #ffffff, pointed the other way.
+// THE WARM GROUND (owner ruling 25, 11/21/2026). The light canvas glow is a
+// warm wash, rgba(196,170,130,.16) at its top stop (theme.js --canvas-glow).
+// Text near the top of a screen or sheet sits on that wash over --bg, so the
+// stop's composite is a ground too, and the darkest of the three.
+const GLOW_TOP = (() => {
+  const b = [0, 2, 4].map((i) => parseInt(carbonNeutral.light.bg.slice(1 + i, 3 + i), 16));
+  const w = [196, 170, 130];
+  return `#${b.map((v, i) => Math.round(w[i] * 0.16 + v * 0.84).toString(16).padStart(2, '0')).join('')}`;
+})();
 const LIGHT_TEXT_GROUNDS = {
   '--card (panel)': carbonNeutral.light.panel,
   '--bg (content ground)': carbonNeutral.light.bg,
+  'the light glow\'s top stop over --bg': GLOW_TOP,
 };
 
 // --bg-band is surface2 and DOES carry text (status pills, the day-of tier
@@ -54,8 +64,8 @@ describe('light mode text clears AA on every ground it lands on', () => {
   const TEXT_TOKENS = {
     '--ink (textPrimary)': light.textPrimary,
     '--ink-soft (textSecondary)': light.textSecondary,
-    '--muted': '#707274',
-    '--faint': '#707274',
+    '--muted': '#5d5a56',
+    '--faint': '#5d5a56',
     '--ok (successGreen)': light.successGreen,
     '--warn (amber)': light.amber,
     '--danger (dangerRed)': light.dangerRed,
@@ -97,12 +107,17 @@ describe('text on a TINT clears AA too — the ground the first sweep missed', (
     ['--ok on --ok-tint', light.successGreen, light.successGreen, 0.10],
     ['--warn on --warn-tint', light.amber, light.amber, 0.10],
     ['--danger on --danger-tint', light.dangerRed, light.dangerRed, 0.10],
-    ['--steel-soft on --steel-tint', '#455d6a', light.steelBlue, 0.16],
-    ['--steel on its own --steel-tint', light.steelBlue, light.steelBlue, 0.16],
+    ['--steel-soft on --steel-tint', '#435a67', light.steelBlue, 0.16],
+    ['--progress on --progress-tint', '#65537f', '#65537f', 0.12],
+    // α .12 in light since ruling 25 (theme.js --steel-tint).
+    ['--steel on its own --steel-tint', light.steelBlue, light.steelBlue, 0.12],
   ];
+  // The tinted pairs keep the two grounds they were always held to; the glow's
+  // top stop is held for bare text above (a pill there is the e2e walk's job).
+  const TINT_GROUNDS = { '--card (panel)': carbonNeutral.light.panel, '--bg (content ground)': carbonNeutral.light.bg };
 
   for (const [name, text, tintBase, alpha] of ON_TINT) {
-    for (const [ground, bg] of Object.entries(LIGHT_TEXT_GROUNDS)) {
+    for (const [ground, bg] of Object.entries(TINT_GROUNDS)) {
       test(`${name}, over ${ground}`, () => {
         const r = ratio(text, overlay(tintBase, bg, alpha));
         expect(`${name} over ${ground}: ${r.toFixed(2)}:1`)
@@ -117,8 +132,15 @@ describe('the gray tiers rank by luminance, not by hue', () => {
   // had identical luminance and differed only in hue, so in grayscale — or for
   // a host who cannot separate those hues — they read as ONE tier. Light has
   // to hold the same property, running the other way: de-emphasis is lighter.
-  test('light: muted sits a real step lighter than ink-soft', () => {
-    expect(lum('#707274')).toBeGreaterThan(lum(light.textSecondary));
+  // OWNER RULING 25 (11/21/2026) set light --muted to #5d5a56 (6.0:1 on the
+  // warm page), which sits DARKER than ink-soft, not lighter: the direction of
+  // the light step flipped with the ruling. What this block exists to stop —
+  // two tiers at one luminance — is still held, and on the SHIPPED values: this
+  // test used to read a stale #707274, while the light tiers that shipped
+  // (#686A6C over #4e6c84) sat only 1.02 apart. Now 1.14 (#5d5a56 / #4a667c).
+  test('light: muted and ink-soft sit a real luminance step apart', () => {
+    const [hi, lo] = [lum('#5d5a56'), lum(light.textSecondary)].sort((a, b) => b - a);
+    expect((hi + 0.05) / (lo + 0.05)).toBeGreaterThanOrEqual(1.10);
   });
 
   test('dark: muted sits a real step darker than ink-soft', () => {

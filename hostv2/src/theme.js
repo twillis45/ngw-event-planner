@@ -175,7 +175,11 @@ export function applyStudioMatte(override) {
   // #686A6C measures 4.54:1 on the same composited ground — headroom over the
   // floor rather than sitting on it. Darkening can only raise contrast, so no
   // existing >=4.5 gate can regress on it.
-  const mutedInk = isLight ? '#686A6C' : '#909296';
+  //
+  // WARM GROUND (owner ruling 25, 11/21/2026): light --muted is #5d5a56, a warm
+  // gray at 6.03:1 on the new --bg #F2F0EC, 5.66 on --bg-band, 5.46 on the light
+  // glow's top stop. #686A6C was solved against the old cool --bg.
+  const mutedInk = isLight ? '#5d5a56' : '#909296';
   set('--muted', mutedInk);
   // --faint carries small text (section labels, form-field labels, chevrons). A
   // tint of the now-darker --muted base; α 0.98 keeps it AA on the tight band
@@ -192,7 +196,7 @@ export function applyStudioMatte(override) {
   // It was written out as #707274 rather than referencing the base, so
   // darkening --muted above silently split the two apart and left --faint
   // alone at 4.04:1 on the card. Same value, stated once.
-  set('--faint', isLight ? '#686A6C' : tint('#909296', 0.98));
+  set('--faint', isLight ? mutedInk : tint('#909296', 0.98));
   set('--line', c.border);
   set('--line-soft', tint(c.border, 0.55));
   // ── The segmented switch (Jump to's Create / Plan / The Day / After) ──
@@ -225,8 +229,13 @@ export function applyStudioMatte(override) {
   // on the tint over --bg and 6.53:1 on --bg itself — chosen for margin, not
   // for the first value that squeaked past: the nearest passing candidate
   // cleared the tint by 0.02, which is a rounding error, not a floor.
-  set('--steel-soft', isLight ? '#455d6a' : dsColor.text.onTint);
-  set('--steel-tint', tint(bundle.steelBlue, 0.16));
+  // Warm ground (ruling 25): #455d6a read 4.45 on its tint over the light
+  // glow's top stop; #435a67 is 4.62 there, 6.36 on --bg.
+  set('--steel-soft', isLight ? '#435a67' : dsColor.text.onTint);
+  // Light takes a lighter wash (owner ruling 25, warm ground): the identity
+  // steel on its own α .16 tint read 4.31:1 over the warm --bg; α .12 is 4.55
+  // there and 5.14 on a white panel. The steel itself does not move.
+  set('--steel-tint', tint(bundle.steelBlue, isLight ? 0.12 : 0.16));
   // Audit S1: steel was doing triple duty — identity, selection, AND the
   // "in progress" status tier (booked / renting / vendor-mid …), so a host
   // couldn't tell a status pill from a selected chip. --progress carries ONLY
@@ -240,7 +249,9 @@ export function applyStudioMatte(override) {
   // LIGHT THEME (live axe 11/13/2026): the same lavender measured 2.18:1 on
   // light surfaces — the one token PR #117's light pass missed. A deeper
   // violet of the same hue clears 5.5:1 there; dark keeps the system value.
-  const progress = isLight ? '#6E5A8A' : dsColor.status.inProgress;
+  // Warm ground (ruling 25): #6E5A8A read 4.12 on its own tint over the light
+  // glow's top stop; #65537f is 4.61 there.
+  const progress = isLight ? '#65537f' : dsColor.status.inProgress;
   set('--progress', progress);
   set('--progress-tint', tint(progress, 0.12));
   // Overhead-light material response (brand direction, splash work 2026-07-11):
@@ -255,7 +266,13 @@ export function applyStudioMatte(override) {
   // 150% x 500px at a 844px-tall phone); 500px became 59vh so it scales with
   // the screen. The hue is that glow's own steel, #56748C. The Day and the
   // ?elegant=0 board used a weaker 300px glow and now take this one too.
-  set('--canvas-glow', `radial-gradient(150% 59vh at 50% -70px, ${tint('#56748C', 0.30)} 0%, ${tint('#56748C', 0.09)} 40%, transparent 74%)`);
+  //
+  // LIGHT IS A WARM WASH (owner ruling 25, 11/21/2026, "W1"): the light canvas
+  // is warm, and its glow is a faint warm wash in the same one token. Dark keeps
+  // the steel glow above.
+  set('--canvas-glow', isLight
+    ? 'radial-gradient(150% 59vh at 50% -80px, rgba(196,170,130,.16) 0%, rgba(196,170,130,.05) 45%, transparent 75%)'
+    : `radial-gradient(150% 59vh at 50% -70px, ${tint('#56748C', 0.30)} 0%, ${tint('#56748C', 0.09)} 40%, transparent 74%)`);
   // ── THE PRIMARY IS LIT FROM THE TOP (owner, 11/20/2026) ─────────────────────
   // The owner chose this over the flat fill from a rendered comparison on the
   // live site. Doctrine: docs/claude-skills/02_STUDIO_MATTE_UI_STANDARD.md

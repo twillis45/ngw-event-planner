@@ -54,8 +54,20 @@ const measure = ([sel, scopeSel]) => {
     if (op < 0.02) continue;
     const layers = [];
     let grounds = [[255, 255, 255]];
+    // A translucent gradient (the canvas glow on .app and .sheet; owner ruling
+    // 25's warm wash) is a ground at EVERY stop in light: each stop composited
+    // over the opaque ground beneath it is measured, and the worst counts.
+    // Light only: the ruling moved the light ground. Dark's steel glow is
+    // unchanged by it, and at its top stop dark muted text reads 3.8:1 (a
+    // standing dark finding, reported to the owner 11/21/2026, not this gate).
+    let wash = null;
+    const lightTheme = document.documentElement.getAttribute('data-theme') === 'light';
     for (let n = el; n; n = n.parentElement) {
       const ncs = getComputedStyle(n);
+      if (lightTheme && !wash && /gradient/.test(ncs.backgroundImage)) {
+        const all = (ncs.backgroundImage.match(/rgba?\([^)]+\)/g) || []).map(rgba).filter(Boolean);
+        if (all.length && all.every((x) => x[3] < 1)) wash = all;
+      }
       // A gradient fill (the primary button since 11/20/2026): every stop is a
       // ground the label may sit on, and the WORST one counts (same rule as
       // lightThemeContrast.spec.mjs).
@@ -66,6 +78,7 @@ const measure = ([sel, scopeSel]) => {
       if (b[3] === 1) { grounds = [b.slice(0, 3)]; break; }
       layers.push(b);
     }
+    if (wash) grounds = grounds.flatMap((g) => [g, ...wash.map((w) => over(w, g))]);
     const c = rgba(cs.color);
     let worst = null;
     for (let g of grounds) {
