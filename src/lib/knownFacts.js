@@ -170,7 +170,7 @@ function placeCall(event, d) {
   const io = event.indoorOutdoor;
   if (asksInOrOut(d) && (io === 'indoor' || io === 'outdoor' || io === 'both')) {
     const pick = optionForInOut(options, io, place);
-    if (pick) return { settled: { pick, because: fromPlan(io === 'indoor' ? 'indoors' : io === 'outdoor' ? 'outside' : 'indoors and outside'), restatesVenue: true } };
+    if (pick) return { settled: { pick, because: fromPlan(io === 'indoor' ? 'indoors' : io === 'outdoor' ? 'outside' : 'indoors and outside') } };
   }
   if (!place) return null;
   // An indoor/outdoor call answered by the kind of place: a hall is indoors, a
@@ -186,7 +186,7 @@ function placeCall(event, d) {
     const pick = place.isHome ? options.find((o) => /estate|backyard/i.test(o))
       : place.kind === 'hotel' ? options.find((o) => /hotel|resort/i.test(o))
         : place.kind === 'restaurant' ? options.find((o) => /full-service/i.test(o)) : null;
-    if (pick) return { settled: { pick, because: fromPlan(place.line), restatesVenue: true } };
+    if (pick) return { settled: { pick, because: fromPlan(place.line) } };
     return { partial: {
       pick: null, known: place.name, metDependents: false,
       ask: `Is ${place.name} full-service?`,
@@ -194,7 +194,7 @@ function placeCall(event, d) {
     } };
   }
   const pick = place.kind ? optionForKind(options, place.kind) : null;
-  if (pick) return { settled: { pick, because: place.isHome ? 'Your place' : fromPlan(place.line), restatesVenue: true } };
+  if (pick) return { settled: { pick, because: place.isHome ? 'Your place' : fromPlan(place.line) } };
   if (place.isHome) return null;
   // Named, but we cannot tell what kind of place it is: ask just that.
   const rest = options.filter((o) => isPlaceOption(o) && !KIND_OPTION.home(o) && !/relative/i.test(o));

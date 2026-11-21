@@ -4014,7 +4014,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
       const settled = !picks[d.id] && !(isDietaryDecision(d) && di.resolved) ? decisionSettledByData(event, d) : null;
       // The venue's settled row would only restate the f-venue foundation fact
       // above it, so it locks (nothing waits on it) without a second row.
-      if (settled && (!settled.pick || settled.restatesVenue) && d.id === 'venue' && hasVenue) continue;
+      if (settled && !settled.pick && d.id === 'venue' && hasVenue) continue;
       // Her answer to the missing part reads beside the part she already gave:
       // "$40,000 · The couple".
       const half = picks[d.id] && !authoredOption(d, picks[d.id]) ? knownPartOf(event, d) : null;
