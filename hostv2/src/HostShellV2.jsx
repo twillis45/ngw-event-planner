@@ -326,6 +326,7 @@ import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGu
 import { MAX_DATE_OPTIONS, dateOptionsOf, datePollTally, dateOptionPatch, nextDateOptionId } from '@app/lib/datePoll';
 import { giftCashTotal, isAbsentGiver, thankYouGiftLine } from '@app/lib/giftLog';
 import { borrowedList, markReturned, addBorrowed } from '@app/lib/borrowedList';
+import { BAR_COVER_ID } from '@app/lib/playbooks/cashBarCover';
 import { SPONSOR_TYPES, sponsorsOf, sponsorTotals, addSponsor, markSponsor, draftSponsorAsk, draftSponsorReport } from '@app/lib/sponsors';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState } from '@app/lib/addressSuggest';
@@ -3093,7 +3094,11 @@ export default function HostShellV2() {
             Unconditional until a real signal exists. The board ruled (a) and
             (a) is still right; the implementation was wrong, and shipping a
             wrong implementation of a correct ruling is worse than waiting. */}
-        <p className="decopts-lead">Tap one to settle it — nothing else changes.</p>
+        {/* A CASH BAR'S FOLLOW-UP MOVES THE BUDGET (owner, 11/21/2026): its
+            answer is the drink lines the plan buys, so "nothing else changes"
+            would be false there. */}
+        <p className="decopts-lead">Tap one to settle it — {String(nd.id || '').endsWith(BAR_COVER_ID)
+          ? 'the drinks line in your budget moves to match.' : 'nothing else changes.'}</p>
         {proposedOpt ? (
           <>
             {optRow(proposedOpt, true)}

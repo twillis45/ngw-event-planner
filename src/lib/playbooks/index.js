@@ -11,6 +11,7 @@
 import { rsvpState, rsvpIsSettled } from '../rsvp';
 import { guestCountFor } from '../guestCountFor';
 import { cookDecisionFor, cookTasksFor, cookRisksFor } from './cookLever';
+import { cashBarDecisionsFor, cashBarKeeps } from './cashBarCover';
 import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
 import { matchGuestIndexByName } from '../guestMerge';
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
@@ -154,6 +155,8 @@ const DECISION_INJECTORS = [
   (event, pb) => destinationDecisionsFor(event, pb),
   (event, pb) => cookDecisionsFor(pb),
   (event) => militaryDecisionsFor(event),
+  // With a cash bar, what the host still covers (owner, 11/21/2026).
+  (event, pb) => cashBarDecisionsFor(pb),
 ];
 
 // ─── namedHelperCount — how many people the host has said are helping ────────
@@ -4889,7 +4892,13 @@ export function playbookFoodPlan(event, opts = {}) {
     if (_cashBar) return isBarLine(p) && !_isToast(p);
     return false;
   };
-  const hostBuysIt = (p) => !(p.category === 'beverage' && !/\bice\b/i.test(p.item || '') && _drinkLeaves(p));
+  // A CASH BAR BUYS ONLY WHAT THE HOST STILL COVERS (owner, 11/21/2026): the
+  // follow-up's answer names the drink lines kept (ice included or not); the
+  // rest leave the spread and the budget. Read from the decision that offers
+  // the cash-bar pick, by id (cashBarCover.js), not from _bevDecision.
+  const _cashKeeps = (() => { try { return cashBarKeeps(playbook, pickFor); } catch (_e) { return null; } })();
+  const hostBuysIt = (p) => !(p.category === 'beverage'
+    && (_cashKeeps ? !_cashKeeps.has(p.id) : (!/\bice\b/i.test(p.item || '') && _drinkLeaves(p))));
 
   // Food-approach → budget. When the host chose a CATERER (vs cooking), they aren't buying the
   // homemade FOOD lines — the caterer brings them — so those drop here (mirrors the BYOB rule
