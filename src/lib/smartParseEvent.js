@@ -1794,7 +1794,14 @@ export function parseSmartEventText(text, opts = {}) {
   const thm = t.match(/\b([a-z][a-z\s&/-]{1,28}?)[- ]themed?\b/i)
     || t.match(/\btheme\s*(?:is|:)?\s*([a-z][a-z\s&/-]{1,28}?)(?:[,.]|$)/i);
   if (thm && thm[1]) {
-    const raw = thm[1].trim().replace(/\s+/g, ' ');
+    // ONLY THE THEME WORDS (owner, 11/21/2026). The lazy capture starts at the
+    // earliest word that reaches "theme", so "…8 kids with a neon glow theme"
+    // stored "kids with a neon glow" and the masthead printed "budget and a neon
+    // glow". What she named is what follows the last filler word. "and" is not
+    // one: "black and gold" is a palette.
+    const raw = thm[1].trim().replace(/\s+/g, ' ')
+      .split(/\b(?:with|a|an|the|for|of|in|at|on|to|including|party|budget|plus|kids?|children|guests?|people)\b/i)
+      .pop().trim();
     if (raw && !/^the$/i.test(raw)) { theme = raw; themeBasis = 'stated'; }
   }
 
