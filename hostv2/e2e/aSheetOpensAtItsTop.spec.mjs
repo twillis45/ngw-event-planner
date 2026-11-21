@@ -24,9 +24,16 @@ const EVENT = {
   date: dateIn(9), startTime: '18:00', startTimeSource: 'host',
   venue: 'The Ironwood Room', venueAddress: '41 Market St, Annapolis, MD', venueCity: 'Annapolis, MD',
   guestMode: 'list', guestEstimate: 14, guestCountSource: 'host',
+  // A LIST LONG ENOUGH TO SCROLL ON ANY SCREEN (11/21/2026). The "scrolled
+  // door" premise needs the Guests sheet to overflow. Two guests did while a
+  // tablet-landscape sheet was a 680px panel capped at 760px tall; since owner
+  // ruling 27 a sheet from 1024 fills the column, so at 1080x1920 (the `wide`
+  // project turned) the two-guest list fit in 1,918px and the premise read 0.
+  // Thirty guests overflow there; nothing this file asserts reads the count.
   guests: [
     { id: 'g1', name: 'Jordan Avery', phone: '(555) 010-0101', rsvp: 'Yes' },
     { id: 'g2', name: 'Riley Park', phone: '(555) 010-0102', rsvp: 'Yes' },
+    ...Array.from({ length: 28 }, (_, i) => ({ id: `g${i + 3}`, name: `Guest ${i + 3}`, rsvp: 'Yes' })),
   ],
   vendors: [{ id: 'v-cat', name: 'Harvest Table Catering', category: 'Catering', status: 'Considering', phone: '(410) 555-0142', cost: 2400, budgetCategory: 'Food' }],
   budget: [{ id: 'food', category: 'Food', budgeted: 2500, actual: 0 }],
