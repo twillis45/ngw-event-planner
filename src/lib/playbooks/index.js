@@ -980,11 +980,22 @@ export function decisionAnswered(event, id) {
   const d = ((pb && pb.decisions) || []).find((x) => x && x.id === id);
   return !!(d && decisionSettledByData(event, d));
 }
+// The calls a checklist step stands for: by its engine row id, or (for a
+// caller holding only the row's words, like the checklist's button) by the
+// authored label it was drafted from. [] when it names none.
+export function stepCalls(event, task) {
+  if (!event || !task) return [];
+  const pb = getPlaybook(event.type);
+  const tasks = (pb && pb.tasks) || [];
+  const id = typeof task.id === 'string' && task.id.startsWith('pbt-') ? task.id : null;
+  const words = String(task.task || '').trim();
+  const t = id ? tasks.find((x) => x && id === `pbt-${event.id}-${x.id}`)
+    : (words ? tasks.find((x) => x && x.label === words) : null);
+  return t && Array.isArray(t.answeredBy) ? t.answeredBy : [];
+}
 export function stepCallsAnswered(event, task) {
   if (!event || !task || typeof task.id !== 'string' || !task.id.startsWith('pbt-')) return false;
-  const pb = getPlaybook(event.type);
-  const t = ((pb && pb.tasks) || []).find((x) => x && task.id === `pbt-${event.id}-${x.id}`);
-  const ids = t && Array.isArray(t.answeredBy) ? t.answeredBy : [];
+  const ids = stepCalls(event, task);
   return ids.length > 0 && ids.every((id) => decisionAnswered(event, id));
 }
 export function choicePickFor(event, id) {

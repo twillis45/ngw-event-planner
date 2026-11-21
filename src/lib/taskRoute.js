@@ -8,6 +8,7 @@
 import { isVendorBooked } from './workstreams';
 import { venueFor } from './venueFor';
 import { showsReplyTracking } from './guestMode';
+import { stepCalls } from './playbooks';
 
 // The first vendor row still needing the host — the row-level rule the
 // Vendors deep-link doctrine requires (not the sheet top).
@@ -296,6 +297,11 @@ export function checklistRouteFor(task, meta = {}, event = null) {
     return { label: 'Open the space list', route: { tab: 'Event Details', focusField: 'space' } };
   if (/\b(grill master|name the|point person|in charge|backup|helper)\b/.test(t))
     return { label: 'Assign it', route: { tab: 'Event Details', focusField: 'space' } };
+  // A STEP THAT IS A CALL is made on Calls to make (11/21/2026): "Decide whose
+  // midnight it is…" had no button though midnight_model sits right there.
+  // The authored `answeredBy` link (playbooks.stepCalls), never a keyword guess.
+  const calls = (() => { try { return stepCalls(event, { id: meta && meta.taskId, task }); } catch (_e) { return []; } })();
+  if (calls.length) return { label: 'Make the call', route: { tab: 'Decisions', decisionId: calls[0] } };
   // Keyword miss → the canonical domain families, so no step is a dead row.
   const fallback = milestoneActionRoute(task, event, meta && meta.taskId);
   if (fallback && fallback.tab === 'Timeline') return null; // self-route on the tasks sheet = no CTA
