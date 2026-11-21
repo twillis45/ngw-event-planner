@@ -547,14 +547,43 @@ for (const state of STATES) {
         // guarantee holds — the handle must exist and sit in the first viewport.
         if (await grab.count() === 0) { test.skip(true, 'no fold on this state (calm/day-of)'); return; }
         await expect(grab.first(), 'the fold model applies here, so the handle must render').toBeVisible({ timeout: 5000 });
-        // Documented boundary: the peek guarantee applies when the ask FITS the
-        // viewport. When the ask content itself exceeds it (short landscape),
-        // scrolling is already inevitable and the handle follows the content.
-        const askH = await page.locator('.escreen').first().evaluate(el => el.getBoundingClientRect().height).catch(() => 0);
-        if (askH > page.viewportSize().height) { test.skip(true, 'ask exceeds viewport — peek boundary'); return; }
-        const box = await grab.boundingBox();
-        expect(box).not.toBeNull();
-        expect(box.y).toBeLessThan(page.viewportSize().height); // inside the first viewport
+        // ── TWO CLAIMS, SPLIT AT THE RESERVATION (owner, 11/21/2026: "Fix the
+        // test only") ─────────────────────────────────────────────────────
+        // `.escreen.on` reserves the foot of the screen for the handle with
+        // `min-height: 100dvh - 72px`. While the ask sits at that height, the
+        // handle lands about 41px above the bottom: it MUST be in the first
+        // viewport. Once the content outgrows the reservation the escreen is
+        // content-sized and the handle follows the content by design.
+        //
+        // The old boundary compared the escreen's HEIGHT to the viewport. The
+        // handle's top is escreen top (16-17px) + height + the fold's own
+        // inset (14px), so a ~30px band neither skipped nor passed: Repast
+        // T-3 at 1024x708 had an escreen 708 tall and the handle 31.4px below
+        // the screen, with nothing overlapped or clipped (batch 4b found it at
+        // 1024x768 as 774 > 768). Measured at 430, 768 and 1024 wide.
+        //
+        // Content-sized, the claim is that the handle FOLLOWS the content: its
+        // gap below the escreen is the fold's own margin + top padding and
+        // nothing more, so no void opens between the ask and the handle.
+        const g = await page.evaluate(() => {
+          const esc = document.querySelector('.escreen');
+          const fold = document.querySelector('.efold');
+          const grabEl = document.querySelector('.efold-grab');
+          const e = esc.getBoundingClientRect(); const fcs = getComputedStyle(fold);
+          return {
+            vh: innerHeight, escH: e.height, escBottom: e.bottom,
+            minH: parseFloat(getComputedStyle(esc).minHeight),   // NaN for `auto` (short screens)
+            inset: parseFloat(fcs.marginTop) + parseFloat(fcs.paddingTop),
+            grabTop: grabEl.getBoundingClientRect().top,
+          };
+        });
+        if (g.escH <= g.minH + 1) {
+          expect(g.grabTop, `ask at its reserved height (${Math.round(g.escH)}px): the handle is in the first viewport`).toBeLessThan(g.vh);
+        } else {
+          const gap = g.grabTop - g.escBottom;
+          expect(gap, `content-sized ask (${Math.round(g.escH)}px): the handle follows it directly`).toBeGreaterThanOrEqual(0);
+          expect(gap, `content-sized ask (${Math.round(g.escH)}px): no space beyond the fold's own ${g.inset}px inset`).toBeLessThanOrEqual(g.inset + 1);
+        }
       });
     }
   });
