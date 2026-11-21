@@ -146,6 +146,10 @@ import MustHaves from './MustHaves';
 import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded, lodgingIsHeld } from '@app/lib/lodgingIntel';
 import { heardAccessNeeds, accessNeedsFor } from '@app/lib/accessNeeds';
 import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch, heardVendorIntents } from '@app/lib/heardClauses';
+import { potluckPickFor, byobPickFor, heardKidsCount, heardAllergyCounts, heardOvernightCount } from '@app/lib/heardFacts';
+import { timeOfDayFor } from '@app/lib/knownFacts';
+import { kidsCountAfterRoster } from '@app/lib/kidsCountAfterRoster';
+import { hostNameFor } from '@app/lib/hostNameFor';
 import { heardFoods, uncoveredFoods, similarPlanLine } from '@app/lib/heardFoods';
 import { heardGameStyle } from '@app/lib/heardGameStyle';
 import { addGame, removeGame, isGameLibrary, GAME_NAME_MAX } from '@app/lib/gameLineup';
@@ -2838,7 +2842,8 @@ export default function HostShellV2() {
     const out = [];
     try {
       (decisionBoard.open || []).forEach(r => {
-        if (r && r.label) out.push({ label: 'Decide: ' + r.label, id: r.id || null, due: r.dueDate || null, days: r.daysOut != null ? r.daysOut : null, kind: 'call' });
+        // A confirm reads as one ("Confirm 30 guests"), never "Decide: Confirm…".
+        if (r && r.label) out.push({ label: (r.confirm ? '' : 'Decide: ') + r.label, id: r.id || null, due: r.dueDate || null, days: r.daysOut != null ? r.daysOut : null, kind: 'call' });
       });
     } catch {}
     try {
@@ -3428,7 +3433,8 @@ export default function HostShellV2() {
     // is an email/phone, so rendering that as "Hosted by" would print an address on
     // the invitation.
     deckLine: event.deckLine || '',
-    hostName: event.hostName || '',
+    // Prefilled from her profile name when the event has none (hostNameFor).
+    hostName: hostNameFor(event, profile),
   });
   const openMeaning = () => { setMeaningDraft(buildMeaningDraft()); setSheet({ kind: 'meaning' }); };
   const hasMeaning = !!(String(event.must_have_moment || '').trim() || String(event.meaning_why || '').trim() || String(event.honoree_story || '').trim());
@@ -4709,7 +4715,7 @@ export default function HostShellV2() {
       const g = guestNumber(event);
       if (!g || !event.type) return null;
       const e = estimateTotalRange({
-        type: event.type, guestCount: g, date: event.date, timeOfDay: event.timeOfDay,
+        type: event.type, guestCount: g, date: event.date, timeOfDay: timeOfDayFor(event),
         isDestination: !!event.isDestination, nights: spanNights(event),
       });
       const mid = e ? Math.round(((e.lowTotal + e.highTotal) / 2) / 100) * 100 : 0;
@@ -7824,7 +7830,7 @@ export default function HostShellV2() {
     const res = undoLastImportBatch(importBatches);
     if (!res) return;
     writeImportBatches(res.batches);
-    patchEvent({ guests: res.snapshot, kidsCount: kidsTotal(res.snapshot) },
+    patchEvent({ guests: res.snapshot, kidsCount: kidsCountAfterRoster(event, res.snapshot) },
       'Import undone — the list is back the way it was before that import.');
   };
   // PII cleanup (engine-gap NEW-3): every batch carries a FULL pre-import
@@ -7898,7 +7904,7 @@ export default function HostShellV2() {
     const before = event.guests || [];
     const batchId = newImportBatchId();
     const merged = applyMerge(before, csvPreview.mapped, 'merge', batchId);
-    const kidsCount = kidsTotal(merged);
+    const kidsCount = kidsCountAfterRoster(event, merged);
     // Record the batch BEFORE the write lands: id, pre-import snapshot (what
     // undo restores), and the same audit counts the legacy wizard records.
     const audit = computeImportAuditMeta(csvPreview.mapped, csvPreview.summary);
@@ -7913,13 +7919,13 @@ export default function HostShellV2() {
     const gs = (event.guests || []).map((g, ix) => ix === i ? { ...g, ...patch } : g);
     // kidsCount is the ENGINE's portion-skew knob (kids eat ~40% of adult
     // protein) — derive it from the roster so food re-prices automatically.
-    const kidsCount = kidsTotal(gs);
+    const kidsCount = kidsCountAfterRoster(event, gs);
     patchEvent({ guests: gs, kidsCount }, msg);
   };
   const removeGuest = (i) => {
     const g = (event.guests || [])[i];
     const gs = (event.guests || []).filter((_, ix) => ix !== i);
-    const kidsCount = gs.reduce((t, x) => t + (Number(x && x.kids) || 0), 0);
+    const kidsCount = kidsCountAfterRoster(event, gs);
     patchEvent({ guests: gs, kidsCount }, (g && g.name || 'Guest') + ' removed from the list.');
     setGuestOpen(null);
   };
@@ -8465,7 +8471,7 @@ export default function HostShellV2() {
   // former inline copy; both apps now consume one implementation.
   const announceReplies = (gs, n, yesCount, withdrawn = 0) => {
     if (!n && !withdrawn) return;
-    const kidsCount = kidsTotal(gs);
+    const kidsCount = kidsCountAfterRoster(event, gs);
     const ask = sameGuestAskLine(event.guests, gs);
     // A guest who deleted her reply is said plainly, never folded into "replies came in".
     const gone = withdrawn ? (withdrawn === 1 ? 'A guest deleted their reply' : withdrawn + ' guests deleted their replies') + ', so their answers are off your list.' : '';
@@ -8687,7 +8693,7 @@ export default function HostShellV2() {
     const url = appUrl + '?helper=' + encodeURIComponent(r.code);
     const mine = (helperData.responsibilities || []).filter(x => x.helperId === resp.helperId);
     const body = buildHelperAsk({
-      event, hostName: (profile && profile.name) || event.hostName || '', helperName: resp.helperName,
+      event, hostName: hostNameFor(event, profile), helperName: resp.helperName,
       jobs: mine.map(x => ({ kind: x.itemType, label: x.label })), url,
     });
     const guest = resp.guestId ? (event.guests || []).find(g => g && g.id === resp.guestId) : null;
@@ -9639,7 +9645,7 @@ export default function HostShellV2() {
     const _stayFloor = (() => {
       try { return budgetComparableTotal(_stayBasis, spanNights(event)); } catch (_e) { return null; }
     })();
-    const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date, timeOfDay: event.timeOfDay, isDestination: !!event.isDestination, nights: spanNights(event), lodgingFloor: _stayFloor });
+    const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date, timeOfDay: timeOfDayFor(event), isDestination: !!event.isDestination, nights: spanNights(event), lodgingFloor: _stayFloor });
     // HOST MODEL: one number (event.totalBudget). Offered three ways — the
     // estimator's real low/mid/high as Lean / Typical / All-out chips (host
     // request, 2026-07-08), a custom number, and the range as a hint.
@@ -10020,7 +10026,9 @@ export default function HostShellV2() {
       // `hostName`, never promoted to honoree — nobody is being celebrated.
       name: effName ? effName + '’s ' + milestoneName : (parsed.hostName ? parsed.hostName + '’s ' + milestoneName : 'My ' + milestoneName),
       honoree: effName || '',
-      ...(parsed.hostName ? { hostName: parsed.hostName } : {}),
+      // …and when she did not name herself, the invitation is from the name
+      // her profile already holds (hostNameFor), not a blank she is asked to fill.
+      ...(hostNameFor({ hostName: parsed.hostName }, profile) ? { hostName: hostNameFor({ hostName: parsed.hostName }, profile) } : {}),
       type: effType, date: effDate || '', ...(effEndDate ? { endDate: effEndDate } : {}), venue: parsed.venue || '', venueKind: parsed.venueKind || '',
       // THE MONTH THE HOST NAMED, when they did not name a day ("in June of 2028",
       // "next month", "this fall"). It was heard at intake — the chip said
@@ -10172,9 +10180,20 @@ export default function HostShellV2() {
       // consumer starts reading it, on every existing event, with nothing to
       // backfill. The LIST is deliberately not stored; see heardClauses.js.
       createdFromText: smartText,
+      // WHAT SHE SAID, WRITTEN DOWN (owner, 11/21/2026: "Don't keep asking host
+      // for the same information"). "including 8 kids", "one guest has a nut
+      // allergy" and "3 staying overnight" were heard, listed as dropped, and
+      // asked for again. lib/heardFacts.js reads them; only what she said.
+      ...(() => { const n = heardKidsCount(smartText); return n ? { kidsCount: Math.min(n, Number(effGuests) || n) } : {}; })(),
+      ...(() => { const dc = heardAllergyCounts(smartText); return dc ? { dietCounts: dc } : {}; })(),
+      ...(() => { const n = heardOvernightCount(smartText); return n ? { overnightCount: n } : {}; })(),
       budget: [],
       guests: [], vendors: heardVendorIntents(smartText).map((v, i) => ({ ...v, id: 'v-' + newId + '-' + i })), timeline: [],
     };
+    // HER CLOCK OUTRANKS HER WORD (owner, 11/21/2026). "Dinner at 4pm" stored
+    // timeOfDay 'evening' (from "dinner") beside 4:00 PM, and the budget's
+    // time-of-day factor read the bucket. A clock she said decides it.
+    { const tod = timeOfDayFor(ev); if (tod) ev.timeOfDay = tod; }
     // AN EVENT ARRIVES WITH A GROUNDED START TIME (host directive, 2026-07-14).
     // Not the old invention — that was a bare 15:00, written as fact and indistinguishable
     // from a host decision. This one is DERIVED (a real sunset + the playbook's own run-length,
@@ -10194,6 +10213,17 @@ export default function HostShellV2() {
       const style = heardGameStyle(smartText);
       const d = style && ((getPlaybook(ev.type) || {}).decisions || []).find((x) => x && x.id === 'game_type' && (x.options || []).includes(style));
       if (d) { ev.foodChoices = { ...(ev.foodChoices || {}), game_type: style }; ev.choiceSource = { ...(ev.choiceSource || {}), game_type: 'host' }; }
+    } catch (_e) { /* the decision asks later */ }
+    // "POTLUCK" AND "BYOB" ARE HER ANSWERS (owner, 11/21/2026). "Potluck
+    // Thanksgiving" stored nothing, so who-cooks proposed host-cooks; "BYOB" was
+    // listed as dropped while the drinks call proposed its default. Recorded the
+    // way her game style is, before the checklist is drawn.
+    try {
+      const decs = (getPlaybook(ev.type) || {}).decisions || [];
+      [potluckPickFor(decs, smartText), byobPickFor(decs, smartText)].filter(Boolean).forEach(({ id, pick }) => {
+        ev.foodChoices = { ...(ev.foodChoices || {}), [id]: pick };
+        ev.choiceSource = { ...(ev.choiceSource || {}), [id]: 'host' };
+      });
     } catch (_e) { /* the decision asks later */ }
     try { ev.timeline = (playbookChecklist(ev) || []).map(r => ({ id: r.id, week: r.week || '', leadDays: r.leadDays != null ? r.leadDays : null, task: r.task || '', done: false, owner: '', category: r.category || '' })); } catch {}
     // A FOOD SHE NAMED IS ON THE MENU (GOLD-05, 11/5/2026). One the playbook
@@ -27568,7 +27598,7 @@ export default function HostShellV2() {
                     return (
                       <div className="card" role="group" aria-label={'Is ' + row.name + ' ' + who.name + '?'} key={'same-' + row.id}>
                         <p className="grounding">A reply came in signed “{row.name}”. Is that {who.name}?</p>
-                        <button className="mini" onClick={() => { const gs = confirmSameGuest(event.guests, row.id); patchEvent({ guests: gs, kidsCount: kidsTotal(gs) }, 'The reply is on ' + who.name + '’s row now.'); }}>Same person</button>{' '}
+                        <button className="mini" onClick={() => { const gs = confirmSameGuest(event.guests, row.id); patchEvent({ guests: gs, kidsCount: kidsCountAfterRoster(event, gs) }, 'The reply is on ' + who.name + '’s row now.'); }}>Same person</button>{' '}
                         <button className="mini" onClick={() => patchEvent({ guests: keepSeparateGuest(event.guests, row.id) }, row.name + ' stays on the list as a separate guest.')}>Different people</button>
                       </div>
                     );

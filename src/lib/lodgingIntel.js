@@ -30,6 +30,7 @@
 import { spanNights, spanEnd } from './dates';
 import { BOOKING_RISK_SOURCES } from './knowledge/bookingRiskContext';
 import { venueFor } from './venueFor';
+import { guestCountFor } from './guestCountFor';
 import { accessNeedsFor } from './accessNeeds';
 import { isListingPhoto } from './lodgingBookmarklet';
 import { googleTravelTs } from './googleTravelTs';
@@ -1516,7 +1517,9 @@ export function lookupTargets(rows, cap) {
 export function rankCandidates(candidates, event, opts) {
   const list = Array.isArray(candidates) ? candidates : [];
   const wants = mustHavesFor(event || {});
-  const guests = Number((event && (event.guestCount || event.guests)) || 0) || 0;
+  // guestCountFor (owner, 11/21/2026): `guestCount || guests` skipped the
+  // estimate, so a new event read 0 guests and the beds-short check never fired.
+  const guests = Number(guestCountFor(event).count) || 0;
   const budget = Number((opts && opts.budget) || 0) || 0;
 
   const scored = list.map((c) => {

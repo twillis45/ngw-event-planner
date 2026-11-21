@@ -63,8 +63,6 @@ const READERS = Object.freeze({
   // ── Canonical authorities. Raw by definition; they are the floor. ─────────
   'src/lib/guestCountFor.js': { need: NEED.AUTHORITY, why: 'the resolution order itself: guestCount || guestEstimate || roster, plus whose it is' },
   'src/lib/playbooks/index.js': { need: NEED.AUTHORITY, why: 'holds attendanceBand, guestCountOf and the food/supply sizing the rest of the app reads' },
-  'src/lib/confirmedCovers.js': { need: NEED.AUTHORITY, why: 'the ONE plates reader; its headcount-mode fallback is the host’s own number' },
-  'src/lib/perHead.js': { need: NEED.AUTHORITY, why: 'the ONE per-head divider; carries its own hostCounts provenance and refuses to guess' },
 
   // ── Applicability. The value is never used as truth. ─────────────────────
   'src/lib/phaseProgress.js': { need: NEED.APPLICABILITY, why: 'decides whether the guests plan-part counts at all' },
