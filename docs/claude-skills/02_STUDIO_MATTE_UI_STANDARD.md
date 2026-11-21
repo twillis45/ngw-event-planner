@@ -44,6 +44,19 @@ existed on one side only and conflicts with nothing, so it is kept).
     - **Dark theme.** The dark canvas stays steel.
     - **Sign-in.** The sign-in prompt is ONE row in both themes, with the same dimensions in each: "**Not saved yet.** Sign in to keep it.", then a primary Sign in button, then a ✕ that does what "Not now" did. Every target is 44×44. This supersedes the two equal gray buttons, which gave no primary and whose copy measured 4.48–4.53:1 over the glow.
     - **Supersedes.** For light mode, this supersedes the "steel glow" wording in ruling 5 and § Canvas glow.
+26. **The iPad board at 1024–1279: "Where you stand" beside the question (owner ruling, 11/21/2026, made from rendered Current / Narrow / Full comparisons: "Narrow").**
+    - **What moves.** On boards 1024–1279 wide, only the "Where you stand" stat column (`.bento`: progress, guests, budget) moves beside the question, as it does at desktop. Every other board zone stays below the fold.
+    - **Tall screens.** On screens 1000px or taller, the question sits at the top instead of centering.
+    - **What this amends.** Three earlier rulings, for this range only:
+      - The fold rule (`foldAtTheFoot`): the stat column is now allowed in the first screen; everything else still is not.
+      - The 2026-08-07 single-column board.
+      - The 2026-08-17 ruling that tall portrait screens center the question.
+    - **The progress bar spans the board** (owner, 11/21/2026: "For narrow expand the progress bar"). In this range the seven-part progress bar ("5 of 7 · Food and Vendors open") runs the full width of the question column and the stat column together. It does not shrink to the question column's 433px. It sits at the top, under the event eyebrow, as at desktop (owner, 11/21/2026: "Lock in at the top"). It is not at the foot by the fold handle: on a 1366-tall screen that left it about 1,200px from a top-aligned question. Its cost is about 50px of the question's height, and the question still fits the first screen at 1024×768.
+    - **Why not the full two-column board.** The owner considered it and declined. At 1024 its work columns are 179px wide and text breaks mid-word.
+27. **Sheets from 1024 up: the full column, never taller than the screen (owner ruling, 11/21/2026, made from rendered sheet-size comparisons: "B").**
+    - **The shape.** From 1024 wide, where the side rail appears, every sheet fills the content column: one shape across the 1280 boundary, with no 680px panel jumping to a full column. This keeps the 8/3 and 8/21 rulings that a section fills the column at desktop.
+    - **Height.** A sheet's frame is capped to the screen height, so its title and Close are always visible. Test it at 1280×654, where the shopping sheet once opened with both off-screen. The page behind the sheet must not scroll while it is open: use `overflow: clip`, never `hidden`, because `hidden` can still be scrolled from code.
+    - **What was declined.** The audit's single centered 680px panel. It dropped the desktop list-with-detail layout, and it only fit at 1280×654 because of where the page happened to be scrolled.
 
 ## Studio Matte Means
 
