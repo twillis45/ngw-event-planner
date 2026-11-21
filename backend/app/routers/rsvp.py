@@ -26,6 +26,7 @@ Security model:
 See supabase/migrations/009_rsvp_submissions.sql for the table + RLS.
 """
 import time
+import re
 from typing import Optional, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
@@ -197,6 +198,44 @@ def _date_options(raw):
     return out[:MAX_DATE_OPTIONS]
 
 
+# The dinner inside the trip (owner decision 11/21/2026). The invite shows the
+# celebration dinner on its picked night and the group meals out, by day. Each
+# is narrowed to what a guest reads: the night and the kind of place for the
+# dinner; the starting point and the per-meal picks for the meals. Who pays for
+# meals out stays with the host.
+_MEAL_PLANS = {"own", "dinners", "house"}
+_MEAL_MODES = {"house", "out", "own"}
+_ISO_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_MEAL_KEY = re.compile(r"^\d{4}-\d{2}-\d{2}:(breakfast|lunch|dinner)$")
+
+
+def _celebration(raw):
+    if not isinstance(raw, dict):
+        return None
+    out = {}
+    night = str(raw.get("night") or "").strip()
+    if _ISO_DAY.match(night):
+        out["night"] = night
+    place = str(raw.get("place") or "").strip()
+    if place:
+        out["place"] = place[:80]
+    return out
+
+
+def _trip_meals(raw):
+    if not isinstance(raw, dict):
+        return None
+    out = {}
+    if raw.get("plan") in _MEAL_PLANS:
+        out["plan"] = raw["plan"]
+    meals = raw.get("meals")
+    if isinstance(meals, dict):
+        picked = {str(k): v for k, v in meals.items() if _MEAL_KEY.match(str(k)) and v in _MEAL_MODES}
+        if picked:
+            out["meals"] = dict(list(picked.items())[:60])
+    return out or None
+
+
 # ── Schemas ────────────────────────────────────────────────────────────────────
 class RsvpSubmit(BaseModel):
     idempotency_key: str = Field(..., min_length=1)
@@ -285,6 +324,12 @@ async def _resolve_event(conn, rsvp_code: str):
         public["dateOptions"] = opts
     else:
         public.pop("dateOptions", None)
+    cel = _celebration(data.get("celebration"))
+    if cel is not None:
+        public["celebration"] = cel
+    meals = _trip_meals(data.get("tripMeals"))
+    if meals:
+        public["tripMeals"] = meals
     public["id"] = row["id"]
     # Anonymized social proof: the COUNT of confirmed guests only — never names,
     # emails, or the roster itself. Closes the invite's "zero social proof on
