@@ -217,7 +217,7 @@ import { typeIsRestatedByName } from '@app/lib/eventMasthead';
 import { confirmedCovers, confirmedRsvpCovers } from '@app/lib/confirmedCovers';
 import { shoppingHint } from '@app/lib/shoppableUnit';
 import { markSignal, lastSignalNote } from './offline/lastSignal';
-import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, sizingRange, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, sizingRange, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum, dietaryNoted } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
@@ -22410,7 +22410,7 @@ export default function HostShellV2() {
                       <p className="grounding" style={{ margin: '10px 0 0' }}>
                         Vegetarian + vegan counts add a real, priced main below; the others flag the lines to double-check.
                       </p>
-                      {!event.dietaryNoted && (
+                      {!dietaryNoted(event) && (
                         <button className="mini" style={{ marginTop: 'var(--sp-2)' }}
                           onClick={() => { patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.'); closeDiet(); }}>That’s everyone — noted</button>
                       )}
@@ -22465,8 +22465,8 @@ export default function HostShellV2() {
                       {planTab && (
                       <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
                         <span className="fstat-l">Dietary needs</span>
-                        <span className="fstat-v" style={anyDiet || event.dietaryNoted ? { color: 'var(--ok)' } : null}>
-                          {anyDiet ? 'noted · ' + dietRowsFor(event).flaggedCount + ' flagged' : event.dietaryNoted ? 'noted' : 'none yet'}
+                        <span className="fstat-v" style={anyDiet || dietaryNoted(event) ? { color: 'var(--ok)' } : null}>
+                          {anyDiet ? 'noted · ' + dietRowsFor(event).flaggedCount + ' flagged' : dietaryNoted(event) ? 'noted' : 'none yet'}
                           <span className="fstat-chev" aria-hidden="true">›</span>
                         </span>
                       </button>

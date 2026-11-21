@@ -5,7 +5,7 @@ import { budgetIsSet } from './budgetFor';
 import { rsvpHasResponded } from './rsvp';
 import { chaseAnsweredOrNudged } from './replyNudge';
 // Live binding, read only at call time: playbooks imports this module too.
-import { openFoodChoices, isDietaryChoice, playbookFoodPlan, hostBuysLine } from './playbooks';
+import { openFoodChoices, isDietaryChoice, playbookFoodPlan, hostBuysLine, dietaryNoted } from './playbooks';
 import { buildTravelPlan } from './travelPlan';
 
 // Single source of truth for "is this planning task already handled by real event state?"
@@ -84,7 +84,7 @@ export function taskSatisfied(event, task) {
   // noted them, the step falls through to whatever else it is about. An
   // invite that only ASKS about diets is excluded — sending the ask is not
   // having the answers.
-  if (event.dietaryNoted && DIETARY_STEP.test(s) && !/\b(invit|send)|chase|nudge/.test(s)) return true;
+  if (dietaryNoted(event) && DIETARY_STEP.test(s) && !/\b(invit|send)|chase|nudge/.test(s)) return true;
 
   // ── BRUTAL AUDIT 2026-07-28 GUARDS — these run before every domain rule ─────
   // A this-or-that question is a DECISION — no stored fact proves a choice was

@@ -57,6 +57,8 @@ const expectNoSettledMenu = async (page) => {
 const option = (page, label) => heroCard(page).locator('button.decopt').filter({ hasText: label }).first();
 
 const SET_ASIDE = { 'decision:dietary': dateIn(4) };
+// The allergy step, in either of its wordings, once the table has said "nobody".
+const NO_ALLERGY_ASK = /Who has a food allergy|Note dietary needs|dietary restrictions/i;
 
 test('Thanksgiving: the turkey, then the table, then the hero moves on', async ({ page }) => {
   await boot(page, seed('Thanksgiving Hosting', 'E2E_menu_tg', {
@@ -91,14 +93,45 @@ test('Thanksgiving: the turkey, then the table, then the hero moves on', async (
   const after = await heroText(page);
   console.log('AFTER THE MENU (Thanksgiving):\n' + after.split('\n').slice(0, 8).join('\n'));
   expect(after).not.toMatch(/How is the turkey cooked|Who at the table has a dietary need|What you.re serving/);
+  // "Nobody" counts as noted (owner ruling 1, 11/21/2026): no allergy ask follows.
+  expect(after).not.toMatch(NO_ALLERGY_ASK);
   await expectNoSettledMenu(page);
   // Both answers are on the plan, and the menu item stays gone after a reload.
   await page.reload();
   await settled(page);
   expect(await menuHeading(page)).toBe(null);
   expect(await heroText(page)).not.toMatch(/How is the turkey cooked|Who at the table has a dietary need|What you.re serving/);
+  expect(await heroText(page)).not.toMatch(NO_ALLERGY_ASK);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].foodChoices);
   expect(saved).toMatchObject({ turkey_method: 'Smoked', dietary_table: 'Nobody — the traditional menu works for everyone' });
+});
+
+// "NOBODY" COUNTS AS NOTED (owner ruling 1, 11/21/2026). Friendsgiving's table
+// question answered "Nobody at this table": the menu is done, and the hero does
+// not turn round and ask who has a food allergy.
+test('Friendsgiving: "Nobody at this table" ends the menu, and no allergy ask follows', async ({ page }) => {
+  await boot(page, seed('Friendsgiving', 'E2E_menu_fg_nobody', {
+    snoozed: { 'decision:dietary': dateIn(4), 'top:operational:p_drinks': dateIn(4) },
+    foodChoices: {
+      hosting_model: 'Potluck — host makes the main, friends each bring an assigned dish',
+      main_dish: 'Roast turkey',
+      drinks: 'Friends bring a bottle; host covers ice, water, and something alcohol-free',
+    },
+  }));
+  await expect.poll(() => menuHeading(page)).toBe('Who has an allergy or dietary need to plan around? · 1 open');
+  const disc = heroCard(page).locator('button.decopt-disc').filter({ hasText: 'Other ways' }).first();
+  if (await disc.count()) await disc.click();
+  await option(page, 'Nobody at this table').click();
+  await expect.poll(() => menuHeading(page)).toBe(null);
+  const after = await heroText(page);
+  console.log('AFTER "NOBODY" (Friendsgiving):\n' + after.split('\n').slice(0, 8).join('\n'));
+  // The receipt names the answer ("…: Nobody at this table — settled."); the ask does not return.
+  expect(await page.locator('.hero h2.ask').first().innerText({ timeout: 1000 }).catch(() => '')).not.toMatch(/allerg|dietary/i);
+  expect(after).not.toMatch(NO_ALLERGY_ASK);
+  await page.reload();
+  await settled(page);
+  expect(await heroText(page)).not.toMatch(/Who has an allergy or dietary need/);
+  expect(await heroText(page)).not.toMatch(NO_ALLERGY_ASK);
 });
 
 // Every playbook with more than one menu question had the same panel: once the
