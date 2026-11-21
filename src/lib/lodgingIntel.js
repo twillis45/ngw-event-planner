@@ -37,7 +37,7 @@ import { googleTravelTs } from './googleTravelTs';
 // LEAF IMPORT ON PURPOSE (2026-08-16). Importing this from './playbooks'
 // dragged the entire 1.4MB playbook corpus onto the guest invite path,
 // because InviteV2 imports this module. See destLodgingOptions.js.
-import { DEST_LODGING_OPTIONS } from './destLodgingOptions';
+import { DEST_LODGING_OPTIONS, kitchenFromLodgingPick } from './destLodgingOptions';
 import { buildTravelPlan } from './travelPlan';
 // LOCAL calendar date, from the canonical formatter in ./dates. `toISOString()`
 // is UTC and slides a day whenever the two calendars disagree — measured at
@@ -403,12 +403,10 @@ export function kitchenSignal(event) {
   //     link is us reading a URL host; this is the host answering the question.
   const picks = (ev.foodChoices && typeof ev.foodChoices === 'object') ? ev.foodChoices : {};
   const pick = String(picks.dest_lodging || '').trim();
-  if (/airbnb|rental|house|cabin|villa/i.test(pick)) {
-    return { value: true, from: 'told', basis: `You said: “${pick}”.` };
-  }
-  // A room block IS a hotel — that is what a block is.
-  if (/room block/i.test(pick)) {
-    return { value: false, from: 'told', basis: `You said: “${pick}”.` };
+  // A room block IS a hotel — that is what a block is (kitchenFromLodgingPick).
+  const told = kitchenFromLodgingPick(pick);
+  if (told !== null) {
+    return { value: told, from: 'told', basis: `You said: “${pick}”.` };
   }
 
   // 2 · Nothing told, so read the listing. Platform comes from the URL host,
@@ -461,9 +459,9 @@ export function lodgingKitchen(event) {
 // never promise a kitchen value it does not produce. If no option matches, the
 // answer is dropped rather than guessed.
 export const KITCHEN_ANSWERS = (() => {
-  const pickBy = (re) => DEST_LODGING_OPTIONS.find((o) => re.test(String(o)));
-  const rental = pickBy(/airbnb|rental|house|cabin|villa/i);
-  const hotel = pickBy(/room block/i);
+  const pickBy = (want) => DEST_LODGING_OPTIONS.find((o) => kitchenFromLodgingPick(o) === want);
+  const rental = pickBy(true);
+  const hotel = pickBy(false);
   return [
     rental ? { id: 'rental', label: 'A house we rent', kitchen: true, pick: rental } : null,
     hotel ? { id: 'hotel', label: 'A hotel or room block', kitchen: false, pick: hotel } : null,

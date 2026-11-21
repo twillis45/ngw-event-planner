@@ -17,6 +17,7 @@
 // renders only when the HOST typed one on their own row.
 
 import { spanNights } from './dates';
+import { celebrationAppliesWith, celebrationNight, celebrationTitle, celebrationPlace, mealItineraryRows, tripIsMultiDay, placeWithArticle } from './tripMeals';
 
 const SLOTS = ['morning', 'midday', 'afternoon', 'evening', 'night'];
 const SLOT_RANK = SLOTS.reduce((m, s, i) => ((m[s] = i + 1), m), {});
@@ -59,7 +60,7 @@ function reunionArc(ev, days) {
   const rows = [{ day: 1, slot: 'evening', title: 'Meet & greet', note: 'everyone lands, keep it easy', anchor: true }];
   const saturday = dayOn(6);
   const cookoutDay = (saturday && saturday > 1) ? saturday : Math.min(days, Math.max(2, Math.ceil(days / 2)));
-  rows.push({ day: cookoutDay, slot: 'afternoon', title: 'The cookout — the big gathering', note: 'the day everyone came for', anchor: true });
+  rows.push({ day: cookoutDay, slot: 'afternoon', title: 'The cookout — the big gathering', note: 'the day everyone came for', anchor: true, main: true });
   const sunday = dayOn(0);
   if (sunday && sunday !== cookoutDay) {
     rows.push({ day: sunday, slot: 'morning', title: 'Worship service', note: 'optional — the traditional close', anchor: false });
@@ -102,6 +103,7 @@ function structuralArc(ev, days) {
     day: mainDay, slot: 'afternoon', anchor: true,
     title: 'The main event',
     note: 'the day everyone came for',
+    main: true,
   });
 
   if (days > mainDay) {
@@ -159,8 +161,29 @@ const normRow = (r) => {
     title,
     note: String(r.note || '').trim() || null,
     anchor: !!r.anchor,
+    ...(r.celebration ? { celebration: true } : {}),
+    ...(r.meal ? { meal: true } : {}),
   };
 };
+
+// ── THE DINNER'S DAY IS THE NIGHT PICK, NEVER A ROW'S OWN (11/21/2026) ──────
+// "Your days" put "The main event" on Tue Jun 15 while the sentence said Jun
+// 14. On an event with a celebration, the arc's main row IS the celebration,
+// and its day is read from celebrationNight every time — an accepted plan
+// stores the row with `celebration: true`, and whatever day it was saved on is
+// overwritten here. A legacy accepted "The main event" row is read the same way.
+const isCelebrationRow = (r) => !!(r && (r.celebration || (r.anchor && /^the main event$/i.test(String(r.title || '').trim()))));
+function celebrationRow(ev) {
+  const n = celebrationNight(ev);
+  const place = celebrationPlace(ev);
+  return {
+    day: n.effectiveIndex, slot: 'evening', time: null,
+    title: celebrationTitle(ev),
+    note: n.picked ? (place ? `at ${placeWithArticle(place)}` : null) : 'suggested night — not picked yet',
+    anchor: true, celebration: true,
+  };
+}
+const resolveCelebration = (ev, rows) => rows.map((r) => (isCelebrationRow(r) ? { ...celebrationRow(ev), ...(r.time ? { time: r.time } : {}) } : r));
 
 const sortRows = (rows) => [...rows].sort((a, b) =>
   (a.day - b.day) || ((a.slot ? SLOT_RANK[a.slot] : 99) - (b.slot ? SLOT_RANK[b.slot] : 99)));
@@ -172,15 +195,21 @@ const sortRows = (rows) => [...rows].sort((a, b) =>
  */
 export function guestItinerary(event, getPlaybook) {
   const ev = event || {};
+  const pb = (() => { try { return getPlaybook ? getPlaybook(ev.type) : null; } catch { return null; } })();
+  // The celebration dinner and the meals around it (tripMeals.js). `meals` is
+  // the day-by-day shared meals — shown in Your days beside these rows, never
+  // written into event.itinerary (they derive from event.tripMeals).
+  const cel = celebrationAppliesWith(ev, pb);
+  const meals = mealItineraryRows(ev, { celebration: cel });
+  const withCel = (rows) => (cel ? sortRows(resolveCelebration(ev, rows)) : rows);
 
   // 1 · host-owned rows win outright
   if (Array.isArray(ev.itinerary) && ev.itinerary.length) {
     const rows = sortRows(ev.itinerary.map(normRow).filter(Boolean));
-    if (rows.length) return { relevant: true, source: 'host', rows, provenance: null };
+    if (rows.length) return { relevant: true, source: 'host', rows: withCel(rows), meals, celebration: cel, provenance: null };
   }
 
   // 2 · authored playbook agenda ("Day N ..." rows only — T-offset rows are crew)
-  const pb = (() => { try { return getPlaybook ? getPlaybook(ev.type) : null; } catch { return null; } })();
   const agenda = pb && pb.schedules && Array.isArray(pb.schedules.agenda) ? pb.schedules.agenda : [];
   // W1.3 (2026-08-21): a conditionally multi-day type (Reunion) gates its
   // weekend agenda rows with whenChoice — the same {id, in} vocabulary
@@ -216,7 +245,7 @@ export function guestItinerary(event, getPlaybook) {
     .filter(Boolean);
   if (authored.length) {
     return {
-      relevant: true, source: 'playbook', rows: sortRows(authored),
+      relevant: true, source: 'playbook', rows: sortRows(authored), meals, celebration: cel,
       provenance: { tier: 'authored', note: `${ev.type}'s own multi-day plan.` },
     };
   }
@@ -232,17 +261,43 @@ export function guestItinerary(event, getPlaybook) {
   if (spanNights(ev) >= 1) {
     const days = spanNights(ev) + 1;
     const isReunion = String(ev.type || '') === 'Reunion';
-    const rows = (isReunion ? reunionArc(ev, days) : structuralArc(ev, days)).map(normRow).filter(Boolean);
+    const rows = (isReunion ? reunionArc(ev, days) : structuralArc(ev, days))
+      .map((r) => (cel && r.main ? celebrationRow(ev) : r))
+      .map(normRow).filter(Boolean);
     if (rows.length) {
       const sorted = sortRows(rows);
       return {
         relevant: true,
         source: 'proposed',
         rows: sorted,
+        meals,
+        celebration: cel,
         provenance: isReunion ? REUNION_ARC_PROVENANCE : structuralArcProvenance(ev, days, sorted),
       };
     }
   }
 
-  return { relevant: false, source: null, rows: [], provenance: null };
+  return { relevant: false, source: null, rows: [], meals: [], celebration: false, provenance: null };
+}
+
+/**
+ * guestFacingDays(event) → { relevant, rows } — what the INVITE shows.
+ * Only what the host decided: their accepted plan rows, the celebration dinner
+ * once its night is picked (on that night), and the group meals out. Never a
+ * raw proposal. Playbook-free, because the invite must not load the corpus: an
+ * event carries a celebration when `event.celebration` exists, which creation
+ * writes only for a type that has one.
+ */
+export function guestFacingDays(event) {
+  const ev = event || {};
+  const cel = tripIsMultiDay(ev) && !!(ev.celebration && typeof ev.celebration === 'object');
+  const night = celebrationNight(ev);
+  let rows = (Array.isArray(ev.itinerary) ? ev.itinerary : []).map(normRow).filter(Boolean)
+    .filter((r) => !(r.celebration && !(cel && night.picked)));
+  if (cel && night.picked) {
+    rows = resolveCelebration(ev, rows);
+    if (!rows.some((r) => r.celebration)) rows.push(celebrationRow(ev));
+  }
+  rows = rows.concat(mealItineraryRows(ev, { celebration: cel, modes: ['out'] }));
+  return { relevant: rows.length > 0, rows: sortRows(rows) };
 }

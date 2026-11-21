@@ -26,3 +26,14 @@ export const DEST_LODGING_OPTIONS = [
   'Guests book on their own',
   'A host-arranged Airbnb',
 ];
+
+// What a "How are guests staying?" answer says about a kitchen: true for a
+// rented house, false for a room block (a block IS a hotel), null when the
+// answer says nothing (guests book on their own, or no answer). ONE predicate:
+// lodgingIntel's kitchenSignal and the trip meals both read it.
+export function kitchenFromLodgingPick(pick) {
+  const p = String(pick || '').trim();
+  if (/airbnb|rental|house|cabin|villa/i.test(p)) return true;
+  if (/room block/i.test(p)) return false;
+  return null;
+}

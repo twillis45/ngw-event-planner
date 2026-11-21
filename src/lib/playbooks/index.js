@@ -16,6 +16,7 @@ import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
 import { matchGuestIndexByName } from '../guestMerge';
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
 import { spanNights } from '../dates';
+import { aroundMeals, celebrationAppliesWith } from '../tripMeals';
 import { attendanceAdjustment } from '../hostIntel';
 import { geoItemForPurchase } from '../knowledge/geoItemMap';
 // The one display form for an answer that may be a string OR a list. `decisionType`
@@ -1456,6 +1457,8 @@ const DESTINATION_DECISIONS = [
     ] },
 ];
 
+const DESTINATION_DECISION_IDS = new Set(DESTINATION_DECISIONS.map((d) => d.id));
+
 // F10 (audit 2026-07-27): a travel-native playbook's OWN lodging decision
 // governs — appending the generic twin asked "how are guests staying?" twice
 // (Team Retreat 'lodging', Conference 'room_block'). Travel-mix/transport have
@@ -1785,6 +1788,25 @@ export function playbookChecklist(event, asOf) {
       dueInDays: dte + off,
       provenance: { source: `${playbook.type} playbook`, taskId: 'fa-caterer', derived: 'food-approach' },
     });
+  }
+  // THE MEALS OUT GET BOOKED (owner, 11/21/2026). On a destination trip, only
+  // a meal the host marked "out together" adds a step: a table for the group
+  // has to be reserved. It is labeled with its day, so the steps read grouped
+  // under the day they belong to; house and on-your-own meals add none.
+  if (event.isDestination) {
+    let around = null;
+    try { around = aroundMeals(event, { celebration: celebrationAppliesWith(event, playbook) }); } catch (_e) { around = null; }
+    for (const m of ((around && around.slots) || []).filter((x) => x.mode === 'out')) {
+      const off = -30;
+      rows.push({
+        id: `pbt-${event.id}-tm-out-${m.key}`,
+        task: `${m.dayLabel} · Reserve a table for the group ${m.meal}`,
+        category: 'planning', phase: 'food', week: taskPhaseLabel(off), owner: '',
+        leadDays: off,
+        dueInDays: dte + off,
+        provenance: { source: `${playbook.type} playbook`, taskId: `tm-out-${m.key}`, derived: 'trip-meals', group: m.dayLabel },
+      });
+    }
   }
   // Soonest-due first; undated tasks sink to the bottom in authored order.
   rows.sort((a, b) => {
@@ -4947,8 +4969,14 @@ export function playbookFoodPlan(event, opts = {}) {
   // Reads the SAME combined list every other surface reads — authored decisions
   // plus the engine-injected cook lever. A local `playbook.decisions` here was
   // how this list and the Decisions board came to disagree in the first place.
+  // NOT THE TRIP'S CALLS (11/21/2026). "How are guests staying?" blocks food
+  // (it decides whether there is a kitchen), so isMenuDecision matched it and
+  // the Spread's pinned bar read "0 of 3 decided" with a lodging question as a
+  // third food choice. The destination rows are travel calls; the kitchen they
+  // imply is asked once, with the trip's meals in Your days.
   const choices = [...(playbook.decisions || []), ...injectedDecisionsFor(event, playbook)]
     .filter(isMenuDecision)
+    .filter((d) => !DESTINATION_DECISION_IDS.has(d.id))
     .filter((d) => choiceShown(event, d.whenChoice))
     .map((d) => ({ id: d.id, label: d.label, options: d.options, default: d.default, why: d.why || '', chosen: picks[d.id] || d.default }));
 

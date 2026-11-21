@@ -54,6 +54,7 @@ import { heardMustHaves, heardStayStyle } from './lodgingIntel';
 import { heardFoods } from './heardFoods';
 import { heardGameStyle } from './heardGameStyle';
 import { heardPotluck, heardByob, heardKidsCount, heardAllergyCounts, heardOvernightCount } from './heardFacts';
+import { heardCelebrationPlace } from './tripMeals';
 
 // ── THIS FILE IS THE COMPOSITION ROOT (Sprint 0.5 Decision 2) ──────────────
 //
@@ -124,8 +125,10 @@ const heardFoodNames = (text) => heardFoods(text).map((f) => f.name);
 // heardFacts (owner, 11/21/2026: "Don't keep asking host for the same
 // information"): creation writes the potluck pick, BYOB, the kids, the
 // allergy and the overnight counts, so a clause they read is not dropped.
+// heardCelebrationPlace (11/21/2026): creation keeps "dinner at an adobe
+// courtyard" as the celebration's place (tripMeals.celebrationFieldsToPersist).
 const SEAM_READERS = [heardAccessNeeds, heardMustHaves, heardStayStyle, heardVendorIntents, heardFoodNames, heardGameStyle,
-  heardPotluck, heardByob, heardKidsCount, heardAllergyCounts, heardOvernightCount];
+  heardPotluck, heardByob, heardKidsCount, heardAllergyCounts, heardOvernightCount, heardCelebrationPlace];
 
 /**
  * clausesNotUsed(text) → the clauses NOTHING in creation read.
