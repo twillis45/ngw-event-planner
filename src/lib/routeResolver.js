@@ -27,8 +27,9 @@
 //                'rain','crabs','ground','air','lodging','space','tasks',
 //                'costshare','messages',
 //                'risks','decisions') OR a stage landing ('stage:plan',
-//                'stage:day') — the surfaces whose target is a full-screen stage,
-//                not a sheet (the plan editor, the day-of run of show).
+//                'stage:day', 'stage:after') — the surfaces whose target is a
+//                full-screen stage, not a sheet (the plan editor, the day-of run
+//                of show, the wrap-up).
 //   focus        the row/section the sheet opens on (a vendorId, guestId,
 //                riskId, decisionId, taskId, a food row id, or a named section
 //                like 'deadline' / 'riders' / 'diet'), or null when the sheet
@@ -142,6 +143,9 @@ export function resolveRoute(route) {
   // checklist. Without this, host-decisions rides tab:'Planning' into the tasks
   // catch below — the wrong sheet (audit 2026-07-21).
   if (ff === 'host-decisions') return { kind: 'decisions', focus: null };
+  // The invite recap's album link, on the After stage (owner pick, 11/21/2026):
+  // the album rows open After and focus the "Photo album link" field.
+  if (ff === 'after-album') return { kind: 'stage:after', focus: 'album', anchor: 'Photo album link' };
   if (route.tab === 'Planning Tasks' || route.tab === 'Timeline' || route.tab === 'Planning') {
     return { kind: 'tasks', focus: route.taskId || null };
   }

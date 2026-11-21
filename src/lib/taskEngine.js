@@ -105,6 +105,14 @@ export function taskSatisfied(event, task) {
   // row stayed open. Leading send verbs only; the chase rows keep their own rule.
   if (/^(text\/email |send( out)? )(the |your )?invit/.test(s)) return invitesOut(event);
 
+  // THE ALBUM LINK IS THE ALBUM SHARED (owner pick, 11/21/2026). "Share the …
+  // photos in one album link" is done by a saved link on the invite recap,
+  // which guests see when they reopen the invite: the same full-link test the
+  // invite applies before it shows one. Above the act guard, whose "share"
+  // would otherwise keep it open forever. Only rows that name the one album
+  // link: "start a shared album and send the link" is still an ask of people.
+  if (/^share\b[^.;]{0,80}\bin one album link\b/.test(s)) return /^https?:\/\//i.test(String(event.albumUrl || '').trim());
+
   // ACTS — calls, briefings, walk-throughs, physical work, ongoing collection —
   // are never proven by presence facts. "Recruit 3-5 volunteers" was marked done
   // by a typed headcount; "share live location" by a venue name; "track RSVPs"

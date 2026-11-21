@@ -113,6 +113,13 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // asking does not.
   if (/(ask|invite)\b.{0,50}\b(send|share|submit|drop)\b.{0,30}(photos?|memor|notes?)|shared (photo|album).{0,30}(drop|link)|photo\/notes drop/i.test(t))
     return { label: 'Open your guest list', route: { tab: 'Guests' } };
+  // SHARING THE PHOTOS IN ONE ALBUM LINK IS THE RECAP'S ALBUM FIELD (owner pick,
+  // 11/21/2026, "Combine A + B line"). Halloween's and NYE's "Share the …
+  // photos in one album link" had no button. The invite recap already holds a
+  // "Photo album link" that guests see when they reopen the invite, so the row
+  // opens After on that field. A saved link is the step done (taskEngine).
+  if (/^share\b[^.;]{0,80}\bin one album link\b/.test(t))
+    return { label: 'Add the album link', route: { focusField: 'after-album' } };
   // VOWS, READINGS AND WHO SPEAKS are the ceremony's own content, and the run of
   // show is the surface that holds the order of the day.
   if (/\b(vows?|reading\(s\)|readings?)\b.{0,40}\b(write|writes|practice|choose|assign)|\bwrite (their|your) vows\b/i.test(t))

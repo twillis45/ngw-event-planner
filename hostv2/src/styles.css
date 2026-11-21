@@ -3396,6 +3396,10 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
 .assign-btn, .row-assign .rowlink{ position:relative; }
 .assign-btn::after, .row-assign .rowlink::after{ content:""; position:absolute;
   left:0; right:0; top:50%; height:44px; transform:translateY(-50%); }
+/* A row's second, quieter link (the album row's guest photos line, owner pick
+   11/21/2026): text weight under the row's own button, never a second pill. */
+.row-assign .rowlink.row-quiet{ background:none; border-color:transparent; color:var(--muted);
+  font-weight:550; white-space:normal; text-align:left; padding-left:0; padding-right:0; }
 .assign-pick{ flex:0 0 100%; display:flex; flex-direction:column; gap:2px;
   margin-top:var(--sp-2); padding:var(--sp-2); background:var(--bg-band);
   border:1px solid var(--line-soft); border-radius:var(--r-md); }

@@ -3423,7 +3423,10 @@ export default function HostShellV2() {
   // event date (the recap state), and only when set — never fabricated.
   const [recapDraft, setRecapDraft] = useState('');
   const [albumDraft, setAlbumDraft] = useState('');
-  useEffect(() => { setRecapDraft(String(event.recapNote || '')); setAlbumDraft(String(event.albumUrl || '')); }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The checklist's "Add the album link" (owner pick, 11/21/2026) shows the
+  // recap block before the day too, so the link can be ready in advance.
+  const [albumAsked, setAlbumAsked] = useState(false);
+  useEffect(() => { setRecapDraft(String(event.recapNote || '')); setAlbumDraft(String(event.albumUrl || '')); setAlbumAsked(false); }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Event memory: the one persisted field the original uses (event.lessons).
   // Recall reads across the loaded events — a past event of the same type.
   const lastLesson = useMemo(() => {
@@ -3467,7 +3470,11 @@ export default function HostShellV2() {
     // External grounded destinations (the CVB search link): a real new-tab
     // open, glyph-earning navigation — never a toast pretending to be one.
     if (hit.href) return { label: hit.label, go: () => { try { window.open(hit.href, '_blank', 'noopener'); } catch { toast('Couldn’t open the link.'); } } };
-    return { label: hit.label, go: () => { if (!routeSheet(hit.route)) toast(hit.label); } };
+    // The album rows (owner pick, 11/21/2026) carry a quiet second line when
+    // guests' photos wait for approval; the row says which one it is.
+    const res = (() => { try { return resolveRoute(hit.route); } catch { return null; } })();
+    const albumRow = !!(res && res.kind === 'stage:after' && res.focus === 'album');
+    return { label: hit.label, albumRow, go: () => { if (!routeSheet(hit.route)) toast(hit.label); } };
   };
   // Split a run-on step into a bold lead action + the detail that follows the
   // first separator, so the row is scannable ("Map the spread" over the list of
@@ -6649,6 +6656,20 @@ export default function HostShellV2() {
       return true;
     }
     if (r.kind === 'stage:day') { setStage('day'); setSheet(null); return true; }
+    // The wrap-up (owner pick, 11/21/2026): the album rows land on the invite
+    // recap's "Photo album link" field, shown even before the day so the link
+    // can be ready (guests see it only once the party is over).
+    if (r.kind === 'stage:after') {
+      setStage('after'); setSheet(null);
+      if (r.focus === 'album') setAlbumAsked(true);
+      if (r.anchor) setTimeout(() => {
+        try {
+          const inp = document.querySelector('[aria-label="' + r.anchor + '"]');
+          if (inp) { inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { inp.focus({ preventScroll: true }); } catch { /* focus is best-effort */ } }
+        } catch { /* After is still the right landing */ }
+      }, 120);
+      return true;
+    }
     // THE ACTUAL MISSED WIRE (host, 2026-08-05: caught by real clicks, not the
     // 4 literal `setSheet({kind:'lodging'})` call sites this file already had
     // fixed). Every route-driven CTA — the essentials hero on this exact
@@ -15629,9 +15650,9 @@ export default function HostShellV2() {
                   shared link after the event, it becomes a recap. The host's note
                   and a real photo-album URL land there. Both optional; blank ones
                   simply don't show (the recap never fabricates content). */}
-              {isPast && (
+              {(isPast || albumAsked) && (
                 <div style={{ marginTop: 'var(--sp-4)' }}>
-                  <div className="shelf-label" style={{ marginBottom: 6 }}>On your invite link — guests see this when they reopen it</div>
+                  <div className="shelf-label" style={{ marginBottom: 6 }}>{isPast ? 'On your invite link — guests see this when they reopen it' : 'On your invite link — guests see this once the party’s over'}</div>
                   <textarea className="field" style={{ maxWidth: 'none', minHeight: 52, resize: 'vertical', fontSize: 'var(--t-input)' }}
                     placeholder="A note to everyone — “What a day. Thank you all for coming.”"
                     value={recapDraft} onChange={e => setRecapDraft(e.target.value)} aria-label="Recap note for guests" />
@@ -21554,8 +21575,19 @@ export default function HostShellV2() {
                     // role=button span INSIDE the row's <button>, which a screen
                     // reader cannot reach as a button). Same left edge as Assign,
                     // so the 11/16 "CTAs balanced" rule still holds.
+                    // THE GUEST PHOTOS LINE (owner pick, 11/21/2026, "Combine A + B
+                    // line"): under "Add the album link", only when guests'
+                    // uploads wait for approval. The count is the server's own
+                    // list (guestPhotoList, the After line's source); signed out
+                    // or unreadable it is empty, and the line says nothing.
+                    const photosLine = action && action.albumRow ? photosWaitingLine(guestPhotoList) : null;
                     const actionEl = action ? (
-                      <span className="row-act"><button type="button" className="mini rowlink" data-row-action onClick={() => action.go()}>{action.label} →</button></span>
+                      <>
+                        <span className="row-act"><button type="button" className="mini rowlink" data-row-action onClick={() => action.go()}>{action.label} →</button></span>
+                        {photosLine && (
+                          <span className="row-act"><button type="button" className="mini rowlink row-quiet" data-row-photos onClick={() => setSheet({ kind: 'guests', focus: 'photos' })}>{photosLine} →</button></span>
+                        )}
+                      </>
                     ) : null;
                     const assignEl = assignablePeople.length && !(inferred && !owner) ? (
                       <div className="row-assign" key={(t.id || i) + '-assign'}>
