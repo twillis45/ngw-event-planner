@@ -8952,7 +8952,7 @@ export default function HostShellV2() {
           {event.guestMode !== 'list' && (
             // Quiet text link (same idiom as "Open the spread") — the .mini pill
             // overflowed the column and read as a competing CTA.
-            <button style={{ alignSelf: 'flex-start', marginTop: ASK_RHYTHM.ctaToFoot, background: 'none', border: 'none', padding: 0, fontFamily: 'var(--sans)', fontSize: 'var(--t-meta)', fontWeight: 600, color: 'var(--steel-soft)', cursor: 'pointer', textAlign: 'left' }}
+            <button className="ask-textlink" style={{ alignSelf: 'flex-start', marginTop: ASK_RHYTHM.ctaToFoot, background: 'none', border: 'none', padding: 0, fontFamily: 'var(--sans)', fontSize: 'var(--t-meta)', fontWeight: 600, color: 'var(--steel-soft)', cursor: 'pointer', textAlign: 'left' }}
               onClick={() => { patchEvent({ guestMode: 'list' }, 'Guest-list event — the roster drives the count.'); setSheet({ kind: 'guests' }); }}>
               Rather track who’s coming by name? Start a guest list ›
             </button>
@@ -16580,7 +16580,7 @@ export default function HostShellV2() {
                     }
                     if (s.key === 'rain') {
                       return (
-                        <button key={s.key} className="line" style={{ width: '100%', alignItems: 'flex-start', background: 'none', border: 'none', font: 'inherit', textAlign: 'left', cursor: 'pointer', padding: '7px 0' }}
+                        <button key={s.key} className="line place-line" style={{ width: '100%', alignItems: 'flex-start', background: 'none', border: 'none', font: 'inherit', textAlign: 'left', cursor: 'pointer', padding: '7px 0' }}
                           onClick={() => setSheet({ kind: 'rain' })} aria-label={'Open ' + s.label}>
                           <span style={{ fontSize: 'var(--t-body-s)' }}>
                             <strong style={{ color: rowColor }}>{s.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span></strong>
@@ -16594,7 +16594,7 @@ export default function HostShellV2() {
                       <div key={s.key}>
                         {/* The 7px lives IN the button (50-host run, 11/16/2026): on the
                             wrapper it left a one-line row a ~20px tap target. */}
-                        <button style={{ width: '100%', alignItems: 'flex-start', background: 'none', border: 'none', font: 'inherit', textAlign: 'left', cursor: 'pointer', padding: '7px 0', display: 'flex' }}
+                        <button className="place-line" style={{ width: '100%', alignItems: 'flex-start', background: 'none', border: 'none', font: 'inherit', textAlign: 'left', cursor: 'pointer', padding: '7px 0', display: 'flex' }}
                           onClick={() => { const opening = !isNoteOpen; setPlaceNoteOpen(opening ? s.key : null); if (opening) setPlaceNoteDraft(event[noteField] || ''); }} aria-label={'Add note for ' + s.label}>
                           <span style={{ fontSize: 'var(--t-body-s)' }}>
                             <strong style={{ color: rowColor }}>{s.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>{isNoteOpen ? '⌄' : '›'}</span></strong>

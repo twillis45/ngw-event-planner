@@ -5055,7 +5055,13 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
   }
 }
 
-@media (max-width: 480px){
+/* ── AND ON EVERY TOUCH SCREEN, NOT ONLY A NARROW ONE (batch 4, 11/21/2026) ──
+   Design audit 2 (#5, T3): tablets measured WORSE than the phone — 35 controls
+   under 44 per tablet size against 24 at 390 — because this floor was gated on
+   width alone. "6 / 8 / 12 / 20" were 34.8 wide, "+ Add a day" 32 tall, "Pin to
+   top" 41. Owner ruling 11/20/2026: 44x44 on both axes on touch. A coarse
+   pointer is a thumb at any width; a mouse at a desk is still not judged. */
+@media (max-width: 480px), (pointer: coarse){
   /* MEASURED, not assumed: a full sweep of every button/link/role=button on the
      home and create screens at 393px found these classes already clearing the
      floor. They are held here so they cannot regress, not because they were
@@ -5089,6 +5095,24 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
   /* Stacked pairs need real separation once they are both 44px, or the two
      targets read as one slab and a thumb lands between them. */
   .lc-ctas > * + * { margin-top: 8px; }
+}
+
+/* Full-width ROWS on the same touch range grow taller instead (they must keep
+   their left alignment, so not the inline-flex centering above): Who sits
+   where's .frow measured 43, the Space section's place lines 33, and the
+   policy links ("Privacy · Terms · Refunds") 17-41, three targets inside 24px
+   of each other, so the inline-link exemption does not reach them, and the
+   headcount ask's "Start a guest list ›" text button, 18 tall. */
+@media (max-width: 480px), (pointer: coarse){
+  .frow, .place-line { min-height: var(--tap-min); }
+  /* "Rather track who's coming by name? Start a guest list ›" is a whole
+     button, not a link inside a sentence, and stood 18px tall under the chips. */
+  .ask-textlink { display: inline-flex; align-items: center; min-height: var(--tap-min); }
+  /* The "what's counted" caret pulls 9px out of its header each way (negative
+     margins) and the tile below covered the overhang: hit 39 at 1024x1366. Its
+     header holds it whole. */
+  .hero.elegant .bento-head { display: flex; align-items: center; min-height: var(--tap-min); }
+  .policy-links a { display: inline-flex; align-items: center; min-height: var(--tap-min); padding-inline: var(--sp-1); }
 }
 
 /* ══ TOUCH TARGETS — Apple HIG 44pt / WCAG 2.5.5 ═══════════════════════════
