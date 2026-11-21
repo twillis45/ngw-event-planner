@@ -245,8 +245,17 @@ export function applyStudioMatte(override) {
   set('--progress-tint', tint(progress, 0.12));
   // Overhead-light material response (brand direction, splash work 2026-07-11):
   // surfaces catch the canvas's top glow as a 1px top sheen. Derived from the
-  // steel anchor — same light source as the .app background radial.
+  // steel anchor — same light source as the canvas glow (--canvas-glow).
   set('--sheen', tint(bundle.steelBlueMuted, 0.10));
+  // ── THE CANVAS GLOW (owner ruling 11/20/2026; design batch 3, 11/21/2026) ──
+  // One steel glow from the top of the screen, sized to the screen height.
+  // Doctrine: docs/claude-skills/02_STUDIO_MATTE_UI_STANDARD.md § Canvas glow
+  // and § Gradients. .app paints it on every stage and .sheet lets it read
+  // through. It is the board's glow as it shipped (styles.css .app-elegant,
+  // 150% x 500px at a 844px-tall phone); 500px became 59vh so it scales with
+  // the screen. The hue is that glow's own steel, #56748C. The Day and the
+  // ?elegant=0 board used a weaker 300px glow and now take this one too.
+  set('--canvas-glow', `radial-gradient(150% 59vh at 50% -70px, ${tint('#56748C', 0.30)} 0%, ${tint('#56748C', 0.09)} 40%, transparent 74%)`);
   // ── THE PRIMARY IS LIT FROM THE TOP (owner, 11/20/2026) ─────────────────────
   // The owner chose this over the flat fill from a rendered comparison on the
   // live site. Doctrine: docs/claude-skills/02_STUDIO_MATTE_UI_STANDARD.md
@@ -328,6 +337,10 @@ export function applyStudioMatte(override) {
   // body #e4ecf3, 4.24:1 (design audit 2). They take --muted's light ink,
   // 4.55:1 there; dark is unchanged.
   set('--carbon-muted', isLight ? mutedInk : bundle.textMuted);
+  // ── THE CARBON PANEL (doctrine 02 § Gradients, the third of exactly three;
+  // design batch 3, 11/21/2026). Was written inline on .day-node. It reads
+  // the two carbon tokens above, so it follows the theme with them.
+  set('--carbon-panel-grad', 'linear-gradient(150deg, var(--carbon-panel) 0%, var(--carbon) 70%)');
   set('--steel-muted', bundle.steelBlueMuted);
   // Secondary text ON A FIXED CARBON STAGE — the creation reveal, whose ground
   // is #0d1014 in BOTH themes. Deliberately not moded: every moded text token

@@ -167,7 +167,9 @@ button{font-family:inherit}
   height:100%; overflow-y:auto; overflow-x:clip; overscroll-behavior:contain; scrollbar-width:none;
   container-type:inline-size;
   background-color:var(--bg);
-  background-image:radial-gradient(120% 300px at 50% -40px, var(--steel-tint) 0%, transparent 100%);
+  /* The canvas glow: one token, sized to the screen height (theme.js,
+     doctrine 02 § Canvas glow). Every stage reads it, The Day included. */
+  background-image:var(--canvas-glow);
   background-repeat:no-repeat;
 }
 .app::-webkit-scrollbar{display:none}
@@ -788,7 +790,7 @@ button{font-family:inherit}
    Moved off the padded .hero onto the full-bleed .app scroll container so the steel crown glow
    spans edge to edge. Overrides the app's subtler base radial in elegant only. */
 /* Size container so `.escreen.on` can measure THIS scroll box (100cqh), not the window. */
-.app.app-elegant{ background-image:radial-gradient(150% 500px at 50% -70px, rgba(86,116,140,.30) 0%, rgba(86,116,140,.09) 40%, transparent 74%); container-type:size; }
+.app.app-elegant{ container-type:size; } /* its glow became --canvas-glow (design batch 3, 11/21/2026), which .app paints on every stage */
 /* GRABBABLE fold cue (host "make grabber grabable"): a real button — cursor grab, the handle
    brightens on hover/active; tap scrolls to the see-all. */
 .efold{ margin-top:4px; display:flex; flex-direction:column; align-items:center; gap:9px; padding:10px 0 12px;
@@ -1438,7 +1440,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 
 .day-node{
   margin:var(--break-major) calc(-1 * var(--sp-5)) 0; padding:30px var(--sp-5) var(--sp-7);/* audit: --break-major + calc bleed */
-  background:linear-gradient(150deg, var(--carbon-panel) 0%, var(--carbon) 70%); color:var(--carbon-text);
+  background:var(--carbon-panel-grad); color:var(--carbon-text); /* theme.js; doctrine 02 § Gradients */
 }
 .day-node .eyebrow{color:var(--carbon-muted)}
 /* Day-before plan modernized (host request, 2026-07-11 — the create-screen
@@ -1700,7 +1702,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 /* ── The Day stage (Dark Standard Carbon) ── */
 .app.dark-stage{
   background-color:var(--carbon); color:var(--carbon-text);
-  background-image:radial-gradient(120% 300px at 50% -40px, var(--steel-tint) 0%, transparent 100%);
+  /* background-image: .app's --canvas-glow reads through onto the carbon. */
 }
 .app.dark-stage .wordmark{color:var(--carbon-text)}
 .app.dark-stage .appbar-note{color:var(--carbon-muted)}
@@ -1765,7 +1767,9 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
      were the vocabulary of a card rising over a visible board, and there is no
      board left to rise over. Safe-area padding at the foot so the last row
      clears the home indicator on a real handset. */
-  background:var(--card); border-radius:0;
+  /* The canvas glow reads through a sheet (doctrine 02 § Canvas glow). The
+     sheet scrolls, the glow does not: it stays at the top of the screen. */
+  background-color:var(--card); background-image:var(--canvas-glow); background-repeat:no-repeat; border-radius:0;
   /* Named once (2026-09-24) so the pinned total bar can cancel exactly this
      inset instead of repeating the literal — two copies of a layout constant
      is how a footer ends up 4px off the edge on one surface and not another. */

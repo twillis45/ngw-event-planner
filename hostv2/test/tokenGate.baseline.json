@@ -1,7 +1,7 @@
 {
   "totals": {
-    "color": 368,
-    "inline": 888
+    "color": 366,
+    "inline": 886
   },
   "files": {
     "CalendarSheet.jsx": {
@@ -17,8 +17,8 @@
       "inline": 1
     },
     "ErrorBoundary.jsx": {
-      "color": 5,
-      "inline": 12
+      "color": 3,
+      "inline": 10
     },
     "EventHashtag.jsx": {
       "inline": 3
