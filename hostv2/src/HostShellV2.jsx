@@ -12535,8 +12535,11 @@ export default function HostShellV2() {
                 // The menu panel names the question it shows, beside the count it
                 // belongs to (owner's iPad, 11/21/2026): "How is the turkey cooked?
                 // · 2 open", never "What you're serving" over a different call.
+                // The plain view (?elegant=0) carries no heroDecisionND (its rung owns
+                // the hero), so it asks the same builder the panel would: foodND reads
+                // openFoodChoices, the list the count reads (11/21/2026).
                 const menuND = (isHero && Array.isArray(a.records) && a.records.length)
-                  ? (a.id === 'phase:food' ? heroDecisionND : (wired === 'food' ? foodND(a.records) : null))
+                  ? (a.id === 'phase:food' ? (heroDecisionND || (!elegantMode ? foodND(a.records) : null)) : (wired === 'food' ? foodND(a.records) : null))
                   : null;
                 const menuAsk = (menuND && menuND.selected == null && menuND.ask) || null;
                 const rec = isHero
