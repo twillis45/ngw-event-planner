@@ -12487,7 +12487,10 @@ export default function HostShellV2() {
                         <h3>{String(a.title || '').replace(/\s*—\s*they'?re past their easy window$/i, '')}</h3>
                         {a.consequence && <p className="because">{isHero ? (String(a.consequence).replace(/\s*—\s*\d+ of \d+ are already handled\./, '.').match(/^[^.!?]{10,}?[.!?]/) || [String(a.consequence)])[0] : a.consequence}</p>}
                         <div className="actions-row" style={{ alignItems: 'center' }}>
-                          <button className="cta" onClick={() => setBundleOpen(m => ({ ...m, [key]: !open }))} aria-expanded={open}>
+                          {/* ONE LIT BUTTON (ruling 31, 11/21/2026): only the hero card's
+                              ask is lit. On the full board (?elegant=0) a second bundle
+                              ("See all 3") sat lit under the hero's "Use $2,200". */}
+                          <button className={askMode && i === 0 ? 'cta' : 'cta soft'} onClick={() => setBundleOpen(m => ({ ...m, [key]: !open }))} aria-expanded={open}>
                             {open ? 'Fold them away' : (
                               /* Elegant hero (F13): the CTA names the ACTION, not "See all N".
                                  Use the bundle's own authored action phrase — verb + count +
@@ -12777,7 +12780,8 @@ export default function HostShellV2() {
                           const isSettle = isVendorConfirmAction(a) || /^send payment to/i.test(String(a.title || ''));
                           // canSettle: this button lives INSIDE the card loop, so
                           // `editor === key` at the slot above genuinely mounts an editor.
-                          return <button className="cta" onClick={() => onCta(a, key, { canSettle: true })}>{
+                          // Ruling 31: lit on the hero card only; every card under it is soft.
+                          return <button className={isHero ? 'cta' : 'cta soft'} onClick={() => onCta(a, key, { canSettle: true })}>{
                           isVendorConfirmAction(a) ? 'Mark as locked in'
                           : /^send payment to/i.test(String(a.title || '')) ? 'Mark as paid'
                           /* NO generic "Take me to it" on the hero (host standing rule): name the real
