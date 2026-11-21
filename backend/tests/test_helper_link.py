@@ -377,3 +377,32 @@ def test_the_phantom_address_field_is_not_read():
     data = {k: v for k, v in EVENT.items() if k != "venueAddress"}
     data["address"] = "999 Phantom Road"
     assert hl_mod.build_helper_payload(data, "g1")["venueAddress"] == ""
+
+
+# ── WHO BRINGS A DISH IS ONE RECORD (owner's iPad, 11/21/2026) ─────────────────
+# The app now keeps the bringer in `foodOwner[dishId]` (the Bringing tab, Shop
+# and the add-a-dish form all write it) and moves an old foodAdd `owner` there
+# on load. A migrated event must still give the helper their dish.
+def test_a_dish_named_in_the_one_record_is_the_helpers_job():
+    data = dict(EVENT)
+    data["foodAdd"] = [
+        {"id": "f1", "name": "Cornbread stuffing", "cost": 25, "group": "Food"},
+        {"id": "f3", "name": "Cranberry sauce", "group": "Food"},
+        {"id": "f4", "name": "Rolls I'm making", "group": "Food"},
+    ]
+    data["foodOwner"] = {"f1": "Jordan Avery", "f3": "Riley Park", "f4": False,
+                         # A playbook dish: the server runs no playbook, so it has
+                         # no label to give it and leaves it out (under-counts).
+                         "p_mac": "Jordan Avery"}
+    jobs = hl_mod._jobs_by_helper(data)
+    assert [j["label"] for j in jobs["g1"]["jobs"]] == ["Cornbread stuffing", "Bring folding chairs", "Set the table"]
+    assert [j["label"] for j in jobs["g2"]["jobs"]][0] == "Cranberry sauce"
+
+
+def test_the_one_record_outranks_a_leftover_line_owner():
+    data = dict(EVENT)
+    data["foodAdd"] = [{"id": "f1", "name": "Cornbread stuffing", "owner": "Riley Park", "group": "Food"}]
+    data["foodOwner"] = {"f1": "Jordan Avery"}
+    jobs = hl_mod._jobs_by_helper(data)
+    assert "Cornbread stuffing" in [j["label"] for j in jobs["g1"]["jobs"]]
+    assert "Cornbread stuffing" not in [j["label"] for j in jobs.get("g2", {"jobs": []})["jobs"]]
