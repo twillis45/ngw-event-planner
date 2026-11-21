@@ -196,7 +196,10 @@ describe('PART B2 — an address with no venue name agrees everywhere', () => {
     expect(v.address).toBe(ADDR);
     expect(v.name).toBe('');                 // the premise: there is no venue NAME
     expect(v.displayLine).toContain(ADDR);   // the street is the most specific thing known
-    expect(v.mapsQuery).toBe(ADDR);          // and it is what a map should be sent
+    // A map is sent the whole line, with the town and state when known
+    // (formatVenueAddress, owner report 11/21/2026).
+    expect(v.mapsQuery).toBe(v.fullAddress);
+    expect(v.mapsQuery.startsWith(ADDR)).toBe(true);
     // The other three readers, asked the same question in their own vocabulary.
     expect(eventLocationStatus(ev)).toBe('full_address');
     expect(placeState(ev)).not.toBe('needs');

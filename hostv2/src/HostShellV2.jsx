@@ -168,7 +168,7 @@ import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, readEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
 import { deleteAccount, isAccountDeletionAvailable } from '@app/lib/api/account';
-import { effectiveDone, factsATickRecords, invitesOut, timelineStepResolved } from '@app/lib/taskEngine';
+import { effectiveDone, factsATickRecords, invitesOut, timelineStepResolved, TRIP_DETAILS_DRAFT } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
@@ -323,13 +323,18 @@ import { appEmailWords, messageEmailResult } from '@app/lib/appEmail';
 import { buildHelperAsk } from '@app/lib/helperAsk';
 import PolicyLinks from './PolicyLinks.jsx';
 import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine } from '@app/lib/guestMerge';
+import { MAX_DATE_OPTIONS, dateOptionsOf, datePollTally, dateOptionPatch, nextDateOptionId } from '@app/lib/datePoll';
+import { giftCashTotal, isAbsentGiver, thankYouGiftLine } from '@app/lib/giftLog';
+import { borrowedList, markReturned, addBorrowed } from '@app/lib/borrowedList';
+import { BAR_COVER_ID } from '@app/lib/playbooks/cashBarCover';
+import { SPONSOR_TYPES, sponsorsOf, sponsorTotals, addSponsor, markSponsor, draftSponsorAsk, draftSponsorReport } from '@app/lib/sponsors';
 import { detectCoupleNames } from '@app/lib/guestSplit';
-import { knownStateCode, preferState } from '@app/lib/addressSuggest';
+import { knownStateCode, preferState, nominatimToSuggestion } from '@app/lib/addressSuggest';
 import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
 import { itemsBoughtByTask } from '@app/lib/shopTaskItems';
 import { voiceDraft, voicesFor, draftAudience } from '@app/lib/draftVoice';
 import { worryLabel } from '@app/lib/worryLabel';
-import { venueFor, setVenue, confirmVenue } from '@app/lib/venueFor';
+import { venueFor, setVenue, confirmVenue, formatVenueAddress } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
 import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
@@ -832,14 +837,9 @@ export async function fetchAddressSuggestions(query, { state } = {}) {
     const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=us&q=' + encodeURIComponent(q));
     const j = await r.json();
     // The host's state first (lib/addressSuggest): "Pasadena" otherwise offers
-    // California to a host planning in Maryland.
-    return preferState((Array.isArray(j) ? j : []).map(x => {
-      const a = x.address || {};
-      const city = a.city || a.town || a.village || a.hamlet || '';
-      const short = String(x.display_name || '').split(',').slice(0, 3).join(',');
-      const iso = String(a['ISO3166-2-lvl4'] || '');
-      return { label: short, city: city + (a.state ? ', ' + a.state : ''), stateCode: /^US-[A-Z]{2}$/.test(iso) ? iso.slice(3) : '' };
-    }), state);
+    // California to a host planning in Maryland. Each result is read whole —
+    // street, town, state, ZIP, coordinates (nominatimToSuggestion, 11/21/2026).
+    return preferState((Array.isArray(j) ? j : []).map(nominatimToSuggestion), state);
   } catch { return []; }
 }
 
@@ -1559,6 +1559,8 @@ export default function HostShellV2() {
   const [cityDraft, setCityDraft] = useState('');
   const [addrSugs, setAddrSugs] = useState([]);
   const [pendingCity, setPendingCity] = useState('');
+  // The suggestion the host picked, held until Save writes its parts.
+  const [pendingPick, setPendingPick] = useState(null);
   const addrTimer = useRef(null);
   useEffect(() => {
     // Google Places upgrades this input automatically when a key is present
@@ -1583,8 +1585,9 @@ export default function HostShellV2() {
     }, 380);
   };
   const pickAddr = (sug) => {
-    setVenueDraft(sug.label);
+    setVenueDraft(sug.line || sug.label);
     setPendingCity(sug.city || '');
+    setPendingPick(sug.street ? sug : null);
     setAddrSugs([]);
   };
   const saveVenue = () => {
@@ -1595,9 +1598,16 @@ export default function HostShellV2() {
     // path) owns kind inference + the strict city gate for it.
     // Naming the place ends "I'll sort this" (50-host run, 11/16/2026): a host
     // who parked the venue and later typed it kept the parked flag in her data.
-    patchEvent({ ...setVenue(event, { name: v, locationText: pendingCity }), ...(venueParked(event) ? unparkVenuePatch(event) : {}) },
-      'Venue on the plan — invites, maps, and the rain note now carry it.');
-    setVenueErr(null); setVenueDraft(''); setPendingCity(''); setAddrSugs([]);
+    // A PICKED ADDRESS IS STORED WHOLE (owner report, iPad, 11/21/2026): its
+    // street, town, state, ZIP and coordinates. A street saved as typed is
+    // saved, and the host is told plainly the ZIP was not found; none is made up.
+    const patch = pendingPick ? setVenue(event, { resolved: pendingPick }) : setVenue(event, { name: v, locationText: pendingCity });
+    const after = venueFor({ ...event, ...patch });
+    const msg = pendingPick
+      ? (after.zip ? `Address on the plan: ${after.fullAddress}.` : `Address on the plan: ${after.fullAddress}. The lookup had no ZIP for it.`)
+      : (after.address && !after.zip ? 'Saved as typed — we couldn’t find the ZIP.' : 'Venue on the plan — invites, maps, and the rain note now carry it.');
+    patchEvent({ ...patch, ...(venueParked(event) ? unparkVenuePatch(event) : {}) }, msg);
+    setVenueErr(null); setVenueDraft(''); setPendingCity(''); setPendingPick(null); setAddrSugs([]);
   };
   // ── ONE VENUE CAPTURE, FOUR DOORS (board wave 2, 2026-08-07) ───────────────
   // The identical control was hand-inlined at FOUR call sites: the hero's wired
@@ -1635,15 +1645,15 @@ export default function HostShellV2() {
     <>
       <div className={wrapClass} style={wrapStyle}>
         <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
-          value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" autoFocus={autoFocus} />
+          value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); setPendingPick(null); fetchAddrSugs(e.target.value); }} aria-label="Venue" autoFocus={autoFocus} />
         <button className={ctaClass} onClick={saveVenue}>Save</button>
       </div>
       {addrSugs.length > 0 && (
         <div style={{ marginTop: 6 }}>
           {addrSugs.map((sg, si) => (
-            <button key={si} className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '7px 2px' }}
+            <button key={si} className="later-row" data-venue-suggestion style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '7px 2px' }}
               onClick={() => pickAddr(sg)}>
-              <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{sg.label}</span>
+              <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{sg.line || sg.label}</span>
             </button>
           ))}
           <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>
@@ -3089,7 +3099,11 @@ export default function HostShellV2() {
             Unconditional until a real signal exists. The board ruled (a) and
             (a) is still right; the implementation was wrong, and shipping a
             wrong implementation of a correct ruling is worse than waiting. */}
-        <p className="decopts-lead">Tap one to settle it — nothing else changes.</p>
+        {/* A CASH BAR'S FOLLOW-UP MOVES THE BUDGET (owner, 11/21/2026): its
+            answer is the drink lines the plan buys, so "nothing else changes"
+            would be false there. */}
+        <p className="decopts-lead">Tap one to settle it — {String(nd.id || '').endsWith(BAR_COVER_ID)
+          ? 'the drinks line in your budget moves to match.' : 'nothing else changes.'}</p>
         {proposedOpt ? (
           <>
             {optRow(proposedOpt, true)}
@@ -3427,7 +3441,9 @@ export default function HostShellV2() {
   // The checklist's "Add the album link" (owner pick, 11/21/2026) shows the
   // recap block before the day too, so the link can be ready in advance.
   const [albumAsked, setAlbumAsked] = useState(false);
-  useEffect(() => { setRecapDraft(String(event.recapNote || '')); setAlbumDraft(String(event.albumUrl || '')); setAlbumAsked(false); }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Birthday's gift rows (owner pick A, 11/21/2026) open the gift log before the day too.
+  const [giftsAsked, setGiftsAsked] = useState(false);
+  useEffect(() => { setRecapDraft(String(event.recapNote || '')); setAlbumDraft(String(event.albumUrl || '')); setAlbumAsked(false); setGiftsAsked(false); }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Event memory: the one persisted field the original uses (event.lessons).
   // Recall reads across the loaded events — a past event of the same type.
   const lastLesson = useMemo(() => {
@@ -5516,6 +5532,16 @@ export default function HostShellV2() {
         } catch { /* anchor is best-effort */ }
       }, 60);
     }
+    // Make it yours on the event hashtag (11/21/2026): Sweet 16's "custom
+    // hashtag" step lands on the hashtag block, below the invite's own words.
+    if (sheet && sheet.kind === 'meaning' && sheet.focus === 'hashtag') {
+      setTimeout(() => {
+        try {
+          const el = document.querySelector('[data-event-hashtag]');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch { /* the sheet is still the right landing */ }
+      }, 120);
+    }
     // Guests row-level landing (Up-Next #4): 'entry' scrolls to the count
     // stepper (count mode) or the counting chips (roster mode) and focuses the
     // number input; 'invites' scrolls to the share-and-invite block. Anchors
@@ -6225,6 +6251,10 @@ export default function HostShellV2() {
   // Writes a real timeline row with an owner — the shape deriveHelperResponsibilities
   // already reads (source: 'timeline.owner'), so one write reaches every surface.
   const [helperForm, setHelperForm] = useState({ name: '', job: '' });
+  // The borrowed list's Add it (owner pick B, 11/21/2026).
+  const [borrowForm, setBorrowForm] = useState({ what: '', from: '' });
+  // Money coming in · sponsors: the add form (owner pick B, 11/21/2026).
+  const [sponsorForm, setSponsorForm] = useState({ business: '', amount: '', recognition: '' });
   const [unfurling, setUnfurling] = useState(false);
   const addHelper = () => {
     const name = String(helperForm.name || '').trim();
@@ -6666,6 +6696,11 @@ export default function HostShellV2() {
     if (r.kind === 'stage:after') {
       setStage('after'); setSheet(null);
       if (r.focus === 'album') setAlbumAsked(true);
+      // The gift log (owner pick A, 11/21/2026): open Thank-yous & gifts.
+      if (r.focus === 'gifts') {
+        setGiftsAsked(true);
+        setTimeout(() => { try { const el = document.getElementById('after-gifts'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* After is still the right landing */ } }, 120);
+      }
       if (r.anchor) setTimeout(() => {
         try {
           const inp = document.querySelector('[aria-label="' + r.anchor + '"]');
@@ -6689,8 +6724,10 @@ export default function HostShellV2() {
     // are built at render, so they are ready the moment it opens.
     if (r.kind === 'sweep') { setSheet({ kind: 'sweep', focus: r.focus || null }); runSweepDrafts(); return true; }
     if (r.kind === 'draft') {
+      // The sponsor ask (owner pick, 11/21/2026): the existing draft sheet.
+      if (r.focus === 'sponsor-ask') { openDraft('The sponsor ask', draftSponsorAsk(event, profile)); return true; }
       if (r.focus !== 'trip-details') return false;
-      openDraft('The trip details', draftTripDetails(event, profile), null, { postsToInvite: true });
+      openDraft(TRIP_DETAILS_DRAFT, draftTripDetails(event, profile), null, { postsToInvite: true });
       return true;
     }
     // Sheet landings: open the named sheet on its row/section. vendorSection is
@@ -6707,6 +6744,8 @@ export default function HostShellV2() {
   // until they change it. Deterministic re-shapes only (no fake AI).
   const [draftTone, setDraftTone] = useState(() => { try { return localStorage.getItem('ngw-hostv2-voice') || 'as-written'; } catch { return 'as-written'; } });
   const [draftBody, setDraftBody] = useState(null); // non-null = host's own edit
+  // The invite or nudge block holds the draft sheet's one lit button (11/21/2026).
+  const [draftListLead, setDraftListLead] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false); // slice (b): one send at a time
   // One checkout at a time: a second tap on a slow network opened a second
   // Stripe session (Nielsen re-run N7, 2026-11-02).
@@ -8405,6 +8444,8 @@ export default function HostShellV2() {
           // The rental pick rides the same rail (migration 016) — an opinion for
           // the host's shortlist, never a booking.
           lodgingPick: r.lodging_pick || undefined,
+          // The date poll's ticks (migration 034) ride the same rail.
+          datePicks: Array.isArray(r.date_picks) ? r.date_picks : undefined,
           phone: r.phone, email: r.email, mailingAddress: r.mailing_address,
           // Each reply's own time, so the merge applies a changed answer last.
           at: r.updated_at || r.submitted_at,
@@ -8921,6 +8962,78 @@ export default function HostShellV2() {
 
   // Inline editors, one per wired kind. Each writes the SAME fields the engine's
   // done-conditions read (_eventFoundationActions), so closing a gap closes the card.
+  // ── DATES TO OFFER: THE POLL ON THE INVITE (owner pick B, 11/21/2026) ──────
+  // Up to three ranges; guests tick the ones that work on the invite, before
+  // they answer; their ticks come back on the reply (migration 034). Shown on
+  // the two playbooks whose rows ask for it, once ranges exist, or when the
+  // row opened it. Signed out or offline, the poll cannot reach anyone: the
+  // sheet says so, and counts nothing.
+  const renderDatePoll = () => {
+    const raw = Array.isArray(event.dateOptions) ? event.dateOptions : [];
+    const asked = sheet && sheet.focus === 'options';
+    if (!raw.length && !asked && !['Group Trip', 'Team Retreat'].includes(event.type)) return null;
+    const live = !!session && isRsvpApiConfigured();
+    const offline = (() => { try { return navigator.onLine === false; } catch { return false; } })();
+    const tally = datePollTally(event);
+    const byId = Object.fromEntries(tally.rows.map((r) => [r.id, r]));
+    const complete = dateOptionsOf(event).length;
+    const write = (list, msg) => patchEvent({ dateOptions: list }, msg);
+    const setField = (id, k, v) => write(raw.map((o) => (o && o.id === id ? { ...o, [k]: v } : o)), null);
+    const top = Math.max(0, ...tally.rows.map((r) => r.count));
+    return (
+      <div id="date-options" data-date-poll style={{ marginTop: 'var(--sp-4)' }} ref={scrollIntoViewOnOpen(asked)}>
+        <div className="shelf-label" style={{ margin: '0 0 var(--sp-1)' }}>Dates to offer</div>
+        <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>
+          {!live
+            ? 'Guests tick the dates that work on their invite, and the answers come back through your account. Sign in to ask — until then nobody can answer, and nothing is counted.'
+            : offline
+              ? 'You’re offline. Answers already in are below; new ones load when you’re back online.'
+              : complete
+                ? <>On the invite: guests tick the dates that work when they open their link.{tally.asked ? <> <b>{tally.answered} of {tally.asked}</b> have answered.</> : ''}</>
+                : 'Add up to three date ranges. Guests tick every one that works on their invite, before they say if they’re coming.'}
+        </p>
+        {raw.slice(0, MAX_DATE_OPTIONS).map((o, i) => {
+          const t = byId[o.id];
+          const used = event.dateOptionUsed === o.id && event.date === o.start;
+          return (
+            <div key={o.id} data-date-option={o.id} style={{ borderTop: '1px solid var(--line-soft)', padding: 'var(--sp-2) 0' }}>
+              <div className="actions-row" style={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                <b>{String.fromCharCode(65 + i)}{t ? ' · ' + t.label : ''}</b>
+                {t && (used
+                  ? <span className="of" style={{ color: 'var(--ok)', fontWeight: 600 }}>Your dates</span>
+                  : <button className="mini" style={{ minHeight: 'var(--tap-min)' }}
+                      onClick={() => { const p = dateOptionPatch(event, o.id); if (p) patchEvent(p, 'Dates set: ' + t.label + ' — every countdown counts back from them now.'); }}>Use these dates</button>)}
+              </div>
+              <div className="actions-row" style={{ alignItems: 'center', marginTop: 'var(--sp-1)', flexWrap: 'nowrap' }}>
+                <input className="field" type="date" style={{ flex: '1 1 0', minWidth: 0, maxWidth: 190, minHeight: 'var(--tap-min)', padding: '0 var(--sp-2)' }} value={o.start || ''} aria-label={'Range ' + String.fromCharCode(65 + i) + ' starts'}
+                  onChange={(e) => setField(o.id, 'start', e.target.value)} />
+                <input className="field" type="date" style={{ flex: '1 1 0', minWidth: 0, maxWidth: 190, minHeight: 'var(--tap-min)', padding: '0 var(--sp-2)' }} value={o.end || ''} aria-label={'Range ' + String.fromCharCode(65 + i) + ' ends'}
+                  onChange={(e) => setField(o.id, 'end', e.target.value)} />
+                <button className="mini" style={{ minHeight: 'var(--tap-min)', minWidth: 'var(--tap-min)', flex: '0 0 auto' }} aria-label={'Remove range ' + String.fromCharCode(65 + i)}
+                  onClick={() => write(raw.filter((x) => x && x.id !== o.id), 'Range removed from the invite.')}>×</button>
+              </div>
+              {(live || tally.answered > 0) && t && (
+                <p className="grounding" data-date-tally style={{ margin: 'var(--sp-1) 0 0', ...(t.count && t.count === top ? { color: 'var(--ok)' } : {}) }}>
+                  {t.count ? t.count + ' can make it — ' + t.names.join(', ') : 'Nobody has ticked this one yet.'}
+                </p>
+              )}
+            </div>
+          );
+        })}
+        <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+          {raw.length < MAX_DATE_OPTIONS && (
+            <button className="mini" style={{ minHeight: 'var(--tap-min)' }}
+              onClick={() => write([...raw, { id: nextDateOptionId(raw), start: '', end: '' }], null)}>{raw.length ? 'Add another range' : 'Add a range'}</button>
+          )}
+          {raw.length > 0 && (
+            <button className="mini" style={{ minHeight: 'var(--tap-min)' }}
+              onClick={() => patchEvent({ dateOptions: [] }, 'The dates are off the invite.')}>Take it off the invite</button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderEditor = (a) => {
     const kind = wiredKind(a);
     if (kind === 'venue') {
@@ -12475,7 +12588,10 @@ export default function HostShellV2() {
                         <h3>{String(a.title || '').replace(/\s*—\s*they'?re past their easy window$/i, '')}</h3>
                         {a.consequence && <p className="because">{isHero ? (String(a.consequence).replace(/\s*—\s*\d+ of \d+ are already handled\./, '.').match(/^[^.!?]{10,}?[.!?]/) || [String(a.consequence)])[0] : a.consequence}</p>}
                         <div className="actions-row" style={{ alignItems: 'center' }}>
-                          <button className="cta" onClick={() => setBundleOpen(m => ({ ...m, [key]: !open }))} aria-expanded={open}>
+                          {/* ONE LIT BUTTON (ruling 31, 11/21/2026): only the hero card's
+                              ask is lit. On the full board (?elegant=0) a second bundle
+                              ("See all 3") sat lit under the hero's "Use $2,200". */}
+                          <button className={askMode && i === 0 ? 'cta' : 'cta soft'} onClick={() => setBundleOpen(m => ({ ...m, [key]: !open }))} aria-expanded={open}>
                             {open ? 'Fold them away' : (
                               /* Elegant hero (F13): the CTA names the ACTION, not "See all N".
                                  Use the bundle's own authored action phrase — verb + count +
@@ -12765,7 +12881,8 @@ export default function HostShellV2() {
                           const isSettle = isVendorConfirmAction(a) || /^send payment to/i.test(String(a.title || ''));
                           // canSettle: this button lives INSIDE the card loop, so
                           // `editor === key` at the slot above genuinely mounts an editor.
-                          return <button className="cta" onClick={() => onCta(a, key, { canSettle: true })}>{
+                          // Ruling 31: lit on the hero card only; every card under it is soft.
+                          return <button className={isHero ? 'cta' : 'cta soft'} onClick={() => onCta(a, key, { canSettle: true })}>{
                           isVendorConfirmAction(a) ? 'Mark as locked in'
                           : /^send payment to/i.test(String(a.title || '')) ? 'Mark as paid'
                           /* NO generic "Take me to it" on the hero (host standing rule): name the real
@@ -15581,31 +15698,68 @@ export default function HostShellV2() {
               {/* Thank-yous & gifts — per-guest flags on the SAME roster rows the
                   wrap-up meter reads (phaseProgress post_event counts
                   thankYouSent), so thanking someone literally moves the meter. */}
-              {isPast && (event.guests || []).some(g => g && g.rsvp === 'Yes') && (() => {
-                const yesIdx = (event.guests || []).map((g, i) => ({ g, i })).filter(x => x.g && x.g.rsvp === 'Yes');
+              {(isPast || giftsAsked) && (event.guests || []).some(g => g && String(g.name || '').trim()) && (() => {
+                const all = (event.guests || []).map((g, i) => ({ g, i })).filter(x => x.g && String(x.g.name || '').trim());
+                const yesIdx = all.filter(x => x.g.rsvp === 'Yes');
+                // THE GIFT LOG (owner pick A, 11/21/2026): a received gift takes
+                // what it was and the cash or card amount, on the same row; guests
+                // who said No or Maybe join "Couldn't come, sent a gift" from the
+                // + chips. One list of people, never a second log.
+                const absent = all.filter(x => isAbsentGiver(x.g) && x.g.giftReceived);
+                const couldAdd = all.filter(x => isAbsentGiver(x.g) && !x.g.giftReceived && ['No', 'Maybe'].includes(x.g.rsvp));
                 const thanked = yesIdx.filter(x => x.g.thankYouSent === true).length;
+                const cash = giftCashTotal(event);
+                const row = ({ g, i }) => (
+                  <div key={i} data-gift-row={g.id || i} style={{ borderTop: '1px solid var(--line-soft)', padding: 'var(--sp-2) 0' }}>
+                    <div className="actions-row" style={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+                      <span>{g.name}{String(g.plusOne || '').trim() ? <span className="of"> +1</span> : null}</span>
+                      <span style={{ display: 'flex', gap: 6 }}>
+                        <button className="mini" style={g.giftReceived ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
+                          onClick={() => writeGuest(i, { giftReceived: !g.giftReceived }, null)}>
+                          {g.giftReceived ? 'gift received' : 'gift?'}
+                        </button>
+                        <button className="mini" style={g.thankYouSent ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
+                          onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? null : ((g.name || 'Guest') + ' thanked — the wrap-up meter keeps count.'))}>
+                          {g.thankYouSent ? 'thanked' : 'thank them'}
+                        </button>
+                      </span>
+                    </div>
+                    {g.giftReceived && (
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'nowrap' }}>
+                        <input className="field" style={{ flex: '1 1 auto', minWidth: 0, minHeight: 'var(--tap-min)', fontSize: 'var(--t-input)' }} maxLength={80}
+                          placeholder="What it was" aria-label={'What ' + g.name + ' gave'} defaultValue={g.giftWhat || ''}
+                          onBlur={(e) => { const v = e.target.value.trim(); if (v !== String(g.giftWhat || '')) writeGuest(i, { giftWhat: v }, null); }} />
+                        <input className="field" style={{ flex: '0 0 112px', width: 112, minHeight: 'var(--tap-min)', fontSize: 'var(--t-input)' }} type="number" min="0" step="1" inputMode="decimal"
+                          placeholder="$ cash/card" aria-label={'Cash or card amount from ' + g.name} defaultValue={Number(g.giftCash) > 0 ? String(g.giftCash) : ''}
+                          onBlur={(e) => { const n = Math.max(0, Number(e.target.value) || 0); if (n !== (Number(g.giftCash) || 0)) writeGuest(i, { giftCash: n }, null); }} />
+                      </div>
+                    )}
+                  </div>
+                );
                 return (
-                  <>
-                    <div className="sect"><h2>Thank-yous</h2><div className="rule" /><span className="when">{thanked} of {yesIdx.length} sent</span></div>
+                  <div id="after-gifts" data-gift-log>
+                    <div className="sect"><h2>Thank-yous &amp; gifts</h2><div className="rule" /><span className="when">{thanked} of {yesIdx.length} sent</span></div>
                     <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
-                      {yesIdx.map(({ g, i }) => (
-                        <div className="line" key={i} style={{ alignItems: 'center' }}>
-                          <span>{g.name}{String(g.plusOne || '').trim() ? <span className="of"> +1</span> : null}</span>
-                          <span style={{ display: 'flex', gap: 6 }}>
-                            <button className="mini" style={g.giftReceived ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
-                              onClick={() => writeGuest(i, { giftReceived: !g.giftReceived }, null)}>
-                              {g.giftReceived ? 'gift received' : 'gift?'}
-                            </button>
-                            <button className="mini" style={g.thankYouSent ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
-                              onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? null : ((g.name || 'Guest') + ' thanked — the wrap-up meter keeps count.'))}>
-                              {g.thankYouSent ? 'thanked' : 'thank them'}
-                            </button>
-                          </span>
-                        </div>
-                      ))}
-                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>“Thanked” feeds the wrap-up meter up top. Gifts are for your memory; the note below is drafted from what happened.</p>
+                      {yesIdx.map(row)}
+                      {absent.length > 0 && <div className="shelf-label" style={{ margin: 'var(--sp-3) 0 var(--sp-1)' }}>Couldn’t come, sent a gift</div>}
+                      {absent.map(row)}
+                      {couldAdd.length > 0 && (
+                        <>
+                          <p className="grounding" style={{ margin: 'var(--sp-2) 0 6px' }}>A gift by mail, or from someone who couldn’t come:</p>
+                          <div className="actions-row" style={{ flexWrap: 'wrap' }}>
+                            {couldAdd.map(({ g, i }) => (
+                              <button key={i} className="mini" style={{ minHeight: 'var(--tap-min)' }} onClick={() => writeGuest(i, { giftReceived: true }, null)}>+ {g.name}</button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                      <div className="line" data-gift-cash style={{ marginTop: 'var(--sp-2)' }}>
+                        <span>Cash and gift cards</span>
+                        <span className="amt">{fmt(cash.total)}{cash.from ? <span className="of"> from {cash.from}</span> : null}</span>
+                      </div>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>Your record, not a bank. “Thanked” feeds the wrap-up meter up top, and the thank-you note names what each person gave.</p>
                     </div></div>
-                  </>
+                  </div>
                 );
               })()}
               {/* The final number — teaches attendance learning (INTEL R1).
@@ -15832,6 +15986,7 @@ export default function HostShellV2() {
                   </p>
                 )}
                 {renderEditor({ domain: 'date' })}
+                {renderDatePoll()}
               </div>
             )}
             {/* Venue area is a real door too (host request 2026-07-16, same dead-route class as
@@ -15845,7 +16000,7 @@ export default function HostShellV2() {
                     11/5/2026, issue #100 D-4): an address from Creation rendered as an empty box
                     here while HostHome called it handled. No business search is ever required. */}
                 {vf.display && (
-                  <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Currently: <b>{vf.display}</b>{vf.city ? ` · ${vf.city}${vf.state ? ', ' + vf.state : ''}` : ''}{vf.confirmed ? (vf.isHome ? ' · your home, confirmed' : ' · confirmed') : ''}. Enter a new place to change it.</p>
+                  <p className="grounding" data-venue-currently style={{ margin: '0 0 var(--sp-2)' }}>Currently: <b>{formatVenueAddress(event)}</b>{vf.confirmed ? (vf.isHome ? ' · your home, confirmed' : ' · confirmed') : ''}. Enter a new place to change it.</p>
                 )}
                 {/* WHERE EVERYONE STAYS, FROM THE VENUE (owner, 11/16/2026: "Venue
                     is related to where everyone stays"). On a trip the two are one
@@ -16895,6 +17050,52 @@ export default function HostShellV2() {
                   </>
                 )}
                 </Panel>
+                {/* BORROWED · N OF M BACK (owner pick B, 11/21/2026). The return
+                    rows land here. What a helper brings on What to bring appears
+                    on its own; anything else is added by hand; each is marked
+                    returned; the last line says who is still owed what. */}
+                {(() => {
+                  const names = Object.fromEntries(((capacity && capacity.items) || []).filter(Boolean).map((it) => [it.key, it.short || it.item]));
+                  const b = borrowedList(event, names);
+                  const asked = sheet.focus === 'borrowed';
+                  if (!b.total && !asked) return null;
+                  const add = () => {
+                    const next = addBorrowed(event, borrowForm.what, borrowForm.from);
+                    if (!next) { toast('What was borrowed? Add it first.'); return; }
+                    patchEvent({ borrowed: next }, borrowForm.what.trim() + ' is on the borrowed list.');
+                    setBorrowForm({ what: '', from: '' });
+                  };
+                  return (
+                    <Panel on={panels}>
+                      <div id="space-borrowed" data-borrowed ref={scrollIntoViewOnOpen(asked)}>
+                        <div className="shelf-label" style={{ margin: 'var(--sp-3) 0 var(--sp-1)' }}>Borrowed · {b.back} of {b.total} back</div>
+                        {b.rows.map((r) => (
+                          <div key={r.id} data-borrowed-row={r.id} className="actions-row" style={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'nowrap', borderTop: '1px solid var(--line-soft)', padding: 'var(--sp-1) 0' }}>
+                            <span style={{ minWidth: 0 }}><b>{r.what}</b>{r.from ? <span className="of"> from {r.from}</span> : null}</span>
+                            <button className="mini" style={{ minHeight: 'var(--tap-min)', flex: '0 0 auto', ...(r.returned ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : {}) }}
+                              aria-label={(r.returned ? 'Returned: ' : 'Mark returned: ') + r.what}
+                              onClick={() => patchEvent({ borrowed: markReturned(event, r, !r.returned) }, r.returned ? null : r.what + ' marked returned.')}>
+                              {r.returned ? 'returned' : 'Mark returned'}
+                            </button>
+                          </div>
+                        ))}
+                        <div className="lodge-form" style={{ marginTop: 'var(--sp-2)' }}>
+                          <label className="lodge-f"><span className="of">What</span>
+                            <input className="field" style={{ ...HELPER_FLD, minHeight: 'var(--tap-min)' }} placeholder="Coffee urn" value={borrowForm.what} aria-label="What was borrowed"
+                              onChange={(e) => setBorrowForm((f) => ({ ...f, what: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') add(); }} /></label>
+                          <label className="lodge-f"><span className="of">From whom</span>
+                            <input className="field" style={{ ...HELPER_FLD, minHeight: 'var(--tap-min)' }} placeholder="Aunt Rose" value={borrowForm.from} aria-label="Borrowed from whom"
+                              onChange={(e) => setBorrowForm((f) => ({ ...f, from: e.target.value }))} onKeyDown={(e) => { if (e.key === 'Enter') add(); }} /></label>
+                        </div>
+                        <button className="mini" style={{ width: '100%', minHeight: 'var(--tap-min)', marginTop: 'var(--sp-1)' }} onClick={add}>Add it</button>
+                        <p className="grounding" data-borrowed-owed style={{ margin: 'var(--sp-2) 0 0' }}>
+                          {b.total === 0 ? 'Nothing borrowed yet. What a helper brings on What to bring shows up here on its own.'
+                            : b.stillToGo ? 'Still to go back: ' + b.stillToGo : 'Everything borrowed is back.'}
+                        </p>
+                      </div>
+                    </Panel>
+                  );
+                })()}
                 {/* ALWAYS RENDERED (host report 2026-07-28: "doesn't have an
                     action to add helpers"). Helpers are DERIVED from owner names
                     on real items, so the empty state used to render nothing at
@@ -20890,7 +21091,7 @@ export default function HostShellV2() {
                 const first = String(g.name || '').trim().split(/\s+/)[0] || 'friend';
                 let base = { body: '' };
                 try { base = draftThankYou(event, profile); } catch { /* draft optional */ }
-                const gift = g.giftReceived ? ' And thank you for the gift — it meant a lot.' : '';
+                const gift = thankYouGiftLine(g);   // names the gift when the log says what it was (11/21/2026)
                 return (first + ' — ' + String(base.body || 'Thank you for celebrating with us.').replace(/^\s*(hi|hey|hello)[^,\n]*,?\s*/i, '')).trim() + gift;
               };
               return (
@@ -21056,7 +21257,7 @@ export default function HostShellV2() {
               const recordSend = (channel) => {
                 // `about`: who the draft was for, as this sheet KNOWS it — the
                 // Messages view groups by it (owner, 11/20/2026). Never inferred.
-                const about = sheet.vendorId ? { kind: 'vendor', id: sheet.vendorId } : sheet.sendsInvite ? { kind: 'guests' } : null;
+                const about = sheet.vendorId ? { kind: 'vendor', id: sheet.vendorId } : (sheet.sendsInvite || sheet.postsToInvite) ? { kind: 'guests' } : null;
                 const led = recordHandoff(event.sendLedger, sheet.title, channel, new Date().toISOString(), about);
                 if (sheet.vendorId) {
                   // Vendor-directed draft: the handoff IS the outreach. The
@@ -21079,10 +21280,12 @@ export default function HostShellV2() {
                 // a send (the clipboard proves a draft, not delivery).
                 const invited = sheet.sendsInvite && channel !== 'copy' && !event.invitesSentAt
                   ? { invitesSentAt: new Date().toISOString() } : {};
-                patchEvent({ sendLedger: led, ...invited }, 'Noted — the plan remembers this went out.');
+                // A post already says "Posted" in its own line; the toast would repeat it.
+                patchEvent({ sendLedger: led, ...invited }, channel === 'invite' ? null : 'Noted — the plan remembers this went out.');
               };
               const sendEntry = sendStateFor(event.sendLedger, sheet.title);
               const sendChip = sendStateLine(sendEntry, Date.now());
+              const canShareDraft = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
               // Whether this draft can be posted on every guest's invite, or
               // the one reason it can't (owner pick, 11/21/2026).
               const invitePost = !sheet.postsToInvite ? null
@@ -21123,6 +21326,12 @@ export default function HostShellV2() {
               // an address (it would 401 or fail), but the host can be told
               // WHY, and handed the one field that fixes it. The field already
               // existed on the vendor card; nothing pointed at it.
+              // The one lit button, by state: the app's own send first (the post,
+              // the vendor email, the list's email or its running text queue),
+              // then Share…, then the helper queue's "Next".
+              const appLead = !!(invitePost && invitePost.ok) || !!emailTarget
+                || (!!(sheet.sendsInvite || sheet.sendsNudge) && draftListLead);
+              const shareLit = canShareDraft && !appLead;
               const missingVendorEmail = (() => {
                 if (emailTarget || !sheet.vendorId) return null;
                 if (!isCommApiConfigured() || !session) return null;   // not a send build; say nothing
@@ -21377,13 +21586,19 @@ export default function HostShellV2() {
                     shows it is the sheet's one lit button: the only handoff the
                     app itself completes, reaching the whole group at once. */}
                 {invitePost && (invitePost.ok
-                  ? <PostToEveryone eventId={event.id} body={shownDraft()} />
+                  /* A post the server took is the trip details sent: the ledger
+                     records it, and that ticks "Send everyone the trip details". */
+                  ? <PostToEveryone eventId={event.id} body={shownDraft()} onPosted={() => recordSend('invite')} />
                   : <p className="grounding" data-post-invite-why style={{ marginTop: 'var(--sp-3)' }}>{invitePost.why}</p>)}
                 {/* Real handoffs: the native share sheet (iMessage/WhatsApp/etc.),
-                    plus direct sms: and wa.me deep links — no fake "sent" states. */}
+                    plus direct sms: and wa.me deep links — no fake "sent" states.
+                    ONE LIT BUTTON (11/21/2026, UX_05): a send the app makes
+                    itself outranks a handoff. "Share…" is lit only when nothing
+                    else is: not beside "Post to everyone's invite", "Send it to
+                    …", or the invite/nudge block's email or text step. */}
                 <div className="actions-row" style={{ marginTop: 14 }}>
-                  {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
-                    <button className={invitePost && invitePost.ok ? 'mini' : 'cta'}
+                  {canShareDraft && (
+                    <button className={shareLit ? 'cta' : 'mini'}
                       onClick={() => { navigator.share({ title: sheet.title || 'From your plan', text: shownDraft() }).then(() => { recordSend('share'); }).catch(() => { /* declined — records NOTHING, by ruling */ }); }}>
                       Share…
                     </button>
@@ -21412,13 +21627,13 @@ export default function HostShellV2() {
                 {sheet.sendsInvite && (
                   <InviteToTheList guests={event.guests} draft={shownDraft()}
                     canEmail={isCommApiConfigured() && !!session}
-                    sendOne={sendInviteTo} onReached={reachInvite} />
+                    sendOne={sendInviteTo} onReached={reachInvite} onLead={setDraftListLead} />
                 )}
                 {sheet.sendsNudge && (
                   <NudgeTheList event={event}
                     textBody={nudgeTextBody(inviteSubjectAndBody(shownDraft(), (draftRsvpChase(event, profile) || {}).subject).body)}
                     canEmail={isCommApiConfigured() && !!session}
-                    sendOne={sendNudgeTo} onReached={reachNudge} />
+                    sendOne={sendNudgeTo} onReached={reachNudge} onLead={setDraftListLead} />
                 )}
                 {/* "Message all helpers": each person still gets reviewed and
                     sent individually through the real handoffs above — this
@@ -21426,7 +21641,7 @@ export default function HostShellV2() {
                     button, not re-opening the list each time. */}
                 {sheet.queue && sheet.queue.length > 0 && (
                   <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                    <button className="cta" onClick={openNextInQueue}>
+                    <button className={appLead || shareLit ? 'mini' : 'cta'} onClick={openNextInQueue}>
                       Next: {sheet.queue[0].name} ({sheet.queue.length} left) →
                     </button>
                   </div>
@@ -25867,6 +26082,70 @@ export default function HostShellV2() {
                     </form>
                   )}
                   </Panel>
+                  {/* MONEY COMING IN · SPONSORS (owner pick B, 11/21/2026). Pledged
+                      vs in hand, kept apart from what you spend: nothing here is
+                      read by hostSpending, so it never lowers a total above. */}
+                  {(() => {
+                    const list = sponsorsOf(event);
+                    const asked = sheet.focus === 'sponsors';
+                    if (!list.length && !asked && !SPONSOR_TYPES.includes(event.type)) return null;
+                    const tot = sponsorTotals(event);
+                    const add = () => {
+                      const next = addSponsor(event, sponsorForm);
+                      if (!next) { toast('Which business? Add its name first.'); return; }
+                      patchEvent({ sponsors: next }, sponsorForm.business.trim() + ' is on your sponsor list.');
+                      setSponsorForm({ business: '', amount: '', recognition: '' });
+                    };
+                    const fld = { minHeight: 'var(--tap-min)', fontSize: 'var(--t-input)', maxWidth: 'none' };
+                    return (
+                      <Panel on={panels}>
+                        <div id="budget-sponsors" data-sponsors ref={scrollIntoViewOnOpen(asked)}>
+                          <div className="shelf-label" style={{ margin: 'var(--sp-3) 0 var(--sp-2)' }}>Money coming in · sponsors</div>
+                          <div className="line" data-sponsor-totals>
+                            <span>Pledged</span>
+                            <span className="amt">{fmt(tot.pledged)} <span className="of">{fmt(tot.inHand)} in hand</span></span>
+                          </div>
+                          {list.map((s) => (
+                            <div key={s.id} data-sponsor={s.id} style={{ borderTop: '1px solid var(--line-soft)', padding: 'var(--sp-2) 0' }}>
+                              <div className="actions-row" style={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'nowrap' }}>
+                                <b>{s.business}</b>
+                                <span className="amt">{Number(s.amount) > 0 ? fmt(s.amount) : 'No amount yet'}</span>
+                              </div>
+                              {s.recognition ? <p className="grounding" style={{ margin: 'var(--sp-1) 0 var(--sp-2)' }}>{s.recognition}</p> : null}
+                              <div className="actions-row" style={{ flexWrap: 'wrap' }}>
+                                <button className="mini" style={{ minHeight: 'var(--tap-min)', ...(s.received ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : {}) }}
+                                  aria-label={(s.received ? 'Received: ' : 'Mark received: ') + s.business}
+                                  onClick={() => patchEvent({ sponsors: markSponsor(event, s.id, 'received', !s.received) }, s.received ? null : s.business + ' marked received.')}>
+                                  {s.received ? 'received' : 'Mark received'}
+                                </button>
+                                <button className="mini" style={{ minHeight: 'var(--tap-min)', ...(s.thanked ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : {}) }}
+                                  aria-label={(s.thanked ? 'Thanked: ' : 'Mark thanked: ') + s.business}
+                                  onClick={() => patchEvent({ sponsors: markSponsor(event, s.id, 'thanked', !s.thanked) }, s.thanked ? null : s.business + ' marked thanked.')}>
+                                  {s.thanked ? 'thanked' : 'Mark thanked'}
+                                </button>
+                                <button className="mini" style={{ minHeight: 'var(--tap-min)' }} aria-label={'Draft their report: ' + s.business}
+                                  onClick={() => openDraft('Report to ' + s.business, draftSponsorReport(event, s, profile))}>Draft their report</button>
+                              </div>
+                            </div>
+                          ))}
+                          <div className="lodge-form" style={{ marginTop: 'var(--sp-2)' }}>
+                            <label className="lodge-f"><span className="of">Business</span>
+                              <input className="field" style={fld} placeholder="Main St. Hardware" aria-label="Sponsor business" value={sponsorForm.business}
+                                onChange={(e) => setSponsorForm((f) => ({ ...f, business: e.target.value }))} /></label>
+                            <label className="lodge-f"><span className="of">Amount</span>
+                              <input className="field" style={fld} type="number" min="0" step="1" inputMode="decimal" placeholder="250" aria-label="Sponsor amount" value={sponsorForm.amount}
+                                onChange={(e) => setSponsorForm((f) => ({ ...f, amount: e.target.value }))} /></label>
+                          </div>
+                          <label className="lodge-f" style={{ display: 'block', marginTop: 'var(--sp-1)' }}><span className="of">What their name goes on</span>
+                            <input className="field" style={fld} placeholder="The banner and the program" aria-label="What their name goes on" value={sponsorForm.recognition}
+                              onChange={(e) => setSponsorForm((f) => ({ ...f, recognition: e.target.value }))}
+                              onKeyDown={(e) => { if (e.key === 'Enter') add(); }} /></label>
+                          <button className="mini" style={{ width: '100%', minHeight: 'var(--tap-min)', marginTop: 'var(--sp-2)' }} onClick={add}>Add a sponsor</button>
+                          <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>Money in, kept apart from what you spend. It never lowers the totals above.</p>
+                        </div>
+                      </Panel>
+                    );
+                  })()}
                   <Panel on={panels}>
                   {hostRows.length > 0 && (
                     <>

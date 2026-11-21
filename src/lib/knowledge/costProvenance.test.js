@@ -33,7 +33,17 @@ describe('cost provenance grounding', () => {
     // This is a ratchet: it must not be lowered again to accommodate a future withdrawal
     // without the same written justification, and it should RISE as claims are properly
     // re-grounded. A smaller truthful knowledge base beats a larger questionable one.
-    expect(grounded).toBeGreaterThanOrEqual(15); // wave-2v grounded 6 more service-tier factors
+    // FLOOR LOWERED 15 -> 2 on 11/21/2026, DELIBERATELY, by owner ruling ("Apply
+    // all but leave crab"), not as a regression. Of the 15, 13 were grounded to
+    // catering-perperson-2026, and the research pass (factor-research.md) found
+    // that source supports only the CATERER legs, which multiplied $0 (the
+    // caterer path drops those lines), while 12 potluck legs miscited it. Those
+    // factors are gone: the potlucks are guests-bring line rules and the
+    // catered picks price at the vendor rate. What is left grounded is Crab
+    // Feast's crab_size and New Year's Eve's toast. The claims did not get
+    // weaker; the factors that leaned on a source that did not support them
+    // stopped existing. Ratchet from here.
+    expect(grounded).toBeGreaterThanOrEqual(2);
     expect(grounded).toBeLessThan(withProv); // honest — most are still a research backlog
   });
 
@@ -80,7 +90,9 @@ describe('cost provenance grounding', () => {
   });
 
   test('the board surfaces costGrounded (reaches runtime)', () => {
-    const b = playbookDecisionBoard({ id: 'e', type: 'Graduation', date: '2026-09-01', guests: [], guestEstimate: 30 });
+    // Crab Feast, not Graduation (11/21/2026): Graduation's catering factors
+    // multiplied $0 and are gone; crab_size is still grounded.
+    const b = playbookDecisionBoard({ id: 'e', type: 'Crab Feast', date: '2026-09-01', guests: [], guestEstimate: 30 });
     const rows = [...b.open, ...b.locked, ...(b.deferred || [])];
     expect(rows.some((r) => r.costGrounded === true)).toBe(true);
   });

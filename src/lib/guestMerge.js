@@ -110,7 +110,7 @@ export function likelySameGuest(guests, fullName) {
   return hits.length === 1 ? hits[0] : null;
 }
 
-const REPLY_FIELDS = ['meal', 'needs', 'plusOne', 'plusOneMeal', 'plusOneNeeds', 'kids', 'address', 'partyNotes', 'phone', 'email', 'lodgingPick'];
+const REPLY_FIELDS = ['meal', 'needs', 'plusOne', 'plusOneMeal', 'plusOneNeeds', 'kids', 'address', 'partyNotes', 'phone', 'email', 'lodgingPick', 'datePicks'];
 const BLANK = (v) => v == null || v === '' || v === '—' || v === 0 || (Array.isArray(v) && !v.length);
 
 /** The host said yes: the short-name row's reply moves onto the guest, its name
@@ -181,7 +181,7 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
       const wx = matchGuestIndexByName(guests, full);
       if (wx < 0) continue;
       const g = guests[wx];
-      const { picksCrabs: _pc, lodgingPick: _lp, ...rest } = g;
+      const { picksCrabs: _pc, lodgingPick: _lp, datePicks: _dp, ...rest } = g;
       const cleared = {
         ...rest, rsvp: '', meal: '—', needs: '', allergens: [], diets: [], access: [],
         plusOne: '', plusOneMeal: '—', plusOneNeeds: '', kids: 0, address: '',
@@ -223,6 +223,9 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
         // never blank a recorded one. Applies to BOTH branches: the merge into an
         // existing roster row AND the row created for a brand-new replier.
         ...(String(sub.lodgingPick || '').trim() ? { lodgingPick: String(sub.lodgingPick).trim() } : {}),
+        // The date poll (migration 034): the ranges she ticked, same rule — a
+        // reply without ticks never blanks the ones she sent before.
+        ...(Array.isArray(sub.datePicks) && sub.datePicks.length ? { datePicks: sub.datePicks.map(String) } : {}),
       };
       // Server rows re-arrive on every visit — only count real changes.
       if (JSON.stringify(next) !== JSON.stringify(g)) guests[ix] = next;
@@ -253,6 +256,9 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
         // never blank a recorded one. Applies to BOTH branches: the merge into an
         // existing roster row AND the row created for a brand-new replier.
         ...(String(sub.lodgingPick || '').trim() ? { lodgingPick: String(sub.lodgingPick).trim() } : {}),
+        // The date poll (migration 034): the ranges she ticked, same rule — a
+        // reply without ticks never blanks the ones she sent before.
+        ...(Array.isArray(sub.datePicks) && sub.datePicks.length ? { datePicks: sub.datePicks.map(String) } : {}),
       });
       added += 1;
     }

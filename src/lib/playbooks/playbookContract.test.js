@@ -26,9 +26,18 @@ function collect() {
       // are NOT gaps: silence would be a lie, but an explicit `noCostEffect: true` is a decision.
       // ...OR marked costViaApproach (the foodApproach model re-prices it, so a per-item factor would
       // silently no-op or fight the model — verified by the effectiveness audit).
-      if (isCostAffecting(d) && !d.costFactors && !d.noCostEffect && !d.costViaApproach && Array.isArray(d.options) && d.options.length >= 2) costFactorGaps.push(`${type}:${d.id}`);
+      if (isCostAffecting(d) && !d.costFactors && !d.noCostEffect && !d.costViaApproach && !d.costViaLines && !d.drinksCall && !d.costPending && Array.isArray(d.options) && d.options.length >= 2) costFactorGaps.push(`${type}:${d.id}`);
       if (d.costFactors && d.noCostEffect) badCostFactors.push(`${type}:${d.id} has BOTH costFactors and noCostEffect`);
       if (d.costFactors && d.costViaApproach) badCostFactors.push(`${type}:${d.id} has BOTH costFactors and costViaApproach`);
+      // drinksCall (11/21/2026): the drinks rule prices it (BYOB, dry and cash bar
+      // drop lines in playbookFoodPlan). costPending: the pick does change the cost,
+      // no source prices it yet, and the field says why; it is an owner call, not
+      // a silent gap, and costFactorCensus lists every one.
+      if (d.costPending && typeof d.costPending !== 'string') badCostFactors.push(`${type}:${d.id} costPending must say why`);
+      // costViaLines (11/21/2026): the pick re-prices by which lines appear, are
+      // brought by guests, or swap (whenChoice / friendsBringWhen), never a ratio.
+      if (d.costViaLines && !(pb.purchases || []).some((p) => [p.whenChoice, p.friendsBringWhen].flat(2).some((g) => g && (g.id === d.id || (Array.isArray(g.any) && g.any.some((x) => x && x.id === d.id))))))
+        badCostFactors.push(`${type}:${d.id} is costViaLines but no purchase is gated on it`);
       if (d.costFactors) {
         const opts = new Set(d.options || []);
         for (const k of Object.keys(d.costFactors)) {

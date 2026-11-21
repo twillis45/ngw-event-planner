@@ -9,11 +9,15 @@
 import { ALL_PLAYBOOKS, beverageTierFor, playbookFoodPlan, getPlaybook } from '../playbooks';
 
 const ALCOHOL = /\b(beer|wine|spirits?|liquor|whiskey|bourbon|vodka|rum|tequila|gin|champagne|prosecco|cocktails?|alcohol)\b/i;
-const bevDecision = (pb) => (pb.decisions || []).find((d) => Array.isArray(d.blocks) && d.blocks.some((b) => /beverage/.test(String(b))));
+// The playbook's named drinks call (A1, 11/21/2026), not the first decision
+// whose `blocks` mention beverage.
+const bevDecision = (pb) => (pb.decisions || []).find((d) => d.drinksCall === true);
 const plan = (type, picks) => playbookFoodPlan({
   id: 'dry', type, date: '2026-12-12', guestEstimate: 30, guestMode: 'count', guestCountSource: 'host', foodChoices: picks || {},
 });
-const drinks = (fp) => fp.list.filter((l) => l.cat === 'beverage' && !l.skipped);
+// A drink a guest brings is $0 to the host and is not priced here (Watch Party's
+// and Get-Together's defaults hand the drinks to the guests).
+const drinks = (fp) => fp.list.filter((l) => l.cat === 'beverage' && !l.skipped && !l.friendBrings);
 const names = (l) => `${l.item} ${String(l.id).replace(/^p_/, '').replace(/_/g, ' ')}`;
 
 // Every playbook whose drinks call is priced by the word-tier (no authored
@@ -29,9 +33,17 @@ for (const pb of ALL_PLAYBOOKS) {
 }
 
 test('the dry picks are the ones measured on 11/21/2026', () => {
+  // Six until the drinks call was named (A1) and the drinks factors became line
+  // rules (A7), both 11/21/2026: the rest were read from the wrong decision, or
+  // priced by a factor that bought the alcohol at 20-70%.
   expect(DRY.map(([type, , o]) => `${type}: ${o}`).sort()).toEqual([
-    'Birthday: No alcohol', 'Client Dinner: No alcohol', 'Dinner Party: Zero-proof / dry',
-    'Graduation: No alcohol', 'Holiday Party: Zero-proof / dry', 'Watch Party: Dry / family-friendly',
+    'Anniversary: Zero-proof / dry', 'Birthday: No alcohol', 'Client Dinner: No alcohol',
+    'Crab Feast: Dry / family-friendly', 'Dinner Party: Zero-proof / dry', 'Fish Fry: Family-friendly / dry',
+    'Fundraiser / Gala: Dry', 'Gender Reveal: Mocktails + soft drinks only', 'Get-Together: Dry / family-friendly',
+    'Graduation: No alcohol', 'Halloween Party: Zero-proof only', 'Holiday Party: Zero-proof / dry',
+    'Housewarming: Zero-proof / dry', 'Juneteenth Cookout: Family-friendly / dry', 'Low Country Boil: Family-friendly / dry',
+    'The Cookout: Red drink + soda + water (family-friendly)', 'Vow Renewal: Zero-proof / dry', 'Watch Party: Dry / family-friendly',
+    'Wedding: Dry',
   ]);
 });
 

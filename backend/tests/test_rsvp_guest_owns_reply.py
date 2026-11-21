@@ -30,7 +30,7 @@ NOW = datetime(2026, 11, 11, 12, 0, tzinfo=timezone.utc)
 ANSWER_COLUMNS = [
     "rsvp", "meal", "needs", "plus_one", "plus_one_meal", "plus_one_needs", "note",
     "allergens", "diets", "access", "picks_crabs", "phone", "email",
-    "mailing_address", "lodging_pick",
+    "mailing_address", "lodging_pick", "date_picks",
 ]
 
 
@@ -41,7 +41,7 @@ def reply(name, **over):
         "kids": 1, "note": "Running late", "allergens": ["Peanuts"], "diets": ["Vegetarian"],
         "access": ["Step-free"], "picks_crabs": True, "phone": "(410) 555-0100",
         "email": "guest@example.invalid", "mailing_address": "1 Test Lane",
-        "lodging_pick": "lodge-1", "submitted_at": NOW, "updated_at": NOW,
+        "lodging_pick": "lodge-1", "date_picks": ["d1", "d3"], "submitted_at": NOW, "updated_at": NOW,
     }
     row.update(over)
     return row

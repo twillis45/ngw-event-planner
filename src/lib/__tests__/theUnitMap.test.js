@@ -73,6 +73,15 @@ describe('THE ALLOWLIST IS THE WHOLE SAFETY ARGUMENT', () => {
       const fp = playbookFoodPlan({ id: 'x', type: pb.type, date: '2026-08-20', guestMode: 'count', guestCount: 20, guests: [] });
       if (!fp) continue;
       for (const l of (fp.list || [])) real.add(`${l.id}\u0000${String(l.item || '').trim()}`);
+      // A line gated on a pick is real for the host who makes it (11/21/2026:
+      // Juneteenth's strawberries show only for the full red table).
+      for (const p of (pb.purchases || [])) {
+        const g = p && p.whenChoice && !Array.isArray(p.whenChoice) ? p.whenChoice : null;
+        for (const pick of (g && g.in) || []) {
+          const gp = playbookFoodPlan({ id: 'x', type: pb.type, date: '2026-08-20', guestMode: 'count', guestCount: 20, guests: [], foodChoices: { [g.id]: pick } });
+          for (const l of ((gp && gp.list) || [])) if (l.id === p.id) real.add(`${l.id}\u0000${String(l.item || '').trim()}`);
+        }
+      }
     }
     // Re-derive the allowlist's own keys by asking the module about each line
     // the corpus holds — anything the module accepts must be a real line.
@@ -184,7 +193,10 @@ describe('how far this reaches, measured rather than hoped', () => {
     expect(total).toBeGreaterThan(400);
     // The honest headline: this is what a host can get a real TOTAL for. Every
     // other line keeps the estimate and, where a product matched, a reference.
-    expect(multipliable).toBe(60);
+    // 60 -> 59 on 11/21/2026: Juneteenth's strawberries are bought only for the
+    // full red table now (the ×1.3 had double-counted them), so the default
+    // plan this counts no longer holds them.
+    expect(multipliable).toBe(59);
   });
 });
 

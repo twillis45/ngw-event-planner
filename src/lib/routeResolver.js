@@ -25,7 +25,7 @@
 //
 //   kind         a sheet kind ('vendors','seating','budget','guests','food',
 //                'rain','crabs','ground','air','lodging','space','tasks',
-//                'costshare','messages',
+//                'costshare','split','meaning','messages',
 //                'risks','decisions') OR a stage landing ('stage:plan',
 //                'stage:day', 'stage:after') — the surfaces whose target is a
 //                full-screen stage, not a sheet (the plan editor, the day-of run
@@ -73,6 +73,8 @@ export function resolveRoute(route) {
     return { kind: 'seating', focus: gid };
   }
   // Budget / Guests — whole-surface sheets, no row concept.
+  // Sponsors (owner pick B, 11/21/2026): Your money, on "Money coming in · sponsors".
+  if (ff === 'budget-sponsors') return { kind: 'budget', focus: 'sponsors' };
   if (route.tab === 'Budget' || ff === 'budget') return { kind: 'budget', focus: null };
   // Guests row-level landings (Up-Next #4, 2026-07-22): the count entry and the
   // invites block are real anchors now — the whole-sheet catch below kept
@@ -106,9 +108,12 @@ export function resolveRoute(route) {
   // everyone stays" is the silent mis-landing this module exists to prevent.
   // Single-purpose sheet, so focus is null.
   if (/^costshare/.test(ff)) return { kind: 'costshare', focus: null };
+  // Split the costs (11/21/2026): who paid, who owes whom, each person's share.
+  // Before the tab:'Travel' catch for the same reason as the line above.
+  if (ff === 'cost-split') return { kind: 'split', focus: null };
   // Lodging — a guest's roster row, the deadline card, or the stay card itself.
   if (route.tab === 'Travel' || /^lodging/.test(ff)) {
-    return { kind: 'lodging', focus: gid != null ? gid : (ff === 'lodging-deadline' ? 'deadline' : null) };
+    return { kind: 'lodging', focus: gid != null ? gid : (ff === 'lodging-deadline' ? 'deadline' : ff === 'lodging-rooms' ? 'rooms' : null) };
   }
   if (/^fp-diet/.test(ff)) return { kind: 'food', focus: 'diet' };
   // Capacity / helper-supply rows both render on the space sheet. /^space MUST
@@ -119,10 +124,14 @@ export function resolveRoute(route) {
   // the capacity/supplies surface = the space sheet. Without this it fell through
   // to the tab:'Planning' tasks catch below — the wrong sheet (audit 2026-07-21).
   if (/^cap-hero/.test(ff)) return { kind: 'space', focus: null };
+  // The borrowed list (owner pick B, 11/21/2026): Space, on "Borrowed · N of M back".
+  if (ff === 'space-borrowed') return { kind: 'space', focus: 'borrowed' };
   if (/^space/.test(ff)) return { kind: 'space', focus: null };
   // Set-the-date foundation MUST branch before the tab:'Event Details' venue
   // catch-all below, else the #1 onboarding foundation scrolls to Venue instead
   // of the date (host-reported wrong-field routing).
+  // The date poll (owner pick B, 11/21/2026): Date & time, on "Dates to offer".
+  if (ff === 'date-options') return { kind: 'date', focus: 'options' };
   if (ff === 'event-date' || ff === 'event-start') {
     // Both routes open the existing Date & time sheet. An off-hero row cannot
     // rely on the hero having mounted its inline input.
@@ -148,10 +157,16 @@ export function resolveRoute(route) {
   if (ff === 'host-decisions') return { kind: 'decisions', focus: null };
   // The invite recap's album link, on the After stage (owner pick, 11/21/2026):
   // the album rows open After and focus the "Photo album link" field.
+  // Make it yours on the event hashtag (11/21/2026).
+  if (ff === 'meaning-hashtag') return { kind: 'meaning', focus: 'hashtag' };
   if (ff === 'after-album') return { kind: 'stage:after', focus: 'album', anchor: 'Photo album link' };
+  // The gift log (owner pick A, 11/21/2026): After, on Thank-yous & gifts.
+  if (ff === 'after-gifts') return { kind: 'stage:after', focus: 'gifts' };
   // A drafted note (owner pick, 11/21/2026): the draft sheet, opened on the
   // named builder. Today one: the Group Trip's trip details.
   if (ff === 'draft-trip-details') return { kind: 'draft', focus: 'trip-details' };
+  // The sponsor ask (owner pick, 11/21/2026), on the same draft sheet.
+  if (ff === 'draft-sponsor-ask') return { kind: 'draft', focus: 'sponsor-ask' };
   // The reconfirm sweep, opened for every booking (owner pick, 11/21/2026):
   // the stay's row first, then each booked vendor.
   if (ff === 'reconfirm-sweep') return { kind: 'sweep', focus: 'bookings' };

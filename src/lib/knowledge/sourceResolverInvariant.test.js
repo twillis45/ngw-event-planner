@@ -201,8 +201,12 @@ describe('1 — the source universe is what we think it is', () => {
     // (434 since 11/20/2026, seasonal leftovers fix 5: `nfpa-candles-2026` in
     // FIRE_SAFETY_SOURCES, NFPA's own candle page, read that day, for the
     // Holiday Party candle risk.)
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(434);
-    expect(unionIds().size).toBe(434);        // therefore every id is globally unique
+    // (440 since 11/21/2026, the pricing batch: `crawfish-wafb-2026`,
+    // `crawfish-wrno-2026`, `thanksgiving-prepared-fox5-2026`,
+    // `thanksgiving-prepared-grocerydive-2026`, `foodtruck-roaminghunger-2024`
+    // and `bls-softdrinks-2026` in COST_SOURCES, each page read that day.)
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(440);
+    expect(unionIds().size).toBe(440);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {

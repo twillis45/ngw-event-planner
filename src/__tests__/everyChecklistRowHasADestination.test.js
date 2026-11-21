@@ -18,12 +18,33 @@ const SHELL_KINDS = new Set(['air', 'budget', 'costshare', 'crabs', 'date', 'dec
   'lodging', 'messages', 'rain', 'risks', 'seating', 'space', 'tasks', 'vendors', 'venue', 'stage:day', 'stage:plan',
   // 11/21/2026: the album rows open After on the recap's album link; the trip
   // details open their draft.
-  'stage:after', 'draft', 'sweep']);
+  'stage:after', 'draft', 'sweep',
+  // 11/21/2026: Group Trip's balance opens Split the costs; Sweet 16's hashtag
+  // opens Make it yours.
+  'split', 'meaning']);
 // 11/21/2026: 124 → 120. Halloween's and NYE's "Share the … photos in one album
 // link" now open After on the recap's "Photo album link" field; Group Trip's
 // "Send everyone the trip details" opens its draft, and "Confirm every
 // reservation" opens the reconfirm sweep as "Confirm every booking".
-const NO_DESTINATION_CEILING = 120;
+// 120 → 114 (11/21/2026, later): Group Trip's balance, Bachelor's buddy,
+// Repast's place and time, Sweet 16's hashtag, Quinceañera's delivery windows
+// and Team Retreat's arrival instructions now open the surface that does them.
+// 114 → 112 (11/21/2026, integration, measured): Group Trip's "Offer two or
+// three date ranges…" and Team Retreat's "Poll the team…" open Date & time on
+// "Dates to offer".
+// 112 → 110 (11/21/2026, integration, measured): Birthday's "Record the cash
+// and gift cards…" and "Add the gifts that arrived by mail…" open After ›
+// Thank-yous & gifts.
+// 110 → 106 (11/21/2026, integration, measured): the return rows open
+// "Borrowed · N of M back" on Space: Anniversary's projector and lent photos,
+// Retirement's platters, urn and chairs, Thanksgiving's pans (and five rows
+// that already opened Space).
+// 106 → 105 (11/21/2026, integration, measured): Group Trip's "Settle who
+// sleeps where" opens the room plan in Where everyone stays.
+// 105 → 102 (11/21/2026, integration, measured): PTA's sponsor ask drafts
+// "The sponsor ask"; the Gala and Conference prospectus rows open "Money
+// coming in · sponsors".
+const NO_DESTINATION_CEILING = 102;
 
 const ev = (type) => ({ id: 'dest', type, date: '2026-12-31', guestEstimate: 20, guestMode: 'count', guestCountSource: 'host',
   venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX' });

@@ -50,13 +50,15 @@ const VENUE = { venue: 'The Ironwood Room', venueCity: 'Annapolis, MD' };
 const STATES = [
   { label: 'an empty event', custom: EMPTY },
   { label: 'a plan under way', custom: UNDER_WAY },
+  // No budget yet: the hero is the money ask, "Use $2,200" (11/21/2026).
+  { label: 'a plan with no budget', custom: { ...UNDER_WAY, id: 'board-lit-nobudget', budget: [], vendors: [] } },
   { label: 'Game Night T-2', id: 'test-two-days', patch: VENUE },
   { label: 'Dinner T-1, vendors', id: 'test-day-before-vendors' },
   { label: 'Wanda far-out', id: 'ev-x-wanda' },
   { label: 'Graduation (past)', id: 'ev-x-graduation' },
 ];
 
-const boot = async (page, state, theme) => {
+const boot = async (page, state, theme, elegant = '1') => {
   await page.addInitScript(([s, th]) => {
     if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
     if (s.custom) {
@@ -70,7 +72,7 @@ const boot = async (page, state, theme) => {
     localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
     localStorage.setItem('ngw-theme', th);
   }, [state, theme]);
-  await page.goto(`?elegant=1&theme=${theme}`);
+  await page.goto(`?elegant=${elegant}&theme=${theme}`);
   await settled(page);
   await page.waitForTimeout(400);
 };
@@ -136,17 +138,22 @@ const walkBoard = async (page) => {
   return { lit: [...seen.values()], together, barSeen };
 };
 
+// ?elegant=0, the full board (11/21/2026): the hero's money ask "Use $2,200"
+// and the bundle card's "See all 3" below it were both lit. Same rule.
+for (const elegant of ['1', '0'])
 for (const theme of ['light', 'dark'])
 for (const state of STATES)
-test(`the board shows at most one lit primary, and only in the hero — ${state.label}, ${theme}`, async ({ page }) => {
+test(`the board shows at most one lit primary, and only in the hero — ${state.label}, ${theme}${elegant === '0' ? ', ?elegant=0' : ''}`, async ({ page }) => {
   test.setTimeout(60_000);
-  await boot(page, state, theme);
+  await boot(page, state, theme, elegant);
   const { lit, together, barSeen } = await walkBoard(page);
   test.info().annotations.push({ type: 'lit', description: JSON.stringify(lit) });
   test.info().annotations.push({ type: 'next-bar seen', description: String(barSeen) });
   expect(lit.filter((f) => !f.hero).map((f) => f.label), 'lit primaries outside the hero (the board\'s lit button is the hero ask)').toEqual([]);
   const heroLit = lit.filter((f) => f.hero).map((f) => f.label);
   expect(heroLit.length, `lit primaries in the hero: ${heroLit.join(' | ')}`).toBeLessThanOrEqual(1);
-  if (theme === 'dark') expect(heroLit, 'the dark hero ask wears the soft tier (ruling 29)').toEqual([]);
+  // The soft tier is the elegant hero's (`.hero.elegant .cta`); the full board's
+  // hero card keeps its one lit ask in dark too.
+  if (theme === 'dark' && elegant === '1') expect(heroLit, 'the dark hero ask wears the soft tier (ruling 29)').toEqual([]);
   expect(together, 'two lit controls on screen at once').toEqual([]);
 });

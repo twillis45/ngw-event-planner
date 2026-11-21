@@ -65,7 +65,18 @@ describe('1 · lever visibility — every registered lever with a caterer-ish pa
       const catOpt = Array.isArray(dec.options) ? dec.options.find(o => CATERER_OPTION_RE.test(String(o))) : null;
       if (!catOpt) continue;
       const key = `${pb.type} · ${dec.id}`;
-      if (registered) {
+      // `servedByCaterer` (11/21/2026). false: a "Pizza" option that is the host
+      // ordering pizza, priced by its own line (Watch Party's menu), never the
+      // caterer. And a decision ranked after one whose every option is catered
+      // (Wedding's venue, after catering_style) cannot change who feeds the room.
+      if (dec.servedByCaterer === false) continue;
+      const servedFirst = FOOD_APPROACH_DECISIONS.slice(0, FOOD_APPROACH_DECISIONS.indexOf(dec.id))
+        .some((id) => pb.decisions.some((d) => d.id === id && d.servedByCaterer === true));
+      if (registered && servedFirst) {
+        test(`${key} → "${catOpt}" is settled by the catered-style decision ranked ahead of it`, () => {
+          expect(foodApproach(mkEvent(pb, { [dec.id]: catOpt })).usesCaterer).toBe(true);
+        });
+      } else if (registered) {
         test(`${key} → "${catOpt}" flips usesCaterer`, () => {
           const ev = mkEvent(pb, { [dec.id]: catOpt });
           const fa = foodApproach(ev);

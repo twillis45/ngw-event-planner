@@ -2866,6 +2866,17 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .lodge-opt, .lodge-opt .inv2-fine, .lodge-opt a{ text-align:left; }
 .lodge-opt .inv2-fine{ margin:0; }
 .inv2-dark .lodge-opt{ background:#22262b; border-color:rgba(255,244,224,.14); color:#ece5d8; }
+/* The date poll on the invite (owner pick B, 11/21/2026): a row per range,
+   a box that fills when ticked. Same card as the stay shortlist above. */
+.inv2-dates{ margin:0 0 16px; }
+.inv2-dates .inv2-label{ text-align:left; margin:0 0 8px; }
+.inv2-dates-list{ display:flex; flex-direction:column; gap:8px; }
+.inv2-dates .lodge-opt{ align-items:center; min-height:44px; }
+.inv2-dates .inv2-fine{ margin:8px 0 0; }
+.inv2-datebox{ flex:0 0 auto; width:20px; height:20px; border-radius:5px; line-height:18px; text-align:center;
+  font-size:13px; font-weight:800; border:1.5px solid currentColor; opacity:.7; }
+.inv2-datebox.on{ background:#3E7A5A; border-color:#3E7A5A; color:#fff; opacity:1; }
+.inv2-dark .inv2-datebox.on{ background:#6fbf90; border-color:#6fbf90; color:#14171a; }
 .inv2-dark .lodge-opt[aria-checked="true"]{ border-color:#6fbf90; background:rgba(111,191,144,.12); }
 @media (prefers-reduced-motion: reduce){ .lodge-opt{ transition:none } }
 

@@ -7,6 +7,16 @@ import { chaseAnsweredOrNudged } from './replyNudge';
 // Live binding, read only at call time: playbooks imports this module too.
 import { openFoodChoices, isDietaryChoice, playbookFoodPlan, hostBuysLine, dietaryNoted, stepCalls, stepCallsAnswered } from './playbooks';
 import { buildTravelPlan } from './travelPlan';
+import { sendStateFor } from './sendLedger';
+import { DATE_POLL_ROW, datePollSettled } from './datePoll';
+import { giftRowSatisfied } from './giftLog';
+import { BORROWED_ROW, borrowedAllBack } from './borrowedList';
+import { ROOMS_ROW, roomPlanSettled } from './roomPlan';
+import { SPONSOR_ASK_ROW, sponsorAskDone } from './sponsors';
+
+// The trip-details draft's title, which is also its send-ledger key: the
+// draft sheet records under it, and the checklist row reads it back.
+export const TRIP_DETAILS_DRAFT = 'The trip details';
 
 // Single source of truth for "is this planning task already handled by real event state?"
 //
@@ -112,6 +122,45 @@ export function taskSatisfied(event, task) {
   // would otherwise keep it open forever. Only rows that name the one album
   // link: "start a shared album and send the link" is still an ask of people.
   if (/^share\b[^.;]{0,80}\bin one album link\b/.test(s)) return /^https?:\/\//i.test(String(event.albumUrl || '').trim());
+
+  // THE TRIP DETAILS WENT OUT (11/21/2026). Group Trip's "Send everyone the
+  // trip details…" opens their draft; posting it on everyone's invite or
+  // handing it off records it on the send ledger, and that record is the
+  // step done. Copying is not a send (the invite's rule above), and a server
+  // email that failed or is still in flight is not one either.
+  if (/^send everyone the trip details\b/.test(s)) {
+    const e = sendStateFor(event.sendLedger, TRIP_DETAILS_DRAFT);
+    return !!e && e.channel !== 'copy' && (e.status === 'handed_off' || e.status === 'accepted');
+  }
+
+  // THE DATE POLL IS SETTLED WHEN THE HOST USES A RANGE (owner pick B,
+  // 11/21/2026). Offering ranges is half the step; the other half is the
+  // group's answer, and "Use these dates" is the host acting on it. Above the
+  // act guard, whose "check" / "poll" words would keep it open forever.
+  if (DATE_POLL_ROW.test(s)) return datePollSettled(event);
+
+  // THE GIFT LOG (owner pick A, 11/21/2026): the cash row is done by a cash
+  // amount on the log, the mailed-gifts row by a gift from someone who did not
+  // come; "go through the gifts" is the host's tick (giftLog.giftRowSatisfied).
+  const gift = giftRowSatisfied(event, s);
+  if (gift !== null) return gift;
+
+  // THE BORROWED LIST (owner pick B, 11/21/2026): a return row is done when
+  // something is on the list and all of it is marked returned. Above the act
+  // guard, whose "give" would keep "Give back what family lent you" open.
+  // A row that also asks to SEND something (Anniversary's originals: "…and
+  // send them the digital copies") is not proven by the list alone.
+  if (BORROWED_ROW.test(s)) return !/\band send\b/.test(s) && borrowedAllBack(event);
+
+  // WHO SLEEPS WHERE (owner pick "combine", 11/21/2026): done when everyone on
+  // the trip is in a room of the room plan.
+  if (ROOMS_ROW.test(s)) return roomPlanSettled(event);
+
+  // SPONSORS (owner pick, 11/21/2026): the ask is done once a sponsor is on
+  // the list. The thank / banner / recognition rows name volunteers, donors
+  // and proofs the list cannot witness, so they stay the host's tick (the act
+  // guard below keeps them open).
+  if (SPONSOR_ASK_ROW.test(s)) return sponsorAskDone(event);
 
   // ACTS — calls, briefings, walk-throughs, physical work, ongoing collection —
   // are never proven by presence facts. "Recruit 3-5 volunteers" was marked done

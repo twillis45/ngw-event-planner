@@ -16,7 +16,7 @@
 
 import { rainPlanStatus, RAIN_PLAN_TARGET, isLikelyOutdoor } from './weather';
 import { guestSafeText } from './guestFacing';
-import { venueFor } from './venueFor';
+import { venueFor, formatVenueAddress } from './venueFor';
 
 export const PLACE_STATES = {
   HANDLED: 'handled',
@@ -104,7 +104,7 @@ export function derivePlaceIntelligence(event = {}) {
       'Add it so guest directions and vendor plans stay accurate.',
       atHome ? 'Add your city' : 'Add the location');
   } else {
-    add('venue', 'Venue / location', PLACE_STATES.HANDLED, `Set: ${vf.displayLine || vf.name}`);
+    add('venue', 'Venue / location', PLACE_STATES.HANDLED, `Set: ${formatVenueAddress(event) || vf.name}`);
   }
 
   // 2 · Guest arrival — guests need an exact address, not just a name.

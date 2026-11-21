@@ -56,6 +56,10 @@ const EV = {
   id: 'e2e-tally', name: 'The Cookout', type: 'The Cookout',
   date: '2027-06-17', venueCity: '21014',
   guestMode: 'count', guestCount: 20, totalBudget: 1200,
+  // Every row is the host's to buy (11/21/2026: under the default "family brings
+  // the rest" the family's sides are listed but are not the host's to tick off,
+  // so they are rightly outside "N of M bought").
+  foodChoices: { cooking_model: 'Host cooks everything' },
   budget: [], vendors: [], guests: [],
 };
 

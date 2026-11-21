@@ -135,13 +135,14 @@ const ptaBoosterFundraiser = {
     },
     {
       id: 'concessions',
+      costPending: '"Both" keeps the stand for treats; no source splits the stand food into meals and treats, so that pick is priced as the full stand.',
+      costViaLines: true,
       label: 'Who runs the food — your volunteers or food trucks?',
       options: ['Volunteer-run concession stand', 'Food trucks with a share back to the school', 'Both — trucks for meals, the stand for treats'],
       default: 'Volunteer-run concession stand',
       defaultWhy: 'The volunteer stand is the default: every food dollar stays with the school. If your volunteer bench is thin, change it to trucks (own permits and staff, a share back) or split it: trucks for dinner, the stand for treats.',
       when: 'T-45d',
       blocks: ['food', 'beverage', 'volunteers'],
-      costFactors: { 'Volunteer-run concession stand': 1, 'Food trucks with a share back to the school': 0.3, 'Both — trucks for meals, the stand for treats': 0.6 },
       affects: ['p_concession_food', 'p_drinks'],
       weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive',
       priorityBasis: { rationale: 'The stand keeps every food dollar but costs shifts and a shopping run, while trucks cost nothing up front and give back a share; you can swap until the trucks are booked.', tier: 'reasoned' },
@@ -166,7 +167,11 @@ const ptaBoosterFundraiser = {
   ],
 
   tasks: [
-    { id: 't_goal', milestoneId: 'pb_kickoff', phase: 'planning', label: 'Set the fundraising goal, the expense budget the night can spend against it, and the one sentence that says what the money funds', when: 'T-120d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the call
+    // clears on the pick, and the work is its own step on the same milestone
+    // and due date, open until ticked.
+    { id: 't_goal', answeredBy: ['fundraising_goal'], milestoneId: 'pb_kickoff', phase: 'planning', label: 'Set the fundraising goal and what it funds', when: 'T-120d' },
+    { id: 't_goal_budget', milestoneId: 'pb_kickoff', phase: 'planning', label: 'Set the expense budget the night can spend against the goal, and write the one sentence that says what the money funds', when: 'T-120d' },
     { id: 't_committee', milestoneId: 'pb_kickoff', phase: 'planning', label: 'Recruit the committee and name who owns volunteers, sponsors, food, and the money', when: 'T-120d' },
     { id: 't_treasurer', milestoneId: 'pb_kickoff', phase: 'planning', label: 'Name the one treasurer who touches every dollar in and out, and keeps the ledger visible to the whole committee', when: 'T-118d' },
     { id: 't_facility', milestoneId: 'pb_facility', phase: 'venue', label: 'Submit the facility-use request to the school or district — the school is the venue, and its calendar fills first', when: 'T-120d' },
@@ -207,7 +212,7 @@ const ptaBoosterFundraiser = {
   purchases: [
     { id: 'p_wristbands', item: 'Admission wristbands or ticket rolls', category: 'logistics', qtyPerGuest: 1.1, unit: 'wristband', where: ['Amazon', 'Party store', 'Office supply'], unitCostRange: [0.03, 0.12], essential: true, buyAt: 'T-14d', note: 'A tenth extra covers re-issues and the volunteers. A different color for adults and kids makes the gate faster.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     { id: 'p_raffle_tickets', item: 'Raffle ticket roll (double stub)', category: 'logistics', qtyFlat: 1, unit: 'roll', where: ['Party store', 'Office supply', 'Amazon'], unitCostRange: [8, 20], essential: false, buyAt: 'T-14d', dependsOnDecision: 'raffle', note: 'Only after the permit check clears. If the state requires drawing rules printed on the ticket, that changes the order — check first, print second.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
-    { id: 'p_concession_food', item: 'Stand food (pizza order, popcorn, bake-sale trays, candy)', category: 'food', qtyPerGuest: 1.5, unit: 'servings', where: ['Costco', 'Grocery', 'Local pizza shop'], unitCostRange: [0.75, 2], essential: true, buyAt: 'T-3d', dependsOnDecision: 'concessions', note: 'Cheap, high-margin, kid-friendly. Size the pizza order to presale, staged in two waves so the last hour is not sold out. Label ingredients and keep one clearly nut-free option.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
+    { id: 'p_concession_food', whenChoice: { id: 'concessions', not: ['Food trucks with a share back to the school'] }, item: 'Stand food (pizza order, popcorn, bake-sale trays, candy)', category: 'food', qtyPerGuest: 1.5, unit: 'servings', where: ['Costco', 'Grocery', 'Local pizza shop'], unitCostRange: [0.75, 2], essential: true, buyAt: 'T-3d', dependsOnDecision: 'concessions', note: 'Cheap, high-margin, kid-friendly. Size the pizza order to presale, staged in two waves so the last hour is not sold out. Label ingredients and keep one clearly nut-free option.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     { id: 'p_drinks', item: 'Bottled water, juice boxes, and soda for the stand', category: 'beverage', qtyPerGuest: 1.5, unit: 'drinks', where: ['Costco', 'Grocery'], unitCostRange: [0.25, 0.6], essential: true, buyAt: 'T-3d', dependsOnDecision: 'concessions', note: 'Water and juice boxes outsell soda at a kid-heavy event. No alcohol — school grounds, full stop.', provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     // ── THE DRINKS HAD NOTHING TO KEEP THEM COLD (added 2026-09-23) ──────────
     // This playbook sold bottled water, juice boxes and soda from an outdoor

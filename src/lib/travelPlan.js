@@ -54,6 +54,8 @@
 //     buildTravelPlan itself stays pure/testable; the clock is only a
 //     fallback default, resolved once at entry.
 
+import { roommatesOf } from './roomPlan';
+
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const str = (v) => (v == null ? null : String(v).trim() || null);
 
@@ -274,7 +276,10 @@ export function buildTravelPlan(event, opts = {}) {
       status: normalizeLodgingStatus(sub && sub.status),
       checkIn: sub ? isoDay(sub.checkIn) : null,
       checkOut: sub ? isoDay(sub.checkOut) : null,
-      roommate: sub ? str(sub.roommate) : null,
+      // DERIVED from the room plan (owner pick "combine", 11/21/2026): the one
+      // record of who sleeps where. The stored sub.roommate had no writer and
+      // is ignored, so it can never disagree with the plan.
+      roommate: (() => { const m = roommatesOf(ev, g.id); return m.length ? m.slice(0, -1).join(', ') + (m.length > 1 ? ' and ' : '') + m[m.length - 1] : null; })(),
       accessibility: sub ? str(sub.accessibility) : null,
       // Caregiver pairing, resolved: name comes from the roster when the id
       // matches a guest, else the host's free-text fallback, else null.

@@ -92,7 +92,7 @@ describe('THE DEFECT ITSELF, re-proved against the live corpus', () => {
       // verbatim, `lastVerified` included, so the row COUNT moved and the two
       // facts this test actually guards — the earliest date, and that nothing
       // predates the old constant — did not.
-      .toBe(`543 dated rows, earliest 2026-08-14, older than 2026-01: 0`); // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
+      .toBe(`561 dated rows, earliest 2026-08-14, older than 2026-01: 0`); // 561 on 11/21/2026: the pricing batch's new cited lines (crawfish boiled, dry soda/water/tea, the food truck, host wine, the seafood boil and others). // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
   });
 
   test('EVERY playbook now derives a stamp its own rows can stand behind', () => {

@@ -208,7 +208,7 @@ export function incidentPlanFor(event) {
   const outdoors = (() => { try { return placeIsOutdoors(ev); } catch { return false; } })();
   const waterish = /pool|lake|beach|river|waterfront|marina|pond/i.test([vfv.name, String(ev.notes || ''), String(ev.type || '')].join(' '));
   const kidsAround = ev.kidsPolicy !== 'adults_only';
-  const addr = vfv.address || vfv.displayLine || '';
+  const addr = vfv.fullAddress || vfv.displayLine || '';
 
   const lines = [];
   lines.push({

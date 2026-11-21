@@ -18,8 +18,11 @@ const { ALL_PLAYBOOKS, playbookChecklist } = require('../lib/playbooks');
 
 const iso = (n) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(12); return d.toISOString().slice(0, 10); };
 const EV = { id: 'dest', type: 'Reunion', date: iso(45), guests: 24, venueCity: 'McHenry', venueState: 'MD' };
-const kindOf = (task, meta = {}) => {
-  const hit = checklistRouteFor(task, meta, EV);
+// `ev`: the row's own event. A step that IS a call (`answeredBy`) is found in
+// that event's playbook, so measuring every playbook's rows against the one
+// Reunion fixture read every other playbook's call rows as buttonless.
+const kindOf = (task, meta = {}, ev = EV) => {
+  const hit = checklistRouteFor(task, meta, ev);
   if (!hit) return null;
   if (hit.href) return 'external:' + hit.href;
   const r = resolveRoute(hit.route);
@@ -76,7 +79,7 @@ describe('coverage floor across every playbook', () => {
       for (const t of rows) {
         const task = typeof t === 'string' ? t : t.task;
         total += 1;
-        const k = kindOf(task, { week: t.week, category: t.category });
+        const k = kindOf(task, { week: t.week, category: t.category }, ev);
         if (k) withCta += 1;
         // A POSITIVE leadDays is days AFTER the event.
         if (typeof t.leadDays === 'number' && t.leadDays > 0) { postTotal += 1; if (k) postCta += 1; }
@@ -125,6 +128,9 @@ describe('coverage floor across every playbook', () => {
     // "Build a playlist celebrating Black artists") opened the vendor sheet's
     // add-a-vendor field. The app has no music surface, so per the rule above
     // they are honest check-offs now and the floor follows the measurement.
+    // 11/21/2026 (the audit batch): each row is now measured against its own
+    // event (kindOf above), so the call rows of every playbook count: 608/688
+    // = 88.4% pre-event, 72/106 post-event. The floor is not raised here.
     expect(preCta / preTotal).toBeGreaterThanOrEqual(0.866);
     // Post-event is younger and thinner on routing by nature -- much of it is
     // work in the world, not in the app. It must not slide below what it is.

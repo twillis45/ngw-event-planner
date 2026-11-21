@@ -237,6 +237,8 @@ const sundayDinner = {
   purchases: [
     {
       id: 'p_chicken',
+      bringerLabel: 'The family',
+      friendsBringWhen: { id: 'who-cooks-what', in: ['Full potluck split across the family'] },
       item: 'Whole chicken or cut-up fryer pieces (the main)',
       category: 'food',
       qtyPerGuest: 0.5,
@@ -251,6 +253,8 @@ const sundayDinner = {
       costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['chicken-bls-2026', 'chicken-walmart-2026'], lastVerified: '2026-08-18', claim: 'Whole chicken, per lb: BLS national average $2.01/lb; Walmart $1.32-1.46/lb depending on size. Band floor lowered slightly to $1.30 to match.', sufficientWhen: 'Confirmed — national average and retail price converge tightly.' } },
     {
       id: 'p_greens',
+      bringerLabel: 'The family',
+      friendsBringWhen: { id: 'who-cooks-what', in: ['Matriarch cooks the main, family brings sides', 'Full potluck split across the family'] },
       item: 'Collard or mustard greens',
       category: 'food',
       qtyPerGuest: 0.5,
@@ -264,6 +268,8 @@ const sundayDinner = {
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'researched', confidence: 'low', verificationStatus: 'cited', sources: ['greens-walmart-2026', 'greens-kroger-2026'], lastVerified: '2026-08-18', claim: 'Fresh collard greens, per bunch: Walmart $1.57-2.47, Kroger $2.99. Converted to per-lb assuming a standard ~1-1.5lb bunch, this lands within the existing band; bunch weight is not standardized by either retailer so the conversion is approximate.', sufficientWhen: 'A stated bunch weight from either retailer would remove the conversion approximation.' } },
     {
       id: 'p_smoked-meat',
+      bringerLabel: 'The family',
+      friendsBringWhen: { id: 'who-cooks-what', in: ['Matriarch cooks the main, family brings sides', 'Full potluck split across the family'] },
       item: 'Smoked turkey, ham hocks, or neck bones (to cook the greens)',
       category: 'food',
       qtyFlat: 1.5,
@@ -277,6 +283,8 @@ const sundayDinner = {
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_mac',
+      bringerLabel: 'The family',
+      friendsBringWhen: { id: 'who-cooks-what', in: ['Matriarch cooks the main, family brings sides', 'Full potluck split across the family'] },
       item: 'Elbow macaroni and block cheeses (sharp cheddar, plus a melting cheese)',
       category: 'food',
       qtyFlat: 1,
@@ -291,6 +299,8 @@ const sundayDinner = {
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_yams',
+      bringerLabel: 'The family',
+      friendsBringWhen: { id: 'who-cooks-what', in: ['Matriarch cooks the main, family brings sides', 'Full potluck split across the family'] },
       item: 'Sweet potatoes for candied yams',
       category: 'food',
       qtyPerGuest: 0.4,
@@ -304,6 +314,8 @@ const sundayDinner = {
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_peas-rice',
+      bringerLabel: 'The family',
+      friendsBringWhen: { id: 'who-cooks-what', in: ['Matriarch cooks the main, family brings sides', 'Full potluck split across the family'] },
       item: 'Black-eyed peas (or rice for a side)',
       category: 'food',
       qtyFlat: 1,
@@ -316,6 +328,8 @@ const sundayDinner = {
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_cornbread',
+      bringerLabel: 'The family',
+      friendsBringWhen: { id: 'who-cooks-what', in: ['Matriarch cooks the main, family brings sides', 'Full potluck split across the family'] },
       item: 'Cornmeal and buttermilk for cornbread (or biscuit mix)',
       category: 'food',
       qtyFlat: 1,
@@ -329,6 +343,8 @@ const sundayDinner = {
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_dessert',
+      bringerLabel: 'The family',
+      friendsBringWhen: { id: 'who-cooks-what', in: ['Matriarch cooks the main, family brings sides', 'Full potluck split across the family'] },
       item: 'Peach cobbler, sweet potato pie & pound cake (or banana pudding)',
       category: 'food',
       qtyFlat: 1,

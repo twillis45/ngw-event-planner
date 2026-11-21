@@ -55,8 +55,10 @@ function whenClause(e) {
 function whereClause(e) {
   const vf = venueFor(e);
   const name = clean(vf.name);
-  if (name && !HOMEISH.test(name)) return `at ${name}`;
-  const addr = clean(vf.address);
+  // A street typed as the venue is the address: say it whole, with its town,
+  // state and ZIP (formatVenueAddress; owner report 11/21/2026).
+  if (name && !HOMEISH.test(name) && name !== clean(vf.address)) return `at ${name}`;
+  const addr = clean(vf.fullAddress);
   if (addr) return `at ${addr}`;
   if (vf.isHome || (name && HOMEISH.test(name))) return 'at my place';
   return '';

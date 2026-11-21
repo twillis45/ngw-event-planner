@@ -1,5 +1,13 @@
 # Where We Are -- live status board
 
+## November 21, 2026 (evening) — prices you can trace, and the address in one piece
+
+**Every budget number now traces to a cited price.** The rough multipliers that stood in for "guests bring this" or "this is ordered" became real lines, and the few true ratios found published sources. Some defaults moved a lot, in the direction the plan already said.
+
+**Six places to do the work the checklist asked for:** a date poll guests answer on the invite, a gift log, a list of borrowed things to give back, a room plan, a sponsor list that never counts as spending, and a choice of what the host still covers at a cash bar.
+
+**The venue address is one line everywhere.** Pick it once and the invite, the seating screen and the calendar all show the street, city, state and ZIP.
+
 ## November 21, 2026 (afternoon) — budgets follow the drinks pick, and four reminders get somewhere to go
 
 **A dry party no longer pays for a bar.** Choosing no alcohol now removes the beer, wine and spirits from the budget, as BYOB already did. Birthdays now assume beer and wine unless the host says otherwise.

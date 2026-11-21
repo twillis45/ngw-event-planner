@@ -252,13 +252,23 @@ const quinceanera = {
   ],
 
   tasks: [
-    { id: 't_budget', milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Set the budget with the family; line up padrinos/sponsors who may cover the cake, gown, flowers, or music', when: 'T-270d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the call
+    // clears on the pick, and the work is its own step on the same milestone
+    // and due date, open until ticked.
+    // With no padrinos, the work is the budget alone.
+    { id: 't_budget', answeredBy: ['padrinos'], milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Decide whether padrinos cover pieces of the celebration', when: 'T-270d' },
+    { id: 't_budget_set', milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Set the budget with the family, and line up the padrinos who may cover the cake, gown, flowers, or music', when: 'T-270d',
+      copyByAnswer: { padrinos: { 'No, the family covers everything directly': 'Set the budget with the family' } } },
     { id: 't_church', milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'If holding a Mass, book the parish and priest; confirm any preparation requirements and readings', when: 'T-268d' },
     { id: 't_venue_walk', milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Tour venues: capacity, included tables/chairs/linens/floor, parking, curfew, in-house vs outside caterer', when: 'T-265d' },
     { id: 't_gown_order', milestoneId: 'order_gown_court', phase: 'plan', label: 'Order the ballgown; choose and order damas\' dresses and chambelanes\' suits to the color story', when: 'T-240d' },
     { id: 't_vendor_book', milestoneId: 'book_core_vendors', phase: 'plan', label: 'Book caterer, photographer + videographer, DJ/banda, and baker; sign contracts and pay deposits', when: 'T-180d' },
     { id: 't_court', milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Confirm damas and chambelanes who will commit to rehearsals; book the choreographer; set a weekly rehearsal slot', when: 'T-120d' },
-    { id: 't_vals_song', milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Finalize the vals song and any surprise-dance track; share with the choreographer', when: 'T-118d' },
+    // Split in two (owner, 11/21/2026), like Reunion's food step: the call
+    // clears on the pick, and the work is its own step on the same milestone
+    // and due date, open until ticked.
+    { id: 't_vals_song', answeredBy: ['vals_song'], milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Choose the vals music plan', when: 'T-118d' },
+    { id: 't_vals_share', milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Finalize the vals song and any surprise-dance track, and share them with the choreographer', when: 'T-118d' },
     { id: 't_florist', milestoneId: 'florist_decor_invites', phase: 'plan', label: 'Book florist and decor/centerpieces to the color story; reserve a backdrop and entrance arch', when: 'T-90d' },
     { id: 't_invites', milestoneId: 'florist_decor_invites', phase: 'plan', label: 'Send invitations with RSVP date and Mass + reception times; track replies for the count', when: 'T-88d' },
     { id: 't_rehearse', milestoneId: 'vals_rehearsals', phase: 'plan', label: 'Run weekly vals and surprise-dance rehearsals; confirm court attire fittings', when: 'T-60d' },

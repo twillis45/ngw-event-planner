@@ -88,6 +88,17 @@ test('signed in with travelers listed, it posts the reviewed words, asking first
   await expect(sheet.locator('[data-post-invite-status]')).toHaveText('Posted — it’s on every invite, and 2 guests get it by email.');
   expect(posts).toEqual([body.trim()]);
   await expect(sheet.locator('[data-post-invite-left]')).toHaveText('2 of 3 left today · 19 of 20 left for this event');
+  // The post is the trip details sent (11/21/2026): the sheet says it was
+  // posted, and the checklist step is done by the plan.
+  await expect(sheet).toContainText('Posted on everyone’s invite');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await openSectionByName(page, 'Your checklist');
+  await sheetSettled(page);
+  const row = page.locator('.sheet').last().locator('.frow').filter({ hasText: 'Send everyone the trip details' });
+  await expect(row).toContainText('done by your plan');
 });
 
 test('a refused post says so and never claims it posted', async ({ page }) => {

@@ -15,6 +15,7 @@ import { effectiveRos } from '@app/lib/playbooks';
 import { isVendorBooked } from '@app/lib/workstreams';
 import { toneVarsFor } from './inviteShared.js';
 import { clock12 } from '@app/lib/clock';
+import { formatVenueAddress } from '@app/lib/venueFor';
 
 const TONE = toneVarsFor(invitePalette('light'));
 
@@ -54,8 +55,8 @@ export default function FamilyViewV2({ code }) {
 function FamilyPage({ plan }) {
   const host = String(plan.hostNames || '').trim();
   const when = [plan.date ? fmtLongDate(plan.date) : '', fmtTime12(plan.startTime)].filter(Boolean).join(' · ');
-  const where = [plan.venue, plan.venueAddress || plan.address, [plan.venueCity, plan.venueState].filter(Boolean).join(', ')]
-    .map((x) => String(x || '').trim()).filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(' · ');
+  // The one place line (formatVenueAddress): name, street, City, ST ZIP.
+  const where = formatVenueAddress(plan);
   const rep = plan.replies || null;
   const repLine = rep ? [
     rep.yes ? `${rep.yes} coming` : '', rep.maybe ? `${rep.maybe} maybe` : '',

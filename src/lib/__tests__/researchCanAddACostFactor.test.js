@@ -64,7 +64,11 @@ describe('(premise) the gap is real and has a real denominator', () => {
     // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
     // 11/19/2026 (G61): the Group Trip playbook joined the corpus (47 types, 4 decisions); this count moved with it.
     expect(candidates).toBe(160);
-    expect(without).toBe(108);   // +2 on 11/19/2026: Group Trip's money_plan and split_rule touch the budget and are noCostEffect by design (no sourced multiplier);
+    // 108 -> 155 on 11/21/2026 (owner ruling "Apply all but leave crab"): 47
+    // decisions' factors became line rules (costViaLines) or were removed as
+    // dead or unsourced; only Crab Feast's four and NYE's cited toast remain.
+    // The research path this file proves still adds a factor to any of them.
+    expect(without).toBe(155);   // +2 on 11/19/2026: Group Trip's money_plan and split_rule touch the budget and are noCostEffect by design (no sourced multiplier);
   });
 });
 
