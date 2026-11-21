@@ -35,15 +35,19 @@ describe('the light step', () => {
     expect(lum(L.surface2)).toBeGreaterThan(lum(L.border));
   });
 
-  test('it stays NEUTRAL carbon — not the steel this ramp exists to remove', () => {
-    // User ruling 2026-06-23: most of the blue removed, blue ~3 over red.
-    // The Figma Light values carry blue 15 over red (#e4ecf3) and are the
-    // thing this deliberately does not import.
-    for (const k of ['bg', 'panel', 'surface2', 'border']) {
-      const [r, , b] = hex(L[k]);
-      expect(b - r).toBeGreaterThanOrEqual(0);
-      expect(b - r).toBeLessThanOrEqual(5);
+  test('it is WARM, never the steel this ramp exists to remove', () => {
+    // User ruling 2026-06-23 removed the blue (neutral, blue ~3 over red).
+    // Owner ruling 25 (11/21/2026, "W1") went further for light: the canvas is
+    // warm — red over green over blue, a warm gray, not a tan. The Figma Light
+    // values carry blue 15 over red (#e4ecf3) and are still never imported.
+    for (const k of ['bg', 'surface2', 'border']) {
+      const [r, g, b] = hex(L[k]);
+      expect(r).toBeGreaterThan(b);
+      expect(r).toBeGreaterThanOrEqual(g);
+      expect(g).toBeGreaterThanOrEqual(b);
+      expect(r - b).toBeLessThanOrEqual(16);
     }
+    expect(L.panel).toBe('#FFFFFF');
   });
 
   test('the shell ink still clears AA on it', () => {

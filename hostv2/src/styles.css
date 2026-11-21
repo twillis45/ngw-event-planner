@@ -945,7 +945,9 @@ button{font-family:inherit}
 .hero.elegant .ef-row .ef-r{ display:flex; align-items:center; gap:9px; flex:0 0 auto; }
 .hero.elegant .ef-cnt{ background:#1a2228; color:var(--steel-soft); border-radius:999px; padding:2px 8px; font-size:12px; font-weight:700; }
 .hero.elegant .ef-row .ef-g{ color:var(--faint); font-weight:800; }
-.hero.elegant .ef-row:hover{ opacity:.82; }
+/* Hover lights the arrow instead of dimming the row: .82 opacity took the arrow
+   under 4.5:1 in both themes (nothingReadsDarkOnDarkInLight, landscape, 11/21/2026). */
+.hero.elegant .ef-row:hover .ef-g{ color:var(--ink-soft); }
 /* Base .decopt — calm stacked action rows OUTSIDE elegant (the v2 count-fix hero
    uses these; the .app-elegant rules below are more specific and still win inside
    the elegant hero). Full-width tactile rows, not inline pills. */
@@ -998,6 +1000,54 @@ button{font-family:inherit}
    design audit 2). */
 .decopt-badge{ background:var(--card); color:var(--steel-soft); border-radius:999px; padding:3px 9px; font-size:11px; font-weight:650; letter-spacing:.3px; flex:0 0 auto; }
 .decopt-note{ font-size:13px; color:var(--muted); font-weight:400; }
+
+/* ── LIGHT: SECTIONS ON PANELS (owner ruling 25, 11/21/2026: "W1") ──────────
+   Doctrine 02, ruling 25. In light, every distinct block of a screen or sheet
+   sits on a white --card panel with a --line edge and a soft shadow, on the
+   page's warm --bg, so sections read as separate objects. Sheets group their
+   sections in markup (<Panel>, rendered in light only); the board's
+   below-fold blocks are single elements already and take the panel here.
+   Dark keeps today's look: none of these rules match there. */
+.panel{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg);
+  box-shadow:var(--panel-shadow); padding:var(--sp-4); margin:0 0 var(--sp-3); min-width:0;
+}
+.panel:empty, .panel:has(> :only-child:empty){ display:none; }
+.panel > :first-child{ margin-top:0 !important; }
+.panel > :last-child{ margin-bottom:0 !important; }
+:root[data-theme="light"] .hero.elegant .then-fold,
+:root[data-theme="light"] .hero.elegant .ef-watch,
+:root[data-theme="light"] .hero.elegant .bento,
+:root[data-theme="light"] [data-who-confirmed]{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg);
+  box-shadow:var(--panel-shadow); padding:var(--sp-4);
+}
+:root[data-theme="light"] .decopt.pick{ background:var(--card); }
+/* ── THE SIGN-IN, ONE ROW (owner ruling 25, 11/21/2026: "s2") ────────────────
+   "Not saved yet. Sign in to keep it.", a primary Sign in, and a ✕ that does
+   what "Not now" did. Every target is 44x44, and every dimension below is a
+   token or a fixed size, so the row has the same box in dark and light; only
+   its colors follow the theme (theSignInIsOneRow measures both). */
+.keep-ask{
+  display:flex; align-items:center; gap:var(--sp-2); margin:0 0 var(--sp-3);
+  /* On the spacing ladder: the S2 mock's 6px inset and 10px gap are 4 and 8. */
+  padding:4px 4px 4px 16px; border:1px solid var(--line); border-radius:var(--r-pill);
+  background:var(--card); box-shadow:var(--panel-shadow);
+  font-size:var(--t-meta); line-height:1.35; color:var(--muted);
+}
+.keep-ask-t{ flex:1 1 auto; min-width:0; margin:0; }
+.keep-ask-t b{ color:var(--ink); font-weight:700; }
+.keep-ask .cta{ flex:0 0 auto; min-height:44px; padding:0 16px; border-radius:var(--r-pill); }
+.keep-ask-x{
+  flex:0 0 auto; width:44px; height:44px; padding:0; border:0; border-radius:var(--r-pill);
+  background:none; color:var(--muted); font-size:var(--t-body-s); line-height:1; cursor:pointer;
+}
+.keep-ask-x:focus-visible{ outline:2px solid var(--steel); outline-offset:-2px; }
+/* A vendor card is already its own object; in light it takes the panel's edge. */
+:root[data-theme="light"] .sheet .vcard{ border-color:var(--line); box-shadow:var(--panel-shadow); }
+/* Who's confirmed (the board's triage block): its frame moved out of an inline
+   style so the light panel above can replace it. Dark paints what it did. */
+.who-confirmed{ margin-top:var(--sp-3); padding:var(--sp-3); border:1px solid var(--line-soft); border-radius:var(--r-md); min-width:0; }
 .decopt-right{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
 /* WHY THIS PICK on hover of "our pick" (Figma combined design): a tooltip, not a line. */
 .decopt-badge-wrap{ position:relative; display:inline-flex; outline:none; }
@@ -1030,6 +1080,10 @@ button{font-family:inherit}
 .hero.elegant .watch-dot{ width:5px; height:5px; border-radius:999px; background:var(--steel); flex:0 0 auto; margin-top:7px; }
 .hero.elegant .watch-row .t{ font-size:13.5px; font-weight:400; color:var(--muted); line-height:1.42; }
 .hero.elegant .watch-row:hover .t{ color:#c7ced4; }
+/* #c7ced4 brightens muted text on the dark stage; on light's white panel it read
+   1.59:1. In light the same hover darkens to ink (11/21/2026). */
+:root[data-theme="light"] .hero.elegant .watch-row:hover .t,
+:root[data-theme="light"] .hero.elegant .watch-row:focus-visible .t{ color:var(--ink); }
 /* A · "since last login" quiet momentum line — a breathing done-dot + one muted line. */
 .hero.elegant .returnbeat{ display:flex; align-items:center; gap:8px; width:100%; background:none; border:none; text-align:left; cursor:pointer; padding:6px 0 0; font:inherit; }
 .hero.elegant .rb-dot{ width:5px; height:5px; border-radius:999px; background:var(--ok); flex:0 0 auto; animation:breathe 3.2s ease-in-out infinite; }
@@ -1783,7 +1837,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
      clears the home indicator on a real handset. */
   /* The canvas glow reads through a sheet (doctrine 02 § Canvas glow). The
      sheet scrolls, the glow does not: it stays at the top of the screen. */
-  background-color:var(--card); background-image:var(--canvas-glow); background-repeat:no-repeat; border-radius:0;
+  background-color:var(--sheet-ground); background-image:var(--canvas-glow); background-repeat:no-repeat; border-radius:0;
   /* Named once (2026-09-24) so the pinned total bar can cancel exactly this
      inset instead of repeating the literal — two copies of a layout constant
      is how a footer ends up 4px off the edge on one surface and not another.
@@ -4453,6 +4507,8 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
   .efold:hover .efold-grab{ opacity:.55; width:44px; }
   .efold:hover .efold-label{ color:var(--faint); }
   .hero.elegant .watch-row:hover .t{ color:var(--muted); }
+  :root[data-theme="light"] .hero.elegant .watch-row:hover .t{ color:var(--muted); }
+  .hero.elegant .ef-row:hover .ef-g{ color:var(--faint); }
   .hero.elegant .returnbeat:hover .rb-t{ color:var(--muted); }
   .db-row:hover .db-lead{ color:var(--carbon-muted); }
   .qidx-row:hover .qidx-l{ color:var(--ink-soft); }
@@ -8136,4 +8192,31 @@ button.vc-pill::after{
     margin:0;
   }
   .stagewrap[data-rail="1"] > .app{ height:100%; min-height:0; border-radius:0; }
+}
+
+/* ── THE HOST'S FIRST-RUN SCREENS TOO (owner, 11/21/2026: "host screens only")
+   The welcome gate has no rail (data-rail="0"), so the ruling 28 rules above
+   never reached it. Measured before: at 1366x1024 with touch it was an inset
+   1280x900 card with the 48px phone bezel, and from 700 wide the boot splash
+   painted 48px corners that the screen edge clipped (1180x820). On touch both
+   are now the screen, square, like the main frame.
+   SCOPED TO HOST SCREENS. Only the host shell writes `data-rail` on its
+   stagewrap; the guest pages (invite, helper, family, vendor brief) carry none,
+   so none of this reaches them. The invite is paper on a card, by design.
+   From 1280 the only rail-less host screen is the welcome (and the localhost
+   `?stage=phone` QA stage, which stays a phone), so the frame rule names it. */
+@media (pointer:coarse) and (max-width:1279px){
+  .stagewrap[data-rail="0"] > .splash{ border-radius:0; }
+}
+@media (pointer:coarse){
+  .stagewrap[data-rail="0"]:has(> .app > .content.welcome) > .splash{ border-radius:0; }
+  .stagewrap[data-rail="0"]:has(> .app > .content.welcome) > .app{ border-radius:0; box-shadow:none; }
+}
+@media (pointer:coarse) and (min-width:1280px){
+  .stagewrap[data-rail="0"]:has(> .app > .content.welcome){
+    width:auto; max-width:none;
+    height:100dvh; max-height:none;
+    margin:0; transform:none;
+  }
+  .stagewrap[data-rail="0"]:has(> .app > .content.welcome) > .app{ height:100%; min-height:0; }
 }

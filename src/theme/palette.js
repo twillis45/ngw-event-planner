@@ -74,7 +74,7 @@ export const TOKENS = {
   // which ran ≈3.6–4.1:1 as text on the danger tint/card (fails WCAG). Lightened
   // to #F27A70 → ≈4.9:1 on tint, ≈6:1 on card. dangerSolid preserves the deep
   // red for the one solid-fill use (the alert banner, white text on it).
-  dangerRed:    { dark: '#F27A70', mid: '#F27A70', light: '#bb3737' }, // light: 4.44 on its own tint -> 4.60
+  dangerRed:    { dark: '#F27A70', mid: '#F27A70', light: '#a73131' }, // light: 4.44 on its own tint -> 4.60 (#bb3737) -> warm ground, ruling 25: #a73131 4.60 worst (own tint over the glow's top stop)
   dangerSolid:  { dark: '#E84036', mid: '#E84036', light: '#c03838' },
   // Light-mode AA pass 2026-08-18. Light is dormant (ACTIVE_MODE is 'dark' and
   // no caller requests light), so these values were never rendered and never
@@ -104,12 +104,14 @@ export const TOKENS = {
   // flattering one. --field (#EDEEF1) is excluded on purpose: it is the gutter
   // behind the stage at >=1024 and carries no text (verified by walking every
   // rendered text node at 1440 and 390 — every one sat on #FFFFFF or #F7F8FA).
-  amber:        { dark: '#ECA13F', mid: '#ECA13F', light: '#99580c' }, // #ef962e 2.31 -> #ac630d 4.35 -> #a7600d 4.57 on --bg -> 4.60 on its own tint
-  successGreen: { dark: '#4FAE7A', mid: '#4FAE7A', light: '#237646' }, // #298c52 4.23 -> #27854e 4.34 -> #26814c 4.57 on --bg -> 4.61 on its own tint
+  amber:        { dark: '#ECA13F', mid: '#ECA13F', light: '#884e0b' }, // #ef962e 2.31 -> #ac630d 4.35 -> #a7600d 4.57 on --bg -> 4.60 on its own tint (#99580c) -> warm ground, ruling 25: #884e0b 4.63 worst
+  successGreen: { dark: '#4FAE7A', mid: '#4FAE7A', light: '#1f693e' }, // #298c52 4.23 -> #27854e 4.34 -> #26814c 4.57 on --bg -> 4.61 on its own tint (#237646) -> warm ground, ruling 25: #1f693e 4.63 worst
 
   // Text ---------------------------------------------------------------
   textPrimary:   { dark: '#eef0f4', mid: '#e8edf2', light: '#0d0f12' },
-  textSecondary: { dark: '#849eb8', mid: '#849eb8', light: '#4e6c84' },
+  // light #4e6c84 -> #4a667c (ruling 25, warm ground): the warm glow's top stop
+  // read 4.40 over --bg and 4.41 over The Day's light carbon; 4.61 on both now.
+  textSecondary: { dark: '#849eb8', mid: '#849eb8', light: '#4a667c' },
   // textMuted was identical to textSecondary (same blue-gray, blue channel
   // +52 over red) — indistinguishable from each other AND from the
   // steelBlue identity accent everywhere they sit near it (found 2026-07-11,
@@ -221,7 +223,12 @@ export const carbonNeutral = {
   // light means bg is the DARKER of the two and panel is white. Getting that
   // backwards is the classic light-mode error: a white page with grey cards
   // reads as a disabled screen.
-  light:  { bg: '#F7F8FA', panel: '#FFFFFF', surface2: '#EDEEF1', border: '#DCDDE1' },
+  //
+  // WARM, BY OWNER RULING 25 (11/21/2026, "W1"): the light canvas is warm, not
+  // steel, chosen from rendered full-scroll comparisons. The neutral step above
+  // (#F7F8FA / #FFFFFF / #EDEEF1 / #DCDDE1) is superseded for light; the panel
+  // stays white so every section reads as an object on the page.
+  light:  { bg: '#F2F0EC', panel: '#FFFFFF', surface2: '#ECE9E4', border: '#D8D2CA' },
 };
 
 // ── Approved brand-color presets ───────────────────────────────────────
