@@ -200,9 +200,9 @@ export function applyStudioMatte(override) {
   // light theme kept a dark track under moded ink: "Plan" 1.58:1, the rest
   // 3.27:1 (design audit 2, 11/20/2026). Both come from the neutral ramp now.
   // Dark is within a step of what it painted; light is the recessive surface2
-  // track with a white lit segment, the same field -> panel order as the shell.
+  // track. The lit segment wears the one selected state (--sel-bg, styles.css;
+  // design batch 4), so --seg-on is gone.
   set('--seg-track', isLight ? carbonNeutral.light.surface2 : carbonNeutral.deep.panel);
-  set('--seg-on', isLight ? carbonNeutral.light.panel : carbonNeutral.softer.surface2);
 
   // ── Identity: locked steel-blue (mode-independent) + the CTA gradient ──
   set('--steel', bundle.steelBlue);
