@@ -198,8 +198,11 @@ describe('1 — the source universe is what we think it is', () => {
     // `avantstay-group-checklist-2026`, `smartertravel-group-trip-2025` and
     // `kayak-group-travel-2018` in TIMING_SOURCES, `ftc-travel-scams-2025` in
     // BOOKING_RISK_SOURCES, each page read that day.)
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(433);
-    expect(unionIds().size).toBe(433);        // therefore every id is globally unique
+    // (434 since 11/20/2026, seasonal leftovers fix 5: `nfpa-candles-2026` in
+    // FIRE_SAFETY_SOURCES, NFPA's own candle page, read that day, for the
+    // Holiday Party candle risk.)
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(434);
+    expect(unionIds().size).toBe(434);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {

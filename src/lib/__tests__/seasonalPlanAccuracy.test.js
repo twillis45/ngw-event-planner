@@ -41,7 +41,10 @@ test('1 · corn is a side, not a dessert: "corn pudding" is savory', () => {
   }
   // Friendsgiving lists no dessert line, so it has no Dessert group at all
   // rather than one holding only corn.
-  expect(playbookFoodPlan(FG()).groups).not.toContain('Dessert');
+  // MOVED 11/20/2026 (seasonalLeftovers fix 3): Friendsgiving now lists a
+  // dessert line, so the Dessert group exists — and holds that line, not corn.
+  const fgDessert = playbookFoodPlan(FG()).list.filter((l) => l.group === 'Dessert').map((l) => l.id);
+  expect(fgDessert).toEqual(['p_dessert']);
 });
 
 // ── 2 ──────────────────────────────────────────────────────────────────────

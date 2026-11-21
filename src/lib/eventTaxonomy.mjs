@@ -15,7 +15,7 @@
 //   • shareFamily      — 3 budget-breakdown share tables + fallback
 //                        (wedding | corporate | private | fallback). Coarser than
 //                        `family` by design; the two axes MAY differ for one type
-//                        (e.g. Holiday Party → family:corporate, shareFamily:private).
+//                        (e.g. Holiday Party → family:home_hosted, shareFamily:private).
 //   • recordKind       — derived from family: home_hosted ⇒ 'event' (a self-host
 //                        planning their own party); everything else ⇒ 'client'.
 //   • roster key       — the canonical type IS the CURATED_VENDORS key (vendor lib).
@@ -52,9 +52,19 @@ const EVENT_TAXONOMY = {
   'Bachelor Party':     { parent: 'Weddings & Celebrations', solveFamily: 'bachelorette',     family: 'host_driven',  shareFamily: 'fallback', travel: true },
 
   // ── Corporate ─────────────────────────────────────────────────────────────
-  // NOTE: Holiday Party keeps shareFamily 'private' (its current resolved value) even
-  // though family is 'corporate' — the axes are allowed to differ; documented drift.
-  'Holiday Party':      { parent: 'Corporate', solveFamily: 'holiday_party',     family: 'corporate', shareFamily: 'private'   },
+  // NOTE: Holiday Party keeps shareFamily 'private' (its current resolved value) under
+  // the Corporate parent — the axes are allowed to differ; documented drift.
+  // FAMILY MOVED TO home_hosted (11/20/2026, seasonal leftovers). As 'corporate'
+  // its budget's "this number leaves out" line named employee travel and
+  // speaker or talent fees for a party in someone's living room. Thanksgiving
+  // Hosting, Friendsgiving and New Year's Eve Party are home_hosted; so is this.
+  // The TYPE cannot tell a home party from an office one — "office party" and
+  // "company party" resolve here (KEYWORDS below) — so the family has to be one
+  // whose list is true for both: home_hosted's (serveware, gifts, cleaning,
+  // tips) is; corporate's (employee travel, speakers, swag, AV) is not true at
+  // home. `parent` stays 'Corporate' (picker grouping only). The playbook's
+  // per-guest band prices this type, so no budget number moves.
+  'Holiday Party':      { parent: 'Corporate', solveFamily: 'holiday_party',     family: 'home_hosted', shareFamily: 'private'   },
   'Board Meeting':      { parent: 'Corporate', solveFamily: 'board',             family: 'corporate', shareFamily: 'corporate' },
   'Conference':         { parent: 'Corporate', solveFamily: 'corporate',         family: 'corporate', shareFamily: 'corporate', multiDay: true },
   'Product Launch':     { parent: 'Corporate', solveFamily: 'product_launch',    family: 'corporate', shareFamily: 'corporate' },

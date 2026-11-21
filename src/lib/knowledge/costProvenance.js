@@ -165,11 +165,19 @@ export const COST_SOURCES = {
     fetched: '2026-08-15',
     claim: 'US retail 2026 by tier: everyday table wine (the grocery shelf) $8-15; mid-range $15-30; premium $30-100+. By type: red $12-40, white $10-30, rose $10-25. Sparkling $20-60. Retail stores hold $8-25 overall while restaurant markups run $30-100+; online $10-40 before shipping.',
   },
+  // NAME CORRECTED TO MATCH THE URL (11/20/2026, seasonal leftovers). The URL is
+  // Today's Homeowner's state-by-state page, and fetching it confirmed every
+  // state figure below. The name also claimed the Tablas Creek rebuttal and the
+  // claim a ~$14 national average, jug/table/premium category bands and the
+  // $56.78 DTC figure — none of which is on that page. Those parts came from
+  // search results with no URL recorded; they are dropped from this entry, not
+  // re-attributed. No state figure changed. The page reads "Last Updated March
+  // 15, 2025".
   'wine-statewide-2026': {
-    org: "Today's Homeowner state-by-state wine pricing, with the Tablas Creek rebuttal to the $56.78 DTC headline (listing - figures read from search results)",
+    org: "Today's Homeowner, \"This Is How Much a Bottle of Wine Costs in Your State\" (fetched; page last updated March 15, 2025)",
     url: 'https://todayshomeowner.com/blog/cost/wine-cost-state/',
     fetched: '2026-08-15',
-    claim: 'State averages cluster tightly: cheapest Massachusetts $10.97, then Maryland $11.14, Delaware $11.31, New Mexico $11.43, Connecticut $11.47; most expensive Mississippi $15.51. An average retail bottle is around $14. Category bands: jug under $5, popular table $5-10, mid-premium $10-15, super-premium $15-20. The $56.78 average-US-bottle headline is DTC-only data (10-11% of off-premise volume) and does not describe a shelf price.',
+    claim: 'Average price of a 750ml bottle by state, from three wines priced at retailers in up to 10 ZIP codes per state. Cheapest Massachusetts $10.97, then Maryland $11.14, Delaware $11.31, New Mexico $11.43, Connecticut $11.47; most expensive Mississippi $15.51, then Georgia $15.16 — the only two states above $15.',
   },
   // ── BACHELORETTE (registered 2026-08-15) ───────────────────────────────────
   // Spirits only. The sparkling line on the same playbook needed NO new source —
@@ -1132,11 +1140,20 @@ export const COST_SOURCES = {
     fetched: '2026-08-18',
     claim: 'PREPARED deli meat 2026: store-made cooked roast beef, deli-sliced, $14.99/lb. Meat trays serving 8-25 people run $89.99-119.99, i.e. $4.80-11.25 a head - those publish head counts but no weights, so no per-pound figure derives from them. This is cooked and sliced product, not raw meat: the same animal as a $2.25/lb spiral ham is a different purchase once a deli has cooked and cut it.',
   },
+  // NAME CORRECTED TO MATCH THE URL (11/20/2026, seasonal leftovers). The name
+  // said two publishers, "both fetched", over ONE url — Q Southern BBQ's "BBQ by
+  // the Pound" page, which on re-fetch shows pulled pork $18, brisket $22 and a
+  // full rack of St. Louis ribs $27, matching the Q Southern half of the claim.
+  // Jim 'N Nick's had no URL recorded; its menu page publishes no prices
+  // ("prices and menu items may vary by location") and a search found no page
+  // carrying the figures below. Those figures are kept, unchanged, and marked
+  // as not at this URL rather than silently deleted out from under the
+  // playbook claims that quote them. No price changed.
   'bbq-perpound-2026': {
-    org: "Q Southern BBQ and Jim 'N Nick's Bar-B-Q published by-the-pound menus (both fetched)",
+    org: 'Q Southern BBQ, "BBQ by the Pound" menu (fetched; re-fetched 2026-11-20)',
     url: 'https://qsouthernbbq.com/bbq-by-the-pound',
     fetched: '2026-08-18',
-    claim: 'Smoked BBQ by the pound 2026, on COOKED weight: pulled pork $17.99-18.00 (the two publishers agree within a cent); brisket $22.00 against $34.49 - a divergence of more than half, and NOT a figure to average; turkey breast $19.99; sausage $15.99; pulled chicken $18.99. Ribs are sold per rack ($27-29.99), not per pound.',
+    claim: 'Smoked BBQ by the pound 2026, on COOKED weight. AT THIS URL (Q Southern BBQ): pulled pork $18, brisket $22, St. Louis ribs $27 a full rack. NOT AT THIS URL, no URL recorded and not re-found 2026-11-20 (attributed to Jim \'N Nick\'s Bar-B-Q): pulled pork $17.99, brisket $34.49 - a divergence from $22 of more than half, and NOT a figure to average - turkey breast $19.99, sausage $15.99, pulled chicken $18.99, ribs $29.99 a rack.',
   },
   'tacobar-catering-2026': {
     org: 'Senor Burrito Company and Tacos and Company published catering menus (both fetched)',
