@@ -8,6 +8,11 @@
 // MEASURED BY SCROLLING, not by asserting a CSS property. `position: sticky`
 // silently does nothing inside an ancestor with the wrong overflow, so a test
 // that reads the declared value would pass on a bar that does not stick.
+//
+// 11/21/2026 (owner: the total becomes a docked footer): the bar is no longer
+// sticky; it is the `.sheet` dialog's footer, after the scroller `.sheet-body`.
+// The claims below still hold and are still measured by scrolling; what
+// scrolls is `.sheet-body`, so the premise and the scroll read it.
 import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const boot = async (page) => {
@@ -49,7 +54,7 @@ test('(premise) the sheet actually OVERFLOWS — without this the scroll test is
   // A scroll test on a sheet that does not scroll proves only that the element
   // exists. This premise is the difference.
   await boot(page);
-  const m = await page.locator('.sheet').first()
+  const m = await page.locator('.sheet > .sheet-body').first()
     .evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }));
   expect(m.scroll).toBeGreaterThan(m.client + 80);
   await expect(page.locator('.ftotal')).toBeVisible();
@@ -72,7 +77,7 @@ test('AND STILL THERE AFTER SCROLLING TO THE END OF THE LIST', async ({ page }) 
   await boot(page);
   const bar = page.locator('.ftotal');
   const before = (await bar.innerText()).replace(/\s+/g, ' ');
-  const sheet = page.locator('.sheet').first();
+  const sheet = page.locator('.sheet > .sheet-body').first();
   await sheet.evaluate((el) => { el.scrollTop = el.scrollHeight; });
   await page.waitForTimeout(400);
   const vp = page.viewportSize();

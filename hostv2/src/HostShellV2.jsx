@@ -5527,6 +5527,7 @@ export default function HostShellV2() {
     }
   }, [sheet]); // eslint-disable-line react-hooks/exhaustive-deps
   const sheetRef = useRef(null);              // the .sheet dialog container (a11y focus mgmt)
+  const sheetBodyRef = useRef(null);          // .sheet-body, the sheet's scroller (the footer docks below it)
 
   // ── A SHEET RISES FROM WHERE YOU TOUCHED IT (motion audit, 2026-08-21) ─────
   // The audit's one real finding: nothing in this app connected a before-state
@@ -5868,7 +5869,7 @@ export default function HostShellV2() {
     if (!sheet) return;
     const foodTab = sheet.kind === 'food' || sheet.kind === 'foodplan' || sheet.kind === 'bringing';
     if (!foodTab && sheet.focus != null) return;
-    const el = sheetRef.current;
+    const el = sheetBodyRef.current;
     if (el && typeof el.scrollTo === 'function') el.scrollTo({ top: 0, behavior: 'auto' });
     else if (el) el.scrollTop = 0;
   }, [sheet && sheet.kind]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -7193,9 +7194,12 @@ export default function HostShellV2() {
   // it there would have made a second bar to keep in step with the first —
   // the duplication class that has cost this repo twice today. One value,
   // rendered by each branch that has a tally to show.
+  // 11/21/2026: and now rendered by NO branch — the sheet shell docks it once,
+  // below the scroller (`sheet-foot`). barTally is null outside the three food
+  // tabs, so the condition is the one the branches used to apply.
   const pinnedBar = barShows ? (
 
-    <div className={'ftotal' + (barIsExit ? ' ftotal-exit' : '')}>
+    <div className={'ftotal sheet-foot' + (barIsExit ? ' ftotal-exit' : '')}>
       <span className="ftotal-l">{barTally}</span>
       {/* ── IT STOPS REPEATING THE HERO (host, 2026-09-24) ────────
           "check for duplication of info and choices between
@@ -15627,6 +15631,19 @@ export default function HostShellV2() {
         <>
           <div className="sheet-scrim" onClick={closeSheet} />
           <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabIndex={-1} ref={sheetRef}>
+            {/* ── THE FOOTER DOCKS BELOW THE SCROLLER (owner, 11/21/2026) ──────
+                A bar pinned OVER a scrolling sheet always has something under
+                it: at 860x430 and 1024x768 "Copy the shopping list", "Search
+                Instacart", "Print" and "+ Add an item you're bringing" sat
+                beneath the running total the moment the sheet opened. So the
+                dialog is a column now: `.sheet-body` scrolls (head and content,
+                exactly what `.sheet` used to scroll) and a footer, when the
+                open sheet has one, sits AFTER it. The scroller ends where the
+                footer begins, so nothing can be under it. Every sheet goes
+                through this one shell; today only the spread's running total
+                is a footer. Indentation inside is left as it was, so the diff
+                stays the size of the change. */}
+            <div className="sheet-body" ref={sheetBodyRef}>
             <div className="sheet-head">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
                 {/* Audit #1: cross-nav — from a SECTION sheet, hop to the Sections
@@ -21854,7 +21871,6 @@ export default function HostShellV2() {
                   <p className="grounding" style={{ margin: 'var(--sp-3) 0 0' }}>
                     This is a note of what you were told. Nothing here is sent to anyone.
                   </p>
-                  {pinnedBar}
                 </>
               );
             })() : null}
@@ -24154,17 +24170,16 @@ export default function HostShellV2() {
                     half of the trip is the half where the total matters, and it
                     was gone for all of it.
 
-                    STICKY, NOT FIXED. `.sheet` is the scroller (position:absolute,
-                    inset:0, overflow-y:auto), so a sticky child pins inside the
-                    sheet and cannot escape it onto another surface — which a
-                    fixed bar would, over every other sheet in the app.
+                    DOCKED, NOT STICKY (owner, 11/21/2026). It was a sticky child
+                    of the scrolling `.sheet`, and a bar over a scroller always
+                    covers its foot. The shell now renders `pinnedBar` once, after
+                    `.sheet-body`, as the dialog's footer — see the sheet shell.
 
                     IT STATES WHAT IT COUNTS. "N of M bought" is the tick-off
                     fraction; the store figure is scoped by its own line count and
                     only appears when the unit map resolved something, because a
                     subtotal that quietly included an unreconciled shelf price is
                     the exact defect the board caught in the prototype. */}
-                {pinnedBar}
               </>
             ) : <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>No spread to build for this kind of event yet.</div>)}
             {sheet.kind === 'vendors' && (() => {
@@ -27614,6 +27629,8 @@ export default function HostShellV2() {
                 </>
               );
             })()}
+            </div>
+            {pinnedBar}
           </div>
         </>
       )}
