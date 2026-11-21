@@ -2378,6 +2378,66 @@ export const COST_SOURCES = {
     limitations: ['commercial_interest_disclosed'],
     claim: 'Average Thanksgiving spend $952 including $175 on food and $110 on drinks; each plate averages $21.88; the average host has eight guests. One in three baby boomers say the host should pay for everything; 33% of Gen Z say costs should be split evenly; 28% of those cutting back will have guests bring some dishes.',
   },
+  // -- CRAWFISH, BOILED vs LIVE (registered 11/21/2026; owner ruling "Apply all
+  // but leave crab") -------------------------------------------------------
+  // Both pages fetched and their figures read verbatim on 11/21/2026. Both
+  // outlets relay ONE upstream dataset (The Crawfish App), so the pair is two
+  // publishers, not two independent measurements. Louisiana prices only.
+  'crawfish-wafb-2026': {
+    org: 'WAFB 9 News (Baton Rouge), "Checking crawfish prices ahead of expected busy Easter weekend," April 3, 2026, citing The Crawfish App (fetched)',
+    url: 'https://www.wafb.com/2026/04/03/checking-crawfish-prices-ahead-expected-busy-easter-weekend/',
+    fetched: '2026-11-21',
+    sourceClass: 'independent',
+    limitations: ['single_upstream_dataset', 'regional_louisiana'],
+    claim: 'Easter weekend 2026, Louisiana: $3.46 per pound for live crawfish and $6.10 per pound for boiled crawfish, per The Crawfish App. Boiled runs 1.76x live (6.10 / 3.46; that division is ours).',
+  },
+  'crawfish-wrno-2026': {
+    org: 'WRNO (iHeartMedia, New Orleans), "Crawfish Prices High At Start Of Season, Expected To Drop," January 16, 2026, citing The Crawfish App (fetched)',
+    url: 'https://wrno.iheart.com/content/2026-01-16-crawfish-prices-high-at-start-of-season-expected-to-drop/',
+    fetched: '2026-11-21',
+    sourceClass: 'independent',
+    limitations: ['single_upstream_dataset', 'regional_louisiana'],
+    claim: 'Mid-January 2026, the Louisiana season opening: live crawfish about $7.24 a pound and boiled about $10.10 a pound, per The Crawfish App. Boiled runs 1.40x live at the season start (10.10 / 7.24; that division is ours): the dollar premium holds while the ratio moves with the live price.',
+  },
+  // -- PREPARED THANKSGIVING DINNER, PER GUEST (registered 11/21/2026) -------
+  // Retailers' own posted 2026 prices, relayed by two independent outlets, both
+  // fetched 11/21/2026. Per-guest figures divide the price by the stated
+  // serving count (ours).
+  'thanksgiving-prepared-fox5-2026': {
+    org: 'FOX 5 DC, "Thanksgiving meal deals 2026: Where to get dinner, what it costs and when to order," November 5, 2026 (fetched)',
+    url: 'https://www.fox5dc.com/news/thanksgiving-meal-deals-2026-where-get-dinner-what-costs-when-order',
+    fetched: '2026-11-21',
+    sourceClass: 'independent',
+    claim: 'Prepared Thanksgiving dinners 2026, posted prices: Sam\'s Club Member\'s Mark just under $160 serving up to 16 (about $10.00 a guest); Bob Evans Standard Farmhouse Feast with turkey $137.99 for 8 ($17.25); Bob Evans Premium Farmhouse Feast $174.99 for 8-10 ($17.50-21.87); Cracker Barrel Turkey Feast about $189.99 for 8-10 ($19.00-23.75); Costco Complete Gourmet Thanksgiving Turkey Dinner $199.99 for 8 ($25.00); Maggiano\'s carryout bundle $210-220 for 4-5 ($42-55, the restaurant ceiling). Mass-chain heat-and-serve dinners cluster at $10-25 a guest.',
+  },
+  'thanksgiving-prepared-grocerydive-2026': {
+    org: 'Grocery Dive (Peyton Bigora), "Rounding up grocers\' Thanksgiving meal deals for 2026," November 12, 2026 (fetched)',
+    url: 'https://www.grocerydive.com/news/thanksgiving-meals-grocery-walmart-target-lidl-aldi-2026/874455/',
+    fetched: '2026-11-21',
+    sourceClass: 'independent',
+    claim: 'Grocer Thanksgiving offers 2026: Heinen\'s whole turkey dinner $159.99 for 10 ($16.00 a guest) and turkey dinner $89.99 for 5 ($18.00); Winn-Dixie heat-and-serve bundle about $40 for 3-5 ($8.00-13.33). Raw-ingredient bundles for 10, for contrast: Aldi $38.74 ($3.87 a guest), Lidl $35.86 ($3.59). A prepared dinner runs several times the same table bought as ingredients.',
+  },
+  // -- FOOD TRUCK CATERING (registered 11/21/2026) ---------------------------
+  // LOW CONFIDENCE, and the line that cites it says so: a booking marketplace
+  // with a commercial interest, last updated in 2024 (the page carries older
+  // conflicting dates too). Fetched 11/21/2026, figures read verbatim.
+  'foodtruck-roaminghunger-2024': {
+    org: 'Roaming Hunger, "Cost to rent a food truck for a party" (booking marketplace; page metadata modified April 18, 2024, with older conflicting dates also present) (fetched)',
+    url: 'https://roaminghunger.com/blog/14754/cost-to-rent-a-food-truck-for-party',
+    fetched: '2026-11-21',
+    sourceClass: 'commercial_practitioner',
+    limitations: ['commercial_interest_disclosed', 'dated_2024'],
+    claim: 'Food truck catering, average price per person: taco $12-15; pizza, BBQ or burger $15-25. Minimum spend for 1-100 eaters: taco $1,200; pizza, BBQ or burger $1,500. At a small party the minimum, not the per-person rate, sets the price ($1,500 / 30 guests = $50 a head; that division is ours).',
+  },
+  // -- SOFT DRINKS, BLS (registered 11/21/2026, Watch Party's dry pick) -------
+  // The federal average-price series, read from FRED on 11/21/2026.
+  'bls-softdrinks-2026': {
+    org: 'U.S. Bureau of Labor Statistics, Average Price: All Soft Drinks (Cost per 2 Liters/67.6 Ounces) in U.S. City Average, series APU0000FN1101, via FRED (fetched)',
+    url: 'https://fred.stlouisfed.org/series/APU0000FN1101',
+    fetched: '2026-11-21',
+    sourceClass: 'government',
+    claim: 'All soft drinks, U.S. city average, per 2 liters: $2.195 (May 2026), $2.196 (June), $2.265 (July), $2.228 (August), $2.273 (September), $2.272 (October 2026). A 2-liter bottle pours about five and a half 12oz servings, so about $0.40 a serving (2.272 / 5.63; that division is ours).',
+  },
 };
 
 // A costFactorProvenance is GROUNDED only when it is tier:'researched' AND cites >=1 real
