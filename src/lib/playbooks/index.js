@@ -949,7 +949,12 @@ export function decisionSettledByData(event, decision) {
 // you're serving · 3 open". Both now ask here. A choice is open when the host
 // has not picked it, no booked vendor answers it, and it is not the dietary
 // question already settled elsewhere. null = no food plan to ask.
-const isDietaryChoice = (c) => c.id === 'dietary' || /dietary|allerg/i.test(c.label || '');
+// The dietary question is known by its id (`dietary`, Thanksgiving's and
+// Friendsgiving's `dietary_table`), not by a label that mentions diets: "Invite
+// + RSVP + dietary/allergy ask", "Confirm guest count + collect dietary…" and
+// Bachelorette's "Drinking mix + dietary/no-alcohol needs" are other questions
+// (11/21/2026; isDietaryChoiceIsTheDietaryQuestion.test.js lists them).
+const isDietaryChoice = (c) => /^dietary(_|$)/.test(String((c && c.id) || ''));
 export function openFoodChoices(event, plan) {
   const p = plan !== undefined ? plan : (() => { try { return playbookFoodPlan(event); } catch (_e) { return null; } })();
   if (!p) return null;
