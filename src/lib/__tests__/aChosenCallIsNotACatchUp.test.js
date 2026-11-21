@@ -69,6 +69,7 @@ describe('every step that names a call', () => {
   test('the decide steps are linked', () => {
     expect(linked.map(([type, id]) => `${type}:${id}`).sort()).toEqual([
       'Friendsgiving:t_money', 'Friendsgiving:t_model', "New Year's Eve Party:t_model",
+      'Reunion:t-decide-food',
       'Sunday Dinner:t-pick-main', 'Thanksgiving Hosting:t_model',
     ].sort());
   });
@@ -86,5 +87,27 @@ describe('every step that names a call', () => {
       const half = seed(type, { [ids[0]]: picks[ids[0]] });
       expect(timelineStepResolved(half, step(half, taskId))).toBe(false);
     }
+  });
+});
+
+// REUNION, SPLIT IN TWO (owner ruling, 11/21/2026): "Decide potluck vs
+// host-cooked BBQ vs catered and tell guests" was a call and a send in one row,
+// so a pick could not honestly clear it. The call clears on the pick; telling
+// guests is its own step, due when the old one was, open until it is ticked.
+describe('Reunion: the food call and telling guests are two steps', () => {
+  const PICK = () => getPlaybook('Reunion').decisions.find((d) => d.id === 'food-model').options[0];
+  test('the call clears on the pick', () => {
+    const ev = seed('Reunion', { 'food-model': PICK() });
+    const t = step(ev, 't-decide-food');
+    expect(t.task).toBe('Decide potluck vs host-cooked BBQ vs catered');
+    expect(timelineStepResolved(ev, t)).toBe(true);
+  });
+  test('telling guests stays open until it is ticked, due when the old step was', () => {
+    const ev = seed('Reunion', { 'food-model': PICK() });
+    const tell = step(ev, 't-tell-food');
+    expect(tell && tell.task).toBe('Tell guests the food plan');
+    expect(tell.leadDays).toBe(step(ev, 't-decide-food').leadDays);
+    expect(timelineStepResolved(ev, tell)).toBe(false);
+    expect(timelineStepResolved(ev, { ...tell, done: true })).toBe(true);
   });
 });
