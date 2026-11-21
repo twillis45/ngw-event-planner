@@ -36,10 +36,23 @@
 //               units from --steel (#4c6675) in every channel and theme, now
 //               reads --steel: the lit reveal bead (twice) and the error
 //               screen's button. Its label goes 5.16 -> 5.31:1.
+//   11/21/2026  281 color, 883 inline (design batch 3c, item 20). A scanner
+//               fix, not a loosened ratchet: no source file changed. The JS
+//               scan now parses instead of pairing quotes. LodgingCockpit.jsx
+//               8 -> 3: five hex/rgba in CSS comments inside its style template
+//               (lines 3700 x2, 3701, 4064, 4109) were counted. HostShellV2.jsx
+//               8 -> 30: the regex literal at 11908 (/[\w'’]+/) flipped the
+//               quote pairing, hiding 22 real literals from 12918 on (two
+//               var() fallbacks on the handled segments, the "done" glow x2,
+//               GROUP_COLORS x5, the seated table puck's shadow, the contract
+//               pop-out window x2, the demo tools bar x10).
+//               parity/check-parity.mjs 1 -> 0: the one it counted sat inside a
+//               regex literal (line 124), not a string.
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parse } from '@babel/parser';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(HERE, '../src');
@@ -109,16 +122,30 @@ const cssColorSites = (raw) => {
   return sites;
 };
 
-// (a) JS/JSX: literals inside string and template literals.
+// (a) JS/JSX: literals inside string and template literals, found by PARSING.
+// Until 11/21/2026 a regex paired quote characters over the comment-stripped
+// text. A quote it could not see as code (inside a regex literal like
+// /[\w']+/, or an apostrophe in JSX text) flipped every later pairing in the
+// file, so real strings read as the gaps between strings and were skipped;
+// and CSS comments inside template strings were counted. @babel/parser is the
+// parser @vitejs/plugin-react already compiles this tree's JSX with (via
+// @babel/core), so it adds no package. JSX text is copy, not paint, and is not
+// a string here.
 const jsColorSites = (raw) => {
-  const text = stripJs(raw);
   const sites = [];
-  const STR = /(["'`])((?:\\.|(?!\1)[\s\S])*?)\1/g;
-  for (const m of text.matchAll(STR)) {
-    if (m[1] !== '`' && m[2].includes('\n')) continue;
-    for (const c of m[2].matchAll(COLOR)) sites.push(lineOf(text, m.index + 1 + c.index));
-  }
-  return sites;
+  const visit = (n) => {
+    if (n.type === 'StringLiteral' || n.type === 'TemplateElement') {
+      const body = raw.slice(n.start, n.end);
+      const scanned = n.type === 'TemplateElement' ? stripCss(body) : body;
+      for (const c of scanned.matchAll(COLOR)) sites.push(lineOf(raw, n.start + c.index));
+    }
+    for (const [k, v] of Object.entries(n)) {
+      if (k === 'loc' || /Comments$/.test(k)) continue;
+      for (const child of Array.isArray(v) ? v : [v]) if (child && typeof child.type === 'string') visit(child);
+    }
+  };
+  visit(parse(raw, { sourceType: 'module', plugins: ['jsx'] }).program);
+  return sites.sort((a, b) => a - b);
 };
 
 // ── (c) inline style literals in JSX ───────────────────────────────────────
@@ -204,6 +231,24 @@ if (process.env.UPDATE_TOKEN_BASELINE) {
   fs.writeFileSync(BASELINE, JSON.stringify({ totals, files: counts }, null, 2) + '\n');
 }
 const baseline = JSON.parse(fs.readFileSync(BASELINE, 'utf8')).files;
+
+// ── THE COLOR SCANNER BITES: synthetic samples, one per miscount ──────────
+// Each sample holds a known number of real color literals. Both cases failed
+// on the scanner before 11/21/2026: (1) counted 3, (2) and (3) counted 0.
+describe('the color scanner counts what a file paints, and nothing else', () => {
+  it('a CSS comment inside a template string is not a literal', () => {
+    const src = 'const css = `\n/* the ramp has no middle step (#eef0f4, #9a9ca0) */\n.a{color:#101010}\n`;\n';
+    expect(jsColorSites(src)).toEqual([3]);
+  });
+  it('a quote inside a regex literal does not hide the strings after it', () => {
+    const src = "const r = /^[\\w']+$/;\nconst a = 'x';\nconst s = { color: '#123456' };\n";
+    expect(jsColorSites(src)).toEqual([3]);
+  });
+  it('an apostrophe in JSX text does not hide the strings after it', () => {
+    const src = "const C = () => (<div>\n  <p>Maya's day</p>\n  <b style={{ color: '#abcdef' }}>x</b>\n</div>);\n";
+    expect(jsColorSites(src)).toEqual([3]);
+  });
+});
 
 describe('token gate', () => {
   it('scans the stylesheet and the shell (premise)', () => {
