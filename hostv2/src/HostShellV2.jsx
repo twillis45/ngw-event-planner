@@ -11489,7 +11489,9 @@ export default function HostShellV2() {
 
           {/* ══════════ PLAN ══════════ */}
           {stage === 'plan' && (
-            <section role="main">
+            /* `.board` scopes the one-lit-button rule (styles.css, ".board >
+               :not(.hero) .cta"): outside the hero, the board's buttons are soft. */
+            <section role="main" className="board">
               {/* Event switching lives in the app-bar switcher (events sheet) —
                   the always-on shelf drew more attention than the plan itself. */}
 

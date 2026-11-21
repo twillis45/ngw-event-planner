@@ -1443,10 +1443,16 @@ button{font-family:inherit}
    dim. --ink is the token the PRIMARY .cta already uses for its label, so the
    soft tier now speaks the same vocabulary instead of a third one, and contrast
    rises rather than falls. Ground is unchanged: no white surface. */
-.cta.soft{background:var(--steel-tint); color:var(--ink)}
+/* ONE LIT BUTTON ON THE BOARD (owner, 11/21/2026: "Do those 4"). UX_05 allows
+   one primary per view, and ruling 29 gives the board's to the hero ask. An
+   empty event lit "Save" (venue card) and "Confirm the headcount" below the
+   fold as well, in both themes. So every .cta on the board outside the hero
+   wears the soft tier: same atom, no per-button class. Sheets are not inside
+   .board and keep their own one-lit rule. Spec: oneLitButtonOnTheBoard. */
+.cta.soft, .board > :not(.hero) .cta:not(.ghost){background:var(--steel-tint); color:var(--ink)}
 /* Soft and ghost stay flat: only the primary carries the lit gradient and its edge. */
-.cta.soft, .cta.ghost{box-shadow:inset 0 1px 0 var(--sheen)}
-.cta.soft:hover{filter:none}
+.cta.soft, .cta.ghost, .board > :not(.hero) .cta{box-shadow:inset 0 1px 0 var(--sheen)}
+.cta.soft:hover, .board > :not(.hero) .cta:hover{filter:none}
 .hc-row{margin-top:var(--sp-3); display:flex; gap:var(--gap-chip); flex-wrap:wrap}
 
 .later-row{
@@ -3595,8 +3601,13 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
   bottom:calc(16px + env(safe-area-inset-bottom,0px)); z-index:22;
   display:flex; align-items:center; gap:var(--sp-3); text-align:left;
   padding:15px 18px; border:none; border-radius:var(--r-pill); cursor:pointer;
-  background:var(--cta-grad); color:var(--on-steel);
-  box-shadow:0 16px 44px -12px var(--shadow-55), inset 0 1px 0 var(--hair-14);
+  /* NOT LIT (owner, 11/21/2026, "Do those 4"; spec oneLitButtonOnTheBoard). The
+     bar echoes the hero ask once it scrolls away, so it was the board's second
+     --cta-grad primary, and at 860x430 it shared the screen with the lit ask.
+     The ask is the one lit button (ruling 29). The bar wears the soft tier on
+     an opaque ground, because it floats over content: --card + --ink. */
+  background:var(--card); color:var(--ink);
+  box-shadow:0 16px 44px -12px var(--shadow-55), inset 0 0 0 1px var(--line);
   transition:transform var(--ms-press) var(--ease-out), filter var(--ms-press) var(--ease-out);
 }
 /* ── THE BAR MUST NOT SIT ON THE CONTENT (Figma-vs-live audit, 2026-07-29) ──
@@ -3655,11 +3666,11 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
 }
 .next-bar:hover{filter:brightness(1.05)}
 .next-bar:active{transform:scale(.99)}
-.next-bar .nb-label{font-size:var(--t-overline); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--on-steel); opacity:.72}
+.next-bar .nb-label{font-size:var(--t-overline); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--muted)}
 .next-bar .nb-title{flex:1; min-width:0; font-size:var(--t-row-sub); font-weight:700; line-height:1.3;
   display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; text-overflow:ellipsis}
-.next-bar .nb-more{flex:0 0 auto; font-size:var(--t-overline); font-weight:800; letter-spacing:.02em; color:var(--on-steel); background:rgba(255,255,255,.16); border-radius:var(--r-pill); padding:2px 8px; opacity:.9}
-.next-bar .nb-chev{flex:0 0 auto; font-size:var(--t-section); color:var(--on-steel); opacity:.6}
+.next-bar .nb-more{flex:0 0 auto; font-size:var(--t-overline); font-weight:800; letter-spacing:.02em; color:var(--ink-soft); background:var(--steel-tint); border-radius:var(--r-pill); padding:2px 8px}
+.next-bar .nb-chev{flex:0 0 auto; font-size:var(--t-section); color:var(--muted)}
 .next-bar.allset .nb-more{background:rgba(0,0,0,.14)}
 .next-bar.allset{background:var(--ok); color:var(--on-ok)}
 .next-bar.allset .nb-label,.next-bar.allset .nb-title,.next-bar.allset .nb-chev{color:var(--on-ok)}
