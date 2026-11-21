@@ -49,3 +49,27 @@ for (const [w, h] of [[1440, 900], [1920, 1080]]) {
     expect(await frame(page)).toEqual(section);
   });
 }
+
+// On touch (owner ruling 28, 11/21/2026) both pages wear the same frame, and
+// that frame is the screen: 0 inset, square corners, no desktop card.
+test.describe('with touch', () => {
+  test.use({ hasTouch: true });
+  test('at 1366x1024, lodging and a section share the full-bleed frame', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 1024 });
+    await page.addInitScript(() => {
+      localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+      localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
+    });
+    await page.goto('./?elegant=1');
+    await settled(page);
+    await openSectionByName(page, 'Your checklist');
+    await settled(page);
+    const section = await frame(page);
+    expect(section.x).toBe(0);
+    expect(section.w).toBe(1366);
+    expect(section.radius).toBe('0px');
+    await page.goto('./?demo=lodging');
+    await settled(page);
+    expect(await frame(page)).toEqual(section);
+  });
+});

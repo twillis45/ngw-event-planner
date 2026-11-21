@@ -29,11 +29,14 @@ import { test, expect, settled } from './fixtures.mjs';
 const FLOOR = 44;
 
 // Food deliberately unset — that is the state under test, not an oversight.
+// Allergies noted (11/21/2026): unnoted, the hero is the dietary note, which is
+// answered at the allergy counts and carries no spread link. It used to show
+// the food panel only because the note sits in the food domain.
 const EV = {
   id: 'E2E_spreadlink', type: 'Birthday', name: 'Spread Link',
   venueCity: 'Santa Fe', venueState: 'NM', venue: 'The Lodge',
   date: '2027-06-20', guestMode: 'count', guestEstimate: 20, guestCount: 20,
-  totalBudget: 3000, budget: [], guests: [], vendors: [], timeline: [],
+  totalBudget: 3000, budget: [], guests: [], vendors: [], timeline: [], dietaryNoted: true,
 };
 
 const boot = async (page) => {

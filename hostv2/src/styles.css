@@ -875,8 +875,15 @@ button{font-family:inherit}
    when an arrow MAY appear — it never required one. Removing it satisfies the
    doctrine and the frames at the same time. Row-level chevrons elsewhere are a
    separate control and are untouched. */
-/* primary takes the full row; any secondary actions wrap quietly beneath it */
-.hero.elegant .hero-card .actions-row{ flex-wrap:wrap; row-gap:10px; }
+/* primary takes the full row; any secondary actions wrap quietly beneath it.
+   ROW-GAP 16, NOT 10 (11/21/2026). A `.mini` is 32px tall and its tap
+   expander (`::after`, min-height --tap-min, 46) overhangs 7px above and below,
+   so two wrapped rows of minis need at least 14px between them or the lower
+   row's expander takes the upper row's bottom edge. At 10 the hit area of
+   "Find venues near Washington" measured 42 (nothingPressableIsUnderTheFloor,
+   1024x768 and 1024x1366), once the narrower question column of ruling 26
+   wrapped the row in two. */
+.hero.elegant .hero-card .actions-row{ flex-wrap:wrap; row-gap:var(--sp-4); }
 .hero.elegant .hero-card .actions-row > .cta{ flex:1 1 100%; }
 /* MINI MOTION (host 2026-07-18): HOVER lifts the raised key a hair toward the finger —
    taller bottom edge, deeper cast, and the arrow leans in; PRESS collapses it into the
@@ -4166,7 +4173,10 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
   .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) .ask{ font-size:64px; }
 }
 
-@media (min-width:640px) and (max-width:1279px) and (min-height:700px){
+/* STOPS AT 1023 (owner ruling 27, 11/21/2026): from 1024, where the rail
+   appears, every sheet fills the content column instead (see "SHEETS FROM 1024"
+   at the end of this file). The centered panel stays for 640-1023. */
+@media (min-width:640px) and (max-width:1023px) and (min-height:700px){
   /* Sheet ruling (host 2026-07-23, "go with panel option"): at tablet every sheet
      becomes a CENTERED FLOATING PANEL — the iPad-native modal read — instead of an
      edge-to-edge bottom sheet stretched across the full width. One overlay shadow
@@ -4598,8 +4608,9 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
 .stagewrap[data-bp="tablet"] > .sheet{
   max-width:720px; margin-inline:auto;
 }
-.stagewrap[data-bp="tablet-land"] > .app > .content,
-.stagewrap[data-bp="tablet-land"] > .sheet{
+/* The sheet left this rule 11/21/2026 (owner ruling 27): from 1024 a sheet
+   fills the content column, one shape across 1280, not an 860px measure. */
+.stagewrap[data-bp="tablet-land"] > .app > .content{
   max-width:860px; margin-inline:auto;
 }
 
@@ -4638,10 +4649,15 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
    flex-start. heroVoid is untouched and stays green on its own terms.
 
    `.ecenter`'s own base rule (~:638) is already `justify-content:center`, so
-   this restores the default rather than inventing a new alignment. */
+   this restores the default rather than inventing a new alignment.
+
+   AMENDED 11/21/2026 (owner ruling 26, "Narrow"): tablet-land (1024-1279) is
+   OUT of this rule. With the stat column beside the question, a screen 1000px
+   or taller puts the question at the TOP, so a 13-inch iPad in portrait keeps
+   the top-align above (`flex-start`, the clamp offset). The 768-wide portrait
+   tablet still centers. */
 @media (orientation: portrait) and (min-height: 1200px){
-  .stagewrap[data-bp="tablet"] .hero.elegant .escreen.on > .ecenter,
-  .stagewrap[data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{
+  .stagewrap[data-bp="tablet"] .hero.elegant .escreen.on > .ecenter{
     justify-content:center; padding-top:0;
   }
 }
@@ -5362,11 +5378,9 @@ button.vc-pill::after{
    exclude the very commit that caused it.
    Shifting the CENTRE by half the offset is the same intent the edge rule
    expresses, said in the idiom this breakpoint actually uses. */
-@media (min-width:640px) and (max-width:1279px) and (min-height:700px){
-  .stagewrap[data-rail="1"] .sheet{
-    left:calc(50% + (var(--rail-w) + var(--sp-5)) / 2);
-  }
-}
+/* RETIRED 11/21/2026 (owner ruling 27): the centered panel now stops at 1023
+   and the rail starts at 1024, so a railed sheet is never the panel and this
+   center shift had nothing left to move. The column rule above places it. */
 
 /* ── THE SECTION MARK ON THE PHONE (host, 2026-08-07) ───────────────────────
    The Sections sheet is the mobile equivalent of the rail — the same
@@ -5771,6 +5785,9 @@ button.vc-pill::after{
    ~700px content area left at 1024, wrapping "5 confirmed guests still need
    seats" onto four lines. It now carries [data-bp="desktop"] as well — >=1280,
    with no height condition — and tablet-land keeps the single-column lane.
+   (Amended 11/21/2026, owner ruling 26: tablet-land now places the stat
+   column beside the question; the work zones stay one column below the fold.
+   See the "iPAD BOARD" block at the end of this file.)
 
    So on any canvas at least 1280 wide and UNDER 700 tall the two gates
    disagree: the rail is up, this grid is on, and the handle is still visible.
@@ -6224,7 +6241,7 @@ button.vc-pill::after{
 
    Scoped to the rail composition ONLY. `:648` and `:902` stand for the phone,
    where the bento is a 2x2 grid and this tile really is a card. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a{
+.stagewrap--responsive-command[data-rail="1"]:is([data-bp="desktop"],[data-bp="tablet-land"]) .hero.elegant .bento .tile-a{
   display:flex !important;
   flex-direction:column; align-items:stretch; gap:6px;
   /* The elegant bento is a column of hairline rows, not cards — :1004's card
@@ -6235,7 +6252,7 @@ button.vc-pill::after{
 }
 /* :1005 sets a 48px jumbo numeral for the phone countdown tile. Beside two
    18px hairline figures that reads as a different component. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a .t-num{
+.stagewrap--responsive-command[data-rail="1"]:is([data-bp="desktop"],[data-bp="tablet-land"]) .hero.elegant .bento .tile-a .t-num{
   font-size:18px; font-weight:700; line-height:1.05;
 }
 /* ONE HEADER, NOT TWO. `.bento-head` was added (89063812) because tile-a was
@@ -6243,7 +6260,7 @@ button.vc-pill::after{
    "Where you stand" label — and that label also holds the "what's counted"
    caret, so it is the one that must survive. Rendering both is anti-pattern 5,
    the double header. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento-head{
+.stagewrap--responsive-command[data-rail="1"]:is([data-bp="desktop"],[data-bp="tablet-land"]) .hero.elegant .bento-head{
   display:none;
 }
 
@@ -6295,8 +6312,8 @@ button.vc-pill::after{
    The rule keeps the number (it owns the six segments that ARE the fraction);
    the tile keeps what only it has — the lifecycle sentence and the six NAMED,
    routed, dot-marked parts, which is the reason it was worth un-hiding. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a .t-num,
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a .t-sub{
+.stagewrap--responsive-command[data-rail="1"]:is([data-bp="desktop"],[data-bp="tablet-land"]) .hero.elegant .bento .tile-a .t-num,
+.stagewrap--responsive-command[data-rail="1"]:is([data-bp="desktop"],[data-bp="tablet-land"]) .hero.elegant .bento .tile-a .t-sub{
   display:none;
 }
 
@@ -6306,7 +6323,7 @@ button.vc-pill::after{
    reads fine; in this column the heading arrived SECOND, under a paragraph it
    is supposed to introduce. `.tile-a` is a flex column here, so one `order`
    puts the heading back on top without touching the markup. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a > .t-label{
+.stagewrap--responsive-command[data-rail="1"]:is([data-bp="desktop"],[data-bp="tablet-land"]) .hero.elegant .bento .tile-a > .t-label{
   order:-1;
 }
 
@@ -6526,7 +6543,7 @@ button.vc-pill::after{
    the surface rather than a panel dropped onto it. This is also the region the
    standing ruling at :3582 reserves for on-demand detail — bounding it now is
    what makes that build a fill rather than a re-zone. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .bento{
+.stagewrap--responsive-command[data-rail="1"]:is([data-bp="desktop"],[data-bp="tablet-land"]) .hero.elegant > .bento{
   border-left:1px solid var(--line);
   padding-left:20px;
 }
@@ -7950,3 +7967,173 @@ button.vc-pill::after{
 @keyframes storebusy{0%,100%{border-color:color-mix(in srgb, var(--steel-soft) 45%, transparent)}50%{border-color:color-mix(in srgb, var(--steel-soft) 85%, transparent)}}
 @media (prefers-reduced-motion: reduce){ .store-busy,.store-busy-dot,.busy-dot{animation:none} }
 .toast .busy-dot{display:inline-block;vertical-align:middle;margin-right:var(--sp-3)}
+
+/* ══ THE iPAD BOARD, 1024-1279: "WHERE YOU STAND" BESIDE THE QUESTION ═════════
+   Owner ruling 26, 11/21/2026, made from rendered Current / Narrow / Full
+   comparisons: "Narrow". Amends three earlier rulings FOR THIS RANGE ONLY: the
+   2026-08-07 single-column board, the fold rule (the stat column may now be in
+   the first screen; nothing else may), and the 2026-08-17 centering (edited in
+   place, above).
+
+   ONLY `.bento` moves. Every other board zone (the fold handle, "Then, in
+   order", "Worth keeping an eye on") stays below the fold, spanning both
+   columns. The full desktop board was considered and declined: at 1024 its
+   work columns are 179px and text breaks mid-word.
+
+   THE PROGRESS BAR SPANS THE BOARD and sits at the TOP, under the eyebrow, as at
+   desktop (owner, 11/21: "For narrow expand the progress bar" / "Lock in at the
+   top"). It lives INSIDE `.escreen`, which is a sibling of `.bento`, so a plain
+   two-column grid cannot give it both columns while keeping the stat column
+   below it. `.escreen` therefore spans both columns as a SUBGRID on both axes:
+   the eyebrow (row 1) and the bar (row 2) run the full width, the question
+   (row 3) takes column 1, and `.bento` drops into row 3, column 2 of the same
+   tracks. Row 3 is 1fr; the spacer below holds the first screen's height, so
+   the fold handle stays at the foot.
+
+   Gated on `.escreen.on`: without it `.escreen` is `display:contents` and its
+   children would auto-place into the two columns. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant:has(> .escreen.on){
+  max-width:none; margin-inline:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(253px,309px);
+  grid-template-rows:auto auto 1fr;
+  align-content:start;
+  column-gap:var(--sp-5);
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant > .escreen.on{
+  grid-column:1 / -1; grid-row:1 / span 3;
+  display:grid;
+  grid-template-columns:subgrid; grid-template-rows:subgrid;
+}
+/* THE FIRST SCREEN'S HEIGHT, HELD BY A SPACER. A subgrid takes its size from
+   the parent's tracks, so `.escreen`'s own viewport min-height (under "THE
+   RAIL RULE ABOVE IS GLOBAL") stops applying: measured, the handle rose from y=717 to y=700 at 1024x768 and sat
+   at y=726 on a 1366-tall screen. This empty item spans the same three rows
+   and carries the same min-height, so the 1fr row grows to fill the screen
+   and the handle returns to the foot. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant:has(> .escreen.on)::before{
+  content:''; grid-column:1; grid-row:1 / span 3;
+  min-height:calc(100dvh - 72px - env(safe-area-inset-bottom,0px));
+}
+/* The eyebrow spans the board with the bar under it: together they are the
+   header band, as at desktop, where both run the width of the work columns.
+   Held to the question column (433px at 1024) a long name wrapped it onto two
+   lines (CI, 11/21/2026: Game Night on the day), and that 16px pushed the fold
+   handle to y=774 on a 768-tall screen while the question itself still fit. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ev-eyebrow{
+  grid-column:1 / -1; grid-row:1; align-self:start;
+}
+/* The desktop header placement ("THE ORDER, NOT THE COLUMNS"), one row under
+   the eyebrow, 4px further down than desktop's 12px. This range is touch: the
+   eyebrow's 44px tap area reaches 6px below it, and a segment span in the bar
+   sits 7px above the bar, so at 12px they overlapped by a pixel and the
+   eyebrow measured 43px tall (everyTapIsFortyFourSquare, 1024x1366). */
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .eprog{
+  grid-column:1 / -1; grid-row:2;
+  align-self:start; margin-top:var(--sp-4); margin-bottom:var(--sp-4); padding-top:0;
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{
+  grid-column:1; grid-row:3; min-width:0;
+}
+/* The stat column: the desktop column's own rules ("THE RICHEST BLOCK", "ONE
+   FRACTION", "BOUND THE COLUMN" — now keyed to tablet-land too) style its
+   insides; this places it. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant > .bento{
+  grid-column:2; grid-row:3;
+  display:flex; flex-direction:column; gap:var(--sp-2);
+  align-self:start; margin-top:0;
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant:has(> .escreen.on) > :not(.escreen):not(.bento){
+  grid-column:1 / -1;
+}
+/* THE QUESTION | ANSWER SPLIT ("THE SPLIT ALSO HAS TO FIT", 1200-1279
+   landscape) DOES NOT FIT BESIDE THE STAT COLUMN. Its own 2026-08-06 gate is a
+   SIZE test: the split needs a 360px question, a 300px answer and an 88px gap,
+   748px. With the stat column beside it, the question column measures 501px at
+   1279x800. So the board keeps the single question column it already has from
+   1024 to 1199. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card){
+  flex-direction:column; align-items:stretch; column-gap:0;
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) > .hzone{
+  flex:0 1 auto; min-width:0;
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) > .eanswer{
+  display:contents;
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) .ask{
+  font-size:clamp(40px,7.5cqw,56px);
+}
+
+/* ══ SHEETS FROM 1024: THE FULL COLUMN, NEVER TALLER THAN THE SCREEN ═════════
+   Owner ruling 27, 11/21/2026, made from rendered sheet-size comparisons: "B".
+   From 1024 wide, where the rail appears, every sheet fills the content column
+   (the rail rule's `left`, inset 0): the 680px centered panel now stops at 1023
+   and the 860px tablet-landscape measure no longer reaches sheets. One shape
+   across 1280, keeping the 8/3 and 8/21 rulings that a section fills the
+   column, and with it the desktop list-with-detail layout.
+
+   ONE CORNER from 1024 too (the 8/21 ruling, which was gated at 1280 and 700
+   tall): a railed sheet is a panel, so its corners are even, not the phone's
+   26/46 bottom-sheet radius. */
+.stagewrap[data-rail="1"] > .sheet{ border-radius:var(--r-xl); }
+/* NEVER TALLER THAN THE SCREEN. The sheet is inset 0 inside the stage, so its
+   frame is as tall as the stage. Below 1280, and on the data stage, the stage
+   is 100dvh. The command and food stages at 1280 and up are content-sized, so
+   a sheet opened over them was as tall as the board: measured at 1280x654, the
+   spread sheet was 1,298px tall and the page had scrolled 242px, which put its
+   title and Close at y=-179. While a sheet is open those stages are capped to
+   the window inside the frame's own margins (--sp-5 above, 40px below), so the
+   sheet frame fits the screen, `.sheet-body` flexes to take what is left and
+   the docked `.sheet-foot` stays at the bottom edge. The page then has nothing
+   to scroll. The stage keeps `overflow:clip` from the rail rule: NEVER
+   `hidden`, which is still a scroll container and can be scrolled from code,
+   carrying the sheet's head off the top. Lodging already carries this cap as
+   its own height. */
+@media (min-width:1280px){
+  .stagewrap--responsive-command[data-rail="1"]:has(> .sheet),
+  .stagewrap--responsive-food[data-rail="1"]:has(> .sheet){
+    max-height:calc(100dvh - var(--sp-5) - 40px);
+    overflow:clip;
+  }
+}
+
+/* ══ ON A TOUCH SCREEN THE FRAME IS THE SCREEN ═══════════════════════════════
+   Owner ruling 28, 11/21/2026, from the owner's iPad: "In tablet some of
+   columns are rounded on different screens." The frame carried a 20px radius at
+   every width. From 1024 to 1279 it filled the screen, so the screen edge
+   clipped its rounded corners (an 11" iPad); from 1280 it was an inset card,
+   24px at the sides, 20px above and 40px below (a 13" iPad at 1366x1024). Two
+   iPads, two shapes.
+
+   Every `(pointer: coarse)` screen, at any width and in either orientation,
+   now gets an edge-to-edge frame: 0,0, the full viewport, square corners, like
+   a native iPad app. The layers that cover the frame edge to edge (the splash,
+   and a sheet, which runs from the rail to the frame's right edge) take its
+   square corner too, the frameCorners rule. A mouse at 1280 and up keeps the
+   inset card with 20px corners, untouched. Inner panels keep their own radii.
+   The rail and the board inside the frame do not move. */
+@media (pointer:coarse){
+  .stagewrap[data-rail="1"],
+  .stagewrap--responsive-lodging,
+  .stagewrap[data-rail="1"] > .splash,
+  .stagewrap[data-rail="1"] > .sheet{ border-radius:0; }
+}
+/* From 1280 the desktop card rules give the frame its width cap, its margins
+   and a height of at most 900px, and ruling 27 caps it to the window minus
+   those margins while a sheet is open. On touch the frame is the screen
+   instead, as it already is from 1024 to 1279: the sheet cap then is the
+   screen, so the sheet's title and Close stay on it. Each selector matches the
+   rule it answers, so it wins on source order at equal specificity. */
+@media (pointer:coarse) and (min-width:1280px){
+  .stagewrap[data-rail="1"],
+  .stagewrap[data-rail="1"]:not(.stagewrap--responsive-command):not(.stagewrap--responsive-food):not(.stagewrap--responsive-data),
+  .stagewrap--responsive-command[data-rail="1"]:has(> .sheet),
+  .stagewrap--responsive-food[data-rail="1"]:has(> .sheet),
+  .stagewrap--responsive-lodging{
+    width:auto; max-width:none;
+    height:100dvh; max-height:none;
+    margin:0;
+  }
+  .stagewrap[data-rail="1"] > .app{ height:100%; min-height:0; border-radius:0; }
+}

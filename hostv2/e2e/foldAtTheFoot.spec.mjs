@@ -105,6 +105,14 @@ for (const [label, w, h] of SIZES) {
     // standard the product already sets and a tablet does not get a laxer one.
     // The fold HANDLE stays visible (asserted above); the below-fold SECTION
     // does not intrude at all.
+    //
+    // AMENDED 11/21/2026, owner ruling 26 ("Narrow"): from 1024 to 1279 the
+    // stat column ("Where you stand", `.bento`) stands beside the question and
+    // the progress bar runs across the top, so BOTH may now be in the first
+    // screen at the two 1024 sizes below. Nothing else may: this test still
+    // holds the day-before card at 0px, and
+    // theStatColumnStandsBesideTheQuestion.spec.mjs holds every other zone at
+    // 1024x768, 1024x1366 and 1180x820. Unchanged at 430 and 768.
     await boot(page);
     const { vh, zone3Top } = await geometry(page);
     const peek = Math.max(0, vh - zone3Top);

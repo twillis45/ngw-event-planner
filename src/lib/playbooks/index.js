@@ -847,9 +847,28 @@ export function playbookContingencyForWeather(event, wx) {
   return hit ? { id: hit.id, plan: hit.plan, kind } : null;
 }
 
+// ─── "NOBODY" COUNTS AS NOTED (owner ruling 1, 11/21/2026) ───────────────────
+// Dietary needs are noted when the host says so — the food sheet's "That's
+// everyone — noted", or a checklist tick that records it — OR when the host
+// answers the playbook's own dietary question with "nobody has one"
+// (Thanksgiving's "Nobody — the traditional menu works for everyone",
+// Friendsgiving's "Nobody at this table"). That answer used to be heard only by
+// the menu count, so the hero asked "Who has a food allergy?" right after it.
+// Only the host's own pick counts, never the authored default or a proposal.
+// ONE rule: dietaryResolved, the checklist (taskEngine) and the food sheet read it.
+const NOBODY_HAS_ONE = /^\s*(nobody|no one|none)\b/i;
+export function dietaryNoted(event) {
+  if (!event) return false;
+  if (event.dietaryNoted) return true;
+  const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  const pb = getPlaybook(event.type);
+  return ((pb && pb.decisions) || []).some((d) => d && isDietaryChoice(d)
+    && NOBODY_HAS_ONE.test(String(picks[d.id] || '')));
+}
+
 function dietaryResolved(event) {
-  // Host explicitly noted allergies (the headcount-mode workflow) → done.
-  if (event.dietaryNoted) return { resolved: true, reason: 'noted' };
+  // Host noted allergies (the headcount-mode workflow), or said nobody has one → done.
+  if (dietaryNoted(event)) return { resolved: true, reason: 'noted' };
   // Headcount / locked-count mode: there's no per-guest list to collect from, so the
   // host just NOTES the allergies they know of (free-text) instead of chasing the list.
   if (event.guestMode === 'count') return { resolved: false, reason: 'headcount' };

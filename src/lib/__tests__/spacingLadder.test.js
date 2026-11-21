@@ -43,7 +43,10 @@ const LADDER = new Set([0, 1, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 56, 64, 80]);
 // the shopping list button"). 14 is off the ladder and 12 is on it, so the
 // unification went DOWNWARD on purpose — matching .chip up to 14 would have
 // raised this number for a restyle, which is what the ratchet refuses.
-const BASELINE = 269;
+// 269 -> 268 on 2026-11-21: the wrapped .mini row's 10px gap became
+// var(--sp-4) (batch 4b CI fix), so each 46px tap area stops stealing from the
+// row below it — a tap-floor fix that also happened to land on the ladder.
+const BASELINE = 268;
 
 const PROP = /\b(margin|padding|gap|row-gap|column-gap)(-top|-right|-bottom|-left|-block|-inline)?\s*:\s*([^;{}]+)/g;
 

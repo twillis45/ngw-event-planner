@@ -182,3 +182,32 @@ test.describe('the rail does not drift', () => {
     expect(scrolled).toBe(0);
   });
 });
+
+// ── Touch (owner ruling 28, 11/21/2026) ────────────────────────────────────
+// On touch the frame is the screen and cannot narrow, so every pixel the rail
+// gives up must land in the content column.
+test.describe('section rail collapse on touch', () => {
+  test.use({ hasTouch: true });
+  test.skip(({ isMobile }) => isMobile, 'a phone-emulated project is not a tablet');
+  test('at 1366x1024 the frame stays the screen and the board takes the freed width', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 1024 });
+    await boot(page);
+    await page.evaluate(() => localStorage.setItem('ngw-hostv2-rail-min', '0'));
+    await page.reload();
+    await settled(page);
+    const read = async () => ({
+      frame: await page.locator('.stagewrap').evaluate((n) => { const r = n.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width }; }),
+      app: await page.locator('#app').evaluate((n) => n.getBoundingClientRect().width),
+      rail: await railWidth(page),
+    });
+    const before = await read();
+    await page.locator('.srail-min').click();
+    await page.waitForFunction(() => document.querySelector('.stagewrap').dataset.railmin === '1');
+    const after = await read();
+    expect(before.frame).toEqual({ x: 0, y: 0, w: 1366 });
+    expect(after.frame).toEqual(before.frame);
+    const freed = before.rail - after.rail;
+    expect(freed).toBeGreaterThan(100);
+    expect(after.app - before.app, `${freed}px freed`).toBeCloseTo(freed, 0);
+  });
+});
