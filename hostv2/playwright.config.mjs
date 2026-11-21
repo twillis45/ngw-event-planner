@@ -28,6 +28,8 @@ const SELF_PINNED = [
   // welcome and the steel-filled labels, measured as the phone meets them.
   '**/lightThemeContrast.spec.mjs',
   '**/heroVoid.spec.mjs',
+  // Each host pins its own viewport from its profile (hero-clears sweep, 11/20/2026).
+  '**/fiftyHostsHeroClears.spec.mjs',
   // Pins 320x640 in its one test (run 2, R2-12).
   '**/theCountFitsAt320.spec.mjs',
   // Drives its own four geometries below 1280; the >=1280 command layout composes

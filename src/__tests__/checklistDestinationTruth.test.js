@@ -119,7 +119,13 @@ describe('coverage floor across every playbook', () => {
     // the photo corner, the host's costume, NYE's food-wave prep) are
     // real-world work with nowhere honest to land, so per the rule above the
     // floor follows the measurement instead of a courtesy destination.
-    expect(preCta / preTotal).toBeGreaterThanOrEqual(0.869);
+    // 11/20/2026 (seasonal leftovers, fix 6): measured 580/669 = 86.697%, down
+    // from 582/669. Two pre-event rows that LEAD with building a playlist
+    // (Holiday Party's "Build a 4-hour festive playlist", Juneteenth Cookout's
+    // "Build a playlist celebrating Black artists") opened the vendor sheet's
+    // add-a-vendor field. The app has no music surface, so per the rule above
+    // they are honest check-offs now and the floor follows the measurement.
+    expect(preCta / preTotal).toBeGreaterThanOrEqual(0.866);
     // Post-event is younger and thinner on routing by nature -- much of it is
     // work in the world, not in the app. It must not slide below what it is.
     expect(postTotal).toBeGreaterThan(50);

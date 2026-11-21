@@ -275,6 +275,15 @@ export function checklistRouteFor(task, meta = {}, event = null) {
     return { label: 'Open the invite', route: { focusField: 'guests-invites' } };
   if (/chase non-?responders|lock the count/i.test(t))
     return { label: 'Open guests', route: { tab: 'Guests', focusField: 'guests-entry' } };
+  // BUILDING A PLAYLIST IS NOT HIRING ONE (11/20/2026, seasonal leftovers).
+  // "Build a 4-hour festive playlist … or brief the DJ" opened the vendor
+  // sheet's add-a-vendor field, because "playlist" sits in the vendor rule
+  // below. The app has no music surface, so a row that LEADS with making the
+  // playlist is an honest check-off with no button. A row that leads with the
+  // DJ ("Book the DJ or build the playlist", "Brief DJ on theme") is still
+  // vendor work and falls through to the rule below.
+  if (/^(?:build|make|create|curate)\b[^.;]{0,30}\bplaylist\b/.test(t))
+    return null;
   if (/\b(dj|playlist|band|speaker|photographer|caterer|book the|rent(al)?|hire)\b/.test(t))
     return { label: 'Line them up', route: firstUndoneVendorRoute(event) };
   if (/\b(forecast|weather|rain plan|shade\/rain)\b/.test(t))

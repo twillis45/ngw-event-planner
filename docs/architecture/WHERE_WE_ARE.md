@@ -1,5 +1,13 @@
 # Where We Are -- live status board
 
+## November 20, 2026 (evening) — the screens agree with each other, and the numbers with the holiday
+
+**The owner noticed sections that were finished while the board kept asking about them.** A code trace found six places where the section, the board's one ask and the section's own heading each decided "done" for themselves. The venue question was asked with no answer to tap. A deposit nobody could ever mark paid. A step the checklist called handled that the board called overdue. A budget the money screen priced at local prices and the board at national ones. A place picked to stay, shown in green, that was never booked. Each now reads one rule. The owner ruled that a stay counts only once it is booked, by the host or, when guests book their own, by every guest on the list.
+
+**Writing the holiday guides found twelve wrong numbers.** "Holiday Party" contains the words "day party", so every holiday party was treated as an outdoor daytime event, sized for walk-ins and told to plan for rain. Thanksgiving priced the sides and pies the guests bring as the host's. Corn pudding counted as dessert. Each was shown failing before it was fixed, and the Thanksgiving guide was written from the corrected numbers.
+
+**The look, tightened and checked by numbers.** Three copy passes. The primary button is now lit from the top, darkened until its label passed contrast at every stop. A test now fails the build if a style names a token that doesn't exist, or if hard-coded colors grow. The app now runs from any address, and the company's own address is verified for it.
+
 ## November 20, 2026 (morning) — measuring the whole funnel, and reaching the host's devices
 
 The owner asked why PostHog showed so little. Two causes: tracker blockers dropped every event sent to PostHog's address, and a signed-out plan sent nothing until sign-in. Analytics now pass through our own server unchanged, and the signed-out steps (drafted, asked to keep, sign-in code) are counted. The week's new features gained their own events. Then the owner chose device notifications for computers and Android now, with iPhone and iPad later: the same alerts as the alert emails, never what anyone wrote, turned off by signing out. Texting from the app was planned for after the paid launch, starting with carrier verification.

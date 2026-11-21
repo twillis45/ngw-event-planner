@@ -68,4 +68,17 @@ export const FIRE_SAFETY_SOURCES = {
     fetched: '2026-07-28',
     claim: 'An average of 20 home candle fires are reported per day; 60% start when something burnable is left too close. Keep candles at least a foot from anything that can burn and out before you leave the room; December–January peak.',
   },
+  // NFPA's OWN page (registered 11/20/2026, seasonal leftovers), for the
+  // Holiday Party candle risk. The entry above quotes NFPA's 2015-2019 figures
+  // through a state fire marshal; NFPA now publishes 2020-2024. Its HTML did
+  // answer a plain fetch this time — the figures sit in the page's own
+  // "Candle Fire Statistics" block. The same page's sample social posts still
+  // say "20 home candle fires are reported each day"; the statistics block is
+  // the dated one, so the claim follows it.
+  'nfpa-candles-2026': {
+    org: 'NFPA — Safety with candles (Candle Fire Statistics, 2020-2024)',
+    url: 'https://www.nfpa.org/education-and-research/home-fire-safety/candles',
+    fetched: '2026-11-20',
+    claim: 'During 2020-2024, U.S. fire departments responded to an annual estimated average 5,894 home structure fires whose heat source was candles, causing an annual average of 63 civilian deaths and 532 injuries. Over half of all candle fires started when a flammable piece of décor (furniture, bedding, curtains, home decorations, paper, or clothing) was too close to the lit candle. Safety tip: keep candles at least 12 inches from anything that can burn.',
+  },
 };

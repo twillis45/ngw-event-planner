@@ -12,8 +12,11 @@ const holidayParty = {
   type: 'Holiday Party',
   vegMain: 'Butternut squash & sage stuffed shells',
   solveFamily: 'holiday_party',
-  family: 'corporate',
-  recordKind: 'client',
+  // home_hosted, matching eventTaxonomy.mjs (11/20/2026, seasonal leftovers):
+  // the taxonomy derives recordKind 'event' from that family, so this says the
+  // same rather than disagree with it.
+  family: 'home_hosted',
+  recordKind: 'event',
   version: '1.1.0',
 
   // The engine owns the cook question; this says only which answer means
@@ -167,7 +170,12 @@ const holidayParty = {
   risks: [
     { id: 'r_overserve', trigger: 'Self-serve full bar + no one watching → guests over-served', severity: 'critical', mitigation: 'Use a bartender who controls the pour, ID-checks, and cuts people off; close the bar ~30-45 min before end; serve food all night and a prominent water station; assign a sober helper to watch the room. Over-serving is the root of the night’s worst outcomes.' },
     { id: 'r_saferides', trigger: 'An impaired guest is about to drive home', severity: 'critical', mitigation: 'Pre-stage a safe-rides plan: rideshare credit/codes, a designated-driver ask in the invite, a couch/guest-room offer, and quietly hold/hand keys. Never let an impaired guest drive — social-host (and at corporate events, employer) liability can attach to harm they cause.' },
-    { id: 'r_candles', trigger: 'Candles or holiday decor too close to something that burns', severity: 'medium', mitigation: 'NFPA counts ~20 home candle fires a day, 60% from something burnable left too close. A foot of clearance around every flame, nothing drapey near them, and every candle out before the room empties — batteries beat flames near garland and gift wrap.' },
+    // SOURCED 11/20/2026 (seasonal leftovers). The old copy, "~20 home candle
+    // fires a day, 60% from something burnable left too close", had no source
+    // id; it is NFPA's 2015-2019 figure as an Illinois fire-marshal page quotes
+    // it. NFPA's own page now reports 2020-2024: about 5,894 a year, over half
+    // started by décor too close. "A foot" is NFPA's own 12-inch tip.
+    { id: 'r_candles', trigger: 'Candles or holiday decor too close to something that burns', severity: 'medium', sources: ['nfpa-candles-2026'], mitigation: 'NFPA counts about 5,894 home candle fires a year, and over half start when something that burns is too close to the flame. Keep candles 12 inches from anything that can burn, nothing drapey near them, and every candle out before the room empties — batteries beat flames near garland and gift wrap.' },
     { id: 'r_headcount', trigger: 'Final headcount still not confirmed 5 days out', severity: 'high', mitigation: 'Chase RSVPs; give the caterer + bartender a guaranteed count; over-cater food ~10%, alcohol on consignment so unopened bottles return.' },
     { id: 'r_underbar', trigger: 'Bar runs dry mid-party', severity: 'high', mitigation: 'Stock to ~1 drink/guest/hour with a buffer; buy returnable where allowed; keep a backup case of wine + the batched signature to stretch; never let it run fully dry.' },
     { id: 'r_coldfood', trigger: 'Hot apps go cold / stations run empty', severity: 'med', mitigation: 'Use chafers/warmers + sterno; stagger replenishment from the kitchen instead of putting everything out at once; assign a food-watch helper.' },
@@ -212,6 +220,18 @@ const holidayParty = {
       { when: 'T0 +4:30', what: 'Bottles/cans to recycling, rentals scraped + stacked for return, leftovers into containers (send home), trash out, linens to laundry' },
     ],
   },
+
+  // Day-of readiness (11/20/2026, seasonal leftovers). This type had no list of
+  // its own and fell to the universal default, so the morning of a full-bar
+  // party carried no bar check and no rides-home check. Each row is something
+  // the host does that day; the bar and rides rows stand down at a dry party.
+  // No numbers: none of these rows carries a source.
+  dayOfChecklist: [
+    { id: 'bar', label: 'Someone is watching the pour', detail: 'The bartender briefed to control the pour, check IDs, and cut people off — or, at a self-serve bar, one sober helper named to watch it. Water and the zero-proof drinks out beside the bar, not in the kitchen.', severity: 'high', whenChoice: { id: 'alcohol_service', not: ['Zero-proof / dry'] } },
+    { id: 'rides', label: 'Every guest has a way home', detail: 'Rideshare codes sent, designated drivers confirmed, the couch made up for anyone who stays — and a set time to close the bar before the party ends, with coffee out.', severity: 'high', whenChoice: { id: 'alcohol_service', not: ['Zero-proof / dry'] } },
+    { id: 'food', label: 'Hot food hot, cold food cold', detail: 'Warmers lit under the hot apps, and the boards refilled from the kitchen in rounds instead of set out all at once — nothing perishable left sitting out all night.', severity: 'high' },
+    { id: 'candles', label: 'Every flame has clear space', detail: 'Candles away from garland, gift wrap, coats, and curtains, on surfaces nobody brushes past — and every one out before the room empties.', severity: 'med' },
+  ],
 
   knowledge: {
     governanceVersion: '1.0.0',
