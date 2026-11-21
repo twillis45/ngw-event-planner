@@ -36,6 +36,7 @@ existed on one side only and conflicts with nothing, so it is kept).
 21. **Abandoned canvas, phone disclosure at a desk, no density floor** — union, 11/20/2026: kept from the app repo (UX_04 anti-patterns 7–8 and the ruling under them).
 22. **UX_10 Typographic Language** — union, 11/20/2026: added from the app repo, still a draft; where it conflicts with rulings 1 and 4, the rulings win (noted at its top).
 23. **REVIEW_BOARD_ROSTER.md and NGW_10PLUS_MASTER_PROMPT.md** — union, 11/20/2026: each existed in one repo only; both now live in both.
+24. **The gradients that predate ruling 2** — owner ruling, 11/21/2026 ("Keep"): the 56 gradients in 37 rules that existed before the three-token rule (edge-fade masks, the dock glass, the creation reveal, the welcome and splash, the invitation paper, the done and spotlight effects, the People plate veil, the lodging photo scrim) stay as they are. `hostv2/test/gradientDoctrine.test.mjs` freezes each in its `KNOWN` table by rule and count, so none can grow and none can be added. Every NEW gradient is still one of the three tokens.
 
 ## Studio Matte Means
 
