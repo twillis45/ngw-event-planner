@@ -14,6 +14,7 @@ import { venueFor } from './venueFor';
 import { budgetFor } from './budgetFor';
 import { lodgingIntel, lodgingKitchen } from './lodgingIntel';
 import { foodSpanText } from './foodSpan';
+import { eventSpanLabel } from './eventDates';
 
 // ─── ONE HEADCOUNT (host ruling "single points of truth", 2026-07-29) ───────
 // This file resolved the guest count in three places: once for the blockers
@@ -88,15 +89,28 @@ function buildIdentityStage(event, eventIdentity, persona) {
   const confidenceWord = !String((event && event.honoree) || '').trim() && honoreeApplies(primaryEventType)
     ? 'Honoree not named' : (confidence >= 0.85 ? 'High confidence' : 'Fairly confident');
 
+  // THE SPAN IS PART OF WHAT THE EVENT IS (owner report 11/21/2026: "Multi day
+  // trip not being picked up at creation"). The dates were stored and this card
+  // still read "A group trip." — the first screen after creation never said it
+  // runs four days. Said in the one span label the board and Space use
+  // (lib/eventDates). When her sentence meant several days and did not say
+  // which, the card says the days are still owed, never a guessed end.
+  const spanNote = (() => {
+    const ev = event || {};
+    if (spanNights(ev) > 0) return ' ' + eventSpanLabel(ev) + '.';
+    if (ev.datesToConfirm) return ev.date ? ` Starts ${eventSpanLabel(ev)} — which day does it end?` : ' Which dates? Set the first and last day.';
+    return '';
+  })();
+
   return {
     key: 'identity',
     icon: 'sparkles',
     title: 'Your Event',
-    what: eventDesc + compoundExplanation,
+    what: eventDesc + spanNote + compoundExplanation,
     why: ceremonyNote.length > 0 || participantNote.length > 0
       ? `I recognized ${primaryEventType}.${ceremonyNote}${participantNote}`
       : `I recognized ${primaryEventType}. Planning starts here.`,
-    status: 'Ready',
+    status: (event && event.datesToConfirm) ? 'Needs Clarification' : 'Ready',
     nextDecision: isCompound
       ? 'Confirm: ceremony timing (before, during, or after celebration)?'
       : null,

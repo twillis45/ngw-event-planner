@@ -14,7 +14,10 @@ test('R3-3: a last day before the first day is refused, and says why', async ({ 
   });
   await page.goto('./');
   await page.getByRole('button', { name: /^Space, seats/ }).first().click();
-  await page.getByLabel('Last day of the event').fill('2027-07-01');
+  // The range is set in Date & time now (owner, 11/21/2026); Space links to it.
+  await page.getByRole('button', { name: 'Change the dates in Date & time' }).click();
+  await page.locator('[data-date-range]').getByLabel('Last day').fill('2027-07-01');
+  await page.getByRole('button', { name: /^Move everything to th(is date|ese dates)$/ }).click();
   await expect.poll(() => page.evaluate(() => window.__t.join(' | '))).toMatch(/The last day has to come after the first day \(Jul 10(, 2027)?\)/);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].endDate || null)).toBeNull();
 });

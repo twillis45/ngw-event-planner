@@ -122,7 +122,8 @@ import { orchestratorStreamTransport, isOrchestratorApiConfigured } from '@app/l
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement, honoreeApplies } from '@app/lib/eventIdentity';
-import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
+import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, spanEnd, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
+import { eventDatesPatch, eventSpanLabel } from '@app/lib/eventDates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel, taskIsOverdue, taskWindowClosed } from '@app/lib/taskLead';
@@ -134,7 +135,7 @@ import { reconcileChecklist, reconcileSummary } from '@app/lib/checklistReconcil
 import { measureRows, playReorder } from '@app/lib/flipReorder';
 import { tweenNumber } from '@app/lib/tweenNumber';
 import { recordTold, clearTold, isTold, guestToldMap, toldRollup } from '@app/lib/guestTold';
-import { addDay, dropDay, dayCount, rowsOn } from '@app/lib/spanEdit';
+import { rowsOn } from '@app/lib/spanEdit';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { startTimeFieldsToPersist, startTimeReading } from '@app/lib/startTimeFieldsToPersist';
 import { arrivalAsk } from '@app/lib/vendorAsks';
@@ -4475,6 +4476,9 @@ export default function HostShellV2() {
   // must be CONFIRMED before it cascades (host report 2026-07-16), instead of committing on
   // the picker's onChange. null = not editing; a string = a picked-but-unconfirmed date.
   const [dateDraft, setDateDraft] = useState(null);
+  // The range's last day, drafted beside the first (owner, 11/21/2026: ask for
+  // ranges, not a last day). null ⇒ show the committed end.
+  const [endDraft, setEndDraft] = useState(null);
   const commitVendorCost = (v) => {
     if (vendorCostDraft === null || !ownsVendorCostDraft(v)) return;
     const raw = String(vendorCostDraft).trim();
@@ -9422,10 +9426,20 @@ export default function HostShellV2() {
       // deadline, so it waits for an explicit confirm (host report). null draft ⇒ show the
       // committed date; a draft that differs ⇒ the confirm button appears below.
       const dateShown = dateDraft !== null ? dateDraft : (event.date || '');
-      const dateDirty = dateDraft !== null && dateDraft !== (event.date || '');
+      // ── FROM – TO, IN ONE PLACE (owner, 11/21/2026) ──────────────────────
+      // "Host should be asked for ranges not last day." The span used to be set
+      // on Space, a sheet about seats, as a "Last day" field and add/drop-a-day
+      // buttons, while this editor offered one date. The range lives here now,
+      // drafted and confirmed together, and lib/eventDates builds the write so
+      // creation, this editor and the date poll store one shape.
+      const committedEnd = (event.endDate && String(event.endDate) > String(event.date || '')) ? String(event.endDate).slice(0, 10) : '';
+      const endShown = endDraft !== null ? endDraft : committedEnd;
+      const dateDirty = (dateDraft !== null && dateDraft !== (event.date || '')) || (endDraft !== null && endDraft !== committedEnd);
       const confirmDate = () => {
-        const v = dateDraft;
+        const v = dateDraft !== null ? dateDraft : (event.date || '');
         if (!v) return;
+        const endV = endDraft !== null ? endDraft : committedEnd;
+        if (endV && endV <= v) { toast('The last day has to come after the first day (' + usShortDate(v) + ').'); return; }
         // DATE-GUARDRAIL: a malformed value (stray keystrokes, a corrupted paste, a broken
         // segment in the native picker) can otherwise write straight through to event.date
         // and render as "739158d ago". eventDateStatus is the one shared verdict.
@@ -9436,10 +9450,25 @@ export default function HostShellV2() {
         // SETTLES the "Date & time" domino so its cue + alerts clear. If a start time is already
         // set, mark it host-confirmed in the same tap so BOTH halves of "when" clear together
         // (datetime is handled only when date AND start time are confirmed — phaseProgress.js).
-        const patch = { date: v };
-        // The named month has been answered by a real day — drop it rather than
-        // leave a second, staler "when" on the record.
-        if (event.targetMonth) patch.targetMonth = null;
+        // One setter (lib/eventDates): it also drops a named month answered by a
+        // real day, and closes an open "which days?" question.
+        const patch = eventDatesPatch(event, { date: v, endDate: endV });
+        if (!patch) return;
+        // Shrinking a span can strand planned rows on a day that stops existing
+        // (what Space's "Drop the last day" used to ask). Say what before writing.
+        const oldEnd = spanEnd(event);
+        const newEnd = patch.endDate || patch.date;
+        if (oldEnd && newEnd < oldEnd) {
+          const stranded = [];
+          for (let d = new Date(newEnd + 'T12:00:00'); ; ) {
+            d.setDate(d.getDate() + 1);
+            const iso = localISO(d);
+            if (iso > oldEnd) break;
+            stranded.push(...rowsOn(event, iso));
+          }
+          if (stranded.length && !window.confirm(
+            `${stranded.length} thing${stranded.length === 1 ? '' : 's'} planned after the new last day: ${stranded.map(r => r.title || 'an item').slice(0, 3).join(', ')}. Change the dates anyway? Nothing is deleted.`)) return;
+        }
         // THE DATE TAP DOES NOT CONFIRM THE HOUR (audit finding, 2026-09-18).
         // This line used to read:
         //
@@ -9472,8 +9501,11 @@ export default function HostShellV2() {
         //
         // The datetime domino now stays open until she confirms the hour, which
         // is what an unconfirmed hour should look like.
-        patchEvent(patch, 'Date confirmed. Countdowns, deadlines, and shopping windows now count from it.');
+        patchEvent(patch, patch.endDate
+          ? 'Dates set: ' + eventSpanLabel({ ...event, ...patch }) + '. Countdowns, deadlines, and shopping windows count from them.'
+          : 'Date confirmed. Countdowns, deadlines, and shopping windows now count from it.');
         setDateDraft(null);
+        setEndDraft(null);
       };
       return (
       <div className="hc-row" style={{ flexWrap: 'wrap' }}>
@@ -9499,12 +9531,37 @@ export default function HostShellV2() {
             </div>
           );
         })()}
-        <input className="field" type="date" value={dateShown} aria-label="Event date"
-          onChange={e => { const v = e.target.value; if (v) setDateDraft(v); }} />
+        {/* The days are owed: her sentence meant more than one day and did not
+            say which (lib/smartParseEvent datesToConfirm). Ask for the range. */}
+        {event.datesToConfirm && (
+          <p className="grounding" data-dates-owed style={{ width: '100%', margin: '0 0 var(--sp-1)' }}>
+            {event.date ? 'You gave the first day. Which day does it end?' : 'Which dates? Set the first and last day.'}
+          </p>
+        )}
+        <div className="actions-row" data-date-range style={{ width: '100%', alignItems: 'center', flexWrap: 'wrap' }}>
+          <label className="of" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>From
+            <input className="field" type="date" value={dateShown} aria-label="Event date" style={{ minHeight: 'var(--tap-min)' }}
+              onChange={e => { const v = e.target.value; if (v) setDateDraft(v); }} />
+          </label>
+          <label className="of" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>To
+            <input className="field" type="date" value={endShown} aria-label="Last day" style={{ minHeight: 'var(--tap-min)' }}
+              min={dateShown || undefined}
+              onChange={e => setEndDraft(e.target.value || '')} />
+          </label>
+        </div>
+        <p className="grounding" style={{ width: '100%', margin: 'var(--sp-1) 0 0' }}>
+          {(() => {
+            const shown = { date: dateShown, endDate: endShown };
+            const n = spanNights(shown);
+            if (n > 0) return 'Dates · ' + eventSpanLabel(shown);
+            // Owed days: the line above already asks; do not call it one day.
+            return event.datesToConfirm ? 'Set “To” to the last day.' : 'One day. Set “To” if it runs longer.';
+          })()}
+        </p>
         {/* CONFIRM (host report): a date change waits for a yes before it moves the plan. */}
         {dateDirty && (
-          <button className="mini" style={{ color: 'var(--steel)', fontWeight: 700 }} onClick={confirmDate}>
-            Move everything to this date
+          <button className="mini" style={{ color: 'var(--steel)', fontWeight: 700, minHeight: 'var(--tap-min)' }} onClick={confirmDate}>
+            {endShown && endShown > dateShown ? 'Move everything to these dates' : 'Move everything to this date'}
           </button>
         )}
         {/* AN EVENT SHOULD START WITH A GROUNDED TIME (2026-07-14).
@@ -10104,7 +10161,15 @@ export default function HostShellV2() {
       // …and when she did not name herself, the invitation is from the name
       // her profile already holds (hostNameFor), not a blank she is asked to fill.
       ...(hostNameFor({ hostName: parsed.hostName }, profile) ? { hostName: hostNameFor({ hostName: parsed.hostName }, profile) } : {}),
-      type: effType, date: effDate || '', ...(effEndDate ? { endDate: effEndDate } : {}), venue: parsed.venue || '', venueKind: parsed.venueKind || '',
+      // THE DATES, THROUGH THE ONE SETTER (lib/eventDates) the Date & time
+      // editor and the date poll use, so creation stores the same shape.
+      type: effType, date: '', ...(() => { const d = eventDatesPatch({}, { date: effDate, endDate: effEndDate }); return d ? (d.endDate ? d : { date: d.date }) : {}; })(),
+      // HER SENTENCE MEANT MORE THAN ONE DAY AND DID NOT SAY WHICH (owner
+      // report 11/21/2026): "a long weekend", "July 4th weekend", a trip with
+      // only a start. Not a span and not a guess — the question the reveal and
+      // Date & time ask ("Which dates?"), cleared by the first range she gives.
+      ...(parsed.datesToConfirm && !effEndDate ? { datesToConfirm: true } : {}),
+      venue: parsed.venue || '', venueKind: parsed.venueKind || '',
       // THE MONTH THE HOST NAMED, when they did not name a day ("in June of 2028",
       // "next month", "this fall"). It was heard at intake — the chip said
       // "Jun 2028 · pick a day" — and then dropped here, so the board answered
@@ -16957,68 +17022,20 @@ export default function HostShellV2() {
               </p>
             )}
             {sheet.kind === 'space' && (
-              // R1 span ruling (2026-07-26): endDate is host-editable after
-              // creation, not only heard once at create. Empty = one day.
-              <div className="line" style={{ padding: '2px 0 10px' }}>
-                <span>Last day <span className="of">— if it runs more than one day</span></span>
-                <input className="field" type="date" style={{ maxWidth: 160 }}
-                  value={/^\d{4}-\d{2}-\d{2}/.test(String(event.endDate || '')) ? String(event.endDate).slice(0, 10) : ''}
-                  min={event.date || undefined}
-                  aria-label="Last day of the event"
-                  onChange={e => {
-                    const v = e.target.value;
-                    // span only extends forward — and says so (run 3, R3-3: a last day
-                    // before the first was refused without a word)
-                    if (v && event.date && v <= String(event.date).slice(0, 10)) { toast('The last day has to come after the first day (' + usShortDate(String(event.date).slice(0, 10)) + ').'); return; }
-                    patchEvent({ endDate: v || null },
-                      v ? 'Multi-day set — the plan now runs through your last day.' : 'Back to a single day.');
-                  }} />
+              // ── THE DATES ARE SHOWN HERE, SET IN DATE & TIME (owner, 11/21/2026)
+              // This sheet kept its own "Last day" field and add/drop-a-day
+              // buttons: a second date control, on a sheet about seats, beside
+              // the one in Date & time. Under the no-duplicate-surfaces rule
+              // (01_PRODUCT_ARCHITECTURE_GUARDRAILS) the copy goes and the span is
+              // read from the event, with "Change" opening the one place that
+              // writes it. Shrinking a span still names stranded rows first; that
+              // check moved into the Date & time confirm with the control.
+              <div className="line" data-space-dates style={{ padding: '2px 0 10px', alignItems: 'center' }}>
+                <span>Dates <span className="of">· {event.date ? eventSpanLabel(event) : 'not set yet'}{event.datesToConfirm ? ' · last day not set' : ''}</span></span>
+                <button className="mini rowlink" style={{ minHeight: 'var(--tap-min)' }} aria-label="Change the dates in Date & time"
+                  onClick={() => setSheet({ kind: 'date' })}>{event.date && !event.datesToConfirm ? 'Change' : 'Set the dates'}</button>
               </div>
             )}
-            {sheet.kind === 'space' && event.date && (() => {
-              // ── DAY CRUD (Workflow's named gap vs Wanderlog) ──────────────
-              // The span was editable only through the date field above, which
-              // is a SPAN control, not a day control: a host thinks "the Sunday
-              // brunch got added", not "recompute the terminal date of the
-              // interval". Making them do that arithmetic is the difference
-              // between a planner and a form.
-              //
-              // Moving an item BETWEEN days is a different feature on different
-              // data and is deliberately not here.
-              const n = dayCount(event);
-              const drop = dropDay(event);
-              const stranded = drop ? rowsOn(event, drop.strandedOn) : [];
-              return (
-                <div className="line day-crud" style={{ padding: '0 0 10px' }}>
-                  <span className="of">{n === 1 ? 'One day' : `${n} days`}</span>
-                  <span className="day-crud-btns">
-                    <button className="mini rowlink" aria-label="Add a day to this event"
-                      onClick={() => {
-                        const next = addDay(event);
-                        if (!next) return;
-                        patchEvent(next, `Added a day — the plan runs ${dayCount({ ...event, ...next })} days now.`);
-                      }}>+ Add a day</button>
-                    {drop && (
-                      <button className="mini rowlink" aria-label={stranded.length
-                        ? `Drop the last day. ${stranded.length} planned ${stranded.length === 1 ? 'item is' : 'items are'} on it.`
-                        : 'Drop the last day'}
-                        onClick={() => {
-                          // NAMES WHAT WOULD BE STRANDED BEFORE IT WRITES.
-                          // Shrinking a span can orphan work the host already
-                          // did; the row itself is never deleted, but it would
-                          // sit on a day that no longer exists, and finding that
-                          // out afterwards is how a host stops trusting the
-                          // plan. `dropDay` reports it precisely so this can ask.
-                          if (stranded.length && !window.confirm(
-                            `${stranded.length} thing${stranded.length === 1 ? '' : 's'} on that day: ${stranded.map(r => r.title || 'an item').slice(0, 3).join(', ')}. Drop the day anyway? Nothing is deleted.`)) return;
-                          patchEvent({ endDate: drop.endDate },
-                            drop.endDate ? `Dropped a day — ${dayCount({ ...event, endDate: drop.endDate })} days now.` : 'Back to a single day.');
-                        }}>Drop the last day</button>
-                    )}
-                  </span>
-                </div>
-              );
-            })()}
             {sheet.kind === 'space' && spanNights(event) >= 1 && (
               // "Your days" is its own sheet (owner, 11/21/2026: "Its own
               // sheet"). Space keeps one read-only row that opens it — never a

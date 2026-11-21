@@ -9,6 +9,7 @@ import { openFoodChoices, isDietaryChoice, playbookFoodPlan, hostBuysLine, dieta
 import { buildTravelPlan } from './travelPlan';
 import { sendStateFor } from './sendLedger';
 import { DATE_POLL_ROW, datePollSettled } from './datePoll';
+import { spanNights } from './dates';
 import { giftRowSatisfied } from './giftLog';
 import { BORROWED_ROW, borrowedAllBack } from './borrowedList';
 import { ROOMS_ROW, roomPlanSettled } from './roomPlan';
@@ -137,7 +138,28 @@ export function taskSatisfied(event, task) {
   // 11/21/2026). Offering ranges is half the step; the other half is the
   // group's answer, and "Use these dates" is the host acting on it. Above the
   // act guard, whose "check" / "poll" words would keep it open forever.
-  if (DATE_POLL_ROW.test(s)) return datePollSettled(event);
+  //
+  // AND A HOST WHO ALREADY GAVE HER DATES IS NOT ASKED TO POLL FOR THEM (owner,
+  // 11/21/2026: "Don't keep asking host for the same information"). A trip
+  // typed with its range ("girls trip Dec 3-6") opened with "Offer two or
+  // three date ranges" still open. When she set a real range and never started
+  // a poll, the dates are decided; once she offers ranges, the poll's own rule
+  // above holds again.
+  if (DATE_POLL_ROW.test(s)) {
+    if (datePollSettled(event)) return true;
+    const offered = Array.isArray(event.dateOptions) && event.dateOptions.length > 0;
+    return !offered && dateSet && spanNights(event) > 0 && !event.datesToConfirm;
+  }
+
+  // "PICK THE DATE (AND TIME)" IS THE DATE BEING SET (11/21/2026). Halloween's
+  // "Pick the date and time to fit the audience…" stayed open on an event with
+  // both, re-asking what Date & time already holds. The time half counts only
+  // when the hour is not ours (startTimeIsConfirmed: source not 'derived'), the same rule
+  // the invite uses; an hour we proposed is not her pick.
+  if (/^pick the date\b/.test(s)) {
+    if (!dateSet || event.datesToConfirm) return false;
+    return /\btime\b/.test(s) ? (!!String(event.startTime || '').trim() && event.startTimeSource !== 'derived') : true;
+  }
 
   // THE GIFT LOG (owner pick A, 11/21/2026): the cash row is done by a cash
   // amount on the log, the mailed-gifts row by a gift from someone who did not
