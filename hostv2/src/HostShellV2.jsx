@@ -205,6 +205,8 @@ import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
 import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
+import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
+import { foodOwnerMap, isNamedBringer, openFoodChoices } from '@app/lib/playbooks';
 import InviteToTheList from './InviteToTheList';
 import NudgeTheList from './NudgeTheList';
 import { takeEventLink, isOwnEvent } from '@app/lib/eventLink';
@@ -6731,6 +6733,9 @@ export default function HostShellV2() {
       openDraft(TRIP_DETAILS_DRAFT, draftTripDetails(event, profile), null, { postsToInvite: true });
       return true;
     }
+    // The spread with no row named lands on the tab the work is on (Plan while
+    // the menu is open; see openSpread). A row or a section keeps its landing.
+    if (r.kind === 'food' && r.focus == null) { openSpread(); return true; }
     // Sheet landings: open the named sheet on its row/section. vendorSection is
     // carried through only for vendor routes (money/insurance sub-sections).
     const s = { kind: r.kind, focus: r.focus != null ? r.focus : null };
@@ -7049,6 +7054,98 @@ export default function HostShellV2() {
     // the same line. One source, one set of numbers.
     try { return playbookFoodPlan(event, { priceFactor: foodPP.priceFactor, itemFactors: foodPP.itemFactors }); } catch { return null; }
   }, [event, foodPP.priceFactor, foodPP.itemFactors]); // same missing-dependency bug as `spend` above
+  // ── THE SPREAD OPENS ON THE TAB THE WORK IS ON (owner's iPad, 11/21/2026:
+  // "When going from hero to food decide when to go to plan vs shopping tab").
+  // Plan while a menu question is open, Shop while there is buying left,
+  // Bringing only when the rest is done and a brought dish has nobody named.
+  // The rule is lib/foodBringing's foodSheetKind, asked by every door from the
+  // board: the hero's spread link, the board row, a route with no row in it.
+  const openSpread = () => setSheet({ kind: foodSheetKind(event, foodPlan), focus: null });
+  // ── ONE EDITOR FOR WHO BRINGS A DISH (owner's iPad, 11/21/2026) ──────────
+  // Rendered on Bringing and inside Shop's "… bringing" group, and both write
+  // the ONE record, `event.foodOwner`, so a name set on either is on the other
+  // at once. Not a second surface: the same row, the same write.
+  //   a name                 that person brings it (it is off her list)
+  //   "I'll make it myself"  false: she buys it, whatever the default said
+  //   "Not serving it"       a skip, with false beside it so the load-time
+  //                          migration never reads it as "a friend brings it"
+  const bringerNamesExtra = (helperData.helpers || []).map((h) => h.name);
+  const bringerRow = (r) => {
+    const dish = r.short || r.item;
+    const saved = r.broughtBy || '';
+    const editing = bringerEdit && bringerEdit.id === r.id;
+    const owners = () => ({ ...foodOwnerMap(event) });
+    const commit = (val) => {
+      const v = String((val !== undefined ? val : (bringerEdit && bringerEdit.value)) || '').trim();
+      setBringerEdit(null);
+      if (v === saved) return;
+      const next = owners();
+      if (v) next[r.id] = v; else delete next[r.id];
+      // Cleared: is it still somebody else's (the playbook default), or hers again?
+      const stillBrought = !v && (() => {
+        try { return !!((playbookFoodPlan({ ...event, foodOwner: next }).list || []).find((i) => i && i.id === r.id) || {}).broughtByCommunity; }
+        catch { return true; }
+      })();
+      patchEvent({ foodOwner: next },
+        v ? `${v} is bringing ${dish}.`
+          : stillBrought ? `Cleared — nobody is named for ${dish} yet.` : `${dish} is back on your list.`);
+    };
+    if (editing) {
+      return (
+        <div key={r.id} className="fstat" style={{ display: 'block' }} data-bringer-row={r.id}>
+          <label className="shelf-label" htmlFor={'bringer-' + r.id}
+            style={{ display: 'block', marginBottom: 'var(--sp-1)' }}>
+            Who is bringing {dish}?
+          </label>
+          {/* From the guest list and the helpers (owner, 11/18 and 11/21/2026),
+              or "Someone not on the list…" for the church kitchen or a neighbor. */}
+          <BringerPicker guests={event.guests} extra={bringerNamesExtra} id={'bringer-' + r.id} autoFocus
+            value={bringerEdit.value}
+            onChange={(v) => setBringerEdit({ id: r.id, value: v })}
+            onCommit={(v) => commit(v)} onCancel={() => setBringerEdit(null)} />
+          {r.broughtByCommunity ? (
+            <div className="actions-row" style={{ margin: 'var(--sp-2) 0 0' }}>
+              <button type="button" className="mini" onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setBringerEdit(null);
+                  patchEvent({ foodOwner: { ...owners(), [r.id]: false } }, `You’re making ${dish} — it’s on your list.`);
+                }}>I’ll make it myself</button>
+              <button type="button" className="mini" onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setBringerEdit(null);
+                  patchEvent({ foodOwner: { ...owners(), [r.id]: false }, foodSkip: { ...(event.foodSkip || {}), [r.id]: true } },
+                    `${dish} is off the menu.`);
+                }}>Not serving it</button>
+            </div>
+          ) : null}
+        </div>
+      );
+    }
+    return (
+      <button key={r.id} className="fstat" data-bringer-row={r.id}
+        onClick={() => setBringerEdit({ id: r.id, value: saved })}>
+        <span className="fstat-l">{dish}</span>
+        {/* NO WRAP. Beside a long dish the label broke to "Add a / name"; the
+            label is the act and stays whole, the DISH takes the wrapping. */}
+        <span className="fstat-v" style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+          {saved || (r.broughtByCommunity ? 'Add a name' : 'Someone’s bringing it?')}
+        </span>
+      </button>
+    );
+  };
+  // A route onto one dish's assignment (the helpers panel, the day-before
+  // "People bringing things", a guest's job) opens that row's editor.
+  const bringFocus = sheet && sheet.kind === 'bringing' ? (sheet.focus || null) : null;
+  useEffect(() => {
+    if (!bringFocus || !foodPlan) return;
+    const r = (foodPlan.list || []).find((i) => i && i.id === bringFocus);
+    if (!r) return;
+    setBringerEdit({ id: r.id, value: r.broughtBy || '' });
+    setTimeout(() => {
+      try { const el = document.querySelector('[data-bringer-row="' + r.id + '"]'); if (el) el.scrollIntoView({ block: 'center' }); } catch { /* the sheet is still the right landing */ }
+    }, 120);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bringFocus]);
   // "Open the spread (N items) ›" — under EVERY menu question, on every route
   // that shows one (owner ruling 3, 11/21/2026): the food editor had it, the
   // elegant hero's in-place question dropped it. One control, both places.
@@ -7056,7 +7153,7 @@ export default function HostShellV2() {
   // options are the CTAs; opening the detail is secondary.
   const spreadLink = () => (foodPlan ? (
     <button className="spread-link" style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0, fontFamily: 'var(--sans)', fontSize: 'var(--t-meta)', fontWeight: 600, letterSpacing: 0, color: 'var(--steel-soft)', cursor: 'pointer' }}
-      onClick={() => setSheet({ kind: 'food' })}>Open the spread ({foodPlan.itemCount} items) ›</button>
+      onClick={openSpread}>Open the spread ({foodPlan.itemCount} items) ›</button>
   ) : null);
 
   // ── ONE PLACE ANSWERS "IS THERE ANYWHERE TO PUT THE SHOPPING" ────────────
@@ -7184,14 +7281,8 @@ export default function HostShellV2() {
   // "Spoken for" on the Bringing tab: a dish counts once somebody's name is
   // against it, the host's override winning over the engine's authored owner
   // — the same precedence the Bringing surface itself uses.
-  const bringingTally = useMemo(() => {
-    const rows = ((foodPlan && foodPlan.list) || []).filter(i => i && i.broughtByCommunity);
-    const owner = event.foodOwner || {};
-    return {
-      named: rows.filter(r => String(owner[r.id] || r.owner || '').trim()).length,
-      total: rows.length,
-    };
-  }, [foodPlan, event.foodOwner]);
+  // The name is the engine's `broughtBy`, from the one record (foodOwner).
+  const bringingTally = useMemo(() => bringingTallyOf(foodPlan), [foodPlan]);
 
   // ORDER MATTERS AND WAS WRONG ONCE: this block reads choicesTally and
   // bringingTally, and sat ABOVE both on the first pass. Shop never noticed —
@@ -7284,7 +7375,7 @@ export default function HostShellV2() {
   const priceLayerRows = useMemo(() => {
     if (!foodPlan) return [];
     return (foodPlan.list || [])
-      .filter(it => it && !it.skipped && it.item)
+      .filter(it => it && !it.skipped && it.item && !it.broughtByCommunity)
       .map(it => layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx }));
   }, [foodPlan, priceIdx]);
   const priceCoverage = useMemo(() => layerCoverage(priceLayerRows), [priceLayerRows]);
@@ -7665,11 +7756,18 @@ export default function HostShellV2() {
     const added = names.map((name, i) => {
       const guess = guessFoodCategory(name);
       return {
-        id: 'add-' + stamp + (names.length > 1 ? '-' + i : ''), name, owner: foodAddOwner.trim(),
+        id: 'add-' + stamp + (names.length > 1 ? '-' + i : ''), name,
         cost, group: foodAddGroup || guess.group, cat: guess.cat,
       };
     });
-    patchEvent({ foodAdd: [...(event.foodAdd || []), ...added] },
+    // WHO BRINGS IT GOES TO THE ONE RECORD (foodOwner), the same place the
+    // Bringing tab writes, so the name is on Bringing, Shop and the helpers
+    // panel at once. It used to ride on the line as `owner`, read by nothing
+    // but the helper engine.
+    const bringer = foodAddOwner.trim();
+    const ownerPatch = isNamedBringer(bringer)
+      ? { foodOwner: { ...foodOwnerMap(event), ...Object.fromEntries(added.map(a => [a.id, bringer])) } } : {};
+    patchEvent({ foodAdd: [...(event.foodAdd || []), ...added], ...ownerPatch },
       (names.length === 1 ? names[0] + ' added to the plan.' : names.length + ' items added to the plan.')
       + (twins.length ? ' Your list already has “' + twins[0] + '”' + (twins.length > 1 ? ' and ' + (twins.length - 1) + ' more like these' : '') + ' — remove one if they’re the same.' : ''));
     setFoodAddName(''); setFoodAddCost(''); setFoodAddGroup(null);
@@ -8178,6 +8276,19 @@ export default function HostShellV2() {
       cloudSaveEvent(ev).then(res => noteSaveResult(ev, res)).catch(() => {});
     }
   };
+  // ── WHO BRINGS EACH DISH, MOVED INTO THE ONE RECORD (11/21/2026) ─────────
+  // lib/foodBringing migrateBringing: a host-added dish's owner moves into
+  // foodOwner, and a pre-#220 skip that stood for "a friend brings it" comes
+  // off. Idempotent (a second pass returns null), silent, not undoable: it is
+  // housekeeping on the host's own data, not something she did.
+  useEffect(() => {
+    if (!event || !event.id) return;
+    let p = null;
+    try { p = migrateBringing(event); } catch { p = null; }
+    if (p) patchEvent(p, '', { noUndo: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event && event.id, event && JSON.stringify(event.foodAdd || null), event && JSON.stringify(event.foodSkip || null)]);
+
   // ── THE CHECKLIST FOLLOWS THE DECISIONS (audit 2026-08-21) ────────────────
   // `playbookChecklist` gates its tasks on four things the host answers over
   // time — the whenChoice pick, how guests arrive, whether kids are coming, and
@@ -10089,7 +10200,7 @@ export default function HostShellV2() {
     // already carries stays as it is; any other becomes a host-named line.
     try {
       const extra = uncoveredFoods(heardFoods(smartText), (playbookFoodPlan(ev) || {}).list);
-      if (extra.length) ev.foodAdd = extra.map((f, i) => ({ id: 'add-heard-' + newId + '-' + i, name: f.name, owner: '', cost: 0, group: 'Food', cat: 'other' }));
+      if (extra.length) ev.foodAdd = extra.map((f, i) => ({ id: 'add-heard-' + newId + '-' + i, name: f.name, cost: 0, group: 'Food', cat: 'other' }));
     } catch (_e) { /* no food plan — the menu asks later */ }
     // MODEL D — THE ONE STAMPING MOMENT (grandfather rule, board 2026-08-18):
     // the pass verdict is computed here, against the events that existed
@@ -14615,7 +14726,13 @@ export default function HostShellV2() {
                   (!rollup || !rollup.counts || rollup.counts.total === 0) && vendorPlan.relevant
                     ? { key: 'vendors_suggest', label: 'People you might hire', sub: vendorPlan.categories.length + ' roles this kind of event usually needs', go: () => setSheet({ kind: 'vendors' }) } : null,
                   foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount < foodPlan.itemCount
-                    ? { key: 'food', label: 'The spread & shopping', sub: 'food & drinks · ' + foodPlan.boughtCount + ' of ' + foodPlan.itemCount + ' bought', go: () => setSheet({ kind: 'food' }) } : null,
+                    // The sub names the work on the tab the row opens (openSpread):
+                    // the open menu questions while it lands on Plan.
+                    ? { key: 'food', label: 'The spread & shopping', sub: (() => {
+                      const k = foodSheetKind(event, foodPlan);
+                      if (k === 'foodplan') return 'the menu · ' + ((openFoodChoices(event, foodPlan) || []).length) + ' to decide';
+                      return 'food & drinks · ' + foodPlan.boughtCount + ' of ' + foodPlan.itemCount + ' bought';
+                    })(), go: openSpread } : null,
                   crab.relevant
                     ? { key: 'crab', label: 'The crab order', sub: crab.lines && crab.lines.length ? (crab.mixedSummary || ('about ' + crab.totalEstimatedCrabs + ' crabs')) : 'not started', go: () => setSheet({ kind: 'crabs' }) } : null,
                   ((capacity && (capacity.items || []).length > 0) || helpers.length > 0)
@@ -22150,102 +22267,84 @@ export default function HostShellV2() {
                 would be chrome advertising an empty room — the exact speculative
                 UI the density work spent the morning removing. */}
             {sheet.kind === 'bringing' && foodPlan ? (() => {
-              const rows = (foodPlan.list || []).filter((i) => i && i.broughtByCommunity);
+              // The dishes someone else is carrying and that are being served:
+              // lib/foodBringing bringingRows, the list the Shop group, the Plan
+              // row and the bar's "N of M spoken for" all count.
+              const rows = bringingRows(foodPlan);
               const who = (rows[0] && rows[0].broughtByLabel) || 'The community';
+              // Dishes the host took back ("I'll make it myself") and the host's
+              // own food lines she could hand to someone: the same editor, so a
+              // dish can be given to anyone from here, not only the default sides.
+              const taken = (foodPlan.list || []).filter((i) => i && i.hostTakes && !i.skipped);
+              const yours = (foodPlan.list || []).filter((i) => i && !i.broughtByCommunity && !i.skipped
+                && !i.hostTakes && i.group !== 'Supplies' && i.group !== 'Drinks');
+              const enteredCost = rows.reduce((t, r) => t + (Number(r.low) || 0), 0);
               return (
                 <>
                   <FoodModes mode="bringing" count={rows.length} setSheet={setSheet} />
                   <div style={{ padding: '2px 0 14px' }}>
                     <Eyebrow>Not yours to buy</Eyebrow>
-                    <BigValue>{rows.length === 1 ? 'One dish' : `${rows.length} dishes`}</BigValue>
+                    <BigValue>{rows.length === 0 ? 'No dishes yet' : rows.length === 1 ? 'One dish' : `${rows.length} dishes`}</BigValue>
                     <GuideLine>
                       {/* Some of the food or all of it: a Friendsgiving potluck's host still
                           buys the turkey (owner, 11/18/2026). Plural names take "are". */}
                       {(() => {
-                        const are = /\b(friends|neighbors|families)\b/i.test(who) ? 'are' : 'is';
-                        const allOfIt = !(foodPlan.list || []).some((i) => i && !i.broughtByCommunity && i.group === 'Food');
+                        if (!rows.length) return 'Nobody is bringing a dish yet. Name someone for one of yours below.';
+                        const are = /\b(friends|neighbors|families|guests)\b/i.test(who) ? 'are' : 'is';
+                        const allOfIt = !(foodPlan.list || []).some((i) => i && !i.broughtByCommunity && !i.skipped && i.group === 'Food');
                         return allOfIt ? `${who} ${are} carrying the food. You are buying the table around it.`
                           : `${who} ${are} bringing these dishes. You are buying the rest.`;
                       })()}
                     </GuideLine>
                     {/* THE COUNT MOVED TO THE PINNED BAR (2026-09-27), so this
-                        line stops saying it. Driven on a Repast the moment the
-                        bar reached this tab: the grounding read "0 of 11 spoken
-                        for · nothing here costs you anything" and the bar four
-                        inches below read "0 of 11 spoken for" — the same
-                        sentence twice on one screen, which is the duplication
-                        the bar's own comment cites as the reason its right slot
-                        stays empty here. I put it in the left slot instead.
-
-                        The bar keeps the count because the bar does not scroll
-                        away; this line keeps the fact the bar cannot carry, and
-                        which a host reading a list of other people's dishes
-                        actually needs to hear — that none of it is her bill. */}
-                    <Grounding gap={ASK_RHYTHM.valueToWhy}>
-                      nothing here costs you anything
-                    </Grounding>
+                        line stops saying it. The bar keeps the count because the
+                        bar does not scroll away; this line keeps the fact the bar
+                        cannot carry: none of it is her bill. A dish she added with
+                        a cost she typed is the exception, and is said. */}
+                    {rows.length ? (
+                      <Grounding gap={ASK_RHYTHM.valueToWhy}>
+                        {enteredCost > 0 ? `nothing here costs you anything but the ${fmt(enteredCost)} you entered` : 'nothing here costs you anything'}
+                      </Grounding>
+                    ) : null}
                   </div>
-                  {/* A CONTROL THAT PERFORMS THE ACT IT NAMES (UX_07). The first
-                      cut of this row said "Who's bringing?" with a chevron and
-                      then called setSheet({kind:'food'}) — it named one act and
-                      did another, which is the exact shape `ctaNamesTheAct`
-                      exists to stop, shipped by me one commit earlier.
-
-                      `foodOwner` is an override map keyed by purchase id, the
-                      same idiom as `foodGot`, `foodWhere`, `foodSkip` and
-                      `foodReal`. The engine's own `owner` stays the fallback, so
-                      an authored bringer still shows and the host's answer wins.
-
+                  {/* ONE RECORD (owner's iPad, 11/21/2026). Each row writes
+                      `foodOwner`, which Shop, Plan, the helpers panel, the guest
+                      rows and the day-before list all read through the engine's
+                      `broughtBy`. The picker offers the guest list and the
+                      helpers, or a typed name; "I'll make it myself" puts the
+                      dish back on her list; "Not serving it" is a skip.
                       A RECORD, NOT A REQUEST: this writes down what she was
                       told. Clearing the field removes the name rather than
-                      storing an empty one, because "nobody named yet" and
-                      "somebody called ''" are different facts. */}
-                  <div className="fstat-list">
-                    {rows.map((r) => {
-                      const saved = String((event.foodOwner || {})[r.id] || r.owner || '').trim();
-                      const editing = bringerEdit && bringerEdit.id === r.id;
-                      const commit = (val) => {
-                        const v = String((val !== undefined ? val : (bringerEdit && bringerEdit.value)) || '').trim();
-                        const next = { ...(event.foodOwner || {}) };
-                        if (v) next[r.id] = v; else delete next[r.id];
-                        setBringerEdit(null);
-                        patchEvent({ foodOwner: next },
-                          v ? `${v} is bringing ${(r.short || r.item)}.`
-                            : `Cleared — nobody is named for ${(r.short || r.item)} yet.`);
-                      };
-                      if (editing) {
-                        return (
-                          <div key={r.id} className="fstat" style={{ display: 'block' }}>
-                            <label className="shelf-label" htmlFor={'bringer-' + r.id}
-                              style={{ display: 'block', marginBottom: 'var(--sp-1)' }}>
-                              Who is bringing {r.short || r.item}?
-                            </label>
-                            {/* From the guest list (owner, 11/18/2026): a dropdown of
-                                guests who haven't declined, or "Someone not on the
-                                list…" for the church kitchen or a neighbor. */}
-                            <BringerPicker guests={event.guests} id={'bringer-' + r.id} autoFocus
-                              value={bringerEdit.value}
-                              onChange={(v) => setBringerEdit({ id: r.id, value: v })}
-                              onCommit={(v) => commit(v)} onCancel={() => setBringerEdit(null)} />
-                          </div>
-                        );
-                      }
-                      return (
-                        <button key={r.id} className="fstat"
-                          onClick={() => setBringerEdit({ id: r.id, value: saved })}>
-                          <span className="fstat-l">{r.short || r.item}</span>
-                          {/* NO WRAP. Beside a long dish — "Sheet cake, pound
-                              cake, pies, banana pudding" — this broke to "Add a
-                              / name" and the row grew a line. The label is the
-                              act and stays whole; the DISH is what should take
-                              the wrapping, because it is the content. */}
-                          <span className="fstat-v" style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>
-                            {saved || 'Add a name'}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                      storing an empty one. */}
+                  {rows.length ? (
+                    <div className="fstat-list">
+                      {rows.map((r) => bringerRow(r))}
+                    </div>
+                  ) : null}
+                  {taken.length ? (
+                    <>
+                      <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 var(--sp-1)' }}>You’re making these yourself</div>
+                      <div className="fstat-list">
+                        {taken.map((r) => (
+                          <button key={r.id} className="fstat" onClick={() => {
+                            const next = { ...foodOwnerMap(event) }; delete next[r.id];
+                            patchEvent({ foodOwner: next }, `${r.short || r.item} is back with ${String(who).toLowerCase() === 'the community' ? 'the community' : 'your guests'} to bring.`);
+                          }}>
+                            <span className="fstat-l">{r.short || r.item}</span>
+                            <span className="fstat-v" style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>Hand it back</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
+                  {yours.length ? (
+                    <>
+                      <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 var(--sp-1)' }}>Yours to make · someone could bring one</div>
+                      <div className="fstat-list">
+                        {yours.map((r) => bringerRow(r))}
+                      </div>
+                    </>
+                  ) : null}
                   {/* A RECORD, NOT A REQUEST. The repast playbook carries a 2026-09-03
                       three-seat ruling about not telling a family they are doing their
                       funeral wrong; a screen that looked like it was chasing the church
@@ -22271,7 +22370,7 @@ export default function HostShellV2() {
                 separate sheet kind would have duplicated all of it. */}
             {(sheet.kind === 'food' || sheet.kind === 'foodplan') && (foodPlan ? (
               <>
-                <FoodModes mode={sheet.kind === 'foodplan' ? 'plan' : 'shop'} count={(foodPlan.list || []).filter((i) => i && i.broughtByCommunity).length} setSheet={setSheet} />
+                <FoodModes mode={sheet.kind === 'foodplan' ? 'plan' : 'shop'} count={bringingRows(foodPlan).length} setSheet={setSheet} />
                 {/* PRINCIPLES REDESIGN: summary before detail — the bought count
                     leads (the host's real question: "how much is left to do?"),
                     one grounding line carries the rest of the engine's math. */}
@@ -22833,6 +22932,21 @@ export default function HostShellV2() {
                           </span>
                         </button>
                       )}
+                      {/* WHO'S BRINGING WHAT, ON THE PLAN (owner's iPad, 11/21/2026:
+                          "linked to other places that reference the same").
+                          A count from the one record and a door to the
+                          assignment, not a second list of names. */}
+                      {planTab && bringingTally.total > 0 && (
+                        <button className="fstat" data-plan-bringing onClick={() => setSheet({ kind: 'bringing' })}>
+                          <span className="fstat-l">Who’s bringing what</span>
+                          <span className="fstat-v" style={bringingTally.named === bringingTally.total ? { color: 'var(--ok)' } : null}>
+                            {bringingTally.named === bringingTally.total
+                              ? 'everyone named'
+                              : `${bringingTally.named} of ${bringingTally.total} named`}
+                            <span className="fstat-chev" aria-hidden="true">›</span>
+                          </span>
+                        </button>
+                      )}
                       {planTab && (
                       <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
                         <span className="fstat-l">Dietary needs</span>
@@ -23310,7 +23424,9 @@ export default function HostShellV2() {
                 {foodSect.list && !noKitchen && (
                 <div className="list-acts">
                 {foodSect.list && !noKitchen && isStorePricesConfigured() && (() => {
-                  const lines = (foodPlan.list || []).filter(it => it && !it.skipped && it.item);
+                  // Only what she buys is priced at her store: a dish someone
+                  // else brings is not on her list (11/21/2026).
+                  const lines = (foodPlan.list || []).filter(it => it && !it.skipped && it.item && !it.broughtByCommunity);
                   // ── PICKED: the store, and what it actually reached ────────
                   if (priceStore) {
                     // `priceCoverage`, not a local recount — the sheet hero two
@@ -23570,7 +23686,15 @@ export default function HostShellV2() {
                       </div>
                     );
                   }
-                  const allItems = (foodPlan.list || []).filter(Boolean);
+                  // ── A BROUGHT DISH IS NOT ON HER LIST (owner's iPad, 11/21/2026) ──
+                  // It read three ways on one sheet: struck through as "skipped",
+                  // as a "Your friends" chip beside "skip it", and counted in
+                  // "0 of 8 bought" and "Check off all 8". Someone else's dish
+                  // leaves the shelves, the counts and the store run, and sits in
+                  // its own quiet group below with the bringer's name from the
+                  // one record. A skip (not served at all) stays a skip, on its shelf.
+                  const allItems = (foodPlan.list || []).filter((it) => it && !(it.broughtByCommunity && !it.skipped));
+                  const broughtShown = bringingRows(foodPlan);
                   // ── Shopping-run mode: "I'm at X" — the list collapses to THIS
                   // store's unbought lines with a walk-in total. Store truth =
                   // the host's pick (foodWhere) first, else the plan's buyAt /
@@ -23778,7 +23902,7 @@ export default function HostShellV2() {
                                     // line the host has nothing to do about, which makes the
                                     // carrier the fact that settles the row; "decision open"
                                     // and "essential" describe work, and there is none here.
-                                    if (it.broughtByCommunity) tags.push(<span key="bring" className="tag plan">{String((event.foodOwner || {})[it.id] || '').trim() || it.broughtByLabel || 'The community'}</span>);
+                                    if (it.broughtByCommunity) tags.push(<span key="bring" className="tag plan">{it.broughtBy || it.broughtByLabel || 'The community'}</span>);
                                     else if (it.owner) tags.push(<span key="own" className="tag plan">{it.owner}</span>);
                                     else if (it.added) tags.push(<span key="yours" className="tag plan">yours</span>);
                                     if (undecidedAffects[it.id]) tags.push(<span key="dec" className="tag essential" title={undecidedAffects[it.id]}>decision open</span>);
@@ -24484,6 +24608,31 @@ export default function HostShellV2() {
                         </>
                       )}
                       {groupRows}
+                      {!shopStore && broughtShown.length > 0 ? (() => {
+                        const lbl = broughtShown[0].broughtByLabel || 'Your friends';
+                        const are = /\b(friends|neighbors|families|guests)\b/i.test(lbl) ? 'are' : 'is';
+                        const named = broughtShown.filter((r) => r.broughtBy).length;
+                        const open = !!foodGroupsOpen.__bringing || broughtShown.some((r) => r.id === sheet.focus || (bringerEdit && bringerEdit.id === r.id));
+                        return (
+                          <div className={'fgroup' + (open ? ' open' : '')} data-brought-group>
+                            <button className="fg-head" onClick={() => setFoodGroupsOpen((m) => ({ ...m, __bringing: !open }))}>
+                              <div className="fg-badge" aria-hidden>{lbl.trim().charAt(0).toUpperCase()}</div>
+                              <div className="fg-id">
+                                <div className="fg-label">{lbl} {are} bringing ({broughtShown.length})</div>
+                                <div className="fg-sub" style={{ color: 'var(--muted)' }}>
+                                  {named === broughtShown.length ? 'everyone named · not yours to buy' : `${named} of ${broughtShown.length} named · not yours to buy`}
+                                </div>
+                              </div>
+                              <span className="fg-chev" aria-hidden="true">›</span>
+                            </button>
+                            {open ? (
+                              <div className="fstat-list" style={{ padding: '0 var(--sp-3) var(--sp-2)' }}>
+                                {broughtShown.map((r) => bringerRow(r))}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })() : null}
                     </>
                   );
                 })()}
@@ -28318,7 +28467,7 @@ export default function HostShellV2() {
           { label: 'Split the costs', sub: 'who paid, who owes whom', go: () => setSheet({ kind: 'split' }) },
           { label: 'Share with family', sub: 'a view-only link to the plan', go: () => setSheet({ kind: 'family' }) },
           { label: 'Co-hosts', sub: 'plan this event with someone', go: () => setSheet({ kind: 'cohosts' }) },
-          { label: 'The spread & shopping', sub: 'food', go: () => setSheet({ kind: 'food' }) },
+          { label: 'The spread & shopping', sub: 'food', go: openSpread },
           { label: 'People you’re hiring', sub: 'vendors', go: () => setSheet({ kind: 'vendors' }) },
           { label: 'Who sits where', sub: 'seating', go: () => setSheet({ kind: 'seating' }) },
           { label: 'Guest list', sub: 'guests & replies', go: () => setSheet({ kind: 'guests' }) },
