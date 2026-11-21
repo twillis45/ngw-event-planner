@@ -193,7 +193,7 @@ button{font-family:inherit}
     transform-origin:top center; transform:scale(var(--fit,1));
     margin-bottom:calc(40px + 852px*(var(--fit,1) - 1));
   }
-  .app{border-radius:48px; box-shadow:0 0 0 11px var(--carbon-panel), 0 0 0 13px var(--carbon-line), 0 42px 90px -28px rgba(0,0,0,.5)}
+  .app{border-radius:48px; box-shadow:0 0 0 11px var(--carbon-panel), 0 0 0 13px var(--carbon-line), 0 42px 90px -28px var(--shadow-50)}
 }
 @media(max-width:1279px), (max-height:699px){ .stagewrap{height:100dvh} }
 
@@ -390,7 +390,7 @@ button{font-family:inherit}
 /* NAV SHEET (Figma Nav B) — phase segmented control + quiet rows. */
 /* Figma Nav B parity: a recessed dark-inset track with the current phase raised + lit. */
 .navseg{ display:flex; gap:2px; background:var(--seg-track); border-radius:12px; padding:4px;
-  box-shadow:inset 0 1px 2px rgba(0,0,0,.4); }
+  box-shadow:inset 0 1px 2px var(--shadow-40); }
 /* min-height, not padding: the segment is inside the Sections sheet rather than
    the home fold, so growing it cannot push the fold peek off-screen the way a
    min-height on .ev-eyebrow did on 2026-08-06. Measured at 85x37 on a phone
@@ -462,7 +462,7 @@ button{font-family:inherit}
 .wm-dot{
   width:6px; height:6px; border-radius:50%; margin-left:var(--sp-1);
   align-self:flex-end; margin-bottom:2px; background:var(--steel);
-  box-shadow:inset 0 1px 1px rgba(255,255,255,.38), inset 0 -1px 2px rgba(0,0,0,.4), 0 0 3px var(--steel-tint);
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.38), inset 0 -1px 2px var(--shadow-40), 0 0 3px var(--steel-tint);
 }
 .appbar-note{font-size:var(--t-caption); font-weight:700; letter-spacing:var(--tracking-6); text-transform:uppercase; color:var(--faint)}
 
@@ -485,7 +485,7 @@ button{font-family:inherit}
    this costs and should not be shrunk. Initials go 11 -> 12px to match. */
 .gav{display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px;
   border-radius:50%; font-size:12px; font-weight:700; letter-spacing:.02em; flex-shrink:0;
-  color:#e8edf2; box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+  color:#e8edf2; box-shadow:inset 0 1px 0 var(--hair-08)}
 /* Seating floor plan — a responsive canvas with draggable table pucks (MVP).
    touch-action:none so a drag doesn't scroll the sheet underneath. */
 .floorplan{position:relative; width:100%; aspect-ratio:4/3; margin:var(--sp-2) 0 6px; border-radius:var(--r-lg);
@@ -495,10 +495,10 @@ button{font-family:inherit}
   align-items:center; justify-content:center; gap:1px; min-width:52px; min-height:52px; padding:6px var(--sp-2);
   border-radius:50%; background:var(--steel-tint); border:1px solid var(--line); color:var(--ink);/* audit C4: --line-strong was undefined */
   cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; z-index:1;
-  box-shadow:0 2px 8px -3px rgba(0,0,0,.5)}
+  box-shadow:0 2px 8px -3px var(--shadow-50)}
 .tpuck:active{cursor:grabbing; z-index:2}
 .tpuck.seated{background:var(--steel); border-color:var(--steel); color:var(--on-steel)}
-.tpuck.seatable{box-shadow:0 0 0 2px var(--steel-soft), 0 2px 8px -3px rgba(0,0,0,.5)}
+.tpuck.seatable{box-shadow:0 0 0 2px var(--steel-soft), 0 2px 8px -3px var(--shadow-50)}
 .tp-label{font-size:var(--t-caption-min); font-weight:750; line-height:1.05; text-align:center; max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .tp-count{font-size:var(--t-caption-min); font-weight:700; opacity:.8; font-variant-numeric:tabular-nums}
 /* Guest first-names float just below the round table token (pointer-events off so
@@ -516,7 +516,7 @@ button{font-family:inherit}
    UX_02's semantic map reserves amber for ATTENTION only, so identification moves
    to the steel identity tone — which is not a status colour and cannot be read as
    urgency. Caution keeps amber; the map now has one meaning per colour. */
-.tp-star{position:absolute; top:-8px; left:-5px; font-size:12px; line-height:1; color:var(--steel-soft); text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.tp-star{position:absolute; top:-8px; left:-5px; font-size:12px; line-height:1; color:var(--steel-soft); text-shadow:0 1px 2px var(--shadow-60)}
 .tpuck.honoree{border-color:var(--steel-soft)}
 .tpuck.long{border-radius:14px; min-width:74px; min-height:44px}
 /* v5 progressive disclosure: calm count tokens by default; the tapped table gets a
@@ -525,7 +525,7 @@ button{font-family:inherit}
 .tsel-panel{margin-top:10px; background:var(--card); border:1px solid var(--line); border-radius:var(--r-md); padding:10px var(--sp-3)}
 .tsel-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:2px}
 .tsel-title{font-weight:650; font-size:var(--t-body-s); color:var(--ink)}
-.tsel-row{display:flex; align-items:center; gap:10px; padding:7px 0; border-top:1px solid rgba(255,255,255,.05)}
+.tsel-row{display:flex; align-items:center; gap:10px; padding:7px 0; border-top:1px solid var(--hair-05)}
 .tsel-row:first-of-type{border-top:none}
 .tsel-name{font-weight:600; color:var(--ink); font-size:var(--t-row-sub)}
 /* Host-placed door marker (grounds "near the door") — dashed = you placed it; drag to move, tap to remove. */
@@ -540,10 +540,10 @@ button{font-family:inherit}
    dragged row dims; the tray highlights so a seated guest can be dropped back. */
 .seat-ghost{position:fixed; transform:translate(-50%,-140%); z-index:120; pointer-events:none;
   background:var(--steel); color:var(--on-steel); font-size:var(--t-pill); font-weight:700;
-  padding:6px 12px; border-radius:999px; box-shadow:0 6px 18px -4px rgba(0,0,0,.6); white-space:nowrap}
+  padding:6px 12px; border-radius:999px; box-shadow:0 6px 18px -4px var(--shadow-60); white-space:nowrap}
 .frow.dragging{opacity:.4}
 .seat-tray.droptarget{outline:1px dashed var(--steel-soft); outline-offset:4px; border-radius:var(--r-md)}
-.tpuck.seatable{box-shadow:0 0 0 2px var(--steel-soft), 0 2px 8px -3px rgba(0,0,0,.5)}
+.tpuck.seatable{box-shadow:0 0 0 2px var(--steel-soft), 0 2px 8px -3px var(--shadow-50)}
 .floorplan-hint{position:absolute; left:0; right:0; bottom:6px; text-align:center; font-size:var(--t-caption-min); color:var(--faint); pointer-events:none}
 /* ── ONE FAMILY, ONE SIZE (owner, 2026-09-26) ────────────────────────────────
    "I dont want super round pill and chips. they should match the style of the
@@ -606,8 +606,8 @@ button{font-family:inherit}
 @keyframes rowin{from{opacity:0}to{opacity:1}}
 .truth{font-size:16px; font-weight:600; letter-spacing:-.02em; color:var(--steel-soft); margin:0 0 6px; line-height:1.45}
 .card.hero-card{margin-top:14px}
-.horizon{margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.07); font-size:13px; color:var(--faint)}
-.path-row{animation:rowin var(--ms-base) var(--ease-out) var(--ms-micro) both; display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:10px 2px; background:none; border:none; border-top:1px solid rgba(255,255,255,.07); cursor:pointer; font:inherit; -webkit-appearance:none; appearance:none}
+.horizon{margin-top:12px; padding-top:10px; border-top:1px solid var(--hair-07); font-size:13px; color:var(--faint)}
+.path-row{animation:rowin var(--ms-base) var(--ease-out) var(--ms-micro) both; display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:10px 2px; background:none; border:none; border-top:1px solid var(--hair-07); cursor:pointer; font:inherit; -webkit-appearance:none; appearance:none}
 .path-row .then{font-size:11px; font-weight:750; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); flex:0 0 auto}
 .path-row .t{font-size:14.5px; font-weight:550; color:var(--faint); letter-spacing:-.01em; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 /* C2 — progressive ink, AA-safe (critique 2026-07-17): recession comes from
@@ -671,7 +671,7 @@ button{font-family:inherit}
    instantly, exactly as that comment says. margin/padding/border are animated too:
    they are 23px of the jump on their own, so transitioning height alone would still
    step. overflow:clip keeps the sentence from spilling while the box is short. */
-.receipt{display:flex; align-items:center; gap:9px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.07); height:auto; overflow:clip; transition:height 260ms var(--ease-out), margin-top 260ms var(--ease-out), padding-top 260ms var(--ease-out), border-top-color 260ms var(--ease-out), opacity 220ms var(--ease-out), translate 220ms var(--ease-out)}
+.receipt{display:flex; align-items:center; gap:9px; margin-top:12px; padding-top:10px; border-top:1px solid var(--hair-07); height:auto; overflow:clip; transition:height 260ms var(--ease-out), margin-top 260ms var(--ease-out), padding-top 260ms var(--ease-out), border-top-color 260ms var(--ease-out), opacity 220ms var(--ease-out), translate 220ms var(--ease-out)}
 @starting-style{ .receipt{height:0; margin-top:0; padding-top:0; border-top-color:transparent; opacity:0; translate:0 5px} }
 .receipt .rdot{width:7px; height:7px; border-radius:999px; background:var(--ok); flex:0 0 auto}
 .receipt .rmsg{flex:1; min-width:0; font-size:13.5px; line-height:1.4; color:var(--muted)}
@@ -814,7 +814,7 @@ button{font-family:inherit}
    wins on order. Removed; the surviving declaration is the one below.) */
 .hero.elegant .bento .tile-a{ display:none; }
 .hero.elegant .bento .tile-b,
-.hero.elegant .bento .tile-c{ min-height:0; padding:16px 0; background:none; border:none; border-radius:0; border-top:1px solid rgba(255,255,255,.08); flex-direction:row; align-items:center; justify-content:space-between; gap:18px; }
+.hero.elegant .bento .tile-c{ min-height:0; padding:16px 0; background:none; border:none; border-radius:0; border-top:1px solid var(--hair-08); flex-direction:row; align-items:center; justify-content:space-between; gap:18px; }
 .hero.elegant .bento .tile-b:hover,
 .hero.elegant .bento .tile-c:hover{ background:none; transform:none; filter:none; }
 .hero.elegant .bento .tile-b .t-label,
@@ -867,7 +867,7 @@ button{font-family:inherit}
    two tokens so this cannot drift back into a fork. */
 .hero.elegant .cta{ background:var(--sheen); color:var(--ink); border-radius:var(--r-row); padding:15px 20px; min-height:54px;
   width:100%; justify-content:center; text-align:center; font-size:var(--t-cta-big);
-  box-shadow:0 3px 0 #06080b, 0 9px 22px -9px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.07);
+  box-shadow:0 3px 0 var(--key-edge), 0 9px 22px -9px var(--shadow-60), inset 0 1px 0 var(--hair-07);
   transition:transform .1s var(--ease-out), box-shadow .1s var(--ease-out); }
 /* THE ARROW IS GONE (host ruling 2026-07-28). It was added claiming Figma
    parity; the frames show none. Note for whoever considers bringing it back:
@@ -889,9 +889,9 @@ button{font-family:inherit}
    taller bottom edge, deeper cast, and the arrow leans in; PRESS collapses it into the
    surface (the depress). Two clear states, both subtle. */
 .hero.elegant .cta:hover:not(:disabled){ transform:translateY(-1px);
-  box-shadow:0 4px 0 #06080b, 0 13px 26px -10px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.09); }
+  box-shadow:0 4px 0 var(--key-edge), 0 13px 26px -10px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.09); }
 .hero.elegant .cta:active{ transform:translateY(3px);
-  box-shadow:0 0 0 #06080b, 0 3px 9px -5px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05); }
+  box-shadow:0 0 0 var(--key-edge), 0 3px 9px -5px var(--shadow-50), inset 0 1px 0 var(--hair-05); }
 /* DECLUTTERED CONFLICT (host 2026-07-18): tight situation with a quiet "why?" tap, and
    the fixes as compact tappable rows (no faked "our fix" — genuine either/or). */
 .hero.elegant .conf-sit{ display:flex; align-items:flex-start; gap:10px; }
@@ -912,7 +912,7 @@ button{font-family:inherit}
 .hero.elegant .then-fold.ef-do{ margin-top:22px; }
 .hero.elegant .ef-sect{ font-size:12px; font-weight:650; letter-spacing:.4px; color:var(--muted); text-transform:uppercase; margin:0 0 2px; }
 .hero.elegant .ef-list{ display:flex; flex-direction:column; }
-.hero.elegant .ef-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; background:none; border:none; border-top:1px solid rgba(255,255,255,.07); padding:14px 0; cursor:pointer; text-align:left; color:var(--ink); font:inherit; transition:opacity var(--ms-fast) var(--ease-out); }
+.hero.elegant .ef-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; background:none; border:none; border-top:1px solid var(--hair-07); padding:14px 0; cursor:pointer; text-align:left; color:var(--ink); font:inherit; transition:opacity var(--ms-fast) var(--ease-out); }
 .hero.elegant .ef-list .ef-row:first-child{ border-top:none; }
 .hero.elegant .ef-row .t{ font-size:15px; font-weight:600; }
 /* REASONING CONTINUITY v1 (2026-07-31) — the row's one earned reason. Recedes:
@@ -983,10 +983,10 @@ button{font-family:inherit}
 .decopt:active{ transform:translateY(1px); }
 /* COMBINED DECISION OPTIONS (host 2026-07-18): the pick shown once (emphasized, badged, with
    its real tradeoff note), the rest behind a disclosure. Ask-mode = equal rows, no badge. */
-.decopt.pick{ background:var(--steel-tint); border:1px solid var(--steel); box-shadow:0 9px 20px -9px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.07); }
+.decopt.pick{ background:var(--steel-tint); border:1px solid var(--steel); box-shadow:0 9px 20px -9px var(--shadow-60), inset 0 1px 0 var(--hair-07); }
 /* was a raw hex rgb(44,49,56); --line is rgb(49,51,56) — nearest existing atom. */
 .decopt.pick:hover{ background:var(--line); }
-.decopt.pick:active{ transform:translateY(3px); box-shadow:0 0 0 #06080b, 0 3px 9px -5px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05); }
+.decopt.pick:active{ transform:translateY(3px); box-shadow:0 0 0 var(--key-edge), 0 3px 9px -5px var(--shadow-50), inset 0 1px 0 var(--hair-05); }
 .decopt-main{ display:flex; flex-direction:column; gap:3px; min-width:0; }
 /* decopt option name matches the Figma node (14px Semi Bold), pick included — was 15/16. */
 .decopt-name{ display:flex; align-items:center; gap:9px; font-size:14px; font-weight:650; }
@@ -1051,7 +1051,7 @@ button{font-family:inherit}
 .decopt-right{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
 /* WHY THIS PICK on hover of "our pick" (Figma combined design): a tooltip, not a line. */
 .decopt-badge-wrap{ position:relative; display:inline-flex; outline:none; }
-.decopt-why{ position:absolute; top:calc(100% + 9px); right:0; width:250px; max-width:74vw; background:var(--carbon-panel); border:1px solid var(--carbon-line); border-radius:10px; padding:10px 12px; font-size:12.5px; font-weight:400; color:var(--muted); line-height:1.42; text-align:left; letter-spacing:0; z-index:40; box-shadow:0 10px 26px -6px rgba(0,0,0,.6); opacity:0; visibility:hidden; transform:translateY(-3px); transition:opacity .15s var(--ease-out), transform .15s var(--ease-out), visibility .15s; pointer-events:none; }
+.decopt-why{ position:absolute; top:calc(100% + 9px); right:0; width:250px; max-width:74vw; background:var(--carbon-panel); border:1px solid var(--carbon-line); border-radius:10px; padding:10px 12px; font-size:12.5px; font-weight:400; color:var(--muted); line-height:1.42; text-align:left; letter-spacing:0; z-index:40; box-shadow:0 10px 26px -6px var(--shadow-60); opacity:0; visibility:hidden; transform:translateY(-3px); transition:opacity .15s var(--ease-out), transform .15s var(--ease-out), visibility .15s; pointer-events:none; }
 .decopt-badge-wrap:hover .decopt-why, .decopt-badge-wrap:focus-visible .decopt-why, .decopt-badge-wrap:focus-within .decopt-why{ opacity:1; visibility:visible; transform:none; }
 .decopt-arrow{ color:var(--faint); font-weight:800; flex:0 0 auto; }
 /* WORDS APART, STILL TWINS (board re-sit, 2026-07-30 — flagged as a CSS-side fix).
@@ -1138,7 +1138,7 @@ button{font-family:inherit}
    not text. Now a real <h2 class="bento-head"> in the DOM (HostShellV2.jsx
    :7893), styled identically. Same pixels, and a screen reader can read it. */
 .hero.elegant .bento-head{ font-size:12px; font-weight:650; letter-spacing:.4px; color:var(--muted); text-transform:uppercase; margin:0 0 2px; }
-.hero.elegant .bento .tile{ display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:12px; width:100%; background:none; border:none; border-top:1px solid rgba(255,255,255,.07); border-radius:0; padding:14px 0; text-align:left; box-shadow:none; min-height:0; }
+.hero.elegant .bento .tile{ display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:12px; width:100%; background:none; border:none; border-top:1px solid var(--hair-07); border-radius:0; padding:14px 0; text-align:left; box-shadow:none; min-height:0; }
 .hero.elegant .bento .tile-a, .hero.elegant .bento .tile-d{ display:none !important; }
 .hero.elegant .bento .tile-b{ border-top:none; }
 .hero.elegant .bento .tile .t-label{ font-size:13px; font-weight:650; color:var(--muted); margin:0; }
@@ -1280,7 +1280,7 @@ button{font-family:inherit}
 /* Gradient-light material (brand direction 2026-07-11): raised surfaces catch
    the canvas's overhead glow as a 1px top sheen — same physics as the splash. */
 .tile-a, .tile-c{box-shadow:inset 0 1px 0 var(--sheen)}
-.tile-d{box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
+.tile-d{box-shadow:inset 0 1px 0 var(--hair-14)}
 .tile-a{grid-area:a; background:var(--card); border:1px solid var(--line-soft)}
 .tile-a .t-num{font-size:48px/*one-off jumbo countdown numeral*/}
 .bar{height:10px; border-radius:6px; background:var(--bg-band); overflow:hidden; margin:var(--sp-3) 0 var(--sp-2)}
@@ -1538,7 +1538,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
      green) — this is the frost-vs-contrast tradeoff, favoring the frosted look. */
   background:color-mix(in srgb, var(--card) 25%, transparent);
   -webkit-backdrop-filter:blur(34px) saturate(1.2); backdrop-filter:blur(34px) saturate(1.2);
-  border:1px solid rgba(255,255,255,.1); box-shadow:0 12px 34px -10px rgba(0,0,0,.36), inset 0 1px 0 0 rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.1); box-shadow:0 12px 34px -10px rgba(0,0,0,.36), inset 0 1px 0 0 var(--hair-08);
 }
 /* On this app's near-black dark-on-dark UI, Apple's real "regular"-variant
    opacity read as opaque in practice — too little color contrast behind it
@@ -1555,7 +1555,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 .dock::after{
   content:''; position:absolute; left:50%; transform:translateX(-50%); bottom:-16px;
   width:440px; max-width:96vw; height:calc(100% + 72px); z-index:-1; pointer-events:none;
-  background:linear-gradient(180deg, transparent 0%, var(--bg, #0e1013) 78%);
+  background:linear-gradient(180deg, transparent 0%, var(--bg) 78%);
 }
 .dock button{
   font-size:var(--t-btn); font-weight:700; color:var(--ink-soft); background:none; border:none;/* brighter than --muted for the translucent dock (host request) */
@@ -1590,7 +1590,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   padding:var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-4); border-radius:var(--r-lg); width:max-content; max-width:min(88vw,400px); text-align:left; line-height:1.45;
   /* A — LIT EDGE (owner pick, 11/16/2026): the steel glow the green "ok" toast
      already wears, so every note reads as lit rather than as one more card. */
-  box-shadow:0 8px 32px rgba(0,0,0,.55), 0 0 0 1px color-mix(in srgb, var(--steel-soft) 40%, transparent),
+  box-shadow:0 8px 32px var(--shadow-55), 0 0 0 1px color-mix(in srgb, var(--steel-soft) 40%, transparent),
              0 0 28px -4px color-mix(in srgb, var(--steel-soft) 60%, transparent);
   animation:toastin var(--ms-escalation) var(--ease-out) both;
 }
@@ -1775,7 +1775,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 .clock{font-size:clamp(56px,18cqw,76px); font-weight:200; letter-spacing:-.04em; margin:var(--sp-3) 0 30px; font-variant-numeric:tabular-nums; line-height:1}
 .now-card{
   background:var(--carbon-panel); border:1px solid var(--carbon-line); border-radius:var(--r-xl); padding:var(--sp-6) var(--sp-6) 22px;
-  box-shadow:inset 0 1px 0 var(--sheen), 0 20px 60px -20px rgba(0,0,0,.6);
+  box-shadow:inset 0 1px 0 var(--sheen), 0 20px 60px -20px var(--shadow-60);
 }
 .now-label{font-size:var(--t-caption); font-weight:800; letter-spacing:var(--tracking-8); text-transform:uppercase; color:var(--steel-soft)}/* audit C2: was --steel-muted 4.0:1 */
 .now-card h2{font-size:26px/*one-off day-of headline*/; font-weight:750; margin:var(--sp-3) 0 var(--sp-2); line-height:1.22; letter-spacing:-.02em}
@@ -1870,7 +1870,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   animation:revealin var(--ms-fast) var(--ease-out) both; }
 .palette{ width:min(520px,94vw); max-height:70vh; display:flex; flex-direction:column; overflow:hidden;
   background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r-lg);
-  box-shadow:0 24px 60px -20px rgba(0,0,0,.6); animation:sheetrise var(--ms-base) var(--ease-out) both; }
+  box-shadow:0 24px 60px -20px var(--shadow-60); animation:sheetrise var(--ms-base) var(--ease-out) both; }
 .palette-input{ font:inherit; font-size:var(--t-input); font-weight:600; color:var(--ink); background:transparent;
   border:none; border-bottom:1px solid var(--line-soft); padding:var(--sp-4) 18px; outline:none; }
 .palette-input::placeholder{ color:var(--faint); font-weight:500; }
@@ -2133,7 +2133,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   position:absolute; inset:0; z-index:65; overflow:hidden; isolation:isolate;
   display:flex; flex-direction:column; justify-content:center;
   padding:32px 24px calc(32px + env(safe-area-inset-bottom, 0px));
-  background-color:#0d1014;
+  background-color:var(--stage);
   background-image:radial-gradient(45% 40% at 30% 15%, rgba(90,120,145,.16) 0%, transparent 72%),
                     radial-gradient(50% 45% at 78% 62%, rgba(70,95,130,.1) 0%, transparent 72%);
   animation:revealin .4s var(--ease-out) both;
@@ -2149,16 +2149,18 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .reveal-stage .reveal-inner{position:relative; z-index:2; overflow-y:auto; max-height:100%}
 /* Color audit T1: the exact-match hexes are tokenized (zero visual change);
    the reveal's own steel-blue-grey tier (#9aa7b2 / #7a8792) is an INTENTIONAL,
-   locked brand surface for the "who you are" moment — kept as scoped literals,
-   like the splash. Fully re-de-blueing the reveal is a brand call, not a bug. */
+   locked brand surface for the "who you are" moment — kept at its own values,
+   like the splash. Fully re-de-blueing the reveal is a brand call, not a bug.
+   Design batch 3b (11/21/2026) named the two at those exact values
+   (--carbon-ink-quiet, --carbon-ink-faint, theme.js); nothing moved. */
 .reveal-stage .eyebrow{color:var(--steel-soft)}
 /* The stage is carbon in both themes; .mini's moded --ink went near-black on it
    in light ("Skip ›" 1.14:1, design audit 2). The fixed carbon ink holds. */
 .reveal-stage .mini{color:var(--carbon-ink)}
 .reveal-stage .tick-list li strong{color:var(--ink)}
-.reveal-stage .tick-list li{color:#9aa7b2}
+.reveal-stage .tick-list li{color:var(--carbon-ink-quiet)}
 .reveal-stage .tick-list li::before{background:rgba(78,104,119,.35)}
-.reveal-stage .grounding{color:#7a8792}
+.reveal-stage .grounding{color:var(--carbon-ink-faint)}
 /* A sheet opened from the reveal (the signed-out "keep this plan" ask) sits
    ABOVE it: the takeover's 65 otherwise covers the sheet (50) and its scrim. */
 .reveal-stage.under-sheet{z-index:30}
@@ -2167,8 +2169,8 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    raised-bead physics, seated at the baseline. A quiet breathe once landed. */
 .reveal-dot{display:inline-block; width:.16em; height:.16em; border-radius:50%; flex-shrink:0;
   margin-left:.1em; margin-bottom:.02em; vertical-align:baseline;
-  background:#0a0d10; opacity:0; transform:translateY(-14px);
-  box-shadow:-1.7px -2.5px 3.4px rgba(255,255,255,.05), 2.5px 3.4px 5px rgba(0,0,0,.5);
+  background:var(--bead); opacity:0; transform:translateY(-14px);
+  box-shadow:var(--bead-rest-shadow);
 }
 /* One animation, drop then ignite — no transition/animation overlap on the
    same properties (they'd race). Falls with real acceleration (cubic-bezier
@@ -2178,14 +2180,14 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   animation:reveal-dot-drop .6s cubic-bezier(.5,0,1,.6) .25s both, reveal-dot-breathe 3400ms var(--ease-in-out) 1.05s infinite;
 }
 @keyframes reveal-dot-drop{
-  0%{opacity:0; transform:translateY(-14px); background-color:#0a0d10; box-shadow:-1.7px -2.5px 3.4px rgba(255,255,255,.05), 2.5px 3.4px 5px rgba(0,0,0,.5)}
-  55%{opacity:1; transform:translateY(0); background-color:#0a0d10; box-shadow:-1.7px -2.5px 3.4px rgba(255,255,255,.05), 2.5px 3.4px 5px rgba(0,0,0,.5)}
-  100%{opacity:1; transform:translateY(0); background-color:#4E6877; box-shadow:-2.5px -3.4px 5.1px rgba(255,255,255,.3), 3.4px 5.1px 7.7px rgba(10,14,17,.44), 0 0 10px rgba(111,147,168,.32), 0 0 19px rgba(78,104,119,.18)}
+  0%{opacity:0; transform:translateY(-14px); background-color:var(--bead); box-shadow:var(--bead-rest-shadow)}
+  55%{opacity:1; transform:translateY(0); background-color:var(--bead); box-shadow:var(--bead-rest-shadow)}
+  100%{opacity:1; transform:translateY(0); background-color:var(--steel); box-shadow:var(--bead-lit-shadow)}
 }
 @keyframes reveal-dot-breathe{
-  0%{box-shadow:-2.5px -3.4px 5.1px rgba(255,255,255,.3), 3.4px 5.1px 7.7px rgba(10,14,17,.44), 0 0 10px rgba(111,147,168,.32), 0 0 19px rgba(78,104,119,.18)}
+  0%{box-shadow:var(--bead-lit-shadow)}
   50%{box-shadow:-2.5px -3.4px 5.1px rgba(255,255,255,.34), 3.4px 5.1px 7.7px rgba(10,14,17,.44), 0 0 13.6px rgba(126,164,188,.4), 0 0 24px rgba(78,104,119,.22)}
-  100%{box-shadow:-2.5px -3.4px 5.1px rgba(255,255,255,.3), 3.4px 5.1px 7.7px rgba(10,14,17,.44), 0 0 10px rgba(111,147,168,.32), 0 0 19px rgba(78,104,119,.18)}
+  100%{box-shadow:var(--bead-lit-shadow)}
 }
 
 /* ── Reveal choreography: lines land, the name drops into focus, one glow ──
@@ -2207,8 +2209,8 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .glow-once{animation:glowonce .9s var(--ease-out) 1}
 @media(prefers-reduced-motion:reduce){
   .rv-line,.title-drop,.pre,.reveal-stage{opacity:1!important; transform:none!important; filter:none!important; animation:none!important}
-  .reveal-dot{opacity:1!important; transform:none!important; background-color:#4E6877!important;
-    box-shadow:-2.5px -3.4px 5.1px rgba(255,255,255,.3), 3.4px 5.1px 7.7px rgba(10,14,17,.44), 0 0 10px rgba(111,147,168,.32), 0 0 19px rgba(78,104,119,.18)!important}
+  .reveal-dot{opacity:1!important; transform:none!important; background-color:var(--steel)!important;
+    box-shadow:var(--bead-lit-shadow)!important}
 }
 
 /* ── REVEAL MONOLITH (host concept pick 2026-07-27: "partial to B" + "the
@@ -2298,9 +2300,9 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .rv-card-what{font-family:var(--sans); font-weight:800; font-size:clamp(30px,8.6cqw,40px); line-height:1.14;
   letter-spacing:-.025em; color:#f2f4f7; margin-top:14px; text-wrap:balance;
   animation:rvcardbit .9s cubic-bezier(.33,0,.2,1) .35s both}
-.rv-card-why{font-size:var(--t-body-s); line-height:1.5; color:#9aa7b2; margin-top:14px; max-width:30ch;
+.rv-card-why{font-size:var(--t-body-s); line-height:1.5; color:var(--carbon-ink-quiet); margin-top:14px; max-width:30ch;
   animation:rvcardbit .85s cubic-bezier(.33,0,.2,1) .62s both}
-.rv-card-prov{font-size:var(--t-caption-min); font-weight:600; letter-spacing:.04em; color:#7a8792;
+.rv-card-prov{font-size:var(--t-caption-min); font-weight:600; letter-spacing:.04em; color:var(--carbon-ink-faint);
   margin-top:16px; animation:rvcardbit .85s cubic-bezier(.33,0,.2,1) .9s both}
 @keyframes rvcardbit{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
 /* SETTLE — the baseline listing composes fast (the cards already told the
@@ -2397,7 +2399,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 /* visited (lit) — quiet, legible, on the record */
 .rv-snode.lit .rv-sdot{opacity:1}
 .rv-snode.lit .rv-shalo{opacity:.22}
-.rv-snode.lit .rv-slabel{color:#9aa7b2; opacity:.72}
+.rv-snode.lit .rv-slabel{color:var(--carbon-ink-quiet); opacity:.72}
 .rv-snode.lit .rv-sval{color:#8792a0; opacity:.5}
 .rv-snode.lit .rv-sprov{opacity:1}
 
@@ -2448,11 +2450,11 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .rv-think{text-align:center; animation:rvfade .4s var(--ease-out) both}
 .rv-truthwrap{text-align:center; margin:26px auto 0; max-width:30rem}
 .rv-t-title{font-size:var(--t-overline); font-weight:650; letter-spacing:.1em; text-transform:uppercase;
-  color:#9aa7b2; animation:rvrise .48s cubic-bezier(.22,1,.36,1) both}
+  color:var(--carbon-ink-quiet); animation:rvrise .48s cubic-bezier(.22,1,.36,1) both}
 .rv-t-what{font-family:var(--serif-read); font-style:italic; font-weight:500; font-optical-sizing:auto;
   font-size:clamp(22px,6.4cqw,27px); line-height:1.32; color:var(--ink); margin-top:10px;
   animation:rvrise .48s cubic-bezier(.22,1,.36,1) .05s both}
-.rv-t-why{font-size:var(--t-meta); color:#7a8792; margin-top:10px; animation:rvrise .48s cubic-bezier(.22,1,.36,1) .12s both}
+.rv-t-why{font-size:var(--t-meta); color:var(--carbon-ink-faint); margin-top:10px; animation:rvrise .48s cubic-bezier(.22,1,.36,1) .12s both}
 @keyframes rvrise{from{opacity:0; transform:translateY(26px); filter:blur(7px)} to{opacity:1; transform:none; filter:blur(0)}}
 @keyframes rvfade{from{opacity:0} to{opacity:1}}
 /* the traveling bead — breathes through the truths, swells on the gather,
@@ -2500,7 +2502,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   background:linear-gradient(100deg, transparent 40%, rgba(205,224,238,.16) 50%, transparent 60%);
   animation:rvsheen .9s var(--ease-out) .35s both}
 @keyframes rvsheen{from{transform:translateX(-130%)} to{transform:translateX(130%)}}
-.rv-idline{text-align:center; margin-top:var(--sp-4); color:#9aa7b2; animation:rvfade .5s var(--ease-out) .3s both}
+.rv-idline{text-align:center; margin-top:var(--sp-4); color:var(--carbon-ink-quiet); animation:rvfade .5s var(--ease-out) .3s both}
 /* the assemble — the verbatim listing cascades in, one row per tick, sweep on arrival */
 .rv-cascade .rv-line{opacity:0; transform:translateY(-10px); transition:none;
   animation:rvrow .46s cubic-bezier(.22,1,.36,1) both; animation-delay:calc(var(--i, 0)*110ms)}
@@ -2532,7 +2534,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
      glow on the bead's resting spot (78% 62%, same coords as .splash), grain for
      tooth, and a directional vignette. Fills the front door with depth instead of
      a flat void, and makes splash → welcome one continuous surface. */
-  position:relative; isolation:isolate; background-color:#0d1014;
+  position:relative; isolation:isolate; background-color:var(--stage);
   background-image:radial-gradient(50% 45% at 78% 62%, rgba(78,104,119,.12) 0%, transparent 72%);
   background-repeat:no-repeat}
 .content.welcome::before{content:""; position:absolute; inset:0; pointer-events:none; z-index:0;
@@ -2674,7 +2676,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   border-radius:var(--r-xl); border:1px solid var(--warn-tint);
   background:color-mix(in srgb, var(--card) 82%, transparent);
   -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px);
-  box-shadow:0 14px 40px -14px rgba(0,0,0,.6);
+  box-shadow:0 14px 40px -14px var(--shadow-60);
   overflow:hidden;
   animation:wxin 340ms var(--ease-out) both;
 }
@@ -3609,7 +3611,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
   display:flex; align-items:center; gap:var(--sp-3); text-align:left;
   padding:15px 18px; border:none; border-radius:var(--r-pill); cursor:pointer;
   background:var(--cta-grad); color:var(--on-steel);
-  box-shadow:0 16px 44px -12px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.14);
+  box-shadow:0 16px 44px -12px var(--shadow-55), inset 0 1px 0 var(--hair-14);
   transition:transform var(--ms-press) var(--ease-out), filter var(--ms-press) var(--ease-out);
 }
 /* ── THE BAR MUST NOT SIT ON THE CONTENT (Figma-vs-live audit, 2026-07-29) ──
@@ -3663,8 +3665,8 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
      Masking .app's own box costs no layout and nothing resizes — and because
      .stagewrap carries the same background-color (:108), fading .app's own
      background reveals an identical ground, so no seam appears. */
-  -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 84px), transparent calc(100% - 34px));
-          mask-image:linear-gradient(to bottom, #000 calc(100% - 84px), transparent calc(100% - 34px));
+  -webkit-mask-image:linear-gradient(to bottom, var(--mask-solid) calc(100% - 84px), transparent calc(100% - 34px));
+          mask-image:linear-gradient(to bottom, var(--mask-solid) calc(100% - 84px), transparent calc(100% - 34px));
 }
 .next-bar:hover{filter:brightness(1.05)}
 .next-bar:active{transform:scale(.99)}
@@ -4240,7 +4242,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
     transform:translate(-50%,-50%);
     width:min(680px, calc(100% - 80px)); max-height:min(760px, 84%);
     border-radius:20px;
-    box-shadow:inset 0 1px 0 var(--sheen), 0 8px 32px rgba(0,0,0,.5);
+    box-shadow:inset 0 1px 0 var(--sheen), 0 8px 32px var(--shadow-50);
     animation:panelrise var(--ms-sheet) var(--ease-standard);
   }
   /* Origin-aware, exactly like `sheetrise` — and it had to be said twice
@@ -6186,7 +6188,7 @@ button.vc-pill::after{
   .stagewrap--responsive-lodging .app{
     border-radius:48px;
     box-shadow:0 0 0 11px var(--carbon-panel), 0 0 0 13px var(--carbon-line),
-               0 42px 90px -28px rgba(0,0,0,.5);
+               0 42px 90px -28px var(--shadow-50);
   }
   /* THE MEASURE CAP .cta GOT AND .hero-card DID NOT. :272 caps all three at
      62ch, height-gated. `.cta` was later given a rail-scoped, height-independent
@@ -6891,8 +6893,8 @@ button.vc-pill::after{
    stops at the gutter (measured right:370) so it sits clear of the fade and
    is never dimmed. A rail that fades its own last item would be telling the
    host there is more when there is not. */
-.chiprail{ -webkit-mask-image:linear-gradient(to right, #000 calc(100% - var(--sp-5)), transparent);
-  mask-image:linear-gradient(to right, #000 calc(100% - var(--sp-5)), transparent); }
+.chiprail{ -webkit-mask-image:linear-gradient(to right, var(--mask-solid) calc(100% - var(--sp-5)), transparent);
+  mask-image:linear-gradient(to right, var(--mask-solid) calc(100% - var(--sp-5)), transparent); }
 .chiprail > *{ flex:0 0 auto; }
 
 /* ── EVERY SECONDARY ACTION IS THE SAME WIDTH ───────────────────────────────
@@ -7360,7 +7362,7 @@ button.vc-pill::after{
    No `.people-field` element: the field IS the sheet, and inventing a wrapper
    to restate the background it already has would be a surface for its own
    sake. */
-.people-plate{ border-bottom:1px solid rgba(255,255,255,.07); }
+.people-plate{ border-bottom:1px solid var(--hair-07); }
 
 /* ── THE RECOMMENDATION BAND ───────────────────────────────────────────────
    The reference's ✦ band: glyph, short bold title, one line, and the action
@@ -7660,7 +7662,7 @@ button.vc-pill::after{
 }
 .people-plate--noimg .people-plate-eyebrow{
   padding-bottom:var(--sp-3);
-  border-bottom:1px solid rgba(255,255,255,.14);
+  border-bottom:1px solid var(--hair-14);
   display:block;
 }
 @media (min-width:768px){
@@ -7984,13 +7986,13 @@ button.vc-pill::after{
 .photo-tile-btn:focus-visible{ outline:3px solid var(--steel, #4a6b7c); outline-offset:-3px; }
 .photo-badge{ position:absolute; left:8px; bottom:8px; padding:2px 8px; border-radius:999px;
   background:rgba(20,20,22,.72); color:#fff; font-size:11px; font-weight:700; letter-spacing:.01em; }
-.pv{ position:fixed; inset:0; z-index:10000; background:#0b0b0c; color:#f4f2ee;
+.pv{ position:fixed; inset:0; z-index:10000; background:#0b0b0c; color:var(--on-photo);
   display:flex; flex-direction:column; touch-action:pan-y pinch-zoom; }
 .pv-top{ display:flex; align-items:center; justify-content:space-between; gap:12px;
   padding:max(12px, env(safe-area-inset-top)) 16px 8px; }
 .pv-count{ font-size:14px; font-weight:650; color:rgba(244,242,238,.75); font-variant-numeric:tabular-nums; }
 .pv-btn{ min-height:44px; min-width:44px; padding:0 16px; border-radius:999px; border:1px solid rgba(255,255,255,.18);
-  background:rgba(255,255,255,.08); color:#f4f2ee; font:inherit; font-size:15px; font-weight:650; cursor:pointer; }
+  background:rgba(255,255,255,.08); color:var(--on-photo); font:inherit; font-size:15px; font-weight:650; cursor:pointer; }
 .pv-btn:focus-visible{ outline:3px solid #fff; outline-offset:2px; }
 .pv-stage{ position:relative; flex:1; min-height:0; margin:0 8px; user-select:none; -webkit-user-select:none; }
 .pv-img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
@@ -8003,12 +8005,12 @@ button.vc-pill::after{
 @media (hover:none){ .pv-nav{ display:none; } }
 .pv-acts{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center;
   padding:12px 16px max(16px, env(safe-area-inset-bottom)); }
-.pv-acts .mini{ min-height:44px; background:rgba(255,255,255,.1); color:#f4f2ee; border-color:rgba(255,255,255,.22); }
+.pv-acts .mini{ min-height:44px; background:rgba(255,255,255,.1); color:var(--on-photo); border-color:rgba(255,255,255,.22); }
 .pv-acts .pv-note{ font-size:14px; color:rgba(244,242,238,.8); }
 /* A wait or failure on the photo in the dark viewer (G68): its own line, light text. */
 .pv-acts .busy-line, .pv-acts [data-photo-err]{ flex-basis:100%; margin:0; text-align:center; justify-content:center; }
-.pv-acts .busy-line{ color:#f4f2ee; }
-.pv-acts [data-photo-err]{ color:#f4f2ee !important; }   /* the viewer is dark in both themes; light-theme --danger is not readable on it */
+.pv-acts .busy-line{ color:var(--on-photo); }
+.pv-acts [data-photo-err]{ color:var(--on-photo) !important; }   /* the viewer is dark in both themes; light-theme --danger is not readable on it */
 @media (prefers-reduced-motion:reduce){ .pv-full, .photo-tile-btn img{ transition:none; } }
 .guest-photo-pick{ position:relative; cursor:pointer; }
 .guest-photo-pick[aria-disabled="true"]{ opacity:.6; cursor:default; }

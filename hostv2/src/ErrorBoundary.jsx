@@ -31,7 +31,7 @@ export default class ErrorBoundary extends Component {
         <div style={{
           position: 'fixed', inset: 0, display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24,
-          textAlign: 'center', background: '#0d1014', color: 'var(--carbon-ink)',
+          textAlign: 'center', background: 'var(--stage)', color: 'var(--carbon-ink)',
           fontFamily: '-apple-system, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
         }}
         >
@@ -56,7 +56,7 @@ export default class ErrorBoundary extends Component {
               check that it took — rather than the old "may need re-entering",
               which named a risk and left them holding it. */}
           <div style={{ fontSize: 17, fontWeight: 700 }}>This screen stopped working.</div>
-          <div style={{ fontSize: 14, color: '#9aa7b2', maxWidth: 320 }}>
+          <div style={{ fontSize: 14, color: 'var(--carbon-ink-quiet)', maxWidth: 320 }}>
             Everything that finished saving is still there. Reopening picks up from that point — if you were typing something in the last few seconds, check that it took.
           </div>
           <button
@@ -64,7 +64,7 @@ export default class ErrorBoundary extends Component {
             onClick={() => window.location.reload()}
             style={{
               marginTop: 4, padding: '10px 20px', borderRadius: 11, border: 'none',
-              background: '#4E6877', color: 'var(--on-steel)', fontWeight: 700, fontSize: 14.5, cursor: 'pointer',
+              background: 'var(--steel)', color: 'var(--on-steel)', fontWeight: 700, fontSize: 14.5, cursor: 'pointer',
             }}
           >
             {/* UX_07 / ctaNamesTheAct: "Reload" is the browser's word for

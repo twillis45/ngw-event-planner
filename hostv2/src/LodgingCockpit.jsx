@@ -3633,8 +3633,8 @@ const CSS = `
    more. */
 .lc-rail{display:flex;gap:2px;margin:18px 0 0;flex-wrap:nowrap;overflow-x:auto;
   scrollbar-width:none;-webkit-overflow-scrolling:touch;
-  -webkit-mask-image:linear-gradient(to right,#000 88%,transparent);
-  mask-image:linear-gradient(to right,#000 88%,transparent);}
+  -webkit-mask-image:linear-gradient(to right,var(--mask-solid) 88%,transparent);
+  mask-image:linear-gradient(to right,var(--mask-solid) 88%,transparent);}
 .lc-rail::-webkit-scrollbar{display:none}
 .lc-step{flex:0 0 auto;white-space:nowrap;}
 /* Sized to FIT all five on a 393pt phone rather than scroll by default —
@@ -3715,8 +3715,8 @@ const CSS = `
    never stacked into a ragged block. */
 .lc-ctas{display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;
   -webkit-overflow-scrolling:touch;padding-bottom:2px;
-  -webkit-mask-image:linear-gradient(to right,#000 90%,transparent);
-  mask-image:linear-gradient(to right,#000 90%,transparent);}
+  -webkit-mask-image:linear-gradient(to right,var(--mask-solid) 90%,transparent);
+  mask-image:linear-gradient(to right,var(--mask-solid) 90%,transparent);}
 .lc-ctas::-webkit-scrollbar{display:none}
 .lc-ctas > *{flex:0 0 auto;white-space:nowrap;}
 /* Sized so all THREE doors sit on one 393pt line. At the full 15px/18px CTA the
@@ -4082,7 +4082,7 @@ const CSS = `
   color:var(--ink);background:var(--sheen);border:1px solid var(--line);border-radius:10px;
   padding:12px;margin:0 0 10px;max-height:280px;overflow:auto;}
 .lc-card-price{font:600 17px/1.25 Inter,sans-serif;color:var(--ink);flex:0 0 auto;
-  font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.5);}
+  font-variant-numeric:tabular-nums;text-shadow:0 1px 3px var(--shadow-50);}
 .lc-card-sub{font:400 13px/1.4 Inter,sans-serif;color:var(--ink-soft);margin:6px 0 0;}
 /* The no-photo card has no scrim to sit on — plain body text, not white on
    nothing. Same markup as the overlay identity block, different context. */
