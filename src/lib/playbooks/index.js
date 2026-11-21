@@ -4693,6 +4693,32 @@ export function hostBuysLine(i) {
   return !!i && !i.friendBrings;
 }
 
+// ─── THE DRINKS TIER, READ FROM THE PICK'S WORDS ─────────────────────────────
+// Fallback for a drinks decision that authors no costFactors (playbookFoodPlan,
+// rule 1). FIRST MATCH WINS. A FULL BAR IS ×1 (owner ruling, 11/21/2026: "Set to
+// 1, fix misreads"): the ×1.6 it carried had no source, and the playbooks that
+// offer a full bar already list its spirits and mixers as lines of their own, so
+// it priced the spirits twice. It is still classified, so a full-bar pick never
+// falls through to a tier below it. "Signature cocktail" and "spirits" left its
+// words: "Beer + wine + one signature cocktail only" is one added drink, and
+// "None — beer/wine/spirits only" is a plain bar. "Full open bar" joined them.
+// ONE ADDED DRINK IS ×1 TOO, for the same reason: uncited, and once a full bar
+// was ×1 its ×1.25 priced "Beer + wine + one signature cocktail only" above a
+// hosted full bar. The dry party's ×0.6 is the one factor left; it is an uncited
+// engine estimate and the line says so (bevTierNote).
+const BEV_TIERS = [
+  { factor: 1, name: 'a full bar', re: /\b(full (open )?bar|open bar|full cooler|premium|top-shelf|brown liquor|whiskey|bourbon|hired bartender)\b/ },
+  { factor: 1, name: 'one added drink', re: /\b(add a|punch|grown section|cocktail|wine \+|signature)\b/ },
+  { factor: 0.6, name: 'a dry party', re: /\b(dry|family-friendly|zero-proof|no alcohol|non-alcoholic|kids|light \/|pace-it)\b/,
+    unless: /\b(wine|beer|bar|spirits?|liquor|cocktails?|champagne|prosecco|bubbly|bottle)\b/ },
+];
+/** The drinks tier a lowercased pick reads as, or null for the cited baseline. */
+export function beverageTierFor(pick) {
+  const p = String(pick || '').toLowerCase();
+  if (!p) return null;
+  return BEV_TIERS.find((x) => x.re.test(p) && !(x.unless && x.unless.test(p))) || null;
+}
+
 export function playbookFoodPlan(event, opts = {}) {
   if (!event) return null;
   const pf = Number(opts.priceFactor) > 0 ? Number(opts.priceFactor) : 1;
@@ -4847,7 +4873,8 @@ export function playbookFoodPlan(event, opts = {}) {
 
   // EVERY beverage choice moves the budget, not just BYOB. The drinks/bar pick scales the
   // beverage line cost by a tier factor read from its words: a dry/family spread is cheaper
-  // (no alcohol), a full/premium bar costs more, the default is the 1.0 baseline. Ice is
+  // (no alcohol), one added drink costs more, a full bar and the default are the cited
+  // baseline (BEV_TIERS above playbookFoodPlan, owner ruling 11/21/2026). Ice is
   // exempt (volume-driven, not bar-tier). One engine rule, every event type; an honest
   // estimate adjustment (the spread already shows a range), recomputed live from the choice.
   //
@@ -4870,21 +4897,15 @@ export function playbookFoodPlan(event, opts = {}) {
   // The factors themselves are uncited engine estimates, so the line carries
   // the rule that applied (costFactorApplied, unverified) and the badge reads
   // it — the same treatment an authored synthesized factor gets.
-  const BEV_TIERS = [
-    { factor: 1.6, name: 'a full bar', re: /\b(full bar|full cooler|premium|top-shelf|brown liquor|spirits?|whiskey|bourbon|signature cocktail|hired bartender)\b/ },
-    { factor: 1.25, name: 'one added drink', re: /\b(add a|punch|grown section|cocktail|wine \+|signature)\b/ },
-    { factor: 0.6, name: 'a dry party', re: /\b(dry|family-friendly|zero-proof|no alcohol|non-alcoholic|kids|light \/|pace-it)\b/,
-      unless: /\b(wine|beer|bar|spirits?|liquor|cocktails?|champagne|prosecco|bubbly|bottle)\b/ },
-  ];
   const beverageTier = (() => {
     if (!_bevPick || (_bevDecision && _bevDecision.costFactors)) return null;
-    const t = BEV_TIERS.find((x) => x.re.test(_bevPick) && !(x.unless && x.unless.test(_bevPick)));
-    return t || null;
+    return beverageTierFor(_bevPick);
   })();
   const BAR_LINE_RE = /\b(beer|wine|spirits?|liquor|whiskey|bourbon|vodka|rum|tequila|gin|champagne|prosecco|bubbly|cocktails?|mixers?|bar|seltzer|alcohol)\b/i;
   const bevFactorFor = (p) => (beverageTier && p.category === 'beverage' && BAR_LINE_RE.test(shortItem(p.item)))
     ? beverageTier.factor : 1;
-  const bevTierNote = beverageTier
+  // Said only when the tier moved a price: a full bar (×1) moves nothing.
+  const bevTierNote = beverageTier && beverageTier.factor !== 1
     ? `The drinks pick "${pickFor(_bevDecision.id)}" reads as ${beverageTier.name}, so the bar lines are priced at ×${beverageTier.factor} of the cited band — an engine estimate, not a cited price.`
     : '';
 

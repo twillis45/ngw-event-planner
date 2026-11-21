@@ -85,14 +85,14 @@ test('3 · drink prices: a zero-proof option does not make a party dry, and the 
     expect([l.perUnitLow, l.perUnitHigh]).toEqual(authored('Holiday Party', id).unitCostRange);
     expect(l.costFactorApplied).toBeNull();
   }
-  // The bar lines still carry the full-bar tier — and say which rule moved them.
+  // A full bar prices the bar lines at their cited bands (owner ruling,
+  // 11/21/2026: the ×1.6 had no source); theBarPricesAtItsCitedRanges holds it.
   const wine = line(hp, 'p_wine');
-  expect(wine.perUnitLow).toBeCloseTo(authored('Holiday Party', 'p_wine').unitCostRange[0] * 1.6, 2);
-  expect(wine.costFactorApplied).toEqual(expect.objectContaining({ factor: 1.6, unverified: true }));
-  expect(wine.costFactorApplied.note).toMatch(/full bar/i);
+  expect([wine.perUnitLow, wine.perUnitHigh]).toEqual(authored('Holiday Party', 'p_wine').unitCostRange);
+  expect(wine.costFactorApplied).toBeNull();
 
   // One multiplier, never two: a drinks decision that authors costFactors is
-  // priced by them alone (The Cookout's full bar is ×1.4, not ×1.6 × 1.4).
+  // priced by them alone (The Cookout's full bar is ×1.4, its own authored factor).
   const cook = (pick) => line(playbookFoodPlan(ev('The Cookout', '2026-12-12', 30, pick ? { foodChoices: { drinks: pick } } : {})), 'p_grown_folks');
   expect(cook().perUnitLow).toBe(authored('The Cookout', 'p_grown_folks').unitCostRange[0]);
   expect(cook('Full bar + punch').perUnitLow).toBeCloseTo(authored('The Cookout', 'p_grown_folks').unitCostRange[0] * 1.4, 2);

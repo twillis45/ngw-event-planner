@@ -166,7 +166,10 @@ describe('food is never priced above the whole event it is part of', () => {
     // Recorded so the rejected option stays rejected for its actual reason.
     // 0.35 is the family's catering-share ceiling; a card party at home is not
     // an event where food is a third of the spend.
+    // Was "> 140" when the drinks tier priced a brown-liquor bar at ×1.6; with
+    // that uncited factor gone (owner ruling, 11/21/2026) it is ~$126 a head,
+    // still about double the card party's own ceiling.
     const fp = playbookFoodPlan(EV('Card Party'));
-    expect(Math.round(fp.perGuestHigh / 0.35)).toBeGreaterThan(140);
+    expect(Math.round(fp.perGuestHigh / 0.35)).toBeGreaterThan(getPlaybook('Card Party').meta.perGuestCost.high * 1.9);
   });
 });
