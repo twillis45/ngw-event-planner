@@ -1440,7 +1440,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 
 .day-node{
   margin:var(--break-major) calc(-1 * var(--sp-5)) 0; padding:30px var(--sp-5) var(--sp-7);/* audit: --break-major + calc bleed */
-  background:linear-gradient(150deg, var(--carbon-panel) 0%, var(--carbon) 70%); color:var(--carbon-text);
+  background:var(--carbon-panel-grad); color:var(--carbon-text); /* theme.js; doctrine 02 § Gradients */
 }
 .day-node .eyebrow{color:var(--carbon-muted)}
 /* Day-before plan modernized (host request, 2026-07-11 — the create-screen

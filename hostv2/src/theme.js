@@ -337,6 +337,10 @@ export function applyStudioMatte(override) {
   // body #e4ecf3, 4.24:1 (design audit 2). They take --muted's light ink,
   // 4.55:1 there; dark is unchanged.
   set('--carbon-muted', isLight ? mutedInk : bundle.textMuted);
+  // ── THE CARBON PANEL (doctrine 02 § Gradients, the third of exactly three;
+  // design batch 3, 11/21/2026). Was written inline on .day-node. It reads
+  // the two carbon tokens above, so it follows the theme with them.
+  set('--carbon-panel-grad', 'linear-gradient(150deg, var(--carbon-panel) 0%, var(--carbon) 70%)');
   set('--steel-muted', bundle.steelBlueMuted);
   // Secondary text ON A FIXED CARBON STAGE — the creation reveal, whose ground
   // is #0d1014 in BOTH themes. Deliberately not moded: every moded text token
