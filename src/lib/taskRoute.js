@@ -8,7 +8,7 @@
 import { isVendorBooked } from './workstreams';
 import { venueFor } from './venueFor';
 import { showsReplyTracking } from './guestMode';
-import { stepCalls } from './playbooks';
+import { stepCalls, getPlaybook } from './playbooks';
 
 // The first vendor row still needing the host — the row-level rule the
 // Vendors deep-link doctrine requires (not the sheet top).
@@ -19,6 +19,28 @@ const firstUndoneVendorRoute = (event) => {
   const target = undone || vs[0];
   return target ? { tab: 'Vendors', vendorId: target.id } : { tab: 'Vendors', focusField: 'vendor-add' };
 };
+
+// The same row-level rule over the vendors of one kind (the baker and the
+// florist), so a step about them opens their own row, never the DJ's. None of
+// that kind yet: add one.
+const kindVendorRoute = (event, re) => {
+  const vs = ((event && event.vendors) || []).filter((v) => v && String(v.name || '').trim() && re.test(`${v.category || ''} ${v.name || ''}`));
+  return firstUndoneVendorRoute({ vendors: vs });
+};
+
+// A row's call, by the ids its playbook actually has (11/21/2026): a slideshow
+// or meaning-moment row opened Calls to make on `tribute` for Anniversary and
+// Juneteenth, which have no such call, so the sheet opened on nothing. The
+// first id the event's playbook has wins; with no event, the first id (the
+// long-standing `tribute`); with none of them, the rule does not fire.
+const ownCall = (event, ids) => {
+  if (!event) return ids[0];
+  const pb = (() => { try { return getPlaybook(event.type); } catch (_e) { return null; } })();
+  const have = new Set(((pb && pb.decisions) || []).map((d) => d && d.id));
+  return ids.find((id) => have.has(id)) || null;
+};
+const CALL_LABEL = { tribute: 'Plan the tribute', slideshow: 'Plan the slideshow', meaning: 'Plan the meaning moment' };
+const callHit = (id) => ({ label: CALL_LABEL[id], route: { tab: 'Decisions', decisionId: id } });
 
 /**
  * Canonical milestone/task route producer (moved from CommandCenter.jsx so the
@@ -120,6 +142,16 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // opens After on that field. A saved link is the step done (taskEngine).
   if (/^share\b[^.;]{0,80}\bin one album link\b/.test(t))
     return { label: 'Add the album link', route: { focusField: 'after-album' } };
+  // THE EVENT HASHTAG LIVES IN MAKE IT YOURS (11/21/2026). Sweet 16's "Set up
+  // the social moment: custom hashtag + photo-booth frame/filter" had no
+  // button; the hashtag is set beside the invite's own words.
+  if (/\bhashtag\b/.test(t))
+    return { label: 'Pick the hashtag', route: { focusField: 'meaning-hashtag' } };
+  // SHARING THE PLACE AND TIME IS THE SHARE LINK (11/21/2026). Repast's "Share
+  // the repast place and time — on the program, at the service…" had no
+  // button; the guest list's Share & invite block carries both.
+  if (/^share\b[^.;:]{0,30}\bplace and time\b/.test(t))
+    return { label: 'Open share & invite', route: { focusField: 'guests-invites' } };
   // VOWS, READINGS AND WHO SPEAKS are the ceremony's own content, and the run of
   // show is the surface that holds the order of the day.
   if (/\b(vows?|reading\(s\)|readings?)\b.{0,40}\b(write|writes|practice|choose|assign)|\bwrite (their|your) vows\b/i.test(t))
@@ -135,6 +167,11 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // kitchen or house work with no screen (cook, fry, sweep) and stay honest
   // check-offs. These name a place the app has: the money agreement, the date,
   // the volunteer shifts, the friend who owns the main dish.
+  // THE REST OF EACH SHARE IS THE COST SPLIT (11/21/2026). Group Trip's
+  // "Collect the rest of each person's share" had no button; Split the costs
+  // holds each person's share and who still owes whom.
+  if (/\bcollect the rest of each person'?s share\b/.test(t))
+    return { label: 'Split the costs', route: { focusField: 'cost-split' } };
   if (/how money works|money rule|shared receipts|settle up|final tally|\btreasurer\b/.test(t))
     return { label: 'Open your money', route: { tab: 'Budget', focusField: 'hsp-budget' } };
   if (/\b(pick|choose|set) the date\b/.test(t))
@@ -204,7 +241,9 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // against parties at a rental" opened People you're hiring: "rental" is a
   // rentals vendor in the rule below. Updates to everyone, on the Guest list,
   // posts the host's own words on every guest's invite.
-  if (/^(?:send|share|post)\b[^.;:]{0,30}\b(?:norms|ground rules)\b/.test(t))
+  // Team Retreat's "Send arrival instructions, on-site contact numbers, and
+  // the day-1 schedule" is the same note to everyone (11/21/2026).
+  if (/^(?:send|share|post)\b[^.;:]{0,30}\b(?:norms|ground rules|arrival instructions)\b/.test(t))
     return { label: 'Open updates to everyone', route: { tab: 'Guests', focusField: 'guests-updates' } };
   if (/^(?:send|share)\b[^.;:]{0,20}\btrip details\b/.test(t))
     return { label: 'Draft the trip details', route: { focusField: 'draft-trip-details' } };
@@ -243,8 +282,7 @@ export function checklistRouteFor(task, meta = {}, event = null) {
     return { label: 'Open where everyone stays', route: { tab: 'Travel' } };
   if (/gift log|who-gave-what/.test(t))
     return { label: 'Open guests', route: { tab: 'Guests', focusField: 'guests-entry' } };
-  if (/meaning moment/.test(t))
-    return { label: 'Plan the tribute', route: { tab: 'Decisions', decisionId: 'tribute' } };
+  if (/meaning moment/.test(t)) { const id = ownCall(event, ['meaning', 'tribute']); if (id) return callHit(id); }
   // Wedding's vision brief (11/21/2026): its answer is the style call, "Style +
   // formality (the design brief)", so the step opens that call.
   if (/\bvision brief\b/.test(t))
@@ -256,6 +294,14 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // coverage probe 2026-07-28): "Give caterer FINAL headcount; pay remaining
   // vendor balances; prep tip envelopes" was killed by the /prep/ rule below —
   // a vendor-money row silently lost its CTA because it ended in a prep verb.
+  // THE CAKE AND FLOWER DELIVERIES ARE THE BAKER'S AND THE FLORIST'S ROWS
+  // (11/21/2026). Quinceañera's "confirm cake and flower delivery windows" had
+  // no button: the vendor rule knows "baker" and "florist", not "cake".
+  // A row that buys the flowers or picks up the cake is shopping ("Fresh food,
+  // florals, garnish; pick up the cake (or schedule delivery)"), so the rule
+  // needs the confirm.
+  if (/\bconfirm\b[^.;]{0,20}\b(?:cakes?|flowers?|florals?)\b[^.;]{0,30}\bdeliver/.test(t))
+    return { label: 'Check the delivery times', route: kindVendorRoute(event, /\b(?:cakes?|bak\w*|pastr\w*|flor\w*|flowers?)\b/i) };
   if (/\bcaterer\b|vendor balance|remaining balance|pay (remaining|the) /.test(t))
     return { label: 'Line them up', route: firstUndoneVendorRoute(event) };
 
@@ -284,8 +330,10 @@ export function checklistRouteFor(task, meta = {}, event = null) {
     return { label: 'Open the list', route: { tab: 'Planning', focusField: 'food-plan' } };
   if (/\b(buys?|groceries|drinks|soda|water|ice\b|disposable|foil|to-go|trash|recycl|fuel|charcoal|napkins|cups|plates|shopping)\b/.test(t))
     return { label: 'Open the list', route: { tab: 'Planning', focusField: 'food-plan' } };
-  if (/\btribute\b|\bspeeches?\b|\bslideshow\b|\bmontage\b|\bopen mic\b|\beulog|line\b.{0,24}\bspeakers?\b/.test(t))
-    return { label: 'Plan the tribute', route: { tab: 'Decisions', decisionId: 'tribute' } };
+  if (/\btribute\b|\bspeeches?\b|\bslideshow\b|\bmontage\b|\bopen mic\b|\beulog|line\b.{0,24}\bspeakers?\b/.test(t)) {
+    const id = ownCall(event, ['tribute', 'slideshow', 'meaning']);
+    if (id) return callHit(id);
+  }
   // GROUNDED DESTINATIONS (host ask 2026-07-28: every row lands somewhere real).
   // The CVB task's destination is EXTERNAL by design (spec 8c1a72a7: generic
   // cities get the search deep-link, built from the EVENT's own town — the
@@ -338,7 +386,9 @@ export function checklistRouteFor(task, meta = {}, event = null) {
     return { label: 'Map the spread', route: { tab: 'Planning', focusField: 'food-plan' } };
   if (/\b(canop\w*|chairs|tables?|seating|shade|spades table|tents?)\b/.test(t))
     return { label: 'Open the space list', route: { tab: 'Event Details', focusField: 'space' } };
-  if (/\b(grill master|name the|point person|in charge|backup|helper)\b/.test(t))
+  // "Name a buddy for the groom + a sober point-person" (11/21/2026): the
+  // hyphen and "Name a" both missed this rule, so the row had no button.
+  if (/\b(grill master|name the|name a|point[- ]person|in charge|backup|helper)\b/.test(t))
     return { label: 'Assign it', route: { tab: 'Event Details', focusField: 'space' } };
   // A STEP THAT IS A CALL is made on Calls to make (11/21/2026): "Decide whose
   // midnight it is…" had no button though midnight_model sits right there.

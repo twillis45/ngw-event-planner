@@ -5516,6 +5516,16 @@ export default function HostShellV2() {
         } catch { /* anchor is best-effort */ }
       }, 60);
     }
+    // Make it yours on the event hashtag (11/21/2026): Sweet 16's "custom
+    // hashtag" step lands on the hashtag block, below the invite's own words.
+    if (sheet && sheet.kind === 'meaning' && sheet.focus === 'hashtag') {
+      setTimeout(() => {
+        try {
+          const el = document.querySelector('[data-event-hashtag]');
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch { /* the sheet is still the right landing */ }
+      }, 120);
+    }
     // Guests row-level landing (Up-Next #4): 'entry' scrolls to the count
     // stepper (count mode) or the counting chips (roster mode) and focuses the
     // number input; 'invites' scrolls to the share-and-invite block. Anchors

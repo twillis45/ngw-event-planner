@@ -25,7 +25,7 @@
 //
 //   kind         a sheet kind ('vendors','seating','budget','guests','food',
 //                'rain','crabs','ground','air','lodging','space','tasks',
-//                'costshare','messages',
+//                'costshare','split','meaning','messages',
 //                'risks','decisions') OR a stage landing ('stage:plan',
 //                'stage:day', 'stage:after') — the surfaces whose target is a
 //                full-screen stage, not a sheet (the plan editor, the day-of run
@@ -106,6 +106,9 @@ export function resolveRoute(route) {
   // everyone stays" is the silent mis-landing this module exists to prevent.
   // Single-purpose sheet, so focus is null.
   if (/^costshare/.test(ff)) return { kind: 'costshare', focus: null };
+  // Split the costs (11/21/2026): who paid, who owes whom, each person's share.
+  // Before the tab:'Travel' catch for the same reason as the line above.
+  if (ff === 'cost-split') return { kind: 'split', focus: null };
   // Lodging — a guest's roster row, the deadline card, or the stay card itself.
   if (route.tab === 'Travel' || /^lodging/.test(ff)) {
     return { kind: 'lodging', focus: gid != null ? gid : (ff === 'lodging-deadline' ? 'deadline' : null) };
@@ -148,6 +151,8 @@ export function resolveRoute(route) {
   if (ff === 'host-decisions') return { kind: 'decisions', focus: null };
   // The invite recap's album link, on the After stage (owner pick, 11/21/2026):
   // the album rows open After and focus the "Photo album link" field.
+  // Make it yours on the event hashtag (11/21/2026).
+  if (ff === 'meaning-hashtag') return { kind: 'meaning', focus: 'hashtag' };
   if (ff === 'after-album') return { kind: 'stage:after', focus: 'album', anchor: 'Photo album link' };
   // A drafted note (owner pick, 11/21/2026): the draft sheet, opened on the
   // named builder. Today one: the Group Trip's trip details.
