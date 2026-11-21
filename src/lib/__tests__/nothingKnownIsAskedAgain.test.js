@@ -230,3 +230,22 @@ describe('confirms read as confirms', () => {
     expect(r.label).not.toMatch(/^Confirm \d/);
   });
 });
+
+describe('2 — the place calls that are not about the kind of place', () => {
+  test('Client Dinner at a restaurant asks only where you sit, never guessing', () => {
+    const ev = base({ type: 'Client Dinner', venue: 'Lucia’s Bistro', venueKind: 'venue' });
+    expect(decisionSettledByData(ev, dec('Client Dinner', 'venue_type'))).toBeNull();
+    const kp = decisionKnownPart(ev, dec('Client Dinner', 'venue_type'));
+    expect(kp.ask).toBe('Where do you sit at Lucia’s Bistro?');
+    expect(kp.options).not.toContain('Company dining room or office');
+  });
+  test('a fly-in retreat is a destination', () => {
+    const ev = base({ type: 'Team Retreat', isDestination: true, travelMode: 'fly', venue: 'Cedar Lodge', venueKind: 'venue' });
+    expect(decisionSettledByData(ev, dec('Team Retreat', 'location')).pick).toBe('Destination (flights for most)');
+    expect(decisionSettledByData({ ...ev, travelMode: 'drive' }, dec('Team Retreat', 'location'))).toBeNull();
+  });
+  test('an elopement at a state park', () => {
+    const ev = base({ type: 'Elopement', venue: 'Pinecrest State Park', venueKind: 'venue' });
+    expect(decisionSettledByData(ev, dec('Elopement', 'location')).pick).toBe('National / state park');
+  });
+});

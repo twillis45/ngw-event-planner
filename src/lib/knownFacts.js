@@ -152,7 +152,20 @@ const optionForInOut = (options, io, place) => {
 
 function placeCall(event, d) {
   const options = opts(d);
+  // A how-far call (Team Retreat: local, regional, destination) is answered by
+  // travel she stated, not by the venue's name: everyone flying is a destination.
+  if (options.some((o) => /^destination/i.test(o)) && options.some((o) => /^local/i.test(o))) {
+    const pick = event.isDestination === true && event.travelMode === 'fly' ? options.find((o) => /^destination/i.test(o)) : null;
+    return pick ? { settled: { pick, because: fromPlan('everyone is flying in') } } : null;
+  }
   const place = venueKindOf(event);
+  // Where you SIT inside a restaurant (Client Dinner) is not answered by the
+  // restaurant's name; it is the one part asked.
+  const seats = options.filter((o) => /dining room|section of|chef.s table|main dining/i.test(o) && !/company|office/i.test(o));
+  if (seats.length >= 3) {
+    if (!place || place.isHome || (place.kind && place.kind !== 'restaurant')) return null;
+    return { partial: { pick: null, known: place.name, metDependents: true, ask: `Where do you sit at ${place.name}?`, options: seats } };
+  }
   // Her indoors/outside answer is the one that call asks first.
   const io = event.indoorOutdoor;
   if (asksInOrOut(d) && (io === 'indoor' || io === 'outdoor' || io === 'both')) {
@@ -358,7 +371,7 @@ function readCall(event, d) {
   if (!opts(d).length) return null;
   if (id === 'budget') return budgetCall(event, d);
   if (COUNT_CALLS.has(id)) return countCall(event, d);
-  if (PLACE_CALLS.has(id) && opts(d).some(isPlaceOption)) return placeCall(event, d);
+  if (PLACE_CALLS.has(id)) return placeCall(event, d);
   if (id === 'serve_time') return serveTimeCall(event, d);
   if (id === 'window') return windowCall(event, d);
   if (id === 'music' || id === 'music_source') return musicCall(event, d);
