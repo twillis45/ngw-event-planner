@@ -41,6 +41,7 @@ const SELF_PINNED = [
   '**/foldAtTheFoot.spec.mjs',
   '**/theStatColumnStandsBesideTheQuestion.spec.mjs',
   '**/aSheetFillsTheColumnAndTheScreen.spec.mjs',
+  '**/theTouchFrameIsFullBleed.spec.mjs',
   '**/statColumnChips.spec.mjs',
   '**/lodgingSpendGuard.spec.mjs',
   '**/regimeBoundary.spec.mjs',

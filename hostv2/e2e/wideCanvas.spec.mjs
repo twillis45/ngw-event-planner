@@ -31,3 +31,15 @@ test('nothing overflows horizontally on a wide canvas', async ({ page }) => {
   const o = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(o).toBeLessThanOrEqual(1);
 });
+
+// A touch screen's frame is the whole screen (owner ruling 28, 11/21/2026), so
+// nothing may overflow it either.
+test.describe('with touch', () => {
+  test.use({ hasTouch: true });
+  test('nothing overflows horizontally on a full-bleed touch canvas', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 1024 });
+    await boot(page);
+    const o = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(o).toBeLessThanOrEqual(1);
+  });
+});

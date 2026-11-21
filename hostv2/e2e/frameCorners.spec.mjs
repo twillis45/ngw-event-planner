@@ -56,3 +56,32 @@ test.describe('frame corners at desktop', () => {
     expect(sheet, `sheet ${sheet} does not match frame ${frame}`).toBe(frame);
   });
 });
+
+// ── Touch (owner ruling 28, 11/21/2026) ────────────────────────────────────
+// On a touch screen the frame is the screen, with square corners, at every
+// width the rail is up. The layers that fill it take that square corner too:
+// a 20px splash or sheet on a square frame would put rounded corners back at
+// the screen edge.
+test.describe('frame corners on touch', () => {
+  test.use({ hasTouch: true });
+  test.skip(({ isMobile }) => isMobile, 'a phone-emulated project is not a tablet');
+  for (const [w, h] of [[1180, 820], [1366, 1024]]) {
+    test(`${w}x${h}: the frame, the splash and an open sheet are all square`, async ({ page }) => {
+      await page.setViewportSize({ width: w, height: h });
+      await page.addInitScript(() => {
+        localStorage.setItem('ngw-hostv2-last-event', 'test-two-days');
+        localStorage.setItem('ngw-welcomed', '1');
+        localStorage.setItem('ngw-v2-welcomed', '1');
+      });
+      await page.goto('?elegant=1');
+      await page.locator('.splash').waitFor({ state: 'visible', timeout: 15_000 });
+      await expect(page.locator('.stagewrap')).toHaveAttribute('data-rail', '1');
+      expect(await radius(page, '.stagewrap'), 'frame').toBe('0px');
+      expect(await radius(page, '.splash'), 'splash').toBe('0px');
+      await settled(page);
+      await page.getByRole('button', { name: /^Guests$/ }).first().click();
+      await settled(page);
+      expect(await radius(page, '.sheet'), 'sheet').toBe('0px');
+    });
+  }
+});

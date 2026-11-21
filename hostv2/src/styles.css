@@ -8085,3 +8085,43 @@ button.vc-pill::after{
     overflow:clip;
   }
 }
+
+/* ══ ON A TOUCH SCREEN THE FRAME IS THE SCREEN ═══════════════════════════════
+   Owner ruling 28, 11/21/2026, from the owner's iPad: "In tablet some of
+   columns are rounded on different screens." The frame carried a 20px radius at
+   every width. From 1024 to 1279 it filled the screen, so the screen edge
+   clipped its rounded corners (an 11" iPad); from 1280 it was an inset card,
+   24px at the sides, 20px above and 40px below (a 13" iPad at 1366x1024). Two
+   iPads, two shapes.
+
+   Every `(pointer: coarse)` screen, at any width and in either orientation,
+   now gets an edge-to-edge frame: 0,0, the full viewport, square corners, like
+   a native iPad app. The layers that cover the frame edge to edge (the splash,
+   and a sheet, which runs from the rail to the frame's right edge) take its
+   square corner too, the frameCorners rule. A mouse at 1280 and up keeps the
+   inset card with 20px corners, untouched. Inner panels keep their own radii.
+   The rail and the board inside the frame do not move. */
+@media (pointer:coarse){
+  .stagewrap[data-rail="1"],
+  .stagewrap--responsive-lodging,
+  .stagewrap[data-rail="1"] > .splash,
+  .stagewrap[data-rail="1"] > .sheet{ border-radius:0; }
+}
+/* From 1280 the desktop card rules give the frame its width cap, its margins
+   and a height of at most 900px, and ruling 27 caps it to the window minus
+   those margins while a sheet is open. On touch the frame is the screen
+   instead, as it already is from 1024 to 1279: the sheet cap then is the
+   screen, so the sheet's title and Close stay on it. Each selector matches the
+   rule it answers, so it wins on source order at equal specificity. */
+@media (pointer:coarse) and (min-width:1280px){
+  .stagewrap[data-rail="1"],
+  .stagewrap[data-rail="1"]:not(.stagewrap--responsive-command):not(.stagewrap--responsive-food):not(.stagewrap--responsive-data),
+  .stagewrap--responsive-command[data-rail="1"]:has(> .sheet),
+  .stagewrap--responsive-food[data-rail="1"]:has(> .sheet),
+  .stagewrap--responsive-lodging{
+    width:auto; max-width:none;
+    height:100dvh; max-height:none;
+    margin:0;
+  }
+  .stagewrap[data-rail="1"] > .app{ height:100%; min-height:0; border-radius:0; }
+}

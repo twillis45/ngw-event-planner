@@ -15,6 +15,10 @@
 // that inset across 1279/1280. Width is held to within the frame's 2 x 24px,
 // not to equality; the old panel jumped 330px (680 -> 1010).
 //
+// ON TOUCH THAT INSET IS GONE (owner ruling 28, 11/21/2026): a touch screen's
+// frame is the screen at every width, so the sheet box is the same on both
+// sides of 1280, and the screen-height cap is the screen itself.
+//
 // SELF-PINNED: every test sets its own viewport.
 import { test, expect, settled, sheetSettled, dateIn } from './fixtures.mjs';
 
@@ -123,3 +127,43 @@ for (const [slug, name] of SHEETS) {
       .toBeLessThanOrEqual(FRAME_X + 1);
   });
 }
+
+// ── Touch (ruling 28): no desktop inset at 1280 and up ─────────────────────
+test.describe('with touch', () => {
+  test.use({ hasTouch: true });
+  for (const [slug, name] of SHEETS) {
+    for (const [w, h] of [[1366, 1024], [1280, 800]]) {
+      test(`${slug} ${w}x${h} touch — fills the column, title and Close on the screen`, async ({ page }) => {
+        await open(page, w, h, name);
+        const m = await measure(page);
+        test.info().annotations.push({ type: 'sheet box', description: JSON.stringify(m.sheet) });
+        expect(Math.abs(m.sheet.x - m.app.x), `sheet left ${m.sheet.x} vs column left ${m.app.x}`).toBeLessThanOrEqual(2);
+        expect(Math.abs((m.sheet.x + m.sheet.w) - (m.app.x + m.app.w)), 'sheet right vs column right').toBeLessThanOrEqual(2);
+        expect(m.sheet.y, 'sheet top').toBeGreaterThanOrEqual(0);
+        expect(m.sheet.y + m.sheet.h, 'sheet bottom').toBeLessThanOrEqual(m.vh);
+        expect(m.titleSeen, `title fully visible (${JSON.stringify(m.title)})`).toBe(true);
+        expect(m.closeSeen, `Close fully visible (${JSON.stringify(m.close)})`).toBe(true);
+        await pushThePageFromCode(page);
+        await page.waitForTimeout(150);
+        const after = await measure(page);
+        expect(after.scrollY, 'document scroll while a sheet is open').toBe(0);
+        expect(after.sheet.y, `sheet moved from y=${m.sheet.y}`).toBe(m.sheet.y);
+      });
+    }
+
+    test(`${slug} touch — one shape across 1280: 1279x800 and 1280x800 boxes match`, async ({ browser }) => {
+      const box = {};
+      for (const w of [1279, 1280]) {
+        const ctx = await browser.newContext({ baseURL: test.info().project.use.baseURL, hasTouch: true });
+        const page = await ctx.newPage();
+        await page.route('https://e2e-mock.invalid/**', (r) => r.fulfill({ status: 200, json: { ok: true } }));
+        await open(page, w, 800, name);
+        const s = (await measure(page)).sheet;
+        box[w] = { x: s.x, y: s.y, right: w - (s.x + s.w), h: s.h };
+        await ctx.close();
+      }
+      test.info().annotations.push({ type: 'boxes', description: JSON.stringify(box) });
+      expect(box[1280]).toEqual(box[1279]);
+    });
+  }
+});
