@@ -97,10 +97,13 @@ describe('no dollar moved', () => {
     // fix (bug 3), not by this disclosure: The Cookout's drinks decision authors
     // its own costFactors, so the word-tier ×1.6 no longer stacks on them, and
     // the tier no longer reprices the red drink and the soda (not bar lines).
-    expect(s.foodEstimate).toBe(4628);
+    // 4628 → 3448 and 6979 → 5799 on 11/21/2026, by the pricing batch, not by
+    // this disclosure: The Cookout's default ("family brings the rest") now
+    // hands those sides to the family instead of pricing them at host cost.
+    expect(s.foodEstimate).toBe(3448);
     expect(s.suppliesEstimate).toBe(898);
     expect(s.capacityEstimate).toBe(1453);
-    expect(s.expected).toBe(6979);
+    expect(s.expected).toBe(5799);
     expect(s.committed).toBe(0);
   });
 });

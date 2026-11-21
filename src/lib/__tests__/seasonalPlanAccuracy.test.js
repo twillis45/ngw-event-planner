@@ -91,11 +91,14 @@ test('3 · drink prices: a zero-proof option does not make a party dry, and the 
   expect([wine.perUnitLow, wine.perUnitHigh]).toEqual(authored('Holiday Party', 'p_wine').unitCostRange);
   expect(wine.costFactorApplied).toBeNull();
 
-  // One multiplier, never two: a drinks decision that authors costFactors is
-  // priced by them alone (The Cookout's full bar is ×1.4, its own authored factor).
-  const cook = (pick) => line(playbookFoodPlan(ev('The Cookout', '2026-12-12', 30, pick ? { foodChoices: { drinks: pick } } : {})), 'p_grown_folks');
-  expect(cook().perUnitLow).toBe(authored('The Cookout', 'p_grown_folks').unitCostRange[0]);
-  expect(cook('Full bar + punch').perUnitLow).toBeCloseTo(authored('The Cookout', 'p_grown_folks').unitCostRange[0] * 1.4, 2);
+  // No multiplier at all now (11/21/2026, owner ruling "Apply all but leave
+  // crab"): The Cookout's full bar was ×1.4 on the grown-folks line; it buys
+  // its punch as its own line instead, and the grown-folks line keeps its band.
+  const cookPlan = (pick) => playbookFoodPlan(ev('The Cookout', '2026-12-12', 30, pick ? { foodChoices: { drinks: pick } } : {}));
+  expect(line(cookPlan(), 'p_grown_folks').perUnitLow).toBe(authored('The Cookout', 'p_grown_folks').unitCostRange[0]);
+  expect(line(cookPlan('Full bar + punch'), 'p_grown_folks').perUnitLow).toBe(authored('The Cookout', 'p_grown_folks').unitCostRange[0]);
+  expect(line(cookPlan('Full bar + punch'), 'p_punch').costFactorApplied).toBeNull();
+  expect(line(cookPlan(), 'p_punch')).toBeUndefined();
 
   // A party that IS dry buys no bar (owner approval, 11/21/2026: the ×0.6 is
   // gone, and the wine leaves the list the way BYOB's drinks do); its water

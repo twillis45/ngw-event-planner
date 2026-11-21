@@ -50,15 +50,23 @@ describe('the badge describes the number on screen', () => {
         if (!cp || cp.tier !== 'researched' || cp.verificationStatus !== 'researched') synthesized += 1;
       }
     }
-    expect(withFactors).toBeGreaterThan(40);
-    expect(synthesized).toBeGreaterThan(30);
+    // 11/21/2026, owner ruling "Apply all but leave crab": every other factor
+    // became a line rule or was removed, so what is left is Crab Feast's four
+    // and New Year's Eve's cited all-sparkling toast. Three of the crab ones are
+    // still synthesized, so the defect class still lives in the corpus, and the
+    // rows below are Crab Feast's. (4, not 3: NYE's grounded toast says
+    // verificationStatus 'cited', which this premise counts with the rest.)
+    expect(withFactors).toBe(5);
+    expect(synthesized).toBe(4);
   });
 
   test('THE DEFECT: the same row, three prices, and the badge now moves with them', () => {
-    const R = 'p_grown_folks';
-    const unpicked = rowOf('The Cookout', {}, R);
-    const cheap = rowOf('The Cookout', { drinks: 'Red drink + soda + water (family-friendly)' }, R);
-    const dear = rowOf('The Cookout', { drinks: 'Full bar + punch' }, R);
+    // The Cookout's p_grown_folks was this row until 11/21/2026; its factors are
+    // line rules now. Crab Feast's synthesized `sides` factor moves p_shrimp.
+    const R = 'p_shrimp';
+    const unpicked = rowOf('Crab Feast', {}, R);
+    const cheap = rowOf('Crab Feast', { sides: 'Corn + slaw only (keep it crab-forward)' }, R);
+    const dear = rowOf('Crab Feast', { sides: 'Full spread (add hush puppies, mac salad, watermelon)' }, R);
 
     // The prices genuinely diverge — without this the badge test proves nothing.
     expect(cheap.low).toBeLessThan(unpicked.low);
@@ -84,12 +92,12 @@ describe('the badge describes the number on screen', () => {
   });
 
   test('the factor and the author’s own caveat travel with the line', () => {
-    const dear = rowOf('The Cookout', { drinks: 'Full bar + punch' }, 'p_grown_folks');
+    const dear = rowOf('Crab Feast', { sides: 'Full spread (add hush puppies, mac salad, watermelon)' }, 'p_shrimp');
     expect(dear.costFactorApplied.factor).toBeCloseTo(1.4, 5);
     expect(dear.costFactorApplied.unverified).toBe(true);
     // The note is the authors', not synthesized here — a caller that wants to say
     // more than the label can has the real words.
-    expect(dear.costFactorApplied.note).toMatch(/need[s]? verification/i);
+    expect(dear.costFactorApplied.note).toMatch(/needs? (grocery price )?verification/i);
     expect(classifyClaim(dear.provenance, dear.costProvenance, dear.costFactorApplied).adjustedUnverified).toBe(true);
   });
 
@@ -104,14 +112,15 @@ describe('the badge describes the number on screen', () => {
 
   test('NEGATIVE CONTROL: a RESEARCHED factor leaves the badge alone', () => {
     // The point is not that adjustment is bad — it is that an UNVERIFIED
-    // adjustment cannot wear a sourced badge. Repast's `food_source` carries a
-    // real `costFactorProvenance` grounded to 2026 catering data, so a line it
-    // moves keeps whatever its own claim earned.
-    const d = (getPlaybook('Repast').decisions || []).find((x) => x.id === 'food_source');
+    // adjustment cannot wear a sourced badge. Crab Feast's `crab_size` carries a
+    // real `costFactorProvenance` grounded to the 2026 DMV crab survey, so a line
+    // it moves keeps whatever its own claim earned. (Repast's catering factors
+    // were this control until 11/21/2026; they multiplied $0 and are gone.)
+    const d = (getPlaybook('Crab Feast').decisions || []).find((x) => x.id === 'crab_size');
     expect(d.costFactorProvenance.tier).toBe('researched');
     expect(d.costFactorProvenance.verificationStatus).toBe('researched');
     for (const rowId of d.affects) {
-      const moved = rowOf('Repast', { food_source: 'Have it catered' }, rowId);
+      const moved = rowOf('Crab Feast', { crab_size: 'Mediums ($32–75/dz)' }, rowId);
       if (!moved || !moved.costFactorApplied) continue;
       expect(`${rowId}: ${moved.costFactorApplied.unverified}`).toBe(`${rowId}: false`);
       expect(`${rowId}: ${labelOf(moved)}`).not.toBe(`${rowId}: ${HOST_LABELS.SOURCED_THEN_ADJUSTED}`);
@@ -144,7 +153,7 @@ describe('the badge describes the number on screen', () => {
   test('every adjusted row still keeps its sourced detail underneath', () => {
     // The label changed; the citation did not. If the detail ever disappears with
     // the badge, this fix has removed information instead of scoping it.
-    const dear = rowOf('The Cookout', { drinks: 'Full bar + punch' }, 'p_grown_folks');
-    expect(String(dear.provenance.note)).toMatch(/source-stated party drink rate/i);
+    const dear = rowOf('Crab Feast', { sides: 'Full spread (add hush puppies, mac salad, watermelon)' }, 'p_shrimp');
+    expect(String(dear.costProvenance.claim)).toMatch(/shrimp/i);
   });
 });

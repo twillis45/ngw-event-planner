@@ -1059,6 +1059,10 @@ export function choiceShown(event, whenChoice) {
   // `itinerary.js` carries its own copy of this predicate for agenda rows and is
   // reworded in the same commit — its comment says to keep them together.
   if (Array.isArray(whenChoice)) return whenChoice.every((g) => choiceShown(event, g));
+  // `{any:[...]}` MEANS OR (11/21/2026). A dish two different picks hand to the
+  // guests (Friendsgiving's drinks: "friends own the drinks" on one decision,
+  // "friends bring drinks and dessert" on another) needs either gate to pass.
+  if (whenChoice && Array.isArray(whenChoice.any)) return whenChoice.any.some((g) => choiceShown(event, g));
   if (!whenChoice.id) return true;
   const v = choicePickFor(event, whenChoice.id);
   if (v == null) return true;
@@ -1231,6 +1235,15 @@ export const FOOD_APPROACH_DECISIONS = [
   // 'hosting_model' — Thanksgiving Hosting's whole-meal lever (2026-08-21): its
   // "Ordered — a market or restaurant cooks" option is the caterer path.
   'hosting_model',
+  // 'catering_style' — Wedding's (A2, 11/21/2026). Every option is a catered
+  // service (plated, buffet, family-style, stations), so the decision carries
+  // `servedByCaterer: true` instead of a caterer word in an option. It ranks
+  // ahead of 'venue': "Raw / blank-canvas venue" still hires the caterer, and
+  // reading the venue had dropped the whole meal from that wedding's budget.
+  // `servedByCaterer: false` is the other half: a menu whose "Pizza" option is
+  // the host ordering pizza, priced by its own line (Watch Party's p_pizza_sliders),
+  // not a caterer's per-guest rate. The decision then never reads as the caterer.
+  'catering_style',
   'help', 'grill_master', 'cook', 'format', 'venue',
 ];
 // "Order in" here means the MEAL arrives made (ordered-in trays, takeout) — a
@@ -1261,13 +1274,19 @@ export function foodApproach(event) {
   const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
   const nulls = { decisionId: null, pick: null, usesCaterer: null, communityBrings: null, cooking: null };
   const result = (decisionId, pick) => {
-    const usesCaterer = CATERER_OPTION_RE.test(String(pick));
+    const dec = decisionId ? decisions.find((d) => d && d.id === decisionId) : null;
+    const usesCaterer = CATERER_OPTION_RE.test(String(pick)) || !!(dec && dec.servedByCaterer === true);
     const communityBrings = !usesCaterer && COMMUNITY_OPTION_RE.test(String(pick));
     return { decisionId, pick, usesCaterer, communityBrings, cooking: !usesCaterer && !communityBrings };
   };
   const candidates = FOOD_APPROACH_DECISIONS
     .map((id) => decisions.find((d) => d && d.id === id))
-    .filter((d) => d && Array.isArray(d.options) && d.options.some((o) => CATERER_OPTION_RE.test(String(o))));
+    .filter((d) => d && Array.isArray(d.options) && d.servedByCaterer !== false && (d.servedByCaterer === true || d.options.some((o) => CATERER_OPTION_RE.test(String(o)))));
+  // A decision every option of which is catered (`servedByCaterer: true`) settles
+  // the meal by itself, so nothing ranked after it can change the answer: a
+  // Wedding host's venue pick no longer outranks its catering style (A2).
+  const _served = candidates.findIndex((d) => d.servedByCaterer === true);
+  if (_served >= 0) candidates.splice(_served + 1);
   // An EXPLICIT host pick on any candidate outranks another candidate's authored
   // default — otherwise a defaulted decision earlier in the list silently vetoes
   // the one the host actually answered.
@@ -3396,6 +3415,7 @@ function decisionCarriesCost(d) {
   return !!(d && (
     (d.costFactors && typeof d.costFactors === 'object' && Object.keys(d.costFactors).length > 0)
     || d.costViaApproach === true
+    || d.costViaLines === true
     || d.costFactorProvenance
   ));
 }
@@ -4708,10 +4728,18 @@ export function hostBuysLine(i) {
 // those 4"): it carried an uncited ×0.6 and still bought the beer and wine. It
 // has no factor now; its bar lines leave the list the way BYOB's drinks do
 // (`hostBuysIt` in playbookFoodPlan), and what is left prices at its cited band.
+// A CASH BAR (A1, 11/21/2026) is the guests buying every drink, so the bar
+// lines leave the host's list (`_drinkLeaves`), toast aside. Only the bare pick
+// "Cash bar": a limited bar or drink tickets is part hosted, and how much is the
+// host's follow-up answer, not a number this rule can know.
+// "Light / pace-it" left the dry tier: a lighter-drinking crowd still drinks,
+// so Bachelor's pick drops the spirits line (a line rule), not the beer.
+// "Mocktails + soft drinks only" joined it: Gender Reveal's zero-proof pick.
 const BEV_TIERS = [
+  { cash: true, name: 'a cash bar', re: /^cash bar$/ },
   { factor: 1, name: 'a full bar', re: /\b(full (open )?bar|open bar|full cooler|premium|top-shelf|brown liquor|whiskey|bourbon|hired bartender)\b/ },
   { factor: 1, name: 'one added drink', re: /\b(add a|punch|grown section|cocktail|wine \+|signature)\b/ },
-  { dry: true, name: 'a dry party', re: /\b(dry|family-friendly|zero-proof|no alcohol|non-alcoholic|kids|light \/|pace-it)\b/,
+  { dry: true, name: 'a dry party', re: /\b(dry|family-friendly|zero-proof|no alcohol|non-alcoholic|kids|soft drinks only)\b/,
     unless: /\b(wine|beer|bar|spirits?|liquor|cocktails?|champagne|prosecco|bubbly|bottle)\b/ },
 ];
 /** The drinks tier a lowercased pick reads as, or null for the cited baseline. */
@@ -4821,21 +4849,47 @@ export function playbookFoodPlan(event, opts = {}) {
   // leave the spread + budget and the cost actually moves (the reported "changed drinks to
   // BYOB and nothing changed" gap). ICE stays: a host still supplies ice even when guests
   // bring drinks. One rule, every event type (any decision whose `blocks` names beverage).
-  // The beverage/bar decision (any decision whose `blocks` names beverage).
-  const _bevDecision = (playbook.decisions || []).find((d) =>
-    Array.isArray(d.blocks) && d.blocks.some((b) => /beverage/.test(String(b))));
-  const _bevPick = (_bevDecision ? (pickFor(_bevDecision.id) || '') : '').toLowerCase();
-  const _byob = /\b(byob|bring your own|guests bring|everyone brings)\b/.test(_bevPick);
+  // THE DRINKS CALL IS NAMED, NOT GUESSED (A1, 11/21/2026). This read the FIRST
+  // decision whose `blocks` mentioned beverage, and on ten playbooks that was the
+  // wrong one: Bachelor read `costsplit`, Juneteenth `red_table`, Gender Reveal
+  // `guestlist`, Get-Together `potluck` ("guests bring sides" read as BYOB), and
+  // Wedding, Fundraiser, Housewarming and Vow Renewal found nothing, so their
+  // Dry and Cash bar picks moved no dollar. Each playbook now tags its one drinks
+  // decision `drinksCall: true` (playbookContract holds the tag to one per type).
+  const _bevDecision = (playbook.decisions || []).find((d) => d && d.drinksCall === true) || null;
+  const _bevPickRaw = _bevDecision ? (pickFor(_bevDecision.id) || '') : '';
+  const _bevPick = String(_bevPickRaw).toLowerCase();
+  // "Beer only / BYOB" (Bachelor) names the beer the host buys, so it is not a
+  // BYOB pick here; its spirits lines leave by their own whenChoice.
+  const _byob = /\b(byob|bring your own|guests bring|everyone brings)\b/.test(_bevPick) && !/\bbeer only\b/.test(_bevPick);
+  // "BYOB + host provides mixers/soda": guests bring the alcohol, the host still
+  // buys what the pick names (the mixers and the soft drinks).
+  const _byobHostMixers = _byob && /\bhost provides\b/.test(_bevPick);
   // A DRY PICK DROPS THE BAR by the same rule (owner approval, 11/21/2026): the
   // lines that name alcohol or bar stock leave, by their item or their id (Client
   // Dinner's "A bottle brought for the table" is p_wine). Water, coffee, soda,
-  // ice and the zero-proof lines stay. A decision that authors its own
-  // costFactors is priced by them alone, so the word-tier never reads it.
+  // ice and the zero-proof lines stay. A pick that authors its own cost factor
+  // is priced by it alone, so the word-tier never reads it.
   const BAR_LINE_RE = /\b(beer|wine|spirits?|liquor|whiskey|bourbon|vodka|rum|tequila|gin|champagne|prosecco|bubbly|cocktails?|mixers?|bar|seltzer|alcohol)\b/i;
-  const _dryTier = (_bevPick && !(_bevDecision && _bevDecision.costFactors)) ? beverageTierFor(_bevPick) : null;
+  const _pickHasFactor = !!(_bevDecision && _bevDecision.costFactors && _bevDecision.costFactors[_bevPickRaw] != null);
+  const _dryTier = (_bevPick && !_pickHasFactor) ? beverageTierFor(_bevPick) : null;
   const _dry = !!(_dryTier && _dryTier.dry);
-  const isBarLine = (p) => BAR_LINE_RE.test(`${shortItem(p.item)} ${String(p.id || '').replace(/^p_/, '').replace(/_/g, ' ')}`);
-  const hostBuysIt = (p) => !(p.category === 'beverage' && !/\bice\b/i.test(p.item || '') && (_byob || (_dry && isBarLine(p))));
+  // A CASH BAR: the guests buy their own drinks, so the host buys no bar stock.
+  // The toast is the host's pour even then, so a toast line stays.
+  const _cashBar = !!(_dryTier && _dryTier.cash);
+  // A line that says it is alcohol-free is never bar stock, whatever else it
+  // names (Gender Reveal's "Mocktail / pink-or-blue punch mixers").
+  const ZERO_PROOF_LINE_RE = /\b(mocktails?|zero-proof|non-alcoholic|alcohol-free)\b/i;
+  const isBarLine = (p) => !ZERO_PROOF_LINE_RE.test(p.item || '') && BAR_LINE_RE.test(`${shortItem(p.item)} ${String(p.id || '').replace(/^p_/, '').replace(/_/g, ' ')}`);
+  const _isToast = (p) => /\btoast\b/i.test(`${p.item || ''} ${p.id || ''}`);
+  const _drinkLeaves = (p) => {
+    if (_byobHostMixers) return isBarLine(p) && !/\b(mixers?|soda)\b/i.test(p.item || '');
+    if (_byob) return true;
+    if (_dry) return isBarLine(p);
+    if (_cashBar) return isBarLine(p) && !_isToast(p);
+    return false;
+  };
+  const hostBuysIt = (p) => !(p.category === 'beverage' && !/\bice\b/i.test(p.item || '') && _drinkLeaves(p));
 
   // Food-approach → budget. When the host chose a CATERER (vs cooking), they aren't buying the
   // homemade FOOD lines — the caterer brings them — so those drop here (mirrors the BYOB rule
@@ -4879,7 +4933,12 @@ export function playbookFoodPlan(event, opts = {}) {
     if (/famil(y|ies)/i.test(pick)) return 'The family';
     return 'The community';
   })();
-  const _catVendor = _usesCaterer ? (playbook.vendors || []).find((v) => v && /cater/i.test(String(v.category)) && /guest/i.test(String(v.costUnit || ''))) : null;
+  // A vendor can name itself the meal's per-guest rate (`cateringRate: true`):
+  // Thanksgiving's "Prepared holiday dinner" is not called a caterer, so the
+  // word match missed it and its ordered dinner priced at the [15, 35] fallback
+  // below, never at its own (now cited) $10-25 (11/21/2026).
+  const _catVendor = _usesCaterer ? ((playbook.vendors || []).find((v) => v && v.cateringRate === true && /guest/i.test(String(v.costUnit || '')))
+    || (playbook.vendors || []).find((v) => v && /cater/i.test(String(v.category)) && /guest/i.test(String(v.costUnit || '')))) : null;
   const _cateringRate = _catVendor && Array.isArray(_catVendor.costRange) ? _catVendor.costRange : (_usesCaterer ? [15, 35] : null);
 
   // GENERAL choice→cost mechanism (single source of truth): any playbook decision can declare, in the
@@ -5144,6 +5203,9 @@ export function playbookFoodPlan(event, opts = {}) {
     ? Number(_crabOrder.crabEatingHeadcount) : null;
   const isShellfish = (name) => /(crab|crawfish|crayfish|shrimp|prawn|lobster|oyster|clam|mussel|shellfish)/i.test(String(name || ''));
 
+  // A line's total never falls below the vendor's authored minimum spend.
+  const _withMinimum = (p, end, total, ppf) => (Array.isArray(p.minimumSpend)
+    ? Math.max(total, Math.round(Number(p.minimumSpend[end]) * ppf)) : total);
   // The grounded shopping list, scaled by guest count, grouped + costed.
   const list = playbook.purchases
     .filter((p) => (p.category === 'food' || p.category === 'beverage') && purchaseShown(p) && regionShown(p) && hostBuysIt(p) && hostCooksIt(p))
@@ -5306,7 +5368,11 @@ export function playbookFoodPlan(event, opts = {}) {
         // multiplying two independent uncertainties (attendance × price) into one
         // misleadingly wide range. The real attendance spread is disclosed on its
         // own (bandLow/bandHigh below), not folded into the dollar figure.
-        low: Math.round(units * uLow * ppf), high: Math.round(units * uHigh * ppf),
+        low: _withMinimum(p, 0, Math.round(units * uLow * ppf), ppf), high: _withMinimum(p, 1, Math.round(units * uHigh * ppf), ppf),
+        // A vendor's MINIMUM SPEND (Day Party's food truck, 11/21/2026): below it the
+        // truck bills the minimum, not the per-guest rate, so the line says which
+        // set its price. Absent on every other line.
+        ...(Array.isArray(p.minimumSpend) ? { minimumSpend: p.minimumSpend, minimumBinds: Math.round(units * uLow * ppf) < Math.round(p.minimumSpend[0] * ppf) } : {}),
         // 60I — the per-unit math behind the line total ("15 lbs × $4–$8/lb"), so a
         // host understands the price, and sees the regional (pf) adjustment in it.
         // When the guardrail converted the line, the per-unit basis is the buyable

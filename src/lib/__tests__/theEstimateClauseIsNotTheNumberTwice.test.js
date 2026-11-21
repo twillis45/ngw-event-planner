@@ -46,7 +46,9 @@ describe('estimates and commitments have different truth states', () => {
   });
 
   test('a bought estimated item and a manual receipt produce the partial estimate case', () => {
-    const ev = { ...evFor('Reunion'), foodGot: { p_protein: true }, budget: [{ category: 'Venue', budgeted: 400, actual: 400 }] };
+    // p_condiments, not p_protein (11/21/2026): under Reunion's default potluck the
+    // households bring the protein, so it is not the host's to buy.
+    const ev = { ...evFor('Reunion'), foodGot: { p_condiments: true }, budget: [{ category: 'Venue', budgeted: 400, actual: 400 }] };
     const s = hostSpending(ev);
     expect(s.spent).toBeGreaterThan(400);
     expect(s.committed).toBe(s.spent);

@@ -168,8 +168,10 @@ describe('food is never priced above the whole event it is part of', () => {
     // an event where food is a third of the spend.
     // Was "> 140" when the drinks tier priced a brown-liquor bar at ×1.6; with
     // that uncited factor gone (owner ruling, 11/21/2026) it is ~$126 a head,
-    // still about double the card party's own ceiling.
+    // still about double the card party's own ceiling. ~$91 a head on
+    // 11/21/2026, when the default ("guests fill in sides") handed its sides to
+    // the guests instead of pricing them at host cost: still 1.4x the ceiling.
     const fp = playbookFoodPlan(EV('Card Party'));
-    expect(Math.round(fp.perGuestHigh / 0.35)).toBeGreaterThan(getPlaybook('Card Party').meta.perGuestCost.high * 1.9);
+    expect(Math.round(fp.perGuestHigh / 0.35)).toBeGreaterThan(getPlaybook('Card Party').meta.perGuestCost.high * 1.4);
   });
 });

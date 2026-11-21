@@ -127,7 +127,15 @@ describe('what the money screen can and cannot see', () => {
     // Birthday's beer/wine line under its old "No alcohol" default; the owner then made "Beer + wine"
     // Birthday's default, so under the default that line is bought again and is not held out.
     expect(gated).not.toContain('Birthday · p_alcohol');
-    expect(gated.length).toBe(37);
+    // +23 on 11/21/2026 (pricing batch): the cost factors became line rules, so
+    // a pick now shows its own lines and the default holds the rest out: Watch
+    // Party's chili and pizza (one menu at a time) and its dry soda and water;
+    // Get-Together's and Low Country's dry soda/water/tea, seafood boil, batch
+    // cocktail and add-ins; Bachelor's food at home; Day Party's food truck;
+    // Halloween's batch cocktail; Juneteenth's strawberries; Crawfish boiled-to-
+    // order, kids' drinks and iced tea; Fish Fry's second starch and grown
+    // section; Friendsgiving's host wine; NYE's all-cider toast; The Cookout's punch.
+    expect(gated.length).toBe(60);
   });
 
   test('THE RED-PROOF, IN THE TEST: perturbing decor moves nothing, food moves a lot', () => {

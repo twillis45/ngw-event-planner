@@ -194,6 +194,8 @@ export function guestItinerary(event, getPlaybook) {
     if (!g) return true;
     // An ARRAY means AND, matching choiceShown (2026-09-18).
     if (Array.isArray(g)) return g.every((one) => agendaShown({ whenChoice: one }));
+    // `{any:[...]}` means OR, matching choiceShown (11/21/2026).
+    if (Array.isArray(g.any)) return g.any.some((one) => agendaShown({ whenChoice: one }));
     if (!g.id) return true;
     const picks = (ev.foodChoices && typeof ev.foodChoices === 'object') ? ev.foodChoices : {};
     const dec = pb && Array.isArray(pb.decisions) ? pb.decisions.find((d) => d && d.id === g.id) : null;

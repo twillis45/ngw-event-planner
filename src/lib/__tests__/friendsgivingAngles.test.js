@@ -192,13 +192,18 @@ describe('angle 6 — money and drinks', () => {
     expect(taskIds(ev({ cost_split: 'Split shared costs evenly afterward' }))).toContain('t_settle');
   });
   test('covering all the drinks costs the host more than bring-a-bottle', () => {
-    const line = (e) => playbookFoodPlan(e).list.find((i) => i.id === 'p_drinks');
-    const base = line(ev());
-    const all = line(ev({ drinks: 'Host covers all the drinks' }));
-    expect(all.high).toBeGreaterThan(base.high);
-    // The default's "alcohol-free" must not trip the engine's dry-party discount
-    // (it once said "zero-proof", which the beverage rule reads as x0.6).
-    expect(all.high / base.high).toBeCloseTo(3, 0);
+    // The wine is its own line now (11/21/2026): the ×3 on the alcohol-free line
+    // could not represent wine. The alcohol-free line is unchanged by the pick.
+    const plan = (e) => playbookFoodPlan(e).list;
+    const line = (e, id) => plan(e).find((i) => i.id === id);
+    const drinks = (e) => plan(e).filter((i) => i.cat === 'beverage').reduce((n, i) => n + i.high, 0);
+    const all = ev({ drinks: 'Host covers all the drinks' });
+    expect(drinks(all)).toBeGreaterThan(drinks(ev()));
+    expect(line(ev(), 'p_wine_host')).toBeUndefined();
+    expect(line(all, 'p_wine_host').costFactorApplied).toBeNull();
+    // The default's "alcohol-free" must not trip the engine's dry-party rule
+    // (it once said "zero-proof", which the beverage rule reads as dry).
+    expect(line(all, 'p_drinks').high).toBe(line(ev(), 'p_drinks').high);
   });
 });
 

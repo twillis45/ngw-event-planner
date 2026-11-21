@@ -38,7 +38,12 @@
 // These lines now stay listed (the host still coordinates them) at $0 to the
 // host under that pick, the same rule Friendsgiving's potluck uses. Rolls and
 // the grazing snacks are not named by the split, so they stay the host's.
-const GUESTS_BRING_SIDES = { id: 'hosting_model', in: ['Host cooks the turkey and core dishes, guests bring sides and desserts'] };
+// A FULL POTLUCK HANDS THE GUESTS THE SAME DISHES (A3, 11/21/2026). It was left out
+// of this set, so under it the sides came back at full price and its ×0.5 still
+// totaled above the split default. The ×1.3 "host cooks the whole meal" and the
+// dead ×1.9 "ordered" factor are gone too: the line rule already restores the
+// sides when the host cooks them, and an ordered dinner is the vendor's rate.
+const GUESTS_BRING_SIDES = { id: 'hosting_model', in: ['Host cooks the turkey and core dishes, guests bring sides and desserts', 'Full potluck — Friendsgiving style, host assigns dishes'] };
 
 const thanksgivingHosting = {
   type: 'Thanksgiving Hosting',
@@ -86,13 +91,12 @@ const thanksgivingHosting = {
     },
     {
       id: 'hosting_model',
+      costViaLines: true,
       label: 'Are you cooking the whole meal, or is it a potluck?',
       options: ['Host cooks the whole meal', 'Host cooks the turkey and core dishes, guests bring sides and desserts', 'Full potluck — Friendsgiving style, host assigns dishes', 'Ordered — a market or restaurant cooks, host reheats and serves'],
       default: 'Host cooks the turkey and core dishes, guests bring sides and desserts',
       when: 'T-21d',
       blocks: ['food'],
-      costFactors: { 'Host cooks the whole meal': 1.3, 'Full potluck — Friendsgiving style, host assigns dishes': 0.5, 'Ordered — a market or restaurant cooks, host reheats and serves': 1.9 },
-      costFactorProvenance: { tier: 'synthesized', confidence: 'low', verificationStatus: 'synthesized', note: 'Ratios mirror The Cookout\'s researched host-cooks-all / split / potluck spread; the ordered-dinner multiplier reflects prepared-holiday-dinner retail versus grocery ingredients and is a judgment.', claim: 'Cooking everything adds roughly 30% over the split model; a full potluck halves the host\'s food cost; a fully ordered dinner roughly doubles it', sufficientWhen: 'One prepared Thanksgiving dinner package price and an ingredient-cost basket at the same headcount confirm the potluck save and the ordered-dinner premium' },
       affects: ['p_turkey', 'p_stuffing', 'p_potatoes', 'p_cranberry', 'p_green_beans', 'p_sweet_potatoes', 'p_mac', 'p_corn', 'p_roast_veg', 'p_pies'],
       weight: 'high', reversibility: 'costly', emotionalWeight: 'med', difmCapable: 'needs-host',
       priorityBasis: { rationale: 'It sets the shopping list, the oven plan, and who\'s trusted with which dish; assignments are personal and awkward to unwind late, and only you know your people.', tier: 'reasoned' },
@@ -241,7 +245,7 @@ const thanksgivingHosting = {
 
   vendors: [
     { category: 'Butcher / turkey order', required: false, altToDIY: 'A frozen supermarket bird, ordered by nobody, thawed on your own schedule — cheaper and it works, but start the thaw five days out', when: 'T-21d', costRange: [30, 120], costUnit: 'flat' },
-    { category: 'Prepared holiday dinner (market or restaurant)', required: false, altToDIY: 'Cook it yourself for a third of the price — the prepared dinner buys back the whole cooking day, not just the bird', when: 'T-21d', costRange: [18, 40], costUnit: 'per guest' },
+    { category: 'Prepared holiday dinner (market or restaurant)', cateringRate: true, required: false, altToDIY: 'Cook it yourself for a fraction of the price — the prepared dinner buys back the whole cooking day, not just the bird', when: 'T-21d', costRange: [10, 25], costUnit: 'per guest', costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['thanksgiving-prepared-fox5-2026', 'thanksgiving-prepared-grocerydive-2026'], lastVerified: '2026-11-21', claim: 'Prepared Thanksgiving dinners 2026 at posted prices: Sam\'s Club about $10.00 a guest, Heinen\'s $16.00, Bob Evans $17.25, Cracker Barrel $19.00-23.75, Costco $25.00. The uncited $18-40 it replaces sat above every mass-chain dinner; only a Maggiano\'s carryout bundle ($42-55 a guest) clears $25.', sufficientWhen: 'A local restaurant carryout price beside the national chains would say whether a higher ceiling belongs here.' } },
     { category: 'House cleaning (before or after)', required: false, altToDIY: 'A family reset the night before and the dishwasher run in shifts — the paid clean after a full house is a sanity purchase', when: 'T-7d', costRange: [100, 250], costUnit: 'flat' },
   ],
 

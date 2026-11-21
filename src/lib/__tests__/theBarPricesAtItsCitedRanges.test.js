@@ -71,3 +71,15 @@ test('no pick prices above its own playbook\'s full bar', () => {
   }
 });
 
+
+// A CASH BAR BUYS NO BAR STOCK (A1, 11/21/2026). Wedding's "Cash bar" read
+// nothing, because the engine never found Wedding's drinks call. The guests buy
+// their drinks; the toast is still the host's pour, at its own cited band.
+test('a cash bar keeps only the toast, priced at its cited range', () => {
+  expect(beverageTierFor('cash bar')).toEqual(expect.objectContaining({ name: 'a cash bar' }));
+  expect(beverageTierFor('drink tickets / cash bar')).not.toEqual(expect.objectContaining({ name: 'a cash bar' }));
+  const fp = plan('Wedding', 100, { bar: 'Cash bar' });
+  const bar = fp.list.filter((l) => l.cat === 'beverage' && !l.skipped);
+  expect(bar.map((l) => l.id)).toEqual(['p_toast_champagne']);
+  expect([bar[0].perUnitLow, bar[0].perUnitHigh, bar[0].costFactorApplied]).toEqual([...authored('Wedding', 'p_toast_champagne').unitCostRange, null]);
+});

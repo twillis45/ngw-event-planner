@@ -104,9 +104,19 @@ describe('Wave 0 reaches the host', () => {
 
   test('EVERY governed line reaches a host — no invisible grounding', () => {
     // The general property the above is one instance of.
+    // A line gated on a pick reaches the host who makes that pick (11/21/2026:
+    // Watch Party's chili and pizza lines show for their own menu, not beside
+    // the wings), so a gated line is looked for under the pick that shows it.
+    const reaches = (type, pid) => {
+      if (rowFor(type, pid)) return true;
+      const p = (getPlaybook(type).purchases || []).find((x) => x.id === pid);
+      const g = p && p.whenChoice && !Array.isArray(p.whenChoice) ? p.whenChoice : null;
+      return !!(g && (g.in || []).some((pick) => ((playbookFoodPlan({ ...EVENT(type), foodChoices: { [g.id]: pick } }, {}) || {}).list || [])
+        .some((r) => r && r.id === pid)));
+    };
     for (const e of (snapshot.entries || [])) {
       const pid = String(e.fieldPath).split('.')[0];
-      expect(rowFor(e.assetId, pid)).toBeTruthy();
+      expect([e.assetId, pid, reaches(e.assetId, pid)]).toEqual([e.assetId, pid, true]);
     }
   });
 
