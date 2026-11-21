@@ -149,6 +149,9 @@ export function resolveRoute(route) {
   // A drafted note (owner pick, 11/21/2026): the draft sheet, opened on the
   // named builder. Today one: the Group Trip's trip details.
   if (ff === 'draft-trip-details') return { kind: 'draft', focus: 'trip-details' };
+  // The reconfirm sweep, opened for every booking (owner pick, 11/21/2026):
+  // the stay's row first, then each booked vendor.
+  if (ff === 'reconfirm-sweep') return { kind: 'sweep', focus: 'bookings' };
   if (route.tab === 'Planning Tasks' || route.tab === 'Timeline' || route.tab === 'Planning') {
     return { kind: 'tasks', focus: route.taskId || null };
   }

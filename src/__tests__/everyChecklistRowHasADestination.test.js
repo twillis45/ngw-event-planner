@@ -18,11 +18,12 @@ const SHELL_KINDS = new Set(['air', 'budget', 'costshare', 'crabs', 'date', 'dec
   'lodging', 'messages', 'rain', 'risks', 'seating', 'space', 'tasks', 'vendors', 'venue', 'stage:day', 'stage:plan',
   // 11/21/2026: the album rows open After on the recap's album link; the trip
   // details open their draft.
-  'stage:after', 'draft']);
-// 11/21/2026: 124 → 121. Halloween's and NYE's "Share the … photos in one album
+  'stage:after', 'draft', 'sweep']);
+// 11/21/2026: 124 → 120. Halloween's and NYE's "Share the … photos in one album
 // link" now open After on the recap's "Photo album link" field; Group Trip's
-// "Send everyone the trip details" opens its draft.
-const NO_DESTINATION_CEILING = 121;
+// "Send everyone the trip details" opens its draft, and "Confirm every
+// reservation" opens the reconfirm sweep as "Confirm every booking".
+const NO_DESTINATION_CEILING = 120;
 
 const ev = (type) => ({ id: 'dest', type, date: '2026-12-31', guestEstimate: 20, guestMode: 'count', guestCountSource: 'host',
   venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX' });

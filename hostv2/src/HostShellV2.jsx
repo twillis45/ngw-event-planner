@@ -234,7 +234,7 @@ import {
   getHostVendorChallenges, getHostVendorReadiness, getVendorNextAction,
   getHostHighestRiskVendor,
 } from '@app/lib/vendorIntelligence';
-import { isVendorBooked, isVendorConfirmed, vendorDepositOwed } from '@app/lib/workstreams';
+import { isVendorBooked, isVendorConfirmed, vendorDepositOwed, isReconfirmable } from '@app/lib/workstreams';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { isPlausibleCityText, parseVenueLocation, proposeTownFromHeard } from '@app/lib/cityText';
 import { foodShopItems } from '@app/lib/foodShopItems';
@@ -4281,7 +4281,9 @@ export default function HostShellV2() {
   // answered. Informal helpers (a friend bringing the cooler) are excluded —
   // same host-appropriate rule the registry raiser applies (surfaceRegistry
   // vendor-reconfirm); the banner counting them was the last divergence.
-  const reconfirmables = useMemo(() => (event.vendors || []).filter(v => v && String(v.name || '').trim() && !v.isInformal), [event]);
+  // BOOKED ONLY (11/21/2026): the sweep drafted "just confirming we're all set"
+  // to vendors still at "Inquired". The banner and the sheet both read this list.
+  const reconfirmables = useMemo(() => (event.vendors || []).filter(isReconfirmable), [event]);
   // GROUNDED ACTION LOOP (the conflict mapper): the SAME cross-vendor conflicts
   // the engine only ever counted, turned into per-item ActionItems the elegant
   // hero renders as the grounded action itself (ask · detail · why · the two
@@ -6682,6 +6684,9 @@ export default function HostShellV2() {
     if (r.kind === 'guests' && r.focus === 'nudge') { openNudge(); return true; }
     // A drafted note (owner pick, 11/21/2026): the trip details open the draft
     // sheet with its handoffs, and "Post to everyone's invite" where it can.
+    // The reconfirm sweep for every booking (owner pick, 11/21/2026): its notes
+    // are built at render, so they are ready the moment it opens.
+    if (r.kind === 'sweep') { setSheet({ kind: 'sweep', focus: r.focus || null }); runSweepDrafts(); return true; }
     if (r.kind === 'draft') {
       if (r.focus !== 'trip-details') return false;
       openDraft('The trip details', draftTripDetails(event, profile), null, { postsToInvite: true });
@@ -15749,7 +15754,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -20374,11 +20379,38 @@ export default function HostShellV2() {
                     eyebrow="Answered so far"
                     star={`${reconfirmedN} of ${total}`}
                     tone={total > 0 && reconfirmedN === total ? 'ok' : undefined}
-                    sub={reconfirmedN === total
-                      ? 'That’s everyone — the day is set.'
-                      : 'Each note has their arrival time and your address. Send it from your own thread; nothing goes out by itself.'}
+                    sub={total === 0
+                      ? 'Nothing booked to reconfirm yet.'
+                      : reconfirmedN === total
+                        ? 'That’s everyone — the day is set.'
+                        // Says only what draftVendorReconfirm writes (11/21/2026): the
+                        // date always; an arrival time and the place when on file.
+                        : 'Each note has your date, plus their arrival time and your place when they’re on file. Send it from your own thread; nothing goes out by itself.'}
                   />
                   <div className="bar" aria-hidden style={{ marginBottom: 'var(--sp-3)' }}><i style={{ '--fill': pct / 100, background: 'var(--ok)' }} /></div>
+                  {/* THE STAY COMES FIRST (owner pick "A: Reconfirm each booking",
+                      11/21/2026): opened from "Confirm every reservation", the
+                      sweep leads with the place to stay, its booked state from
+                      lodgingIsHeld, and the way to it. The stay is confirmed in
+                      Where everyone stays; this row does not attest it. */}
+                  {sheet.focus === 'bookings' && (() => {
+                    const stayName = String(((event.lodging && typeof event.lodging === 'object') ? event.lodging : {}).hotelName || '').trim();
+                    const held = lodgingIsHeld(event);
+                    return (
+                      <div className={'sweep-row ' + (held ? 'answered' : 'waiting')} data-sweep-stay>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-2)', alignItems: 'flex-start' }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div className="f-name">{stayName || 'The place to stay'}</div>
+                            <div className="sv-meta">Where everyone stays</div>
+                          </div>
+                          <span className="sweep-state">{held ? 'booked' : stayName ? 'not booked yet' : 'nothing on file'}</span>
+                        </div>
+                        <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                          <button className="mini" onClick={() => goToLodgingCockpit()}>Open the stay</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {reconfirmables.map(v => {
                     const st = v.reconfirmed72 ? 'answered' : (sweepState[v.id] || 'waiting');
                     const d = draftVendorReconfirm(event, v, profile);

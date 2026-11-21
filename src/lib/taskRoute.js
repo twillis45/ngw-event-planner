@@ -195,6 +195,10 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // 11/21/2026): Group Trip's "Send everyone the trip details…" had no button.
   // It opens the draft sheet on doItForMe.draftTripDetails, built from the
   // dates, the booked stay, the booked plans and the split.
+  // CONFIRMING EVERY BOOKING IS THE RECONFIRM SWEEP (owner pick "A: Reconfirm
+  // each booking", 11/21/2026): the stay and every booked vendor, one sheet.
+  if (/^confirm every (?:reservation|booking)\b/.test(t))
+    return { label: 'Reconfirm each booking', route: { focusField: 'reconfirm-sweep' } };
   if (/^(?:send|share)\b[^.;:]{0,20}\btrip details\b/.test(t))
     return { label: 'Draft the trip details', route: { focusField: 'draft-trip-details' } };
   if (/getting[- ]here|travel (info|details|brief|plan)\b|how to get (here|there)|arrival info/.test(t)

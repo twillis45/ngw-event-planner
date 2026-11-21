@@ -89,6 +89,16 @@ export function isVendorBooked(vendor) {
   return !!vendor && BOOKED_STATUSES.has(vendor.status);
 }
 
+// ── WHO GETS A RECONFIRM (11/21/2026) ────────────────────────────────────────
+// A reconfirm says "just confirming we're all set", so it goes only to a vendor
+// who is BOOKED. The sweep sheet, its 0–3-days-out banner and the board's
+// vendor-reconfirm raise all took every named vendor, so a brunch still at
+// "Inquired" got that note (owner's Group Trip review). Informal helpers (a
+// friend bringing the cooler) are never put through a paid-vendor reconfirm.
+export function isReconfirmable(vendor) {
+  return !!vendor && !!String(vendor.name || '').trim() && !vendor.isInformal && isVendorBooked(vendor);
+}
+
 // The STRICT "fully locked in" set — the final rung of the host's status ladder
 // (Confirmed/"Locked in"; legacy Booked/Paid are equivalents). DISTINCT from
 // isVendorBooked, which also counts Deposit Paid / Contracted as "secured enough
