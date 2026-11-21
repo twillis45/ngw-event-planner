@@ -6717,6 +6717,8 @@ export default function HostShellV2() {
   // until they change it. Deterministic re-shapes only (no fake AI).
   const [draftTone, setDraftTone] = useState(() => { try { return localStorage.getItem('ngw-hostv2-voice') || 'as-written'; } catch { return 'as-written'; } });
   const [draftBody, setDraftBody] = useState(null); // non-null = host's own edit
+  // The invite or nudge block holds the draft sheet's one lit button (11/21/2026).
+  const [draftListLead, setDraftListLead] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false); // slice (b): one send at a time
   // One checkout at a time: a second tap on a slow network opened a second
   // Stripe session (Nielsen re-run N7, 2026-11-02).
@@ -21094,6 +21096,7 @@ export default function HostShellV2() {
               };
               const sendEntry = sendStateFor(event.sendLedger, sheet.title);
               const sendChip = sendStateLine(sendEntry, Date.now());
+              const canShareDraft = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
               // Whether this draft can be posted on every guest's invite, or
               // the one reason it can't (owner pick, 11/21/2026).
               const invitePost = !sheet.postsToInvite ? null
@@ -21134,6 +21137,12 @@ export default function HostShellV2() {
               // an address (it would 401 or fail), but the host can be told
               // WHY, and handed the one field that fixes it. The field already
               // existed on the vendor card; nothing pointed at it.
+              // The one lit button, by state: the app's own send first (the post,
+              // the vendor email, the list's email or its running text queue),
+              // then Share…, then the helper queue's "Next".
+              const appLead = !!(invitePost && invitePost.ok) || !!emailTarget
+                || (!!(sheet.sendsInvite || sheet.sendsNudge) && draftListLead);
+              const shareLit = canShareDraft && !appLead;
               const missingVendorEmail = (() => {
                 if (emailTarget || !sheet.vendorId) return null;
                 if (!isCommApiConfigured() || !session) return null;   // not a send build; say nothing
@@ -21393,10 +21402,14 @@ export default function HostShellV2() {
                   ? <PostToEveryone eventId={event.id} body={shownDraft()} onPosted={() => recordSend('invite')} />
                   : <p className="grounding" data-post-invite-why style={{ marginTop: 'var(--sp-3)' }}>{invitePost.why}</p>)}
                 {/* Real handoffs: the native share sheet (iMessage/WhatsApp/etc.),
-                    plus direct sms: and wa.me deep links — no fake "sent" states. */}
+                    plus direct sms: and wa.me deep links — no fake "sent" states.
+                    ONE LIT BUTTON (11/21/2026, UX_05): a send the app makes
+                    itself outranks a handoff. "Share…" is lit only when nothing
+                    else is: not beside "Post to everyone's invite", "Send it to
+                    …", or the invite/nudge block's email or text step. */}
                 <div className="actions-row" style={{ marginTop: 14 }}>
-                  {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
-                    <button className={invitePost && invitePost.ok ? 'mini' : 'cta'}
+                  {canShareDraft && (
+                    <button className={shareLit ? 'cta' : 'mini'}
                       onClick={() => { navigator.share({ title: sheet.title || 'From your plan', text: shownDraft() }).then(() => { recordSend('share'); }).catch(() => { /* declined — records NOTHING, by ruling */ }); }}>
                       Share…
                     </button>
@@ -21425,13 +21438,13 @@ export default function HostShellV2() {
                 {sheet.sendsInvite && (
                   <InviteToTheList guests={event.guests} draft={shownDraft()}
                     canEmail={isCommApiConfigured() && !!session}
-                    sendOne={sendInviteTo} onReached={reachInvite} />
+                    sendOne={sendInviteTo} onReached={reachInvite} onLead={setDraftListLead} />
                 )}
                 {sheet.sendsNudge && (
                   <NudgeTheList event={event}
                     textBody={nudgeTextBody(inviteSubjectAndBody(shownDraft(), (draftRsvpChase(event, profile) || {}).subject).body)}
                     canEmail={isCommApiConfigured() && !!session}
-                    sendOne={sendNudgeTo} onReached={reachNudge} />
+                    sendOne={sendNudgeTo} onReached={reachNudge} onLead={setDraftListLead} />
                 )}
                 {/* "Message all helpers": each person still gets reviewed and
                     sent individually through the real handoffs above — this
@@ -21439,7 +21452,7 @@ export default function HostShellV2() {
                     button, not re-opening the list each time. */}
                 {sheet.queue && sheet.queue.length > 0 && (
                   <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                    <button className="cta" onClick={openNextInQueue}>
+                    <button className={appLead || shareLit ? 'mini' : 'cta'} onClick={openNextInQueue}>
                       Next: {sheet.queue[0].name} ({sheet.queue.length} left) →
                     </button>
                   </div>

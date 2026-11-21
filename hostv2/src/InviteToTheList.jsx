@@ -11,10 +11,15 @@
 // text to individual guests"): every guest who has not declined, with Email
 // and Text wherever they have that contact, and how they were already invited.
 // The rules (who, how, nobody twice) are in lib/inviteBatch.js.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { inviteRecipients, inviteContacts, sendInviteEmails, smsHref } from '@app/lib/inviteBatch';
 
-export default function InviteToTheList({ guests, draft, canEmail, sendOne, onReached }) {
+// ONE LIT BUTTON (11/21/2026, UX_05 "maximum ONE primary"): this block's lit
+// control is the step it is on. Email it to the list (the send the app makes
+// itself), or, while the text queue runs, "Text {name}"; then the email step
+// goes quiet. `onLead(true)` tells the sheet this block holds its one primary,
+// so the sheet's own "Share…" stands down to a quiet button.
+export default function InviteToTheList({ guests, draft, canEmail, sendOne, onReached, onLead }) {
   const r = inviteRecipients(guests);
   const [step, setStep] = useState('idle');          // idle | confirm | sending | done
   const [progress, setProgress] = useState([0, 0]);
@@ -26,6 +31,10 @@ export default function InviteToTheList({ guests, draft, canEmail, sendOne, onRe
   const rows = inviteContacts(guests);
 
   const emailCount = r.email.length;
+  const queueOn = queueAt != null && queueAt < queue.length;
+  const emailShown = !!rows.length && canEmail && emailCount > 0 && (step === 'idle' || step === 'confirm');
+  const lead = queueOn || emailShown;
+  useEffect(() => { if (onLead) onLead(lead); return () => { if (onLead) onLead(false); }; }, [lead]); // eslint-disable-line react-hooks/exhaustive-deps
   // No guest list to speak of: say nothing.
   if (!rows.length) return null;
   const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
@@ -68,7 +77,7 @@ export default function InviteToTheList({ guests, draft, canEmail, sendOne, onRe
       {/* ── EMAIL ─────────────────────────────────────────────────────────── */}
       {canEmail && emailCount > 0 && step === 'idle' && (
         <div className="actions-row">
-          <button className="cta" data-invite-email onClick={() => setStep('confirm')}>
+          <button className={queueOn ? 'mini' : 'cta'} data-invite-email onClick={() => setStep('confirm')}>
             Email it to {plural(emailCount, 'guest', 'guests')}
           </button>
         </div>
@@ -79,7 +88,7 @@ export default function InviteToTheList({ guests, draft, canEmail, sendOne, onRe
             Each guest gets their own email with the words above. Nobody sees anyone else’s address, and replies come to you.
           </p>
           <div className="actions-row">
-            <button className="cta" data-invite-email-go onClick={run}>Send {plural(emailCount, 'email', 'emails')}</button>
+            <button className={queueOn ? 'mini' : 'cta'} data-invite-email-go onClick={run}>Send {plural(emailCount, 'email', 'emails')}</button>
             <button className="mini" onClick={() => setStep('idle')}>Not yet</button>
           </div>
         </div>

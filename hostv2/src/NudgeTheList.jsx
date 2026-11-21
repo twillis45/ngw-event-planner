@@ -8,14 +8,19 @@
 // TEXT: guests with only a phone, one prefilled text at a time. The app does
 // not send texts; the host's tap on "Text …" is recorded as the host's word.
 // Who, who is skipped, and what a row says afterwards: lib/replyNudge.js.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { sendInviteEmails, smsHref } from '@app/lib/inviteBatch';
 import { nudgeRecipients, nudgeCount, NUDGE_GAP_DAYS } from '@app/lib/replyNudge';
 import { trackNudgeRun, trackNudgeText } from '@app/lib/flowAnalytics';
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
-export default function NudgeTheList({ event, textBody, canEmail, sendOne, onReached }) {
+// ONE LIT BUTTON (11/21/2026, UX_05 "maximum ONE primary"): this block's lit
+// control is the step it is on. Email the nudge (the send the app makes
+// itself), or, while the text queue runs, "Text {name}"; then the email step
+// goes quiet. `onLead(true)` tells the sheet this block holds its one primary,
+// so the sheet's own "Share…" stands down to a quiet button.
+export default function NudgeTheList({ event, textBody, canEmail, sendOne, onReached, onLead }) {
   // Who it goes to is fixed when the sheet opens: the run and the queue work
   // through that list, and the counts above them do not shift as each guest's
   // nudge is recorded (a guest just emailed is not "skipped").
@@ -28,6 +33,10 @@ export default function NudgeTheList({ event, textBody, canEmail, sendOne, onRea
 
   const emailCount = r.email.length;
   const n = nudgeCount(r);
+  const queueOn = queueAt != null && queueAt < queue.length;
+  const emailShown = canEmail && emailCount > 0 && (step === 'idle' || step === 'confirm');
+  const lead = queueOn || emailShown;
+  useEffect(() => { if (onLead) onLead(lead); return () => { if (onLead) onLead(false); }; }, [lead]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const run = async () => {
     setStep('sending');
@@ -58,7 +67,7 @@ export default function NudgeTheList({ event, textBody, canEmail, sendOne, onRea
       {/* ── EMAIL ─────────────────────────────────────────────────────────── */}
       {canEmail && emailCount > 0 && step === 'idle' && (
         <div className="actions-row">
-          <button className="cta" data-nudge-email onClick={() => setStep('confirm')}>
+          <button className={queueOn ? 'mini' : 'cta'} data-nudge-email onClick={() => setStep('confirm')}>
             Email the nudge to {plural(emailCount, 'guest', 'guests')}
           </button>
         </div>
@@ -69,7 +78,7 @@ export default function NudgeTheList({ event, textBody, canEmail, sendOne, onRea
             Each guest gets their own email with the words above, from the app. Nobody sees anyone else’s address, and replies come to you.
           </p>
           <div className="actions-row">
-            <button className="cta" data-nudge-email-go onClick={run}>Send {plural(emailCount, 'email', 'emails')}</button>
+            <button className={queueOn ? 'mini' : 'cta'} data-nudge-email-go onClick={run}>Send {plural(emailCount, 'email', 'emails')}</button>
             <button className="mini" onClick={() => setStep('idle')}>Not yet</button>
           </div>
         </div>
