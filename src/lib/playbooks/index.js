@@ -17,7 +17,7 @@ import { cashBarDecisionsFor, cashBarKeeps, aliasedChoices } from './cashBarCove
 import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
 import { matchGuestIndexByName } from '../guestMerge';
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
-import { spanNights } from '../dates';
+import { spanNights, spanEnd } from '../dates';
 import { aroundMeals, celebrationAppliesWith, DINNER_GROUP, DINNER_OWN_STEPS } from '../tripMeals';
 import { attendanceAdjustment } from '../hostIntel';
 import { geoItemForPurchase } from '../knowledge/geoItemMap';
@@ -3969,6 +3969,11 @@ export function playbookDecisionBoard(event, asOf, profile) {
   const dte = daysToEvent(event.date, asOf); // null when no date
   const open = [];
   const locked = [];
+  // A CALL IS A PLANNING CALL (audit 2 lane C P0-5): the day after the wedding,
+  // Calls to make still read "7 open" under "Nothing needs you now". Once the
+  // LAST day has passed there is nothing left to decide; the rows that were
+  // open are dropped, not deferred, and the settled ones stay as the record.
+  const afterTheDay = (() => { const d = daysToEvent(spanEnd(event), asOf); return d != null && d < 0; })();
 
   // ── Wave-2b · HORIZON AWARENESS (wire workflowCompression into the board) ──────
   // The board's order/partition must change with the runway, not stay byte-identical at
@@ -4523,8 +4528,8 @@ export function playbookDecisionBoard(event, asOf, profile) {
   // HORIZON PARTITION — deferred ("comes up closer") vs the active board. This is the
   // genuine order/partition change vs Wave-2a: at 90 days out a T-5d store-run lands in
   // `deferred`; at 3 days out the same decision is overdue and leads `open`.
-  const deferred = open.filter((r) => r.horizon === 'later');
-  const active = open.filter((r) => r.horizon !== 'later');
+  const deferred = afterTheDay ? [] : open.filter((r) => r.horizon === 'later');
+  const active = afterTheDay ? [] : open.filter((r) => r.horizon !== 'later');
   const byScore = (a, b) => (b.priorityScore - a.priorityScore)
     || ((a.daysOut == null ? 9999 : a.daysOut) - (b.daysOut == null ? 9999 : b.daysOut));
   active.sort(byScore);

@@ -84,6 +84,7 @@ import { venueFor } from './venueFor';
 import { accessNeedsFor } from './accessNeeds';
 import { placeIsOutdoors } from './placeIntelligence';
 import { attendanceBand } from './playbooks';
+import { daysUntil } from './dates';
 
 /** The headcount at which a public/outdoor gathering starts needing a permit. */
 const PERMIT_THRESHOLD = 50;
@@ -115,6 +116,11 @@ const answered = (event, field) => {
 export function placeQuestionsFor(event) {
   const ev = event || {};
   const out = [];
+  // WORTH FINDING OUT BEFORE THE DAY, NOT ON IT (audit 2 lane C P0-5): the
+  // permit question was still asked the day after the wedding. On or after the
+  // first day there is nothing left to find out in time.
+  const toDay = daysUntil(ev.date);
+  if (toDay != null && toDay <= 0) return out;
 
   // ── VENUE × ACCESS ───────────────────────────────────────────────────────
   // Both halves must be true, and neither alone is enough:

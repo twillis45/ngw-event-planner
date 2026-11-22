@@ -92,7 +92,8 @@ describe('cost provenance grounding', () => {
   test('the board surfaces costGrounded (reaches runtime)', () => {
     // Crab Feast, not Graduation (11/21/2026): Graduation's catering factors
     // multiplied $0 and are gone; crab_size is still grounded.
-    const b = playbookDecisionBoard({ id: 'e', type: 'Crab Feast', date: '2026-09-01', guests: [], guestEstimate: 30 });
+    // asOf before the event: a past event's board holds no open calls (audit 2 lane C P0-5).
+    const b = playbookDecisionBoard({ id: 'e', type: 'Crab Feast', date: '2026-09-01', guests: [], guestEstimate: 30 }, '2026-08-01');
     const rows = [...b.open, ...b.locked, ...(b.deferred || [])];
     expect(rows.some((r) => r.costGrounded === true)).toBe(true);
   });

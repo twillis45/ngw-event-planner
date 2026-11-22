@@ -62,7 +62,8 @@ describe('venue-constraint axis', () => {
     let gaps = 0;
     for (const pb of ALL_PLAYBOOKS) gaps += detectGapsInPlaybook(pb).filter((g) => String(g.type).includes('venue-ungrounded')).length;
     expect(gaps).toBe(0);
-    const b = playbookDecisionBoard({ id: 'e', type: 'Retirement Party', date: '2026-09-01', guests: [], guestEstimate: 40 });
+    // asOf before the event: a past event's board holds no open calls (audit 2 lane C P0-5).
+    const b = playbookDecisionBoard({ id: 'e', type: 'Retirement Party', date: '2026-09-01', guests: [], guestEstimate: 40 }, '2026-08-01');
     const rows = [...b.open, ...b.locked, ...(b.deferred || [])];
     expect(rows.some((r) => r.venueGrounded === true)).toBe(true);
   });
