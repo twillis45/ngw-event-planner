@@ -68,7 +68,7 @@ import { heroAskFor, heroRecord } from '@app/lib/heroAsk'; // the ASK vocabulary
 // ONE selected decision across the hero, the panel and the CTA — see src/lib/selectedAction.js
 import { resolveSelection, decisionIdentityFor } from '@app/lib/selectedAction';
 import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — see src/lib/decisionEvidence.js
-import { boardDecisionND, foodDecisionND, blockerDecisionND, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
+import { boardDecisionND, foodDecisionND, blockerDecisionND, foodPanelQuestion, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, travelHazard, guestTravelMessage } from '@app/lib/weather';
@@ -5306,11 +5306,13 @@ export default function HostShellV2() {
       // or the Super Bowl. When the panel it opens (wiredKind 'food' →
       // foodND(records), the same builder) shows a playbook call, the headline is
       // that call's question. The generic trio has none and keeps the ladder.
+      // phase:food with records is not this path: there the record line names
+      // the question beside its count (owner's iPad ruling, 11/21/2026).
       actionAsk: (a) => {
         if (a && a.domain === 'food'
           && !/^fp-diet/.test(String((a.route && a.route.focusField) || ''))) {
           const nd = (() => { try { return foodDecisionND(event, guests, [...open, ...(decisionBoard.locked || [])], a.records); } catch { return null; } })();
-          const q = nd && nd.id !== 'phase:food' && nd.selected == null ? (normalizeAsk(nd.ask) || (nd.label ? questionFrom(nd.label) : null)) : null;
+          const q = foodPanelQuestion(nd);
           if (q) return q;
         }
         return heroAskFor(a, event);
@@ -13302,10 +13304,7 @@ export default function HostShellV2() {
                 const menuND = (isHero && Array.isArray(a.records) && a.records.length)
                   ? (a.id === 'phase:food' ? (heroDecisionND || (!elegantMode ? foodND(a.records) : null)) : (wired === 'food' ? foodND(a.records) : null))
                   : null;
-                // When the headline already IS that question (audit 2 P2-1), the
-                // record line does not say it a second time.
-                const menuAskRaw = (menuND && menuND.selected == null && menuND.ask) || null;
-                const menuAsk = (menuAskRaw && String(menuAskRaw).replace(/[.?!\s]+$/, '').toLowerCase() === String(heroAskText || '').replace(/[.?!\s]+$/, '').toLowerCase()) ? null : menuAskRaw;
+                const menuAsk = (menuND && menuND.selected == null && menuND.ask) || null;
                 const rec = isHero
                   ? (menuAsk ? `${String(menuAsk).replace(/\.+$/, '')} · ${a.records.length} open` : heroRecord(a, heroAskText))
                   : null;

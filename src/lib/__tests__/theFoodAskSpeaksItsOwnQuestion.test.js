@@ -1,25 +1,28 @@
-// "Decide the menu." headlined asks that are not about the menu — the bartender,
-// the grill master, the Super Bowl, "Who is this party for…" (audit 2 lane A
-// P2-1). When the food item's hero shows a playbook call, the headline is that
-// call's own question; only the generic cook / cater / potluck trio, which has
-// no question of its own, keeps the ladder's wording.
-import { resolveSelection } from '../selectedAction';
+// "Decide the menu." headlined food asks that are not about the menu — the
+// bartender, the grill master, the Super Bowl (audit 2 lane A P2-1). The food
+// cue's headline is the question its panel shows; only the generic cook /
+// cater / potluck trio, which has no question of its own, keeps the ladder.
+import { foodPanelQuestion, foodDecisionND } from '../decisionND';
+import { playbookDecisionBoard } from '../playbooks';
 
-const action = { id: 'phase:food', category: 'phase', domain: 'food', title: 'What you’re serving' };
-const fallback = () => 'Decide the menu.';
 const opts = [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }];
 
-describe('the food hero speaks the call it shows', () => {
-  test('a call with an authored ask is headlined by it', () => {
-    const sel = resolveSelection(action, { decisionND: () => ({ id: 'grill_master', options: opts, ask: 'Who runs the grill?' }), boardRow: () => null, actionAsk: fallback });
-    expect(sel.ask).toBe('Who runs the grill?');
+describe('the food panel names its own question', () => {
+  test('a call with an authored ask is asked by it', () => {
+    expect(foodPanelQuestion({ id: 'grill_master', options: opts, ask: 'Who runs the grill?' })).toBe('Who runs the grill?');
   });
   test('a call with only a label is asked as its question', () => {
-    const sel = resolveSelection(action, { decisionND: () => ({ id: 'help', options: opts, label: 'Hire a bartender or cleaner' }), boardRow: () => null, actionAsk: fallback });
-    expect(sel.ask).toBe('Hire a bartender or cleaner?');
+    expect(foodPanelQuestion({ id: 'help', options: opts, label: 'Hire a bartender or cleaner' })).toBe('Hire a bartender or cleaner?');
   });
-  test('the generic trio keeps the ladder’s wording', () => {
-    const sel = resolveSelection(action, { decisionND: () => ({ id: 'phase:food', options: opts }), boardRow: () => null, actionAsk: fallback });
-    expect(sel.ask).toBe('Decide the menu.');
+  test('the generic trio and an answered call have none', () => {
+    expect(foodPanelQuestion({ id: 'phase:food', options: opts })).toBeNull();
+    expect(foodPanelQuestion({ id: 'help', options: opts, ask: 'Who helps?', selected: 'a' })).toBeNull();
+  });
+  test('The Cookout’s food panel asks who runs the grill', () => {
+    const ev = { id: 'c', type: 'The Cookout', date: '2027-02-01', guestMode: 'count', guestCount: 12, venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX' };
+    const b = playbookDecisionBoard(ev, new Date('2026-11-22T12:00:00'));
+    const q = foodPanelQuestion(foodDecisionND(ev, 12, [...(b.open || []), ...(b.locked || [])], null));
+    expect(q).toBeTruthy();
+    expect(q).not.toMatch(/menu/i);
   });
 });

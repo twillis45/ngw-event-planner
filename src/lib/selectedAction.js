@@ -91,12 +91,7 @@ export function resolveSelection(action, resolvers = {}) {
   // words on screen and must leave decisionId, options and route untouched.
   const fallback = normalizeAsk(call(actionAsk, action));
   const ask = active
-    // A call the decision carries itself (the food item's next menu call) is
-    // asked as ITSELF — "Decide the menu." headlined the bartender, the grill
-    // master and the Super Bowl (audit 2 lane A P2-1).
-    ? (normalizeAsk(row && row.ask) || (row && questionFrom(row.label))
-      || normalizeAsk(ndRaw.ask) || (ndRaw.label ? questionFrom(ndRaw.label) : null)
-      || fallback || 'Your next step.')
+    ? (normalizeAsk(row && row.ask) || (row && questionFrom(row.label)) || fallback || 'Your next step.')
     : (fallback || 'Your next step.');
 
   return {

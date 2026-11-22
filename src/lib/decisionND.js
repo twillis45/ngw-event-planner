@@ -16,6 +16,7 @@
 //                          selected?:string|null, why?:string }
 import { playbookDecisionOptions, foodApproach, openFoodChoices, getPlaybook, decisionSettledByData } from './playbooks';
 import { venueKindOf } from './knownFacts';
+import { normalizeAsk, questionFrom } from './askVoice';
 import { decisionApproach } from './doItForMe';
 
 // A playbook `decision:*` board row → its authored options, notes and grounded
@@ -42,6 +43,16 @@ export function boardDecisionND(event, dec) {
     proposed: proposed ? { value: proposed, why: dopts.defaultWhy || null } : null,
     why: dopts.why || null,
   };
+}
+
+// THE QUESTION A FOOD PANEL ASKS, or null (audit 2 lane A P2-1). "Decide the
+// menu." headlined the grill master, the bartender and the Super Bowl: the food
+// cue's editor shows a playbook call, but its headline came from the title
+// ladder. A call's own ask, else its label as a question; the generic trio
+// (phase:food) and a call already answered have none.
+export function foodPanelQuestion(nd) {
+  if (!nd || nd.id === 'phase:food' || nd.selected != null) return null;
+  return normalizeAsk(nd.ask) || (nd.label ? questionFrom(nd.label) : null);
 }
 
 // The generic host/caterer/potluck trio, for event types with NO authored
