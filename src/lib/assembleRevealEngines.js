@@ -98,7 +98,7 @@ function buildIdentityStage(event, eventIdentity, persona) {
   const spanNote = (() => {
     const ev = event || {};
     if (spanNights(ev) > 0) return ' ' + eventSpanLabel(ev) + '.';
-    if (ev.datesToConfirm) return ev.date ? ` Starts ${eventSpanLabel(ev)} — which day does it end?` : ' Which dates? Set the first and last day.';
+    if (ev.datesToConfirm) return ev.date ? ` Starts ${eventSpanLabel(ev)} — which dates? Set the first and last day.` : ' Which dates? Set the first and last day.';
     return '';
   })();
 

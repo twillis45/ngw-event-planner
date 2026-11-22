@@ -1502,7 +1502,14 @@ export function _eventFoundationActions(event) {
   // question it is named for, on the SAME predicate the other ledger already
   // uses. A host with no date still sees "Set the date." exactly as before.
   const timeOk = (() => { try { return startTimeIsConfirmed(event); } catch (_e) { return false; } })();
-  const whenSet = dateSet && timeOk;
+  // THE DAYS OWED ARE THE DATE (owner ruling 11/22/2026, "dates first as the
+  // main ask"). Her sentence meant more than one day and did not say which
+  // (`datesToConfirm`, lib/eventDates clears it): a known start is not the
+  // date, because the stay, the meals and the budget count from both ends. So
+  // the rung asks for the range, From – To, from the date's own place at the
+  // top of the ladder — never the last day alone.
+  const datesOwed = !!event.datesToConfirm;
+  const whenSet = dateSet && timeOk && !datesOwed;
   const budgetNow = budgetFor(event);   // the one budget reader (lib/budgetFor)
   const budgetIsSet = budgetNow.isSet;
   // Food is "sourced" once the host has made any food/sourcing choice, self-provides
@@ -1545,15 +1552,20 @@ export function _eventFoundationActions(event) {
       // The copy splits by WHICH half is open, the same way phaseProgress's cue
       // does — "Set the date." on an event that already has one was the first
       // thing this change would have broken.
-      title: !dateSet ? 'Set the date.'
+      title: datesOwed ? 'Set the dates.' : !dateSet ? 'Set the date.'
         : String(event.startTime || '').trim() ? 'Confirm the start time.' : 'Set the start time.',
-      consequence: !dateSet
+      // The authored ask: the hero would otherwise read the domain and say
+      // "Pick the day." over a range.
+      ...(datesOwed ? { ask: 'Which dates? From – to.' } : null),
+      consequence: datesOwed
+        ? 'The stay, the meals for each day, and the budget all count from both ends of the trip.'
+        : !dateSet
         ? 'The date anchors every countdown, milestone, and shopping window.'
         : 'Until the hour is yours, your invite and your vendor briefs will not name one.',
       // 'Event Details' is the real tab id — 'Details' has no render branch
       // (the same dead-route bug the rain-plan CTA's live verification caught).
-      cta: !dateSet ? 'Set date' : 'Confirm time',
-      route: { tab: 'Event Details', focusField: !dateSet ? 'event-date' : 'event-start' },
+      cta: datesOwed ? 'Set the dates' : !dateSet ? 'Set date' : 'Confirm time',
+      route: { tab: 'Event Details', focusField: (!dateSet || datesOwed) ? 'event-date' : 'event-start' },
       done: whenSet,
       handledFact: whenSet ? 'Date & time set' : null,
       // THE LEDGER IS FIXED HERE; THE RANKING IS NOT, ON PURPOSE.
@@ -1577,7 +1589,7 @@ export function _eventFoundationActions(event) {
       // a product call with a measurement behind it, not a constant to pick
       // here: measured 2026-09-19, the row sits 9 of 9 at T-3 while an
       // unconfirmed hour withholds the time from nine outward artifacts.
-      rankLadder: !!dateSet ? false : undefined,
+      rankLadder: (!!dateSet && !datesOwed) ? false : undefined,
     },
     {
       id: 'guests', domain: 'guests', title: 'Add your guest list.',
@@ -2891,6 +2903,19 @@ export function eventPlan(event, ctx = null) {
       nextActions.forEach((a, i) => { if (a && a.domain === 'day') lastDay = i; });
       if (lastDay > bi) { const [b] = nextActions.splice(bi, 1); nextActions.splice(lastDay, 0, b); }
     }
+  }
+
+  // ── THE DAYS OWED LEAD (owner ruling 11/22/2026, "dates first as the main
+  // ask") ─────────────────────────────────────────────────────────────────
+  // A trip whose days are still owed (`datesToConfirm`) asks for its range
+  // first: ahead of the budget, which is sized over the days, and of the stay,
+  // which is booked for them. Only a CRITICAL action keeps its place above it,
+  // the same exception the budget's own rule above makes.
+  if (event.datesToConfirm) {
+    const di = nextActions.findIndex((a) => a && a.domain === 'date' && !a.done);
+    let slot = 0;
+    for (let k = 0; k < di; k++) if (nextActions[k] && nextActions[k].level === 'critical') slot = k + 1;
+    if (di > slot) { const [d] = nextActions.splice(di, 1); nextActions.splice(slot, 0, d); }
   }
 
   // ── WAVE-6: ONE POST-SNOOZE TRUTH ───────────────────────────────────────────

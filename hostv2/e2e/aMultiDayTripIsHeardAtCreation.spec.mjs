@@ -165,11 +165,13 @@ test('a weekend with no stated days asks for the range, never guesses the last d
   let ev = await savedEvent(page);
   // July 4, 2027 is a Sunday: the start she said stands, the end is owed.
   expect([ev.date, ev.endDate, ev.statedNights, ev.datesToConfirm]).toEqual(['2027-07-04', undefined, undefined, true]);
-  await expect(revealCard(page, 'Your Event')).toContainText('which day does it end?');
+  // Asked as the range, never the last day alone (owner 11/22/2026).
+  await expect(revealCard(page, 'Your Event')).toContainText('which dates? Set the first and last day.');
+  await expect(revealCard(page, 'Your Event')).not.toContainText('which day does it end?');
 
   await openPlan(page);
   const sheet = await openDates(page);
-  await expect(sheet.locator('[data-dates-owed]')).toContainText('Which day does it end?');
+  await expect(sheet.locator('[data-dates-owed]')).toHaveText('Which dates? Set the first and last day.');
   await sheet.locator('[data-date-range]').getByLabel('Event date').fill('2027-07-02');
   await sheet.locator('[data-date-range]').getByLabel('Last day').fill('2027-07-05');
   await sheet.getByRole('button', { name: 'Move everything to these dates' }).click();

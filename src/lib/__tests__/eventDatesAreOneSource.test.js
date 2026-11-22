@@ -147,14 +147,16 @@ describe('a checklist row that asks for the date is done once the date is set', 
   });
 });
 
-describe('the board asks only for the part of the dates that is missing', () => {
+describe('the board asks for the dates as one range until both days are known', () => {
   const cue = (ev) => {
     const r = deriveEventPhaseProgress(ev, new Date('2026-11-21T12:00:00'));
     return (r.items || []).find((x) => x && x.id === 'datetime');
   };
   test.each([
     [{ datesToConfirm: true }, 'Which dates? From – to'],
-    [{ date: '2027-07-04', datesToConfirm: true }, 'Which day does it end?'],
+    // Owner 11/22/2026, "Host should be asked for ranges not last day": a
+    // known start still asks for the range (From – To), never the last day alone.
+    [{ date: '2027-07-04', datesToConfirm: true }, 'Which dates? From – to'],
     [{ date: '2027-07-04', endDate: '2027-07-06', startTime: '12:00', startTimeSource: 'host' }, null],
   ])('%j', (ev, label) => {
     const c = cue({ type: 'Reunion', ...ev });

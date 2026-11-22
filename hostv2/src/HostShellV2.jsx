@@ -9535,7 +9535,8 @@ export default function HostShellV2() {
             say which (lib/smartParseEvent datesToConfirm). Ask for the range. */}
         {event.datesToConfirm && (
           <p className="grounding" data-dates-owed style={{ width: '100%', margin: '0 0 var(--sp-1)' }}>
-            {event.date ? 'You gave the first day. Which day does it end?' : 'Which dates? Set the first and last day.'}
+            {/* A known start is asked as the range too (owner 11/22/2026): never the last day alone. */}
+            Which dates? Set the first and last day.
           </p>
         )}
         <div className="actions-row" data-date-range style={{ width: '100%', alignItems: 'center', flexWrap: 'wrap' }}>

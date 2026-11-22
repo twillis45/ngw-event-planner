@@ -97,17 +97,18 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   const _multiDay = (() => { try { return spanNights(ev) >= 1; } catch (_e) { return false; } })();
   // THE DAYS ARE OWED (owner report 11/21/2026): her sentence meant more than
   // one day and did not say which ("a long weekend", "July 4th weekend", a trip
-  // with only a start — `datesToConfirm`). Ask for the range, and only for the
-  // part that is missing: no date at all asks for both days, a known start asks
-  // for the end. Cleared by lib/eventDates the moment she gives either answer.
+  // with only a start — `datesToConfirm`). Ask for the range: a known start is
+  // asked as From – To too, never as "the last day" alone (owner 11/22/2026,
+  // "Host should be asked for ranges not last day"). Cleared by lib/eventDates
+  // the moment she gives either answer.
   const _owed = !!ev.datesToConfirm;
   add('datetime', true, _hasDate && _timeOk && !_owed,
-    !_hasDate ? (_owed ? 'Which dates? From – to' : 'Add the event date to time the plan')
-      : _owed ? 'Which day does it end?'
+    _owed ? 'Which dates? From – to'
+      : !_hasDate ? 'Add the event date to time the plan'
       : String(ev.startTime || '').trim()
         ? (_multiDay ? 'Confirm the first day’s start time' : 'Confirm the start time')
         : (_multiDay ? 'Set the first day’s start time' : 'Set the start time'),
-    !_hasDate ? { tab: 'Event Details', focusField: 'event-date' } : { tab: 'Event Details', focusField: 'event-start' },
+    (!_hasDate || _owed) ? { tab: 'Event Details', focusField: 'event-date' } : { tab: 'Event Details', focusField: 'event-start' },
     !_hasDate ? 1 : _owed ? 2 : 9);
   // Location essential uses the ONE shared reader (eventLocationStatus) — an
   // at-home host with their city on file has a location (weather and shopping
