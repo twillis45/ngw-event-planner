@@ -12583,7 +12583,14 @@ export default function HostShellV2() {
                 // leads the hero with the date instead, it speaks about a different item
                 // than the card it sits on ("Add the day." over "Everything depends on
                 // venue…", gold run GOLD-01) — so it stands down for that frame only.
-                if (firstCard && queueRanked[0] && firstCard !== queueRanked[0]) return null;
+                // …and the same holds for every other way the shell's first card can
+                // differ from the engine's (Wanda audit P0-2, 11/22/2026): a settled
+                // pick dropped from the queue, a demoted confirm, the venue leading the
+                // stay. "You chose 'Drop-off catering / buffet'… a caterer is not booked
+                // yet." printed under the allergy ask. The reason is the ENGINE's lead's
+                // (CommandCenter planningState.reasoning = nextActions[0].consequence),
+                // so it prints only under that very item.
+                if (!firstCard || firstCard !== actions[0]) return null;
                 // When the lead is a decision, its decopt options + "our pick" why carry the
                 // reasoning — the generic planningState.reasoning (often vendor-status copy like
                 // "Currently quoted…") would bleed onto it. Suppress it for decision heroes.
