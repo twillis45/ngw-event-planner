@@ -44,3 +44,12 @@ test('a pick moves the count by one, and only that one', () => {
 test('no food plan, no tally', () => {
   expect(menuChoicesTally({ id: 'x', type: 'Not a type' })).toBe(null);
 });
+
+test('the dietary question stays on the list when the needs are already closed', () => {
+  // A record settling a call hides it; noted needs do not. A Crab Feast with
+  // no roster reads its needs as closed, and the host can still tap the
+  // restrictions in (dietaryHoldsTwo.spec).
+  const t = menuChoicesTally({ id: 'c', type: 'Crab Feast', date: '2027-06-12', guestEstimate: 18, guests: [], budget: [], vendors: [] });
+  expect(ids(t.shown)).toContain('dietary');
+  expect(ids(t.open)).not.toContain('dietary');
+});

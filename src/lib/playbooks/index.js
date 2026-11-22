@@ -1023,7 +1023,8 @@ export { isDietaryChoice };
 // and it re-asked the booked hall's venue call) while the hero counted
 // openFoodChoices less what the board parks ("1 open"). Both read this now:
 //   shown    the calls the list asks or shows as picked (a call a record settles
-//            is not shown; the dietary question closes with the noted needs)
+//            is not shown; the dietary question stays, counted settled once the
+//            needs are noted)
 //   open     openFoodChoices, the list the hero and the checklist read
 //   openNow  open, less what playbookDecisionBoard defers (the hero's ask)
 //   later    how many of the open calls come up closer to the date
@@ -1033,7 +1034,10 @@ export function menuChoicesTally(event, plan, asOf) {
   const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
   const open = openFoodChoices(event, p) || [];
   const openIds = new Set(open.map((c) => c.id));
-  const shown = (p.choices || []).filter((c) => c && (picks[c.id] != null || openIds.has(c.id)));
+  // The dietary question stays askable once the needs read as closed (a
+  // restriction can still be tapped in); only a settling record hides a call.
+  const shown = (p.choices || []).filter((c) => c && (picks[c.id] != null || openIds.has(c.id)
+    || (isDietaryChoice(c) && !decisionSettledByData(event, c))));
   let deferredIds = new Set();
   try {
     const board = playbookDecisionBoard(event, asOf) || {};
