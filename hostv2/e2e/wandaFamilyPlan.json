@@ -1,0 +1,82 @@
+{
+  "name": "Wanda’s 50th & 30-Year Army Retirement — Black & Gold",
+  "type": "Retirement Party",
+  "date": "2027-03-20",
+  "startTime": "18:30",
+  "venue": "Freedom Hall at VFW Post 1847",
+  "venueCity": "Upper Marlboro, MD",
+  "dressCode": "All black — she’s the only gold in the room",
+  "guestEstimate": 75,
+  "guestCount": 75,
+  "ros": [
+    {
+      "time": "6:30 PM",
+      "label": "Doors — guests in all black; 6-ft prints + memory table on display"
+    },
+    {
+      "time": "6:45 PM",
+      "label": "Wanda arrives in Army ceremonial dress"
+    },
+    {
+      "time": "7:00 PM",
+      "label": "Buffet dinner"
+    },
+    {
+      "time": "7:45 PM",
+      "label": "Army retirement presentation"
+    },
+    {
+      "time": "8:30 PM",
+      "label": "Wardrobe change — Wanda returns in the gold dress"
+    },
+    {
+      "time": "8:45 PM",
+      "label": "Toast + black-&-gold cake"
+    },
+    {
+      "time": "9:00 PM",
+      "label": "Dance floor opens — DJ + photobooth"
+    }
+  ],
+  "checklist": [
+    {
+      "task": "Book the pre-event photoshoot friend + confirm the 6-ft print turnaround (everything decorative hangs on this)",
+      "done": true
+    },
+    {
+      "task": "Lock catering",
+      "done": false
+    },
+    {
+      "task": "Book photobooth + night-of photographer",
+      "done": false
+    },
+    {
+      "task": "Final headcount to the caterer (~75), confirm run of show, all-black dress reminder in the invite",
+      "done": false
+    }
+  ],
+  "vendors": [
+    {
+      "name": "VFW Post 1847 — Freedom Hall",
+      "category": "Venue",
+      "status": "Confirmed"
+    },
+    {
+      "name": "Semper Catering Co.",
+      "category": "Catering",
+      "status": "Quoted"
+    },
+    {
+      "name": "DJ Marcus Kane + dance floor",
+      "category": "DJ",
+      "status": "Deposit Paid"
+    }
+  ],
+  "replies": {
+    "yes": 6,
+    "no": 0,
+    "maybe": 1,
+    "waiting": 1
+  }
+}

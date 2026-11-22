@@ -97,7 +97,9 @@ PUBLIC_EVENT_FIELDS = (
     # the stay (hotel name / group rate / booking code / book-by date) and the
     # airport options. No PII, no guest data, no money ledger; the rate is the
     # group rate the host negotiated to share. moneyDates/frontedAmount stay
-    # host-private and are deliberately ABSENT here.
+    # host-private and are deliberately ABSENT here. Both are NARROWED to the
+    # keys the invite renders (_NESTED_KEYS below): `lodging` also holds the
+    # host's private who-stays-where list on some events, which never leaves.
     "lodging", "airportOptions",
     # itinerary: the host-ACCEPTED weekend program (day/slot/title rows the
     # host chose to publish to guests) — display copy, no owners, no crew
@@ -106,7 +108,8 @@ PUBLIC_EVENT_FIELDS = (
     # lodgingOptions (rental-house engine, 2026-07-28): the host's SHARED
     # shortlist of rental candidates — listing links + host-typed facts
     # (sleeps/beds/price/tier) published so guests can weigh in from the
-    # invite. Host-curated display data; no PII, no money ledger.
+    # invite. Host-curated display data; no PII, no money ledger. Narrowed
+    # to the listing facts the invite prints (_NESTED_KEYS); host notes stay.
     "lodgingOptions",
     # hashtag (owner ruling 11/16/2026): the tag the HOST turned on for the
     # event, shown quietly on the invite and in share captions. Host-chosen
@@ -174,6 +177,40 @@ def _enforce(request: Request, code: str, *, per_code: bool):
         if not ok:
             raise HTTPException(429, "Too many requests for this invite — try again shortly",
                                 headers={"Retry-After": str(retry)})
+
+
+# ── THE TRIP BRIEF, NARROWED TO WHAT THE INVITE SHOWS (audit lane E, P0-1) ─────
+# These fields are lists or objects, and the whitelist above used to pass them
+# through whole. On the Wanda sample `lodging` is not the trip brief's hotel at
+# all but the host's list of who stays where (a private house address, family
+# names, host notes), and the invite sent it to anyone with the link. Each one
+# is now cut to the keys InviteV2 renders; anything else the host keeps beside
+# them stays with the host. The census in tests/test_invite_payload_privacy.py
+# pins every key.
+_NESTED_KEYS = {
+    # The stay row: hotel, group rate, booking code, book-by date, provenance.
+    # Only the hotel OBJECT; the host's who-stays-where LIST is never sent.
+    "lodging": ("hotelName", "rate", "code", "deadline", "from"),
+    # The shortlist guests weigh in on: the listing facts the invite prints
+    # and its pictures and link. The host's own notes on a listing are not
+    # written for guests and stay behind.
+    "lodgingOptions": ("id", "label", "sleeps", "beds", "totalPrice", "photos", "photoUrl", "url"),
+    "airportOptions": ("code", "name", "note"),
+    # The accepted program as lib/itinerary normRow reads it — no owners, no
+    # crew times.
+    "itinerary": ("day", "slot", "time", "title", "what", "note", "anchor", "celebration", "meal"),
+}
+_SCALAR = (str, int, float, bool)
+
+
+def _narrow(field, raw):
+    keys = _NESTED_KEYS[field]
+    pick = lambda d: {k: d[k] for k in keys if d.get(k) not in (None, "")}
+    if field == "lodging":
+        return (pick(raw) or None) if isinstance(raw, dict) else None
+    if not isinstance(raw, list):
+        return None
+    return [r for r in (pick(d) for d in raw if isinstance(d, dict)) if r][:60] or None
 
 
 def _clip(v: Optional[str], n: int) -> Optional[str]:
@@ -312,7 +349,14 @@ async def _resolve_event(conn, rsvp_code: str):
             data = json.loads(data)
         except Exception:
             data = {}
-    public = {k: data.get(k) for k in PUBLIC_EVENT_FIELDS if data.get(k) is not None}
+    # Display fields are scalars; a dict or list sitting in one is not shipped
+    # whole. The structured trip fields are cut to what the invite renders.
+    public = {k: data.get(k) for k in PUBLIC_EVENT_FIELDS
+              if k not in _NESTED_KEYS and isinstance(data.get(k), _SCALAR)}
+    for k in _NESTED_KEYS:
+        v = _narrow(k, data.get(k))
+        if v:
+            public[k] = v
     # A start time the APP derived is not the host's hour (run 2, R2-23): a
     # guest is never handed it. The client's gate reads startTimeSource, which
     # this projection does not carry, so the derived hour stops here.
@@ -330,6 +374,11 @@ async def _resolve_event(conn, rsvp_code: str):
     meals = _trip_meals(data.get("tripMeals"))
     if meals:
         public["tripMeals"] = meals
+    # The event id is NOT display data (audit P2-9). It still ships because the
+    # host app's live-invite check (checkRsvpCapability) compares it, and every
+    # guest's saved reply key and outbox are named by it (InviteV2): dropping
+    # it would orphan replies already sent. It is a name, not a credential —
+    # no public route resolves by it. Removing it needs that client migration.
     public["id"] = row["id"]
     # Anonymized social proof: the COUNT of confirmed guests only — never names,
     # emails, or the roster itself. Closes the invite's "zero social proof on
