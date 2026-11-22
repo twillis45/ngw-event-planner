@@ -505,14 +505,11 @@ agree('venue · ledger "address settled" = Space guest-arrival handled', {
 // The Plan steppers and the estimate (dietCountsFor), the hero's allergy ask
 // (plan.dietaryResolved → the ledger's food cue), the seating chips.
 
-// D-10: dietaryResolved (the hero's "Who has a food allergy?") reads a row's
-// `needs` and `meal` only. A diet recorded in the invite reply's `diets` /
-// `allergens` arrays, or on the plus-one (`plusOneNeeds`), is counted by
-// dietCountsFor — the Plan shows "Vegetarian 1" — while the hero still asks.
-const D10 = 'D-10 allergy ask ignores diets/allergens/plusOneNeeds';
-agree('diet · guest rows that name a diet close the allergy ask', {
-  'var-diets-array': D10, 'var-plusone-needs': D10,
-}, (ev) => {
+// D-10 (fixed): dietaryResolved (the hero's "Who has a food allergy?") read a
+// row's `needs` and `meal` only, so a diet in the invite reply's `diets` /
+// `allergens` arrays, or on the plus-one (`plusOneNeeds`), was on the Plan
+// ("Vegetarian 1") while the hero still asked. It now reads guestDietCounts.
+agree('diet · guest rows that name a diet close the allergy ask', {}, (ev) => {
   const counted = Object.values(guestDietCounts(ev)).some((n) => n > 0);
   const p = plan(ev);
   if (!counted || !p) return;

@@ -27,6 +27,7 @@ import { answerText, answerList } from '../decisionType';
 import { marketFor } from '../marketFor';
 // A real price keeps its cents ($42.50, not $43): round to the cent, not the dollar.
 import { roundCurrency } from '../currency';
+import { guestDietCounts, dietTagFor } from '../dietRows';
 // No cycle: lodgingIntel reads destLodgingOptions, never this module — that
 // split exists precisely so the two can refer to one option list safely.
 import { lodgingKitchen } from '../lodgingIntel';
@@ -878,9 +879,17 @@ export function dietaryNoted(event) {
   if (event.dietaryNoted) return true;
   const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
   const pb = getPlaybook(event.type);
+  // A PICK THAT NAMES THE NEED IS THE ANSWER (audit 2 P1-2, 11/22/2026). Only
+  // "nobody" used to count, so Crab Feast's "Who can't eat shellfish…?" and
+  // Dinner Party's "Any allergies, vegetarians…?" — whose options ARE the diet
+  // tags — were answered and then asked again as "Who has a food allergy?".
+  // A pick that names a need (the dietRows vocabulary) settles it. "One or two
+  // needs" names none, so who they are is still owed (oneAllergyStep, ruling 2).
   return ((pb && pb.decisions) || []).some((d) => d && isDietaryChoice(d)
-    && NOBODY_HAS_ONE.test(String(picks[d.id] || '')));
+    && (NOBODY_HAS_ONE.test(String(picks[d.id] || '')) || namesADiet(picks[d.id])));
 }
+const namesADiet = (v) => (Array.isArray(v) ? v : String(v == null ? '' : v).split(','))
+  .some((x) => !!dietTagFor(x));
 
 function dietaryResolved(event) {
   // Host noted allergies (the headcount-mode workflow), or said nobody has one → done.
@@ -892,7 +901,10 @@ function dietaryResolved(event) {
   // Still only the rows earn it: a count says how many, not that she asked
   // everyone (theChipsReachTheSpread.test.js).
   const list = Array.isArray(event.guests) ? event.guests : [];
-  const recorded = list.some((g) => {
+  // ONE DIET READER (audit 2 D-10): the invite reply's `diets` / `allergens`
+  // and the plus-one's needs are read by guestDietCounts — the rows behind the
+  // Plan's steppers (dietCountsFor) — so a need the Plan shows closes the ask.
+  const recorded = Object.values(guestDietCounts(event)).some((n) => n > 0) || list.some((g) => {
     if (!g || /^n/i.test(String(g.rsvp || ''))) return false;
     const needs = String((g && g.needs) || '').trim();
     const meal = String((g && g.meal) || '').trim();
