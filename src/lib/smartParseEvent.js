@@ -38,6 +38,10 @@ export const HOST_TYPES = ALL_PLAYBOOKS
   .map(pb => pb && pb.type)
   .filter(t => t && !/board meeting|conference|team retreat/i.test(t));
 
+// A MONTH WORD IS A WHOLE MONTH TOKEN (audit lane B, 11/22/2026). Every month
+// pattern below read `(may|mar|jun|…)[a-z]*`, so "maybe 30-35" was May 30,
+// "married 25 years" Mar 25 and "my junior 17 friends" Jun 17. Each now names
+// the month or its abbreviation and nothing longer: "jun", "june", "sept".
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 const MONTH_LABEL = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -48,7 +52,7 @@ const SEASON_MONTH = { winter: 0, spring: 3, summer: 6, fall: 9, autumn: 9 };
 const _WD_SPAN = '(sunday|saturday|thursday|wednesday|tuesday|monday|friday|sun|sat|thurs|thur|thu|wed|tues|tue|mon|fri)\\.?';
 const _dowOf = (w) => DAYS.findIndex((d) => d.startsWith(String(w).toLowerCase().replace(/\.$/, '').slice(0, 3)));
 // A month-day said as a weekend: "July 4th weekend", "Dec 5 weekend".
-const SAID_DAY_WEEKEND = /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?\s+weekend\b/i;
+const SAID_DAY_WEEKEND = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?\s+\d{1,2}(?:st|nd|rd|th)?\s+weekend\b/i;
 // A trip that is not a friends' trip: business, a field trip, one day out.
 const TRIP_WORD = /\b(?:trip|getaway|vacation)\b/i;
 const NOT_A_GROUP_TRIP = /\b(?:business|work|field|school|class|day|shopping|grocery|supply)\s+trip\b/i;
@@ -335,7 +339,7 @@ export function parseSmartEventText(text, opts = {}) {
   // Saturday, November 7, "this Saturday, November 7" read as November 14: the
   // weekday ran first, "this <today>" jumps a week, and the stated date was
   // then thrown away as unused.
-  const saidMonthDay = /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?\b|\b\d{1,2}(?:st|nd|rd|th)?\s+of\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)|\b\d{1,2}\/\d{1,2}\b/i.test(t);
+  const saidMonthDay = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?\s+\d{1,2}(?:st|nd|rd|th)?\b|\b\d{1,2}(?:st|nd|rd|th)?\s+of\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)|\b\d{1,2}\/\d{1,2}\b/i.test(t);
   // Relative forms first — "today", "tonight", "in 2 weeks", "tomorrow", "next saturday".
   // "Today"/"tonight" is the most literal date a host can say — same-day plans
   // ("BBQ at my brother's house today at 3pm") were falling through every
@@ -379,7 +383,7 @@ export function parseSmartEventText(text, opts = {}) {
     // the single-date matcher below ate the first half and the confirm screen
     // told the host it had thrown "to June 17 2027" away. Four digits only, on
     // both sides, so "June 12-14, 20 cousins" still cannot read a count as a year.
-    const rng = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\s*(?:-|–|—|to|through|thru|(and))\s*(?:(?:sun|mon|tue|wed|thu|fri|sat)[a-z]*\.?,?\s+)?(?:(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+)?(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
+    const rng = t.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\s*(?:-|–|—|to|through|thru|(and))\s*(?:(?:sun|mon|tue|wed|thu|fri|sat)[a-z]*\.?,?\s+)?(?:(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?\s+)?(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
     if (rng) {
       const m1 = MONTHS.indexOf(rng[1].slice(0, 3).toLowerCase());
       // "and" joins two DAYS ("Sat Nov 21 and Sun Nov 22", round 2, 11/16/2026)
@@ -404,7 +408,11 @@ export function parseSmartEventText(text, opts = {}) {
       if (end < start && rng[5] && m2 !== m1 && !y2) end.setFullYear(end.getFullYear() + 1);
       // A same-month "range" running backwards ("June 14-12") is noise, not a span.
       const andOk = !viaAnd || (rng[5] && Math.round((end - start) / 86400000) === 1);
-      if (!isNaN(start) && !isNaN(end) && end > start && andOk) {
+      // A DAY THAT DOES NOT EXIST ENDS NO RANGE (audit lane B, 11/22/2026):
+      // "30-35 people" after a month word read as May 30 – Jun 4, because Date
+      // rolls a 35th into the next month. Both days must survive as written.
+      const daysReal = start.getDate() === parseInt(rng[2], 10) && end.getDate() === parseInt(rng[6], 10);
+      if (!isNaN(start) && !isNaN(end) && end > start && andOk && daysReal) {
         date = localISO(start);
         endDate = localISO(end);
       }
@@ -452,7 +460,7 @@ export function parseSmartEventText(text, opts = {}) {
   // not is kept as `impossibleDate` and no date is set — the plan asks.
   let impossibleDate = null;
   const dmOf = date ? null : t.match(
-    /\b(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+of\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?(?:,?\s*(\d{4}))?\b/i);
+    /\b(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+of\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?(?:,?\s*(\d{4}))?\b/i);
   if (dmOf && Number(dmOf[1]) >= 1 && Number(dmOf[1]) <= 31) {
     const saidY = dmOf[3] ? parseInt(dmOf[3], 10) : null;
     const cand = new Date(saidY || now.getFullYear(),
@@ -461,7 +469,7 @@ export function parseSmartEventText(text, opts = {}) {
     if (cand.getDate() === parseInt(dmOf[1], 10)) date = localISO(cand); else impossibleDate = dmOf[0];
   }
 
-  const dm = date ? null : t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
+  const dm = date ? null : t.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
   if (dm) {
     const saidY = dm[3] ? parseInt(dm[3], 10) : null;
     const cand = new Date(saidY || now.getFullYear(), MONTHS.indexOf(dm[1].slice(0, 3).toLowerCase()), parseInt(dm[2], 10), 12);
@@ -575,7 +583,7 @@ export function parseSmartEventText(text, opts = {}) {
   // the host picks or types one.
   let monthYear = null;
   if (!date) {
-    const my = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(?:of\s+)?(\d{4})\b/i);
+    const my = t.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?\s+(?:of\s+)?(\d{4})\b/i);
     if (my) {
       const year = parseInt(my[2], 10);
       const month = MONTHS.indexOf(my[1].slice(0, 3).toLowerCase());
