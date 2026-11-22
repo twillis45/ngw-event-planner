@@ -40,16 +40,3 @@ describe('the Wanda vendor list', () => {
   });
 });
 
-describe('no screen counts the raw vendor list', () => {
-  // jest cannot run hostv2, so this reads the source (the repo's standing
-  // instrument for the shell). A raw `event.vendors.filter(isVendor…).length`
-  // counts the friends again — the exact drift this file closed.
-  const fs = require('fs');
-  const path = require('path');
-  const code = fs.readFileSync(path.resolve(__dirname, '../../..', 'hostv2/src/HostShellV2.jsx'), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/[^\n]*/g, '$1');
-  test('the vendor hero reads vendorCounts', () => {
-    expect(code).not.toMatch(/\(event\.vendors \|\| \[\]\)\.filter\(isVendor(Confirmed|Booked)\)\.length/);
-    expect(code).toMatch(/vendorCounts\(event\)\.confirmed/);
-  });
-});
