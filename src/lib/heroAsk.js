@@ -188,6 +188,18 @@ export function heroAskFor(a, event) {
       const fromCta = normalizeAsk(/[.?!]$/.test(cta) ? cta : cta + '.');
       if (fromCta) return fromCta;
     }
+    // A BUNDLE SPEAKS FOR ITS FIRST ITEM (audit 2 lane C P1-6, 11/22/2026):
+    // "Your next step. · past its window · See all 5" named nothing. The first
+    // item is the one "this one first" points at. Its own ask when it has a
+    // specific one, else its own words — a generic "Catch up on this step."
+    // names no step either.
+    const first = a && Array.isArray(a.items) && a.items.length ? a.items[0] : null;
+    if (first) {
+      const fa = heroAskFor(first, event);
+      if (fa && fa !== 'Your next step.' && fa !== 'Catch up on this step.') return fa;
+      const ft = normalizeAsk(String(first.title || '').replace(/\.+$/, '').trim() + '.');
+      if (ft) return ft;
+    }
     return 'Your next step.';
   } catch { return 'Your next step.'; }
 }
