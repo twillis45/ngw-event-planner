@@ -16,6 +16,7 @@
 // parent clips computes as 44 and taps as nothing. Touch projects only, and
 // with touch on, so the (hover:none) rules apply as on a real iPad.
 import { test, expect, settled, sheetSettled, openSectionByName, dateIn } from './fixtures.mjs';
+import { previewUrl } from '../deployBase.mjs';
 
 const TOUCH = /mobile|landscape|tablet/;
 test.use({ hasTouch: true });
@@ -51,10 +52,11 @@ const boot = async (page, url = '?elegant=1', event = EVENT) => {
 
 // Runs in the page: every pressable control inside `root` whose probed hit
 // area is under the floor on either axis, minus the one exemption.
-const underFloor = ([rootSel, floor]) => {
+const underFloor = ([rootSel, floor, only]) => {
   const root = [...document.querySelectorAll(rootSel)].pop() || document.body;
   const PRESS = 'button, a[href], [role=button], [role=radio], summary, input:not([type=hidden]), select';
   const all = [...root.querySelectorAll(PRESS)];
+  const judged = only ? all.filter((el) => el.matches(only)) : all;
   const inlineInSentence = (el) => {
     if (getComputedStyle(el).display !== 'inline') return false;
     const p = el.parentElement;
@@ -69,7 +71,7 @@ const underFloor = ([rootSel, floor]) => {
     });
   };
   const out = [];
-  for (const el of all) {
+  for (const el of judged) {
     const r = el.getBoundingClientRect();
     if (r.height < 4 || r.width < 4 || el.closest('[inert], [aria-hidden="true"]')) continue;
     if (getComputedStyle(el).visibility === 'hidden') continue;
@@ -123,4 +125,110 @@ test('the guest invite has no tap under 44x44', async ({ page }, info) => {
   await expect(page.locator('.inv2-sheet').first()).toBeVisible({ timeout: 20_000 });
   await page.waitForTimeout(2600);   // past the entrance animation
   expect(await page.evaluate(underFloor, ['.inv2', FLOOR])).toEqual([]);
+});
+
+// ─── AUDIT 2, LANE F, P1-4 AND P1-5 (11/22/2026) ────────────────────────────
+// Each control below measured under 44 on every touch device the audit ran:
+// the Guests filter chips 32 tall (their own min-height:32px outranked the
+// chip floor) and the "Find someone" field 40; "Delete [event]" 92x15; the
+// pass chip 27; After's money rows 20 (an inline padding:0); The Day's "Menu"
+// 38; the vendors bar 39; the pass sheet's support address 18 with a button
+// inside 24px; the reveal's "Your original description" 15. Judged one by one
+// with `only`, and each must exist (a control that vanished is not a pass).
+// thePassIsOnTheBoard's event: a destination that takes the pass.
+const PASS_EV = { id: 'cust-board-pass', name: 'Lake House Weekend', type: 'Birthday Party', date: dateIn(60),
+  guestEstimate: 12, guestMode: 'count', guestCountSource: 'host', budget: [], vendors: [], guests: [], timeline: [],
+  isDestination: true, passRequired: true, passReasons: ['destination'] };
+const TRIP = {
+  id: 'tap-44-trip', name: 'Girls Trip to Nashville', type: 'Group Trip', createdAt: '2026-11-01',
+  date: dateIn(40), endDate: dateIn(43), guestEstimate: 8, guestMode: 'list', guestCountSource: 'host',
+  isDestination: true, passRequired: true, passReasons: ['destination', 'multi-day'], costSharing: { mode: 'self-pay' },
+  venueCity: 'Nashville, TN', hostName: 'Casey Morgan',
+  guests: [{ id: 'g1', name: 'Jordan Avery', rsvp: 'Yes' }, { id: 'g2', name: 'Sam Lee', rsvp: 'Maybe' }],
+  vendors: [], budget: [], timeline: [],
+};
+const judge = async (page, root, only) => {
+  const n = await page.evaluate(([r, o]) => { const el = [...document.querySelectorAll(r)].pop() || document.body; return el.querySelectorAll(o).length; }, [root, only]);
+  expect(n, `premise: ${only} is on screen`).toBeGreaterThan(0);
+  return page.evaluate(underFloor, [root, FLOOR, only]);
+};
+const viaMenu = async (page, label) => {
+  if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
+  await page.locator('.ev-eyebrow').first().click();
+  await page.locator('.sheet').last().getByRole('button', { name: label, exact: false }).first().click();
+  await page.waitForTimeout(1200);
+};
+
+test.describe('the controls audit 2 measured under 44 (390, touch)', () => {
+  test.beforeEach(async ({ page }, info) => {
+    test.skip(info.project.name !== 'mobile', 'pinned to the 390 phone the audit measured');
+    await page.setViewportSize({ width: 390, height: 844 });
+  });
+
+  // The pass chip and its sheet show only where billing is live: the passgate
+  // bundle, with the capability mocked (thePassIsOnTheBoard's harness).
+  test('billing live: the pass chip and its sheet\'s support address', async ({ page }) => {
+    const API = 'https://passgate-mock.invalid';
+    await page.route(API + '/**', (route) => route.fulfill({ status: 200, json: {} }));
+    await page.route(API + '/api/capabilities', (route) => route.fulfill({ status: 200, json: { stripe_configured: true, stripe_can_honour_purchases: true } }));
+    await page.route(API + '/api/stripe/pass**', (route) => route.fulfill({ status: 200, json: { event_id: PASS_EV.id, held: false } }));
+    await boot(page, previewUrl(Number(process.env.PW_PASSGATE_PORT || 5266)) + '?elegant=1', PASS_EV);
+    await settled(page);
+    await page.locator('.pass-status-needed').first().waitFor({ timeout: 15_000 });
+    const found = [];
+    found.push(...await judge(page, '.app', '.pass-status-needed'));
+    await page.locator('.pass-status-needed').first().click();
+    await sheetSettled(page);
+    found.push(...await judge(page, '.sheet', '.grounding > a[href^="mailto:"]'));
+    // and the link's grown hit area took none from the controls around it
+    found.push(...await page.evaluate(underFloor, ['.sheet', FLOOR]));
+    expect(found).toEqual([]);
+  });
+
+  test('a trip: Delete on This event', async ({ page }) => {
+    await boot(page, '?elegant=1', TRIP);
+    await settled(page);
+    const found = [];
+    await viaMenu(page, 'This event');
+    found.push(...await judge(page, '.sheet', '.delrow'));
+    expect(found).toEqual([]);
+  });
+
+  test('Wanda: the Guests chips and field, the vendors bar, The Day\'s Menu, After\'s money rows', async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
+      localStorage.setItem('ngw-hostv2-last-event', 'ev-x-wanda');
+      localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+      localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
+    });
+    await page.goto('?elegant=1');
+    await settled(page);
+    const found = [];
+    await openSectionByName(page, 'Guests', { settle: 800 });
+    await sheetSettled(page);
+    found.push(...await judge(page, '.sheet', '.rtool-lens .chip, .rtool-q'));
+    await openSectionByName(page, 'People you’re hiring', { settle: 800 });
+    await sheetSettled(page);
+    found.push(...await judge(page, '.sheet', '.conflictbar'));
+    await viaMenu(page, 'The Day');
+    found.push(...await judge(page, '.app', '.day-sec > .ev-eyebrow'));
+    await viaMenu(page, 'After');
+    found.push(...await judge(page, '.app', 'button.line'));
+    expect(found).toEqual([]);
+  });
+
+  test('the reveal: "Your original description"', async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.addInitScript(() => { if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1'); localStorage.clear(); });
+    await page.route('https://e2e-mock.invalid/**', (route) => route.fulfill({ status: 404, json: { detail: 'not found' } }));
+    await page.goto('?elegant=1');
+    await page.getByRole('button', { name: 'Start my event' }).first().click({ timeout: 30_000 });
+    await page.getByText(/what are we planning/i).first().waitFor({ timeout: 20_000 });
+    await page.getByPlaceholder(/crab feast/i).first().fill('Backyard crab feast for 20 people on Saturday');
+    await page.getByRole('button', { name: /^Put my plan together$/ }).click();
+    await page.getByRole('button', { name: /^Open your plan$|^Keep this plan$/ }).waitFor({ timeout: 30_000 });
+    await page.waitForTimeout(6000);
+    expect(await judge(page, '.reveal-stage', 'details.grounding > summary')).toEqual([]);
+  });
 });

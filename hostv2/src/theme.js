@@ -98,12 +98,44 @@ export function applyStudioMatte(override) {
   // The text/status bundle has to move with the surfaces or the two disagree
   // — which is exactly the unreadable half-flip of 2026-09-27.
   const bundle = isLight ? light : dark;
+  // ── LIGHT IS WARM LINEN (owner, 11/22/2026: "Let's go with B with the C
+  // touches") ─────────────────────────────────────────────────────────────
+  // Direction B of the light theme study ("Warm Linen, Refined"). Ruling 25's
+  // warm canvas, made one warm-neutral system:
+  //   - two surfaces, not four: page = band #F1EEE8, warm-white panels #FFFEFB
+  //     with a real edge (#D9D1C4) and an umber lift;
+  //   - one secondary steel (--ink-soft = --steel-soft: they were ΔE 5.6
+  //     apart, one visible color under two names). The study's #3F5866 sat at
+  //     the meta gray's luminance (1.01:1), which the tier rule forbids
+  //     (lightModeClearsAA: two tiers a real luminance step apart, >=1.10), so
+  //     it is one step deeper, #34495A (1.23 from the meta gray);
+  //   - attention is umber on a HONEY chip, #5A3606 on #F2D894 (7.65:1). The
+  //     old #884E0B on its 10% tint sat at the meta text's lightness (1.03:1)
+  //     and read as dirty beige; the honey sits far above the canvas in
+  //     chroma, and the umber far below the meta in lightness;
+  //   - risk is a solid brick fill, #9B2A22 under white (7.64:1);
+  //   - steel stays the accent (ruling 25), --cta-grad untouched (ruling 29).
+  // Every value is gated by test/statusInkClearsItsTint.test.mjs.
+  const LINEN = {
+    page: '#F1EEE8', field: '#ECE8E0', panel: '#FFFEFB', line: '#D9D1C4',
+    ink: '#1B1814', steelInk: '#34495A', muted: '#5A534A',
+    ok: '#24603D', warn: '#5A3606', honey: '#F2D894', brick: '#9B2A22', progress: '#5E4E78',
+  };
+  // ── DARK STATUS INKS UNDER THE STEEL GLOW (audit 2, lane F, P1-1) ─────────
+  // Ruling 30 brightened dark's gray text for the glow's top stop and left
+  // the colored inks: the green, red and steel labels on their own tints read
+  // 3.72 / 3.83 / 4.08:1 there (the RSVP "Yes", "Worth planning now", the
+  // board pills, the filter chips). Each is the same hue and saturation one
+  // HSL lightness step up, to the first value clearing 4.6 on its tint over
+  // every ground and glow stop. Surfaces and tints do not move.
+  const DARK_STATUS = { ok: '#77c198', danger: '#f59891', steelSoft: '#b1c2cb', progress: '#c0b1d5' };
   try {
     document.documentElement.setAttribute('data-theme', theme);
     document.documentElement.style.setProperty('color-scheme', theme);
   } catch (_) { /* attribute is cosmetic; the vars below are the theme */ }
-  set('--bg', c.bg);
-  set('--bg-band', c.surface2);
+  set('--bg', isLight ? LINEN.page : c.bg);
+  // Light: the band IS the page (linen, B): two surfaces, not four.
+  set('--bg-band', isLight ? LINEN.page : c.surface2);
   // ── --field: the ground BEHIND the stage at >=1024 (host, 2026-08-07) ──────
   // "need more of my carbon in the tablet, desktop, widescreens."
   //
@@ -134,21 +166,22 @@ export function applyStudioMatte(override) {
   // on light is surface2 (#EDEEF1), and the composition still reads in three —
   // field #EDEEF1 -> content ground #F7F8FA -> panel #FFFFFF — exactly as deep
   // -> mid -> panel does in the dark.
-  set('--field', isLight ? carbonNeutral.light.surface2 : carbonNeutral.deep.bg);
-  set('--card', c.panel);
+  set('--field', isLight ? LINEN.field : carbonNeutral.deep.bg);
+  set('--card', isLight ? LINEN.panel : c.panel);
   // ── PANELS ON A GROUND (owner ruling 25, 11/21/2026: "W1") ────────────────
   // In light a sheet's ground is the page (--bg) and each section sits on a
   // white --card panel with a soft warm shadow. Dark keeps its sheet on --card
   // and casts no panel shadow, so dark renders as it did.
-  set('--sheet-ground', isLight ? c.bg : c.panel);
-  set('--panel-shadow', isLight ? `0 1px 2px ${tint('#281E14', 0.08)}, 0 4px 14px ${tint('#281E14', 0.05)}` : 'none');
-  set('--ink', bundle.textPrimary);
+  set('--sheet-ground', isLight ? LINEN.page : c.panel);
+  // Linen (B): a real edge plus an umber lift, so a panel reads as an object.
+  set('--panel-shadow', isLight ? `0 1px 0 ${tint('#46341E', 0.05)}, 0 8px 18px -12px ${tint('#46341E', 0.22)}` : 'none');
+  set('--ink', isLight ? LINEN.ink : bundle.textPrimary);
   // DARK UNDER THE STEEL GLOW (owner, 11/21/2026, option C "brighter secondary
   // text"): every stop of --canvas-glow is a ground. At its top stop
   // (α .30 steel over the sheet's #1E1F22) #849eb8 read 4.26, and 3.59 on the
   // amber chip tint; #98b2cc is 5.40 and 4.54. Host shell only: the shared
   // palette's textSecondary (CRA, DOCTRINE LOCKED in tokens.js) is untouched.
-  set('--ink-soft', isLight ? bundle.textSecondary : '#98b2cc');
+  set('--ink-soft', isLight ? LINEN.steelInk : '#98b2cc');
   // --muted was aliased to the SAME textSecondary as --ink-soft (and both
   // sit in the steel-blue hue family) — indistinguishable from each other
   // and from the identity accent everywhere they appear together (e.g. the
@@ -194,7 +227,8 @@ export function applyStudioMatte(override) {
   // at the glow's top stop over a sheet, 4.21 over the board; #a0a2a6 is 4.63
   // and 5.13. It still sits a real step under the new --ink-soft #98b2cc
   // (1.17 by luminance, was 1.12).
-  const mutedInk = isLight ? '#5d5a56' : '#a0a2a6';
+  // Linen (B): #5A534A, 6.54:1 on the page, 7.51 on a panel.
+  const mutedInk = isLight ? LINEN.muted : '#a0a2a6';
   set('--muted', mutedInk);
   // --faint carries small text (section labels, form-field labels, chevrons). A
   // tint of the now-darker --muted base; α 0.98 keeps it AA on the tight band
@@ -212,8 +246,12 @@ export function applyStudioMatte(override) {
   // darkening --muted above silently split the two apart and left --faint
   // alone at 4.04:1 on the card. Same value, stated once.
   set('--faint', isLight ? mutedInk : tint(mutedInk, 0.98));
-  set('--line', c.border);
-  set('--line-soft', tint(c.border, 0.55));
+  set('--line', isLight ? LINEN.line : c.border);
+  set('--line-soft', isLight ? tint(LINEN.line, 0.7) : tint(c.border, 0.55));
+  // The one secondary button's edge in light (Linen, B), a step deeper than
+  // a panel's so a recessed button reads on its panel. Dark has no such
+  // recipe; it is --line there so the token is never undefined.
+  set('--line-strong', isLight ? '#CBC1B1' : c.border);
   // ── The segmented switch (Jump to's Create / Plan / The Day / After) ──
   // Its track and lit segment were hex in styles.css (#17181b, #33363b), so
   // light theme kept a dark track under moded ink: "Plan" 1.58:1, the rest
@@ -221,7 +259,12 @@ export function applyStudioMatte(override) {
   // Dark is within a step of what it painted; light is the recessive surface2
   // track. The lit segment wears the one selected state (--sel-bg, styles.css;
   // design batch 4), so --seg-on is gone.
-  set('--seg-track', isLight ? carbonNeutral.light.surface2 : carbonNeutral.deep.panel);
+  set('--seg-track', isLight ? LINEN.field : carbonNeutral.deep.panel);
+  // The one selected state (styles.css :root --sel-*). Linen (B): selection
+  // is a warm-white chip with a steel line, never the steel wash an ordinary
+  // button wears, so the selected tab and "Copy the list" stop looking alike.
+  set('--sel-bg', isLight ? LINEN.panel : 'var(--steel-tint)');
+  set('--sel-line', isLight ? bundle.steelBlue : 'var(--steel-soft)');
 
   // ── Identity: locked steel-blue (mode-independent) + the CTA gradient ──
   set('--steel', bundle.steelBlue);
@@ -249,11 +292,13 @@ export function applyStudioMatte(override) {
   // Dark (owner, 11/21/2026, option C): #8AA3B0 read 4.48 at the steel glow's
   // top stop over a sheet; one unit up, #8BA4B1, is 4.53. Only --steel-soft
   // moves: dsColor.text.onTint stays for its other consumers.
-  set('--steel-soft', isLight ? '#435a67' : '#8BA4B1');
+  // Linen (B): one secondary steel, the same value as --ink-soft. Dark: see
+  // DARK_STATUS (#8BA4B1 read 4.08 on its tint under the glow's top stop).
+  set('--steel-soft', isLight ? LINEN.steelInk : DARK_STATUS.steelSoft);
   // Light takes a lighter wash (owner ruling 25, warm ground): the identity
   // steel on its own α .16 tint read 4.31:1 over the warm --bg; α .12 is 4.55
   // there and 5.14 on a white panel. The steel itself does not move.
-  set('--steel-tint', tint(bundle.steelBlue, isLight ? 0.12 : 0.16));
+  set('--steel-tint', tint(bundle.steelBlue, isLight ? 0.10 : 0.16));
   // Audit S1: steel was doing triple duty — identity, selection, AND the
   // "in progress" status tier (booked / renting / vendor-mid …), so a host
   // couldn't tell a status pill from a selected chip. --progress carries ONLY
@@ -269,9 +314,9 @@ export function applyStudioMatte(override) {
   // violet of the same hue clears 5.5:1 there; dark keeps the system value.
   // Warm ground (ruling 25): #6E5A8A read 4.12 on its own tint over the light
   // glow's top stop; #65537f is 4.61 there.
-  const progress = isLight ? '#65537f' : dsColor.status.inProgress;
+  const progress = isLight ? LINEN.progress : DARK_STATUS.progress;
   set('--progress', progress);
-  set('--progress-tint', tint(progress, 0.12));
+  set('--progress-tint', tint(progress, isLight ? 0.10 : 0.12));
   // Overhead-light material response (brand direction, splash work 2026-07-11):
   // surfaces catch the canvas's top glow as a 1px top sheen. Derived from the
   // steel anchor — same light source as the canvas glow (--canvas-glow).
@@ -289,7 +334,7 @@ export function applyStudioMatte(override) {
   // is warm, and its glow is a faint warm wash in the same one token. Dark keeps
   // the steel glow above.
   set('--canvas-glow', isLight
-    ? 'radial-gradient(150% 59vh at 50% -80px, rgba(196,170,130,.16) 0%, rgba(196,170,130,.05) 45%, transparent 75%)'
+    ? 'radial-gradient(150% 59vh at 50% -80px, rgba(196,170,130,.10) 0%, rgba(196,170,130,.03) 45%, transparent 75%)'
     : `radial-gradient(150% 59vh at 50% -70px, ${tint('#56748C', 0.30)} 0%, ${tint('#56748C', 0.09)} 40%, transparent 74%)`);
   // ── THE PRIMARY IS LIT FROM THE TOP (owner, 11/20/2026) ─────────────────────
   // The owner chose this over the flat fill from a rendered comparison on the
@@ -306,18 +351,30 @@ export function applyStudioMatte(override) {
   set('--on-steel', dark.textPrimary);
 
   // ── Status anchors (Dark calibrations) ──
-  set('--ok', bundle.successGreen);
+  set('--ok', isLight ? LINEN.ok : DARK_STATUS.ok);
   // Dark green-ink for text ON the --ok fill (the all-quiet NEXT tile). Tokenized
   // (was a #0d2018 literal) — 6.2:1 on the green. (Color audit T2.)
   set('--on-ok', '#0d2018');
+  // ── THE PROGRESS STRIPS (owner, 11/22/2026: "Green should pop more for the
+  // progress") ──────────────────────────────────────────────────────────────
+  // The seven strips under the board's ask ("5 of 7 · Food and Vendors open")
+  // were --ok at .95 for done and --steel-soft at .75 for open: in dark both
+  // sat near one lightness, so done and open differed by hue alone. Done is
+  // now a fuller green (green = done only), open a recessive neutral that
+  // still shows the denominator. Gate: statusInkClearsItsTint (done 3:1 on
+  // every ground, 2:1 against open; open 1.3:1 on its ground).
+  set('--seg-done', isLight ? '#1F8A4C' : '#4FD08A');
+  set('--seg-open', tint(mutedInk, isLight ? 0.30 : 0.35));
   // Status-pill TEXT (--ok on --ok-tint) ran 4.35:1 at α=0.14 — large-text-only.
   // Lightened the tint to α=0.10 (a subtler wash) → 4.64:1, clearing small-text
   // AA for the pill label without touching the green itself (2026-07-13 audit).
-  set('--ok-tint', tint(bundle.successGreen, 0.10));
-  set('--warn', bundle.amber);
+  set('--ok-tint', isLight ? tint(LINEN.ok, 0.08) : tint(bundle.successGreen, 0.10));
+  set('--warn', isLight ? LINEN.warn : bundle.amber);
   // Audit I2: was α 0.15 while --ok-tint/--danger-tint are 0.10 — amber chips
   // rendered visibly denser than green/red beside them. Normalized to 0.10.
-  set('--warn-tint', tint(bundle.amber, 0.10));
+  // Light: the honey chip is OPAQUE, so it reads the same on a panel and on
+  // the page (Linen, B). Dark keeps the 10% wash.
+  set('--warn-tint', isLight ? LINEN.honey : tint(bundle.amber, 0.10));
   // WEATHER GLYPH TONES (owner, 11/18/2026: "Color on light is dirty or
   // muted", then "Still a bit dark"; picked B from a four-step ladder). The
   // glyphs first borrowed --warn and --steel-soft, which light mode darkens
@@ -337,14 +394,18 @@ export function applyStudioMatte(override) {
   // original deep red for the ONE place danger is a solid fill behind light text
   // (the alert banner) — lightening that fill would have dropped its white-text
   // contrast (per-screen audit cross-cutting fix).
-  set('--danger', bundle.dangerRed);
+  set('--danger', isLight ? LINEN.brick : DARK_STATUS.danger);
   // Same small-text fix as --ok-tint: the tint dropped α 0.14 → 0.10 for the
   // danger pill/label text. WAVE-6 CORRECTION: the "4.42:1 → 4.78:1" figures
   // this comment used to carry did not reproduce. Measured (WCAG relative
   // luminance, dangerRed #F27A70, α=0.10 composited): 5.27:1 over --card,
   // 4.82:1 over --bg-band, 6.71:1 over --carbon — all clear 4.5:1.
-  set('--danger-tint', tint(bundle.dangerRed, 0.10));
-  set('--danger-solid', bundle.dangerSolid);
+  set('--danger-tint', isLight ? tint(LINEN.brick, 0.08) : tint(bundle.dangerRed, 0.10));
+  // Light: risk is SOLID brick under white (Linen, B), 7.64:1.
+  set('--danger-solid', isLight ? LINEN.brick : bundle.dangerSolid);
+  // The label on that solid risk fill: warm white, 7.6:1 on brick. Dark's
+  // banner already labels its fill with --ink, which is this value there.
+  set('--on-danger', isLight ? LINEN.panel : bundle.textPrimary);
   // WAVE-6 AA REPAIR: danger TEXT on dark grounds gets its OWN token so text
   // legibility never rides on the fill anchors (--danger/--danger-solid are
   // fills/accents and stay untouched — dimming them would break the alert
@@ -361,7 +422,7 @@ export function applyStudioMatte(override) {
   // --bg, 4.68 on --bg-band): the "one step lighter" refinement is a
   // dark-ramp move, and repeating it in light would soften the value in the
   // direction that costs contrast rather than the one that adds it.
-  set('--danger-text', isLight ? bundle.dangerRed : '#F58B82');
+  set('--danger-text', isLight ? LINEN.brick : DARK_STATUS.danger);
 
   // ── The Day: Dark Standard Carbon ramp ──
   set('--carbon', bundle.carbonBody);

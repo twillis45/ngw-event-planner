@@ -56,6 +56,11 @@
 //               #e8edf2 now reads --carbon-ink; the unrendered reveal rules
 //               took #f4f6f8 (.rv-mname), #f2f4f7 (.rv-card-what) and the five
 //               in @keyframes rvignite (.rv-name .rv-L) with them.
+//   11/22/2026  269 color, 880 inline (the Linen theme, owner: "B with the C
+//               touches"). The board's progress strips moved from an inline
+//               style (two var() fallbacks, #6f9f7f / #7d8590, plus background
+//               and opacity) to .eprog-seg and the --seg-done / --seg-open
+//               tokens: HostShellV2.jsx 30 -> 28 color, 636 -> 634 inline.
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';

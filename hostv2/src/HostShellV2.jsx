@@ -13621,18 +13621,14 @@ export default function HostShellV2() {
                             onMouseEnter={() => setHoverSeg(s)}
                             onMouseLeave={() => setHoverSeg(cur => (cur && cur.id === s.id ? null : cur))}
                             style={{ flex: 1, padding: '7px 0', display: 'flex', alignItems: 'center' }}>
-                            <span style={{
-                              flex: 1, height: 2, borderRadius: 1,
-                              // Never colour-only: the aria-label above and the title
-                              // attribute both name the state in words.
-                              //
-                              // Open segments were `--line` at 0.5 opacity and read as
-                              // nearly invisible on the dark ground, so the bar looked
-                              // like "2 things" rather than "2 of 5 handled" — the
-                              // denominator disappeared. Found by inspecting the zoom.
-                              background: s.handled ? 'var(--ok, #6f9f7f)' : 'var(--steel-soft, #7d8590)',
-                              opacity: s.handled ? 0.95 : 0.75,
-                            }} />
+                            {/* Never colour-only: the aria-label above and the title
+                                attribute both name the state in words, and a done
+                                strip is also thicker than an open one. Its paint is
+                                .eprog-seg in styles.css (--seg-done / --seg-open;
+                                owner, 11/22/2026: "Green should pop more"). Open
+                                strips once read as nearly invisible and the
+                                denominator disappeared; --seg-open is gated to show. */}
+                            <span className={'eprog-seg' + (s.handled ? ' is-done' : '')} />
                           </span>
                         ))}
                       </div>
@@ -16326,7 +16322,9 @@ export default function HostShellV2() {
                         (cursor:default, no onClick) — the one thing on this whole
                         screen you couldn't tap into. */}
                     {hostRowsGo().map(r => (
-                      <button key={r.label} className="line" style={{ width: '100%', background: 'none', border: 'none', font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer', padding: 0 }}
+                      // .line-go: its inline padding:0 left this row 20px tall, so the
+                      // touch floor is a class (styles.css, audit 2 lane F P1-5).
+                      <button key={r.label} className="line line-go" style={{ width: '100%', background: 'none', border: 'none', font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer', padding: 0 }}
                         onClick={r.go} aria-label={'Open ' + r.label}>
                         <span>{r.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
                         <span className="amt">{fmt(r.got)} <span className="of">of ~{fmt(r.est)}</span></span>

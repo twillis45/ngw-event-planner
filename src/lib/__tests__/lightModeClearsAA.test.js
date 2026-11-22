@@ -64,8 +64,9 @@ describe('light mode text clears AA on every ground it lands on', () => {
   const TEXT_TOKENS = {
     '--ink (textPrimary)': light.textPrimary,
     '--ink-soft (textSecondary)': light.textSecondary,
-    '--muted': '#5d5a56',
-    '--faint': '#5d5a56',
+    // hostv2's shipped light meta gray (Linen, owner 11/22/2026: "B").
+    '--muted': '#5A534A',
+    '--faint': '#5A534A',
     '--ok (successGreen)': light.successGreen,
     '--warn (amber)': light.amber,
     '--danger (dangerRed)': light.dangerRed,
@@ -107,10 +108,11 @@ describe('text on a TINT clears AA too — the ground the first sweep missed', (
     ['--ok on --ok-tint', light.successGreen, light.successGreen, 0.10],
     ['--warn on --warn-tint', light.amber, light.amber, 0.10],
     ['--danger on --danger-tint', light.dangerRed, light.dangerRed, 0.10],
-    ['--steel-soft on --steel-tint', '#435a67', light.steelBlue, 0.16],
-    ['--progress on --progress-tint', '#65537f', '#65537f', 0.12],
-    // α .12 in light since ruling 25 (theme.js --steel-tint).
-    ['--steel on its own --steel-tint', light.steelBlue, light.steelBlue, 0.12],
+    // hostv2's shipped light values (Linen, owner 11/22/2026: "B"):
+    // --steel-soft = --ink-soft #34495A, --steel-tint and --progress-tint α .10.
+    ['--steel-soft on --steel-tint', '#34495A', light.steelBlue, 0.10],
+    ['--progress on --progress-tint', '#5E4E78', '#5E4E78', 0.10],
+    ['--steel on its own --steel-tint', light.steelBlue, light.steelBlue, 0.10],
   ];
   // The tinted pairs keep the two grounds they were always held to; the glow's
   // top stop is held for bare text above (a pill there is the e2e walk's job).
@@ -138,8 +140,11 @@ describe('the gray tiers rank by luminance, not by hue', () => {
   // two tiers at one luminance — is still held, and on the SHIPPED values: this
   // test used to read a stale #707274, while the light tiers that shipped
   // (#686A6C over #4e6c84) sat only 1.02 apart. Now 1.14 (#5d5a56 / #4a667c).
+  // Linen (owner, 11/22/2026: "B"): hostv2 ships --muted #5A534A and
+  // --ink-soft #34495A (the study's #3F5866 sat 1.01 from the meta gray, so it
+  // went one step deeper). Read the shipped pair.
   test('light: muted and ink-soft sit a real luminance step apart', () => {
-    const [hi, lo] = [lum('#5d5a56'), lum(light.textSecondary)].sort((a, b) => b - a);
+    const [hi, lo] = [lum('#5A534A'), lum('#34495A')].sort((a, b) => b - a);
     expect((hi + 0.05) / (lo + 0.05)).toBeGreaterThanOrEqual(1.10);
   });
 

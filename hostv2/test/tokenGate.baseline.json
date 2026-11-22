@@ -1,7 +1,7 @@
 {
   "totals": {
-    "color": 272,
-    "inline": 883
+    "color": 269,
+    "inline": 880
   },
   "files": {
     "CalendarSheet.jsx": {
@@ -44,8 +44,8 @@
       "inline": 1
     },
     "HostShellV2.jsx": {
-      "color": 30,
-      "inline": 636
+      "color": 28,
+      "inline": 634
     },
     "HostUpdates.jsx": {
       "inline": 12
