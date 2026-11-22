@@ -5608,6 +5608,7 @@ export default function HostShellV2() {
   // an origin for free, including the ones not written yet.
   const lastTapRef = useRef(null);
   const reconciledRef = useRef(new Set());   // events whose catch-up pass has already run this session
+  const lastUndoRef = useRef(null);          // the last undoable edit: { eventId, prev, msg, at } (patchEvent's followsLast)
   // The ranked index's FLIP pair. `qidxKeys` is the order as a string, so the
   // effect fires when the RANKING changes rather than on every render — the
   // measure is cheap but not free, and re-measuring on unrelated state is how
@@ -8465,7 +8466,11 @@ export default function HostShellV2() {
     // something the host did in this session is worth a sentence.
     const first = !reconciledRef.current.has(event.id);
     reconciledRef.current.add(event.id);
-    patchEvent({ timeline: res.rows }, first ? '' : reconcileSummary(res), first ? { noUndo: true } : undefined);
+    // ONE UNDO FOR A PICK AND WHAT FOLLOWED (Wanda audit P0-3, 11/22/2026): this
+    // pass follows her last edit, so it joins that edit's Undo instead of
+    // replacing it. Its own receipt restored only the timeline and left
+    // "Host cooks" picked.
+    patchEvent({ timeline: res.rows }, first ? '' : reconcileSummary(res), first ? { noUndo: true } : { followsLast: true });
     return;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event && event.id, event && JSON.stringify(event.foodChoices || null), event && JSON.stringify(event.tripMeals || null), event && JSON.stringify(event.celebration || null),
@@ -8490,6 +8495,15 @@ export default function HostShellV2() {
     const undoable = !!msg && !(opts && opts.noUndo);
     let undoPrev = null;
     if (undoable) { undoPrev = {}; for (const k of Object.keys(obj || {})) undoPrev[k] = event[k]; }
+    // A write that FOLLOWS the host's last edit (opts.followsLast — the checklist
+    // reconcile after a pick) folds into that edit's Undo: one Undo puts back the
+    // pick and everything that followed from it, and the receipt says both. The
+    // earlier edit's values win for any key both touched (they are the older ones).
+    const last = lastUndoRef.current;
+    const folds = undoable && !!(opts && opts.followsLast) && !!last && last.eventId === eventId && (Date.now() - last.at) < 7000;
+    if (folds) { undoPrev = { ...undoPrev, ...last.prev }; msg = last.msg + ' ' + msg; }
+    // Any write that is not itself undoable ends the chain: what follows it does not follow her edit.
+    if (!undoable) lastUndoRef.current = null;
     let result;
     let savedEv = null;
     // AN EVENT FROM THE ACCOUNT BECOMES THIS DEVICE'S OWN ON ITS FIRST EDIT
@@ -8577,7 +8591,8 @@ export default function HostShellV2() {
       // through, so its toast is always a confirmation ⇒ green. Errors never come through
       // here (they call toast() directly with no tone), so they stay neutral.
       if (undoable) {
-        const undoFn = () => patchEvent(undoPrev, 'Undone.', { noUndo: true });
+        lastUndoRef.current = { eventId, prev: undoPrev, msg, at: Date.now() };
+        const undoFn = () => { lastUndoRef.current = null; return patchEvent(undoPrev, 'Undone.', { noUndo: true }); };
         if (askModeRef.current && stage === 'plan' && !sheet) {
           setHeroReceipt({ msg, fn: undoFn });
           // Route through the ONE haptic vocabulary (feedback) instead of a bespoke
