@@ -13,6 +13,8 @@
 //  • Wanda changes from Army ceremonial dress into a gold dress mid-event.
 //  • A friend shoots a PRE-EVENT photoshoot at 4604 Grazin Way so 6-ft image
 //    decorations can be printed in time. Marcus's family + Wanda's Mom lodge at 4604.
+//  • The singer (vendor, run-of-show row, checklist step) is marked `surprise`,
+//    so the family link leaves it out (owner ruling 11/22/2026).
 //  • Open bar, catering, decorations, DJ, photobooth, event photographer, desserts.
 
 const WANDA_GOLD_EVENT = {
@@ -128,7 +130,7 @@ const WANDA_GOLD_EVENT = {
       id: 'ev-x-wanda-v8', name: 'Church singer (Cory’s surprise)', category: 'Entertainment', budgetCategory: '',
       status: 'Confirmed', cost: 0, depositAmt: 0, depositPaid: false, balancePaid: false, payDueDate: '',
       coiStatus: 'n/a', coiVerified: false, arrivalTime: '7:30 PM', contact: 'Cory (keeping it secret)',
-      phone: '', website: '', contractSigned: false, isInformal: true, deliversHeartMoment: true, backup: '',
+      phone: '', website: '', contractSigned: false, isInformal: true, deliversHeartMoment: true, surprise: true, backup: '',
       notes: 'SURPRISE — a singer from Cory’s church performs a dedication. Wanda doesn’t know. Only the run-of-show and the DJ need the cue; keep it off any guest-facing note.',
       serviceArea: '', insuranceStatus: 'n/a', log: [],
     },
@@ -147,7 +149,7 @@ const WANDA_GOLD_EVENT = {
     { id: 'ev-x-wanda-t3', week: 'Week of Mar 1', task: 'Book photobooth + night-of photographer, or trim to fit budget', done: false, owner: 'Vida Haynes' },
     { id: 'ev-x-wanda-t4', week: 'Week of Mar 8', task: 'Do the photoshoot at 4604 and ORDER the 6-ft prints (~10 days out so they’re ready)', done: false, owner: 'Wanda' },
     { id: 'ev-x-wanda-t5', week: 'Week of Mar 8', task: 'Set up the rooms at 4604 for Marcus’s family + Mom (arriving 2 days early)', done: false, owner: 'Cory' },
-    { id: 'ev-x-wanda-t6', week: 'Week of Mar 8', task: 'Coordinate the secret singer + gold-dress reveal cues with the DJ — keep it off Wanda’s radar', done: false, owner: 'Cory' },
+    { id: 'ev-x-wanda-t6', week: 'Week of Mar 8', task: 'Coordinate the secret singer + gold-dress reveal cues with the DJ — keep it off Wanda’s radar', done: false, owner: 'Cory', surprise: true },
     { id: 'ev-x-wanda-t7', week: 'Week of Mar 15', task: 'Final headcount to the caterer (~75), confirm run of show, all-black dress reminder in the invite', done: false, owner: 'Vida Haynes' },
   ],
   ros: [
@@ -155,7 +157,7 @@ const WANDA_GOLD_EVENT = {
     { id: 'ev-x-wanda-ros-2', time: '6:45 PM', label: 'Wanda arrives in Army ceremonial dress' },
     { id: 'ev-x-wanda-ros-3', time: '7:00 PM', label: 'Buffet dinner' },
     { id: 'ev-x-wanda-ros-4', time: '7:45 PM', label: 'Army retirement presentation — Marcus (brother)' },
-    { id: 'ev-x-wanda-ros-5', time: '8:15 PM', label: 'SURPRISE: church singer’s dedication (Cory’s doing)' },
+    { id: 'ev-x-wanda-ros-5', time: '8:15 PM', label: 'SURPRISE: church singer’s dedication (Cory’s doing)', surprise: true },
     { id: 'ev-x-wanda-ros-6', time: '8:30 PM', label: 'Wardrobe change — Wanda returns in the gold dress' },
     { id: 'ev-x-wanda-ros-7', time: '8:45 PM', label: 'Toast + black-&-gold cake' },
     { id: 'ev-x-wanda-ros-8', time: '9:00 PM', label: 'Dance floor opens — DJ + photobooth' },

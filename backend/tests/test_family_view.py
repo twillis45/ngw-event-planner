@@ -93,3 +93,31 @@ def test_a_short_unknown_or_cleared_code_is_the_same_404(monkeypatch):
 
 def test_the_apps_guessed_start_time_is_withheld():
     assert "startTime" not in fv.family_projection({**EVENT, "startTimeSource": "derived"})
+
+
+def test_marked_surprises_never_reach_the_family_link():
+    """Owner ruling 11/22/2026 ("Hide marked surprises"): a run-of-show row, a
+    vendor or a checklist step the host marked as a surprise is left out of the
+    family view. Unmarked rows still come through, and the playbook's own rows
+    keep their flag so the page can tell hers from the app's."""
+    data = dict(EVENT)
+    data["ros"] = [
+        {"time": "18:30", "label": "Doors"},
+        {"time": "20:15", "label": "The singer’s dedication", "surprise": True},
+        {"time": "21:00", "segment": "Cake", "generated": True},
+    ]
+    data["vendors"] = [
+        {"name": "Harvest Table Catering", "category": "Catering", "status": "Booked"},
+        {"name": "Church singer", "category": "Entertainment", "status": "Confirmed", "surprise": True},
+    ]
+    data["timeline"] = [
+        {"task": "Order the turkey", "done": True},
+        {"task": "Cue the singer with the DJ", "done": False, "surprise": True},
+    ]
+    out = fv.family_projection(data)
+    assert [r["label"] for r in out["ros"]] == ["Doors", "Cake"]
+    assert out["ros"][1].get("generated") is True
+    assert "generated" not in out["ros"][0]
+    assert [v["name"] for v in out["vendors"]] == ["Harvest Table Catering"]
+    assert [t["task"] for t in out["checklist"]] == ["Order the turkey"]
+    assert "singer" not in json.dumps(out).lower()
