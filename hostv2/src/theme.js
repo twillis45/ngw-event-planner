@@ -414,6 +414,10 @@ export function applyStudioMatte(override) {
   // signal is an umber-on-honey chip, not orange body text. 7.65:1.
   set('--honey', LINEN.honey);
   set('--on-honey', LINEN.warn);
+  // The "9" count badge in "Then, in order": dark's own #1a2228 (unchanged),
+  // and warm black under a warm-white label in light, where the dark literal
+  // read 2.22:1 (Linen, B).
+  set('--count-badge', isLight ? LINEN.ink : '#1a2228');
   // The sheet and search scrims. Dark keeps its black washes; light's are a
   // warm umber, so a scrim over linen reads warm, not gray (owner, 11/22).
   set('--scrim', isLight ? tint('#2E2214', 0.42) : 'rgba(0,0,0,.42)');

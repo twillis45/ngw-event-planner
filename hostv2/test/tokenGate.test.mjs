@@ -63,6 +63,9 @@
 //               tokens: HostShellV2.jsx 30 -> 28 color, 636 -> 634 inline.
 //   11/22/2026  the two sheet scrims (rgba(0,0,0,.42), rgba(6,9,12,.55)) read
 //               --scrim / --scrim-deep, warm umber in light: styles.css 119 -> 117.
+//   11/22/2026  .ef-cnt's dark #1a2228 is --count-badge (warm black in light, so
+//               the parity gate's no-white-plate rule stops reading var(--ink) as
+//               one): styles.css 117 -> 116.
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
