@@ -207,13 +207,13 @@ import { expectedFromPlanned, likelyAttendancePhrase } from '@app/lib/attendance
 import { estimateTotalRange, notIncludedFor, notIncludedSummary } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
 import { venueLeadsStay } from '@app/lib/venueLeadsStay'; // owner ruling 11/20/2026: the venue leads the stay
-import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
+import { dietRowsFor, anyDietFlagged, dietCountsFor, guestDietCounts } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
 import { parseStartMinutes } from '@app/lib/eventWhen';
 import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
 import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
-import { foodOwnerMap, isNamedBringer, openFoodChoices } from '@app/lib/playbooks';
+import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt } from '@app/lib/playbooks';
 import InviteToTheList from './InviteToTheList';
 import NudgeTheList from './NudgeTheList';
 import { takeEventLink, isOwnEvent } from '@app/lib/eventLink';
@@ -697,17 +697,6 @@ const TYPE_GROUPS = (() => {
 // expression, which nothing warns about). '' is a real state — "no reply" is
 // not the absence of an answer, it is the answer the roster starts with.
 const RSVP_VALUES = [['Yes', 'Yes'], ['No', 'No'], ['Maybe', 'Maybe'], ['', 'No reply']];
-// Guest free-text "needs" → a DIET_TAG, so a per-guest RSVP note ("gluten
-// free please") can be merged into dietCounts without retyping (parity:
-// App.js:10831, tagFor).
-const dietTagFor = (s) => {
-  const t = String(s || '').trim().toLowerCase();
-  if (!t) return null;
-  return DIET_TAGS.find((tag) => {
-    const tl = tag.toLowerCase();
-    return tl === t || tl.startsWith(t) || (t.length > 2 && tl.startsWith(t.replace(/ (allergy|free)$/, '')));
-  }) || null;
-};
 
 // Ros cue times are internal 24h "HH:MM" strings (playbookRunOfShow) — never
 // host copy. This turns "23:40" into "11:40 PM"; anything that isn't a bare
@@ -9426,8 +9415,9 @@ export default function HostShellV2() {
       // The ENGINE's dietary model: dietCounts adds a real priced veg main and
       // flags related lines; dietaryNoted closes the cue (headcount events).
       const dc = event.dietCounts || {};
+      const counts = dietCountsFor(event);
       const setD = (k, delta) => {
-        const n = Math.max(0, (Number(dc[k]) || 0) + delta);
+        const n = Math.max(0, (Number(counts[k]) || 0) + delta);
         patchEvent({ dietCounts: { ...dc, [k]: n } },
           n ? k + ' × ' + n + ' — spread adjusted.' : k + ' cleared.');
       };
@@ -9452,7 +9442,7 @@ export default function HostShellV2() {
               <span>{k}</span>
               <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <button className="mini" onClick={() => setD(k, -1)} aria-label={'Fewer ' + k}>−</button>
-                <span className="step-val" style={{ minWidth: 18 }}>{Number(dc[k]) || 0}</span>
+                <span className="step-val" style={{ minWidth: 18 }}>{Number(counts[k]) || 0}</span>
                 <button className="mini" onClick={() => setD(k, 1)} aria-label={'More ' + k}>+</button>
               </span>
             </div>
@@ -9464,7 +9454,7 @@ export default function HostShellV2() {
             </button>
           )}
           <div className="actions-row" style={{ marginTop: 6 }}>
-            <button className="cta" onClick={() => patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.')}>That’s everyone — noted</button>
+            <button className="cta" onClick={() => patchEvent({ dietaryNoted: true }, dietaryNotedReceipt(event))}>That’s everyone — noted</button>
           </div>
           <p className="grounding" style={{ margin: 0 }}>
             Vegetarian and vegan counts add a real, priced main to the spread; the others flag which lines to double-check. Counts live on the plan — change them anytime.
@@ -23348,9 +23338,10 @@ export default function HostShellV2() {
                   // Keys must match the engine's DIET_KEYWORDS table verbatim ('Shellfish',
                   // not 'Shellfish allergy') — dietCounts keys ARE the flag lookup keys.
                   const dc = event.dietCounts || {};
+                  const counts = dietCountsFor(event);   // the one count (lib/dietRows)
                   const anyDiet = anyDietFlagged(event);  // lib/dietRows — was hand-rolled here twice, identically
                   const setD = (k, delta) => {
-                    const n = Math.max(0, (Number(dc[k]) || 0) + delta);
+                    const n = Math.max(0, (Number(counts[k]) || 0) + delta);
                     patchEvent({ dietCounts: { ...dc, [k]: n } },
                       n ? k + ' × ' + n + ' — spread adjusted.' : k + ' cleared.');
                   };
@@ -23366,16 +23357,11 @@ export default function HostShellV2() {
                   // Guest-needs reconciliation (parity: App.js:10827-10836) — what the
                   // RSVPs already told the host, mapped to the same DIET_TAGS vocabulary,
                   // so a per-guest free-text note doesn't have to be re-typed here.
-                  const guestDiet = {};
-                  const addNeeds = (str) => {
-                    const seen = new Set();
-                    String(str || '').split(',').map(x => x.trim()).filter(Boolean).forEach(p => {
-                      const tag = dietTagFor(p);
-                      if (tag && !seen.has(tag)) { seen.add(tag); guestDiet[tag] = (guestDiet[tag] || 0) + 1; }
-                    });
-                  };
-                  (event.guests || []).forEach(g => { if (!g) return; addNeeds(g.needs); addNeeds(g.plusOneNeeds); });
-                  const pending = Object.entries(guestDiet).filter(([d, n]) => (Number(dc[d]) || 0) < n);
+                  // The rows are read by the same reader the counts are (lib/dietRows
+                  // guestDietCounts), so this offers only what the host's own tally
+                  // sits below.
+                  const guestDiet = guestDietCounts(event);
+                  const pending = Object.entries(guestDiet).filter(([d, n]) => (Number(counts[d]) || 0) < n);
                   const pullFromGuests = () => {
                     const next = { ...dc };
                     Object.entries(guestDiet).forEach(([d, n]) => { next[d] = Math.max(Number(next[d]) || 0, n); });
@@ -23397,7 +23383,7 @@ export default function HostShellV2() {
                     setDietOtherName(''); setDietOtherOpen(false);
                   };
                   const stepper = (k) => {
-                    const n = Number(dc[k]) || 0;
+                    const n = Number(counts[k]) || 0;
                     return (
                       <div key={k} className="line" style={{ padding: '6px 0' }}>
                         <span style={{ color: n > 0 ? 'var(--ink)' : 'var(--muted)', fontWeight: n > 0 ? 650 : 500 }}>{k}</span>
@@ -23476,7 +23462,7 @@ export default function HostShellV2() {
                       </p>
                       {!dietaryNoted(event) && (
                         <button className="mini" style={{ marginTop: 'var(--sp-2)' }}
-                          onClick={() => { patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.'); closeDiet(); }}>That’s everyone — noted</button>
+                          onClick={() => { patchEvent({ dietaryNoted: true }, dietaryNotedReceipt(event)); closeDiet(); }}>That’s everyone — noted</button>
                       )}
                       {/* The dietary-note drafter lives here now (port of 391:60 —
                           it belongs with dietary needs, not on the calm summary). */}

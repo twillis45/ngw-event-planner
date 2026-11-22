@@ -885,17 +885,25 @@ export function dietaryNoted(event) {
 function dietaryResolved(event) {
   // Host noted allergies (the headcount-mode workflow), or said nobody has one → done.
   if (dietaryNoted(event)) return { resolved: true, reason: 'noted' };
-  // Headcount / locked-count mode: there's no per-guest list to collect from, so the
-  // host just NOTES the allergies they know of (free-text) instead of chasing the list.
-  if (event.guestMode === 'count') return { resolved: false, reason: 'headcount' };
+  // THE ROWS ARE READ IN EITHER MODE (Wanda audit P0-13, 11/22/2026).
+  // Headcount mode used to return before reading anything, so a count event
+  // whose rows said "Vegetarian" and "Gluten-free" was asked "Who has a food
+  // allergy?" with Vegetarian 0 while the estimate flagged the same two needs.
+  // Still only the rows earn it: a count says how many, not that she asked
+  // everyone (theChipsReachTheSpread.test.js).
   const list = Array.isArray(event.guests) ? event.guests : [];
-  if (list.length === 0) return { resolved: true, reason: 'no-list' }; // nothing to collect from — don't block
   const recorded = list.some((g) => {
+    if (!g || /^n/i.test(String(g.rsvp || ''))) return false;
     const needs = String((g && g.needs) || '').trim();
     const meal = String((g && g.meal) || '').trim();
     return needs || (meal && !/^(standard|—|-|none)$/i.test(meal));
   });
-  return { resolved: recorded };
+  if (recorded) return { resolved: true, reason: 'roster' };
+  // Headcount / locked-count mode with nothing recorded: the host NOTES the
+  // allergies they know of instead of chasing a list.
+  if (event.guestMode === 'count') return { resolved: false, reason: 'headcount' };
+  if (list.length === 0) return { resolved: true, reason: 'no-list' }; // nothing to collect from — don't block
+  return { resolved: false };
 }
 
 function playbookHasDietaryDecision(playbook) {
@@ -999,6 +1007,16 @@ export function openFoodChoices(event, plan) {
     && picks[c.id] == null && !decisionSettledByData(event, c));
 }
 export { isDietaryChoice };
+
+// ─── "NOTED" SAYS ONLY WHAT IS TRUE (Wanda audit P1-14, 11/22/2026) ──────────
+// The receipt for "That's everyone — noted" said "the menu is good to go."
+// while three menu calls were still open. It names what is left, from the same
+// list the menu hero counts (openFoodChoices), read as if the note had landed.
+export function dietaryNotedReceipt(event) {
+  const open = (() => { try { return openFoodChoices({ ...(event || {}), dietaryNoted: true }) || []; } catch (_e) { return []; } })();
+  if (!open.length) return 'Dietary needs noted — the menu is good to go.';
+  return `Dietary needs noted. ${open.length} menu ${open.length === 1 ? 'call is' : 'calls are'} still open.`;
+}
 
 // ─── A CHOSEN CALL IS NOT A CATCH-UP (owner's iPad, 11/21/2026) ──────────────
 // A playbook call is answered when the host picked it, or a record settles it
@@ -3957,7 +3975,15 @@ export function playbookDecisionBoard(event, asOf, profile) {
   const boardFacts = (() => {
     try { return decisionFactsFor(event, pb, asOf, profile); } catch (_e) { return {}; }
   })();
-  const isDietaryDecision = (d) => d.id === 'dietary' || /dietary|allerg/i.test(d.label || '');
+  // ONE dietary rule for what the noted needs SETTLE (Wanda audit P1-3,
+  // 11/22/2026): the question is known by its id. The board locked on the broad
+  // label match #218 retired elsewhere, so noting allergies filed Retirement's
+  // invite call ("Invite + RSVP + dietary/allergy + accessibility ask") as
+  // "Collected". The broad match stays for ROUTING only: a row that asks for
+  // dietary needs among other things still opens the diet drill-in
+  // (blocksIsNotADestination.test.js).
+  const isDietaryDecision = isDietaryChoice;
+  const mentionsDiet = (d) => isDietaryChoice(d) || /dietary|allerg/i.test(d.label || '');
   // A decision is locked when the host picked it (foodChoices[id]) OR the underlying
   // fact is settled — dietary uses the SAME predicate the food gate / next-step use.
   // …OR a booked vendor already answers it (decisionSettledByData, 11/16/2026).
@@ -4062,7 +4088,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
     // the board row itself, so they carry no route (the row is the consumer).
     const _isFoodChoice = _foodChoiceIds.has(d.id);
     const route = (Array.isArray(d.options) && d.options.length > 0 && _isFoodChoice) ? { eventId: event.id, tab: 'Planning', foodFocus: d.id }
-      : isDietaryDecision(d) ? { eventId: event.id, tab: 'Planning', focusField: `fp-diet-${event.id}` }
+      : mentionsDiet(d) ? { eventId: event.id, tab: 'Planning', focusField: `fp-diet-${event.id}` }
       : /vendor|team|hire|staff/.test(_blocks) ? _firstUndoneVendorRoute()
       // ── `blocks` IS NOT A DESTINATION (2026-09-18) ────────────────────────
       // The food branch below reads `_hay`, which folds in `blocks`. Five
