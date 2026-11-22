@@ -20,6 +20,11 @@ import { test, expect, settled } from './fixtures.mjs';
 const ID = 'ev-x-wanda';
 const PATCH = 'ngw-hostv2-patch-' + ID;
 
+// 11/22/2026 (owner ruling "Expected spending", audit 2 D-03): the board now
+// judges Wanda's $5,000 against her plan's EXPECTED cost ($5,263), so it leads
+// with "Expected costs are $225 over your budget". This spec is about her food
+// and timing asks, not her money, so it seeds a budget that covers the plan.
+const ROOMY = { totalBudget: 5600 };
 const boot = async (page, patch) => {
   await page.addInitScript(([id, key, p]) => {
     if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
@@ -27,7 +32,7 @@ const boot = async (page, patch) => {
     if (p) localStorage.setItem(key, JSON.stringify(p));
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
-  }, [ID, PATCH, patch || null]);
+  }, [ID, PATCH, { ...ROOMY, ...(patch || {}) }]);
   await page.goto('?elegant=1');
   await settled(page);
   await page.waitForTimeout(400);

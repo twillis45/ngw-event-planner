@@ -12763,7 +12763,8 @@ export default function HostShellV2() {
                   : (calmVeto && calmVeto.kind === 'open-calls')
                   ? (
                     <div data-calls-open-here>
-                      <div>{calmVeto.label.charAt(0).toUpperCase() + calmVeto.label.slice(1)}.</div>
+                      {/* The verdict above already says it when the day is counted. */}
+                      {!(days !== null && days > 0) && <div>{calmVeto.label.charAt(0).toUpperCase() + calmVeto.label.slice(1)}.</div>}
                       <button className="mini" style={{ marginTop: 'var(--sp-2)' }} onClick={() => setSheet({ kind: 'decisions' })}>Open Calls to make</button>
                     </div>
                   )

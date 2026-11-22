@@ -15,13 +15,19 @@ import { test, expect, settled } from './fixtures.mjs';
 const ID = 'ev-x-wanda';
 const PATCH = 'ngw-hostv2-patch-' + ID;
 
+// 11/22/2026 (owner ruling "Expected spending", audit 2 D-03): the board now
+// judges Wanda's $5,000 against her plan's EXPECTED cost ($5,263), so it leads
+// with "Expected costs are $225 over your budget". This spec is about her food
+// and timing asks, not her money, so it seeds a budget that covers the plan.
+const ROOMY = { totalBudget: 5600 };
 const boot = async (page) => {
-  await page.addInitScript(([id]) => {
+  await page.addInitScript(([id, key, p]) => {
     if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
     localStorage.setItem('ngw-hostv2-last-event', id);
+    localStorage.setItem(key, JSON.stringify(p));
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
-  }, [ID]);
+  }, [ID, PATCH, ROOMY]);
   await page.goto('?elegant=1');
   await settled(page);
   await page.waitForTimeout(400);
@@ -35,9 +41,12 @@ const toTheQuiet = async (page) => {
   await boot(page);
   await tap(page, card(page).locator('.decopt').filter({ hasText: 'Drop-off catering' }).first());
   await tap(page, card(page).locator('.decopt').filter({ hasText: 'Held separately' }).first());
-  // Premise: that pick emptied the queue, and the board is calm.
+  // Premise: that pick emptied the queue. Changed 11/22/2026 (audit 2 P1-3):
+  // this asserted "All quiet" here while Calls to make held four open calls —
+  // the defect. The board now says what is still open instead of calm.
   await expect(page.locator('.hero article.hero-card')).toHaveCount(0);
-  await expect(page.locator('.hero')).toContainText('All quiet');
+  await expect(page.locator('.hero')).toContainText(/calls? still to make/);
+  await expect(page.locator('.hero')).not.toContainText('All quiet');
 };
 
 test('the pick that empties the queue keeps its receipt and its Undo', async ({ page }) => {
@@ -54,6 +63,9 @@ test('the pick that empties the queue keeps its receipt and its Undo', async ({ 
 
 test('the progress line under "All quiet" does not call the plan open and due', async ({ page }) => {
   await toTheQuiet(page);
+  // With calls open there is no calm pole and so no progress line under it;
+  // where one shows, the rule below holds.
+  if (!(await page.locator('.hero .cp-prog').count())) return;
   const prog = (await page.locator('.hero .cp-prog').first().innerText()).trim();
   // Open parts are named only as not due yet, which is what "All quiet" means.
   if (/\bopen\b/.test(prog)) expect(prog).toMatch(/open, nothing due yet$/);
