@@ -1476,7 +1476,7 @@ export default function InviteV2({ code }) {
                     )}
                   </>
                 )}
-                {replyNotice && <p className="grounding" role="status" data-reply-notice style={{ margin: '10px 0 0' }}>{replyNotice}</p>}
+                {replyNotice && <p className="grounding" role="status" data-reply-notice>{replyNotice}</p>}
                 <div className="actions-row" style={{ marginTop: 14, justifyContent: 'center' }}>
                   {rsvp !== 'No' && gcalUrl && <a className="mini" style={{ textDecoration: 'none' }} href={gcalUrl} target="_blank" rel="noreferrer">Add to Google Calendar</a>}
                   {rsvp !== 'No' && icsHref && <a className="mini" style={{ textDecoration: 'none' }} href={icsHref} download={(event.name || 'event') + '.ics'}>Add to Apple Calendar</a>}
