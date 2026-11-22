@@ -46,7 +46,14 @@ const SHELL_KINDS = new Set(['air', 'budget', 'costshare', 'crabs', 'date', 'dec
 // 105 → 102 (11/21/2026, integration, measured): PTA's sponsor ask drafts
 // "The sponsor ask"; the Gala and Conference prospectus rows open "Money
 // coming in · sponsors".
-const NO_DESTINATION_CEILING = 102;
+// 102 → 116 (11/22/2026, lane A audit P1-6, measured 101 → 116): fifteen rows
+// had a WRONG button, and hands-on work with no screen keeps none rather than
+// a wrong one (rowsRouteOnTheirIntent). The Gala's ticket sales, auction
+// display and first-aid kit; NYE's midnight station and countdown test;
+// Halloween's path lights, stroller walk and yard teardown; Holiday Party's
+// decor teardown and toast draft (it has no toast call); Quinceañera's ceremony items; Kwanzaa's zawadi; Retirement's
+// bound book; Thanksgiving's fridge staging.
+const NO_DESTINATION_CEILING = 116;
 
 const ev = (type) => ({ id: 'dest', type, date: '2026-12-31', guestEstimate: 20, guestMode: 'count', guestCountSource: 'host',
   venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX' });

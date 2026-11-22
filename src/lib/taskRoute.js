@@ -140,6 +140,38 @@ export function checklistRouteFor(task, meta = {}, event = null) {
     // "See the day plan" CTA dead-tapped into the toast fallback. Caught by the
     // board-matrix checklist probe's first run (2026-07-27).
     return { label: 'See the day plan', route: { tab: 'Event Day Schedule' } };
+  // ── THE ROW'S ACT OUTRANKS ITS NOUNS (lane A audit P1-6, 11/22/2026) ───────
+  // The rules below take the first keyword they meet, so an incidental noun
+  // beat the row's verb: "Send invitations … no-alcohol note" opened the list on
+  // "alcohol", the Gala's "Mail invitations … table hosts" opened seating, "Book
+  // florist and decor" opened the list, "Book elopement photographer … permit"
+  // opened the place rules, "Set a per-head spend cap … menu" opened the spread,
+  // "Ask each person for a firm yes … deposit" opened Your money. A row that
+  // LEADS with one of these acts lands where the act is done.
+  if (/^(?:send|mail|e-?mail)\b[^.;:]{0,25}\binvit|^send (?:the )?itinerary\b[^.;]{0,40}\brsvp|^send save-the-date\b|^invite\b/.test(t))
+    return { label: 'Open the invite', route: { focusField: 'guests-invites' } };
+  if (/^(?:book|hire|order)\b[^.;:]{0,25}\b(?:photograph\w*|officiant|florists?|florals?|tee time)\b|^confirm\b[^.;]{0,10}\b(?:photograph\w*|officiant)\b[^.;]{0,25}\barrival\b/.test(t)
+    && !/\binsurance\b|\bcois?\b/.test(t)) // the paperwork rule below opens their documents
+    return { label: 'Line them up', route: firstUndoneVendorRoute(event) };
+  if (/\bspend(?:ing)? cap\b|\bcard on file\b/.test(t))
+    return { label: 'Open your money', route: { tab: 'Budget', focusField: 'hsp-budget' } };
+  if (/^ask (?:each|every) ?(?:one|person|guest)\b[^.;]{0,30}\byes\b/.test(t))
+    return { label: 'Open guests', route: { tab: 'Guests', focusField: 'guests-entry' } };
+  if (/^recruit\b[^.;]{0,20}\bcommittee\b/.test(t))
+    return { label: 'Assign it', route: { tab: 'Event Details', focusField: 'space' } };
+  // Toasts: the playbook's own toast call, else no button (a planning row never
+  // opens the day-of board; seasonalPlanAccuracy holds that).
+  if (/^(?:confirm|draft|write|pick)\b[^.;]{0,30}\btoast(?:ers?|s)?\b/.test(t)) {
+    const id = ownCall(event, ['toast']);
+    return id ? { label: 'Plan the toasts', route: { tab: 'Decisions', decisionId: id } } : null;
+  }
+  if (/\bpick (?:one|a) (?:local )?dish\b/.test(t))
+    return { label: 'Map the spread', route: { tab: 'Planning', focusField: 'food-plan' } };
+  // Hands-on work with no screen (staging, lighting, teardown, a test run) keeps
+  // no button rather than the wrong one its nouns would give it. Ticket sales
+  // have no surface yet: Your money tracks sponsors, not tickets.
+  if (/^(?:light the|gather|design|bind the|test the|stage (?:a|the)|walk the route|plan zawadi)\b|^take\b[^.;]{0,60}\bdown\b|\bticket sales\b/.test(t))
+    return null;
   // ── COVERAGE WAVE (host ask 2026-07-28, probe: 79% of rows had a CTA) ──────
   // These land ABOVE the kitchen-prep null because none of them is ever a
   // cooking row — "prep the name tags" is guest-list work, and the /prep/ rule
@@ -152,7 +184,7 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   if (/every household|households\b|contact for each|sign-?in sheet|contact[- ]update|name tags?/.test(t))
     return { label: 'Open guests', route: { tab: 'Guests', focusField: 'guests-entry' } };
   // Permits, alcohol rules, sound ordinances are PLACE facts — the house-rules note.
-  if (/\bpermit\b|alcohol rule|amplified[- ]sound|noise ordinance/.test(t))
+  if (/\bpermit\b|facility[- ]use request|alcohol rule|amplified[- ]sound|noise ordinance/.test(t))
     return { label: 'Open the place rules', route: { focusField: 'house-rules' } };
   if (/safe[- ]rides?|designated[- ]driver|rideshare code/.test(t))
     return { label: 'Open rides', route: { focusField: 'ground' } };
@@ -186,7 +218,7 @@ export function checklistRouteFor(task, meta = {}, event = null) {
     return { label: 'Open share & invite', route: { focusField: 'guests-invites' } };
   // VOWS, READINGS AND WHO SPEAKS are the ceremony's own content, and the run of
   // show is the surface that holds the order of the day.
-  if (/\b(vows?|reading\(s\)|readings?)\b.{0,40}\b(write|writes|practice|choose|assign)|\bwrite (their|your) vows\b/i.test(t))
+  if (/\b(vows?|reading\(s\)|readings?)\b.{0,40}\b(write|writes|practice|choose|assign)|\bwrite (their|your) vows\b|^(?:walk|rehearse) the processional\b/i.test(t))
     return { label: 'Open the day', route: { tab: 'Event Day Schedule' } };
   // POST-EVENT THANK-YOUS route to the roster, because that is where the
   // thank-you state actually lives -- per-guest flags on the same rows (the
@@ -249,9 +281,16 @@ export function checklistRouteFor(task, meta = {}, event = null) {
     return { label: 'Open the place notes', route: { tab: 'Event Details', focusField: 'space' } };
   if (/\bparking\b/.test(t) && !RESERVES_A_SPACE.test(t))
     return { label: 'Open the parking note', route: { focusField: 'parking-notes' } };
-  // Crabs have their own planning surface in the resolver's vocabulary.
-  if (/\bcrabs?\b|crab house|crawfish/.test(t))
+  // THE CRAB ORDER IS A CRAB FEAST'S, AND ONLY FOR BUYING THE CRABS (lane A
+  // audit P0-2, 11/22/2026). Its sizes and "serious pickers" count opened on
+  // Juneteenth's local-tradition row, Crawfish Boil's sacks and Low Country
+  // Boil's "crab boil" seasoning. Another type's crab or crawfish is a line on
+  // its shopping list; a Crab Feast row that sets out mallets is not an order.
+  const crabFeast = !!event && ((() => { try { return getPlaybook(event.type); } catch (_e) { return null; } })() || {}).type === 'Crab Feast';
+  if (crabFeast && /\bcrabs?\b|crab house/.test(t) && /\b(?:order|buy|pick ?up|pickup|reserve|call|bushels?|dozen)\b/.test(t))
     return { label: 'Open the crab plan', route: { focusField: 'crab-plan' } };
+  if (/^(?:call|buy|pick up|order)\b[^.;]{0,40}\b(?:crawfish|shrimp|seafood)\b/.test(t))
+    return { label: 'Open the list', route: { tab: 'Planning', focusField: 'food-plan' } };
   // ── THE GETTING-HERE BRIEF IS TRAVEL, NOT THE GUEST LIST ──────────────────
   // Host report 2026-07-28: "Send guests the getting-here info — airport, hotel,
   // transport, cutoff dates" landed on Open guests. No specific rule matched it,
@@ -280,7 +319,8 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // posts the host's own words on every guest's invite.
   // Team Retreat's "Send arrival instructions, on-site contact numbers, and
   // the day-1 schedule" is the same note to everyone (11/21/2026).
-  if (/^(?:send|share|post)\b[^.;:]{0,30}\b(?:norms|ground rules|arrival instructions)\b/.test(t))
+  // Holiday Party's lost-and-found "post them once to the group" is the same.
+  if (/^(?:send|share|post)\b[^.;:]{0,30}\b(?:norms|ground rules|arrival instructions)\b|\bpost (?:them|it) once to the group\b/.test(t))
     return { label: 'Open updates to everyone', route: { tab: 'Guests', focusField: 'guests-updates' } };
   if (/^(?:send|share)\b[^.;:]{0,20}\btrip details\b/.test(t))
     return { label: 'Draft the trip details', route: { focusField: 'draft-trip-details' } };
