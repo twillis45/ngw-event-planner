@@ -220,3 +220,44 @@ test('dark: its sheet ground is the canvas and its panels are the raised --card'
   expect(s.sheet).toBe(s.bg);
   expect(s.panel).toBe(s.card);
 });
+
+// ONE PANEL PADDING (audit 2 lane F P2-5, 11/22/2026). The Day's day-of card
+// (.dayof-card) has a --line edge and no padding, so its text sat 1px inside
+// the edge in both themes (measured on the built bundle). Every edged or filled
+// block on The Day keeps its text at least 8px off its own edge.
+test('The Day keeps its text off every panel edge, in both themes', async ({ browser }, info) => {
+  test.skip(info.project.name !== 'mobile', 'pins its own 390 contexts; one run is the whole check');
+  test.setTimeout(90_000);
+  const tight = [];
+  for (const theme of ['light', 'dark']) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const page = await ctx.newPage();
+    await boot(page, theme);
+    await page.locator('.ev-eyebrow').first().click();
+    await page.locator('.sheet').last().getByRole('button', { name: 'The Day', exact: false }).first().click();
+    await page.waitForTimeout(1200);
+    const rows = await page.evaluate(() => {
+      const out = [];
+      const sec = document.querySelector('.day-sec');
+      if (!sec) return ['no .day-sec'];
+      for (const el of sec.querySelectorAll('*')) {
+        const cs = getComputedStyle(el); const r = el.getBoundingClientRect();
+        if (r.width < 100 || r.height < 20) continue;
+        const filled = cs.backgroundImage !== 'none' || !/rgba\(0, 0, 0, 0\)|transparent/.test(cs.backgroundColor);
+        const edged = parseFloat(cs.borderLeftWidth) > 0 && !/rgba\(0, 0, 0, 0\)/.test(cs.borderLeftColor);
+        if (!filled && !edged) continue;
+        const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n; let inset = Infinity;
+        while ((n = w.nextNode())) {
+          if (!n.textContent.trim()) continue;
+          const rg = document.createRange(); rg.selectNodeContents(n);
+          for (const q of rg.getClientRects()) if (q.width > 0) inset = Math.min(inset, q.left - r.left);
+        }
+        if (inset < 8) out.push(`${String(el.className || el.tagName)} text ${inset.toFixed(1)}px from its edge`);
+      }
+      return out;
+    });
+    tight.push(...rows.map((x) => `${theme}: ${x}`));
+    await ctx.close();
+  }
+  expect(tight).toEqual([]);
+});
