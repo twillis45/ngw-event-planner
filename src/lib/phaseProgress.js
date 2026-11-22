@@ -20,7 +20,7 @@
 // Thin composition over existing single sources (guestCountResolved, weather
 // readers, dayBefore-style vendor gaps, playbook plans) — not a new engine.
 
-import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, playbookDecisionBoard, openFoodChoices, hostBuysLine } from './playbooks';
+import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, openFoodChoices, hostBuysLine, menuChoicesTally } from './playbooks';
 import { rainPlanStatus } from './weather';
 import { placeIsOutdoors, OUTDOOR_TYPE } from './placeIntelligence';
 import { spanNights } from './dates';
@@ -210,30 +210,17 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   // is false for guestMode 'count' with nothing noted, and for a guest list
   // where nobody has recorded a need — both verified — so a host who really
   // does owe this answer is still asked for it.
+  // ONE COUNT (Wanda audit P0-12, 11/22/2026): the open calls and what the
+  // board parks for later come from menuChoicesTally, which the Plan tab's
+  // "Your choices" row reads too. A booked vendor that answers a choice closes
+  // it there (openFoodChoices, 11/16/2026); the board owns the deferral rule
+  // and is asked for it there (2026-08-07), never re-derived here. A board
+  // failure counts every open call as due now.
+  const menuTally = plan ? (() => { try { return menuChoicesTally(ev, plan, now); } catch (_e) { return null; } })() : null;
   const openChoices = plan
-    // A booked vendor that answers the choice (a contracted caterer answers "how
-    // is the food handled?") closes it here too, as on the board (11/16/2026).
-    ? (openFoodChoices(ev, plan) || [])
+    ? (menuTally ? menuTally.open : (openFoodChoices(ev, plan) || []))
     : [];
-  // THE HERO NAGGED FOR DECISIONS THE BOARD HAD PARKED (2026-08-07).
-  // Reproduced on a birthday 90 days out: playbookDecisionBoard put `food_style`
-  // and `alcohol` in its `deferred` bucket — "comes up closer to the date" — and
-  // this cue was simultaneously the app's TOP instruction, reading "Decide what
-  // you're serving · 2 open". Two surfaces, one event, opposite advice. Same
-  // class as the dest_lodging weight bug: intelligence that exists on one
-  // surface and is contradicted on another.
-  //
-  // The deferral rule is NOT re-derived here. Re-implementing a horizon test is
-  // exactly the "second copy" trap this codebase already names (see the
-  // choicePickFor comment in playbooks/index.js) — the board owns the rule and
-  // is asked for its answer. Wrapped because a board throw must never take the
-  // progress header down with it; an empty set just restores the old behaviour.
-  let deferredIds = new Set();
-  try {
-    const board = playbookDecisionBoard(ev, now) || {};
-    deferredIds = new Set((board.deferred || []).map((r) => r && r.id).filter(Boolean));
-  } catch (e) { /* board unavailable — fall back to counting every open choice */ }
-  const activeChoices = openChoices.filter((c) => !deferredIds.has(c.id));
+  const activeChoices = menuTally ? menuTally.openNow : openChoices;
   // `handled` deliberately still counts EVERY open choice. A parked decision is
   // not a made decision, and flipping food to ✓ at 90 days out because nothing
   // is due yet would be the opposite dishonesty — a green dot over an undecided

@@ -213,7 +213,7 @@ import { parseStartMinutes } from '@app/lib/eventWhen';
 import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
 import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
-import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt } from '@app/lib/playbooks';
+import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt, menuChoicesTally } from '@app/lib/playbooks';
 import InviteToTheList from './InviteToTheList';
 import NudgeTheList from './NudgeTheList';
 import { takeEventLink, isOwnEvent } from '@app/lib/eventLink';
@@ -7403,11 +7403,14 @@ export default function HostShellV2() {
   // `openN`). A third copy is how the bar and the panel come to disagree
   // about the same number on the same screen — the class that has cost this
   // repo twice today. Asked here, once, and read by everyone.
+  // ONE COUNT WITH THE HERO (Wanda audit P0-12, 11/22/2026): this counted the
+  // host's picks over every authored choice, so a call a booked venue settles
+  // read as open ("4 open" under the hero's "1 open") and was asked again in
+  // the list. lib/playbooks menuChoicesTally is what phaseProgress counts.
   const choicesTally = useMemo(() => {
-    const chs = (foodPlan && foodPlan.choices) || [];
-    const picks = event.foodChoices || {};
-    return { settled: chs.filter(c => picks[c.id]).length, total: chs.length };
-  }, [foodPlan, event.foodChoices]);
+    const t = (() => { try { return foodPlan ? menuChoicesTally(event, foodPlan) : null; } catch (_e) { return null; } })();
+    return t || { shown: [], open: [], openNow: [], later: 0, settled: 0, total: 0 };
+  }, [event, foodPlan]);
   const choicesAllSettled = choicesTally.total > 0 && choicesTally.settled === choicesTally.total;
 
   // "Spoken for" on the Bringing tab: a dish counts once somebody's name is
@@ -16401,11 +16404,10 @@ export default function HostShellV2() {
                 // other sheet keeps the plain control rather than inventing one.
                 let tone;
                 if (sheet.kind === 'food' && foodPlan && (foodPlan.itemCount || 0) > 0) {
-                  const picks = event.foodChoices || {};
-                  const chs = foodPlan.choices || [];
-                  const settledAll = chs.length > 0 && chs.every(d => picks[d.id]);
+                  // The menu's count is choicesTally, the one the Plan row reads.
+                  const settledAll = choicesAllSettled;
                   const boughtAll = foodPlan.boughtCount === foodPlan.itemCount;
-                  const started = foodPlan.boughtCount > 0 || chs.some(d => picks[d.id]);
+                  const started = foodPlan.boughtCount > 0 || choicesTally.settled > 0;
                   tone = (settledAll && boughtAll) ? { color: 'var(--ok)', background: 'var(--ok-tint)' }
                     : started ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' }
                       : undefined;
@@ -23513,7 +23515,13 @@ export default function HostShellV2() {
                         <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, choices: true }))}>
                           <span className="fstat-l">Your choices</span>
                           <span className="fstat-v" style={openN > 0 ? null : { color: 'var(--ok)' }}>
-                            {openN > 0 ? openN + ' open' : 'all set'}
+                            {/* Open now is the hero's count; the rest come up
+                                closer to the date, as on Calls to make. */}
+                            {openN > 0
+                              ? (choicesTally.openNow.length > 0
+                                ? choicesTally.openNow.length + ' open' + (choicesTally.later > 0 ? ' · ' + choicesTally.later + ' later' : '')
+                                : choicesTally.later + ' later')
+                              : 'all set'}
                             <span className="fstat-chev" aria-hidden="true">›</span>
                           </span>
                         </button>
@@ -23597,9 +23605,8 @@ export default function HostShellV2() {
                         // movement without claiming a completion the host has not
                         // reached. The button keeps its own text label either way, so
                         // the colour is never the only carrier (UX_02's colorblind rule).
-                        const picks = event.foodChoices || {};
-                        const settled = foodPlan.choices.filter(d => picks[d.id]).length;
-                        const tone = settled === foodPlan.choices.length
+                        const settled = choicesTally.settled;
+                        const tone = settled === choicesTally.total
                           ? { color: 'var(--ok)', background: 'var(--ok-tint)' }
                           : settled > 0
                             ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' }
@@ -23611,7 +23618,7 @@ export default function HostShellV2() {
                         // at the moment the work finishes nothing moves in their
                         // eyeline. Fires only when there is nothing left to
                         // answer — a glow after every pick would be decoration.
-                        const allSettled = settled === foodPlan.choices.length && foodPlan.choices.length > 0;
+                        const allSettled = settled === choicesTally.total && choicesTally.total > 0;
                         return (
                           barIsExit ? null : (
                             <button className={'mini' + (allSettled ? ' lit-done' : '')} style={{ marginLeft: 'var(--sp-2)', ...tone }}
@@ -23629,7 +23636,7 @@ export default function HostShellV2() {
                         green for done), so the eye lands on the next act without
                         being told twice. */}
                     {(() => { void 0; })()}
-                    {foodPlan.choices.map((d, _ci) => {
+                    {choicesTally.shown.map((d, _ci) => {
                       // AUTO-COLLAPSE (host request): a made choice folds to its
                       // settled line; when the LAST one lands the whole section
                       // closes itself — done work never keeps the room.
@@ -23649,7 +23656,7 @@ export default function HostShellV2() {
                           </div>
                         );
                       }
-                      const firstOpenId = (foodPlan.choices.find(c => !((event.foodChoices || {})[c.id])) || {}).id;
+                      const firstOpenId = (choicesTally.open[0] || {}).id;
                       const isNext = d.id === firstOpenId;
                       return (
                         <div key={d.id} className={isNext ? 'choice-next' : undefined} style={{ marginBottom: 'var(--sp-3)' }}>
@@ -23663,7 +23670,7 @@ export default function HostShellV2() {
                                 onClick={() => {
                                   const patch = settleChoicePatch(event, d.id, opt, 'host', d);
                                   const nextChoices = patch.foodChoices;
-                                  const stillOpen = (foodPlan.choices || []).filter(c => !nextChoices[c.id]).length;
+                                  const stillOpen = (openFoodChoices({ ...event, foodChoices: nextChoices }, foodPlan) || []).length;
                                   // ── A MULTI LIST STAYS OPEN WHILE THE HOST IS STILL IN IT ──
                                   // (2026-09-18) The auto-collapse below is right for a
                                   // pick-one: one tap IS the answer. On the dietary list it

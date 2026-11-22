@@ -1,11 +1,15 @@
-// ─── THE SPREAD COUNTS WHAT THE HERO COUNTS (Wanda audit P0-13, P1-14) ───────
+// ─── THE SPREAD COUNTS WHAT THE HERO COUNTS (Wanda audit P0-12, P0-13, P1-14) ─
 //
 // On the Wanda sample (ev-x-wanda, 11/22/2026):
+//   - the Plan tab read "Your choices · 4 open" under a hero reading "1 open",
+//     and its list asked "At home, a restaurant, or the workplace?" for the
+//     booked VFW hall that Calls to make lists as settled;
 //   - the guest rows say Vegetarian and Gluten-free, and the Plan tab read
 //     "Dietary needs · none yet" while the hero asked "Who has a food allergy?";
 //   - "That's everyone — noted" answered "the menu is good to go." with menu
 //     calls still open.
-// One dietary reader (dietCountsFor) now feeds every one of those lines.
+// One count (menuChoicesTally) and one dietary reader (dietCountsFor) now
+// feed every one of those lines.
 import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const boot = async (page) => {
@@ -29,6 +33,19 @@ const openPlan = async (page) => {
   await settled(page);
   return sheet;
 };
+
+test('the Plan does not re-ask the booked hall, and counts like the hero', async ({ page }) => {
+  await boot(page);
+  const sheet = await openPlan(page);
+  const row = sheet.locator('.fstat', { hasText: 'Your choices' }).first();
+  await expect(row).toBeVisible();
+  const value = ((await row.innerText()) || '').replace(/\s+/g, ' ');
+  // Four authored menu calls, one settled by the booked hall: never "4 open".
+  expect(value).not.toMatch(/\b4 open\b/);
+  await row.click();
+  await expect(sheet).toContainText('How is the food handled?');
+  await expect(sheet).not.toContainText('At home, a restaurant, or the workplace?');
+});
 
 test('the guest rows’ needs are known on the Plan and on the board', async ({ page }) => {
   await boot(page);

@@ -1008,6 +1008,31 @@ export function openFoodChoices(event, plan) {
 }
 export { isDietaryChoice };
 
+// ─── THE MENU COUNT IS ONE COUNT (Wanda audit P0-12, 11/22/2026) ─────────────
+// The Plan tab counted the host's picks over every authored choice ("4 open",
+// and it re-asked the booked hall's venue call) while the hero counted
+// openFoodChoices less what the board parks ("1 open"). Both read this now:
+//   shown    the calls the list asks or shows as picked (a call a record settles
+//            is not shown; the dietary question closes with the noted needs)
+//   open     openFoodChoices, the list the hero and the checklist read
+//   openNow  open, less what playbookDecisionBoard defers (the hero's ask)
+//   later    how many of the open calls come up closer to the date
+export function menuChoicesTally(event, plan, asOf) {
+  const p = plan !== undefined ? plan : (() => { try { return playbookFoodPlan(event); } catch (_e) { return null; } })();
+  if (!p) return null;
+  const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  const open = openFoodChoices(event, p) || [];
+  const openIds = new Set(open.map((c) => c.id));
+  const shown = (p.choices || []).filter((c) => c && (picks[c.id] != null || openIds.has(c.id)));
+  let deferredIds = new Set();
+  try {
+    const board = playbookDecisionBoard(event, asOf) || {};
+    deferredIds = new Set((board.deferred || []).map((r) => r && r.id).filter(Boolean));
+  } catch (_e) { /* board unavailable — every open call counts as now */ }
+  const openNow = open.filter((c) => !deferredIds.has(c.id));
+  return { shown, open, openNow, later: open.length - openNow.length, settled: shown.length - open.length, total: shown.length };
+}
+
 // ─── "NOTED" SAYS ONLY WHAT IS TRUE (Wanda audit P1-14, 11/22/2026) ──────────
 // The receipt for "That's everyone — noted" said "the menu is good to go."
 // while three menu calls were still open. It names what is left, from the same
