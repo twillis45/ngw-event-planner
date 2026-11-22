@@ -65,10 +65,22 @@ test('typing in the open card’s phone field does not move the sheet', async ({
   expect(Math.abs((await scrollTop(page)) - before)).toBeLessThanOrEqual(2);
 });
 
+// WHERE THE CARD SITS, NOT THE SCROLL OFFSET (11/22/2026, #231). "Mark asked"
+// also rewrites the sheet's summary line ABOVE the card ("Insurance
+// certificate not on file…" becomes "Booking in progress…"). Since sections sit
+// on panels in dark (owner's parity ruling), that row is 34px narrower and the
+// longer sentence takes three lines instead of two, so content above the card
+// shrinks 16px and the browser's scroll anchoring takes 16px off scrollTop to
+// keep the card where it was: measured card top 390 -> 390, scrollTop 338 ->
+// 322. scrollTop is a proxy that reads an anchor correction as a move; the
+// promise is the card's place on screen, and a re-centering scroll (the bug
+// this file exists for, 1,150px) moves that too.
+const cardTop = (page) => page.locator('.vcard.open').first().evaluate((c) => Math.round(c.getBoundingClientRect().top));
+
 test('"Mark asked" on the open card does not move the sheet', async ({ page }) => {
   await boot(page);
-  const before = await scrollTop(page);
+  const before = await cardTop(page);
   await page.locator('.vcard.open').getByRole('button', { name: /^Mark asked$/ }).first().evaluate((b) => b.click());
   await page.waitForTimeout(400);
-  expect(Math.abs((await scrollTop(page)) - before)).toBeLessThanOrEqual(2);
+  expect(Math.abs((await cardTop(page)) - before)).toBeLessThanOrEqual(2);
 });
