@@ -168,7 +168,7 @@ import { dayPhases, programmeDays } from '@app/lib/dayPhases';
 import { recordContact, contactState } from '@app/lib/vendorContact';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
 import { AIRPORTS, nearestAirports, airportByCodeOrName, airportTradeoff } from '@app/lib/airports';
-import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement';
+import { militaryRetirementContext, officialCeremonyAnswer } from '@app/lib/knowledge/militaryRetirement';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, readEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
@@ -209,6 +209,7 @@ import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePar
 import { venueLeadsStay } from '@app/lib/venueLeadsStay'; // owner ruling 11/20/2026: the venue leads the stay
 import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
+import { parseStartMinutes } from '@app/lib/eventWhen';
 import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
 import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
@@ -225,7 +226,7 @@ import { typeIsRestatedByName } from '@app/lib/eventMasthead';
 import { confirmedCovers, confirmedRsvpCovers } from '@app/lib/confirmedCovers';
 import { shoppingHint } from '@app/lib/shoppableUnit';
 import { markSignal, lastSignalNote } from './offline/lastSignal';
-import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, sizingRange, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum, dietaryNoted, playbookPacing } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, rosSuggestions, hostRosRows, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, sizingRange, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum, dietaryNoted, playbookPacing } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
@@ -352,7 +353,7 @@ import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
 import { mayExhale, calmVetoFor } from '@app/lib/exhaleGate';
 import { checklistRouteFor } from '@app/lib/taskRoute';
 import { vendorObligations } from '@app/lib/vendorObligations';
-import { heartPlaceholders } from '@app/lib/heartPrompts';
+import { heartPlaceholders, heartFieldsFor } from '@app/lib/heartPrompts';
 import { parseMin } from '@app/lib/dayAlerts';
 // The viewport system, ported 2026-08-07. hostv2 had NO breakpoint machinery at
 // all — 0 uses of useBreakpoint/innerWidth against 117 in the donor shell — so
@@ -716,6 +717,13 @@ const dietTagFor = (s) => {
 // Compact field metrics shared by the inline add-forms that sit outside the
 // sheet blocks owning their own local `fld`.
 const HELPER_FLD = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
+
+// Who stays where, as the event lists it: `event.lodging` as an array of
+// { address, who, notes } rows (the Wanda sample's shape). The travel engine's
+// object shape ({ hotelName, … }) is not this and yields [].
+const stayRowsFor = (ev) => (Array.isArray(ev && ev.lodging) ? ev.lodging : [])
+  .filter((r) => r && typeof r === 'object' && (String(r.address || '').trim() || String(r.who || '').trim()))
+  .map((r, i) => ({ id: r.id || 'stay-' + i, address: String(r.address || '').trim(), who: String(r.who || '').trim(), notes: String(r.notes || '').trim() }));
 
 const fmt12h = (t) => {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '').trim());
@@ -1657,7 +1665,8 @@ export default function HostShellV2() {
       <div className={wrapClass} style={wrapStyle}>
         <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
           value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); setPendingPick(null); fetchAddrSugs(e.target.value); }} aria-label="Venue" autoFocus={autoFocus} />
-        <button className={ctaClass} onClick={saveVenue}>Save</button>
+        {/* Not lit while there is nothing to save (Wanda audit P1-2). */}
+        <button className={ctaClass} onClick={saveVenue} disabled={!String(venueDraft || '').trim()}>Save</button>
       </div>
       {addrSugs.length > 0 && (
         <div style={{ marginTop: 6 }}>
@@ -3421,12 +3430,10 @@ export default function HostShellV2() {
   // dayBefore's protect-the-moment, phaseProgress's moment item, the nudge
   // layer, and doItForMe's toast all DERIVE from these; V2 only writes them).
   const [meaningDraft, setMeaningDraft] = useState(null);
+  // WHAT SHE ALREADY SAID (Wanda audit P1-9, 11/22/2026): the creation story
+  // and meaning fill the heart fields (heartFieldsFor) instead of an empty form.
   const buildMeaningDraft = () => ({
-    honoree: event.honoree || '',
-    honoree_story: event.honoree_story || '',
-    meaning_why: event.meaning_why || '',
-    feeling_words: event.feeling_words || '',
-    must_have_moment: event.must_have_moment || '',
+    ...heartFieldsFor(event),
     // THE INVITE READS THESE AND NOTHING EVER FILLED THEM.
     // `deckLine` is the line under the event's name on the invitation — the invite
     // has always preferred the host's own words over its canned DECK_LINES default,
@@ -3441,7 +3448,7 @@ export default function HostShellV2() {
     hostName: hostNameFor(event, profile),
   });
   const openMeaning = () => { setMeaningDraft(buildMeaningDraft()); setSheet({ kind: 'meaning' }); };
-  const hasMeaning = !!(String(event.must_have_moment || '').trim() || String(event.meaning_why || '').trim() || String(event.honoree_story || '').trim());
+  const hasMeaning = (() => { const h = heartFieldsFor(event); return !!(h.must_have_moment || h.meaning_why || h.honoree_story); })();
   const [lessonDraft, setLessonDraft] = useState('');
   // Seed the draft from the saved lesson whenever the event changes (getLesson
   // is the canonical reader; setLesson the writer — 200-char cap lives in lib).
@@ -6171,6 +6178,11 @@ export default function HostShellV2() {
     // state with the pass door. Every lodging entry point funnels through this
     // function, so one check covers them all; the cockpit re-checks itself.
     if (destinationLocked(event)) { setSheet({ kind: 'lodging' }); return; }
+    // HER OWN STAYS OPEN HERE (Wanda audit P0-5, 11/22/2026). The cockpit loads
+    // only events saved on this device and searches for a place to book, so a
+    // sample or saved event that already lists who stays where opened an empty
+    // demo ("Load the Santa Fe example"). A list of stays opens its own sheet.
+    if (stayRowsFor(event).length) { setSheet({ kind: 'lodging', focus: focus || undefined }); return; }
     const f = focus != null && String(focus).trim() ? String(focus).trim() : null;
     try {
       const u = new URL(window.location.href);
@@ -15553,6 +15565,36 @@ export default function HostShellV2() {
                       does not offer to overwrite her sheet — the contract is the
                       point — it just stops the silence. */}
                   {(() => {
+                    // HERS WINS, BEATS SUGGESTED (owner, 11/22/2026; Wanda audit P0-4).
+                    // A run of show she brought is shown exactly as written; the
+                    // playbook's beats she doesn't have yet are offered here, one
+                    // tap each, and an added beat becomes one of her rows.
+                    let sugg = [];
+                    try { sugg = rosSuggestions(event) || []; } catch (_e) { sugg = []; }
+                    if (sugg.length) {
+                      const addBeat = (r) => {
+                        const row = { id: 'ros-' + Date.now().toString(36), time: r.time || '', segment: r.segment, notes: '' };
+                        if (r.day) row.day = r.day;
+                        const mine = Array.isArray(event.ros) ? event.ros.slice() : [];
+                        const at = r.time ? mine.findIndex((x) => x && parseStartMinutes(x.time) != null && parseStartMinutes(x.time) > parseStartMinutes(r.time)) : -1;
+                        if (at < 0) mine.push(row); else mine.splice(at, 0, row);
+                        patchEvent({ ros: mine }, 'Added to your night: ' + String(r.segment).slice(0, 48));
+                      };
+                      return (
+                        <div className="ros-sugg" data-ros-suggestions>
+                          <p className="grounding ros-sugg-lead">
+                            This is your run of show, so it stays as you wrote it. Add to your night? The {String(event.type || 'event').toLowerCase()} playbook suggests:
+                          </p>
+                          {sugg.map((r) => (
+                            <div key={r.id} className="then-row ros-sugg-row" data-ros-suggestion>
+                              <span className="d ros-sugg-when">{r.time ? fmt12h(r.time) : '·'}</span>
+                              <span className="ros-sugg-what">{r.segment}{!r.time && r.rel ? <span className="ros-sugg-rel"> · {r.rel}</span> : null}</span>
+                              <button type="button" className="mini" onClick={() => addBeat(r)} aria-label={'Add to your night: ' + r.segment}>Add</button>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
                     let w = null;
                     try { w = withheldPlaybookBeats(event); } catch (_e) { w = null; }
                     if (!w || !w.owned || !w.count) return null;
@@ -15591,7 +15633,7 @@ export default function HostShellV2() {
                       to move the hour. It stays while the playbook's day follows
                       the start time; a run of show she wrote herself keeps its
                       own times, so there it shows only while rows are unclocked. */}
-                  {ros.length > 0 && (ros.some(r => !r.time) || !(event.rosEdited && Array.isArray(event.ros) && event.ros.length)) && (() => {
+                  {ros.length > 0 && (ros.some(r => !r.time) || !((event.rosEdited || hostRosRows(event).length) && Array.isArray(event.ros) && event.ros.length)) && (() => {
                     // THE START TIME — GROUNDED, PROPOSED, THE HOST'S TO CHANGE (2026-07-14).
                     //
                     // This used to be invented: with only "afternoon" the schedule printed
@@ -15680,8 +15722,19 @@ export default function HostShellV2() {
                               not an invented "15:00". */}
                           {/* 12-hour only on agendas (host order 2026-07-28) — stored HH:MM stays 24h, display never. */}
                           <span className="d" style={{ minWidth: 54 }}>{r.time ? fmt12h(r.time) : (r.rel ? '·' : '—')}</span>
-                          <span style={{ flex: 1, minWidth: 0 }}>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}{r.owner && r.owner !== r.vendorName ? <span style={{ color: 'var(--carbon-muted)' }}> · {r.owner}</span> : null}
+                          {/* An owner prints only when it names someone: the engine's
+                              literal "Host" on every row said nothing (Wanda audit P0-4). */}
+                          <span style={{ flex: 1, minWidth: 0 }}>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}{r.owner && r.owner !== r.vendorName && !/^(host|you|me)$/i.test(String(r.owner).trim()) ? <span style={{ color: 'var(--carbon-muted)' }}> · {r.owner}</span> : null}
                             {!r.time && r.rel && <span style={{ color: 'var(--carbon-muted)' }}> · {r.rel}</span>}</span>
+                          {/* HIDE MARKED SURPRISES (owner, 11/22/2026): a marked moment is
+                              left out of the family link. Her own rows only — the
+                              playbook's rows are not stored until she owns them. */}
+                          {r.id && !r.generated && (
+                            <button type="button" className="mini" data-ros-surprise aria-pressed={!!r.surprise}
+                              onClick={() => writeRosCue(r.id, { surprise: !r.surprise }, r.surprise ? 'No longer a surprise — the family link shows it.' : 'Marked as a surprise — the family link leaves it out.')}>
+                              {r.surprise ? 'Surprise · hidden from family' : 'Surprise?'}
+                            </button>
+                          )}
                           {clash && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>overlaps</span>}
                           {r.done && <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>Done</span>}
                           {/* DRAG HANDLE (host ask 2026-07-28) — pointer-drag reorders (touch
@@ -16420,7 +16473,9 @@ export default function HostShellV2() {
                     </div>
                   );
                 })()}
-                {vf.display && !vf.confirmed && (
+                {/* A BOOKED VENUE ANSWERS IT (Wanda audit P1-2): "private home, or a
+                    venue?" was asked under her booked VFW hall. */}
+                {vf.display && !vf.confirmed && !(event.vendors || []).some(x => x && !x.isInformal && /venue/i.test(String(x.category || '')) && isVendorBooked(x)) && (
                   <div style={{ margin: '0 0 var(--sp-3)' }}>
                     <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Is this a private home, or a venue?</p>
                     <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
@@ -17881,6 +17936,34 @@ export default function HostShellV2() {
               // HOST surface only (no guest portal). Everything shown comes
               // from lib/travelPlan or the host's own form: headcount mode
               // degrades to the stay card alone — guest rows never invented.
+              // Her own list of who stays where (see goToLodgingCockpit).
+              const stays = stayRowsFor(event);
+              if (stays.length) {
+                const byPlace = [];
+                for (const st of stays) {
+                  const key = st.address || 'Place not named yet';
+                  let g = byPlace.find((x) => x.place === key);
+                  if (!g) { g = { place: key, rows: [] }; byPlace.push(g); }
+                  g.rows.push(st);
+                }
+                return (
+                  <div data-lodging-stays>
+                    <SheetHero eyebrow="Where everyone stays"
+                      star={`${stays.length} ${stays.length === 1 ? 'stay' : 'stays'}`}
+                      sub={byPlace.length === 1 ? `All at ${byPlace[0].place}.` : `Across ${byPlace.length} places.`} />
+                    {byPlace.map((g) => (
+                      <div key={g.place} className="brow stay-place">
+                        <div className="f-name stay-place-name">{g.place}</div>
+                        {g.rows.map((st) => (
+                          <p key={st.id} className="grounding stay-row" data-lodging-stay>
+                            <b>{st.who || 'Who’s staying: not noted'}</b>{st.notes ? ' — ' + st.notes : ''}
+                          </p>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
               if (!travel.relevant) {
                 return <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>This is a local event — nobody needs a room. If that changes, mark it as a destination event under Space, seats & helpers.</div>;
               }
@@ -20145,10 +20228,22 @@ export default function HostShellV2() {
                 {(() => {
                   const mil = (() => { try { return militaryRetirementContext(event); } catch { return null; } })();
                   if (!mil || !mil.authored) return null;
+                  // ASKED ONCE (owner, 11/22/2026): held separately, this party carries
+                  // no protocol; unanswered, the sequence is offered as conditional.
+                  const here = (() => { try { return officialCeremonyAnswer(event); } catch { return null; } })();
+                  if (here === 'separate') {
+                    return (
+                      <p className="grounding ceremony-separate" data-ceremony-separate>
+                        The official {String(mil.label || '').replace(/^U\.S\.\s+/, '')} retirement ceremony is held separately, so this party carries no protocol of its own.
+                      </p>
+                    );
+                  }
                   return (
                     <div style={{ marginBottom: 'var(--sp-5)', padding: 'var(--sp-3) 14px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', background: 'var(--bg-band)' }}>
                       <div className="eyebrow" style={{ color: 'var(--steel-soft)', marginBottom: 6 }}>{mil.label} · retirement protocol</div>
-                      <p className="v-meta" style={{ margin: '0 0 8px' }}>This is a military retirement — it carries protocol a civilian party doesn’t. The ceremony runs roughly:</p>
+                      <p className="v-meta" style={{ margin: '0 0 8px' }}>{here === 'this-party'
+                        ? 'This is a military retirement — it carries protocol a civilian party doesn’t. The ceremony runs roughly:'
+                        : 'If the official ceremony is part of this party, it runs roughly:'}</p>
                       <ol style={{ margin: '0 0 12px', paddingLeft: 18, fontSize: 'var(--t-body-s)', color: 'var(--ink-soft)', lineHeight: 1.5 }}>
                         {mil.ceremonySequence.map((s, i) => <li key={i} style={{ margin: '2px 0' }}>{s}</li>)}
                       </ol>
@@ -20195,7 +20290,10 @@ export default function HostShellV2() {
                     // Dirty-gate (per-screen audit: "Save it" fired a success toast even
                     // with zero changes) — only enabled when a field actually changed.
                     const _mk = ['honoree', 'honoree_story', 'meaning_why', 'feeling_words', 'must_have_moment', 'hostName', 'deckLine'];
-                    const dirty = _mk.some(k => String(meaningDraft[k] || '').trim() !== String(event[k] || '').trim());
+                    // Compared with what the sheet opened on — the creation story it
+                    // shows is not an edit, so Save stays dim until she changes something.
+                    const base = buildMeaningDraft();
+                    const dirty = _mk.some(k => String(meaningDraft[k] || '').trim() !== String(base[k] || '').trim());
                     return (
                       <button className="cta" disabled={!dirty} style={!dirty ? { opacity: .5 } : undefined} onClick={() => {
                         if (!dirty) return;
@@ -26054,6 +26152,16 @@ export default function HostShellV2() {
                               </>)}
                             </>)}
                           </div>
+                          {/* HIDE MARKED SURPRISES (owner, 11/22/2026): a vendor marked as
+                              a surprise (Cory's church singer) is left out of the family
+                              link. Her crew still sees it: the helper and vendor links are
+                              how the cue reaches them. */}
+                          <button className="chip vendor-surprise" data-vendor-surprise
+                            aria-pressed={!!v.surprise}
+                            onClick={() => writeVendor(v.id, { surprise: !v.surprise },
+                              !v.surprise ? (v.name || 'This') + ' is a surprise — the family link leaves it out.' : (v.name || 'This') + ' is no longer a surprise — the family link shows it.')}>
+                            {v.surprise ? 'Surprise · hidden from the family link' : 'Is this a surprise?'}
+                          </button>
                           {/* HOST-APPROPRIATE-VENDOR-UI: friends/family helping out
                               shouldn't get chased for a certificate of insurance. This
                               flag is read by the shared vendorAccountability engine

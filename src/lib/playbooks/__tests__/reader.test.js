@@ -361,8 +361,11 @@ describe('55H-B1 effectiveRos (Rule 1 + Rule 5)', () => {
     const manual = [{ id: 'm1', time: '19:00', segment: 'My own segment' }];
     expect(effectiveRos({ ...dp, ros: manual, rosEdited: true })).toBe(manual);
   });
-  test('SINGLE SOURCE: a stored ros NOT owned by the host (no rosEdited) does NOT win — the playbook-derived schedule does, so timeOfDay still drives it', () => {
-    const stale = [{ id: 'm1', time: '19:00', segment: 'Stale snapshot' }];
+  // Owner ruling 11/22/2026 ("Hers wins, beats suggested"): a stored row the
+  // playbook did NOT generate is the host's and wins (wandaScheduleVenueInvite
+  // test). What still does not win is a stale snapshot of the app's OWN rows.
+  test('SINGLE SOURCE: a stale snapshot of playbook rows (no rosEdited) does NOT win — the playbook-derived schedule does, so timeOfDay still drives it', () => {
+    const stale = [{ id: 'm1', time: '19:00', segment: 'Stale snapshot', generated: true, source: 'playbook' }];
     const r = effectiveRos({ ...dp, ros: stale });
     expect(r).not.toBe(stale);
     expect(r.every((row) => row.segment !== 'Stale snapshot')).toBe(true);

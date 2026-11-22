@@ -49,7 +49,8 @@ describe('the agenda says what it is written for', () => {
     // because the disclosure would then be describing a problem that is gone.
     const a = rows(CATERED_HOTEL);
     const b = rows(COOKING_RENTAL);
-    expect(a.length).toBe(11);
+    // 10, not 11, since 11/22/2026 (Wanda audit P0-4): the "Guests arrive" anchor is not added beside Birthday's own "Doors" beat.
+    expect(a.length).toBe(10);
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
     // And every row is owned by the engine's literal, not an authored value.
     expect([...new Set(a.map((r) => r.owner))]).toEqual(['Host']);

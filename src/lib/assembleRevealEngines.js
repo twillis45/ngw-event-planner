@@ -15,6 +15,7 @@ import { budgetFor } from './budgetFor';
 import { lodgingIntel, lodgingKitchen } from './lodgingIntel';
 import { foodSpanText } from './foodSpan';
 import { eventSpanLabel } from './eventDates';
+import { isMilitaryRetirement, militaryRetirementContext, officialCeremonyAnswer } from './knowledge/militaryRetirement';
 
 // ─── ONE HEADCOUNT (host ruling "single points of truth", 2026-07-29) ───────
 // This file resolved the guest count in three places: once for the blockers
@@ -124,8 +125,25 @@ function buildIdentityStage(event, eventIdentity, persona) {
 function deriveDecisionBlockers(event, eventIdentity) {
   const blockers = [];
 
+  // ONE CEREMONY QUESTION FOR A MILITARY RETIREMENT (owner, 11/22/2026: "Ask
+  // once"). Whether the official ceremony is part of this party comes before
+  // when it happens: held separately, there is no timing to ask at all. While
+  // it is open, it is the only ceremony question; settled by her own words
+  // (officialCeremonyAnswer), it is not asked.
+  const militaryRet = isMilitaryRetirement(event);
+  const ceremonyHere = militaryRet ? officialCeremonyAnswer(event) : null;
+  if (militaryRet && ceremonyHere === null) {
+    const mil = militaryRetirementContext(event);
+    blockers.push({
+      type: 'official-ceremony',
+      urgency: 'high',
+      branchLabel: mil && mil.authored ? mil.label : null,
+      reasoning: 'Whether the official protocol is part of your run of show',
+    });
+  }
+
   // RULE: Compound events always surface timing decision
-  if (eventIdentity && eventIdentity.isCompound) {
+  if (eventIdentity && eventIdentity.isCompound && !(militaryRet && ceremonyHere !== 'this-party')) {
     if (!event.ceremonyTiming) {
       blockers.push({
         type: 'ceremony-timing',
@@ -293,6 +311,21 @@ function buildBlockerStage(blocker) {
   // GOLD-05: "Backyard cookout at my house, I'm handling the venue myself" was
   // asked "Where is the event? … Choose or confirm the venue." The venue is the
   // one thing she settled; the blocker exists because the town is missing.
+  // The ceremony question, in the event's own words (owner, 11/22/2026: "Ask once").
+  if (blocker.type === 'official-ceremony') {
+    const branch = String(blocker.branchLabel || '').replace(/^U\.S\.\s+/, '').trim();
+    blockerCopy['official-ceremony'] = {
+      title: 'The official ceremony',
+      what: `Is the official ${branch ? branch + ' ' : ''}retirement ceremony part of this party, or held separately?`,
+      why: 'If it’s part of this party, the official protocol joins your run of show. If it’s held separately, the night stays as you planned it.',
+      nextDecision: 'Choose one.',
+      fieldKey: 'officialCeremony',
+      options: [
+        { value: 'this-party', label: 'Part of this party' },
+        { value: 'separate', label: 'Held separately' },
+      ],
+    };
+  }
   if (blocker.type === 'venue-selection' && blocker.homeNeedsTown) {
     blockerCopy['venue-selection'] = {
       ...blockerCopy['venue-selection'],
@@ -632,13 +665,21 @@ function deriveTopRisks(event, eventIdentity) {
   if (!eventIdentity) return [];
 
   // RULE: Compound events often have ceremony/celebration confusion
+  // A RISK THAT RE-ASKS WHAT SHE SET (Wanda audit P1-15, 11/22/2026): the
+  // mitigation asked for a dress code the event already holds. It now names
+  // only what is still open, and stands down when nothing is.
   if (eventIdentity.isCompound) {
-    risks.push({
-      type: 'compound-confusion',
-      severity: 'medium',
-      description: 'Guest expectations for ceremony vs. celebration formality will diverge if not clarified early.',
-      mitigation: 'Clarity on dress code + timing cascades to reduce all downstream friction.'
-    });
+    const dressSet = typeof event.dressCode === 'string' ? !!event.dressCode.trim() : !!event.dressCode;
+    const timingSettled = !!event.ceremonyTiming || officialCeremonyAnswer(event) === 'separate';
+    const open = [!dressSet ? 'dress code' : null, !timingSettled ? 'timing' : null].filter(Boolean);
+    if (open.length) {
+      risks.push({
+        type: 'compound-confusion',
+        severity: 'medium',
+        description: 'Guest expectations for ceremony vs. celebration formality will diverge if not clarified early.',
+        mitigation: `Clarity on ${open.join(' + ')} cascades to reduce all downstream friction.`
+      });
+    }
   }
 
   // RULE: Outdoor + ceremony = weather

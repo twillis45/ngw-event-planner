@@ -110,6 +110,8 @@ export function sectionGroups(state) {
         return { k: 'lodging', label: 'Travel & where everyone stays',
           sub: due.length ? due[0].label.toLowerCase() + ' in ' + due[0].daysLeft + (due[0].daysLeft === 1 ? ' day' : ' days')
             : shortlist ? shortlist + (shortlist === 1 ? ' place on your shortlist' : ' places on your shortlist')
+            // Her own list of who stays where (Wanda audit P0-5).
+            : (Array.isArray(ev.lodging) && ev.lodging.length) ? ev.lodging.length + (ev.lodging.length === 1 ? ' stay listed' : ' stays listed')
             : 'Lodging, rides, arrivals' };
       })()] : []),
       // ── TWO SURFACES THAT HAD NO DOOR (competitive-read audit, 2026-07-30) ──

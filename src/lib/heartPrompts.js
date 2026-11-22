@@ -18,70 +18,76 @@
 // event.<key>, placeholder is this).
 
 // Matched in order — first hit wins, so put the specific before the general.
+//
+// PROMPTS, NOT SOMEONE ELSE'S STORY (Wanda audit P1-9, 11/22/2026). The sets
+// still carried strangers' lives ("32 years at the library; she taught half
+// the county to read") — and on Wanda's Army retirement that sat in the field
+// beside her own "30 years in the Army". Each example now names what to write,
+// in the register of the event, and asserts nothing about anyone.
 const SETS = [
   {
     id: 'memorial',
     // Repast / memorial / funeral. Solemn register: no "celebrate", no "loud".
     match: /repast|memorial|funeral|celebration of life|wake|shiva|homegoing/i,
-    honoree: 'Deacon Willie Hayes',
-    honoree_story: 'Fifty years in the choir loft; he never missed a Sunday',
-    meaning_why: 'His people need somewhere to sit down together afterward',
-    feeling_words: 'gentle, unhurried, room to talk',
-    must_have_moment: 'The family eats before anyone else is served',
+    honoree: 'Their name',
+    honoree_story: 'What people will say about them, in a line',
+    meaning_why: 'What the family needs from this day',
+    feeling_words: 'For example: gentle, unhurried, room to talk',
+    must_have_moment: 'The one thing the family needs to happen',
   },
   {
     id: 'couple',
     match: /wedding|elopement|vow|engagement|anniversar|rehearsal dinner/i,
-    honoree: 'Marcus & Adaeze — us',
-    honoree_story: 'Eight years, two cities, one very patient dog',
-    meaning_why: 'Both families in one room for the first time',
-    feeling_words: 'warm, unhurried, a little loud',
-    must_have_moment: 'Both mothers help light the candle',
+    honoree: 'The two of you',
+    honoree_story: 'How you got here, in a line or two',
+    meaning_why: 'Why this day, with these people',
+    feeling_words: 'For example: warm, unhurried, a little loud',
+    must_have_moment: 'The moment you won’t skip',
   },
   {
     id: 'reunion',
     match: /reunion|family gathering|homecoming/i,
-    honoree: 'The Whitfield side — all of us',
-    honoree_story: 'Five states, one weekend, first time since ’19',
-    meaning_why: 'The cousins have never all met each other',
-    feeling_words: 'warm, loud, unhurried',
-    must_have_moment: 'The whole family on the steps for one photo',
+    honoree: 'Who is coming together',
+    honoree_story: 'What ties everyone together',
+    meaning_why: 'Why now',
+    feeling_words: 'For example: warm, loud, unhurried',
+    must_have_moment: 'The moment everyone should be in',
   },
   {
     id: 'graduation',
     match: /graduat|commencement|promotion ceremony/i,
-    honoree: 'Maya — my daughter',
-    honoree_story: 'First in the family to finish; worked nights the whole way',
-    meaning_why: 'She thinks nobody noticed how hard it was',
-    feeling_words: 'proud, easy, a little loud',
-    must_have_moment: 'Her grandmother hands her the cap',
+    honoree: 'The graduate — and who they are to you',
+    honoree_story: 'What it took to get here',
+    meaning_why: 'Why marking it matters',
+    feeling_words: 'For example: proud, easy, a little loud',
+    must_have_moment: 'The moment that has to happen',
   },
   {
     id: 'retirement',
     match: /retirement|farewell|last day|service send/i,
-    honoree: 'Margaret — my mom',
-    honoree_story: '32 years at the library; she taught half the county to read',
-    meaning_why: 'She never lets anyone celebrate her — this time we are',
-    feeling_words: 'warm, loud, unhurried',
-    must_have_moment: 'Everyone on the lawn for the sunset photo',
+    honoree: 'Who is retiring — and who they are to you',
+    honoree_story: 'Their years of work, in a line',
+    meaning_why: 'Why this send-off matters',
+    feeling_words: 'For example: proud, warm, unhurried',
+    must_have_moment: 'The moment that has to happen',
   },
   {
     id: 'baby',
     match: /baby shower|baby|gender reveal|christening|baptism|naming/i,
-    honoree: 'Priya & the baby',
-    honoree_story: 'Waited a long time for this one',
-    meaning_why: 'She has looked after everyone else for years',
-    feeling_words: 'calm, warm, short',
-    must_have_moment: 'Her sister reads the letter from their mom',
+    honoree: 'Who it’s for',
+    honoree_story: 'Their story so far, in a line',
+    meaning_why: 'Why gathering for this matters',
+    feeling_words: 'For example: calm, warm, short',
+    must_have_moment: 'The moment that has to happen',
   },
   {
     id: 'birthday',
     match: /birthday|quince|sweet 16|sweet sixteen|bar mitzvah|bat mitzvah|milestone/i,
-    honoree: 'Priya — turning 40',
-    honoree_story: 'She has thrown everyone else’s party for twenty years',
-    meaning_why: 'This is the first one that is actually hers',
-    feeling_words: 'warm, loud, unhurried',
-    must_have_moment: 'The lights go down before the cake comes out',
+    honoree: 'Whose birthday — and the age, if it’s a big one',
+    honoree_story: 'Who they are, in a line',
+    meaning_why: 'Why this one matters',
+    feeling_words: 'For example: warm, loud, unhurried',
+    must_have_moment: 'The moment that has to happen',
   },
 ];
 
@@ -92,9 +98,32 @@ const GENERIC = {
   honoree: 'Who the day is really for',
   honoree_story: 'A line about them — the thing people would say',
   meaning_why: 'Why this one matters more than the last',
-  feeling_words: 'warm, unhurried',
+  feeling_words: 'For example: warm, unhurried',
   must_have_moment: 'The one thing that has to happen',
 };
+
+/**
+ * heartFieldsFor(event) → { honoree, honoree_story, meaning_why, feeling_words, must_have_moment }
+ *
+ * WHAT SHE ALREADY SAID (Wanda audit P1-9, 11/22/2026). Creation stores the
+ * story as `story` and the why as `meaning`; "Make it yours" read only
+ * `honoree_story` and `meaning_why`, so it opened empty over an event that had
+ * both. Her answer in the heart field wins; the creation words fill the gap.
+ */
+export function heartFieldsFor(event) {
+  const ev = event || {};
+  const pick = (...vals) => {
+    for (const v of vals) { const t = String(v == null ? '' : v).trim(); if (t) return t; }
+    return '';
+  };
+  return {
+    honoree: pick(ev.honoree),
+    honoree_story: pick(ev.honoree_story, ev.honoreeStory, ev.story),
+    meaning_why: pick(ev.meaning_why, ev.meaning),
+    feeling_words: pick(ev.feeling_words),
+    must_have_moment: pick(ev.must_have_moment),
+  };
+}
 
 /**
  * heartPlaceholders(type) → { honoree, honoree_story, meaning_why,

@@ -96,7 +96,8 @@ import { effectiveTimingProvenance, isGroundedTiming, timingConflict } from '../
 // else. Values, quantities, costs, decisions and ranking are untouched.
 import { effectiveValue } from '../knowledge/knowledgeOverride';
 import { isGroundedCulture } from '../knowledge/culturalContext';
-import { militaryDecisionsFor, isGroundedMilitary, militaryRetirementContext } from '../knowledge/militaryRetirement';
+import { militaryDecisionsFor, isGroundedMilitary, militaryRetirementContext, officialCeremonyAnswer } from '../knowledge/militaryRetirement';
+import { hostIsHonoree } from '../hostNameFor';
 import { normalizeCategory } from '../vendorAccountability/playbooks.js';
 import { vendorDisplayName } from '../vendorDisplayName';
 import { destinationContextFor, isGroundedDestination } from '../knowledge/destinationContext';
@@ -948,6 +949,13 @@ export function decisionSettledByData(event, decision) {
   // "Indoor (home or rented room)" for "in our backyard".
   const fact = settledFromFacts(event, decision);
   if (fact) return fact;
+  // THE HOST IS THE GUEST OF HONOR (Wanda audit P1-11, 11/22/2026). "Surprise
+  // or announced?" was asked of the honoree herself, and the plan staged a
+  // surprise for her. Her own party is announced; nothing is asked.
+  if (/surprise/i.test(String(decision.id || '')) && hostIsHonoree(event)) {
+    const opt = decision.options.find((o) => /announced|not a surprise|no surprise/i.test(String(o)));
+    if (opt) return { pick: opt, because: 'You’re the guest of honor' };
+  }
   if (decision.id === 'venue') {
     const vf = (() => { try { return venueFor(event); } catch (_e) { return null; } })();
     // A named place we cannot classify, with a BOOKED venue vendor, still
@@ -2266,6 +2274,8 @@ const ROS_ANCHOR_HOUR = ANCHOR_HOUR;
 // overriding the coarse timeOfDay bucket. Tolerant of "18:30", "6:30 PM", "7:00 PM".
 // Returns minutes-since-midnight, or null when unset/unparseable (→ fall back to bucket).
 const parseRosStartMin = parseStartMinutes;   // lib/eventWhen — one parser, shared with the invite
+// A beat that opens the doors — the arrival anchor is not added beside one.
+const DOORS_BEAT = /\bdoors?\b|\bguests (arrive|in)\b/i;
 // kind → segment type; both 'cooking' (Dinner Party) and 'preparation' (others).
 const ROS_SCHEDULE_KINDS = [
   { key: 'cooking', segType: 'event' },
@@ -2541,6 +2551,9 @@ export function playbookRunOfShow(event) {
   // when militaryRetirementContext has one; otherwise the authored text stands.
   const ceremony = (() => {
     try {
+      // ASKED ONCE, NEVER PRESUMED (owner, 11/22/2026): the official sequence
+      // prints only when the host said the ceremony is part of this party.
+      if (officialCeremonyAnswer(event) !== 'this-party') return null;
       const m = militaryRetirementContext(event);
       return m && m.authored && Array.isArray(m.ceremonySequence) && m.ceremonySequence.length ? m : null;
     } catch (_e) { return null; }
@@ -2693,8 +2706,10 @@ export function playbookRunOfShow(event) {
     }
   }
   if (!rows.length) return null;
-  // Anchor a "Guests arrive" hero segment unless an entry already lands there.
-  if (!rows.some((r) => r._min === baseMin)) {
+  // Anchor a "Guests arrive" hero segment unless an entry already lands there —
+  // or the program already opens the doors (Wanda audit P0-4: "Doors: guests
+  // in and settled" five minutes later printed the arrival twice).
+  if (!rows.some((r) => r._min === baseMin || (r.type === 'event' && DOORS_BEAT.test(String(r.segment || ''))))) {
     rows.push({
       id: `pb-ros-${event.id}-arrival`,
       time: exact ? `${rosPad2(Math.floor(baseMin / 60))}:${String(baseMin % 60).padStart(2, '0')}` : null,
@@ -2713,21 +2728,92 @@ export function playbookRunOfShow(event) {
 // (Rule 1: never overwrite manual/imported), otherwise the playbook-derived
 // run-of-show (Rule 5). Pure; derived rows are never auto-persisted — once the
 // host edits (which seeds + saves them), the saved schedule wins.
+//
+// ── HERS WINS, BEATS SUGGESTED (owner, 11/22/2026; Wanda audit P0-4) ────────
+// A stored schedule used to win only once the ROS editor set `rosEdited`. A run
+// of show the host brought with her — Wanda's eight rows: her brother's 7:45
+// presentation, the secret singer, the gold-dress change — was silently
+// replaced by the playbook's day, with an Army ceremony it presumed and a 2:30
+// PM reheat beat before the hall opened. Now any stored row the playbook did
+// not generate is hers, and her rows win exactly as written. The playbook's
+// beats become suggestions (rosSuggestions) she adds one at a time.
+const isPlaybookRosRow = (r) => !!(r && (r.generated === true || r.source === 'playbook' || /^pb-(ros|during)-/.test(String(r.id || ''))));
+const rosText = (r) => String((r && (r.segment != null && String(r.segment).trim() ? r.segment : (r.label || r.title))) || '').trim();
+export function hostRosRows(event) {
+  const stored = event && Array.isArray(event.ros) ? event.ros : [];
+  return stored.filter((r) => r && !isPlaybookRosRow(r) && rosText(r));
+}
+// Her row, readable by every surface: the text as `segment` (she may have
+// written `label`) and her clock as the app's 24-hour string, which every
+// surface prints back as "6:30 PM". Nothing she wrote is dropped.
+function asRosRow(r) {
+  if (!r) return r;
+  const text = rosText(r);
+  const raw = String(r.time == null ? '' : r.time).trim();
+  const min = raw && !/^\d{1,2}:\d{2}$/.test(raw) ? parseRosStartMin(raw) : null;
+  const time = min != null ? `${rosPad2(Math.floor(min / 60))}:${String(min % 60).padStart(2, '0')}` : r.time;
+  return (text === r.segment && time === r.time) ? r : { ...r, segment: text, time };
+}
+// When the place opens: a booked venue's own arrival time ("3:00 PM setup").
+// No beat is placed at the venue before it (Wanda audit: a 2:30 PM reheat at a
+// hall that opens at 3). null when no booked venue says when.
+function venueOpensMin(event) {
+  const v = bookedVendorIn(event, 'venue');
+  const m = v ? parseRosStartMin(v.arrivalTime) : null;
+  return m == null ? null : m;
+}
+function dropBeforeVenueOpens(event, rows) {
+  const open = venueOpensMin(event);
+  if (open == null || !Array.isArray(rows)) return rows;
+  return rows.filter((r) => !(r && r.time && (r.day || 1) === 1 && parseRosStartMin(r.time) != null && parseRosStartMin(r.time) < open));
+}
+// The moments a night is built from. A program beat is not suggested when one
+// of her rows already holds the same moment, in her words.
+const ROS_MOMENTS = [
+  /\bdoors?\b|\bguests (arrive|in)\b/i,
+  /\barrives\b/i,
+  /\bdinner\b|\blunch\b|\bbrunch\b|\bmeal\b/i,
+  /\b(presentation|program|ceremony|speeches|tribute)\b/i,
+  /\bcake\b/i,
+  /\btoast\b/i,
+  /\bdanc(e|ing)\b/i,
+  /\bsend-?off\b/i,
+];
+export function rosSuggestions(event) {
+  if (!event || !hostRosRows(event).length) return [];
+  let derived = null;
+  try { derived = playbookRunOfShow(event); } catch (_e) { derived = null; }
+  if (!derived || !derived.length) return [];
+  // Everything already on her sheet counts, including beats she added from here.
+  const herText = (Array.isArray(event.ros) ? event.ros : []).map(rosText).filter(Boolean);
+  const have = new Set(herText.map((t) => t.toLowerCase()));
+  const covered = ROS_MOMENTS.filter((re) => herText.some((t) => re.test(t)));
+  return dropBeforeVenueOpens(event, derived).filter((r) => {
+    const t = rosText(r);
+    if (!t || have.has(t.toLowerCase())) return false;
+    if (r.type === 'event' && covered.some((re) => re.test(t))) return false;
+    return true;
+  });
+}
 export function effectiveRos(event) {
   const stored = event && Array.isArray(event.ros) ? event.ros : [];
   // SINGLE SOURCE OF TRUTH for the run-of-show. The playbook-derived schedule tracks the
   // event's timeOfDay live (anchors 10/15/18), so changing "Where & when" reflows the whole
-  // day. A stored ros wins ONLY when the host has genuinely taken ownership in the ROS editor
-  // (event.rosEdited), or when the event has no playbook to derive from. Per-cue "done" state
-  // is kept SEPARATELY in event.rosDone and overlaid here — marking a cue done must never
-  // freeze the schedule into a snapshot that then stops tracking timeOfDay.
-  const derived = playbookRunOfShow(event);
-  const owned = stored.length && ((event && event.rosEdited) || !derived || !derived.length);
+  // day. A stored ros wins when the host has taken ownership in the ROS editor
+  // (event.rosEdited), when any stored row is her own (not playbook-generated), or when
+  // the event has no playbook to derive from. Per-cue "done" state is kept SEPARATELY in
+  // event.rosDone and overlaid here — marking a cue done must never freeze the schedule
+  // into a snapshot that then stops tracking timeOfDay.
+  const derivedAll = playbookRunOfShow(event);
+  const derived = derivedAll ? dropBeforeVenueOpens(event, derivedAll) : derivedAll;
+  const hers = hostRosRows(event).length > 0;
+  const owned = stored.length && ((event && event.rosEdited) || hers || !derived || !derived.length);
   // See withheldPlaybookBeats() below — the ownership contract is correct, but
   // it is INVISIBLE, and a host looking at her own short sheet cannot tell the
   // difference between "the playbook has nothing" and "the playbook is standing
   // down because I touched this."
-  const base = owned ? stored : (derived || stored);
+  const mapped = owned ? stored.map(asRosRow) : null;
+  const base = owned ? (mapped.every((r, i) => r === stored[i]) ? stored : mapped) : (derived || stored);
   const doneMap = event && event.rosDone;
   if (!doneMap || !base.length) return base;
   return base.map((r) => (doneMap[r.id] && !r.done ? { ...r, done: true } : r));
@@ -2757,11 +2843,11 @@ export function withheldPlaybookBeats(event) {
     const stored = Array.isArray(event && event.ros) ? event.ros : [];
     if (!stored.length) return none;
     const derived = playbookRunOfShow(event) || [];
-    const owned = !!((event && event.rosEdited) || !derived.length);
+    const owned = !!((event && event.rosEdited) || hostRosRows(event).length || !derived.length);
     if (!owned || !derived.length) return none;
     // Only count what the stored sheet does NOT already cover, by moment text —
     // a host who kept the playbook's own rows is not missing them.
-    const have = new Set(stored.map((r) => String((r && r.segment) || '').trim().toLowerCase()).filter(Boolean));
+    const have = new Set(stored.map((r) => rosText(r).toLowerCase()).filter(Boolean));
     const missing = derived.filter((r) => !have.has(String((r && r.segment) || '').trim().toLowerCase()));
     return { owned: true, count: missing.length, program: missing.filter((r) => r && r.type === 'event').length };
   } catch (_e) { return none; }

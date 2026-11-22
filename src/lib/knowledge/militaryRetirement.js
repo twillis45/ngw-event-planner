@@ -217,11 +217,41 @@ export function militaryRetirementContext(event) {
 // Backward-compatible export: the Army decision set (the reference shape).
 export const MILITARY_DECISIONS = BRANCHES.army.decisions;
 
+// ─── IS THE OFFICIAL CEREMONY PART OF THIS PARTY? (owner, 11/22/2026: "Ask once") ──
+// The Wanda audit found the app presuming a full unit ceremony at a party whose
+// own run of show holds a family presentation. One question settles it, and the
+// answer decides whether the official protocol beats and calls appear.
+//   'this-party' — the official ceremony happens at this party
+//   'separate'   — it is held separately (or already was); this is the party
+//   null         — not known: the question is still open
+// The host's answer (event.officialCeremony) wins. Otherwise the event's own
+// words settle it when they say so plainly: a run-of-show row naming the
+// ceremony's own parts, or a note that it was or will be held elsewhere.
+export const OFFICIAL_CEREMONY_ANSWERS = ['this-party', 'separate'];
+const CEREMONY_IN_ROS = /\b(retirement ceremony|post(ing)? (of )?the colou?rs|retirement order|official party)\b/i;
+const CEREMONY_ELSEWHERE = /\bceremony\b[^.;]{0,80}\b(separate(ly)?|already (held|happened|done)|(was|is|will be) held (at|on|in|earlier)|held earlier)\b/i;
+export function officialCeremonyAnswer(event) {
+  if (!event) return null;
+  const a = String(event.officialCeremony || '').trim();
+  if (OFFICIAL_CEREMONY_ANSWERS.includes(a)) return a;
+  const words = [event.story, event.meaning, event.honoreeStory, event.honoree_story, event.meaning_why, event.notes]
+    .filter(Boolean).join(' \n ');
+  if (CEREMONY_ELSEWHERE.test(words)) return 'separate';
+  const ros = Array.isArray(event.ros) ? event.ros : [];
+  if (ros.some((r) => r && CEREMONY_IN_ROS.test(String(r.label || r.segment || r.title || '')))) return 'this-party';
+  return null;
+}
+// The calls that belong to the official ceremony itself. Held separately, none
+// of them is this party's to make. Unanswered, they stay ("silence is not a no").
+const CEREMONY_ONLY_DECISIONS = new Set(['mil_color_guard', 'mil_order_reader', 'mil_official_party', 'mil_uniform']);
+
 // The military decisions that apply to THIS event — the detected branch's set, else [].
 export function militaryDecisionsFor(event) {
   const slug = isMilitaryRetirement(event) ? detectMilitaryBranch(event) : null;
   const data = slug && BRANCHES[slug];
-  return (data && data.authored) ? data.decisions : [];
+  if (!(data && data.authored)) return [];
+  if (officialCeremonyAnswer(event) === 'separate') return data.decisions.filter((d) => !CEREMONY_ONLY_DECISIONS.has(d.id));
+  return data.decisions;
 }
 
 // ── OTHER MILITARY CEREMONIES — the same intelligence for the ceremonies a host also

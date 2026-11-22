@@ -61,11 +61,34 @@ export function timePhrase(event) {
 
 // Place line: a real venue string, or "our place" for an at-home event. Empty when
 // the host hasn't said where yet (we won't guess — we just leave it off).
+// ONE PLACE LINE (Wanda audit P0-14, 11/22/2026): the invite printed the hall's
+// name with no town while every other screen read formatVenueAddress. A named
+// place now carries the same line, in sentence form ("Freedom Hall at VFW Post
+// 1847, Upper Marlboro, MD"). A bare town is still not a place.
 export function placePhrase(event) {
-  const v = venueFor(event).name;
+  const vf = venueFor(event);
+  const v = vf.name;
   if (!v) return '';
   if (/\bhome\b/i.test(v) || /our (place|home|backyard)/i.test(v) || v.toLowerCase() === "host's home") return 'our place';
-  return v;
+  return String(vf.displayLine || v).split(' · ').join(', ');
+}
+
+// What to wear, as the host wrote it — only when it is fit for a guest.
+function dressLine(event) {
+  const d = guestSafeText(event && event.dressCode);
+  return d ? `Dress: ${d}` : '';
+}
+
+// THE SECOND OCCASION, FROM HER OWN FIELDS (Wanda audit P1-8, 11/22/2026): a
+// retirement that is also her 50th read as a retirement only. A milestone
+// birthday the event records rides along; nothing is guessed.
+function alsoBirthday(event) {
+  if (!/birthday/i.test(String((event && event.secondaryType) || ''))) return '';
+  const n = Number(event && event.milestoneBirthday);
+  if (!Number.isFinite(n) || n <= 0) return 'birthday';
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]} birthday`;
 }
 
 function hostName(profile) {
@@ -140,7 +163,11 @@ function inviteVoice(event) {
     T(/anniversary/, { emoji: '', head: 'You’re invited!', line: `We’re marking a special anniversary and would love to celebrate with you.` }) ||
     T(/(baby ?shower)/, { emoji: '', head: 'You’re invited!', line: `We’re showering ${honoree || 'the parents-to-be'} with love before the baby arrives — join us!` }) ||
     T(/(bridal ?shower|bachelorette)/, { emoji: '', head: 'You’re invited!', line: `We’re celebrating ${honoree || 'the bride-to-be'} — come join us!` }) ||
-    T(/(retire)/, { emoji: '', head: 'You’re invited!', line: `We’re celebrating ${honoree ? honoree + '’s retirement' : 'a well-earned retirement'} — come raise a glass.` }) ||
+    T(/(retire)/, { emoji: '', head: 'You’re invited!', line: (() => {
+      const bday = alsoBirthday(event);
+      if (bday) return `We’re celebrating ${honoree ? honoree + '’s retirement and ' + bday : 'a retirement and a ' + bday} — come raise a glass.`;
+      return `We’re celebrating ${honoree ? honoree + '’s retirement' : 'a well-earned retirement'} — come raise a glass.`;
+    })() }) ||
     T(/(reunion)/, { emoji: '', head: 'You’re invited!', line: `It’s been too long — we’re getting everyone back together.` }) ||
     // G61 (11/19/2026): a trip is not "hosted" — the generic line read "We’re hosting a group trip".
     T(/(group ?trip)/, { emoji: '', head: 'You’re invited!', line: `We’re planning a trip together, and we want you on it.` }) ||
@@ -213,10 +240,12 @@ export function draftInvite(event, profile, opts = {}) {
   const host = hostName(profile);
   const rsvpUrl = (opts && opts.rsvpUrl) ? String(opts.rsvpUrl).trim() : '';
   const when = [date, time].filter(Boolean).join(' · ');
+  const dress = dressLine(event);
   const lines = [v.emoji ? `${v.emoji} ${v.head}` : v.head, v.line, ''];
   if (when)  lines.push(when);
   if (place) lines.push(place);
-  if (when || place) lines.push('');
+  if (dress) lines.push(dress);
+  if (when || place || dress) lines.push('');
   // Closer follows the TONE. Somber gatherings never get "hope you can make it!"; and
   // when there's a real RSVP page, we point them to it (one place, headcount comes back).
   lines.push(v.sombre
@@ -241,7 +270,7 @@ function inviteInVoice(event, profile, opts, voice) {
   const url = (opts && opts.rsvpUrl) ? String(opts.rsvpUrl).trim() : '';
   const thing = subjectThing(event);
   const when = [date, time].filter(Boolean).join(' · ');
-  const facts = [when, place].filter(Boolean);
+  const facts = [when, place, dressLine(event)].filter(Boolean);
   const honoree = (event.honoree || '').trim();
   const join = (parts) => parts.filter((p) => p != null).join('\n').replace(/\n{3,}/g, '\n\n').trim();
   if (v.sombre) {

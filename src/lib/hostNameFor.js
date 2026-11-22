@@ -32,3 +32,18 @@ export function isHostName(name, event, profile) {
   const people = norm(hostNameFor(event, profile)).split(/\s*(?:&|\+|\/|,|\band\b)\s*/).filter(Boolean);
   return people.some((p) => p === n || p.split(' ')[0] === n);
 }
+
+// ─── THE HOST IS THE GUEST OF HONOR (Wanda audit P1-11, 11/22/2026) ──────────
+// Wanda plans her own 50th: the sample's host and honoree are one person, and
+// the plan asked her whether her party was a surprise to her. True when the
+// event's host name (hostNameFor, or a sample's `host` field) names the
+// honoree: the same full name, or a lone first name that is the honoree's
+// first name. Unknown on either side is false — never assumed.
+const nameWords = (v) => clean(v).toLowerCase().replace(/[^a-z\s'-]/g, ' ').split(/\s+/).filter(Boolean);
+export function hostIsHonoree(event, profile) {
+  const host = nameWords(hostNameFor(event, profile) || (event && typeof event.host === 'string' ? event.host : ''));
+  const hon = nameWords(event && event.honoree);
+  if (!host.length || !hon.length) return false;
+  if (host.join(' ') === hon.join(' ')) return true;
+  return (host.length === 1 || hon.length === 1) && host[0] === hon[0];
+}

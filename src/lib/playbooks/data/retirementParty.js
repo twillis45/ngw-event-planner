@@ -249,7 +249,7 @@ const retirementParty = {
     ],
     program: [
       { when: 'T0 +5m', what: 'Doors: guests in and settled, drinks out, sign the card on the way in' },
-      { when: 'T0 +20m', what: 'The honoree arrives — or the room quiets for the surprise' },
+      { when: 'T0 +20m', what: 'The honoree arrives — or the room quiets for the surprise', copyByAnswer: { surprise: { 'Announced celebration': 'The honoree arrives' } } },
       { when: 'T0 +45m', what: 'Dinner served; blessing first if that’s your family' },
       // militaryCeremonyBeat: on a military retirement whose branch protocol is
       // authored, the engine prints the ceremony sequence here instead.
