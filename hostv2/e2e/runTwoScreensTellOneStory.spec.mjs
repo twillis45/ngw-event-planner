@@ -113,6 +113,9 @@ test('R2-21: an item the list already has is added, and the list says so', async
   test.skip(!RAIL.test(testInfo.project.name), 'rail viewports');
   await page.addInitScript(() => { window.__t = []; new MutationObserver(() => document.querySelectorAll('[role=status]').forEach((n) => { const x = (n.innerText || '').trim(); if (x && window.__t[window.__t.length - 1] !== x) window.__t.push(x); })).observe(document, { subtree: true, childList: true, characterData: true }); });
   await open(page, 'The spread');
+  // The section door opens on Plan while a menu question is open
+  // (foodSheetKind); adding to the list is on Shop, so tap Shop.
+  await page.locator('.sheet').last().locator('.fmode', { hasText: /^Shop$/ }).first().click();
   await page.getByRole('button', { name: /Add an item you/ }).first().click();
   const box = page.getByPlaceholder(/Aunt Carol/).first();
   // Return makes a new line now (owner, 11/18/2026: several items at once), so
