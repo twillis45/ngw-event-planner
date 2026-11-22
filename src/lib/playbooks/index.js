@@ -1514,6 +1514,21 @@ export function foodApproach(event) {
 export const hostIsCooking = (event) => foodApproach(event).usesCaterer === false;
 // A caterer IS in scope. True only when we can tell.
 export const hostUsesCaterer = (event) => foodApproach(event).usesCaterer === true;
+// A CATERER IS HIRED, not just a meal that arrives made (audit 2 lane A P1-12).
+// usesCaterer is true for an order too ("Order pizza/trays"), so the grocery
+// lines drop; a step that presumes a caterer ("Confirm your caterer…", "Pay …
+// the caterer's final headcount charge") needs one hired: booked, a plan whose
+// every option is catered, or a pick that names hiring one — the same reading
+// vendorPlan's catererChosen gives "HIRING ONE, NOT ORDERING ONE".
+export function catererHired(event, fa) {
+  const a = fa || foodApproach(event);
+  if (!a || a.usesCaterer !== true) return false;
+  if ((() => { try { return !!bookedVendorIn(event, 'catering'); } catch (_e) { return false; } })()) return true;
+  const pb = getPlaybook(event && event.type);
+  const dec = a.decisionId && pb && Array.isArray(pb.decisions) ? pb.decisions.find((d) => d && d.id === a.decisionId) : null;
+  if (dec && dec.servedByCaterer === true) return true;
+  return /cater|\bchef\b|drop-?off|pitmaster/i.test(String(a.pick || ''));
+}
 
 // Day offset from a task's `when` token: 'T-10d' → -10, 'T0' → 0, 'T0 -0:30' → 0
 // (the intra-day hours are ignored — only the day phase matters here). null if absent.
@@ -1819,6 +1834,10 @@ export function playbookChecklist(event, asOf) {
   // exists and isn't a caterer); null/undecided leaves every task in place.
   const fa = foodApproach(event);
   const dropCaterer = fa.usesCaterer === false;
+  // A meal that arrives made but with no one hired (an order of trays) keeps
+  // the grocery list off and the caterer's paperwork off too (P1-12).
+  const noCatererHired = fa.usesCaterer === true && !catererHired(event, fa);
+  const BOOKS_A_CATERER = /\b(book|contract|choose|find|decide|tour|sign|hire|if catering|vs|or confirm|yourself)\b/i;
 
   // The milestones the air-travel floor moved, keyed by id, so a task can
   // inherit its own milestone's date rather than a second copy of the rule.
@@ -1863,6 +1882,7 @@ export function playbookChecklist(event, asOf) {
     // bites + grazing table yourself"): with no caterer, that half IS the work
     // (Day Party, #220 Open, 11/22/2026). Its caterer and truck picks rename it.
     if (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label)) continue;
+    if (noCatererHired && /\bcaterer/i.test(t.label) && !BOOKS_A_CATERER.test(t.label)) continue;
     // ── THE AIR-TRAVEL FLOOR REACHES THE CHECKLIST (2026-09-23) ─────────────
     // The floor was built into `playbookMilestones` and stopped there. Measured:
     // `playbookMilestones` has exactly one consumer, `playbookAreaNextStep`,
@@ -1935,7 +1955,7 @@ export function playbookChecklist(event, asOf) {
   // so the food CHOICE visibly reshapes "what's left" (it was previously inert in the task list;
   // the cook choice already recedes caterer tasks via the dropCaterer gate above). Deduped so a
   // playbook that already authors a caterer task isn't doubled.
-  if (fa.usesCaterer === true && !rows.some((r) => /cater/i.test(r.task))) {
+  if (fa.usesCaterer === true && catererHired(event, fa) && !rows.some((r) => /cater/i.test(r.task))) {
     const off = -7;
     rows.push({
       id: `pbt-${event.id}-fa-caterer`,
