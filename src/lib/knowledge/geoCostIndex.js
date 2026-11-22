@@ -270,9 +270,12 @@ export function geoPlanNote(state, appliedBasis, zip) {
     const source = tail.filter((x) => !isMonth(x))
       .map((x) => x.replace(/^BLS Average Price$/i, 'BLS')).join(' · ');
     const rest = [source, month].filter(Boolean).join(' ');
+    // "Food prices" (Wanda audit P1-13, 11/22/2026): the factor moves the
+    // grocery-priced lines only; vendor ranges move with a market the host
+    // picks, and the vendor sheet says "National baseline" until she does.
     return rest
-      ? `Adjusted for ${where} · ${rest}`
-      : `Adjusted for ${where}`;
+      ? `Food prices adjusted for ${where} · ${rest}`
+      : `Food prices adjusted for ${where}`;
   }
   // ── CONDENSED 2026-09-24, SECOND PASS (host: "the pricing-basis note") ────
   // The branch above was compacted earlier the same day and these two were
