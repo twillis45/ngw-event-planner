@@ -1780,6 +1780,9 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   transform:rotate(-45deg);
 }
 .grounding{font-size:var(--t-meta); color:var(--muted); margin-top:6px; font-weight:550}
+/* A guess inside a calm sentence: the guessed word wears the honey chip and the
+   sentence stays in the meta tier (owner, 11/22/2026, B, both themes). */
+.honey{ background:var(--honey); color:var(--on-honey); border-radius:var(--r-pill); padding:1px var(--sp-2); font-weight:700; }
 /* Published policy links (PolicyLinks.jsx): quiet, inherit the line's color. */
 .policy-links a{color:inherit}
 

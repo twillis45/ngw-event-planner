@@ -407,6 +407,11 @@ export function applyStudioMatte(override) {
   set('--danger-tint', isLight ? tint(LINEN.brick, 0.08) : tint(bundle.dangerRed, 0.10));
   // Light: risk is SOLID brick under white (Linen, B), 7.64:1.
   set('--danger-solid', isLight ? LINEN.brick : bundle.dangerSolid);
+  // THE HONEY CHIP, ONE VALUE IN BOTH THEMES (owner, 11/22/2026): where a
+  // warning sits inside calm copy (the create screen's type guess), the
+  // signal is an umber-on-honey chip, not orange body text. 7.65:1.
+  set('--honey', LINEN.honey);
+  set('--on-honey', LINEN.warn);
   // The sheet and search scrims. Dark keeps its black washes; light's are a
   // warm umber, so a scrim over linen reads warm, not gray (owner, 11/22).
   set('--scrim', isLight ? tint('#2E2214', 0.42) : 'rgba(0,0,0,.42)');

@@ -179,5 +179,32 @@ for (const theme of ['dark', 'light']) {
       await page.waitForTimeout(6000);
       check(await page.evaluate(measure, ['.rv-swhy, .reveal-stage .grounding', null]), 'the reveal');
     });
+
+  // Coordinator, 11/22/2026: on the create screen in dark the type guess
+  // ("Reading this as a birthday from "80th" — …") was bright amber body
+  // copy, the same "dirty orange" the owner rejected in light. B's treatment
+  // in both themes: the sentence in the calm text tier, the guessed type as an
+  // umber-on-honey chip carrying the signal.
+  test('the create screen\'s type guess: calm text, the guess on a honey chip', async ({ page }) => {
+    test.setTimeout(90_000);
+    await seed(page, theme, [], null);
+    await page.goto('./?elegant=1');
+    await page.getByRole('button', { name: 'Start my event' }).first().click({ timeout: 30_000 });
+    await page.getByText(/what are we planning/i).first().waitFor({ timeout: 20_000 });
+    await page.getByPlaceholder(/crab feast/i).first().fill('Mom’s 80th, about 30 people, Saturday afternoon');
+    const note = page.locator('p.grounding', { hasText: 'Reading this as' }).first();
+    await note.waitFor({ timeout: 10_000 });
+    const got = await note.evaluate((p) => {
+      const tok = (n) => { const d = document.createElement('div'); d.style.color = `var(${n})`; document.body.appendChild(d); const c = getComputedStyle(d).color; d.remove(); return c; };
+      const strong = p.querySelector('strong');
+      return { text: getComputedStyle(p).color, warn: tok('--warn'), muted: tok('--muted'),
+        chip: getComputedStyle(strong).backgroundColor, honey: tok('--honey') };
+    });
+    expect(got.text, 'the sentence is not warning-colored body copy').not.toBe(got.warn);
+    expect(got.text, 'the sentence reads in the calm meta tier').toBe(got.muted);
+    expect(got.chip, 'the guessed type sits on the honey chip').toBe(got.honey);
+    check(await page.evaluate(measure, ['p.grounding', '.create-stage']), 'the type guess');
   });
+});
 }
+

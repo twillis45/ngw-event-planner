@@ -11905,15 +11905,17 @@ export default function HostShellV2() {
                           It is not a reasonable silent answer to a typo. The rule
                           stays; the guess is declared and one tap from correction. */}
                       {parsed && parsed.typeBasis === 'milestone' && effType && parsed.milestone && (
-                        <p className="grounding" style={{ margin: '12px 0 0', color: 'var(--warn)' }}>
-                          Reading this as a <strong>{String(effType).toLowerCase()}</strong> from “{parsed.milestone}” —
+                        // The guess is the honey chip; the sentence stays calm (B, owner
+                        // 11/22/2026: no orange body copy, in either theme).
+                        <p className="grounding" style={{ margin: '12px 0 0' }}>
+                          Reading this as a <strong className="honey">{String(effType).toLowerCase()}</strong> from “{parsed.milestone}” —
                           nothing else named the occasion. If that’s not it, change it above: the checklist,
                           the risks and the food all follow from it.
                         </p>
                       )}
                       {parsed && parsed.typeBasis === 'generic' && effType && (
-                        <p className="grounding" style={{ margin: '12px 0 0', color: 'var(--warn)' }}>
-                          Reading this as a <strong>{String(effType).toLowerCase()}</strong> because you said
+                        <p className="grounding" style={{ margin: '12px 0 0' }}>
+                          Reading this as a <strong className="honey">{String(effType).toLowerCase()}</strong> because you said
                           “{String(parsed.typeHeard || 'party').toLowerCase()}” — nothing named the kind of event. If that’s not it, change it above:
                           the checklist, the risks and the food all follow from it.
                         </p>
