@@ -3409,7 +3409,25 @@ export function playbookDayOfChecklist(event) {
   const noKitchen = (() => {
     try { return event.isDestination === true && lodgingKitchen(event) === false; } catch (_e) { return false; }
   })();
-  const source = (authored && authored.length ? authored : DEFAULT_DAYOF_CHECKLIST)
+  // THE TYPE'S OWN DAY-OF ROWS (audit 2 lane A P0-6). 29 types authored no
+  // list, so The Day said "We have no day-of list written for wedding yet"
+  // while the checklist held that type's day-of steps. Not authored twice: the
+  // checklist rows due ON the day (leadDays 0) are the list, in the checklist's
+  // own words and ids, and the universal basics ride along as an addition.
+  // A type with no day-of checklist row (Group Trip) keeps its day in its
+  // arrival-day run of show; those rows are its own day-of rows.
+  const ownRows = (authored && authored.length) ? [] : (() => {
+    try {
+      const steps = (playbookChecklist(event) || [])
+        .filter((r) => r && r.leadDays === 0 && r.id && r.task)
+        .map((r) => ({ id: r.id, label: r.task, detail: '', severity: 'high' }));
+      if (steps.length) return steps;
+      return (playbookRunOfShow(event) || [])
+        .filter((r) => r && r.id && r.segment && (r.day || 1) === 1)
+        .map((r) => ({ id: r.id, label: r.segment, detail: '', severity: 'high' }));
+    } catch (_e) { return []; }
+  })();
+  const source = (authored && authored.length ? authored : [...ownRows, ...DEFAULT_DAYOF_CHECKLIST])
     // The same whenChoice gate tasks and purchases use (11/15/2026): "the turkey
     // is fully thawed" has no business on the morning of a Friendsgiving where a
     // friend is bringing the ham. Ungated items are unaffected.
@@ -3442,13 +3460,15 @@ export function playbookDayOfChecklist(event) {
     ? [DAYOF_RAIN_ROW] : [];
   const items = normalizeDayOfItems([...source, ...rainRow, ...milItems]);
   if (!items.length) return null;
-  const isDefault = !(authored && authored.length) && !milItems.length;
+  const isDefault = !(authored && authored.length) && !milItems.length && !ownRows.length;
   const typeWord = String(event.type || 'event').toLowerCase();
   const because = isDefault
     ? `standard ${typeWord} safety basics`
-    : !(authored && authored.length)
-      ? `the ${mil.label} ceremony checks and standard ${typeWord} safety basics`
-      : `the things that actually matter for a ${typeWord}`;
+    : (authored && authored.length)
+      ? `the things that actually matter for a ${typeWord}`
+      : [ownRows.length ? `the ${typeWord}’s own day-of steps` : null,
+        milItems.length ? `the ${mil.label} ceremony checks` : null].filter(Boolean).join(', ')
+        + ` and the safety basics every event shares`;
   return { items, count: items.length, isDefault, because };
 }
 
