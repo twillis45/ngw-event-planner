@@ -129,6 +129,16 @@ test.describe('the helper answers', () => {
     await expect(page.locator('.tabbar, .next-bar, .splash')).toHaveCount(0);
   });
 
+  // Audit 2, lane E (P1-1, P0-4): every day of a weekend, and the one place
+  // line, street, City, ST ZIP, as the host's app prints it.
+  test('the page reads every day of the weekend and the whole address', async ({ page }) => {
+    await mockHelper(page, { ...HELPER, eventDate: '2027-12-13', endDate: '2027-12-15', venue: 'The Boathouse',
+      venueAddress: '9 Dock Rd', venueCity: 'Annapolis', venueState: 'MD', venueZip: '21401', venueKind: 'venue' });
+    await openHelper(page);
+    await expect(page.locator('.vb2-when')).toHaveText('Monday, December 13 – Wednesday, December 15 · 4:00 PM');
+    await expect(page.locator('[data-helper="where"]')).toHaveText('The Boathouse · 9 Dock Rd, Annapolis, MD 21401');
+  });
+
   test('"I’ve got it" posts a confirm and the host’s row then reads "said yes"', async ({ page }) => {
     const calls = await mockHelper(page);
     await openHelper(page);

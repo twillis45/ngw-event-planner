@@ -105,7 +105,8 @@ def compose_cohost_invite(name: str, email: str, host=None) -> tuple[str, str]:
     return frame(
         kind="cohost_invite", hue=hue_for(name), eyebrow="You’re invited to co-host", title=name,
         blocks=[(_html.escape(words), words)],
-        primary=("Open the app", APP_BASE_URL),
+        # The app is hostv2; the site root is the frozen CRA shell (audit 2, E P1-5).
+        primary=("Open the app", APP_BASE_URL.rstrip("/") + "/hostv2/"),
         fine="If you weren't expecting this, ignore it. Nothing happens unless you sign in.",
         footer=f"Sent by {host} with No Guesswork Events." if host else "Sent with No Guesswork Events.")
 

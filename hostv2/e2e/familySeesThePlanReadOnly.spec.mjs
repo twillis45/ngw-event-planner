@@ -40,7 +40,7 @@ test('family sees the plan, and there is nothing to change', async ({ page }) =>
   await expect(page_.locator('[data-family="where"]')).toContainText('Pine Street Commons');
   await expect(page_.locator('[data-family="replies"]')).toHaveText('12 coming · 1 maybe · 2 can’t make it · 3 haven’t answered');
   await expect(page_.locator('[data-family="day"] li')).toHaveText(['4:00 PMDoors open', '5:30 PMDinner']);
-  await expect(page_).toContainText('The checklist · 1 of 2 done');
+  await expect(page_).toContainText('The checklist · 1 of 2 ticked off');
   await expect(page_.locator('[data-family="vendors"] li')).toHaveText([/Harvest Table Catering.*Booked/, /Pie Shop.*Not booked yet/]);
   await expect(page_.locator('[data-family="note"]')).toContainText('View only');
   // Read-only: no buttons, no fields, nothing to submit.
@@ -56,13 +56,29 @@ test('the Wanda plan keeps the footer’s promise: no money, no guest names, no 
   // The plan is still there to read, minus its private clauses.
   await expect(page_.locator('[data-family="day"]')).toContainText('Army retirement presentation');
   await expect(page_.locator('[data-family="checklist"]')).toContainText('Lock catering');
-  await expect(page_).toContainText('The checklist · 1 of 4 done');
+  await expect(page_).toContainText('The checklist · 1 of 4 ticked off');
   await expect(page_.locator('[data-family="vendors"] li')).toHaveText([/VFW Post 1847.*Booked/, /Semper Catering.*Not booked yet/, /DJ Marcus Kane.*Booked/]);
   const words = await page_.innerText();
   expect(words).not.toMatch(/\$|budget|4604|Grazin/i);
   // Every guest or helper by first name; the DJ's business name is not a guest.
   for (const name of ['Cory', 'Gloria', 'Nia', 'Diane', 'Vida', 'Haynes']) expect(words).not.toContain(name);
   expect(words.replace('DJ Marcus Kane', '')).not.toContain('Marcus');
+});
+
+// Audit 2, lane E (P1-1, P0-4, D-13): every day of a multi-day plan, the host
+// by hostNameFor's rule (the server sends hostName), and a private home by its
+// town, the way family_view.py sends it (no street parts).
+test('a weekend at home reads every day, its host, and the town only', async ({ page }) => {
+  await open(page, 200, {
+    name: 'Reed Cookout Weekend', type: 'Family Reunion', date: '2027-06-11', endDate: '2027-06-13', startTime: '17:00',
+    hostName: 'Dana Reed', venue: 'Our place', venueKind: 'home', venueCity: 'Bowie', venueState: 'MD',
+    checklist: [{ task: 'Borrow chairs', done: false }],
+  });
+  const page_ = page.locator('[data-surface="family-view-v2"]');
+  await expect(page_.locator('[data-family="when"]')).toHaveText('Friday, June 11 – Sunday, June 13 · 5:00 PM');
+  await expect(page_.locator('[data-family="where"]')).toHaveText('Our place · Bowie, MD');
+  await expect(page_.locator('[data-family="note"]')).toContainText('Dana Reed keeps the plan');
+  await expect(page_).toContainText('The checklist · 0 of 1 ticked off');
 });
 
 test('a link that was turned off says so', async ({ page }) => {

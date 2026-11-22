@@ -195,7 +195,32 @@ def _pick(text, url, width, t=None):
     # Styled on the cell, so every one keeps one height when one wraps on a small phone.
     return (f'<td width="{width}" valign="middle" style="background:{t["raised"]};border:1px solid {t["edge"]};border-radius:10px;text-align:center;">'
             f'<a href="{url}" style="display:block;color:{t["ink"]};text-decoration:none;'
-            f'font:600 13px/1.25 {SANS};padding:11px 2px;">{_html.escape(text)}</a></td>')
+            f'font:600 13px/1.25 {SANS};padding:14px 2px;">{_html.escape(text)}</a></td>')
+    # 13px x 1.25 + 2 x 14px = 44px: a tap target (audit 2, lane E P2-6; was 38px).
+
+
+# ── When and Where, the same two facts on every outward email (audit 2, E) ───
+# The words come from app/outward.py (event_days, place_line): the app's own
+# readers, ported. These only lay them out: the weekday over the date, the
+# hour under it; the place's name over the rest of its line.
+def when_fact(day_label: str, time_label: str):
+    if not (day_label or time_label):
+        return None
+    e = _html.escape
+    d = e(day_label).replace(", ", "<br>", 1)
+    t = f'<span style="color:{SUB};font-weight:500;">{e(time_label)}</span>' if time_label else ""
+    return ("When", "<br>".join(x for x in (d, t) if x), " · ".join(x for x in (day_label, time_label) if x))
+
+
+def where_fact(line: str):
+    if not line:
+        return None
+    e = _html.escape
+    head, _sep, rest = line.partition(" · ")
+    extra = f'<br><span style="color:{SUB};font-weight:500;">{e(rest)}</span>' if rest else ""
+    # In words, the line reads as a sentence, the way the invite text says it
+    # (doItForMe.placePhrase): "Vida's, 271 Whitaker Rd".
+    return ("Where", e(head) + extra, ", ".join(line.split(" · ")))
 
 
 def frame(*, kind=None, hue=HUE, greeting=None, top_html=None, eyebrow=None, lede=None, title=None, text_title=None,
@@ -318,7 +343,8 @@ def frame(*, kind=None, hue=HUE, greeting=None, top_html=None, eyebrow=None, led
         lines += [f"{t}: {_html.unescape(u)}" for t, u in secondary] + [""]
     if fine and fine_in_text:
         lines += [fine, ""]
-    if note_text_lines:
+    # No words, no heading: an empty note printed a bare "A note from Vida:" (E P2-5).
+    if any(str(x).strip() for x in note_text_lines):
         lines += [f"{note_label}:", *note_text_lines, ""]
     lines.append(footer)
     if stop_url:

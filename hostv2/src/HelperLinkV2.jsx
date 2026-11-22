@@ -14,7 +14,8 @@ import { useEffect, useState } from 'react';
 import { BRAND } from '@app/lib/brand';
 import { invitePalette } from '@app/lib/inviteTone';
 import { fetchPublicHelperLink, isHelperLinkApiConfigured, submitHelperAnswer, helperIdempotencyKey } from '@app/lib/api/helperLink';
-import { fmtLongDate } from '@app/lib/doItForMe';
+import { fmtLongSpan } from '@app/lib/doItForMe';
+import { formatVenueAddress } from '@app/lib/venueFor';
 import { toneVarsFor } from './inviteShared.js';
 import { clock12 } from '@app/lib/clock';
 import { trackHelperAnswered } from '@app/lib/flowAnalytics';
@@ -55,7 +56,13 @@ function HelperPage({ h, code }) {
   const host = String(h.hostName || '').trim();
   const to = host ? host.split(/\s+/)[0] : 'the host';
   const first = String(h.helperName || '').trim().split(/\s+/)[0];
-  const when = [h.eventDate ? fmtLongDate(h.eventDate) : '', fmtTime12(h.startTime)].filter(Boolean).join(' · ');
+  // The payload as the event shape the outward readers take (helper_link.py
+  // helper_event): every day of the span, and the one place line, street,
+  // City, ST ZIP, as the host sees it (audit 2, lane E P0-4, P1-1).
+  const ev = { date: h.eventDate, endDate: h.endDate, venue: h.venue, venueAddress: h.venueAddress, venueStreet: h.venueStreet,
+    venueCity: h.venueCity, venueState: h.venueState, venueZip: h.venueZip, venueKind: h.venueKind, venueConfirmed: h.venueConfirmed };
+  const when = [fmtLongSpan(ev), fmtTime12(h.startTime)].filter(Boolean).join(' · ');
+  const where = formatVenueAddress(ev);
   const jobs = h.jobs || [];
   return (
     <div className="stagewrap vb2-stage">
@@ -65,9 +72,7 @@ function HelperPage({ h, code }) {
             <div className="inv2-mast lp"><span>{jobs.length === 1 ? 'Your job' : 'Your jobs'}</span><span className="mr" aria-hidden /><span className="vb2-from">{host ? `From ${host}` : 'From the host'}</span></div>
             <h1 className="inv2-name lp-display">{h.eventName || 'The party'}</h1>
             {when && <p className="inv2-fine vb2-when">{when}</p>}
-            {(h.venue || h.venueAddress) && (
-              <p className="inv2-fine vb2-tight" data-helper="where">{[h.venue, h.venueAddress].filter(Boolean).join(' · ')}</p>
-            )}
+            {where && <p className="inv2-fine vb2-tight" data-helper="where">{where}</p>}
             <hr className="inv2-rule" />
             {first && <p className="inv2-fine">Hi {first},</p>}
             <p className="inv2-fine vb2-tight">{host ? `${host} is counting on you for:` : 'The host is counting on you for:'}</p>

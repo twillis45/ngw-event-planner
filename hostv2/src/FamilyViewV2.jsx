@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { BRAND } from '@app/lib/brand';
 import { invitePalette } from '@app/lib/inviteTone';
 import { fetchFamilyPlan, isFamilyViewConfigured } from '@app/lib/api/familyView';
-import { fmtLongDate } from '@app/lib/doItForMe';
+import { fmtLongSpan } from '@app/lib/doItForMe';
 import { effectiveRos } from '@app/lib/playbooks';
 import { isVendorBooked } from '@app/lib/workstreams';
 import { toneVarsFor } from './inviteShared.js';
@@ -53,9 +53,12 @@ export default function FamilyViewV2({ code }) {
 }
 
 function FamilyPage({ plan }) {
-  const host = String(plan.hostNames || '').trim();
-  const when = [plan.date ? fmtLongDate(plan.date) : '', fmtTime12(plan.startTime)].filter(Boolean).join(' · ');
-  // The one place line (formatVenueAddress): name, street, City, ST ZIP.
+  // Who hosts, by hostNameFor's rule: the server sends it as hostName.
+  const host = String(plan.hostName || plan.hostNames || '').trim();
+  // Every day of a multi-day event (fmtLongSpan, audit 2 E P1-1).
+  const when = [fmtLongSpan(plan), fmtTime12(plan.startTime)].filter(Boolean).join(' · ');
+  // The one place line (formatVenueAddress): name, street, City, ST ZIP. A
+  // private home arrives without its street (family_view.py): its town only.
   const where = formatVenueAddress(plan);
   const rep = plan.replies || null;
   const repLine = rep ? [
@@ -105,7 +108,10 @@ function FamilyPage({ plan }) {
 
             {list.length > 0 && (
               <>
-                <div className="inv2-label" style={{ marginTop: 18 }}>The checklist · {done} of {list.length} done</div>
+                {/* What it counts, said (audit 2, E P1-4): the steps the host ticked.
+                    Her own checklist also counts steps the plan proves handled,
+                    which only her app can see. */}
+                <div className="inv2-label" style={{ marginTop: 18 }}>The checklist · {done} of {list.length} ticked off</div>
                 <ul className="fam-list" data-family="checklist">
                   {list.map((t, i) => (
                     <li key={i} data-done={t.done ? 'yes' : 'no'}>
