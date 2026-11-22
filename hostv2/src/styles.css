@@ -5142,6 +5142,15 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
      each one — after eliminating three candidate rules by reading, all wrong.
      A structural cap must be matched by structure, not by depth. */
   .stagewrap--responsive-data > .sheet > .sheet-body > .roster{ max-width:none; }
+  /* ── AND THE SAME DENSE WORK INSIDE A PANEL (11/22/2026) ─────────────────
+     Sections sit on <Panel> (light since ruling 25, dark since the owner's
+     parity ruling), which puts one more box between .sheet-body and every
+     row above: the same "matched by depth" trap the roster note describes.
+     The guest roster's panel took the 820px prose measure, the Dietary track
+     went to 0px at 1440 ("PeanuYes", theDietaryTagKeepsItsColumn). A panel
+     holding dense rows takes the width its rows would have. */
+  .stagewrap--responsive-data > .sheet > .sheet-body > .panel:has(.roster, .grow, .brow, .later-row, .frow, .vcard),
+  .stagewrap--responsive-food > .sheet > .sheet-body > .panel:has(.fstat-list, .food-act, .shelf, .later-row, .brow, .frow){ max-width:none; }
   /* The head names the surface and carries its close — it belongs to both. */
   .stagewrap--responsive-data > .sheet > .sheet-body > .sheet-head{ grid-column:1 / -1; }
   /* Column 1 is the DEFAULT, and only the row list is moved out of it.

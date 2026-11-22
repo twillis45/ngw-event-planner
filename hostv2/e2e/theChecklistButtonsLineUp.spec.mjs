@@ -69,7 +69,11 @@ const lefts = (page) => page.evaluate(() => {
     // action first (11/16: moved out of the row's <button>, axe
     // nested-interactive), then helper / assign
     const sib = row.nextElementSibling && row.nextElementSibling.classList.contains('row-assign') ? row.nextElementSibling : null;
-    if (sib) btns.push(...sib.querySelectorAll(':scope > button, :scope > .row-act > button'));
+    // and the helper's "Call Jordan" (a tel: link styled as the same control):
+    // in a section panel (both themes since 11/22/2026) the row is 34px
+    // narrower, it takes its own line, and a buttons-only walk read the line
+    // it took as a 70px gap.
+    if (sib) btns.push(...sib.querySelectorAll(':scope > button, :scope > a.rowlink, :scope > .row-act > button'));
     for (const b of btns) {
       const r = b.getBoundingClientRect();
       if (r.width) out.push({ row: title.innerText.slice(0, 30), label: b.innerText.slice(0, 30), dx: Math.round(r.x) - tx, left: Math.round(r.x), top: Math.round(r.top), bottom: Math.round(r.bottom) });
@@ -95,8 +99,8 @@ test('the buttons under one row keep one even gap between them', async ({ page }
   await mockHost(page);
   await openChecklist(page);
   const chairs = (await lefts(page)).filter((b) => /folding chairs/.test(b.row));
-  // the row link, then "Jordan Avery — not told yet", "Send Jordan their job", "Mark Jordan Avery confirmed"
-  expect(chairs.length).toBe(4);
+  // the row link, then "Jordan Avery — not told yet", "Send Jordan their job", "Call Jordan", "Mark Jordan Avery confirmed"
+  expect(chairs.length).toBe(5);
   const gaps = chairs.slice(1).map((b, i) => b.top - chairs[i].bottom);
   // one gap (12px, --sp-3) between every pair — it was 3px under the row link and 12 below
   expect(Math.max(...gaps) - Math.min(...gaps), JSON.stringify(gaps)).toBeLessThanOrEqual(2);
