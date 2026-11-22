@@ -48,12 +48,13 @@
 // not have to retype her sentence to get it back.
 //
 // PURE: no I/O, no UI, no storage. The caller persists.
-import { unusedClauses } from './smartParseEvent';
+import { unusedClauses, parseSmartEventText } from './smartParseEvent';
+import { getPlaybook } from './playbooks';
 import { heardAccessNeeds } from './accessNeeds';
 import { heardMustHaves, heardStayStyle } from './lodgingIntel';
 import { heardFoods } from './heardFoods';
 import { heardGameStyle } from './heardGameStyle';
-import { heardPotluck, heardByob, heardKidsCount, heardAllergyCounts, heardOvernightCount } from './heardFacts';
+import { potluckPickFor, byobPickFor, heardKidsCount, heardAllergyCounts, heardOvernightCount } from './heardFacts';
 import { heardCelebrationPlace } from './tripMeals';
 
 // ── THIS FILE IS THE COMPOSITION ROOT (Sprint 0.5 Decision 2) ──────────────
@@ -127,8 +128,21 @@ const heardFoodNames = (text) => heardFoods(text).map((f) => f.name);
 // allergy and the overnight counts, so a clause they read is not dropped.
 // heardCelebrationPlace (11/21/2026): creation keeps "dinner at an adobe
 // courtyard" as the celebration's place (tripMeals.celebrationFieldsToPersist).
+// POTLUCK AND BYOB ARE READ ONLY WHERE THEY ARE STORED (audit lane B,
+// 11/22/2026). Creation writes them as the pick of a call the playbook has
+// (potluckPickFor / byobPickFor), so "BYOB" on a New Year's Eve party or a
+// Crab Feast, whose playbooks offer no BYOB answer, was neither saved nor
+// listed. The reader asks the same question creation asks, of the type the
+// parser reads from the same text: what would be stored.
+const heardStoredPicks = (text) => {
+  let type = null;
+  try { type = parseSmartEventText(text).type; } catch { type = null; }
+  const decs = ((type && getPlaybook(type)) || {}).decisions || [];
+  const picks = [potluckPickFor(decs, text), byobPickFor(decs, text)].filter(Boolean);
+  return picks.length ? picks : null;
+};
 const SEAM_READERS = [heardAccessNeeds, heardMustHaves, heardStayStyle, heardVendorIntents, heardFoodNames, heardGameStyle,
-  heardPotluck, heardByob, heardKidsCount, heardAllergyCounts, heardOvernightCount, heardCelebrationPlace];
+  heardStoredPicks, heardKidsCount, heardAllergyCounts, heardOvernightCount, heardCelebrationPlace];
 
 /**
  * clausesNotUsed(text) → the clauses NOTHING in creation read.

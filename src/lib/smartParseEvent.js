@@ -623,6 +623,23 @@ export function parseSmartEventText(text, opts = {}) {
     const hol = resolveHoliday(t, now);
     if (hol) date = hol.date;
   }
+  // ── A MONTH WITH NO DAY IS A MONTH TO PICK FROM (audit lane B, 11/22/2026) ─
+  // "wedding in Napa next September" and "sometime in February" set nothing and
+  // were not reported either, so the board asked "Add the day." with no month
+  // picker, while "next month" offered one. A month she named after next,
+  // this or "sometime in" is the same monthYear signal: never a day, only options.
+  // A bare "in June" stays unread (parseCorpus #22) and is reported instead.
+  // "may" the verb is excluded by the lead word and by the verb after it.
+  if (!date && !monthYear) {
+    const mo = t.match(/\b(next|this|sometime\s+in|early|late|mid-?)\s+(?:early\s+|late\s+|mid-?\s*)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])(?!\.?\s*\d)(?!\s+(?:be|have|not|need|want|come|bring|also|get|go|do|or|like|change|add|include)\b)/i);
+    if (mo) {
+      const month = MONTHS.indexOf(mo[2].slice(0, 3).toLowerCase());
+      const cur = now.getMonth();
+      const nextSaid = /^next$/i.test(mo[1]);
+      const year = now.getFullYear() + ((nextSaid ? month <= cur : month < cur) ? 1 : 0);
+      if (month >= 0) monthYear = { year, month, label: MONTH_LABEL[month] + ' ' + year };
+    }
+  }
   // Season ("this fall", "next summer") — wider than a month, but still just
   // OPTIONS from the season's anchor month, never a guessed exact date.
   if (!date && !monthYear) {
@@ -844,7 +861,14 @@ export function parseSmartEventText(text, opts = {}) {
     // fire hall, the VFW, the rec center, the lodge. Kept verbatim, because
     // guests read this line in the invite.
     || t.match(/\b(?:in|at)\s+((?:the\s+|a\s+)?(?:church|fellowship|banquet|fire|legion|social|event|reception|dining|great)\s+(?:hall|room|space|center|centre))\b/i)
-    || t.match(/\b(?:in|at)\s+((?:the\s+|a\s+)?(?:vfw|elks?\s*lodge|masonic\s*(?:temple|lodge)|rec(?:reation)?\s*center|senior\s*center|banquet\s*facility|ballroom|event\s*space|country\s*club))\b/i);
+    || t.match(/\b(?:in|at)\s+((?:the\s+|a\s+)?(?:vfw|elks?\s*lodge|masonic\s*(?:temple|lodge)|rec(?:reation)?\s*center|senior\s*center|banquet\s*facility|ballroom|event\s*space|country\s*club))\b/i)
+    // THE CHURCH, AND A RELATIVE'S PLACE WITH NO NOUN (audit lane B, 11/22/2026).
+    // "fish fry fundraiser at the church", "repast … at the church fellowship
+    // hall" and "Thanksgiving weekend at my mom's" kept no place and said
+    // nothing, because the phrase sat inside a clause that gave the type. Kept
+    // verbatim; "my mom's" is her mother's home, not hers, and reads that way.
+    || t.match(/\b(?:in|at)\s+((?:the\s+|a\s+)?church(?:\s+(?:fellowship|social|banquet|activity|activities|community))?(?:\s+(?:hall|room|basement|center|centre|building|gym))?)\b/i)
+    || t.match(new RegExp('\\b(?:in|at)\\s+((?:my|our)\\s+' + REL_ONE + '(?:[\'\u2019]s|s[\'\u2019]))(?=\\s*(?:[,.;!?]|$)|\\s+(?:in|on|for|this|next|with|from|over|during|and)\\b|\\s+\\d)', 'i'));
   const venuePhrase = vm ? vm[1].charAt(0).toUpperCase() + vm[1].slice(1) : '';
   // "at Vida's" with no place noun after it still names a place (11/15/2026,
   // atSomeonesIsAPlace.test.js). Kept verbatim and NOT claimed as a home: it
@@ -2147,6 +2171,17 @@ export function unusedClauses(text, opts = {}) {
     const phrase = m[1].replace(/^the\s+/, 'the ');
     if (!said(phrase)) out.push(phrase);
   }
+  // A PHRASE INSIDE A USED CLAUSE (audit lane B, 11/22/2026). The clause test
+  // above judges whole clauses, so a clause that gave anything hid everything
+  // else in it. This asks the same differential question of one phrase:
+  // remove it, and did anything creation derives change?
+  const tx = String(text || '');
+  const derive = _deriver(opts);
+  const fullDerived = JSON.stringify(derive(tx));
+  const unusedAt = (index, length) => {
+    const without = (tx.slice(0, index) + tx.slice(index + length)).replace(/\s{2,}/g, ' ').trim();
+    return JSON.stringify(derive(without)) === fullDerived;
+  };
   // A PLACE SHE NAMED IS NEVER SWALLOWED EITHER (run 2, R2-6): "…next friday
   // at chuck e cheese, like 20 kids" kept no place, and its clause counted as
   // used because the date beside it was read — so nothing said so, and the plan
@@ -2154,8 +2189,46 @@ export function unusedClauses(text, opts = {}) {
   // City, ST); when the plan ended up with no place at all, an "at …" phrase
   // she wrote is reported as not applied. Times, home and relatives are not places.
   const at = String(text || '').match(/\bat\s+((?!(?:home|my|our|his|her|their|the house|night|noon|midnight|dusk|sunset|sunrise|least|most|once|all|first|last|about|around|\d))[a-z][a-z'’&.-]*(?:\s+[a-z][a-z'’&.-]*){0,4}?)(?=\s*(?:[,.;!]|$|\s(?:on|for|with|this|next|from|at|in|by|and|around|about)\b))/i);
-  if (at && !p.venue && !p.venueAddress && !p.venueKind && !p.venueCity && !said('at ' + at[1])) out.push('at ' + at[1]);
+  // A town is not a venue (audit lane B, 11/22/2026): "at a restaurant in
+  // Atlanta" kept Atlanta and lost the restaurant without a word. With a town,
+  // the phrase is reported only when nothing creation derives read it.
+  if (at && !p.venue && !p.venueAddress && !p.venueKind && !said('at ' + at[1])
+    && (!p.venueCity || unusedAt(at.index, at[0].length))) out.push('at ' + at[1]);
+  // BARE WEEKDAYS, "THIS/NEXT WEEKEND" AND A MONTH WITH NOTHING ELSE: "the
+  // funeral Saturday", "friday night", "this weekend", "reunion in June" set no
+  // date (a bare weekday does not say which one — aWeekdaySpanNeedsAStart
+  // .test.js) and nothing said so, so the board asked for the day. Reported only
+  // when the plan has no date and the word changed nothing.
+  if (!p.date) {
+    const re = new RegExp('\\b(?:(?:this|next|coming)\\s+weekend|((?:sun|mon|tues|wednes|thurs|fri|satur)day)(?:\\s+(?:night|morning|afternoon|evening))?'
+      + '|(?:(?:the\\s+)?(?:first|last|second|third|fourth)\\s+weekend\\s+)?(?:(?:in|of|during)\\s+)?(?:early\\s+|late\\s+|mid-?\\s*)?((?:jan|febr)uary|march|april|june|july|august|september|october|november|december))\\b', 'gi');
+    for (const m of tx.matchAll(re)) {
+      const word = m[1] || m[2] || m[0];
+      const index = m.index + m[0].lastIndexOf(word);
+      if (unusedAt(index, word.length) && !said(m[0])) out.push(m[0]);
+    }
+  }
   return out;
+}
+
+// Everything creation derives from a sentence: the parse plus the seam readers
+// the caller passes (see the note in _unusedClausesCore). Shared by the clause
+// test and the phrase checks in unusedClauses, so both ask the same question.
+function _deriver(opts = {}) {
+  const alsoDerives = Array.isArray(opts.alsoDerives) ? opts.alsoDerives.filter((f) => typeof f === 'function') : [];
+  return (s) => {
+    let p;
+    try { p = parseSmartEventText(s, opts); } catch { return null; }
+    if (!alsoDerives.length) return p;
+    const out = { ...p };
+    alsoDerives.forEach((fn, i) => {
+      // A seam consumer that throws must not be read as "derived nothing" —
+      // that would silently restore the false alarm it was added to remove.
+      // Null is a value; the comparison below treats it like any other.
+      try { out[`_derived${i}`] = fn(s); } catch { out[`_derived${i}`] = '__threw__'; }
+    });
+    return out;
+  };
 }
 
 function _unusedClausesCore(text, opts = {}) {
@@ -2187,20 +2260,7 @@ function _unusedClausesCore(text, opts = {}) {
   // The differential mechanism is UNCHANGED. It still asks "does removing this
   // clause change what we derived?" — the only difference is that "what we
   // derived" now means everything creation derives, not just the parse.
-  const alsoDerives = Array.isArray(opts.alsoDerives) ? opts.alsoDerives.filter((f) => typeof f === 'function') : [];
-  const derive = (s) => {
-    let p;
-    try { p = parseSmartEventText(s, opts); } catch { return null; }
-    if (!alsoDerives.length) return p;
-    const out = { ...p };
-    alsoDerives.forEach((fn, i) => {
-      // A seam consumer that throws must not be read as "derived nothing" —
-      // that would silently restore the false alarm it was added to remove.
-      // Null is a value; the comparison below treats it like any other.
-      try { out[`_derived${i}`] = fn(s); } catch { out[`_derived${i}`] = '__threw__'; }
-    });
-    return out;
-  };
+  const derive = _deriver(opts);
 
   const full = derive(t);
   if (!full) return [];

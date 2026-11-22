@@ -231,7 +231,11 @@ describe('a fact the plan is holding is never reported as dropped', () => {
   test('…and a year the plan really lost still IS handed back', () => {
     // The other half of the guard. Silencing these would re-create the exact
     // bug this file exists to close, in the fix for its false alarm.
-    for (const s of YEAR_LOST) expect({ [s]: unusedClauses(s) }).toEqual({ [s]: ['2027'] });
+    // The month was lost with it, and since 11/22/2026 (audit lane B) a month
+    // word inside a used clause is handed back too. Only full month names are:
+    // "nov" is not, because abbreviations such as "may" and "mar" are words.
+    const lost = { [YEAR_LOST[0]]: ['2027', 'November'], [YEAR_LOST[1]]: ['2027'] };
+    for (const s of YEAR_LOST) expect({ [s]: unusedClauses(s) }).toEqual({ [s]: lost[s] });
   });
 
   test('NEGATIVE CONTROL: the guard silences redundancy, not genuine misses', () => {
