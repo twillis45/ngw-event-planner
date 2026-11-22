@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 22, 2026 (afternoon) — the board stops saying "done" too early
+
+**"All quiet" now means nothing is open.** A caterer step waits for a booked caterer, and there is one Undo on screen that brings the question back. Money is judged on what the plan is expected to cost, diets are asked once, and The Day lights one button.
+
 ## November 22, 2026 (midday) — creation hears what she typed
 
 **Typing an event no longer invents dates or picks the wrong occasion.** "Maybe 30-35" is a guest count, not May 30. A celebration of life, Kwanzaa, Juneteenth, a camping weekend, a brunch and a church fish fry each reach their own plan. Anything the app can't use is reported, not dropped.
