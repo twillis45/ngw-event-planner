@@ -959,6 +959,7 @@ button{font-family:inherit}
 }
 .hero.elegant .ef-row .ef-r{ display:flex; align-items:center; gap:9px; flex:0 0 auto; }
 .hero.elegant .ef-cnt{ background:#1a2228; color:var(--steel-soft); border-radius:999px; padding:2px 8px; font-size:12px; font-weight:700; }
+:root[data-theme="light"] .hero.elegant .ef-cnt{ background:var(--ink); color:var(--card); }
 .hero.elegant .ef-row .ef-g{ color:var(--faint); font-weight:800; }
 /* Hover lights the arrow instead of dimming the row: .82 opacity took the arrow
    under 4.5:1 in both themes (nothingReadsDarkOnDarkInLight, landscape, 11/21/2026). */

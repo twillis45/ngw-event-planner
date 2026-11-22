@@ -139,6 +139,9 @@ for (const line of CSS_NO_COMMENTS.split('\n')) {
   }
   if (printDepth > 0) continue;                 // print IS paper
   if (/^\s*\.inv2-/.test(line)) continue;        // the public invite is a paper aesthetic
+  // A light-theme rule paints var(--ink) as DARK ink (theme.js sets --ink to the
+  // light bundle's textPrimary), so it is the inverse of a white surface.
+  if (/^\s*:root\[data-theme="light"\]/.test(line) && !/#fff\b|#ffffff\b|white\b/i.test(line)) continue;
   if (WHITE_BG.test(line)) {
     violations.push(`styles.css: a runtime surface paints a WHITE background ("${line.trim().slice(0, 72)}") — dark-only app; use var(--card) on var(--line-soft), or var(--ok) for a confirmation.`);
   }
