@@ -17,14 +17,12 @@ const fmtDate = (iso) => {
 
 export function WhatsNewList({ entries = ENTRIES }) {
   return (
-    <div data-whats-new-list style={{ marginTop: 'var(--sp-3)', textAlign: 'left' }}>
+    <div className="whats-new" data-whats-new-list>
       {entries.map((e, i) => (
-        <section key={i} style={{ padding: 'var(--sp-3) 0', borderTop: i ? '1px solid var(--line)' : 'none' }}>
-          <div className="grounding" style={{ margin: 0 }}>{fmtDate(e.date)}</div>
-          <h3 style={{ margin: '2px 0 var(--sp-1)', fontSize: 'var(--t-body)', fontWeight: 700, color: 'var(--ink)' }}>{e.headline}</h3>
-          <ul style={{ margin: 0, paddingLeft: '1.1em', color: 'var(--ink)', fontSize: 'var(--t-meta)', lineHeight: 1.45 }}>
-            {e.bullets.map((b, j) => <li key={j} style={{ margin: '2px 0' }}>{b}</li>)}
-          </ul>
+        <section key={i} className="whats-new-entry">
+          <div className="grounding">{fmtDate(e.date)}</div>
+          <h3>{e.headline}</h3>
+          <ul>{e.bullets.map((b, j) => <li key={j}>{b}</li>)}</ul>
         </section>
       ))}
     </div>
@@ -35,10 +33,9 @@ export function VersionAndWhatsNew({ build = BUILD, entries = ENTRIES }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <p className="grounding" data-build-line style={{ margin: 'var(--sp-4) 0 0', textAlign: 'center' }}>
-        <button type="button" data-whats-new aria-expanded={open} onClick={() => setOpen((v) => !v)}
-          style={{ display: 'inline-flex', alignItems: 'center', minHeight: 'var(--tap-min)', background: 'none', border: 'none', padding: '0 var(--sp-1)', font: 'inherit', color: 'inherit', cursor: 'pointer' }}>
-          {buildLabel(build)} · <span style={{ textDecoration: 'underline', marginLeft: '0.3em' }}>What’s new</span>
+      <p className="grounding build-line" data-build-line>
+        <button type="button" className="whats-new-toggle" data-whats-new aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+          {buildLabel(build)} · <span className="whats-new-link">What’s new</span>
         </button>
       </p>
       {open && <WhatsNewList entries={entries} />}

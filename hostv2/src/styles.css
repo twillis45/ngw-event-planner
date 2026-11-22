@@ -1788,6 +1788,18 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
    won't open, a malformed email, the crab order's issues. Umber on honey,
    7.65:1, one value in both themes. Pinned by aWarningLineWearsHoney.test.js. */
 .warn-note, .grounding.warn-note, .vc-detail.warn-note, .v-meta.warn-note{ background:var(--honey); color:var(--on-honey); border-radius:var(--r-sm); padding:2px var(--sp-2); font-weight:650; width:fit-content; max-width:100%; box-sizing:border-box; }
+/* WHAT'S NEW (owner, 11/22/2026): the version line at the foot of You &
+   settings is a 44px button that opens the list in place (WhatsNew.jsx). */
+.grounding.build-line{ margin:var(--sp-4) 0 0; text-align:center; }
+.whats-new-toggle{ display:inline-flex; align-items:center; min-height:var(--tap-min); background:none; border:none; padding:0 var(--sp-1); font:inherit; color:inherit; cursor:pointer; }
+.whats-new-link{ text-decoration:underline; margin-left:var(--sp-1); }
+.whats-new{ margin-top:var(--sp-3); text-align:left; }
+.whats-new-entry{ padding:var(--sp-3) 0; }
+.whats-new-entry + .whats-new-entry{ border-top:1px solid var(--line); }
+.whats-new-entry .grounding{ margin:0; }
+.whats-new-entry h3{ margin:var(--sp-1) 0; font-size:var(--t-body); font-weight:700; color:var(--ink); }
+.whats-new-entry ul{ margin:0; padding-left:var(--sp-4); color:var(--ink); font-size:var(--t-meta); line-height:var(--lh-body); }
+.whats-new-entry li{ margin:var(--sp-1) 0; }
 /* Published policy links (PolicyLinks.jsx): quiet, inherit the line's color. */
 .policy-links a{color:inherit}
 
