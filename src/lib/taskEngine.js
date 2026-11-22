@@ -349,6 +349,10 @@ export function taskSatisfied(event, task) {
     }
     if (/vendor|\bhire[ds]?\b|book a /.test(s)) return vendors.length > 0;
   }
+  // A CATERER STEP NEEDS A BOOKED CATERER (audit 2 P0-3): "Confirm your caterer
+  // and send them the final headcount" closed on a typed guest count through
+  // the headcount rule below. Whatever else it names, the caterer is required.
+  if (/\bcater/.test(s) && !bookedMatch(/cater|food/)) return false;
 
   // Headcount/guest-count tasks: a typed count DOES prove "set the guest count" —
   // but only tasks about ESTABLISHING the count qualify. The old rule fired on any
