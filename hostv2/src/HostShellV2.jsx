@@ -4176,9 +4176,23 @@ export default function HostShellV2() {
   // holds the notice up with a pulsing mark and no button until the next
   // toast replaces it, or endBusyToast() clears it when the wait ends quietly.
   const busyToastRef = useRef(false);
+  // Is the toast on screen an edit's Undo? (audit 2 P0-1) A newer edit retires
+  // it — see patchEvent — so the only Undo on screen is the last edit's.
+  const undoToastRef = useRef(false);
+  const retireUndoToast = () => {
+    if (!undoToastRef.current) return;
+    undoToastRef.current = false;
+    clearTimeout(toastTimer.current);
+    setToastMsg(null); setToastAction(null); setToastTone(null);
+  };
   const toast = (msg, action, tone, opts) => {
     const busy = !!(opts && opts.busy);
     busyToastRef.current = busy;
+    // Every toast that offers "Undo" is an edit's Undo, whoever raised it (the
+    // budget editor raises its own, ~setB).
+    undoToastRef.current = !busy && !!(action && action.label === 'Undo');
+    // ...and it is the only Undo on screen: the older edit's receipt retires.
+    if (undoToastRef.current) { try { setHeroReceipt(null); } catch { /* not mounted yet */ } }
     setToastMsg(msg);
     setToastAction(busy ? null : (action || ((opts && opts.sticky) ? { label: 'Got it', fn: dismissToast } : null)));
     setToastTone(tone || null);   // 'ok' ⇒ green confirmation; else neutral
@@ -5316,6 +5330,23 @@ export default function HostShellV2() {
   // panel wears a brief ok-ring pulse — the beat, never blocking.
   const [heroReceipt, setHeroReceipt] = useState(null);
   const receiptTimerRef = useRef(null);
+  const pendingSatisfiedRef = useRef([]);
+  // ONE WAY TO SET AN ASK DOWN (audit 2 P1-1, 11/22/2026): the hero Undo on
+  // Crab Feast's first food pick put the data back and left "Decide the menu."
+  // filtered out until reload, because the food editor's settle marked the ask
+  // satisfied without telling the receipt. Every settle now records the ask on
+  // the receipt its write raises (`pendingSatisfiedRef`, read by patchEvent)
+  // and on the receipt already up, so that receipt's Undo brings it back.
+  const settleAndSetDown = (id, write) => {
+    if (id != null) pendingSatisfiedRef.current = [...pendingSatisfiedRef.current, id];
+    try { if (write) write(); } finally {
+      if (id != null) {
+        pendingSatisfiedRef.current = pendingSatisfiedRef.current.filter((x) => x !== id);
+        setSatisfiedIds(ids => ids.includes(id) ? ids : [...ids, id]);
+        setHeroReceipt(r => (r && !(r.satisfied || []).includes(id) ? { ...r, satisfied: [...(r.satisfied || []), id] } : r));
+      }
+    }
+  };
   // ONE Undo for every receipt the board shows (hero card or calm board). It
   // puts back the edit and the ask that edit set down (`satisfied`).
   const undoHeroReceipt = () => {
@@ -8617,10 +8648,23 @@ export default function HostShellV2() {
         const toHero = folds ? !!last.toHero : (askModeRef.current && stage === 'plan' && !sheet);
         lastUndoRef.current = { eventId, prev: undoPrev, msg, at: Date.now(), toHero };
         const undoFn = () => { lastUndoRef.current = null; return patchEvent(undoPrev, 'Undone.', { noUndo: true }); };
+        // ONE UNDO, THE LAST EDIT'S (audit 2 P0-1, 11/22/2026). "Budget set to
+        // $400 · Undo" stayed up through a venue save and a food pick, beside
+        // the hero's own Undo, and tapping it cleared the budget under the pick.
+        // A newer edit retires the older Undo, wherever it was offered.
+        // THE ASK THIS PICK SET DOWN (audit 2 P1-1): the hero's settle records
+        // it in pendingSatisfiedRef before the write, so the receipt holds it
+        // whatever order the two land in, and its Undo brings the ask back.
+        const pend = pendingSatisfiedRef.current; pendingSatisfiedRef.current = [];
         if (toHero) {
+          retireUndoToast();
           // A folded write keeps the ask its pick set down (`satisfied`, below):
           // the Undo that puts the pick back puts the ask back.
-          setHeroReceipt(r => ({ msg, fn: undoFn, satisfied: folds && r ? r.satisfied : undefined }));
+          setHeroReceipt(r => {
+            const kept = folds && r && Array.isArray(r.satisfied) ? r.satisfied : [];
+            const sat = [...new Set([...kept, ...pend])];
+            return { msg, fn: undoFn, satisfied: sat.length ? sat : undefined };
+          });
           // Route through the ONE haptic vocabulary (feedback) instead of a bespoke
           // vibrate(8) — a receipt lands with the same 10ms tick as every other state
           // change, and respects the silent-haptics layer (audit 2026-07-22).
@@ -8628,7 +8672,7 @@ export default function HostShellV2() {
           if (receiptTimerRef.current) clearTimeout(receiptTimerRef.current);
           receiptTimerRef.current = setTimeout(() => setHeroReceipt(null), 7000);
         } else {
-          toast(msg, { label: 'Undo', fn: undoFn }, 'ok');
+          toast(msg, { label: 'Undo', fn: pend.length ? () => { setSatisfiedIds(ids => ids.filter(x => !pend.includes(x))); return undoFn(); } : undoFn }, 'ok');
         }
       }
       // A non-undoable write may still carry one action (opts.action) — e.g.
@@ -9404,12 +9448,11 @@ export default function HostShellV2() {
           {event.guestMode !== 'list' && guestN > 0 && (
             <CtaRow>
               <button className="cta" onClick={() => {
-                patchEvent({ guestCount: guestN, guestEstimate: guestN, guestCountSource: 'host' },
-                  guestN + ' locked in — food, seats, and buys now size from it.');
                 // Answering the ask advances the loop (W14b): the engine stops
                 // generating this action once guestCount is set, but the session
                 // mark makes the roll immediate, same as every decision settle.
-                if (a && a.id) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]);
+                settleAndSetDown(a && a.id ? a.id : null, () => patchEvent({ guestCount: guestN, guestEstimate: guestN, guestCountSource: 'host' },
+                  guestN + ' locked in — food, seats, and buys now size from it.'));
               }}>Lock {guestN} in</button>
             </CtaRow>
           )}
@@ -9423,7 +9466,7 @@ export default function HostShellV2() {
             return (
               <div style={{ marginTop: ASK_RHYTHM.whyToCta }}>
                 <span className="of">Your caterer is set for {event.catererCount} · {yes} confirmed</span>
-                {countResolutionRows(() => { if (a && a.id) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); })}
+                {countResolutionRows(() => settleAndSetDown(a && a.id ? a.id : null))}
               </div>
             );
           })()}
@@ -9739,11 +9782,10 @@ export default function HostShellV2() {
       // write, close the editor, and satisfied-roll this action so the next queue
       // item rises.
       const fnd = { ...fndBase, settle: (v) => {
-        fndBase.settle(v);
-        setEditor(null);
         // A food cue re-derives with the next open menu question and leaves the
         // queue on its own when none is left (owner's iPad, 11/21/2026).
-        if (a && a.id != null && !Array.isArray(a.records)) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]);
+        settleAndSetDown(a && a.id != null && !Array.isArray(a.records) ? a.id : null, () => fndBase.settle(v));
+        setEditor(null);
       } };
       // PARITY (Figma 369:60): the decision leads with the guide-voice grounding (Newsreader
       // italic) — the proposed "why" when we have a pick, else the ask-mode why. Was missing on
@@ -9791,7 +9833,7 @@ export default function HostShellV2() {
       // The two count resolutions render as tactile .decopt rows — ONE shared
       // definition (countResolutionRows) also composed by the guests editor's
       // drift bridge (W14), so a mismatched count is fixable wherever it shows.
-      return countResolutionRows(() => { if (a && a.id) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); });
+      return countResolutionRows(() => settleAndSetDown(a && a.id ? a.id : null));
     }
     return null;
   };
@@ -13161,7 +13203,7 @@ export default function HostShellV2() {
                   // The receipt remembers the ask this pick set down, so its Undo
                   // brings the ask back (undoHeroReceipt) — otherwise an undone
                   // pick left its question filtered out of the queue.
-                  const panel = renderDecision({ ...nd, settle: (v) => { nd.settle(v); trackCompletion(a, getActionReason(a, { event }), 'settled'); if (!(a.id === 'phase:food' && Array.isArray(a.records))) { setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); setHeroReceipt(r => (r ? { ...r, satisfied: [...(r.satisfied || []), a.id] } : r)); } } });
+                  const panel = renderDecision({ ...nd, settle: (v) => { settleAndSetDown(!(a.id === 'phase:food' && Array.isArray(a.records)) ? a.id : null, () => nd.settle(v)); trackCompletion(a, getActionReason(a, { event }), 'settled'); } });
                   // A menu question carries the spread link here as in the food editor (ruling 3).
                   return a.id === 'phase:food' ? <>{panel}{spreadLink()}</> : panel;
                 })() : null;
