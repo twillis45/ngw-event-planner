@@ -191,6 +191,10 @@ export function hairlineLabel(orientationResult, opts = {}) {
   const openCount = o.segments.filter((s) => !s.handled).length;
   const done = o.completedCount;
   const total = o.totalCount;
+  // ON THE DAY the engine counts run-of-show cues the host has ticked
+  // (phaseProgress liveProgress), not plan parts (audit 2 lane C P0-2: "0 of 13
+  // plan parts handled" on a board whose plan was done). Named for what it counts.
+  if (o.phase === 'live_event') return total ? `${done} of ${total} run-of-show cues done` : '';
   // UNDER A CALM BOARD (Wanda audit follow-up, 11/22/2026). "5 of 7 · Food and
   // Vendors open" sat under "All quiet": the parts are open and nothing in them
   // is due, which is the board's own reason for being quiet. Said, not dropped.

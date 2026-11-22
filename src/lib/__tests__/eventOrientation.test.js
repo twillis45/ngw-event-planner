@@ -283,4 +283,20 @@ describe('hairlineLabel — names when they help, the specified count when they 
   test('it degrades safely', () => {
     expect(hairlineLabel(null)).toBe('');
   });
+
+  // Audit 2 lane C P0-2: on the day the engine counts run-of-show cues the
+  // host has ticked (phaseProgress liveProgress), not plan parts. "0 of 13
+  // plan parts handled" sat on a board whose plan was done.
+  test('on the day the count is named for what it counts: run-of-show cues', () => {
+    const now = new Date();
+    const hhmm = (h) => `${String(h).padStart(2, '0')}:00`;
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const ev = { id: 'live', type: 'Birthday', date: today, guestCount: 10,
+      rosEdited: true, ros: [{ id: 'r1', time: hhmm(1), segment: 'Doors' }, { id: 'r2', time: hhmm(2), segment: 'Cake' }, { id: 'r3', time: hhmm(3), segment: 'Toast' }] };
+    const cues = deriveEventPhaseProgress(ev, now);
+    expect(cues.phase).toBe('live_event');
+    const label = hairlineLabel(orientation(cues));
+    expect(label).not.toMatch(/plan parts/);
+    expect(label).toBe(`0 of ${cues.totalCount} run-of-show cues done`);
+  });
 });
