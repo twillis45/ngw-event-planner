@@ -116,6 +116,9 @@ export function blockerDecisionND(blocker) {
     id: 'blocker:' + blocker.fieldKey,
     options: blocker.options.map(o => ({ value: o.value, label: o.label, note: o.note || null })),
     proposed: null,
-    why: blocker.what || null,
+    // The hero already asks `nextDecision`; a body that opens by restating it
+    // ("When does the retirement presentation happen? Before, during…") would
+    // ask it twice, and the picks under it say the rest (Wanda audit, 11/22/2026).
+    why: (blocker.what && !(blocker.nextDecision && String(blocker.what).startsWith(String(blocker.nextDecision)))) ? blocker.what : null,
   };
 }

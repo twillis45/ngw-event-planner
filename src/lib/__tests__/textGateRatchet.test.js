@@ -428,7 +428,14 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // browser run can see: a second date writer renders exactly like the first.
 // The behavior half (range set once, nothing re-asks) is the e2e
 // aMultiDayTripIsHeardAtCreation.spec.mjs.
-const MAX_HOSTV2_TEXT_GATES = 63;
+//
+// 63 → 64 (11/22/2026): aPlusOneIsEveryoneTheyBring.test.js. Owner: "Single
+// sources not duplicative sources." It asserts file CONTENT — that no reader
+// in hostv2/src re-derives the plus-one count as one-per-row instead of
+// calling lib/plusOneCount — a structural claim no browser run can see: a
+// second copy renders exactly like the first until the data has a "+3". The
+// behavior half is the e2e aPlusOneRowSaysWhoItBrings.spec.mjs.
+const MAX_HOSTV2_TEXT_GATES = 64;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

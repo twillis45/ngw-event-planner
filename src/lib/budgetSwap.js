@@ -4,6 +4,9 @@
 // hostSpending source — no parallel math, fully honest.
 import hostSpending from './hostSpending';
 import { budgetBasis } from './budgetFor';
+import { getPlaybook, playbookFoodPlan } from './playbooks';
+import { cashBarParent } from './playbooks/cashBarCover';
+import { normalizeCategory } from './vendorAccountability/playbooks';
 
 // \bcater\b missed 'Catering'/'Caterer' (no boundary after 'cater') — the
 // engine offered to DROP THE CATERER as a discretionary cut. cater\w* fixes
@@ -43,4 +46,36 @@ export function pickDroppableBudgetRow(event, priceFactor) {
     .sort((a, b) => b.drop - a.drop);
   void fixedTotal;
   return candidates.length ? candidates[0] : null;
+}
+
+// ─── A CHEAPER BAR BEFORE NO BAR (Wanda audit P2-9, 11/22/2026) ──────────────
+// The one-line fix said "drop Open Bar (~$700)" on a plan whose own drinks call
+// offers a cash bar. When the row the fix would drop is the bar, and the drinks
+// call has a cash pick, this prices that pick the way the spread does (the
+// beverage lines the host still covers, at their midpoints) and returns it when
+// it costs less than the row: { option, cover, saves, clears } or null.
+// `clears` is true only when setting the row to `cover` brings the EXPECTED
+// total under the ceiling — the basis the recovery headline speaks on.
+const mid = (l) => (l.locked != null ? Number(l.locked) : (Number(l.low) + Number(l.high)) / 2) || 0;
+export function cheaperBarOption(event, candidate, priceFactor) {
+  const ev = event || {};
+  const row = candidate && candidate.row;
+  if (!row || normalizeCategory(String(row.category || row.label || '')) !== normalizeCategory('Bar / Beverage')) return null;
+  const parent = (() => { try { return cashBarParent(getPlaybook(ev.type)); } catch (_e) { return null; } })();
+  if (!parent) return null;
+  const current = (ev.foodChoices || {})[parent.decision.id];
+  if (parent.picks.includes(current)) return null;   // already a cash bar
+  let plan = null;
+  try { plan = playbookFoodPlan({ ...ev, foodChoices: { ...(ev.foodChoices || {}), [parent.decision.id]: parent.pick } }, { priceFactor: Number(priceFactor) > 0 ? Number(priceFactor) : 1 }); } catch (_e) { plan = null; }
+  if (!plan) return null;
+  const cover = Math.round((plan.list || []).filter((l) => l && l.cat === 'beverage' && !l.skipped).reduce((s2, l) => s2 + mid(l), 0));
+  const drop = Number(candidate.drop) || 0;
+  if (!(cover > 0) || cover >= drop) return null;
+  const rows = Array.isArray(ev.budget) ? ev.budget : [];
+  let clears = false;
+  try {
+    const sp = hostSpending({ ...ev, budget: rows.map((r) => (r === row ? { ...r, budgeted: cover } : r)) }, priceFactor);
+    clears = sp.total > 0 && sp.expected <= sp.total;
+  } catch (_e) { clears = false; }
+  return { option: parent.pick, cover, saves: drop - cover, clears };
 }

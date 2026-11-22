@@ -89,7 +89,6 @@ const READERS = Object.freeze({
 
   // ── Outward or money, gated in-file. ─────────────────────────────────────
   'src/lib/doItForMe.js': { need: NEED.GATED, why: 'outwardHeadCount() withholds an unconfirmed count from vendor outreach (2026-09-18)' },
-  'src/lib/budgetRecovery.js': { need: NEED.GATED, why: 'hasRealCount = guestCountIsConfirmed gates the money path (Sprint 0 P0-2)' },
   'src/lib/vendorAccountability/conflicts.js': { need: NEED.GATED, why: 'the estimate term is gated on guestCountFor().fromHost so an invented count cannot be written onto a caterer (Sprint 0.5)' },
 
   // ── The shell. ───────────────────────────────────────────────────────────

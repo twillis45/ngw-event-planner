@@ -17,8 +17,13 @@ describe('heart prompts belong to the event', () => {
     expect(r.meaning_why).not.toMatch(/celebrat/i);
   });
 
-  test('the retirement set is preserved — it was right for its own type', () => {
-    expect(heartPlaceholders('Retirement Party').honoree).toMatch(/Margaret/);
+  // Superseded 11/22/2026 (Wanda audit P1-9): the retirement set was "right for
+  // its own type" until it sat beside a real retiree's own story. It keeps its
+  // type's register and asserts nobody's life.
+  test('the retirement set speaks to a retirement without telling a stranger’s story', () => {
+    const r = heartPlaceholders('Retirement Party');
+    expect(r.honoree_story).toMatch(/years of work/i);
+    expect(`${r.honoree} ${r.honoree_story}`).not.toMatch(/Margaret|library|32 years/);
   });
 
   test('unknown / empty types get the generic set, never a stranger’s life', () => {

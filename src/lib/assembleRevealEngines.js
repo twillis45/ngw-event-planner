@@ -5,7 +5,8 @@
 
 import { occasionNoun } from './occasionWords';
 import { honoreeApplies } from './eventIdentity';
-import { playbookFoodPlan, effectiveRos } from './playbooks';
+import { playbookFoodPlan, effectiveRos, decisionSettledByData } from './playbooks';
+import { ceremonyName, CEREMONY_TIMING_CALL } from './knownFacts';
 // Was: Math.floor((eventMidnight - new Date()) / 86400000) — a floor over a diff whose
 // right side still carried the wall clock, so for most of every day it reported one day
 // FEWER than remained, and the 30-day risk thresholds below fired a day early.
@@ -15,6 +16,7 @@ import { budgetFor } from './budgetFor';
 import { lodgingIntel, lodgingKitchen } from './lodgingIntel';
 import { foodSpanText } from './foodSpan';
 import { eventSpanLabel } from './eventDates';
+import { isMilitaryRetirement, militaryRetirementContext, officialCeremonyAnswer } from './knowledge/militaryRetirement';
 
 // ─── ONE HEADCOUNT (host ruling "single points of truth", 2026-07-29) ───────
 // This file resolved the guest count in three places: once for the blockers
@@ -124,13 +126,36 @@ function buildIdentityStage(event, eventIdentity, persona) {
 function deriveDecisionBlockers(event, eventIdentity) {
   const blockers = [];
 
+  // ONE CEREMONY QUESTION FOR A MILITARY RETIREMENT (owner, 11/22/2026: "Ask
+  // once"). Whether the official ceremony is part of this party comes before
+  // when it happens: held separately, there is no timing to ask at all. While
+  // it is open, it is the only ceremony question; settled by her own words
+  // (officialCeremonyAnswer), it is not asked.
+  const militaryRet = isMilitaryRetirement(event);
+  const ceremonyHere = militaryRet ? officialCeremonyAnswer(event) : null;
+  if (militaryRet && ceremonyHere === null) {
+    const mil = militaryRetirementContext(event);
+    blockers.push({
+      type: 'official-ceremony',
+      urgency: 'high',
+      branchLabel: mil && mil.authored ? mil.label : null,
+      reasoning: 'Whether the official protocol is part of your run of show',
+    });
+  }
+
   // RULE: Compound events always surface timing decision
-  if (eventIdentity && eventIdentity.isCompound) {
-    if (!event.ceremonyTiming) {
+  // Her own run of show can already answer it (Wanda audit P1-1, 11/22/2026):
+  // the one reader is decisionSettledByData, the rule is in lib/knownFacts.
+  // A military retirement asks it only when the official ceremony is part of
+  // this party (owner: "Ask once", 11/22/2026).
+  if (eventIdentity && eventIdentity.isCompound && !(militaryRet && ceremonyHere !== 'this-party')) {
+    if (!event.ceremonyTiming && !decisionSettledByData(event, CEREMONY_TIMING_CALL)) {
       blockers.push({
         type: 'ceremony-timing',
         urgency: 'critical',
-        reasoning: 'Ceremony timing affects vendors, timeline, guest experience'
+        reasoning: 'Ceremony timing affects vendors, timeline, guest experience',
+        // Asked in the event's own words ("the retirement presentation").
+        ceremonyName: ceremonyName(event),
       });
     }
   }
@@ -249,12 +274,16 @@ function deriveDecisionBlockers(event, eventIdentity) {
 }
 
 function buildBlockerStage(blocker) {
+  const ceremony = String((blocker && blocker.ceremonyName) || 'ceremony');
+  const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
   const blockerCopy = {
     'ceremony-timing': {
-      title: 'Ceremony Timing',
-      what: 'When does the ceremony happen? Before, during, or after the celebration?',
+      // In the event's own words, sentence case (Wanda audit P1-1/P2-7): the
+      // question IS the ask, and its three picks render under it on the hero.
+      title: cap(ceremony),
+      what: `When does the ${ceremony} happen? Before, during, or after the celebration?`,
       why: 'This decision cascades: it affects your timeline, guest experience, vendor sequence, and risk profile.',
-      nextDecision: 'Choose the timing.',
+      nextDecision: `When does the ${ceremony} happen?`,
       // No in-app tab/field to ROUTE to (route stays null, below) — but this is
       // a plain 3-way pick with nowhere else it needs to live, so it resolves
       // inline on the card itself rather than being a dead-end instruction with
@@ -293,6 +322,23 @@ function buildBlockerStage(blocker) {
   // GOLD-05: "Backyard cookout at my house, I'm handling the venue myself" was
   // asked "Where is the event? … Choose or confirm the venue." The venue is the
   // one thing she settled; the blocker exists because the town is missing.
+  // The ceremony question, in the event's own words (owner, 11/22/2026: "Ask once").
+  if (blocker.type === 'official-ceremony') {
+    const branch = String(blocker.branchLabel || '').replace(/^U\.S\.\s+/, '').trim();
+    blockerCopy['official-ceremony'] = {
+      title: 'The official ceremony',
+      what: `Is the official ${branch ? branch + ' ' : ''}retirement ceremony part of this party, or held separately?`,
+      why: 'If it’s part of this party, the official protocol joins your run of show. If it’s held separately, the night stays as you planned it.',
+      // The headline IS the question, as on the timing ask (a bare "Choose
+      // one." headlined the board on the owner's phone, 11/22/2026).
+      nextDecision: `Is the official ${branch ? branch + ' ' : ''}retirement ceremony part of this party?`,
+      fieldKey: 'officialCeremony',
+      options: [
+        { value: 'this-party', label: 'Part of this party' },
+        { value: 'separate', label: 'Held separately' },
+      ],
+    };
+  }
   if (blocker.type === 'venue-selection' && blocker.homeNeedsTown) {
     blockerCopy['venue-selection'] = {
       ...blockerCopy['venue-selection'],
@@ -632,13 +678,21 @@ function deriveTopRisks(event, eventIdentity) {
   if (!eventIdentity) return [];
 
   // RULE: Compound events often have ceremony/celebration confusion
+  // A RISK THAT RE-ASKS WHAT SHE SET (Wanda audit P1-15, 11/22/2026): the
+  // mitigation asked for a dress code the event already holds. It now names
+  // only what is still open, and stands down when nothing is.
   if (eventIdentity.isCompound) {
-    risks.push({
-      type: 'compound-confusion',
-      severity: 'medium',
-      description: 'Guest expectations for ceremony vs. celebration formality will diverge if not clarified early.',
-      mitigation: 'Clarity on dress code + timing cascades to reduce all downstream friction.'
-    });
+    const dressSet = typeof event.dressCode === 'string' ? !!event.dressCode.trim() : !!event.dressCode;
+    const timingSettled = !!event.ceremonyTiming || officialCeremonyAnswer(event) === 'separate';
+    const open = [!dressSet ? 'dress code' : null, !timingSettled ? 'timing' : null].filter(Boolean);
+    if (open.length) {
+      risks.push({
+        type: 'compound-confusion',
+        severity: 'medium',
+        description: 'Guest expectations for ceremony vs. celebration formality will diverge if not clarified early.',
+        mitigation: `Clarity on ${open.join(' + ')} cascades to reduce all downstream friction.`
+      });
+    }
   }
 
   // RULE: Outdoor + ceremony = weather

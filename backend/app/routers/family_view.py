@@ -7,7 +7,7 @@ the old link stops working at once (the lookup is by exact match).
 
 WHAT FAMILY SEES — an explicit allow-list, never the event blob:
   when and where (the same fields the invite already shows), the run of show
-  the host stored, the checklist (each step and whether it is done), who is
+  the host stored (minus anything she marked as a surprise), the checklist (each step and whether it is done), who is
   being hired (name, kind, booked or not), how many guests said yes / no /
   maybe / haven't answered, and the hashtag.
 WHAT FAMILY NEVER SEES: guest names or contact details, diets, any money
@@ -39,6 +39,19 @@ def _text(v, n=200):
     return s[:n]
 
 
+def _shown(r) -> bool:
+    """A row the host marked as a surprise never leaves for the family link
+    (owner ruling 11/22/2026: "Hide marked surprises")."""
+    return isinstance(r, dict) and not r.get("surprise")
+
+
+def _ros_row(r: dict) -> dict:
+    row = {"time": _text(r.get("time"), 20), "label": _text(r.get("label") or r.get("segment") or r.get("title"), 160)}
+    if r.get("generated") is True:
+        row["generated"] = True   # the app's own row, so the page can tell hers from ours
+    return row
+
+
 def family_projection(data: dict) -> dict:
     """The family view of a saved plan. PURE; every field is allow-listed."""
     out = {k: data[k] for k in WHEN_WHERE if data.get(k) not in (None, "")}
@@ -46,19 +59,19 @@ def family_projection(data: dict) -> dict:
         out.pop("startTime", None)          # the app's guess is not the host's hour
     ros = data.get("ros")
     if isinstance(ros, list):
-        out["ros"] = [{"time": _text(r.get("time"), 20), "label": _text(r.get("label") or r.get("segment") or r.get("title"), 160)}
-                      for r in ros if isinstance(r, dict) and (r.get("label") or r.get("segment") or r.get("title"))][:80]
+        out["ros"] = [_ros_row(r) for r in ros
+                      if _shown(r) and (r.get("label") or r.get("segment") or r.get("title"))][:80]
     if data.get("rosEdited"):
         out["rosEdited"] = True   # the host owns the stored schedule; the page shows it as stored
     tl = data.get("timeline")
     if isinstance(tl, list):
         out["checklist"] = [{"task": _text(t.get("task") or t.get("title"), 160), "done": bool(t.get("done"))}
-                            for t in tl if isinstance(t, dict) and (t.get("task") or t.get("title"))][:200]
+                            for t in tl if _shown(t) and (t.get("task") or t.get("title"))][:200]
     vendors = data.get("vendors")
     if isinstance(vendors, list):
         out["vendors"] = [{"name": _text(v.get("name"), 120), "category": _text(v.get("category"), 60),
                            "status": _text(v.get("status"), 40)}
-                          for v in vendors if isinstance(v, dict) and v.get("name")][:60]
+                          for v in vendors if _shown(v) and v.get("name")][:60]
     guests = data.get("guests")
     if isinstance(guests, list):
         counts = {"yes": 0, "no": 0, "maybe": 0, "waiting": 0}

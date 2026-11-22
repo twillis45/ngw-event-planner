@@ -9,9 +9,10 @@
 // shorter than her planned count, the stepper's number stands unless the list
 // itself already holds more. PURE.
 import { guestCountFor } from './guestCountFor';
+import { plusOneCount } from './plusOneCount';
 
 const kidsOf = (gs) => (gs || []).reduce((t, g) => t + (Number(g && g.kids) || 0), 0);
-const people = (gs) => (gs || []).reduce((t, g) => t + 1 + (g && g.plusOne ? 1 : 0) + (Number(g && g.kids) || 0), 0);
+const people = (gs) => (gs || []).reduce((t, g) => t + 1 + plusOneCount(g) + (Number(g && g.kids) || 0), 0);
 
 export function kidsCountAfterRoster(event, guests) {
   const listed = kidsOf(guests);

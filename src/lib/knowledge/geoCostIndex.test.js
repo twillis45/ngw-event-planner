@@ -246,8 +246,16 @@ describe('the plan note says what actually happened to the price', () => {
     expect(n).toMatch(/adjusted for the South/i);
   });
 
+  test('it names what it adjusted: the food, not the vendors (Wanda audit P1-13)', () => {
+    // The Spread read "Adjusted for the South" while the vendor sheet read
+    // "National baseline" for the same event. Both were true of different
+    // things: the BLS factor moves grocery-priced lines, and vendor ranges
+    // move only with a market the host picks. The note says which it is.
+    expect(geoPlanNote('MD', APPLIED)).toMatch(/^Food prices adjusted for the South/);
+  });
+
   test('a basis with no detail still reads as a sentence', () => {
-    expect(geoPlanNote('MD', 'South')).toBe('Adjusted for the South');
+    expect(geoPlanNote('MD', 'South')).toBe('Food prices adjusted for the South');
   });
 });
 
@@ -309,11 +317,11 @@ describe('a ZIP resolves the region when no state does', () => {
     expect(geoPlanNote('MD')).toBe('National average · not yet adjusted for the South');
     expect(geoPlanNote(null)).toMatch(/add your state/);
     expect(geoPlanNote('MD', 'South · May 2026 · BLS Average Price'))
-      .toBe('Adjusted for the South · BLS May 2026');
+      .toBe('Food prices adjusted for the South · BLS May 2026');
   });
 
   test('an applied basis still outranks a ZIP — what happened beats where', () => {
-    expect(geoPlanNote(null, 'South · May 2026', '21401')).toMatch(/^Adjusted for the South/);
+    expect(geoPlanNote(null, 'South · May 2026', '21401')).toMatch(/^Food prices adjusted for the South/);
   });
 });
 

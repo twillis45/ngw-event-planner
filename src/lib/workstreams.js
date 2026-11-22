@@ -96,7 +96,32 @@ export function isVendorBooked(vendor) {
 // "Inquired" got that note (owner's Group Trip review). Informal helpers (a
 // friend bringing the cooler) are never put through a paid-vendor reconfirm.
 export function isReconfirmable(vendor) {
-  return !!vendor && !!String(vendor.name || '').trim() && !vendor.isInformal && isVendorBooked(vendor);
+  return isHiredVendor(vendor) && !!String(vendor.name || '').trim() && isVendorBooked(vendor);
+}
+
+// ── WHO COUNTS AS A VENDOR, ONCE (Wanda audit P0-9, 11/22/2026) ──────────────
+// "Single sources not duplicative sources" (owner). A friend on the vendor list
+// (`isInformal` — the church singer, a day-of helper) is help, not a hire: no
+// contract, no deposit, no insurance, counted with the helpers. The board left
+// them out ("Vendors 1 of 7 confirmed · 3 booked") while the sheet's rollup
+// counted them as booked vendors ("Booked so far 5 of 9"). Every vendor count
+// reads these two now.
+export function isHiredVendor(vendor) {
+  return !!vendor && !vendor.isInformal;
+}
+/** The hired vendors of an event (or of a vendor list). */
+export function hiredVendors(eventOrList) {
+  const list = Array.isArray(eventOrList) ? eventOrList : ((eventOrList && eventOrList.vendors) || []);
+  return (Array.isArray(list) ? list : []).filter(isHiredVendor);
+}
+/** { total, booked, confirmed } over hired vendors — the one vendor count. */
+export function vendorCounts(eventOrList) {
+  const hired = hiredVendors(eventOrList);
+  return {
+    total: hired.length,
+    booked: hired.filter(isVendorBooked).length,
+    confirmed: hired.filter(isVendorConfirmed).length,
+  };
 }
 
 // The STRICT "fully locked in" set — the final rung of the host's status ladder
@@ -181,7 +206,9 @@ function nextDecisionFor(workstreamKey, ctx) {
  * @returns {Array<{id, label, status, blocked, nextDecision, dependencies, deepLink, vendors, readiness}>}
  */
 export function workstreamsFor(event, ctx = null, vendors = null, playbook = null) {
-  const list = vendors || (event && event.vendors) || [];
+  // Hired vendors only (hiredVendors): a friend helping is not a workstream to
+  // book, and counting one here put two helpers into "Booked so far" (P0-9).
+  const list = hiredVendors(vendors || (event && event.vendors) || []);
   const groups = new Map();
 
   for (const v of list) {

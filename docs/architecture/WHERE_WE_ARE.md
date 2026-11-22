@@ -1,5 +1,13 @@
 # Where We Are -- live status board
 
+## November 22, 2026 (morning) — Wanda's night as she wrote it, and every screen counting the same
+
+**A full walk through the Wanda sample found 39 problems, and they are fixed.**
+- **No dead ends:** no question on the main screen is a dead end, and no reason line sits under the wrong question. One Undo takes back a pick and everything that followed from it.
+- **Her schedule wins:** the host's own run of show stays exactly as she wrote it. The app's ideas come as suggestions she can add.
+- **Asked once:** the official retirement ceremony is asked once. Surprises she marks are hidden from the family link.
+- **Every screen counts the same:** guests with their plus-ones, hired vendors (friends helping are not vendors), dietary needs, the budget, the menu questions and the expected total.
+
 ## November 22, 2026 (early morning) — a trip's holiday is its night, the dates come first, and the food doors follow one rule
 
 **A New Year's Eve trip is a trip, with the 31st as its dinner night.** A trip whose end date is missing now asks for the dates first, as a range. The start time can be changed from the run of show or from Date & time, and both write the same value.

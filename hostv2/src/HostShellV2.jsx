@@ -168,7 +168,7 @@ import { dayPhases, programmeDays } from '@app/lib/dayPhases';
 import { recordContact, contactState } from '@app/lib/vendorContact';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
 import { AIRPORTS, nearestAirports, airportByCodeOrName, airportTradeoff } from '@app/lib/airports';
-import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement';
+import { militaryRetirementContext, officialCeremonyAnswer } from '@app/lib/knowledge/militaryRetirement';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, readEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
@@ -189,6 +189,7 @@ import { publicAppUrl } from '@app/lib/publicAppUrl';
 import { budgetPaymentPatch, parseVendorCost, paymentAboveWholePlan } from '@app/lib/vendorMoney';
 import { budgetFor, budgetTotal } from '@app/lib/budgetFor';
 import { guestCountFor } from '@app/lib/guestCountFor';
+import { plusOneCount, plusOneLabel } from '@app/lib/plusOneCount';
 import { serviceStyle } from '@app/lib/serviceStyle';
 import { marketFor } from '@app/lib/marketFor';
 import { metroForPlace } from '@app/lib/metroForPlace';
@@ -206,12 +207,13 @@ import { expectedFromPlanned, likelyAttendancePhrase } from '@app/lib/attendance
 import { estimateTotalRange, notIncludedFor, notIncludedSummary } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
 import { venueLeadsStay } from '@app/lib/venueLeadsStay'; // owner ruling 11/20/2026: the venue leads the stay
-import { DIET_TAGS, dietRowsFor, anyDietFlagged } from '@app/lib/dietRows';
+import { dietRowsFor, anyDietFlagged, dietCountsFor, guestDietCounts } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
+import { parseStartMinutes } from '@app/lib/eventWhen';
 import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
 import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
-import { foodOwnerMap, isNamedBringer, openFoodChoices } from '@app/lib/playbooks';
+import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt, menuChoicesTally } from '@app/lib/playbooks';
 import InviteToTheList from './InviteToTheList';
 import NudgeTheList from './NudgeTheList';
 import { takeEventLink, isOwnEvent } from '@app/lib/eventLink';
@@ -224,7 +226,7 @@ import { typeIsRestatedByName } from '@app/lib/eventMasthead';
 import { confirmedCovers, confirmedRsvpCovers } from '@app/lib/confirmedCovers';
 import { shoppingHint } from '@app/lib/shoppableUnit';
 import { markSignal, lastSignalNote } from './offline/lastSignal';
-import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, sizingRange, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum, dietaryNoted, playbookPacing } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, rosSuggestions, hostRosRows, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, sizingRange, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum, dietaryNoted, playbookPacing } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
@@ -241,7 +243,7 @@ import {
   getHostVendorChallenges, getHostVendorReadiness, getVendorNextAction,
   getHostHighestRiskVendor,
 } from '@app/lib/vendorIntelligence';
-import { isVendorBooked, isVendorConfirmed, vendorDepositOwed, isReconfirmable } from '@app/lib/workstreams';
+import { isVendorBooked, isVendorConfirmed, vendorDepositOwed, isReconfirmable, hiredVendors, vendorCounts } from '@app/lib/workstreams';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { isPlausibleCityText, parseVenueLocation, proposeTownFromHeard } from '@app/lib/cityText';
 import { foodShopItems } from '@app/lib/foodShopItems';
@@ -283,10 +285,10 @@ import { refundLine } from '@app/lib/refundRule';
 // The device's pass price (G86 price test): every place the pass's price shows reads it here.
 import { devicePassPriceCents, passPriceLabel, withPassPrice } from '@app/lib/passPrice';
 import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
-import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
+import { pickDroppableBudgetRow, cheaperBarOption } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence, placeIsOutdoors, outdoorsGuess } from '@app/lib/placeIntelligence';
-import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote } from '@app/lib/budgetCopy';
+import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote, planHeadroomLine } from '@app/lib/budgetCopy';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { deliverNotification, deliveryExcuse, notificationApiPresent, DELIVERY } from '@app/lib/notifyDelivery';
@@ -351,7 +353,7 @@ import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
 import { mayExhale, calmVetoFor } from '@app/lib/exhaleGate';
 import { checklistRouteFor } from '@app/lib/taskRoute';
 import { vendorObligations } from '@app/lib/vendorObligations';
-import { heartPlaceholders } from '@app/lib/heartPrompts';
+import { heartPlaceholders, heartFieldsFor } from '@app/lib/heartPrompts';
 import { parseMin } from '@app/lib/dayAlerts';
 // The viewport system, ported 2026-08-07. hostv2 had NO breakpoint machinery at
 // all — 0 uses of useBreakpoint/innerWidth against 117 in the donor shell — so
@@ -695,17 +697,6 @@ const TYPE_GROUPS = (() => {
 // expression, which nothing warns about). '' is a real state — "no reply" is
 // not the absence of an answer, it is the answer the roster starts with.
 const RSVP_VALUES = [['Yes', 'Yes'], ['No', 'No'], ['Maybe', 'Maybe'], ['', 'No reply']];
-// Guest free-text "needs" → a DIET_TAG, so a per-guest RSVP note ("gluten
-// free please") can be merged into dietCounts without retyping (parity:
-// App.js:10831, tagFor).
-const dietTagFor = (s) => {
-  const t = String(s || '').trim().toLowerCase();
-  if (!t) return null;
-  return DIET_TAGS.find((tag) => {
-    const tl = tag.toLowerCase();
-    return tl === t || tl.startsWith(t) || (t.length > 2 && tl.startsWith(t.replace(/ (allergy|free)$/, '')));
-  }) || null;
-};
 
 // Ros cue times are internal 24h "HH:MM" strings (playbookRunOfShow) — never
 // host copy. This turns "23:40" into "11:40 PM"; anything that isn't a bare
@@ -715,6 +706,13 @@ const dietTagFor = (s) => {
 // Compact field metrics shared by the inline add-forms that sit outside the
 // sheet blocks owning their own local `fld`.
 const HELPER_FLD = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
+
+// Who stays where, as the event lists it: `event.lodging` as an array of
+// { address, who, notes } rows (the Wanda sample's shape). The travel engine's
+// object shape ({ hotelName, … }) is not this and yields [].
+const stayRowsFor = (ev) => (Array.isArray(ev && ev.lodging) ? ev.lodging : [])
+  .filter((r) => r && typeof r === 'object' && (String(r.address || '').trim() || String(r.who || '').trim()))
+  .map((r, i) => ({ id: r.id || 'stay-' + i, address: String(r.address || '').trim(), who: String(r.who || '').trim(), notes: String(r.notes || '').trim() }));
 
 const fmt12h = (t) => {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '').trim());
@@ -1656,7 +1654,8 @@ export default function HostShellV2() {
       <div className={wrapClass} style={wrapStyle}>
         <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
           value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); setPendingPick(null); fetchAddrSugs(e.target.value); }} aria-label="Venue" autoFocus={autoFocus} />
-        <button className={ctaClass} onClick={saveVenue}>Save</button>
+        {/* Not lit while there is nothing to save (Wanda audit P1-2). */}
+        <button className={ctaClass} onClick={saveVenue} disabled={!String(venueDraft || '').trim()}>Save</button>
       </div>
       {addrSugs.length > 0 && (
         <div style={{ marginTop: 6 }}>
@@ -3182,7 +3181,11 @@ export default function HostShellV2() {
     if (/^blocker:/.test(String(nd.id || ''))) {
       const key = String(nd.id).slice('blocker:'.length);
       const b = (blockers || []).find(x => x && x.fieldKey === key);
-      patchEvent({ [key]: v }, ((b && b.title) || 'Decided') + ' — set.');
+      // The receipt says what she picked: "Retirement presentation: during the celebration."
+      const picked = b && Array.isArray(b.options) ? b.options.find(o => o && o.value === v) : null;
+      patchEvent({ [key]: v }, picked
+        ? ((b.title || 'Decided') + ': ' + String(picked.label).charAt(0).toLowerCase() + String(picked.label).slice(1) + '.')
+        : (((b && b.title) || 'Decided') + ' — set.'));
       return;
     }
     const row = [...(decisionBoard.open || []), ...(decisionBoard.locked || [])].find(x => x && x.id === nd.id);
@@ -3420,12 +3423,10 @@ export default function HostShellV2() {
   // dayBefore's protect-the-moment, phaseProgress's moment item, the nudge
   // layer, and doItForMe's toast all DERIVE from these; V2 only writes them).
   const [meaningDraft, setMeaningDraft] = useState(null);
+  // WHAT SHE ALREADY SAID (Wanda audit P1-9, 11/22/2026): the creation story
+  // and meaning fill the heart fields (heartFieldsFor) instead of an empty form.
   const buildMeaningDraft = () => ({
-    honoree: event.honoree || '',
-    honoree_story: event.honoree_story || '',
-    meaning_why: event.meaning_why || '',
-    feeling_words: event.feeling_words || '',
-    must_have_moment: event.must_have_moment || '',
+    ...heartFieldsFor(event),
     // THE INVITE READS THESE AND NOTHING EVER FILLED THEM.
     // `deckLine` is the line under the event's name on the invitation — the invite
     // has always preferred the host's own words over its canned DECK_LINES default,
@@ -3440,7 +3441,7 @@ export default function HostShellV2() {
     hostName: hostNameFor(event, profile),
   });
   const openMeaning = () => { setMeaningDraft(buildMeaningDraft()); setSheet({ kind: 'meaning' }); };
-  const hasMeaning = !!(String(event.must_have_moment || '').trim() || String(event.meaning_why || '').trim() || String(event.honoree_story || '').trim());
+  const hasMeaning = (() => { const h = heartFieldsFor(event); return !!(h.must_have_moment || h.meaning_why || h.honoree_story); })();
   const [lessonDraft, setLessonDraft] = useState('');
   // Seed the draft from the saved lesson whenever the event changes (getLesson
   // is the canonical reader; setLesson the writer — 200-char cap lives in lib).
@@ -5194,12 +5195,16 @@ export default function HostShellV2() {
     const q0 = queue[0];
     if (!q0) return null;
     // An EARLIER rung of the ask ladder can own the hero outright — the DAY, a
-    // foundational blocker's authored ask, a conflict, a COI step. When one does,
-    // the selection still resolves (the ask string has exactly one author, always),
-    // but it is denied any decision identity — so the panel can never claim a hero
-    // that is in fact talking about something else.
+    // conflict, a COI step. When one does, the selection still resolves (the ask
+    // string has exactly one author, always), but it is denied any decision
+    // identity — so the panel can never claim a hero that is in fact talking
+    // about something else.
+    // A foundational blocker's ask is NOT such a rung (Wanda audit P0-1,
+    // 11/22/2026). Its ask and its picks are the same blocker — blockerDecisionND
+    // reads the very stage the ask came from — so denying it the panel left
+    // "When does the ceremony happen?" with no options, no button and the
+    // "in the full app" chip, with the NEXT bar pointing at it.
     const rungOwnsHero = !elegantMode || !askMode || days === 0
-      || (/^blocker:/.test(String(q0.id || '')) && !!q0.ask)
       || (/conflict/i.test(String(q0.title || '')) && !!conflictItems[0])
       || q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || ''));
     const open = decisionBoard.open || [];
@@ -5255,8 +5260,9 @@ export default function HostShellV2() {
     // it is the floor the rest of the plan stands on, not one item among several.
     if (elegantMode && days === null) return 'Add the day.';
     const q0 = queue[0];
-    // Foundational pick-decision (Ceremony Timing, …) surfaced as a hero — its own
-    // ask ("Choose the timing."), so it stays in the ask flow after roll-to-next.
+    // Foundational pick-decision (ceremony timing, …) surfaced as a hero — its own
+    // ask ("When does the retirement presentation happen?"), so it stays in the
+    // ask flow after roll-to-next. Its picks render under it (heroSelection).
     if (elegantMode && /^blocker:/.test(String(q0.id || '')) && q0.ask) return q0.ask;
     if (elegantMode && /conflict/i.test(String(q0.title || '')) && conflictItems[0]) return conflictItems[0].ask;
     // COI-collection task → the REAL first step (coiNextAction), not "Your next step."
@@ -5600,6 +5606,7 @@ export default function HostShellV2() {
   // an origin for free, including the ones not written yet.
   const lastTapRef = useRef(null);
   const reconciledRef = useRef(new Set());   // events whose catch-up pass has already run this session
+  const lastUndoRef = useRef(null);          // the last undoable edit: { eventId, prev, msg, at } (patchEvent's followsLast)
   // The ranked index's FLIP pair. `qidxKeys` is the order as a string, so the
   // effect fires when the RANKING changes rather than on every render — the
   // measure is cheap but not free, and re-measuring on unrelated state is how
@@ -6170,6 +6177,11 @@ export default function HostShellV2() {
     // state with the pass door. Every lodging entry point funnels through this
     // function, so one check covers them all; the cockpit re-checks itself.
     if (destinationLocked(event)) { setSheet({ kind: 'lodging' }); return; }
+    // HER OWN STAYS OPEN HERE (Wanda audit P0-5, 11/22/2026). The cockpit loads
+    // only events saved on this device and searches for a place to book, so a
+    // sample or saved event that already lists who stays where opened an empty
+    // demo ("Load the Santa Fe example"). A list of stays opens its own sheet.
+    if (stayRowsFor(event).length) { setSheet({ kind: 'lodging', focus: focus || undefined }); return; }
     const f = focus != null && String(focus).trim() ? String(focus).trim() : null;
     try {
       const u = new URL(window.location.href);
@@ -7391,11 +7403,14 @@ export default function HostShellV2() {
   // `openN`). A third copy is how the bar and the panel come to disagree
   // about the same number on the same screen — the class that has cost this
   // repo twice today. Asked here, once, and read by everyone.
+  // ONE COUNT WITH THE HERO (Wanda audit P0-12, 11/22/2026): this counted the
+  // host's picks over every authored choice, so a call a booked venue settles
+  // read as open ("4 open" under the hero's "1 open") and was asked again in
+  // the list. lib/playbooks menuChoicesTally is what phaseProgress counts.
   const choicesTally = useMemo(() => {
-    const chs = (foodPlan && foodPlan.choices) || [];
-    const picks = event.foodChoices || {};
-    return { settled: chs.filter(c => picks[c.id]).length, total: chs.length };
-  }, [foodPlan, event.foodChoices]);
+    const t = (() => { try { return foodPlan ? menuChoicesTally(event, foodPlan) : null; } catch (_e) { return null; } })();
+    return t || { shown: [], open: [], openNow: [], later: 0, settled: 0, total: 0 };
+  }, [event, foodPlan]);
   const choicesAllSettled = choicesTally.total > 0 && choicesTally.settled === choicesTally.total;
 
   // "Spoken for" on the Bringing tab: a dish counts once somebody's name is
@@ -8452,7 +8467,11 @@ export default function HostShellV2() {
     // something the host did in this session is worth a sentence.
     const first = !reconciledRef.current.has(event.id);
     reconciledRef.current.add(event.id);
-    patchEvent({ timeline: res.rows }, first ? '' : reconcileSummary(res), first ? { noUndo: true } : undefined);
+    // ONE UNDO FOR A PICK AND WHAT FOLLOWED (Wanda audit P0-3, 11/22/2026): this
+    // pass follows her last edit, so it joins that edit's Undo instead of
+    // replacing it. Its own receipt restored only the timeline and left
+    // "Host cooks" picked.
+    patchEvent({ timeline: res.rows }, first ? '' : reconcileSummary(res), first ? { noUndo: true } : { followsLast: true });
     return;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event && event.id, event && JSON.stringify(event.foodChoices || null), event && JSON.stringify(event.tripMeals || null), event && JSON.stringify(event.celebration || null),
@@ -8477,6 +8496,15 @@ export default function HostShellV2() {
     const undoable = !!msg && !(opts && opts.noUndo);
     let undoPrev = null;
     if (undoable) { undoPrev = {}; for (const k of Object.keys(obj || {})) undoPrev[k] = event[k]; }
+    // A write that FOLLOWS the host's last edit (opts.followsLast — the checklist
+    // reconcile after a pick) folds into that edit's Undo: one Undo puts back the
+    // pick and everything that followed from it, and the receipt says both. The
+    // earlier edit's values win for any key both touched (they are the older ones).
+    const last = lastUndoRef.current;
+    const folds = undoable && !!(opts && opts.followsLast) && !!last && last.eventId === eventId && (Date.now() - last.at) < 7000;
+    if (folds) { undoPrev = { ...undoPrev, ...last.prev }; msg = last.msg + ' ' + msg; }
+    // Any write that is not itself undoable ends the chain: what follows it does not follow her edit.
+    if (!undoable) lastUndoRef.current = null;
     let result;
     let savedEv = null;
     // AN EVENT FROM THE ACCOUNT BECOMES THIS DEVICE'S OWN ON ITS FIRST EDIT
@@ -8564,7 +8592,8 @@ export default function HostShellV2() {
       // through, so its toast is always a confirmation ⇒ green. Errors never come through
       // here (they call toast() directly with no tone), so they stay neutral.
       if (undoable) {
-        const undoFn = () => patchEvent(undoPrev, 'Undone.', { noUndo: true });
+        lastUndoRef.current = { eventId, prev: undoPrev, msg, at: Date.now() };
+        const undoFn = () => { lastUndoRef.current = null; return patchEvent(undoPrev, 'Undone.', { noUndo: true }); };
         if (askModeRef.current && stage === 'plan' && !sheet) {
           setHeroReceipt({ msg, fn: undoFn });
           // Route through the ONE haptic vocabulary (feedback) instead of a bespoke
@@ -9388,9 +9417,12 @@ export default function HostShellV2() {
     if (kind === 'diet') {
       // The ENGINE's dietary model: dietCounts adds a real priced veg main and
       // flags related lines; dietaryNoted closes the cue (headcount events).
+      // Reads the ONE count (lib/dietRows: the host's tally, else the guest
+      // rows); writes only the host's own map (Wanda audit P0-13).
       const dc = event.dietCounts || {};
+      const counts = dietCountsFor(event);
       const setD = (k, delta) => {
-        const n = Math.max(0, (Number(dc[k]) || 0) + delta);
+        const n = Math.max(0, (Number(counts[k]) || 0) + delta);
         patchEvent({ dietCounts: { ...dc, [k]: n } },
           n ? k + ' × ' + n + ' — spread adjusted.' : k + ' cleared.');
       };
@@ -9415,7 +9447,7 @@ export default function HostShellV2() {
               <span>{k}</span>
               <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <button className="mini" onClick={() => setD(k, -1)} aria-label={'Fewer ' + k}>−</button>
-                <span className="step-val" style={{ minWidth: 18 }}>{Number(dc[k]) || 0}</span>
+                <span className="step-val" style={{ minWidth: 18 }}>{Number(counts[k]) || 0}</span>
                 <button className="mini" onClick={() => setD(k, 1)} aria-label={'More ' + k}>+</button>
               </span>
             </div>
@@ -9427,7 +9459,7 @@ export default function HostShellV2() {
             </button>
           )}
           <div className="actions-row" style={{ marginTop: 6 }}>
-            <button className="cta" onClick={() => patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.')}>That’s everyone — noted</button>
+            <button className="cta" onClick={() => patchEvent({ dietaryNoted: true }, dietaryNotedReceipt(event))}>That’s everyone — noted</button>
           </div>
           <p className="grounding" style={{ margin: 0 }}>
             Vegetarian and vegan counts add a real, priced main to the spread; the others flag which lines to double-check. Counts live on the plan — change them anytime.
@@ -9862,12 +9894,14 @@ export default function HostShellV2() {
     // other five readers in the tree were each answering one of two questions by
     // accident; see lib/budgetFor.js.
     const bf = budgetFor(event);
-    const isSet = bf.hostSetTotal;
-    // …but when they HAVE budgeted rows and no overall figure, this control must
-    // not speak as though nothing is known. Measured live: the money bar at the
-    // top of this same sheet read "$3,113 of $18,900 left" while the editor two
-    // hundred lines below asked for a budget as if from scratch.
-    const rowsStandIn = !bf.hostSetTotal && bf.basis === 'rows' ? bf : null;
+    // ONE "BUDGET IS SET" READER (Wanda audit P0-6, 11/22/2026). This asked
+    // budgetFor's second question (did she give an OVERALL figure) while the
+    // board asked the first, so the board read "Budget set · $5,000 · handled"
+    // over her nine budget lines and this editor proposed "Use $13,600" as if
+    // nothing were known. Rows she budgeted ARE a number to plan against: the
+    // editor shows it, says where it came from, and Change still writes the
+    // overall figure.
+    const isSet = bf.isSet;
     const setB = (n) => {
       setCustomBudget('');
       setBudgetChanging(false);
@@ -9908,8 +9942,8 @@ export default function HostShellV2() {
       return (
         <AskColumn>
           <Eyebrow tone="ok">Your budget</Eyebrow>
-          <BigValue>{fmt(Number(event.totalBudget))}</BigValue>
-          <Grounding>The plan sizes food, vendors and shopping from here — change it anytime.</Grounding>
+          <BigValue>{fmt(Number(bf.total))}</BigValue>
+          <Grounding>{bf.basis === 'rows' ? `Your ${bf.rowCount} budget ${bf.rowCount === 1 ? 'line adds' : 'lines add'} up to this. ` : ''}The plan sizes food, vendors and shopping from here — change it anytime.</Grounding>
           {roomsNote}
           <CtaRow><button className="mini" onClick={() => setBudgetChanging(true)}>Change the number</button></CtaRow>
         </AskColumn>
@@ -10009,17 +10043,6 @@ export default function HostShellV2() {
               </Grounding>
             ) : null;
           })()}
-          {/* THE HOST'S OWN ROWS, SAID OUT LOUD (2026-09-18). A host who filled in
-              budget categories but never named an overall figure used to reach an
-              ask written as though nothing were known — on a sheet whose money bar
-              was already counting against their $18,900. Their number leads the
-              alternatives now; the estimator's typical is still the proposal, but
-              it no longer pretends to be the only figure in the room. */}
-          {rowsStandIn && (
-            <Grounding gap={8}>
-              Your categories already add up to {fmt(rowsStandIn.rowsSum)} across {rowsStandIn.rowCount} {rowsStandIn.rowCount === 1 ? 'line' : 'lines'} — <button className="tap-44" style={linkBtn} onClick={() => setB(rowsStandIn.rowsSum)}>use that</button> if it is the ceiling you mean.
-            </Grounding>
-          )}
           {/* ── AND WHOSE MONEY IT IS ──────────────────────────────────────
               The old line here said "travel-scale costs are part of the
               numbers", which a host reads as "the flights are in this". The
@@ -12570,7 +12593,14 @@ export default function HostShellV2() {
                 // leads the hero with the date instead, it speaks about a different item
                 // than the card it sits on ("Add the day." over "Everything depends on
                 // venue…", gold run GOLD-01) — so it stands down for that frame only.
-                if (firstCard && queueRanked[0] && firstCard !== queueRanked[0]) return null;
+                // …and the same holds for every other way the shell's first card can
+                // differ from the engine's (Wanda audit P0-2, 11/22/2026): a settled
+                // pick dropped from the queue, a demoted confirm, the venue leading the
+                // stay. "You chose 'Drop-off catering / buffet'… a caterer is not booked
+                // yet." printed under the allergy ask. The reason is the ENGINE's lead's
+                // (CommandCenter planningState.reasoning = nextActions[0].consequence),
+                // so it prints only under that very item.
+                if (!firstCard || firstCard !== actions[0]) return null;
                 // When the lead is a decision, its decopt options + "our pick" why carry the
                 // reasoning — the generic planningState.reasoning (often vendor-status copy like
                 // "Currently quoted…") would bleed onto it. Suppress it for decision heroes.
@@ -15552,6 +15582,36 @@ export default function HostShellV2() {
                       does not offer to overwrite her sheet — the contract is the
                       point — it just stops the silence. */}
                   {(() => {
+                    // HERS WINS, BEATS SUGGESTED (owner, 11/22/2026; Wanda audit P0-4).
+                    // A run of show she brought is shown exactly as written; the
+                    // playbook's beats she doesn't have yet are offered here, one
+                    // tap each, and an added beat becomes one of her rows.
+                    let sugg = [];
+                    try { sugg = rosSuggestions(event) || []; } catch (_e) { sugg = []; }
+                    if (sugg.length) {
+                      const addBeat = (r) => {
+                        const row = { id: 'ros-' + Date.now().toString(36), time: r.time || '', segment: r.segment, notes: '' };
+                        if (r.day) row.day = r.day;
+                        const mine = Array.isArray(event.ros) ? event.ros.slice() : [];
+                        const at = r.time ? mine.findIndex((x) => x && parseStartMinutes(x.time) != null && parseStartMinutes(x.time) > parseStartMinutes(r.time)) : -1;
+                        if (at < 0) mine.push(row); else mine.splice(at, 0, row);
+                        patchEvent({ ros: mine }, 'Added to your night: ' + String(r.segment).slice(0, 48));
+                      };
+                      return (
+                        <div className="ros-sugg" data-ros-suggestions>
+                          <p className="grounding ros-sugg-lead">
+                            This is your run of show, so it stays as you wrote it. Add to your night? The {String(event.type || 'event').toLowerCase()} playbook suggests:
+                          </p>
+                          {sugg.map((r) => (
+                            <div key={r.id} className="then-row ros-sugg-row" data-ros-suggestion>
+                              <span className="d ros-sugg-when">{r.time ? fmt12h(r.time) : '·'}</span>
+                              <span className="ros-sugg-what">{r.segment}{!r.time && r.rel ? <span className="ros-sugg-rel"> · {r.rel}</span> : null}</span>
+                              <button type="button" className="mini" onClick={() => addBeat(r)} aria-label={'Add to your night: ' + r.segment}>Add</button>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
                     let w = null;
                     try { w = withheldPlaybookBeats(event); } catch (_e) { w = null; }
                     if (!w || !w.owned || !w.count) return null;
@@ -15590,7 +15650,7 @@ export default function HostShellV2() {
                       to move the hour. It stays while the playbook's day follows
                       the start time; a run of show she wrote herself keeps its
                       own times, so there it shows only while rows are unclocked. */}
-                  {ros.length > 0 && (ros.some(r => !r.time) || !(event.rosEdited && Array.isArray(event.ros) && event.ros.length)) && (() => {
+                  {ros.length > 0 && (ros.some(r => !r.time) || !((event.rosEdited || hostRosRows(event).length) && Array.isArray(event.ros) && event.ros.length)) && (() => {
                     // THE START TIME — GROUNDED, PROPOSED, THE HOST'S TO CHANGE (2026-07-14).
                     //
                     // This used to be invented: with only "afternoon" the schedule printed
@@ -15679,8 +15739,19 @@ export default function HostShellV2() {
                               not an invented "15:00". */}
                           {/* 12-hour only on agendas (host order 2026-07-28) — stored HH:MM stays 24h, display never. */}
                           <span className="d" style={{ minWidth: 54 }}>{r.time ? fmt12h(r.time) : (r.rel ? '·' : '—')}</span>
-                          <span style={{ flex: 1, minWidth: 0 }}>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}{r.owner && r.owner !== r.vendorName ? <span style={{ color: 'var(--carbon-muted)' }}> · {r.owner}</span> : null}
+                          {/* An owner prints only when it names someone: the engine's
+                              literal "Host" on every row said nothing (Wanda audit P0-4). */}
+                          <span style={{ flex: 1, minWidth: 0 }}>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}{r.owner && r.owner !== r.vendorName && !/^(host|you|me)$/i.test(String(r.owner).trim()) ? <span style={{ color: 'var(--carbon-muted)' }}> · {r.owner}</span> : null}
                             {!r.time && r.rel && <span style={{ color: 'var(--carbon-muted)' }}> · {r.rel}</span>}</span>
+                          {/* HIDE MARKED SURPRISES (owner, 11/22/2026): a marked moment is
+                              left out of the family link. Her own rows only — the
+                              playbook's rows are not stored until she owns them. */}
+                          {r.id && !r.generated && (
+                            <button type="button" className="mini" data-ros-surprise aria-pressed={!!r.surprise}
+                              onClick={() => writeRosCue(r.id, { surprise: !r.surprise }, r.surprise ? 'No longer a surprise — the family link shows it.' : 'Marked as a surprise — the family link leaves it out.')}>
+                              {r.surprise ? 'Surprise · hidden from family' : 'Surprise?'}
+                            </button>
+                          )}
                           {clash && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>overlaps</span>}
                           {r.done && <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>Done</span>}
                           {/* DRAG HANDLE (host ask 2026-07-28) — pointer-drag reorders (touch
@@ -16039,10 +16110,12 @@ export default function HostShellV2() {
                     committed is part guess so are they (app-wide estimate pass,
                     2026-07-29). Stating "$X of headroom" as a flat fact hid that
                     the figure moves the moment a real price replaces a guess. */}
+                {/* ONE FIGURE WITH THE TOTAL BELOW (Wanda audit P0-15): it read
+                    "$3,410 of headroom" from what is spoken for, over an
+                    "Expected total $5,263 · against $5,000". lib/budgetCopy
+                    planHeadroomLine reads the figure that row prints. */}
                 {money.planned
-                  ? (money.committed <= money.planned
-                    ? `${fmt(money.planned - money.committed)} of headroom against the ${fmt(money.planned)} plan so far${money.committedEstimated > 0 ? ' — some of what’s spoken for is still an estimate' : ''}.`
-                    : `Running ${fmt(money.committed - money.planned)} over the ${fmt(money.planned)} plan${money.committedEstimated > 0 ? ' — some of what’s spoken for is still an estimate' : ''}.`)
+                  ? planHeadroomLine(money, isPast)
                   // Booked vendors with no price are not "nothing to settle" (live hunt item 5).
                   : ((spend.unpricedBooked || []).length
                     ? 'No budget yet — ' + spend.unpricedBooked.map(x => x.name).join(', ') + ' ' + (spend.unpricedBooked.length === 1 ? 'has' : 'have') + ' no price on record, so there’s nothing to total yet.'
@@ -16112,7 +16185,7 @@ export default function HostShellV2() {
                 const row = ({ g, i }) => (
                   <div key={i} data-gift-row={g.id || i} style={{ borderTop: '1px solid var(--line-soft)', padding: 'var(--sp-2) 0' }}>
                     <div className="actions-row" style={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'nowrap' }}>
-                      <span>{g.name}{String(g.plusOne || '').trim() ? <span className="of"> +1</span> : null}</span>
+                      <span>{g.name}{plusOneCount(g) ? <span className="of"> +{plusOneCount(g)}</span> : null}</span>
                       <span style={{ display: 'flex', gap: 6 }}>
                         <button className="mini" style={g.giftReceived ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
                           onClick={() => writeGuest(i, { giftReceived: !g.giftReceived }, null)}>
@@ -16326,11 +16399,10 @@ export default function HostShellV2() {
                 // other sheet keeps the plain control rather than inventing one.
                 let tone;
                 if (sheet.kind === 'food' && foodPlan && (foodPlan.itemCount || 0) > 0) {
-                  const picks = event.foodChoices || {};
-                  const chs = foodPlan.choices || [];
-                  const settledAll = chs.length > 0 && chs.every(d => picks[d.id]);
+                  // The menu's count is choicesTally, the one the Plan row reads.
+                  const settledAll = choicesAllSettled;
                   const boughtAll = foodPlan.boughtCount === foodPlan.itemCount;
-                  const started = foodPlan.boughtCount > 0 || chs.some(d => picks[d.id]);
+                  const started = foodPlan.boughtCount > 0 || choicesTally.settled > 0;
                   tone = (settledAll && boughtAll) ? { color: 'var(--ok)', background: 'var(--ok-tint)' }
                     : started ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' }
                       : undefined;
@@ -16419,7 +16491,9 @@ export default function HostShellV2() {
                     </div>
                   );
                 })()}
-                {vf.display && !vf.confirmed && (
+                {/* A BOOKED VENUE ANSWERS IT (Wanda audit P1-2): "private home, or a
+                    venue?" was asked under her booked VFW hall. */}
+                {vf.display && !vf.confirmed && !(event.vendors || []).some(x => x && !x.isInformal && /venue/i.test(String(x.category || '')) && isVendorBooked(x)) && (
                   <div style={{ margin: '0 0 var(--sp-3)' }}>
                     <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Is this a private home, or a venue?</p>
                     <div style={{ display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
@@ -17880,6 +17954,34 @@ export default function HostShellV2() {
               // HOST surface only (no guest portal). Everything shown comes
               // from lib/travelPlan or the host's own form: headcount mode
               // degrades to the stay card alone — guest rows never invented.
+              // Her own list of who stays where (see goToLodgingCockpit).
+              const stays = stayRowsFor(event);
+              if (stays.length) {
+                const byPlace = [];
+                for (const st of stays) {
+                  const key = st.address || 'Place not named yet';
+                  let g = byPlace.find((x) => x.place === key);
+                  if (!g) { g = { place: key, rows: [] }; byPlace.push(g); }
+                  g.rows.push(st);
+                }
+                return (
+                  <div data-lodging-stays>
+                    <SheetHero eyebrow="Where everyone stays"
+                      star={`${stays.length} ${stays.length === 1 ? 'stay' : 'stays'}`}
+                      sub={byPlace.length === 1 ? `All at ${byPlace[0].place}.` : `Across ${byPlace.length} places.`} />
+                    {byPlace.map((g) => (
+                      <div key={g.place} className="brow stay-place">
+                        <div className="f-name stay-place-name">{g.place}</div>
+                        {g.rows.map((st) => (
+                          <p key={st.id} className="grounding stay-row" data-lodging-stay>
+                            <b>{st.who || 'Who’s staying: not noted'}</b>{st.notes ? ' — ' + st.notes : ''}
+                          </p>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
               if (!travel.relevant) {
                 return <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>This is a local event — nobody needs a room. If that changes, mark it as a destination event under Space, seats & helpers.</div>;
               }
@@ -20144,10 +20246,22 @@ export default function HostShellV2() {
                 {(() => {
                   const mil = (() => { try { return militaryRetirementContext(event); } catch { return null; } })();
                   if (!mil || !mil.authored) return null;
+                  // ASKED ONCE (owner, 11/22/2026): held separately, this party carries
+                  // no protocol; unanswered, the sequence is offered as conditional.
+                  const here = (() => { try { return officialCeremonyAnswer(event); } catch { return null; } })();
+                  if (here === 'separate') {
+                    return (
+                      <p className="grounding ceremony-separate" data-ceremony-separate>
+                        The official {String(mil.label || '').replace(/^U\.S\.\s+/, '')} retirement ceremony is held separately, so this party carries no protocol of its own.
+                      </p>
+                    );
+                  }
                   return (
                     <div style={{ marginBottom: 'var(--sp-5)', padding: 'var(--sp-3) 14px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', background: 'var(--bg-band)' }}>
                       <div className="eyebrow" style={{ color: 'var(--steel-soft)', marginBottom: 6 }}>{mil.label} · retirement protocol</div>
-                      <p className="v-meta" style={{ margin: '0 0 8px' }}>This is a military retirement — it carries protocol a civilian party doesn’t. The ceremony runs roughly:</p>
+                      <p className="v-meta" style={{ margin: '0 0 8px' }}>{here === 'this-party'
+                        ? 'This is a military retirement — it carries protocol a civilian party doesn’t. The ceremony runs roughly:'
+                        : 'If the official ceremony is part of this party, it runs roughly:'}</p>
                       <ol style={{ margin: '0 0 12px', paddingLeft: 18, fontSize: 'var(--t-body-s)', color: 'var(--ink-soft)', lineHeight: 1.5 }}>
                         {mil.ceremonySequence.map((s, i) => <li key={i} style={{ margin: '2px 0' }}>{s}</li>)}
                       </ol>
@@ -20194,7 +20308,10 @@ export default function HostShellV2() {
                     // Dirty-gate (per-screen audit: "Save it" fired a success toast even
                     // with zero changes) — only enabled when a field actually changed.
                     const _mk = ['honoree', 'honoree_story', 'meaning_why', 'feeling_words', 'must_have_moment', 'hostName', 'deckLine'];
-                    const dirty = _mk.some(k => String(meaningDraft[k] || '').trim() !== String(event[k] || '').trim());
+                    // Compared with what the sheet opened on — the creation story it
+                    // shows is not an edit, so Save stays dim until she changes something.
+                    const base = buildMeaningDraft();
+                    const dirty = _mk.some(k => String(meaningDraft[k] || '').trim() !== String(base[k] || '').trim());
                     return (
                       <button className="cta" disabled={!dirty} style={!dirty ? { opacity: .5 } : undefined} onClick={() => {
                         if (!dirty) return;
@@ -23218,9 +23335,10 @@ export default function HostShellV2() {
                   // Keys must match the engine's DIET_KEYWORDS table verbatim ('Shellfish',
                   // not 'Shellfish allergy') — dietCounts keys ARE the flag lookup keys.
                   const dc = event.dietCounts || {};
+                  const counts = dietCountsFor(event);   // the one count (lib/dietRows)
                   const anyDiet = anyDietFlagged(event);  // lib/dietRows — was hand-rolled here twice, identically
                   const setD = (k, delta) => {
-                    const n = Math.max(0, (Number(dc[k]) || 0) + delta);
+                    const n = Math.max(0, (Number(counts[k]) || 0) + delta);
                     patchEvent({ dietCounts: { ...dc, [k]: n } },
                       n ? k + ' × ' + n + ' — spread adjusted.' : k + ' cleared.');
                   };
@@ -23236,16 +23354,11 @@ export default function HostShellV2() {
                   // Guest-needs reconciliation (parity: App.js:10827-10836) — what the
                   // RSVPs already told the host, mapped to the same DIET_TAGS vocabulary,
                   // so a per-guest free-text note doesn't have to be re-typed here.
-                  const guestDiet = {};
-                  const addNeeds = (str) => {
-                    const seen = new Set();
-                    String(str || '').split(',').map(x => x.trim()).filter(Boolean).forEach(p => {
-                      const tag = dietTagFor(p);
-                      if (tag && !seen.has(tag)) { seen.add(tag); guestDiet[tag] = (guestDiet[tag] || 0) + 1; }
-                    });
-                  };
-                  (event.guests || []).forEach(g => { if (!g) return; addNeeds(g.needs); addNeeds(g.plusOneNeeds); });
-                  const pending = Object.entries(guestDiet).filter(([d, n]) => (Number(dc[d]) || 0) < n);
+                  // The rows are read by the same reader the counts are (lib/dietRows
+                  // guestDietCounts), so this offers only what the host's own tally
+                  // sits below.
+                  const guestDiet = guestDietCounts(event);
+                  const pending = Object.entries(guestDiet).filter(([d, n]) => (Number(counts[d]) || 0) < n);
                   const pullFromGuests = () => {
                     const next = { ...dc };
                     Object.entries(guestDiet).forEach(([d, n]) => { next[d] = Math.max(Number(next[d]) || 0, n); });
@@ -23267,7 +23380,7 @@ export default function HostShellV2() {
                     setDietOtherName(''); setDietOtherOpen(false);
                   };
                   const stepper = (k) => {
-                    const n = Number(dc[k]) || 0;
+                    const n = Number(counts[k]) || 0;
                     return (
                       <div key={k} className="line" style={{ padding: '6px 0' }}>
                         <span style={{ color: n > 0 ? 'var(--ink)' : 'var(--muted)', fontWeight: n > 0 ? 650 : 500 }}>{k}</span>
@@ -23346,7 +23459,7 @@ export default function HostShellV2() {
                       </p>
                       {!dietaryNoted(event) && (
                         <button className="mini" style={{ marginTop: 'var(--sp-2)' }}
-                          onClick={() => { patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.'); closeDiet(); }}>That’s everyone — noted</button>
+                          onClick={() => { patchEvent({ dietaryNoted: true }, dietaryNotedReceipt(event)); closeDiet(); }}>That’s everyone — noted</button>
                       )}
                       {/* The dietary-note drafter lives here now (port of 391:60 —
                           it belongs with dietary needs, not on the calm summary). */}
@@ -23397,7 +23510,13 @@ export default function HostShellV2() {
                         <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, choices: true }))}>
                           <span className="fstat-l">Your choices</span>
                           <span className="fstat-v" style={openN > 0 ? null : { color: 'var(--ok)' }}>
-                            {openN > 0 ? openN + ' open' : 'all set'}
+                            {/* Open now is the hero's count; the rest come up
+                                closer to the date, as on Calls to make. */}
+                            {openN > 0
+                              ? (choicesTally.openNow.length > 0
+                                ? choicesTally.openNow.length + ' open' + (choicesTally.later > 0 ? ' · ' + choicesTally.later + ' later' : '')
+                                : choicesTally.later + ' later')
+                              : 'all set'}
                             <span className="fstat-chev" aria-hidden="true">›</span>
                           </span>
                         </button>
@@ -23481,9 +23600,8 @@ export default function HostShellV2() {
                         // movement without claiming a completion the host has not
                         // reached. The button keeps its own text label either way, so
                         // the colour is never the only carrier (UX_02's colorblind rule).
-                        const picks = event.foodChoices || {};
-                        const settled = foodPlan.choices.filter(d => picks[d.id]).length;
-                        const tone = settled === foodPlan.choices.length
+                        const settled = choicesTally.settled;
+                        const tone = settled === choicesTally.total
                           ? { color: 'var(--ok)', background: 'var(--ok-tint)' }
                           : settled > 0
                             ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' }
@@ -23495,7 +23613,7 @@ export default function HostShellV2() {
                         // at the moment the work finishes nothing moves in their
                         // eyeline. Fires only when there is nothing left to
                         // answer — a glow after every pick would be decoration.
-                        const allSettled = settled === foodPlan.choices.length && foodPlan.choices.length > 0;
+                        const allSettled = settled === choicesTally.total && choicesTally.total > 0;
                         return (
                           barIsExit ? null : (
                             <button className={'mini' + (allSettled ? ' lit-done' : '')} style={{ marginLeft: 'var(--sp-2)', ...tone }}
@@ -23513,7 +23631,7 @@ export default function HostShellV2() {
                         green for done), so the eye lands on the next act without
                         being told twice. */}
                     {(() => { void 0; })()}
-                    {foodPlan.choices.map((d, _ci) => {
+                    {choicesTally.shown.map((d, _ci) => {
                       // AUTO-COLLAPSE (host request): a made choice folds to its
                       // settled line; when the LAST one lands the whole section
                       // closes itself — done work never keeps the room.
@@ -23533,7 +23651,7 @@ export default function HostShellV2() {
                           </div>
                         );
                       }
-                      const firstOpenId = (foodPlan.choices.find(c => !((event.foodChoices || {})[c.id])) || {}).id;
+                      const firstOpenId = (choicesTally.open[0] || {}).id;
                       const isNext = d.id === firstOpenId;
                       return (
                         <div key={d.id} className={isNext ? 'choice-next' : undefined} style={{ marginBottom: 'var(--sp-3)' }}>
@@ -23547,7 +23665,7 @@ export default function HostShellV2() {
                                 onClick={() => {
                                   const patch = settleChoicePatch(event, d.id, opt, 'host', d);
                                   const nextChoices = patch.foodChoices;
-                                  const stillOpen = (foodPlan.choices || []).filter(c => !nextChoices[c.id]).length;
+                                  const stillOpen = (openFoodChoices({ ...event, foodChoices: nextChoices }, foodPlan) || []).length;
                                   // ── A MULTI LIST STAYS OPEN WHILE THE HOST IS STILL IN IT ──
                                   // (2026-09-18) The auto-collapse below is right for a
                                   // pick-one: one tap IS the answer. On the dietary list it
@@ -24257,7 +24375,7 @@ export default function HostShellV2() {
                             {gDecisions > 0 ? <span className="tag essential" style={{ marginLeft: 'var(--sp-2)' }}>{gDecisions} decision{gDecisions === 1 ? '' : 's'} open</span> : null}
                           </div>
                           <div className="fg-sub" style={{ color: gDone ? 'var(--ok)' : 'var(--muted)' }}>
-                            {!gActive.length ? 'all skipped' : gDone ? 'all ' + gActive.length + ' bought' : gBought + ' of ' + gActive.length + ' bought' + (foodPlan.hasRealCount ? ' · ' + fmt(gLow) + '–' + fmt(gHigh) : '')}
+                            {!gActive.length ? 'all skipped' : gDone ? 'all ' + gActive.length + ' bought' : gBought + ' of ' + gActive.length + ' bought' + (foodPlan.hasRealCount ? ' · ' + (gLow === gHigh ? fmt(gLow) : fmt(gLow) + '–' + fmt(gHigh)) : '')}
                           </div>
                           <div className={'fg-track' + (gDone ? ' done' : '')}><i style={{ '--fill': gActive.length ? gBought / gActive.length : 1 }} /></div>
                         </div>
@@ -25250,7 +25368,9 @@ export default function HostShellV2() {
                         the number. "locked in" stays reserved for isVendorConfirmed. */}
                     {(() => {
                       if (rc.ready < rc.total) return `${rc.total - rc.ready} not booked yet — their cards below say which.`;
-                      const confirmed = (event.vendors || []).filter(isVendorConfirmed).length;
+                      // vendorCounts: the rollup's own population (hired only, P0-9) —
+                      // the two friends' "Confirmed" used to cancel two real confirms.
+                      const confirmed = vendorCounts(event).confirmed;
                       const toConfirm = Math.max(0, rc.ready - confirmed);
                       // A DEPOSIT OWED IS NOT "ALL SET" (hero-clears sweep, 11/20/2026).
                       // The Vendors part stays open while one is owed (isVendorSettled);
@@ -25286,7 +25406,7 @@ export default function HostShellV2() {
                   Tapping opens that vendor's card, where the six axes and the
                   next action already live. No new surface; a way in. */}
               {(() => {
-                const paid = (event.vendors || []).filter(x => x && !x.isInformal);
+                const paid = hiredVendors(event);
                 if (paid.length < 2) return null;
                 let top = null;
                 try { top = getHostHighestRiskVendor(paid, event); } catch { return null; }
@@ -25501,7 +25621,10 @@ export default function HostShellV2() {
                     // behind a collapsed fold and rendered a count above an empty
                     // list. Asking for a thing and being shown nothing is the
                     // worst answer a filter can give.
-                    if (vendorLens === 'settled') return [all, []];
+                    // The same for "Helping, not hired": friends owe no paperwork
+                    // (P0-10), so they are usually settled, and folding them made
+                    // that lens's own rows vanish behind a closed fold.
+                    if (vendorLens === 'settled' || vendorLens === 'informal') return [all, []];
                     const live = all.filter(v => !vendorSettled(v));
                     const rest = all.filter(v => vendorSettled(v));
                     return [live, rest];
@@ -26048,6 +26171,16 @@ export default function HostShellV2() {
                               </>)}
                             </>)}
                           </div>
+                          {/* HIDE MARKED SURPRISES (owner, 11/22/2026): a vendor marked as
+                              a surprise (Cory's church singer) is left out of the family
+                              link. Her crew still sees it: the helper and vendor links are
+                              how the cue reaches them. */}
+                          <button className="chip vendor-surprise" data-vendor-surprise
+                            aria-pressed={!!v.surprise}
+                            onClick={() => writeVendor(v.id, { surprise: !v.surprise },
+                              !v.surprise ? (v.name || 'This') + ' is a surprise — the family link leaves it out.' : (v.name || 'This') + ' is no longer a surprise — the family link shows it.')}>
+                            {v.surprise ? 'Surprise · hidden from the family link' : 'Is this a surprise?'}
+                          </button>
                           {/* HOST-APPROPRIATE-VENDOR-UI: friends/family helping out
                               shouldn't get chased for a certificate of insurance. This
                               flag is read by the shared vendorAccountability engine
@@ -26950,11 +27083,19 @@ export default function HostShellV2() {
                           </span>
                         </div>
                       ))}
-                      {swapPick && swapPick.row && (
-                        <p className="grounding" style={{ margin: '6px 0 0', fontWeight: 650, color: 'var(--ink-soft)' }}>
-                          The one-line fix: drop “{swapPick.row.category || swapPick.row.label}” (~{fmt(swapPick.drop)}) and you’re back under.
-                        </p>
-                      )}
+                      {swapPick && swapPick.row && (() => {
+                        // A cheaper bar before no bar (Wanda audit P2-9): when the
+                        // row is the bar and the drinks call has a cash bar the
+                        // plan prices for less, that is the fix it offers.
+                        const bar = (() => { try { return cheaperBarOption(event, swapPick, foodPP.priceFactor); } catch { return null; } })();
+                        return (
+                          <p className="grounding" style={{ margin: '6px 0 0', fontWeight: 650, color: 'var(--ink-soft)' }}>
+                            {bar
+                              ? `A cheaper fix than dropping “${swapPick.row.category || swapPick.row.label}”: a cash bar, where your plan prices what you’d still cover at ~${fmt(bar.cover)}${bar.clears ? ' — and you’re back under' : ''}.`
+                              : `The one-line fix: drop “${swapPick.row.category || swapPick.row.label}” (~${fmt(swapPick.drop)}) and you’re back under.`}
+                          </p>
+                        );
+                      })()}
                       {(recovery.protectedItems || []).length > 0 && (
                         <p className="grounding" style={{ margin: '6px 0 0' }}>Protected — not on the cut list: {(recovery.protectedItems || []).slice(0, 3).map(x => x.label || x).join(', ')}.</p>
                       )}
@@ -26969,7 +27110,7 @@ export default function HostShellV2() {
                       the block it folds can never disagree about which state
                       the host is in. */}
                   <Panel on={panels}>
-                  {budgetFor(event).hostSetTotal ? (
+                  {budgetFor(event).isSet ? (
                     budgetFoldOpen ? (
                       // Fold-open = intent to change → open straight into the CHANGE drawer (its
                       // own "Pick a number, or set your own" header carries it, so no shelf-label
@@ -26980,7 +27121,7 @@ export default function HostShellV2() {
                       </div>
                     ) : (
                       <button className="fold-btn" style={{ marginTop: 14 }} onClick={() => setBudgetFoldOpen(true)}>
-                        Your budget — {fmt(Number(event.totalBudget))}<span className="chev" aria-hidden="true">›</span>
+                        Your budget — {fmt(Number(budgetFor(event).total))}<span className="chev" aria-hidden="true">›</span>
                       </button>
                     )
                   ) : (
@@ -27083,7 +27224,7 @@ export default function HostShellV2() {
                 </div>
               );
               const chase = showsReplyTracking(event); // count-only hosts are never chased
-              const plusOnes = (event.guests || []).filter(g => g && g.rsvp === 'Yes' && String(g.plusOne || '').trim()).length;
+              const plusOnes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').reduce((t, g) => t + plusOneCount(g), 0);
               const kidsHere = kidsTotal(event.guests);
               // guestMode switch — the ENGINE's own workflow knob (guestPlanningMode
               // reads it): by-list hosts get reply tracking + chasing, by-headcount
@@ -27200,7 +27341,7 @@ export default function HostShellV2() {
                 let n, sub;
                 if (roster) {
                   const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
-                  const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
+                  const heads = yes.length + yes.reduce((t, g) => t + plusOneCount(g), 0);
                   // A headcount host's big number is the names ON THE LIST — the
                   // sub says so. It read the yes-count under that label (gold run,
                   // 11/5/2026), so five names showed "—" until someone replied.
@@ -27461,7 +27602,7 @@ export default function HostShellV2() {
                   : null;
                 const party = [
                   partner && partner.name ? 'with ' + String(partner.name).split(' ')[0] : null,
-                  String(g.plusOne || '').trim() ? '+1 ' + String(g.plusOne).trim() : null,
+                  plusOneLabel(g) || null,
                   Number(g.kids) > 0 ? g.kids + ' kid' + (Number(g.kids) === 1 ? '' : 's') : null,
                   String(g.group || '').trim() || null,
                 ].filter(Boolean);
@@ -28059,7 +28200,7 @@ export default function HostShellV2() {
                   <div className="v-meta" style={{ padding: '2px 2px var(--sp-3)', display: peopleMode ? 'none' : undefined }}>
                     {(() => {
                       const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
-                      const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
+                      const heads = yes.length + yes.reduce((t, g) => t + plusOneCount(g), 0);
                       const parts = [];
                       // §4: internal calculation, not a host decision. The redesigned
                       // surface keeps it behind the attendance disclosure instead of
@@ -28082,7 +28223,7 @@ export default function HostShellV2() {
                     {(() => {
                       // leading separator only when something precedes the hint
                       const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
-                      const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
+                      const heads = yes.length + yes.reduce((t, g) => t + plusOneCount(g), 0);
                       const hasPre = (heads !== yes.length) || (rsvpBy && rsvpBy.iso && !isPast) || !isPast;
                       // Was "tap a tag to change an RSVP, a name to edit" — two doors
                       // described as doing different things. Since the reply picker moved
@@ -28274,7 +28415,7 @@ export default function HostShellV2() {
                                 : null;
                               const party = [
                                 partner && partner.name ? 'with ' + String(partner.name).split(' ')[0] : null,
-                                String(g.plusOne || '').trim() ? '+1 ' + String(g.plusOne).trim() : null,
+                                plusOneLabel(g) || null,
                                 Number(g.kids) > 0 ? g.kids + ' kid' + (Number(g.kids) === 1 ? '' : 's') : null,
                               ].filter(Boolean);
                               const meal = String(g.meal || '').trim();
@@ -28328,7 +28469,7 @@ export default function HostShellV2() {
                                 width and overflow the sheet (min-width:auto held it wide). */}
                             <span style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {g.name || 'Guest ' + (i + 1)}
-                              {String(g.plusOne || '').trim() ? <span className="of"> +1 {g.plusOne}</span> : null}
+                              {plusOneLabel(g) ? <span className="of"> {plusOneLabel(g)}</span> : null}
                               {g.coupleId ? (() => {
                                 const p = (event.guests || []).find((x) => x && x !== g && x.coupleId === g.coupleId);
                                 return p ? <span className="of"> · with {String(p.name || '').split(' ')[0]}</span> : null;

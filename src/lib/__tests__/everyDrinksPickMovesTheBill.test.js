@@ -34,8 +34,12 @@ const SAME_TIER = [
   ['Anniversary', ['Wine + beer + champagne toast', 'Full bar + signature cocktail'], FULL_BAR_IS_BASELINE],
   ['Holiday Party', ['Hosted full bar, bartender controls pour', 'Hosted full bar, self-serve', 'Beer + wine + one signature cocktail only'],
     'Who pours is not what is bought, and the one cocktail pours from the same spirits line.'],
-  ['Retirement Party', ["Beer + wine + honoree's favorite", 'Full open bar', 'Beer/wine + a signature cocktail'],
-    `${FULL_BAR_IS_BASELINE} The signature cocktail is the honoree's favorite line.`],
+  // Wanda audit P1-4 (11/22/2026): the signature cocktail and the full bar buy
+  // the cited batch line Engagement, Holiday and Dinner Party already price, so
+  // the honoree's-favorite pick prices apart. The full bar buys nothing beyond
+  // it, marked costPending for the owner.
+  ['Retirement Party', ['Full open bar', 'Beer/wine + a signature cocktail'],
+    `${FULL_BAR_IS_BASELINE} OWNER CALL (costPending): no source splits a full bar's drinks between spirits and the beer and wine already counted.`],
   ['Bachelor Party', ['Beer + whiskey', 'Full bar'], FULL_BAR_IS_BASELINE],
   ['Bachelor Party', ['Beer only / BYOB', 'Light / pace-it'], 'Both buy the beer without the spirits; no source sizes a lighter-drinking crowd.'],
   ['Vow Renewal', ['Wine + beer + champagne toast', 'Full bar + signature cocktail'], FULL_BAR_IS_BASELINE],
@@ -88,6 +92,7 @@ test('the picks the brief named do move the drinks total', () => {
     // The cash-bar follow-up (integration, 11/21/2026): a cash or limited bar
     // prices below the hosted bar it used to equal.
     ['Engagement Party', 'bar', 'Cash/limited bar'], ['Retirement Party', 'bar', 'Limited / cash bar'],
+    ['Retirement Party', 'bar', 'Beer/wine + a signature cocktail'],
     ['Holiday Party', 'alcohol_service', 'Drink tickets / cash bar'],
   ];
   for (const [type, id, pick] of moves) {

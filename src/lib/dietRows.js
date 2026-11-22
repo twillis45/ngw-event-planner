@@ -32,6 +32,52 @@ export const DIET_TAGS = Object.freeze([
 
 const countOf = (map, k) => Number((map || {})[k]) || 0;
 
+// A guest's free text ("gluten free please", a meal pick, an invite chip) → a
+// DIET_TAG, or null. Moved here from HostShellV2 (parity: App.js:10831, tagFor)
+// so the vocabulary and the rule that reads guests into it are one file.
+export const dietTagFor = (s) => {
+  const t = String(s || '').trim().toLowerCase();
+  if (!t) return null;
+  return DIET_TAGS.find((tag) => {
+    const tl = tag.toLowerCase();
+    return tl === t || tl.startsWith(t) || (t.length > 2 && tl.startsWith(t.replace(/ (allergy|free)$/, '')));
+  }) || null;
+};
+
+// ─── THE GUEST ROWS COUNT, IN EITHER MODE (Wanda audit P0-13, 11/22/2026) ──
+// A headcount event can still carry guest rows, and a row's meal ("Vegetarian",
+// "Gluten-free") is a dietary fact about a person who is coming. Each row that
+// has not said no counts once per tag, from its needs, its plus-one's needs,
+// its meal, and the invite's structured diet and allergen chips.
+export function guestDietCounts(event) {
+  const out = {};
+  for (const g of (Array.isArray(event && event.guests) ? event.guests : [])) {
+    if (!g || /^n/i.test(String(g.rsvp || ''))) continue;
+    const parts = [
+      ...String(g.needs || '').split(','), ...String(g.plusOneNeeds || '').split(','), String(g.meal || ''),
+      ...(Array.isArray(g.diets) ? g.diets : []), ...(Array.isArray(g.allergens) ? g.allergens : []),
+    ];
+    const seen = new Set();
+    for (const p of parts) {
+      const tag = dietTagFor(p);
+      if (tag && !seen.has(tag)) { seen.add(tag); out[tag] = (out[tag] || 0) + 1; }
+    }
+  }
+  return out;
+}
+
+/**
+ * The ONE dietary count every surface reads: the host's own tally wins for any
+ * tag she has given a number to (zero included); every other tag comes from the
+ * guest rows.
+ */
+export function dietCountsFor(event) {
+  const host = (event && event.dietCounts && typeof event.dietCounts === 'object') ? event.dietCounts : {};
+  const merged = { ...guestDietCounts(event) };
+  for (const [k, v] of Object.entries(host)) merged[k] = Number(v) || 0;
+  return merged;
+}
+
 /**
  * How the dietary steppers should be laid out for THIS event.
  *
@@ -56,7 +102,7 @@ const countOf = (map, k) => Number((map || {})[k]) || 0;
 export function dietRowsFor(event, opts = {}) {
   const expanded = opts.expanded === true;
   const quickCount = Number.isFinite(opts.quickCount) ? Math.max(0, opts.quickCount) : 2;
-  const dc = (event && event.dietCounts && typeof event.dietCounts === 'object') ? event.dietCounts : {};
+  const dc = dietCountsFor(event);
 
   const customs = Object.keys(dc).filter((d) => !DIET_TAGS.includes(d) && countOf(dc, d) > 0);
   const active = [...DIET_TAGS, ...customs].filter((d) => countOf(dc, d) > 0);
@@ -77,6 +123,6 @@ export function dietRowsFor(event, opts = {}) {
 
 /** Does this event carry ANY dietary count at all, custom entries included? */
 export function anyDietFlagged(event) {
-  const dc = (event && event.dietCounts && typeof event.dietCounts === 'object') ? event.dietCounts : {};
+  const dc = dietCountsFor(event);
   return Object.keys(dc).some((k) => countOf(dc, k) > 0);
 }

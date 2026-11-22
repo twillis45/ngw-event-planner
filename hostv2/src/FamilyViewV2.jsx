@@ -63,11 +63,13 @@ function FamilyPage({ plan }) {
     rep.no ? `${rep.no} can’t make it` : '', rep.waiting ? `${rep.waiting} haven’t answered` : '',
   ].filter(Boolean).join(' · ') : '';
   const ros = (() => {
-    try { return (effectiveRos(plan) || []).filter((r) => r && (r.label || r.segment)); } catch { return []; }
+    // A marked surprise never shows here (owner, 11/22/2026). The server already
+    // leaves it out (family_view.py); this holds if a plan ever arrives whole.
+    try { return (effectiveRos(plan) || []).filter((r) => r && !r.surprise && (r.label || r.segment)); } catch { return []; }
   })();
-  const list = Array.isArray(plan.checklist) ? plan.checklist : [];
+  const list = (Array.isArray(plan.checklist) ? plan.checklist : []).filter((t) => t && !t.surprise);
   const done = list.filter((t) => t.done).length;
-  const vendors = Array.isArray(plan.vendors) ? plan.vendors : [];
+  const vendors = (Array.isArray(plan.vendors) ? plan.vendors : []).filter((v) => v && !v.surprise);
   return (
     <div className="stagewrap vb2-stage">
       <div className="app" style={TONE}><div className="content vb2-content">

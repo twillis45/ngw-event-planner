@@ -111,7 +111,10 @@ describe('what the money screen can and cannot see', () => {
     // playbookFoodPlan with this file's own evFor shape and reading the list:
     // all three now appear on the host's shopping list. See
     // playbooks/__tests__/theSymbolsAreNotOptional.test.js.
-    expect(shape).toEqual({ decor: 56, logistics: 40, rental: 4 });
+    // rental 4->5 on 11/22/2026 (Wanda audit P1-5): Retirement's buffet
+    // serveware (chafing dishes) is held out under its default drop-off
+    // caterer, who brings the warmers; a host who cooks still buys it.
+    expect(shape).toEqual({ decor: 56, logistics: 40, rental: 5 });
   });
 
   test('and the food/beverage lines held out are DECISION-gated, not dropped', () => {
@@ -135,7 +138,9 @@ describe('what the money screen can and cannot see', () => {
     // Halloween's batch cocktail; Juneteenth's strawberries; Crawfish boiled-to-
     // order, kids' drinks and iced tea; Fish Fry's second starch and grown
     // section; Friendsgiving's host wine; NYE's all-cider toast; The Cookout's punch.
-    expect(gated.length).toBe(60);
+    // +1 on 11/22/2026 (Wanda audit P1-4): Retirement's signature-cocktail batch,
+    // bought only on the signature pick.
+    expect(gated.length).toBe(61);
   });
 
   test('THE RED-PROOF, IN THE TEST: perturbing decor moves nothing, food moves a lot', () => {
@@ -252,6 +257,9 @@ describe('what the money screen can and cannot see', () => {
     // and the `inList` guard above skips those. That is the intended result —
     // the point of the flag change was to make them visible to the host, not
     // to move them between two invisible buckets.
-    expect({ notEssential, essentialButOut }).toEqual({ notEssential: 95, essentialButOut: 5 });
+    // essentialButOut 5->6 on 11/22/2026 (Wanda audit P1-5): the same
+    // Retirement serveware line, essential for a host who cooks and held out
+    // by the caterer default.
+    expect({ notEssential, essentialButOut }).toEqual({ notEssential: 95, essentialButOut: 6 });
   });
 });

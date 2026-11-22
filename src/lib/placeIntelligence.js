@@ -82,7 +82,11 @@ export function derivePlaceIntelligence(event = {}) {
   const kind = vf.kind;
   const atHome = vf.isHome;
   const venueResolved = vf.isSet;
-  const hasAddress = !!vf.address;
+  // ONE "ADDRESS SETTLED" RULE (Wanda audit P0-14, 11/22/2026): the board read
+  // venueFor's addressSettled ("handled") while this asked "Add the address…"
+  // under the same named hall. A named venue IS the address here too; a home
+  // still needs its street, because "our place" is not somewhere guests can find.
+  const hasAddress = atHome ? !!vf.address : !!vf.addressSettled;
   const outdoors = placeIsOutdoors(event);
   const indoorOnly = event.indoorOutdoor === 'indoor';
   const hasVendors = (event.vendors || []).some((v) => v && has(v.name));
@@ -112,7 +116,9 @@ export function derivePlaceIntelligence(event = {}) {
     add('arrival', 'Guest arrival', PLACE_STATES.NEEDS,
       'Guests need to know where to go — start with the location above.', null);
   } else if (hasAddress) {
-    add('arrival', 'Guest arrival', PLACE_STATES.HANDLED, 'Address entered — guests can be sent exact directions.');
+    add('arrival', 'Guest arrival', PLACE_STATES.HANDLED, vf.address
+      ? 'Address entered — guests can be sent exact directions.'
+      : `Guests are sent to ${formatVenueAddress(event) || vf.name}.`);
   } else {
     sections.push({
       key: 'arrival', label: 'Guest arrival', state: PLACE_STATES.NEEDS,

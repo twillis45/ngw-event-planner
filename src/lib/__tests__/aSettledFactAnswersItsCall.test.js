@@ -105,8 +105,10 @@ describe('item 16 — The Day reads the Army ceremony it already has', () => {
     expect(ids).toEqual(expect.arrayContaining(['mil_flag_presentation', 'mil_retirement_order']));
     expect(rc.isDefault).toBe(false);
   });
+  // Owner ruling 11/22/2026 ("Ask once"): the sequence prints once the host
+  // says the official ceremony is part of this party — never presumed.
   test('the run of show names the ceremony at the program beat', () => {
-    const ros = playbookRunOfShow(demo());
+    const ros = playbookRunOfShow({ ...demo(), officialCeremony: 'this-party' });
     const program = ros.find((r) => /retirement ceremony/i.test(r.segment));
     expect(program).toBeTruthy();
     expect(program.segment).toContain('Colors');

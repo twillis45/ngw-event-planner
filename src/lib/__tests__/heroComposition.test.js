@@ -128,9 +128,15 @@ describe('ruling B — the overdue scold is said once, not twice', () => {
     // The selection denies decision identity whenever an earlier ask rung owns the
     // hero, so the guard can never claim a hero that is talking about something else.
     const block = src.slice(src.indexOf('const heroSelection'), src.indexOf('const heroAskText'));
-    for (const rung of ['days === 0', 'blocker:', 'conflict', 'coi']) {
+    for (const rung of ['days === 0', 'conflict', 'coi']) {
       expect(block).toContain(rung);
     }
+    // A foundational blocker is NOT a rung that denies the panel (Wanda audit
+    // P0-1, 11/22/2026): its ask and its picks are one blocker, so it keeps its
+    // decision and renders its options. Denied, it dead-ended the hero.
+    const rungs = block.slice(block.indexOf('const rungOwnsHero'), block.indexOf('const open ='));
+    expect(rungs).not.toMatch(/blocker:/);
+    expect(block).toMatch(/idn\.source === 'blocker'\) return blockerDecisionND/);
   });
 
   it('ONE derivation — the ask ladder reads the same selection, not its own copy', () => {

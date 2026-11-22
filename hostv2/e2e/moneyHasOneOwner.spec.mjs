@@ -79,7 +79,10 @@ test('the audited default sample keeps its contract total when the caterer is pa
   await expect(page.locator('.sheet').last()).toContainText('$4,660 actually spent');
   // $13,561 → $13,568 on 11/20/2026 (seasonal accuracy, bug 6): counted drinks
   // round UP to whole units, so Bar / Beverage reads ~$244 instead of ~$237.
-  await expect(page.locator('.sheet').last()).toContainText('$13,568 expected in total');
+  // $13,568 → $13,446 on 11/22/2026 (Wanda audit P1-5): the sample's caterer
+  // brings the warmers, so the buffet serveware and the chafing-dish rental
+  // leave a catered Retirement Party's supplies (−$122).
+  await expect(page.locator('.sheet').last()).toContainText('$13,446 expected in total');
   await page.screenshot({ path: testInfo.outputPath('sample-before-payment.png'), fullPage: true });
   await page.getByRole('button', { name: 'Review vendor payments' }).click();
   const card = page.locator('.vcard').filter({ hasText: 'Hearthstone Catering Co.' });

@@ -67,7 +67,8 @@ describe('a beat anchored to another beat', () => {
   });
 
   test('NEGATIVE CONTROL: no other playbook’s day sheet moved', () => {
-    expect(rows('Birthday').length).toBe(11);
+    // 10, not 11, since 11/22/2026 (Wanda audit P0-4): the "Guests arrive" anchor is not added beside Birthday's own "Doors" beat.
+    expect(rows('Birthday').length).toBe(10);
     expect(rows('Birthday').some((x) => /after/i.test(String(x.rel)))).toBe(false);
   });
 

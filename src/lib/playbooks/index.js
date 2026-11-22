@@ -10,6 +10,8 @@
 
 import { rsvpState, rsvpIsSettled } from '../rsvp';
 import { guestCountFor } from '../guestCountFor';
+import { plusOneCount } from '../plusOneCount';
+import { isHostName } from '../hostNameFor';
 import { cookDecisionFor, cookTasksFor, cookRisksFor } from './cookLever';
 import { cashBarDecisionsFor, cashBarKeeps, aliasedChoices } from './cashBarCover';
 import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
@@ -94,7 +96,8 @@ import { effectiveTimingProvenance, isGroundedTiming, timingConflict } from '../
 // else. Values, quantities, costs, decisions and ranking are untouched.
 import { effectiveValue } from '../knowledge/knowledgeOverride';
 import { isGroundedCulture } from '../knowledge/culturalContext';
-import { militaryDecisionsFor, isGroundedMilitary, militaryRetirementContext } from '../knowledge/militaryRetirement';
+import { militaryDecisionsFor, isGroundedMilitary, militaryRetirementContext, officialCeremonyAnswer } from '../knowledge/militaryRetirement';
+import { hostIsHonoree } from '../hostNameFor';
 import { normalizeCategory } from '../vendorAccountability/playbooks.js';
 import { vendorDisplayName } from '../vendorDisplayName';
 import { destinationContextFor, isGroundedDestination } from '../knowledge/destinationContext';
@@ -190,13 +193,14 @@ const DECISION_INJECTORS = [
 // capacity list. Both under-count rather than over-count on the edge cases, and
 // under-counting is the safe direction: it can only leave the "you're on your
 // own" copy standing, never assert help the host does not have.
-const HOSTY_OWNER = /^(host|you|yours|me|myself|self)$/i;
-const isNamedHelper = (v) => {
-  const s = String(v || '').trim();
-  return !!s && !HOSTY_OWNER.test(s);
-};
+// The host is never her own helper, by word or by name (isHostName, the one
+// reader helperResponsibility also uses — Wanda audit P1-6).
 export function namedHelperCount(event) {
   const ev = event || {};
+  const isNamedHelper = (v) => {
+    const s = String(v || '').trim();
+    return !!s && !isHostName(s, ev);
+  };
   const guests = Array.isArray(ev.guests) ? ev.guests : [];
   const foodSkip = (ev.foodSkip && typeof ev.foodSkip === 'object') ? ev.foodSkip : {};
   const capSkip = (ev.capacitySkip && typeof ev.capacitySkip === 'object') ? ev.capacitySkip : {};
@@ -655,10 +659,11 @@ export function attendanceBand(event) {
       // the model the rest of the app now follows rather than re-deriving its own.
       const s = rsvpState(g);
       const gKids = Math.max(0, Math.round(Number(g && g.kids) || 0));
-      // A filled plusOne is a real adult riding this row's answer. The UI headers
+      // A filled plusOne is real people riding this row's answer. The UI headers
       // counted them for years while this engine didn't — so the roster said 12
-      // and the food sized 10 (audit 2026-07-27). One person, one count, here too.
-      const po = String((g && g.plusOne) || '').trim() ? 1 : 0;
+      // and the food sized 10 (audit 2026-07-27). "+3 (Nia + 2 boys)" is three,
+      // not one (Wanda audit P0-8): plusOneCount is the one reader.
+      const po = plusOneCount(g);
       if (s === 'yes') { confirmed += 1 + po; kidsConfirmed += gKids; }
       else if (s === 'maybe') { maybe += 1 + po; kidsOut += gKids; }
       else if (s === 'no') declined++;
@@ -880,17 +885,25 @@ export function dietaryNoted(event) {
 function dietaryResolved(event) {
   // Host noted allergies (the headcount-mode workflow), or said nobody has one → done.
   if (dietaryNoted(event)) return { resolved: true, reason: 'noted' };
-  // Headcount / locked-count mode: there's no per-guest list to collect from, so the
-  // host just NOTES the allergies they know of (free-text) instead of chasing the list.
-  if (event.guestMode === 'count') return { resolved: false, reason: 'headcount' };
+  // THE ROWS ARE READ IN EITHER MODE (Wanda audit P0-13, 11/22/2026).
+  // Headcount mode used to return before reading anything, so a count event
+  // whose rows said "Vegetarian" and "Gluten-free" was asked "Who has a food
+  // allergy?" with Vegetarian 0 while the estimate flagged the same two needs.
+  // Still only the rows earn it: a count says how many, not that she asked
+  // everyone (theChipsReachTheSpread.test.js).
   const list = Array.isArray(event.guests) ? event.guests : [];
-  if (list.length === 0) return { resolved: true, reason: 'no-list' }; // nothing to collect from — don't block
   const recorded = list.some((g) => {
+    if (!g || /^n/i.test(String(g.rsvp || ''))) return false;
     const needs = String((g && g.needs) || '').trim();
     const meal = String((g && g.meal) || '').trim();
     return needs || (meal && !/^(standard|—|-|none)$/i.test(meal));
   });
-  return { resolved: recorded };
+  if (recorded) return { resolved: true, reason: 'roster' };
+  // Headcount / locked-count mode with nothing recorded: the host NOTES the
+  // allergies they know of instead of chasing a list.
+  if (event.guestMode === 'count') return { resolved: false, reason: 'headcount' };
+  if (list.length === 0) return { resolved: true, reason: 'no-list' }; // nothing to collect from — don't block
+  return { resolved: false };
 }
 
 function playbookHasDietaryDecision(playbook) {
@@ -929,6 +942,16 @@ const FOOD_HANDLING_DECISION_IDS = new Set(['sourcing', 'food_style', 'food_sour
 const bookedVendorIn = (event, key) => ((event && Array.isArray(event.vendors)) ? event.vendors : [])
   .find((v) => v && !v.isInformal && isVendorBooked(v) && normalizeCategory(String(v.category || '')) === key) || null;
 const vendorStatusWord = (v) => String((v && v.status) || 'booked').trim().toLowerCase();
+// The caterer whose price stands for the food: a booked catering vendor with a
+// cost, else one marked Quoted with a cost. Considering, or no price, is not a
+// price (Wanda audit P0-15, 11/22/2026).
+export function catererPriceOf(event) {
+  const vs = ((event && Array.isArray(event.vendors)) ? event.vendors : [])
+    .filter((v) => v && !v.isInformal && Number(v.cost) > 0 && normalizeCategory(String(v.category || '')) === 'catering');
+  const booked = vs.find((v) => isVendorBooked(v));
+  const v = booked || vs.find((x) => /\bquot/i.test(String(x.status || '')));
+  return v ? { vendor: v, cost: Math.round(Number(v.cost)), booked: !!booked } : null;
+}
 export function decisionSettledByData(event, decision) {
   if (!event || !decision || !Array.isArray(decision.options) || !decision.options.length) return null;
   if (FOOD_HANDLING_DECISION_IDS.has(decision.id)) {
@@ -944,6 +967,13 @@ export function decisionSettledByData(event, decision) {
   // "Indoor (home or rented room)" for "in our backyard".
   const fact = settledFromFacts(event, decision);
   if (fact) return fact;
+  // THE HOST IS THE GUEST OF HONOR (Wanda audit P1-11, 11/22/2026). "Surprise
+  // or announced?" was asked of the honoree herself, and the plan staged a
+  // surprise for her. Her own party is announced; nothing is asked.
+  if (/surprise/i.test(String(decision.id || '')) && hostIsHonoree(event)) {
+    const opt = decision.options.find((o) => /announced|not a surprise|no surprise/i.test(String(o)));
+    if (opt) return { pick: opt, because: 'You’re the guest of honor' };
+  }
   if (decision.id === 'venue') {
     const vf = (() => { try { return venueFor(event); } catch (_e) { return null; } })();
     // A named place we cannot classify, with a BOOKED venue vendor, still
@@ -987,6 +1017,45 @@ export function openFoodChoices(event, plan) {
     && picks[c.id] == null && !decisionSettledByData(event, c));
 }
 export { isDietaryChoice };
+
+// ─── THE MENU COUNT IS ONE COUNT (Wanda audit P0-12, 11/22/2026) ─────────────
+// The Plan tab counted the host's picks over every authored choice ("4 open",
+// and it re-asked the booked hall's venue call) while the hero counted
+// openFoodChoices less what the board parks ("1 open"). Both read this now:
+//   shown    the calls the list asks or shows as picked (a call a record settles
+//            is not shown; the dietary question stays, counted settled once the
+//            needs are noted)
+//   open     openFoodChoices, the list the hero and the checklist read
+//   openNow  open, less what playbookDecisionBoard defers (the hero's ask)
+//   later    how many of the open calls come up closer to the date
+export function menuChoicesTally(event, plan, asOf) {
+  const p = plan !== undefined ? plan : (() => { try { return playbookFoodPlan(event); } catch (_e) { return null; } })();
+  if (!p) return null;
+  const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  const open = openFoodChoices(event, p) || [];
+  const openIds = new Set(open.map((c) => c.id));
+  // The dietary question stays askable once the needs read as closed (a
+  // restriction can still be tapped in); only a settling record hides a call.
+  const shown = (p.choices || []).filter((c) => c && (picks[c.id] != null || openIds.has(c.id)
+    || (isDietaryChoice(c) && !decisionSettledByData(event, c))));
+  let deferredIds = new Set();
+  try {
+    const board = playbookDecisionBoard(event, asOf) || {};
+    deferredIds = new Set((board.deferred || []).map((r) => r && r.id).filter(Boolean));
+  } catch (_e) { /* board unavailable — every open call counts as now */ }
+  const openNow = open.filter((c) => !deferredIds.has(c.id));
+  return { shown, open, openNow, later: open.length - openNow.length, settled: shown.length - open.length, total: shown.length };
+}
+
+// ─── "NOTED" SAYS ONLY WHAT IS TRUE (Wanda audit P1-14, 11/22/2026) ──────────
+// The receipt for "That's everyone — noted" said "the menu is good to go."
+// while three menu calls were still open. It names what is left, from the same
+// list the menu hero counts (openFoodChoices), read as if the note had landed.
+export function dietaryNotedReceipt(event) {
+  const open = (() => { try { return openFoodChoices({ ...(event || {}), dietaryNoted: true }) || []; } catch (_e) { return []; } })();
+  if (!open.length) return 'Dietary needs noted — the menu is good to go.';
+  return `Dietary needs noted. ${open.length} menu ${open.length === 1 ? 'call is' : 'calls are'} still open.`;
+}
 
 // ─── A CHOSEN CALL IS NOT A CATCH-UP (owner's iPad, 11/21/2026) ──────────────
 // A playbook call is answered when the host picked it, or a record settles it
@@ -2262,6 +2331,8 @@ const ROS_ANCHOR_HOUR = ANCHOR_HOUR;
 // overriding the coarse timeOfDay bucket. Tolerant of "18:30", "6:30 PM", "7:00 PM".
 // Returns minutes-since-midnight, or null when unset/unparseable (→ fall back to bucket).
 const parseRosStartMin = parseStartMinutes;   // lib/eventWhen — one parser, shared with the invite
+// A beat that opens the doors — the arrival anchor is not added beside one.
+const DOORS_BEAT = /\bdoors?\b|\bguests (arrive|in)\b/i;
 // kind → segment type; both 'cooking' (Dinner Party) and 'preparation' (others).
 const ROS_SCHEDULE_KINDS = [
   { key: 'cooking', segType: 'event' },
@@ -2537,6 +2608,9 @@ export function playbookRunOfShow(event) {
   // when militaryRetirementContext has one; otherwise the authored text stands.
   const ceremony = (() => {
     try {
+      // ASKED ONCE, NEVER PRESUMED (owner, 11/22/2026): the official sequence
+      // prints only when the host said the ceremony is part of this party.
+      if (officialCeremonyAnswer(event) !== 'this-party') return null;
       const m = militaryRetirementContext(event);
       return m && m.authored && Array.isArray(m.ceremonySequence) && m.ceremonySequence.length ? m : null;
     } catch (_e) { return null; }
@@ -2689,8 +2763,10 @@ export function playbookRunOfShow(event) {
     }
   }
   if (!rows.length) return null;
-  // Anchor a "Guests arrive" hero segment unless an entry already lands there.
-  if (!rows.some((r) => r._min === baseMin)) {
+  // Anchor a "Guests arrive" hero segment unless an entry already lands there —
+  // or the program already opens the doors (Wanda audit P0-4: "Doors: guests
+  // in and settled" five minutes later printed the arrival twice).
+  if (!rows.some((r) => r._min === baseMin || (r.type === 'event' && DOORS_BEAT.test(String(r.segment || ''))))) {
     rows.push({
       id: `pb-ros-${event.id}-arrival`,
       time: exact ? `${rosPad2(Math.floor(baseMin / 60))}:${String(baseMin % 60).padStart(2, '0')}` : null,
@@ -2709,21 +2785,92 @@ export function playbookRunOfShow(event) {
 // (Rule 1: never overwrite manual/imported), otherwise the playbook-derived
 // run-of-show (Rule 5). Pure; derived rows are never auto-persisted — once the
 // host edits (which seeds + saves them), the saved schedule wins.
+//
+// ── HERS WINS, BEATS SUGGESTED (owner, 11/22/2026; Wanda audit P0-4) ────────
+// A stored schedule used to win only once the ROS editor set `rosEdited`. A run
+// of show the host brought with her — Wanda's eight rows: her brother's 7:45
+// presentation, the secret singer, the gold-dress change — was silently
+// replaced by the playbook's day, with an Army ceremony it presumed and a 2:30
+// PM reheat beat before the hall opened. Now any stored row the playbook did
+// not generate is hers, and her rows win exactly as written. The playbook's
+// beats become suggestions (rosSuggestions) she adds one at a time.
+const isPlaybookRosRow = (r) => !!(r && (r.generated === true || r.source === 'playbook' || /^pb-(ros|during)-/.test(String(r.id || ''))));
+const rosText = (r) => String((r && (r.segment != null && String(r.segment).trim() ? r.segment : (r.label || r.title))) || '').trim();
+export function hostRosRows(event) {
+  const stored = event && Array.isArray(event.ros) ? event.ros : [];
+  return stored.filter((r) => r && !isPlaybookRosRow(r) && rosText(r));
+}
+// Her row, readable by every surface: the text as `segment` (she may have
+// written `label`) and her clock as the app's 24-hour string, which every
+// surface prints back as "6:30 PM". Nothing she wrote is dropped.
+function asRosRow(r) {
+  if (!r) return r;
+  const text = rosText(r);
+  const raw = String(r.time == null ? '' : r.time).trim();
+  const min = raw && !/^\d{1,2}:\d{2}$/.test(raw) ? parseRosStartMin(raw) : null;
+  const time = min != null ? `${rosPad2(Math.floor(min / 60))}:${String(min % 60).padStart(2, '0')}` : r.time;
+  return (text === r.segment && time === r.time) ? r : { ...r, segment: text, time };
+}
+// When the place opens: a booked venue's own arrival time ("3:00 PM setup").
+// No beat is placed at the venue before it (Wanda audit: a 2:30 PM reheat at a
+// hall that opens at 3). null when no booked venue says when.
+function venueOpensMin(event) {
+  const v = bookedVendorIn(event, 'venue');
+  const m = v ? parseRosStartMin(v.arrivalTime) : null;
+  return m == null ? null : m;
+}
+function dropBeforeVenueOpens(event, rows) {
+  const open = venueOpensMin(event);
+  if (open == null || !Array.isArray(rows)) return rows;
+  return rows.filter((r) => !(r && r.time && (r.day || 1) === 1 && parseRosStartMin(r.time) != null && parseRosStartMin(r.time) < open));
+}
+// The moments a night is built from. A program beat is not suggested when one
+// of her rows already holds the same moment, in her words.
+const ROS_MOMENTS = [
+  /\bdoors?\b|\bguests (arrive|in)\b/i,
+  /\barrives\b/i,
+  /\bdinner\b|\blunch\b|\bbrunch\b|\bmeal\b/i,
+  /\b(presentation|program|ceremony|speeches|tribute)\b/i,
+  /\bcake\b/i,
+  /\btoast\b/i,
+  /\bdanc(e|ing)\b/i,
+  /\bsend-?off\b/i,
+];
+export function rosSuggestions(event) {
+  if (!event || !hostRosRows(event).length) return [];
+  let derived = null;
+  try { derived = playbookRunOfShow(event); } catch (_e) { derived = null; }
+  if (!derived || !derived.length) return [];
+  // Everything already on her sheet counts, including beats she added from here.
+  const herText = (Array.isArray(event.ros) ? event.ros : []).map(rosText).filter(Boolean);
+  const have = new Set(herText.map((t) => t.toLowerCase()));
+  const covered = ROS_MOMENTS.filter((re) => herText.some((t) => re.test(t)));
+  return dropBeforeVenueOpens(event, derived).filter((r) => {
+    const t = rosText(r);
+    if (!t || have.has(t.toLowerCase())) return false;
+    if (r.type === 'event' && covered.some((re) => re.test(t))) return false;
+    return true;
+  });
+}
 export function effectiveRos(event) {
   const stored = event && Array.isArray(event.ros) ? event.ros : [];
   // SINGLE SOURCE OF TRUTH for the run-of-show. The playbook-derived schedule tracks the
   // event's timeOfDay live (anchors 10/15/18), so changing "Where & when" reflows the whole
-  // day. A stored ros wins ONLY when the host has genuinely taken ownership in the ROS editor
-  // (event.rosEdited), or when the event has no playbook to derive from. Per-cue "done" state
-  // is kept SEPARATELY in event.rosDone and overlaid here — marking a cue done must never
-  // freeze the schedule into a snapshot that then stops tracking timeOfDay.
-  const derived = playbookRunOfShow(event);
-  const owned = stored.length && ((event && event.rosEdited) || !derived || !derived.length);
+  // day. A stored ros wins when the host has taken ownership in the ROS editor
+  // (event.rosEdited), when any stored row is her own (not playbook-generated), or when
+  // the event has no playbook to derive from. Per-cue "done" state is kept SEPARATELY in
+  // event.rosDone and overlaid here — marking a cue done must never freeze the schedule
+  // into a snapshot that then stops tracking timeOfDay.
+  const derivedAll = playbookRunOfShow(event);
+  const derived = derivedAll ? dropBeforeVenueOpens(event, derivedAll) : derivedAll;
+  const hers = hostRosRows(event).length > 0;
+  const owned = stored.length && ((event && event.rosEdited) || hers || !derived || !derived.length);
   // See withheldPlaybookBeats() below — the ownership contract is correct, but
   // it is INVISIBLE, and a host looking at her own short sheet cannot tell the
   // difference between "the playbook has nothing" and "the playbook is standing
   // down because I touched this."
-  const base = owned ? stored : (derived || stored);
+  const mapped = owned ? stored.map(asRosRow) : null;
+  const base = owned ? (mapped.every((r, i) => r === stored[i]) ? stored : mapped) : (derived || stored);
   const doneMap = event && event.rosDone;
   if (!doneMap || !base.length) return base;
   return base.map((r) => (doneMap[r.id] && !r.done ? { ...r, done: true } : r));
@@ -2753,11 +2900,11 @@ export function withheldPlaybookBeats(event) {
     const stored = Array.isArray(event && event.ros) ? event.ros : [];
     if (!stored.length) return none;
     const derived = playbookRunOfShow(event) || [];
-    const owned = !!((event && event.rosEdited) || !derived.length);
+    const owned = !!((event && event.rosEdited) || hostRosRows(event).length || !derived.length);
     if (!owned || !derived.length) return none;
     // Only count what the stored sheet does NOT already cover, by moment text —
     // a host who kept the playbook's own rows is not missing them.
-    const have = new Set(stored.map((r) => String((r && r.segment) || '').trim().toLowerCase()).filter(Boolean));
+    const have = new Set(stored.map((r) => rosText(r).toLowerCase()).filter(Boolean));
     const missing = derived.filter((r) => !have.has(String((r && r.segment) || '').trim().toLowerCase()));
     return { owned: true, count: missing.length, program: missing.filter((r) => r && r.type === 'event').length };
   } catch (_e) { return none; }
@@ -2932,6 +3079,9 @@ export function playbookCapacity(event) {
   };
   const items = [];
   for (const r of playbook.rentalsGap) {
+    // The same choice gate the spread and the checklist read: a caterer brings
+    // the warmers a host who cooks rents (Wanda audit P1-5, 11/22/2026).
+    if (r && r.whenChoice && !choiceShown(event, r.whenChoice)) continue;
     let factor = null, factorType = null;
     // Quantity comes from the ONE canonical source (resolveQuantity) so the
     // explainer/capacity number always matches the food-plan number. The
@@ -3867,7 +4017,15 @@ export function playbookDecisionBoard(event, asOf, profile) {
   const boardFacts = (() => {
     try { return decisionFactsFor(event, pb, asOf, profile); } catch (_e) { return {}; }
   })();
-  const isDietaryDecision = (d) => d.id === 'dietary' || /dietary|allerg/i.test(d.label || '');
+  // ONE dietary rule for what the noted needs SETTLE (Wanda audit P1-3,
+  // 11/22/2026): the question is known by its id. The board locked on the broad
+  // label match #218 retired elsewhere, so noting allergies filed Retirement's
+  // invite call ("Invite + RSVP + dietary/allergy + accessibility ask") as
+  // "Collected". The broad match stays for ROUTING only: a row that asks for
+  // dietary needs among other things still opens the diet drill-in
+  // (blocksIsNotADestination.test.js).
+  const isDietaryDecision = isDietaryChoice;
+  const mentionsDiet = (d) => isDietaryChoice(d) || /dietary|allerg/i.test(d.label || '');
   // A decision is locked when the host picked it (foodChoices[id]) OR the underlying
   // fact is settled — dietary uses the SAME predicate the food gate / next-step use.
   // …OR a booked vendor already answers it (decisionSettledByData, 11/16/2026).
@@ -3972,7 +4130,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
     // the board row itself, so they carry no route (the row is the consumer).
     const _isFoodChoice = _foodChoiceIds.has(d.id);
     const route = (Array.isArray(d.options) && d.options.length > 0 && _isFoodChoice) ? { eventId: event.id, tab: 'Planning', foodFocus: d.id }
-      : isDietaryDecision(d) ? { eventId: event.id, tab: 'Planning', focusField: `fp-diet-${event.id}` }
+      : mentionsDiet(d) ? { eventId: event.id, tab: 'Planning', focusField: `fp-diet-${event.id}` }
       : /vendor|team|hire|staff/.test(_blocks) ? _firstUndoneVendorRoute()
       // ── `blocks` IS NOT A DESTINATION (2026-09-18) ────────────────────────
       // The food branch below reads `_hay`, which folds in `blocks`. Five
@@ -5834,13 +5992,20 @@ export function playbookFoodPlan(event, opts = {}) {
   // Food-approach: caterer chosen → inject the per-guest catering line (the homemade food rows
   // were dropped by hostCooksIt above). Same row shape as a host-added dish, so it flows into the
   // food total, the Food group, and effectiveItems like any other line. pf = regional factor.
-  if (_usesCaterer && _cateringRate) {
-    const [cgLow, cgHigh] = _cateringRate;
+  // A QUOTE IS A PRICE (Wanda audit P0-15, 11/22/2026). With a caterer who has
+  // quoted or been booked at a real figure, that figure IS the food line — the
+  // band was a stand-in for exactly this number. Hers, so no regional factor.
+  // Booked outranks quoted; a price she types on the line still wins (locked).
+  const _quote = _usesCaterer ? catererPriceOf(event) : null;
+  if (_usesCaterer && (_cateringRate || _quote)) {
+    const [cgLow, cgHigh] = _cateringRate || [0, 0];
+    const _qName = _quote ? (vendorDisplayName(_quote.vendor) || String(_quote.vendor.name || 'Your caterer')) : '';
     list.unshift({
-      id: 'fa-catering', group: 'Food', short: 'Catering (the food)',
-      item: 'Catering — the caterer provides the food', owner: '', qty: guests, unit: shortUnit('guest', guests),
+      id: 'fa-catering', group: 'Food', short: _quote ? `Catering (the food) · ${_qName} ${_quote.booked ? 'booked' : 'quote'}` : 'Catering (the food)',
+      item: _quote ? `Catering — ${_qName}${_quote.booked ? ', booked' : '’s quote'}` : 'Catering — the caterer provides the food', owner: '', qty: guests, unit: shortUnit('guest', guests),
       essential: true, where: ['Caterer'], qtyOverridden: false, baseQty: guests,
-      low: Math.round(guests * cgLow * pf), high: Math.round(guests * cgHigh * pf),
+      low: _quote ? _quote.cost : Math.round(guests * cgLow * pf), high: _quote ? _quote.cost : Math.round(guests * cgHigh * pf),
+      ...(_quote ? { quotedBy: { id: _quote.vendor.id, name: _qName, status: String(_quote.vendor.status || '') } } : null),
       units: guests, unitBase: '',
       // Was missing skipped/locked entirely (found in the 2026-07-11 food-plan
       // audit) — the caterer line couldn't be skipped OR have a real price

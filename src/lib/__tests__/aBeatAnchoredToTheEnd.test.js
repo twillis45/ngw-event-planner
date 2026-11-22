@@ -86,7 +86,8 @@ describe('a beat anchored to the end of the party', () => {
     // Only two playbooks author End rows; nothing else may shift.
     expect(rows('Birthday').map((x) => x.rel)).toEqual(rows('Birthday').map((x) => x.rel));
     const bday = rows('Birthday');
-    expect(bday.length).toBe(11);
+    // 10, not 11, since 11/22/2026 (Wanda audit P0-4): the "Guests arrive" anchor is not added beside Birthday's own "Doors" beat.
+    expect(bday.length).toBe(10);
     expect(bday.some((x) => /End/i.test(String(x.rel)))).toBe(false);
   });
 

@@ -1,5 +1,5 @@
 import { vendorIsCommitted, vendorOutstanding } from './vendorMoney';
-import { isVendorBooked } from './workstreams';
+import { isVendorBooked, hiredVendors } from './workstreams';
 import { venueFor } from './venueFor';
 import { budgetIsSet } from './budgetFor';
 import { rsvpHasResponded } from './rsvp';
@@ -69,22 +69,31 @@ export function invitesOut(event) {
 // name, category or type. Booked means isVendorBooked on event.vendors, the
 // record every booking proof reads. The booking-verb rule below and the steps
 // that list their roles (`books` on a playbook task) both read this table.
+// The third column rules a vendor OUT of the role (Wanda audit P0-11): a
+// photobooth is its own role, and neither a booth nor a photoshoot is the
+// event's photographer.
 export const BOOKING_ROLES = [
   [/cater/, /cater|food/],
-  [/photograph|videograph/, /photo|video/],
+  [/photo ?booth/, /booth/],
+  [/photograph|videograph/, /photo|video/, /booth|photo ?shoot/],
   [/\bdj\b|\bbanda?\b|entertain|\bmusic\b/, /\bdj\b|music|banda?\b|entertain/],
   [/florist|\bflowers?\b/, /flor/],
   [/\bcake\b|\bbaker\b/, /bak|cake/],
   [/officiant/, /offici/],
   [/\bplanner\b|coordinator/, /planner|coordinat/],
 ];
-const vendorBookedAs = (event, vendRe) => (Array.isArray(event && event.vendors) ? event.vendors : [])
-  .some((v) => v && isVendorBooked(v) && vendRe.test(((v.name || '') + ' ' + (v.category || '') + ' ' + (v.type || '')).toLowerCase()));
+// HIRED vendors only (hiredVendors, Wanda audit P0-10): a friend helping is not a booking.
+const vendorBookedAs = (event, vendRe, notRe) => hiredVendors(event || {})
+  .some((v) => {
+    if (!v || !isVendorBooked(v)) return false;
+    const t = ((v.name || '') + ' ' + (v.category || '') + ' ' + (v.type || '')).toLowerCase();
+    return vendRe.test(t) && !(notRe && notRe.test(t));
+  });
 /** Is a vendor of this role booked? `role` is the step's word for it ("band/DJ"). */
 export function roleBooked(event, role) {
   const r = String(role || '').toLowerCase();
   const hit = BOOKING_ROLES.find(([taskRe]) => taskRe.test(r));
-  return !!hit && vendorBookedAs(event, hit[1]);
+  return !!hit && vendorBookedAs(event, hit[1], hit[2]);
 }
 
 export function taskSatisfied(event, task) {
@@ -317,16 +326,28 @@ export function taskSatisfied(event, task) {
   // Booking-verb vendor proof — ROLE-AWARE and STATUS-AWARE. "Book the DJ" is
   // proven by a DJ the host actually booked (isVendorBooked),
   // never by a florist, and never by a name typed while still considering.
-  const vendors = Array.isArray(event.vendors) ? event.vendors : [];
-  const bookedMatch = (re) => vendorBookedAs(event, re);
+  // HIRED vendors only (hiredVendors): a friend helping is not a booking.
+  const vendors = hiredVendors(event).filter((v) => isVendorBooked(v));
+  const vendorText = (v) => ((v.name || '') + ' ' + (v.category || '') + ' ' + (v.type || '')).toLowerCase();
+  const bookedMatch = (re) => vendors.some((v) => re.test(vendorText(v)));
   if (/\b(book(ed)?|hire[ds]?|lock(ed)? in|secure[d]?)\b/.test(s) || /vendor/.test(s)) {
     if (/cater/.test(s)) return bookedMatch(/cater|food/);
     // The caterer is answered above. The planner role stays out of this rule:
     // no step was proven by a booked planner before the table was shared.
+    // A COMPOUND STEP NEEDS A VENDOR PER ROLE (Wanda audit P0-11): "Book
+    // photobooth + night-of photographer" closed on one booked friend shooting
+    // a pre-event photoshoot. The roles, and what rules a vendor OUT of one,
+    // are the one table above (BOOKING_ROLES).
     const roles = BOOKING_ROLES.filter(([taskRe]) => !taskRe.test('caterer') && !taskRe.test('planner'));
     const named = roles.filter(([taskRe]) => taskRe.test(s));
-    if (named.length) return named.every(([, vendRe]) => bookedMatch(vendRe));
-    if (/vendor|\bhire[ds]?\b|book a /.test(s)) return vendors.some((v) => v && isVendorBooked(v));
+    if (named.length) {
+      const fits = (v, [, vendRe, notRe]) => vendRe.test(vendorText(v)) && !(notRe && notRe.test(vendorText(v)));
+      // Each named role gets its own vendor: a small matching, tried in order.
+      const fill = (i, used) => i === named.length || vendors.some((v) => !used.has(v)
+        && fits(v, named[i]) && fill(i + 1, new Set([...used, v])));
+      return fill(0, new Set());
+    }
+    if (/vendor|\bhire[ds]?\b|book a /.test(s)) return vendors.length > 0;
   }
 
   // Headcount/guest-count tasks: a typed count DOES prove "set the guest count" —
