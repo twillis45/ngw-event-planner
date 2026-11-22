@@ -26,6 +26,7 @@
 import { guestCountFor, SOURCE_PLAYBOOK_TYPICAL } from './guestCountFor';
 import { venueFor, isHomeVenueName } from './venueFor';
 import { parseStartMinutes } from './eventWhen';
+import { dietTagFor } from './dietRows';
 
 const opts = (d) => (d && Array.isArray(d.options) ? d.options.map(String) : []);
 const money = (n) => '$' + Math.round(n).toLocaleString('en-US');
@@ -439,12 +440,30 @@ export function knownPartOf(event, d) {
 // ── The allergy question, asked about what is not yet known ─────────────────
 // "One guest has a nut allergy" prefills the steppers (heardFacts); the
 // question is then whether anyone ELSE has one, not who has one.
+// HER OWN DIET CALL IS HEARD TOO (audit 2 P1-2, 11/22/2026). Crab Feast's
+// "Who can't eat shellfish…?" and Dinner Party's diet call are answered in
+// diet tags; she then got "Who has a food allergy?", the same question again.
+// A tag names a need without saying that's everyone (dietaryResolved stays
+// false: theChipsReachTheSpread), so the follow-up asks about everyone ELSE.
 const ALLERGY_TAG = /allerg|shellfish|gluten|dairy/i;
+const chipTags = (event) => {
+  const fc = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  const out = [];
+  for (const [k, v] of Object.entries(fc)) {
+    if (!/^dietary(_|$)/.test(k)) continue;
+    for (const x of (Array.isArray(v) ? v : String(v == null ? '' : v).split(','))) {
+      const t = dietTagFor(x);
+      if (t && !out.includes(t)) out.push(t);
+    }
+  }
+  return out;
+};
 export function allergyAsk(event) {
   const dc = (event && event.dietCounts && typeof event.dietCounts === 'object') ? event.dietCounts : {};
   const known = Object.entries(dc).filter(([k, n]) => ALLERGY_TAG.test(k) && Number(n) > 0);
-  if (!known.length) return 'Who has a food allergy?';
-  const said = known.map(([k, n]) => `${n} ${k.toLowerCase()}`).join(', ');
+  const named = chipTags(event).filter((t) => !known.some(([k]) => k === t));
+  if (!known.length && !named.length) return 'Who has a food allergy?';
+  const said = [...known.map(([k, n]) => `${n} ${k.toLowerCase()}`), ...named.map((t) => t.toLowerCase())].join(', ');
   return `Anyone besides the ${said}?`;
 }
 

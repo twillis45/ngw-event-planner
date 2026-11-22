@@ -6,6 +6,7 @@
 // counted on the Plan (dietCountsFor) while the hero still asked.
 import { playbookFoodPlan, dietaryNoted, getPlaybook } from '../playbooks';
 import { deriveEventPhaseProgress } from '../phaseProgress';
+import { allergyAsk } from '../knownFacts';
 
 const dayOut = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const ev = (type, extra = {}) => ({ id: `t-${type}`, type, name: type, date: dayOut(40), guestMode: 'count', guestCount: 20,
@@ -15,7 +16,10 @@ const foodCue = (e) => {
   return item ? String(item.cueLabel || '') + ' ' + String((item.ask) || '') : '';
 };
 
-describe('a pick on the authored diet call that names the need settles the allergy ask', () => {
+// A tag names a need without saying that's everyone, so the allergy step stays
+// owed (theChipsReachTheSpread NEGATIVE CONTROL) — but it is asked as the
+// follow-up about everyone else, never as the same question again.
+describe('a pick on the authored diet call is heard by the allergy ask', () => {
   for (const type of ['Crab Feast', 'Dinner Party']) {
     test(type, () => {
       const pb = getPlaybook(type);
@@ -23,9 +27,8 @@ describe('a pick on the authored diet call that names the need settles the aller
       expect(d).toBeTruthy();
       const pick = d.options.find((o) => !/^\s*(nobody|no one|none)\b/i.test(o));
       const e = ev(type, { foodChoices: { [d.id]: pick } });
-      expect(dietaryNoted(e)).toBe(true);
-      expect(playbookFoodPlan(e).dietaryResolved).toBe(true);
-      expect(foodCue(e)).not.toMatch(/food allergy/i);
+      expect(allergyAsk(e)).not.toBe('Who has a food allergy?');
+      expect(allergyAsk(e)).toMatch(new RegExp('^Anyone besides the .*' + pick.toLowerCase()));
     });
   }
 
