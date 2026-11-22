@@ -14,7 +14,7 @@ const CODE = 'fam-' + 'b'.repeat(28);
 const PLAN = {
   name: 'Vida’s Friendsgiving', type: 'Friendsgiving', date: '2026-11-21', startTime: '16:00', hostNames: 'Vida Ramos',
   venue: 'Pine Street Commons', venueCity: 'Alexandria', venueState: 'VA', hashtag: '#VidasFriendsgiving2026',
-  replies: { yes: 12, no: 2, maybe: 1, waiting: 3 },
+  replies: { yes: 12, no: 2, maybe: 1, waiting: 3 }, dressCode: 'Fall colors, comfy shoes',
   ros: [{ time: '16:00', label: 'Doors open' }, { time: '17:30', label: 'Dinner' }], rosEdited: true,
   checklist: [{ task: 'Order the turkey', done: true }, { task: 'Borrow 8 chairs', done: false }],
   vendors: [{ name: 'Harvest Table Catering', category: 'Catering', status: 'Booked' }, { name: 'Pie Shop', category: 'Bakery', status: 'Considering' }],
@@ -38,7 +38,11 @@ test('family sees the plan, and there is nothing to change', async ({ page }) =>
   await expect(page_).toBeVisible();
   await expect(page_.locator('h1')).toHaveText('Vida’s Friendsgiving');
   await expect(page_.locator('[data-family="where"]')).toContainText('Pine Street Commons');
-  await expect(page_.locator('[data-family="replies"]')).toHaveText('12 coming · 1 maybe · 2 can’t make it · 3 haven’t answered');
+  // Replies, not people (audit 2 E P2-1, 11/22/2026): a reply that brings a
+  // plus-one is still one reply, so the line says who said yes, not "12 coming".
+  await expect(page_.locator('[data-family="replies"]')).toHaveText('12 said yes · 1 maybe · 2 can’t make it · 3 haven’t answered');
+  // The dress code the invite shows is on the family page too (E P2-7).
+  await expect(page_.locator('[data-family="dress"]')).toHaveText('Dress: Fall colors, comfy shoes');
   await expect(page_.locator('[data-family="day"] li')).toHaveText(['4:00 PMDoors open', '5:30 PMDinner']);
   await expect(page_).toContainText('The checklist · 1 of 2 ticked off');
   await expect(page_.locator('[data-family="vendors"] li')).toHaveText([/Harvest Table Catering.*Booked/, /Pie Shop.*Not booked yet/]);
