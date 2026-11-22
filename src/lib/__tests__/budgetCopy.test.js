@@ -25,14 +25,17 @@ describe('budgetHeroCopy states', () => {
   test('2. budget set, nothing priced → waiting copy', () => {
     const c = budgetHeroCopy(ev({ totalBudget: 2000 }), 1);
     expect(c.state).toBe('waiting');
-    expect(c.title).toBe("Your budget's set — nothing committed yet.");
+    expect(c.title).toBe("Your budget's set — nothing priced yet.");
   });
 
   test('3. under budget → "about $X left" leads; basis is support copy', () => {
     const c = budgetHeroCopy(ev({ totalBudget: 2000, budget: [{ id: 'r1', category: 'Rentals', actual: 800 }] }), 1);
     expect(c.state).toBe('under');
     expect(c.title).toBe("You've got about $1,200 left.");
-    expect(c.line).toMatch(/based on \$800 in known costs against your \$2,000 budget/i);
+    // Owner ruling 11/22/2026 ("Expected spending"): judged on expected cost;
+    // what is booked stays visible as the secondary clause.
+    expect(c.line).toMatch(/based on \$800 expected against your \$2,000 budget/i);
+    expect(c.line).toMatch(/\$800 of it booked so far/);
     expect(c.line).toMatch(/\$800 spent so far/); // rows' actual IS real spend
   });
 
@@ -44,10 +47,10 @@ describe('budgetHeroCopy states', () => {
     expect(NEAR_BUDGET_HEADROOM).toBe(0.15);
   });
 
-  test('5. over budget → direct known-costs-over headline + review action', () => {
+  test('5. over budget → direct expected-over headline + review action', () => {
     const c = budgetHeroCopy(ev({ totalBudget: 2000, budget: [{ id: 'r1', category: 'Rentals', actual: 2600 }] }), 1);
     expect(c.state).toBe('over');
-    expect(c.title).toBe('Known costs are $600 over your budget.');
+    expect(c.title).toBe('Expected costs are $600 over your budget.');
     expect(c.line).toMatch(/review costs before adding more commitments/i);
   });
 
@@ -89,5 +92,25 @@ describe('budgetHeroCopy states', () => {
     states.forEach(c => expect(c.title).not.toMatch(FORBIDDEN_TITLE));
     // and estimates are never called paid
     states.forEach(c => expect(c.title + ' ' + c.line).not.toMatch(/\bpaid\b/i));
+  });
+});
+
+// Owner ruling 11/22/2026 ("Expected spending", audit 2 D-03): the hero judges
+// over/under on EXPECTED cost — the basis After and the recovery panel use —
+// so an estimate past the budget reads over before anything is booked.
+describe('Your money judges on expected cost', () => {
+  const { expectedHeadroom } = require('../budgetCopy');
+  test('expected over the budget with little booked reads over, and says expected', () => {
+    const e = ev({ totalBudget: 1000, budget: [{ id: 'r1', category: 'Food', budgeted: 1400 }, { id: 'r2', category: 'Venue', actual: 200 }] });
+    const c = budgetHeroCopy(e, 1);
+    expect(c.numbers.expected).toBeGreaterThan(1000);
+    expect(c.state).toBe('over');
+    expect(c.title).toMatch(/^Expected costs are \$[\d,]+ over your budget\.$/);
+    expect(c.line).toMatch(/booked so far|none of it booked yet/);
+  });
+  test('expectedHeadroom is budget less expected, null with no budget', () => {
+    expect(expectedHeadroom({ planned: 1000, expected: 1225 })).toBe(-225);
+    expect(expectedHeadroom({ planned: 1000, expected: 400 })).toBe(600);
+    expect(expectedHeadroom({ planned: 0, expected: 400 })).toBeNull();
   });
 });

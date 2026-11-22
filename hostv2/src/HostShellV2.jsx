@@ -288,7 +288,7 @@ import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow, cheaperBarOption } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence, placeIsOutdoors, outdoorsGuess } from '@app/lib/placeIntelligence';
-import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote, planHeadroomLine } from '@app/lib/budgetCopy';
+import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote, planHeadroomLine, expectedHeadroom } from '@app/lib/budgetCopy';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { deliverNotification, deliveryExcuse, notificationApiPresent, DELIVERY } from '@app/lib/notifyDelivery';
@@ -4944,9 +4944,11 @@ export default function HostShellV2() {
   // Budget sheet). Uses the EXACT field the budget readout uses: money.committed > money.planned.
   // Not on a PAST event — then the overage is a final fact (shown in the recap), not a
   // live "worth keeping an eye on" heads-up (post-event wire 2026-07-22).
-  const _overBudget = (!isPastEvent(event) && money.planned && money.committed > money.planned) ? Math.round(money.committed - money.planned) : 0;
+  // ONE BASIS: EXPECTED (owner ruling 11/22/2026, audit 2 D-03) — expectedHeadroom.
+  const _room = !isPastEvent(event) ? expectedHeadroom(money) : null;
+  const _overBudget = _room != null && _room < 0 ? Math.round(-_room) : 0;
   const worries = _overBudget > 0
-    ? [..._baseWorries, { id: 'budget-over', category: 'money', title: `Known costs are $${_overBudget.toLocaleString()} over your budget`, route: { tab: 'Budget' } }]
+    ? [..._baseWorries, { id: 'budget-over', category: 'money', title: `Expected costs are $${_overBudget.toLocaleString()} over your budget`, route: { tab: 'Budget' } }]
     : _baseWorries;
   // BOARD RULING (2026-07-18): a vendor-confirm is a RECORD-ONLY self-report ("Mark as
   // locked in"), not a grounded next-step — it earns the command hero's one loud slot
@@ -10866,10 +10868,10 @@ export default function HostShellV2() {
     if (yes > 0) w.push(yes + ' confirmed');
     else if (guests) w.push('planned for ' + guests);
     if (foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount >= foodPlan.itemCount) w.push('food shopped');
-    if (money.planned && money.committed <= money.planned) w.push('budget on plan');
+    { const r = expectedHeadroom(money); if (r != null && r >= 0) w.push('budget on plan'); }
     if (outdoor && String(event.rainPlan || '').trim()) w.push('rain backup set');
     return w.slice(0, 4);
-  }, [liveDay, event, foodPlan, money.planned, money.committed, outdoor, guests]);
+  }, [liveDay, event, foodPlan, money.planned, money.expected, outdoor, guests]);
   // Who's helping — DERIVED people (ros owners + arriving confirmed vendors),
   // never a CRM. Caterer rows drop when the host is cooking (original rule).
   // RULED (parity audit): dayHelpers is V2-only day-crew intelligence with no
@@ -12273,7 +12275,7 @@ export default function HostShellV2() {
                       if (od && !heroSpeaksThisOverdue && !solemn) slips.push(od === 1 ? 'one decision is past its easy window' : 'a few decisions are past their easy window');
                     } catch { /* board unavailable */ }
                     if (compression && compression.headline) slips.push('time got tight');
-                    if (money.planned && money.committed > money.planned) slips.push('spending is past your number');
+                    { const r = expectedHeadroom(money); if (r != null && r < 0) slips.push('spending is past your number'); }
                     if (slips.length) {
                       // ── THE FRAME GOES, THE FACT STAYS (Grandmother, board re-sit 2026-07-30) ──
                       // She read "Mostly on course — time got tight. Worth a look today." sitting
@@ -14269,7 +14271,7 @@ export default function HostShellV2() {
                     </div>
                     {/* over-budget warn moved from inline style to the .over class so
                         the numeral <b> rule can defer to it (b stays warn, not gray). */}
-                    <div className={'t-sub' + (money.planned && money.committed > money.planned && !isPast ? ' over' : '')}>
+                    <div className={'t-sub' + ((expectedHeadroom(money) ?? 0) < 0 && !isPast ? ' over' : '')}>
                       {/* "spoken for" carries its own est. marker now (app-wide
                           estimate pass, 2026-07-29). It is the biggest number on
                           the tile and a MIXTURE — real spend plus every not-yet-
@@ -14278,7 +14280,7 @@ export default function HostShellV2() {
                           vocabulary as `spent` right beside it: "(est.)" when the
                           whole figure is a guess, "· $N est." when only part is.
                           Never a second vocabulary (UX_08). */}
-                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? <span className="over-seg">{' · ' + fmt(money.committed - money.planned) + ' over'}</span> : ''}{spend.moneyDiscrepancies && spend.moneyDiscrepancies.length > 0 ? ' · payment records differ' : ''}</>
+                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{(expectedHeadroom(money) ?? 0) < 0 ? <span className="over-seg">{' · ' + fmt(-expectedHeadroom(money)) + ' over, expected'}</span> : ''}{spend.moneyDiscrepancies && spend.moneyDiscrepancies.length > 0 ? ' · payment records differ' : ''}</>
                         : (suggestedTotal
                           /* NO POPULATION. This read "mid-range for an event
                              this size", and the comment here claimed it shared
@@ -26700,7 +26702,9 @@ export default function HostShellV2() {
               try { recovery = buildBudgetRecoveryPlan(event, foodPP.priceFactor); } catch { recovery = null; }
               let swapPick = null;
               try { swapPick = recovery && recovery.status === 'recovery_available' ? pickDroppableBudgetRow(event, foodPP.priceFactor) : null; } catch { swapPick = null; }
-              const left = money.planned ? money.planned - money.committed : null;
+              // ONE BASIS: EXPECTED (owner ruling 11/22/2026, audit 2 D-03): the
+              // star reads what the hero copy, the ledger and After read.
+              const left = expectedHeadroom(money);
               return (
                 <>
                   {/* PRINCIPLES REDESIGN (host directive): summary before detail —
@@ -26733,7 +26737,7 @@ export default function HostShellV2() {
                       : heroCopy.caveat || null;
                     return (
                     <SheetHero
-                      eyebrow={over ? 'Over by' : 'Left to spend'}
+                      eyebrow={over ? 'Expected over by' : 'Expected left to spend'}
                       star={fmt(Math.abs(left || 0))}
                       tone={over ? 'danger' : hcState === 'near' ? 'warn' : 'ok'}
                       sub={warmSub}
@@ -26744,7 +26748,7 @@ export default function HostShellV2() {
                             — and this is the surface that exists to be honest
                             about money, so it says so in full rather than
                             leaving the host to infer it from the rows. */}
-                        <b>{fmt(money.committed)}</b> spoken for, of a <b>{fmt(money.planned)}</b> budget{money.committedEstimated > 0 ? (money.committedEstimated === money.committed
+                        <b>{fmt(money.expected)}</b> expected · <b>{fmt(money.committed)}</b> spoken for, of a <b>{fmt(money.planned)}</b> budget{money.committedEstimated > 0 ? (money.committedEstimated === money.committed
                           /* SAY "ALL OF IT" RATHER THAN THE NUMBER AGAIN (2026-09-26).
                              Measured over all 45 playbooks at 30 guests: committedEstimated
                              EQUALS committed on 45 of 45 — every event, because before a host

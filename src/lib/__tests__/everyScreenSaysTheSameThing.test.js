@@ -288,19 +288,11 @@ agree('money · Your money hero "over" = plan ledger budget part "over" (both on
   expect(ledgerOver).toBe(budgetHeroCopy(ev).state === 'over');
 });
 
-// D-03 (owner call open since #224, "Your money's two bases"): the Your money
-// hero and the plan ledger judge over/under on COMMITTED costs; After and the
-// recovery panel on the same sheet judge it on EXPECTED costs. Where the two
-// bases straddle the budget, one screen says "about $N left" and the other
-// "Expected to run $M over".
-const D03 = 'D-03 two money bases (owner call)';
-agree('money · Your money hero over/under = After over/under', {
-  'ev-x-wanda': D03, 'ev-x-vow-renewal': D03, 'ev-x-baby-shower': D03, 'ev-x-reunion': D03,
-  'ev-x-product-launch': D03, 'ev-x-training-workshop': D03, 'ev-x-award-ceremony': D03, 'ev-x-networking-event': D03,
-  'ev-x-home-gathering': D03, 'ev-x-elopement': D03, 'ev-dmv-wedding': D03, 'ev-dmv-gala': D03,
-  'ev-dmv-home-gathering': D03, 'ev-dmv-bachelorette': D03, 'test-day-of': D03, 'var-budget-rows': D03,
-  'var-wanda-roster': D03, 'var-wanda-total': D03,
-}, (ev) => {
+// D-03 (fixed; owner ruling 11/22/2026 "Expected spending"): the Your money
+// hero and the plan ledger judged over/under on COMMITTED costs while After and
+// the recovery panel judged it on EXPECTED costs — "about $N left" beside
+// "Expected to run $M over". All four now judge on expected.
+agree('money · Your money hero over/under = After over/under', {}, (ev) => {
   const s = hostSpending(ev);
   if (!(s.total > 0)) return;
   const afterOver = /over the/.test(planHeadroomLine({ planned: s.total, expected: s.expected, committed: s.committed }, false));

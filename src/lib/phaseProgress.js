@@ -31,6 +31,7 @@ import { isVendorSettled } from './workstreams';
 import { chosenCatererUnbooked } from './vendorPlan';
 import { vendorIsCommitted, vendorBalance } from './vendorMoney';
 import { hostSpending } from './hostSpending';
+import { expectedHeadroom } from './budgetCopy';
 import { daysUntil, spanEnd, getToday, localISO } from './dates';
 import { taskLeadDays } from './taskLead';
 import { budgetFor } from './budgetFor';
@@ -427,11 +428,13 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
     // sheet and "Known costs are $N over your budget" from the hero. The caller
     // that holds the price context passes it; nothing here guesses one.
     const money = (() => { try { return hostSpending(ev, prices && prices.priceFactor, prices && prices.itemFactors); } catch { return null; } })();
-    const knownCosts = money ? num(money.committed) : 0;
-    const over = budgetSet ? Math.round(knownCosts - totalBudget) : 0;
+    // ONE BASIS: EXPECTED (owner ruling 11/22/2026; audit 2 D-03) — the same
+    // reader the Your money hero and After use (budgetCopy expectedHeadroom).
+    const room = budgetSet && money ? expectedHeadroom({ planned: totalBudget, expected: money.expected }) : null;
+    const over = room != null && room < 0 ? Math.round(-room) : 0;
     add('budget', true, budgetSet && over <= 0,
       !budgetSet ? 'Set your budget'
-        : over > 0 ? `Known costs are $${over.toLocaleString()} over your budget` : null,
+        : over > 0 ? `Expected costs are $${over.toLocaleString()} over your budget` : null,
       { tab: 'Budget' }, 9);
   }
   if (String(ev.must_have_moment || '').trim()) add('moment', true, true, null, null, 9);
