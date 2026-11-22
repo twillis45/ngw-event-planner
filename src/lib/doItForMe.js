@@ -20,6 +20,8 @@ import { incidentPlanFor } from './knowledge/incidentContext';
 import { vendorGreetingName } from './vendorDetailsMessage';
 import { vendorDisplayName } from './vendorDisplayName';
 import { hashtagLine } from './eventHashtag';
+import { hostNameFor } from './hostNameFor';
+import { spanEnd } from './dates';
 
 // A gathering that must carry a somber, respectful tone — never the festive template.
 const SOMBRE_RE = /funeral|memorial|shiva|celebration of life|life celebration|wake|remembrance|in memoriam|mourn|repast/i;
@@ -36,6 +38,20 @@ export function fmtLongDate(iso) {
   const dt = new Date(y, m - 1, d);
   if (isNaN(dt.getTime())) return '';
   return `${WD[dt.getDay()]}, ${MO[m - 1]} ${d}`;
+}
+
+// ─── ONE DATE RANGE FOR EVERY OUTWARD SURFACE (audit 2, D-05 / E P1-1) ───────
+// "Sunday, December 13 – Tuesday, December 15" for a multi-day event, the
+// first day alone otherwise (spanEnd ignores an end on or before the start).
+// The invite text, the invite card, the family page, the helper page and ask,
+// and the vendor brief read this; the emails read its server copy
+// (backend/app/outward.py event_days), pinned by outwardLines.fixture.json.
+export function fmtLongSpan(event) {
+  const start = fmtLongDate(event && event.date);
+  if (!start) return '';
+  let end = '';
+  try { end = spanEnd(event) || ''; } catch { end = ''; }
+  return end && end !== String(event.date).slice(0, 10) ? `${start} – ${fmtLongDate(end)}` : start;
 }
 
 // The time the host actually gave us — an explicit start time if present, else the
@@ -65,12 +81,26 @@ export function timePhrase(event) {
 // name with no town while every other screen read formatVenueAddress. A named
 // place now carries the same line, in sentence form ("Freedom Hall at VFW Post
 // 1847, Upper Marlboro, MD"). A bare town is still not a place.
+// HER HOME IS venueFor's ANSWER (audit 2, D-08): the invite used its own
+// /\bhome\b/ test, so "Marshall Funeral Home" read as "our place" and a home
+// "Backyard" read as "Backyard". venueFor's kind is the only rule; the write
+// path (setVenue) stores venueKind 'home' for a home phrase.
 export function placePhrase(event) {
   const vf = venueFor(event);
   const v = vf.name;
   if (!v) return '';
-  if (/\bhome\b/i.test(v) || /our (place|home|backyard)/i.test(v) || v.toLowerCase() === "host's home") return 'our place';
+  if (vf.isHome) return 'our place';
   return String(vf.displayLine || v).split(' · ').join(', ');
+}
+
+// The place line a guest reads: placePhrase, and at home the street when the
+// host gave one ("our place, 12 Elm St, Bowie, MD"), so "our place" never
+// costs a guest the way there.
+export function placeLine(event) {
+  const p = placePhrase(event);
+  if (p !== 'our place') return p;
+  const a = venueFor(event).fullAddress;
+  return a ? `our place, ${a}` : p;
 }
 
 // What to wear, as the host wrote it — only when it is fit for a guest.
@@ -234,10 +264,11 @@ export function draftInvite(event, profile, opts = {}) {
     if (out) return out;
   }
   const v = inviteVoice(event);
-  const date = fmtLongDate(event.date);
+  const date = fmtLongSpan(event);
   const time = inviteTime(event);
-  const place = placePhrase(event);
-  const host = hostName(profile);
+  const place = placeLine(event);
+  // Signed by the host line every screen reads (D-14), the profile only as fallback.
+  const host = hostNameFor(event, profile);
   const rsvpUrl = (opts && opts.rsvpUrl) ? String(opts.rsvpUrl).trim() : '';
   const when = [date, time].filter(Boolean).join(' · ');
   const dress = dressLine(event);
@@ -263,10 +294,10 @@ export function draftInvite(event, profile, opts = {}) {
 
 function inviteInVoice(event, profile, opts, voice) {
   const v = inviteVoice(event);
-  const date = fmtLongDate(event.date);
+  const date = fmtLongSpan(event);
   const time = inviteTime(event);
-  const place = placePhrase(event);
-  const host = hostName(profile);
+  const place = placeLine(event);
+  const host = hostNameFor(event, profile);
   const url = (opts && opts.rsvpUrl) ? String(opts.rsvpUrl).trim() : '';
   const thing = subjectThing(event);
   const when = [date, time].filter(Boolean).join(' · ');

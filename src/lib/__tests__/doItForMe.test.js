@@ -2,7 +2,9 @@
 // the event facts it already has, never inventing what the host didn't give.
 import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftDietaryNote, draftShoppingList, buildShoppingPlan, localityAnchor, draftDayBeforeDetails, draftVendorReconfirm, draftToast, hasToastMaterial, eventCulturalMeta, isAtHome, fmtLongDate, placePhrase, timePhrase, draftLodgingNote, draftRidesNote, draftGettingHereNote } from '../doItForMe';
 
-const maya = { name: "Maya's Graduation", type: 'Graduation', date: '2026-07-07', timeOfDay: 'afternoon', venue: "Host's home", honoree: 'Maya', guestEstimate: '35' };
+// venueKind 'home' is what the write path (setVenue) stores for "Host's home";
+// the invite reads venueFor's kind, not its own regex (audit 2, D-08).
+const maya = { name: "Maya's Graduation", type: 'Graduation', date: '2026-07-07', timeOfDay: 'afternoon', venue: "Host's home", venueKind: 'home', honoree: 'Maya', guestEstimate: '35' };
 const profile = { name: 'Todd' };
 
 describe('formatters', () => {
@@ -12,7 +14,8 @@ describe('formatters', () => {
     expect(fmtLongDate('garbage')).toBe('');
   });
   test('placePhrase: home → "our place", real venue verbatim, empty → ""', () => {
-    expect(placePhrase({ venue: "Host's home" })).toBe('our place');
+    expect(placePhrase({ venue: "Host's home", venueKind: 'home' })).toBe('our place');
+    expect(placePhrase({ venue: 'Marshall Funeral Home', venueKind: 'venue' })).toBe('Marshall Funeral Home');
     expect(placePhrase({ venue: 'The Grand Hall' })).toBe('The Grand Hall');
     expect(placePhrase({ venue: '' })).toBe('');
   });
@@ -127,7 +130,7 @@ describe('eventCulturalMeta / isAtHome (analytics signals)', () => {
     expect(eventCulturalMeta({ type: 'Something Niche' })).toEqual({ sombre: false, voice: 'other' });
   });
   test('isAtHome mirrors placePhrase', () => {
-    expect(isAtHome({ venue: "Host's home" })).toBe(true);
+    expect(isAtHome({ venue: "Host's home", venueKind: 'home' })).toBe(true);
     expect(isAtHome({ venue: 'The Grand Hall' })).toBe(false);
     expect(isAtHome({ venue: '' })).toBe(false);
   });
@@ -370,7 +373,7 @@ describe('draftDayBeforeDetails', () => {
 
 describe('draftVendorReconfirm', () => {
   test('reconfirms date/place with a booked vendor', () => {
-    const { subject, body } = draftVendorReconfirm({ ...maya, venue: 'The Grand Hall' }, { name: 'Ace Catering', arrivalTime: '3:00 PM' }, profile);
+    const { subject, body } = draftVendorReconfirm({ ...maya, venue: 'The Grand Hall', venueKind: 'venue' }, { name: 'Ace Catering', arrivalTime: '3:00 PM' }, profile);
     expect(subject).toContain('Ace Catering');
     expect(body).toContain('Hi Ace Catering,');
     expect(body).toContain('Tuesday, July 7');

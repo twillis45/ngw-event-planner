@@ -376,11 +376,8 @@ agree('dates · eyebrow day = invite text day = invite card day', {}, (ev) => {
 
 // D-05: a multi-day event's invite TEXT prints only its first day ("Sunday,
 // December 13") while the eyebrow says "Dec 13–15 (2 nights)" and the invite
-// CARD prints the range. draftInvite reads fmtLongDate(event.date) alone.
-const D05 = 'D-05 invite text drops the last day';
-agree('dates · a multi-day event\'s invite text names its last day', {
-  'test-multi-day': D05, 'var-multi-day': D05, 'var-destination': D05,
-}, (ev) => {
+// CARD prints the range. Fixed: both read doItForMe.fmtLongSpan.
+agree('dates · a multi-day event\'s invite text names its last day', {}, (ev) => {
   if (!(spanNights(ev) > 0)) return;
   const last = fmtLongDate(spanEnd(ev));
   expect(draftInvite(ev, null).body).toContain(last.split(', ')[1]);
@@ -463,12 +460,9 @@ const FAR_EAST = -new Date().getTimezoneOffset() >= 13 * 60;
 // D-08: the invite text decides "is this her home?" with its own regex
 // (/\bhome\b/, "our place"), not venueFor's kind. "Backyard" (venueFor: home)
 // prints as "Backyard" to guests, and a venue named "Marshall Funeral Home"
-// (venueFor: a venue) is printed as "our place".
-const D08 = 'D-08 invite text has its own home rule';
-agree('venue · invite text says "our place" exactly when venueFor says home', {
-  'ev-x-graduation': D08, 'ev-x-home-gathering': D08, 'ev-dmv-home-gathering': D08, 'test-day-of': D08,
-  'test-two-days': D08, 'var-funeral-home': D08, 'var-backyard-city': D08,
-}, (ev) => {
+// (venueFor: a venue) is printed as "our place". Fixed: placePhrase reads
+// venueFor's kind.
+agree('venue · invite text says "our place" exactly when venueFor says home', {}, (ev) => {
   const vf = venueFor(ev);
   if (!vf.name) return;
   expect(placePhrase(ev) === 'our place').toBe(!!vf.isHome);
@@ -585,11 +579,9 @@ agree('helpers · the host is never listed as her own helper', {}, (ev) => {
 
 // D-13: the invite card's "Hosted by" reads hostName || hostNames and skips
 // `host`, the field Wanda's event (and any parse that stores `host`) carries;
-// hostNameFor, which every other screen reads, includes it.
-const D13 = 'D-13 invite card skips event.host';
-agree('host · invite card "Hosted by" = hostNameFor', {
-  'ev-x-wanda': D13, 'var-host-field': D13, 'var-wanda-roster': D13, 'var-wanda-total': D13,
-}, (ev) => {
+// hostNameFor, which every other screen reads, includes it. Fixed: the card
+// reads hostNameFor.
+agree('host · invite card "Hosted by" = hostNameFor', {}, (ev) => {
   const daysEnd = daysUntil(spanEnd(ev));
   if (daysEnd != null && daysEnd < 0) return; // a past card drops the line by design
   const card = inviteCardModel(ev).facts.find((f) => f.label === 'Hosted by');
@@ -599,11 +591,9 @@ agree('host · invite card "Hosted by" = hostNameFor', {
 // D-14: the invite TEXT signs with the signed-in profile's name only
 // (doItForMe hostName(profile)); with no profile it is unsigned even when the
 // event names its host, and with a profile it signs as the account holder,
-// not the host every other screen shows.
-const D14 = 'D-14 invite text signs with profile, not the host';
-agree('host · invite text is signed by hostNameFor', {
-  'ev-x-wanda': D14, 'ev-x-repast': D14, 'var-host-field': D14, 'var-wanda-roster': D14, 'var-wanda-total': D14,
-}, (ev) => {
+// not the host every other screen shows. Fixed: draftInvite signs with
+// hostNameFor(event, profile).
+agree('host · invite text is signed by hostNameFor', {}, (ev) => {
   const host = hostNameFor(ev, null);
   if (!host) return;
   expect(draftInvite(ev, null).body).toContain(`— ${host}`);
