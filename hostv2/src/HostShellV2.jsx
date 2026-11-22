@@ -9892,12 +9892,14 @@ export default function HostShellV2() {
     // other five readers in the tree were each answering one of two questions by
     // accident; see lib/budgetFor.js.
     const bf = budgetFor(event);
-    const isSet = bf.hostSetTotal;
-    // …but when they HAVE budgeted rows and no overall figure, this control must
-    // not speak as though nothing is known. Measured live: the money bar at the
-    // top of this same sheet read "$3,113 of $18,900 left" while the editor two
-    // hundred lines below asked for a budget as if from scratch.
-    const rowsStandIn = !bf.hostSetTotal && bf.basis === 'rows' ? bf : null;
+    // ONE "BUDGET IS SET" READER (Wanda audit P0-6, 11/22/2026). This asked
+    // budgetFor's second question (did she give an OVERALL figure) while the
+    // board asked the first, so the board read "Budget set · $5,000 · handled"
+    // over her nine budget lines and this editor proposed "Use $13,600" as if
+    // nothing were known. Rows she budgeted ARE a number to plan against: the
+    // editor shows it, says where it came from, and Change still writes the
+    // overall figure.
+    const isSet = bf.isSet;
     const setB = (n) => {
       setCustomBudget('');
       setBudgetChanging(false);
@@ -9938,8 +9940,8 @@ export default function HostShellV2() {
       return (
         <AskColumn>
           <Eyebrow tone="ok">Your budget</Eyebrow>
-          <BigValue>{fmt(Number(event.totalBudget))}</BigValue>
-          <Grounding>The plan sizes food, vendors and shopping from here — change it anytime.</Grounding>
+          <BigValue>{fmt(Number(bf.total))}</BigValue>
+          <Grounding>{bf.basis === 'rows' ? `Your ${bf.rowCount} budget ${bf.rowCount === 1 ? 'line adds' : 'lines add'} up to this. ` : ''}The plan sizes food, vendors and shopping from here — change it anytime.</Grounding>
           {roomsNote}
           <CtaRow><button className="mini" onClick={() => setBudgetChanging(true)}>Change the number</button></CtaRow>
         </AskColumn>
@@ -10039,17 +10041,6 @@ export default function HostShellV2() {
               </Grounding>
             ) : null;
           })()}
-          {/* THE HOST'S OWN ROWS, SAID OUT LOUD (2026-09-18). A host who filled in
-              budget categories but never named an overall figure used to reach an
-              ask written as though nothing were known — on a sheet whose money bar
-              was already counting against their $18,900. Their number leads the
-              alternatives now; the estimator's typical is still the proposal, but
-              it no longer pretends to be the only figure in the room. */}
-          {rowsStandIn && (
-            <Grounding gap={8}>
-              Your categories already add up to {fmt(rowsStandIn.rowsSum)} across {rowsStandIn.rowCount} {rowsStandIn.rowCount === 1 ? 'line' : 'lines'} — <button className="tap-44" style={linkBtn} onClick={() => setB(rowsStandIn.rowsSum)}>use that</button> if it is the ceiling you mean.
-            </Grounding>
-          )}
           {/* ── AND WHOSE MONEY IT IS ──────────────────────────────────────
               The old line here said "travel-scale costs are part of the
               numbers", which a host reads as "the flights are in this". The
@@ -27107,7 +27098,7 @@ export default function HostShellV2() {
                       the block it folds can never disagree about which state
                       the host is in. */}
                   <Panel on={panels}>
-                  {budgetFor(event).hostSetTotal ? (
+                  {budgetFor(event).isSet ? (
                     budgetFoldOpen ? (
                       // Fold-open = intent to change → open straight into the CHANGE drawer (its
                       // own "Pick a number, or set your own" header carries it, so no shelf-label
@@ -27118,7 +27109,7 @@ export default function HostShellV2() {
                       </div>
                     ) : (
                       <button className="fold-btn" style={{ marginTop: 14 }} onClick={() => setBudgetFoldOpen(true)}>
-                        Your budget — {fmt(Number(event.totalBudget))}<span className="chev" aria-hidden="true">›</span>
+                        Your budget — {fmt(Number(budgetFor(event).total))}<span className="chev" aria-hidden="true">›</span>
                       </button>
                     )
                   ) : (
