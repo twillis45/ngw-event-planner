@@ -54,7 +54,7 @@ Before that, 2026-11-02 (sixtieth entry:
 - **Every host type has its own day-of list.** It comes from the playbook's day-of rows, with the safety basics after them, and ticking one ticks its checklist row (A P0-6). The census went from 31 failing to 46/46.
 - **Not changed:** C P2-1 (Kiritimati). `createdAt` is a real instant, so the audit's replay in another zone isn't a host's view.
 - **Specs updated:** `dayOfChecklist`, `aQuotedCatererPricesTheFood`, `aSettledFactAnswersItsCall`, five knowledge tests (they now pin `asOf` before their event date) and `decisionTiebreak` (local date). New e2e: `theDayAndAfterSayWhatIsTrue`.
-- **Left:** Crab's run of show vs its caterer (handled in #231/batch 4), the rentals-return step with no rentals, C P1-11, and C P1-1, P1-2, P1-6, P1-8, P2-4 to P2-6.
+- **Left:** Crab's run of show vs its caterer (handled in batch 4), the rentals-return step with no rentals, C P1-11, and C P1-1, P1-2, P1-6, P1-8, P2-4 to P2-6.
 
 ## November 22, 2026 (afternoon) — #229: one "settled" truth, one Undo, money judged on expected, one lit button on the day
 
