@@ -62,7 +62,9 @@ test('the timing her run of show answers is never asked, and the hero keeps an a
 });
 
 test('with no schedule of her own, it is asked in her words, with its three picks, and one settles it', async ({ page }) => {
-  await boot(page, { ros: [] });
+  // Timing waits on the official-ceremony question for a military retirement
+  // (owner: "Ask once", 11/22/2026); this case answers it as part of the party.
+  await boot(page, { ros: [], officialCeremony: 'this-party' });
   await dropOffThenNoted(page);
   await expect(page.locator('.hero')).toContainText('When does the retirement presentation happen?');
   const t = await heroText(page);

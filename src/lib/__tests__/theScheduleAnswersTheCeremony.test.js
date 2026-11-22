@@ -15,7 +15,11 @@ import WANDA from '../../data/wandaGoldEvent';
 
 const blockersFor = (ev) => deriveDecisionBlockers(ev, buildExperienceContext(ev).eventIdentity);
 const timing = (ev) => blockersFor(ev).find((b) => b.type === 'ceremony-timing') || null;
-const NO_ROS = { ...WANDA, ros: [] };
+// Timing is asked of a military retirement only once the official ceremony is
+// part of this party (owner: "Ask once", 11/22/2026); unanswered, that question
+// comes first. These cases are about the timing, so they answer it.
+const HERE = { officialCeremony: 'this-party' };
+const NO_ROS = { ...WANDA, ...HERE, ros: [] };
 
 describe('her run of show settles the ceremony timing', () => {
   it('Wanda is a two-milestone event (the question exists to be answered)', () => {
@@ -43,7 +47,7 @@ describe('her run of show settles the ceremony timing', () => {
   it('a schedule that never names the ceremony settles nothing', () => {
     const ros = [{ id: 'a', time: '6:30 PM', label: 'Doors' }, { id: 'b', time: '7:00 PM', label: 'Dinner' }];
     expect(decisionSettledByData({ ...WANDA, ros }, CEREMONY_TIMING_CALL)).toBeNull();
-    expect(timing({ ...WANDA, ros })).not.toBeNull();
+    expect(timing({ ...WANDA, ...HERE, ros })).not.toBeNull();
   });
 
   it('her own answer still wins, and settles it with no schedule at all', () => {
