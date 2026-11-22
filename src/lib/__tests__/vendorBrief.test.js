@@ -186,3 +186,30 @@ describe('host name, headcount and day-of contact (board 2026-11-12)', () => {
     expect(briefFeedsGuests('Rentals')).toBe(false);
   });
 });
+
+// ── Audit 2, lane E P1-2 / P0-4: the brief says what the host's app knows ────
+// Diets from dietCountsFor (the guests' replies count, the host's tally wins
+// per tag), the host by hostNameFor's rule, the hour she set, every day, and
+// the parts of the one place line. Fictional sample data only.
+describe('the brief says what the host knows (audit 2, lane E)', () => {
+  const ev = {
+    ...event, host: 'Dana Reed', endDate: '2026-07-12', startTime: '16:00', startTimeSource: 'host',
+    venueAddress: '9 Dock Rd', venueCity: 'Annapolis', venueState: 'MD', venueZip: '21401', venueKind: 'venue',
+    guests: [{ name: 'Pat Lin', rsvp: 'Yes', meal: 'Vegetarian' }, { name: 'Sam Roe', rsvp: 'Yes', diets: ['Vegan'], allergens: ['Shellfish'] },
+      { name: 'Lee Park', rsvp: 'No', meal: 'Vegetarian' }],
+    dietCounts: { Vegan: 2 },
+  };
+  const p = buildVendorBriefPayload(privateVendor, ev, ros, {});
+  test('diets come from the replies too, and the host\'s own count wins', () => {
+    expect(p.dietCounts).toEqual({ Vegetarian: 1, Vegan: 2, Shellfish: 1 });
+    expect(briefDietCounts(ev)).toEqual(p.dietCounts);
+    expect(JSON.stringify(p)).not.toMatch(/Pat Lin|Sam Roe|Lee Park/);
+  });
+  test('the host, the hour, the days and the whole place ride along', () => {
+    expect(p.hostName).toBe('Dana Reed');
+    expect(p.startTime).toBe('16:00');
+    expect(p.endDate).toBe('2026-07-12');
+    expect([p.venueAddress, p.venueCity, p.venueState, p.venueZip, p.venueKind]).toEqual(['9 Dock Rd', 'Annapolis', 'MD', '21401', 'venue']);
+    expect(buildVendorBriefPayload(privateVendor, { ...ev, startTimeSource: 'derived' }, ros, {}).startTime).toBe('');
+  });
+});

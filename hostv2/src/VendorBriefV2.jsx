@@ -33,6 +33,8 @@ import { briefShowsHeadcount, briefFeedsGuests, briefDietLine } from '@app/lib/v
 import { formatPhoneUS } from '@app/lib/contactFormat';
 import { toneVarsFor } from './inviteShared.js';
 import { clock12 } from '@app/lib/clock';
+import { fmtLongSpan } from '@app/lib/doItForMe';
+import { formatVenueAddress } from '@app/lib/venueFor';
 
 const TONE = toneVarsFor(invitePalette('light'));
 
@@ -138,12 +140,20 @@ function BriefPage({ brief: b, briefCode }) {
   const guestCount = Number(b.guestCount) > 0 && briefShowsHeadcount(b.category) ? Number(b.guestCount) : null;
   const dietLine = briefFeedsGuests(b.category) ? briefDietLine(b.dietCounts) : '';
   const cueWhen = (r) => fmtTime12(r.time) || String(r.rel || '');
+  // Every day, the hour the host set, and the one place line (audit 2, lane E
+  // P0-4, P1-1, P1-2): the readers the host's app and every guest page use.
+  const ev = { date: b.eventDate, endDate: b.endDate, venue: b.venue, venueAddress: b.venueAddress, venueStreet: b.venueStreet,
+    venueCity: b.venueCity, venueState: b.venueState, venueZip: b.venueZip, venueKind: b.venueKind, venueConfirmed: b.venueConfirmed };
+  const days = b.eventDate ? (fmtLongSpan(ev) || fmtDate(b.eventDate)) : '';
+  const starts = fmtTime12(b.startTime);
+  const where = formatVenueAddress(ev);
 
   const textBrief = [
     sender ? `${sender} — Vendor brief` : 'Vendor brief',
     `Event: ${b.eventName || 'Event'}`,
-    b.eventDate ? fmtDate(b.eventDate) : '',
-    b.venue ? `Venue: ${b.venue}` : '',
+    days,
+    starts ? `Guests arrive: ${starts}` : '',
+    where ? `Venue: ${where}` : '',
     '',
     `${b.vendorName}${b.category ? ` — ${b.category}` : ''}`,
     b.arrivalTime ? `Arrival: ${fmtTime12(b.arrivalTime)}` : '',
@@ -171,9 +181,10 @@ function BriefPage({ brief: b, briefCode }) {
             <div className="inv2-mast lp"><span>Vendor brief</span><span className="mr" aria-hidden /><span className="vb2-from">{fromLine}</span></div>
             {logo && <img className="vb2-logo" src={logo} alt={sender} />}
             <h1 className="inv2-name lp-display">{b.eventName || 'Event'}</h1>
-            {(b.eventDate || b.venue) && (
-              <p className="inv2-fine vb2-when">{[b.eventDate ? fmtDate(b.eventDate) : '', b.venue || ''].filter(Boolean).join(' · ')}</p>
+            {(days || starts) && (
+              <p className="inv2-fine vb2-when" data-brief="when">{[days, starts].filter(Boolean).join(' · ')}</p>
             )}
+            {where && <p className="inv2-fine vb2-tight" data-brief="where">{where}</p>}
             <hr className="inv2-rule" />
 
             {b.contactName && <p className="inv2-fine">Hi {b.contactName},</p>}

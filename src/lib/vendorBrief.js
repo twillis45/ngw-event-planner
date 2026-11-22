@@ -24,7 +24,8 @@
 // followed on site — not host bookkeeping, so they stay.)
 import { venueFor } from './venueFor';
 import { guestCountFor } from './guestCountFor';
-import { DIET_TAGS } from './dietRows';
+import { DIET_TAGS, dietCountsFor } from './dietRows';
+import { hostNameFor } from './hostNameFor';
 
 // ── WHO NEEDS THE HEADCOUNT (board 2026-11-12, follow-up 1, finding 1) ──────
 // A caterer cannot size an order without a guest count, and the brief carried
@@ -48,12 +49,13 @@ export function briefGuestCount(event) {
   return g.fromHost ? g.count : null;
 }
 
-// Dietary needs as AGGREGATE counts the host already keeps (event.dietCounts —
-// the food sheet's steppers): { Vegetarian: 3, 'Nut allergy': 1 }. Only the
+// Dietary needs as AGGREGATE counts: dietCountsFor, the one diet reader (audit
+// 2, lane E P1-2) — the host's own tally wins per tag, her guests' rows and
+// invite replies fill the rest: { Vegetarian: 3, 'Nut allergy': 1 }. Only the
 // fixed DIET_TAGS vocabulary passes: a host-typed custom key is free text and
 // could carry a person ("Grandma's no-salt"), so it never leaves.
 export function briefDietCounts(event) {
-  const dc = (event && event.dietCounts && typeof event.dietCounts === 'object') ? event.dietCounts : {};
+  const dc = dietCountsFor(event || {});
   const out = {};
   for (const tag of DIET_TAGS) {
     const n = Math.floor(Number(dc[tag]) || 0);
@@ -90,6 +92,8 @@ export function vendorRosSlice(ros, vendor) {
     .map(r => ({ time: r.time, rel: r.rel || null, segment: r.segment, location: r.location, notes: r.notes }));
 }
 
+const VENUE_PARTS = ['venueAddress', 'venueStreet', 'venueCity', 'venueState', 'venueZip', 'venueKind', 'venueConfirmed'];
+
 export function buildVendorBriefPayload(vendor, event, ros, profile) {
   const v = vendor || {}, e = event || {}, p = profile || {};
   return {
@@ -105,7 +109,13 @@ export function buildVendorBriefPayload(vendor, event, ros, profile) {
     eventId:   e.id,
     eventName: e.name,
     eventDate: e.date,
+    // Every day, the hour SHE set, and the parts of the one place line (audit
+    // 2, lane E P0-4, P1-2): the same fields the server's brief sends
+    // (vendor_brief.py), read on the page through formatVenueAddress.
+    endDate:   e.endDate || '',
+    startTime: String(e.startTimeSource || '') === 'derived' ? '' : (e.startTime || ''),
     venue:     venueFor(e).name,
+    ...Object.fromEntries(VENUE_PARTS.filter((k) => e[k] !== undefined && e[k] !== null && e[k] !== '' && typeof e[k] !== 'object').map((k) => [k, e[k]])),
     // planner contact + branding — intended for vendor use
     plannerName:     p.name  || '',
     plannerPhone:    p.phone || '',
@@ -119,7 +129,7 @@ export function buildVendorBriefPayload(vendor, event, ros, profile) {
     // THE HOST, NOT "YOUR EVENT PLANNER" (finding 2). Most people who send a
     // brief are hosting their own party. hostName is already on the event (the
     // invite's "Hosted by"); hostNames is the plural the invite whitelist ships.
-    hostName: e.hostName || e.hostNames || '',
+    hostName: hostNameFor(e),
     // WHO THE VENDOR CALLS ON THE DAY (finding 3), when it is not the host —
     // set per event in the host app. Empty means "call the host".
     briefContactName:  e.briefContactName  || '',
