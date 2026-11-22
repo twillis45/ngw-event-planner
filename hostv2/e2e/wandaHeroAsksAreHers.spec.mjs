@@ -38,11 +38,13 @@ const heroText = async (page) => (await page.locator('.hero').first().innerText(
 const stored = (page) => page.evaluate((k) => JSON.parse(localStorage.getItem(k) || '{}'), PATCH);
 const tap = async (page, loc) => { await loc.scrollIntoViewIfNeeded(); await loc.click(); await page.waitForTimeout(700); };
 
-// The path the audit took: settle the food, then note dietary needs.
+// The path the audit took: settle the food. Her guest rows already carry their
+// dietary needs (one reader, dietCountsFor, Wanda audit P0-13), so the allergy
+// ask the audit met next is settled by her data and not asked again (#222).
 const dropOffThenNoted = async (page) => {
   await tap(page, card(page).locator('.decopt').filter({ hasText: 'Drop-off catering' }).first());
-  await expect(page.locator('.hero')).toContainText('Who has a food allergy?');
-  await tap(page, page.locator('.hero button').filter({ hasText: 'That’s everyone — noted' }).first());
+  await expect(page.locator('.hero')).not.toContainText('How is the food handled?');
+  await expect(page.locator('.hero')).not.toContainText('Who has a food allergy?');
 };
 
 // A calm board (no hero card) asks nothing; a hero card always carries an action.
@@ -82,16 +84,16 @@ test('with no schedule of her own, it is asked in her words, with its three pick
 test('a reason prints only under the item it belongs to', async ({ page }) => {
   await boot(page);
   await tap(page, card(page).locator('.decopt').filter({ hasText: 'Drop-off catering' }).first());
-  await expect(page.locator('.hero')).toContainText('Who has a food allergy?');
-  // The engine's lead (the unbooked caterer) is not the allergy ask.
+  await expect(page.locator('.hero')).not.toContainText('How is the food handled?');
+  // The engine's lead (the unbooked caterer) is not the ask that follows.
   expect(await heroText(page)).not.toMatch(/a caterer is not booked yet/);
 });
 
-test('…and after Host cooks, the caterer’s quote does not print under the allergy ask', async ({ page }) => {
+test('…and after Host cooks, the caterer’s quote does not print under the next ask', async ({ page }) => {
   await boot(page);
   await tap(page, card(page).locator('.decopt-disc').first());
   await tap(page, card(page).locator('.decopt').filter({ hasText: 'Host cooks' }).first());
-  await expect(page.locator('.hero')).toContainText('Who has a food allergy?');
+  await expect(page.locator('.hero')).not.toContainText('How is the food handled?');
   expect(await heroText(page)).not.toMatch(/Currently quoted/);
 });
 
