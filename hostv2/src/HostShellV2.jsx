@@ -503,7 +503,7 @@ function VendorReplyParserV2({ vendor, event, writeVendor, signedIn, onSignIn })
         value={replyText} onChange={e => setReplyText(e.target.value)} aria-label="Paste the vendor's message" />
       <div className="actions-row" style={{ marginTop: 8, alignItems: 'center', gap: 8 }}>
         <button className="mini" onClick={analyze} disabled={busy || !replyText.trim()}>{busy ? 'Reading…' : 'Read the message'}</button>
-        {err && err !== 'signed-out' && <span style={{ fontSize: 12, color: 'var(--warn)' }}>{err}</span>}
+        {err && err !== 'signed-out' && <span className="warn-note" style={{ fontSize: 12 }}>{err}</span>}
       </div>
       {busy && <BusyLine>Reading the message{vendor.name ? ' from ' + vendor.name : ''} — this can take a few seconds…</BusyLine>}
       {err === 'signed-out' && (
@@ -11845,7 +11845,7 @@ export default function HostShellV2() {
                             <input className="field" type="date" value={effDate} onChange={e => setFDate(e.target.value)} />
                           </label>
                           {effDate && dstatC.status !== 'ok' && (
-                            <p className="grounding" style={dstatC.blocking ? { color: 'var(--danger)' } : { color: 'var(--warn)' }}>{dstatC.reason}</p>
+                            <p className={'grounding' + (dstatC.blocking ? '' : ' warn-note')} style={dstatC.blocking ? { color: 'var(--danger)' } : undefined}>{dstatC.reason}</p>
                           )}
                           {/* ── THE LAST DAY, WHICH USED TO HAVE NOWHERE TO GO ──────────
                               A host who typed a range got one, and lost it the moment
@@ -11869,7 +11869,7 @@ export default function HostShellV2() {
                                   min={effDate} onChange={e => setFEndDate(e.target.value)} />
                               </label>
                               {effEndDate && effEndDate <= effDate && (
-                                <p className="grounding" style={{ color: 'var(--warn)' }}>
+                                <p className="grounding warn-note">
                                   The last day needs to be after {new Date(effDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.
                                 </p>
                               )}
@@ -14694,7 +14694,7 @@ export default function HostShellV2() {
                       <button className="mini rowlink" data-who-flagged style={{ display: 'block', marginTop: 'var(--sp-2)', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }} onClick={go.vendors}>{l.flagged}</button>
                     )}
                     {l.cantDo && (
-                      <p className="vc-detail" data-who-cant style={{ margin: 'var(--sp-2) 0 0', color: 'var(--warn)', overflowWrap: 'anywhere' }}>{l.cantDo}</p>
+                      <p className="vc-detail warn-note" data-who-cant style={{ margin: 'var(--sp-2) 0 0', overflowWrap: 'anywhere' }}>{l.cantDo}</p>
                     )}
                     {l.waiting && (
                       <p className="vc-detail" data-who-waiting style={{ margin: 'var(--sp-2) 0 0', overflowWrap: 'anywhere' }}>{l.waiting}</p>
@@ -16562,7 +16562,7 @@ export default function HostShellV2() {
                     type="url" inputMode="url" placeholder="Photo album link — Google Photos, iCloud, a shared drive…"
                     value={albumDraft} onChange={e => setAlbumDraft(e.target.value)} aria-label="Photo album link" />
                   {albumDraft.trim() && !/^https?:\/\//i.test(albumDraft.trim()) && (
-                    <p className="grounding" style={{ margin: '4px 0 0', color: 'var(--warn)' }}>Add the full link (starts with https://) so it opens for guests.</p>
+                    <p className="grounding warn-note" style={{ margin: '4px 0 0' }}>Add the full link (starts with https://) so it opens for guests.</p>
                   )}
                   <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                     {(() => {
@@ -19348,7 +19348,7 @@ export default function HostShellV2() {
                     const when = new Date(lg.deadline + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
                     const late = dd != null && dd < 0;
                     return (
-                      <p className={'v-meta' + (focusDeadline ? ' rowfocus' : '')} style={{ padding: '2px 2px var(--sp-2)', ...(late || (dd != null && dd <= 7) ? { color: 'var(--warn)', fontWeight: 650 } : {}) }}>
+                      <p className={'v-meta' + (focusDeadline ? ' rowfocus' : '') + (late || (dd != null && dd <= 7) ? ' warn-note' : '')} style={late || (dd != null && dd <= 7) ? { margin: '2px 0 var(--sp-2)' } : { padding: '2px 2px var(--sp-2)' }}>
                         {late
                           ? 'The group rate ended ' + when + ' — check with the hotel before pointing anyone else there.'
                           : 'Group rate ends ' + when + (dd != null ? (dd === 0 ? ' — today' : ' — in ' + dd + ' day' + (dd === 1 ? '' : 's')) : '') + '.'}
@@ -21451,7 +21451,7 @@ export default function HostShellV2() {
                   {crab.bushelExplanation && <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>{crab.bushelExplanation}</p>}
                   {(crab.issues || []).map((iss, i) => (
                     <div key={i} style={{ margin: '6px 0 0' }}>
-                      <p className="grounding" style={{ margin: 0, color: 'var(--warn)' }}>{iss.copy || iss.message || String(iss)}</p>
+                      <p className="grounding warn-note" style={{ margin: 0 }}>{iss.copy || iss.message || String(iss)}</p>
                       {/* The sheet is already open, so setting sheet.focus did nothing —
                           these ids (crab-headcount / crabline-<id>-count|price) aren't
                           consumed by any highlight branch. Scroll the real input into
@@ -21470,7 +21470,7 @@ export default function HostShellV2() {
                       onChange={e => { const n = parseInt(e.target.value, 10) || 0; writeCp({ crabEatingHeadcount: n || undefined }, n ? 'Sizing crabs to ' + n + ' pickers — kids and light eaters don’t drive the count.' : 'Back to the full headcount.'); }} />
                     <span className="of" style={{ flex: 1 }}>serious pickers — kids and light eaters don’t drive the crab count</span>
                   </div>
-                  {crab.pickerNote && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--warn)' }}>{crab.pickerNote}</p>}
+                  {crab.pickerNote && <p className="grounding warn-note" style={{ margin: 'var(--sp-1) 0 0' }}>{crab.pickerNote}</p>}
                   {crab.pickerReconcileNote && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>{crab.pickerReconcileNote}</p>}
                   <div className={'shelf-label' + (sheet.focus === 'order' ? ' rowfocus' : '')} style={{ margin: 'var(--sp-4) 0 6px', borderRadius: 'var(--r-sm)' }}>Add to the order</div>
                   {/* Calm open pickers (radio-lists, not chip clusters) — size then unit. */}
@@ -22521,7 +22521,7 @@ export default function HostShellV2() {
                   const blanks = unfilledBlanks(shownDraft());
                   if (!blanks.length) return null;
                   return (
-                    <p className="grounding" style={{ margin: '10px 0 0', color: 'var(--warn)' }}>
+                    <p className="grounding warn-note" style={{ margin: '10px 0 0' }}>
                       {blanks.length === 1
                         ? `One blank still to fill — ${blanks[0]}. Edit it above before you send.`
                         : `${blanks.length} blanks still to fill — ${blanks.slice(0, 2).join(' ')}${blanks.length > 2 ? '…' : ''}. Edit them above before you send.`}
@@ -25801,7 +25801,7 @@ export default function HostShellV2() {
                   )}
                   {sheet.conflictsOpen && conflicts.slice(0, 4).map((c, i) => (
                     <div key={c.id || i} className="brow" style={{ borderColor: 'var(--warn-tint)' }}>
-                      <p className="grounding" style={{ margin: 0, color: 'var(--warn)', fontWeight: 600 }}>{c.title}</p>
+                      <p className="grounding warn-note" style={{ margin: 0 }}>{c.title}</p>
                       <p className="grounding" style={{ margin: '2px 0 0' }}>{c.explanation}{c.recommendedAction ? ' ' + c.recommendedAction : ''}</p>
                     </div>
                   ))}
@@ -26287,7 +26287,7 @@ export default function HostShellV2() {
                               patchEvent({ vendors: (event.vendors || []).filter(x => x?.id !== v.id) }, (v.name || v.category || 'Vendor') + ' removed from this event.');
                               setSheet(s => ({ ...s, focus: null }));
                             }}>Remove from this event</button>
-                          {isMalformedEmail(v.email) && <p className="grounding" role="alert" style={{ margin: '-4px 0 var(--sp-2)', color: 'var(--warn)' }}>That doesn’t look like an email address.</p>}
+                          {isMalformedEmail(v.email) && <p className="grounding warn-note" role="alert" style={{ margin: '-4px 0 var(--sp-2)' }}>That doesn’t look like an email address.</p>}
                           {/* Vendor Brief authoring (VB2, ported): contactName and
                               briefNote are both in buildVendorBriefPayload's audited
                               whitelist (lib/vendorBrief.js) — legacy has always had a

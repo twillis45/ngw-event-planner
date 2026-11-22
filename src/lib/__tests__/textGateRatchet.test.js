@@ -439,7 +439,19 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // shell string places Captain White's at the Maine Ave Fish Market (it reads
 // CRAB_REFERENCE_MARKET), and the budget proposal's lit button reads
 // budgetProposalCta, whose behavior is unit-tested in the same file.
-const MAX_HOSTV2_TEXT_GATES = 65;
+// 65 → 67 (11/22/2026, #235), two gates on file CONTENT, and the behavior
+// claims of the same batch moved to e2e instead (the ruled food card's
+// headline, the spread link's "1 item", the reply counts: theFoodAskSaysItOnce,
+// aGuestAsksTheHost, familySeesThePlanReadOnly):
+//   aWarningLineWearsHoney.test.js: no warning paragraph in hostv2/src colors
+//   itself with --warn inline, and `.warn-note` reads the honey tokens. A
+//   structural claim: a new orange paragraph renders fine until someone opens
+//   dark mode, which is how a dozen survived #231.
+//   sourceMapsStayOffThePage.test.js: it runs pages-from-source.yml's own steps
+//   against a fixture tree (maps stripped, upload no-ops without a token) and
+//   reads the job graph. It is counted because its fixture paths name
+//   build/hostv2; no browser run can see a deploy workflow.
+const MAX_HOSTV2_TEXT_GATES = 67;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

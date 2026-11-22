@@ -1782,6 +1782,12 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 /* A guess inside a calm sentence: the guessed word wears the honey chip and the
    sentence stays in the meta tier (owner, 11/22/2026, B, both themes). */
 .honey{ background:var(--honey); color:var(--on-honey); border-radius:var(--r-pill); padding:1px var(--sp-2); font-weight:700; }
+/* A WARNING LINE wears the same honey, in both themes (owner, 11/22/2026: B,
+   "be consistent with touches for dark"). These were `color: var(--warn)`
+   paragraphs, orange body text in dark: a date that can't work, a link that
+   won't open, a malformed email, the crab order's issues. Umber on honey,
+   7.65:1, one value in both themes. Pinned by aWarningLineWearsHoney.test.js. */
+.warn-note, .grounding.warn-note, .vc-detail.warn-note, .v-meta.warn-note{ background:var(--honey); color:var(--on-honey); border-radius:var(--r-sm); padding:2px var(--sp-2); font-weight:650; width:fit-content; max-width:100%; box-sizing:border-box; }
 /* Published policy links (PolicyLinks.jsx): quiet, inherit the line's color. */
 .policy-links a{color:inherit}
 
