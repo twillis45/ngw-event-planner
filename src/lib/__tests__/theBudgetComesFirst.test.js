@@ -35,12 +35,11 @@ test('ten and thirty days out: the budget leads', () => {
   expect(top(mk(30)).domain).toBe('budget');
 });
 
-// $200 → $2,000 on 11/22/2026 (owner ruling "Expected spending", D-03): the
-// ledger now judges on expected cost, and this 15-guest Friendsgiving is
-// expected past $200, so a $200 budget is itself an open (over) part. A budget
-// that covers the plan is what "a budget set" means here.
+// $200 restored 11/22/2026: the owner's own case. Expected cost is past $200
+// (D-03 basis), but nothing is booked and the menu that sets the cost is open,
+// so the menu leads (aChoiceThatSetsTheCostLeadsTheOverrun.test.js).
 test('with a budget set, the menu leads again', () => {
-  expect(top(mk(3, { totalBudget: 2000 })).domain).toBe('food');
+  expect(top(mk(3, { totalBudget: 200 })).domain).toBe('food');
 });
 
 test('on the event day the budget is not forced to the top', () => {

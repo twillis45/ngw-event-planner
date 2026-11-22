@@ -87,7 +87,7 @@ import { expectedFromPlanned, attendanceShift, implausibleGuestNote } from '../a
 import { SOURCING_TIERS, DEFAULT_SOURCING, sourcingTier, sourcingFactor, isProteinItem, canonicalProteinPrice, nonProteinFactor, extraSupplyStores, canonicalSubstitutes } from '../sourcing';
 import { resolveEffectiveItem } from '../effectiveItem'; // FOOD-2A: read-only normalized projection of `list`
 import { buildCrabPlan } from '../crabPlan';
-import { isVendorBooked, bookedVendorIn } from '../workstreams';
+import { isVendorBooked, bookedVendorIn, hiredVendors } from '../workstreams';
 import { crabsPerPicker, crabsPerBushel } from '../crabServing';
 import { kidCount, vegCount, KID_PROTEIN_FACTOR } from '../appetite';
 import { getCompressionLevel, getStandardLeadProvenance, isGroundedLead } from '../workflowCompression';
@@ -1047,6 +1047,31 @@ export function menuChoicesTally(event, plan, asOf) {
   } catch (_e) { /* board unavailable — every open call counts as now */ }
   const openNow = open.filter((c) => !deferredIds.has(c.id));
   return { shown, open, openNow, later: open.length - openNow.length, settled: shown.length - open.length, total: shown.length };
+}
+
+// ─── IS A CALL THAT SETS THE COST STILL OPEN? (PR #229, 11/22/2026) ──────────
+// The question an expected overrun waits on (CommandCenter, "a choice that sets
+// the cost leads"). Open means: the food plan's own ask is still a menu or
+// sourcing call (not the allergy note, which moves no price), a hired vendor is
+// not yet booked, or an open board call is a drinks, venue or food call that is
+// not authored `noCostEffect`.
+const COST_CALL_ID = /venue|cater|food|menu|sourc|bar|alcohol|drink|main|style|format|hosting/i;
+export function costSettingCallOpen(event, phaseCues) {
+  try {
+    const items = (phaseCues && Array.isArray(phaseCues.items)) ? phaseCues.items : [];
+    const food = items.find((i) => i && i.id === 'food');
+    if (food && !food.handled && food.cueLabel && !/dietary/i.test(String(food.cueLabel))) return true;
+    // A hired vendor not yet booked: its price is a quote until it is booked.
+    if (hiredVendors(event).some((v) => !isVendorBooked(v))) return true;
+    const pb = getPlaybook(event && event.type);
+    const byId = new Map(((pb && pb.decisions) || []).map((d) => [d.id, d]));
+    const board = playbookDecisionBoard(event) || {};
+    return (board.open || []).some((r) => {
+      const d = r && byId.get(r.id);
+      if (!d || d.noCostEffect || isDietaryChoice(d)) return false;
+      return d.drinksCall === true || d.costViaLines === true || COST_CALL_ID.test(String(d.id));
+    });
+  } catch (_e) { return false; }
 }
 
 // ─── THE BOARD ROW COUNTS WHAT THE HERO COUNTS (audit 2 D-12, 11/22/2026) ────
