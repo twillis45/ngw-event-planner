@@ -4,6 +4,9 @@
 // server never sends them; backend/tests/test_family_view.py pins that). A
 // link that was turned off says so. A signed-out host is told to keep the plan
 // first, and gets no link.
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { test, expect, settled, openSectionByName, dateIn } from './fixtures.mjs';
 
 const API = 'https://e2e-mock.invalid';
@@ -17,9 +20,14 @@ const PLAN = {
   vendors: [{ name: 'Harvest Table Catering', category: 'Catering', status: 'Booked' }, { name: 'Pie Shop', category: 'Bakery', status: 'Considering' }],
 };
 
-const open = async (page, status = 200) => {
+// The server's REAL family view of the fictional Wanda sample (audit lane E,
+// P0-2): backend/tests/test_family_view_privacy.py pins that this file equals
+// family_projection() of that sample, so the page is tested on what it gets.
+const WANDA = JSON.parse(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'wandaFamilyPlan.json'), 'utf8'));
+
+const open = async (page, status = 200, plan = PLAN) => {
   await page.route(`${API}/**`, (r) => r.fulfill({ status: 404, json: { detail: 'not found' } }));
-  await page.route(`${API}/api/public/family/${CODE}`, (r) => r.fulfill(status === 200 ? { status, json: { ok: true, plan: PLAN } } : { status, json: { detail: 'not found' } }));
+  await page.route(`${API}/api/public/family/${CODE}`, (r) => r.fulfill(status === 200 ? { status, json: { ok: true, plan } } : { status, json: { detail: 'not found' } }));
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('?family=' + CODE);
 };
@@ -39,6 +47,22 @@ test('family sees the plan, and there is nothing to change', async ({ page }) =>
   await expect(page_.locator('button, input, textarea, select, form')).toHaveCount(0);
   await expect(page.locator('body')).not.toContainText(/\$\d/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+});
+
+test('the Wanda plan keeps the footer’s promise: no money, no guest names, no helper among the hires', async ({ page }) => {
+  await open(page, 200, WANDA);
+  const page_ = page.locator('[data-surface="family-view-v2"]');
+  await expect(page_.locator('[data-family="note"]')).toContainText('Guest names, contact details and money aren’t shared here.');
+  // The plan is still there to read, minus its private clauses.
+  await expect(page_.locator('[data-family="day"]')).toContainText('Army retirement presentation');
+  await expect(page_.locator('[data-family="checklist"]')).toContainText('Lock catering');
+  await expect(page_).toContainText('The checklist · 1 of 4 done');
+  await expect(page_.locator('[data-family="vendors"] li')).toHaveText([/VFW Post 1847.*Booked/, /Semper Catering.*Not booked yet/, /DJ Marcus Kane.*Booked/]);
+  const words = await page_.innerText();
+  expect(words).not.toMatch(/\$|budget|4604|Grazin/i);
+  // Every guest or helper by first name; the DJ's business name is not a guest.
+  for (const name of ['Cory', 'Gloria', 'Nia', 'Diane', 'Vida', 'Haynes']) expect(words).not.toContain(name);
+  expect(words.replace('DJ Marcus Kane', '')).not.toContain('Marcus');
 });
 
 test('a link that was turned off says so', async ({ page }) => {
