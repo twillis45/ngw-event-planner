@@ -3,7 +3,10 @@
 // already differ in importance (bounded < the 0.25 importance step).
 import { playbookDecisionBoard } from '../index';
 
-function dateN(n) { const d = new Date('2026-07-16T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+// LOCAL calendar day, never toISOString (UTC): under Pacific/Kiritimati the UTC
+// date of local noon is the day BEFORE, which put the "day-of" Crab Feast in the
+// past — where the board holds no open calls (audit 2 lane C P0-5).
+function dateN(n) { const d = new Date('2026-07-16T12:00:00'); d.setDate(d.getDate() + n); return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-'); }
 const asOf = new Date('2026-07-16T12:00:00');
 
 describe('Wave-2e structural tiebreak', () => {

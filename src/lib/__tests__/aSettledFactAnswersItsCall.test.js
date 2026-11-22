@@ -115,9 +115,12 @@ describe('item 16 — The Day reads the Army ceremony it already has', () => {
     expect(program).toBeTruthy();
     expect(program.segment).toContain('Colors');
   });
-  test('control: a civilian retirement keeps the generic floor and the civilian program', () => {
+  // UPDATED (audit 2 lane A P0-6): the "generic floor" is gone — a retirement's
+  // day-of list is now its own checklist day-of steps plus the safety basics.
+  // The control still holds where it matters: no ceremony checks.
+  test('control: a civilian retirement gets no ceremony checks and the civilian program', () => {
     const ev = { ...demo(), name: 'Pat’s Retirement Party', venue: 'Elm Street Hall', vendors: [] };
-    expect(playbookDayOfChecklist(ev).isDefault).toBe(true);
+    expect(playbookDayOfChecklist(ev).items.some((i) => /^mil_/.test(i.id))).toBe(false);
     expect(playbookRunOfShow(ev).some((r) => /retirement ceremony/i.test(r.segment))).toBe(false);
   });
 });

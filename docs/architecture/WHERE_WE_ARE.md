@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 22, 2026 (afternoon, later) — the day runs the show, and after tells the truth
+
+**On the day, the board leads with the run of show by the clock.** After the date, planning stops nagging, overdue counts stop climbing, and the money line never claims a landing it can't show. Every event type gets its own day-of list.
+
 ## November 22, 2026 (afternoon) — the board stops saying "done" too early
 
 **"All quiet" now means nothing is open.** A caterer step waits for a booked caterer, and there is one Undo on screen that brings the question back. Money is judged on what the plan is expected to cost, diets are asked once, and The Day lights one button.

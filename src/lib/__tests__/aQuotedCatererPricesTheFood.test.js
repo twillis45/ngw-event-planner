@@ -70,9 +70,14 @@ describe('After states the expected total it prints beside it (P0-15)', () => {
       .toBe('$800 of headroom against the $6,000 plan, expected.');
   });
 
-  test('after the day it reads what was spent', () => {
+  // UPDATED (audit 2 lane C P0-3, owner ruling D-03): after the day, over/under
+  // is judged on EXPECTED cost too, so $5,300 expected against $5,000 is over
+  // even with $4,700 recorded spent. It used to read "$300 under… spent".
+  test('after the day it reads what was spent, on the expected basis', () => {
     expect(planHeadroomLine({ planned: 5000, expected: 5300, committed: 5300, spent: 4700 }, true))
-      .toBe('$300 under the $5,000 plan, spent.');
+      .toBe('Expected to land $300 over the $5,000 you planned — $4,700 recorded spent so far.');
+    expect(planHeadroomLine({ planned: 5000, expected: 4800, committed: 4800, spent: 4700 }, true))
+      .toBe('Landed inside the $5,000 you planned.');
   });
 
   test('no budget, no line', () => {

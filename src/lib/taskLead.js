@@ -26,7 +26,7 @@
 // A note on the label: taskPhaseLabel's prose ('Week of', 'Day before') is a fine thing
 // to SHOW a host. Its sin was being load-bearing. It stays a label; it stops being data.
 
-import { daysUntil, getToday } from './dates';
+import { daysUntil, getToday, spanEnd } from './dates';
 import { timelineStepResolved } from './taskEngine';
 
 // The prose buckets taskPhaseLabel emits, mapped back to the lead they represent — the
@@ -117,9 +117,25 @@ export function taskLeadDays(task) {
 export function taskDueInDays(task, event, now) {
   const lead = taskLeadDays(task);
   if (lead == null) return null;
-  const toEvent = daysUntil(event && event.date, now);
+  // A step owed AFTER the day counts from the LAST day of a multi-day event
+  // (audit 2 lane C P1-4): a trip's thank-yous were due a week after day 1.
+  const anchor = lead > 0 ? (spanEnd(event) || (event && event.date)) : (event && event.date);
+  const toEvent = daysUntil(anchor, now);
   if (toEvent == null) return null;
   return toEvent + lead;
+}
+
+/**
+ * A step whose job was to get the day ready, asked once the day has passed.
+ * It is not late then — it simply did not happen — so it is never overdue and
+ * never "past its window" (audit 2 lane C P0-4: Wanda's overdue count climbed
+ * 12 → 21 → 29 after the date). Steps owed after the day (lead > 0) still come due.
+ */
+export function planningStepAfterTheDay(task, event, now) {
+  const lead = taskLeadDays(task);
+  if (lead == null || lead > 0) return false;
+  const toEnd = daysUntil(spanEnd(event) || (event && event.date), now);
+  return toEnd != null && toEnd < 0;
 }
 
 /**
@@ -172,6 +188,7 @@ export function taskIsOverdue(task, event, now) {
   if (task.retired) return false;
   try { if (event && timelineStepResolved(event, task)) return false; } catch { /* fall through to timing */ }
   if (task.snoozedUntil && new Date(task.snoozedUntil + 'T00:00:00') > getToday(now)) return false;
+  if (planningStepAfterTheDay(task, event, now)) return false;
   const due = taskDueInDays(task, event, now);
   if (due == null) return false;
   if (due >= 0) return false;
@@ -197,6 +214,7 @@ export function taskIsOverdue(task, event, now) {
  */
 export function taskWindowClosed(task, event, now) {
   if (!task || task.done || task.retired) return false;
+  if (planningStepAfterTheDay(task, event, now)) return false;
   const due = taskDueInDays(task, event, now);
   return due != null && due < 0;
 }
@@ -223,6 +241,7 @@ const LATE_BEYOND_COUNTING = 60;
 export function taskDueLabel(task, event, now) {
   const due = taskDueInDays(task, event, now);
   if (due == null) return '';
+  if (planningStepAfterTheDay(task, event, now)) return 'before the day';
   if (due < 0) {
     // A TIGHT TIMELINE IS NOT LATENESS (issue #100, D-10): a window that closed
     // before the plan existed was never the host's to miss. taskIsOverdue

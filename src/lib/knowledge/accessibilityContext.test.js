@@ -74,7 +74,8 @@ describe('accessibility axis', () => {
   });
 
   test('the board surfaces accessibilityContext + accessibilityGrounded (reaches runtime)', () => {
-    const b = playbookDecisionBoard({ id: 'e', type: 'Retirement Party', date: '2026-09-01', guests: [], guestEstimate: 40 });
+    // asOf before the event: a past event's board holds no open calls (audit 2 lane C P0-5).
+    const b = playbookDecisionBoard({ id: 'e', type: 'Retirement Party', date: '2026-09-01', guests: [], guestEstimate: 40 }, '2026-08-01');
     const rows = [...b.open, ...b.locked, ...(b.deferred || [])];
     const grounded = rows.filter((r) => r.accessibilityGrounded);
     expect(grounded.length).toBeGreaterThan(0);

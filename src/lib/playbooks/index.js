@@ -17,7 +17,7 @@ import { cashBarDecisionsFor, cashBarKeeps, aliasedChoices } from './cashBarCove
 import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
 import { matchGuestIndexByName } from '../guestMerge';
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
-import { spanNights } from '../dates';
+import { spanNights, spanEnd } from '../dates';
 import { aroundMeals, celebrationAppliesWith, DINNER_GROUP, DINNER_OWN_STEPS } from '../tripMeals';
 import { attendanceAdjustment } from '../hostIntel';
 import { geoItemForPurchase } from '../knowledge/geoItemMap';
@@ -3409,7 +3409,25 @@ export function playbookDayOfChecklist(event) {
   const noKitchen = (() => {
     try { return event.isDestination === true && lodgingKitchen(event) === false; } catch (_e) { return false; }
   })();
-  const source = (authored && authored.length ? authored : DEFAULT_DAYOF_CHECKLIST)
+  // THE TYPE'S OWN DAY-OF ROWS (audit 2 lane A P0-6). 29 types authored no
+  // list, so The Day said "We have no day-of list written for wedding yet"
+  // while the checklist held that type's day-of steps. Not authored twice: the
+  // checklist rows due ON the day (leadDays 0) are the list, in the checklist's
+  // own words and ids, and the universal basics ride along as an addition.
+  // A type with no day-of checklist row (Group Trip) keeps its day in its
+  // arrival-day run of show; those rows are its own day-of rows.
+  const ownRows = (authored && authored.length) ? [] : (() => {
+    try {
+      const steps = (playbookChecklist(event) || [])
+        .filter((r) => r && r.leadDays === 0 && r.id && r.task)
+        .map((r) => ({ id: r.id, label: r.task, detail: '', severity: 'high' }));
+      if (steps.length) return steps;
+      return (playbookRunOfShow(event) || [])
+        .filter((r) => r && r.id && r.segment && (r.day || 1) === 1)
+        .map((r) => ({ id: r.id, label: r.segment, detail: '', severity: 'high' }));
+    } catch (_e) { return []; }
+  })();
+  const source = (authored && authored.length ? authored : [...ownRows, ...DEFAULT_DAYOF_CHECKLIST])
     // The same whenChoice gate tasks and purchases use (11/15/2026): "the turkey
     // is fully thawed" has no business on the morning of a Friendsgiving where a
     // friend is bringing the ham. Ungated items are unaffected.
@@ -3442,13 +3460,15 @@ export function playbookDayOfChecklist(event) {
     ? [DAYOF_RAIN_ROW] : [];
   const items = normalizeDayOfItems([...source, ...rainRow, ...milItems]);
   if (!items.length) return null;
-  const isDefault = !(authored && authored.length) && !milItems.length;
+  const isDefault = !(authored && authored.length) && !milItems.length && !ownRows.length;
   const typeWord = String(event.type || 'event').toLowerCase();
   const because = isDefault
     ? `standard ${typeWord} safety basics`
-    : !(authored && authored.length)
-      ? `the ${mil.label} ceremony checks and standard ${typeWord} safety basics`
-      : `the things that actually matter for a ${typeWord}`;
+    : (authored && authored.length)
+      ? `the things that actually matter for a ${typeWord}`
+      : [ownRows.length ? `the ${typeWord}’s own day-of steps` : null,
+        milItems.length ? `the ${mil.label} ceremony checks` : null].filter(Boolean).join(', ')
+        + ` and the safety basics every event shares`;
   return { items, count: items.length, isDefault, because };
 }
 
@@ -3969,6 +3989,11 @@ export function playbookDecisionBoard(event, asOf, profile) {
   const dte = daysToEvent(event.date, asOf); // null when no date
   const open = [];
   const locked = [];
+  // A CALL IS A PLANNING CALL (audit 2 lane C P0-5): the day after the wedding,
+  // Calls to make still read "7 open" under "Nothing needs you now". Once the
+  // LAST day has passed there is nothing left to decide; the rows that were
+  // open are dropped, not deferred, and the settled ones stay as the record.
+  const afterTheDay = (() => { const d = daysToEvent(spanEnd(event), asOf); return d != null && d < 0; })();
 
   // ── Wave-2b · HORIZON AWARENESS (wire workflowCompression into the board) ──────
   // The board's order/partition must change with the runway, not stay byte-identical at
@@ -4523,8 +4548,8 @@ export function playbookDecisionBoard(event, asOf, profile) {
   // HORIZON PARTITION — deferred ("comes up closer") vs the active board. This is the
   // genuine order/partition change vs Wave-2a: at 90 days out a T-5d store-run lands in
   // `deferred`; at 3 days out the same decision is overdue and leads `open`.
-  const deferred = open.filter((r) => r.horizon === 'later');
-  const active = open.filter((r) => r.horizon !== 'later');
+  const deferred = afterTheDay ? [] : open.filter((r) => r.horizon === 'later');
+  const active = afterTheDay ? [] : open.filter((r) => r.horizon !== 'later');
   const byScore = (a, b) => (b.priorityScore - a.priorityScore)
     || ((a.daysOut == null ? 9999 : a.daysOut) - (b.daysOut == null ? 9999 : b.daysOut));
   active.sort(byScore);

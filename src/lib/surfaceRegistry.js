@@ -978,12 +978,15 @@ export const SURFACES = [
         if (!(v.payDueDate && !v.balancePaid && (v.cost || 0) > 0)) continue;
         let od = null;
         try { od = daysUntil(v.payDueDate); } catch (_e) { continue; }
-        if (od == null || od >= 0) continue;               // future due dates are chips, not interruptions
+        // Future due dates are chips, not interruptions — but the DAY it comes
+        // due is not the future (audit 2 lane C P1-3): `od >= 0` left a balance
+        // due today silent until it was "1 day ago".
+        if (od == null || od > 0) continue;
         const late = Math.abs(od);
         out.push({
           severity: 'critical',
           title: `Send payment to ${v.name || 'this vendor'}.`,
-          why: `Balance was due ${late} ${late === 1 ? 'day' : 'days'} ago`,
+          why: od === 0 ? 'Balance is due today' : `Balance was due ${late} ${late === 1 ? 'day' : 'days'} ago`,
           // Same row the ladder routes to: the vendor's payment section.
           route: { tab: 'Vendors', vendorId: v.id, vendorSection: 'payment' },
           key: v.id,                    // WAVE-6: the vendor record

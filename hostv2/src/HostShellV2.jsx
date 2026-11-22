@@ -123,6 +123,8 @@ import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement, honoreeApplies } from '@app/lib/eventIdentity';
 import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, spanEnd, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
+import { dayOfHero, cueByTheClock } from '@app/lib/dayOfHero';
+import { afterOwed } from '@app/lib/afterOwed';
 import { eventDatesPatch, eventSpanLabel, eventStartTimePatch } from '@app/lib/eventDates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
@@ -288,7 +290,7 @@ import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow, cheaperBarOption } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence, placeIsOutdoors, outdoorsGuess } from '@app/lib/placeIntelligence';
-import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote, planHeadroomLine, expectedHeadroom } from '@app/lib/budgetCopy';
+import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote, planHeadroomLine, expectedHeadroom, afterSpendVerdict } from '@app/lib/budgetCopy';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { deliverNotification, deliveryExcuse, notificationApiPresent, DELIVERY } from '@app/lib/notifyDelivery';
@@ -5057,8 +5059,36 @@ export default function HostShellV2() {
   // past-window decision. One rule, in lib/venueLeadsStay, applied here so the
   // hero and "Then, in order" read the same order. The date floor below still
   // outranks it on an undated event.
+  // ── ON THE DAY THE HERO IS THE RUN OF SHOW (audit 2 lane C P0-1, P1-5, P1-7) ──
+  // The day's loud line was a planning chore (insurance, a $12,000 payment,
+  // "cook, cater, or potluck?") at 8 AM and 9 PM alike, while the run of show
+  // sat below showing its first step. On any day of the event — a trip's day 3
+  // as much as its day 1 — the hero is lib/dayOfHero: the day and the cue the
+  // clock is on. Planning chores leave the hero; what is still open stays in the
+  // list below it. The clock ticks only while the event is live, and The Day's
+  // now-card reads the same clock and the same reader.
+  const [dayClock, setDayClock] = useState(() => Date.now());
+  const eventLive = (() => { try { return isDuringEvent(event); } catch (_e) { return false; } })();
+  useEffect(() => {
+    if (!eventLive) return undefined;
+    const tick = () => setDayClock(Date.now());
+    tick();
+    const iv = setInterval(tick, 30000);
+    return () => clearInterval(iv);
+  }, [eventLive, event.id]);
+  const dayHero = useMemo(() => {
+    if (!elegantMode || !eventLive) return null;
+    try { return dayOfHero(event, new Date(dayClock)); } catch (_e) { return null; }
+  }, [elegantMode, eventLive, event, dayClock]);
   const queue = (() => {
-    const ordered = elegantMode ? venueLeadsStay(queueRanked, event) : queueRanked;
+    const ordered0 = elegantMode ? venueLeadsStay(queueRanked, event) : queueRanked;
+    // THE VENUE ASK DOES NOT RUN THROUGH THE TRIP (audit 2 lane C P0-6). A
+    // foundation ask — pick the place, the date, the start time, a ceremony
+    // pick — cannot be acted on once the day has come; the Group Trip asked
+    // for its venue from 300 days out through day 1.
+    const ordered = dayHero
+      ? ordered0.filter((a) => a && !a.blockerType && !/^blocker:/.test(String(a.id || '')) && a.domain !== 'date' && a.domain !== 'blocker')
+      : ordered0;
     if (!elegantMode || days !== null) return ordered;
     const ix = ordered.findIndex((a) => a && (a.domain === 'date' || a.category === 'date')
       && !/start time|the hour/i.test(String(a.title || '')));
@@ -5177,7 +5207,7 @@ export default function HostShellV2() {
   // frame shows the SAME board, with the ask simply being "Add the day." and the
   // one action being "Set the event date". The countdown does not own the display
   // when there is no countdown to own it.
-  const askMode = (days === null || days >= 0) && !listIsCalm && queue.length > 0; // >=0: day-of joined the elegant ask flow (T2 ruling, Figma 598:60/602:60)
+  const askMode = (days === null || days >= 0) && !listIsCalm && queue.length > 0 && !dayHero; // >=0: day-of joined the elegant ask flow (T2 ruling, Figma 598:60/602:60); the live day's hero is the run of show (dayHero)
   // ── THE ONE ASK STRING (board ruling C, 2026-07-30) ──
   // The loud line is the FIRST real ITEM, not the generic bundle verb — the per-item
   // intelligence surfacing where the host looks first. Conflicts → the clash; decisions
@@ -10856,7 +10886,7 @@ export default function HostShellV2() {
   // cue not already done (event.rosDone persists across reloads — the same
   // per-cue flag the production app writes; effectiveRos overlays it).
   useEffect(() => {
-    if (stage !== 'day' || days !== 0) return;
+    if (stage !== 'day' || !(days === 0 || eventLive)) return;
     const first = ros.findIndex(r => r && !r.done);
     setDayIdx(first === -1 ? ros.length : first);
   }, [stage]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -10865,24 +10895,21 @@ export default function HostShellV2() {
   // ticks every 30s and the NOW cue is DERIVED from the current minute — the
   // first open cue at/after now, else the first open cue. The host never taps
   // to find their place; marking done simply re-derives the next NOW.
-  const [nowMin, setNowMin] = useState(() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); });
-  useEffect(() => {
-    if (stage !== 'day' || days !== 0) return undefined;
-    const tick = () => { const d = new Date(); setNowMin(d.getHours() * 60 + d.getMinutes()); };
-    tick();
-    const iv = setInterval(tick, 30000);
-    return () => clearInterval(iv);
-  }, [stage, days]);
+  // ONE CLOCK (audit 2 lane C P0-1): the board's day-of hero and this card read
+  // the same `dayClock`, which ticks every 30s while the event is live.
+  const nowMin = (() => { const d = new Date(dayClock); return d.getHours() * 60 + d.getMinutes(); })();
   // Cue-time math honoring BOTH stored forms — 24h "14:00" and 12h "2:00 PM"
   // (the original's toMins; parsing 12h as 24h creates the 3 AM-cookout bug).
   const cueMins = (t) => parseMin(t); // lib/dayAlerts — one time parser (12h+24h)
   const rosState = useMemo(() => { try { return classifyRos(ros); } catch { return ros.length ? 'timed' : 'empty'; } }, [ros]);
-  const liveDay = stage === 'day' && days === 0 && rosState === 'timed';
+  // Any day of the event is live, a trip's day 3 as much as its day 1 (P1-5).
+  const liveDay = stage === 'day' && (days === 0 || eventLive) && rosState === 'timed';
   const openCues = useMemo(() => ros.filter(r => r && !r.done), [ros]);
-  const nowCue = liveDay
-    ? (openCues.find(r => { const m = cueMins(r.time); return m !== null && m >= nowMin; }) || openCues[0] || null)
-    : null;
-  const nowActive = !!(nowCue && (() => { const m = cueMins(nowCue.time); return m !== null && m <= nowMin; })());
+  // THE CUE THE CLOCK IS ON — lib/dayOfHero, the same reader as the board's hero:
+  // the latest cue that has started while it is still open, else the next one.
+  const clockCue = liveDay ? cueByTheClock(ros, nowMin) : null;
+  const nowCue = clockCue ? clockCue.cue : null;
+  const nowActive = !!(clockCue && clockCue.state === 'now');
   // EVERY open cue stays visible (original renders the full timeline): the
   // list is chronological and includes behind-schedule cues, marked honestly.
   const cuesAfterNow = nowCue ? openCues.filter(c => c !== nowCue) : [];
@@ -12105,17 +12132,17 @@ export default function HostShellV2() {
                   up top, the summary tiles mid, and the NEXT tile anchored just
                   above the floating dock so the primary action sits at thumb
                   reach with no dead space below it. */}
-              <div className={'hero' + (elegantMode ? ' elegant voice-' + elegantVoice : '') + (days === 0 ? ' is-dayof' : '')}>
+              <div className={'hero' + (elegantMode ? ' elegant voice-' + elegantVoice : '') + ((days === 0 || dayHero) ? ' is-dayof' : '')}>
               {/* First-screen bound (F13 foot-pin): a display:contents wrapper — invisible in
                   every mode EXCEPT elegant-ask, where it becomes a 100dvh flex column so the
                   progress hairline pins to the true foot and the see-all sits below it. */}
-              <div className={(elegantMode && (askMode || isPast || (listIsCalm && !isPast && days !== null && days > 0))) ? 'escreen on' : 'escreen'}>
+              <div className={(elegantMode && (askMode || dayHero || isPast || (listIsCalm && !isPast && days !== null && days > 0))) ? 'escreen on' : 'escreen'}>
               {/* ELEGANT-MINIMAL PORT (F13 fidelity, host ruling "match Figma exactly"
                   2026-07-17): the ask screen's masthead collapses to ONE tiny eyebrow
                   (countdown · event name, uppercase) — the big serif name + venue + kicker
                   move OFF the ask screen (the serif name belongs on the pull-down Overview).
                   Everything below composes with generous negative space. */}
-              {elegantMode && (askMode || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
+              {elegantMode && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
                   {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
@@ -12142,9 +12169,14 @@ export default function HostShellV2() {
                        feeling, a date is a calendar entry — so both, always. */
                     const parts = [];
                     // 1. urgency
+                    // A trip's days are its own (audit 2 lane C P1-4, P1-5): "DAY 3 OF 4"
+                    // while it runs, and "N DAYS AGO" counted from its LAST day.
+                    const agoEnd = (() => { try { return daysUntilEnd(event); } catch (_e) { return days; } })();
                     if (days != null && days > 0) parts.push(days === 1 ? '1 DAY' : days + ' DAYS');
+                    else if (dayHero && dayHero.dayCount > 1) parts.push(`DAY ${dayHero.dayIndex} OF ${dayHero.dayCount}`);
                     else if (days === 0) parts.push('TODAY');
-                    else if (days != null && days < 0) parts.push(days === -1 ? '1 DAY AGO' : Math.abs(days) + ' DAYS AGO');
+                    else if (agoEnd != null && agoEnd < 0) parts.push(agoEnd === -1 ? '1 DAY AGO' : Math.abs(agoEnd) + ' DAYS AGO');
+                    else if (days != null && days < 0) parts.push('TODAY');
                     else if (targetMonthLabel(event)) { parts.push(String(targetMonthLabel(event)).toUpperCase()); parts.push('PICK A DAY'); }
                     else parts.push('NO DATE YET');
                     // 2. identity — the name, unless the type slot is ALREADY showing
@@ -12430,6 +12462,40 @@ export default function HostShellV2() {
                     <button className="mini" onClick={undoHeroReceipt}>Undo</button>
                   </div>
                 ) : null;
+                if (dayHero) {
+                  // THE DAY'S HERO (audit 2 lane C P0-1): the day, then the cue the
+                  // clock is on, from lib/dayOfHero — the same reader The Day's
+                  // now-card uses, so the two cannot name different cues.
+                  const c = dayHero.cue;
+                  const live = dayHero.state === 'now';
+                  const meta = c ? [c.location, c.owner && ('owner: ' + c.owner), c.vendorName].filter(Boolean).join(' · ') : '';
+                  return (<>
+                    <h2 className="ask">{dayHero.headline}</h2>
+                    {c ? (
+                      <article className="card hero-card" id="card-dayof-cue" data-dayof-cue={dayHero.state}>
+                        <div className="card-head">
+                          <div className="card-top">
+                            <span className="of" style={live ? { color: 'var(--ok)' } : undefined}>
+                              {dayHero.label}{c.time ? (live ? ' · started ' : ' · ') + fmt12h(c.time) : ''}
+                            </span>
+                          </div>
+                          <h3>{c.segment}</h3>
+                          {meta && <p className="because">{meta}</p>}
+                          <div className="actions-row" style={{ alignItems: 'center' }}>
+                            <button className="cta" onClick={() => setStage('day')}>Run the day</button>
+                          </div>
+                        </div>
+                      </article>
+                    ) : (<>
+                      <p className="truth">{dayHero.state === 'done'
+                        ? 'Every cue on the run of show is done — enjoy the rest.'
+                        : 'There’s no run of show for today yet.'}</p>
+                      <div className="actions-row" style={{ alignItems: 'center' }}>
+                        <button className="cta" onClick={() => setStage('day')}>{dayHero.state === 'done' ? 'See the day' : 'Open the day'}</button>
+                      </div>
+                    </>)}
+                  </>);
+                }
                 if (askMode) {
                   return (<>
                     {/* ONE ask string, computed once at heroAskText (~2357) so the card-title
@@ -12533,42 +12599,33 @@ export default function HostShellV2() {
                     const m = /^([A-Z][\w'’]+)(?:\s+[A-Z][\w'’]+)*['’]s\b/.exec(String(event.name || ''));
                     return m ? m[1] : null;
                   })();
-                  const agoN = Math.abs(days);
                   const typeWord = String(eventTypeLabel(event) || 'day').toLowerCase();
                   // "Nothing needs you now" was asserted unconditionally, and the
                   // corpus now carries post-event work -- return the borrowed pans,
                   // thank the people who cooked. Claiming nothing is owed while
                   // three tasks are due is the plainest kind of untruth this app
-                  // can tell, and it is the one a host would catch. Read the same
-                  // checklist every other surface reads; a positive leadDays is
-                  // days AFTER the event.
-                  const afterRows = (() => {
-                    try {
-                      return (playbookChecklist(event) || [])
-                        .filter(r => r && typeof r.leadDays === 'number' && r.leadDays > 0)
-                        .filter(r => !effectiveDone(event, r))
-                        .sort((a, b) => a.leadDays - b.leadDays);
-                    } catch { return []; }
-                  })();
-                  const afterDue = afterRows.filter(r => r.leadDays <= agoN);
+                  // can tell, and it is the one a host would catch.
+                  // lib/afterOwed (audit 2 lane C P1-4, P1-9, P1-10): an unpaid
+                  // vendor balance is owed and leads, then the after-steps whose day
+                  // has come — counted from the LAST day of a multi-day event.
+                  const owed = afterOwed(event, new Date(), typeWord);
+                  const nDays = spanNights(event) + 1;
                   const yesN = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
                   const invitedN = (event.guests || []).length;
                   // DATA HONESTY (host challenge, 2026-07-22): the Figma comp said
                   // "~7 came · a couple more likely walked in" — but attendance was
                   // never OBSERVED; walk-ins are a planning model, and "came" is a
                   // past-tense fact claim. The recap states only what's on file.
-                  const over = (money.planned && money.committed > money.planned) ? money.committed - money.planned : 0;
                   const rowL = { fontSize: 'var(--t-pill)', fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' };
                   const rowV = { fontSize: 26, fontWeight: 750, letterSpacing: '-.02em', fontVariantNumeric: 'tabular-nums' };
                   const rowSub = { margin: '3px 0 0', fontSize: 'var(--t-meta)', color: 'var(--muted)', lineHeight: 1.4 };
                   return (<>
                     <Eyebrow tone="ok" style={{ display: 'block', letterSpacing: '.1em' }}>BEHIND YOU</Eyebrow>
-                    <h2 className="ask">{first ? first + '’s day, done.' : 'The day, done.'}</h2>
-                    <GuideLine gap={ASK_RHYTHM.eyebrowToValue}>The {typeWord} happened — {agoN === 1 ? 'yesterday' : agoN + ' days ago'}. {afterRows.length === 0
-                      ? 'Nothing needs you now; here’s how it landed.'
-                      : afterDue.length > 0
-                        ? `${afterDue.length === 1 ? 'One thing is' : afterDue.length + ' things are'} still owed — ${String(afterRows[0].task).replace(/\.$/, '')}.`
-                        : `${afterRows.length === 1 ? 'One thing comes' : afterRows.length + ' things come'} after — the first is ${String(afterRows[0].task).replace(/\.$/, '').toLowerCase()}.`}</GuideLine>
+                    {/* "The day, done." on a four-day trip (audit 2 lane C P2-3). */}
+                    <h2 className="ask">{nDays > 1
+                      ? (first ? first + '’s ' + nDays + ' days, done.' : 'All ' + nDays + ' days, done.')
+                      : (first ? first + '’s day, done.' : 'The day, done.')}</h2>
+                    <GuideLine gap={ASK_RHYTHM.eyebrowToValue}>{owed.line}</GuideLine>
                     <div style={{ marginTop: 26, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
                         <span style={rowL}>Guests</span>
@@ -12583,10 +12640,11 @@ export default function HostShellV2() {
                         <span style={rowL}>Final spend</span>
                         <span style={rowV}>{money.committed ? fmt(money.committed) : '—'}</span>
                       </div>
+                      {/* lib/budgetCopy afterSpendVerdict (audit 2 lane C P0-3): never
+                          "inside" without recorded spend, never while EXPECTED cost
+                          (owner ruling D-03) or recorded spend is over. */}
                       <p style={rowSub}>{money.planned
-                        ? (over > 0
-                          ? 'Landed ' + fmt(over) + ' over the ' + fmt(money.planned) + ' you planned. Final, not a warning.'
-                          : 'Landed inside the ' + fmt(money.planned) + ' you planned.')
+                        ? afterSpendVerdict(money).line
                         : (money.committed ? fmt(money.committed) + ' all told.' : 'no budget was tracked.')}</p>
                     </div>
                     <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'nowrap' }}>
@@ -12681,7 +12739,11 @@ export default function HostShellV2() {
                   ? (elegantMode
                       ? <div id="actionsAnchor" aria-hidden="true" />
                       : <div className="sect" id="actionsAnchor"><h2>How it landed</h2><div className="rule" /><span className="when">behind you</span></div>)
-                  : <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>}
+                  : dayHero
+                    /* On the day the hero is the run of show; what is left here is
+                       planning that did not get done, and is named as that. */
+                    ? <div className="sect" id="actionsAnchor"><h2>Still open from planning</h2><div className="rule" /><span className="when">not today’s job</span></div>
+                    : <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>}
               {plan && plan.planningState && plan.planningState.reasoning && (() => {
                 // Re-audit 2026-07-17 (P0, "one hero instruction"): the milestone
                 // sentence ("Milestone: X — then Y.") was a THIRD "what's next" voice
@@ -12727,7 +12789,9 @@ export default function HostShellV2() {
                   only while calm could not be vetoed — the moment it could, a
                   vetoed state got the pole withheld AND the fallback suppressed,
                   and the hero would have rendered nothing at all. One predicate. */}
-              {queue.length === 0 && !(elegantMode && mayBeCalm && !isPast && days !== null && days > 0) && !(elegantMode && isPast) && (
+              {/* Not on the day: the hero owns it, and "the basics are all settled"
+                  sat beside an unset venue on a trip's day 3 (audit 2 lane C P0-6). */}
+              {queue.length === 0 && !(elegantMode && mayBeCalm && !isPast && days !== null && days > 0) && !(elegantMode && isPast) && !dayHero && (
                 <div className="empty">{isPast
                   ? 'The recap is below.'
                   /* AN EMPTY QUEUE IS NOT A QUIET PLAN. The host set the CARDS
@@ -14651,7 +14715,10 @@ export default function HostShellV2() {
                             closing everywhere else. Calm is now earned against the SAME
                             predicate the NEXT tile reads (listIsCalm) — one strictness of
                             quiet per screen, calm fillers included. */}
-                        {bits.join(' · ')}{(n('Blocked') || !listIsCalm) ? '' : ' · all clear'}
+                        {/* …and not over an open part of the plan (audit 2 lane C P1-9):
+                            the wedding's After read "all clear" above "Settle up with
+                            Bluemont Vineyard" and $12,000 unpaid. */}
+                        {bits.join(' · ')}{(n('Blocked') || !listIsCalm || ((phaseCues && phaseCues.items) || []).some(c => c && !c.handled)) ? '' : ' · all clear'}
                       </p>
                     );
                   })()}
@@ -14664,7 +14731,7 @@ export default function HostShellV2() {
                   )}
                   {phaseCues && Array.isArray(phaseCues.items) && phaseCues.items.length > 0 && (
                     <>
-                      <div className="shelf-label" style={{ margin: '6px 0 var(--sp-1)' }}>The {phaseCues.totalCount} parts of your plan this count reads</div>
+                      <div className="shelf-label" style={{ margin: '6px 0 var(--sp-1)' }}>{phaseCues.totalCount === 1 ? 'The 1 part of your plan this count reads' : `The ${phaseCues.totalCount} parts of your plan this count reads`}</div>
                       {/* RECON MODEL grounding: why this number and the inventories
                           below it can never be compared one-to-one. */}
                       <p className="grounding" style={{ margin: '0 0 6px' }}>
@@ -14795,7 +14862,9 @@ export default function HostShellV2() {
                       and nothing an author wrote is unreachable. Resolved counts
                       run 4-6 across all 45 playbooks (Watch Party's 36 raw entries
                       collapse through copyByAnswer), so the open state is bounded. */}
-                  {heartMoments.length > 0 && (() => {
+                  {/* A moment to protect is a planning note; after the day there is
+                      nothing left to protect it from (audit 2 lane C P0-5). */}
+                  {heartMoments.length > 0 && !isPast && (() => {
                     const text = (m) => String((m && (m.label || m.title || m.moment)) || m);
                     const rest = heartMoments.slice(1);
                     return (
@@ -14933,6 +15002,9 @@ export default function HostShellV2() {
                    venue action is first; a second copy below the fold is the
                    duplicate surface the board ruled against. */
                 .filter(b => !(heroCarriesVenue && /venue/i.test(String(b.title || ''))))
+                /* A foundation ask has no job once the day has come (audit 2
+                   lane C P0-6): the trip asked for its venue on day 3. */
+                .filter(() => !(days !== null && days <= 0))
                 /* And the same promise for any OTHER critical blocker the engine
                    promotes into the hero — matched on `blockerType`, which both
                    sides carry, rather than on the rendered title. */
@@ -15616,9 +15688,14 @@ export default function HostShellV2() {
                 // where the answer lives — instead of storing a second one.
                 const rainHas = (() => { try { return rainPlanStatus(event).hasPlan; } catch { return false; } })();
                 const isRainRow = (p) => p.key === 'weather';
-                const isChecked = (p) => (isRainRow(p) && rainHas) || !!checked[p.key];
+                // ONE TICK (audit 2 lane A P0-6): a row derived from the checklist's
+                // own day-of step IS that step, so it reads and writes the step.
+                const stepIx = (key) => (event.timeline || []).findIndex((t) => t && String(t.id) === String(key));
+                const stepDone = (key) => { const i = stepIx(key); return i >= 0 && !!event.timeline[i].done; };
+                const isChecked = (p) => (isRainRow(p) && rainHas) || !!checked[p.key] || stepDone(p.key);
                 const done = rc.items.filter(isChecked).length;
                 const toggle = (key) => {
+                  if (stepIx(key) >= 0 && !checked[key]) { toggleTask(stepIx(key)); return; }
                   const next = { ...checked };
                   if (next[key]) delete next[key]; else next[key] = true;
                   patchEvent({ safetyChecked: next },
@@ -16266,7 +16343,7 @@ export default function HostShellV2() {
                     ) : null}
                     <div className="line total">
                       <span>{isPast ? 'Recorded spent' : 'Expected total'}</span>
-                      <span className={'amt' + (money.planned && money.committed <= money.planned ? ' under' : '')}>
+                      <span className={'amt' + (money.planned && (isPast ? afterSpendVerdict(money).state === 'inside' : (expectedHeadroom(money) || 0) >= 0) ? ' under' : '')}>
                         {/* The rows above each wear "~" (est.); this total is the
                             sum of them, so it wears the marker too (app-wide
                             estimate pass 2026-07-29) — a total is not firmer than
@@ -29143,17 +29220,17 @@ export default function HostShellV2() {
           className={'next-bar' + (((queue.length === 0 || listIsCalm) && !calmVeto) ? ' allset' : '')}
           /* The bar's title ellipsizes on long asks — the full text must survive
              somewhere reachable (audit cleanup 2026-07-22: truncation-without-title). */
-          title={days === 0 ? 'Run the day' : (listIsCalm ? (calmVeto ? calmVeto.label : 'All quiet') : String(queue[0].title || ''))}
+          title={(days === 0 || dayHero) ? 'Run the day' : (listIsCalm ? (calmVeto ? calmVeto.label : 'All quiet') : String(queue[0].title || ''))}
           onClick={() => {
-            if (days === 0) { setStage('day'); return; }
+            if (days === 0 || dayHero) { setStage('day'); return; }
             if ((queue.length && !listIsCalm) || calmVeto) { try { heroZoneRef.current && heroZoneRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* no hero zone */ } return; }
             document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' });
           }}
           aria-label="Next thing that needs you"
         >
           <span className="nb-label">Next</span>
-          <span className="nb-title">{days === 0 ? 'Run the day' : (listIsCalm ? (calmVeto ? calmVeto.label : 'All quiet') : String(queue[0].title || '').replace(/\.+$/, ''))}</span>
-          {days !== 0 && !listIsCalm && queue.length > 1 && (
+          <span className="nb-title">{(days === 0 || dayHero) ? 'Run the day' : (listIsCalm ? (calmVeto ? calmVeto.label : 'All quiet') : String(queue[0].title || '').replace(/\.+$/, ''))}</span>
+          {days !== 0 && !dayHero && !listIsCalm && queue.length > 1 && (
             /* LABEL THE COUNT, DO NOT RENUMBER IT (both panels ruled, 2026-07-30).
                This badge counts QUEUE ITEMS while the sentence beside it counts
                DECISIONS, so "+6" next to "3 open" read as a contradiction — and the

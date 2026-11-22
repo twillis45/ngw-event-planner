@@ -30,7 +30,8 @@ describe('dietary/allergy axis', () => {
     let gaps = 0;
     for (const pb of ALL_PLAYBOOKS) gaps += detectGapsInPlaybook(pb).filter((g) => String(g.type).includes('dietary-ungrounded')).length;
     expect(gaps).toBe(0);
-    const b = playbookDecisionBoard({ id: 'e', type: 'Crab Feast', date: '2026-09-01', guests: [{ name: 'a' }], guestEstimate: 20 });
+    // asOf before the event: a past event's board holds no open calls (audit 2 lane C P0-5).
+    const b = playbookDecisionBoard({ id: 'e', type: 'Crab Feast', date: '2026-09-01', guests: [{ name: 'a' }], guestEstimate: 20 }, '2026-08-01');
     const rows = [...b.open, ...b.locked, ...(b.deferred || [])];
     expect(rows.some((r) => r.dietaryGrounded === true)).toBe(true);
   });
