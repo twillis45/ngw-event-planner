@@ -52,6 +52,20 @@ export function byobPickFor(decisions, text) {
   return pick ? { id: d.id, pick } : null;
 }
 
+/**
+ * "no kids" / "adults only" (the parser's kidsPolicy) → the audience call's
+ * adults-only option, when the playbook has one (audit lane B, 11/22/2026:
+ * "40 adults, no kids" was saved adults-only while the Halloween audience call
+ * proposed "Family party — all ages"). null when she did not say it or the
+ * playbook asks no such question.
+ */
+export function adultsOnlyPickFor(decisions, kidsPolicy) {
+  if (kidsPolicy !== 'adults_only') return null;
+  const d = (decisions || []).find((x) => x && x.id === 'audience');
+  const pick = d && Array.isArray(d.options) ? d.options.map(String).find((o) => /^adults?[\s-]only\b/i.test(o)) : null;
+  return pick ? { id: d.id, pick } : null;
+}
+
 /** "including 8 kids", "plus 3 children" → 8. */
 export function heardKidsCount(text) {
   const m = String(text || '').match(new RegExp(`\\b${NUM}\\s+(?:little\\s+)?(?:kids|children|little ones)\\b`, 'i'));

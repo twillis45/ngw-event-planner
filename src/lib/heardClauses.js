@@ -118,6 +118,20 @@ export function heardVendorIntents(text) {
   return rows;
 }
 
+// The creation preview's line for those rows. It said "These start as
+// Considering, not booked." over a DJ she said was already booked and that was
+// then saved Booked (audit lane B, 11/22/2026). Booked roles are named as
+// booked; only the rest carry the Considering note. null with no roles.
+export function vendorRolesLine(roles) {
+  const name = (v) => v.name || v.category;
+  const booked = (roles || []).filter((v) => v && v.status === 'Booked').map(name);
+  const open = (roles || []).filter((v) => v && v.status !== 'Booked').map(name);
+  const parts = [];
+  if (booked.length) parts.push(`Already booked: ${booked.join(' · ')}.`);
+  if (open.length) parts.push(`Vendor roles to consider: ${open.join(' · ')}. These start as Considering, not booked.`);
+  return parts.length ? parts.join(' ') : null;
+}
+
 // heardFoods (gold run GOLD-05, 11/5/2026): the creation seam now writes the
 // foods she named, so they are read here too — otherwise they are reported as
 // dropped while being on the menu. Mapped to names: its rows carry a regex.

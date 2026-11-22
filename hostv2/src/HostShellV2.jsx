@@ -146,8 +146,8 @@ import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import MustHaves from './MustHaves';
 import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded, lodgingIsHeld, KITCHEN_ANSWERS } from '@app/lib/lodgingIntel';
 import { heardAccessNeeds, accessNeedsFor } from '@app/lib/accessNeeds';
-import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch, heardVendorIntents } from '@app/lib/heardClauses';
-import { potluckPickFor, byobPickFor, heardKidsCount, heardAllergyCounts, heardOvernightCount } from '@app/lib/heardFacts';
+import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch, heardVendorIntents, vendorRolesLine } from '@app/lib/heardClauses';
+import { potluckPickFor, byobPickFor, adultsOnlyPickFor, heardKidsCount, heardAllergyCounts, heardOvernightCount } from '@app/lib/heardFacts';
 import { timeOfDayFor } from '@app/lib/knownFacts';
 import { kidsCountAfterRoster } from '@app/lib/kidsCountAfterRoster';
 import { hostNameFor } from '@app/lib/hostNameFor';
@@ -10440,10 +10440,11 @@ export default function HostShellV2() {
     // "POTLUCK" AND "BYOB" ARE HER ANSWERS (owner, 11/21/2026). "Potluck
     // Thanksgiving" stored nothing, so who-cooks proposed host-cooks; "BYOB" was
     // listed as dropped while the drinks call proposed its default. Recorded the
-    // way her game style is, before the checklist is drawn.
+    // way her game style is, before the checklist is drawn. "no kids" is her
+    // audience answer the same way (audit lane B, 11/22/2026).
     try {
       const decs = (getPlaybook(ev.type) || {}).decisions || [];
-      [potluckPickFor(decs, smartText), byobPickFor(decs, smartText)].filter(Boolean).forEach(({ id, pick }) => {
+      [potluckPickFor(decs, smartText), byobPickFor(decs, smartText), adultsOnlyPickFor(decs, ev.kidsPolicy)].filter(Boolean).forEach(({ id, pick }) => {
         ev.foodChoices = { ...(ev.foodChoices || {}), [id]: pick };
         ev.choiceSource = { ...(ev.choiceSource || {}), [id]: 'host' };
       });
@@ -11825,12 +11826,9 @@ export default function HostShellV2() {
                         </p>
                       )}
                       {(() => {
-                        const roles = heardVendorIntents(smartText);
-                        if (!roles.length) return null;
-                        return <p className="grounding" style={{ margin: '12px 0 0' }}>
-                          Vendor roles to consider: {roles.map((v) => v.name || v.category).join(' · ')}.
-                          {' '}These start as Considering, not booked.
-                        </p>;
+                        const line = vendorRolesLine(heardVendorIntents(smartText));
+                        if (!line) return null;
+                        return <p className="grounding" style={{ margin: '12px 0 0' }}>{line}</p>;
                       })()}
                       {(() => {
                         let dropped = [];
