@@ -24,7 +24,8 @@ import { hostSpending } from './hostSpending';
 import { vendorIsCommitted } from './vendorMoney';
 import { playbookFoodPlan, playbookCapacity, guestCountResolved } from './playbooks';
 import { buildCrabPlan, UNIT_LABEL, SIZE_LABEL } from './crabPlan';
-import { guestCountIsConfirmed } from './guestCountFor';
+import { guestCountIsConfirmed, guestCountFor } from './guestCountFor';
+import { confirmedRsvpCovers } from './confirmedCovers';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const mid = (lo, hi) => {
@@ -213,9 +214,13 @@ export function buildBudgetRecoveryPlan(event, priceFactor) {
 
   // ── safe_cut · guest-count right-sizing — only with a real count AND a live
   //    roster showing fewer yeses than the number the plan is sized for.
-  if (hasRealCount && Array.isArray(ev.guests) && ev.guests.length > 0) {
-    const yes = ev.guests.filter(g => g && /^y/i.test(String(g.rsvp || ''))).length;
-    const sized = num(ev.guestCount) || num(ev.guestEstimate) || ev.guests.length;
+  //    PEOPLE, NOT ROWS, AND NEVER IN HEADCOUNT MODE (Wanda audit P0-7). It
+  //    read "Re-size for 7 confirmed guests" for seven Yes rows bringing 17
+  //    people, on a host planning by headcount whose rows are tracking only.
+  //    confirmedRsvpCovers is the one heads reader; guestCountFor the one count.
+  if (hasRealCount && ev.guestMode !== 'count' && Array.isArray(ev.guests) && ev.guests.length > 0) {
+    const yes = confirmedRsvpCovers(ev);
+    const sized = num(guestCountFor(ev).count);
     const pendingReplies = counted && !counted.resolved;
     if (!pendingReplies && yes > 0 && yes < sized) {
       suggestions.push({
