@@ -5,7 +5,7 @@ import { budgetIsSet } from './budgetFor';
 import { rsvpHasResponded } from './rsvp';
 import { chaseAnsweredOrNudged } from './replyNudge';
 // Live binding, read only at call time: playbooks imports this module too.
-import { openFoodChoices, isDietaryChoice, playbookFoodPlan, hostBuysLine, dietaryNoted, stepCalls, stepCallsAnswered } from './playbooks';
+import { openFoodChoices, isDietaryChoice, playbookFoodPlan, hostBuysLine, dietaryNoted, stepCalls, stepCallsAnswered, stepBooks } from './playbooks';
 import { buildTravelPlan } from './travelPlan';
 import { sendStateFor } from './sendLedger';
 import { DATE_POLL_ROW, datePollSettled } from './datePoll';
@@ -64,6 +64,29 @@ export function invitesOut(event) {
   return (Array.isArray(event.guests) ? event.guests : []).some((g) => rsvpHasResponded(g));
 }
 
+// ─── WHO IS BOOKED, BY ROLE: ONE TABLE ──────────────────────────────────────
+// A role as a step names it → the words a vendor of that role carries in its
+// name, category or type. Booked means isVendorBooked on event.vendors, the
+// record every booking proof reads. The booking-verb rule below and the steps
+// that list their roles (`books` on a playbook task) both read this table.
+export const BOOKING_ROLES = [
+  [/cater/, /cater|food/],
+  [/photograph|videograph/, /photo|video/],
+  [/\bdj\b|\bbanda?\b|entertain|\bmusic\b/, /\bdj\b|music|banda?\b|entertain/],
+  [/florist|\bflowers?\b/, /flor/],
+  [/\bcake\b|\bbaker\b/, /bak|cake/],
+  [/officiant/, /offici/],
+  [/\bplanner\b|coordinator/, /planner|coordinat/],
+];
+const vendorBookedAs = (event, vendRe) => (Array.isArray(event && event.vendors) ? event.vendors : [])
+  .some((v) => v && isVendorBooked(v) && vendRe.test(((v.name || '') + ' ' + (v.category || '') + ' ' + (v.type || '')).toLowerCase()));
+/** Is a vendor of this role booked? `role` is the step's word for it ("band/DJ"). */
+export function roleBooked(event, role) {
+  const r = String(role || '').toLowerCase();
+  const hit = BOOKING_ROLES.find(([taskRe]) => taskRe.test(r));
+  return !!hit && vendorBookedAs(event, hit[1]);
+}
+
 export function taskSatisfied(event, task) {
   if (!event || !task) return false;
   const s = String(task.task || task.text || '').toLowerCase();
@@ -76,6 +99,11 @@ export function taskSatisfied(event, task) {
   // budget is one of them, not the step. So no keyword rule below may clear a
   // step that names calls; it clears when every call it names is answered.
   if (typeof task.id === 'string' && task.id.startsWith('pbt-') && stepCalls(event, task).length) return stepCallsAnswered(event, task);
+  // A STEP THAT LISTS ITS ROLES (Wedding's "Sign planner, photographer,
+  // caterer, band/DJ") is done when every role it lists is booked — and only
+  // then: its "book a year out" used to let the caterer branch below tick it.
+  const books = stepBooks(event, task);
+  if (books.length) return books.every((r) => roleBooked(event, r));
   // THE DINNER'S OWN STEPS tick from the dinner's parts (queued from #222):
   // the night step when the night is picked, the place step when a place is
   // named in Venue — the same `set` the dinner sheet and the board card show.
@@ -290,17 +318,12 @@ export function taskSatisfied(event, task) {
   // proven by a DJ the host actually booked (isVendorBooked),
   // never by a florist, and never by a name typed while still considering.
   const vendors = Array.isArray(event.vendors) ? event.vendors : [];
-  const bookedMatch = (re) => vendors.some((v) => v && isVendorBooked(v)
-    && re.test(((v.name || '') + ' ' + (v.category || '') + ' ' + (v.type || '')).toLowerCase()));
+  const bookedMatch = (re) => vendorBookedAs(event, re);
   if (/\b(book(ed)?|hire[ds]?|lock(ed)? in|secure[d]?)\b/.test(s) || /vendor/.test(s)) {
     if (/cater/.test(s)) return bookedMatch(/cater|food/);
-    const roles = [
-      [/photograph|videograph/, /photo|video/],
-      [/\bdj\b|\bbanda?\b|entertain|\bmusic\b/, /\bdj\b|music|banda?\b|entertain/],
-      [/florist|\bflowers?\b/, /flor/],
-      [/\bcake\b|\bbaker\b/, /bak|cake/],
-      [/officiant/, /offici/],
-    ];
+    // The caterer is answered above. The planner role stays out of this rule:
+    // no step was proven by a booked planner before the table was shared.
+    const roles = BOOKING_ROLES.filter(([taskRe]) => !taskRe.test('caterer') && !taskRe.test('planner'));
     const named = roles.filter(([taskRe]) => taskRe.test(s));
     if (named.length) return named.every(([, vendRe]) => bookedMatch(vendRe));
     if (/vendor|\bhire[ds]?\b|book a /.test(s)) return vendors.some((v) => v && isVendorBooked(v));

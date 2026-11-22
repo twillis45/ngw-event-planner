@@ -79,7 +79,7 @@ import ptaBoosterFundraiser from './data/ptaBoosterFundraiser';
 import { resolveCanonicalType } from '../eventTaxonomyAdapter';
 import { audiencePersona } from '../nextActionRenderer';
 import { quantityBasis } from '../quantities/quantityBasis';
-import { taskSatisfied } from '../taskEngine';
+import { taskSatisfied, roleBooked } from '../taskEngine';
 import { expectedFromPlanned, attendanceShift, implausibleGuestNote } from '../attendanceModel';
 import { SOURCING_TIERS, DEFAULT_SOURCING, sourcingTier, sourcingFactor, isProteinItem, canonicalProteinPrice, nonProteinFactor, extraSupplyStores, canonicalSubstitutes } from '../sourcing';
 import { resolveEffectiveItem } from '../effectiveItem'; // FOOD-2A: read-only normalized projection of `list`
@@ -1032,6 +1032,31 @@ export function stepCalls(event, task) {
     : (words ? tasks.find((x) => x && (x.label === words || stepLeftAsk(event, x) === words)) : null);
   return t && Array.isArray(t.answeredBy) ? t.answeredBy : [];
 }
+// ─── A STEP THAT LISTS ITS ROLES NAMES ONLY THOSE LEFT (queued from #222) ───
+// A task's `books` lists the vendor roles its label names, in the label's own
+// words ("planner, photographer, caterer, band/DJ"). The label says only the
+// roles with no booked vendor yet (taskEngine.roleBooked, on event.vendors);
+// with all booked it keeps the authored words, and taskEngine ticks it.
+function booksLeftLabel(event, t, base) {
+  const books = t && Array.isArray(t.books) ? t.books : [];
+  const list = books.join(', ');
+  if (!books.length || !String(base).includes(list)) return base;
+  const left = books.filter((r) => !roleBooked(event, r));
+  return left.length && left.length < books.length ? String(base).replace(list, left.join(', ')) : base;
+}
+// The roles a checklist step lists: by its engine row id, or by its words
+// (the authored label, or the label with only the roles left). [] when none.
+export function stepBooks(event, task) {
+  if (!event || !task) return [];
+  const pb = getPlaybook(event.type);
+  const tasks = ((pb && pb.tasks) || []).filter((x) => x && Array.isArray(x.books) && x.books.length);
+  if (!tasks.length) return [];
+  const id = typeof task.id === 'string' && task.id.startsWith('pbt-') ? task.id : null;
+  const words = String(task.task || task.text || '').trim();
+  const t = id ? tasks.find((x) => id === `pbt-${event.id}-${x.id}`)
+    : (words ? tasks.find((x) => x.label === words || booksLeftLabel(event, x, x.label) === words) : null);
+  return t ? t.books : [];
+}
 export function stepCallsAnswered(event, task) {
   if (!event || !task || typeof task.id !== 'string' || !task.id.startsWith('pbt-')) return false;
   const ids = stepCalls(event, task);
@@ -1752,7 +1777,7 @@ export function playbookChecklist(event, asOf) {
       // connecting-room ask on the lodging call). Tasks without one are untouched.
       // taskLabelFor picks the arrival-mode wording BEFORE the answered-copy
       // override, so a task can vary by both without either clobbering the other.
-      task: (stepLeftAsk(event, t) || resolveAnsweredCopy(taskLabelFor(event, t), t.copyByAnswer, event))
+      task: (stepLeftAsk(event, t) || booksLeftLabel(event, t, resolveAnsweredCopy(taskLabelFor(event, t), t.copyByAnswer, event)))
         + (t.kidsLine && kidsComing ? ` — ${t.kidsLine}` : ''),
       // 'event-day' buckets a T0 task under THE DAY tab; everything else is planning.
       category: eventDay ? 'event-day' : 'planning',
