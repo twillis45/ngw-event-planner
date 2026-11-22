@@ -38,8 +38,9 @@ describe('vite config defines the build vars', () => {
   });
 
   it('says dev, with no time, when the env is missing', () => {
-    expect(defined(configFor(undefined))).toEqual({ commit: 'dev', builtAt: null });
-    expect(defined(configFor(''))).toEqual({ commit: 'dev', builtAt: null });
+    // `version: null` since the calendar version (11/22/2026, releaseVersion.test.mjs).
+    expect(defined(configFor(undefined))).toEqual({ commit: 'dev', builtAt: null, version: null });
+    expect(defined(configFor(''))).toEqual({ commit: 'dev', builtAt: null, version: null });
   });
 
   it('the release telemetry reads the same commit', () => {

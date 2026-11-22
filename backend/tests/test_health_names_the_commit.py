@@ -54,8 +54,24 @@ def test_health_reports_process_start_in_utc_iso(monkeypatch):
     assert _get(monkeypatch).json()["started_at"] == started
 
 
+# The calendar version (owner, 11/22/2026): RELEASE_VERSION when the host sets
+# it (vYYYY.MM.DD.N without the v, the name the Pages deploy tags), else
+# "unknown". Render does not set it on its own, so "unknown" is the honest
+# default until it is configured.
+def test_health_reports_the_release_version(monkeypatch):
+    monkeypatch.setenv("RELEASE_VERSION", "2026.11.22.3")
+    assert _get(monkeypatch, "abc1234").json()["version"] == "2026.11.22.3"
+
+
+def test_health_version_is_unknown_without_the_env_var(monkeypatch):
+    monkeypatch.delenv("RELEASE_VERSION", raising=False)
+    assert _get(monkeypatch).json()["version"] == "unknown"
+    monkeypatch.setenv("RELEASE_VERSION", "")
+    assert _get(monkeypatch).json()["version"] == "unknown"
+
+
 def test_health_exposes_nothing_else(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "postgres://user:secret@host/db")
     body = _get(monkeypatch, "abc1234").json()
-    assert set(body) == {"ok", "service", "commit", "started_at"}
+    assert set(body) == {"ok", "service", "commit", "version", "started_at"}
     assert "secret" not in str(body)

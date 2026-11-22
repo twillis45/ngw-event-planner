@@ -41,9 +41,13 @@ export default defineConfig(({ command, mode }) => {
   // a local build byte-identical across runs. Pinned by
   // test/theBuildSaysWhichCommit.test.mjs; the deploy checks the meta tag.
   const releaseSha = process.env.RELEASE_SHA || appEnv.REACT_APP_RELEASE_SHA || '';
+  // The calendar version (owner, 11/22/2026): RELEASE_VERSION is set by the
+  // deploy from scripts/calver.mjs (vYYYY.MM.DD.N without the v). No env, no
+  // version: null, never a made-up one. Pinned by test/releaseVersion.test.mjs.
+  const releaseVersion = process.env.RELEASE_VERSION || null;
   const build = releaseSha
-    ? { commit: releaseSha, builtAt: new Date().toISOString() }
-    : { commit: 'dev', builtAt: null };
+    ? { commit: releaseSha, builtAt: new Date().toISOString(), version: releaseVersion }
+    : { commit: 'dev', builtAt: null, version: releaseVersion };
   return {
     // Production build ships as a static bundle under the Pages site.
     // E2E_BASE: `vite preview` runs as command==='serve', so without this the
@@ -86,10 +90,19 @@ export default defineConfig(({ command, mode }) => {
         transformIndexHtml: {
           order: 'pre',
           handler: (html) => html.replace('</head>',
-            `  <meta name="ngw-build" content="${[build.commit, build.builtAt].filter(Boolean).join(' ')}" />\n  </head>`),
+            `  <meta name="ngw-build" content="${[build.commit, build.builtAt].filter(Boolean).join(' ')}" />\n`
+            + (build.version ? `  <meta name="ngw-build-version" content="${build.version}" />\n` : '')
+            + '  </head>'),
         },
       },
     ],
+    // ── SOURCE MAPS FOR SENTRY, NEVER ON THE PAGE (owner, 11/22/2026) ────
+    // Off by default. The deploy sets SENTRY_SOURCEMAPS=1 only when a
+    // SENTRY_AUTH_TOKEN secret exists; then the maps are 'hidden' (no
+    // sourceMappingURL comment in the bundle), uploaded to Sentry, and deleted
+    // before the artifact is published (pages-from-source.yml). The offline
+    // shell never precaches .map (SHELL_EXT).
+    build: { sourcemap: process.env.SENTRY_SOURCEMAPS === '1' ? 'hidden' : false },
     resolve: {
       alias: { '@app': path.resolve(__dirname, '../src') },
       // ONE REACT. hostv2/node_modules carried 19.2.7 while the root carried

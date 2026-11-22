@@ -98,6 +98,10 @@ jobs:
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
+    # The release name, handed to the `tag` job (owner, 11/22/2026).
+    outputs:
+      tag: ${{ steps.calver.outputs.tag }}
+      is_new: ${{ steps.calver.outputs.is_new }}
     # PUBLIC production configuration, job-scoped so BOTH builds inherit it.
     #
     # These are GitHub repository (or environment) VARIABLES — `vars.*`, not
@@ -156,6 +160,11 @@ jobs:
       REACT_APP_BILLING_LIVE: ${{ vars.REACT_APP_BILLING_LIVE }}
       REACT_APP_GOOGLE_MAPS_KEY: ${{ vars.REACT_APP_GOOGLE_MAPS_KEY }}
       REACT_APP_OPENWEATHER_KEY: ${{ vars.REACT_APP_OPENWEATHER_KEY }}
+      # SOURCE MAPS FOR SENTRY (owner, 11/22/2026). A yes/no, not the token:
+      # '1' only when a SENTRY_AUTH_TOKEN secret exists, which makes hostv2's
+      # build write 'hidden' maps (vite.config.js). The token itself is given
+      # to the upload step alone. No secret → no maps, and nothing changes.
+      SENTRY_SOURCEMAPS: ${{ secrets.SENTRY_AUTH_TOKEN != '' && '1' || '' }}
       # REACT_APP_PLANNER_TOKEN / _AUTH_BYPASS / _BYPASS_ROLE are deliberately
       # ABSENT and are rejected by the validator if ever introduced.
     steps:
@@ -219,6 +228,22 @@ jobs:
       - name: Validate release configuration for the chosen profile
         run: node scripts/validate-production-config.mjs --mode="${RELEASE_PROFILE}"
 
+      # ── name the release (owner, 11/22/2026) ─────────────────────────────
+      # vYYYY.MM.DD.N, the owner's calendar day (America/New_York) and that
+      # day's count + 1 (scripts/calver.mjs). Named BEFORE the build so hostv2
+      # bakes it beside the commit; the tag is pushed by the `tag` job only
+      # after the site is live. A commit that already has a calendar tag (a
+      # re-run, a rollback dispatch) keeps it. Only the v* tags are fetched,
+      # one commit deep, so the shallow checkout stays shallow.
+      - name: Name this release (calendar version)
+        id: calver
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin '+refs/tags/v*:refs/tags/v*' || true
+          version="$(node scripts/calver.mjs version --github-output)"
+          echo "RELEASE_VERSION=${version}" >> "$GITHUB_ENV"
+          echo "release version ${version}"
+
       # ── build the release artifact from THIS commit ──────────────────────
       # `npm run release` = build hostv2 → sync into public/hostv2 → CRA build.
       # Both builds run in this same job, so both inherit the job-level env
@@ -271,6 +296,37 @@ jobs:
           grep -qF "<meta name=\"ngw-build\" content=\"${RELEASE_SHA} " build/hostv2/index.html \
             || { echo "::error::build/hostv2/index.html has no ngw-build meta tag naming ${RELEASE_SHA}"; exit 1; }
           echo "hostv2 stamped: $(grep -o '<meta name="ngw-build"[^>]*>' build/hostv2/index.html)"
+
+      # ── hostv2 source maps: to Sentry, never to the public site ──────────
+      # (owner, 11/22/2026). Built only when SENTRY_SOURCEMAPS=1, as 'hidden'
+      # maps, and uploaded against release = RELEASE_SHA, the same value
+      # initSentry reads off window.__BUILD__. Without the secret this says so
+      # and exits 0. SENTRY_ORG / SENTRY_PROJECT are repository variables.
+      # The CLI is fetched at a pinned version here only; it is not a
+      # dependency of the app. Pinned by src/__tests__/sourceMapsStayOffThePage.test.js.
+      - name: Upload hostv2 source maps to Sentry (only with a token)
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
+            echo "no SENTRY_AUTH_TOKEN secret: source maps were not built or uploaded"
+            exit 0
+          fi
+          npx --yes @sentry/cli@2.39.1 sourcemaps upload \
+            --release "${RELEASE_SHA}" --url-prefix '~/hostv2/assets' build/hostv2/assets
+
+      # Every profile, token or not: no hostv2 .map reaches the Pages artifact.
+      - name: Keep hostv2 source maps off the public site
+        run: |
+          set -euo pipefail
+          find build/hostv2 -name '*.map' -delete
+          if [ -n "$(find build/hostv2 -name '*.map' -print -quit)" ]; then
+            echo "::error::a hostv2 source map is still in the artifact"; exit 1
+          fi
+          echo "no hostv2 source maps in the artifact"
 
       # ── prove BOTH bundles received the intended configuration ───────────
       # CRA and hostv2 are compiled by different toolchains from different
@@ -362,3 +418,29 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # ── TAG THE RELEASE, AFTER IT IS LIVE (owner, 11/22/2026) ────────────────
+  # The only job that may write to the repository, and it writes one tag: the
+  # name the build job chose and baked (vYYYY.MM.DD.N). A merge to main only
+  # (workflow_run); a manual dispatch never tags. Skipped when the commit was
+  # already tagged. The `pages` concurrency group serializes runs, so two
+  # merges on one day cannot pick the same N.
+  tag:
+    needs: [build, deploy]
+    if: github.event_name == 'workflow_run' && needs.build.outputs.is_new == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - name: Push the release tag
+        env:
+          TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${TAG}" -m "Release ${TAG#v}"
+          git push origin "refs/tags/${TAG}"
