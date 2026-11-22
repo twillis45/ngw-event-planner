@@ -42,14 +42,12 @@ describe('4 · every clause is used or reported', () => {
   test('BYOB a playbook holds as its drinks answer is used, not reported (Watch Party)', () => {
     expect(dropped('Super Bowl watch party at my apartment Feb 7, 12 people, BYOB')).not.toMatch(/byob/);
   });
-  test('a bare weekday with no date is reported', () => {
-    expect(dropped('Repast for my grandmother after the funeral Saturday at the church fellowship hall, about 100 people')).toMatch(/saturday/);
-    expect(dropped('Card party at my house friday night, 3 tables of 4')).toMatch(/friday night/);
-    expect(dropped('kids birthday party at chuck e cheese saturday, 20 kids')).toMatch(/saturday/);
-  });
-  test('"this weekend" / "next weekend" with no date is reported', () => {
-    expect(dropped('Sunday dinner this weekend for 10, two vegetarians')).toMatch(/this weekend/);
-    expect(dropped('game night for 8 friends next weekend, potluck')).toMatch(/next weekend/);
+  // A bare weekday and "this/next weekend" are no longer reported: the owner
+  // ruled on 11/22/2026 "Resolve to the next one with the date shown so she
+  // can fix it as well." (creationAWeekdayIsTheNextOne.test.js). One the plan
+  // cannot apply — a weekday inside a month she named — still is.
+  test('a weekday the plan could not apply is still reported', () => {
+    expect(dropped('wedding on a Saturday next September, 120 guests')).toMatch(/saturday/);
   });
   test('a weekday the plan used is not reported', () => {
     expect(dropped('dinner party for 8 next Friday at 7pm, adults only')).not.toMatch(/friday/);

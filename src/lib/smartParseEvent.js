@@ -72,6 +72,51 @@ const NOT_A_PLACE = /^(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|ju
 // party" still names the playbook.
 const _NAMED_DAY = /\b(?:memorial|labou?r|mother['’]?s|father['’]?s|valentine['’]?s|independence|veterans['’]?|presidents?['’]?s?|columbus|indigenous\s+peoples['’]?|mlk|election|new\s+year['’]?s|boxing|st\.?\s+patrick['’]?s|saint\s+patrick['’]?s|patriots['’]?|flag|earth|groundhog|thanksgiving|christmas|easter|juneteenth|game|field|snow|sick|spa|tax|moving|opening|wedding|graduation|turkey)\s+day\b/gi;
 
+// The end of a "<weekday> to <weekday>" span, read off a start that agrees
+// with its first weekday (see the date block's note on contradicted starts).
+// null when there is no span, the start disagrees, or both sides are one day.
+function _weekdaySpanEnd(date, t) {
+  const span = t.match(new RegExp(`\\b${_WD_SPAN}\\s*(?:to|through|thru|until|-|–|—)\\s*${_WD_SPAN}\\b`, 'i'));
+  if (!span) return null;
+  const fromDow = _dowOf(span[1]);
+  const toDow = _dowOf(span[2]);
+  const start = new Date(date + 'T12:00:00');
+  if (fromDow < 0 || toDow < 0 || isNaN(start) || start.getDay() !== fromDow) return null;
+  const add = (toDow - fromDow + 7) % 7;
+  if (add <= 0) return null;
+  const e = new Date(start);
+  e.setDate(e.getDate() + add);
+  return localISO(e);
+}
+
+// ── A BARE WEEKDAY IS THE NEXT ONE (owner ruling, 11/22/2026) ───────────────
+// "Resolve to the next one with the date shown so she can fix it as well."
+// Only for a sentence with no other date (the caller checks). A weekday alone
+// is its next occurrence after today — said on that weekday, next week's.
+// "this weekend" is the coming Saturday (today on a Saturday; the following
+// Saturday on a Sunday); "next weekend" is a week after that. A Sunday said
+// with a weekend is that weekend's Sunday. Returns a local ISO day or null.
+function _nextWeekdayDate(t, now) {
+  const wk = t.match(/\b(this|next|coming)\s+weekend\b/i);
+  const bare = t.match(/\b(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i);
+  const d = new Date(now); d.setHours(12, 0, 0, 0);
+  if (wk) {
+    let add = (6 - d.getDay() + 7) % 7;
+    if (wk[1].toLowerCase() === 'next') add += 7;
+    if (bare && bare[1].toLowerCase() === 'sunday') add += 1;
+    d.setDate(d.getDate() + add);
+    return localISO(d);
+  }
+  // A span's first day may be abbreviated ("Fri to Sun"); a lone "sat", "sun"
+  // or "wed" is too often an ordinary word to count.
+  const span = t.match(new RegExp(`\\b${_WD_SPAN}\\s*(?:to|through|thru|until|-|–|—)\\s*${_WD_SPAN}\\b`, 'i'));
+  const dow = span ? _dowOf(span[1]) : (bare ? DAYS.indexOf(bare[1].toLowerCase()) : -1);
+  if (dow < 0) return null;
+  const add = (dow - d.getDay() + 7) % 7 || 7;
+  d.setDate(d.getDate() + add);
+  return localISO(d);
+}
+
 export function parseSmartEventText(text, opts = {}) {
   const t = String(text || '');
   const now = opts.now instanceof Date && !isNaN(opts.now) ? opts.now : new Date();
@@ -543,12 +588,12 @@ export function parseSmartEventText(text, opts = {}) {
   // plan ends, and the end was dropped on the floor — the same silent-range-loss
   // class as the numeric and word-month ranges above.
   //
-  // THE BARE-WEEKDAY RULING IS NOT TOUCHED. The date block above deliberately
-  // requires "next"/"this" before a weekday, because "Friday" alone does not say
-  // which Friday. A sentence whose ONLY date words are "Friday to Sunday" still
-  // resolves to nothing, and must: this block cannot run without a `date`, so it
-  // can never be the thing that invents a start. It reads an END off a start that
-  // some other, stricter matcher already earned.
+  // THE BARE-WEEKDAY RULING CHANGED (owner, 11/22/2026: "Resolve to the next
+  // one with the date shown so she can fix it as well."). This block still
+  // cannot invent a start: it reads an END off a start some matcher earned.
+  // A sentence whose ONLY date words are "Friday to Sunday" now gets its start
+  // from _nextWeekdayDate after every other date form has had its turn, and
+  // the same _weekdaySpanEnd then reads the end (next Friday to that Sunday).
   //
   // A CONTRADICTED START PRODUCES NO SPAN. "Friday to Sunday, July 10" resolves
   // July 10 2027, which is a SATURDAY — the host's two facts disagree, and there
@@ -563,24 +608,7 @@ export function parseSmartEventText(text, opts = {}) {
   // (lib/dates spanNights, `overnight`) as a zero-night multi-day event, which is
   // a fabricated shape. "To the following Friday" is a week, and she did not say
   // "following", so it stays unheard rather than guessed at 0 or 7.
-  if (date && !endDate) {
-    const _WD = '(sunday|saturday|thursday|wednesday|tuesday|monday|friday|sun|sat|thurs|thur|thu|wed|tues|tue|mon|fri)\\.?';
-    const span = t.match(new RegExp(`\\b${_WD}\\s*(?:to|through|thru|until|-|–|—)\\s*${_WD}\\b`, 'i'));
-    if (span) {
-      const _dow = (w) => DAYS.findIndex((d) => d.startsWith(String(w).toLowerCase().replace(/\.$/, '').slice(0, 3)));
-      const fromDow = _dow(span[1]);
-      const toDow = _dow(span[2]);
-      const start = new Date(date + 'T12:00:00');
-      if (fromDow >= 0 && toDow >= 0 && !isNaN(start) && start.getDay() === fromDow) {
-        const add = (toDow - fromDow + 7) % 7;
-        if (add > 0) {
-          const e = new Date(start);
-          e.setDate(e.getDate() + add);
-          endDate = localISO(e);
-        }
-      }
-    }
-  }
+  if (date && !endDate) endDate = _weekdaySpanEnd(date, t);
   // Month + year, no day ("June of 2028", "June 2028") — a real signal the
   // host gave, but never precise enough to silently commit as their actual
   // date. We never invent a day for them — same as the type picker offers
@@ -662,6 +690,19 @@ export function parseSmartEventText(text, opts = {}) {
           : now.getFullYear() + (rel === 'next' ? 1 : 0);
         monthYear = { year, month, label: seasonLabel + ' ' + year };
       }
+    }
+  }
+
+  // A bare weekday or "this/next weekend", LAST, so any date she typed, a
+  // holiday, or a month she named wins (owner ruling 11/22/2026, above
+  // _nextWeekdayDate). Marked so the preview shows the weekday with the date.
+  let dateBasis = null;
+  if (!date && !monthYear && !impossibleDate) {
+    const d = _nextWeekdayDate(t, now);
+    if (d) {
+      date = d;
+      dateBasis = 'resolved-weekday';
+      if (!endDate) endDate = _weekdaySpanEnd(date, t);
     }
   }
 
@@ -2041,7 +2082,7 @@ export function parseSmartEventText(text, opts = {}) {
 
   return {
     hostName,
-    type: typeOut, typeBasis: typeBasisOut, typeHeard, secondaryType, theme, themeBasis, guests, guestPairs, budget, date, impossibleDate, endDate, datesToConfirm, monthYear, milestone, nights, lodgingKind,
+    type: typeOut, typeBasis: typeBasisOut, typeHeard, secondaryType, theme, themeBasis, guests, guestPairs, budget, date, dateBasis, impossibleDate, endDate, datesToConfirm, monthYear, milestone, nights, lodgingKind,
     // The trip's night the host named by its holiday, and that holiday (null when none).
     celebrationNight: _nyeNight, celebrationOccasion: _nyeNight ? 'New Year’s Eve' : null,
     isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
@@ -2194,11 +2235,11 @@ export function unusedClauses(text, opts = {}) {
   // the phrase is reported only when nothing creation derives read it.
   if (at && !p.venue && !p.venueAddress && !p.venueKind && !said('at ' + at[1])
     && (!p.venueCity || unusedAt(at.index, at[0].length))) out.push('at ' + at[1]);
-  // BARE WEEKDAYS, "THIS/NEXT WEEKEND" AND A MONTH WITH NOTHING ELSE: "the
-  // funeral Saturday", "friday night", "this weekend", "reunion in June" set no
-  // date (a bare weekday does not say which one — aWeekdaySpanNeedsAStart
-  // .test.js) and nothing said so, so the board asked for the day. Reported only
-  // when the plan has no date and the word changed nothing.
+  // A WEEKDAY, "THIS/NEXT WEEKEND" OR A MONTH THE PLAN COULD NOT APPLY: a bare
+  // weekday is the next one since the owner ruling of 11/22/2026, so what is
+  // left is "a Saturday next September" or "reunion in June" — no date set, and
+  // nothing said so. Reported only when the plan has no date and the word
+  // changed nothing.
   if (!p.date) {
     const re = new RegExp('\\b(?:(?:this|next|coming)\\s+weekend|((?:sun|mon|tues|wednes|thurs|fri|satur)day)(?:\\s+(?:night|morning|afternoon|evening))?'
       + '|(?:(?:the\\s+)?(?:first|last|second|third|fourth)\\s+weekend\\s+)?(?:(?:in|of|during)\\s+)?(?:early\\s+|late\\s+|mid-?\\s*)?((?:jan|febr)uary|march|april|june|july|august|september|october|november|december))\\b', 'gi');

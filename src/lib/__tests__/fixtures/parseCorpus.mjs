@@ -87,6 +87,11 @@ export const PARSER_FIELDS = [
   // say which ("a long weekend", "July 4th weekend", a trip with only a
   // start). A question owed, never a date; see aMultiDayTripIsHeardAtCreation.
   'datesToConfirm',
+  // `dateBasis` added 2026-11-22 (owner ruling "Resolve to the next one with
+  // the date shown so she can fix it as well."): 'resolved-weekday' when the
+  // date came from a bare weekday or "this/next weekend", so the preview shows
+  // the weekday with it; null for every date she typed.
+  'dateBasis',
   // `celebrationNight` and `celebrationOccasion` added 2026-11-22 (owner
   // ruling "trip wins"): a trip whose days include a holiday it is named for
   // ("New Year's Eve trip … Dec 30 – Jan 2") is a Group Trip, and that night is
@@ -118,7 +123,7 @@ export const PARSE_CORPUS = [
   { text: "Dinner at 6pm at 231 6th Avenue North, Nashville TN", from: 'derived variant — unspaced time, numbered street, spelled suffix', expect: { type: 'Dinner Party', startTime: '6:00 PM', startTimeBasis: 'said-exact', timeOfDay: 'evening', venueAddress: '231 6th Avenue', venueCity: 'Nashville', venueState: 'TN' } },
   // #9 corrected 2026-11-05: 'Day Party' was recorded from a substring bug — "day"
   // inside "Saturday". A bare "shower" names no specific type, so null is honest.
-  { text: "Shower on Saturday at 2 pm at 418 King Street Apt 4B, Alexandria VA", from: 'derived variant — apartment tail', expect: { venueAddress: '418 King Street Apt 4B', venueCity: 'Alexandria', venueState: 'VA', startTime: '2:00 PM', startTimeBasis: 'said-exact', type: null, date: null }, suspect: 'TWO. (1) type "Day Party" — the fallback substring match reads the "day" inside "Saturday". (2) date null — a bare weekday with no "this"/"next" is never parsed, so the one day she named is dropped.' },
+  { text: "Shower on Saturday at 2 pm at 418 King Street Apt 4B, Alexandria VA", from: 'derived variant — apartment tail', expect: { venueAddress: '418 King Street Apt 4B', venueCity: 'Alexandria', venueState: 'VA', startTime: '2:00 PM', startTimeBasis: 'said-exact', type: null, date: '2026-09-19', dateBasis: 'resolved-weekday' }, suspect: 'One left open: (1) type "Day Party" — the fallback substring match reads the "day" inside "Saturday". (2) was: date null for a bare weekday; since the owner ruling of 11/22/2026 ("Resolve to the next one with the date shown so she can fix it as well.") it is the next Saturday.' },
   { text: "Housewarming at 77 Maple Ct Unit 12, Raleigh NC for 25 people", from: 'derived variant — unit tail, abbreviated suffix', expect: { type: 'Housewarming', guests: 25, venueAddress: '77 Maple Ct Unit 12', venueCity: 'Raleigh', venueState: 'NC' } },
   { text: "Graduation party at 4400 Massachusetts Avenue NW, Washington DC for 60", from: 'derived variant — a street named after a state, in a city named after a state', expect: { type: 'Graduation', guests: 60, venueAddress: '4400 Massachusetts Avenue', venueCity: 'Massachusetts Avenue NW', venueState: 'WA' }, suspect: 'the STREET LINE became the town: venueCity "Massachusetts Avenue NW", venueState "WA" (Washington STATE, from "Washington DC"). Weather, the venue check and the home comparison all read this.' },
   { text: "Baby shower at 1600 Pennsylvania Ave, Washington DC for 30", from: 'derived variant — same shape as the Massachusetts Ave case, shorter street', expect: { type: 'Baby Shower', guests: 30, venueAddress: '1600 Pennsylvania Ave', venueCity: 'Pennsylvania Ave', venueState: 'WA' }, suspect: 'same defect as the Massachusetts Avenue entry — street read as city, "Washington DC" read as Washington state.' },
@@ -135,7 +140,7 @@ export const PARSE_CORPUS = [
   { text: "Graduation cookout, 3 kegs, 40 people", from: 'negative case — the counting noun decides which number is the headcount', expect: { type: 'Graduation', guests: 40, budget: null } },
   { text: "Reunion in June for 30", from: 'negative case — a month with no year commits to nothing', expect: { type: 'Reunion', guests: 30, date: null, monthYear: null, endDate: null, venueCity: null, venueState: null } },
   { text: "Cookout for 20 people", from: 'negative case — the minimum sentence; everything else must stay null', expect: { type: 'The Cookout', guests: 20, date: null, endDate: null, monthYear: null, budget: null, startTime: null, startTimeBasis: null, venueAddress: null, venueCity: null, venueState: null, honoree: null, theme: null, kidsPolicy: null, isDestination: false, destinationBasis: null, travelMode: null, overnight: null, milestone: null, secondaryType: null, vacationArea: null } },
-  { text: "Bridal shower on Saturday for 20", from: 'negative case — a bare weekday is not parsed as a date', expect: { type: 'Bridal Shower', guests: 20, date: null }, suspect: 'the host named a day and it is dropped. "on Saturday" only resolves when written "this Saturday"/"next Saturday".' },
+  { text: "Bridal shower on Saturday for 20", from: 'a bare weekday is the next one (owner ruling 11/22/2026: "Resolve to the next one with the date shown so she can fix it as well."); was a negative case that set no date', expect: { type: 'Bridal Shower', guests: 20, date: '2026-09-19', dateBasis: 'resolved-weekday' } },
   { text: "Zoom baby shower for 20", from: 'negative case — "Zoom" is not a town', expect: { type: 'Baby Shower', guests: 20, venueCity: null, venueState: null, isDestination: false } },
 
   // ── Times: spaced, unspaced, a.m., 24-hour, bucket-disambiguated, bare ────
@@ -212,7 +217,7 @@ export const PARSE_CORPUS = [
 
   // ── Type routing, honoree, milestone, theme, kids policy ──────────────────
   { text: "Engagement party at the clubhouse for 50, adults only", from: 'derived variant — a public venue phrase kept verbatim', expect: { type: 'Engagement Party', guests: 50, venue: 'The clubhouse', kidsPolicy: 'adults_only' } },
-  { text: "Kids birthday party at my brother's backyard on Saturday, kids welcome", from: 'derived variant — the other kids policy, and a possessive that is not an honoree', expect: { type: 'Birthday', kidsPolicy: 'kids_welcome', venue: "My brother's backyard", venueKind: 'home', honoree: null, date: null } },
+  { text: "Kids birthday party at my brother's backyard on Saturday, kids welcome", from: 'derived variant — the other kids policy, and a possessive that is not an honoree', expect: { type: 'Birthday', kidsPolicy: 'kids_welcome', venue: "My brother's backyard", venueKind: 'home', honoree: null, date: '2026-09-19' } }, // the next Saturday: owner ruling 11/22/2026
   { text: "Bridal shower at 2 pm, black and gold theme, 30 people", from: 'derived variant — theme phrase captured, not dropped', expect: { type: 'Bridal Shower', theme: 'black and gold', startTime: '2:00 PM', guests: 30 } },
   { text: "Birthday celebration for Vida, 20 people, $2500 budget", from: 'regression sentence, host report 2026-07-27 (the honoree was dropped)', expect: { type: 'Birthday', honoree: 'Vida', guests: 20, budget: 2500 } },
   { text: "50th birthday and 30 year Army retirement for Wanda", from: 'regression sentence — a dual event, host report (birthday was dropped)', expect: { type: 'Retirement Party', secondaryType: 'Birthday', milestone: '50th', honoree: 'Wanda' } },

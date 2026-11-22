@@ -11460,7 +11460,10 @@ export default function HostShellV2() {
                           {effGuests ? '~' + effGuests + (fGuests == null && parsed.guests == null ? ' · typical' : '') : 'How many?'}
                         </button>
                         <button className="chip" onClick={() => setCreateEdit(createEdit === 'date' ? null : 'date')}>
-                          {effDate ? new Date(effDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + (effEndDate ? ' – ' + new Date(effEndDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '') : (parsed.monthYear ? parsed.monthYear.label + ' · pick a day' : 'No date yet')}
+                          {/* A day read off a bare weekday or "this weekend" shows its
+                              weekday, "Sat, Nov 28", so she sees which one we took and
+                              can change it here (owner ruling 11/22/2026). */}
+                          {effDate ? new Date(effDate + 'T12:00:00').toLocaleDateString('en-US', { ...(parsed.dateBasis === 'resolved-weekday' && effDate === parsed.date ? { weekday: 'short' } : {}), month: 'short', day: 'numeric' }) + (effEndDate ? ' – ' + new Date(effEndDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '') : (parsed.monthYear ? parsed.monthYear.label + ' · pick a day' : 'No date yet')}
                         </button>
                         {/* No "Who's it for?" ask where the occasion honors nobody
                             (Friendsgiving, game night — lib/eventIdentity
