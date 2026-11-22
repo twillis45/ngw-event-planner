@@ -104,12 +104,12 @@ export function foodDecisionND(event, guests, boardRows, claimed) {
     if (approachSettled(leverId)) {
       const next = nextOpenFoodChoiceRow(event, boardRows, claimed);
       const nd = next ? boardDecisionND(event, next) : null;
-      if (nd) return { ...nd, selected: null, ask: next.ask || null };
+      if (nd) return { ...nd, selected: null, ask: next.ask || null, label: next.label || null };
     }
     if (leverId) {
       const row = (boardRows || []).find(x => x && x.id === leverId) || (call && call.id === leverId ? call : null);
       const nd = row ? boardDecisionND(event, row) : null;
-      if (nd) return { ...nd, selected: picks[leverId] || null, ask: row.ask || null };
+      if (nd) return { ...nd, selected: picks[leverId] || null, ask: row.ask || null, label: row.label || null };
     }
   } catch { /* fall through to the generic trio */ }
   const place = (() => { try { return venueKindOf(event); } catch { return null; } })();

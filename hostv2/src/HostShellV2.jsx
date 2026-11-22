@@ -5300,7 +5300,21 @@ export default function HostShellV2() {
         const row = open.find(r => r && String(r.id) === String(idn.decisionId));
         return row ? boardDecisionND(event, row) : null;
       },
-      actionAsk: (a) => heroAskFor(a, event),
+      // THE FOOD ITEM'S EDITOR ASKS A CALL OF ITS OWN (audit 2 lane A P2-1).
+      // The food cue carries no decision identity, so its headline came from the
+      // title ladder — "Decide the menu." — over the grill master, the bartender
+      // or the Super Bowl. When the panel it opens (wiredKind 'food' →
+      // foodND(records), the same builder) shows a playbook call, the headline is
+      // that call's question. The generic trio has none and keeps the ladder.
+      actionAsk: (a) => {
+        if (a && a.domain === 'food'
+          && !/^fp-diet/.test(String((a.route && a.route.focusField) || ''))) {
+          const nd = (() => { try { return foodDecisionND(event, guests, [...open, ...(decisionBoard.locked || [])], a.records); } catch { return null; } })();
+          const q = nd && nd.id !== 'phase:food' && nd.selected == null ? (normalizeAsk(nd.ask) || (nd.label ? questionFrom(nd.label) : null)) : null;
+          if (q) return q;
+        }
+        return heroAskFor(a, event);
+      },
     });
   })();
   // The board ROW behind the selection (authored assurance, overdue status) — the
@@ -9859,7 +9873,9 @@ export default function HostShellV2() {
       return (
         <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 'var(--sp-3)' }}>
           {foodGuide && <GuideLine gap={0}>{foodGuide}</GuideLine>}
-          {renderDecision(fnd)}
+          {/* The guide line above already says the ask-mode why; the panel
+              does not print it a second time (audit 2 lane A P2-2). */}
+          {renderDecision(foodGuide ? { ...fnd, why: null } : fnd)}
           {spreadLink()}
         </div>
       );
@@ -13286,7 +13302,10 @@ export default function HostShellV2() {
                 const menuND = (isHero && Array.isArray(a.records) && a.records.length)
                   ? (a.id === 'phase:food' ? (heroDecisionND || (!elegantMode ? foodND(a.records) : null)) : (wired === 'food' ? foodND(a.records) : null))
                   : null;
-                const menuAsk = (menuND && menuND.selected == null && menuND.ask) || null;
+                // When the headline already IS that question (audit 2 P2-1), the
+                // record line does not say it a second time.
+                const menuAskRaw = (menuND && menuND.selected == null && menuND.ask) || null;
+                const menuAsk = (menuAskRaw && String(menuAskRaw).replace(/[.?!\s]+$/, '').toLowerCase() === String(heroAskText || '').replace(/[.?!\s]+$/, '').toLowerCase()) ? null : menuAskRaw;
                 const rec = isHero
                   ? (menuAsk ? `${String(menuAsk).replace(/\.+$/, '')} · ${a.records.length} open` : heroRecord(a, heroAskText))
                   : null;
