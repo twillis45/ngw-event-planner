@@ -1,5 +1,15 @@
 # Where We Are -- live status board
 
+## November 21, 2026 (night) — asked once, a trip's dates as one range, and the dinner inside the trip
+
+**Nothing the host has already said is asked again.** What she says when she creates the event (potluck, bring your own, kids, allergies, staying over, already booked) is written down once. Any later question it already answers counts as settled. A question that is half answered asks only the part that's missing.
+
+**A trip's dates are one range, set in one place.** Date & time asks From and To, and every other screen shows that range. A trip with dates is recognized as a trip from the first sentence.
+
+**The celebration dinner is planned on its own, inside the trip.** The host picks the night, with day 2 suggested. The other meals are listed under "Your days". The money is shown in two parts: the dinner, and everything around it.
+
+**Which version is live can now be checked** on both the server and the app. Each dish has one record of who is bringing it.
+
 ## November 21, 2026 (evening) — prices you can trace, and the address in one piece
 
 **Every budget number now traces to a cited price.** The rough multipliers that stood in for "guests bring this" or "this is ordered" became real lines, and the few true ratios found published sources. Some defaults moved a lot, in the direction the plan already said.

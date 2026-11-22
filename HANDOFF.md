@@ -17,6 +17,33 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 21, 2026 (late night) — #222: nothing known is asked again, the dates are one range, the dinner inside the trip
+
+- **Never re-ask (owner: "Make sure ask is not repeated. Say chosen already"; 13-finding audit):**
+  - A call the event already answers is settled, and a half-known call asks only the rest (`decisionSettledByData`, `decisionKnownPart`).
+  - Creation writes what she said: potluck, BYOB, kids, allergy counts, overnight and booked.
+  - One store and one reader each for kids, guest counts, time of day and host name.
+  - Client Dinner asks only where you sit, and a fly-in retreat is a destination.
+  - The spec `nothingKnownIsAskedAgain` walks the audit's sentences.
+- **Dates are one source (owner: "Host should be asked for ranges not last day"):**
+  - Date & time asks one From – To range, and everywhere else shows it. `eventDates.js` is the only date setter, and the census test `eventDatesAreOneSource` holds that.
+  - A trip with dates is heard at creation as a Group Trip, and any days still owed are named. The Santa Fe 80th is the acceptance case.
+  - Space lost its day controls and keeps a read-only "Your days" row.
+- **The dinner inside the trip (owner: "B with A's money"; "Ask, suggest day 2"):**
+  - The board asks one dinner-night pick and suggests day 2. The dinner has its own sheet.
+  - The meals around it live in "Your days", which is now its own sheet.
+  - Plan shows two money layers, "The celebration" and "Around it" (`tripFoodMoney`).
+  - The invite carries the dinner's night and the group meals, not who pays. The dinner's place reads the venue through `venueFor`.
+- **Coverage:** `dayCrud.spec` retired, and its Space checks moved into `theDinnerInsideTheTrip.spec`.
+- **Queued next:**
+  - NYE trip → Group Trip with NYE as its celebration night.
+  - A missing end date becomes the board's main ask.
+  - Start time: both editors write through `eventDates`.
+  - Dinner steps grouped under the dinner.
+  - Restaurant-rate detection.
+  - Wedding "Sign planner…" step when partly booked.
+  - Orphaned spanEdit helpers.
+
 ## November 21, 2026 (night) — #221: which commit is live, one record for who brings each dish
 
 - **Which commit is live (owner: "Why do we not track which code version is loaded only health?"):**
