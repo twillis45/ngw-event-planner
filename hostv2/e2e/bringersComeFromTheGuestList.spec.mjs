@@ -56,7 +56,12 @@ test('Add an item: who\'s bringing it is picked from the guest list too', async 
   await page.getByRole('textbox', { name: 'Items to add, one per line' }).fill('Dinner rolls');
   await page.getByLabel("Who's bringing it (optional)").selectOption('Maya');
   await page.locator('[data-food-add-commit]').click();
-  await expect.poll(async () => ((await saved(page)).foodAdd || []).map((a) => [a.name, a.owner])).toEqual([['Dinner rolls', 'Maya']]);
+  // The name goes to the one record of who brings what (foodOwner, 11/21/2026),
+  // the same place Bringing writes, not onto the line.
+  await expect.poll(async () => {
+    const ev = await saved(page);
+    return (ev.foodAdd || []).map((a) => [a.name, a.owner, (ev.foodOwner || {})[a.id]]);
+  }).toEqual([['Dinner rolls', undefined, 'Maya']]);
 });
 
 test('Bringing: tapping away closes the picker, and Escape leaves a dish as it was', async ({ page }) => {

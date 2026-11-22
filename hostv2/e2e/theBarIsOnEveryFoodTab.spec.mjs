@@ -149,9 +149,16 @@ test('at completion the bar carries the Bringing screen\u2019s own words', async
       return true;
     });
     if (!opened) break;                       // every dish is named
-    const box = page.locator('input[id^="bringer-"]').first();
-    await box.fill('Aunt Rose');
-    await box.press('Enter');
+    // Once Aunt Rose has one dish she is a helper, and the picker offers her
+    // by name (helpers join the guest list there, 11/21/2026).
+    const pick = page.locator('select[id^="bringer-"]').first();
+    if (await pick.count()) {
+      await pick.selectOption('Aunt Rose');
+    } else {
+      const box = page.locator('input[id^="bringer-"]').first();
+      await box.fill('Aunt Rose');
+      await box.press('Enter');
+    }
     await page.waitForTimeout(150);
   }
   await settled(page);

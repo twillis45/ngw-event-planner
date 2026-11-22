@@ -76,7 +76,7 @@ INTENTIONALLY_PUBLIC = {
     # Seen only once the sweep read every router object (SEC-4 board 11/19/2026, L10)
     ("GET", "/api/public/email/stop/{token}"): "the emailed stop token (24 random bytes) is the credential; shows a button, changes nothing",
     ("POST", "/api/public/email/stop/{token}"): "the same stop token; stops that one address, same answer for any token (no oracle)",
-    ("GET", "/health"): "liveness probe; returns a constant",
+    ("GET", "/health"): "liveness probe; ok, service name, deployed commit SHA and process start time, nothing else",
     ("GET", "/api/capabilities"): "capability probe; booleans only, never secrets",
     ("GET", "/public-key"): "push.py (/api/push/public-key): the VAPID PUBLIC key, handed to every subscribing browser by design; 503 when unset; no data, no writes",
     ("POST", "/api/resend-webhook"): "provider webhook: Svix signature checked when RESEND_WEBHOOK_SECRET is set; RECORDED: unverified without it (board C3)",

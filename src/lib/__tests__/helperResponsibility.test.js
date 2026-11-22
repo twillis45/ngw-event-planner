@@ -100,13 +100,16 @@ describe('status ladder — assigned → confirmed → handled', () => {
     expect(r.status).toBe('confirmed');
   });
 
-  test('11 · routes obey the rendered-id rule (foodrow id exists in the plan list)', () => {
+  // A food job lands on its own row of the Bringing tab, where the name is
+  // set (one record, 11/21/2026), and that row exists on the rendered plan.
+  test('11 · routes obey the rendered-id rule (the bringing row exists in the plan list)', () => {
     const ev = baseEvent();
     const { responsibilities } = deriveHelperResponsibilities(ev);
     const food = responsibilities.filter(r => r.itemType === 'food');
-    const rendered = new Set(playbookFoodPlan(ev).list.map(i => i.id));
+    const rendered = new Set(playbookFoodPlan(ev).list.filter(i => i.broughtByCommunity).map(i => i.id));
+    expect(food.length).toBeGreaterThan(0);
     for (const r of food) {
-      expect(r.route.focusField).toBe(`foodrow-${r.itemId}`);
+      expect(r.route.focusField).toBe(`bringing-${r.itemId}`);
       expect(rendered.has(r.itemId)).toBe(true);
     }
   });

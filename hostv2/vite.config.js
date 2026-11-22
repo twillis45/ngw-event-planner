@@ -32,6 +32,18 @@ export default defineConfig(({ command, mode }) => {
   // (The deployed CRA bundle on this origin already ships these; V2 matching
   // it adds no new exposure.)
   const appEnv = loadEnv(mode, path.resolve(__dirname, '..'), 'REACT_APP_');
+  // ── WHICH COMMIT THIS BUILD IS (owner, 11/21/2026) ─────────────────────
+  // RELEASE_SHA is set job-wide by pages-from-source.yml to the commit Checks
+  // passed (not main's tip), and the release telemetry below already reads it.
+  // The same value now stamps the page: the ngw-build meta tag, window.__BUILD__
+  // (main.jsx) and the Version line in You & settings (BuildLine.jsx). Without
+  // it (local, e2e) the commit is 'dev' and there is no time, which also keeps
+  // a local build byte-identical across runs. Pinned by
+  // test/theBuildSaysWhichCommit.test.mjs; the deploy checks the meta tag.
+  const releaseSha = process.env.RELEASE_SHA || appEnv.REACT_APP_RELEASE_SHA || '';
+  const build = releaseSha
+    ? { commit: releaseSha, builtAt: new Date().toISOString() }
+    : { commit: 'dev', builtAt: null };
   return {
     // Production build ships as a static bundle under the Pages site.
     // E2E_BASE: `vite preview` runs as command==='serve', so without this the
@@ -69,6 +81,14 @@ export default defineConfig(({ command, mode }) => {
           handler: (html) => html.replaceAll('%SITE_BASE%', command === 'build' ? '../' : '/'),
         },
       },
+      {
+        name: 'ngw-build-stamp',
+        transformIndexHtml: {
+          order: 'pre',
+          handler: (html) => html.replace('</head>',
+            `  <meta name="ngw-build" content="${[build.commit, build.builtAt].filter(Boolean).join(' ')}" />\n  </head>`),
+        },
+      },
     ],
     resolve: {
       alias: { '@app': path.resolve(__dirname, '../src') },
@@ -98,9 +118,10 @@ export default defineConfig(({ command, mode }) => {
       // value; `mode` is 'production' for `vite build` and 'development' for
       // the dev server, which is exactly the CRA semantics ../src expects.
       'process.env': JSON.stringify({ ...appEnv, NODE_ENV: mode,
-        REACT_APP_RELEASE_SHA: process.env.RELEASE_SHA || appEnv.REACT_APP_RELEASE_SHA || 'unreported',
+        REACT_APP_RELEASE_SHA: releaseSha || 'unreported',
         REACT_APP_RELEASE_PROFILE: process.env.RELEASE_PROFILE || appEnv.REACT_APP_RELEASE_PROFILE || 'unreported',
       }),
+      __NGW_BUILD__: JSON.stringify(build),
     },
     // ── HTTPS=1 FOR PHONE TESTING, OPT-IN ────────────────────────────────
     // `navigator.clipboard.readText()` requires a SECURE CONTEXT. `localhost`

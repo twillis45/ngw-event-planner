@@ -81,6 +81,8 @@ const openTheList = async (page) => {
   await tapText(page, '^Done$');          // back out of any dietary drill-in
   await page.waitForTimeout(1200);
   await settled(page);
+  await tapText(page, '^Shop$');          // the menu door opens Plan while the menu is open (11/21/2026)
+  await sheetSettled(page);
   await tapText(page, 'The list[\\s\\S]*item');
   await sheetSettled(page);
 };

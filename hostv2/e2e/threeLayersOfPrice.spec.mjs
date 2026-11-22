@@ -67,6 +67,10 @@ const openList = async (page, venueCity) => {
       date: '2027-06-17', venueCity: vc,
       guestMode: 'count', guestCount: 20, totalBudget: 1200,
       budget: [], vendors: [], guests: [],
+      // The host makes the potato salad herself, so its "…ingredients" basket
+      // is on her list to price: the family's dishes are not priced at her
+      // store (one record for who brings, 11/21/2026).
+      foodOwner: { p_potato_salad: false },
     };
     localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([ev]));
     localStorage.setItem('ngw-hostv2-last-event', 'e2e-3l');
@@ -81,6 +85,10 @@ const openList = async (page, venueCity) => {
   // sleep was not even measuring the right thing: `settled` answers "the app
   // booted", and what happens after these taps is a SHEET opening.
   await tapText(page, "what you.?re serving");
+  await sheetSettled(page);
+  // The menu door opens the spread on Plan while the menu is open (owner's
+  // iPad, 11/21/2026); the list is on Shop.
+  await tapText(page, '^Shop$');
   await sheetSettled(page);
   await tapText(page, 'The list[\\s\\S]*item');
   await sheetSettled(page);
@@ -196,7 +204,8 @@ test('HAPPY PATH: a store is picked, the sheet says what it reached, the row sho
     return el ? (el.innerText || '').replace(/\s+/g, ' ') : 'NO HERO NOTE';
   });
   console.log('HERO NOTE:', heroSaysStore);
-  expect(heroSaysStore).toMatch(/2 of 22 lines priced at your store/);
+  // 18, not 22: the family's dishes are not hers to price (11/21/2026).
+  expect(heroSaysStore).toMatch(/2 of 18 lines priced at your store/);
 });
 
 test('HONEST FAILURE: no keys on the backend says so, and does not invent a price', async ({ page }) => {

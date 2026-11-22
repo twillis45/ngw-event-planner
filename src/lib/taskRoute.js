@@ -202,6 +202,11 @@ export function checklistRouteFor(task, meta = {}, event = null) {
     return { label: 'Set the date', route: { tab: 'Event Details', focusField: 'event-date' } };
   if (/\bshifts?\b/.test(t))
     return { label: 'Assign it', route: { tab: 'Event Details', focusField: 'space' } };
+  // ASSIGNING THE DISHES IS THE BRINGING TAB (owner's iPad, 11/21/2026:
+  // "Items need place to assign helpers"): one row per dish, a name from the
+  // guest list or the helpers, saved to the one record every screen reads.
+  if (/\bassign (every|each) dish\b|\bassign (the )?dishes\b/.test(t))
+    return { label: 'Name who brings each dish', route: { tab: 'Planning', focusField: 'bringing' } };
   if (/\bown the main\b/.test(t))
     return { label: 'Map the spread', route: { tab: 'Planning', focusField: 'food-plan' } };
   if (/per[- ]person\b.{0,40}(number|cost|amount|budget)|who pays|we cover the\b/.test(t))

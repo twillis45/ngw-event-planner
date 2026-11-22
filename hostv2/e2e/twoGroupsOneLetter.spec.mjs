@@ -32,7 +32,9 @@ const badges = (page) => page.evaluate(() => {
   for (const g of document.querySelectorAll('.fgroup')) {
     const b = g.querySelector('.fg-badge');
     const l = g.querySelector('.fg-label');
-    if (b && l) out[(l.innerText || '').split('\n')[0].trim()] = (b.innerText || '').trim();
+    // The group's own name is the label's first text node; a "1 decision
+    // open" tag can follow it inline.
+    if (b && l) out[((l.firstChild && l.firstChild.textContent) || l.innerText || '').split('\n')[0].trim()] = (b.innerText || '').trim();
   }
   return out;
 });
@@ -46,6 +48,10 @@ const openList = async (page) => {
       venueCity: 'Annapolis', state: 'MD',
       guestMode: 'count', guestCount: 40, totalBudget: 1200,
       budget: [], vendors: [], guests: [],
+      // The family makes the main and the dessert itself, so Food and Dessert stay on the shelves
+      // beside Drinks: the community's dishes left the shopping list for their
+      // own "… bringing" group (one record for who brings, 11/21/2026).
+      foodOwner: { p_dessert: false, p_protein: false },
     }]));
     localStorage.setItem('ngw-hostv2-last-event', 'e2e-glyph');
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());

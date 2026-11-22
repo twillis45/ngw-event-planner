@@ -32,7 +32,8 @@ matchGuestIndexByName), else by the lowercased typed name, and names them
 `<guest id>` or `helper-<slug>`. The server keys a link the same way, so the
 host's read-back matches the helper the host sees. The jobs read here are the
 host's own explicit fields — the same ones src/lib/playbooks namedHelperCount
-reads without the playbook engine: foodAdd owners, task owners, run-of-show
+reads without the playbook engine: foodAdd dishes' bringers (foodOwner, else a
+not-yet-migrated line owner), task owners, run-of-show
 owners, informal vendors. A supply line (capacityHelpers) takes its label from
 the playbook, which the server does not run, so it is left out: the page
 under-counts rather than invents.
@@ -173,10 +174,20 @@ def _jobs_by_helper(data: dict) -> dict:
             slot["jobs"].append(job)
 
     food_skip = data.get("foodSkip") if isinstance(data.get("foodSkip"), dict) else {}
+    # WHO BRINGS A DISH IS ONE RECORD (11/21/2026): `foodOwner[dishId]`, a name
+    # or False ("I'll make it myself"). The app moves an old line `owner` into
+    # it on load; until an event has been opened since, the line's own `owner`
+    # still counts. A playbook dish named there has no label on the server
+    # (the playbook runs in the client), so it is left out: the page
+    # under-counts rather than invents, as with supply lines above.
+    food_owner = data.get("foodOwner") if isinstance(data.get("foodOwner"), dict) else {}
     for a in data.get("foodAdd") or []:
         if isinstance(a, dict) and a.get("name") and not food_skip.get(a.get("id")):
             kind = "supply" if a.get("group") == "Supplies" else "food"
-            add(a.get("owner"), {"kind": kind, "label": _clip(a.get("name"), MAX_LABEL)})
+            owner = food_owner[a.get("id")] if a.get("id") in food_owner else a.get("owner")
+            if not isinstance(owner, str):
+                continue
+            add(owner, {"kind": kind, "label": _clip(a.get("name"), MAX_LABEL)})
     for t in data.get("timeline") or []:
         if isinstance(t, dict) and t.get("task") and not t.get("retired"):
             add(t.get("owner"), {"kind": "task", "label": _clip(t.get("task"), MAX_LABEL)})

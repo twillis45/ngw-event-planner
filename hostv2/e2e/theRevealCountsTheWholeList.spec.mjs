@@ -44,6 +44,10 @@ test('THE REVEAL COUNTS THE WHOLE LIST, not just the food', async ({ page }) => 
   });
   expect(opened, 'the host can reach the food/shopping surface').toBe(true);
   await page.waitForTimeout(1500);
+  // The food door opens Plan while the menu is open (owner's iPad,
+  // 11/21/2026, foodSheetKind); the list and its count are on Shop.
+  await page.getByRole('tab', { name: 'Shop' }).first().evaluate((el) => el.click()).catch(() => {});
+  await page.waitForTimeout(1200);
 
   const shop = await page.evaluate(() => document.body.innerText || '');
   const listed = Number((shop.match(/(\d+)\s+items?,\s*ready to check off/i)

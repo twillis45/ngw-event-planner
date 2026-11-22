@@ -200,8 +200,14 @@ export function namedHelperCount(event) {
   const capSkip = (ev.capacitySkip && typeof ev.capacitySkip === 'object') ? ev.capacitySkip : {};
   const capHelpers = (ev.capacityHelpers && typeof ev.capacityHelpers === 'object') ? ev.capacityHelpers : {};
   const names = [];
+  // Who brings each dish is one record, `foodOwner` (playbook lines and
+  // host-added dishes alike); a not-yet-migrated foodAdd owner still counts.
+  const foodOwner = foodOwnerMap(ev);
+  for (const id of Object.keys(foodOwner)) {
+    if (!foodSkip[id] && isNamedBringer(foodOwner[id]) && isNamedHelper(foodOwner[id])) names.push(foodOwner[id]);
+  }
   for (const a of (Array.isArray(ev.foodAdd) ? ev.foodAdd : [])) {
-    if (a && a.name && !foodSkip[a.id] && isNamedHelper(a.owner)) names.push(a.owner);
+    if (a && a.name && !foodSkip[a.id] && !(a.id in foodOwner) && isNamedHelper(a.owner)) names.push(a.owner);
   }
   for (const t of (Array.isArray(ev.timeline) ? ev.timeline : [])) {
     if (t && t.task && !t.retired && isNamedHelper(t.owner)) names.push(t.owner);
@@ -4713,7 +4719,30 @@ export function normalizeAlternative(alt) {
 // day-before "Still to get" each filtered the list themselves and did not,
 // so Friendsgiving's board said 19 left over a list of 11.
 export function hostBuysLine(i) {
-  return !!i && !i.friendBrings;
+  // A community-carried dish (a repast committee's) is not hers either.
+  return !!i && !i.friendBrings && !i.broughtByCommunity;
+}
+
+// ─── WHO BRINGS EACH DISH: ONE RECORD (owner's iPad, 11/21/2026) ─────────────
+// "Bringing doesn't update when the other screens update the assigned bringing
+// information. Single sources not duplicative sources."
+//
+// `event.foodOwner[dishId]` is the record, for playbook lines and host-added
+// dishes alike:
+//   'Name'  that person brings it (it is brought, whatever the default said)
+//   false   the host makes or buys it herself (overrides friendsBringWhen)
+//   absent  the playbook's default (friendsBringWhen, or the community rule)
+// `foodSkip` stays a different fact: the dish is not being served at all.
+// playbookFoodPlan resolves the record into `broughtBy` / `broughtByCommunity`
+// on each line, and every surface reads those.
+export function foodOwnerMap(event) {
+  const m = event && event.foodOwner;
+  return (m && typeof m === 'object' && !Array.isArray(m)) ? m : {};
+}
+const HOSTY_BRINGER = /^(host|you|yours|me|myself|self|i)$/i;
+export function isNamedBringer(v) {
+  const s = typeof v === 'string' ? v.trim() : '';
+  return !!s && !HOSTY_BRINGER.test(s);
 }
 
 // ─── THE DRINKS TIER, READ FROM THE PICK'S WORDS ─────────────────────────────
@@ -5115,6 +5144,8 @@ export function playbookFoodPlan(event, opts = {}) {
   // reversible) but MARKED skipped so they leave every total — the plan honestly
   // reflects what they're actually getting, without losing the line.
   const skip = (event.foodSkip && typeof event.foodSkip === 'object') ? event.foodSkip : {};
+  // WHO BRINGS EACH DISH, ONE RECORD (owner's iPad, 11/21/2026). See foodOwnerOf.
+  const _ownerMap = foodOwnerMap(event);
 
   // 64 — costs the host has LOCKED: event.foodLocked[id] = a committed dollar amount
   // (they picked a source/price). A locked item is a fixed cost, not a range.
@@ -5447,7 +5478,9 @@ export function playbookFoodPlan(event, opts = {}) {
       const cost = Math.max(0, Math.round(Number(a.cost) || 0));
       return {
         id: a.id, group: a.group || 'Food', cat: a.cat, item: a.name, short: a.name,
-        owner: String(a.owner || '').trim(), qty: null, unit: '', essential: false,
+        // The bringer lives in foodOwner now; `a.owner` is read only until the
+        // load-time migration (lib/foodBringing) has moved it there.
+        owner: String((typeof _ownerMap[a.id] === 'string' ? _ownerMap[a.id] : a.owner) || '').trim(), qty: null, unit: '', essential: false,
         where: [], qtyOverridden: false, baseQty: null,
         low: cost, high: cost, units: 1, unitBase: '',
         perUnitLow: cost, perUnitHigh: cost,
@@ -5565,6 +5598,8 @@ export function playbookFoodPlan(event, opts = {}) {
   if (_communityBrings) {
     for (const it of list) {
       if (!it || !_communityFoodIds.has(it.id)) continue;
+      // The host said she is making this one herself: hers, priced.
+      if (_ownerMap[it.id] === false) { it.hostTakes = true; continue; }
       it.broughtByCommunity = true;
       it.broughtByLabel = _bringerLabel;
       it.low = 0;
@@ -5583,6 +5618,7 @@ export function playbookFoodPlan(event, opts = {}) {
     if (!it || it.broughtByCommunity) continue;
     const p = _purchaseById.get(it.id);
     if (!p || !p.friendsBringWhen || !choiceShown(event, p.friendsBringWhen)) continue;
+    if (_ownerMap[it.id] === false) { it.hostTakes = true; continue; }
     it.broughtByCommunity = true;
     // Who brings it, in the playbook's own words: Thanksgiving's family table
     // says "Your guests" (bringerLabel); a Friendsgiving potluck is friends.
@@ -5590,6 +5626,28 @@ export function playbookFoodPlan(event, opts = {}) {
     it.friendBrings = true;   // not the host's to buy: off "N of M bought" too
     it.low = 0;
     it.high = 0;
+  }
+
+  // A NAME IS AN ASSIGNMENT, WHEREVER THE DISH STARTED (owner's iPad,
+  // 11/21/2026: "Items need place to assign helpers"). The playbook's rule
+  // above decides the DEFAULT; the host's own answer in `foodOwner` wins. A
+  // dish she names someone for is brought — listed, off what she buys — even
+  // when the default had it on her list. A host-added dish keeps the cost she
+  // typed (her number, not ours); a playbook line drops to $0 as above.
+  // `broughtBy` is the one name every surface prints: Bringing, Shop, Plan,
+  // the helpers panel, the guest rows, the day-before list.
+  for (const it of list) {
+    if (!it) continue;
+    const o = _ownerMap[it.id];
+    const named = typeof o === 'string' && isNamedBringer(o) ? o.trim() : '';
+    if (!it.broughtByCommunity && (named || (it.added && isNamedBringer(it.owner)))) {
+      const p = _purchaseById.get(it.id);
+      it.broughtByCommunity = true;
+      it.broughtByLabel = (p && p.bringerLabel) || 'Your friends';
+      it.friendBrings = true;
+      if (!it.added) { it.low = 0; it.high = 0; }
+    }
+    it.broughtBy = it.broughtByCommunity ? (named || (isNamedBringer(it.owner) ? String(it.owner).trim() : '')) : '';
   }
 
   // Food-approach: caterer chosen → inject the per-guest catering line (the homemade food rows

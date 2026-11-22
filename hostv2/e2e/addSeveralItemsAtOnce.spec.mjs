@@ -26,6 +26,10 @@ const openShop = async (page) => {
   // page, as before, so the sticky next-bar over a scrolled row does not catch it.
   await page.getByRole('button', { name: /what you.?re serving/i }).first().evaluate((el) => el.click());
   await sheetSettled(page);
+  // "What you're serving" opens the spread on Plan while the menu is open
+  // (owner's iPad, 11/21/2026); the list is on Shop.
+  await page.getByRole('tab', { name: 'Shop' }).first().evaluate((el) => el.click());
+  await sheetSettled(page);
   await page.getByRole('button', { name: /The list.*item/i }).first().evaluate((el) => el.click());
   await sheetSettled(page);
   await page.getByRole('button', { name: /Add an item you/ }).first().click();

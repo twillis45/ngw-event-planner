@@ -84,6 +84,9 @@ const openList = async (page, pick) => {
   // carries no "Done" at all — which is exactly why it is safe to always send.
   await tapText(page, '^Done$');
   await sheetSettled(page);
+  // The menu door opens Plan while the menu is open (11/21/2026); the list is on Shop.
+  await tapText(page, '^Shop$');
+  await sheetSettled(page);
   await tapText(page, 'The list[\\s\\S]*item');
   await sheetSettled(page);
 };
@@ -190,6 +193,8 @@ test('NEGATIVE CONTROL: a LOCAL event is untouched by any of it', async ({ page 
   await tapText(page, "what you.?re serving|dietary needs on the food plan");
   await sheetSettled(page);
   await tapText(page, '^Done$');
+  await sheetSettled(page);
+  await tapText(page, '^Shop$');   // the menu door opens Plan while the menu is open
   await sheetSettled(page);
   await tapText(page, 'The list[\\s\\S]*item');
   await sheetSettled(page);

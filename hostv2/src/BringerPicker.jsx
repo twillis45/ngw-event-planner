@@ -10,8 +10,10 @@ import { useRef, useState } from 'react';
 
 export const OTHER = '__other__';
 
-/** Guest names a host can pick from: named, not declined, each once. */
-export function bringerNames(guests) {
+/** Guest names a host can pick from: named, not declined, each once — then
+ *  the helpers who are not guests (owner, 11/21/2026: "place to assign
+ *  helpers"), from the helper engine's own list. */
+export function bringerNames(guests, extra) {
   const seen = new Set(); const out = [];
   for (const g of Array.isArray(guests) ? guests : []) {
     const n = String((g && g.name) || '').trim();
@@ -20,11 +22,17 @@ export function bringerNames(guests) {
     if (seen.has(k)) continue;
     seen.add(k); out.push(n);
   }
+  for (const x of Array.isArray(extra) ? extra : []) {
+    const n = String(x || '').trim();
+    const k = n.toLowerCase();
+    if (!n || seen.has(k)) continue;
+    seen.add(k); out.push(n);
+  }
   return out;
 }
 
-export default function BringerPicker({ guests, value, onChange, onCommit, onCancel, id, label, autoFocus = false, placeholder = 'A name, as you were told it', style }) {
-  const names = bringerNames(guests);
+export default function BringerPicker({ guests, extra, value, onChange, onCommit, onCancel, id, label, autoFocus = false, placeholder = 'A name, as you were told it', style }) {
+  const names = bringerNames(guests, extra);
   const v = String(value || '');
   const onList = names.some((n) => n.toLowerCase() === v.trim().toLowerCase());
   const [typing, setTyping] = useState(() => !!v.trim() && !onList);
