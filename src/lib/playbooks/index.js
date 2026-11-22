@@ -16,7 +16,7 @@ import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
 import { matchGuestIndexByName } from '../guestMerge';
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
 import { spanNights } from '../dates';
-import { aroundMeals, celebrationAppliesWith } from '../tripMeals';
+import { aroundMeals, celebrationAppliesWith, DINNER_GROUP, DINNER_OWN_STEPS } from '../tripMeals';
 import { attendanceAdjustment } from '../hostIntel';
 import { geoItemForPurchase } from '../knowledge/geoItemMap';
 // The one display form for an answer that may be a string OR a list. `decisionType`
@@ -1700,6 +1700,11 @@ export function playbookChecklist(event, asOf) {
   // that use them, so the copy lives once (playbooks/cookLever.js).
   const base = [...playbook.tasks, ...cookTasksFor(playbook)];
   const taskList = event.isDestination ? [...base, ...DESTINATION_TASKS] : base;
+  // THE DINNER'S STEPS ARE ONE GROUP (queued from #222). On a trip with a
+  // celebration dinner, the playbook's food-phase steps are the dinner's food
+  // (the Spread is sized for the dinner), so they carry the dinner's group.
+  let celebration = false;
+  try { celebration = celebrationAppliesWith(event, playbook); } catch (_e) { celebration = false; }
   for (const t of taskList) {
     if (!t || !t.id || !t.label) continue;
     // Choice gate — a task tagged whenChoice appears only for the matching pick.
@@ -1759,7 +1764,7 @@ export function playbookChecklist(event, asOf) {
       leadDays: offset,
       owner: '', // a solo host owns everything — no owner chip clutter
       dueInDays,
-      provenance: { source: `${playbook.type} playbook`, taskId: t.id },
+      provenance: { source: `${playbook.type} playbook`, taskId: t.id, ...(celebration && t.phase === 'food' ? { group: DINNER_GROUP } : null) },
       // ── AND THE REASON TRAVELS WITH THE DATE (2026-10-06) ────────────────
       // The hop this sweep missed. The milestone has carried `airFloorBecause`
       // and `airFloorSources` since 2026-09-23; grepped on 2026-10-06, the only
@@ -1800,7 +1805,7 @@ export function playbookChecklist(event, asOf) {
       // lossy label bucket instead of the authored T-7d lead.
       leadDays: off,
       dueInDays: dte + off,
-      provenance: { source: `${playbook.type} playbook`, taskId: 'fa-caterer', derived: 'food-approach' },
+      provenance: { source: `${playbook.type} playbook`, taskId: 'fa-caterer', derived: 'food-approach', ...(celebration ? { group: DINNER_GROUP } : null) },
     });
   }
   // THE MEALS OUT GET BOOKED (owner, 11/21/2026). On a destination trip, only
@@ -1809,7 +1814,7 @@ export function playbookChecklist(event, asOf) {
   // under the day they belong to; house and on-your-own meals add none.
   if (event.isDestination) {
     let around = null;
-    try { around = aroundMeals(event, { celebration: celebrationAppliesWith(event, playbook) }); } catch (_e) { around = null; }
+    try { around = aroundMeals(event, { celebration }); } catch (_e) { around = null; }
     for (const m of ((around && around.slots) || []).filter((x) => x.mode === 'out')) {
       const off = -30;
       rows.push({
@@ -1819,6 +1824,22 @@ export function playbookChecklist(event, asOf) {
         leadDays: off,
         dueInDays: dte + off,
         provenance: { source: `${playbook.type} playbook`, taskId: `tm-out-${m.key}`, derived: 'trip-meals', group: m.dayLabel },
+      });
+    }
+  }
+  // The dinner's own steps: the night and the place, each ticked by the
+  // dinner's matching part (taskEngine → tripFood.dinnerParts). Undated: no
+  // source says how far ahead a dinner night or its place is settled, and the
+  // group renders where its earliest dated member sits (groupDinnerSteps).
+  if (celebration) {
+    for (const s of DINNER_OWN_STEPS) {
+      rows.push({
+        id: `pbt-${event.id}-cel-${s.key}`,
+        task: s.label,
+        category: 'planning', phase: 'food', week: '', owner: '',
+        leadDays: null,
+        dueInDays: null,
+        provenance: { source: `${playbook.type} playbook`, taskId: `cel-${s.key}`, derived: 'celebration', group: DINNER_GROUP },
       });
     }
   }

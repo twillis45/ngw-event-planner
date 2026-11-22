@@ -1977,6 +1977,10 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   padding-bottom:var(--sp-2); border-bottom:1px solid var(--line);
 }
 .sheet .shelf-label:not(.srail-t):first-child{margin-top:var(--sp-2) !important}
+/* The celebration dinner's steps, one part of the checklist (queued from #222):
+   its title above, a hairline under its last step, so the rows after it do not
+   read as the dinner's. */
+.dinner-steps{border-bottom:1px solid var(--line); padding-bottom:var(--sp-2); margin-bottom:var(--sp-3)}
 /* Field labels are labels, not headings: plain text, so only section titles
    read as section titles ("WHO" under "WHO'S HELPING" read as a third title). */
 .sheet .lodge-f .of{text-transform:none; letter-spacing:0; font-size:var(--t-row-sub); font-weight:550}

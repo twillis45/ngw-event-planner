@@ -14,6 +14,9 @@ import { giftRowSatisfied } from './giftLog';
 import { BORROWED_ROW, borrowedAllBack } from './borrowedList';
 import { ROOMS_ROW, roomPlanSettled } from './roomPlan';
 import { SPONSOR_ASK_ROW, sponsorAskDone } from './sponsors';
+import { DINNER_OWN_STEPS } from './tripMeals';
+// Live binding, read only at call time: tripFood imports playbooks, which imports this module.
+import { dinnerParts } from './tripFood';
 
 // The trip-details draft's title, which is also its send-ledger key: the
 // draft sheet records under it, and the checklist row reads it back.
@@ -73,6 +76,13 @@ export function taskSatisfied(event, task) {
   // budget is one of them, not the step. So no keyword rule below may clear a
   // step that names calls; it clears when every call it names is answered.
   if (typeof task.id === 'string' && task.id.startsWith('pbt-') && stepCalls(event, task).length) return stepCallsAnswered(event, task);
+  // THE DINNER'S OWN STEPS tick from the dinner's parts (queued from #222):
+  // the night step when the night is picked, the place step when a place is
+  // named in Venue — the same `set` the dinner sheet and the board card show.
+  const dinnerStep = DINNER_OWN_STEPS.find((d) => d.label.toLowerCase() === s.trim());
+  if (dinnerStep) {
+    try { const p = dinnerParts(event).find((x) => x.id === dinnerStep.part); return !!(p && p.set); } catch (_e) { return false; }
+  }
   const guests     = Array.isArray(event.guests) ? event.guests : [];
   const hasGuests  = (Number(event.guestCount) || Number(event.guestEstimate) || guests.length) > 0;
   // ONE BUDGET READER (2026-09-18) — this rule was correct and was one of SIX

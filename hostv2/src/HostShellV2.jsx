@@ -345,7 +345,7 @@ import { worryLabel } from '@app/lib/worryLabel';
 import { venueFor, setVenue, confirmVenue, formatVenueAddress } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
-import { tripDays, celebrationNight, celebrationTitle, celebrationPlace, celebrationFieldsToPersist, aroundMeals, mealsOutPayer, placeWithArticle, MEAL_PLANS, MEAL_MODES, MEAL_PAYERS, MEAL_LABEL, tripIsMultiDay } from '@app/lib/tripMeals';
+import { tripDays, celebrationNight, celebrationTitle, celebrationPlace, celebrationFieldsToPersist, aroundMeals, mealsOutPayer, placeWithArticle, MEAL_PLANS, MEAL_MODES, MEAL_PAYERS, MEAL_LABEL, tripIsMultiDay, DINNER_GROUP, groupDinnerSteps } from '@app/lib/tripMeals';
 import { celebrationApplies, tripFoodMoney, aroundSummary, dinnerParts, RESTAURANT_DINNER } from '@app/lib/tripFood';
 import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
 import { mayExhale, calmVetoFor } from '@app/lib/exhaleGate';
@@ -7048,6 +7048,38 @@ export default function HostShellV2() {
     } catch (_e) { /* no checklist, no note */ }
     return m;
   }, [event]);
+
+  // ── THE DINNER'S STEPS ARE ONE GROUP (queued from #222) ────────────────
+  // The checklist renders the celebration dinner's steps together, under the
+  // dinner's title. Which rows those are is read live off the engine
+  // (provenance.group), like airFloorById above, so an event drafted before
+  // the group existed groups too. groupDinnerSteps keeps each row's stored
+  // index, so a tick still writes the row it shows.
+  const dinnerStepIds = useMemo(() => {
+    const ids = new Set();
+    try {
+      for (const r of (playbookChecklist(event) || [])) if (r && r.provenance && r.provenance.group === DINNER_GROUP) ids.add(r.id);
+    } catch (_e) { /* no checklist, no group */ }
+    return ids;
+  }, [event]);
+  const renderGroupedTasks = (renderRow) => {
+    const order = groupDinnerSteps(event.timeline, dinnerStepIds);
+    const group = order.filter((x) => x.inGroup).map((x) => ({ x, el: renderRow(x.t, x.i) })).filter((g) => g.el);
+    const out = [];
+    let placed = false;
+    for (const x of order) {
+      if (!x.inGroup) { out.push(renderRow(x.t, x.i)); continue; }
+      if (placed || !group.length) continue;
+      placed = true;
+      out.push(
+        <div className="dinner-steps" data-dinner-steps key="dinner-steps">
+          <div className="shelf-label">{celebrationTitle(event)}</div>
+          {group.map((g) => <Fragment key={(g.x.t.id || g.x.i) + '-dn'}>{g.el}</Fragment>)}
+        </div>,
+      );
+    }
+    return out;
+  };
 
   // The REAL spread: same food plan hostSpending bills from, sized by the
   // engine's own attendance band for this event.
@@ -22272,7 +22304,7 @@ export default function HostShellV2() {
                       report line (tap to review) — same green-dot semantics as
                       the handled sections everywhere else. */}
                   <Panel on={panels}>
-                  {(event.timeline || []).map((t, i) => {
+                  {renderGroupedTasks((t, i) => {
                     // A RETIRED row is off the open list. The reconcile marks a
                     // row retired when the gate that authored it closes — pick
                     // "steam them myself" and the two crab-house pickup rows
