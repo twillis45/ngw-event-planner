@@ -62,6 +62,15 @@ export function latestCalverDate(tags = []) {
   return days.length ? days[days.length - 1].replaceAll('.', '-') : null;
 }
 
+// The What's new guard: the newest entry must not be older than the day of the
+// last release tag. No tags (a shallow checkout) → nothing to compare against.
+export function whatsNewIsBehind(entries, tags) {
+  const last = latestCalverDate(tags || []);
+  if (!last) return false;
+  const newest = (entries || []).map((e) => e.date).sort().pop();
+  return !newest || newest < last;
+}
+
 const git = (...args) => {
   try { return execFileSync('git', args, { encoding: 'utf8' }).split('\n').map((s) => s.trim()).filter(Boolean); } catch { return []; }
 };
@@ -78,9 +87,10 @@ if (isMain) {
   } else if (cmd === 'check-whats-new') {
     const file = process.argv[3] || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'hostv2', 'src', 'whatsNew.json');
     const entries = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const tags = git('tag', '-l', 'v*');
     const newest = entries.map((e) => e.date).sort().pop() || null;
-    const lastTag = latestCalverDate(git('tag', '-l', 'v*'));
-    if (lastTag && (!newest || newest < lastTag)) {
+    const lastTag = latestCalverDate(tags);
+    if (whatsNewIsBehind(entries, tags)) {
       console.log(`::warning::What's new is behind: newest entry ${newest || '(none)'} is older than the last release (${lastTag}). Add an entry to hostv2/src/whatsNew.json.`);
     } else {
       console.log(`What's new is current: newest entry ${newest}, last release ${lastTag || '(no tags fetched)'}.`);

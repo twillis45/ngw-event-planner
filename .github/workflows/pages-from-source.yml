@@ -243,6 +243,9 @@ jobs:
           version="$(node scripts/calver.mjs version --github-output)"
           echo "RELEASE_VERSION=${version}" >> "$GITHUB_ENV"
           echo "release version ${version}"
+          # What's new should not be older than the last release. A warning,
+          # not a gate: making it block a deploy is an owner call.
+          node scripts/calver.mjs check-whats-new
 
       # ── build the release artifact from THIS commit ──────────────────────
       # `npm run release` = build hostv2 → sync into public/hostv2 → CRA build.
