@@ -1,6 +1,15 @@
 [
   {
     "date": "2026-11-22",
+    "headline": "Smaller fixes you'll notice",
+    "bullets": [
+      "The run of show opens the doors at your start time, not five minutes after it.",
+      "Warnings, like a date that can't work, are easier to spot in dark mode.",
+      "The family page shows the dress code, and reply counts say who said yes."
+    ]
+  },
+  {
+    "date": "2026-11-22",
     "headline": "Every price says where it comes from",
     "bullets": [
       "Each priced line now says what it rests on: a cited price, your own number, your caterer's quote, or an estimate.",
