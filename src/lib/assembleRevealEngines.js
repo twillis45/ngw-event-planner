@@ -329,7 +329,9 @@ function buildBlockerStage(blocker) {
       title: 'The official ceremony',
       what: `Is the official ${branch ? branch + ' ' : ''}retirement ceremony part of this party, or held separately?`,
       why: 'If it’s part of this party, the official protocol joins your run of show. If it’s held separately, the night stays as you planned it.',
-      nextDecision: 'Choose one.',
+      // The headline IS the question, as on the timing ask (a bare "Choose
+      // one." headlined the board on the owner's phone, 11/22/2026).
+      nextDecision: `Is the official ${branch ? branch + ' ' : ''}retirement ceremony part of this party?`,
       fieldKey: 'officialCeremony',
       options: [
         { value: 'this-party', label: 'Part of this party' },

@@ -182,3 +182,22 @@ describe('P1-15: a set dress code is not asked again by a risk', () => {
     expect(risks.some((r) => /dress code/i.test(r.mitigation))).toBe(true);
   });
 });
+
+// The official-ceremony ask is headlined by its question, not "Choose one."
+// (owner's phone, 11/22/2026).
+describe('the official ceremony ask headlines its question', () => {
+  it('nextDecision is the question in the branch\'s words', () => {
+    // eslint-disable-next-line global-require
+    const { deriveDecisionBlockers, buildBlockerStage } = require('../assembleRevealEngines');
+    // eslint-disable-next-line global-require
+    const { buildExperienceContext } = require('../experienceContext');
+    // eslint-disable-next-line global-require
+    const W = require('../../data/wandaGoldEvent').default;
+    const ev = { ...W, ros: [] };
+    const b = deriveDecisionBlockers(ev, buildExperienceContext(ev).eventIdentity).find((x) => x.type === 'official-ceremony');
+    expect(b).toBeTruthy();
+    const stage = buildBlockerStage(b);
+    expect(stage.nextDecision).toBe('Is the official Army retirement ceremony part of this party?');
+    expect(stage.nextDecision).not.toBe('Choose one.');
+  });
+});
