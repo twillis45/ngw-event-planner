@@ -5,7 +5,8 @@
 
 import { occasionNoun } from './occasionWords';
 import { honoreeApplies } from './eventIdentity';
-import { playbookFoodPlan, effectiveRos } from './playbooks';
+import { playbookFoodPlan, effectiveRos, decisionSettledByData } from './playbooks';
+import { ceremonyName, CEREMONY_TIMING_CALL } from './knownFacts';
 // Was: Math.floor((eventMidnight - new Date()) / 86400000) — a floor over a diff whose
 // right side still carried the wall clock, so for most of every day it reported one day
 // FEWER than remained, and the 30-day risk thresholds below fired a day early.
@@ -143,12 +144,18 @@ function deriveDecisionBlockers(event, eventIdentity) {
   }
 
   // RULE: Compound events always surface timing decision
+  // Her own run of show can already answer it (Wanda audit P1-1, 11/22/2026):
+  // the one reader is decisionSettledByData, the rule is in lib/knownFacts.
+  // A military retirement asks it only when the official ceremony is part of
+  // this party (owner: "Ask once", 11/22/2026).
   if (eventIdentity && eventIdentity.isCompound && !(militaryRet && ceremonyHere !== 'this-party')) {
-    if (!event.ceremonyTiming) {
+    if (!event.ceremonyTiming && !decisionSettledByData(event, CEREMONY_TIMING_CALL)) {
       blockers.push({
         type: 'ceremony-timing',
         urgency: 'critical',
-        reasoning: 'Ceremony timing affects vendors, timeline, guest experience'
+        reasoning: 'Ceremony timing affects vendors, timeline, guest experience',
+        // Asked in the event's own words ("the retirement presentation").
+        ceremonyName: ceremonyName(event),
       });
     }
   }
@@ -267,12 +274,16 @@ function deriveDecisionBlockers(event, eventIdentity) {
 }
 
 function buildBlockerStage(blocker) {
+  const ceremony = String((blocker && blocker.ceremonyName) || 'ceremony');
+  const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
   const blockerCopy = {
     'ceremony-timing': {
-      title: 'Ceremony Timing',
-      what: 'When does the ceremony happen? Before, during, or after the celebration?',
+      // In the event's own words, sentence case (Wanda audit P1-1/P2-7): the
+      // question IS the ask, and its three picks render under it on the hero.
+      title: cap(ceremony),
+      what: `When does the ${ceremony} happen? Before, during, or after the celebration?`,
       why: 'This decision cascades: it affects your timeline, guest experience, vendor sequence, and risk profile.',
-      nextDecision: 'Choose the timing.',
+      nextDecision: `When does the ${ceremony} happen?`,
       // No in-app tab/field to ROUTE to (route stays null, below) — but this is
       // a plain 3-way pick with nowhere else it needs to live, so it resolves
       // inline on the card itself rather than being a dead-end instruction with

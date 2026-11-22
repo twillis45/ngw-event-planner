@@ -376,10 +376,46 @@ function travelMixCall(event, d) {
   return pick ? { settled: { pick, because: fromPlan('everyone is flying in') } } : null;
 }
 
+// ── When the ceremony happens (Wanda audit P1-1, 11/22/2026) ────────────────
+// A two-milestone event asks whether its ceremony comes before, during or
+// after the celebration. Her own run of show answers it when one of HER rows
+// names the ceremony: first row → before, last → after, between → during.
+// Only the stored rows she wrote count (`event.ros`), never the playbook's
+// suggested beats. The call's shape is the blocker's (assembleRevealEngines).
+export const CEREMONY_TIMING_CALL = { id: 'ceremonyTiming', options: ['before', 'during', 'after'] };
+const CEREMONY_WORD = /\b(ceremony|presentation)\b/i;
+const NOT_A_NAME = new Set(['the', 'a', 'an', 'her', 'his', 'their', 'our', 'my', 'your', 'official', 'formal', 'army', 'navy']);
+function ceremonyCall(event) {
+  const rows = (Array.isArray(event.ros) ? event.ros : [])
+    .map((r) => ({ r, m: parseStartMinutes(r && r.time) }))
+    .filter((x) => x.r && x.m != null && String(x.r.label || '').trim())
+    .sort((a, b) => a.m - b.m);
+  if (rows.length < 2) return null;
+  const at = rows.findIndex((x) => CEREMONY_WORD.test(String(x.r.label)));
+  if (at < 0) return null;
+  const pick = at === 0 ? 'before' : at === rows.length - 1 ? 'after' : 'during';
+  const row = rows[at].r;
+  return { settled: { pick, because: fromPlan(`${String(row.label).trim()} at ${String(row.time).trim()}`) } };
+}
+// The event's own name for its ceremony ("retirement presentation"), read from
+// her rows, then her own words about the event; "ceremony" when she never
+// named it. Lower case, for use inside a sentence.
+export function ceremonyName(event) {
+  const ev = event || {};
+  const texts = [...(Array.isArray(ev.ros) ? ev.ros.map((r) => r && r.label) : []), ev.meaning, ev.story, ev.name];
+  for (const t of texts) {
+    const m = /\b([a-z]+)\s+(ceremony|presentation)\b/i.exec(String(t || '')) || null;
+    if (m) return (NOT_A_NAME.has(m[1].toLowerCase()) ? m[2] : `${m[1]} ${m[2]}`).toLowerCase();
+    if (CEREMONY_WORD.test(String(t || ''))) return String(t).match(CEREMONY_WORD)[1].toLowerCase();
+  }
+  return 'ceremony';
+}
+
 function readCall(event, d) {
   if (!event || !d || !d.id) return null;
   const id = String(d.id);
   if (!opts(d).length) return null;
+  if (id === CEREMONY_TIMING_CALL.id) return ceremonyCall(event);
   if (id === 'budget') return budgetCall(event, d);
   if (COUNT_CALLS.has(id)) return countCall(event, d);
   if (PLACE_CALLS.has(id)) return placeCall(event, d);
