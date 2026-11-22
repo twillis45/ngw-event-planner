@@ -61,6 +61,8 @@
 //               style (two var() fallbacks, #6f9f7f / #7d8590, plus background
 //               and opacity) to .eprog-seg and the --seg-done / --seg-open
 //               tokens: HostShellV2.jsx 30 -> 28 color, 636 -> 634 inline.
+//   11/22/2026  the two sheet scrims (rgba(0,0,0,.42), rgba(6,9,12,.55)) read
+//               --scrim / --scrim-deep, warm umber in light: styles.css 119 -> 117.
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';

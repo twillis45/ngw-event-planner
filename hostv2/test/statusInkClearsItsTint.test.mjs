@@ -67,6 +67,9 @@ const grounds = (t) => {
 const ON_TINT = [
   ['--ok', '--ok-tint'], ['--danger', '--danger-tint'], ['--warn', '--warn-tint'],
   ['--steel-soft', '--steel-tint'], ['--ink-soft', '--steel-tint'], ['--progress', '--progress-tint'],
+  // The pass sheet's grounding line: meta gray on a steel panel (lane F, 3.99
+  // in dark at the glow's top stop).
+  ['--muted', '--steel-tint'],
 ];
 const INKS = ['--ink', '--ink-soft', '--muted', '--faint', '--steel-soft', '--ok', '--danger', '--danger-text', '--warn', '--progress'];
 

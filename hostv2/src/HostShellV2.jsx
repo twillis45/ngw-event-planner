@@ -724,12 +724,11 @@ const fmt12h = (t) => {
   return (h % 12 || 12) + ':' + m[2] + (h >= 12 ? ' PM' : ' AM');
 };
 
-// ── A SECTION ON ITS OWN PANEL, IN LIGHT (owner ruling 25, 11/21/2026: "W1") ──
-// In light every distinct block of a sheet sits on a white --card panel with a
-// --line edge and a soft shadow, on the --bg ground. Dark keeps today's flat
-// column, so in dark this renders its children with no wrapper at all: the
-// dark DOM is unchanged, and so is every `.sheet-body > X` layout rule that
-// reads it. An empty panel (its only child rendered nothing) is hidden by
+// ── A SECTION ON ITS OWN PANEL (owner ruling 25, 11/21/2026: "W1"; dark too
+// since 11/22/2026) ──
+// Every distinct block of a sheet sits on a --card panel with a --line edge,
+// on the --bg ground, in both themes. `on` stays so a caller can still opt a
+// block out (Space wraps only its own kind; People mode skips it). An empty panel (its only child rendered nothing) is hidden by
 // `.panel:empty`, so a conditional block can be wrapped where it stands.
 function Panel({ on, children }) {
   return on ? <div className="panel">{children}</div> : <>{children}</>;
@@ -8202,7 +8201,9 @@ export default function HostShellV2() {
   // feature. Seeded from the same reader the boot path uses, so the row opens
   // showing what is actually on screen rather than a default.
   const [theme, setThemeState] = useState(() => { try { return currentTheme(); } catch { return 'dark'; } });
-  const panels = theme === 'light';   // ruling 25: sheet sections on panels, light only (see Panel)
+  // Ruling 25 put sheet sections on panels in light; owner 11/22/2026 gave dark
+  // the same panels ("screen section panel parity"), so both themes render them.
+  const panels = true;
   // The visible analytics opt-out (owner ruling 2026-11-02, option A).
   const [analyticsOff, setAnalyticsOff] = useState(() => { try { return isAnalyticsOptedOut(); } catch { return false; } });
   useEffect(() => { setMessageSoundMuted(muted); try { localStorage.setItem('ngw-hostv2-muted', muted ? '1' : '0'); } catch {} }, [muted]);

@@ -172,7 +172,11 @@ export function applyStudioMatte(override) {
   // In light a sheet's ground is the page (--bg) and each section sits on a
   // white --card panel with a soft warm shadow. Dark keeps its sheet on --card
   // and casts no panel shadow, so dark renders as it did.
-  set('--sheet-ground', isLight ? LINEN.page : c.panel);
+  // PANELS IN DARK TOO (owner, 11/22/2026: "screen section panel parity from
+  // the light theme in the dark theme too"): a dark sheet's ground is now the
+  // canvas --bg, and its sections sit on the raised --card it always had, the
+  // same structure light has. The canvas itself does not move.
+  set('--sheet-ground', isLight ? LINEN.page : c.bg);
   // Linen (B): a real edge plus an umber lift, so a panel reads as an object.
   set('--panel-shadow', isLight ? `0 1px 0 ${tint('#46341E', 0.05)}, 0 8px 18px -12px ${tint('#46341E', 0.22)}` : 'none');
   set('--ink', isLight ? LINEN.ink : bundle.textPrimary);
@@ -403,6 +407,10 @@ export function applyStudioMatte(override) {
   set('--danger-tint', isLight ? tint(LINEN.brick, 0.08) : tint(bundle.dangerRed, 0.10));
   // Light: risk is SOLID brick under white (Linen, B), 7.64:1.
   set('--danger-solid', isLight ? LINEN.brick : bundle.dangerSolid);
+  // The sheet and search scrims. Dark keeps its black washes; light's are a
+  // warm umber, so a scrim over linen reads warm, not gray (owner, 11/22).
+  set('--scrim', isLight ? tint('#2E2214', 0.42) : 'rgba(0,0,0,.42)');
+  set('--scrim-deep', isLight ? tint('#2E2214', 0.55) : 'rgba(6,9,12,.55)');
   // The label on that solid risk fill: warm white, 7.6:1 on brick. Dark's
   // banner already labels its fill with --ink, which is this value there.
   set('--on-danger', isLight ? LINEN.panel : bundle.textPrimary);
@@ -425,9 +433,12 @@ export function applyStudioMatte(override) {
   set('--danger-text', isLight ? LINEN.brick : DARK_STATUS.danger);
 
   // ── The Day: Dark Standard Carbon ramp ──
-  set('--carbon', bundle.carbonBody);
-  set('--carbon-panel', bundle.carbonPanel);
-  set('--carbon-line', bundle.carbonBorder);
+  // Light: The Day reads linen too (owner, 11/22/2026: "Light theme is
+  // blue"). The carbon ramp's light step was cool (#e4ecf3 page, #b9cedf
+  // edge); it now takes the same page, panel and edge as every other view.
+  set('--carbon', isLight ? LINEN.page : bundle.carbonBody);
+  set('--carbon-panel', isLight ? LINEN.panel : bundle.carbonPanel);
+  set('--carbon-line', isLight ? LINEN.line : bundle.carbonBorder);
   set('--carbon-text', bundle.textPrimary);
   // Light: The Day's eyebrows and "ongoing" read #6b6f74 on the light carbon
   // body #e4ecf3, 4.24:1 (design audit 2). They take --muted's light ink,
