@@ -31,16 +31,19 @@ Before that, 2026-11-02 (sixtieth entry:
 - **The repast honoree** is no longer "After" ("after the funeral"). Test: `creationRepastHonoree.test.js`.
 - **Every clause is used or reported:**
   - BYOB is reported where the playbook has no BYOB answer (NYE, Crab Feast);
-  - a bare weekday and "this/next weekend" are reported when there is no date;
+  - a weekday or month the plan could not apply is reported ("a Saturday next September", a bare "in June");
   - "next September" and "sometime in February" offer a month picker;
   - "at the church", "at my mom's" and "fellowship hall" save as the venue.
   - Test: `creationEveryClauseUsedOrReported.test.js`.
 - **"no kids"** records Halloween's adults-only audience as her answer, and a booked DJ previews as booked. Test: `creationKidsAndVendors.test.js`.
 - **Red → green:** 17 of 26 new tests failed before the fix, and all pass after. They also pass under Kiritimati and Midway, and the 44 create-flow e2e specs pass.
-- **Owner call:**
-  - A bare weekday ("Friday") still sets no date, by the existing rule in `aWeekdaySpanNeedsAStart`.
-  - "this/next weekend" and a bare "in June" are reported, not resolved.
-  - Resolving any of these needs a ruling.
+- **A bare weekday is the next one (owner ruling 11/22, verbatim: "Resolve to the next one with the date shown so she can fix it as well."):**
+  - With no other date, "Saturday", "friday night" or "the funeral Saturday" is the next occurrence after today; said on that weekday, it is next week's.
+  - "this weekend" is the coming Saturday (today on a Saturday, the following Saturday on a Sunday), "next weekend" the Saturday after that, and a Sunday said with a weekend is that weekend's Sunday.
+  - A weekday span ("Friday to Sunday", "Fri to Sun") starts at the next Friday. Any typed date, holiday or named month still wins.
+  - The parser marks it `dateBasis: 'resolved-weekday'`; the preview's date chip then reads "Sat, Nov 28", the normal date control changes it, and it saves like any typed date. It is no longer listed as dropped.
+  - Tests: `creationAWeekdayIsTheNextOne.test.js` (Sunday and Wednesday clocks, plus a Saturday) and `aBareWeekdayIsTheNextOne.spec.mjs`. `aWeekdaySpanNeedsAStart`, `aMultiDayTripIsHeardAtCreation`, `fiftyFriendsgivingHosts` and parse corpus #9, #24 and #62 were updated, each citing the ruling.
+- **Owner call:** a bare "in June" (no next/this) still offers no month picker and is reported (parse corpus #22). Resolving it needs a ruling.
 
 ## November 22, 2026 (late morning) — #226 and #227: private data stays private, checklist rows open what they do
 
