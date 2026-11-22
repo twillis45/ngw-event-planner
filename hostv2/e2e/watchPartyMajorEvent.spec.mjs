@@ -61,6 +61,10 @@ const readSpread = async (page) => {
   await openSectionByName(page, 'spread', { timeout: 8000 });
   await expect(page.locator('#sheet-title')).toHaveText(/spread|shopping/i, { timeout: 8000 });
   const sheet = page.locator('.sheet').last();
+  // The section door opens on Plan while a menu question is open (foodSheetKind);
+  // the list this reads is on Shop, so tap Shop.
+  await sheet.locator('.fmode', { hasText: /^Shop$/ }).first().click();
+  await settled(page);
   const listRow = sheet.locator('text=The list').first();
   if (await listRow.count()) {
     await listRow.click();

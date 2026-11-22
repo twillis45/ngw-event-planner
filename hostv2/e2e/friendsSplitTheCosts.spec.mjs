@@ -62,3 +62,47 @@ test('three friends, two receipts: the app says who pays whom, for free', async 
   expect(small).toBe(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
 });
+
+// ── A BROUGHT DISH IS NOT SHARED SPENDING (owner's iPad, 11/21/2026) ─────────
+// `event.foodOwner` is the one record of who brings each dish, and Shop reads
+// it through foodBringing's bringingRows. The split reads the same thing: a
+// receipt for the mac and cheese a guest brings stays on the list, marked, and
+// out of the total; the turkey the host side buys is split.
+const TG = { id: 'cust-split-tg', name: 'Our Thanksgiving', type: 'Thanksgiving Hosting', date: dateIn(12), startTime: '16:00',
+  guestMode: 'list', guestEstimate: 12, budget: [], vendors: [], timeline: [],
+  foodChoices: { hosting_model: 'Host cooks the turkey and core dishes, guests bring sides and desserts' },
+  guests: [{ id: 'g1', name: 'Jordan', rsvp: 'Yes' }, { id: 'g2', name: 'Ana', rsvp: 'Yes' }, { id: 'g3', name: 'Sam', rsvp: 'Yes' }] };
+
+test('a receipt for a dish a guest brings is listed, marked, and not split', async ({ page }) => {
+  await page.addInitScript((e) => {
+    if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e])); localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
+  }, TG);
+  await page.goto('?elegant=1');
+  await settled(page);
+  await openSectionByName(page, 'Split the costs');
+  await settled(page);
+  const sheet = page.locator('[data-cost-split]');
+  await sheet.locator('[data-split-add-yes]').click();
+  const add = async (who, what, amount) => {
+    await sheet.getByLabel('Who paid').selectOption({ label: who });
+    await sheet.getByLabel('What it was for').fill(what);
+    await sheet.getByLabel('How much').fill(amount);
+    await sheet.getByRole('button', { name: 'Add it' }).click();
+  };
+  await add('Ana', 'Turkey', '60');
+  await add('Jordan', 'Mac and cheese', '30');
+
+  const result = sheet.locator('[data-split-result]');
+  await expect(result).toContainText('$60.00 total, split 3 ways — $20.00 each');
+  await expect(result.locator('[data-split-brought-note]')).toHaveText('Left out: Mac and cheese ($30.00) — a brought dish isn’t shared spending.');
+  await expect(result.locator('[data-split-transfers] li')).toHaveText(['Jordan pays Ana $20.00', 'Sam pays Ana $20.00']);
+  await expect(sheet.locator('[data-split-expenses] li', { hasText: 'Mac and cheese' }).locator('[data-split-brought]')).toHaveText(' · brought, not split');
+  await expect(sheet.locator('[data-split-expenses] li', { hasText: 'Turkey' }).locator('[data-split-brought]')).toHaveCount(0);
+  // The receipt names its dish; whether it is brought is read, never stored.
+  const s = await page.evaluate(() => (JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]').find((e) => e.id === 'cust-split-tg') || {}).costSplit);
+  expect(s.expenses.map((x) => x.dishId)).toEqual(['p_turkey', 'p_mac']);
+  expect(s.expenses.some((x) => 'brought' in x)).toBe(false);
+});

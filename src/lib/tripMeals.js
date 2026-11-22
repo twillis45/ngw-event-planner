@@ -81,7 +81,17 @@ export function tripIsMultiDay(event) {
 /** Does this event carry a celebration dinner? `pb` is the event's playbook. */
 export function celebrationAppliesWith(event, pb) {
   if (!tripIsMultiDay(event)) return false;
+  // A trip has no single moment of its own, unless she named one inside it
+  // ("New Year's Eve trip", owner 11/22/2026: "trip wins"): then that night is
+  // the trip's celebration dinner.
+  if (celebrationOccasion(event)) return true;
   return !!(pb && !NO_CELEBRATION_FAMILIES.has(pb.family));
+}
+
+/** The holiday she named the trip's night by ("New Year’s Eve"), or null. */
+export function celebrationOccasion(event) {
+  const c = event && event.celebration && typeof event.celebration === 'object' ? event.celebration : {};
+  return String(c.occasion || '').trim() || null;
 }
 
 /** The trip's days: { iso, index (1-based), label "Mon, Jun 14", short "Mon 14", role }. */
@@ -138,6 +148,8 @@ export function celebrationTitle(event) {
   const ev = event || {};
   const name = String(ev.name || '').trim();
   const type = String(ev.type || '').trim();
+  const occasion = celebrationOccasion(ev);
+  if (occasion) return `${occasion} dinner`;
   const words = [type, type.replace(/\s+party$/i, '')].filter(Boolean);
   let stem = name;
   for (const w of words) stem = stem.replace(new RegExp(`\\s*\\b${escapeRe(w)}\\s*$`, 'i'), '').trim();
@@ -170,10 +182,17 @@ export function heardCelebrationPlace(text) {
   return article === 'the' ? `the ${words}` : words;
 }
 
-/** What creation writes for the dinner: only what the sentence said. */
-export function celebrationFieldsToPersist(text) {
+/**
+ * What creation writes for the dinner: only what the sentence said. `heard` is
+ * the parser's result; its `celebrationNight` is a night she named by its
+ * holiday ("New Year's Eve trip … Dec 30 – Jan 2" → Dec 31), stored as her pick.
+ */
+export function celebrationFieldsToPersist(text, heard = {}) {
   const place = heardCelebrationPlace(text);
-  return place ? { celebration: { place } } : {};
+  const night = heard && ISO.test(String(heard.celebrationNight || '')) ? heard.celebrationNight : null;
+  const occasion = night && heard.celebrationOccasion ? String(heard.celebrationOccasion) : null;
+  const c = { ...(place ? { place } : {}), ...(night ? { night } : {}), ...(occasion ? { occasion } : {}) };
+  return Object.keys(c).length ? { celebration: c } : {};
 }
 
 /** Kitchen, as the host told it through "How are guests staying?". */
@@ -247,6 +266,47 @@ export function aroundMeals(event, { celebration = false } = {}) {
 // The checklist step a meal out together adds (playbookChecklist). It opens
 // Your days, where the meal lives (taskRoute).
 export const TRIP_MEAL_STEP = /\breserve a table for the group (?:breakfast|lunch|dinner)\b/i;
+
+// ── THE DINNER'S STEPS ARE ONE GROUP (queued from #222) ─────────────────────
+// The checklist rows that belong to the celebration dinner carry
+// provenance.group === DINNER_GROUP (playbookChecklist): the dinner's own two
+// steps below, and the playbook's food-phase steps, which on a trip are the
+// dinner's food (the Spread is sized for the dinner). Each own step ticks from
+// the dinner's matching part (tripFood.dinnerParts), so the step, the dinner
+// sheet and the board card read one fact. The night step is worded as the
+// board card's button asks it.
+export const DINNER_GROUP = 'celebration';
+export const DINNER_NIGHT_STEP = 'Pick the night of the dinner';
+export const DINNER_PLACE_STEP = 'Book the place for the dinner';
+export const DINNER_OWN_STEPS = [
+  { key: 'night', part: 'night', label: DINNER_NIGHT_STEP },
+  { key: 'place', part: 'place', label: DINNER_PLACE_STEP },
+];
+
+/**
+ * groupDinnerSteps(timeline, memberIds) → [{ t, i, head, inGroup }]
+ * The checklist's render order: the dinner's rows sit together where the
+ * first of them was, its own steps first, then the rest in list order.
+ * `i` is the row's index in the stored timeline (the tick writes by it);
+ * `head` marks the row the group's title goes above.
+ */
+export function groupDinnerSteps(timeline, memberIds) {
+  const list = Array.isArray(timeline) ? timeline : [];
+  const ids = memberIds instanceof Set ? memberIds : new Set(memberIds || []);
+  const all = list.map((t, i) => ({ t, i }));
+  const isMember = (x) => !!(x.t && ids.has(x.t.id));
+  const members = all.filter(isMember);
+  if (!members.length) return all.map((x) => ({ ...x, head: false, inGroup: false }));
+  const own = new Set(DINNER_OWN_STEPS.map((s) => s.label));
+  const group = [...members.filter((x) => own.has(x.t.task)), ...members.filter((x) => !own.has(x.t.task))]
+    .map((x, n) => ({ ...x, head: n === 0, inGroup: true }));
+  const out = [];
+  for (const x of all) {
+    if (isMember(x)) { if (x === members[0]) out.push(...group); continue; }
+    out.push({ ...x, head: false, inGroup: false });
+  }
+  return out;
+}
 
 /** Itinerary rows for the planned shared meals (out together, at the house). */
 export function mealItineraryRows(event, { celebration = false, modes = ['out', 'house'] } = {}) {

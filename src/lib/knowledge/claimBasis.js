@@ -57,10 +57,19 @@ export const CLAIM_BASIS = Object.freeze({
   'host-coaching':      { family: 'judgment',     label: 'Planning judgment',     note: 'An editorial call a seasoned planner also makes.' },
   norm:                 { family: 'judgment',     label: 'Common practice',       note: 'What is ordinarily done, absent a reason to differ.' },
 
+  // The host's own answer (owner, 11/22/2026: "Tickets count as 2"). Not
+  // authored in any playbook: the engine writes it on a line whose count the
+  // host's pick states ("Two drink tickets, then cash"), so it is listed in
+  // ENGINE_TIERS below rather than found in the corpus.
+  'host-stated':        { family: 'host',         label: 'Your own pick',         note: 'The count is the one the host picked, not a consumption estimate.' },
+
   // Authored assumption
   estimate:             { family: 'baseline',     label: 'Planning estimate',     note: 'An authored starting figure, to be adjusted.' },
   heuristic:            { family: 'baseline',     label: 'Rule of thumb',         note: 'A simple planning shortcut.' },
 });
+
+/** Basis tiers the engine writes from the host's own answers, never authored. */
+export const ENGINE_TIERS = Object.freeze(['host-stated']);
 
 // ─── Dimension 2: VERIFICATION ───────────────────────────────────────────────
 //
@@ -105,6 +114,9 @@ export const HOST_LABELS = Object.freeze({
   CULTURAL_TRADITION:   'Cultural tradition',
   PRACTITIONER_GUIDANCE: 'Practitioner guidance',
   PLANNING_BASELINE:    'Planning baseline',
+  // The count on the line is the host's own pick (ENGINE_TIERS): she stated it,
+  // so it is neither sourced nor a baseline (owner, 11/22/2026).
+  HOST_STATED:          'Your own pick',
   NEEDS_CONFIRMATION:   'Needs confirmation',
   // ── THE BADGE MUST DESCRIBE THE NUMBER ON SCREEN (2026-09-19) ─────────────
   // The same defect the two labels above were split for, one layer along. A
@@ -366,6 +378,8 @@ export function classifyClaim(prov, costProv, applied) {
     hostLabel = HOST_LABELS.NEEDS_CONFIRMATION;
   } else if (basisDef.family === 'cultural') {
     hostLabel = HOST_LABELS.CULTURAL_TRADITION;
+  } else if (basisDef.family === 'host') {
+    hostLabel = HOST_LABELS.HOST_STATED;
   } else if (basisDef.family === 'practitioner') {
     // Includes `trade-heuristic / established-consensus` (23 lines): settled among
     // practitioners is still practitioner guidance, not independent consensus.

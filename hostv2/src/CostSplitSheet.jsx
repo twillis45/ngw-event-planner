@@ -5,19 +5,22 @@
 // event. NO MONEY MOVES THROUGH THE APP, and nothing here says otherwise: the
 // host copies the summary into the group chat and people pay each other.
 import { useState } from 'react';
-import { readSplit, settle, transferLine, splitSummary, formatCents } from '@app/lib/costSplit';
+import { readSplit, settle, transferLine, splitSummary, formatCents, splitDishes, dishFor } from '@app/lib/costSplit';
 
 const newId = (p) => p + Math.random().toString(36).slice(2, 9);
 
-export default function CostSplitSheet({ event, onSave, onLine }) {
-  const split = readSplit(event);
+// `plan` is the shell's playbookFoodPlan: a receipt for a dish a guest brings
+// is listed but not split (lib/costSplit, the reader Shop uses).
+export default function CostSplitSheet({ event, plan, onSave, onLine }) {
+  const split = readSplit(event, plan);
   const r = settle(split);
   const [name, setName] = useState('');
   const [who, setWho] = useState('');
   const [what, setWhat] = useState('');
   const [amount, setAmount] = useState('');
 
-  const save = (next, msg) => onSave({ costSplit: next }, msg);
+  // `brought`/`bringer` are read from foodOwner each time, never stored.
+  const save = (next, msg) => onSave({ costSplit: { ...next, expenses: next.expenses.map(({ brought: _b, bringer: _n, ...x }) => x) } }, msg);
   const people = split.people;
   const expenses = split.expenses;
   const yesNames = (event.guests || [])
@@ -43,13 +46,16 @@ export default function CostSplitSheet({ event, onSave, onLine }) {
   const addExpense = () => {
     if (!canAdd) return;
     const payer = people.find((p) => p.id === who);
-    save({ people, expenses: [...expenses, { id: newId('sx-'), who, what: what.trim(), amount: Math.round(amt * 100) / 100 }] },
+    const dishId = dishFor(event, what, plan);
+    save({ people, expenses: [...expenses, { id: newId('sx-'), who, what: what.trim(), amount: Math.round(amt * 100) / 100, ...(dishId ? { dishId } : {}) }] },
       `Added — ${payer ? payer.name : 'they'} paid ${formatCents(Math.round(amt * 100))}.`);
     setWhat(''); setAmount('');
   };
   const removeExpense = (id) => save({ people, expenses: expenses.filter((x) => x.id !== id) }, 'Removed.');
+  const dishes = splitDishes(event, plan);
+  const left = expenses.filter((x) => x.brought);
   const copy = async () => {
-    const text = splitSummary(event);
+    const text = splitSummary(event, plan);
     try { await navigator.clipboard.writeText(text); onLine('Copied — paste it in the group chat.'); }
     catch { onLine('Copy didn’t work here — select the summary and copy it yourself.'); }
   };
@@ -67,6 +73,11 @@ export default function CostSplitSheet({ event, onSave, onLine }) {
           <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>
             {formatCents(r.total)} total, split {people.length} ways — {formatCents(r.each)} each{r.people.some((p) => p.share !== r.each) ? ' (a cent more for some, so it adds up)' : ''}.
           </p>
+          {left.length > 0 && (
+            <p className="grounding" data-split-brought-note style={{ margin: '0 0 var(--sp-2)' }}>
+              Left out: {left.map((x) => x.what).join(', ')} ({formatCents(r.brought)}) — a brought dish isn’t shared spending.
+            </p>
+          )}
           {r.transfers.length ? (
             <ul className="split-transfers" data-split-transfers>
               {r.transfers.map((t, i) => <li key={i}>{transferLine(t)}</li>)}
@@ -107,7 +118,7 @@ export default function CostSplitSheet({ event, onSave, onLine }) {
                 const p = people.find((q) => q.id === x.who);
                 return (
                   <li key={x.id}>
-                    <span><b>{p ? p.name : 'Someone'}</b> · {formatCents(Math.round(x.amount * 100))}{x.what ? ` · ${x.what}` : ''}</span>
+                    <span><b>{p ? p.name : 'Someone'}</b> · {formatCents(Math.round(x.amount * 100))}{x.what ? ` · ${x.what}` : ''}{x.brought ? <span data-split-brought> · brought, not split</span> : null}</span>
                     <button className="mini" aria-label={`Remove ${p ? p.name : 'this'}’s ${formatCents(Math.round(x.amount * 100))}`} onClick={() => removeExpense(x.id)}>Remove</button>
                   </li>
                 );
@@ -119,7 +130,11 @@ export default function CostSplitSheet({ event, onSave, onLine }) {
               <option value="">Who paid?</option>
               {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <input className="field" placeholder="For what?" aria-label="What it was for" value={what} onChange={(e) => setWhat(e.target.value)} />
+            <input className="field" placeholder="For what?" aria-label="What it was for" value={what} onChange={(e) => setWhat(e.target.value)}
+              list={dishes.length ? 'split-dishes' : undefined} />
+            {dishes.length > 0 && (
+              <datalist id="split-dishes">{dishes.map((d) => <option key={d.id} value={d.label} />)}</datalist>
+            )}
             <input className="field" inputMode="decimal" placeholder="$0.00" aria-label="How much" value={amount}
               onChange={(e) => setAmount(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addExpense(); }} />
             <button className="mini" disabled={!canAdd} onClick={addExpense}>Add it</button>
@@ -132,10 +147,10 @@ export default function CostSplitSheet({ event, onSave, onLine }) {
 }
 
 /** The plan row's one-line summary. */
-export function splitRowSub(event) {
-  const split = readSplit(event);
+export function splitRowSub(event, plan) {
+  const split = readSplit(event, plan);
   const r = settle(split);
   if (!split.people.length) return 'who paid for what — the app does the math';
-  if (!r.total) return `${split.people.length} splitting · nothing added yet`;
+  if (!r.total && !r.brought) return `${split.people.length} splitting · nothing added yet`;
   return `${formatCents(r.total)} · ${r.transfers.length ? r.transfers.length + (r.transfers.length === 1 ? ' payment' : ' payments') + ' to settle' : 'everyone’s even'}`;
 }

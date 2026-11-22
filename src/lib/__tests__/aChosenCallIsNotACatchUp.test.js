@@ -231,9 +231,10 @@ describe.each([
     't_rules_post', 'Post the house rules: talking across the table (or not), renege calls, blind nil / Boston, and the cut'],
   ['Halloween Party', 'costume_contest', 0, 't_contest_plan', 'Decide the costume contest: judged categories or one applause winner',
     't_contest_prizes', 'Set the contest categories and judges, and buy prizes worth winning — one per category plus a spare'],
-  // The caterer pick: a host-run food level retires the caterer row, as it did before the split.
+  // The caterer pick: the work row confirms the caterer, and its do-it-yourself
+  // half leaves (copyByAnswer; aCatererPickHidesOnlyWhatItRulesOut, 11/22/2026).
   ['Day Party', 'food', 3, 't_food', 'Decide the food level: passed bites and grazing, light bites only, a food truck, or catered drop-off',
-    't_food_lock', 'Lock food: confirm the food truck or caterer window, or plan the passed bites + grazing table yourself'],
+    't_food_lock', 'Lock food: confirm the caterer’s drop-off window'],
   ['Kwanzaa Gathering', 'program', 0, 't_program_plan', 'Decide who leads the principle discussion and the libation',
     't_program_prep', "Choose the night's principle (or the order across nights); print/save the reading + a question or two for discussion; ask the elder/host/children who will light the candle and pour the libation"],
   ['Team Retreat', 'intensity', 0, 't_agenda', 'Decide how full the days are: light, balanced, or packed',

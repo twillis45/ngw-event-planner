@@ -36,7 +36,9 @@ const MULTI = [
   // Team Retreat is deliberately outside HOST_TYPES (smartParseEvent): an owner call.
   ['team retreat Jan 14-16', null, '2027-01-14', '2027-01-16', false],
   ['bachelorette weekend in Austin March 6-8', 'Bachelorette Party', '2027-03-06', '2027-03-08', false],
-  ['Dec 30 - Jan 2 NYE trip', "New Year's Eve Party", '2026-12-30', '2027-01-02', false],
+  // Owner ruling 11/22/2026, "trip wins": a trip over Dec 31 is a Group Trip,
+  // and the 31st is its celebration night (aHolidayInsideATripIsTheTripsNight).
+  ['Dec 30 - Jan 2 NYE trip', 'Group Trip', '2026-12-30', '2027-01-02', false],
   [SANTA_FE, 'Birthday', '2027-06-14', '2027-06-17', false],
 ];
 

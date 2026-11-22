@@ -1453,6 +1453,12 @@ button{font-family:inherit}
 /* Soft and ghost stay flat: only the primary carries the lit gradient and its edge. */
 .cta.soft, .cta.ghost, .board > :not(.hero):not(.keep-ask) .cta{box-shadow:inset 0 1px 0 var(--sheen)}
 .cta.soft:hover, .board > :not(.hero):not(.keep-ask) .cta:hover{filter:none}
+/* ?elegant=0 IN DARK (ruling 31: none lit in dark; #220 Open, 11/22/2026). The
+   elegant hero's ask wears its dark soft tier above; the full board's hero card
+   (`.hero` without `.elegant`) kept the base gradient, so its ask stayed lit.
+   It wears the board cards' `.cta.soft` values. Light keeps it lit, the one. */
+:root[data-theme="dark"] .hero:not(.elegant) .cta:not(.ghost){background:var(--steel-tint); color:var(--ink); box-shadow:inset 0 1px 0 var(--sheen)}
+:root[data-theme="dark"] .hero:not(.elegant) .cta:hover{filter:none}
 .hc-row{margin-top:var(--sp-3); display:flex; gap:var(--gap-chip); flex-wrap:wrap}
 
 .later-row{
@@ -1971,6 +1977,10 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   padding-bottom:var(--sp-2); border-bottom:1px solid var(--line);
 }
 .sheet .shelf-label:not(.srail-t):first-child{margin-top:var(--sp-2) !important}
+/* The celebration dinner's steps, one part of the checklist (queued from #222):
+   its title above, a hairline under its last step, so the rows after it do not
+   read as the dinner's. */
+.dinner-steps{border-bottom:1px solid var(--line); padding-bottom:var(--sp-2); margin-bottom:var(--sp-3)}
 /* Field labels are labels, not headings: plain text, so only section titles
    read as section titles ("WHO" under "WHO'S HELPING" read as a third title). */
 .sheet .lodge-f .of{text-transform:none; letter-spacing:0; font-size:var(--t-row-sub); font-weight:550}

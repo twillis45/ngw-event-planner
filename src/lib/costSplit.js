@@ -10,13 +10,48 @@
 // the list one cent more. PURE: no I/O, no clock.
 //
 // Stored on the event as `costSplit: { people: [{ id, name }], expenses:
-// [{ id, who, what, amount }] }` (amount in dollars, as typed).
+// [{ id, who, what, amount, dishId? }] }` (amount in dollars, as typed).
+//
+// A BROUGHT DISH IS NOT SHARED SPENDING (owner's iPad, 11/21/2026: "Single
+// sources not duplicative sources"). A receipt tied to a dish on the spread
+// (`dishId`, set when "For what?" names one) is left out of the total while
+// that dish is brought — read through foodBringing's bringingRows, the same
+// reader Shop uses, so `event.foodOwner` decides here as it does there. It
+// stays on the list, marked, and returns to the split the moment the host
+// says "I'll make it myself".
+import { bringingRows } from './foodBringing';
+import { playbookFoodPlan } from './playbooks';
+
+const planOf = (event, plan) => {
+  if (plan !== undefined) return plan;
+  try { return playbookFoodPlan(event); } catch { return null; }
+};
+const dishName = (i) => String((i && (i.short || i.item)) || '').trim();
+const norm = (t) => String(t || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+/** The spread's lines "For what?" can name: [{ id, label }]. */
+export function splitDishes(event, plan) {
+  const p = planOf(event, plan);
+  return ((p && p.list) || []).filter((i) => i && i.id && !i.skipped && dishName(i))
+    .map((i) => ({ id: String(i.id), label: dishName(i) }));
+}
+
+/** The dish a typed "For what?" names (its short or full name, any case), or null. */
+export function dishFor(event, text, plan) {
+  const t = norm(text);
+  if (!t) return null;
+  const p = planOf(event, plan);
+  const hit = ((p && p.list) || []).find((i) => i && i.id && !i.skipped && (norm(i.short) === t || norm(i.item) === t));
+  return hit ? String(hit.id) : null;
+}
 
 const cents = (n) => Math.round((Number(n) || 0) * 100);
 const fmt = (c) => '$' + (c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-/** The split, read from whatever is stored. Never throws. */
-export function readSplit(event) {
+/** The split, read from whatever is stored. Never throws. `plan` is the
+ *  event's playbookFoodPlan when the caller has it; it is built only when a
+ *  receipt names a dish. */
+export function readSplit(event, plan) {
   const s = (event && event.costSplit && typeof event.costSplit === 'object') ? event.costSplit : {};
   const people = (Array.isArray(s.people) ? s.people : [])
     .filter((p) => p && p.id && String(p.name || '').trim())
@@ -24,21 +59,35 @@ export function readSplit(event) {
   const ids = new Set(people.map((p) => p.id));
   const expenses = (Array.isArray(s.expenses) ? s.expenses : [])
     .filter((x) => x && x.id && ids.has(String(x.who)) && cents(x.amount) > 0)
-    .map((x) => ({ id: String(x.id), who: String(x.who), what: String(x.what || '').trim(), amount: cents(x.amount) / 100 }));
+    .map((x) => ({ id: String(x.id), who: String(x.who), what: String(x.what || '').trim(), amount: cents(x.amount) / 100,
+      ...(x.dishId ? { dishId: String(x.dishId) } : {}) }));
+  if (expenses.some((x) => x.dishId)) {
+    const brought = new Map(bringingRows(planOf(event, plan)).map((r) => [String(r.id), r]));
+    for (const x of expenses) {
+      const r = x.dishId && brought.get(x.dishId);
+      if (r) { x.brought = true; x.bringer = r.broughtBy || ''; }
+    }
+  }
   return { people, expenses };
 }
 
 /**
  * @returns {{ total:number, each:number, people:Array<{id,name,paid,share,net}>,
- *   transfers:Array<{from,to,fromName,toName,amount}> }}  — all money in CENTS.
+ *   transfers:Array<{from,to,fromName,toName,amount}>, brought:number }}  — all
+ *   money in CENTS. `brought` is the receipts for brought dishes, not split.
  */
 export function settle(split) {
   const { people, expenses } = split && split.people ? split : readSplit(null);
   const n = people.length;
   const paid = Object.fromEntries(people.map((p) => [p.id, 0]));
-  for (const x of expenses) if (x.who in paid) paid[x.who] += cents(x.amount);
+  let brought = 0;
+  for (const x of expenses) {
+    if (!(x.who in paid)) continue;
+    if (x.brought) brought += cents(x.amount);
+    else paid[x.who] += cents(x.amount);
+  }
   const total = Object.values(paid).reduce((a, b) => a + b, 0);
-  if (!n) return { total, each: 0, people: [], transfers: [] };
+  if (!n) return { total, each: 0, people: [], transfers: [], brought };
   const base = Math.floor(total / n);
   const extra = total - base * n;                       // 0 … n-1 leftover cents
   const rows = people.map((p, i) => {
@@ -59,7 +108,7 @@ export function settle(split) {
     if (!d.left) owe.shift();
     if (!c.left) get.shift();
   }
-  return { total, each: base, people: rows, transfers };
+  return { total, each: base, people: rows, transfers, brought };
 }
 
 /** One payment as a sentence: "Sam pays Jordan $30.00". */
@@ -68,8 +117,8 @@ export function transferLine(t) {
 }
 
 /** The whole split as text the host can paste into the group chat. */
-export function splitSummary(event) {
-  const split = readSplit(event);
+export function splitSummary(event, plan) {
+  const split = readSplit(event, plan);
   const r = settle(split);
   if (!split.people.length || !r.total) return '';
   const name = String((event && event.name) || '').trim();
@@ -79,7 +128,7 @@ export function splitSummary(event) {
   ];
   for (const x of split.expenses) {
     const who = split.people.find((p) => p.id === x.who);
-    lines.push(`${who ? who.name : 'Someone'} paid ${fmt(cents(x.amount))}${x.what ? ' for ' + x.what : ''}.`);
+    lines.push(`${who ? who.name : 'Someone'} paid ${fmt(cents(x.amount))}${x.what ? ' for ' + x.what : ''}${x.brought ? ' — a brought dish, so it isn’t split' : ''}.`);
   }
   lines.push('');
   if (r.transfers.length) r.transfers.forEach((t) => lines.push(transferLine(t) + '.'));

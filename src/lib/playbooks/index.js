@@ -11,12 +11,12 @@
 import { rsvpState, rsvpIsSettled } from '../rsvp';
 import { guestCountFor } from '../guestCountFor';
 import { cookDecisionFor, cookTasksFor, cookRisksFor } from './cookLever';
-import { cashBarDecisionsFor, cashBarKeeps } from './cashBarCover';
+import { cashBarDecisionsFor, cashBarKeeps, aliasedChoices } from './cashBarCover';
 import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
 import { matchGuestIndexByName } from '../guestMerge';
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
 import { spanNights } from '../dates';
-import { aroundMeals, celebrationAppliesWith } from '../tripMeals';
+import { aroundMeals, celebrationAppliesWith, DINNER_GROUP, DINNER_OWN_STEPS } from '../tripMeals';
 import { attendanceAdjustment } from '../hostIntel';
 import { geoItemForPurchase } from '../knowledge/geoItemMap';
 // The one display form for an answer that may be a string OR a list. `decisionType`
@@ -79,7 +79,7 @@ import ptaBoosterFundraiser from './data/ptaBoosterFundraiser';
 import { resolveCanonicalType } from '../eventTaxonomyAdapter';
 import { audiencePersona } from '../nextActionRenderer';
 import { quantityBasis } from '../quantities/quantityBasis';
-import { taskSatisfied } from '../taskEngine';
+import { taskSatisfied, roleBooked } from '../taskEngine';
 import { expectedFromPlanned, attendanceShift, implausibleGuestNote } from '../attendanceModel';
 import { SOURCING_TIERS, DEFAULT_SOURCING, sourcingTier, sourcingFactor, isProteinItem, canonicalProteinPrice, nonProteinFactor, extraSupplyStores, canonicalSubstitutes } from '../sourcing';
 import { resolveEffectiveItem } from '../effectiveItem'; // FOOD-2A: read-only normalized projection of `list`
@@ -158,7 +158,7 @@ const DECISION_INJECTORS = [
   (event, pb) => cookDecisionsFor(pb),
   (event) => militaryDecisionsFor(event),
   // With a cash bar, what the host still covers (owner, 11/21/2026).
-  (event, pb) => cashBarDecisionsFor(pb),
+  (event, pb) => cashBarDecisionsFor(pb, (id) => aliasedChoices(event && event.foodChoices)[id]),
 ];
 
 // ─── namedHelperCount — how many people the host has said are helping ────────
@@ -1032,6 +1032,31 @@ export function stepCalls(event, task) {
     : (words ? tasks.find((x) => x && (x.label === words || stepLeftAsk(event, x) === words)) : null);
   return t && Array.isArray(t.answeredBy) ? t.answeredBy : [];
 }
+// ─── A STEP THAT LISTS ITS ROLES NAMES ONLY THOSE LEFT (queued from #222) ───
+// A task's `books` lists the vendor roles its label names, in the label's own
+// words ("planner, photographer, caterer, band/DJ"). The label says only the
+// roles with no booked vendor yet (taskEngine.roleBooked, on event.vendors);
+// with all booked it keeps the authored words, and taskEngine ticks it.
+function booksLeftLabel(event, t, base) {
+  const books = t && Array.isArray(t.books) ? t.books : [];
+  const list = books.join(', ');
+  if (!books.length || !String(base).includes(list)) return base;
+  const left = books.filter((r) => !roleBooked(event, r));
+  return left.length && left.length < books.length ? String(base).replace(list, left.join(', ')) : base;
+}
+// The roles a checklist step lists: by its engine row id, or by its words
+// (the authored label, or the label with only the roles left). [] when none.
+export function stepBooks(event, task) {
+  if (!event || !task) return [];
+  const pb = getPlaybook(event.type);
+  const tasks = ((pb && pb.tasks) || []).filter((x) => x && Array.isArray(x.books) && x.books.length);
+  if (!tasks.length) return [];
+  const id = typeof task.id === 'string' && task.id.startsWith('pbt-') ? task.id : null;
+  const words = String(task.task || task.text || '').trim();
+  const t = id ? tasks.find((x) => id === `pbt-${event.id}-${x.id}`)
+    : (words ? tasks.find((x) => x.label === words || booksLeftLabel(event, x, x.label) === words) : null);
+  return t ? t.books : [];
+}
 export function stepCallsAnswered(event, task) {
   if (!event || !task || typeof task.id !== 'string' || !task.id.startsWith('pbt-')) return false;
   const ids = stepCalls(event, task);
@@ -1039,7 +1064,8 @@ export function stepCallsAnswered(event, task) {
 }
 export function choicePickFor(event, id) {
   if (!event || !id) return null;
-  const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  // A retired answer wording reads as its current one (cashBarCover, 11/22/2026).
+  const picks = aliasedChoices(event.foodChoices);
   const pb = getPlaybook(event.type);
   const dec = pb && Array.isArray(pb.decisions) ? pb.decisions.find((d) => d.id === id) : null;
   if (picks[id]) {
@@ -1257,8 +1283,18 @@ export function taskLabelFor(event, t) {
 export function resolveAnsweredCopy(base, copyByAnswer, event) {
   if (!copyByAnswer) return base;
   const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  // A BOOKED VENDOR ANSWERS TOO (owner, 11/22/2026: "booked caterer counts").
+  // With no pick, a record that settles the call (decisionSettledByData: a
+  // booked Catering vendor settles the food call on its caterer option) names
+  // the copy the same as that pick would. Never the authored default.
+  const pb = event ? getPlaybook(event.type) : null;
+  const settledPick = (decisionId) => {
+    const d = pb && Array.isArray(pb.decisions) ? pb.decisions.find((x) => x && x.id === decisionId) : null;
+    if (!d) return null;
+    try { const st = decisionSettledByData(event, d); return (st && st.pick) || null; } catch (_e) { return null; }
+  };
   for (const decisionId of Object.keys(copyByAnswer)) {
-    const answered = picks[decisionId];
+    const answered = picks[decisionId] || settledPick(decisionId);
     if (answered && copyByAnswer[decisionId][answered] != null) return copyByAnswer[decisionId][answered];
   }
   return base;
@@ -1689,6 +1725,11 @@ export function playbookChecklist(event, asOf) {
   // that use them, so the copy lives once (playbooks/cookLever.js).
   const base = [...playbook.tasks, ...cookTasksFor(playbook)];
   const taskList = event.isDestination ? [...base, ...DESTINATION_TASKS] : base;
+  // THE DINNER'S STEPS ARE ONE GROUP (queued from #222). On a trip with a
+  // celebration dinner, the playbook's food-phase steps are the dinner's food
+  // (the Spread is sized for the dinner), so they carry the dinner's group.
+  let celebration = false;
+  try { celebration = celebrationAppliesWith(event, playbook); } catch (_e) { celebration = false; }
   for (const t of taskList) {
     if (!t || !t.id || !t.label) continue;
     // Choice gate — a task tagged whenChoice appears only for the matching pick.
@@ -1701,8 +1742,11 @@ export function playbookChecklist(event, asOf) {
     // Kids gate — a task tagged whenKids appears only when kids are actually coming.
     if (t.whenKids && !kidsComing) continue;
     // Caterer-action gate — drop booking/headcount-to-caterer tasks when the host cooks.
-    // Keep decision-framing tasks ("…or confirm the host-cooks plan", "vs a caterer").
-    if (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy)\b/i.test(t.label)) continue;
+    // Keep decision-framing tasks ("…or confirm the host-cooks plan", "vs a caterer"),
+    // and a step that also offers the do-it-yourself path ("…or plan the passed
+    // bites + grazing table yourself"): with no caterer, that half IS the work
+    // (Day Party, #220 Open, 11/22/2026). Its caterer and truck picks rename it.
+    if (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label)) continue;
     // ── THE AIR-TRAVEL FLOOR REACHES THE CHECKLIST (2026-09-23) ─────────────
     // The floor was built into `playbookMilestones` and stopped there. Measured:
     // `playbookMilestones` has exactly one consumer, `playbookAreaNextStep`,
@@ -1733,7 +1777,7 @@ export function playbookChecklist(event, asOf) {
       // connecting-room ask on the lodging call). Tasks without one are untouched.
       // taskLabelFor picks the arrival-mode wording BEFORE the answered-copy
       // override, so a task can vary by both without either clobbering the other.
-      task: (stepLeftAsk(event, t) || resolveAnsweredCopy(taskLabelFor(event, t), t.copyByAnswer, event))
+      task: (stepLeftAsk(event, t) || booksLeftLabel(event, t, resolveAnsweredCopy(taskLabelFor(event, t), t.copyByAnswer, event)))
         + (t.kidsLine && kidsComing ? ` — ${t.kidsLine}` : ''),
       // 'event-day' buckets a T0 task under THE DAY tab; everything else is planning.
       category: eventDay ? 'event-day' : 'planning',
@@ -1745,7 +1789,7 @@ export function playbookChecklist(event, asOf) {
       leadDays: offset,
       owner: '', // a solo host owns everything — no owner chip clutter
       dueInDays,
-      provenance: { source: `${playbook.type} playbook`, taskId: t.id },
+      provenance: { source: `${playbook.type} playbook`, taskId: t.id, ...(celebration && t.phase === 'food' ? { group: DINNER_GROUP } : null) },
       // ── AND THE REASON TRAVELS WITH THE DATE (2026-10-06) ────────────────
       // The hop this sweep missed. The milestone has carried `airFloorBecause`
       // and `airFloorSources` since 2026-09-23; grepped on 2026-10-06, the only
@@ -1786,7 +1830,7 @@ export function playbookChecklist(event, asOf) {
       // lossy label bucket instead of the authored T-7d lead.
       leadDays: off,
       dueInDays: dte + off,
-      provenance: { source: `${playbook.type} playbook`, taskId: 'fa-caterer', derived: 'food-approach' },
+      provenance: { source: `${playbook.type} playbook`, taskId: 'fa-caterer', derived: 'food-approach', ...(celebration ? { group: DINNER_GROUP } : null) },
     });
   }
   // THE MEALS OUT GET BOOKED (owner, 11/21/2026). On a destination trip, only
@@ -1795,7 +1839,7 @@ export function playbookChecklist(event, asOf) {
   // under the day they belong to; house and on-your-own meals add none.
   if (event.isDestination) {
     let around = null;
-    try { around = aroundMeals(event, { celebration: celebrationAppliesWith(event, playbook) }); } catch (_e) { around = null; }
+    try { around = aroundMeals(event, { celebration }); } catch (_e) { around = null; }
     for (const m of ((around && around.slots) || []).filter((x) => x.mode === 'out')) {
       const off = -30;
       rows.push({
@@ -1805,6 +1849,22 @@ export function playbookChecklist(event, asOf) {
         leadDays: off,
         dueInDays: dte + off,
         provenance: { source: `${playbook.type} playbook`, taskId: `tm-out-${m.key}`, derived: 'trip-meals', group: m.dayLabel },
+      });
+    }
+  }
+  // The dinner's own steps: the night and the place, each ticked by the
+  // dinner's matching part (taskEngine → tripFood.dinnerParts). Undated: no
+  // source says how far ahead a dinner night or its place is settled, and the
+  // group renders where its earliest dated member sits (groupDinnerSteps).
+  if (celebration) {
+    for (const s of DINNER_OWN_STEPS) {
+      rows.push({
+        id: `pbt-${event.id}-cel-${s.key}`,
+        task: s.label,
+        category: 'planning', phase: 'food', week: '', owner: '',
+        leadDays: null,
+        dueInDays: null,
+        provenance: { source: `${playbook.type} playbook`, taskId: `cel-${s.key}`, derived: 'celebration', group: DINNER_GROUP },
       });
     }
   }
@@ -3799,7 +3859,8 @@ export function playbookDecisionBoard(event, asOf, profile) {
     ...((pb && Array.isArray(pb.decisions)) ? pb.decisions : []),
     ...injectedDecisionsFor(event, pb),
   ];
-  const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  // A retired answer wording reads as its current one (cashBarCover, 11/22/2026).
+  const picks = aliasedChoices(event.foodChoices);
   // The fact bag, built ONCE for the whole board (it is identical for every row)
   // and handed to decisionPriorityFields so an authored rationale that asserts
   // the host is on their own can stand down when the app knows they are not.
@@ -5040,7 +5101,10 @@ export function playbookFoodPlan(event, opts = {}) {
     return false;
   };
   const hostBuysIt = (p) => !(p.category === 'beverage'
-    && (_cashKeeps ? !_cashKeeps.has(p.id) : (!/\bice\b/i.test(p.item || '') && _drinkLeaves(p))));
+    && (_cashKeeps ? !_cashKeeps.ids.has(p.id) : (!/\bice\b/i.test(p.item || '') && _drinkLeaves(p))));
+  // The count a cash pick states (two drink tickets → 2 a guest), at the line's
+  // own rate; null for every other line (cashBarCover, owner 11/22/2026).
+  const _statedPerGuest = (p) => (_cashKeeps && _cashKeeps.perGuest[p.id] != null ? _cashKeeps.perGuest[p.id] : null);
 
   // Food-approach → budget. When the host chose a CATERER (vs cooking), they aren't buying the
   // homemade FOOD lines — the caterer brings them — so those drop here (mirrors the BYOB rule
@@ -5367,7 +5431,9 @@ export function playbookFoodPlan(event, opts = {}) {
       // Everything below (sizing, pricing, copy) reads the GOVERNED purchase, so a
       // published KCR moves the host's numbers without any surface knowing.
       // Identity when nothing is published.
-      const p = governedPurchase(playbook, p0);
+      const _pg = governedPurchase(playbook, p0);
+      const _stated = _statedPerGuest(_pg);
+      const p = _stated != null ? { ..._pg, qtyPerGuest: _stated } : _pg;
       // In-place swap chosen for this line (event.foodSwap[id] = the alternative's name).
       const swappedName = (p.id in swapMap && String(swapMap[p.id] || '').trim()) ? String(swapMap[p.id]).trim() : null;
       // If the chosen alternative carries its OWN price/qty data, the line RE-PRICES to it
@@ -5564,7 +5630,8 @@ export function playbookFoodPlan(event, opts = {}) {
         // Governance, carried to the surface (5C.10). `provenance` is what a host
         // can read; `qtyGrounded` is whether the quantity is sourced; `governedFields`
         // names which numbers came from a published KCR rather than the authored file.
-        provenance: purchaseProvenance(playbook, p0) || null,
+        // A count the host's own pick states carries that basis, not the line's estimate.
+        provenance: (_stated != null && _cashKeeps.provenance) || purchaseProvenance(playbook, p0) || null,
         costProvenance: purchaseCostProvenance(playbook, p0) || null,
         // What MOVED this price, carried out with it. `classifyClaim` reads it so
         // a sourced badge cannot go on vouching for a base rate after an
@@ -5576,7 +5643,7 @@ export function playbookFoodPlan(event, opts = {}) {
             note: _choiceBasis.note || '',
           }
           : null,
-        qtyGrounded: isGroundedItemQty(purchaseProvenance(playbook, p0)),
+        qtyGrounded: _stated != null ? false : isGroundedItemQty(purchaseProvenance(playbook, p0)),
         governedFields: p._governed || [],
       };
     });

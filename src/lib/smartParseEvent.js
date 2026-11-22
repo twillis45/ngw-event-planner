@@ -1566,11 +1566,33 @@ export function parseSmartEventText(text, opts = {}) {
   // field trip, a day trip are not this), and that refusal stands for a trip
   // with nothing else said. A trip the host says spans days — two dates, a
   // night count, a weekend — is a group trip, and only when nothing more
-  // specific named the occasion ("bachelorette weekend", "NYE trip" keep
-  // theirs).
+  // specific named the occasion ("bachelorette weekend" keeps its own; an
+  // NYE trip over Dec 31 is the one exception, below).
   const _tripSaid = TRIP_WORD.test(t) && !NOT_A_GROUP_TRIP.test(t);
-  const _tripType = !type && _tripSaid && (endDate || nights > 0) ? 'Group Trip' : null;
-  const typeOut = type || _tripType;
+  // A weekend spans days too, even when which days is still owed ("July 4th
+  // weekend trip to the lake", owner 11/22/2026: "dates first as the main ask").
+  const _spanSaid = !!endDate || nights > 0 || /\bweekend\b/i.test(t);
+  // ── A HOLIDAY INSIDE THE TRIP IS ITS NIGHT (owner ruling 11/22/2026: "trip
+  // wins") ────────────────────────────────────────────────────────────────
+  // "New Year's Eve trip to Nashville Dec 30 – Jan 2" was a one-night party
+  // playbook laid over four days. A trip whose days include Dec 31 is a Group
+  // Trip, and Dec 31 is the night of its celebration dinner, as she said it
+  // (tripMeals.celebrationFieldsToPersist writes it). A party on the night
+  // itself, or a trip that misses the 31st, keeps what it was.
+  const _nyeNight = (() => {
+    if (type !== "New Year's Eve Party" || !_tripSaid || !date) return null;
+    const last = endDate || (nights > 0 ? (() => {
+      const [y, m, d] = date.split('-').map(Number);
+      const e = new Date(y, m - 1, d + nights, 12);
+      return `${e.getFullYear()}-${String(e.getMonth() + 1).padStart(2, '0')}-${String(e.getDate()).padStart(2, '0')}`;
+    })() : null);
+    if (!last) return null;
+    const eve = `${date.slice(0, 4)}-12-31`;
+    // Dec 31 must be a night of the trip: on or after the first day, before the last.
+    return date <= eve && eve < last ? eve : null;
+  })();
+  const _tripType = (!type && _tripSaid && _spanSaid) || _nyeNight ? 'Group Trip' : null;
+  const typeOut = _tripType || type;
   const typeBasisOut = _tripType ? 'named' : typeBasis;
 
   // ── THE DAYS ARE OWED, NOT GUESSED ──────────────────────────────────────
@@ -1979,7 +2001,10 @@ export function parseSmartEventText(text, opts = {}) {
 
   return {
     hostName,
-    type: typeOut, typeBasis: typeBasisOut, typeHeard, secondaryType, theme, themeBasis, guests, guestPairs, budget, date, impossibleDate, endDate, datesToConfirm, monthYear, milestone, nights, lodgingKind, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
+    type: typeOut, typeBasis: typeBasisOut, typeHeard, secondaryType, theme, themeBasis, guests, guestPairs, budget, date, impossibleDate, endDate, datesToConfirm, monthYear, milestone, nights, lodgingKind,
+    // The trip's night the host named by its holiday, and that holiday (null when none).
+    celebrationNight: _nyeNight, celebrationOccasion: _nyeNight ? 'New Year’s Eve' : null,
+    isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
     healthNoted,
     startTime: startTimeParsed ? startTimeParsed.startTime : null,
     startTimeBasis: startTimeParsed ? startTimeParsed.startTimeBasis : null,

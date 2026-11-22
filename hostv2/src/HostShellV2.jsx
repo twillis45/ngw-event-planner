@@ -123,7 +123,7 @@ import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement, honoreeApplies } from '@app/lib/eventIdentity';
 import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, spanEnd, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
-import { eventDatesPatch, eventSpanLabel } from '@app/lib/eventDates';
+import { eventDatesPatch, eventSpanLabel, eventStartTimePatch } from '@app/lib/eventDates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel, taskIsOverdue, taskWindowClosed } from '@app/lib/taskLead';
@@ -345,7 +345,7 @@ import { worryLabel } from '@app/lib/worryLabel';
 import { venueFor, setVenue, confirmVenue, formatVenueAddress } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
-import { tripDays, celebrationNight, celebrationTitle, celebrationPlace, celebrationFieldsToPersist, aroundMeals, mealsOutPayer, placeWithArticle, MEAL_PLANS, MEAL_MODES, MEAL_PAYERS, MEAL_LABEL, tripIsMultiDay } from '@app/lib/tripMeals';
+import { tripDays, celebrationNight, celebrationTitle, celebrationPlace, celebrationFieldsToPersist, aroundMeals, mealsOutPayer, placeWithArticle, MEAL_PLANS, MEAL_MODES, MEAL_PAYERS, MEAL_LABEL, tripIsMultiDay, DINNER_GROUP, groupDinnerSteps } from '@app/lib/tripMeals';
 import { celebrationApplies, tripFoodMoney, aroundSummary, dinnerParts, RESTAURANT_DINNER } from '@app/lib/tripFood';
 import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
 import { mayExhale, calmVetoFor } from '@app/lib/exhaleGate';
@@ -6195,6 +6195,9 @@ export default function HostShellV2() {
     // 'days' is the span-gated "Your days" door (sectionDirectory) — a second
     // honest door onto the space sheet's programme block, not a new surface.
     if (kind === 'days') { setSheet({ kind: 'days' }); return; }
+    // The spread's section door (the rail and Jump to a section) asks the one
+    // tab rule like every other generic door (owner: "Single sources").
+    if (kind === 'food') { openSpread(); return; }
     // Which door opened Messages travels with the sheet (messages_view_opened).
     setSheet(kind === 'messages' ? { kind, entry: 'section_list' } : { kind });
   };
@@ -7046,6 +7049,38 @@ export default function HostShellV2() {
     return m;
   }, [event]);
 
+  // ── THE DINNER'S STEPS ARE ONE GROUP (queued from #222) ────────────────
+  // The checklist renders the celebration dinner's steps together, under the
+  // dinner's title. Which rows those are is read live off the engine
+  // (provenance.group), like airFloorById above, so an event drafted before
+  // the group existed groups too. groupDinnerSteps keeps each row's stored
+  // index, so a tick still writes the row it shows.
+  const dinnerStepIds = useMemo(() => {
+    const ids = new Set();
+    try {
+      for (const r of (playbookChecklist(event) || [])) if (r && r.provenance && r.provenance.group === DINNER_GROUP) ids.add(r.id);
+    } catch (_e) { /* no checklist, no group */ }
+    return ids;
+  }, [event]);
+  const renderGroupedTasks = (renderRow) => {
+    const order = groupDinnerSteps(event.timeline, dinnerStepIds);
+    const group = order.filter((x) => x.inGroup).map((x) => ({ x, el: renderRow(x.t, x.i) })).filter((g) => g.el);
+    const out = [];
+    let placed = false;
+    for (const x of order) {
+      if (!x.inGroup) { out.push(renderRow(x.t, x.i)); continue; }
+      if (placed || !group.length) continue;
+      placed = true;
+      out.push(
+        <div className="dinner-steps" data-dinner-steps key="dinner-steps">
+          <div className="shelf-label">{celebrationTitle(event)}</div>
+          {group.map((g) => <Fragment key={(g.x.t.id || g.x.i) + '-dn'}>{g.el}</Fragment>)}
+        </div>,
+      );
+    }
+    return out;
+  };
+
   // The REAL spread: same food plan hostSpending bills from, sized by the
   // engine's own attendance band for this event.
   const foodPlan = useMemo(() => {
@@ -7545,9 +7580,11 @@ export default function HostShellV2() {
   // rows as inert, cursor:default divs). Every allocation row lands on the
   // surface that actually prices it, in EITHER place these rows render.
   const supplGroupName = ((foodPlan && foodPlan.groups) || []).find(g => /suppl|paper|setup|gear/i.test(String(g)));
+  // Food and Drinks name the spread, not a tab, so they ask the tab rule
+  // (openSpread). Supplies opens its own shelf, which only Shop has.
   const GO_SPEND = {
-    food: () => setSheet({ kind: 'food' }),
-    drinks: () => setSheet({ kind: 'food' }),
+    food: () => openSpread(),
+    drinks: () => openSpread(),
     supplies: () => { if (supplGroupName) setFoodGroupsOpen(m => ({ ...m, [supplGroupName]: true })); setSheet({ kind: 'food' }); },
     space: () => setSheet({ kind: 'space' }),
     crabs: () => setSheet({ kind: 'crabs' }),
@@ -8422,6 +8459,13 @@ export default function HostShellV2() {
       event && event.travelMode, event && event.isDestination, event && event.foodFocus,
       event && event.caterer, event && event.date]);
 
+  // THE START TIME'S ONE WRITE PATH (owner 11/22/2026, "Both can edit"):
+  // Date & time and the run of show's "guests arrive" both write `startTime`
+  // through lib/eventDates, so the two editors cannot store it two ways.
+  const writeStartTime = (next, msg) => {
+    const p = eventStartTimePatch(event, next);
+    if (p) patchEvent(p, msg);
+  };
   const patchEvent = (obj, msg, opts) => {
     // GENERIC UNDO (build-map #8): patchEvent is the ONE write path every edit
     // funnels through, so undo is built here ONCE rather than wired action by
@@ -9535,7 +9579,8 @@ export default function HostShellV2() {
             say which (lib/smartParseEvent datesToConfirm). Ask for the range. */}
         {event.datesToConfirm && (
           <p className="grounding" data-dates-owed style={{ width: '100%', margin: '0 0 var(--sp-1)' }}>
-            {event.date ? 'You gave the first day. Which day does it end?' : 'Which dates? Set the first and last day.'}
+            {/* A known start is asked as the range too (owner 11/22/2026): never the last day alone. */}
+            Which dates? Set the first and last day.
           </p>
         )}
         <div className="actions-row" data-date-range style={{ width: '100%', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -9583,10 +9628,10 @@ export default function HostShellV2() {
                 <span className="of">guests arrive:</span>
                 <input className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                   value={event.startTime || ''}
-                  onChange={e => patchEvent({ startTime: e.target.value, startTimeSource: 'host' }, 'Start time set — the day now runs on a real clock.')}
+                  onChange={e => writeStartTime({ startTime: e.target.value }, 'Start time set — the day now runs on a real clock.')}
                   aria-label="What time guests arrive" />
                 {prop && (
-                  <button className="mini" onClick={() => patchEvent({ startTime: prop.hhmm, startTimeSource: 'host' },
+                  <button className="mini" onClick={() => writeStartTime({ startTime: prop.hhmm },
                     'Start time set — the day now runs on a real clock.')}>
                     use {prop.label}
                   </button>
@@ -9594,7 +9639,7 @@ export default function HostShellV2() {
                 {/* Confirm the proposed time INLINE next to it (host request 2026-07-16) — one tap
                     right where the time lives, not a separate row below. */}
                 {!startTimeIsConfirmed(event) && String(event.startTime || '').trim() && (
-                  <button className="mini" onClick={() => patchEvent({ startTimeSource: 'host' },
+                  <button className="mini" onClick={() => writeStartTime({ confirm: true },
                     'Start time confirmed — your invite and vendor briefs can name it now.')}>
                     that’s right
                   </button>
@@ -10370,8 +10415,12 @@ export default function HostShellV2() {
     // place (the kind of place, not a booked venue), shown on the dinner sheet
     // and never re-asked. A type with a celebration gets the record even with
     // no place said, so the invite knows the dinner is its own moment.
+    // A night she named by its holiday ("New Year's Eve trip … Dec 30 – Jan 2",
+    // owner 11/22/2026: "trip wins") is her pick, and it is what gives a Group
+    // Trip its dinner — so it is read before asking whether one applies.
     try {
-      if (celebrationApplies(ev)) ev.celebration = celebrationFieldsToPersist(smartText).celebration || {};
+      const said = celebrationFieldsToPersist(smartText, parsed).celebration || {};
+      if (celebrationApplies({ ...ev, celebration: said })) ev.celebration = said;
     } catch (_e) { /* the dinner sheet asks what it must */ }
     try { ev.timeline = (playbookChecklist(ev) || []).map(r => ({ id: r.id, week: r.week || '', leadDays: r.leadDays != null ? r.leadDays : null, task: r.task || '', done: false, owner: '', category: r.category || '' })); } catch {}
     // A FOOD SHE NAMED IS ON THE MENU (GOLD-05, 11/5/2026). One the playbook
@@ -10922,7 +10971,8 @@ export default function HostShellV2() {
             <div className="srail-g" key={g.title}>
               <div className="shelf-label srail-t">{g.title}</div>
               {g.rows.map((r) => {
-                const here = sheet && sheet.kind === r.k;
+                // The spread is one door whichever tab it opened on.
+                const here = sheet && (sheet.kind === 'bringing' || sheet.kind === 'foodplan' ? 'food' : sheet.kind) === r.k;
                 return (
                   <button key={r.k} className={'srail-row' + (here ? ' on' : '')}
                     aria-current={here ? 'page' : undefined}
@@ -13694,7 +13744,9 @@ export default function HostShellV2() {
                         if (sec.route && routeSheet(sec.route)) return;
                         const k = String(sec.key || sec.label || '').toLowerCase();
                         if (/task|step|plan/.test(k)) setSheet({ kind: 'tasks', focus: null });
-                        else if (/get|shop|food|buy/.test(k)) setSheet({ kind: 'food', focus: null });
+                        // Route-less is "Shopping — all in hand": no line to land
+                        // on, so the spread opens on the tab the work is on.
+                        else if (/get|shop|food|buy/.test(k)) openSpread();
                         else if (/weather|rain/.test(k)) setSheet({ kind: 'rain' });
                         else if (/tomorrow|start|schedule/.test(k)) setStage('day');
                         else setSheet({ kind: 'tasks', focus: null });
@@ -15077,7 +15129,7 @@ export default function HostShellV2() {
                     // SPLIT THE COSTS (owner 11/16/2026, free, math only): a
                     // local event splits what friends paid; a destination
                     // event keeps its pass-unlocked "Who pays for what".
-                    : { key: 'split', label: 'Split the costs', sub: splitRowSub(event), go: () => setSheet({ kind: 'split' }) },
+                    : { key: 'split', label: 'Split the costs', sub: splitRowSub(event, foodPlan), go: () => setSheet({ kind: 'split' }) },
                   riskCount > 0
                     // WAVE-5: the row tints only when the registry actually raises a
                     // high risk — "N to know about" alone is information, not an ask.
@@ -15533,7 +15585,12 @@ export default function HostShellV2() {
                       model and nothing could write it — so this is both the proposal and the
                       capture. Grounded: the seed is the host's OWN time-of-day bucket, and we
                       say so. Nothing is written until they tap. */}
-                  {ros.length > 0 && ros.some(r => !r.time) && (() => {
+                  {/* BOTH CAN EDIT (owner 11/22/2026): once the day is on her clock
+                      this row used to vanish, leaving Date & time the only place
+                      to move the hour. It stays while the playbook's day follows
+                      the start time; a run of show she wrote herself keeps its
+                      own times, so there it shows only while rows are unclocked. */}
+                  {ros.length > 0 && (ros.some(r => !r.time) || !(event.rosEdited && Array.isArray(event.ros) && event.ros.length)) && (() => {
                     // THE START TIME — GROUNDED, PROPOSED, THE HOST'S TO CHANGE (2026-07-14).
                     //
                     // This used to be invented: with only "afternoon" the schedule printed
@@ -15577,21 +15634,23 @@ export default function HostShellV2() {
                             ? <><b>{reading.line}</b> Every line below reads from it.</>
                             : derived
                             ? <><b>We pencilled in {(() => { const [h, m] = String(event.startTime).split(':').map(Number); const ap = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ap}`; })()} — not you.</b> Confirm it and every line below becomes a real clock time.</>
+                            : startTimeIsConfirmed(event)
+                            ? <>Every line below reads from this start time.</>
                             : <>These moments are in order but not on a clock — set a start time and every line below becomes a real one.</>}
                         </p>
                         <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
                           <span className="of">guests arrive:</span>
                           <input className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                             value={event.startTime || ''}
-                            onChange={e => patchEvent({ startTime: e.target.value, startTimeSource: 'host' }, 'Start time set — the whole day reads from it now.')}
+                            onChange={e => writeStartTime({ startTime: e.target.value }, 'Start time set — the whole day reads from it now.')}
                             aria-label="What time guests arrive" />
                           {derived ? (
-                            <button className="mini" onClick={() => patchEvent({ startTimeSource: 'host' },
+                            <button className="mini" onClick={() => writeStartTime({ confirm: true },
                               'Start time confirmed — the whole day reads from it now.')}>
                               that’s right
                             </button>
                           ) : prop && (
-                            <button className="mini" onClick={() => patchEvent({ startTime: prop.hhmm, startTimeSource: 'host' },
+                            <button className="mini" onClick={() => writeStartTime({ startTime: prop.hhmm },
                               'Start time set — the whole day reads from it now.')}>
                               use {prop.label}
                             </button>
@@ -15705,8 +15764,8 @@ export default function HostShellV2() {
                         <CtaRow gap={ASK_COMPACT.whyToCta}>
                           <button className="cta"
                             onClick={() => derived
-                              ? patchEvent({ startTimeSource: 'host' }, 'Start time confirmed — the whole day reads from it now.')
-                              : patchEvent({ startTime: prop.hhmm, startTimeSource: 'host' }, 'Penciled the day from your ' + prop.label + ' start — nudge any time you like.')}>
+                              ? writeStartTime({ confirm: true }, 'Start time confirmed — the whole day reads from it now.')
+                              : writeStartTime({ startTime: prop.hhmm }, 'Penciled the day from your ' + prop.label + ' start — nudge any time you like.')}>
                             {derived ? (reading ? 'That’s right — pencil the day from it' : 'That’s right — pencil them in') : 'Yes, pencil them in'}
                           </button>
                         </CtaRow>
@@ -17435,7 +17494,7 @@ export default function HostShellV2() {
                 onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} onSignIn={signInFromSheet} />
             )}
             {sheet.kind === 'split' && (
-              <CostSplitSheet event={event} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} />
+              <CostSplitSheet event={event} plan={foodPlan} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} />
             )}
             {sheet.kind === 'days' && (() => {
               // ── YOUR DAYS, ITS OWN SHEET (owner, 11/21/2026: "Its own sheet") ──
@@ -20550,7 +20609,8 @@ export default function HostShellV2() {
               };
               const goAnswer = (route) => {
                 if (route === 'plan') { setStage('plan'); setSheet(null); return; }
-                if (['budget', 'food', 'guests', 'rain'].includes(route)) setSheet({ kind: route });
+                if (route === 'food') { openSpread(); return; }
+                if (['budget', 'guests', 'rain'].includes(route)) setSheet({ kind: route });
               };
               const examples = ['Will $2,000 cover it?', 'How much food do I need?', 'Am I ready?', 'Will it rain?'];
               return (
@@ -22244,7 +22304,7 @@ export default function HostShellV2() {
                       report line (tap to review) — same green-dot semantics as
                       the handled sections everywhere else. */}
                   <Panel on={panels}>
-                  {(event.timeline || []).map((t, i) => {
+                  {renderGroupedTasks((t, i) => {
                     // A RETIRED row is off the open list. The reconcile marks a
                     // row retired when the gate that authored it closes — pick
                     // "steam them myself" and the two crab-house pickup rows

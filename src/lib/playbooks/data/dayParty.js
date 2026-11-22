@@ -72,7 +72,13 @@ const dayParty = {
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
     { id: 't_food', answeredBy: ['food'], milestoneId: 'dp_bookdj', phase: 'vendor', label: 'Decide the food level: passed bites and grazing, light bites only, a food truck, or catered drop-off', when: 'T-28d' },
-    { id: 't_food_lock', milestoneId: 'dp_bookdj', phase: 'vendor', label: 'Lock food: confirm the food truck or caterer window, or plan the passed bites + grazing table yourself', when: 'T-28d' },
+    { id: 't_food_lock', milestoneId: 'dp_bookdj', phase: 'vendor', label: 'Lock food: confirm the food truck or caterer window, or plan the passed bites + grazing table yourself', when: 'T-28d',
+      copyByAnswer: { food: {
+        'Light passed bites + grazing table': 'Lock food: plan the passed bites + grazing table yourself',
+        'Light bites only': 'Lock food: plan the light bites yourself',
+        'Food truck': 'Lock food: confirm the food truck’s window',
+        'Caterer drop-off small plates': 'Lock food: confirm the caterer’s drop-off window',
+      } } },
     { id: 't_permit', milestoneId: 'dp_permit', phase: 'logistics', label: 'Check city noise ordinance / daytime decibel + permit rules; tell the neighbors the date and end time (invite one or two)', when: 'T-21d' },
     { id: 't_invite', milestoneId: 'dp_invite', phase: 'guest', label: 'Send the invite — dress code, start AND end time, address, "21+ / grown folks" if applicable', when: 'T-21d' },
     { id: 't_rsvp', milestoneId: 'dp_rsvp', phase: 'guest', label: 'Confirm headcount; check the forecast + shade/rain plan; remind guests to line up a ride / rideshare', when: 'T-5d' },

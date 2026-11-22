@@ -95,7 +95,9 @@ const wedding = {
     { id: 't_budget', answeredBy: ['budget', 'guestcount'], milestoneId: 'w_budget', phase: 'planning', label: 'Agree total budget, who pays, and the guest-count target', when: 'T-365d' },
     { id: 't_vision_brief', milestoneId: 'w_budget', phase: 'planning', label: 'Write the vision brief', when: 'T-365d' },
     { id: 't_venue', milestoneId: 'w_venue', phase: 'venue', label: 'Tour, compare, sign venue contract + deposit; lock the date', when: 'T-365d' },
-    { id: 't_keyvendors', milestoneId: 'w_keyvendors', phase: 'vendor', label: 'Sign planner, photographer, caterer, band/DJ (these book a year out)', when: 'T-300d' },
+    // `books` names the roles the label lists, in its words: the step says only
+    // the ones not yet booked (event.vendors) and is done when all are.
+    { id: 't_keyvendors', milestoneId: 'w_keyvendors', phase: 'vendor', label: 'Sign planner, photographer, caterer, band/DJ (these book a year out)', books: ['planner', 'photographer', 'caterer', 'band/DJ'], when: 'T-300d' },
     { id: 't_attire', milestoneId: 'w_attire', phase: 'planning', label: 'Order dress/attire; schedule alterations runway', when: 'T-240d' },
     { id: 't_design', milestoneId: 'w_design', phase: 'vendor', label: 'Book florist, rentals, baker, officiant; order stationery; build registry + website', when: 'T-180d' },
     { id: 't_invites', milestoneId: 'w_invites', phase: 'guest', label: 'Mail invitations 6–8 wks out; track RSVPs + meal choices', when: 'T-90d' },
