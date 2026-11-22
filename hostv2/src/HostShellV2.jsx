@@ -15097,7 +15097,7 @@ export default function HostShellV2() {
                     // SPLIT THE COSTS (owner 11/16/2026, free, math only): a
                     // local event splits what friends paid; a destination
                     // event keeps its pass-unlocked "Who pays for what".
-                    : { key: 'split', label: 'Split the costs', sub: splitRowSub(event), go: () => setSheet({ kind: 'split' }) },
+                    : { key: 'split', label: 'Split the costs', sub: splitRowSub(event, foodPlan), go: () => setSheet({ kind: 'split' }) },
                   riskCount > 0
                     // WAVE-5: the row tints only when the registry actually raises a
                     // high risk — "N to know about" alone is information, not an ask.
@@ -17462,7 +17462,7 @@ export default function HostShellV2() {
                 onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} onSignIn={signInFromSheet} />
             )}
             {sheet.kind === 'split' && (
-              <CostSplitSheet event={event} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} />
+              <CostSplitSheet event={event} plan={foodPlan} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} />
             )}
             {sheet.kind === 'days' && (() => {
               // ── YOUR DAYS, ITS OWN SHEET (owner, 11/21/2026: "Its own sheet") ──
