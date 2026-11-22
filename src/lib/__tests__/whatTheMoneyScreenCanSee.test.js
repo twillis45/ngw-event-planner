@@ -138,7 +138,9 @@ describe('what the money screen can and cannot see', () => {
     // Halloween's batch cocktail; Juneteenth's strawberries; Crawfish boiled-to-
     // order, kids' drinks and iced tea; Fish Fry's second starch and grown
     // section; Friendsgiving's host wine; NYE's all-cider toast; The Cookout's punch.
-    expect(gated.length).toBe(60);
+    // +1 on 11/22/2026 (Wanda audit P1-4): Retirement's signature-cocktail batch,
+    // bought only on the signature pick.
+    expect(gated.length).toBe(61);
   });
 
   test('THE RED-PROOF, IN THE TEST: perturbing decor moves nothing, food moves a lot', () => {

@@ -70,6 +70,7 @@ test('the picks that change the cost with no source yet, each saying why (owner 
   expect(pending).toEqual([
     'Crawfish Boil · heat', 'Crawfish Boil · sides', 'Day Party · food', 'Ethiopian Coffee Ceremony · injera_source',
     'Fish Fry · fish', 'PTA / Booster Fundraiser · concessions', 'Pupusa Gathering · curtido_ahead', 'Pupusa Gathering · make_vs_order',
+    'Retirement Party · bar',
   ]);
 });
 
