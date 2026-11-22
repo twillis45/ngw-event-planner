@@ -129,10 +129,19 @@ const openSection = async (page, name) => {
     if (el) el.click();
   }, name);
   await page.waitForTimeout(900);
-  const t = await page.evaluate(() => {
+  const read = () => page.evaluate(() => {
     const sh = document.querySelector('.sheet');
     return sh ? (sh.innerText || '').replace(/\s+/g, ' ') : '';
   });
+  let t = await read();
+  // The spread's section door opens on Plan while a menu question is open
+  // (foodSheetKind, #223); the list lives on Shop, so read both tabs.
+  const shop = page.locator('.sheet').last().locator('.fmode', { hasText: /^Shop$/ }).first();
+  if (await shop.count()) {
+    await shop.click();
+    await page.waitForTimeout(600);
+    t = t + ' ' + await read();
+  }
   await page.keyboard.press('Escape');
   await page.waitForTimeout(400);
   return t;
