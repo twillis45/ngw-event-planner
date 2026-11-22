@@ -56,6 +56,16 @@
 //               #e8edf2 now reads --carbon-ink; the unrendered reveal rules
 //               took #f4f6f8 (.rv-mname), #f2f4f7 (.rv-card-what) and the five
 //               in @keyframes rvignite (.rv-name .rv-L) with them.
+//   11/22/2026  269 color, 880 inline (the Linen theme, owner: "B with the C
+//               touches"). The board's progress strips moved from an inline
+//               style (two var() fallbacks, #6f9f7f / #7d8590, plus background
+//               and opacity) to .eprog-seg and the --seg-done / --seg-open
+//               tokens: HostShellV2.jsx 30 -> 28 color, 636 -> 634 inline.
+//   11/22/2026  the two sheet scrims (rgba(0,0,0,.42), rgba(6,9,12,.55)) read
+//               --scrim / --scrim-deep, warm umber in light: styles.css 119 -> 117.
+//   11/22/2026  .ef-cnt's dark #1a2228 is --count-badge (warm black in light, so
+//               the parity gate's no-white-plate rule stops reading var(--ink) as
+//               one): styles.css 117 -> 116.
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';

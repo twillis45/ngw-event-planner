@@ -724,13 +724,40 @@ const fmt12h = (t) => {
   return (h % 12 || 12) + ':' + m[2] + (h >= 12 ? ' PM' : ' AM');
 };
 
-// ── A SECTION ON ITS OWN PANEL, IN LIGHT (owner ruling 25, 11/21/2026: "W1") ──
-// In light every distinct block of a sheet sits on a white --card panel with a
-// --line edge and a soft shadow, on the --bg ground. Dark keeps today's flat
-// column, so in dark this renders its children with no wrapper at all: the
-// dark DOM is unchanged, and so is every `.sheet-body > X` layout rule that
-// reads it. An empty panel (its only child rendered nothing) is hidden by
+// ── A SECTION ON ITS OWN PANEL (owner ruling 25, 11/21/2026: "W1"; dark too
+// since 11/22/2026) ──
+// Every distinct block of a sheet sits on a --card panel with a --line edge,
+// on the --bg ground, in both themes. `on` stays so a caller can still opt a
+// block out (Space wraps only its own kind; People mode skips it). An empty panel (its only child rendered nothing) is hidden by
 // `.panel:empty`, so a conditional block can be wrapped where it stands.
+// ── HOLD THE OPEN VENDOR CARD WHERE IT IS (11/22/2026, #231) ─────────────────
+// A write from inside an open vendor card ("Mark asked", "Not needed", a status
+// pick) can rewrite rows ABOVE the card: the sheet's summary line under "Booked
+// so far" changes sentence and wrap, and everything below it shifts. Chromium
+// and current WebKit anchor the scroll and keep the card still; a browser that
+// does not (an older iPhone Safari) moves it, 16px in anOpenCardHoldsStill.
+// So note the card's top before the write and, on the next frame (after the
+// commit, before paint), scroll back by any drift. A browser that already
+// anchored leaves no drift, and this does nothing.
+function holdOpenCard() {
+  try {
+    const open = () => document.querySelector('.sheet .vcard.open');
+    const card = open();
+    if (!card) return;
+    const id = card.id;
+    const before = card.getBoundingClientRect().top;
+    requestAnimationFrame(() => {
+      const now = (card.isConnected ? card : (id && document.getElementById(id))) || open();
+      if (!now) return;
+      const delta = now.getBoundingClientRect().top - before;
+      if (Math.abs(delta) < 1) return;
+      let sc = now.parentElement;
+      while (sc && sc !== document.body && !(/(auto|scroll)/.test(getComputedStyle(sc).overflowY) && sc.scrollHeight > sc.clientHeight)) sc = sc.parentElement;
+      (sc && sc !== document.body ? sc : document.scrollingElement).scrollTop += delta;
+    });
+  } catch (_e) { /* a hold is a nicety; the write itself already happened */ }
+}
+
 function Panel({ on, children }) {
   return on ? <div className="panel">{children}</div> : <>{children}</>;
 }
@@ -4366,6 +4393,7 @@ export default function HostShellV2() {
   const sweepWindow = days != null && days >= 0 && days <= 3 && reconfirmables.length > 0 && !isPastEvent(event);
   const reconfirmedN = reconfirmables.filter(v => v.reconfirmed72 === true).length;
   const writeVendor = (id, patch, msg) => {
+    holdOpenCard();   // a write inside the open card must not move it (see holdOpenCard)
     const vs = (event.vendors || []).map(v => (v && v.id === id) ? { ...v, ...patch } : v);
     return patchEvent({ vendors: vs }, msg);
   };
@@ -8202,7 +8230,9 @@ export default function HostShellV2() {
   // feature. Seeded from the same reader the boot path uses, so the row opens
   // showing what is actually on screen rather than a default.
   const [theme, setThemeState] = useState(() => { try { return currentTheme(); } catch { return 'dark'; } });
-  const panels = theme === 'light';   // ruling 25: sheet sections on panels, light only (see Panel)
+  // Ruling 25 put sheet sections on panels in light; owner 11/22/2026 gave dark
+  // the same panels ("screen section panel parity"), so both themes render them.
+  const panels = true;
   // The visible analytics opt-out (owner ruling 2026-11-02, option A).
   const [analyticsOff, setAnalyticsOff] = useState(() => { try { return isAnalyticsOptedOut(); } catch { return false; } });
   useEffect(() => { setMessageSoundMuted(muted); try { localStorage.setItem('ngw-hostv2-muted', muted ? '1' : '0'); } catch {} }, [muted]);
@@ -11904,15 +11934,17 @@ export default function HostShellV2() {
                           It is not a reasonable silent answer to a typo. The rule
                           stays; the guess is declared and one tap from correction. */}
                       {parsed && parsed.typeBasis === 'milestone' && effType && parsed.milestone && (
-                        <p className="grounding" style={{ margin: '12px 0 0', color: 'var(--warn)' }}>
-                          Reading this as a <strong>{String(effType).toLowerCase()}</strong> from “{parsed.milestone}” —
+                        // The guess is the honey chip; the sentence stays calm (B, owner
+                        // 11/22/2026: no orange body copy, in either theme).
+                        <p className="grounding" style={{ margin: '12px 0 0' }}>
+                          Reading this as a <strong className="honey">{String(effType).toLowerCase()}</strong> from “{parsed.milestone}” —
                           nothing else named the occasion. If that’s not it, change it above: the checklist,
                           the risks and the food all follow from it.
                         </p>
                       )}
                       {parsed && parsed.typeBasis === 'generic' && effType && (
-                        <p className="grounding" style={{ margin: '12px 0 0', color: 'var(--warn)' }}>
-                          Reading this as a <strong>{String(effType).toLowerCase()}</strong> because you said
+                        <p className="grounding" style={{ margin: '12px 0 0' }}>
+                          Reading this as a <strong className="honey">{String(effType).toLowerCase()}</strong> because you said
                           “{String(parsed.typeHeard || 'party').toLowerCase()}” — nothing named the kind of event. If that’s not it, change it above:
                           the checklist, the risks and the food all follow from it.
                         </p>
@@ -13621,18 +13653,14 @@ export default function HostShellV2() {
                             onMouseEnter={() => setHoverSeg(s)}
                             onMouseLeave={() => setHoverSeg(cur => (cur && cur.id === s.id ? null : cur))}
                             style={{ flex: 1, padding: '7px 0', display: 'flex', alignItems: 'center' }}>
-                            <span style={{
-                              flex: 1, height: 2, borderRadius: 1,
-                              // Never colour-only: the aria-label above and the title
-                              // attribute both name the state in words.
-                              //
-                              // Open segments were `--line` at 0.5 opacity and read as
-                              // nearly invisible on the dark ground, so the bar looked
-                              // like "2 things" rather than "2 of 5 handled" — the
-                              // denominator disappeared. Found by inspecting the zoom.
-                              background: s.handled ? 'var(--ok, #6f9f7f)' : 'var(--steel-soft, #7d8590)',
-                              opacity: s.handled ? 0.95 : 0.75,
-                            }} />
+                            {/* Never colour-only: the aria-label above and the title
+                                attribute both name the state in words, and a done
+                                strip is also thicker than an open one. Its paint is
+                                .eprog-seg in styles.css (--seg-done / --seg-open;
+                                owner, 11/22/2026: "Green should pop more"). Open
+                                strips once read as nearly invisible and the
+                                denominator disappeared; --seg-open is gated to show. */}
+                            <span className={'eprog-seg' + (s.handled ? ' is-done' : '')} />
                           </span>
                         ))}
                       </div>
@@ -16326,7 +16354,9 @@ export default function HostShellV2() {
                         (cursor:default, no onClick) — the one thing on this whole
                         screen you couldn't tap into. */}
                     {hostRowsGo().map(r => (
-                      <button key={r.label} className="line" style={{ width: '100%', background: 'none', border: 'none', font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer', padding: 0 }}
+                      // .line-go: its inline padding:0 left this row 20px tall, so the
+                      // touch floor is a class (styles.css, audit 2 lane F P1-5).
+                      <button key={r.label} className="line line-go" style={{ width: '100%', background: 'none', border: 'none', font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer', padding: 0 }}
                         onClick={r.go} aria-label={'Open ' + r.label}>
                         <span>{r.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
                         <span className="amt">{fmt(r.got)} <span className="of">of ~{fmt(r.est)}</span></span>

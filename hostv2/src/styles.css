@@ -20,7 +20,7 @@
   --t-stat-sm:24px;      /* compact stat (CTA tile number) */
   --t-section:22px;      /* section heads (.sect h2) */
   --t-card-title:19px;   /* card titles (h3) */
-  --t-sheet-title:18px;  /* sheet header title */
+  --t-sheet-title:22px;  /* sheet header title. 18 -> 22 (owner, 11/22/2026, "B with the C touches", both themes): it was smaller than a board section heading (19), so the page title did not lead */
   --t-sub:17px;          /* mega-sub deck lines, question labels */
   --t-cta-big:17px;      /* primary-moment CTA (start / assemble / open plan) */
   --t-input-lg:17px;     /* standard .field */
@@ -680,7 +680,13 @@ button{font-family:inherit}
    ambient life, asleep-calm: opacity-only, slow, barely perceptible. Never
    layout, never color, never faster than a resting breath. */
 @keyframes breathe{0%,100%{opacity:1}50%{opacity:.82}}
-.truth, .mega-sub{animation:breathe 7s ease-in-out infinite}
+/* TEXT BREATHES SHALLOWER (audit 2, lane F, P1-2 and P1-3, 11/22/2026). At
+   breathe's .82 the create screen's subtitle read 3.96:1 (dark) and 3.76
+   (light), and After's 3.62: the first sentence a new host reads dipped under
+   AA once every 7s. Text keeps the breath, at a depth that holds 4.5. Dots and
+   the dock keep the deeper one. */
+@keyframes breathe-text{0%,100%{opacity:1}50%{opacity:.95}}
+.truth, .mega-sub{animation:breathe-text 7s ease-in-out infinite}
 .receipt .rdot{animation:breathe 3.2s ease-in-out infinite}
 .dock::before{animation:breathe 5s ease-in-out infinite}
 
@@ -952,14 +958,18 @@ button{font-family:inherit}
    live-verified. --warn is the existing urgency token and the one the comment
    above always meant. */
 .hero.elegant .ef-row .ef-why[data-reason="time"]{ color:var(--warn); }
+/* "past its window" broke mid-word ("wind / ow"): the title beside it starved
+   the reason below one word's width. The time reason is short and fixed, so it
+   keeps its own width and the title takes the slack (light theme study, 11/22). */
+.hero.elegant .ef-row .ef-why[data-reason="time"]{ flex:0 0 auto; max-width:none; white-space:nowrap; overflow-wrap:normal; }
+.hero.elegant .ef-row .t{ min-width:0; flex:1 1 auto; }
 @media (max-width: 430px){
   /* On a phone the title owns the row; a reason that would squeeze it below
      ~55% of the width is dropped rather than truncated to noise. */
   .hero.elegant .ef-row .ef-why{ max-width:42%; font-size:12px; }
 }
 .hero.elegant .ef-row .ef-r{ display:flex; align-items:center; gap:9px; flex:0 0 auto; }
-.hero.elegant .ef-cnt{ background:#1a2228; color:var(--steel-soft); border-radius:999px; padding:2px 8px; font-size:12px; font-weight:700; }
-:root[data-theme="light"] .hero.elegant .ef-cnt{ background:var(--ink); color:var(--card); }
+.hero.elegant .ef-cnt{ background:var(--count-badge); color:var(--steel-soft); border-radius:999px; padding:2px 8px; font-size:12px; font-weight:700; }
 .hero.elegant .ef-row .ef-g{ color:var(--faint); font-weight:800; }
 /* Hover lights the arrow instead of dimming the row: .82 opacity took the arrow
    under 4.5:1 in both themes (nothingReadsDarkOnDarkInLight, landscape, 11/21/2026). */
@@ -1015,16 +1025,17 @@ button{font-family:inherit}
 /* The pill sits on the pick's --steel-tint card, so it takes the panel color
    to stand off it in both themes (was #28343c: 1.84:1 under light's ink,
    design audit 2). */
-.decopt-badge{ background:var(--card); color:var(--steel-soft); border-radius:999px; padding:3px 9px; font-size:11px; font-weight:650; letter-spacing:.3px; flex:0 0 auto; }
+/* "OUR PICK" in 12px tracked caps (owner, 11/22/2026, the C touch, both themes):
+   at 11px / 650 the recommendation was the smallest type in its card. */
+.decopt-badge{ background:var(--card); color:var(--steel-soft); border-radius:999px; padding:4px 10px; font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; flex:0 0 auto; }
 .decopt-note{ font-size:13px; color:var(--muted); font-weight:400; }
 
-/* ── LIGHT: SECTIONS ON PANELS (owner ruling 25, 11/21/2026: "W1") ──────────
-   Doctrine 02, ruling 25. In light, every distinct block of a screen or sheet
-   sits on a white --card panel with a --line edge and a soft shadow, on the
-   page's warm --bg, so sections read as separate objects. Sheets group their
-   sections in markup (<Panel>, rendered in light only); the board's
-   below-fold blocks are single elements already and take the panel here.
-   Dark keeps today's look: none of these rules match there. */
+/* ── SECTIONS ON PANELS (owner ruling 25, 11/21/2026: "W1"; dark too since
+   11/22/2026: "screen section panel parity ... in the dark theme too") ─────
+   Every distinct block of a sheet sits on a --card panel with a --line edge,
+   on the sheet's ground (--bg, the canvas, in both themes), so sections read
+   as separate objects. Sheets group their sections in markup (<Panel>). The
+   board's below-fold blocks take the panel in light only (rules below). */
 .panel{
   background:var(--card); border:1px solid var(--line); border-radius:var(--r-lg);
   box-shadow:var(--panel-shadow); padding:var(--sp-4); margin:0 0 var(--sp-3); min-width:0;
@@ -1040,6 +1051,52 @@ button{font-family:inherit}
   box-shadow:var(--panel-shadow); padding:var(--sp-4);
 }
 :root[data-theme="light"] .decopt.pick{ background:var(--card); }
+/* ── LIGHT IS WARM LINEN (owner, 11/22/2026: "B with the C touches") ─────────
+   The tokens are in theme.js (LINEN). These are the recipes the tokens cannot
+   carry on their own, all light-only:
+   - the pick: a steel line and a warm lift, not dark's 60% black slab;
+   - ONE secondary button: linen fill recessed into the panel, a warm edge
+     (.mini, .food-act, .chip, .cta.soft were three recipes, and the steel
+     wash made an ordinary button look like the selected tab);
+   - attention is ALWAYS the honey chip, risk is solid brick, settled is
+     green text with a check (status never by color alone);
+   - the "9" count badge was a dark literal on light (2.22:1). */
+:root[data-theme="light"] .decopt.pick{ border-color:var(--steel); box-shadow:var(--panel-shadow); }
+:root[data-theme="light"] .decopt:not(.pick){ background:var(--card); border:1px solid var(--line); }
+/* The fixed carbon stages (the reveal, the welcome) and the invite stationery
+   paint their own buttons in both themes, so they are left out. :where keeps
+   this at the weight of a base rule, so a component's own variant still wins.
+   Text color is not touched: each control keeps its own ink. */
+:root[data-theme="light"] :where(.mini, .food-act, .chip):not(:where(.reveal-stage, .welcome, .inv2) *),
+:root[data-theme="light"] .cta.soft:not(:where(.reveal-stage, .welcome, .inv2) *){ background:var(--bg); border:1px solid var(--line-strong); box-shadow:none; }
+:root[data-theme="light"] .chip:is([aria-pressed="true"], [aria-checked="true"]):not(:where(.reveal-stage, .welcome, .inv2) *){ background:var(--sel-bg); border-color:var(--sel-line); box-shadow:inset 0 0 0 1px var(--sel-line); font-weight:700; }
+:root[data-theme="light"] .sheet-x{ background:var(--field); color:var(--ink); }
+:root[data-theme="light"] .p-warn,
+:root[data-theme="light"] .vc-chip.warn,
+:root[data-theme="light"] .tag.essential{ background:var(--warn-tint); color:var(--warn); border-color:transparent; font-weight:700; }
+:root[data-theme="light"] .tag[style*="--warn"],
+:root[data-theme="light"] .mini[style*="--warn"]{ background:var(--warn-tint) !important; color:var(--warn) !important; border-color:transparent !important; font-weight:700; }
+/* Honey is a highlighter: past about three in a list it gets loud (Calls at 14
+   days showed four on an iPad). From the fourth honey row of a list on, the
+   label stays umber text, without the chip. */
+:root[data-theme="light"] .frow:nth-child(n+4 of .frow:has(.tag[style*="--warn"])) .tag[style*="--warn"]{
+  background:transparent !important; padding-inline:0; }
+:root[data-theme="light"] .hero.elegant .hero-card .card-top .of,
+:root[data-theme="light"] .hero.elegant .ef-row .ef-why[data-reason="time"]{
+  background:var(--warn-tint); color:var(--warn); padding:2px var(--sp-2); border-radius:var(--r-pill); font-weight:700; width:max-content; }
+/* A .tag takes its status from an inline style (color + tint), which only
+   !important can restyle from here; the [style*] match is what scopes it. */
+:root[data-theme="light"] .p-risk{ background:var(--danger-solid); color:var(--on-danger); }
+:root[data-theme="light"] .tag[style*="--danger"]{ background:var(--danger-solid) !important; color:var(--on-danger) !important; }
+:root[data-theme="light"] .p-ok{ background:transparent; color:var(--ok); box-shadow:inset 0 0 0 1px var(--line); }
+:root[data-theme="light"] .tag[style*="--ok"]{ background:transparent !important; color:var(--ok) !important; box-shadow:inset 0 0 0 1px var(--line); }
+:root[data-theme="light"] .p-ok::before,
+:root[data-theme="light"] .tag[style*="--ok"]::before{ content:"\2713\00a0"; }
+:root[data-theme="light"] .hero.elegant .ef-cnt{ color:var(--card); }
+:root[data-theme="light"] .ev-eyebrow{ letter-spacing:.04em; }
+/* After's "What carries forward" wore an inline steel wash: a cool block on
+   linen (owner, 11/22/2026: "Light theme is blue"). In light it is a panel. */
+:root[data-theme="light"] .empty[style*="--steel-tint"]{ background:var(--card) !important; border:1px solid var(--line); box-shadow:var(--panel-shadow); }
 /* ── THE SIGN-IN, ONE ROW (owner ruling 25, 11/21/2026: "s2") ────────────────
    "Not saved yet. Sign in to keep it.", a primary Sign in, and a ✕ that does
    what "Not now" did. Every target is 44x44, and every dimension below is a
@@ -1173,7 +1230,10 @@ button{font-family:inherit}
    Its rules are deleted rather than left dead so nobody later styles a bar that
    no longer renders. GREEN IS EARNED (host 2026-07-18) still holds — it now
    lives on the segments, which turn --ok only as each essential is handled. */
-.eprog-labels{ display:flex; justify-content:space-between; font-size:13px; font-weight:500; color:var(--faint); }
+/* The count line ("5 of 7 · Food and Vendors open") reads at --muted, not the
+   faint tier (owner, 11/22/2026: the circled progress area, both themes). Its
+   weight stays 500: any wider and a 390 phone cuts more of the open parts. */
+.eprog-labels{ display:flex; justify-content:space-between; font-size:13px; font-weight:500; color:var(--muted); }
 /* The left label now NAMES the open parts, so it is variable-length where it used to
    be a fixed count. On a 390px phone "Date & time and Food open" plus "the rest can
    wait" can exceed the line, and flex would resolve that by shrinking BOTH — squeezing
@@ -1181,6 +1241,14 @@ button{font-family:inherit}
    the slack and truncates; the right never shrinks. */
 .eprog-labels > span:first-child{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .eprog-labels > span:last-child{ flex:none; padding-left:10px; }
+/* THE STRIPS (owner, 11/22/2026: "Green should pop more for the progress").
+   Were inline: 2px, --ok at .95 for done, --steel-soft at .75 for open, which
+   in dark sat at one lightness. Done is a full --seg-done strip, thicker than
+   an open one, so done and open differ in weight as well as color; open is
+   the recessive --seg-open and still shows the denominator (theme.js gates
+   both). The 2px open strip stays centered on the done strip's row. */
+.eprog-seg{ flex:1; height:2px; border-radius:2px; background:var(--seg-open); }
+.eprog-seg.is-done{ height:4px; background:var(--seg-done); }
 /* Scroll-driven stratum focus (progressive enhancement): below-fold blocks
    brighten as they enter the reading zone — attention follows the eye. */
 @supports (animation-timeline: view()){
@@ -1711,6 +1779,9 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   transform:rotate(-45deg);
 }
 .grounding{font-size:var(--t-meta); color:var(--muted); margin-top:6px; font-weight:550}
+/* A guess inside a calm sentence: the guessed word wears the honey chip and the
+   sentence stays in the meta tier (owner, 11/22/2026, B, both themes). */
+.honey{ background:var(--honey); color:var(--on-honey); border-radius:var(--r-pill); padding:1px var(--sp-2); font-weight:700; }
 /* Published policy links (PolicyLinks.jsx): quiet, inherit the line's color. */
 .policy-links a{color:inherit}
 
@@ -1841,7 +1912,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 .memory-note::before{content:""; width:7px; height:7px; border-radius:50%; background:var(--ok); flex-shrink:0; transform:translateY(-1px)}
 
 /* ── Deep-link landing sheet ── */
-.sheet-scrim{position:absolute; inset:0; z-index:40; background:rgba(0,0,0,.42); border-radius:inherit}
+.sheet-scrim{position:absolute; inset:0; z-index:40; background:var(--scrim); border-radius:inherit}
 .sheet{
   /* FULL VIEWPORT (host 2026-08-03: "the where everyone stays and section panel
      should take the whole viewport"). At max-height:72% a section sheet showed
@@ -1894,7 +1965,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 @keyframes sheetrise{from{transform:translateY(var(--from-y,24px)); opacity:.4} to{transform:none; opacity:1}}
 /* Quick-switcher / command palette (build-map #9) — jump across events and
    destinations from one search box (Cmd/Ctrl-K or the header button). */
-.palette-scrim{ position:fixed; inset:0; z-index:130; background:rgba(6,9,12,.55);
+.palette-scrim{ position:fixed; inset:0; z-index:130; background:var(--scrim-deep);
   display:flex; align-items:flex-start; justify-content:center; padding:12vh var(--sp-4) var(--sp-4);
   animation:revealin var(--ms-fast) var(--ease-out) both; }
 .palette{ width:min(520px,94vw); max-height:70vh; display:flex; flex-direction:column; overflow:hidden;
@@ -2193,7 +2264,9 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .reveal-stage .tick-list li strong{color:var(--ink)}
 .reveal-stage .tick-list li{color:var(--carbon-ink-quiet)}
 .reveal-stage .tick-list li::before{background:rgba(78,104,119,.35)}
-.reveal-stage .grounding{color:var(--carbon-ink-faint)}
+/* The quiet tier, not the faint one: "This plan isn't saved yet" and "Your
+   original description" carry meaning and read 4.09:1 in faint (lane F, P1-6). */
+.reveal-stage .grounding{color:var(--carbon-ink-quiet)}
 /* A sheet opened from the reveal (the signed-out "keep this plan" ask) sits
    ABOVE it: the takeover's 65 otherwise covers the sheet (50) and its scrim. */
 .reveal-stage.under-sheet{z-index:30}
@@ -2400,7 +2473,9 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .rv-slabel{display:inline-block; transform-origin:left center; font:600 14px/1.15 var(--sans);
   color:#5d6772; opacity:.34; transition:color .7s var(--ease-out), opacity .7s, transform .7s cubic-bezier(.33,0,.2,1)}
 .rv-sval{margin-top:3px; font-size:12px; line-height:1.35; color:#5a6570; opacity:.16; transition:color .7s, opacity .7s}
-.rv-swhy{color:inherit; opacity:.82}
+/* Was opacity:.82 on top of the line's own fade: 4.32:1 at the reveal glow's
+   worst stop (audit 2, lane F, P1-6). The line's own fade is the hierarchy. */
+.rv-swhy{color:inherit}
 .rv-sprov{margin-top:3px; font-size:var(--t-overline); font-weight:600; letter-spacing:.5px; text-transform:uppercase;
   color:var(--carbon-ink-soft); opacity:.05; transition:opacity .7s}
 
@@ -5066,6 +5141,15 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
      each one — after eliminating three candidate rules by reading, all wrong.
      A structural cap must be matched by structure, not by depth. */
   .stagewrap--responsive-data > .sheet > .sheet-body > .roster{ max-width:none; }
+  /* ── AND THE SAME DENSE WORK INSIDE A PANEL (11/22/2026) ─────────────────
+     Sections sit on <Panel> (light since ruling 25, dark since the owner's
+     parity ruling), which puts one more box between .sheet-body and every
+     row above: the same "matched by depth" trap the roster note describes.
+     The guest roster's panel took the 820px prose measure, the Dietary track
+     went to 0px at 1440 ("PeanuYes", theDietaryTagKeepsItsColumn). A panel
+     holding dense rows takes the width its rows would have. */
+  .stagewrap--responsive-data > .sheet > .sheet-body > .panel:has(.roster, .grow, .brow, .later-row, .frow, .vcard),
+  .stagewrap--responsive-food > .sheet > .sheet-body > .panel:has(.fstat-list, .food-act, .shelf, .later-row, .brow, .frow){ max-width:none; }
   /* The head names the surface and carries its close — it belongs to both. */
   .stagewrap--responsive-data > .sheet > .sheet-body > .sheet-head{ grid-column:1 / -1; }
   /* Column 1 is the DEFAULT, and only the row list is moved out of it.
@@ -5223,6 +5307,32 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
      header holds it whole. */
   .hero.elegant .bento-head { display: flex; align-items: center; min-height: var(--tap-min); }
   .policy-links a { display: inline-flex; align-items: center; min-height: var(--tap-min); padding-inline: var(--sp-1); }
+  /* Audit 2, lane F, P1-4 and P1-5 (11/22/2026), each measured on a touch
+     device under 44:
+     - the Guests / People filter chips, 32 tall: `.rtool-lens > .chip`'s own
+       min-height:32px outranked the chip floor above; the "Find someone"
+       field beside them was 40;
+     - "Delete [event]" on This event, 92x15 (padding 0) — the worst, since
+       it deletes;
+     - the pass chip "This event takes the One-Event Pass", 310x27;
+     - After's money rows ("Venue ›"), 20 tall;
+     - "Menu" on The Day, 38 tall: its ::after expander is painted over by
+       the eyebrow line that follows it, so the box itself grows here;
+     - the vendors bar "2 things between vendors need…", 39;
+     - the support address on the pass sheet, 18 tall, with the policy links
+       inside 24px, so the inline-link exemption does not reach it. Its line
+       grows to the floor: a padding expander overlapped Privacy / Terms /
+       Refunds and cut them to 37;
+     - the reveal's "Your original description", 15 tall. */
+  /* Scoped by .rtoolbar so it outranks the 32px / 40px base rules further down. */
+  .rtoolbar .rtool-lens > .chip, .rtoolbar .rtool-q { min-height: var(--tap-min); }
+  .delrow { display: inline-flex; align-items: center; min-height: var(--tap-min); }
+  .pass-status-needed { min-height: var(--tap-min); }
+  button.line-go { min-height: var(--tap-min); align-items: center; }
+  .day-sec > .ev-eyebrow { min-height: var(--tap-min); }
+  .conflictbar { min-height: var(--tap-min); }
+  .grounding > a[href^="mailto:"] { display: inline-flex; align-items: center; min-height: var(--tap-min); }
+  .reveal-stage details.grounding > summary { line-height: var(--tap-min); }
 }
 
 /* ══ TOUCH TARGETS — Apple HIG 44pt / WCAG 2.5.5 ═══════════════════════════

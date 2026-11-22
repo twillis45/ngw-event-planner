@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 22, 2026 (evening) — light is warm linen, dark sits on the same panels
+
+**The light theme is one warm linen system, with warnings as umber-on-honey chips and a progress green that pops, and dark's sections sit on the same panels.** Every text and tap the accessibility audit flagged now passes: contrast 266 to 0, taps 204 to 0.
+
 ## November 22, 2026 (afternoon, later) — the day runs the show, and after tells the truth
 
 **On the day, the board leads with the run of show by the clock.** After the date, planning stops nagging, overdue counts stop climbing, and the money line never claims a landing it can't show. Every event type gets its own day-of list.

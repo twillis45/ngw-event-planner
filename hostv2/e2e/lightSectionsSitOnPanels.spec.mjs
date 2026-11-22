@@ -118,16 +118,105 @@ test('light: every section of the money, shopping, checklist, People, Space and 
   }
 });
 
-test('dark keeps today\'s look: no panels, the sheet on --card, no panel shadow', async ({ page }) => {
+// ── PARITY IN DARK (owner, 11/22/2026: "We may want to have screen section
+// panel parity from the light theme in the dark theme too") ────────────────
+// Supersedes "dark keeps today's look": dark sections render on the same
+// panels as light. Counted by what is painted, not by class: a raised block
+// is one whose fill differs from the ground around it, with a radius of at
+// least 10px, at least 60% of the sheet's width and 80px tall. Each sheet and
+// The Day must show the same count in both themes. Dark's canvas does not
+// move: a dark sheet's ground becomes the canvas (--bg) and its panels the
+// raised --card it already had.
+const raised = (scopeSel) => {
+  const rgb = (s) => (s.match(/[\d.]+/g) || []).map(Number);
+  const scope = [...document.querySelectorAll(scopeSel)].pop();
+  if (!scope) return -1;
+  const sw = scope.getBoundingClientRect().width;
+  const groundOf = (el) => {
+    for (let n = el.parentElement; n; n = n.parentElement) {
+      const b = rgb(getComputedStyle(n).backgroundColor);
+      if (b.length >= 3 && (b[3] === undefined || b[3] === 1)) return b.slice(0, 3).join(',');
+    }
+    return '255,255,255';
+  };
+  let n = 0;
+  for (const el of scope.querySelectorAll('*')) {
+    const r = el.getBoundingClientRect();
+    if (r.width < sw * 0.6 || r.height < 80) continue;
+    const cs = getComputedStyle(el);
+    let b = rgb(cs.backgroundColor);
+    // The Day's panel is the carbon panel GRADIENT: its first opaque stop is its fill.
+    if ((b.length < 3 || b[3] === 0) && /gradient/.test(cs.backgroundImage)) {
+      const stop = (cs.backgroundImage.match(/rgba?\([^)]+\)/g) || []).map(rgb).find((x) => x[3] === undefined || x[3] === 1);
+      if (stop) b = stop;
+    }
+    if (parseFloat(cs.borderTopLeftRadius) < 10) continue;
+    const filled = b.length >= 3 && (b[3] === undefined || b[3] === 1) && b.slice(0, 3).join(',') !== groundOf(el);
+    // or an edged card on the ground (The Day's .dayof-card: a --line edge, no fill)
+    const edge = rgb(cs.borderTopColor);
+    const edged = parseFloat(cs.borderTopWidth) >= 1 && edge.length >= 3 && (edge[3] === undefined || edge[3] > 0);
+    if (filled || edged) n++;
+  }
+  return n;
+};
+
+const PARITY = ['Your money', 'The spread & shopping', 'Your checklist', 'People you’re hiring', 'Space, seats', 'Guests'];
+
+test('dark sits its sections on the same panels as light, and The Day too', async ({ browser }, info) => {
+  test.skip(info.project.name !== 'mobile', 'pins its own 390 contexts; one run is the whole check');
+  test.setTimeout(120_000);
+  const counts = {};
+  for (const theme of ['light', 'dark']) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const page = await ctx.newPage();
+    await boot(page, theme);
+    for (const name of PARITY) {
+      await openSectionByName(page, name, { settle: 1200 });
+      counts[`${name} (${theme})`] = await page.evaluate(raised, '.sheet');
+    }
+    if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
+    await page.locator('.ev-eyebrow').first().click();
+    await page.locator('.sheet').last().getByRole('button', { name: 'The Day', exact: false }).first().click();
+    await page.waitForTimeout(1200);
+    counts[`The Day (${theme})`] = await page.evaluate(raised, '.day-sec');
+    await ctx.close();
+  }
+  console.log(counts);
+  const off = [...PARITY, 'The Day'].filter((n) => counts[`${n} (light)`] !== counts[`${n} (dark)`])
+    .map((n) => `${n}: light ${counts[`${n} (light)`]}, dark ${counts[`${n} (dark)`]}`);
+  for (const n of PARITY) expect(counts[`${n} (light)`], `premise: ${n} has panels in light`).toBeGreaterThan(0);
+  expect(off).toEqual([]);
+});
+
+test('on the day, The Day shows the same panels in both themes', async ({ browser }, info) => {
+  test.skip(info.project.name !== 'mobile', 'pins its own 390 contexts; one run is the whole check');
+  test.setTimeout(90_000);
+  const counts = {};
+  for (const theme of ['light', 'dark']) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const page = await ctx.newPage();
+    await page.clock.setFixedTime(new Date(EVENT.date + 'T15:00:00'));
+    await boot(page, theme);
+    await page.locator('.ev-eyebrow').first().click();
+    await page.locator('.sheet').last().getByRole('button', { name: 'The Day', exact: false }).first().click();
+    await page.waitForTimeout(1200);
+    counts[`The Day (${theme})`] = await page.evaluate(raised, '.day-sec');
+    await ctx.close();
+  }
+  console.log(counts);
+  expect(counts['The Day (light)'], 'premise: The Day has a panel on the day').toBeGreaterThan(0);
+  expect(counts['The Day (dark)']).toBe(counts['The Day (light)']);
+});
+
+test('dark: its sheet ground is the canvas and its panels are the raised --card', async ({ page }) => {
   await boot(page, 'dark');
   await openSectionByName(page, 'Your money', { settle: 1000 });
-  expect(await page.locator('.panel').count()).toBe(0);
+  expect(await page.locator('.sheet .panel').count()).toBeGreaterThan(0);
   const s = await page.evaluate(() => {
-    const d = document.createElement('div'); d.style.color = 'var(--card)'; document.body.appendChild(d);
-    const card = getComputedStyle(d).color; d.remove();
-    return { sheet: getComputedStyle(document.querySelector('.sheet')).backgroundColor, card,
-      shadow: getComputedStyle(document.documentElement).getPropertyValue('--panel-shadow').trim() };
+    const tok = (n) => { const d = document.createElement('div'); d.style.color = `var(${n})`; document.body.appendChild(d); const c = getComputedStyle(d).color; d.remove(); return c; };
+    return { sheet: getComputedStyle(document.querySelector('.sheet')).backgroundColor, bg: tok('--bg'), card: tok('--card'),
+      panel: getComputedStyle(document.querySelector('.sheet .panel')).backgroundColor };
   });
-  expect(s.sheet).toBe(s.card);
-  expect(s.shadow).toBe('none');
+  expect(s.sheet).toBe(s.bg);
+  expect(s.panel).toBe(s.card);
 });

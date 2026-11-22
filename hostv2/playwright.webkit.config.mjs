@@ -13,6 +13,8 @@ const critical = [
   '**/e2e/vendorRemovalUndo.spec.mjs',
   '**/e2e/aRefusedSaveIsNotCalledSaved.spec.mjs',
   '**/e2e/thePassSurvivesTheWebhookRace.spec.mjs',
+  // An open vendor card holds still where Safari may not anchor scrolling (#231).
+  '**/e2e/anOpenCardHoldsStill.spec.mjs',
 ];
 const mainPort = 5293;
 const syncPort = Number(process.env.PW_SYNCTEST_PORT || 5244);

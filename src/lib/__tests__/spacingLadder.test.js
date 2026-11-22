@@ -52,7 +52,10 @@ const LADDER = new Set([0, 1, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 56, 64, 80]);
 // 266 -> 264 on 2026-11-21: the unrendered reveal rules .rv-mname
 // (`margin:18px 0 0`) and .rv-card-what (`margin-top:14px`) were deleted
 // (owner: "Snap + remove dead CSS"). Dead code again, not a respace.
-const BASELINE = 264;
+// 264 -> 263 on 11/22/2026 (the Linen theme, owner: "B with the C touches"):
+// "OUR PICK" went to 12px tracked caps, and its .decopt-badge padding
+// `3px 9px` became `4px 10px` with it; 4 is on the ladder, 3 was not.
+const BASELINE = 263;
 
 const PROP = /\b(margin|padding|gap|row-gap|column-gap)(-top|-right|-bottom|-left|-block|-inline)?\s*:\s*([^;{}]+)/g;
 
