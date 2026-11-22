@@ -38,11 +38,13 @@
 
 import { playbookFoodPlan, playbookCapacity } from './playbooks';
 import { matchGuestIndexByName } from './guestMerge';
+import { isHostName } from './hostNameFor';
 
-const HOSTY = /^(host|you|yours|me|myself|self)$/i;
-const isHelperName = (v) => {
+// The host is never her own helper — by word ("me") or by name ("Wanda"):
+// isHostName reads the one host-name reader (Wanda audit P1-6).
+const isHelperNameFor = (ev) => (v) => {
   const s = String(v || '').trim();
-  return !!s && !HOSTY.test(s);
+  return !!s && !isHostName(s, ev);
 };
 
 // Resolves a typed helper name to a real guest, if one matches. Returns
@@ -88,6 +90,7 @@ function nextActionFor(status, name, itemType) {
 
 export function deriveHelperResponsibilities(event) {
   const ev = event || {};
+  const isHelperName = isHelperNameFor(ev);
   const guests = Array.isArray(ev.guests) ? ev.guests : [];
   const responsibilities = [];
 

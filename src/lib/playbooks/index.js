@@ -11,6 +11,7 @@
 import { rsvpState, rsvpIsSettled } from '../rsvp';
 import { guestCountFor } from '../guestCountFor';
 import { plusOneCount } from '../plusOneCount';
+import { isHostName } from '../hostNameFor';
 import { cookDecisionFor, cookTasksFor, cookRisksFor } from './cookLever';
 import { cashBarDecisionsFor, cashBarKeeps, aliasedChoices } from './cashBarCover';
 import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
@@ -191,13 +192,14 @@ const DECISION_INJECTORS = [
 // capacity list. Both under-count rather than over-count on the edge cases, and
 // under-counting is the safe direction: it can only leave the "you're on your
 // own" copy standing, never assert help the host does not have.
-const HOSTY_OWNER = /^(host|you|yours|me|myself|self)$/i;
-const isNamedHelper = (v) => {
-  const s = String(v || '').trim();
-  return !!s && !HOSTY_OWNER.test(s);
-};
+// The host is never her own helper, by word or by name (isHostName, the one
+// reader helperResponsibility also uses — Wanda audit P1-6).
 export function namedHelperCount(event) {
   const ev = event || {};
+  const isNamedHelper = (v) => {
+    const s = String(v || '').trim();
+    return !!s && !isHostName(s, ev);
+  };
   const guests = Array.isArray(ev.guests) ? ev.guests : [];
   const foodSkip = (ev.foodSkip && typeof ev.foodSkip === 'object') ? ev.foodSkip : {};
   const capSkip = (ev.capacitySkip && typeof ev.capacitySkip === 'object') ? ev.capacitySkip : {};
