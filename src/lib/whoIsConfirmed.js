@@ -16,7 +16,7 @@
 // Nothing is shown as confirmed without one of the sources above saying so.
 // PURE: no I/O, no clock, no storage.
 import { deriveHelperResponsibilities } from './helperResponsibility';
-import { isVendorConfirmed, isVendorBooked } from './workstreams';
+import { isVendorConfirmed, isVendorBooked, hiredVendors } from './workstreams';
 import { vendorDisplayName } from './vendorDisplayName';
 
 const clean = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
@@ -34,7 +34,8 @@ export function summarizeWhoIsConfirmed(event, confirmationByVendor, helperAnswe
 
   // Vendors — hired help with their own confirm lifecycle. An informal "vendor"
   // (a friend on the vendor list) is a helper, and is counted there instead.
-  const paid = (Array.isArray(ev.vendors) ? ev.vendors : []).filter((v) => v && !v.isInformal);
+  // hiredVendors is the one reader the sheet's rollup also counts (P0-9).
+  const paid = hiredVendors(ev);
   let vendors = null;
   if (paid.length) {
     const confirmed = [], flagged = [], waiting = [];

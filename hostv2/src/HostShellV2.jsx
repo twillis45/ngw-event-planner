@@ -242,7 +242,7 @@ import {
   getHostVendorChallenges, getHostVendorReadiness, getVendorNextAction,
   getHostHighestRiskVendor,
 } from '@app/lib/vendorIntelligence';
-import { isVendorBooked, isVendorConfirmed, vendorDepositOwed, isReconfirmable } from '@app/lib/workstreams';
+import { isVendorBooked, isVendorConfirmed, vendorDepositOwed, isReconfirmable, hiredVendors, vendorCounts } from '@app/lib/workstreams';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { isPlausibleCityText, parseVenueLocation, proposeTownFromHeard } from '@app/lib/cityText';
 import { foodShopItems } from '@app/lib/foodShopItems';
@@ -25251,7 +25251,9 @@ export default function HostShellV2() {
                         the number. "locked in" stays reserved for isVendorConfirmed. */}
                     {(() => {
                       if (rc.ready < rc.total) return `${rc.total - rc.ready} not booked yet — their cards below say which.`;
-                      const confirmed = (event.vendors || []).filter(isVendorConfirmed).length;
+                      // vendorCounts: the rollup's own population (hired only, P0-9) —
+                      // the two friends' "Confirmed" used to cancel two real confirms.
+                      const confirmed = vendorCounts(event).confirmed;
                       const toConfirm = Math.max(0, rc.ready - confirmed);
                       // A DEPOSIT OWED IS NOT "ALL SET" (hero-clears sweep, 11/20/2026).
                       // The Vendors part stays open while one is owed (isVendorSettled);
@@ -25287,7 +25289,7 @@ export default function HostShellV2() {
                   Tapping opens that vendor's card, where the six axes and the
                   next action already live. No new surface; a way in. */}
               {(() => {
-                const paid = (event.vendors || []).filter(x => x && !x.isInformal);
+                const paid = hiredVendors(event);
                 if (paid.length < 2) return null;
                 let top = null;
                 try { top = getHostHighestRiskVendor(paid, event); } catch { return null; }
