@@ -29,11 +29,16 @@
 // 3. SILENCE IS AN ANSWER. A vendor with nothing outstanding emits nothing. A
 //    derived list that always has rows in it is a nag, and a host learns to stop
 //    reading a list that is never empty.
-import { isVendorBooked } from './workstreams';
+import { isVendorBooked, hiredVendors } from './workstreams';
 import { getVendorCOIState } from './vendorIntelligence';
 
-/** Booked vendors only — an idea for a vendor owes the host nothing yet. */
-const engagedVendors = (event) => ((event && event.vendors) || []).filter((v) => {
+/**
+ * Booked HIRED vendors only — an idea for a vendor owes the host nothing yet,
+ * and a friend helping (isInformal) owes no insurance, deposit or contract at
+ * all (Wanda audit P0-10: the checklist asked the church singer and the day-of
+ * helper for all three). hiredVendors is the one "who is a vendor" reader.
+ */
+const engagedVendors = (event) => hiredVendors(event).filter((v) => {
   if (!v || !v.name) return false;
   try { return isVendorBooked(v); } catch { return false; }
 });

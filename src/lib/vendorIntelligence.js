@@ -90,6 +90,15 @@ const RE_HIGHRISK = /tent|stage|staging|bounce|inflatab|pyro|firework|generator|
 const RE_ONSITE   = /cater|venue|rental|furniture|staffing|lighting|\bav\b|production|install|full[\s-]?service|on[\s-]?site/;
 const RE_VENUEREQ = /\bcoi\b|certificate of insurance|proof of insurance|insurance (is )?required|requires? (a )?(coi|insurance)/;
 
+// The host's recorded insurance status, in the gate's own words. `'n/a'` is a
+// host (and seed) spelling of "not required" (Wanda audit P0-10): read as an
+// unknown explicit status, it fell through to "required" and raised "Insurance
+// still needed" beside "No paperwork needed".
+const coiStatusOf = (vendor) => {
+  const s = vendor && vendor.coiStatus;
+  return /^n\/?a$/i.test(String(s || '').trim()) ? 'not_required' : s;
+};
+
 export function vendorCoiRequirement(vendor, event) {
   if (!vendor) return null;
 
@@ -107,7 +116,7 @@ export function vendorCoiRequirement(vendor, event) {
   const venueRequires = RE_VENUEREQ.test(venueText);
 
   // 1 · Explicit handling always wins — never re-litigate what the host recorded.
-  if (vendor.coiStatus === 'not_required') {
+  if (coiStatusOf(vendor) === 'not_required') {
     return { level: 'not_needed', reason: 'You marked insurance as not required for this vendor.', source: 'explicit',
       hostCopy: 'Marked not required. Change it here if the venue asks for one.' };
   }
@@ -167,11 +176,13 @@ export function getVendorCOIState(vendor, event) {
   if (vendor.coiWaived === true) {
     return { required: false, status: 'waived', label: 'Not needed — you waived it', level: 'safe', dueInDays: null, verified: false, expiry: null, need: 'not_needed' };
   }
-  const explicit = vendor.coiStatus;
+  const explicit = coiStatusOf(vendor);
   // COI-LOGIC-1: requirement comes from the service-mode classifier, not the
-  // old blunt category list. Explicit host tracking still always wins.
+  // old blunt category list. Explicit host tracking still always wins — except
+  // over the informal ruling, which vendorCoiRequirement already says outranks
+  // any stored status (a friend helping is never gated on insurance, P0-10).
   const req = vendorCoiRequirement(vendor, event) || { level: 'unknown', hostCopy: '', reason: '', source: 'none' };
-  if (explicit === 'not_required' || (!explicit && req.level === 'not_needed')) {
+  if (explicit === 'not_required' || (req.level === 'not_needed' && (!explicit || vendor.isInformal))) {
     return { required: false, status: 'not_required', label: req.source === 'service_mode' ? 'Probably not needed — pickup/drop-off' : 'Not required', level: 'safe', dueInDays: null, verified: false, expiry: null, need: 'not_needed', hostCopy: req.hostCopy, needReason: req.reason };
   }
   if (!explicit && (req.level === 'ask_venue' || req.level === 'unknown')) {
