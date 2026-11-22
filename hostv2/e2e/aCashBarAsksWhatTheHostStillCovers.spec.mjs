@@ -70,3 +70,19 @@ test('the drinks line follows the answer: the first set by default, nothing when
   const none = await barLine(page);
   expect(none === null || /\$0\b/.test(none)).toBe(true);
 });
+
+// The Gala's "Two drink tickets, then cash" asks the same follow-up (#220
+// Open, 11/22/2026), and no option names ice the Gala does not price.
+test('the Gala: two drink tickets ask what the host still covers, and no option names ice', async ({ page }) => {
+  await boot(page, { ...seed('e2e-cashbar-gala', { bar: 'Two drink tickets, then cash' }), name: 'Spring benefit', type: 'Fundraiser / Gala', guestEstimate: 120 });
+  await openSectionByName(page, 'Calls to make');
+  await sheetSettled(page);
+  const sheet = page.locator('.sheet').last();
+  const card = sheet.getByText('What you still cover at a cash bar').first();
+  await expect(card).toBeVisible();
+  await card.click();
+  await expect(sheet.getByText('The non-alcoholic drinks').first()).toBeVisible();
+  await sheet.getByRole('button', { name: /Other ways/ }).first().click();
+  await expect(sheet.getByText('The drink tickets, plus the non-alcoholic drinks').first()).toBeVisible();
+  await expect(sheet.getByText(/non-alcoholic drinks and ice/)).toHaveCount(0);
+});
