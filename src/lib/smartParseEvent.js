@@ -66,6 +66,12 @@ const NOT_A_GROUP_TRIP = /\b(?:business|work|field|school|class|day|shopping|gro
 // "40 guests in the Maryland/DC area" committed `venueCity: "the"`.
 const NOT_A_PLACE = /^(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|the|our|my|zoom)$/i;
 
+// "Day Party" strips to "day" in the name fallback below, and "day" is inside
+// every named day: "Memorial Day weekend camping trip" was a Day Party (audit
+// lane B, 11/22/2026). Those names are blanked for that one test only; "day
+// party" still names the playbook.
+const _NAMED_DAY = /\b(?:memorial|labou?r|mother['’]?s|father['’]?s|valentine['’]?s|independence|veterans['’]?|presidents?['’]?s?|columbus|indigenous\s+peoples['’]?|mlk|election|new\s+year['’]?s|boxing|st\.?\s+patrick['’]?s|saint\s+patrick['’]?s|patriots['’]?|flag|earth|groundhog|thanksgiving|christmas|easter|juneteenth|game|field|snow|sick|spa|tax|moving|opening|wedding|graduation|turkey)\s+day\b/gi;
+
 export function parseSmartEventText(text, opts = {}) {
   const t = String(text || '');
   const now = opts.now instanceof Date && !isNaN(opts.now) ? opts.now : new Date();
@@ -86,7 +92,7 @@ export function parseSmartEventText(text, opts = {}) {
       // counts ("showers", "reunions").
       const hit = HOST_TYPES.find(ht => {
         const word = ht.toLowerCase().replace(' party', '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        return new RegExp(`(^|[^a-z])${word}s?($|[^a-z])`, 'i').test(text);
+        return new RegExp(`(^|[^a-z])${word}s?($|[^a-z])`, 'i').test(text.replace(_NAMED_DAY, ' '));
       });
       if (hit && hit.length > 3) out = hit;
     }
