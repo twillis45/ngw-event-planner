@@ -17,6 +17,32 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 22, 2026 (morning, later) — #225: the Wanda follow-ups — ceremony items wait, the venue names its contact, Undo after the last pick, a quote isn't groceries
+
+- **#224 live, checked 4:55 AM EST:**
+  - Backend and app both report a63b9416.
+  - On Pixel 7, the owner's path goes from Drop-off catering to "Is the official Army retirement ceremony part of this party?" with two buttons and Undo, with no caterer line and no "in the full app".
+  - Your money reads the $5,000 budget, and guests count 17 heads.
+- **Six queued follow-ups, each test-first:**
+  1. Day-of Army ceremony items show only when `officialCeremonyAnswer` is `'this-party'`, the same check the run of show uses.
+  2. A booked venue's contact answers Space's day-of contact row. `bookedVendorIn` moved to `workstreams.js` to avoid a circular import.
+  3. "All quiet" after the last pick keeps its receipt and Undo, Undo brings the question back, and there is one `undoHeroReceipt`. The progress line reads "…, nothing due yet".
+  4. A caterer's quote (`quotedBy`) is not offered as a trimmable shopping line.
+  5. A caterer pick or booking retires the cooking prep beats and "How it's sourced".
+  6. `vegCount` reads `dietCountsFor`. Under a caterer the vegetarian main is gated off, because it double-counted against the quote.
+- **Polish:** the official-ceremony card asks once. Its body now reads "Your answer decides whether the official protocol joins your run of show."
+- **Open:**
+  - The bundle Undo paths (`HostShellV2.jsx` ~9392, ~9726) may still leave an undone question hidden. This is unverified.
+  - `vegCount`: a guest tagged both Vegetarian and Vegan counts twice, and free text like "veggie" no longer counts.
+  - The `isNamedBringer` host words.
+  - `lodgingIntel` counts a plus-one as one couple.
+- **Owner calls (unchanged):**
+  - A source for the full open bar.
+  - Your money's two bases.
+  - One "settled" vendor rule.
+  - The "+10 plus-ones" wording.
+  - A dinner night for July 4th and Thanksgiving trips.
+
 ## November 22, 2026 (morning) — #224: the Wanda audit, fixed — her night as she wrote it, counts that agree, no dead-end asks
 
 **Owner:** "Look at the complete Wanda 50th birthday and 30 year retirement event and workflow. Make sure we've learned from what we've developed especially the last week." An audit of `ev-x-wanda` on the live build, at phone width, found 15 P0, 15 P1 and 9 P2 (`scratchpad/wanda-audit/FINDINGS.md`). Four lanes fixed them, each test-first.
