@@ -48,7 +48,11 @@ const FG = { id: 'cust-taps-fg', name: 'My Friendsgiving', type: 'Friendsgiving'
   // vanished the day this event's dateIn(6) landed in Thanksgiving week, when
   // factors.usHolidays lifts the middle to $400 (CI, 11/19/2026): correct app
   // behavior, a calendar-dependent fixture.
-  budget: [{ id: 'b-rent', category: 'Rentals', budgeted: 300 }], vendors: [], guests: [], timeline: [] };
+  // A BOOKED $300 rental, not a $300 budget row: since the Wanda audit (P0-6,
+  // 11/22/2026) a budget built from rows IS a set budget, so it no longer
+  // leaves the editor proposing a number. A booked vendor still puts the plan
+  // over the band's middle without setting a budget.
+  budget: [], vendors: [{ id: 'v-rent', name: 'Table rental', category: 'Rentals', status: 'Booked', cost: 300 }], guests: [], timeline: [] };
 
 test('the "Use $…" link and the Space rows are big enough to tap', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
