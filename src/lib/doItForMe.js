@@ -89,9 +89,13 @@ export function placePhrase(event) {
   const vf = venueFor(event);
   const v = vf.name;
   if (!v) return '';
-  if (vf.isHome) return 'our place';
+  // "Our place" stands in only for a GENERIC home phrase. A home she named
+  // ("Vida's place", "my mom's") is printed in her words: it says whose home
+  // it is, and it may not be hers (CI on #232, 11/22/2026).
+  if (vf.isHome) return GENERIC_HOME.test(String(v).trim().replace(/\s+/g, ' ')) ? 'our place' : String(v).trim();
   return String(vf.displayLine || v).split(' · ').join(', ');
 }
+const GENERIC_HOME = /^(?:at\s+)?(?:home|back\s?yard|(?:my|our|(?:the\s+)?host['’]s)\s+(?:back\s?yard|yard|home|house|place|garden|apartment|condo)|the\s+(?:back\s?yard|yard|house|home))$/i;
 
 // The place line a guest reads: placePhrase, and at home the street when the
 // host gave one ("our place, 12 Elm St, Bowie, MD"), so "our place" never
@@ -230,8 +234,10 @@ export function eventCulturalMeta(event) {
 }
 
 // isAtHome — the location signal used in invites and analytics (mirrors placePhrase).
+// A home she named is still a home: venueFor's kind decides, not the wording.
 export function isAtHome(event) {
-  return placePhrase(event) === 'our place';
+  const p = placePhrase(event);
+  return p === 'our place' || (!!p && venueFor(event).isHome);
 }
 
 // #1 — the guest invite. { subject, body } ready to drop into a text or email.
