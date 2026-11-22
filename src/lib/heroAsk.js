@@ -60,6 +60,8 @@ export function heroAskFor(a, event) {
     if (a && a.category === 'compression' && a.leadIsStep) return 'Catch up on this step.';
     const t = String((a && a.title) || '').replace(/\.+$/, '').trim();
     const d = String((a && a.domain) || '').toLowerCase();
+    // A SET budget that the plan runs past is not asked to be set (11/22/2026).
+    if (/over (your|the) budget/i.test(t)) return 'Bring the plan inside your budget.';
     if (d === 'budget' || /budget/i.test(t)) return 'Set your budget.';
     // ── A BUY LINE IS NOT A DECISION (PR #70, driven 2026-07-31) ──────────────
     // "Buy chips, crackers, pretzels & popcorn — 13 snack servings tomorrow"

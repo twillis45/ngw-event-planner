@@ -28,3 +28,13 @@ test('a bundle of late steps names the step that leads it', () => {
 test('a lone long title with no act keeps the honest last resort', () => {
   expect(heroAskFor({ title: 'Reconcile the outstanding vendor balance ledger entries' })).toBe(PLACEHOLDER);
 });
+
+// A budget that is SET and over is not asked to be set (audit 2 follow-up,
+// 11/22/2026): with over/under judged on expected cost (owner ruling), Wanda's
+// board raised "Expected costs are $225 over your budget" under the headline
+// "Set your budget." — over a $5,000 budget already set.
+test('an over-budget item asks to bring the plan inside the budget, not to set one', () => {
+  const a = { id: 'phase:budget', domain: 'budget', category: 'phase', title: 'Expected costs are $225 over your budget' };
+  expect(heroAskFor(a, {})).toBe('Bring the plan inside your budget.');
+  expect(heroAskFor({ id: 'phase:budget', domain: 'budget', title: 'Set your budget' }, {})).toBe('Set your budget.');
+});
