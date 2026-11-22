@@ -6200,7 +6200,10 @@ export function playbookFoodPlan(event, opts = {}) {
     // cost so the UI shows each option's re-priced "~$X ribs".
     sourcing,
     sourcingKey,
-    sourcingTiers: SOURCING_TIERS,
+    // A caterer brings the proteins (the same gate hostCooksIt reads, Wanda
+    // audit follow-up 11/22/2026): there is nothing for a sourcing tier to
+    // re-price, so the "How it's sourced" card is not offered.
+    sourcingTiers: _foodOffPlate ? [] : SOURCING_TIERS,
     foodLow: Math.max(0, Math.round(sum('low') / 5) * 5),
     foodHigh: Math.max(0, Math.round(sum('high') / 5) * 5),
     // Cost PER HEAD — both totals are now priced at the same ceiling headcount (see

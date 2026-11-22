@@ -169,8 +169,15 @@ describe('the prep row reads the host’s own food answer', () => {
     // Party's undercard and pre-race beats are two of the three. The third is
     // Retirement Party's row anchored to a toast its program does not have, which
     // is reported and deliberately unresolved. None of the three is a defect.
+    //
+    // 3 -> 5 on 11/22/2026 (Wanda audit follow-up): Retirement Party's two
+    // host-cooking prep beats ("reheat or stage…", "Final plating; fill the
+    // chafing dishes…") are gated to Host cooks / Potluck, the gate its
+    // make-ahead task and chafing-dish rental read. A bare event takes the
+    // drop-off default and renders their caterer twins, so the cooking pair
+    // counts absent here: the first kind above, gated to a choice not made.
     expect(authored).toBeGreaterThan(600);
     expect(authored).toBeLessThan(700);
-    expect(authored - rendered).toBeLessThanOrEqual(3);
+    expect(authored - rendered).toBeLessThanOrEqual(5);
   });
 });

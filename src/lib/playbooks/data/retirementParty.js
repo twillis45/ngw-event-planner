@@ -244,9 +244,14 @@ const retirementParty = {
   ],
 
   schedules: {
+    // A caterer or a restaurant cooks (Wanda audit follow-up, 11/22/2026): the
+    // same food_style gate t_prep_food and the chafing-dish rental read. Under
+    // a caterer the beats keep only the host's own part.
     preparation: [
-      { when: 'T0 -4h', what: 'Chill all wine/beer/favorite-drink; reheat or stage anything that warms fast for the buffet' },
-      { when: 'T0 -1h', what: 'Final plating; fill the chafing dishes; light candles; cue the slideshow' },
+      { when: 'T0 -4h', what: 'Chill all wine/beer/favorite-drink; reheat or stage anything that warms fast for the buffet', whenChoice: { id: 'food_style', in: ['Host cooks', 'Potluck'] } },
+      { when: 'T0 -4h', what: 'Chill all wine/beer/favorite-drink', whenChoice: { id: 'food_style', not: ['Host cooks', 'Potluck'] } },
+      { when: 'T0 -1h', what: 'Final plating; fill the chafing dishes; light candles; cue the slideshow', whenChoice: { id: 'food_style', in: ['Host cooks', 'Potluck'] } },
+      { when: 'T0 -1h', what: 'Light candles; cue the slideshow', whenChoice: { id: 'food_style', not: ['Host cooks', 'Potluck'] } },
     ],
     setup: [
       { when: 'T0 -3:55', what: 'Start chilling bottles; set up the ice tubs (chilling vs drink ice, separate)' },
