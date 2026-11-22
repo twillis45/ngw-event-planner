@@ -71,12 +71,54 @@ test('an authored type gets its own day-of list, and a confirmation survives a r
   await expect(page.locator('.dayof-card ' + plain).first()).toHaveClass(/got/);
 });
 
-test('an unauthored type gets the floor AND is told it is the floor', async ({ page }) => {
-  // 32 of 39 playbooks author no day-of list. Handing a board meeting a generic
-  // safety floor is fine; presenting it as that event's own is not.
+// UPDATED (audit 2 lane A P0-6, 11/22/2026). This pinned the old floor: a
+// playbook with no authored day-of list showed only the generic safety basics
+// under "no day-of list written" — on a board meeting whose own checklist holds
+// "Take minutes…" on the day. The list is now derived from the playbook's own
+// day-of rows, with the basics as an addition; only an event with no playbook
+// rows at all still gets the floor, and is still told so.
+test('an unauthored playbook gets its own day-of steps, not the floor', async ({ page }) => {
   await boot(page, 'Board Meeting');
+  const card = page.locator('.dayof-card');
+  await expect(card).toBeVisible();
+  await expect(card).toContainText(/Take minutes/);
+  await expect(card).toContainText('Emergency basics');
+  await expect(card.locator('.borrowed-note')).toHaveCount(0);
+});
+
+test('an event with no playbook rows gets the floor AND is told it is the floor', async ({ page }) => {
+  await boot(page, 'Kite Festival');
   const card = page.locator('.dayof-card');
   await expect(card).toBeVisible();
   await expect(card.locator('.borrowed-note')).toBeVisible();
   await expect(card.locator('.borrowed-note')).toContainText(/no day-of list written/i);
+});
+
+// ONE TICK (audit 2 lane A P0-6): a day-of row derived from the checklist's own
+// day-of step IS that step — ticking it on The Day ticks the checklist row.
+test('ticking a derived day-of row ticks the checklist step it came from', async ({ page }) => {
+  const stepId = 'pbt-dayof-step-t_dayof';
+  await page.addInitScript(([id, date]) => {
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1');
+    localStorage.setItem('ngw-v2-welcomed', '1');
+    localStorage.setItem('ngw-hostv2-last-event', 'dayof-step');
+    if (!localStorage.getItem('ngw-hostv2-custom-events')) {
+      localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([{
+        id: 'dayof-step', type: 'Wedding', name: 'Wedding probe', date, guestCount: 80,
+        guests: [], vendors: [], budget: [],
+        timeline: [{ id, task: 'Hair/makeup → first look → ceremony → cocktail → reception → toasts → first dance → cake → send-off', leadDays: 0, week: 'Day of', done: false }],
+      }]));
+    }
+  }, [stepId, dateIn(10)]);
+  await page.goto('?elegant=1');
+  await settled(page);
+  await toTheDay(page);
+  const row = page.locator(`.dayof-card [data-dayof-item="${stepId}"]`);
+  await expect(row).toBeVisible();
+  await row.click();
+  await settled(page);
+  await expect(row).toHaveClass(/\bgot\b/);
+  const done = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].timeline[0].done);
+  expect(done).toBe(true);
 });
