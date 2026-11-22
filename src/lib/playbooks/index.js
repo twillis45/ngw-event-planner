@@ -16,6 +16,7 @@ import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
 import { matchGuestIndexByName } from '../guestMerge';
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
 import { spanNights } from '../dates';
+import { aroundMeals, celebrationAppliesWith } from '../tripMeals';
 import { attendanceAdjustment } from '../hostIntel';
 import { geoItemForPurchase } from '../knowledge/geoItemMap';
 // The one display form for an answer that may be a string OR a list. `decisionType`
@@ -98,6 +99,7 @@ import { normalizeCategory } from '../vendorAccountability/playbooks.js';
 import { vendorDisplayName } from '../vendorDisplayName';
 import { destinationContextFor, isGroundedDestination } from '../knowledge/destinationContext';
 import { venueFor, isHomeVenueName } from '../venueFor';
+import { settledFromFacts, knownPartOf, allergyAsk, confirmAskFor } from '../knownFacts';
 import { placeIsOutdoors } from '../placeIntelligence';
 import { effectiveAccessibility, isGroundedAccessibility } from '../knowledge/accessibilityContext';
 import { isGroundedCost } from '../knowledge/costProvenance';
@@ -934,23 +936,35 @@ export function decisionSettledByData(event, decision) {
     const caterer = opt ? bookedVendorIn(event, 'catering') : null;
     if (caterer) return { pick: opt, because: `${vendorDisplayName(caterer) || 'Your caterer'} — ${vendorStatusWord(caterer)}`, vendorId: caterer.id };
   }
+  // THE EVENT'S OWN FIELDS (owner, 11/21/2026: "Don't keep asking host for the
+  // same information"). The budget she typed, the count she gave, the place she
+  // named, her clock, a DJ she booked, her theme, her stay: lib/knownFacts.js
+  // reads them. At home is one of these (hero-clears sweep, 11/20/2026), and so
+  // is a backyard, which is OUTSIDE: `/\bhome\b/` alone picked Gender Reveal's
+  // "Indoor (home or rented room)" for "in our backyard".
+  const fact = settledFromFacts(event, decision);
+  if (fact) return fact;
   if (decision.id === 'venue') {
     const vf = (() => { try { return venueFor(event); } catch (_e) { return null; } })();
-    // AT HOME IS AN ANSWER THE EVENT ALREADY HOLDS (hero-clears sweep, 11/20/2026).
-    // The shell used to hide this call whenever any venue was named; that filter is
-    // gone so the board, the Calls sheet and the hero read one rule — this one — and
-    // the home case has to be answered here or the host is asked where her own party
-    // is. A named place with no booked venue vendor still asks (the 11/15 rule).
-    // A bare "Home" typed before setVenue stamped venueKind reads home too.
-    if (vf && vf.isSet && (vf.isHome || isHomeVenueName(vf.name))) {
-      const homeOpt = decision.options.find((o) => /\bhome\b/i.test(String(o)));
-      if (homeOpt) return { pick: homeOpt, because: 'Your place' };
-    }
+    // A named place we cannot classify, with a BOOKED venue vendor, still
+    // settles the call without an option (the 11/15 rule); unbooked, it asks
+    // only what kind of place it is (decisionKnownPart).
     const place = vf && vf.isSet && !vf.isHome && !isHomeVenueName(vf.name) && !/^(tbd|tba)$/i.test(vf.name) ? bookedVendorIn(event, 'venue') : null;
     if (place) return { pick: null, because: `${vf.displayLine} — ${vendorStatusWord(place)}`, vendorId: place.id };
   }
   return null;
 }
+// ─── A CALL HALF-ANSWERED ASKS ONLY THE OTHER HALF (owner, 11/21/2026) ───────
+// "…for 150 guests with a $40,000 budget" left Wedding's "Total budget + who
+// pays" asking for the budget. The fact answers part of the call; the call
+// stays open and asks only the rest ("Who pays?"). null when nothing is known,
+// or the call is already settled whole. See lib/knownFacts.js.
+export function decisionKnownPart(event, decision) {
+  if (!event || !decision) return null;
+  if (decisionSettledByData(event, decision)) return null;
+  return knownPartOf(event, decision);
+}
+const authoredOption = (d, v) => !!(d && Array.isArray(d.options) && d.options.includes(v));
 // ─── THE OPEN MENU QUESTIONS, ONCE (single-source audit, 11/18/2026) ─────────
 // phaseProgress decided "is the food handled?" from this list, while
 // taskEngine credited every "menu" step after ONE pick — so the checklist said
@@ -989,6 +1003,22 @@ export function decisionAnswered(event, id) {
   const d = ((pb && pb.decisions) || []).find((x) => x && x.id === id);
   return !!(d && decisionSettledByData(event, d));
 }
+// A STEP THAT NAMES ITS CALLS ASKS ONLY WHAT IS LEFT (owner, 11/21/2026).
+// "Agree total budget, who pays, and the guest-count target" on a wedding
+// created "for 150 guests with a $40,000 budget" led the hero past its window;
+// the count and the number are hers already. When every call the step names
+// is answered except ONE half-known call, the step says that call's missing
+// part ("Agree who pays"). null leaves the authored label.
+function stepLeftAsk(event, t) {
+  const ids = t && Array.isArray(t.answeredBy) ? t.answeredBy : [];
+  if (!ids.length) return null;
+  const pb = getPlaybook(event.type);
+  const left = ids.filter((id) => !decisionAnswered(event, id));
+  if (left.length !== 1) return null;
+  const d = ((pb && pb.decisions) || []).find((x) => x && x.id === left[0]);
+  const kp = d ? decisionKnownPart(event, d) : null;
+  return (kp && kp.step) || null;
+}
 // The calls a checklist step stands for: by its engine row id, or (for a
 // caller holding only the row's words, like the checklist's button) by the
 // authored label it was drafted from. [] when it names none.
@@ -999,7 +1029,7 @@ export function stepCalls(event, task) {
   const id = typeof task.id === 'string' && task.id.startsWith('pbt-') ? task.id : null;
   const words = String(task.task || '').trim();
   const t = id ? tasks.find((x) => x && id === `pbt-${event.id}-${x.id}`)
-    : (words ? tasks.find((x) => x && x.label === words) : null);
+    : (words ? tasks.find((x) => x && (x.label === words || stepLeftAsk(event, x) === words)) : null);
   return t && Array.isArray(t.answeredBy) ? t.answeredBy : [];
 }
 export function stepCallsAnswered(event, task) {
@@ -1010,13 +1040,26 @@ export function stepCallsAnswered(event, task) {
 export function choicePickFor(event, id) {
   if (!event || !id) return null;
   const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
-  if (picks[id]) return picks[id];
   const pb = getPlaybook(event.type);
   const dec = pb && Array.isArray(pb.decisions) ? pb.decisions.find((d) => d.id === id) : null;
+  if (picks[id]) {
+    // An answer to the REST of a half-known call ("Who pays?") is not a band:
+    // the plan keeps running on the band the known half implies.
+    if (dec && !authoredOption(dec, picks[id])) {
+      const kp = decisionKnownPart(event, dec);
+      if (kp && kp.pick) return kp.pick;
+    }
+    return picks[id];
+  }
   if (dec) {
     // A booked vendor's answer outranks a recommendation (see decisionSettledByData).
     const settled = decisionSettledByData(event, dec);
     if (settled && settled.pick) return settled.pick;
+    // A fact that answers the call without naming an option (a theme no option
+    // names) leaves no pick to run on — never the authored default over it.
+    if (settled && settled.noDefault) return null;
+    const known = decisionKnownPart(event, dec);
+    if (known && known.pick) return known.pick;
     // A RECOMMENDATION OUTRANKS THE AUTHORED LITERAL (2026-09-18). This used to
     // return `dec.default` flat, which is why difmCapable:'can-derive' derived
     // nothing: the same string on a 4-guest event and a 400-guest one.
@@ -1043,6 +1086,9 @@ export function choicePickFor(event, id) {
   const dd = injectedDecisionsFor(event, pb).find((d) => d.id === id) || null;
   if (!dd) return null;
   if (picks[dd.id]) return picks[dd.id];
+  const ddSettled = decisionSettledByData(event, dd);
+  if (ddSettled && ddSettled.pick) return ddSettled.pick;
+  if (ddSettled && ddSettled.noDefault) return null;
   // A recommendation supersedes the authored literal when one fires — that IS
   // the derivation. `proposedPickFor` falls back to the default when no rule
   // applies or the facts are unknown, so this is never a guess.
@@ -1411,6 +1457,8 @@ const DESTINATION_DECISIONS = [
     ] },
 ];
 
+const DESTINATION_DECISION_IDS = new Set(DESTINATION_DECISIONS.map((d) => d.id));
+
 // F10 (audit 2026-07-27): a travel-native playbook's OWN lodging decision
 // governs — appending the generic twin asked "how are guests staying?" twice
 // (Team Retreat 'lodging', Conference 'room_block'). Travel-mix/transport have
@@ -1685,7 +1733,7 @@ export function playbookChecklist(event, asOf) {
       // connecting-room ask on the lodging call). Tasks without one are untouched.
       // taskLabelFor picks the arrival-mode wording BEFORE the answered-copy
       // override, so a task can vary by both without either clobbering the other.
-      task: resolveAnsweredCopy(taskLabelFor(event, t), t.copyByAnswer, event)
+      task: (stepLeftAsk(event, t) || resolveAnsweredCopy(taskLabelFor(event, t), t.copyByAnswer, event))
         + (t.kidsLine && kidsComing ? ` — ${t.kidsLine}` : ''),
       // 'event-day' buckets a T0 task under THE DAY tab; everything else is planning.
       category: eventDay ? 'event-day' : 'planning',
@@ -1740,6 +1788,25 @@ export function playbookChecklist(event, asOf) {
       dueInDays: dte + off,
       provenance: { source: `${playbook.type} playbook`, taskId: 'fa-caterer', derived: 'food-approach' },
     });
+  }
+  // THE MEALS OUT GET BOOKED (owner, 11/21/2026). On a destination trip, only
+  // a meal the host marked "out together" adds a step: a table for the group
+  // has to be reserved. It is labeled with its day, so the steps read grouped
+  // under the day they belong to; house and on-your-own meals add none.
+  if (event.isDestination) {
+    let around = null;
+    try { around = aroundMeals(event, { celebration: celebrationAppliesWith(event, playbook) }); } catch (_e) { around = null; }
+    for (const m of ((around && around.slots) || []).filter((x) => x.mode === 'out')) {
+      const off = -30;
+      rows.push({
+        id: `pbt-${event.id}-tm-out-${m.key}`,
+        task: `${m.dayLabel} · Reserve a table for the group ${m.meal}`,
+        category: 'planning', phase: 'food', week: taskPhaseLabel(off), owner: '',
+        leadDays: off,
+        dueInDays: dte + off,
+        provenance: { source: `${playbook.type} playbook`, taskId: `tm-out-${m.key}`, derived: 'trip-meals', group: m.dayLabel },
+      });
+    }
   }
   // Soonest-due first; undated tasks sink to the bottom in authored order.
   rows.sort((a, b) => {
@@ -2097,7 +2164,9 @@ export function topPlaybookDecision(event, asOf) {
       // courtesy. Plain host language per UX_06; the clinical register
       // ("dietary restrictions & allergies", reading grade 12.3) stays on the
       // card where a list needs a precise noun.
-      ask: 'Who has a food allergy?',
+      // A known allergy ("one guest has a nut allergy") is not asked again:
+      // the question becomes whether anyone else has one (lib/knownFacts.js).
+      ask: allergyAsk(event),
       consequence: 'Lock the menu only after allergies are in — one unflagged allergy is a safety issue, not a courtesy. Collect from your guest list before buying food.',
       level: 'attention',
       primaryCta: 'Collect dietary needs',
@@ -2992,6 +3061,9 @@ export function playbookRisks(event, domain) {
     // announced?" was still open. A risk that only exists for one answer waits
     // for the host to give it. Same read as standsDown.
     .filter((r) => !r.whenAnswered || standsDown(event, r.whenAnswered))
+    // "Allergies not collected" is not a risk once she has noted them
+    // (dietaryNoted, the one rule the checklist and the food sheet read).
+    .filter((r) => !(/allergies (?:not )?collected|before allergies collected/i.test(String(r.trigger || '')) && dietaryNoted(event)))
     .filter((r) => !dre || dre.test(`${r.id || ''} ${r.trigger}`)) // match the trigger/id, not the fix (mitigations mention "guest" generically)
     .map((r) => {
       const sev = String(r.severity || 'med').toLowerCase();
@@ -3740,11 +3812,17 @@ export function playbookDecisionBoard(event, asOf, profile) {
   // …OR a booked vendor already answers it (decisionSettledByData, 11/16/2026).
   const isLocked = (d) => !!picks[d.id] || (isDietaryDecision(d) && di.resolved) || !!decisionSettledByData(event, d);
   const lockedIds = new Set(decisions.filter(isLocked).map((d) => d.id));
+  // A HALF-KNOWN CALL (lib/knownFacts.js) is still open, asking only its missing
+  // part — and when the known part is what its dependents wait on (the budget's
+  // number, not who pays it), nothing waits on it.
+  const knownParts = new Map(decisions.filter((d) => !lockedIds.has(d.id))
+    .map((d) => [d.id, decisionKnownPart(event, d)]).filter(([, k]) => k));
   // A prerequisite (dependsOn) is met when it's a locked decision, dietary collected,
   // or the headcount resolved. Anything else is treated as still-pending (honest: we
   // only claim "met" from observable state).
   const depMet = (depId) => {
     if (lockedIds.has(depId)) return true;
+    if (knownParts.has(depId) && knownParts.get(depId).metDependents) return true;
     if (depId === 'dietary' && di.resolved) return true;
     if (depId === 'headcount' || depId === 'count') return gc.resolved;
     return false;
@@ -3959,7 +4037,10 @@ export function playbookDecisionBoard(event, asOf, profile) {
       // The venue's settled row would only restate the f-venue foundation fact
       // above it, so it locks (nothing waits on it) without a second row.
       if (settled && !settled.pick && d.id === 'venue' && hasVenue) continue;
-      const val = picks[d.id] || (settled ? settled.because : null) || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
+      // Her answer to the missing part reads beside the part she already gave:
+      // "$40,000 · The couple".
+      const half = picks[d.id] && !authoredOption(d, picks[d.id]) ? knownPartOf(event, d) : null;
+      const val = (half ? `${half.known} · ${answerText(picks[d.id])}` : null) || picks[d.id] || (settled ? settled.because : null) || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
       // `d.ask ||` — the open branch below has always honoured an authored ask
       // and this one did not, so a decision that authored its own question lost
       // it the moment it locked. Found while correcting the schema spec against
@@ -4071,6 +4152,18 @@ export function playbookDecisionBoard(event, asOf, profile) {
     // sentence. authoredQuestion stays as the fallback, so every existing
     // question-authored label keeps working untouched and nothing is invented
     // where neither exists.
+    const kp = knownParts.get(d.id);
+    if (kp) {
+      // Asks ONLY the missing part, and says the part it already has.
+      open.push({ id: d.id, label: kp.ask, title: kp.ask, ask: kp.ask, known: kp.known, status, because: status === 'ready' ? `From your plan: ${kp.known}. Only this part is left.` : because, assurance, dueDate, daysOut, ...priority, ...derived, route });
+      continue;
+    }
+    const confirm = confirmAskFor(event, d);
+    if (confirm) {
+      // A deliberate confirm, with her number in it: "Confirm 30 guests".
+      open.push({ id: d.id, label: confirm, title: confirm, ask: `${confirm}?`, confirm: true, status, because, assurance, dueDate, daysOut, ...priority, ...derived, route });
+      continue;
+    }
     open.push({ id: d.id, label: decisionShortLabel(d.label), title: decisionTitle(d.label), ask: d.ask || authoredQuestion(d.label), status, because, assurance, dueDate, daysOut, ...priority, ...derived, route });
   }
 
@@ -4469,6 +4562,21 @@ export function playbookDecisionOptions(event, id) {
   // the What-to-settle board (seating layout, hiring help — not just menu picks).
   // Inline settle IS the deepest link: zero navigation, resolves where it's read.
   if (!d || !Array.isArray(d.options) || d.options.length === 0) return null;
+  // HALF-KNOWN: the options are the missing part's ("Who pays?"), unless the
+  // host has picked one of the authored options outright.
+  const _known = (() => {
+    const p = (event.foodChoices || {})[d.id];
+    if (p != null && p !== '' && authoredOption(d, p)) return null;
+    return decisionKnownPart(event, d);
+  })();
+  if (_known) {
+    const p = (event.foodChoices || {})[d.id];
+    return {
+      id: d.id, label: _known.ask, options: _known.options, why: '', copyBasis: 'authored', copyRead: [],
+      chosen: _known.options.includes(p) ? p : null, optionNotes: null, default: null, defaultWhy: '',
+      known: _known.known,
+    };
+  }
   // optionGates (audit 2026-07-27, F8/C): per-option pruning a prior answer makes
   // possible — keyed by option string like optionNotes. Forms: whenChoice
   // (show only while), standsDownWhen (hide once ANSWERED mooting), minGuests
@@ -4861,8 +4969,14 @@ export function playbookFoodPlan(event, opts = {}) {
   // Reads the SAME combined list every other surface reads — authored decisions
   // plus the engine-injected cook lever. A local `playbook.decisions` here was
   // how this list and the Decisions board came to disagree in the first place.
+  // NOT THE TRIP'S CALLS (11/21/2026). "How are guests staying?" blocks food
+  // (it decides whether there is a kitchen), so isMenuDecision matched it and
+  // the Spread's pinned bar read "0 of 3 decided" with a lodging question as a
+  // third food choice. The destination rows are travel calls; the kitchen they
+  // imply is asked once, with the trip's meals in Your days.
   const choices = [...(playbook.decisions || []), ...injectedDecisionsFor(event, playbook)]
     .filter(isMenuDecision)
+    .filter((d) => !DESTINATION_DECISION_IDS.has(d.id))
     .filter((d) => choiceShown(event, d.whenChoice))
     .map((d) => ({ id: d.id, label: d.label, options: d.options, default: d.default, why: d.why || '', chosen: picks[d.id] || d.default }));
 

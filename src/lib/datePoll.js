@@ -9,6 +9,8 @@
 // writes the event's dates. Nothing here guesses: a tally is the guests' own
 // ticks, and with no ticks it is empty.
 
+import { eventDatesPatch } from './eventDates';
+
 export const MAX_DATE_OPTIONS = 3;
 
 // The two rows this destination serves, by their authored words.
@@ -60,7 +62,10 @@ export function datePollTally(event) {
 export function dateOptionPatch(event, id) {
   const o = dateOptionsOf(event).find((x) => x.id === id);
   if (!o) return null;
-  return { date: o.start, endDate: o.end === o.start ? '' : o.end, dateOptionUsed: o.id };
+  // Through the one date setter (lib/eventDates), so the poll writes the same
+  // shape Date & time does and closes the same open questions.
+  const p = eventDatesPatch(event, { date: o.start, endDate: o.end });
+  return p ? { ...p, dateOptionUsed: o.id } : null;
 }
 
 /** The poll rows are done once the host used one of the ranges. */

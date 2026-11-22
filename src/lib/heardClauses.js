@@ -53,6 +53,8 @@ import { heardAccessNeeds } from './accessNeeds';
 import { heardMustHaves, heardStayStyle } from './lodgingIntel';
 import { heardFoods } from './heardFoods';
 import { heardGameStyle } from './heardGameStyle';
+import { heardPotluck, heardByob, heardKidsCount, heardAllergyCounts, heardOvernightCount } from './heardFacts';
+import { heardCelebrationPlace } from './tripMeals';
 
 // ── THIS FILE IS THE COMPOSITION ROOT (Sprint 0.5 Decision 2) ──────────────
 //
@@ -86,10 +88,16 @@ import { heardGameStyle } from './heardGameStyle';
 // extension point, and it is the reason the list is here rather than inlined at
 // a call site: a new reader added to the creation seam and not to this list is
 // a new false alarm, and this is the one place a reviewer has to look.
-// Intake records interest, never a booking. Category labels come from the
-// existing vendor vocabulary; an unnamed role stays unnamed.
+// Intake records interest — or a booking, when she SAID it was booked (owner,
+// 11/21/2026: "we already booked a DJ and a photographer" was stored as two
+// Considering rows, so the music call asked "band or DJ?"). "Booked" is read
+// per comma-clause, so it covers every role that clause names, "and" included.
+// Category labels come from the existing vendor vocabulary; an unnamed role
+// stays unnamed.
+const SAID_BOOKED = /\b(?:already\s+(?:booked|hired|have|got|secured|reserved)|(?:we|i)(?:['’]ve| have)?\s+(?:booked|hired|secured|reserved)|booked|hired|locked in)\b/i;
 export function heardVendorIntents(text) {
   const rows = [];
+  const bookedIn = String(text || '').split(/[,;]/).map((c) => c.trim()).filter((c) => SAID_BOOKED.test(c));
   const clauses = String(text || '').split(/[,;]|\band\b/i).map((c) => c.trim());
   const categories = [
     ['Catering', /\bcater(?:er|ing|ed)?\b/i, /^food$/i],
@@ -102,7 +110,8 @@ export function heardVendorIntents(text) {
     for (const [category, ...patterns] of categories) {
       if (!patterns.some((re) => re.test(clause)) || rows.some((v) => v.category === category)) continue;
       const named = clause.match(/\b([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)?['’]s\s+(?:BBQ|Catering|Kitchen|Photography|Bakery))\b/);
-      rows.push({ category, name: named ? named[1] : '', status: 'Considering' });
+      const booked = bookedIn.some((b) => b.includes(clause));
+      rows.push({ category, name: named ? named[1] : '', status: booked ? 'Booked' : 'Considering' });
     }
   }
   return rows;
@@ -113,7 +122,13 @@ export function heardVendorIntents(text) {
 // dropped while being on the menu. Mapped to names: its rows carry a regex.
 const heardFoodNames = (text) => heardFoods(text).map((f) => f.name);
 // heardGameStyle (run 2, R2-15): creation records "Team games" as her pick.
-const SEAM_READERS = [heardAccessNeeds, heardMustHaves, heardStayStyle, heardVendorIntents, heardFoodNames, heardGameStyle];
+// heardFacts (owner, 11/21/2026: "Don't keep asking host for the same
+// information"): creation writes the potluck pick, BYOB, the kids, the
+// allergy and the overnight counts, so a clause they read is not dropped.
+// heardCelebrationPlace (11/21/2026): creation keeps "dinner at an adobe
+// courtyard" as the celebration's place (tripMeals.celebrationFieldsToPersist).
+const SEAM_READERS = [heardAccessNeeds, heardMustHaves, heardStayStyle, heardVendorIntents, heardFoodNames, heardGameStyle,
+  heardPotluck, heardByob, heardKidsCount, heardAllergyCounts, heardOvernightCount, heardCelebrationPlace];
 
 /**
  * clausesNotUsed(text) → the clauses NOTHING in creation read.

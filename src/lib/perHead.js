@@ -18,14 +18,17 @@
 // PURE: no I/O, no UI, no storage.
 
 /** Did the host say whether their own number includes them? true | false | null. */
+import { guestCountFor } from './guestCountFor';
 export function hostCounts(event) {
   const v = event && event.hostCounts;
   return v === true || v === false ? v : null;
 }
 
+// guestCountFor, the one reader (owner, 11/21/2026). `guestCount != null`
+// read "Reopen the count"'s `guestCount: ''` as zero heads beside an estimate
+// of 60.
 const rawCount = (event) => {
-  const ev = event || {};
-  const n = Number(ev.guestCount != null ? ev.guestCount : ev.guestEstimate);
+  const n = Number(guestCountFor(event).count);
   return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
 };
 

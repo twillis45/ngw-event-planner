@@ -31,6 +31,7 @@
 // here rather than assumed.
 
 import { isMultiDecision, answerList } from './decisionType';
+import { indoorOutdoorPatch } from './knownFacts';
 
 /** How a settled value came to be. Absent means: never settled by anyone. */
 export const CHOICE_SOURCES = Object.freeze(['host', 'accepted']);
@@ -86,6 +87,11 @@ export function settleChoicePatch(event, id, value, source, decision) {
   return {
     foodChoices: { ...picks, [id]: nextValue },
     [CHOICE_SOURCE_FIELD]: { ...sourcesOf(event), [id]: src },
+    // INDOORS OR OUTSIDE HAS ONE STORE (owner, 11/21/2026). A place call whose
+    // pick says it ("Backyard / outdoor", "Indoor hall") writes event.indoorOutdoor
+    // too — the field the Space sheet's chips, the rain plan and the forecast
+    // read — so the two never disagree.
+    ...(indoorOutdoorPatch(id, nextValue) || {}),
   };
 }
 

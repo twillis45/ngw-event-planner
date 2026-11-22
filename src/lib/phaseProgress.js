@@ -24,6 +24,7 @@ import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, p
 import { rainPlanStatus } from './weather';
 import { placeIsOutdoors, OUTDOOR_TYPE } from './placeIntelligence';
 import { spanNights } from './dates';
+import { allergyAsk } from './knownFacts';
 import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
 import { isVendorSettled } from './workstreams';
@@ -94,13 +95,20 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   // programmeDays derives later days from their own first beat), so the fix
   // is the COPY saying what the clock really governs.
   const _multiDay = (() => { try { return spanNights(ev) >= 1; } catch (_e) { return false; } })();
-  add('datetime', true, _hasDate && _timeOk,
-    !_hasDate ? 'Add the event date to time the plan'
+  // THE DAYS ARE OWED (owner report 11/21/2026): her sentence meant more than
+  // one day and did not say which ("a long weekend", "July 4th weekend", a trip
+  // with only a start — `datesToConfirm`). Ask for the range, and only for the
+  // part that is missing: no date at all asks for both days, a known start asks
+  // for the end. Cleared by lib/eventDates the moment she gives either answer.
+  const _owed = !!ev.datesToConfirm;
+  add('datetime', true, _hasDate && _timeOk && !_owed,
+    !_hasDate ? (_owed ? 'Which dates? From – to' : 'Add the event date to time the plan')
+      : _owed ? 'Which day does it end?'
       : String(ev.startTime || '').trim()
         ? (_multiDay ? 'Confirm the first day’s start time' : 'Confirm the start time')
         : (_multiDay ? 'Set the first day’s start time' : 'Set the start time'),
     !_hasDate ? { tab: 'Event Details', focusField: 'event-date' } : { tab: 'Event Details', focusField: 'event-start' },
-    !_hasDate ? 1 : 9);
+    !_hasDate ? 1 : _owed ? 2 : 9);
   // Location essential uses the ONE shared reader (eventLocationStatus) — an
   // at-home host with their city on file has a location (weather and shopping
   // already run off it); only a truly missing location is a readiness gap.
@@ -256,7 +264,7 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
           // gate's debt ("Collect dietary restrictions & allergies"), so it
           // declares that record and every tier keys it 'decision:dietary' —
           // set aside here or there, it is set aside in both.
-          extra: { ask: 'Who has a food allergy?', decision: 'dietary' },
+          extra: { ask: allergyAsk(ev), decision: 'dietary' },
         }
         : { label: null, route: null, extra: null };
   // THE SHOP CLOCK, read once for both rows below (issue #100 D-11): the

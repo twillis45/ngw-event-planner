@@ -48,6 +48,9 @@ test('the door lands on the per-day programme, not a dead tap', async ({ page })
   await settled(page);
   const sheet = page.locator('.sheet').last();
   await expect(sheet).toBeVisible();
+  // Its own sheet (owner, 11/21/2026: "Its own sheet"), not a block in Space.
+  await expect(page.locator('#sheet-title')).toHaveText('Your days');
+  await expect(sheet.locator('#days-plan')).toBeVisible();
   // It has to actually carry day structure — a sheet that opens on a heading
   // and nothing else is a dead tap wearing a door's clothes.
   const text = await sheet.innerText();

@@ -420,7 +420,15 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // claim is that each committed page is byte-for-byte what
 // scripts/publish-policies.mjs builds from docs/legal/. That is two files
 // agreeing, and no browser run can see a draft edited without republishing.
-const MAX_HOSTV2_TEXT_GATES = 62;
+//
+// 62 → 63 (11/21/2026): eventDatesAreOneSource.test.js. Owner: "Make sure
+// dates are single source", and the census was asked for by name. It asserts
+// file CONTENT — that no patchEvent call in hostv2/src writes `date` or
+// `endDate` except through lib/eventDates — which is a structural claim no
+// browser run can see: a second date writer renders exactly like the first.
+// The behavior half (range set once, nothing re-asks) is the e2e
+// aMultiDayTripIsHeardAtCreation.spec.mjs.
+const MAX_HOSTV2_TEXT_GATES = 63;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

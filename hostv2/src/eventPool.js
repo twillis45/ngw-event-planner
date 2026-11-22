@@ -15,6 +15,7 @@ import { reportFailure } from '@app/lib/failureTelemetry';
 import { ALL_PLAYBOOKS, playbookTypicalGuests, playbookChecklist } from '@app/lib/playbooks';
 import { ARTWORK_MARKS } from '@app/lib/artworkMarks';
 import { isRealHostEvent } from '@app/lib/welcomeGate';
+import { normalizeEventDates } from '@app/lib/eventDates';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
 import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
 import { WANDA_GOLD_EVENT } from '@app/data/wandaGoldEvent';
@@ -120,6 +121,10 @@ export function loadCustomEvents() {
   try { list = JSON.parse(localStorage.getItem(LS_CUSTOMS)) || []; } catch { list = []; }
   if (!Array.isArray(list)) list = [];
   list = list.filter(e => e && e.id);
+  // One date shape (lib/eventDates): an empty or backwards endDate left by the
+  // old Space "Last day" field, or a night count kept beside real dates, is
+  // cleaned on read. Idempotent, and a clean event is returned untouched.
+  list = list.map(normalizeEventDates);
   try {
     if (!list.some(e => e.id === LEGACY_CUSTOM_ID)) {
       let legacy = null;

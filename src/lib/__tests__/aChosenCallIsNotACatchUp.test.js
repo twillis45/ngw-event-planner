@@ -93,8 +93,10 @@ describe('every step that names a call', () => {
     expect(t).toBeTruthy();
     expect(timelineStepResolved(ev, t)).toBe(true);
     // One call of two answered is not the step.
+    // The count here is the app's typical, not hers: a count she gave answers
+    // Wedding's guest-count call by itself (nothingKnownIsAskedAgain.test.js).
     if (ids.length > 1) {
-      const half = seed(type, { [ids[0]]: picks[ids[0]] });
+      const half = seed(type, { [ids[0]]: picks[ids[0]] }, { guestCountSource: 'playbook-typical' });
       expect(timelineStepResolved(half, step(half, taskId))).toBe(false);
     }
   });
@@ -174,7 +176,7 @@ describe('Wedding: the budget calls and the vision brief are two steps', () => {
     't_budget', 'Agree total budget, who pays, and the guest-count target',
     't_vision_brief', 'Write the vision brief');
   test('both calls must be answered: the budget alone does not clear it', () => {
-    const ev = seed('Wedding', { budget: first('Wedding', 'budget') }, NO_BUDGET);
+    const ev = seed('Wedding', { budget: first('Wedding', 'budget') }, { ...NO_BUDGET, guestCountSource: 'playbook-typical' });
     expect(timelineStepResolved(ev, step(ev, 't_budget'))).toBe(false);
   });
 });

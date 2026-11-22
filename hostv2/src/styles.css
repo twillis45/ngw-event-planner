@@ -8233,3 +8233,63 @@ button.vc-pill::after{
   }
   .stagewrap[data-rail="0"]:has(> .app > .content.welcome) > .app{ height:100%; min-height:0; }
 }
+
+/* ── THE DINNER INSIDE THE TRIP (owner decision 11/21/2026, "B with A's money") ──
+   The board's "Inside the trip" card, the dinner sheet's parts, the meals day by
+   day in Your days, and the two money layers. Tokens only; the card's button is
+   soft (unlit), so the hero keeps the board's one lit ask (ruling 31). */
+.trip-fold{ margin-top:var(--sp-5); }
+.trip-card{ display:block; width:100%; text-align:left; font:inherit; color:var(--ink);
+  border:1px solid var(--line); border-radius:var(--r-md); background:var(--card);
+  padding:var(--sp-4); margin:var(--sp-2) 0 var(--sp-3); }
+.trip-card-link{ cursor:pointer; }
+.trip-card-h{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-3); }
+.trip-card-t{ font-size:var(--t-row); font-weight:650; color:var(--ink); }
+.trip-card-n{ font-size:var(--t-row-sub); color:var(--muted); white-space:nowrap; font-variant-numeric:tabular-nums; }
+.trip-card-sub{ display:block; margin:var(--sp-1) 0 0; font-size:var(--t-row-sub); color:var(--muted); }
+.trip-segs{ display:flex; gap:var(--sp-1); margin:var(--sp-3) 0; }
+.trip-seg{ flex:1 1 0; height:3px; border-radius:var(--r-pill); background:var(--line); }
+.trip-seg.on{ background:var(--steel-soft); }
+.trip-go{ display:flex; align-items:center; justify-content:center; width:100%; min-height:var(--tap-min);
+  border:1px solid var(--line); border-radius:var(--r-row); background:var(--steel-tint); color:var(--ink);
+  font:inherit; font-size:var(--t-row); font-weight:650; cursor:pointer; box-shadow:inset 0 1px 0 var(--sheen); }
+.trip-go:focus-visible, .trip-days-row:focus-visible, .meal-seg:focus-visible, .meal-cel:focus-visible{ outline:2px solid var(--steel-soft); outline-offset:2px; }
+.trip-days-row{ display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3); width:100%;
+  min-height:var(--tap-min); padding:var(--sp-2) 0; background:none; border:none; font:inherit; color:var(--ink); text-align:left; cursor:pointer; }
+.trip-days-l{ display:flex; flex-direction:column; gap:var(--sp-1); min-width:0; }
+.trip-days-t{ font-size:var(--t-row); font-weight:600; }
+.trip-days-v{ font-size:var(--t-row-sub); color:var(--steel-soft); white-space:nowrap; }
+.trip-days-strip{ display:flex; flex-wrap:wrap; gap:var(--sp-1); }
+.trip-day{ font-size:12px; color:var(--muted); border:1px solid var(--line); border-radius:var(--r-pill); padding:0 var(--sp-2); }
+.trip-day.on{ color:var(--sel-ink); border-color:var(--sel-line); background:var(--sel-bg); }
+.trip-shelf{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-3); }
+.trip-shelf .of{ text-transform:none; letter-spacing:0; font-weight:500; }
+.trip-part-sub{ display:block; margin-top:2px; font-size:var(--t-row-sub); font-weight:450; color:var(--muted); white-space:normal; }
+.fstat.trip-part, .trip-layers .fstat{ align-items:flex-start; }
+.trip-link{ display:inline-block; min-height:var(--tap-min); background:none; border:none; padding:0; font:inherit;
+  font-size:var(--t-meta); font-weight:600; color:var(--steel-soft); cursor:pointer; text-align:left; }
+.trip-money-line{ display:flex; justify-content:space-between; align-items:flex-start; gap:var(--sp-3); padding:var(--sp-2) 0; }
+.trip-money-line strong{ white-space:nowrap; font-variant-numeric:tabular-nums; }
+.trip-money-line em{ white-space:nowrap; color:var(--muted); }
+.trip-layers{ padding:2px 0 var(--sp-3); }
+.trip-around{ border-top:1px solid var(--line); margin-top:var(--sp-1); }
+.trip-itin-cel{ display:flex; justify-content:space-between; gap:var(--sp-2); width:100%; min-height:var(--tap-min);
+  background:none; border:none; font:inherit; color:var(--ink); text-align:left; cursor:pointer; padding:2px 0 var(--sp-2); }
+.meal-days{ margin:var(--sp-4) 0 var(--sp-3); }
+.meal-day{ border-top:1px solid var(--line); padding:var(--sp-3) 0 var(--sp-2); }
+.meal-day-h{ display:flex; justify-content:space-between; align-items:baseline; gap:var(--sp-2); margin:0 0 var(--sp-2); }
+.meal-day-h .of{ font-size:var(--t-row-sub); color:var(--muted); }
+.meal-row{ display:flex; align-items:center; gap:var(--sp-2); margin:0 0 var(--sp-2); }
+.meal-row-l{ flex:0 0 76px; font-size:var(--t-row-sub); color:var(--ink); }
+.meal-seg{ min-height:var(--tap-min); padding:0 var(--sp-3); border:1px solid var(--line); border-radius:var(--r-pill);
+  background:transparent; color:var(--ink); font:inherit; font-size:var(--t-row-sub); cursor:pointer; white-space:nowrap; }
+.meal-seg[aria-checked="true"]{ background:var(--sel-bg); border-color:var(--sel-line); color:var(--sel-ink); font-weight:650; }
+.meal-cel{ display:flex; justify-content:space-between; align-items:center; gap:var(--sp-2); width:100%; min-height:var(--tap-min);
+  border:1px solid var(--sel-line); border-radius:var(--r-md); background:var(--sel-bg); color:var(--ink); font:inherit;
+  text-align:left; padding:var(--sp-2) var(--sp-3); margin:0 0 var(--sp-2); cursor:pointer; }
+.meal-cel > span:first-child{ display:flex; flex-direction:column; }
+.meal-cel .of{ font-size:var(--t-row-sub); color:var(--muted); }
+@media (max-width: 400px){ .meal-row{ gap:var(--sp-1); } .meal-row-l{ flex-basis:64px; } .meal-seg{ padding:0 var(--sp-2); } }
+.trip-total{ font-size:var(--t-row); font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; margin-top:var(--sp-1); }
+[data-trip-layers="spread"]{ border-bottom:1px solid var(--line); margin-bottom:var(--sp-3); }
+.trip-hero{ padding:2px 0 var(--sp-4); }

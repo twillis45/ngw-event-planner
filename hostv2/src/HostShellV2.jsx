@@ -122,7 +122,8 @@ import { orchestratorStreamTransport, isOrchestratorApiConfigured } from '@app/l
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement, honoreeApplies } from '@app/lib/eventIdentity';
-import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
+import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, spanEnd, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
+import { eventDatesPatch, eventSpanLabel } from '@app/lib/eventDates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel, taskIsOverdue, taskWindowClosed } from '@app/lib/taskLead';
@@ -134,7 +135,7 @@ import { reconcileChecklist, reconcileSummary } from '@app/lib/checklistReconcil
 import { measureRows, playReorder } from '@app/lib/flipReorder';
 import { tweenNumber } from '@app/lib/tweenNumber';
 import { recordTold, clearTold, isTold, guestToldMap, toldRollup } from '@app/lib/guestTold';
-import { addDay, dropDay, dayCount, rowsOn } from '@app/lib/spanEdit';
+import { rowsOn } from '@app/lib/spanEdit';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { startTimeFieldsToPersist, startTimeReading } from '@app/lib/startTimeFieldsToPersist';
 import { arrivalAsk } from '@app/lib/vendorAsks';
@@ -143,9 +144,13 @@ import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import MustHaves from './MustHaves';
-import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded, lodgingIsHeld } from '@app/lib/lodgingIntel';
+import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, extractListingMeta, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates, bedroomsNeeded, lodgingIsHeld, KITCHEN_ANSWERS } from '@app/lib/lodgingIntel';
 import { heardAccessNeeds, accessNeedsFor } from '@app/lib/accessNeeds';
 import { clausesNotUsed, heardNotUsedFor, acknowledgeClausePatch, heardVendorIntents } from '@app/lib/heardClauses';
+import { potluckPickFor, byobPickFor, heardKidsCount, heardAllergyCounts, heardOvernightCount } from '@app/lib/heardFacts';
+import { timeOfDayFor } from '@app/lib/knownFacts';
+import { kidsCountAfterRoster } from '@app/lib/kidsCountAfterRoster';
+import { hostNameFor } from '@app/lib/hostNameFor';
 import { heardFoods, uncoveredFoods, similarPlanLine } from '@app/lib/heardFoods';
 import { heardGameStyle } from '@app/lib/heardGameStyle';
 import { addGame, removeGame, isGameLibrary, GAME_NAME_MAX } from '@app/lib/gameLineup';
@@ -219,7 +224,7 @@ import { typeIsRestatedByName } from '@app/lib/eventMasthead';
 import { confirmedCovers, confirmedRsvpCovers } from '@app/lib/confirmedCovers';
 import { shoppingHint } from '@app/lib/shoppableUnit';
 import { markSignal, lastSignalNote } from './offline/lastSignal';
-import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, sizingRange, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum, dietaryNoted } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, sizingRange, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum, dietaryNoted, playbookPacing } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
@@ -340,6 +345,8 @@ import { worryLabel } from '@app/lib/worryLabel';
 import { venueFor, setVenue, confirmVenue, formatVenueAddress } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
+import { tripDays, celebrationNight, celebrationTitle, celebrationPlace, celebrationFieldsToPersist, aroundMeals, mealsOutPayer, placeWithArticle, MEAL_PLANS, MEAL_MODES, MEAL_PAYERS, MEAL_LABEL, tripIsMultiDay } from '@app/lib/tripMeals';
+import { celebrationApplies, tripFoodMoney, aroundSummary, dinnerParts, RESTAURANT_DINNER } from '@app/lib/tripFood';
 import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
 import { mayExhale, calmVetoFor } from '@app/lib/exhaleGate';
 import { checklistRouteFor } from '@app/lib/taskRoute';
@@ -2838,7 +2845,8 @@ export default function HostShellV2() {
     const out = [];
     try {
       (decisionBoard.open || []).forEach(r => {
-        if (r && r.label) out.push({ label: 'Decide: ' + r.label, id: r.id || null, due: r.dueDate || null, days: r.daysOut != null ? r.daysOut : null, kind: 'call' });
+        // A confirm reads as one ("Confirm 30 guests"), never "Decide: Confirm…".
+        if (r && r.label) out.push({ label: (r.confirm ? '' : 'Decide: ') + r.label, id: r.id || null, due: r.dueDate || null, days: r.daysOut != null ? r.daysOut : null, kind: 'call' });
       });
     } catch {}
     try {
@@ -3428,7 +3436,8 @@ export default function HostShellV2() {
     // is an email/phone, so rendering that as "Hosted by" would print an address on
     // the invitation.
     deckLine: event.deckLine || '',
-    hostName: event.hostName || '',
+    // Prefilled from her profile name when the event has none (hostNameFor).
+    hostName: hostNameFor(event, profile),
   });
   const openMeaning = () => { setMeaningDraft(buildMeaningDraft()); setSheet({ kind: 'meaning' }); };
   const hasMeaning = !!(String(event.must_have_moment || '').trim() || String(event.meaning_why || '').trim() || String(event.honoree_story || '').trim());
@@ -4467,6 +4476,9 @@ export default function HostShellV2() {
   // must be CONFIRMED before it cascades (host report 2026-07-16), instead of committing on
   // the picker's onChange. null = not editing; a string = a picked-but-unconfirmed date.
   const [dateDraft, setDateDraft] = useState(null);
+  // The range's last day, drafted beside the first (owner, 11/21/2026: ask for
+  // ranges, not a last day). null ⇒ show the committed end.
+  const [endDraft, setEndDraft] = useState(null);
   const commitVendorCost = (v) => {
     if (vendorCostDraft === null || !ownsVendorCostDraft(v)) return;
     const raw = String(vendorCostDraft).trim();
@@ -4709,7 +4721,7 @@ export default function HostShellV2() {
       const g = guestNumber(event);
       if (!g || !event.type) return null;
       const e = estimateTotalRange({
-        type: event.type, guestCount: g, date: event.date, timeOfDay: event.timeOfDay,
+        type: event.type, guestCount: g, date: event.date, timeOfDay: timeOfDayFor(event),
         isDestination: !!event.isDestination, nights: spanNights(event),
       });
       const mid = e ? Math.round(((e.lowTotal + e.highTotal) / 2) / 100) * 100 : 0;
@@ -5524,17 +5536,6 @@ export default function HostShellV2() {
       setPlaceNoteOpen(sheet.focus);
       setPlaceNoteDraft(String(event[PLACE_NOTE_FIELD[sheet.focus]] || ''));
     }
-    // "Your days" door (2026-08-21): the span-gated Sections row lands on the
-    // programme block, not the top of the furniture sheet — same anchor idiom
-    // as the guests rows below.
-    if (sheet && sheet.kind === 'space' && sheet.focus === 'days') {
-      setTimeout(() => {
-        try {
-          const el = document.getElementById('space-days');
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } catch { /* anchor is best-effort */ }
-      }, 60);
-    }
     // Make it yours on the event hashtag (11/21/2026): Sweet 16's "custom
     // hashtag" step lands on the hashtag block, below the invite's own words.
     if (sheet && sheet.kind === 'meaning' && sheet.focus === 'hashtag') {
@@ -6193,7 +6194,7 @@ export default function HostShellV2() {
     if (kind === 'ask') { setAskQ(''); setAskResult(null); setAskLLM(null); }
     // 'days' is the span-gated "Your days" door (sectionDirectory) — a second
     // honest door onto the space sheet's programme block, not a new surface.
-    if (kind === 'days') { setSheet({ kind: 'space', focus: 'days' }); return; }
+    if (kind === 'days') { setSheet({ kind: 'days' }); return; }
     // Which door opened Messages travels with the sheet (messages_view_opened).
     setSheet(kind === 'messages' ? { kind, entry: 'section_list' } : { kind });
   };
@@ -7146,6 +7147,90 @@ export default function HostShellV2() {
     }, 120);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bringFocus]);
+  // ── THE DINNER INSIDE THE TRIP (owner decision 11/21/2026, "B with A's money") ──
+  // One read of the trip's food for every surface: the board card, the dinner
+  // sheet, Your days, the Spread and Your money. The money is ONE calculation
+  // (lib/tripFood.tripFoodMoney); the celebration layer is priced by the very
+  // number the Spread shows, so the two can never disagree.
+  const trip = useMemo(() => {
+    try {
+      if (!tripIsMultiDay(event)) return null;
+      const cel = celebrationApplies(event);
+      const est = foodPlan && foodPlan.hasRealCount
+        ? { low: (foodPlan.foodLow || 0) + (foodPlan.suppliesLow || 0), high: (foodPlan.foodHigh || 0) + (foodPlan.suppliesHigh || 0) }
+        : null;
+      return {
+        cel,
+        days: tripDays(event),
+        night: celebrationNight(event),
+        title: cel ? celebrationTitle(event) : null,
+        place: cel ? celebrationPlace(event) : null,
+        parts: cel ? dinnerParts(event) : [],
+        meals: aroundMeals(event, { celebration: cel }),
+        tripMoney: tripFoodMoney(event, { foodEstimate: est }),
+      };
+    } catch (_e) { return null; }
+  }, [event, foodPlan]);
+  const tripMealsNow = (event.tripMeals && typeof event.tripMeals === 'object') ? event.tripMeals : {};
+  const pickDinnerNight = (d) => patchEvent(
+    { celebration: { ...((event.celebration && typeof event.celebration === 'object') ? event.celebration : {}), night: d.iso } },
+    `The dinner is ${d.label}. Your days and the invite show it.`);
+  const setTripMeals = (patch, msg) => patchEvent({ tripMeals: { ...tripMealsNow, ...patch } }, msg);
+  // "Food across the trip" — A's money view, on the Spread and in Your money.
+  // Two layers, one calculation (tripFoodMoney): the celebration, and the
+  // meals around it. A meal with no price source is counted and named, never
+  // priced.
+  const tripLayers = (where) => {
+    if (!trip) return null;
+    const mo = trip.tripMoney;
+    const by = Object.fromEntries(mo.around.rows.map((r) => [r.mode, r]));
+    const money = (lo, hi) => (lo === hi ? fmt(lo) : `${fmt(lo)}–${fmt(hi)}`);
+    const unpriced = mo.unpricedMeals;
+    const summary = aroundSummary(mo);
+    return (
+      <div className="trip-layers" data-trip-layers={where}>
+        <Eyebrow>Food across the trip</Eyebrow>
+        {/* On the Spread the hero above already prints the dinner's number, so
+            the trip total is a line, not a second big number; Your money
+            leads with it. */}
+        {where === 'money'
+          ? <BigValue style={{ fontVariantNumeric: 'tabular-nums' }}>{money(mo.totalLow, mo.totalHigh)}</BigValue>
+          : <div className="trip-total" data-trip-total>{money(mo.totalLow, mo.totalHigh)}</div>}
+        <Grounding gap={ASK_RHYTHM.valueToWhy}>
+          {`what you pay for${trip.cel ? ' · the dinner' : ''}${unpriced ? ` · plus ${unpriced} meal${unpriced === 1 ? '' : 's'} that still need${unpriced === 1 ? 's' : ''} a price source` : ''}`}
+        </Grounding>
+        <div className="fstat-list" style={{ marginTop: 'var(--sp-3)' }}>
+          {trip.cel && mo.celebration && (
+            <button type="button" className="fstat" data-layer="celebration" onClick={() => setSheet({ kind: 'celebration' })}>
+              <span className="fstat-l">The celebration<span className="trip-part-sub">{mo.celebration.title} · {mo.celebration.basis === 'restaurant' ? 'the restaurant’s rate, before drinks, tax and tip' : 'this spread’s estimate · all in'}</span></span>
+              <span className="fstat-v">{mo.celebration.low != null ? money(mo.celebration.low, mo.celebration.high) : 'needs a guest count'}<span className="fstat-chev" aria-hidden="true">›</span></span>
+            </button>
+          )}
+          <button type="button" className="fstat" data-layer="around" onClick={() => goToSection('days')}>
+            <span className="fstat-l">{trip.cel ? 'Around it' : 'Meals on the trip'}<span className="trip-part-sub">{mo.around.planned ? `${mo.around.total} meals · ${summary}` : `${mo.around.total} meals · not planned yet`}</span></span>
+            <span className="fstat-v">{mo.around.planned ? (by.out && by.out.low ? `${money(by.out.low, by.out.high)} to you` : '$0 to you') : 'plan them'}<span className="fstat-chev" aria-hidden="true">›</span></span>
+          </button>
+        </div>
+        {mo.around.planned > 0 && (
+          <div className="trip-around" data-around-rows>
+            {by.out && by.out.count > 0 && (
+              <div className="trip-money-line"><span>{by.out.count} group meal{by.out.count === 1 ? '' : 's'} out<span className="trip-part-sub">{by.out.payer === 'host' ? 'You cover them · dinners at $25–$75 a head' : by.out.payer === 'split' ? 'Split evenly at the table' : 'Each pays · about $25–$75 a head a dinner'}</span></span>
+                <strong>{by.out.payer === 'host' ? (by.out.low ? `${money(by.out.low, by.out.high)}${by.out.unpriced ? ' + needs a price source' : ''}` : 'needs a price source') : '$0 to you'}</strong></div>
+            )}
+            {by.house && by.house.count > 0 && (
+              <div className="trip-money-line"><span>{by.house.count} meal{by.house.count === 1 ? '' : 's'} at the house<span className="trip-part-sub">Groceries for the group · one person holds the list</span></span><em>needs a price source</em></div>
+            )}
+            {by.own && by.own.count > 0 && (
+              <div className="trip-money-line"><span>{by.own.count} on your own<span className="trip-part-sub">Each person buys their own</span></span><strong>$0 to you</strong></div>
+            )}
+            {(mo.sources.length > 0 || (by.out && by.out.count > 0)) && (
+              <p className="v-meta">Restaurant figures: a three-course mid-range dinner for two is $50–$150 nationally (UC Berkeley Cal Dining and Indiana University Catering menus, Numbeo US restaurant data, fetched 8/18/2026). Not adjusted for {vf.city || 'the destination'}. No registered source prices a group breakfast, lunch, or a grocery run per meal, so those are not priced.</p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
   // "Open the spread (N items) ›" — under EVERY menu question, on every route
   // that shows one (owner ruling 3, 11/21/2026): the food editor had it, the
   // elegant hero's in-place question dropped it. One control, both places.
@@ -7824,7 +7909,7 @@ export default function HostShellV2() {
     const res = undoLastImportBatch(importBatches);
     if (!res) return;
     writeImportBatches(res.batches);
-    patchEvent({ guests: res.snapshot, kidsCount: kidsTotal(res.snapshot) },
+    patchEvent({ guests: res.snapshot, kidsCount: kidsCountAfterRoster(event, res.snapshot) },
       'Import undone — the list is back the way it was before that import.');
   };
   // PII cleanup (engine-gap NEW-3): every batch carries a FULL pre-import
@@ -7898,7 +7983,7 @@ export default function HostShellV2() {
     const before = event.guests || [];
     const batchId = newImportBatchId();
     const merged = applyMerge(before, csvPreview.mapped, 'merge', batchId);
-    const kidsCount = kidsTotal(merged);
+    const kidsCount = kidsCountAfterRoster(event, merged);
     // Record the batch BEFORE the write lands: id, pre-import snapshot (what
     // undo restores), and the same audit counts the legacy wizard records.
     const audit = computeImportAuditMeta(csvPreview.mapped, csvPreview.summary);
@@ -7913,13 +7998,13 @@ export default function HostShellV2() {
     const gs = (event.guests || []).map((g, ix) => ix === i ? { ...g, ...patch } : g);
     // kidsCount is the ENGINE's portion-skew knob (kids eat ~40% of adult
     // protein) — derive it from the roster so food re-prices automatically.
-    const kidsCount = kidsTotal(gs);
+    const kidsCount = kidsCountAfterRoster(event, gs);
     patchEvent({ guests: gs, kidsCount }, msg);
   };
   const removeGuest = (i) => {
     const g = (event.guests || [])[i];
     const gs = (event.guests || []).filter((_, ix) => ix !== i);
-    const kidsCount = gs.reduce((t, x) => t + (Number(x && x.kids) || 0), 0);
+    const kidsCount = kidsCountAfterRoster(event, gs);
     patchEvent({ guests: gs, kidsCount }, (g && g.name || 'Guest') + ' removed from the list.');
     setGuestOpen(null);
   };
@@ -8333,7 +8418,7 @@ export default function HostShellV2() {
     patchEvent({ timeline: res.rows }, first ? '' : reconcileSummary(res), first ? { noUndo: true } : undefined);
     return;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [event && event.id, event && JSON.stringify(event.foodChoices || null),
+  }, [event && event.id, event && JSON.stringify(event.foodChoices || null), event && JSON.stringify(event.tripMeals || null), event && JSON.stringify(event.celebration || null),
       event && event.travelMode, event && event.isDestination, event && event.foodFocus,
       event && event.caterer, event && event.date]);
 
@@ -8465,7 +8550,7 @@ export default function HostShellV2() {
   // former inline copy; both apps now consume one implementation.
   const announceReplies = (gs, n, yesCount, withdrawn = 0) => {
     if (!n && !withdrawn) return;
-    const kidsCount = kidsTotal(gs);
+    const kidsCount = kidsCountAfterRoster(event, gs);
     const ask = sameGuestAskLine(event.guests, gs);
     // A guest who deleted her reply is said plainly, never folded into "replies came in".
     const gone = withdrawn ? (withdrawn === 1 ? 'A guest deleted their reply' : withdrawn + ' guests deleted their replies') + ', so their answers are off your list.' : '';
@@ -8687,7 +8772,7 @@ export default function HostShellV2() {
     const url = appUrl + '?helper=' + encodeURIComponent(r.code);
     const mine = (helperData.responsibilities || []).filter(x => x.helperId === resp.helperId);
     const body = buildHelperAsk({
-      event, hostName: (profile && profile.name) || event.hostName || '', helperName: resp.helperName,
+      event, hostName: hostNameFor(event, profile), helperName: resp.helperName,
       jobs: mine.map(x => ({ kind: x.itemType, label: x.label })), url,
     });
     const guest = resp.guestId ? (event.guests || []).find(g => g && g.id === resp.guestId) : null;
@@ -9341,10 +9426,20 @@ export default function HostShellV2() {
       // deadline, so it waits for an explicit confirm (host report). null draft ⇒ show the
       // committed date; a draft that differs ⇒ the confirm button appears below.
       const dateShown = dateDraft !== null ? dateDraft : (event.date || '');
-      const dateDirty = dateDraft !== null && dateDraft !== (event.date || '');
+      // ── FROM – TO, IN ONE PLACE (owner, 11/21/2026) ──────────────────────
+      // "Host should be asked for ranges not last day." The span used to be set
+      // on Space, a sheet about seats, as a "Last day" field and add/drop-a-day
+      // buttons, while this editor offered one date. The range lives here now,
+      // drafted and confirmed together, and lib/eventDates builds the write so
+      // creation, this editor and the date poll store one shape.
+      const committedEnd = (event.endDate && String(event.endDate) > String(event.date || '')) ? String(event.endDate).slice(0, 10) : '';
+      const endShown = endDraft !== null ? endDraft : committedEnd;
+      const dateDirty = (dateDraft !== null && dateDraft !== (event.date || '')) || (endDraft !== null && endDraft !== committedEnd);
       const confirmDate = () => {
-        const v = dateDraft;
+        const v = dateDraft !== null ? dateDraft : (event.date || '');
         if (!v) return;
+        const endV = endDraft !== null ? endDraft : committedEnd;
+        if (endV && endV <= v) { toast('The last day has to come after the first day (' + usShortDate(v) + ').'); return; }
         // DATE-GUARDRAIL: a malformed value (stray keystrokes, a corrupted paste, a broken
         // segment in the native picker) can otherwise write straight through to event.date
         // and render as "739158d ago". eventDateStatus is the one shared verdict.
@@ -9355,10 +9450,25 @@ export default function HostShellV2() {
         // SETTLES the "Date & time" domino so its cue + alerts clear. If a start time is already
         // set, mark it host-confirmed in the same tap so BOTH halves of "when" clear together
         // (datetime is handled only when date AND start time are confirmed — phaseProgress.js).
-        const patch = { date: v };
-        // The named month has been answered by a real day — drop it rather than
-        // leave a second, staler "when" on the record.
-        if (event.targetMonth) patch.targetMonth = null;
+        // One setter (lib/eventDates): it also drops a named month answered by a
+        // real day, and closes an open "which days?" question.
+        const patch = eventDatesPatch(event, { date: v, endDate: endV });
+        if (!patch) return;
+        // Shrinking a span can strand planned rows on a day that stops existing
+        // (what Space's "Drop the last day" used to ask). Say what before writing.
+        const oldEnd = spanEnd(event);
+        const newEnd = patch.endDate || patch.date;
+        if (oldEnd && newEnd < oldEnd) {
+          const stranded = [];
+          for (let d = new Date(newEnd + 'T12:00:00'); ; ) {
+            d.setDate(d.getDate() + 1);
+            const iso = localISO(d);
+            if (iso > oldEnd) break;
+            stranded.push(...rowsOn(event, iso));
+          }
+          if (stranded.length && !window.confirm(
+            `${stranded.length} thing${stranded.length === 1 ? '' : 's'} planned after the new last day: ${stranded.map(r => r.title || 'an item').slice(0, 3).join(', ')}. Change the dates anyway? Nothing is deleted.`)) return;
+        }
         // THE DATE TAP DOES NOT CONFIRM THE HOUR (audit finding, 2026-09-18).
         // This line used to read:
         //
@@ -9391,8 +9501,11 @@ export default function HostShellV2() {
         //
         // The datetime domino now stays open until she confirms the hour, which
         // is what an unconfirmed hour should look like.
-        patchEvent(patch, 'Date confirmed. Countdowns, deadlines, and shopping windows now count from it.');
+        patchEvent(patch, patch.endDate
+          ? 'Dates set: ' + eventSpanLabel({ ...event, ...patch }) + '. Countdowns, deadlines, and shopping windows count from them.'
+          : 'Date confirmed. Countdowns, deadlines, and shopping windows now count from it.');
         setDateDraft(null);
+        setEndDraft(null);
       };
       return (
       <div className="hc-row" style={{ flexWrap: 'wrap' }}>
@@ -9418,12 +9531,37 @@ export default function HostShellV2() {
             </div>
           );
         })()}
-        <input className="field" type="date" value={dateShown} aria-label="Event date"
-          onChange={e => { const v = e.target.value; if (v) setDateDraft(v); }} />
+        {/* The days are owed: her sentence meant more than one day and did not
+            say which (lib/smartParseEvent datesToConfirm). Ask for the range. */}
+        {event.datesToConfirm && (
+          <p className="grounding" data-dates-owed style={{ width: '100%', margin: '0 0 var(--sp-1)' }}>
+            {event.date ? 'You gave the first day. Which day does it end?' : 'Which dates? Set the first and last day.'}
+          </p>
+        )}
+        <div className="actions-row" data-date-range style={{ width: '100%', alignItems: 'center', flexWrap: 'wrap' }}>
+          <label className="of" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>From
+            <input className="field" type="date" value={dateShown} aria-label="Event date" style={{ minHeight: 'var(--tap-min)' }}
+              onChange={e => { const v = e.target.value; if (v) setDateDraft(v); }} />
+          </label>
+          <label className="of" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>To
+            <input className="field" type="date" value={endShown} aria-label="Last day" style={{ minHeight: 'var(--tap-min)' }}
+              min={dateShown || undefined}
+              onChange={e => setEndDraft(e.target.value || '')} />
+          </label>
+        </div>
+        <p className="grounding" style={{ width: '100%', margin: 'var(--sp-1) 0 0' }}>
+          {(() => {
+            const shown = { date: dateShown, endDate: endShown };
+            const n = spanNights(shown);
+            if (n > 0) return 'Dates · ' + eventSpanLabel(shown);
+            // Owed days: the line above already asks; do not call it one day.
+            return event.datesToConfirm ? 'Set “To” to the last day.' : 'One day. Set “To” if it runs longer.';
+          })()}
+        </p>
         {/* CONFIRM (host report): a date change waits for a yes before it moves the plan. */}
         {dateDirty && (
-          <button className="mini" style={{ color: 'var(--steel)', fontWeight: 700 }} onClick={confirmDate}>
-            Move everything to this date
+          <button className="mini" style={{ color: 'var(--steel)', fontWeight: 700, minHeight: 'var(--tap-min)' }} onClick={confirmDate}>
+            {endShown && endShown > dateShown ? 'Move everything to these dates' : 'Move everything to this date'}
           </button>
         )}
         {/* AN EVENT SHOULD START WITH A GROUNDED TIME (2026-07-14).
@@ -9639,7 +9777,7 @@ export default function HostShellV2() {
     const _stayFloor = (() => {
       try { return budgetComparableTotal(_stayBasis, spanNights(event)); } catch (_e) { return null; }
     })();
-    const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date, timeOfDay: event.timeOfDay, isDestination: !!event.isDestination, nights: spanNights(event), lodgingFloor: _stayFloor });
+    const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date, timeOfDay: timeOfDayFor(event), isDestination: !!event.isDestination, nights: spanNights(event), lodgingFloor: _stayFloor });
     // HOST MODEL: one number (event.totalBudget). Offered three ways — the
     // estimator's real low/mid/high as Lean / Typical / All-out chips (host
     // request, 2026-07-08), a custom number, and the range as a hint.
@@ -10020,8 +10158,18 @@ export default function HostShellV2() {
       // `hostName`, never promoted to honoree — nobody is being celebrated.
       name: effName ? effName + '’s ' + milestoneName : (parsed.hostName ? parsed.hostName + '’s ' + milestoneName : 'My ' + milestoneName),
       honoree: effName || '',
-      ...(parsed.hostName ? { hostName: parsed.hostName } : {}),
-      type: effType, date: effDate || '', ...(effEndDate ? { endDate: effEndDate } : {}), venue: parsed.venue || '', venueKind: parsed.venueKind || '',
+      // …and when she did not name herself, the invitation is from the name
+      // her profile already holds (hostNameFor), not a blank she is asked to fill.
+      ...(hostNameFor({ hostName: parsed.hostName }, profile) ? { hostName: hostNameFor({ hostName: parsed.hostName }, profile) } : {}),
+      // THE DATES, THROUGH THE ONE SETTER (lib/eventDates) the Date & time
+      // editor and the date poll use, so creation stores the same shape.
+      type: effType, date: '', ...(() => { const d = eventDatesPatch({}, { date: effDate, endDate: effEndDate }); return d ? (d.endDate ? d : { date: d.date }) : {}; })(),
+      // HER SENTENCE MEANT MORE THAN ONE DAY AND DID NOT SAY WHICH (owner
+      // report 11/21/2026): "a long weekend", "July 4th weekend", a trip with
+      // only a start. Not a span and not a guess — the question the reveal and
+      // Date & time ask ("Which dates?"), cleared by the first range she gives.
+      ...(parsed.datesToConfirm && !effEndDate ? { datesToConfirm: true } : {}),
+      venue: parsed.venue || '', venueKind: parsed.venueKind || '',
       // THE MONTH THE HOST NAMED, when they did not name a day ("in June of 2028",
       // "next month", "this fall"). It was heard at intake — the chip said
       // "Jun 2028 · pick a day" — and then dropped here, so the board answered
@@ -10172,9 +10320,20 @@ export default function HostShellV2() {
       // consumer starts reading it, on every existing event, with nothing to
       // backfill. The LIST is deliberately not stored; see heardClauses.js.
       createdFromText: smartText,
+      // WHAT SHE SAID, WRITTEN DOWN (owner, 11/21/2026: "Don't keep asking host
+      // for the same information"). "including 8 kids", "one guest has a nut
+      // allergy" and "3 staying overnight" were heard, listed as dropped, and
+      // asked for again. lib/heardFacts.js reads them; only what she said.
+      ...(() => { const n = heardKidsCount(smartText); return n ? { kidsCount: Math.min(n, Number(effGuests) || n) } : {}; })(),
+      ...(() => { const dc = heardAllergyCounts(smartText); return dc ? { dietCounts: dc } : {}; })(),
+      ...(() => { const n = heardOvernightCount(smartText); return n ? { overnightCount: n } : {}; })(),
       budget: [],
       guests: [], vendors: heardVendorIntents(smartText).map((v, i) => ({ ...v, id: 'v-' + newId + '-' + i })), timeline: [],
     };
+    // HER CLOCK OUTRANKS HER WORD (owner, 11/21/2026). "Dinner at 4pm" stored
+    // timeOfDay 'evening' (from "dinner") beside 4:00 PM, and the budget's
+    // time-of-day factor read the bucket. A clock she said decides it.
+    { const tod = timeOfDayFor(ev); if (tod) ev.timeOfDay = tod; }
     // AN EVENT ARRIVES WITH A GROUNDED START TIME (host directive, 2026-07-14).
     // Not the old invention — that was a bare 15:00, written as fact and indistinguishable
     // from a host decision. This one is DERIVED (a real sunset + the playbook's own run-length,
@@ -10195,6 +10354,25 @@ export default function HostShellV2() {
       const d = style && ((getPlaybook(ev.type) || {}).decisions || []).find((x) => x && x.id === 'game_type' && (x.options || []).includes(style));
       if (d) { ev.foodChoices = { ...(ev.foodChoices || {}), game_type: style }; ev.choiceSource = { ...(ev.choiceSource || {}), game_type: 'host' }; }
     } catch (_e) { /* the decision asks later */ }
+    // "POTLUCK" AND "BYOB" ARE HER ANSWERS (owner, 11/21/2026). "Potluck
+    // Thanksgiving" stored nothing, so who-cooks proposed host-cooks; "BYOB" was
+    // listed as dropped while the drinks call proposed its default. Recorded the
+    // way her game style is, before the checklist is drawn.
+    try {
+      const decs = (getPlaybook(ev.type) || {}).decisions || [];
+      [potluckPickFor(decs, smartText), byobPickFor(decs, smartText)].filter(Boolean).forEach(({ id, pick }) => {
+        ev.foodChoices = { ...(ev.foodChoices || {}), [id]: pick };
+        ev.choiceSource = { ...(ev.choiceSource || {}), [id]: 'host' };
+      });
+    } catch (_e) { /* the decision asks later */ }
+    // THE DINNER INSIDE THE TRIP (owner, 11/21/2026). "dinner at an adobe
+    // courtyard" survived only in the sentence; it is now the celebration's
+    // place (the kind of place, not a booked venue), shown on the dinner sheet
+    // and never re-asked. A type with a celebration gets the record even with
+    // no place said, so the invite knows the dinner is its own moment.
+    try {
+      if (celebrationApplies(ev)) ev.celebration = celebrationFieldsToPersist(smartText).celebration || {};
+    } catch (_e) { /* the dinner sheet asks what it must */ }
     try { ev.timeline = (playbookChecklist(ev) || []).map(r => ({ id: r.id, week: r.week || '', leadDays: r.leadDays != null ? r.leadDays : null, task: r.task || '', done: false, owner: '', category: r.category || '' })); } catch {}
     // A FOOD SHE NAMED IS ON THE MENU (GOLD-05, 11/5/2026). One the playbook
     // already carries stays as it is; any other becomes a host-named line.
@@ -13269,6 +13447,51 @@ export default function HostShellV2() {
                   digest is leading and the host hasn't expanded the queue, this
                   expanded copy stands down — the collapsed tail below still opens
                   the same rows on tap, and expanding brings this back. */}
+              {/* ── INSIDE THE TRIP (owner decision 11/21/2026, option B) ──────
+                  The celebration dinner as its own planned moment: a card with
+                  its own progress and ONE soft button, which asks the night
+                  first. Under it, the meals around it in Your days. Below the
+                  fold, unlit (ruling 31): the hero keeps the one lit ask. It
+                  routes to L4 sheets and edits nothing here (guardrail 01). */}
+              {elegantMode && trip && !isPastEvent(event) && (() => {
+                const setN = trip.parts.filter((p) => p.set).length;
+                const nightLine = trip.night.picked ? trip.night.label : 'Night not picked';
+                const facts = [nightLine, event.timeOfDay === 'evening' ? 'evening' : null,
+                  placeWithArticle(trip.place),
+                  (trip.tripMoney.celebration && trip.tripMoney.celebration.guests) ? `${trip.tripMoney.celebration.guests} guests` : null].filter(Boolean).join(' · ');
+                const mealsPlanned = trip.meals.planned;
+                return (
+                  <div className="trip-fold" data-trip-card>
+                    <div className="ef-sect">Inside the trip</div>
+                    {trip.cel && (
+                      <div className="trip-card" data-dinner-card>
+                        <div className="trip-card-h">
+                          <strong className="trip-card-t">{trip.title}</strong>
+                          <span className="trip-card-n">{setN} of {trip.parts.length} set</span>
+                        </div>
+                        <p className="trip-card-sub">{facts}</p>
+                        <div className="trip-segs" role="img" aria-label={`${setN} of ${trip.parts.length} parts of the dinner set`}>
+                          {trip.parts.map((p) => <span key={p.id} className={'trip-seg' + (p.set ? ' on' : '')} />)}
+                        </div>
+                        <button type="button" className="trip-go" data-dinner-go
+                          onClick={() => setSheet({ kind: 'celebration' })}>
+                          {trip.night.picked ? `Open ${trip.title}` : 'Pick the night of the dinner'}
+                        </button>
+                      </div>
+                    )}
+                    <button type="button" className="trip-days-row" data-trip-days
+                      onClick={() => goToSection('days')}>
+                      <span className="trip-days-l">
+                        <span className="trip-days-t">Your days · {trip.cel ? 'meals around the dinner' : 'meals on the trip'}</span>
+                        <span className="trip-days-strip" aria-hidden="true">
+                          {trip.days.map((d) => <span key={d.iso} className={'trip-day' + (trip.cel && d.iso === trip.night.effectiveIso && trip.night.picked ? ' on' : '')}>{d.short}</span>)}
+                        </span>
+                      </span>
+                      <span className="trip-days-v">{mealsPlanned ? `${mealsPlanned} of ${trip.meals.total} planned` : 'not planned'} <span aria-hidden="true">›</span></span>
+                    </button>
+                  </div>
+                );
+              })()}
               {elegantMode && askMode && !(nearDayPlan && !queueOpen) && (() => {
                 // Include a SECOND bundle here (host 2026-07-18): "Resolve 9 decisions" behind
                 // the conflict hero drops below the fold as a path-row, so the first screen isn't
@@ -16027,7 +16250,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -16799,136 +17022,31 @@ export default function HostShellV2() {
               </p>
             )}
             {sheet.kind === 'space' && (
-              // R1 span ruling (2026-07-26): endDate is host-editable after
-              // creation, not only heard once at create. Empty = one day.
-              <div className="line" style={{ padding: '2px 0 10px' }}>
-                <span>Last day <span className="of">— if it runs more than one day</span></span>
-                <input className="field" type="date" style={{ maxWidth: 160 }}
-                  value={/^\d{4}-\d{2}-\d{2}/.test(String(event.endDate || '')) ? String(event.endDate).slice(0, 10) : ''}
-                  min={event.date || undefined}
-                  aria-label="Last day of the event"
-                  onChange={e => {
-                    const v = e.target.value;
-                    // span only extends forward — and says so (run 3, R3-3: a last day
-                    // before the first was refused without a word)
-                    if (v && event.date && v <= String(event.date).slice(0, 10)) { toast('The last day has to come after the first day (' + usShortDate(String(event.date).slice(0, 10)) + ').'); return; }
-                    patchEvent({ endDate: v || null },
-                      v ? 'Multi-day set — the plan now runs through your last day.' : 'Back to a single day.');
-                  }} />
+              // ── THE DATES ARE SHOWN HERE, SET IN DATE & TIME (owner, 11/21/2026)
+              // This sheet kept its own "Last day" field and add/drop-a-day
+              // buttons: a second date control, on a sheet about seats, beside
+              // the one in Date & time. Under the no-duplicate-surfaces rule
+              // (01_PRODUCT_ARCHITECTURE_GUARDRAILS) the copy goes and the span is
+              // read from the event, with "Change" opening the one place that
+              // writes it. Shrinking a span still names stranded rows first; that
+              // check moved into the Date & time confirm with the control.
+              <div className="line" data-space-dates style={{ padding: '2px 0 10px', alignItems: 'center' }}>
+                <span>Dates <span className="of">· {event.date ? eventSpanLabel(event) : 'not set yet'}{event.datesToConfirm ? ' · last day not set' : ''}</span></span>
+                <button className="mini rowlink" style={{ minHeight: 'var(--tap-min)' }} aria-label="Change the dates in Date & time"
+                  onClick={() => setSheet({ kind: 'date' })}>{event.date && !event.datesToConfirm ? 'Change' : 'Set the dates'}</button>
               </div>
             )}
-            {sheet.kind === 'space' && event.date && (() => {
-              // ── DAY CRUD (Workflow's named gap vs Wanderlog) ──────────────
-              // The span was editable only through the date field above, which
-              // is a SPAN control, not a day control: a host thinks "the Sunday
-              // brunch got added", not "recompute the terminal date of the
-              // interval". Making them do that arithmetic is the difference
-              // between a planner and a form.
-              //
-              // Moving an item BETWEEN days is a different feature on different
-              // data and is deliberately not here.
-              const n = dayCount(event);
-              const drop = dropDay(event);
-              const stranded = drop ? rowsOn(event, drop.strandedOn) : [];
-              return (
-                <div className="line day-crud" style={{ padding: '0 0 10px' }}>
-                  <span className="of">{n === 1 ? 'One day' : `${n} days`}</span>
-                  <span className="day-crud-btns">
-                    <button className="mini rowlink" aria-label="Add a day to this event"
-                      onClick={() => {
-                        const next = addDay(event);
-                        if (!next) return;
-                        patchEvent(next, `Added a day — the plan runs ${dayCount({ ...event, ...next })} days now.`);
-                      }}>+ Add a day</button>
-                    {drop && (
-                      <button className="mini rowlink" aria-label={stranded.length
-                        ? `Drop the last day. ${stranded.length} planned ${stranded.length === 1 ? 'item is' : 'items are'} on it.`
-                        : 'Drop the last day'}
-                        onClick={() => {
-                          // NAMES WHAT WOULD BE STRANDED BEFORE IT WRITES.
-                          // Shrinking a span can orphan work the host already
-                          // did; the row itself is never deleted, but it would
-                          // sit on a day that no longer exists, and finding that
-                          // out afterwards is how a host stops trusting the
-                          // plan. `dropDay` reports it precisely so this can ask.
-                          if (stranded.length && !window.confirm(
-                            `${stranded.length} thing${stranded.length === 1 ? '' : 's'} on that day: ${stranded.map(r => r.title || 'an item').slice(0, 3).join(', ')}. Drop the day anyway? Nothing is deleted.`)) return;
-                          patchEvent({ endDate: drop.endDate },
-                            drop.endDate ? `Dropped a day — ${dayCount({ ...event, endDate: drop.endDate })} days now.` : 'Back to a single day.');
-                        }}>Drop the last day</button>
-                    )}
-                  </span>
-                </div>
-              );
-            })()}
-            {sheet.kind === 'space' && (() => {
-              // ── The weekend plan (Slice A): ONE schedule, guest projection.
-              // Proposal renders HERE for the host to accept — guests only ever
-              // see host-accepted rows (event.itinerary), never a raw proposal.
-              const it = guestItinerary(event, getPlaybook);
-              if (!it.relevant) return null;
-              // MODEL D visibility rule — see the lodging sheet's note. The
-              // multi-day program is destination toolkit the pass sells. Only
-              // the HOST's editor locks: a plan already accepted stays on the
-              // guest invite (InviteV2 reads event.itinerary, ungated).
-              if (destinationLocked(event)) {
-                return (
-                  <>
-                    <div id="space-days" className="shelf-label" style={{ marginTop: 'var(--sp-3)' }}>The weekend plan <span className="of">— what guests see, day by day</span></div>
-                    <div style={{ padding: '2px 0' }}>
-                      <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>The weekend plan lives here — what happens each day, written once and shown to guests on the invite. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
-                      <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>{withPassPrice('See the One-Event Pass')}</button>
-                    </div>
-                  </>
-                );
-              }
-              const days = Math.max(1, spanNights(event) + 1);
-              const writeRows = (rows, msg) => patchEvent({ itinerary: rows }, msg);
-              const SLOT_OPTS = ['', 'morning', 'midday', 'afternoon', 'evening', 'night'];
-              return (
-                <>
-                  <div id="space-days" className="shelf-label" style={{ marginTop: 'var(--sp-3)' }}>The weekend plan <span className="of">— what guests see, day by day</span></div>
-                  {it.source !== 'host' ? (
-                    <>
-                      {it.rows.map((r, i) => (
-                        <div className="line" key={i} style={{ padding: '2px 0 6px' }}>
-                          <span>{dayLabelFor(event, r.day)}{r.slot ? ' ' + r.slot : ''} — <strong>{r.title}</strong>{r.note ? <span className="of"> · {r.note}</span> : null}</span>
-                        </div>
-                      ))}
-                      {it.provenance && it.provenance.note ? (
-                        <p className="v-meta" style={{ padding: '0 2px 6px' }}>{it.source === 'proposed' ? 'A suggested shape — ' : ''}{it.provenance.note}</p>
-                      ) : null}
-                      <div className="actions-row" style={{ marginBottom: 'var(--sp-2)' }}>
-                        <button className="mini" onClick={() => writeRows(it.rows, 'Weekend plan set — it’s on the invite now, and it’s yours to edit.')}>Use this plan</button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {it.rows.map((r, i) => (
-                        <div className="line" key={i} style={{ padding: '2px 0 6px', gap: 6 }}>
-                          <span style={{ display: 'flex', gap: 6, flex: 1, minWidth: 0, alignItems: 'center' }}>
-                            <select className="field" style={{ maxWidth: 64, padding: '6px 4px' }} value={r.day} aria-label="Day"
-                              onChange={(e) => { const rows = it.rows.map((x, j) => j === i ? { ...x, day: Number(e.target.value) } : x); writeRows(rows); }}>
-                              {Array.from({ length: days }, (_, d) => <option key={d + 1} value={d + 1}>{dayLabelFor(event, d + 1).slice(0, 3)}</option>)}
-                            </select>
-                            <select className="field" style={{ maxWidth: 104, padding: '6px 4px' }} value={r.slot || ''} aria-label="Time of day"
-                              onChange={(e) => { const rows = it.rows.map((x, j) => j === i ? { ...x, slot: e.target.value || null } : x); writeRows(rows); }}>
-                              {SLOT_OPTS.map((sl) => <option key={sl} value={sl}>{sl || '—'}</option>)}
-                            </select>
-                            <input className="field" style={{ flex: 1, minWidth: 0 }} value={r.title} aria-label="What's happening"
-                              onChange={(e) => { const rows = it.rows.map((x, j) => j === i ? { ...x, title: e.target.value } : x); writeRows(rows); }} />
-                          </span>
-                          <button className="mini" aria-label="Remove this line" onClick={() => writeRows(it.rows.filter((_, j) => j !== i), 'Line removed.')}>×</button>
-                        </div>
-                      ))}
-                      <div className="actions-row" style={{ marginBottom: 'var(--sp-2)' }}>
-                        <button className="mini" onClick={() => writeRows([...it.rows, { day: 1, slot: null, title: '' }])}>Add a line</button>
-                      </div>
-                    </>
-                  )}
-                </>
-              );
-            })()}
+            {sheet.kind === 'space' && spanNights(event) >= 1 && (
+              // "Your days" is its own sheet (owner, 11/21/2026: "Its own
+              // sheet"). Space keeps one read-only row that opens it — never a
+              // second editor of the days.
+              <div className="fstat-list" style={{ marginTop: 'var(--sp-3)' }}>
+                <button type="button" className="fstat" data-space-days onClick={() => setSheet({ kind: 'days' })}>
+                  <span className="fstat-l">Your days</span>
+                  <span className="fstat-v">{spanNights(event) + 1} days · open<span className="fstat-chev" aria-hidden="true">›</span></span>
+                </button>
+              </div>
+            )}
             {sheet.kind === 'space' && (() => {
               // ONE Place Core (queue: untouched list) — venue/location states;
               // 'na' is suppression, never failure.
@@ -17319,6 +17437,294 @@ export default function HostShellV2() {
             {sheet.kind === 'split' && (
               <CostSplitSheet event={event} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} />
             )}
+            {sheet.kind === 'days' && (() => {
+              // ── YOUR DAYS, ITS OWN SHEET (owner, 11/21/2026: "Its own sheet") ──
+              // The single home of the day-by-day plan: the days, the dinner
+              // row, the meals around it, the kitchen question, who pays for
+              // meals out, and the plan guests see. It READS the date range and
+              // never edits it — the dates are set in Date & time only.
+              const nDays = Math.max(1, spanNights(event) + 1);
+              const fmtDay = (i) => { try { const d = new Date(String(event.date).slice(0, 10) + 'T12:00:00'); d.setDate(d.getDate() + i - 1); return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); } catch { return ''; } };
+              const meals = trip && !destinationLocked(event) ? trip.meals : null;
+              return (
+                <div data-days-sheet>
+                  <Panel on={panels}>
+                    <div className="trip-hero">
+                      <Eyebrow>{nDays} days{vf.city ? ` in ${vf.city}` : ''}</Eyebrow>
+                      {meals ? (
+                        <>
+                          <BigValue><span data-meals-count>{meals.planned} of {meals.total}</span></BigValue>
+                          <GuideLine>{trip.cel ? 'meals planned around the dinner · the dinner is its own plan' : 'meals planned on the trip'}</GuideLine>
+                        </>
+                      ) : (
+                        <BigValue>{`${nDays} days`}</BigValue>
+                      )}
+                      <Grounding gap={ASK_RHYTHM.valueToWhy}>{fmtDay(1)} to {fmtDay(nDays)}</Grounding>
+                      <button type="button" className="spread-link trip-link" data-days-dates onClick={() => setSheet({ kind: 'date' })}>Change the dates in Date &amp; time ›</button>
+                    </div>
+            {trip && !destinationLocked(event) && (() => {
+              // ── THE MEALS AROUND THE DINNER, DAY BY DAY (owner, 11/21/2026) ──
+              // Your days carries the trip's meals. A starting point fills every
+              // meal; any meal can then be changed. The kitchen is asked once,
+              // here, and saved to the one "How are guests staying?" answer.
+              // Only "out together" meals add a step to the checklist; the
+              // group meals out reach the invite (itinerary.guestFacingDays).
+              const m = trip.meals;
+              const bySlot = new Map(m.slots.map((x) => [x.key, x]));
+              const payer = mealsOutPayer(event);
+              const n = trip.night;
+              const placeA = placeWithArticle(trip.place);
+              const first = trip.days[0];
+              const last = trip.days[trip.days.length - 1];
+              const roleNote = (d) => (d.role === 'arrival' ? 'Everyone arrives · keep it easy' : d.role === 'departure' ? 'Everyone leaves · a slow goodbye' : 'Full day');
+              const mealsOf = (d) => (d.role === 'arrival' ? ['dinner'] : d.role === 'departure' ? ['breakfast'] : ['breakfast', 'lunch', 'dinner']);
+              const cm = trip.tripMoney.celebration;
+              return (
+                <div data-trip-meals>
+
+                  {trip.cel && (
+                    <button type="button" className="trip-card trip-card-link" data-days-dinner onClick={() => setSheet({ kind: 'celebration' })}>
+                      <span className="trip-card-h">
+                        <strong className="trip-card-t">{trip.title}</strong>
+                        {cm && cm.low != null ? <span className="trip-card-n">{fmt(cm.low)}–{fmt(cm.high)} ›</span> : <span className="trip-card-n">›</span>}
+                      </span>
+                      <span className="trip-card-sub">{[n.picked ? n.label : 'Night not picked', 'evening', placeA].filter(Boolean).join(' · ')}</span>
+                    </button>
+                  )}
+                  <div className="shelf-label">How do the other meals work?</div>
+                  <GuideLine>{`${m.total} meals ${trip.cel ? 'around the dinner' : 'on the trip'}, ${first.label} to ${last.label}. Pick a starting point, then change any meal.`}</GuideLine>
+                  <OptionList ariaLabel="How do the other meals work?" style={{ marginTop: 'var(--sp-2)' }}
+                    options={MEAL_PLANS.map((p) => ({ value: p.id, label: p.label, sub: p.id === 'own' && !trip.cel ? 'Nobody plans a group meal' : p.sub }))}
+                    value={m.plan} onPick={(id) => setTripMeals({ plan: id }, 'Meals set — change any one below.')} />
+                  {m.kitchen == null && (
+                    <div className="trip-card" data-kitchen-ask>
+                      <strong className="trip-card-t">Is there a kitchen?</strong>
+                      <GuideLine>Where everyone sleeps decides whether the food plan is a grocery run or a set of reservations.</GuideLine>
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'wrap' }}>
+                        {KITCHEN_ANSWERS.map((a) => (
+                          <button key={a.id} type="button" className="mini" onClick={() => patchEvent(
+                            settleChoicePatch(event, 'dest_lodging', a.pick, 'host'),
+                            a.kitchen ? 'A kitchen — house meals are on the table.' : 'No kitchen — the meals are out or on your own.')}>{a.label}</button>
+                        ))}
+                      </div>
+                      <p className="v-meta">Same answer as “How are guests staying?” — one question, saved once.</p>
+                    </div>
+                  )}
+                  {m.plan && (
+                    <div className="meal-days" data-meal-days>
+                      <div className="shelf-label trip-shelf"><span>Day by day</span><span className="of">House = at the rental · Own = each on their own</span></div>
+                      {trip.days.map((d) => (
+                        <div key={d.iso} className="meal-day" data-meal-day={d.iso}>
+                          <div className="meal-day-h"><strong>{d.label}</strong><span className="of">{roleNote(d)}</span></div>
+                          {mealsOf(d).map((meal) => {
+                            const key = `${d.iso}:${meal}`;
+                            const slot = bySlot.get(key);
+                            if (!slot) {
+                              return (
+                                <button key={key} type="button" className="meal-cel" data-meal-celebration onClick={() => setSheet({ kind: 'celebration' })}>
+                                  <span><span className="of">{MEAL_LABEL[meal]}</span><strong>{trip.title}</strong></span>
+                                  <span className="of">{n.picked ? (placeA || '') : 'suggested night'}</span>
+                                </button>
+                              );
+                            }
+                            return (
+                              <div key={key} className="meal-row" role="radiogroup" aria-label={`${d.label} ${MEAL_LABEL[meal]}`}>
+                                <span className="meal-row-l">{MEAL_LABEL[meal]}</span>
+                                {MEAL_MODES.map((mo) => (
+                                  <button key={mo.id} type="button" className="meal-seg" role="radio" aria-checked={slot.mode === mo.id}
+                                    onClick={() => setTripMeals({ meals: { ...(tripMealsNow.meals || {}), [key]: mo.id } })}>{mo.label}</button>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {m.plan && m.counts.out > 0 && (
+                    <>
+                      <div className="shelf-label">Who pays for the meals out</div>
+                      <OptionList ariaLabel="Who pays for the meals out"
+                        options={MEAL_PAYERS.map((p) => ({ value: p.id, label: p.label, sub: p.sub }))}
+                        value={payer} onPick={(id) => setTripMeals({ payer: id }, 'Who pays for the meals out — saved.')} />
+                      <button type="button" className="spread-link trip-link" onClick={() => setSheet({ kind: 'costshare' })}>
+                        Who pays for what: {costSharingSummary(event).pooled ? 'a shared pool' : 'everyone covers their own'} ›
+                      </button>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+                  </Panel>
+                  <Panel on={panels}>
+                    {(() => {
+              // ── The weekend plan (Slice A): ONE schedule, guest projection.
+              // Proposal renders HERE for the host to accept — guests only ever
+              // see host-accepted rows (event.itinerary), never a raw proposal.
+              const it = guestItinerary(event, getPlaybook);
+              if (!it.relevant) return null;
+              // MODEL D visibility rule — see the lodging sheet's note. The
+              // multi-day program is destination toolkit the pass sells. Only
+              // the HOST's editor locks: a plan already accepted stays on the
+              // guest invite (InviteV2 reads event.itinerary, ungated).
+              if (destinationLocked(event)) {
+                return (
+                  <>
+                    <div id="days-plan" className="shelf-label" style={{ marginTop: 'var(--sp-3)' }}>The weekend plan <span className="of">— what guests see, day by day</span></div>
+                    <div style={{ padding: '2px 0' }}>
+                      <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>The weekend plan lives here — what happens each day, written once and shown to guests on the invite. It’s part of the destination toolkit, which the One-Event Pass unlocks for this event.</p>
+                      <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'pass' })}>{withPassPrice('See the One-Event Pass')}</button>
+                    </div>
+                  </>
+                );
+              }
+              const days = Math.max(1, spanNights(event) + 1);
+              const writeRows = (rows, msg) => patchEvent({ itinerary: rows }, msg);
+              const SLOT_OPTS = ['', 'morning', 'midday', 'afternoon', 'evening', 'night'];
+              return (
+                <>
+                  <div id="days-plan" className="shelf-label" style={{ marginTop: 'var(--sp-3)' }}>The weekend plan <span className="of">— what guests see, day by day</span></div>
+                  {it.source !== 'host' ? (
+                    <>
+                      {it.rows.map((r, i) => r.celebration ? (
+                        <button type="button" className="line trip-itin-cel" key={i} data-itin-celebration onClick={() => setSheet({ kind: 'celebration' })}>
+                          <span>{dayLabelFor(event, r.day)} evening — <strong>{r.title}</strong>{r.note ? <span className="of"> · {r.note}</span> : null}</span>
+                          <span className="of">{celebrationNight(event).picked ? 'the dinner ›' : 'pick the night ›'}</span>
+                        </button>
+                      ) : (
+                        <div className="line" key={i} style={{ padding: '2px 0 6px' }}>
+                          <span>{dayLabelFor(event, r.day)}{r.slot ? ' ' + r.slot : ''} — <strong>{r.title}</strong>{r.note ? <span className="of"> · {r.note}</span> : null}</span>
+                        </div>
+                      ))}
+                      {it.provenance && it.provenance.note ? (
+                        <p className="v-meta" style={{ padding: '0 2px 6px' }}>{it.source === 'proposed' ? 'A suggested shape — ' : ''}{it.provenance.note}</p>
+                      ) : null}
+                      <div className="actions-row" style={{ marginBottom: 'var(--sp-2)' }}>
+                        <button className="mini" onClick={() => writeRows(it.rows, 'Weekend plan set — it’s on the invite now, and it’s yours to edit.')}>Use this plan</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {it.rows.map((r, i) => r.celebration ? (
+                        // The dinner's day is the night pick on its own sheet
+                        // (one source); here it reads, and the row opens it.
+                        <button type="button" className="line trip-itin-cel" key={i} data-itin-celebration onClick={() => setSheet({ kind: 'celebration' })}>
+                          <span>{dayLabelFor(event, r.day)} evening — <strong>{r.title}</strong>{r.note ? <span className="of"> · {r.note}</span> : null}</span>
+                          <span className="of">the dinner ›</span>
+                        </button>
+                      ) : (
+                        <div className="line" key={i} style={{ padding: '2px 0 6px', gap: 6 }}>
+                          <span style={{ display: 'flex', gap: 6, flex: 1, minWidth: 0, alignItems: 'center' }}>
+                            <select className="field" style={{ maxWidth: 64, padding: '6px 4px' }} value={r.day} aria-label="Day"
+                              onChange={(e) => { const rows = it.rows.map((x, j) => j === i ? { ...x, day: Number(e.target.value) } : x); writeRows(rows); }}>
+                              {Array.from({ length: days }, (_, d) => <option key={d + 1} value={d + 1}>{dayLabelFor(event, d + 1).slice(0, 3)}</option>)}
+                            </select>
+                            <select className="field" style={{ maxWidth: 104, padding: '6px 4px' }} value={r.slot || ''} aria-label="Time of day"
+                              onChange={(e) => { const rows = it.rows.map((x, j) => j === i ? { ...x, slot: e.target.value || null } : x); writeRows(rows); }}>
+                              {SLOT_OPTS.map((sl) => <option key={sl} value={sl}>{sl || '—'}</option>)}
+                            </select>
+                            <input className="field" style={{ flex: 1, minWidth: 0 }} value={r.title} aria-label="What's happening"
+                              onChange={(e) => { const rows = it.rows.map((x, j) => j === i ? { ...x, title: e.target.value } : x); writeRows(rows); }} />
+                          </span>
+                          <button className="mini" aria-label="Remove this line" onClick={() => writeRows(it.rows.filter((_, j) => j !== i), 'Line removed.')}>×</button>
+                        </div>
+                      ))}
+                      <div className="actions-row" style={{ marginBottom: 'var(--sp-2)' }}>
+                        <button className="mini" onClick={() => writeRows([...it.rows, { day: 1, slot: null, title: '' }])}>Add a line</button>
+                      </div>
+                    </>
+                  )}
+                </>
+              );
+            })()}
+                  </Panel>
+                </div>
+              );
+            })()}
+            {sheet.kind === 'celebration' && (() => {
+              // ── THE DINNER'S OWN SHEET (owner decision 11/21/2026, option B) ──
+              // It ONLY LINKS OUT. Food, drinks, the cake, the place and the
+              // seats stay edited on the sheets that own them; this shows each
+              // one's state and the door to it, so it never becomes a second
+              // command center (01_PRODUCT_ARCHITECTURE_GUARDRAILS). The one
+              // thing asked here is the night, because nothing else owns it.
+              if (!trip || !trip.cel) {
+                return <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>This dinner is part of a trip that runs across days. Set the trip’s dates and where it is, and it will show here.</div>;
+              }
+              const n = trip.night;
+              const placeA = placeWithArticle(trip.place);
+              const guestsN = trip.tripMoney.celebration && trip.tripMoney.celebration.guests;
+              const facts = [n.picked ? n.label : 'Night not picked', event.timeOfDay === 'evening' ? 'evening' : null, placeA, guestsN ? `${guestsN} guests` : null].filter(Boolean).join(' · ');
+              const setN = trip.parts.filter((p) => p.set).length;
+              const nightOptions = trip.days.filter((d) => d.role !== 'departure').map((d) => ({
+                value: d.iso,
+                label: d.iso === n.suggestedIso ? `${d.label} — suggested` : d.label,
+                sub: d.role === 'arrival' ? `${/birthday/i.test(String(event.type || '')) ? 'The birthday itself · ' : ''}${event.travelMode === 'fly' ? 'the night everyone flies in' : 'the night everyone arrives'}` : d.iso === n.suggestedIso ? 'The first full day' : 'A full day',
+              }));
+              const arrival = (() => { try { const pc = playbookPacing(event); return pc && pc.days.find((x) => x.id === 'dest_p_arrival'); } catch { return null; } })();
+              const go = (p) => {
+                if (p.goes === 'venue') setSheet({ kind: 'venue' });
+                else if (p.goes === 'seating') setSheet({ kind: 'seating' });
+                else if (p.goes === 'foodplan') setSheet({ kind: 'foodplan' });
+              };
+              const cm = trip.tripMoney.celebration;
+              return (
+                <div data-dinner-sheet>
+                  <Panel on={panels}>
+                    <div className="trip-hero">
+                      <Eyebrow>A moment inside the trip</Eyebrow>
+                      <BigValue>{n.picked ? n.label : 'Pick the night'}</BigValue>
+                      <Grounding gap={ASK_RHYTHM.valueToWhy}>{facts}</Grounding>
+                    </div>
+                    <div data-dinner-night>
+                      <div className="shelf-label">Which night is the dinner?</div>
+                      {!n.picked && (
+                        <GuideLine>
+                          {`We suggest ${n.suggestedLabel}, the first full day: late flights land on arrival night`}
+                          {arrival ? `, and your trip plan already says that night should stay easy: “${arrival.guidance.split(' — ')[0]}.”` : '.'}
+                        </GuideLine>
+                      )}
+                      <OptionList ariaLabel="Which night is the dinner?" style={{ marginTop: 'var(--sp-2)' }}
+                        options={nightOptions} value={n.iso}
+                        onPick={(iso) => { const d = trip.days.find((x) => x.iso === iso); if (d) pickDinnerNight(d); }} />
+                    </div>
+                  </Panel>
+                  <Panel on={panels}>
+                    <div className="shelf-label trip-shelf"><span>The dinner</span><span className="of">{setN} of {trip.parts.length} set</span></div>
+                    <div className="fstat-list" data-dinner-parts>
+                      {trip.parts.filter((p) => p.id !== 'night').map((p) => (
+                        <button key={p.id} type="button" className="fstat trip-part" data-part={p.id} data-goes={p.goes} onClick={() => go(p)}>
+                          <span className="fstat-l">
+                            {p.label}
+                            {p.id === 'place' && p.sub && !p.set ? <span className="trip-part-sub">{p.sub}</span> : null}
+                            {p.id === 'seats' && p.stepFree ? <span className="trip-part-sub" data-stepfree-check>You said “{p.stepFree}”: a step-free path {placeA ? `to ${/^an? /.test(placeA) ? placeA.replace(/^an? /, 'the ') : placeA}` : 'in'} and a seat she can reach.</span> : null}
+                          </span>
+                          <span className="fstat-v" style={p.set ? { color: 'var(--ok)' } : null}>
+                            {p.set ? 'set' : p.goes === 'venue' ? 'name it' : p.goes === 'seating' ? 'who sits where' : 'open'}
+                            <span className="fstat-chev" aria-hidden="true">›</span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </Panel>
+                  <Panel on={panels}>
+                    <div className="shelf-label">What the dinner costs you</div>
+                    {cm && cm.low != null ? (
+                      <div className="trip-money-line" data-dinner-cost>
+                        <span>{cm.basis === 'restaurant' ? 'The restaurant’s rate' : 'Food, drinks and cake'}{guestsN ? ` · ${guestsN} guests` : ''}</span>
+                        <strong>{fmt(cm.low)}–{fmt(cm.high)}</strong>
+                      </div>
+                    ) : (
+                      <p className="v-meta">No number yet — the Spread prices it once there is a guest count.</p>
+                    )}
+                    <p className="grounding">{cm && cm.basis === 'restaurant'
+                      ? `$${RESTAURANT_DINNER.low}–$${RESTAURANT_DINNER.high} a head before drinks, tax and tip — a mid-range three-course dinner, national figures.`
+                      : 'The Spread’s own estimate, now scoped to this dinner.'}{trip.meals.total ? ` The other ${trip.meals.total} meals are in Your days.` : ''}</p>
+                    <button type="button" className="spread-link trip-link" onClick={() => goToSection('days')}>Meals around the dinner, day by day ›</button>
+                  </Panel>
+                </div>
+              );
+            })()}
             {sheet.kind === 'costshare' && (() => {
               // ── DESTINATION-3 — Who pays for what ──
               // Two funding models, both first-class (lib/costSharing):
@@ -22896,6 +23302,10 @@ export default function HostShellV2() {
                   void openN;
                   return null; // folded into the status strip below
                 })()}
+                {/* Food across the trip (owner, 11/21/2026: A's money view). The
+                    Spread is the DINNER's food on a trip with a celebration; the
+                    trip's other meals are the layer around it. */}
+                {sheet.kind === 'foodplan' && trip && !drillOpen && tripLayers('spread')}
                 {/* ONE compact status strip replaces two heavy fold-rows — the
                     same information, without the wall-of-rows drift. */}
                 {(() => {
@@ -26072,6 +26482,7 @@ export default function HostShellV2() {
                       the host's question is "am I OK?", so the STATE leads. One
                       narrative (the canonical engine copy), not three number
                       readouts of the same fact. */}
+                  {trip && <Panel on={panels}>{tripLayers('money')}</Panel>}
                   <Panel on={panels}>
                   {money.planned ? (() => {
                     // DENOMINATORS-1: name the guest count this budget was sized
@@ -27568,7 +27979,7 @@ export default function HostShellV2() {
                     return (
                       <div className="card" role="group" aria-label={'Is ' + row.name + ' ' + who.name + '?'} key={'same-' + row.id}>
                         <p className="grounding">A reply came in signed “{row.name}”. Is that {who.name}?</p>
-                        <button className="mini" onClick={() => { const gs = confirmSameGuest(event.guests, row.id); patchEvent({ guests: gs, kidsCount: kidsTotal(gs) }, 'The reply is on ' + who.name + '’s row now.'); }}>Same person</button>{' '}
+                        <button className="mini" onClick={() => { const gs = confirmSameGuest(event.guests, row.id); patchEvent({ guests: gs, kidsCount: kidsCountAfterRoster(event, gs) }, 'The reply is on ' + who.name + '’s row now.'); }}>Same person</button>{' '}
                         <button className="mini" onClick={() => patchEvent({ guests: keepSeparateGuest(event.guests, row.id) }, row.name + ' stays on the list as a separate guest.')}>Different people</button>
                       </div>
                     );

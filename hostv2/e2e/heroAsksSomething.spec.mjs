@@ -40,13 +40,19 @@ const isoIn = (d) => dateIn(d);
 // always guarded is that the hero asks something REAL and specific rather than
 // a placeholder, and it still does.
 const CASES = [
-  ['a wedding four months out', { type: 'Wedding', date: isoIn(120) }, /Agree total budget/i],
+  // The fixture carries totalBudget 6000, so "Agree total budget" was a re-ask
+  // and is now settled by the data (decisionSettledByData, 11/21/2026). The head
+  // is the wedding's own authored question, as heroAskNeverPlaceholder asserts.
+  ['a wedding four months out', { type: 'Wedding', date: isoIn(120) }, /what kind of ceremony/i],
   // 11/16/2026 (owner's live hunt, item 4): this fixture books a venue, and a
   // booked venue now SETTLES the venue call — asking "at home, a restaurant, or
   // the workplace?" over a booked venue was a decision that could never
   // unblock. To keep guarding what this case is for (the 40-character authored
   // question surviving to the hero), the case runs with no vendors booked.
-  ['a retirement party a month out', { type: 'Retirement Party', date: isoIn(30), vendors: [] }, /at home, a restaurant, or the workplace/i],
+  // 11/21/2026: a NAMED place now has its kind asked in the hero ("What kind of
+  // place is The Ironwood Room?"), so the venue is cleared too, as in
+  // heroAskNeverPlaceholder.test.js, and the authored question is what is left.
+  ['a retirement party a month out', { type: 'Retirement Party', date: isoIn(30), vendors: [], venue: '', venueKind: '' }, /at home, a restaurant, or the workplace/i],
   ['a birthday two weeks out', { type: 'Birthday Party', date: isoIn(14) }, /is there a theme/i],
 ];
 

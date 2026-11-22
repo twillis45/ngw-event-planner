@@ -55,7 +55,10 @@ const openList = async (page) => {
   });
   await page.goto('?elegant=1');
   await settled(page);
-  await tapText(page, "what you.?re serving");
+  // A destination trip leads with its dinner and "Your days" (the dinner inside
+  // the trip, 11/21/2026), so its board has no "what you're serving" door; the
+  // food plan's own row opens the same spread.
+  await page.getByRole('button', { name: /^Note dietary needs on the food plan$/ }).first().click();
   await sheetSettled(page);
   // The menu door opens the spread on Plan while the menu is open (owner's
   // iPad, 11/21/2026); the list is on Shop.

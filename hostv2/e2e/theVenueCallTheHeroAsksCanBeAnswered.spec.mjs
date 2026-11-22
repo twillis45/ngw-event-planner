@@ -23,7 +23,10 @@ const EV = {
   startTime: '18:00', startTimeSource: 'host', totalBudget: 30000,
   budget: [], vendors: [], timeline: [], guests: [],
 };
-const VENUE_ASK = /at home, a restaurant, or the workplace/i;
+// A named place whose kind the app cannot tell is asked just that (owner,
+// 11/21/2026: "Don't keep asking host for the same information"); a VFW post
+// is asked rather than guessed, per the 11/15/2026 ruling.
+const VENUE_ASK = /what kind of place is VFW Post 12/i;
 
 const boot = async (page) => {
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -49,7 +52,7 @@ test('a venue call on the board can be answered on the Calls sheet, and the hero
   // A long board paces itself; the venue call may sit under "show the rest".
   const rest = sheet.getByText(/show the rest/i);
   if (await rest.count()) await rest.first().click();
-  await expect(sheet).toContainText(/At home, a restaurant, or the workplace/i);
+  await expect(sheet).toContainText(/What kind of place is VFW Post 12\?/i);
   await sheet.locator('button').filter({ hasText: 'Restaurant private room' }).first().click();
   await page.keyboard.press('Escape');
   await expect.poll(() => ask(page).catch(() => '')).not.toMatch(VENUE_ASK);
@@ -61,8 +64,9 @@ test('a venue call on the board can be answered on the Calls sheet, and the hero
 test('the hero that asks the venue call offers its answers in place', async ({ page }) => {
   await boot(page);
   expect(await ask(page)).toMatch(VENUE_ASK);
-  // The hero carries the call's own answers; take its pick in place.
-  await page.locator('.hero').first().locator('button').filter({ hasText: /our pick/ }).first().click();
+  // The hero carries the call's own answers; take one in place. Asking only the
+  // kind, there is no "our pick" to propose: every answer is an equal row.
+  await page.locator('.hero').first().locator('button.decopt').filter({ hasText: 'Banquet hall / event venue' }).first().click();
   await expect.poll(() => ask(page).catch(() => '')).not.toMatch(VENUE_ASK);
 });
 

@@ -278,7 +278,6 @@ const PLAYBOOK_EXPORTS_NOT_IN_HOSTV2 = {
   decisionProposal: 'No consumer anywhere. proposedPickFor carries the live proposal path.',
   destinationDecisionsFor: 'No consumer anywhere — its only two mentions in the repo are comments in cookLever.js and smartParseEvent.js describing it.',
   hostUsesCaterer: 'No consumer anywhere. foodApproach().usesCaterer is the live predicate, and the duplication is the reason this one went unused.',
-  playbookPacing: 'No consumer anywhere.',
 };
 
 // ── THE 159, SORTED (2026-09-23) ────────────────────────────────────────────

@@ -29,6 +29,7 @@
 //
 // PURE: no I/O, no UI, no storage.
 import { attendanceBand } from './playbooks';
+import { guestCountFor } from './guestCountFor';
 
 /**
  * Confirmed COVERS for an event — what a caterer, a seating plan or a meal
@@ -57,7 +58,9 @@ export function confirmedCovers(event) {
     // modelled spread, and a spread is not a confirmation.
     if (band.basis === 'rsvp') return band.low;
   }
-  const own = Number(ev.guestCount != null ? ev.guestCount : ev.guestEstimate);
+  // guestCountFor, the one reader: a reopened count (`guestCount: ''`) is not
+  // zero covers while the estimate stands (owner, 11/21/2026).
+  const own = Number(guestCountFor(ev).count);
   return Number.isFinite(own) && own > 0 ? own : null;
 }
 
