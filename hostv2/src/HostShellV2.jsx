@@ -25504,7 +25504,10 @@ export default function HostShellV2() {
                     // behind a collapsed fold and rendered a count above an empty
                     // list. Asking for a thing and being shown nothing is the
                     // worst answer a filter can give.
-                    if (vendorLens === 'settled') return [all, []];
+                    // The same for "Helping, not hired": friends owe no paperwork
+                    // (P0-10), so they are usually settled, and folding them made
+                    // that lens's own rows vanish behind a closed fold.
+                    if (vendorLens === 'settled' || vendorLens === 'informal') return [all, []];
                     const live = all.filter(v => !vendorSettled(v));
                     const rest = all.filter(v => vendorSettled(v));
                     return [live, rest];
