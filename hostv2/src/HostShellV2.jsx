@@ -10842,6 +10842,16 @@ export default function HostShellV2() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId, elegantMode, askMode, nearDayPlan, queueOpen, queue, actions]);
   const isPast = isPastEvent(event);                      // lib/closeoutIntel — tense authority
+  // THE DAY'S PENCIL OFFER, ONCE: an untimed day proposes a start (or asks her to
+  // confirm ours). Read by the offer card and by the walk-through's button, which
+  // steps down to soft while the offer is up — one lit button on The Day (owner,
+  // 11/22/2026, "One lit button on the day"; audit 2 lane F P2-1).
+  const dayPencilOffer = (() => {
+    if (isPast || ros.some(r => r && r.time)) return null;
+    let prop = null; try { prop = proposeStartTime(event, wx); } catch (_e) { prop = null; }
+    const derived = String(event.startTimeSource || '') === 'derived' && String(event.startTime || '').trim();
+    return (prop || derived) ? { prop, derived } : null;
+  })();
   // DAY-OF resume: entering The Day on the day itself picks up at the first
   // cue not already done (event.rosDone persists across reloads — the same
   // per-cue flag the production app writes; effectiveRos overlays it).
@@ -15918,11 +15928,9 @@ export default function HostShellV2() {
                       consistently: an untimed day pencils the WHOLE run of show from one grounded start
                       (not nine taps). Accepting writes event.startTime; playbookRunOfShow reflows every
                       moment to a real clock. Handles: OUR derived guess awaiting a yes · a fresh proposal. */}
-                  {!isPast && !ros.some(r => r && r.time) && (() => {
-                    let prop = null; try { prop = proposeStartTime(event, wx); } catch (_e) { prop = null; }
-                    const derived = String(event.startTimeSource || '') === 'derived' && String(event.startTime || '').trim();
+                  {dayPencilOffer && (() => {
+                    const { prop, derived } = dayPencilOffer;
                     const reading = derived ? startTimeReading(event) : null;
-                    if (!prop && !derived) return null;
                     // Composed from the parity kit at COMPACT density — same propose atoms as
                     // budget B1, tighter card rhythm. The eyebrow/why/accept shape is the
                     // shared Propose-Don't-Ask primitive (day-of 331:61 + budget 344:61).
@@ -15994,7 +16002,7 @@ export default function HostShellV2() {
                               style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--steel-soft)', fontWeight: 600, cursor: 'pointer' }}>Set a time ›</button>
                           </>)) : null}
                         </p>
-                        <button className="cta" style={{ marginTop: 'var(--sp-4)' }} onClick={() => {
+                        <button className={'cta' + (dayPencilOffer ? ' soft' : '')} style={{ marginTop: 'var(--sp-4)' }} onClick={() => {
                           const cue = cur;
                           // DAY-OF ONLY: write the per-cue done flag (event.rosDone; effectiveRos overlays it).
                           if (days === 0 && cue && cue.id) {
