@@ -9,7 +9,7 @@
 // ESM-only (per the prod-bundle lesson — no CJS module.exports in src/).
 
 import { rsvpState, rsvpIsSettled } from '../rsvp';
-import { guestCountFor } from '../guestCountFor';
+import { guestCountFor, guestCountIsConfirmed } from '../guestCountFor';
 import { plusOneCount } from '../plusOneCount';
 import { isHostName } from '../hostNameFor';
 import { cookDecisionFor, cookTasksFor, cookRisksFor } from './cookLever';
@@ -107,6 +107,7 @@ import { settledFromFacts, knownPartOf, allergyAsk, confirmAskFor } from '../kno
 import { placeIsOutdoors } from '../placeIntelligence';
 import { effectiveAccessibility, isGroundedAccessibility } from '../knowledge/accessibilityContext';
 import { isGroundedCost } from '../knowledge/costProvenance';
+import { priceBasisFor, pricePendingFor } from '../priceBasis';
 import { isGroundedItemQty } from '../knowledge/quantityProvenance';
 import { effectiveLegal, isGroundedLegal } from '../knowledge/legalContext';
 import { effectiveVenue, isGroundedVenue } from '../knowledge/venueContext';
@@ -5229,6 +5230,13 @@ export function beverageTierFor(pick) {
   return BEV_TIERS.find((x) => x.re.test(p) && !(x.unless && x.unless.test(p))) || null;
 }
 
+// The drop-off catering tier, as the two registered catering guides publish it.
+const DROPOFF_CATERING_PROVENANCE = Object.freeze({
+  tier: 'researched', confidence: 'medium', verificationStatus: 'cited',
+  sources: ['catering-chefry-2026', 'catering-perperson-2026'], lastVerified: '2026-11-22',
+  claim: '2026 US drop-off catering per person: $15-30 at Chefry (trays, no staff) and $15-35 at The Catering Finder. This $15-35 a guest band is that tier; buffet and staffed service price above it, and both exclude the service charge and gratuity.',
+});
+
 export function playbookFoodPlan(event, opts = {}) {
   if (!event) return null;
   const pf = Number(opts.priceFactor) > 0 ? Number(opts.priceFactor) : 1;
@@ -5272,6 +5280,10 @@ export function playbookFoodPlan(event, opts = {}) {
       basis: factor === 1 ? null : { factor, item: own ? key : null, scope: own ? 'item' : 'basket' },
     };
   };
+  // Lines priced at the basket mean `pf` (supplies, the catering band, the
+  // vegetarian main) carry the same basis a food line does when it takes the
+  // mean, so `layerForLine` labels them by the factor actually applied.
+  const basketBasis = pf === 1 ? null : { factor: pf, item: null, scope: 'basket' };
   const playbook = getPlaybook(event.type);
   if (!playbook || !Array.isArray(playbook.purchases)) return null;
   // Size the spread from the ONE engine sizer (eventSizing → attendanceBand): the
@@ -5290,9 +5302,14 @@ export function playbookFoodPlan(event, opts = {}) {
   // with neither, `guests` came from the fallback and a $ figure would be fabricated.
   // Surfaces (the food panel / The spread) gate their dollar DISPLAY on this so they
   // never show "$X–$Y" for a count the host never entered.
-  const hasRealCount = (Number(event.guestCount) || 0) > 0
-    || (Number(event.guestEstimate) || 0) > 0
-    || (Array.isArray(event.guests) && event.guests.length > 0);
+  //
+  // ONE COUNT BASIS (audit G #3, 11/22/2026). This was "any number exists", so
+  // a count the APP supplied (`guestCountSource: 'playbook-typical'`) priced the
+  // Spread while Your money and After, gated on `guestCountIsConfirmed`, read
+  // $0 for the same event — 46 of 47 playbooks. hostSpending's ruling (P0-2,
+  // 10/18) is the standing one: the app's guess is a labeled preview, never
+  // money. Same predicate here, so the Spread shows its "typical guess" state.
+  const hasRealCount = guestCountIsConfirmed(event);
   const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
 
   // The food/drink CHOICES the host should make (menu style, host-vs-potluck, drinks…).
@@ -5433,6 +5450,12 @@ export function playbookFoodPlan(event, opts = {}) {
   const _catVendor = _usesCaterer ? ((playbook.vendors || []).find((v) => v && v.cateringRate === true && /guest/i.test(String(v.costUnit || '')))
     || (playbook.vendors || []).find((v) => v && /cater/i.test(String(v.category)) && /guest/i.test(String(v.costUnit || '')))) : null;
   const _cateringRate = _catVendor && Array.isArray(_catVendor.costRange) ? _catVendor.costRange : (_usesCaterer ? [15, 35] : null);
+  // The [15, 35] fallback is the drop-off tier both registered catering guides
+  // publish, so it carries their citation (audit G #1); a vendor's own band
+  // carries the vendor's block, or none.
+  const _cateringProv = _catVendor
+    ? (_catVendor.costProvenance || null)
+    : (_usesCaterer ? DROPOFF_CATERING_PROVENANCE : null);
 
   // GENERAL choice→cost mechanism (single source of truth): any playbook decision can declare, in the
   // DATA, how a chosen option re-prices specific purchase lines — `costFactors: { '<option>': <mult> }`
@@ -5971,6 +5994,8 @@ export function playbookFoodPlan(event, opts = {}) {
       perUnitLow: Math.round(6 * pf), perUnitHigh: Math.round(12 * pf),
       skipped: !!skip['diet-veg'], locked: ('diet-veg' in lockedMap) ? Math.max(0, roundCurrency(Number(lockedMap['diet-veg']) || 0)) : null,
       note: 'So your vegetarian/vegan guests have a real main, not just sides.', forgotten: false, dietDerived: true,
+      // The regional factor moved this band, so the line says so (audit G #6).
+      geoBasis: basketBasis,
     });
   }
   const specialDiets = Object.entries(dietCounts).filter(([, v]) => Number(v) > 0).map(([diet, count]) => ({ diet, count: Number(count) }));
@@ -6128,6 +6153,12 @@ export function playbookFoodPlan(event, opts = {}) {
       essential: true, where: ['Caterer'], qtyOverridden: false, baseQty: guests,
       low: _quote ? _quote.cost : Math.round(guests * cgLow * pf), high: _quote ? _quote.cost : Math.round(guests * cgHigh * pf),
       ...(_quote ? { quotedBy: { id: _quote.vendor.id, name: _qName, status: String(_quote.vendor.status || '') } } : null),
+      // THE VENDOR'S CITATION TRAVELS WITH ITS BAND (audit G #1). The band is
+      // the catering vendor's `costRange`; where that vendor is cited
+      // (Thanksgiving's prepared dinner), the line carries the same block. A
+      // quote is hers, so it carries none, and takes no regional factor.
+      costProvenance: (!_quote && _cateringProv) || null,
+      geoBasis: _quote ? null : basketBasis,
       units: guests, unitBase: '',
       // Was missing skipped/locked entirely (found in the 2026-07-11 food-plan
       // audit) — the caterer line couldn't be skipped OR have a real price
@@ -6223,6 +6254,9 @@ export function playbookFoodPlan(event, opts = {}) {
       costProvenance: purchaseCostProvenance(playbook, p0) || null,
       qtyGrounded: isGroundedItemQty(purchaseProvenance(playbook, p0)),
       governedFields: p._governed || [],
+      // Supplies take the basket mean `pf` above, so they say so (audit G #6:
+      // 179 supply lines were moved by the factor and labeled national).
+      geoBasis: basketBasis,
     });
   }
 
@@ -6284,8 +6318,15 @@ export function playbookFoodPlan(event, opts = {}) {
   const supGot = (k) => supItems.filter((i) => got[i.id]).reduce((s, i) => s + eff(i, k), 0);
   const supplies = list.filter((i) => i.group === 'Supplies');
 
+  // WHAT EACH PRICE RESTS ON (owner rule, 11/22/2026): cited, hers, her
+  // caterer's quote, or an estimate with no source — said, never implied.
+  for (const it of list) if (it) it.priceBasis = priceBasisFor(it, playbook.type);
+
   return {
     type: playbook.type,
+    // The picks priced as something else until a source exists (`costPending`),
+    // for the host to be told so (audit G #2). [] when none applies.
+    pricePending: pricePendingFor(playbook, pickFor, (d) => choiceShown(event, d.whenChoice)),
     guests,
     guestCountResolved: gc.resolved,
     hasRealCount,

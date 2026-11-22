@@ -291,6 +291,7 @@ import { pickDroppableBudgetRow, cheaperBarOption } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence, placeIsOutdoors, outdoorsGuess } from '@app/lib/placeIntelligence';
 import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote, planHeadroomLine, expectedHeadroom, afterSpendVerdict } from '@app/lib/budgetCopy';
+import { priceSourceNote } from '@app/lib/priceBasis';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { deliverNotification, deliveryExcuse, notificationApiPresent, DELIVERY } from '@app/lib/notifyDelivery';
@@ -23529,6 +23530,16 @@ export default function HostShellV2() {
                           in one place instead of sixteen. */}
                       {foodPP.priceContext ? ' · “area average” means the region’s basket stood in — BLS publishes no price for that line itself' : ''}
                     </p>
+                    {/* WHAT THE PRICES REST ON (owner rule, 11/22/2026): how many
+                        are estimates with no source yet, and each pick priced as
+                        another until a source exists. lib/priceBasis — the same
+                        sentence Your money prints. */}
+                    {(() => {
+                      const ps = (() => { try { return priceSourceNote(foodPlan); } catch (_e) { return null; } })();
+                      return ps ? (
+                        <p className="grounding" data-testid="price-sources" style={{ margin: 'var(--sp-2) 0 0', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>{ps.text}</p>
+                      ) : null;
+                    })()}
                     {/* ── WHERE WE ARE SHOPPING (host, 2026-09-24, board D) ─────
                         "we need to include which stores are under umbrella or
                         that Kroger is parent" — and, with it, where the host is
@@ -25014,10 +25025,16 @@ export default function HostShellV2() {
                                   const detail = (it.provenance && typeof it.provenance === 'object' && it.provenance.note)
                                     ? it.provenance.note
                                     : claim.rationale;
+                                  // The price's own basis, in words, when it is not a cited
+                                  // source (lib/priceBasis): "Estimate — no price source yet".
+                                  const pb = it.priceBasis && it.priceBasis.label ? it.priceBasis.label : null;
                                   return (
-                                    <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
-                                      {claim.hostLabel}{detail ? ` — ${detail}` : ''}
-                                    </span>
+                                    <>
+                                      {pb ? <span className="v-meta" data-testid="price-basis" style={{ display: 'block' }}>{pb}</span> : null}
+                                      <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
+                                        {claim.hostLabel}{detail ? ` — ${detail}` : ''}
+                                      </span>
+                                    </>
                                   );
                                 })()}
                               </span>
@@ -27043,6 +27060,7 @@ export default function HostShellV2() {
                     );
                   })()}
                   <p className="grounding"><b>{fmt(spend.expected || 0)}</b> expected in total, including estimates for things not bought or booked yet. “Spoken for” counts only what you’ve committed to, so the final bill can still change.</p>
+                  {spend.priceSources ? <p className="grounding" data-testid="price-sources">{spend.priceSources.text}</p> : null}
                   {(spend.moneyDiscrepancies || []).length > 0 && (
                     <div className="card" role="note">
                       <p className="grounding">Payment records overlap or differ. Each category is counted once; review the records before relying on spent.</p>

@@ -119,7 +119,7 @@ const juneteenthCookout = {
   ],
 
   vendors: [
-    { category: 'Black-owned caterer / BBQ pitmaster', required: false, altToDIY: 'Host smokes the mains', when: 'T-16d', costRange: [15, 30], costUnit: 'per guest' },
+    { category: 'Black-owned caterer / BBQ pitmaster', required: false, altToDIY: 'Host smokes the mains', when: 'T-16d', costRange: [15, 30], costUnit: 'per guest', costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['catering-chefry-2026', 'catering-perperson-2026'], lastVerified: '2026-11-22', claim: '2026 US catering per person: drop-off $15-30, buffet $25-55 and plated or full service $50-120 (Chefry); drop-off $15-35, drop-off buffet $28-50, buffet with servers $45-85 and full-service $75-150 (The Catering Finder). This $15-30 a guest band sits in the drop-off tier both guides publish ($15-30 at Chefry, $15-35 at The Catering Finder). Both exclude the 18-22% service charge and gratuity a caterer adds on top.', sufficientWhen: 'A local caterer quote for this menu at this headcount; staffed service prices above this band.' } },
     { category: 'Black-owned bakery (red velvet cake / desserts)', required: false, altToDIY: 'Bake or buy grocery cake', when: 'T-14d', costRange: [30, 90], costUnit: 'flat' },
     { category: 'Tent / canopy rental', required: false, altToDIY: 'Own/borrow pop-up canopies', when: 'T-10d', costRange: [80, 250], costUnit: 'flat' },
     { category: 'Chair / table rental', required: false, altToDIY: 'Borrow folding chairs/tables', when: 'T-10d', costRange: [60, 180], costUnit: 'flat' },

@@ -435,7 +435,7 @@ const quinceanera = {
   vendors: [
     { category: 'Venue / salón', required: true, altToDIY: false, when: 'T-270d', costRange: [2000, 8000], costUnit: 'event' },
     { category: 'Church / parish (if a Mass)', required: false, altToDIY: false, when: 'T-268d', costRange: [200, 800], costUnit: 'event' },
-    { category: 'Caterer', required: true, altToDIY: false, when: 'T-180d', costRange: [18, 45], costUnit: 'guest' },
+    { category: 'Caterer', required: true, altToDIY: false, when: 'T-180d', costRange: [18, 45], costUnit: 'guest', costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['catering-chefry-2026', 'catering-perperson-2026'], lastVerified: '2026-11-22', claim: '2026 US catering per person: drop-off $15-30, buffet $25-55 and plated or full service $50-120 (Chefry); drop-off $15-35, drop-off buffet $28-50, buffet with servers $45-85 and full-service $75-150 (The Catering Finder). This $18-45 a guest band sits in drop-off ($15-30 / $15-35) into buffet ($25-55 at Chefry, drop-off buffet $28-50 at The Catering Finder). Both exclude the 18-22% service charge and gratuity a caterer adds on top.', sufficientWhen: 'A local caterer quote for this menu at this headcount; staffed service prices above this band.' } },
     { category: 'DJ or banda / mariachi', required: true, altToDIY: false, when: 'T-180d', costRange: [600, 3000], costUnit: 'event' },
     { category: 'Photographer + videographer', required: true, altToDIY: false, when: 'T-180d', costRange: [1200, 4000], costUnit: 'event' },
     { category: 'Baker (tiered cake)', required: true, altToDIY: true, when: 'T-180d', costRange: [250, 700], costUnit: 'event' },

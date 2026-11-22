@@ -331,7 +331,10 @@ const sweet16 = {
       essential: true,
       buyAt: 'T-1d',
       note: 'A signature mocktail bar (3-4 colorful zero-proof drinks) is a Sweet 16 highlight and a social-media moment. Pre-batch syrups; let teens build their own.',
-     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' },
+      // The corpus's zero-proof drink citation (Dinner Party p_nonalc); this
+      // $0.75-2.00 band sits inside its $0.75-3.00.
+      costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['zeroproof-retail-2026', 'nabeer-retail-2026'], lastVerified: '2026-08-15', claim: 'A zero-proof drink runs $0.75-3.00 poured at home: a simple juice-and-soda mocktail sits at the floor, NA beer is $2.17-2.50 a can (Athletic $13 a six-pack, Budweiser AF $29.99 a twelve), and a drink built on an NA spirit costs about $1.60-2.20 in spirit alone since a $25-35 bottle pours roughly sixteen.', sufficientWhen: 'Re-checked against NA spirit, NA beer and canned-mocktail retail. BAR PRICING IS EXCLUDED AND MUST STAY EXCLUDED - zero-proof drinks run $13-17 at bars, which is hospitality pricing for a served drink and would inflate this band roughly tenfold. Premium canned mocktails at about $8 a serving also sit above it.' } },
     {
       id: 'p_water',
       item: 'Bottled / dispenser water',

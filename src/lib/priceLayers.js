@@ -68,6 +68,9 @@ export const PRICE_LAYERS = Object.freeze({
   national: { rank: 0, label: 'National average' },
   regional: { rank: 1, label: 'Regional average' },
   store: { rank: 2, label: 'Your store' },
+  // Her caterer's quote or booking: her number, not ours to adjust or average
+  // (audit G #6 — it was labeled "National average").
+  quote: { rank: 3, label: 'Your caterer’s quote' },
 });
 
 const num = (n) => (Number.isFinite(Number(n)) ? Number(n) : null);
@@ -230,6 +233,15 @@ export function priceForLine({ purchase, range, state, storeIndex } = {}) {
  * range: Kroger prices their package, the plan counts plan units.
  */
 export function layerForLine({ purchase, geoBasis, storeIndex } = {}) {
+  if (purchase && purchase.quotedBy) {
+    return {
+      layer: 'quote',
+      label: PRICE_LAYERS.quote.label,
+      exact: null, size: null, onSale: false, was: null, product: null,
+      total: null, packs: null, math: null, band: null,
+      because: 'Your caterer’s quote, used as given — no regional or national average applies.',
+    };
+  }
   const raw = storeIndex instanceof Map ? storeIndex.get(storeKey(purchase)) : null;
   // Same gate as `priceForLine`, and the one that matters most: this is the
   // function the food sheet calls, so this is where a shoe insert priced as
@@ -321,7 +333,7 @@ export function layerCoverage(lines) {
   // the only set a host could add up. A prototype of this screen summed every
   // matched line instead — including one the same screen flagged as the wrong
   // product — and printed it beside a caption saying it had priced one fewer.
-  const out = { store: 0, regional: 0, national: 0, regionalItem: 0, storeTotal: 0, storeSum: 0, total: 0 };
+  const out = { store: 0, regional: 0, national: 0, quote: 0, regionalItem: 0, storeTotal: 0, storeSum: 0, total: 0 };
   for (const l of Array.isArray(lines) ? lines : []) {
     if (!l || !l.layer) continue;
     out.total += 1;
@@ -345,8 +357,18 @@ export function layerCoverage(lines) {
  * anything and says how far it got, so "your store" never implies every line.
  */
 export function coverageNote(cov) {
-  const c = cov || { store: 0, regional: 0, national: 0, total: 0 };
-  if (!c.total) return null;
+  const c0 = cov || { store: 0, regional: 0, national: 0, total: 0 };
+  // A caterer's quote is hers and is described as hers, never counted among
+  // the averages (audit G #6).
+  const q = Number(c0.quote) || 0;
+  const c = q ? { ...c0, total: c0.total - q } : c0;
+  const tail = q ? ` ${q === 1 ? 'Your caterer’s quote is' : 'Your caterers’ quotes are'} used as given.` : '';
+  if (!c.total) return q ? tail.trim() : null;
+  const head = coverageHead(c);
+  return head ? head + tail : (tail.trim() || null);
+}
+
+function coverageHead(c) {
   if (c.store) {
     const head = c.store === c.total
       ? 'Every line priced at your store.'

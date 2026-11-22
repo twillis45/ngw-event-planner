@@ -265,8 +265,9 @@ describe('the sheet never claims more coverage than it has', () => {
     // storeSum added 2026-09-24 for the two-money-truths hero. Deliberately a
     // deep-equality assertion, and deliberately updated by hand rather than
     // loosened to toMatchObject: this test exists to make a new field a
-    // decision, and it just did its job.
-    expect(cov).toEqual({ store: 2, regional: 2, national: 1, regionalItem: 1, storeTotal: 1, storeSum: 57.39, total: 5 });
+    // decision, and it just did its job. `quote` added 2026-11-22 (audit G #6):
+    // a caterer's quote is its own layer, not a national average.
+    expect(cov).toEqual({ store: 2, regional: 2, national: 1, quote: 0, regionalItem: 1, storeTotal: 1, storeSum: 57.39, total: 5 });
   });
 
   test('A MATCHED PRICE AND A SPENDABLE TOTAL ARE COUNTED APART', () => {
