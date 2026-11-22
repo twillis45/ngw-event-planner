@@ -762,7 +762,9 @@ export function parseSmartEventText(text, opts = {}) {
       // a month — is how a host names the person. She said it, so it is used,
       // capitalized; nothing is guessed when no such word follows.
       const after = t.slice(m.index + m[0].length).match(/^\s+([A-Za-z][a-z'’-]{1,20}|[A-Z][a-zA-Z'’-]{1,20})\b/);
-      const STOP = /^(?:turning|turns|turned|who|whose|and|or|is|was|will|for|at|in|on|to|with|from|this|that|next|last|the|a|an|his|her|their|our|my|birthday|bday|party|dinner|celebration|retirement|graduation|anniversary|shower|surprise|just|finally|today|tonight|tomorrow|weekend|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|\d.*)$/i;
+      const STOP = /^(?:turning|turns|turned|who|whose|and|or|is|was|will|for|at|in|on|to|with|from|after|before|during|since|because|when|while|until|this|that|next|last|the|a|an|his|her|their|our|my|birthday|bday|party|dinner|celebration|retirement|graduation|anniversary|shower|surprise|just|finally|today|tonight|tomorrow|weekend|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|\d.*)$/i;
+      // "for my grandmother after the funeral" named her "After" (audit lane B,
+      // 11/22/2026): a preposition or a conjunction is never a name.
       if (after && !STOP.test(after[1])) {
         const nm = after[1];
         return [m[0] + after[0], nm.charAt(0).toUpperCase() + nm.slice(1)];
