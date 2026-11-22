@@ -44,6 +44,7 @@
 //     round-robins per GUEST, so one group's members scatter across
 //     consecutive tables — that is what shipped; noted, not changed).
 
+import { plusOneCount } from './plusOneCount';
 import { playbookCapacity } from './playbooks';
 import { seatsForTable, tableTypeOf } from './tableTypes';
 import { guestNeedsStepFree } from './accessNeeds';
@@ -174,13 +175,14 @@ export function confirmedGuests(guests) {
 }
 
 /**
- * Chairs a guest row actually needs: the guest plus a filled plusOne. A couple
- * stays ONE assignment unit (they sit together), but they are TWO people — one
- * row = one chair undercounted every couple at every table until the 2026-07-27
- * audit (engine parity with attendanceBand/crabPlan).
+ * Chairs a guest row actually needs: the guest plus everyone their plusOne
+ * brings. A party stays ONE assignment unit (they sit together), but it is
+ * several people — one row = one chair undercounted every couple at every table
+ * until the 2026-07-27 audit, and a "+3 (Nia + 2 boys)" row read as two chairs
+ * until the Wanda audit (P0-8). plusOneCount is the one reader.
  */
 export function seatsFor(g) {
-  return 1 + (String((g && g.plusOne) || '').trim() ? 1 : 0);
+  return 1 + plusOneCount(g);
 }
 const seatSum = (rows) => rows.reduce((s, g) => s + seatsFor(g), 0);
 

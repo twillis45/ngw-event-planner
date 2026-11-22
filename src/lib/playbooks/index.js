@@ -10,6 +10,7 @@
 
 import { rsvpState, rsvpIsSettled } from '../rsvp';
 import { guestCountFor } from '../guestCountFor';
+import { plusOneCount } from '../plusOneCount';
 import { cookDecisionFor, cookTasksFor, cookRisksFor } from './cookLever';
 import { cashBarDecisionsFor, cashBarKeeps, aliasedChoices } from './cashBarCover';
 import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
@@ -655,10 +656,11 @@ export function attendanceBand(event) {
       // the model the rest of the app now follows rather than re-deriving its own.
       const s = rsvpState(g);
       const gKids = Math.max(0, Math.round(Number(g && g.kids) || 0));
-      // A filled plusOne is a real adult riding this row's answer. The UI headers
+      // A filled plusOne is real people riding this row's answer. The UI headers
       // counted them for years while this engine didn't — so the roster said 12
-      // and the food sized 10 (audit 2026-07-27). One person, one count, here too.
-      const po = String((g && g.plusOne) || '').trim() ? 1 : 0;
+      // and the food sized 10 (audit 2026-07-27). "+3 (Nia + 2 boys)" is three,
+      // not one (Wanda audit P0-8): plusOneCount is the one reader.
+      const po = plusOneCount(g);
       if (s === 'yes') { confirmed += 1 + po; kidsConfirmed += gKids; }
       else if (s === 'maybe') { maybe += 1 + po; kidsOut += gKids; }
       else if (s === 'no') declined++;

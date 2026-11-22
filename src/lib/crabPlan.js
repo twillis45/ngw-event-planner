@@ -20,6 +20,7 @@
 // Crabs per unit defaults come from the crab-feast playbook's RESEARCHED ladder
 // (Captain White's July 2026: ~72 large / ~84 medium per bushel) and are always
 // labeled "about"; the host's vendor count, when entered, wins.
+import { plusOneCount } from './plusOneCount';
 import { crabsPerPicker, crabsPerBushel, DEFAULT_CRAB_SIZE, crabServingProvenance } from './crabServing';
 import { kidCount, vegCount, KID_PROTEIN_FACTOR } from './appetite';
 
@@ -91,9 +92,9 @@ export function lineCrabCount(line) {
 // the party. Counting people, not rows, is what attendanceBand already does.
 function rosterHeadcount(ev) {
   const rows = Array.isArray(ev.guests) ? ev.guests.filter(g => g && /^y/i.test(String(g.rsvp || ''))) : [];
-  // + a filled plusOne: that's another adult mouth riding the row's Yes
-  // (engine parity with attendanceBand, audit 2026-07-27).
-  return rows.reduce((s, g) => s + 1 + Math.max(0, num(g.kids)) + (String(g.plusOne || '').trim() ? 1 : 0), 0);
+  // + everyone the plusOne brings: more mouths riding the row's Yes
+  // (engine parity with attendanceBand via plusOneCount, Wanda audit P0-8).
+  return rows.reduce((s, g) => s + 1 + Math.max(0, num(g.kids)) + plusOneCount(g), 0);
 }
 
 export function buildCrabPlan(event) {

@@ -189,6 +189,7 @@ import { publicAppUrl } from '@app/lib/publicAppUrl';
 import { budgetPaymentPatch, parseVendorCost, paymentAboveWholePlan } from '@app/lib/vendorMoney';
 import { budgetFor, budgetTotal } from '@app/lib/budgetFor';
 import { guestCountFor } from '@app/lib/guestCountFor';
+import { plusOneCount, plusOneLabel } from '@app/lib/plusOneCount';
 import { serviceStyle } from '@app/lib/serviceStyle';
 import { marketFor } from '@app/lib/marketFor';
 import { metroForPlace } from '@app/lib/metroForPlace';
@@ -16112,7 +16113,7 @@ export default function HostShellV2() {
                 const row = ({ g, i }) => (
                   <div key={i} data-gift-row={g.id || i} style={{ borderTop: '1px solid var(--line-soft)', padding: 'var(--sp-2) 0' }}>
                     <div className="actions-row" style={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'nowrap' }}>
-                      <span>{g.name}{String(g.plusOne || '').trim() ? <span className="of"> +1</span> : null}</span>
+                      <span>{g.name}{plusOneCount(g) ? <span className="of"> +{plusOneCount(g)}</span> : null}</span>
                       <span style={{ display: 'flex', gap: 6 }}>
                         <button className="mini" style={g.giftReceived ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
                           onClick={() => writeGuest(i, { giftReceived: !g.giftReceived }, null)}>
@@ -27083,7 +27084,7 @@ export default function HostShellV2() {
                 </div>
               );
               const chase = showsReplyTracking(event); // count-only hosts are never chased
-              const plusOnes = (event.guests || []).filter(g => g && g.rsvp === 'Yes' && String(g.plusOne || '').trim()).length;
+              const plusOnes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').reduce((t, g) => t + plusOneCount(g), 0);
               const kidsHere = kidsTotal(event.guests);
               // guestMode switch — the ENGINE's own workflow knob (guestPlanningMode
               // reads it): by-list hosts get reply tracking + chasing, by-headcount
@@ -27200,7 +27201,7 @@ export default function HostShellV2() {
                 let n, sub;
                 if (roster) {
                   const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
-                  const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
+                  const heads = yes.length + yes.reduce((t, g) => t + plusOneCount(g), 0);
                   // A headcount host's big number is the names ON THE LIST — the
                   // sub says so. It read the yes-count under that label (gold run,
                   // 11/5/2026), so five names showed "—" until someone replied.
@@ -27461,7 +27462,7 @@ export default function HostShellV2() {
                   : null;
                 const party = [
                   partner && partner.name ? 'with ' + String(partner.name).split(' ')[0] : null,
-                  String(g.plusOne || '').trim() ? '+1 ' + String(g.plusOne).trim() : null,
+                  plusOneLabel(g) || null,
                   Number(g.kids) > 0 ? g.kids + ' kid' + (Number(g.kids) === 1 ? '' : 's') : null,
                   String(g.group || '').trim() || null,
                 ].filter(Boolean);
@@ -28059,7 +28060,7 @@ export default function HostShellV2() {
                   <div className="v-meta" style={{ padding: '2px 2px var(--sp-3)', display: peopleMode ? 'none' : undefined }}>
                     {(() => {
                       const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
-                      const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
+                      const heads = yes.length + yes.reduce((t, g) => t + plusOneCount(g), 0);
                       const parts = [];
                       // §4: internal calculation, not a host decision. The redesigned
                       // surface keeps it behind the attendance disclosure instead of
@@ -28082,7 +28083,7 @@ export default function HostShellV2() {
                     {(() => {
                       // leading separator only when something precedes the hint
                       const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
-                      const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
+                      const heads = yes.length + yes.reduce((t, g) => t + plusOneCount(g), 0);
                       const hasPre = (heads !== yes.length) || (rsvpBy && rsvpBy.iso && !isPast) || !isPast;
                       // Was "tap a tag to change an RSVP, a name to edit" — two doors
                       // described as doing different things. Since the reply picker moved
@@ -28274,7 +28275,7 @@ export default function HostShellV2() {
                                 : null;
                               const party = [
                                 partner && partner.name ? 'with ' + String(partner.name).split(' ')[0] : null,
-                                String(g.plusOne || '').trim() ? '+1 ' + String(g.plusOne).trim() : null,
+                                plusOneLabel(g) || null,
                                 Number(g.kids) > 0 ? g.kids + ' kid' + (Number(g.kids) === 1 ? '' : 's') : null,
                               ].filter(Boolean);
                               const meal = String(g.meal || '').trim();
@@ -28328,7 +28329,7 @@ export default function HostShellV2() {
                                 width and overflow the sheet (min-width:auto held it wide). */}
                             <span style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {g.name || 'Guest ' + (i + 1)}
-                              {String(g.plusOne || '').trim() ? <span className="of"> +1 {g.plusOne}</span> : null}
+                              {plusOneLabel(g) ? <span className="of"> {plusOneLabel(g)}</span> : null}
                               {g.coupleId ? (() => {
                                 const p = (event.guests || []).find((x) => x && x !== g && x.coupleId === g.coupleId);
                                 return p ? <span className="of"> · with {String(p.name || '').split(' ')[0]}</span> : null;
