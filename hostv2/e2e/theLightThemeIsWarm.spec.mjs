@@ -97,6 +97,20 @@ for (const [w, h] of [[390, 844], [834, 1194]]) {
       expect(found).toEqual([]);
     });
 
+    // The day itself (#229's day-of hero on the board, "Run the day", and The
+    // Day's run-of-show) reads the same tokens; walk it on Wanda's date.
+    test('on the day: the board\'s day-of hero and The Day', async ({ page }) => {
+      test.setTimeout(90_000);
+      await page.clock.setFixedTime(new Date('2027-03-20T15:00:00'));
+      await boot(page, false);
+      await settled(page);
+      const found = (await page.evaluate(coolSurfaces)).map((s) => `board, the day: ${s}`);
+      expect(await page.locator('[data-dayof-cue], .hero.is-dayof').count(), 'premise: the board is in its day-of state').toBeGreaterThan(0);
+      await viaMenu(page, 'The Day');
+      found.push(...(await page.evaluate(coolSurfaces)).map((s) => `The Day, the day: ${s}`));
+      expect(found).toEqual([]);
+    });
+
     test('the welcome\'s next step: the create screen', async ({ page }) => {
       await boot(page, true);
       await page.getByRole('button', { name: 'Start my event' }).first().click({ timeout: 30_000 });

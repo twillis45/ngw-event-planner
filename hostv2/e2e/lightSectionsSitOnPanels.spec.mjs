@@ -144,9 +144,18 @@ const raised = (scopeSel) => {
     const r = el.getBoundingClientRect();
     if (r.width < sw * 0.6 || r.height < 80) continue;
     const cs = getComputedStyle(el);
-    const b = rgb(cs.backgroundColor);
-    if (b.length < 3 || (b[3] !== undefined && b[3] < 1) || parseFloat(cs.borderTopLeftRadius) < 10) continue;
-    if (b.slice(0, 3).join(',') !== groundOf(el)) n++;
+    let b = rgb(cs.backgroundColor);
+    // The Day's panel is the carbon panel GRADIENT: its first opaque stop is its fill.
+    if ((b.length < 3 || b[3] === 0) && /gradient/.test(cs.backgroundImage)) {
+      const stop = (cs.backgroundImage.match(/rgba?\([^)]+\)/g) || []).map(rgb).find((x) => x[3] === undefined || x[3] === 1);
+      if (stop) b = stop;
+    }
+    if (parseFloat(cs.borderTopLeftRadius) < 10) continue;
+    const filled = b.length >= 3 && (b[3] === undefined || b[3] === 1) && b.slice(0, 3).join(',') !== groundOf(el);
+    // or an edged card on the ground (The Day's .dayof-card: a --line edge, no fill)
+    const edge = rgb(cs.borderTopColor);
+    const edged = parseFloat(cs.borderTopWidth) >= 1 && edge.length >= 3 && (edge[3] === undefined || edge[3] > 0);
+    if (filled || edged) n++;
   }
   return n;
 };
@@ -177,6 +186,26 @@ test('dark sits its sections on the same panels as light, and The Day too', asyn
     .map((n) => `${n}: light ${counts[`${n} (light)`]}, dark ${counts[`${n} (dark)`]}`);
   for (const n of PARITY) expect(counts[`${n} (light)`], `premise: ${n} has panels in light`).toBeGreaterThan(0);
   expect(off).toEqual([]);
+});
+
+test('on the day, The Day shows the same panels in both themes', async ({ browser }, info) => {
+  test.skip(info.project.name !== 'mobile', 'pins its own 390 contexts; one run is the whole check');
+  test.setTimeout(90_000);
+  const counts = {};
+  for (const theme of ['light', 'dark']) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const page = await ctx.newPage();
+    await page.clock.setFixedTime(new Date(EVENT.date + 'T15:00:00'));
+    await boot(page, theme);
+    await page.locator('.ev-eyebrow').first().click();
+    await page.locator('.sheet').last().getByRole('button', { name: 'The Day', exact: false }).first().click();
+    await page.waitForTimeout(1200);
+    counts[`The Day (${theme})`] = await page.evaluate(raised, '.day-sec');
+    await ctx.close();
+  }
+  console.log(counts);
+  expect(counts['The Day (light)'], 'premise: The Day has a panel on the day').toBeGreaterThan(0);
+  expect(counts['The Day (dark)']).toBe(counts['The Day (light)']);
 });
 
 test('dark: its sheet ground is the canvas and its panels are the raised --card', async ({ page }) => {
