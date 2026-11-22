@@ -1450,7 +1450,10 @@ export const FOOD_APPROACH_DECISIONS = [
 // "Trays" counts only as an ORDER ("Order trays", "Order pizza/trays"): on a
 // buffet ("Buffet / trays") a tray is the serving dish, and Graduation's
 // menu-format pick flipped a host who cooks to catered (audit 2 lane A P0-4).
-export const CATERER_OPTION_RE = /(?:cater|private chef|\bchef\b|drop-?off|order(ed)?[- ]?in\b|pizza|\border(?:ed)?\b[^;]*?\btrays?\b|takeout|take-?out|restaurant)/i;
+// A caterer for PART of the meal is not the meal's caterer: "Drop-off catering
+// for 1 course" dropped all six courses she still cooks and priced a whole
+// catered meal (audit 2 lane G #5). Hence the leading lookahead.
+export const CATERER_OPTION_RE = /^(?!.*\b(?:1|one)\s+course\b).*?(?:cater|private chef|\bchef\b|drop-?off|order(ed)?[- ]?in\b|pizza|\border(?:ed)?\b[^;]*?\btrays?\b|takeout|take-?out|restaurant)/is;
 // The menu questions asked AFTER the approach (what is served, how it is laid
 // out). Her answer to who carries the meal outranks a pick here: a menu option
 // that happens to say "pizza" is the menu, not a hire (audit 2 lane A P0-4).
@@ -1504,7 +1507,19 @@ export function foodApproach(event) {
     if (picks[dec.id] != null && !(generic && MENU_FORMAT_DECISIONS.has(dec.id))) return result(dec.id, picks[dec.id]);
   }
   if (generic) return result(null, generic);
+  // A BOOKED CATERER CARRIES THE MEAL (audit 2 lane G #4). Where the caterer
+  // option lives on a call that is not about food handling (Dinner Party's
+  // `help`, The Cookout's `grill_master`, Low Country's `cook`), the booking
+  // settled nothing there, and the plan kept the grocery meal the caterer
+  // brings. The food-handling calls already read the booking (choicePickFor →
+  // decisionSettledByData); the others read it here, without settling their
+  // own question (a bartender or a cleaner is still hers to decide).
+  const bookedCaterer = (() => { try { return bookedVendorIn(event, 'catering'); } catch (_e) { return null; } })();
   for (const dec of candidates) {
+    if (bookedCaterer && !FOOD_HANDLING_DECISION_IDS.has(dec.id)) {
+      const opt = dec.options.find((o) => /\bcater/i.test(String(o)) && CATERER_OPTION_RE.test(String(o)));
+      return result(dec.id, opt || 'caterer');
+    }
     const pick = choicePickFor(event, dec.id);
     if (pick != null) return result(dec.id, pick);
   }
