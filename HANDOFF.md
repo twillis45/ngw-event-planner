@@ -17,6 +17,31 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 22, 2026 (early morning) — #223: a holiday inside a trip is its night, owed dates lead, one start time, food doors ask one rule, the dinner's steps together, the Gala's drink tickets
+
+- **Dates (owner: "trip wins"; "dates first as the main ask"; "Both can edit"):**
+  - A trip whose days include Dec 31 is a Group Trip, with Dec 31 stored as its dinner night ("New Year’s Eve dinner"). "July 4th weekend trip to the lake" now reaches a plan as a Group Trip with its days owed.
+  - Owed dates are the board's main ask: "Which dates? From – to." Only a critical item sits above it. "Which day does it end?" is gone everywhere.
+  - Start time: the run of show's "guests arrive" row and Date & time both edit it, and 8 inline writes now go through `eventStartTimePatch` in `eventDates.js`. The `eventDatesAreOneSource` census was red-proofed (a planted second writer fails it).
+  - spanEdit `addDay`/`dropDay`/`dayCount` were removed (orphaned by #222).
+- **Food doors (owner: "decide when to go to plan vs shopping tab"):** every generic food door (the section rail, Jump to, the Your money Food/Bar rows, the Ask answer, the day-before fallback) calls `openSpread` → `foodSheetKind`. These stay direct: Supplies (Shop-only shelf), tab buttons, item-focused rows, and the dinner sheet's Plan rows. Spec `everyFoodDoorAsksTheRule` (56/56).
+- **Split the costs knows brought dishes:** a receipt can carry a `dishId` (exact match on "For what?"). Whether that dish is brought is read every time through `bringingRows`. A brought dish stays listed, marked " · brought, not split", and is left out of the total.
+- **The dinner inside the trip:** the night and place steps are added and grouped with the dinner's food steps under the dinner's title (`theDinnerStepsAreOneGroup`). The restaurant rate applies only when the place is a restaurant: there is one `placeKindOfName` in `knownFacts.js`, the booked venue's kind wins, and "café" now counts.
+- **Wedding "Sign planner, photographer, caterer, band/DJ"** names only the roles still unbooked (`isVendorBooked` on `event.vendors`, with one role table in `taskEngine.js`). It ticks only when all four are booked; before, booking a caterer alone ticked it.
+- **Gala / Day Party (owner: "Tickets count as 2, map old pick, booked caterer counts"):**
+  - "Two drink tickets, then cash" asks the cash-bar follow-up and defaults to "The drink tickets, plus the non-alcoholic drinks". Tickets price at 2 per guest; the count comes from the pick itself.
+  - No option names ice it doesn't price. The old saved answer "…and ice" reads as its new wording.
+  - Day Party: the caterer gate keeps the do-it-yourself bites step. A booked Catering vendor counts like the caterer pick.
+  - `?elegant=0` dark hero ask is unlit (ruling 31, spec covers both views × both themes).
+- **Open:**
+  - Holiday rule is New Year's Eve only (July 4th and Thanksgiving trips are untouched). A trip is named "My Group Trip".
+  - The run-of-show start row hides when every row is timed.
+  - Trip day-of steps are dated to day 1, not the dinner's night.
+  - A receipt matches a dish only on an exact name.
+  - Specs hard-code ports 5233/5244/5266/5277, so scratch configs can't run them.
+- **In flight:** the Wanda audit (15 P0 · 15 P1 · 9 P2, `scratchpad/wanda-audit/FINDINGS.md`), being fixed in four lanes: hero, people/vendors, schedule/venue/invite, and money/food counts.
+- 🔴 **Trap: four agents with full local e2e runs on one machine took hours and starved each other** (load average 30–60; vitest's shell-import test timed out). Run only the specs a change touches locally; CI's 8 shards run the rest in about 35 minutes.
+
 ## November 21, 2026 (late night) — #222: nothing known is asked again, the dates are one range, the dinner inside the trip
 
 - **Never re-ask (owner: "Make sure ask is not repeated. Say chosen already"; 13-finding audit):**

@@ -1,5 +1,15 @@
 # Where We Are -- live status board
 
+## November 22, 2026 (early morning) — a trip's holiday is its night, the dates come first, and the food doors follow one rule
+
+**A New Year's Eve trip is a trip, with the 31st as its dinner night.** A trip whose end date is missing now asks for the dates first, as a range. The start time can be changed from the run of show or from Date & time, and both write the same value.
+
+**Every way into the food follows one rule:** the menu when questions are open, the shopping list when there's buying left. Split the costs leaves out a dish a guest brings.
+
+**The dinner inside a trip has its own steps, together.** The restaurant price applies only to restaurants. The Wedding's "sign the key vendors" step names only who is left.
+
+**The Gala's drink tickets ask what the host still covers, and count as two drinks.** A Day Party without a caterer keeps its do-it-yourself food step.
+
 ## November 21, 2026 (night) — asked once, a trip's dates as one range, and the dinner inside the trip
 
 **Nothing the host has already said is asked again.** What she says when she creates the event (potluck, bring your own, kids, allergies, staying over, already booked) is written down once. Any later question it already answers counts as settled. A question that is half answered asks only the part that's missing.
