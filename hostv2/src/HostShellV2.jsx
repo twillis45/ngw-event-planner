@@ -3192,7 +3192,11 @@ export default function HostShellV2() {
     if (/^blocker:/.test(String(nd.id || ''))) {
       const key = String(nd.id).slice('blocker:'.length);
       const b = (blockers || []).find(x => x && x.fieldKey === key);
-      patchEvent({ [key]: v }, ((b && b.title) || 'Decided') + ' — set.');
+      // The receipt says what she picked: "Retirement presentation: during the celebration."
+      const picked = b && Array.isArray(b.options) ? b.options.find(o => o && o.value === v) : null;
+      patchEvent({ [key]: v }, picked
+        ? ((b.title || 'Decided') + ': ' + String(picked.label).charAt(0).toLowerCase() + String(picked.label).slice(1) + '.')
+        : (((b && b.title) || 'Decided') + ' — set.'));
       return;
     }
     const row = [...(decisionBoard.open || []), ...(decisionBoard.locked || [])].find(x => x && x.id === nd.id);
@@ -5202,12 +5206,16 @@ export default function HostShellV2() {
     const q0 = queue[0];
     if (!q0) return null;
     // An EARLIER rung of the ask ladder can own the hero outright — the DAY, a
-    // foundational blocker's authored ask, a conflict, a COI step. When one does,
-    // the selection still resolves (the ask string has exactly one author, always),
-    // but it is denied any decision identity — so the panel can never claim a hero
-    // that is in fact talking about something else.
+    // conflict, a COI step. When one does, the selection still resolves (the ask
+    // string has exactly one author, always), but it is denied any decision
+    // identity — so the panel can never claim a hero that is in fact talking
+    // about something else.
+    // A foundational blocker's ask is NOT such a rung (Wanda audit P0-1,
+    // 11/22/2026). Its ask and its picks are the same blocker — blockerDecisionND
+    // reads the very stage the ask came from — so denying it the panel left
+    // "When does the ceremony happen?" with no options, no button and the
+    // "in the full app" chip, with the NEXT bar pointing at it.
     const rungOwnsHero = !elegantMode || !askMode || days === 0
-      || (/^blocker:/.test(String(q0.id || '')) && !!q0.ask)
       || (/conflict/i.test(String(q0.title || '')) && !!conflictItems[0])
       || q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || ''));
     const open = decisionBoard.open || [];
@@ -5263,8 +5271,9 @@ export default function HostShellV2() {
     // it is the floor the rest of the plan stands on, not one item among several.
     if (elegantMode && days === null) return 'Add the day.';
     const q0 = queue[0];
-    // Foundational pick-decision (Ceremony Timing, …) surfaced as a hero — its own
-    // ask ("Choose the timing."), so it stays in the ask flow after roll-to-next.
+    // Foundational pick-decision (ceremony timing, …) surfaced as a hero — its own
+    // ask ("When does the retirement presentation happen?"), so it stays in the
+    // ask flow after roll-to-next. Its picks render under it (heroSelection).
     if (elegantMode && /^blocker:/.test(String(q0.id || '')) && q0.ask) return q0.ask;
     if (elegantMode && /conflict/i.test(String(q0.title || '')) && conflictItems[0]) return conflictItems[0].ask;
     // COI-collection task → the REAL first step (coiNextAction), not "Your next step."
