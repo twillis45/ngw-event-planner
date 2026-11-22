@@ -123,7 +123,7 @@ import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement, honoreeApplies } from '@app/lib/eventIdentity';
 import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, spanEnd, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
-import { eventDatesPatch, eventSpanLabel } from '@app/lib/eventDates';
+import { eventDatesPatch, eventSpanLabel, eventStartTimePatch } from '@app/lib/eventDates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel, taskIsOverdue, taskWindowClosed } from '@app/lib/taskLead';
@@ -8422,6 +8422,13 @@ export default function HostShellV2() {
       event && event.travelMode, event && event.isDestination, event && event.foodFocus,
       event && event.caterer, event && event.date]);
 
+  // THE START TIME'S ONE WRITE PATH (owner 11/22/2026, "Both can edit"):
+  // Date & time and the run of show's "guests arrive" both write `startTime`
+  // through lib/eventDates, so the two editors cannot store it two ways.
+  const writeStartTime = (next, msg) => {
+    const p = eventStartTimePatch(event, next);
+    if (p) patchEvent(p, msg);
+  };
   const patchEvent = (obj, msg, opts) => {
     // GENERIC UNDO (build-map #8): patchEvent is the ONE write path every edit
     // funnels through, so undo is built here ONCE rather than wired action by
@@ -9584,10 +9591,10 @@ export default function HostShellV2() {
                 <span className="of">guests arrive:</span>
                 <input className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                   value={event.startTime || ''}
-                  onChange={e => patchEvent({ startTime: e.target.value, startTimeSource: 'host' }, 'Start time set — the day now runs on a real clock.')}
+                  onChange={e => writeStartTime({ startTime: e.target.value }, 'Start time set — the day now runs on a real clock.')}
                   aria-label="What time guests arrive" />
                 {prop && (
-                  <button className="mini" onClick={() => patchEvent({ startTime: prop.hhmm, startTimeSource: 'host' },
+                  <button className="mini" onClick={() => writeStartTime({ startTime: prop.hhmm },
                     'Start time set — the day now runs on a real clock.')}>
                     use {prop.label}
                   </button>
@@ -9595,7 +9602,7 @@ export default function HostShellV2() {
                 {/* Confirm the proposed time INLINE next to it (host request 2026-07-16) — one tap
                     right where the time lives, not a separate row below. */}
                 {!startTimeIsConfirmed(event) && String(event.startTime || '').trim() && (
-                  <button className="mini" onClick={() => patchEvent({ startTimeSource: 'host' },
+                  <button className="mini" onClick={() => writeStartTime({ confirm: true },
                     'Start time confirmed — your invite and vendor briefs can name it now.')}>
                     that’s right
                   </button>
@@ -15538,7 +15545,12 @@ export default function HostShellV2() {
                       model and nothing could write it — so this is both the proposal and the
                       capture. Grounded: the seed is the host's OWN time-of-day bucket, and we
                       say so. Nothing is written until they tap. */}
-                  {ros.length > 0 && ros.some(r => !r.time) && (() => {
+                  {/* BOTH CAN EDIT (owner 11/22/2026): once the day is on her clock
+                      this row used to vanish, leaving Date & time the only place
+                      to move the hour. It stays while the playbook's day follows
+                      the start time; a run of show she wrote herself keeps its
+                      own times, so there it shows only while rows are unclocked. */}
+                  {ros.length > 0 && (ros.some(r => !r.time) || !(event.rosEdited && Array.isArray(event.ros) && event.ros.length)) && (() => {
                     // THE START TIME — GROUNDED, PROPOSED, THE HOST'S TO CHANGE (2026-07-14).
                     //
                     // This used to be invented: with only "afternoon" the schedule printed
@@ -15582,21 +15594,23 @@ export default function HostShellV2() {
                             ? <><b>{reading.line}</b> Every line below reads from it.</>
                             : derived
                             ? <><b>We pencilled in {(() => { const [h, m] = String(event.startTime).split(':').map(Number); const ap = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ap}`; })()} — not you.</b> Confirm it and every line below becomes a real clock time.</>
+                            : startTimeIsConfirmed(event)
+                            ? <>Every line below reads from this start time.</>
                             : <>These moments are in order but not on a clock — set a start time and every line below becomes a real one.</>}
                         </p>
                         <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
                           <span className="of">guests arrive:</span>
                           <input className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                             value={event.startTime || ''}
-                            onChange={e => patchEvent({ startTime: e.target.value, startTimeSource: 'host' }, 'Start time set — the whole day reads from it now.')}
+                            onChange={e => writeStartTime({ startTime: e.target.value }, 'Start time set — the whole day reads from it now.')}
                             aria-label="What time guests arrive" />
                           {derived ? (
-                            <button className="mini" onClick={() => patchEvent({ startTimeSource: 'host' },
+                            <button className="mini" onClick={() => writeStartTime({ confirm: true },
                               'Start time confirmed — the whole day reads from it now.')}>
                               that’s right
                             </button>
                           ) : prop && (
-                            <button className="mini" onClick={() => patchEvent({ startTime: prop.hhmm, startTimeSource: 'host' },
+                            <button className="mini" onClick={() => writeStartTime({ startTime: prop.hhmm },
                               'Start time set — the whole day reads from it now.')}>
                               use {prop.label}
                             </button>
@@ -15710,8 +15724,8 @@ export default function HostShellV2() {
                         <CtaRow gap={ASK_COMPACT.whyToCta}>
                           <button className="cta"
                             onClick={() => derived
-                              ? patchEvent({ startTimeSource: 'host' }, 'Start time confirmed — the whole day reads from it now.')
-                              : patchEvent({ startTime: prop.hhmm, startTimeSource: 'host' }, 'Penciled the day from your ' + prop.label + ' start — nudge any time you like.')}>
+                              ? writeStartTime({ confirm: true }, 'Start time confirmed — the whole day reads from it now.')
+                              : writeStartTime({ startTime: prop.hhmm }, 'Penciled the day from your ' + prop.label + ' start — nudge any time you like.')}>
                             {derived ? (reading ? 'That’s right — pencil the day from it' : 'That’s right — pencil them in') : 'Yes, pencil them in'}
                           </button>
                         </CtaRow>

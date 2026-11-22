@@ -11,7 +11,7 @@
 // date control cannot come back quietly.
 import fs from 'fs';
 import path from 'path';
-import { eventDatesPatch, normalizeEventDates, eventSpanLabel } from '../eventDates';
+import { eventDatesPatch, normalizeEventDates, eventSpanLabel, eventStartTimePatch } from '../eventDates';
 import { dateOptionPatch } from '../datePoll';
 
 describe('eventDatesPatch — the one builder of a date write', () => {
@@ -39,6 +39,27 @@ describe('eventDatesPatch — the one builder of a date write', () => {
   test('the date poll writes through it', () => {
     const ev = { dateOptions: [{ id: 'a', start: '2027-03-05', end: '2027-03-08' }], datesToConfirm: true };
     expect(dateOptionPatch(ev, 'a')).toEqual({ date: '2027-03-05', endDate: '2027-03-08', datesToConfirm: null, dateOptionUsed: 'a' });
+  });
+});
+
+// ── THE START TIME: TWO EDITORS, ONE STORE (owner 11/22/2026, "Both can edit") ──
+// The run of show's "guests arrive" and Date & time's start time both edit the
+// one stored `startTime`, and both build the write here.
+describe('eventStartTimePatch — the one builder of a start-time write', () => {
+  test('a time she sets is hers', () => {
+    expect(eventStartTimePatch({ startTime: '15:00', startTimeSource: 'derived' }, { startTime: '18:30' }))
+      .toEqual({ startTime: '18:30', startTimeSource: 'host' });
+  });
+  test('confirming our pencilled time keeps the time and makes it hers', () => {
+    expect(eventStartTimePatch({ startTime: '15:00', startTimeSource: 'derived' }, { confirm: true }))
+      .toEqual({ startTimeSource: 'host' });
+    expect(eventStartTimePatch({}, { confirm: true })).toBe(null);
+  });
+  test('a cleared field clears the time; a malformed one writes nothing', () => {
+    expect(eventStartTimePatch({ startTime: '18:30', startTimeSource: 'host' }, { startTime: '' }))
+      .toEqual({ startTime: '', startTimeSource: null });
+    expect(eventStartTimePatch({}, { startTime: 'soon' })).toBe(null);
+    expect(eventStartTimePatch({}, { startTime: '25:00' })).toBe(null);
   });
 });
 
@@ -97,7 +118,7 @@ const patchArgs = (src) => {
   return out;
 };
 
-describe('census: nothing in the host shell writes the dates except eventDatesPatch', () => {
+describe('census: nothing in the host shell writes the dates or the start time except lib/eventDates', () => {
   test.each(shellFiles)('%s', (f) => {
     const src = fs.readFileSync(path.join(SHELL_DIR, f), 'utf8');
     const offenders = [];
@@ -105,14 +126,29 @@ describe('census: nothing in the host shell writes the dates except eventDatesPa
       // A literal patch naming the date fields, or a helper other than the one setter.
       if (/^\{/.test(arg) && /(?:^|[{,\s])(?:date|endDate)\s*:/.test(arg)) offenders.push(`${f}:${at} ${arg.slice(0, 80)}`);
       if (/\b(?:addDay|dropDay)\(/.test(arg)) offenders.push(`${f}:${at} ${arg.slice(0, 80)}`);
+      // The start time is one store with two editors: a literal patch naming it
+      // is a second writer (eventStartTimePatch builds every one).
+      if (/^\{/.test(arg) && /(?:^|[{,\s])(?:startTime|startTimeSource)\s*:/.test(arg)) offenders.push(`${f}:${at} ${arg.slice(0, 80)}`);
     }
     // A patch object assembled in a variable before being written.
     const lines = src.split('\n');
     lines.forEach((l, i) => {
       if (/\b(?:const|let)\s+\w*patch\w*\s*=\s*\{[^}]*\b(?:date|endDate)\s*:/i.test(l)) offenders.push(`${f}:${i + 1} ${l.trim().slice(0, 80)}`);
       if (/\bpatch\.(?:date|endDate)\s*=/.test(l)) offenders.push(`${f}:${i + 1} ${l.trim().slice(0, 80)}`);
+      if (/^\s*(?:\/\/|\*|\{\/\*)/.test(l)) return; // prose about an old writer is not one
+      if (/\b(?:const|let)\s+\w*patch\w*\s*=\s*\{[^}]*\bstartTime(?:Source)?\s*:/i.test(l)) offenders.push(`${f}:${i + 1} ${l.trim().slice(0, 80)}`);
+      if (/\bpatch\.startTime(?:Source)?\s*=/.test(l)) offenders.push(`${f}:${i + 1} ${l.trim().slice(0, 80)}`);
     });
     expect(offenders).toEqual([]);
+  });
+
+  test('both start-time editors write through eventStartTimePatch', () => {
+    const src = fs.readFileSync(path.join(SHELL_DIR, 'HostShellV2.jsx'), 'utf8');
+    // Date & time's time field and the run of show's "guests arrive" field.
+    const inputs = src.match(/aria-label="What time guests arrive"/g) || [];
+    expect(inputs.length).toBe(2);
+    expect((src.match(/writeStartTime\(\{ startTime: e\.target\.value \}/g) || []).length).toBe(2);
+    expect(src).toMatch(/const writeStartTime = \(next, msg\) => \{\s*const p = eventStartTimePatch\(event, next\);/);
   });
 
   test('Space keeps no date input of its own', () => {

@@ -51,6 +51,28 @@ export function eventDatesPatch(event, next = {}) {
 }
 
 /**
+ * eventStartTimePatch(event, { startTime } | { confirm: true }) -> patch | null
+ *
+ * THE START TIME, TWO EDITORS, ONE STORE (owner 11/22/2026: "Both can edit").
+ * Date & time's start time and the run of show's "guests arrive" are the same
+ * fact, `startTime` (HH:MM, 24h), and both build their write here, as the
+ * dates do above. A time she types or picks is hers (`startTimeSource:
+ * 'host'`, the outward gate lib/startTime reads). `confirm` makes our
+ * pencilled time hers without changing it; with no time there is nothing to
+ * confirm. A cleared field clears the time. Anything that is not a clock time
+ * writes nothing.
+ */
+export function eventStartTimePatch(event, next = {}) {
+  const ev = event || {};
+  if (next.confirm) return String(ev.startTime || '').trim() ? { startTimeSource: 'host' } : null;
+  const t = String(next.startTime == null ? '' : next.startTime).trim();
+  if (!t) return { startTime: '', startTimeSource: null };
+  const m = /^(\d{1,2}):(\d{2})$/.exec(t);
+  if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) return null;
+  return { startTime: `${m[1].padStart(2, '0')}:${m[2]}`, startTimeSource: 'host' };
+}
+
+/**
  * normalizeEventDates(event) -> event
  *
  * Idempotent clean-up of what older builds stored: an endDate that is empty,
