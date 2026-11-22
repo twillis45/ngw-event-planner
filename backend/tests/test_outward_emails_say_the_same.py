@@ -61,3 +61,22 @@ def test_the_cohost_email_opens_the_app_not_the_frozen_shell():
     from app.routers.cohosts import compose_cohost_invite
     _html, text = compose_cohost_invite("Reed Reunion", "cohost@example.test", "Dana Reed")
     assert f"Open the app: {APP_BASE_URL.rstrip('/')}/hostv2/" in text
+
+
+def test_a_friend_helping_reads_her_role_not_just_helper():
+    """E P2-3: the informal vendor row's job read "Helper"; her role is in the name."""
+    from app.routers.helper_link import _jobs_by_helper
+    from tests._wanda_sample import wanda
+    jobs = _jobs_by_helper(wanda())["g5"]["jobs"]
+    assert {"kind": "help", "label": "Day-of helper"} in jobs
+    data = {"vendors": [{"id": "v1", "name": "Sam Roe", "category": "Photography", "isInformal": True}]}
+    assert _jobs_by_helper(data)["helper-sam-roe"]["jobs"] == [{"kind": "help", "label": "Photography"}]
+
+
+def test_the_helper_emails_i_cant_opens_the_page_ready_to_say_so():
+    """E P2-4: "I can't" opened the same page as "I can do it". It now opens it
+    on the "can't" answer; a link a mail scanner opens still records nothing."""
+    helper = {"helperName": "Sam Roe", "hostName": "Dana Reed", "eventName": "X", "eventDate": "2027-12-13",
+              "jobs": [{"kind": "task", "label": "Ice"}]}
+    _s, html, _t = compose_helper_email({}, helper, "https://x.test/hostv2/?helper=c0de", None)
+    assert 'href="https://x.test/hostv2/?helper=c0de&amp;answer=declined"' in html

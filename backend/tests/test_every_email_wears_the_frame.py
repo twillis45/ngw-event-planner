@@ -128,8 +128,10 @@ def test_the_helper_email_reads_the_afternoon_either_way(stored):
     # The jobs, each on its own line; the allergy note names the allergen, never the guest.
     assert "• The stuffing — keep it nut-free, a guest is allergic\n• Set up chairs" in text
     assert "• The stuffing — keep it nut-free, a guest is allergic<br>• Set up chairs" in html
-    # Both answers open the helper's own page; the frame, the sender, the stop link.
-    assert html.count('href="https://app.example.test/hostv2/?helper=CODE"') == 2
+    # Both answers open the helper's own page, "I can't" on that answer (audit 2,
+    # lane E P2-4); the frame, the sender, the stop link.
+    assert html.count('href="https://app.example.test/hostv2/?helper=CODE"') == 1
+    assert html.count('href="https://app.example.test/hostv2/?helper=CODE&amp;answer=declined"') == 1
     assert "I can do it" in html and "I can’t" in html
     assert framed(html) and "Sent by Casey Rivera with No Guesswork Events." in html
     assert STOP in html and STOP in text

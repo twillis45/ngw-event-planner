@@ -139,6 +139,19 @@ test.describe('the helper answers', () => {
     await expect(page.locator('[data-helper="where"]')).toHaveText('The Boathouse · 9 Dock Rd, Annapolis, MD 21401');
   });
 
+  // Audit 2, lane E P2-4: the email's "I can't" opens the page on that answer.
+  test('the email’s "I can’t" opens the page ready to say so, and sends only on a tap', async ({ page }) => {
+    const calls = await mockHelper(page);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('?helper=' + CODE + '&answer=declined');
+    await expect(page.getByText('Tell Casey you can’t')).toBeVisible();
+    expect(calls.answer).toHaveLength(0);
+    await page.getByRole('button', { name: 'Send to Casey', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('can’t make it');
+    expect(calls.answer).toHaveLength(1);
+    expect(calls.answer[0]).toMatchObject({ state: 'declined' });
+  });
+
   test('"I’ve got it" posts a confirm and the host’s row then reads "said yes"', async ({ page }) => {
     const calls = await mockHelper(page);
     await openHelper(page);

@@ -84,7 +84,7 @@ function HelperPage({ h, code }) {
                 </li>
               ))}
             </ol>
-            <AnswerBlock code={code} to={to} prior={h.answer || null} />
+            <AnswerBlock code={code} to={to} prior={h.answer || null} startDeclined={startsDeclined()} />
           </div>
           <p className="inv2-fine vb2-foot">{host ? `From ${host}` : 'From the host'}</p>
           <div className="inv2-wordmark">{BRAND.full}<span className="inv2-wm-dot" aria-hidden="true" /></div>
@@ -94,13 +94,20 @@ function HelperPage({ h, code }) {
   );
 }
 
+// The email's "I can't" opens this page with ?answer=declined (audit 2, lane
+// E P2-4): it lands on the "can't" note, one tap from sending. Opening the link
+// sends nothing by itself, so a mail scanner that follows it records nothing.
+const startsDeclined = () => {
+  try { return new URLSearchParams(window.location.search).get('answer') === 'declined'; } catch { return false; }
+};
+
 // The answer. Idempotent per code, so a retry or a changed mind updates one
 // row. A failed send says so and keeps what was typed — never a fake "done".
-function AnswerBlock({ code, to, prior }) {
-  const [mode, setMode] = useState(prior ? 'done' : 'choose');   // choose | note | sending | done | error
+function AnswerBlock({ code, to, prior, startDeclined }) {
+  const [mode, setMode] = useState(startDeclined ? 'note' : prior ? 'done' : 'choose');   // choose | note | sending | done | error
   const [answer, setAnswer] = useState(prior);                     // { state, note }
   const [note, setNote] = useState((prior && prior.note) || '');
-  const [pending, setPending] = useState(null);                    // the state being sent
+  const [pending, setPending] = useState(startDeclined ? 'declined' : null);   // the state being sent
 
   const send = async (state, n) => {
     setPending(state);
