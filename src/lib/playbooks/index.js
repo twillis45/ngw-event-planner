@@ -942,6 +942,16 @@ const FOOD_HANDLING_DECISION_IDS = new Set(['sourcing', 'food_style', 'food_sour
 const bookedVendorIn = (event, key) => ((event && Array.isArray(event.vendors)) ? event.vendors : [])
   .find((v) => v && !v.isInformal && isVendorBooked(v) && normalizeCategory(String(v.category || '')) === key) || null;
 const vendorStatusWord = (v) => String((v && v.status) || 'booked').trim().toLowerCase();
+// The caterer whose price stands for the food: a booked catering vendor with a
+// cost, else one marked Quoted with a cost. Considering, or no price, is not a
+// price (Wanda audit P0-15, 11/22/2026).
+export function catererPriceOf(event) {
+  const vs = ((event && Array.isArray(event.vendors)) ? event.vendors : [])
+    .filter((v) => v && !v.isInformal && Number(v.cost) > 0 && normalizeCategory(String(v.category || '')) === 'catering');
+  const booked = vs.find((v) => isVendorBooked(v));
+  const v = booked || vs.find((x) => /\bquot/i.test(String(x.status || '')));
+  return v ? { vendor: v, cost: Math.round(Number(v.cost)), booked: !!booked } : null;
+}
 export function decisionSettledByData(event, decision) {
   if (!event || !decision || !Array.isArray(decision.options) || !decision.options.length) return null;
   if (FOOD_HANDLING_DECISION_IDS.has(decision.id)) {
@@ -5975,13 +5985,20 @@ export function playbookFoodPlan(event, opts = {}) {
   // Food-approach: caterer chosen → inject the per-guest catering line (the homemade food rows
   // were dropped by hostCooksIt above). Same row shape as a host-added dish, so it flows into the
   // food total, the Food group, and effectiveItems like any other line. pf = regional factor.
-  if (_usesCaterer && _cateringRate) {
-    const [cgLow, cgHigh] = _cateringRate;
+  // A QUOTE IS A PRICE (Wanda audit P0-15, 11/22/2026). With a caterer who has
+  // quoted or been booked at a real figure, that figure IS the food line — the
+  // band was a stand-in for exactly this number. Hers, so no regional factor.
+  // Booked outranks quoted; a price she types on the line still wins (locked).
+  const _quote = _usesCaterer ? catererPriceOf(event) : null;
+  if (_usesCaterer && (_cateringRate || _quote)) {
+    const [cgLow, cgHigh] = _cateringRate || [0, 0];
+    const _qName = _quote ? (vendorDisplayName(_quote.vendor) || String(_quote.vendor.name || 'Your caterer')) : '';
     list.unshift({
-      id: 'fa-catering', group: 'Food', short: 'Catering (the food)',
-      item: 'Catering — the caterer provides the food', owner: '', qty: guests, unit: shortUnit('guest', guests),
+      id: 'fa-catering', group: 'Food', short: _quote ? `Catering (the food) · ${_qName} ${_quote.booked ? 'booked' : 'quote'}` : 'Catering (the food)',
+      item: _quote ? `Catering — ${_qName}${_quote.booked ? ', booked' : '’s quote'}` : 'Catering — the caterer provides the food', owner: '', qty: guests, unit: shortUnit('guest', guests),
       essential: true, where: ['Caterer'], qtyOverridden: false, baseQty: guests,
-      low: Math.round(guests * cgLow * pf), high: Math.round(guests * cgHigh * pf),
+      low: _quote ? _quote.cost : Math.round(guests * cgLow * pf), high: _quote ? _quote.cost : Math.round(guests * cgHigh * pf),
+      ...(_quote ? { quotedBy: { id: _quote.vendor.id, name: _qName, status: String(_quote.vendor.status || '') } } : null),
       units: guests, unitBase: '',
       // Was missing skipped/locked entirely (found in the 2026-07-11 food-plan
       // audit) — the caterer line couldn't be skipped OR have a real price

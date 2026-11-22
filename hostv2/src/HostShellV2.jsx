@@ -288,7 +288,7 @@ import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence, placeIsOutdoors, outdoorsGuess } from '@app/lib/placeIntelligence';
-import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote } from '@app/lib/budgetCopy';
+import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote, planHeadroomLine } from '@app/lib/budgetCopy';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { deliverNotification, deliveryExcuse, notificationApiPresent, DELIVERY } from '@app/lib/notifyDelivery';
@@ -16108,10 +16108,12 @@ export default function HostShellV2() {
                     committed is part guess so are they (app-wide estimate pass,
                     2026-07-29). Stating "$X of headroom" as a flat fact hid that
                     the figure moves the moment a real price replaces a guess. */}
+                {/* ONE FIGURE WITH THE TOTAL BELOW (Wanda audit P0-15): it read
+                    "$3,410 of headroom" from what is spoken for, over an
+                    "Expected total $5,263 · against $5,000". lib/budgetCopy
+                    planHeadroomLine reads the figure that row prints. */}
                 {money.planned
-                  ? (money.committed <= money.planned
-                    ? `${fmt(money.planned - money.committed)} of headroom against the ${fmt(money.planned)} plan so far${money.committedEstimated > 0 ? ' — some of what’s spoken for is still an estimate' : ''}.`
-                    : `Running ${fmt(money.committed - money.planned)} over the ${fmt(money.planned)} plan${money.committedEstimated > 0 ? ' — some of what’s spoken for is still an estimate' : ''}.`)
+                  ? planHeadroomLine(money, isPast)
                   // Booked vendors with no price are not "nothing to settle" (live hunt item 5).
                   : ((spend.unpricedBooked || []).length
                     ? 'No budget yet — ' + spend.unpricedBooked.map(x => x.name).join(', ') + ' ' + (spend.unpricedBooked.length === 1 ? 'has' : 'have') + ' no price on record, so there’s nothing to total yet.'
@@ -24371,7 +24373,7 @@ export default function HostShellV2() {
                             {gDecisions > 0 ? <span className="tag essential" style={{ marginLeft: 'var(--sp-2)' }}>{gDecisions} decision{gDecisions === 1 ? '' : 's'} open</span> : null}
                           </div>
                           <div className="fg-sub" style={{ color: gDone ? 'var(--ok)' : 'var(--muted)' }}>
-                            {!gActive.length ? 'all skipped' : gDone ? 'all ' + gActive.length + ' bought' : gBought + ' of ' + gActive.length + ' bought' + (foodPlan.hasRealCount ? ' · ' + fmt(gLow) + '–' + fmt(gHigh) : '')}
+                            {!gActive.length ? 'all skipped' : gDone ? 'all ' + gActive.length + ' bought' : gBought + ' of ' + gActive.length + ' bought' + (foodPlan.hasRealCount ? ' · ' + (gLow === gHigh ? fmt(gLow) : fmt(gLow) + '–' + fmt(gHigh)) : '')}
                           </div>
                           <div className={'fg-track' + (gDone ? ' done' : '')}><i style={{ '--fill': gActive.length ? gBought / gActive.length : 1 }} /></div>
                         </div>

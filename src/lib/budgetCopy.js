@@ -243,3 +243,27 @@ export function stayOnTopOfTheRangeNote(est, stay) {
   // the constant's own wording instead of rounding it off.
   return `The rooms are on top of this. ${whose} showed ${fmt(floor)} for the stay, and this range covers the party — lodging beyond a group block, the flights and travel insurance all sit outside it.${outruns}`;
 }
+
+// ─── AFTER SAYS WHAT THE TOTAL BESIDE IT SAYS (Wanda audit P0-15, 11/22/2026) ─
+// After's headline read "$3,410 of headroom against the $5,000 plan so far"
+// (budget less what is spoken for) directly above "Expected total $5,263 ·
+// against $5,000". One screen, two answers. The headline now reads the figure
+// its own total row prints: the expected total before the day, what was spent
+// after it. `money` is the shell's { planned, expected, committed, spent }.
+export function planHeadroomLine(money, isPast) {
+  const m = money || {};
+  const planned = Number(m.planned) || 0;
+  if (!(planned > 0)) return null;
+  const basis = isPast ? (Number(m.spent) || 0) : (Number(m.expected) || 0);
+  const word = isPast ? 'spent' : 'expected';
+  const est = !isPast && basis > (Number(m.committed) || 0) ? ' — some of it is still an estimate' : '';
+  const gap = roundCurrency(planned - basis);
+  if (gap >= 0) {
+    return isPast
+      ? `${fmt(gap)} under the ${fmt(planned)} plan, ${word}.`
+      : `${fmt(gap)} of headroom against the ${fmt(planned)} plan, ${word}${est}.`;
+  }
+  return isPast
+    ? `${fmt(-gap)} over the ${fmt(planned)} plan, ${word}.`
+    : `Expected to run ${fmt(-gap)} over the ${fmt(planned)} plan${est}.`;
+}
