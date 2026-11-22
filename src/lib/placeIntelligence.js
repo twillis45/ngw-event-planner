@@ -17,6 +17,7 @@
 import { rainPlanStatus, RAIN_PLAN_TARGET, isLikelyOutdoor } from './weather';
 import { guestSafeText } from './guestFacing';
 import { venueFor, formatVenueAddress } from './venueFor';
+import { bookedVendorIn } from './workstreams';
 
 export const PLACE_STATES = {
   HANDLED: 'handled',
@@ -189,10 +190,20 @@ export function derivePlaceIntelligence(event = {}) {
   }
 
   // 6 · Venue contact — venue events only; at-home hosts ARE the contact.
+  // A BOOKED VENUE'S OWN CONTACT ANSWERS IT (Wanda audit follow-up, 11/22/2026;
+  // owner: "Make sure ask is not repeated"). Her hall's vendor record names
+  // its contact, and Space still asked her to confirm who it is. Her own entry
+  // wins; a venue still being considered answers nothing.
+  const bookedVenueContact = (() => {
+    const v = atHome ? null : bookedVendorIn(event, 'venue');
+    return v ? String(v.contact || v.contactName || '').trim() : '';
+  })();
   if (atHome) {
     add('contact', 'Venue contact', PLACE_STATES.NA, 'You’re the point of contact at home.');
   } else if (has(event.venueContact) || has(event.venuePhone)) {
     add('contact', 'Venue contact', PLACE_STATES.HANDLED, 'Day-of contact entered.');
+  } else if (bookedVenueContact) {
+    add('contact', 'Venue contact', PLACE_STATES.HANDLED, `${bookedVenueContact} (from your booked venue).`);
   } else {
     add('contact', 'Venue contact', PLACE_STATES.NEEDS,
       'Confirm with the venue who your day-of contact is.', 'Add venue contact');

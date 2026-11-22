@@ -86,7 +86,7 @@ import { expectedFromPlanned, attendanceShift, implausibleGuestNote } from '../a
 import { SOURCING_TIERS, DEFAULT_SOURCING, sourcingTier, sourcingFactor, isProteinItem, canonicalProteinPrice, nonProteinFactor, extraSupplyStores, canonicalSubstitutes } from '../sourcing';
 import { resolveEffectiveItem } from '../effectiveItem'; // FOOD-2A: read-only normalized projection of `list`
 import { buildCrabPlan } from '../crabPlan';
-import { isVendorBooked } from '../workstreams';
+import { isVendorBooked, bookedVendorIn } from '../workstreams';
 import { crabsPerPicker, crabsPerBushel } from '../crabServing';
 import { kidCount, vegCount, KID_PROTEIN_FACTOR } from '../appetite';
 import { getCompressionLevel, getStandardLeadProvenance, isGroundedLead } from '../workflowCompression';
@@ -939,8 +939,6 @@ function purchaseGate(p, playbook, gc, di) {
 // isVendorBooked — Contracted / Deposit Paid / Confirmed / Booked / Paid — so a
 // vendor still Considering or Quoted settles nothing.
 const FOOD_HANDLING_DECISION_IDS = new Set(['sourcing', 'food_style', 'food_source', 'food', 'food-model', 'food_model', 'hosting_model']);
-const bookedVendorIn = (event, key) => ((event && Array.isArray(event.vendors)) ? event.vendors : [])
-  .find((v) => v && !v.isInformal && isVendorBooked(v) && normalizeCategory(String(v.category || '')) === key) || null;
 const vendorStatusWord = (v) => String((v && v.status) || 'booked').trim().toLowerCase();
 // The caterer whose price stands for the food: a booked catering vendor with a
 // cost, else one marked Quoted with a cost. Considering, or no price, is not a
