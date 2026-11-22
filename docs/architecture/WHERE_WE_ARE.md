@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 22, 2026 (midday) — creation hears what she typed
+
+**Typing an event no longer invents dates or picks the wrong occasion.** "Maybe 30-35" is a guest count, not May 30. A celebration of life, Kwanzaa, Juneteenth, a camping weekend, a brunch and a church fish fry each reach their own plan. Anything the app can't use is reported, not dropped.
+
 ## November 22, 2026 (late morning) — private data stays private, rows open what they do
 
 **A guest's invite no longer carries the host's private stay list, and the family link no longer prints money or guests' names.** Checklist rows now open where their act is done, and the crab order belongs to the Crab Feast alone. A seven-lane audit ranked what is left, with creation first.

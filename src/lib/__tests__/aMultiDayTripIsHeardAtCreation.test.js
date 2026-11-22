@@ -45,14 +45,20 @@ const MULTI = [
 // Relative phrases: the length or the start may be known; the days are owed.
 // [sentence, type, date, endDate, nights, datesToConfirm]
 const RELATIVE = [
-  // Which Thursday is not said; that it is three nights is.
-  ['Thursday to Sunday in Nashville', null, null, null, 3, true],
+  // Which Thursday is not said; that it is three nights is. Owner ruling
+  // 11/22/2026 ("Resolve to the next one with the date shown so she can fix it
+  // as well."): the next Thursday through that Sunday, so nothing is owed and
+  // the length lives in the two dates, as for any typed range.
+  ['Thursday to Sunday in Nashville', null, '2026-11-26', '2026-11-29', null, false],
   // A long weekend is two nights to some and three to others: not guessed.
   ['a long weekend in Nashville', null, null, null, null, true],
   // July 4, 2027 is a Sunday: the weekend around it is not July 4–6.
   ['family reunion July 4th weekend', 'Reunion', '2027-07-04', null, null, true],
-  // Said on a Saturday, "next weekend" is Nov 28–29 to some and Dec 5–6 to others.
-  ['next weekend camping trip', 'Group Trip', null, null, 2, true],
+  // Said on a Saturday, "next weekend" is Nov 28–29 to some and Dec 5–6 to
+  // others. Owner ruling 11/22/2026 ("Resolve to the next one with the date
+  // shown so she can fix it as well."): this weekend is today, next weekend
+  // the Saturday after, shown so she can change it. The last day is still owed.
+  ['next weekend camping trip', 'Group Trip', '2026-11-28', null, 2, true],
 ];
 
 // One day, and must stay one day. A time range is not a date range.

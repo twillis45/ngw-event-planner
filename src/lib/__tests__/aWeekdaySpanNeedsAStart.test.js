@@ -10,9 +10,9 @@ import { parseSmartEventText } from '../smartParseEvent';
 // and word-month range matchers already fixed.
 //
 // What this file pins, in order of what would hurt most if it broke:
-//   1. The BARE-WEEKDAY RULING IS UNTOUCHED. "Friday to Sunday" with no other
-//      date words still resolves to nothing. The new block cannot run without a
-//      `date`, so it can never invent a start.
+//   1. The BARE-WEEKDAY RULING, as changed by the owner on 11/22/2026: "Friday
+//      to Sunday" with no other date words starts at the next Friday (it used
+//      to resolve to nothing). A date she typed still wins over the weekday.
 //   2. A resolved start + "<weekday> to <weekday>" yields the end weekday's next
 //      occurrence after the start.
 //   3. A CONTRADICTED start yields NO span (July 10 2027 is a Saturday, not the
@@ -29,10 +29,14 @@ const span = (text) => {
 };
 
 describe('a weekday span needs a start it did not invent', () => {
-  test('THE RULING HOLDS — a bare weekday pair still resolves to nothing', () => {
-    expect(span('reunion Friday to Sunday')).toEqual([null, null]);
-    expect(span('reunion Friday through Sunday')).toEqual([null, null]);
-    expect(span('family reunion, Fri to Sun, 30 people')).toEqual([null, null]);
+  // THE RULING CHANGED. Owner, 11/22/2026: "Resolve to the next one with the
+  // date shown so she can fix it as well." A bare weekday pair starts at the
+  // next occurrence of its first day (NOW is Sunday 9/27, so Friday 10/2) and
+  // ends on its last; the preview shows the day so she can change it.
+  test('THE RULING, 11/22/2026 — a bare weekday pair starts at the next one', () => {
+    expect(span('reunion Friday to Sunday')).toEqual(['2026-10-02', '2026-10-04']);
+    expect(span('reunion Friday through Sunday')).toEqual(['2026-10-02', '2026-10-04']);
+    expect(span('family reunion, Fri to Sun, 30 people')).toEqual(['2026-10-02', '2026-10-04']);
   });
 
   test('THE GAP CLOSED — "next Friday to Sunday" now carries the end', () => {

@@ -71,10 +71,16 @@ describe('a stay written with weekday names keeps its last day', () => {
 // Round 2 (11/16/2026): the "didn't make it into the plan" list showed the
 // fragment "saturday at my". "at my backyard" WAS used; only "saturday" was not.
 import { clausesNotUsed } from '../heardClauses';
+// Since the owner ruling of 11/22/2026 ("Resolve to the next one with the date
+// shown so she can fix it as well.") a bare "saturday" IS used — it is the next
+// Saturday — so the trimming is pinned on a word that is still unread.
 describe('an unused word is reported without the used words around it', () => {
-  test('"saturday", not "saturday at my"', () => {
-    const out = clausesNotUsed('friends giving dinner 10 people saturday at my backyard');
-    expect(out).toContain('saturday');
+  test('"karaoke", not "karaoke at my"', () => {
+    const out = clausesNotUsed('friends giving dinner 10 people karaoke at my backyard');
+    expect(out).toContain('karaoke');
     out.forEach((c) => expect(c).not.toMatch(/\b(?:at|my)\s*$/i));
+  });
+  test('"saturday" is the next Saturday now, and not reported', () => {
+    expect(clausesNotUsed('friends giving dinner 10 people saturday at my backyard').join(' | ')).not.toMatch(/saturday/i);
   });
 });

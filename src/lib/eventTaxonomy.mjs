@@ -201,8 +201,10 @@ const TYPE_ALIASES = {
 // function" and "pull up" were added here, they started reporting `named` — the
 // disclosure said a host had named their event type when the catch-all was the
 // only thing holding it up. One list, one owner.
+// "celebration of life" is a memorial, not a generic party word (audit lane B,
+// 11/22/2026): stripping it left nothing, so a named repast read as a guess.
 export const GENERIC_GATHERING_WORDS =
-  /party|celebration|\bbash\b|soiree|fiesta|shindig|\bthe\s+function\b|\bkick\s*back\b|\bpull\s*up\b|\blink\s*-?\s*up\b/;
+  /party|celebration(?!\s+of\s+life)|\bbash\b|soiree|fiesta|shindig|\bthe\s+function\b|\bkick\s*back\b|\bpull\s*up\b|\blink\s*-?\s*up\b/;
 
 const KEYWORDS = [
   // ── Cultural / religious ceremonies (resolve to the nearest host model, flagged) ──
@@ -210,7 +212,15 @@ const KEYWORDS = [
   [/quincea|quince\b/, 'Quinceañera'],
   [/bris\b|brit\s*milah|baby\s*naming|naming\s*ceremony|christening|baptism|first\s*communion|confirmation\b/, 'Baby Shower'],
   [/mehndi|sangeet|haldi|nikah|walima|baraat|\broka\b/, 'Wedding'],
-  [/diwali|deepavali|\beid\b|lunar\s*new\s*year|\blny\b|\btet\b|seollal|holi\b|nowruz|hanukkah|kwanzaa|lohri|onam|vaisakhi/, 'Birthday'],
+  // KWANZAA HAS ITS OWN PLAYBOOK (audit lane B, 11/22/2026): it sat in the
+  // line below and every "Kwanzaa gathering … for 20" was planned as a
+  // birthday, named and at $630 a head. Only the exact type name reached it.
+  [/kwanzaa/, 'Kwanzaa Gathering'],
+  // A CELEBRATION OF LIFE IS A MEMORIAL (audit lane B): it fell to the generic
+  // "celebration" catch-all and was saved as "Ray's Birthday". The Repast
+  // playbook is the gathering after a funeral or memorial service.
+  [/celebration\s+of\s+life|memorial\s+service|funeral\s+reception|\brepast\b/, 'Repast'],
+  [/diwali|deepavali|\beid\b|lunar\s*new\s*year|\blny\b|\btet\b|seollal|holi\b|nowruz|hanukkah|lohri|onam|vaisakhi/, 'Birthday'],
   // ── On-trend + specific ceremonies (most specific first) ──
   [/bachelorette|hen\s*(do|party)/, 'Bachelorette Party'],
   [/bachelor\b|stag\b/, 'Bachelor Party'],
@@ -240,6 +250,10 @@ const KEYWORDS = [
   [/graduation|grad\s*party/, 'Graduation'],
   [/retirement/, 'Retirement Party'],
   [/reunion/, 'Reunion'],
+  // Juneteenth has its own playbook and no keyword reached it, so "Juneteenth
+  // celebration at the park" was a birthday (audit lane B, 11/22/2026). After
+  // reunion, so "Juneteenth cookout and family reunion" keeps the reunion first.
+  [/juneteenth/, 'Juneteenth Cookout'],
   // ── Corporate ──
   [/board\s*meeting|\bboard\b|trustee|governance/, 'Board Meeting'],
   [/product\s*launch|launch\s*party|unveiling/, 'Product Launch'],
@@ -255,6 +269,10 @@ const KEYWORDS = [
   // fundraiser" and "booster club auction" belong to the parent-volunteer
   // playbook, not the ballroom one. (2026-08-21, W1.4)
   [/\bpta\b|\bptsa\b|\bpto\b|booster|spirit\s*night|school\s*(fundraiser|carnival|festival|fun\s*fair|auction)|fall\s*festival|fun\s*run\b|walk-?a-?thon|concession\s*(stand|season)/, 'PTA / Booster Fundraiser'],
+  // A FISH FRY FUNDRAISER IS A FISH FRY (audit lane B, 11/22/2026): the gala
+  // rule ran first and the church fish fry was offered a hotel ballroom. The
+  // Fish Fry playbook already covers a plates-for-sale fundraiser.
+  [/fish\s*fry/, 'Fish Fry'],
   [/gala|fundrais|benefit\b|auction|charity\b|donor\b/, 'Fundraiser / Gala'],
   // ── Casual / at-home gatherings ──
   // Seasonal hosted holidays (2026-08-21) resolve BEFORE the generic dinner-party
@@ -268,7 +286,11 @@ const KEYWORDS = [
   [/halloween|trunk.?or.?treat/, 'Halloween Party'],
   [/new\s*year'?s?\s*(eve|party)|\bnye\b/, "New Year's Eve Party"],
   [/house\s*warming|housewarming/, 'Housewarming'],
-  [/dinner\s*party|supper\s*club|welcome\s*dinner|rehearsal\s*dinner|tasting\s*menu/, 'Dinner Party'],
+  // BRUNCH IS A SIT-DOWN MEAL, NOT A COOKOUT (audit lane B, 11/22/2026): it sat
+  // on the Get-Together line, whose playbook is a cookout, so Easter brunch
+  // and Mother's Day brunch opened on "Host grills everything". TYPE_ALIASES
+  // already maps the Brunch label to Dinner Party; the keyword now agrees.
+  [/dinner\s*party|supper\s*club|welcome\s*dinner|rehearsal\s*dinner|tasting\s*menu|brunch/, 'Dinner Party'],
   // Named food-event playbooks resolve BEFORE the generic catch-all (CANON-TYPE-1):
   // "crab feast … in the backyard" is a Crab Feast — and `backyard` is a VENUE
   // word, not a type signal, so it no longer appears in any type regex (it let
@@ -276,7 +298,6 @@ const KEYWORDS = [
   [/crab\s*(feast|fest|boil)/, 'Crab Feast'],
   [/crawfish|crayfish|crawdad/, 'Crawfish Boil'],
   [/low.?country\s*boil|frogmore/, 'Low Country Boil'],
-  [/fish\s*fry/, 'Fish Fry'],
   [/cook.?out|\bbbq\b|barbecue|barbeque/, 'The Cookout'],
   // Game Night and Watch Party were both authored as their OWN canonical
   // playbooks (src/lib/playbooks/data/gameNight.js, watchParty.js;
@@ -318,7 +339,7 @@ const KEYWORDS = [
   // birthday milestone (line ~186) and that rule runs first; the basketball
   // round of the same name isn't worth breaking a real collision over.
   [/\bnfl\s*draft\b|\bnba\s*(finals?|draft)\b|stanley\s*cup|\bnhl\s*playoffs?\b|world\s*cup|champions\s*league|\bthe\s*masters\b|ryder\s*cup|kentucky\s*derby|daytona\s*500|indy(?:anapolis)?\s*500|\bwimbledon\b|\bfight\s*night\b|\bufc\b\s*\d*|\bppv\b|boxing\s*match|title\s*fight|\bolympics?\b|bowl\s*game|national\s*championship|\bcfp\b|(rose|sugar|orange|cotton|fiesta|peach)\s*bowl|wild\s*card\s*(game|weekend)?|conference\s*championship|\btailgate\b|elite\s*eight|draft\s*(day|night)|all-?star\s*game/, 'Watch Party'],
-  [/get.?together|potluck|\bboil\b|brunch|happy\s*hour|cocktail\s*party|block\s*party|picnic/, 'Get-Together'],
+  [/get.?together|potluck|\bboil\b|happy\s*hour|cocktail\s*party|block\s*party|picnic/, 'Get-Together'],
   // ── Generic travel (after team retreat / wellness specifics) ──
   // "destination" alone is a MODIFIER on another event ("destination birthday",
   // "destination anniversary") — it must not hijack type resolution before

@@ -38,6 +38,10 @@ export const HOST_TYPES = ALL_PLAYBOOKS
   .map(pb => pb && pb.type)
   .filter(t => t && !/board meeting|conference|team retreat/i.test(t));
 
+// A MONTH WORD IS A WHOLE MONTH TOKEN (audit lane B, 11/22/2026). Every month
+// pattern below read `(may|mar|jun|…)[a-z]*`, so "maybe 30-35" was May 30,
+// "married 25 years" Mar 25 and "my junior 17 friends" Jun 17. Each now names
+// the month or its abbreviation and nothing longer: "jun", "june", "sept".
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 const MONTH_LABEL = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -48,7 +52,7 @@ const SEASON_MONTH = { winter: 0, spring: 3, summer: 6, fall: 9, autumn: 9 };
 const _WD_SPAN = '(sunday|saturday|thursday|wednesday|tuesday|monday|friday|sun|sat|thurs|thur|thu|wed|tues|tue|mon|fri)\\.?';
 const _dowOf = (w) => DAYS.findIndex((d) => d.startsWith(String(w).toLowerCase().replace(/\.$/, '').slice(0, 3)));
 // A month-day said as a weekend: "July 4th weekend", "Dec 5 weekend".
-const SAID_DAY_WEEKEND = /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?\s+weekend\b/i;
+const SAID_DAY_WEEKEND = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?\s+\d{1,2}(?:st|nd|rd|th)?\s+weekend\b/i;
 // A trip that is not a friends' trip: business, a field trip, one day out.
 const TRIP_WORD = /\b(?:trip|getaway|vacation)\b/i;
 const NOT_A_GROUP_TRIP = /\b(?:business|work|field|school|class|day|shopping|grocery|supply)\s+trip\b/i;
@@ -61,6 +65,57 @@ const NOT_A_GROUP_TRIP = /\b(?:business|work|field|school|class|day|shopping|gro
 // was a temporal-dead-zone throw and it simply had no guard. That is how
 // "40 guests in the Maryland/DC area" committed `venueCity: "the"`.
 const NOT_A_PLACE = /^(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|the|our|my|zoom)$/i;
+
+// "Day Party" strips to "day" in the name fallback below, and "day" is inside
+// every named day: "Memorial Day weekend camping trip" was a Day Party (audit
+// lane B, 11/22/2026). Those names are blanked for that one test only; "day
+// party" still names the playbook.
+const _NAMED_DAY = /\b(?:memorial|labou?r|mother['’]?s|father['’]?s|valentine['’]?s|independence|veterans['’]?|presidents?['’]?s?|columbus|indigenous\s+peoples['’]?|mlk|election|new\s+year['’]?s|boxing|st\.?\s+patrick['’]?s|saint\s+patrick['’]?s|patriots['’]?|flag|earth|groundhog|thanksgiving|christmas|easter|juneteenth|game|field|snow|sick|spa|tax|moving|opening|wedding|graduation|turkey)\s+day\b/gi;
+
+// The end of a "<weekday> to <weekday>" span, read off a start that agrees
+// with its first weekday (see the date block's note on contradicted starts).
+// null when there is no span, the start disagrees, or both sides are one day.
+function _weekdaySpanEnd(date, t) {
+  const span = t.match(new RegExp(`\\b${_WD_SPAN}\\s*(?:to|through|thru|until|-|–|—)\\s*${_WD_SPAN}\\b`, 'i'));
+  if (!span) return null;
+  const fromDow = _dowOf(span[1]);
+  const toDow = _dowOf(span[2]);
+  const start = new Date(date + 'T12:00:00');
+  if (fromDow < 0 || toDow < 0 || isNaN(start) || start.getDay() !== fromDow) return null;
+  const add = (toDow - fromDow + 7) % 7;
+  if (add <= 0) return null;
+  const e = new Date(start);
+  e.setDate(e.getDate() + add);
+  return localISO(e);
+}
+
+// ── A BARE WEEKDAY IS THE NEXT ONE (owner ruling, 11/22/2026) ───────────────
+// "Resolve to the next one with the date shown so she can fix it as well."
+// Only for a sentence with no other date (the caller checks). A weekday alone
+// is its next occurrence after today — said on that weekday, next week's.
+// "this weekend" is the coming Saturday (today on a Saturday; the following
+// Saturday on a Sunday); "next weekend" is a week after that. A Sunday said
+// with a weekend is that weekend's Sunday. Returns a local ISO day or null.
+function _nextWeekdayDate(t, now) {
+  const wk = t.match(/\b(this|next|coming)\s+weekend\b/i);
+  const bare = t.match(/\b(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i);
+  const d = new Date(now); d.setHours(12, 0, 0, 0);
+  if (wk) {
+    let add = (6 - d.getDay() + 7) % 7;
+    if (wk[1].toLowerCase() === 'next') add += 7;
+    if (bare && bare[1].toLowerCase() === 'sunday') add += 1;
+    d.setDate(d.getDate() + add);
+    return localISO(d);
+  }
+  // A span's first day may be abbreviated ("Fri to Sun"); a lone "sat", "sun"
+  // or "wed" is too often an ordinary word to count.
+  const span = t.match(new RegExp(`\\b${_WD_SPAN}\\s*(?:to|through|thru|until|-|–|—)\\s*${_WD_SPAN}\\b`, 'i'));
+  const dow = span ? _dowOf(span[1]) : (bare ? DAYS.indexOf(bare[1].toLowerCase()) : -1);
+  if (dow < 0) return null;
+  const add = (dow - d.getDay() + 7) % 7 || 7;
+  d.setDate(d.getDate() + add);
+  return localISO(d);
+}
 
 export function parseSmartEventText(text, opts = {}) {
   const t = String(text || '');
@@ -82,7 +137,7 @@ export function parseSmartEventText(text, opts = {}) {
       // counts ("showers", "reunions").
       const hit = HOST_TYPES.find(ht => {
         const word = ht.toLowerCase().replace(' party', '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        return new RegExp(`(^|[^a-z])${word}s?($|[^a-z])`, 'i').test(text);
+        return new RegExp(`(^|[^a-z])${word}s?($|[^a-z])`, 'i').test(text.replace(_NAMED_DAY, ' '));
       });
       if (hit && hit.length > 3) out = hit;
     }
@@ -335,7 +390,7 @@ export function parseSmartEventText(text, opts = {}) {
   // Saturday, November 7, "this Saturday, November 7" read as November 14: the
   // weekday ran first, "this <today>" jumps a week, and the stated date was
   // then thrown away as unused.
-  const saidMonthDay = /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?\b|\b\d{1,2}(?:st|nd|rd|th)?\s+of\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)|\b\d{1,2}\/\d{1,2}\b/i.test(t);
+  const saidMonthDay = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?\s+\d{1,2}(?:st|nd|rd|th)?\b|\b\d{1,2}(?:st|nd|rd|th)?\s+of\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)|\b\d{1,2}\/\d{1,2}\b/i.test(t);
   // Relative forms first — "today", "tonight", "in 2 weeks", "tomorrow", "next saturday".
   // "Today"/"tonight" is the most literal date a host can say — same-day plans
   // ("BBQ at my brother's house today at 3pm") were falling through every
@@ -379,7 +434,7 @@ export function parseSmartEventText(text, opts = {}) {
     // the single-date matcher below ate the first half and the confirm screen
     // told the host it had thrown "to June 17 2027" away. Four digits only, on
     // both sides, so "June 12-14, 20 cousins" still cannot read a count as a year.
-    const rng = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\s*(?:-|–|—|to|through|thru|(and))\s*(?:(?:sun|mon|tue|wed|thu|fri|sat)[a-z]*\.?,?\s+)?(?:(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+)?(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
+    const rng = t.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\s*(?:-|–|—|to|through|thru|(and))\s*(?:(?:sun|mon|tue|wed|thu|fri|sat)[a-z]*\.?,?\s+)?(?:(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?\s+)?(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
     if (rng) {
       const m1 = MONTHS.indexOf(rng[1].slice(0, 3).toLowerCase());
       // "and" joins two DAYS ("Sat Nov 21 and Sun Nov 22", round 2, 11/16/2026)
@@ -404,7 +459,11 @@ export function parseSmartEventText(text, opts = {}) {
       if (end < start && rng[5] && m2 !== m1 && !y2) end.setFullYear(end.getFullYear() + 1);
       // A same-month "range" running backwards ("June 14-12") is noise, not a span.
       const andOk = !viaAnd || (rng[5] && Math.round((end - start) / 86400000) === 1);
-      if (!isNaN(start) && !isNaN(end) && end > start && andOk) {
+      // A DAY THAT DOES NOT EXIST ENDS NO RANGE (audit lane B, 11/22/2026):
+      // "30-35 people" after a month word read as May 30 – Jun 4, because Date
+      // rolls a 35th into the next month. Both days must survive as written.
+      const daysReal = start.getDate() === parseInt(rng[2], 10) && end.getDate() === parseInt(rng[6], 10);
+      if (!isNaN(start) && !isNaN(end) && end > start && andOk && daysReal) {
         date = localISO(start);
         endDate = localISO(end);
       }
@@ -452,7 +511,7 @@ export function parseSmartEventText(text, opts = {}) {
   // not is kept as `impossibleDate` and no date is set — the plan asks.
   let impossibleDate = null;
   const dmOf = date ? null : t.match(
-    /\b(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+of\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?(?:,?\s*(\d{4}))?\b/i);
+    /\b(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?\s+of\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?(?:,?\s*(\d{4}))?\b/i);
   if (dmOf && Number(dmOf[1]) >= 1 && Number(dmOf[1]) <= 31) {
     const saidY = dmOf[3] ? parseInt(dmOf[3], 10) : null;
     const cand = new Date(saidY || now.getFullYear(),
@@ -461,7 +520,7 @@ export function parseSmartEventText(text, opts = {}) {
     if (cand.getDate() === parseInt(dmOf[1], 10)) date = localISO(cand); else impossibleDate = dmOf[0];
   }
 
-  const dm = date ? null : t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
+  const dm = date ? null : t.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
   if (dm) {
     const saidY = dm[3] ? parseInt(dm[3], 10) : null;
     const cand = new Date(saidY || now.getFullYear(), MONTHS.indexOf(dm[1].slice(0, 3).toLowerCase()), parseInt(dm[2], 10), 12);
@@ -529,12 +588,12 @@ export function parseSmartEventText(text, opts = {}) {
   // plan ends, and the end was dropped on the floor — the same silent-range-loss
   // class as the numeric and word-month ranges above.
   //
-  // THE BARE-WEEKDAY RULING IS NOT TOUCHED. The date block above deliberately
-  // requires "next"/"this" before a weekday, because "Friday" alone does not say
-  // which Friday. A sentence whose ONLY date words are "Friday to Sunday" still
-  // resolves to nothing, and must: this block cannot run without a `date`, so it
-  // can never be the thing that invents a start. It reads an END off a start that
-  // some other, stricter matcher already earned.
+  // THE BARE-WEEKDAY RULING CHANGED (owner, 11/22/2026: "Resolve to the next
+  // one with the date shown so she can fix it as well."). This block still
+  // cannot invent a start: it reads an END off a start some matcher earned.
+  // A sentence whose ONLY date words are "Friday to Sunday" now gets its start
+  // from _nextWeekdayDate after every other date form has had its turn, and
+  // the same _weekdaySpanEnd then reads the end (next Friday to that Sunday).
   //
   // A CONTRADICTED START PRODUCES NO SPAN. "Friday to Sunday, July 10" resolves
   // July 10 2027, which is a SATURDAY — the host's two facts disagree, and there
@@ -549,24 +608,7 @@ export function parseSmartEventText(text, opts = {}) {
   // (lib/dates spanNights, `overnight`) as a zero-night multi-day event, which is
   // a fabricated shape. "To the following Friday" is a week, and she did not say
   // "following", so it stays unheard rather than guessed at 0 or 7.
-  if (date && !endDate) {
-    const _WD = '(sunday|saturday|thursday|wednesday|tuesday|monday|friday|sun|sat|thurs|thur|thu|wed|tues|tue|mon|fri)\\.?';
-    const span = t.match(new RegExp(`\\b${_WD}\\s*(?:to|through|thru|until|-|–|—)\\s*${_WD}\\b`, 'i'));
-    if (span) {
-      const _dow = (w) => DAYS.findIndex((d) => d.startsWith(String(w).toLowerCase().replace(/\.$/, '').slice(0, 3)));
-      const fromDow = _dow(span[1]);
-      const toDow = _dow(span[2]);
-      const start = new Date(date + 'T12:00:00');
-      if (fromDow >= 0 && toDow >= 0 && !isNaN(start) && start.getDay() === fromDow) {
-        const add = (toDow - fromDow + 7) % 7;
-        if (add > 0) {
-          const e = new Date(start);
-          e.setDate(e.getDate() + add);
-          endDate = localISO(e);
-        }
-      }
-    }
-  }
+  if (date && !endDate) endDate = _weekdaySpanEnd(date, t);
   // Month + year, no day ("June of 2028", "June 2028") — a real signal the
   // host gave, but never precise enough to silently commit as their actual
   // date. We never invent a day for them — same as the type picker offers
@@ -575,7 +617,7 @@ export function parseSmartEventText(text, opts = {}) {
   // the host picks or types one.
   let monthYear = null;
   if (!date) {
-    const my = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(?:of\s+)?(\d{4})\b/i);
+    const my = t.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?\s+(?:of\s+)?(\d{4})\b/i);
     if (my) {
       const year = parseInt(my[2], 10);
       const month = MONTHS.indexOf(my[1].slice(0, 3).toLowerCase());
@@ -609,6 +651,23 @@ export function parseSmartEventText(text, opts = {}) {
     const hol = resolveHoliday(t, now);
     if (hol) date = hol.date;
   }
+  // ── A MONTH WITH NO DAY IS A MONTH TO PICK FROM (audit lane B, 11/22/2026) ─
+  // "wedding in Napa next September" and "sometime in February" set nothing and
+  // were not reported either, so the board asked "Add the day." with no month
+  // picker, while "next month" offered one. A month she named after next,
+  // this or "sometime in" is the same monthYear signal: never a day, only options.
+  // A bare "in June" stays unread (parseCorpus #22) and is reported instead.
+  // "may" the verb is excluded by the lead word and by the verb after it.
+  if (!date && !monthYear) {
+    const mo = t.match(/\b(next|this|sometime\s+in|early|late|mid-?)\s+(?:early\s+|late\s+|mid-?\s*)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])(?!\.?\s*\d)(?!\s+(?:be|have|not|need|want|come|bring|also|get|go|do|or|like|change|add|include)\b)/i);
+    if (mo) {
+      const month = MONTHS.indexOf(mo[2].slice(0, 3).toLowerCase());
+      const cur = now.getMonth();
+      const nextSaid = /^next$/i.test(mo[1]);
+      const year = now.getFullYear() + ((nextSaid ? month <= cur : month < cur) ? 1 : 0);
+      if (month >= 0) monthYear = { year, month, label: MONTH_LABEL[month] + ' ' + year };
+    }
+  }
   // Season ("this fall", "next summer") — wider than a month, but still just
   // OPTIONS from the season's anchor month, never a guessed exact date.
   if (!date && !monthYear) {
@@ -631,6 +690,19 @@ export function parseSmartEventText(text, opts = {}) {
           : now.getFullYear() + (rel === 'next' ? 1 : 0);
         monthYear = { year, month, label: seasonLabel + ' ' + year };
       }
+    }
+  }
+
+  // A bare weekday or "this/next weekend", LAST, so any date she typed, a
+  // holiday, or a month she named wins (owner ruling 11/22/2026, above
+  // _nextWeekdayDate). Marked so the preview shows the weekday with the date.
+  let dateBasis = null;
+  if (!date && !monthYear && !impossibleDate) {
+    const d = _nextWeekdayDate(t, now);
+    if (d) {
+      date = d;
+      dateBasis = 'resolved-weekday';
+      if (!endDate) endDate = _weekdaySpanEnd(date, t);
     }
   }
 
@@ -748,7 +820,9 @@ export function parseSmartEventText(text, opts = {}) {
       // a month — is how a host names the person. She said it, so it is used,
       // capitalized; nothing is guessed when no such word follows.
       const after = t.slice(m.index + m[0].length).match(/^\s+([A-Za-z][a-z'’-]{1,20}|[A-Z][a-zA-Z'’-]{1,20})\b/);
-      const STOP = /^(?:turning|turns|turned|who|whose|and|or|is|was|will|for|at|in|on|to|with|from|this|that|next|last|the|a|an|his|her|their|our|my|birthday|bday|party|dinner|celebration|retirement|graduation|anniversary|shower|surprise|just|finally|today|tonight|tomorrow|weekend|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|\d.*)$/i;
+      const STOP = /^(?:turning|turns|turned|who|whose|and|or|is|was|will|for|at|in|on|to|with|from|after|before|during|since|because|when|while|until|this|that|next|last|the|a|an|his|her|their|our|my|birthday|bday|party|dinner|celebration|retirement|graduation|anniversary|shower|surprise|just|finally|today|tonight|tomorrow|weekend|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec|\d.*)$/i;
+      // "for my grandmother after the funeral" named her "After" (audit lane B,
+      // 11/22/2026): a preposition or a conjunction is never a name.
       if (after && !STOP.test(after[1])) {
         const nm = after[1];
         return [m[0] + after[0], nm.charAt(0).toUpperCase() + nm.slice(1)];
@@ -828,7 +902,14 @@ export function parseSmartEventText(text, opts = {}) {
     // fire hall, the VFW, the rec center, the lodge. Kept verbatim, because
     // guests read this line in the invite.
     || t.match(/\b(?:in|at)\s+((?:the\s+|a\s+)?(?:church|fellowship|banquet|fire|legion|social|event|reception|dining|great)\s+(?:hall|room|space|center|centre))\b/i)
-    || t.match(/\b(?:in|at)\s+((?:the\s+|a\s+)?(?:vfw|elks?\s*lodge|masonic\s*(?:temple|lodge)|rec(?:reation)?\s*center|senior\s*center|banquet\s*facility|ballroom|event\s*space|country\s*club))\b/i);
+    || t.match(/\b(?:in|at)\s+((?:the\s+|a\s+)?(?:vfw|elks?\s*lodge|masonic\s*(?:temple|lodge)|rec(?:reation)?\s*center|senior\s*center|banquet\s*facility|ballroom|event\s*space|country\s*club))\b/i)
+    // THE CHURCH, AND A RELATIVE'S PLACE WITH NO NOUN (audit lane B, 11/22/2026).
+    // "fish fry fundraiser at the church", "repast … at the church fellowship
+    // hall" and "Thanksgiving weekend at my mom's" kept no place and said
+    // nothing, because the phrase sat inside a clause that gave the type. Kept
+    // verbatim; "my mom's" is her mother's home, not hers, and reads that way.
+    || t.match(/\b(?:in|at)\s+((?:the\s+|a\s+)?church(?:\s+(?:fellowship|social|banquet|activity|activities|community))?(?:\s+(?:hall|room|basement|center|centre|building|gym))?)\b/i)
+    || t.match(new RegExp('\\b(?:in|at)\\s+((?:my|our)\\s+' + REL_ONE + '(?:[\'\u2019]s|s[\'\u2019]))(?=\\s*(?:[,.;!?]|$)|\\s+(?:in|on|for|this|next|with|from|over|during|and)\\b|\\s+\\d)', 'i'));
   const venuePhrase = vm ? vm[1].charAt(0).toUpperCase() + vm[1].slice(1) : '';
   // "at Vida's" with no place noun after it still names a place (11/15/2026,
   // atSomeonesIsAPlace.test.js). Kept verbatim and NOT claimed as a home: it
@@ -2001,7 +2082,7 @@ export function parseSmartEventText(text, opts = {}) {
 
   return {
     hostName,
-    type: typeOut, typeBasis: typeBasisOut, typeHeard, secondaryType, theme, themeBasis, guests, guestPairs, budget, date, impossibleDate, endDate, datesToConfirm, monthYear, milestone, nights, lodgingKind,
+    type: typeOut, typeBasis: typeBasisOut, typeHeard, secondaryType, theme, themeBasis, guests, guestPairs, budget, date, dateBasis, impossibleDate, endDate, datesToConfirm, monthYear, milestone, nights, lodgingKind,
     // The trip's night the host named by its holiday, and that holiday (null when none).
     celebrationNight: _nyeNight, celebrationOccasion: _nyeNight ? 'New Year’s Eve' : null,
     isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
@@ -2131,6 +2212,17 @@ export function unusedClauses(text, opts = {}) {
     const phrase = m[1].replace(/^the\s+/, 'the ');
     if (!said(phrase)) out.push(phrase);
   }
+  // A PHRASE INSIDE A USED CLAUSE (audit lane B, 11/22/2026). The clause test
+  // above judges whole clauses, so a clause that gave anything hid everything
+  // else in it. This asks the same differential question of one phrase:
+  // remove it, and did anything creation derives change?
+  const tx = String(text || '');
+  const derive = _deriver(opts);
+  const fullDerived = JSON.stringify(derive(tx));
+  const unusedAt = (index, length) => {
+    const without = (tx.slice(0, index) + tx.slice(index + length)).replace(/\s{2,}/g, ' ').trim();
+    return JSON.stringify(derive(without)) === fullDerived;
+  };
   // A PLACE SHE NAMED IS NEVER SWALLOWED EITHER (run 2, R2-6): "…next friday
   // at chuck e cheese, like 20 kids" kept no place, and its clause counted as
   // used because the date beside it was read — so nothing said so, and the plan
@@ -2138,8 +2230,46 @@ export function unusedClauses(text, opts = {}) {
   // City, ST); when the plan ended up with no place at all, an "at …" phrase
   // she wrote is reported as not applied. Times, home and relatives are not places.
   const at = String(text || '').match(/\bat\s+((?!(?:home|my|our|his|her|their|the house|night|noon|midnight|dusk|sunset|sunrise|least|most|once|all|first|last|about|around|\d))[a-z][a-z'’&.-]*(?:\s+[a-z][a-z'’&.-]*){0,4}?)(?=\s*(?:[,.;!]|$|\s(?:on|for|with|this|next|from|at|in|by|and|around|about)\b))/i);
-  if (at && !p.venue && !p.venueAddress && !p.venueKind && !p.venueCity && !said('at ' + at[1])) out.push('at ' + at[1]);
+  // A town is not a venue (audit lane B, 11/22/2026): "at a restaurant in
+  // Atlanta" kept Atlanta and lost the restaurant without a word. With a town,
+  // the phrase is reported only when nothing creation derives read it.
+  if (at && !p.venue && !p.venueAddress && !p.venueKind && !said('at ' + at[1])
+    && (!p.venueCity || unusedAt(at.index, at[0].length))) out.push('at ' + at[1]);
+  // A WEEKDAY, "THIS/NEXT WEEKEND" OR A MONTH THE PLAN COULD NOT APPLY: a bare
+  // weekday is the next one since the owner ruling of 11/22/2026, so what is
+  // left is "a Saturday next September" or "reunion in June" — no date set, and
+  // nothing said so. Reported only when the plan has no date and the word
+  // changed nothing.
+  if (!p.date) {
+    const re = new RegExp('\\b(?:(?:this|next|coming)\\s+weekend|((?:sun|mon|tues|wednes|thurs|fri|satur)day)(?:\\s+(?:night|morning|afternoon|evening))?'
+      + '|(?:(?:the\\s+)?(?:first|last|second|third|fourth)\\s+weekend\\s+)?(?:(?:in|of|during)\\s+)?(?:early\\s+|late\\s+|mid-?\\s*)?((?:jan|febr)uary|march|april|june|july|august|september|october|november|december))\\b', 'gi');
+    for (const m of tx.matchAll(re)) {
+      const word = m[1] || m[2] || m[0];
+      const index = m.index + m[0].lastIndexOf(word);
+      if (unusedAt(index, word.length) && !said(m[0])) out.push(m[0]);
+    }
+  }
   return out;
+}
+
+// Everything creation derives from a sentence: the parse plus the seam readers
+// the caller passes (see the note in _unusedClausesCore). Shared by the clause
+// test and the phrase checks in unusedClauses, so both ask the same question.
+function _deriver(opts = {}) {
+  const alsoDerives = Array.isArray(opts.alsoDerives) ? opts.alsoDerives.filter((f) => typeof f === 'function') : [];
+  return (s) => {
+    let p;
+    try { p = parseSmartEventText(s, opts); } catch { return null; }
+    if (!alsoDerives.length) return p;
+    const out = { ...p };
+    alsoDerives.forEach((fn, i) => {
+      // A seam consumer that throws must not be read as "derived nothing" —
+      // that would silently restore the false alarm it was added to remove.
+      // Null is a value; the comparison below treats it like any other.
+      try { out[`_derived${i}`] = fn(s); } catch { out[`_derived${i}`] = '__threw__'; }
+    });
+    return out;
+  };
 }
 
 function _unusedClausesCore(text, opts = {}) {
@@ -2171,20 +2301,7 @@ function _unusedClausesCore(text, opts = {}) {
   // The differential mechanism is UNCHANGED. It still asks "does removing this
   // clause change what we derived?" — the only difference is that "what we
   // derived" now means everything creation derives, not just the parse.
-  const alsoDerives = Array.isArray(opts.alsoDerives) ? opts.alsoDerives.filter((f) => typeof f === 'function') : [];
-  const derive = (s) => {
-    let p;
-    try { p = parseSmartEventText(s, opts); } catch { return null; }
-    if (!alsoDerives.length) return p;
-    const out = { ...p };
-    alsoDerives.forEach((fn, i) => {
-      // A seam consumer that throws must not be read as "derived nothing" —
-      // that would silently restore the false alarm it was added to remove.
-      // Null is a value; the comparison below treats it like any other.
-      try { out[`_derived${i}`] = fn(s); } catch { out[`_derived${i}`] = '__threw__'; }
-    });
-    return out;
-  };
+  const derive = _deriver(opts);
 
   const full = derive(t);
   if (!full) return [];
