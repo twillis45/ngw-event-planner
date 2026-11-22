@@ -18,6 +18,7 @@ import { getPlaybook, decisionAnswered, isMenuDecision } from './playbooks';
 import { guestCountFor } from './guestCountFor';
 import { accessNeedsFor } from './accessNeeds';
 import { venueFor } from './venueFor';
+import { placeKindOfName, venueKindOf } from './knownFacts';
 import {
   celebrationAppliesWith, celebrationNight, celebrationTitle, celebrationPlace,
   aroundMeals, mealsOutPayer, placeWithArticle,
@@ -34,12 +35,18 @@ export function celebrationApplies(event) {
 // Dinners only — the source prices a dinner, not a breakfast or a lunch.
 export const RESTAURANT_DINNER = { low: 25, high: 75, source: 'boxedlunch-restaurant-2026' };
 
-/** The dinner is at a restaurant when the place she named, or the venue, says so. */
+/**
+ * The dinner is at a restaurant only when the place's name or kind says so,
+ * read by the one kind reader (knownFacts.placeKindOfName). The booked venue's
+ * kind, when its name says one, outranks the kind she said at creation; a hall
+ * booked later is priced as a hall. Anything else (a courtyard, a house, a
+ * hall) is priced by the Spread's line rules.
+ */
 export function celebrationAtRestaurant(event) {
   const ev = event || {};
-  const vf = (() => { try { return venueFor(ev); } catch { return null; } })();
-  const words = `${celebrationPlace(ev) || ''} ${(vf && vf.name) || ''} ${vf && vf.kind === 'restaurant' ? 'restaurant' : ''}`;
-  return /\b(restaurant|bistro|steakhouse|trattoria|brasserie|tavern|cantina|supper club)\b/i.test(words);
+  const venue = (() => { try { return venueKindOf(ev); } catch { return null; } })();
+  const kind = (venue && venue.isHome) ? 'home' : ((venue && venue.kind) || placeKindOfName(celebrationPlace(ev)));
+  return kind === 'restaurant';
 }
 
 const n0 = (v) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : null);

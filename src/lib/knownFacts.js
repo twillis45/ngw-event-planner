@@ -70,7 +70,9 @@ export function bandFor(options, n) {
 // a hall, a "beer garden" is a bar before it is a garden.
 const KIND_WORDS = [
   ['courthouse', /\b(courthouse|city hall|registry office|county clerk)\b/i],
-  ['restaurant', /\b(restaurant|bistro|grill|kitchen|cafe|café|trattoria|steakhouse|tavern|brasserie|osteria|diner|eatery|cantina|taqueria|pizzeria|chophouse|supper club)\b/i],
+  // "café" ends in a letter that \b does not count as a word letter, so it is
+  // matched on its own: with a trailing \b, "La Plazuela Café" was no kind.
+  ['restaurant', /\b(restaurant|bistro|grill|kitchen|cafe|trattoria|steakhouse|tavern|brasserie|osteria|diner|eatery|cantina|taqueria|pizzeria|chophouse|supper club)\b|\bcafé(?![\p{L}\p{N}_])/iu],
   ['bar', /\b(bar|pub|brewery|brewing|taproom|winery|lounge|beer garden)\b/i],
   ['hotel', /\b(hotel|resort|marriott|hilton|hyatt|westin|sheraton)\b/i],
   // Not a VFW or Legion post: whether one is a hall, a bar or a restaurant room
@@ -83,6 +85,16 @@ const KIND_WORDS = [
 ];
 const BACKYARD_WORDS = /\b(back\s?yard|yard|garden|patio|deck|lawn|outside|outdoors?)\b/i;
 
+// The kind a place's name or description says ("Coyote Grill" → restaurant,
+// "community hall" → hall), or null when the words say none. The one reader:
+// the venue calls (venueKindOf) and the dinner's money (tripFood) both ask it.
+export function placeKindOfName(name) {
+  const n = String(name || '').trim();
+  if (!n) return null;
+  const hit = KIND_WORDS.find(([, re]) => re.test(n));
+  return hit ? hit[0] : null;
+}
+
 export function venueKindOf(event) {
   const vf = (() => { try { return venueFor(event); } catch (_e) { return null; } })();
   if (!vf || !vf.isSet) return null;
@@ -91,8 +103,7 @@ export function venueKindOf(event) {
   if (vf.isHome || isHomeVenueName(name)) {
     return { name, kind: BACKYARD_WORDS.test(name) ? 'backyard' : 'home', isHome: true, line: vf.displayLine || name };
   }
-  const hit = KIND_WORDS.find(([, re]) => re.test(name));
-  return { name, kind: hit ? hit[0] : null, isHome: false, line: vf.displayLine || name };
+  return { name, kind: placeKindOfName(name), isHome: false, line: vf.displayLine || name };
 }
 
 // The option(s) of a place call that name this kind of place.
