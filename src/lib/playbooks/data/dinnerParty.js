@@ -119,7 +119,7 @@ const dinnerParty = {
     cooking: [
       { when: 'T0 -4h', what: 'Slow-cook/roast items; prep salad components (dress later)' },
       { when: 'T0 -1h', what: 'Reheat make-ahead; bring proteins to room temp' },
-      { when: 'guests arrive', what: 'Plate appetizer; finish/plate mains; dress salad' },
+      { when: 'T0 -15m', what: 'Plate appetizer; finish/plate mains; dress salad' },
     ],
     setup: [
       { when: 'T0 -3h', what: 'Set the table: linens, plates, glasses, flatware, place cards, centerpiece, candles' },
@@ -127,7 +127,7 @@ const dinnerParty = {
       { when: 'T0 -2h', what: 'Empty dishwasher, stage bus tub + trash/recycling, light candles 15 min before' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: coats taken, first drink in every hand within a minute' },
+      { when: 'T0', what: 'Doors: coats taken, first drink in every hand within a minute' },
       { when: 'T0 +30m', what: 'Passed bites while the last guests land' },
       { when: 'T0 +1h', what: 'Seated: first course out, wine poured' },
       { when: 'T0 +1:45', what: 'Main course; keep the table’s glasses filled' },

@@ -125,7 +125,7 @@ const bridalShower = {
       { when: 'T0 -2h', what: 'Coffee/tea urn + mimosa bar + punch dispensers, ice; stage trash/recycling; place the gift log on the gift table' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: welcome drink in hand, gift table set, guest book open' },
+      { when: 'T0', what: 'Doors: welcome drink in hand, gift table set, guest book open' },
       { when: 'T0 +30m', what: 'Mingling and the first game' },
       { when: 'T0 +1h', what: 'Food out' },
       { when: 'T0 +1:45', what: 'Gifts: log each gift to its giver as she opens it' },

@@ -538,7 +538,7 @@ const reunion = {
       { when: 'T0-30m', do: 'Stage games and kids area; do a final walk-through; brief volunteers on their jobs.' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Registration table opens: name tags, sign-in, contact updates' },
+      { when: 'T0', what: 'Registration table opens: name tags, sign-in, contact updates' },
       { when: 'T0 +45m', what: 'The group photo — do it early while everyone’s here and clean' },
       { when: 'T0 +1:15', what: 'Blessing, then the meal; elders and small kids first' },
       { when: 'T0 +2h', what: 'The program: welcome, oldest and youngest present, anyone we lost this year' },

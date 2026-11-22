@@ -179,7 +179,7 @@ const anniversary = {
       { when: 'T0 -0:30', what: 'Light candles, start the looping slideshow softly, pour welcome drinks for early arrivals' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: guests in, drinks out, photo table where people will see it' },
+      { when: 'T0', what: 'Doors: guests in, drinks out, photo table where people will see it' },
       { when: 'T0 +30m', what: 'The welcome toast — keep the couple’s entrance simple' },
       { when: 'T0 +1h', what: 'Dinner: blessing, then serve; elders first' },
       { when: 'T0 +1:45', what: 'The tribute — slideshow, the kids’ speeches, the letters' },

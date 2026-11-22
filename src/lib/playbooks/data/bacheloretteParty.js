@@ -133,7 +133,7 @@ const bacheloretteParty = {
       { when: 'T0 -2h', what: 'Set the VISIBLE water/zero-proof station (full + iced), stage the safety kit, confirm the transport pickup time, post the itinerary + meetup spot for the group' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Everyone gathers at the meeting point; confirm the headcount before you move' },
+      { when: 'T0', what: 'Everyone gathers at the meeting point; confirm the headcount before you move' },
       { when: 'T0 +45m', what: 'First activity — the thing she actually asked for' },
       { when: 'T0 +2:30', what: 'Dinner, and water alongside it' },
       { when: 'T0 +4h', what: 'The main event of the night' },

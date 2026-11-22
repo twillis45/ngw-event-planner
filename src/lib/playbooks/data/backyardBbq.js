@@ -138,7 +138,7 @@ const backyardBbq = {
       { when: 'T0 -0:45', what: 'Light the grill; stage trash + recycling bins' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: drinks on ice, music on, greet people at the gate' },
+      { when: 'T0', what: 'Doors: drinks on ice, music on, greet people at the gate' },
       { when: 'T0 +30m', what: 'Grill starts serving — first plates to whoever’s been waiting' },
       { when: 'T0 +1:15', what: 'Everything out: sides, condiments, second rounds' },
       { when: 'T0 +2h', what: 'The hang — yard games, music, let it run itself' },

@@ -186,7 +186,7 @@ const wedding = {
       { when: 'T0 -2h', what: 'Final venue walk-through; place escort cards, favors, signage, guest book; sound check; first look + portraits' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: ushers seat guests, prelude music on, programs handed out' },
+      { when: 'T0', what: 'Doors: ushers seat guests, prelude music on, programs handed out' },
       { when: 'T0 +30m', what: 'Ceremony: processional, vows, rings, pronouncement, recessional' },
       { when: 'T0 +1h', what: 'Cocktail hour: couple and party take portraits while guests hit the bar' },
       { when: 'T0 +2h', what: 'Grand entrance and first dance; guests find their seats' },

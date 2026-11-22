@@ -240,7 +240,7 @@ const genderReveal = {
       { when: 'T0 -15m', what: 'Gather guests, brief the photographer, place the reveal item; if outdoor + dry, do a final fire-safety check' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: guests in, drinks out, the guessing board where people see it' },
+      { when: 'T0', what: 'Doors: guests in, drinks out, the guessing board where people see it' },
       { when: 'T0 +30m', what: 'Food and the guessing' },
       { when: 'T0 +1h', what: 'Gather everyone: phones up, photographer placed, kids and pets back' },
       { when: 'T0 +1:15', what: 'The reveal' },

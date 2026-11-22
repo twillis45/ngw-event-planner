@@ -120,7 +120,7 @@ const pupusaGathering = {
       { when: 'T0 -0:30', what: 'Set the toppings line — curtido and salsa roja out, plates and napkins, drinks station; pull early shapers to the table' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: comal hot, curtido and salsa out, drinks poured' },
+      { when: 'T0', what: 'Doors: comal hot, curtido and salsa out, drinks poured' },
       { when: 'T0 +30m', what: 'First round off the comal — serve as they come, don’t stack them' },
       { when: 'T0 +1:15', what: 'Second round; refill curtido and salsa, start any new fillings' },
       { when: 'T0 +2h', what: 'Third round for whoever’s still eating' },

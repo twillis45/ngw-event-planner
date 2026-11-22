@@ -131,7 +131,7 @@ const fishFry = {
       { when: 'T0 -0:30', what: 'Set the serving line (fish, bread, sides, hot sauce, lemon), drinks table on ice, to-go containers stacked' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: fryer at temperature and attended, drinks out, plates staged' },
+      { when: 'T0', what: 'Doors: fryer at temperature and attended, drinks out, plates staged' },
       // The outlet for `ff_spread_word` (T-10d), which sets a price and takes
       // pre-orders. That intake had no day-of counterpart, so a host who sold
       // plates was left to improvise the handover and the money in the middle

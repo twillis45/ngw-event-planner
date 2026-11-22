@@ -161,7 +161,7 @@ const lowCountryBoil = {
       // a boil that everybody assumes somebody else took, and the strip is the
       // one nobody volunteers for once the eating is done. Naming a pair at the
       // start is what makes the wind-down beat land on a person.
-      { when: 'T0 +5m', what: 'Doors: table papered and taped down by two people before anyone arrives, drinks on ice, pot on and attended' },
+      { when: 'T0', what: 'Doors: table papered and taped down by two people before anyone arrives, drinks on ice, pot on and attended' },
       { when: 'T0 +45m', what: 'The dump: everything onto the table at once, butter and sauce down the line' },
       { when: 'T0 +1:30', what: 'Second round for anyone still going; restock lemon and sauce' },
       { when: 'T0 +2:15', what: 'Sides and bread out' },

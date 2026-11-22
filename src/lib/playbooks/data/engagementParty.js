@@ -174,7 +174,7 @@ const engagementParty = {
       { when: 'T0 -10m', what: 'Pre-pour a tray of welcome drinks; light candles; first batch of hot apps in the oven' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: welcome drinks poured, both families introduced to each other' },
+      { when: 'T0', what: 'Doors: welcome drinks poured, both families introduced to each other' },
       { when: 'T0 +30m', what: 'Passed bites while everyone lands' },
       { when: 'T0 +1h', what: 'The toast: whoever’s hosting, then a parent from each side' },
       { when: 'T0 +1:30', what: 'Food out' },

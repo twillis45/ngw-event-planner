@@ -222,7 +222,7 @@ const newYearsEveParty = {
       { when: 'T0 -0:45', what: 'Midnight station final check: flutes out, glasses-per-guest counted, the toast spot cleared, balloon drop rigged if there is one' },
     ],
     program: [
-      { when: 'T0 +15m', what: 'Doors: coats, first drinks, the evening spread open' },
+      { when: 'T0', what: 'Doors: coats, first drinks, the evening spread open' },
       { when: 'T0 +1h', what: 'The party proper: music up, spread replenished, the room mixing' },
       { when: 'T0 +2h', what: 'Pour crew recruited and briefed; midnight wave moved from refrigerator to oven-ready; around eleven on the default nine-o-clock doors' },
       { when: 'T0 +2:40', what: 'Pouring starts at the station — every flute filled ahead of the gather, spares held back' },

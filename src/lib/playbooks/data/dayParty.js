@@ -156,7 +156,7 @@ const dayParty = {
       { when: 'T0 -1h', what: 'Hang decor + the photo wall in the theme palette, fill coolers/tubs with ice, lay out cups + water station, soundcheck' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: DJ on, bar open, the room still bright' },
+      { when: 'T0', what: 'Doors: DJ on, bar open, the room still bright' },
       { when: 'T0 +1h', what: 'First set — build it, don’t peak yet' },
       { when: 'T0 +2h', what: 'Food out while the floor rests' },
       { when: 'T0 +3h', what: 'Peak: the set everyone came for' },

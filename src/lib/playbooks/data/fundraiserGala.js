@@ -241,7 +241,7 @@ const fundraiserGala = {
       { when: 'T0 -1h', what: 'Brief every volunteer on their station; brief the bartenders; confirm the hard-out time with the venue' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors and registration: card captured at check-in, paddles issued, guests into the reception' },
+      { when: 'T0', what: 'Doors and registration: card captured at check-in, paddles issued, guests into the reception' },
       { when: 'T0 +15m', what: 'Reception and silent auction bidding open; sponsors visible; the room fills' },
       { when: 'T0 +1h', what: 'Room called to dinner; guests seated to the chart' },
       { when: 'T0 +1:30', what: 'Welcome and the thank-you to sponsors, by name and briefly' },

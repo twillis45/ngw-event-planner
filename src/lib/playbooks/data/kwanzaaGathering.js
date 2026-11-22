@@ -145,7 +145,7 @@ const kwanzaaGathering = {
       { when: 'T0 -0:45', what: 'Set the food spread + serving dishes; fill the unity cup for the libation; cue the music low; set out trash + recycling bins' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Gather: greet everyone, the kinara set and ready' },
+      { when: 'T0', what: 'Gather: greet everyone, the kinara set and ready' },
       { when: 'T0 +20m', what: 'Libation and the greeting — Habari gani' },
       { when: 'T0 +30m', what: 'Light the candle for tonight’s principle and speak on it' },
       { when: 'T0 +45m', what: 'The meal: blessing, then serve, elders first' },

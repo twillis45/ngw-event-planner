@@ -157,7 +157,7 @@ const juneteenthCookout = {
       { when: 'T0 -0:30', what: 'Set out warm mains + sides in waves, dessert/red-table staged, to-go containers nearby, trash + recycling bins out' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: red drinks out, music on, flag or display where people see it' },
+      { when: 'T0', what: 'Doors: red drinks out, music on, flag or display where people see it' },
       { when: 'T0 +45m', what: 'The moment: read or say what the day is, however your family does it' },
       { when: 'T0 +1h', what: 'Blessing, then the meal — elders first' },
       { when: 'T0 +2h', what: 'Music, games, and the visiting' },

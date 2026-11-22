@@ -213,7 +213,7 @@ const holidayParty = {
       { when: 'T0 -55m', what: 'Set the entry: coat rack + hangers, name-tag table, welcome-drink tray; brief the bartender on pour control + cut-off' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: coats, first drink, music on' },
+      { when: 'T0', what: 'Doors: coats, first drink, music on' },
       { when: 'T0 +45m', what: 'Food out — buffet keeps the room moving better than a seated meal' },
       { when: 'T0 +1:30', what: 'The program: the toast, the thanks, any awards' },
       { when: 'T0 +2h', what: 'Gift exchange if you’re doing one — set the rules before you start' },

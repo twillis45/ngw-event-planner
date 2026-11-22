@@ -283,7 +283,7 @@ const thanksgivingHosting = {
       { when: 'T0 -0:30', what: 'Mash finished and held warm; gravy finished with the drippings; rolls in for their ten minutes' },
     ],
     program: [
-      { when: 'T0 +10m', what: 'Arrivals: coats, first drinks, travelers landed and settled; helpers given real jobs away from the stove' },
+      { when: 'T0', what: 'Arrivals: coats, first drinks, travelers landed and settled; helpers given real jobs away from the stove' },
       { when: 'T0 +20m', what: 'Arriving dishes landed, labeled, and slotted into the oven map; serving spoons matched to dishes' },
       { when: 'T0 +1h', what: 'Dinner: everything to the table at once — carve, sauce boats out, sides in their places, and sit down yourself' },
       { when: 'T0 +1:45', what: 'Seconds round; kids table check; the thankful-for moment if your table does one' },

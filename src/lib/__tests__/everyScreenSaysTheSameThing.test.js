@@ -422,18 +422,11 @@ agree('dates · a run-of-show row\'s calendar day falls inside the event', {
   }
 });
 
-// D-15: Date & time's "guests arrive" and the invite say 6:00 PM; the run of
-// show's arrival beat says 6:05 PM. Birthday and Repast author their doors /
-// family-arrives beat at 'T0 +5m' (playbooks/data/birthday.js:181,
-// repast.js:272), so no row of the day sheet sits at the start time.
-const D15 = 'D-15 arrival beat authored at start + 5 min';
+// D-15 (fixed 11/22/2026, #235): Date & time's "guests arrive" and the invite
+// said 6:00 PM; the run of show's arrival beat said 6:05 PM, because 35
+// playbooks authored their doors / family-arrives beat at 'T0 +5m'. Those
+// beats now sit at 'T0' (theDoorsOpenAtTheStartTime.test.js pins the corpus).
 agree('dates · a host start time is on the run of show', {
-  'ev-x-repast': D15, 'var-headcount-plain': D15, 'var-headcount-rows': D15, 'var-roster': D15,
-  'var-roster-all-replied': D15, 'var-budget-none': D15, 'var-budget-total': D15, 'var-budget-rows': D15,
-  'var-budget-over': D15, 'var-caterer-picked': D15, 'var-caterer-quoted': D15, 'var-caterer-booked': D15,
-  'var-informal-vendors': D15, 'var-multi-day': D15, 'var-destination': D15, 'var-funeral-home': D15,
-  'var-backyard-city': D15, 'var-home-street': D15, 'var-diets-array': D15, 'var-plusone-needs': D15,
-  'var-veg-and-vegan': D15, 'var-host-field': D15,
 }, (ev) => {
   const w = eventStartLabel(ev);
   if (!w || w.kind !== 'exact' || !/^\d{1,2}:\d{2}$/.test(String(ev.startTime || ''))) return;

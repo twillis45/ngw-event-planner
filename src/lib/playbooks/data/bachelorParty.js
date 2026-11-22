@@ -133,7 +133,7 @@ const bachelorParty = {
       { when: 'T0 -0:30', what: 'Brief the crew on the plan + the buddy/point-person + the ride-home plan; start the playlist' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Everyone gathers at the meeting point; confirm the headcount before you move' },
+      { when: 'T0', what: 'Everyone gathers at the meeting point; confirm the headcount before you move' },
       { when: 'T0 +45m', what: 'First activity — the thing he actually asked for' },
       { when: 'T0 +2h', what: 'Food, and water alongside it' },
       { when: 'T0 +3:30', what: 'The main event of the night' },
