@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 22, 2026 (late morning) — private data stays private, rows open what they do
+
+**A guest's invite no longer carries the host's private stay list, and the family link no longer prints money or guests' names.** Checklist rows now open where their act is done, and the crab order belongs to the Crab Feast alone. A seven-lane audit ranked what is left, with creation first.
+
 ## November 22, 2026 (morning, later) — the last of the Wanda loose ends
 
 **The ceremony items wait for the ceremony question.** Space takes the day-of contact the booked venue already lists. Picking the last open question keeps its Undo. A caterer's quote is not treated as groceries, and a caterer means no cooking steps. A host who cooks gets her guests' vegetarian main priced.
