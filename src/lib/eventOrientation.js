@@ -185,13 +185,16 @@ export function openPartsLabel(orientationResult) {
  * names while the remaining list is short enough to BE a list, the specified
  * count otherwise.
  */
-export function hairlineLabel(orientationResult) {
+export function hairlineLabel(orientationResult, opts = {}) {
   const o = orientationResult;
   if (!o) return '';
   const openCount = o.segments.filter((s) => !s.handled).length;
   const done = o.completedCount;
   const total = o.totalCount;
-  if (openCount > 0 && openCount <= 2) return `${done} of ${total} · ${openPartsLabel(o)}`;
+  // UNDER A CALM BOARD (Wanda audit follow-up, 11/22/2026). "5 of 7 · Food and
+  // Vendors open" sat under "All quiet": the parts are open and nothing in them
+  // is due, which is the board's own reason for being quiet. Said, not dropped.
+  if (openCount > 0 && openCount <= 2) return `${done} of ${total} · ${openPartsLabel(o)}${opts.calm ? ', nothing due yet' : ''}`;
   return `${done} of ${total} plan parts handled`;
 }
 

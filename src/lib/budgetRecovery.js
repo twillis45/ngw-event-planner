@@ -130,8 +130,13 @@ export function buildBudgetRecoveryPlan(event, priceFactor) {
     const plan = playbookFoodPlan(ev, priceFactor ? { priceFactor } : undefined);
     const got = (ev.foodGot && typeof ev.foodGot === 'object') ? ev.foodGot : {};
     const list = (plan && Array.isArray(plan.list)) ? plan.list : [];
+    // A VENDOR'S QUOTE IS NOT A SHOPPING LINE (Wanda audit follow-up,
+    // 11/22/2026). With a caterer who quoted or booked (catererPriceOf), the
+    // catering line carries that vendor's figure (`quotedBy`). Trimming it is
+    // a conversation with the vendor, which the vendor `ask` below already
+    // offers, not a line to buy less of.
     const priced = list
-      .filter(i => i && !i.skipped && !got[i.id])
+      .filter(i => i && !i.skipped && !got[i.id] && !i.quotedBy)
       .map(i => ({ ...i, saving: i.locked != null ? num(i.locked) : mid(i.low, i.high) }))
       .filter(i => i.saving > 0)
       .sort((a, b) => b.saving - a.saving);

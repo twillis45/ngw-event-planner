@@ -256,6 +256,15 @@ describe('hairlineLabel — names when they help, the specified count when they 
       .toBe('1 of 3 · Date & time and Food open');
   });
 
+  // Wanda audit follow-up (11/22/2026): under "All quiet" the open parts are
+  // named as not due, which is why the board is quiet.
+  test('under a calm board, the named open parts say nothing is due yet', () => {
+    expect(hairlineLabel(o([seg('Date & time', false), seg('Food', false), seg('Place', true)]), { calm: true }))
+      .toBe('1 of 3 · Date & time and Food open, nothing due yet');
+    expect(hairlineLabel(o([seg('Date & time', false), seg('Food', false), seg('Budget', false)]), { calm: true }))
+      .toBe('0 of 3 plan parts handled');
+  });
+
   test('THREE open falls back to the count — names stop being a list', () => {
     expect(hairlineLabel(o([seg('Date & time', false), seg('Food', false), seg('Budget', false)])))
       .toBe('0 of 3 plan parts handled');

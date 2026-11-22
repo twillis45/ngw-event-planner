@@ -32,13 +32,21 @@ import { deriveEventPhaseProgress } from '../phaseProgress';
 import { orientation } from '../eventOrientation';
 import { STAY_FROM_CONFIRMATION } from '../lodgingIntel';
 
-const NOW = new Date(2026, 7, 6, 9, 0, 0);
+// ONE CLOCK FOR BOTH SIDES (11/22/2026). NOW was pinned to Aug 6, 2026 for the
+// host side while the engine read the real date (some of it captured at module
+// load, before any fake timer), and the event was a fixed 2027-06-20. Once the
+// real date reached 210 days out, the engine raised the lodging call the host
+// side (still on Aug 6) did not: red in CI's UTC+14 run from 11/22/2026, and in
+// UTC from 11/23. Both sides now read the real date, and the event keeps the
+// distance it was written at (318 days out, a 4-night trip).
+const NOW = new Date();
+const isoIn = (d) => { const x = new Date(NOW); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
 
 // The recovered real event's facts (id anonymised — the facts are the fixture).
 const recovered = (extra) => ({
   id: 'parity-dest', type: 'Birthday', name: 'A destination birthday',
   isDestination: true, venueCity: 'Santa Fe', venueState: 'NM',
-  date: '2027-06-20', endDate: '2027-06-24',
+  date: isoIn(318), endDate: isoIn(322),
   guestMode: 'count', guestEstimate: 5, guestCount: 5, totalBudget: 2000,
   budget: [], guests: [], vendors: [], timeline: [],
   foodChoices: { sourcing: 'host cooks' },

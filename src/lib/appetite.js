@@ -10,6 +10,8 @@
 // A vegetarian eats NONE of the protein — a full subtraction, not a discount. A kid
 // eats about 40% of an adult's share. Both engines now ask these two functions.
 
+import { dietCountsFor } from './dietRows';
+
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 /** Kids eat ~40% of an adult's protein share. A grounded catering heuristic; the crab
@@ -26,20 +28,16 @@ const attending = (event) =>
 
 /**
  * Vegetarians + vegans among the people actually coming.
- * The host's explicit `dietCounts` tally WINS when set; the roster fills in only when
- * no manual tally exists (so the invite's diet picks size the food on their own).
+ * Read through the ONE dietary count, dietCountsFor (Wanda audit follow-up,
+ * 11/22/2026): the host's own tally wins for any tag she gave a number to
+ * (zero included), and the guest rows fill in every other tag, in roster AND
+ * headcount mode. This reader used to keep its own copy of that rule, reading
+ * rows in roster mode only, so a headcount host whose rows said "Vegetarian"
+ * saw "Vegetarian 1" under Dietary needs and no vegetarian main priced.
  */
 export function vegCount(event) {
-  const ev = event || {};
-  const dietCounts = (ev.dietCounts && typeof ev.dietCounts === 'object') ? ev.dietCounts : {};
-  const cnt = (k) => Math.max(0, Math.round(num(dietCounts[k])));
-  const manual = cnt('Vegetarian') + cnt('Vegan');
-  if (manual > 0) return manual;
-  if (!isRosterMode(ev)) return 0;
-  return attending(ev).filter((g) => {
-    const hay = [g.meal, g.needs, ...(Array.isArray(g.diets) ? g.diets : [])].filter(Boolean).join(' ').toLowerCase();
-    return /\bvegan\b|vegetarian|veggie/.test(hay);
-  }).length;
+  const dc = dietCountsFor(event || {});
+  return Math.max(0, Math.round(num(dc.Vegetarian))) + Math.max(0, Math.round(num(dc.Vegan)));
 }
 
 /**

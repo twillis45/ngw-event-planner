@@ -15,6 +15,7 @@
 // (currently: never, until that graph is authored), never invented here.
 
 import { getVendorCOIState } from './vendorIntelligence';
+import { normalizeCategory } from './vendorAccountability/playbooks.js';
 
 // Category (from vendorCategoriesByType.js / the add-vendor picker) -> workstream.
 // Deliberately conservative: categories not listed fall into 'other' rather than
@@ -87,6 +88,16 @@ export const BOOKED_STATUSES = Object.freeze(new Set(['Confirmed', 'Booked', 'Pa
 // Status only; surfaces with an EXTRA concern (e.g. unpaid deposit) layer it on.
 export function isVendorBooked(vendor) {
   return !!vendor && BOOKED_STATUSES.has(vendor.status);
+}
+
+// ── THE BOOKED VENDOR OF A KIND, ONCE (11/22/2026) ───────────────────────────
+// A booked, hired vendor whose category normalizes to `key` ('venue',
+// 'catering'), or null. Moved here from playbooks/index.js so the place checks
+// can read the same booked venue the venue call settles from without importing
+// the playbook engine (which imports them).
+export function bookedVendorIn(event, key) {
+  return ((event && Array.isArray(event.vendors)) ? event.vendors : [])
+    .find((v) => isHiredVendor(v) && isVendorBooked(v) && normalizeCategory(String(v.category || '')) === key) || null;
 }
 
 // ── WHO GETS A RECONFIRM (11/21/2026) ────────────────────────────────────────

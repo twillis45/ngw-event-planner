@@ -86,7 +86,7 @@ import { expectedFromPlanned, attendanceShift, implausibleGuestNote } from '../a
 import { SOURCING_TIERS, DEFAULT_SOURCING, sourcingTier, sourcingFactor, isProteinItem, canonicalProteinPrice, nonProteinFactor, extraSupplyStores, canonicalSubstitutes } from '../sourcing';
 import { resolveEffectiveItem } from '../effectiveItem'; // FOOD-2A: read-only normalized projection of `list`
 import { buildCrabPlan } from '../crabPlan';
-import { isVendorBooked } from '../workstreams';
+import { isVendorBooked, bookedVendorIn } from '../workstreams';
 import { crabsPerPicker, crabsPerBushel } from '../crabServing';
 import { kidCount, vegCount, KID_PROTEIN_FACTOR } from '../appetite';
 import { getCompressionLevel, getStandardLeadProvenance, isGroundedLead } from '../workflowCompression';
@@ -939,8 +939,6 @@ function purchaseGate(p, playbook, gc, di) {
 // isVendorBooked — Contracted / Deposit Paid / Confirmed / Booked / Paid — so a
 // vendor still Considering or Quoted settles nothing.
 const FOOD_HANDLING_DECISION_IDS = new Set(['sourcing', 'food_style', 'food_source', 'food', 'food-model', 'food_model', 'hosting_model']);
-const bookedVendorIn = (event, key) => ((event && Array.isArray(event.vendors)) ? event.vendors : [])
-  .find((v) => v && !v.isInformal && isVendorBooked(v) && normalizeCategory(String(v.category || '')) === key) || null;
 const vendorStatusWord = (v) => String((v && v.status) || 'booked').trim().toLowerCase();
 // The caterer whose price stands for the food: a booked catering vendor with a
 // cost, else one marked Quoted with a cost. Considering, or no price, is not a
@@ -3382,8 +3380,14 @@ export function playbookDayOfChecklist(event) {
   // sources on every element. The Day showed only the generic safety floor and
   // said "we have no day-of list written". Only elements the protocol marks as a
   // days-lead item are added, in its own words.
+  // ASKED ONCE, NEVER PRESUMED (owner, 11/22/2026): the same answer the run of
+  // show's ceremony beat reads. Unanswered or "Held separately", the flag and
+  // the Retirement Order are not this party's to check.
   const mil = (() => {
-    try { const m = militaryRetirementContext(event); return m && m.authored && Array.isArray(m.protocol) ? m : null; } catch (_e) { return null; }
+    try {
+      if (officialCeremonyAnswer(event) !== 'this-party') return null;
+      const m = militaryRetirementContext(event); return m && m.authored && Array.isArray(m.protocol) ? m : null;
+    } catch (_e) { return null; }
   })();
   const milItems = mil
     ? mil.protocol.filter((p) => p && p.id && p.label && p.lead === 'days').map((p) => ({ id: `mil_${p.id}`, label: p.label, detail: p.note || '', severity: 'med' }))
@@ -5837,7 +5841,9 @@ export function playbookFoodPlan(event, opts = {}) {
   // wellington. Falls back to a real, appetizing default, never a placeholder.
   // (dietCounts/dietCnt/vegN are hoisted above, near proteinGuests — same values, no
   // re-declaration here; the protein base already nets these guests out.)
-  if (vegN > 0) {
+  // A caterer cooks for every guest, the vegetarians included (the same gate
+  // hostCooksIt reads): no grocery main on top of the catering line.
+  if (vegN > 0 && !_foodOffPlate) {
     const vegDish = (typeof playbook.vegMain === 'string' && playbook.vegMain.trim())
       ? playbook.vegMain.trim()
       : 'Stuffed peppers + grilled veg platter';
@@ -6196,7 +6202,10 @@ export function playbookFoodPlan(event, opts = {}) {
     // cost so the UI shows each option's re-priced "~$X ribs".
     sourcing,
     sourcingKey,
-    sourcingTiers: SOURCING_TIERS,
+    // A caterer brings the proteins (the same gate hostCooksIt reads, Wanda
+    // audit follow-up 11/22/2026): there is nothing for a sourcing tier to
+    // re-price, so the "How it's sourced" card is not offered.
+    sourcingTiers: _foodOffPlate ? [] : SOURCING_TIERS,
     foodLow: Math.max(0, Math.round(sum('low') / 5) * 5),
     foodHigh: Math.max(0, Math.round(sum('high') / 5) * 5),
     // Cost PER HEAD — both totals are now priced at the same ceiling headcount (see

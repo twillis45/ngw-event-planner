@@ -101,7 +101,11 @@ describe('Ceremony: asked once, the answer decides', () => {
 
   test('the one question, in the event’s words, with its two answers', () => {
     const st = unresolvedBlockerStages(buildExperienceContext(ev(), null, 1)).find((x) => x.blockerType === 'official-ceremony');
-    expect(st.what).toBe('Is the official Army retirement ceremony part of this party, or held separately?');
+    // The headline IS the question; the body says what the answer decides
+    // instead of asking it a second time (owner's phone, live #224, 11/22/2026).
+    expect(st.nextDecision).toBe('Is the official Army retirement ceremony part of this party?');
+    expect(st.what).not.toMatch(/part of this party\?|or held separately\?/);
+    expect(st.what).toMatch(/protocol/);
     expect(st.fieldKey).toBe('officialCeremony');
     expect(st.options.map((o) => o.value)).toEqual(['this-party', 'separate']);
   });

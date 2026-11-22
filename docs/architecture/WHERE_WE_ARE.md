@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 22, 2026 (morning, later) — the last of the Wanda loose ends
+
+**The ceremony items wait for the ceremony question.** Space takes the day-of contact the booked venue already lists. Picking the last open question keeps its Undo. A caterer's quote is not treated as groceries, and a caterer means no cooking steps. A host who cooks gets her guests' vegetarian main priced.
+
 ## November 22, 2026 (morning) — Wanda's night as she wrote it, and every screen counting the same
 
 **A full walk through the Wanda sample found 39 problems, and they are fixed.**
