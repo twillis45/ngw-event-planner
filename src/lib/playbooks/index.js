@@ -1701,8 +1701,11 @@ export function playbookChecklist(event, asOf) {
     // Kids gate — a task tagged whenKids appears only when kids are actually coming.
     if (t.whenKids && !kidsComing) continue;
     // Caterer-action gate — drop booking/headcount-to-caterer tasks when the host cooks.
-    // Keep decision-framing tasks ("…or confirm the host-cooks plan", "vs a caterer").
-    if (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy)\b/i.test(t.label)) continue;
+    // Keep decision-framing tasks ("…or confirm the host-cooks plan", "vs a caterer"),
+    // and a step that also offers the do-it-yourself path ("…or plan the passed
+    // bites + grazing table yourself"): with no caterer, that half IS the work
+    // (Day Party, #220 Open, 11/22/2026). Its caterer and truck picks rename it.
+    if (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label)) continue;
     // ── THE AIR-TRAVEL FLOOR REACHES THE CHECKLIST (2026-09-23) ─────────────
     // The floor was built into `playbookMilestones` and stopped there. Measured:
     // `playbookMilestones` has exactly one consumer, `playbookAreaNextStep`,
