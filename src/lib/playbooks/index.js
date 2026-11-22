@@ -5841,7 +5841,9 @@ export function playbookFoodPlan(event, opts = {}) {
   // wellington. Falls back to a real, appetizing default, never a placeholder.
   // (dietCounts/dietCnt/vegN are hoisted above, near proteinGuests — same values, no
   // re-declaration here; the protein base already nets these guests out.)
-  if (vegN > 0) {
+  // A caterer cooks for every guest, the vegetarians included (the same gate
+  // hostCooksIt reads): no grocery main on top of the catering line.
+  if (vegN > 0 && !_foodOffPlate) {
     const vegDish = (typeof playbook.vegMain === 'string' && playbook.vegMain.trim())
       ? playbook.vegMain.trim()
       : 'Stuffed peppers + grilled veg platter';

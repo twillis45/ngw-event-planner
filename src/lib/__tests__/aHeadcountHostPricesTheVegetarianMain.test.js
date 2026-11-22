@@ -36,6 +36,15 @@ describe('the vegetarian main reads the one dietary count', () => {
     expect(line.high).toBeGreaterThan(0);
   });
 
+  // The caterer cooks (#224's gate, theCatererCooks): the quote covers the
+  // vegetarian guests too, so no grocery main is added on top of it. Found by
+  // wandasMoneyIsOneAnswer: the Spread read "$1,506–$1,512" over a $1,500 quote.
+  test('under a caterer, no grocery vegetarian main on top of the quote', () => {
+    const ev = wanda({ foodChoices: { food_style: 'Drop-off catering / buffet' } });
+    expect(vegCount(ev)).toBe(1);
+    expect(vegMain(ev)).toBeUndefined();
+  });
+
   test('her own tally still wins, zero included', () => {
     expect(vegCount(cooks({ dietCounts: { Vegetarian: 3 } }))).toBe(3);
     expect(vegCount(cooks({ dietCounts: { Vegetarian: 0 } }))).toBe(0);
