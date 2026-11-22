@@ -10370,8 +10370,12 @@ export default function HostShellV2() {
     // place (the kind of place, not a booked venue), shown on the dinner sheet
     // and never re-asked. A type with a celebration gets the record even with
     // no place said, so the invite knows the dinner is its own moment.
+    // A night she named by its holiday ("New Year's Eve trip … Dec 30 – Jan 2",
+    // owner 11/22/2026: "trip wins") is her pick, and it is what gives a Group
+    // Trip its dinner — so it is read before asking whether one applies.
     try {
-      if (celebrationApplies(ev)) ev.celebration = celebrationFieldsToPersist(smartText).celebration || {};
+      const said = celebrationFieldsToPersist(smartText, parsed).celebration || {};
+      if (celebrationApplies({ ...ev, celebration: said })) ev.celebration = said;
     } catch (_e) { /* the dinner sheet asks what it must */ }
     try { ev.timeline = (playbookChecklist(ev) || []).map(r => ({ id: r.id, week: r.week || '', leadDays: r.leadDays != null ? r.leadDays : null, task: r.task || '', done: false, owner: '', category: r.category || '' })); } catch {}
     // A FOOD SHE NAMED IS ON THE MENU (GOLD-05, 11/5/2026). One the playbook

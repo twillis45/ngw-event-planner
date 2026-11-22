@@ -87,6 +87,11 @@ export const PARSER_FIELDS = [
   // say which ("a long weekend", "July 4th weekend", a trip with only a
   // start). A question owed, never a date; see aMultiDayTripIsHeardAtCreation.
   'datesToConfirm',
+  // `celebrationNight` and `celebrationOccasion` added 2026-11-22 (owner
+  // ruling "trip wins"): a trip whose days include a holiday it is named for
+  // ("New Year's Eve trip … Dec 30 – Jan 2") is a Group Trip, and that night is
+  // its celebration dinner. See aHolidayInsideATripIsTheTripsNight.
+  'celebrationNight', 'celebrationOccasion',
   // `nights` and `lodgingKind` added 2026-09-25, from a host-reported parse:
   // "50th birthday nov 2027 8 couples 5 nights Disneyland 2 excursions airbnb
   // accomodations". Measured, every duration phrase was discarded unless the

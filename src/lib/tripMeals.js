@@ -81,7 +81,17 @@ export function tripIsMultiDay(event) {
 /** Does this event carry a celebration dinner? `pb` is the event's playbook. */
 export function celebrationAppliesWith(event, pb) {
   if (!tripIsMultiDay(event)) return false;
+  // A trip has no single moment of its own, unless she named one inside it
+  // ("New Year's Eve trip", owner 11/22/2026: "trip wins"): then that night is
+  // the trip's celebration dinner.
+  if (celebrationOccasion(event)) return true;
   return !!(pb && !NO_CELEBRATION_FAMILIES.has(pb.family));
+}
+
+/** The holiday she named the trip's night by ("New Year’s Eve"), or null. */
+export function celebrationOccasion(event) {
+  const c = event && event.celebration && typeof event.celebration === 'object' ? event.celebration : {};
+  return String(c.occasion || '').trim() || null;
 }
 
 /** The trip's days: { iso, index (1-based), label "Mon, Jun 14", short "Mon 14", role }. */
@@ -138,6 +148,8 @@ export function celebrationTitle(event) {
   const ev = event || {};
   const name = String(ev.name || '').trim();
   const type = String(ev.type || '').trim();
+  const occasion = celebrationOccasion(ev);
+  if (occasion) return `${occasion} dinner`;
   const words = [type, type.replace(/\s+party$/i, '')].filter(Boolean);
   let stem = name;
   for (const w of words) stem = stem.replace(new RegExp(`\\s*\\b${escapeRe(w)}\\s*$`, 'i'), '').trim();
@@ -170,10 +182,17 @@ export function heardCelebrationPlace(text) {
   return article === 'the' ? `the ${words}` : words;
 }
 
-/** What creation writes for the dinner: only what the sentence said. */
-export function celebrationFieldsToPersist(text) {
+/**
+ * What creation writes for the dinner: only what the sentence said. `heard` is
+ * the parser's result; its `celebrationNight` is a night she named by its
+ * holiday ("New Year's Eve trip … Dec 30 – Jan 2" → Dec 31), stored as her pick.
+ */
+export function celebrationFieldsToPersist(text, heard = {}) {
   const place = heardCelebrationPlace(text);
-  return place ? { celebration: { place } } : {};
+  const night = heard && ISO.test(String(heard.celebrationNight || '')) ? heard.celebrationNight : null;
+  const occasion = night && heard.celebrationOccasion ? String(heard.celebrationOccasion) : null;
+  const c = { ...(place ? { place } : {}), ...(night ? { night } : {}), ...(occasion ? { occasion } : {}) };
+  return Object.keys(c).length ? { celebration: c } : {};
 }
 
 /** Kitchen, as the host told it through "How are guests staying?". */
