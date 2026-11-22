@@ -213,7 +213,7 @@ import { parseStartMinutes } from '@app/lib/eventWhen';
 import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
 import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
-import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt, menuChoicesTally } from '@app/lib/playbooks';
+import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt, menuChoicesTally, menuBoardRowSub } from '@app/lib/playbooks';
 import InviteToTheList from './InviteToTheList';
 import NudgeTheList from './NudgeTheList';
 import { takeEventLink, isOwnEvent } from '@app/lib/eventLink';
@@ -15067,7 +15067,7 @@ export default function HostShellV2() {
                     // the open menu questions while it lands on Plan.
                     ? { key: 'food', label: 'The spread & shopping', sub: (() => {
                       const k = foodSheetKind(event, foodPlan);
-                      if (k === 'foodplan') return 'the menu · ' + ((openFoodChoices(event, foodPlan) || []).length) + ' to decide';
+                      if (k === 'foodplan') return menuBoardRowSub(event, foodPlan); // one count with the hero (D-12)
                       return 'food & drinks · ' + foodPlan.boughtCount + ' of ' + foodPlan.itemCount + ' bought';
                     })(), go: openSpread } : null,
                   crab.relevant

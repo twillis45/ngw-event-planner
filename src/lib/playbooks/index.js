@@ -1045,6 +1045,18 @@ export function menuChoicesTally(event, plan, asOf) {
   return { shown, open, openNow, later: open.length - openNow.length, settled: shown.length - open.length, total: shown.length };
 }
 
+// ─── THE BOARD ROW COUNTS WHAT THE HERO COUNTS (audit 2 D-12, 11/22/2026) ────
+// "The spread & shopping — the menu · 3 to decide" sat under the hero's
+// "Decide what you're serving · 1 open": the row counted every open call,
+// parked ones too. One count — the tally the hero reads; parked calls are
+// named as later, never as due.
+export function menuBoardRowSub(event, plan, asOf) {
+  const t = menuChoicesTally(event, plan, asOf);
+  if (!t) return 'the menu';
+  if (!t.openNow.length && t.later > 0) return `the menu · ${t.later} for later`;
+  return `the menu · ${t.openNow.length} to decide${t.later > 0 ? ` · ${t.later} later` : ''}`;
+}
+
 // ─── "NOTED" SAYS ONLY WHAT IS TRUE (Wanda audit P1-14, 11/22/2026) ──────────
 // The receipt for "That's everyone — noted" said "the menu is good to go."
 // while three menu calls were still open. It names what is left, from the same

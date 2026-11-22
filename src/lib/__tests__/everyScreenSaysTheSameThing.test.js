@@ -559,25 +559,18 @@ agree('menu · hero "N open" = menuChoicesTally openNow', {}, (ev) => {
   expect(Number(m[1])).toBe(tally.openNow.length);
 });
 
-// D-12: the board's below-fold row "The spread & shopping — the menu · N to
-// decide" counts openFoodChoices (every open call) while the hero above it
-// counts the calls due now (menuChoicesTally.openNow). Wanda: hero "1 open",
-// row "3 to decide".
-const D12 = 'D-12 below-fold row counts parked calls';
-agree('menu · board row "the menu · N to decide" = hero "N open"', {
-  'ev-x-wanda': D12, 'ev-x-bachelorette': D12, 'ev-dmv-bachelorette': D12, 'var-headcount-plain': D12,
-  'var-headcount-rows': D12, 'var-roster': D12, 'var-roster-all-replied': D12, 'var-budget-none': D12,
-  'var-budget-total': D12, 'var-budget-rows': D12, 'var-budget-over': D12, 'var-caterer-picked': D12,
-  'var-caterer-quoted': D12, 'var-caterer-booked': D12, 'var-informal-vendors': D12, 'var-multi-day': D12,
-  'var-destination': D12, 'var-derived-start': D12, 'var-backyard-city': D12, 'var-home-street': D12,
-  'var-diets-array': D12, 'var-plusone-needs': D12, 'var-veg-and-vegan': D12, 'var-host-field': D12,
-  'var-wanda-roster': D12, 'var-wanda-total': D12,
-}, (ev) => {
+// D-12 (fixed): the board's below-fold row "The spread & shopping — the menu ·
+// N to decide" counted openFoodChoices (every open call, parked ones too)
+// while the hero above it counted the calls due now (menuChoicesTally.openNow).
+// Wanda: hero "1 open", row "3 to decide". The row's words now come from
+// menuBoardRowSub, which reads the hero's tally; parked calls say "later".
+agree('menu · board row "the menu · N to decide" = hero "N open"', {}, (ev) => {
   if (!isPre(ev)) return;
   const p = plan(ev);
   if (!p) return;
-  const row = (pb.openFoodChoices(ev, p) || []).length;
-  expect(row).toBe(pb.menuChoicesTally(ev, p, NOW).openNow.length);
+  const sub = pb.menuBoardRowSub(ev, p, NOW);
+  const m = /(\d+) to decide/.exec(sub);
+  expect(m ? Number(m[1]) : 0).toBe(pb.menuChoicesTally(ev, p, NOW).openNow.length);
 });
 
 agree('menu · decision board calls = hero openNow', {}, (ev) => {
