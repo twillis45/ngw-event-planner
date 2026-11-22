@@ -1453,6 +1453,12 @@ button{font-family:inherit}
 /* Soft and ghost stay flat: only the primary carries the lit gradient and its edge. */
 .cta.soft, .cta.ghost, .board > :not(.hero):not(.keep-ask) .cta{box-shadow:inset 0 1px 0 var(--sheen)}
 .cta.soft:hover, .board > :not(.hero):not(.keep-ask) .cta:hover{filter:none}
+/* ?elegant=0 IN DARK (ruling 31: none lit in dark; #220 Open, 11/22/2026). The
+   elegant hero's ask wears its dark soft tier above; the full board's hero card
+   (`.hero` without `.elegant`) kept the base gradient, so its ask stayed lit.
+   It wears the board cards' `.cta.soft` values. Light keeps it lit, the one. */
+:root[data-theme="dark"] .hero:not(.elegant) .cta:not(.ghost){background:var(--steel-tint); color:var(--ink); box-shadow:inset 0 1px 0 var(--sheen)}
+:root[data-theme="dark"] .hero:not(.elegant) .cta:hover{filter:none}
 .hc-row{margin-top:var(--sp-3); display:flex; gap:var(--gap-chip); flex-wrap:wrap}
 
 .later-row{

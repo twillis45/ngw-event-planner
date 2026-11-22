@@ -145,7 +145,8 @@ const walkBoard = async (page) => {
 };
 
 // ?elegant=0, the full board (11/21/2026): the hero's money ask "Use $2,200"
-// and the bundle card's "See all 3" below it were both lit. Same rule.
+// and the bundle card's "See all 3" below it were both lit. Same rule, and in
+// dark its hero ask is unlit like the elegant one (11/22/2026).
 for (const elegant of ['1', '0'])
 for (const theme of ['light', 'dark'])
 for (const state of STATES)
@@ -158,8 +159,9 @@ test(`the board shows at most one lit primary, and only in the hero — ${state.
   expect(lit.filter((f) => !f.hero).map((f) => f.label), 'lit primaries outside the hero (the board\'s lit button is the hero ask)').toEqual([]);
   const heroLit = lit.filter((f) => f.hero).map((f) => f.label);
   expect(heroLit.length, `lit primaries in the hero: ${heroLit.join(' | ')}`).toBeLessThanOrEqual(1);
-  // The soft tier is the elegant hero's (`.hero.elegant .cta`); the full board's
-  // hero card keeps its one lit ask in dark too.
-  if (theme === 'dark' && elegant === '1') expect(heroLit, 'the dark hero ask wears the soft tier (ruling 29)').toEqual([]);
+  // Ruling 31: none lit in dark, `?elegant=0` included (#220 Open, 11/22/2026:
+  // the full board's hero card kept its ask lit in dark). In light the hero's
+  // ask is the board's one lit button in both modes.
+  if (theme === 'dark') expect(heroLit, 'the dark hero ask wears the soft tier (rulings 29, 31)').toEqual([]);
   expect(together, 'two lit controls on screen at once').toEqual([]);
 });
