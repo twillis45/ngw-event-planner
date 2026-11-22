@@ -3075,6 +3075,9 @@ export function playbookCapacity(event) {
   };
   const items = [];
   for (const r of playbook.rentalsGap) {
+    // The same choice gate the spread and the checklist read: a caterer brings
+    // the warmers a host who cooks rents (Wanda audit P1-5, 11/22/2026).
+    if (r && r.whenChoice && !choiceShown(event, r.whenChoice)) continue;
     let factor = null, factorType = null;
     // Quantity comes from the ONE canonical source (resolveQuantity) so the
     // explainer/capacity number always matches the food-plan number. The
