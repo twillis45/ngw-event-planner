@@ -6195,6 +6195,9 @@ export default function HostShellV2() {
     // 'days' is the span-gated "Your days" door (sectionDirectory) — a second
     // honest door onto the space sheet's programme block, not a new surface.
     if (kind === 'days') { setSheet({ kind: 'days' }); return; }
+    // The spread's section door (the rail and Jump to a section) asks the one
+    // tab rule like every other generic door (owner: "Single sources").
+    if (kind === 'food') { openSpread(); return; }
     // Which door opened Messages travels with the sheet (messages_view_opened).
     setSheet(kind === 'messages' ? { kind, entry: 'section_list' } : { kind });
   };
@@ -7545,9 +7548,11 @@ export default function HostShellV2() {
   // rows as inert, cursor:default divs). Every allocation row lands on the
   // surface that actually prices it, in EITHER place these rows render.
   const supplGroupName = ((foodPlan && foodPlan.groups) || []).find(g => /suppl|paper|setup|gear/i.test(String(g)));
+  // Food and Drinks name the spread, not a tab, so they ask the tab rule
+  // (openSpread). Supplies opens its own shelf, which only Shop has.
   const GO_SPEND = {
-    food: () => setSheet({ kind: 'food' }),
-    drinks: () => setSheet({ kind: 'food' }),
+    food: () => openSpread(),
+    drinks: () => openSpread(),
     supplies: () => { if (supplGroupName) setFoodGroupsOpen(m => ({ ...m, [supplGroupName]: true })); setSheet({ kind: 'food' }); },
     space: () => setSheet({ kind: 'space' }),
     crabs: () => setSheet({ kind: 'crabs' }),
@@ -10934,7 +10939,8 @@ export default function HostShellV2() {
             <div className="srail-g" key={g.title}>
               <div className="shelf-label srail-t">{g.title}</div>
               {g.rows.map((r) => {
-                const here = sheet && sheet.kind === r.k;
+                // The spread is one door whichever tab it opened on.
+                const here = sheet && (sheet.kind === 'bringing' || sheet.kind === 'foodplan' ? 'food' : sheet.kind) === r.k;
                 return (
                   <button key={r.k} className={'srail-row' + (here ? ' on' : '')}
                     aria-current={here ? 'page' : undefined}
@@ -13706,7 +13712,9 @@ export default function HostShellV2() {
                         if (sec.route && routeSheet(sec.route)) return;
                         const k = String(sec.key || sec.label || '').toLowerCase();
                         if (/task|step|plan/.test(k)) setSheet({ kind: 'tasks', focus: null });
-                        else if (/get|shop|food|buy/.test(k)) setSheet({ kind: 'food', focus: null });
+                        // Route-less is "Shopping — all in hand": no line to land
+                        // on, so the spread opens on the tab the work is on.
+                        else if (/get|shop|food|buy/.test(k)) openSpread();
                         else if (/weather|rain/.test(k)) setSheet({ kind: 'rain' });
                         else if (/tomorrow|start|schedule/.test(k)) setStage('day');
                         else setSheet({ kind: 'tasks', focus: null });
@@ -20569,7 +20577,8 @@ export default function HostShellV2() {
               };
               const goAnswer = (route) => {
                 if (route === 'plan') { setStage('plan'); setSheet(null); return; }
-                if (['budget', 'food', 'guests', 'rain'].includes(route)) setSheet({ kind: route });
+                if (route === 'food') { openSpread(); return; }
+                if (['budget', 'guests', 'rain'].includes(route)) setSheet({ kind: route });
               };
               const examples = ['Will $2,000 cover it?', 'How much food do I need?', 'Am I ready?', 'Will it rain?'];
               return (
