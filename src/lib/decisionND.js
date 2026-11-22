@@ -14,7 +14,7 @@
 //
 //   NormalizedDecision = { id, options:[{value,label,note?}], proposed:{value,why}|null,
 //                          selected?:string|null, why?:string }
-import { playbookDecisionOptions, foodApproach, openFoodChoices } from './playbooks';
+import { playbookDecisionOptions, foodApproach, openFoodChoices, getPlaybook, decisionSettledByData } from './playbooks';
 import { decisionApproach } from './doItForMe';
 
 // A playbook `decision:*` board row → its authored options, notes and grounded
@@ -80,20 +80,31 @@ export function nextOpenFoodChoiceRow(event, boardRows, claimed) {
   }
   return null;
 }
+// A playbook with no food-approach lever may still author ITS OWN food call
+// (`foodCall: true` — Crab Feast's steam-or-order). That call stands in for the
+// generic trio, whose "A caterer handles it" contradicted the feast's run of
+// show (audit 2 lane A P1-5, lane C P0-7). Read from the playbook, not the
+// board, so a call the board files for later is still the one asked.
+function foodCallOf(event) {
+  const pb = (() => { try { return getPlaybook(event && event.type); } catch { return null; } })();
+  return (pb && Array.isArray(pb.decisions) && pb.decisions.find(d => d && d.foodCall === true)) || null;
+}
 export function foodDecisionND(event, guests, boardRows, claimed) {
   const picks = (event && event.foodChoices) || {};
-  const approachSettled = (id) => (id ? picks[id] != null : picks.sourcing != null);
+  const call = foodCallOf(event);
+  const approachSettled = (id) => (id ? picks[id] != null || !!(call && call.id === id && decisionSettledByData(event, call)) : picks.sourcing != null);
   try {
     const fa = foodApproach(event);
-    if (approachSettled(fa && fa.decisionId)) {
+    const leverId = (fa && fa.decisionId) || (call && call.id) || null;
+    if (approachSettled(leverId)) {
       const next = nextOpenFoodChoiceRow(event, boardRows, claimed);
       const nd = next ? boardDecisionND(event, next) : null;
       if (nd) return { ...nd, selected: null, ask: next.ask || null };
     }
-    if (fa && fa.decisionId) {
-      const row = (boardRows || []).find(x => x && x.id === fa.decisionId);
+    if (leverId) {
+      const row = (boardRows || []).find(x => x && x.id === leverId) || (call && call.id === leverId ? call : null);
       const nd = row ? boardDecisionND(event, row) : null;
-      if (nd) return { ...nd, selected: picks[fa.decisionId] || null, ask: row.ask || null };
+      if (nd) return { ...nd, selected: picks[leverId] || null, ask: row.ask || null };
     }
   } catch { /* fall through to the generic trio */ }
   const gn = Number(guests) || 0;

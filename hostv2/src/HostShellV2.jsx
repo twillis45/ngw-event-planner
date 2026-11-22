@@ -3221,7 +3221,10 @@ export default function HostShellV2() {
         : (((b && b.title) || 'Decided') + ' — set.'));
       return;
     }
-    const row = [...(decisionBoard.open || []), ...(decisionBoard.locked || [])].find(x => x && x.id === nd.id);
+    // A playbook's own food call (Crab Feast's steam-or-order) is asked as the
+    // food item even while the board files it for later, so its write path
+    // looks there too.
+    const row = [...(decisionBoard.open || []), ...(decisionBoard.locked || []), ...(decisionBoard.deferred || [])].find(x => x && x.id === nd.id);
     if (row) settleDecision(row, v);
   };
   // The canonical payload's write half — same dispatcher, reached through the

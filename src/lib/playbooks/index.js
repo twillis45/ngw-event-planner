@@ -956,6 +956,13 @@ export function catererPriceOf(event) {
 }
 export function decisionSettledByData(event, decision) {
   if (!event || !decision || !Array.isArray(decision.options) || !decision.options.length) return null;
+  // A GENERIC FOOD ANSWER ON FILE IS THIS CALL'S ANSWER (Crab Feast, audit 2
+  // lane A P1-5): "We'll cook it" is "Steam them myself". Data-declared
+  // (`fromSourcing`), and only an authored option.
+  if (decision.fromSourcing && event.foodChoices && event.foodChoices.sourcing != null) {
+    const mapped = decision.fromSourcing[String(event.foodChoices.sourcing)];
+    if (mapped && decision.options.includes(mapped)) return { pick: mapped, because: 'Your food answer' };
+  }
   if (FOOD_HANDLING_DECISION_IDS.has(decision.id)) {
     const opt = decision.options.find((o) => /\bcater/i.test(String(o)));
     const caterer = opt ? bookedVendorIn(event, 'catering') : null;
@@ -5310,7 +5317,7 @@ export function playbookFoodPlan(event, opts = {}) {
     .filter(isMenuDecision)
     .filter((d) => !DESTINATION_DECISION_IDS.has(d.id))
     .filter((d) => choiceShown(event, d.whenChoice))
-    .map((d) => ({ id: d.id, label: d.label, options: d.options, default: d.default, why: d.why || '', chosen: picks[d.id] || d.default }));
+    .map((d) => ({ id: d.id, label: d.label, options: d.options, default: d.default, why: d.why || '', chosen: picks[d.id] || d.default, ...(d.fromSourcing ? { fromSourcing: d.fromSourcing } : null) }));
 
   // Sprint 60F — make the spread REACT to the menu/sourcing choices. A purchase
   // tagged whenChoice:{id,in:[...]} appears only when the effective pick for that
