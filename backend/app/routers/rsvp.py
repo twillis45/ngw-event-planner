@@ -34,6 +34,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from ..db import get_pool
 from ..host_alerts import alert_host
+from ..outward import host_name_for
 from ..auth import require_planner
 
 router = APIRouter(tags=["rsvp"])
@@ -120,7 +121,28 @@ PUBLIC_EVENT_FIELDS = (
     # data the host wrote for guests; _resolve_event narrows each range to its
     # id / start / end, so nothing else the host keeps beside them leaks.
     "dateOptions",
+    # THE GUEST'S INVITE IS THE HOST'S PREVIEW (audit 2, lane E P0-3). Each is
+    # copy or a choice the host made FOR guests; none is a guest's data:
+    #   hostName       the invite's "Hosted by", computed (hostNameFor's rule)
+    #                  in _resolve_event, so a sample's `host` spelling counts.
+    #   deckLine       the line under the name she wrote for the invitation.
+    #   secondaryType  the second occasion the deck line reads ("Birthday").
+    #   venueStreet, venueZip, venueKind, venueConfirmed: the parts the one
+    #                  place line (venueFor.formatVenueAddress) is built from;
+    #                  the street joins venueAddress, already intentional above.
+    #   kidsPolicy, plusOnePolicy, collectAddresses: the reply rules, ONLY as
+    #                  the values the host app writes (_RULES); public_rsvp
+    #                  enforces the first two on every submit.
+    "deckLine", "secondaryType", "venueStreet", "venueZip", "venueKind", "venueConfirmed",
 )
+
+# The reply rules as the host app writes them (HostShellV2 invite rules). Any
+# other value is not a rule and is not shipped.
+_RULES = {
+    "kidsPolicy": {"adults_only", "kids_welcome"},
+    "plusOnePolicy": {"no_plus_ones", "plus_one_ok"},
+    "collectAddresses": {True},
+}
 
 # ── In-memory sliding-window rate limiter (mirrors routers/ai.py) ──────────────
 # Per-process (single-worker beta); swap for Redis if scaled horizontally.
@@ -357,6 +379,17 @@ async def _resolve_event(conn, rsvp_code: str):
         v = _narrow(k, data.get(k))
         if v:
             public[k] = v
+    host = host_name_for(data)
+    if host:
+        public["hostName"] = host[:MAX_NAME]
+    for k, allowed in _RULES.items():
+        v = data.get(k)
+        # `is True`, not `in`: 1 == True in Python, and a 1 is not her answer.
+        if (v is True and True in allowed) or (isinstance(v, str) and v in allowed):
+            public[k] = v
+    if data.get("recordKind") == "host_event":
+        # Only this value: an unnamed host event is at home (venueFor's kind rule).
+        public["recordKind"] = "host_event"
     # A start time the APP derived is not the host's hour (run 2, R2-23): a
     # guest is never handed it. The client's gate reads startTimeSource, which
     # this projection does not carry, so the derived hour stops here.
@@ -489,6 +522,14 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request, bac
         offered = [o["id"] for o in _public.get("dateOptions") or []]
         picks = [p for p in offered if isinstance(payload.date_picks, list) and p in payload.date_picks] or None
 
+        # THE HOST'S REPLY RULES ARE KEPT HERE, not only by the form (audit 2,
+        # lane E P0-3). The form hides what she ruled out; a stale page or a
+        # hand-made request can still send it. The reply is never lost over
+        # it: the ruled-out part is dropped, the rest is saved, and the answer
+        # says what was dropped and why.
+        rules = _reply_rules(_public, payload)
+        kids, plus_one, plus_one_meal, plus_one_needs, mailing = rules["values"]
+
         row = await conn.fetchrow(
             """
             insert into public.rsvp_submissions
@@ -526,10 +567,10 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request, bac
             payload.rsvp,
             _clip(payload.meal, MAX_MEAL),
             _clip(payload.needs, MAX_NEEDS),
-            _clip(payload.plus_one, MAX_NAME),
-            _clip(payload.plus_one_meal, MAX_MEAL),
-            _clip(payload.plus_one_needs, MAX_NEEDS),
-            int(payload.kids or 0),
+            plus_one,
+            plus_one_meal,
+            plus_one_needs,
+            kids,
             _clip(payload.note, MAX_NOTE),
             _clip_list(payload.allergens),
             _clip_list(payload.diets),
@@ -537,12 +578,37 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request, bac
             payload.picks_crabs,
             _clip(payload.phone, MAX_CONTACT),
             _clip(payload.email, MAX_CONTACT),
-            _clip(payload.mailing_address, MAX_ADDR),
+            mailing,
             _clip(payload.lodging_pick, MAX_KEY),
             picks,
         )
     background.add_task(alert_host, event_id, "rsvp", _clip(payload.name, MAX_NAME), payload.rsvp)
-    return {"ok": True, "submitted_at": row["submitted_at"].isoformat()}
+    out = {"ok": True, "submitted_at": row["submitted_at"].isoformat()}
+    if rules["dropped"]:
+        out["dropped"] = rules["dropped"]
+        out["notice"] = " ".join(rules["notices"])
+    return out
+
+
+def _reply_rules(public: dict, payload: "RsvpSubmit") -> dict:
+    """The reply as the host's rules allow it: (kids, plus_one, plus_one_meal,
+    plus_one_needs, mailing_address), what was dropped, and why."""
+    dropped, notices = [], []
+    kids = int(payload.kids or 0)
+    if public.get("kidsPolicy") == "adults_only" and kids:
+        kids = 0
+        dropped.append("kids")
+        notices.append("This party is adults only, so the kids weren’t added to your reply.")
+    plus = (_clip(payload.plus_one, MAX_NAME), _clip(payload.plus_one_meal, MAX_MEAL), _clip(payload.plus_one_needs, MAX_NEEDS))
+    if public.get("plusOnePolicy") == "no_plus_ones" and plus[0]:
+        dropped.append("plus_one")
+        notices.append("The host asked for no plus-ones, so your guest wasn’t added to your reply.")
+    if public.get("plusOnePolicy") == "no_plus_ones":
+        plus = (None, None, None)
+    # The mailing address is asked only when the host collects them; one sent
+    # anyway is not kept (it is a guest's home address she did not ask for).
+    mailing = _clip(payload.mailing_address, MAX_ADDR) if public.get("collectAddresses") is True else None
+    return {"values": (kids, *plus, mailing), "dropped": dropped, "notices": notices}
 
 
 # ── 2b. A GUEST'S OWN REPLY: read it back, or delete it (11/11/2026) ─────────
