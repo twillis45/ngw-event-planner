@@ -274,6 +274,9 @@ export function planHeadroomLine(money, isPast) {
   const m = money || {};
   const planned = Number(m.planned) || 0;
   if (!(planned > 0)) return null;
+  // After the day, the one verdict (afterSpendVerdict) speaks: no "under"
+  // without recorded spend, never under while the expected cost is over.
+  if (isPast) return afterSpendVerdict(m).line;
   const basis = isPast ? (Number(m.spent) || 0) : (Number(m.expected) || 0);
   const word = isPast ? 'spent' : 'expected';
   const est = !isPast && basis > (Number(m.committed) || 0) ? ' — some of it is still an estimate' : '';
@@ -286,4 +289,30 @@ export function planHeadroomLine(money, isPast) {
   return isPast
     ? `${fmt(-gap)} over the ${fmt(planned)} plan, ${word}.`
     : `Expected to run ${fmt(-gap)} over the ${fmt(planned)} plan${est}.`;
+}
+
+// ─── AFTER THE DAY: WHAT THE MONEY DID (audit 2 lane C P0-3, 11/22/2026) ─────
+// "Landed inside the $600 you planned" showed with nothing recorded as spent,
+// and Wanda read "Landed inside $5,000" against $5,263 expected. Over/under is
+// judged on EXPECTED cost (owner ruling D-03, expectedHeadroom); recorded spend
+// over the budget is over too. "Inside" needs recorded spend, and both bases
+// inside it. `money` is the shell's { planned, expected, committed, spent }.
+// null when no budget is set. state: over | inside | unrecorded.
+export function afterSpendVerdict(money) {
+  const m = money || {};
+  const planned = Number(m.planned) || 0;
+  if (!(planned > 0)) return null;
+  const spent = Number(m.spent) || 0;
+  const room = expectedHeadroom(m);
+  const overSpent = roundCurrency(spent - planned);
+  if (overSpent > 0) {
+    return { state: 'over', line: `Landed ${fmt(overSpent)} over the ${fmt(planned)} you planned. Final, not a warning.` };
+  }
+  if (room != null && room < 0) {
+    return { state: 'over', line: `Expected to land ${fmt(-room)} over the ${fmt(planned)} you planned${spent > 0 ? ` — ${fmt(spent)} recorded spent so far` : ''}.` };
+  }
+  if (!(spent > 0)) {
+    return { state: 'unrecorded', line: `Nothing was recorded as spent against the ${fmt(planned)} you planned.` };
+  }
+  return { state: 'inside', line: `Landed inside the ${fmt(planned)} you planned.` };
 }
