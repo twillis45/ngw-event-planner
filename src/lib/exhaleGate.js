@@ -91,7 +91,12 @@ export function mayExhale(checklistDone, nextAction) {
  *   counted from the SAME list that renders them.
  * @returns {{kind:string, count:number, label:string}|null}
  */
-export function calmVetoFor({ moneyWorry = null, overdueCount = 0 } = {}) {
+// AND A CALL STILL TO MAKE (audit 2 P1-3, 11/22/2026). "All quiet" and "The
+// plan is quiet" sat over Calls to make reading "Open now · 2 to settle": the
+// queue had gone quiet while the Calls board, one tap away, had not. `openCalls`
+// is the count the Calls sheet prints as "N to settle" (the decision board's
+// open rows), read once by the shell and passed here.
+export function calmVetoFor({ moneyWorry = null, overdueCount = 0, openCalls = 0 } = {}) {
   if (moneyWorry) return { kind: 'money', count: 1, label: 'money' };
   const n = Number(overdueCount) || 0;
   if (n > 0) {
@@ -103,6 +108,8 @@ export function calmVetoFor({ moneyWorry = null, overdueCount = 0 } = {}) {
       label: n === 1 ? '1 thing is past due' : `${n} things are past due`,
     };
   }
+  const c = Number(openCalls) || 0;
+  if (c > 0) return { kind: 'open-calls', count: c, label: c === 1 ? '1 call still to make' : `${c} calls still to make` };
   return null;
 }
 

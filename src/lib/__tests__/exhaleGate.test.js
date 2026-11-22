@@ -69,3 +69,17 @@ test('a fully confirmed roster still lets the host exhale — this is not a perm
   // invariant is "no calm while work is open", not "calm is unreachable".)
   expect(mayExhale(true, na)).toBe(!na);
 });
+
+// AUDIT 2 P1-3 / P0-5 (11/22/2026): "All quiet" and "The plan is quiet" sat
+// over Calls to make reading "Open now · 2 to settle" (NYE, Reunion, …). An
+// open call on the Calls board vetoes calm the same way a late step does, and
+// says what is open in one wording the shell does not re-author.
+test('an open call on the Calls board vetoes calm', () => {
+  const { calmVetoFor } = require('../exhaleGate');
+  expect(calmVetoFor({ openCalls: 2 })).toEqual({ kind: 'open-calls', count: 2, label: '2 calls still to make' });
+  expect(calmVetoFor({ openCalls: 1 }).label).toBe('1 call still to make');
+  expect(calmVetoFor({ openCalls: 0 })).toBeNull();
+  // A late step still speaks first: it is the more urgent truth.
+  expect(calmVetoFor({ overdueCount: 1, openCalls: 3 }).kind).toBe('overdue-steps');
+  expect(mayExhale(true, calmVetoFor({ openCalls: 1 }))).toBe(false);
+});

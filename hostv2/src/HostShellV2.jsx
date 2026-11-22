@@ -2665,6 +2665,10 @@ export default function HostShellV2() {
       return playbookDecisionBoard(event, undefined, profile) || { open: [], locked: [] };
     } catch { return { open: [], locked: [] }; }
   }, [event, profile]);
+  // IS ANY CALL STILL OPEN? ONE READER (audit 2 P0-5 / P1-3, 11/22/2026). The
+  // Calls sheet's "Open now · N to settle", the calm veto (hero calm, the
+  // completion beat, the next bar) and the all-clear payoff all read this.
+  const openCallsN = (decisionBoard.open || []).length;
   // "show the rest" for a paced calls board — mirrors queueOpen's expander pattern.
   const [callsOpen, setCallsOpen] = useState(false);
   // The open board AS THE HOST SEES IT — their pins floated, then the engine's
@@ -5129,6 +5133,7 @@ export default function HostShellV2() {
   const calmVeto = calmVetoFor({
     moneyWorry: (worries || []).find(w => w && String(w.category) === 'money') || null,
     overdueCount: overdueShown,
+    openCalls: openCallsN,
   });
   const mayBeCalm = mayExhale(listIsCalm, calmVeto);
 
@@ -5292,8 +5297,11 @@ export default function HostShellV2() {
     const total = phaseCues && Number(phaseCues.totalCount);
     if (done == null) return;
     if (partsPrevRef.current != null && done > partsPrevRef.current && total) {
+      // "The plan is quiet" only when it is (audit 2 P1-3): Reunion's beat said
+      // so directly above an open permit call. The veto names what is open.
+      const still = calmVeto ? (calmVeto.kind === 'money' ? 'Spending is past your number.' : calmVeto.label.charAt(0).toUpperCase() + calmVeto.label.slice(1) + '.') : 'The plan is quiet.';
       setBeat(done >= total
-        ? 'That was the last one — all ' + total + ' handled. The plan is quiet.'
+        ? 'That was the last one — all ' + total + ' handled. ' + still
         : 'Handled — ' + done + ' of ' + total + '.');
       const t = setTimeout(() => setBeat(null), 6000);
       partsPrevRef.current = done;
@@ -12181,19 +12189,29 @@ export default function HostShellV2() {
                   const isCoi = jc.kind === 'coi';
                   const cues = isConf ? ros.filter(r => r && r.time && r.label).slice(0, 5) : [];
                   const next = (queue && queue.length && !listIsCalm) ? queue[0] : null;
+                  // ONE BUNDLE IS NOT EVERY CALL (audit 2 P0-5): "All decided. Every
+                  // open call is made" showed over its own "Next: Note dietary needs"
+                  // and over Calls to make reading "Open now". The payoff claims the
+                  // whole plan only when nothing is open (openCallsN, the next card).
+                  const callsLeft = openCallsN > 0;
+                  const anythingOpen = !!next || callsLeft;
                   const nextLabel = next
                     ? 'Next: ' + String(next.title || 'your next step').replace(/\.+$/, '')
+                    : callsLeft ? 'See the ' + (openCallsN === 1 ? 'call' : 'calls') + ' still to make'
                     : 'Nothing else needs you right now';
                   return (
                     <div className={'allclear' + (solemn ? ' solemn' : '')} role="status">
                       <h2 className="ac-head">{solemn
-                        ? (isConf ? 'The day’s in order.' : isCoi ? 'Everyone’s cleared to help.' : 'It’s all settled.')
-                        : (isConf ? 'All untangled.' : isCoi ? 'All covered.' : 'All decided.')}</h2>
+                        ? (isConf ? 'The day’s in order.' : isCoi ? 'Everyone’s cleared to help.' : anythingOpen ? (jc.count === 1 ? 'That’s settled.' : 'Those are settled.') : 'It’s all settled.')
+                        : (isConf ? 'All untangled.' : isCoi ? 'All covered.' : anythingOpen ? (jc.count === 1 ? 'That’s decided.' : 'Those are decided.') : 'All decided.')}</h2>
                       <p className="ac-voice">{isConf
                         ? (cues.length ? 'Every vendor has its own hour now — here’s the day, in order.'
                                        : 'Every vendor has its own hour now — nothing’s fighting for setup.')
                         : isCoi ? 'Every vendor’s proof is on file — you’re clear to let them on-site.'
-                        : 'Every open call is made — each one has an answer now.'}</p>
+                        : anythingOpen
+                          ? (jc.count === 1 ? 'That call has its answer now.' : 'Each of those ' + jc.count + ' calls has an answer now.')
+                            + (callsLeft ? ' ' + calmVetoFor({ openCalls: openCallsN }).label.replace(/^./, (c) => c.toUpperCase()) + ' in Calls to make.' : '')
+                          : 'Every open call is made — each one has an answer now.'}</p>
                       {isConf && cues.length > 0 && (
                         <ul className="ac-tl">
                           {cues.map((c, i) => (
@@ -12207,9 +12225,9 @@ export default function HostShellV2() {
                       <div className="ac-bar" aria-hidden="true"><span /></div>
                       <div className="ac-meta">
                         <span className="ac-count">{jc.count} of {jc.count} · {isConf ? 'in sync' : isCoi ? 'on file' : 'decided'}</span>
-                        <span className="ac-clear">{isConf ? 'nothing clashing' : isCoi ? 'nothing missing' : 'nothing pending'}</span>
+                        <span className="ac-clear">{isConf ? 'nothing clashing' : isCoi ? 'nothing missing' : callsLeft ? openCallsN + ' still to make' : next ? 'more below' : 'nothing pending'}</span>
                       </div>
-                      <button className="ac-next" onClick={() => setJustCleared(null)}>{nextLabel}<span aria-hidden="true"> ›</span></button>
+                      <button className="ac-next" onClick={() => { setJustCleared(null); if (!next && callsLeft) setSheet({ kind: 'decisions' }); }}>{nextLabel}<span aria-hidden="true"> ›</span></button>
                     </div>
                   );
                 }
@@ -12330,6 +12348,11 @@ export default function HostShellV2() {
                       // than leaving the host to find it.
                       statusNode = <p className={'verdict' + (elegantMode ? '' : ' slipping')}>
                         {calmVeto.label.charAt(0).toUpperCase() + calmVeto.label.slice(1)} — still worth doing, or tick {calmVeto.count === 1 ? 'it' : 'them'} off below.
+                      </p>;
+                    } else if (listIsCalm && calmVeto && calmVeto.kind === 'open-calls') {
+                      // A QUIET QUEUE IS NOT A QUIET PLAN WHILE A CALL IS OPEN (audit 2 P1-3).
+                      statusNode = <p className="verdict">
+                        {calmVeto.label.charAt(0).toUpperCase() + calmVeto.label.slice(1)} — settle {calmVeto.count === 1 ? 'it' : 'them'} in Calls to make.
                       </p>;
                     } else if (listIsCalm) {
                       statusNode = <p className="verdict">{solemn
@@ -12683,6 +12706,13 @@ export default function HostShellV2() {
                         onClick={() => setSheet({ kind: 'tasks', focus: null })}>
                         {overdueRows.length > 5 ? `See all ${overdueRows.length} in your checklist` : 'Open your checklist'}
                       </button>
+                    </div>
+                  )
+                  : (calmVeto && calmVeto.kind === 'open-calls')
+                  ? (
+                    <div data-calls-open-here>
+                      <div>{calmVeto.label.charAt(0).toUpperCase() + calmVeto.label.slice(1)}.</div>
+                      <button className="mini" style={{ marginTop: 'var(--sp-2)' }} onClick={() => setSheet({ kind: 'decisions' })}>Open Calls to make</button>
                     </div>
                   )
                   : worries.length
@@ -16553,7 +16583,7 @@ export default function HostShellV2() {
                 {/* Hero copy (host request 2026-07-11): the open count is the star —
                     decisionBoard is the ONE decision source (queue item 10). */}
                 {(() => {
-                  const openN = (decisionBoard.open || []).length;
+                  const openN = openCallsN;
                   const lockedN = (decisionBoard.locked || []).length;
                   // Wave-2b: parked-for-later decisions keep the sheet honest even with
                   // zero open work — the hero must still render (not vanish) so the
