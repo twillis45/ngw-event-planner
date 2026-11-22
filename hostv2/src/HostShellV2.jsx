@@ -730,6 +730,34 @@ const fmt12h = (t) => {
 // on the --bg ground, in both themes. `on` stays so a caller can still opt a
 // block out (Space wraps only its own kind; People mode skips it). An empty panel (its only child rendered nothing) is hidden by
 // `.panel:empty`, so a conditional block can be wrapped where it stands.
+// ── HOLD THE OPEN VENDOR CARD WHERE IT IS (11/22/2026, #231) ─────────────────
+// A write from inside an open vendor card ("Mark asked", "Not needed", a status
+// pick) can rewrite rows ABOVE the card: the sheet's summary line under "Booked
+// so far" changes sentence and wrap, and everything below it shifts. Chromium
+// and current WebKit anchor the scroll and keep the card still; a browser that
+// does not (an older iPhone Safari) moves it, 16px in anOpenCardHoldsStill.
+// So note the card's top before the write and, on the next frame (after the
+// commit, before paint), scroll back by any drift. A browser that already
+// anchored leaves no drift, and this does nothing.
+function holdOpenCard() {
+  try {
+    const open = () => document.querySelector('.sheet .vcard.open');
+    const card = open();
+    if (!card) return;
+    const id = card.id;
+    const before = card.getBoundingClientRect().top;
+    requestAnimationFrame(() => {
+      const now = (card.isConnected ? card : (id && document.getElementById(id))) || open();
+      if (!now) return;
+      const delta = now.getBoundingClientRect().top - before;
+      if (Math.abs(delta) < 1) return;
+      let sc = now.parentElement;
+      while (sc && sc !== document.body && !(/(auto|scroll)/.test(getComputedStyle(sc).overflowY) && sc.scrollHeight > sc.clientHeight)) sc = sc.parentElement;
+      (sc && sc !== document.body ? sc : document.scrollingElement).scrollTop += delta;
+    });
+  } catch (_e) { /* a hold is a nicety; the write itself already happened */ }
+}
+
 function Panel({ on, children }) {
   return on ? <div className="panel">{children}</div> : <>{children}</>;
 }
@@ -4365,6 +4393,7 @@ export default function HostShellV2() {
   const sweepWindow = days != null && days >= 0 && days <= 3 && reconfirmables.length > 0 && !isPastEvent(event);
   const reconfirmedN = reconfirmables.filter(v => v.reconfirmed72 === true).length;
   const writeVendor = (id, patch, msg) => {
+    holdOpenCard();   // a write inside the open card must not move it (see holdOpenCard)
     const vs = (event.vendors || []).map(v => (v && v.id === id) ? { ...v, ...patch } : v);
     return patchEvent({ vendors: vs }, msg);
   };

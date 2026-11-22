@@ -84,3 +84,22 @@ test('"Mark asked" on the open card does not move the sheet', async ({ page }) =
   await page.waitForTimeout(400);
   expect(Math.abs((await cardTop(page)) - before)).toBeLessThanOrEqual(2);
 });
+
+// AND WHERE THE BROWSER DOES NOT ANCHOR (11/22/2026, #231). The test above
+// passes on scroll anchoring: Chromium (and this repo's WebKit build) take
+// the 16px off scrollTop themselves. Not every Safari the flagship phone runs
+// anchors, so the shell holds the open card itself (holdOpenCard in
+// HostShellV2: it notes the card's top before a vendor write and scrolls back
+// by any drift on the next frame). Anchoring is switched off here to stand
+// in for such a browser; without the shell's hold the card moves 16px.
+test('"Mark asked" holds the card even where the browser does not anchor scrolling', async ({ page }) => {
+  await page.addInitScript(() => {
+    const add = () => { const s = document.createElement('style'); s.textContent = '*{overflow-anchor:none !important}'; document.head.appendChild(s); };
+    if (document.head) add(); else document.addEventListener('DOMContentLoaded', add);
+  });
+  await boot(page);
+  const before = await cardTop(page);
+  await page.locator('.vcard.open').getByRole('button', { name: /^Mark asked$/ }).first().evaluate((b) => b.click());
+  await page.waitForTimeout(400);
+  expect(Math.abs((await cardTop(page)) - before)).toBeLessThanOrEqual(2);
+});
