@@ -193,6 +193,9 @@ test.describe('preferences follow the account', () => {
     await pa.keyboard.press('Escape');
     await pa.waitForTimeout(300);
     await pa.locator('.srail-row', { hasText: 'spread' }).first().click();
+    // The section door opens on Plan while a menu question is open
+    // (foodSheetKind); the list and its copy action are on Shop.
+    await pa.locator('.sheet').last().locator('.fmode', { hasText: /^Shop$/ }).first().click();
     await pa.locator('.sheet').last().getByText('Copy the shopping list').first().click({ timeout: 10000 });
     await pa.locator('.sheet').last().getByRole('radio', { name: 'Tighter' }).click();
     await pa.waitForTimeout(1200);

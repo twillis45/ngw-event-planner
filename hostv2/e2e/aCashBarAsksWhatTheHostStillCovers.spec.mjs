@@ -82,7 +82,8 @@ test('the Gala: two drink tickets ask what the host still covers, and no option 
   await expect(card).toBeVisible();
   await card.click();
   // The tickets pick starts on the tickets (owner, 11/22/2026), the zero-proof one tap away.
-  await expect(sheet.locator('.decopt.pick').getByText('The drink tickets, plus the non-alcoholic drinks')).toBeVisible();
+  // The name, not the why line: the default's why repeats the option's words.
+  await expect(sheet.locator('.decopt.pick .decopt-name').getByText('The drink tickets, plus the non-alcoholic drinks', { exact: true })).toBeVisible();
   await sheet.getByRole('button', { name: /Other ways/ }).first().click();
   await expect(sheet.getByText('The non-alcoholic drinks', { exact: true }).first()).toBeVisible();
   await expect(sheet.getByText(/non-alcoholic drinks and ice/)).toHaveCount(0);
