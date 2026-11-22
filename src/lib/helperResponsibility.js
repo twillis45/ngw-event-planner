@@ -71,6 +71,19 @@ const confirmMap = (ev) => (ev && ev.helperConfirmed && typeof ev.helperConfirme
 // every reader (the Helpers panel, the task rows, the "Who's confirmed"
 // summary on the event home) goes through deriveHelperResponsibilities, which
 // calls this. Returns 'handled' | 'confirmed' | 'assigned'.
+// THE ROLE, NOT "HELPER" (audit 2, lane E P2-3): a friend on the vendor list
+// as "Vida Haynes (day-of helper)" under the category "Helper" read "Helper".
+// A generic category gives way to the role written in the name. The server's
+// helper page reads the same rule (helper_link.py helper_role). PURE.
+const GENERIC_HELP = /^(help|helper|helpers|helping out|volunteer|volunteers)$/i;
+export function helperRoleOf(v) {
+  const cat = String((v && v.category) || '').trim();
+  if (cat && !GENERIC_HELP.test(cat)) return cat;
+  const m = /\(([^()]+)\)\s*$/.exec(String((v && v.name) || ''));
+  const r = m ? m[1].trim() : '';
+  return r ? r.charAt(0).toUpperCase() + r.slice(1) : (cat || 'Helping out');
+}
+
 export function helperStatusFor(ev, itemId, done) {
   if (done) return 'handled';
   if (confirmMap(ev)[itemId] === true) return 'confirmed';
@@ -208,7 +221,7 @@ export function deriveHelperResponsibilities(event) {
     const who = resolveHelper(v.name, guests);
     responsibilities.push({
       helperName: who.name, guestId: who.guestId,
-      itemType: 'vendor', itemId: v.id, label: v.category || 'Helping out',
+      itemType: 'vendor', itemId: v.id, label: helperRoleOf(v),
       status,
       hostBackupNeeded: status === 'assigned',
       hostNextAction: nextActionFor(status, who.name, 'vendor'),

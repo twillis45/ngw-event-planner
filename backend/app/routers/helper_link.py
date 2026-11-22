@@ -46,7 +46,6 @@ import os
 import re
 import secrets
 import time
-from datetime import date as _date
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -55,7 +54,8 @@ from pydantic import BaseModel, Field
 from ..db import get_pool
 from ..auth import require_planner
 from ..config import APP_BASE_URL
-from ..email_frame import SUB, clock12, frame, hue_for, paragraphs_html
+from ..email_frame import clock12, frame, hue_for, paragraphs_html, when_fact, where_fact
+from ..outward import event_days, host_name_for, place_line
 from ..email_pictures import with_picture
 from ..emailer import send_thread_email
 from .rsvp import _assert_event_studio_read, _client_ip
@@ -199,8 +199,27 @@ def _jobs_by_helper(data: dict) -> dict:
             add(r.get("owner"), job)
     for v in data.get("vendors") or []:
         if isinstance(v, dict) and v.get("isInformal"):
-            add(v.get("name"), {"kind": "help", "label": _clip(v.get("category") or "Helping out", MAX_LABEL)})
+            add(v.get("name"), {"kind": "help", "label": _clip(helper_role(v), MAX_LABEL)})
     return out
+
+
+# THE ROLE, NOT "HELPER" (audit 2, lane E P2-3). A friend added on the vendor
+# list as "Vida Haynes (day-of helper)" under the category "Helper" read only
+# "Helper". A generic category gives way to the role she wrote in the name.
+# Mirrors src/lib/helperResponsibility.js helperRoleOf.
+_GENERIC_HELP = re.compile(r"^(help|helper|helpers|helping out|volunteer|volunteers)$", re.I)
+_ROLE_IN_NAME = re.compile(r"\(([^()]+)\)\s*$")
+
+
+def helper_role(v: dict) -> str:
+    cat = str(v.get("category") or "").strip()
+    if cat and not _GENERIC_HELP.match(cat):
+        return cat
+    m = _ROLE_IN_NAME.search(str(v.get("name") or ""))
+    if m and m.group(1).strip():
+        r = m.group(1).strip()
+        return r[:1].upper() + r[1:]
+    return cat or "Helping out"
 
 
 def build_helper_payload(data: dict, helper_key: str):
@@ -211,17 +230,36 @@ def build_helper_payload(data: dict, helper_key: str):
         return None
     return {
         "helperName": slot["name"],
-        "hostName": data.get("hostName") or data.get("hostNames") or "",
+        # hostNameFor's rule: the event's host line, `host` included (audit 2, D-13).
+        "hostName": host_name_for(data),
         "eventName": data.get("name") or "",
         "eventDate": data.get("date") or "",
+        # The last day of a multi-day event (audit 2, E P1-1): the page and the
+        # email print every day.
+        "endDate": data.get("endDate") or "",
         # An hour the app derived is its guess, not the host's word
         # (doItForMe.timePhrase), so it never reaches a helper.
         "startTime": "" if data.get("startTimeSource") == "derived" else (data.get("startTime") or ""),
+        # THE PARTS OF THE ONE PLACE LINE (audit 2, E P0-4): the page reads them
+        # through venueFor.formatVenueAddress, the email through outward.place_line,
+        # so a helper sees the street, City, ST ZIP the host sees. A helper is
+        # coming to work there; she gets the address. (event.address is a
+        # phantom nothing writes, venueFor.js.)
+        **{k: data.get(k) for k in _VENUE_PARTS if isinstance(data.get(k), (str, bool)) and data.get(k) not in ("", None)},
         "venue": data.get("venue") or "",
-        # venueAddress only: event.address is a phantom nothing writes (venueFor.js).
         "venueAddress": data.get("venueAddress") or "",
         "jobs": slot["jobs"],
     }
+
+
+_VENUE_PARTS = ("venueStreet", "venueCity", "venueState", "venueZip", "venueKind", "venueConfirmed")
+
+
+def helper_event(helper: dict) -> dict:
+    """The payload as the event shape the outward readers take."""
+    h = helper or {}
+    return {"date": h.get("eventDate"), "endDate": h.get("endDate"), "venue": h.get("venue"),
+            "venueAddress": h.get("venueAddress"), **{k: h.get(k) for k in _VENUE_PARTS if k in h}}
 
 
 # ── Schemas ─────────────────────────────────────────────────────────────────────
@@ -482,24 +520,8 @@ def compose_helper_email(data: dict, helper: dict, page_url: str, stop_url):
     host_first = host.split(" ")[0] if host else ""
     first = (str(helper.get("helperName") or "").strip().split() or ["there"])[0]
     name = " ".join(str(helper.get("eventName") or "").split()) or "the party"
-    when_day = ""
-    try:
-        day = _date.fromisoformat(str(helper.get("eventDate") or "")[:10])
-        when_day = f"{day.strftime('%A')}, {day.strftime('%B')} {day.day}"
-    except ValueError:
-        pass
-    when_time = clock12(helper.get("startTime"))
-    place = str(helper.get("venue") or "").strip()
-    address = str(helper.get("venueAddress") or "").strip()
-    facts = []
-    if when_day or when_time:
-        h = "<br>".join(x for x in (e(when_day).replace(", ", "<br>", 1),
-                                     f'<span style="color:{SUB};font-weight:500;">{e(when_time)}</span>' if when_time else "") if x)
-        facts.append(("When", h, " · ".join(x for x in (when_day, when_time) if x)))
-    if place or address:
-        extra = f'<br><span style="color:{SUB};font-weight:500;">{e(address)}</span>' if place and address and address != place else ""
-        facts.append(("Where", e(place or address) + extra,
-                      (place or address) + (f", {address}" if place and address and address != place else "")))
+    ev = helper_event(helper)
+    facts = [f for f in (when_fact(event_days(ev), clock12(helper.get("startTime"))), where_fact(place_line(ev))) if f]
     allergy = helper_allergy_note(data)
     lines = []
     for j in helper.get("jobs") or []:
@@ -515,7 +537,9 @@ def compose_helper_email(data: dict, helper: dict, page_url: str, stop_url):
     html, text = frame(
         kind="helper_ask", hue=hue_for(name), greeting=f"Hi {first},", eyebrow=asks, title=name, facts=facts,
         fixed=[(paragraphs_html(jobs_text), jobs_text)],     # the jobs are in the card's picture
-        primary=("I can do it", page_url), secondary=[("I can’t", e(page_url))],
+        # "I can't" opens her page on that answer (E P2-4); she still taps Send,
+        # so a mail scanner opening the link records nothing.
+        primary=("I can do it", page_url), secondary=[("I can’t", e(page_url) + "&amp;answer=declined")],
         fine=f"Either one opens your page, where you tap your answer for {host_first or 'your host'}. No app, no account.",
         footer=f"Sent by {host or 'your host'} with No Guesswork Events.", stop_url=stop_url)
     return subject, html, text

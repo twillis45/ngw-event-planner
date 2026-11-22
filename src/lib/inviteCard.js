@@ -17,7 +17,9 @@ import { inviteTone } from './inviteTone';
 import { deckLineFor } from './inviteDeck';
 import { eventStartLabel } from './eventWhen';
 import { formatVenueAddress } from './venueFor';
-import { spanEnd, daysUntilEnd } from './dates';
+import { daysUntilEnd } from './dates';
+import { fmtLongSpan } from './doItForMe';
+import { hostNameFor } from './hostNameFor';
 
 // The page's stationery colors (hostv2 styles.css .inv2-sheet, .inv2-dark,
 // .inv2-muted), verbatim.
@@ -36,18 +38,15 @@ export function inviteCardModel(event) {
   try { const d = daysUntilEnd(ev); past = d != null && d < 0; } catch { /* undated: not past */ }
   const facts = [];
   if (ev.date) {
-    let day = dfmt(ev.date, { weekday: 'long', month: 'long', day: 'numeric' });
-    try {
-      const end = spanEnd(ev);
-      if (end && end !== String(ev.date).slice(0, 10)) day += ' – ' + dfmt(end, { weekday: 'long', month: 'long', day: 'numeric' });
-    } catch { /* one day */ }
+    const day = fmtLongSpan(ev);
     let time = '';
     try { const w = eventStartLabel(ev); time = (w && w.label) || ''; } catch { /* no hour */ }
     facts.push({ label: 'When', value: day, sub: time });
   }
   const where = (() => { try { return formatVenueAddress(ev) || ''; } catch { return ''; } })();
   if (where) facts.push({ label: 'Where', value: where });
-  const host = String(ev.hostName || ev.hostNames || '').trim();
+  // The host line every screen reads (hostNameFor, D-13), `host` included.
+  const host = hostNameFor(ev);
   if (host && !past) facts.push({ label: 'Hosted by', value: host });
   return {
     tone,

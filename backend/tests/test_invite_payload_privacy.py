@@ -35,6 +35,13 @@ ALLOWED_TOP = {
     "celebration", "tripMeals",
     # computed by the server
     "goingCount",
+    # THE GUEST'S INVITE IS THE HOST'S PREVIEW (audit 2, lane E P0-3), added on
+    # purpose: who hosts (computed, hostNameFor's rule), the deck line she
+    # wrote and its second occasion, the rest of the one place line, and her
+    # reply rules (only the values the host app writes). None is a guest's data.
+    "hostName", "deckLine", "secondaryType",
+    "venueStreet", "venueZip", "venueKind", "venueConfirmed", "recordKind",
+    "kidsPolicy", "plusOnePolicy", "collectAddresses",
     # The event id. Not display data, and the audit (P2-9) asks for it to go;
     # it stays for now because the host app's "is this invite live?" check and
     # every guest's saved reply key are built on it (see rsvp.py). It is a

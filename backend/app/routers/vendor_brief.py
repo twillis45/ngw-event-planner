@@ -41,6 +41,7 @@ from pydantic import BaseModel, Field
 
 from ..db import get_pool
 from ..host_alerts import alert_host
+from ..outward import diet_counts_for, host_name_for
 from ..auth import require_planner
 from .. import config
 from .rsvp import _assert_event_studio_read, _client_ip
@@ -182,14 +183,19 @@ def _brief_guest_count(data: dict):
 
 
 def _brief_diet_counts(data: dict) -> dict:
-    dc = data.get("dietCounts")
-    dc = dc if isinstance(dc, dict) else {}
+    # dietCountsFor (audit 2, lane E P1-2): the host's tally wins per tag, her
+    # guests' rows and invite replies fill the rest. Still numbers only, and
+    # still only the fixed vocabulary.
+    dc = diet_counts_for(data)
     out = {}
     for tag in DIET_TAGS:
         n = int(_num(dc.get(tag)))
         if n > 0:
             out[tag] = n
     return out
+
+
+_VENUE_PARTS = ("venueAddress", "venueStreet", "venueCity", "venueState", "venueZip", "venueKind", "venueConfirmed")
 
 
 def build_vendor_brief_payload(vendor: dict, event_id: str, data: dict) -> dict:
@@ -207,12 +213,21 @@ def build_vendor_brief_payload(vendor: dict, event_id: str, data: dict) -> dict:
         "eventId":   event_id,
         "eventName": data.get("name"),
         "eventDate": data.get("date"),
+        # The last day of a multi-day event and the hour the host set (audit 2,
+        # lane E P1-1, P1-2). An hour the app derived is not hers: withheld.
+        "endDate":   data.get("endDate") or "",
+        "startTime": "" if str(data.get("startTimeSource") or "") == "derived" else (data.get("startTime") or ""),
         "venue":     data.get("venue"),
+        # The parts of the one place line (venueFor.formatVenueAddress), so the
+        # page prints street, City, ST ZIP: a vendor is working there (E P0-4).
+        **{k: data.get(k) for k in _VENUE_PARTS if isinstance(data.get(k), (str, bool)) and data.get(k) not in ("", None)},
         # this vendor's run-of-show slice only
         "ros": _brief_ros(data, v.get("name") or ""),
         # the host's own name on their own brief (same rationale as the invite's
         # hostNames) — so the page never says "your event planner" to a host
-        "hostName": data.get("hostName") or data.get("hostNames") or "",
+        # hostNameFor's rule, `host` included (audit 2, D-13): the brief signs
+        # with her name, and names her as the day-of contact when no one else is.
+        "hostName": host_name_for(data),
         # who the vendor calls on the day, when the host named someone else —
         # host-authored FOR vendors, per event; empty means "call the host"
         "briefContactName": data.get("briefContactName") or "",

@@ -19,23 +19,18 @@ stated. A solemn gathering gets the muted hue. PURE: returns (html, text).
 """
 import html as _html
 import re
-from datetime import date as _date
 
-from .email_frame import SUB, frame, hue_for
+from .email_frame import frame, hue_for, when_fact, where_fact
 from .guest_notices import invite_url
+from .outward import event_days, place_line, venue_for
 
 _URL_LINE = re.compile(r"^\s*https?://\S+\s*$")
 _INTRO_LINE = re.compile(r":\s*$")     # "Let us know you're coming:" — it only introduced the link
 
 
 def _when_parts(ev: dict):
-    d = str(ev.get("date") or "")[:10]
-    try:
-        y, m, dd = (int(x) for x in d.split("-"))
-        day = _date(y, m, dd)
-        date_label = f"{day.strftime('%A')}, {day.strftime('%B')} {day.day}"
-    except (ValueError, TypeError):
-        date_label = ""
+    # Every day of a multi-day event (audit 2, E P1-1), as the app says it.
+    date_label = event_days(ev)
     t = str(ev.get("startTime") or "").strip()
     time_label = ""
     if t and str(ev.get("startTimeSource") or "") != "derived":
@@ -86,33 +81,25 @@ def compose_invite_email(ev: dict, note: str, recipient_name, sender: str, stop_
     name = str(ev.get("name") or "").strip() or "Our gathering"
     date_label, time_label = _when_parts(ev)
     when = " · ".join(x for x in (date_label, time_label) if x)
-    place = str(ev.get("venue") or "").strip()
-    address = str(ev.get("venueAddress") or "").strip()
-    if not place and not address:   # an at-home event named only by its town
-        place = ", ".join(x for x in (str(ev.get("venueCity") or "").strip(), str(ev.get("venueState") or "").strip()) if x)
+    # THE ONE PLACE LINE (audit 2, E P0-4): name · street, City, ST ZIP, as the
+    # host's app and the invite page print it (outward.place_line).
+    where = place_line(ev)
+    place = venue_for(ev)["name"] or where
     host = str(sender or "").strip()
     first = host.split(" ")[0] if host else "your host"
     url = invite_url(str(ev.get("rsvpCode") or ev.get("id") or ""))
     hi = f"Hi {str(recipient_name).strip()}," if recipient_name and str(recipient_name).strip() else ""
-    note_lines = _note_lines(note, (when, date_label, place, address))
+    note_lines = _note_lines(note, (when, date_label, place, where))
     note_html = re.sub(r"(<br>){3,}", "<br><br>", "<br>".join(e(x) for x in note_lines).strip())
 
-    facts = []
-    if date_label or time_label:
-        # The weekday on its own line, so "Thursday, November 26" never breaks mid-date.
-        d = e(date_label).replace(", ", "<br>", 1)
-        t = f'<span style="color:{SUB};font-weight:500;">{e(time_label)}</span>' if time_label else ""
-        facts.append(("When", "<br>".join(x for x in (d, t) if x), when))
-    if place or address:
-        extra = f'<br><span style="color:{SUB};font-weight:500;">{e(address)}</span>' if place and address and address != place else ""
-        facts.append(("Where", e(place or address) + extra,
-                      (place or address) + (f", {address}" if place and address and address != place else "")))
+    # The weekday on its own line, so "Thursday, November 26" never breaks mid-date.
+    facts = [f for f in (when_fact(date_label, time_label), where_fact(where)) if f]
 
     # THE INVITATION AS A PICTURE (owner, 11/19/2026: "doesn't resemble my
     # invitations"). A picture of the host's own card (src/lib/inviteCard.js),
     # which no mail app recolors in dark mode. Its alt text carries the facts
     # for a reader with pictures off. Without one, the HTML card stands in.
-    alt = ". ".join(x for x in (f"Invitation: {name}", when, place or address, f"Hosted by {host}" if host else "") if x)
+    alt = ". ".join(x for x in (f"Invitation: {name}", when, where, f"Hosted by {host}" if host else "") if x)
     top = (f'<a href="{e(url)}" style="display:block;text-decoration:none;"><img src="{e(card_url)}" width="520" alt="{e(alt)}" '
            f'style="display:block;width:100%;max-width:520px;height:auto;border:0;border-radius:14px;margin:0 auto;"></a>'
            if card_url else None)

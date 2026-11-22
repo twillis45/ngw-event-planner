@@ -20,7 +20,7 @@ const realDinner = {
   ],
 };
 const realMemorial = {
-  id: 'evt-2', type: 'Memorial Service', market: 'NYC', venue: "Host's home",
+  id: 'evt-2', type: 'Memorial Service', market: 'NYC', venue: "Host's home", venueKind: 'home', // as setVenue stores it; at home is venueFor's kind (audit 2, D-08)
   date: '2026-08-10', guestCount: 30,
   vendors: [{ id: 'v1', name: 'acme catering', status: 'Booked' }], // rehire (same name)
 };

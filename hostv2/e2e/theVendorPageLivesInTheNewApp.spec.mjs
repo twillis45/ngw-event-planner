@@ -158,6 +158,16 @@ test.describe('board 2026-11-12: what the brief says', () => {
     await expect(contact.getByRole('link', { name: '(555) 010-3000' })).toHaveAttribute('href', 'tel:5550103000');
     await expect(contact).not.toContainText('Vida Reyes');
   });
+
+  // Audit 2, lane E (P1-1, P1-2, P0-4): every day, the hour guests arrive and
+  // the whole address, as the host's app prints them.
+  test('the brief names every day, the start time and the whole address', async ({ page }) => {
+    await mockBrief(page, { ...CATERER, eventDate: '2027-12-13', endDate: '2027-12-15', startTime: '18:00', venue: 'The Boathouse',
+      venueAddress: '9 Dock Rd', venueCity: 'Annapolis', venueState: 'MD', venueZip: '21401', venueKind: 'venue' });
+    await openBrief(page);
+    await expect(page.locator('[data-brief="when"]')).toHaveText('Monday, December 13 – Wednesday, December 15 · 6:00 PM');
+    await expect(page.locator('[data-brief="where"]')).toHaveText('The Boathouse · 9 Dock Rd, Annapolis, MD 21401');
+  });
 });
 
 test('the legacy self-contained link still renders, with no confirm form and no private notes', async ({ page }) => {

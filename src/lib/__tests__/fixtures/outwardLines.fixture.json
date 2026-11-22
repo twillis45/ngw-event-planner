@@ -1,0 +1,372 @@
+[
+ {
+  "id": "named-venue-town",
+  "event": {
+   "venue": "The Loft",
+   "venueKind": "venue",
+   "venueCity": "Bowie, MD",
+   "date": "2027-03-20"
+  },
+  "expect": {
+   "line": "The Loft · Bowie, MD",
+   "town": "Bowie, MD",
+   "isHome": false,
+   "days": "Saturday, March 20",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "hall-city-with-state-in-city",
+  "event": {
+   "venue": "Freedom Hall at VFW Post 1847",
+   "venueCity": "Upper Marlboro, MD",
+   "date": "2027-03-20",
+   "host": "Wanda Mundy"
+  },
+  "expect": {
+   "line": "Freedom Hall at VFW Post 1847 · Upper Marlboro, MD",
+   "town": "Upper Marlboro, MD",
+   "isHome": false,
+   "days": "Saturday, March 20",
+   "host": "Wanda Mundy",
+   "diets": {}
+  }
+ },
+ {
+  "id": "venue-full-address",
+  "event": {
+   "venue": "The Boathouse",
+   "venueAddress": "9 Dock Rd",
+   "venueCity": "Annapolis",
+   "venueState": "MD",
+   "venueZip": "21401",
+   "date": "2027-12-13",
+   "endDate": "2027-12-15",
+   "hostName": "Dana & Lee"
+  },
+  "expect": {
+   "line": "The Boathouse · 9 Dock Rd, Annapolis, MD 21401",
+   "town": "Annapolis, MD 21401",
+   "isHome": false,
+   "days": "Monday, December 13 – Wednesday, December 15",
+   "host": "Dana & Lee",
+   "diets": {}
+  }
+ },
+ {
+  "id": "home-street",
+  "event": {
+   "venue": "Our place",
+   "venueKind": "home",
+   "venueStreet": "12 Elm St",
+   "venueCity": "Bowie",
+   "venueState": "MD",
+   "venueZip": "20715",
+   "date": "2027-12-31",
+   "endDate": "2028-01-02"
+  },
+  "expect": {
+   "line": "Our place · 12 Elm St, Bowie, MD 20715",
+   "town": "Bowie, MD 20715",
+   "isHome": true,
+   "days": "Friday, December 31 – Sunday, January 2",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "home-backyard-town",
+  "event": {
+   "venue": "Backyard",
+   "venueKind": "home",
+   "venueCity": "Bowie",
+   "venueState": "MD",
+   "date": "2027-06-12",
+   "endDate": "2027-06-12"
+  },
+  "expect": {
+   "line": "Backyard · Bowie, MD",
+   "town": "Bowie, MD",
+   "isHome": true,
+   "days": "Saturday, June 12",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "home-no-name",
+  "event": {
+   "recordKind": "host_event",
+   "venueCity": "Bowie",
+   "venueState": "MD",
+   "date": "2027-06-12"
+  },
+  "expect": {
+   "line": "At home in Bowie, MD",
+   "town": "Bowie, MD",
+   "isHome": true,
+   "days": "Saturday, June 12",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "street-typed-as-venue",
+  "event": {
+   "venue": "271 Whitaker Rd, Pasadena MD",
+   "date": "2027-06-12",
+   "endDate": "2027-06-11"
+  },
+  "expect": {
+   "line": "271 Whitaker Rd, Pasadena MD",
+   "town": "",
+   "isHome": false,
+   "days": "Saturday, June 12",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "dash-town-in-name",
+  "event": {
+   "venue": "VFW Post 3150 — Alexandria, VA",
+   "date": "2027-06-12"
+  },
+  "expect": {
+   "line": "VFW Post 3150 — Alexandria, VA",
+   "town": "Alexandria, VA",
+   "isHome": false,
+   "days": "Saturday, June 12",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "venue-is-a-town",
+  "event": {
+   "venue": "Santa Fe, NM",
+   "date": "2027-06-12"
+  },
+  "expect": {
+   "line": "Santa Fe, NM",
+   "town": "Santa Fe, NM",
+   "isHome": false,
+   "days": "Saturday, June 12",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "tail-town",
+  "event": {
+   "venue": "Casa Alegria, Santa Fe, NM",
+   "date": "2027-06-12"
+  },
+  "expect": {
+   "line": "Casa Alegria · Santa Fe, NM",
+   "town": "Santa Fe, NM",
+   "isHome": false,
+   "days": "Saturday, June 12",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "town-only-venue-kind",
+  "event": {
+   "venueCity": "Bowie",
+   "venueState": "MD"
+  },
+  "expect": {
+   "line": "Bowie, MD",
+   "town": "Bowie, MD",
+   "isHome": false,
+   "days": "",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "zip-in-city",
+  "event": {
+   "venue": "The Loft",
+   "venueCity": "20715"
+  },
+  "expect": {
+   "line": "The Loft · 20715",
+   "town": "20715",
+   "isHome": false,
+   "days": "",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "stale-home-guess",
+  "event": {
+   "venue": "The Boathouse",
+   "venueKind": "home",
+   "venueCity": "Annapolis",
+   "venueState": "MD"
+  },
+  "expect": {
+   "line": "The Boathouse · Annapolis, MD",
+   "town": "Annapolis, MD",
+   "isHome": false,
+   "days": "",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "funeral-home",
+  "event": {
+   "venue": "Marshall Funeral Home",
+   "venueKind": "venue",
+   "venueCity": "Petersburg, VA",
+   "hostNames": "The Marshall family"
+  },
+  "expect": {
+   "line": "Marshall Funeral Home · Petersburg, VA",
+   "town": "Petersburg, VA",
+   "isHome": false,
+   "days": "",
+   "host": "The Marshall family",
+   "diets": {}
+  }
+ },
+ {
+  "id": "name-carries-town",
+  "event": {
+   "venue": "Annapolis Yacht Club, Annapolis",
+   "venueCity": "Annapolis"
+  },
+  "expect": {
+   "line": "Annapolis Yacht Club, Annapolis",
+   "town": "Annapolis",
+   "isHome": false,
+   "days": "",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "address-with-zip",
+  "event": {
+   "venue": "",
+   "venueAddress": "8100 Ryan Way, Greenbelt MD 20770"
+  },
+  "expect": {
+   "line": "8100 Ryan Way, Greenbelt MD 20770",
+   "town": "20770",
+   "isHome": false,
+   "days": "",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "nothing",
+  "event": {},
+  "expect": {
+   "line": "",
+   "town": "",
+   "isHome": false,
+   "days": "",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "diets-from-replies",
+  "event": {
+   "venue": "The Loft",
+   "venueKind": "venue",
+   "guests": [
+    {
+     "id": "a",
+     "name": "Pat Lin",
+     "rsvp": "Yes",
+     "meal": "Vegetarian",
+     "needs": "gluten free please, nut allergy"
+    },
+    {
+     "id": "b",
+     "name": "Sam Roe",
+     "rsvp": "Yes",
+     "diets": [
+      "Vegan"
+     ],
+     "allergens": [
+      "Shellfish"
+     ],
+     "plusOneNeeds": "Vegetarian"
+    },
+    {
+     "id": "c",
+     "name": "Lee Park",
+     "rsvp": "No",
+     "meal": "Vegetarian"
+    },
+    {
+     "id": "d",
+     "name": "Kim Ode",
+     "rsvp": "Pending",
+     "needs": "Halal"
+    }
+   ]
+  },
+  "expect": {
+   "line": "The Loft",
+   "town": "",
+   "isHome": false,
+   "days": "",
+   "host": "",
+   "diets": {
+    "Nut allergy": 1,
+    "Vegetarian": 2,
+    "Vegan": 1,
+    "Shellfish": 1,
+    "Halal": 1
+   }
+  }
+ },
+ {
+  "id": "diets-host-wins",
+  "event": {
+   "dietCounts": {
+    "Vegetarian": 5,
+    "Vegan": 0,
+    "Grandma no-salt": 1
+   },
+   "guests": [
+    {
+     "id": "a",
+     "name": "Pat Lin",
+     "rsvp": "Yes",
+     "meal": "Vegetarian"
+    },
+    {
+     "id": "b",
+     "name": "Sam Roe",
+     "rsvp": "Maybe",
+     "needs": "Vegan, Dairy-free"
+    }
+   ]
+  },
+  "expect": {
+   "line": "",
+   "town": "",
+   "isHome": false,
+   "days": "",
+   "host": "",
+   "diets": {
+    "Vegetarian": 5,
+    "Vegan": 0,
+    "Dairy-free": 1,
+    "Grandma no-salt": 1
+   }
+  }
+ }
+]

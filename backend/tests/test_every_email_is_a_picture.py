@@ -235,7 +235,8 @@ def test_the_picture_opens_the_emails_primary_destination(pics):  # noqa: F811
     assert a < out.index("/api/public/email-card/")
     # The jobs are in the picture (and its alt text); the buttons stay live.
     assert "• Set up chairs" in _html.unescape(picture(out)[1])
-    assert "• Set up chairs" not in out.split("alt=")[0] and out.count(f'href="{HELPER_PAGE}"') == 3
+    assert "• Set up chairs" not in out.split("alt=")[0] and out.count(f'href="{HELPER_PAGE}"') == 2 \
+        and out.count(f'href="{HELPER_PAGE}&amp;answer=declined"') == 1   # "I can't" (audit 2, E P2-4)
 
 
 def test_the_invite_keeps_its_own_uploaded_picture(pics):  # noqa: F811

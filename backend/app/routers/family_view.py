@@ -10,6 +10,9 @@ WHAT FAMILY SEES — an explicit allow-list, never the event blob:
   the host stored (minus anything she marked as a surprise), the checklist (each step and whether it is done), who is
   being hired (name, kind, booked or not), how many guests said yes / no /
   maybe / haven't answered, and the hashtag.
+WHERE, ONE LINE (audit 2, lane E P0-4): the place line's own parts, so the
+  page prints the line the host's app prints, except that a PRIVATE HOME
+  reaches family as its town only (owner, a #226 follow-up), never its street.
 WHAT FAMILY NEVER SEES: guest names or contact details, diets, any money
   (budget, prices, deposits), vendor contacts, notes, the host's private
   fields, or any code (invite, family, vendor or helper).
@@ -34,14 +37,19 @@ import re
 from fastapi import APIRouter, HTTPException, Request
 
 from ..db import get_pool
+from ..outward import host_name_for, without_home_street
 from .rsvp import _enforce, MAX_CODE
 
 router = APIRouter(tags=["family"])
 
 MIN_FAMILY_CODE = 24
 
+# The place line's parts are those venueFor reads, so the page prints the line
+# the host's app prints (audit 2, lane E P0-4). A private home's street parts
+# are taken out first (outward.without_home_street): family reads its town.
 WHEN_WHERE = ("name", "type", "date", "endDate", "startTime", "timeOfDay", "endTime", "venue",
-              "venueAddress", "venueCity", "venueState", "address", "hostNames", "dressCode",
+              "venueAddress", "venueStreet", "venueCity", "venueState", "venueZip", "venueKind",
+              "venueConfirmed", "address", "hostNames", "dressCode",
               "parking", "parkingNotes", "hashtag", "guestEstimate", "guestCount")
 
 
@@ -130,7 +138,13 @@ def _ros_row(r: dict, private=None) -> dict:
 
 def family_projection(data: dict) -> dict:
     """The family view of a saved plan. PURE; every field is allow-listed."""
-    out = {k: data[k] for k in WHEN_WHERE if data.get(k) not in (None, "")}
+    place = without_home_street(data)
+    out = {k: place[k] for k in WHEN_WHERE if place.get(k) not in (None, "")}
+    if data.get("recordKind") == "host_event":
+        out["recordKind"] = "host_event"      # an unnamed host event is at home (venueFor)
+    host = host_name_for(data)
+    if host:
+        out["hostName"] = host[:120]          # hostNameFor's rule, `host` included
     if str(data.get("startTimeSource") or "") == "derived":
         out.pop("startTime", None)          # the app's guess is not the host's hour
     private = _private_terms(data)
@@ -144,7 +158,8 @@ def family_projection(data: dict) -> dict:
     tl = data.get("timeline")
     if isinstance(tl, list):
         items = [{"task": _scrub(_text(t.get("task") or t.get("title"), 160), private), "done": bool(t.get("done"))}
-                 for t in tl if _shown(t) and (t.get("task") or t.get("title"))]
+                 # A retired step leaves the host's list and its "N of M"; it leaves this one too.
+                 for t in tl if _shown(t) and not t.get("retired") and (t.get("task") or t.get("title"))]
         out["checklist"] = [t for t in items if t["task"]][:200]
     vendors = data.get("vendors")
     if isinstance(vendors, list):

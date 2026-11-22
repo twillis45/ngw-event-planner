@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 22, 2026 (evening) — what guests, family, helpers and vendors see matches the host
+
+**The invite, emails, family page, helper page and vendor brief print the same dates, place line and host name the host sees.** The server enforces adults-only and no-plus-ones on replies, and the vendor brief carries the diets guests reported.
+
 ## November 22, 2026 (evening) — light is warm linen, dark sits on the same panels
 
 **The light theme is one warm linen system, with warnings as umber-on-honey chips and a progress green that pops, and dark's sections sit on the same panels.** Every text and tap the accessibility audit flagged now passes: contrast 266 to 0, taps 204 to 0.

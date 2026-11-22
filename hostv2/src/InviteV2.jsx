@@ -282,6 +282,10 @@ export default function InviteV2({ code }) {
   const [sending, setSending] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [queued, setQueued] = useState(false);
+  // What the server left out of her reply and why (the host's rules, rsvp.py
+  // _reply_rules): the form hides those fields, so this shows only when a
+  // stale page sent them.
+  const [replyNotice, setReplyNotice] = useState('');
   const [shareState, setShareState] = useState('');
   const [shareError, setShareError] = useState('');
   const shareTimer = useRef(null);
@@ -695,7 +699,7 @@ export default function InviteV2({ code }) {
     if (isRsvpApiConfigured()) {
       setSending(true);
       try {
-        await submitRsvp(code, {
+        const sent = await submitRsvp(code, {
           idempotency_key: idk, name: payload.name, rsvp: payload.rsvp, meal: payload.meal,
           needs: payload.needs, plus_one: payload.plusOne, plus_one_meal: payload.plusOneMeal,
           plus_one_needs: payload.plusOneNeeds, kids: payload.kids, note: payload.note,
@@ -714,6 +718,7 @@ export default function InviteV2({ code }) {
           ...(payload.email ? { email: payload.email } : {}),
         });
         delivered = true;
+        setReplyNotice(String((sent && sent.notice) || ''));
         try {
           const q = JSON.parse(localStorage.getItem(key) || '[]');
           const rest = q.filter(e => e.idempotencyKey !== idk);
@@ -1471,6 +1476,7 @@ export default function InviteV2({ code }) {
                     )}
                   </>
                 )}
+                {replyNotice && <p className="grounding" role="status" data-reply-notice>{replyNotice}</p>}
                 <div className="actions-row" style={{ marginTop: 14, justifyContent: 'center' }}>
                   {rsvp !== 'No' && gcalUrl && <a className="mini" style={{ textDecoration: 'none' }} href={gcalUrl} target="_blank" rel="noreferrer">Add to Google Calendar</a>}
                   {rsvp !== 'No' && icsHref && <a className="mini" style={{ textDecoration: 'none' }} href={icsHref} download={(event.name || 'event') + '.ics'}>Add to Apple Calendar</a>}

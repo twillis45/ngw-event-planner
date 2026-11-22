@@ -225,7 +225,9 @@ def test_resolve_returns_only_this_helpers_jobs_and_the_event_basics(monkeypatch
     r = c.get(f"/api/public/helper/{GOOD_CODE}")
     assert r.status_code == 200
     h = r.json()["helper"]
-    assert set(h) == {"helperName", "hostName", "eventName", "eventDate", "startTime",
+    # endDate and the place line's other parts joined on purpose (audit 2,
+    # lane E P0-4, P1-1): each part present on the event, nothing else.
+    assert set(h) == {"helperName", "hostName", "eventName", "eventDate", "endDate", "startTime",
                       "venue", "venueAddress", "jobs", "answer"}
     assert h["helperName"] == "Jordan Avery"
     assert h["hostName"] == "Casey Morgan"

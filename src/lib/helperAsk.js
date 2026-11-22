@@ -14,7 +14,7 @@
 // allergy — and the note names the allergen, never the guest. "Bring it hot"
 // / "cold" appears only when a job carries `carry`; nothing in the plan writes
 // that field yet, so today it never does.
-import { fmtLongDate, timePhrase, placePhrase } from './doItForMe';
+import { fmtLongSpan, timePhrase, placePhrase } from './doItForMe';
 import { venueFor } from './venueFor';
 import { clock12 } from './clock';
 
@@ -70,7 +70,7 @@ export function buildHelperAsk({ event, hostName, helperName, jobs, url }) {
   const host = String(hostName || '').trim().split(/\s+/)[0];
   const name = String(ev.name || '').trim() || 'the party';
 
-  const date = fmtLongDate(ev.date);
+  const date = fmtLongSpan(ev);
   const tp = timePhrase(ev);
   const when = [date ? `on ${date}` : '', clock(tp) ? `at ${clock(tp)}` : tp].filter(Boolean).join(' ');
   const place = placePhrase(ev);
