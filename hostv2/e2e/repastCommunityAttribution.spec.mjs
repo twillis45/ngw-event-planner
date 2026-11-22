@@ -49,6 +49,10 @@ const boot = async (page) => {
   // against the hero — which is exactly how the first run read as "the dishes
   // are missing" when the sheet had simply not opened yet.
   await page.locator('.sheet').first().waitFor({ state: 'visible', timeout: 8000 });
+  // The section door opens on Plan while a menu question is open (foodSheetKind);
+  // the list this walks is on Shop, so tap Shop.
+  await page.locator('.sheet').last().locator('.fmode', { hasText: /^Shop$/ }).first().click();
+  await settled(page);
   // The rows live behind the list drill-in; the sheet's own summary shows
   // "The list · N bought ›" and not the items.
   const listRow = page.locator('.fstat', { hasText: 'The list' }).first();

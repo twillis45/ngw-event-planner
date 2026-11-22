@@ -32,10 +32,17 @@ const boot = async (page) => {
   }, null, { timeout: 20000 });
 };
 
+// The section door opens on Plan while a menu question is open (foodSheetKind);
+// the shopping list and its copy action are on Shop, so tap Shop.
+const tapShop = async (page) => {
+  await page.locator('.sheet').last().locator('.fmode', { hasText: /^Shop$/ }).first().click({ timeout: 8000 });
+};
+
 /** Open the food sheet, then drill into the list itself. */
 const openTheList = async (page) => {
   await openSectionByName(page, 'spread');
   await expect(page.locator('#sheet-title')).toBeVisible({ timeout: 8000 });
+  await tapShop(page);
   const listRow = page.locator('.sheet').last().getByText(/^The list|Still to get|shopping list/i).first();
   if (await listRow.count()) await listRow.click({ timeout: 8000 }).catch(() => {});
 };
@@ -47,6 +54,7 @@ test.describe('taking the shopping list out of the app', () => {
     // very different problems that look identical from a red assertion.
     await boot(page);
     await openSectionByName(page, 'spread');
+    await tapShop(page);
     await expect(page.locator('.sheet').last().getByText('Copy the shopping list').first()).toBeVisible({ timeout: 8000 });
   });
 

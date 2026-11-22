@@ -33,6 +33,10 @@ const boot = async (page) => {
   await openSectionByName(page, 'The spread & shopping');
   await settled(page);
   await page.locator('.sheet').first().waitFor({ state: 'visible', timeout: 8000 });
+  // The section door opens on Plan while a menu question is open (foodSheetKind);
+  // the list this walks is on Shop, so tap Shop.
+  await page.locator('.sheet').last().locator('.fmode', { hasText: /^Shop$/ }).first().click();
+  await settled(page);
   // OPEN THE LIST AND EXPAND THE FOLDS. The collapsed summary does not overflow
   // at 430px, so a scroll test against it is vacuous — measured: the first cut
   // of this spec passed with `position:static`. A host looking at their total
