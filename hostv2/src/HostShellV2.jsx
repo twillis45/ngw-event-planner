@@ -64,7 +64,7 @@ import { parseVendorReply, isAiProxyConfigured, extractDocumentAI } from '@app/l
 import { buildReplyDiff, buildPatch, replyLogEntry } from '@app/lib/vendorReplyParse';
 import { positiveAttention } from '@app/lib/positiveAttention';
 import { isSolemnEvent } from '@app/lib/solemn';
-import { heroAskFor, heroRecord } from '@app/lib/heroAsk'; // the ASK vocabulary — see src/lib/heroAsk.js
+import { heroAskFor, heroRecord, foodCallsAsk } from '@app/lib/heroAsk'; // the ASK vocabulary — see src/lib/heroAsk.js
 // ONE selected decision across the hero, the panel and the CTA — see src/lib/selectedAction.js
 import { resolveSelection, decisionIdentityFor } from '@app/lib/selectedAction';
 import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — see src/lib/decisionEvidence.js
@@ -5313,6 +5313,11 @@ export default function HostShellV2() {
       actionAsk: (a) => {
         if (a && a.domain === 'food'
           && !/^fp-diet/.test(String((a.route && a.route.focusField) || ''))) {
+          // …and the ruled card (a food item WITH records), whose record line
+          // already names the call beside its count, is headlined by the food
+          // calls themselves: never the same question twice, never "Decide the
+          // menu." over a cook/cater/potluck call (polish, 11/22/2026).
+          if (Array.isArray(a.records) && a.records.length) return foodCallsAsk(a.records.length);
           const nd = (() => { try { return foodDecisionND(event, guests, [...open, ...(decisionBoard.locked || [])], a.records); } catch { return null; } })();
           const q = foodPanelQuestion(nd);
           if (q) return q;
@@ -7415,7 +7420,7 @@ export default function HostShellV2() {
   // options are the CTAs; opening the detail is secondary.
   const spreadLink = () => (foodPlan ? (
     <button className="spread-link" style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0, fontFamily: 'var(--sans)', fontSize: 'var(--t-meta)', fontWeight: 600, letterSpacing: 0, color: 'var(--steel-soft)', cursor: 'pointer' }}
-      onClick={openSpread}>Open the spread ({foodPlan.itemCount} items) ›</button>
+      onClick={openSpread}>Open the spread ({foodPlan.itemCount} {foodPlan.itemCount === 1 ? 'item' : 'items'}) ›</button>
   ) : null);
 
   // ── ONE PLACE ANSWERS "IS THERE ANYWHERE TO PUT THE SHOPPING" ────────────

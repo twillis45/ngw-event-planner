@@ -31,6 +31,15 @@ function foodAsk(title) {
   for (const d of FOOD_DIMENSION) if (d.re.test(title)) return d.ask;
   return null;
 }
+// THE RULED FOOD CARD'S HEADLINE (polish, 11/22/2026). When the record line
+// under it names the call beside its count ("Who cooks what? · 2 open", the
+// owner's 11/21 iPad ruling), the headline must not repeat that question, and
+// "Decide the menu." was wrong over a grill master or a cook/cater/potluck
+// call. Pinned by theRuledFoodCardSaysItsCallOnce.test.js.
+export function foodCallsAsk(n) {
+  return Number(n) === 1 ? 'Make the food call.' : 'Make the food calls.';
+}
+
 export function heroAskFor(a, event) {
   try {
     // AN AUTHORED ASK ALWAYS WINS (2026-07-30). Everything below classifies an item

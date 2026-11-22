@@ -57,3 +57,35 @@ test('the grill-master ask is headlined by its own question', async ({ page }) =
   expect(hero, 'the grill-master ask reached the hero').not.toBeNull();
   await expect(hero.locator('h2.ask')).not.toHaveText(/^Decide the menu\.?$/);
 });
+
+// THE RULED CARD SAYS ITS CALL ONCE (polish, 11/22/2026). Its record line names
+// the call beside its count (owner's iPad ruling, 11/21/2026); the headline was
+// that same question again ("Who cooks what?" over "Who cooks what? · 2 open"),
+// or "Decide the menu." over a cook/cater/potluck call. It is now the food
+// calls themselves.
+test('the ruled food card names its call once, under a food-calls headline', async ({ page }) => {
+  await boot(page, seed('Friendsgiving', 'ev-food-ruled'));
+  const hero = page.locator('.escreen.on').first();
+  await expect(hero.getByText(/^Who cooks what\? · \d+ open$/)).toBeVisible();
+  await expect(hero.locator('h2.ask')).toHaveText(/^Make the food calls?\.$/);
+  expect((await hero.innerText()).split('Who cooks what?').length - 1).toBe(1);
+});
+
+test('a cook, cater or potluck call is not headlined "Decide the menu."', async ({ page }) => {
+  await boot(page, seed('Dinner Party', 'ev-food-trio'));
+  const hero = page.locator('.escreen.on').first();
+  await expect(hero.locator('.decopt').filter({ hasText: /We’ll cook it/ })).toBeVisible();
+  await expect(hero.locator('h2.ask')).not.toHaveText(/Decide the menu/);
+});
+
+// ONE ITEM IS ONE ITEM (audit 2 lane A P2-3, 11/22/2026): Client Dinner read
+// "Open the spread (1 items) ›".
+test('the spread link counts one item as one item', async ({ page }) => {
+  await boot(page, seed('Client Dinner', 'ev-food-one-item'));
+  const hero = await toFoodAsk(page, /We’ll cook it/);
+  expect(hero, 'the food ask reached the hero').not.toBeNull();
+  const link = hero.locator('.spread-link').first();
+  await expect(link).toBeVisible();
+  await expect(link).not.toHaveText(/\(1 items\)/);
+  await expect(link).toHaveText(/^Open the spread \((1 item|([2-9]|\d{2,}) items)\) ›$/);
+});

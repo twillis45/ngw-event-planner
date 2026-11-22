@@ -60,7 +60,7 @@ const expectSpreadLink = async (page) => {
   const link = heroCard(page).locator('button.spread-link');
   await expect(link).toHaveCount(1);
   await expect(link).toBeVisible();
-  await expect(link).toHaveText(/^Open the spread \(\d+ items\) ›$/);
+  await expect(link).toHaveText(/^Open the spread \(\d+ items?\) ›$/);
   // The tap floor holds here too (spreadLinkTapFloor measures the editor's copy).
   expect((await link.boundingBox()).height).toBeGreaterThanOrEqual(44);
 };

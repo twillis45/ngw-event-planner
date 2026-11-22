@@ -31,8 +31,10 @@ test('with a budget given, three days out the board leads with the menu, not the
   await expect(top).not.toHaveText(/Get the food/i);
   // The food call leads. Since #233 (audit A P2-1) a food ask with no ruled
   // record line is headlined by its own question, so Friendsgiving's reads
-  // "Who cooks what?" rather than the generic "Decide the menu.".
-  await expect(top).toHaveText(/menu|serving|who cooks/i);
+  // "Who cooks what?" rather than the generic "Decide the menu.". Since #235
+  // the ruled food card (its record line names the call and its count) is
+  // headlined "Make the food calls." so the question is not said twice.
+  await expect(top).toHaveText(/menu|serving|who cooks|food calls?/i);
 });
 
 test('with no budget, the owner\'s exact line leads with the budget, still not the shop', async ({ page }) => {
