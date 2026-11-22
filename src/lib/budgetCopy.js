@@ -48,36 +48,44 @@ export function budgetHeroCopy(event, priceFactor, itemFactors) {
     };
   }
 
+  // ONE BASIS: EXPECTED (owner ruling 11/22/2026, "Expected spending"; audit 2
+  // D-03). This judged over/under on COMMITTED costs while After and the
+  // recovery panel on the same sheet judged EXPECTED — "about $3,410 left"
+  // beside "Expected to run $225 over". Every screen now judges on what the
+  // plan is expected to cost (expectedHeadroom); what is booked stays visible
+  // as the secondary clause.
+  const expected = Number(sp.expected) || 0;
+
   // 2. Budget set, nothing priced yet — waiting on real costs.
-  if (committed <= 0) {
+  if (expected <= 0) {
     return {
       state: 'waiting',
-      title: "Your budget's set — nothing committed yet.",
-      line: sp.expected > 0 ? `${fmt(sp.expected)} expected so far, including allocations and estimates. Booked costs and payments will appear as spoken for.` : 'Add costs as you book vendors or make purchases.',
+      title: "Your budget's set — nothing priced yet.",
+      line: 'Add costs as you book vendors or make purchases.',
       caveat, numbers: sp,
     };
   }
 
-  const delta = roundCurrency(committed - total);
+  const left = expectedHeadroom({ planned: total, expected });
+  const booked = committed > 0 ? `${fmt(committed)} of it booked so far` : 'none of it booked yet';
+  const est = expected > committed ? ', some of it still an estimate' : '';
 
   // 5. Over — direct, not alarming; the action is in the line.
-  if (delta > 0) {
+  if (left < 0) {
     return {
       state: 'over',
-      title: `Known costs are ${fmt(delta)} over your budget.`,
-      line: `${fmt(committed)} spoken for against ${fmt(total)} — review costs before adding more commitments.`,
+      title: `Expected costs are ${fmt(-left)} over your budget.`,
+      line: `${fmt(expected)} expected against ${fmt(total)}${est} · ${booked} — review costs before adding more commitments.`,
       caveat, numbers: sp,
     };
   }
-
-  const left = -delta;
 
   // 4. Getting close — inside the headroom threshold.
   if (left < total * NEAR_BUDGET_HEADROOM) {
     return {
       state: 'near',
       title: "You're getting close to your budget.",
-      line: `Known costs leave about ${fmt(left)}${spent > 0 ? ` · ${fmt(spent)} spent so far` : ''}.`,
+      line: `Expected costs leave about ${fmt(left)} · ${booked}${spent > 0 ? ` · ${fmt(spent)} spent so far` : ''}.`,
       caveat, numbers: sp,
     };
   }
@@ -86,9 +94,21 @@ export function budgetHeroCopy(event, priceFactor, itemFactors) {
   return {
     state: 'under',
     title: `You've got about ${fmt(left)} left.`,
-    line: `Based on ${fmt(committed)} in known costs against your ${fmt(total)} budget${spent > 0 ? ` · ${fmt(spent)} spent so far` : ''}.`,
+    line: `Based on ${fmt(expected)} expected against your ${fmt(total)} budget${est} · ${booked}${spent > 0 ? ` · ${fmt(spent)} spent so far` : ''}.`,
     caveat, numbers: sp,
   };
+}
+
+// ─── THE ONE OVER/UNDER READER (owner ruling 11/22/2026, "Expected spending") ─
+// Budget less what the plan is expected to cost. Positive is room left,
+// negative is over. The Your money hero, the ledger's Budget part, the board's
+// budget tile and heads-up, and After before the day all read this. null when
+// no budget is set. `money` is { planned, expected }.
+export function expectedHeadroom(money) {
+  const m = money || {};
+  const planned = Number(m.planned) || 0;
+  if (!(planned > 0)) return null;
+  return roundCurrency(planned - (Number(m.expected) || 0));
 }
 
 // ─── WHEN THE PLAN'S OWN VENDORS COST MORE THAN THE ESTIMATE ────────────────

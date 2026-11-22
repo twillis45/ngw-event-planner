@@ -60,6 +60,8 @@ export function heroAskFor(a, event) {
     if (a && a.category === 'compression' && a.leadIsStep) return 'Catch up on this step.';
     const t = String((a && a.title) || '').replace(/\.+$/, '').trim();
     const d = String((a && a.domain) || '').toLowerCase();
+    // A SET budget that the plan runs past is not asked to be set (11/22/2026).
+    if (/over (your|the) budget/i.test(t)) return 'Bring the plan inside your budget.';
     if (d === 'budget' || /budget/i.test(t)) return 'Set your budget.';
     // ── A BUY LINE IS NOT A DECISION (PR #70, driven 2026-07-31) ──────────────
     // "Buy chips, crackers, pretzels & popcorn — 13 snack servings tomorrow"
@@ -187,6 +189,18 @@ export function heroAskFor(a, event) {
     if (cta && cta.toLowerCase() !== 'go') {
       const fromCta = normalizeAsk(/[.?!]$/.test(cta) ? cta : cta + '.');
       if (fromCta) return fromCta;
+    }
+    // A BUNDLE SPEAKS FOR ITS FIRST ITEM (audit 2 lane C P1-6, 11/22/2026):
+    // "Your next step. · past its window · See all 5" named nothing. The first
+    // item is the one "this one first" points at. Its own ask when it has a
+    // specific one, else its own words — a generic "Catch up on this step."
+    // names no step either.
+    const first = a && Array.isArray(a.items) && a.items.length ? a.items[0] : null;
+    if (first) {
+      const fa = heroAskFor(first, event);
+      if (fa && fa !== 'Your next step.' && fa !== 'Catch up on this step.') return fa;
+      const ft = normalizeAsk(String(first.title || '').replace(/\.+$/, '').trim() + '.');
+      if (ft) return ft;
     }
     return 'Your next step.';
   } catch { return 'Your next step.'; }

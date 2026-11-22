@@ -35,6 +35,9 @@ test('ten and thirty days out: the budget leads', () => {
   expect(top(mk(30)).domain).toBe('budget');
 });
 
+// $200 restored 11/22/2026: the owner's own case. Expected cost is past $200
+// (D-03 basis), but nothing is booked and the menu that sets the cost is open,
+// so the menu leads (aChoiceThatSetsTheCostLeadsTheOverrun.test.js).
 test('with a budget set, the menu leads again', () => {
   expect(top(mk(3, { totalBudget: 200 })).domain).toBe('food');
 });

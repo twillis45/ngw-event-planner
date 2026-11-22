@@ -35,9 +35,13 @@ const toTheQuiet = async (page) => {
   await boot(page);
   await tap(page, card(page).locator('.decopt').filter({ hasText: 'Drop-off catering' }).first());
   await tap(page, card(page).locator('.decopt').filter({ hasText: 'Held separately' }).first());
-  // Premise: that pick emptied the queue, and the board is calm.
+  // Premise: that pick emptied the queue. Changed 11/22/2026 (audit 2 P1-3):
+  // this asserted "All quiet" here while Calls to make held four open calls and
+  // her plan was expected over budget — the defect. The board now names what is
+  // still open (the money first, then the calls) instead of calm.
   await expect(page.locator('.hero article.hero-card')).toHaveCount(0);
-  await expect(page.locator('.hero')).toContainText('All quiet');
+  await expect(page.locator('.hero')).toContainText(/spending is past your number|calls? still to make/);
+  await expect(page.locator('.hero')).not.toContainText('All quiet');
 };
 
 test('the pick that empties the queue keeps its receipt and its Undo', async ({ page }) => {
@@ -54,6 +58,9 @@ test('the pick that empties the queue keeps its receipt and its Undo', async ({ 
 
 test('the progress line under "All quiet" does not call the plan open and due', async ({ page }) => {
   await toTheQuiet(page);
+  // With calls open there is no calm pole and so no progress line under it;
+  // where one shows, the rule below holds.
+  if (!(await page.locator('.hero .cp-prog').count())) return;
   const prog = (await page.locator('.hero .cp-prog').first().innerText()).trim();
   // Open parts are named only as not due yet, which is what "All quiet" means.
   if (/\bopen\b/.test(prog)) expect(prog).toMatch(/open, nothing due yet$/);

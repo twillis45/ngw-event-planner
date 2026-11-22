@@ -288,19 +288,11 @@ agree('money · Your money hero "over" = plan ledger budget part "over" (both on
   expect(ledgerOver).toBe(budgetHeroCopy(ev).state === 'over');
 });
 
-// D-03 (owner call open since #224, "Your money's two bases"): the Your money
-// hero and the plan ledger judge over/under on COMMITTED costs; After and the
-// recovery panel on the same sheet judge it on EXPECTED costs. Where the two
-// bases straddle the budget, one screen says "about $N left" and the other
-// "Expected to run $M over".
-const D03 = 'D-03 two money bases (owner call)';
-agree('money · Your money hero over/under = After over/under', {
-  'ev-x-wanda': D03, 'ev-x-vow-renewal': D03, 'ev-x-baby-shower': D03, 'ev-x-reunion': D03,
-  'ev-x-product-launch': D03, 'ev-x-training-workshop': D03, 'ev-x-award-ceremony': D03, 'ev-x-networking-event': D03,
-  'ev-x-home-gathering': D03, 'ev-x-elopement': D03, 'ev-dmv-wedding': D03, 'ev-dmv-gala': D03,
-  'ev-dmv-home-gathering': D03, 'ev-dmv-bachelorette': D03, 'test-day-of': D03, 'var-budget-rows': D03,
-  'var-wanda-roster': D03, 'var-wanda-total': D03,
-}, (ev) => {
+// D-03 (fixed; owner ruling 11/22/2026 "Expected spending"): the Your money
+// hero and the plan ledger judged over/under on COMMITTED costs while After and
+// the recovery panel judged it on EXPECTED costs — "about $N left" beside
+// "Expected to run $M over". All four now judge on expected.
+agree('money · Your money hero over/under = After over/under', {}, (ev) => {
   const s = hostSpending(ev);
   if (!(s.total > 0)) return;
   const afterOver = /over the/.test(planHeadroomLine({ planned: s.total, expected: s.expected, committed: s.committed }, false));
@@ -513,14 +505,11 @@ agree('venue · ledger "address settled" = Space guest-arrival handled', {
 // The Plan steppers and the estimate (dietCountsFor), the hero's allergy ask
 // (plan.dietaryResolved → the ledger's food cue), the seating chips.
 
-// D-10: dietaryResolved (the hero's "Who has a food allergy?") reads a row's
-// `needs` and `meal` only. A diet recorded in the invite reply's `diets` /
-// `allergens` arrays, or on the plus-one (`plusOneNeeds`), is counted by
-// dietCountsFor — the Plan shows "Vegetarian 1" — while the hero still asks.
-const D10 = 'D-10 allergy ask ignores diets/allergens/plusOneNeeds';
-agree('diet · guest rows that name a diet close the allergy ask', {
-  'var-diets-array': D10, 'var-plusone-needs': D10,
-}, (ev) => {
+// D-10 (fixed): dietaryResolved (the hero's "Who has a food allergy?") read a
+// row's `needs` and `meal` only, so a diet in the invite reply's `diets` /
+// `allergens` arrays, or on the plus-one (`plusOneNeeds`), was on the Plan
+// ("Vegetarian 1") while the hero still asked. It now reads guestDietCounts.
+agree('diet · guest rows that name a diet close the allergy ask', {}, (ev) => {
   const counted = Object.values(guestDietCounts(ev)).some((n) => n > 0);
   const p = plan(ev);
   if (!counted || !p) return;
@@ -559,25 +548,18 @@ agree('menu · hero "N open" = menuChoicesTally openNow', {}, (ev) => {
   expect(Number(m[1])).toBe(tally.openNow.length);
 });
 
-// D-12: the board's below-fold row "The spread & shopping — the menu · N to
-// decide" counts openFoodChoices (every open call) while the hero above it
-// counts the calls due now (menuChoicesTally.openNow). Wanda: hero "1 open",
-// row "3 to decide".
-const D12 = 'D-12 below-fold row counts parked calls';
-agree('menu · board row "the menu · N to decide" = hero "N open"', {
-  'ev-x-wanda': D12, 'ev-x-bachelorette': D12, 'ev-dmv-bachelorette': D12, 'var-headcount-plain': D12,
-  'var-headcount-rows': D12, 'var-roster': D12, 'var-roster-all-replied': D12, 'var-budget-none': D12,
-  'var-budget-total': D12, 'var-budget-rows': D12, 'var-budget-over': D12, 'var-caterer-picked': D12,
-  'var-caterer-quoted': D12, 'var-caterer-booked': D12, 'var-informal-vendors': D12, 'var-multi-day': D12,
-  'var-destination': D12, 'var-derived-start': D12, 'var-backyard-city': D12, 'var-home-street': D12,
-  'var-diets-array': D12, 'var-plusone-needs': D12, 'var-veg-and-vegan': D12, 'var-host-field': D12,
-  'var-wanda-roster': D12, 'var-wanda-total': D12,
-}, (ev) => {
+// D-12 (fixed): the board's below-fold row "The spread & shopping — the menu ·
+// N to decide" counted openFoodChoices (every open call, parked ones too)
+// while the hero above it counted the calls due now (menuChoicesTally.openNow).
+// Wanda: hero "1 open", row "3 to decide". The row's words now come from
+// menuBoardRowSub, which reads the hero's tally; parked calls say "later".
+agree('menu · board row "the menu · N to decide" = hero "N open"', {}, (ev) => {
   if (!isPre(ev)) return;
   const p = plan(ev);
   if (!p) return;
-  const row = (pb.openFoodChoices(ev, p) || []).length;
-  expect(row).toBe(pb.menuChoicesTally(ev, p, NOW).openNow.length);
+  const sub = pb.menuBoardRowSub(ev, p, NOW);
+  const m = /(\d+) to decide/.exec(sub);
+  expect(m ? Number(m[1]) : 0).toBe(pb.menuChoicesTally(ev, p, NOW).openNow.length);
 });
 
 agree('menu · decision board calls = hero openNow', {}, (ev) => {

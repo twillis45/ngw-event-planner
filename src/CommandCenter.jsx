@@ -28,6 +28,7 @@
 import { isSolemnEvent } from './lib/solemn';
 import { guestCountFor } from './lib/guestCountFor';
 import { budgetFor } from './lib/budgetFor';
+import { hostSpending } from './lib/hostSpending';
 import { useState, useEffect, useMemo } from 'react';
 import { color, space, type, radius, elevation, edge } from './design/tokens';
 // Sprint 57f.1: derive compression urgency from the event's own timeline so
@@ -53,7 +54,7 @@ import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
 // in the vendor detail. Surfaced here so the Portfolio triage column + its
 // "Waiting on" word (both derived from this engine) agree.
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
-import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacity, playbookInfraPrompts, playbookFoodPlan, playbookDecisionBoard } from './lib/playbooks';
+import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacity, playbookInfraPrompts, playbookFoodPlan, playbookDecisionBoard, costSettingCallOpen } from './lib/playbooks';
 import { deriveEventPhaseProgress, cueActionLabel } from './lib/phaseProgress';
 import { startTimeIsConfirmed } from './lib/startTime';
 import { taskIsOverdue, taskDueInDays, taskLeadDays } from './lib/taskLead';
@@ -2883,6 +2884,25 @@ export function eventPlan(event, ctx = null) {
   // EVENT DAY the day's own steps lead: before this, plain scoring put the
   // budget over "Next up at 12:00 PM — turkey into the oven" on the morning of
   // a Friendsgiving.
+  // ── A CHOICE THAT SETS THE COST LEADS AN EXPECTED OVERRUN (PR #229, 11/22/2026) ──
+  // Over/under is judged on EXPECTED cost (owner ruling, D-03) — a basis, not a
+  // new hero priority. "Bring the plan inside your budget." led a Friendsgiving
+  // whose host had just typed $200 and not yet picked the food that sets the
+  // cost. While nothing BOOKED is over the budget and a cost-setting call is
+  // open, the overrun leaves the action list; the call leads, and the overrun
+  // stays on the ledger (the Budget part reads over) and in the shell's heads-up.
+  // Booked costs over the budget, or nothing cost-setting open: the money leads.
+  {
+    const bi = nextActions.findIndex((a) => a && a.domain === 'budget' && !a.done && /over your budget/i.test(String(a.title || '')));
+    if (bi >= 0) {
+      let committedOver = true;
+      try {
+        const b = budgetFor(event);
+        committedOver = !b.isSet || Number(hostSpending(event, _prices && _prices.priceFactor, _prices && _prices.itemFactors).committed) > Number(b.total);
+      } catch (_e) { committedOver = true; }
+      if (!committedOver && costSettingCallOpen(event, phaseProgressForPlan)) nextActions.splice(bi, 1);
+    }
+  }
   {
     const dOut = event.date ? daysFrom(event.date) : null;
     const bi = nextActions.findIndex((a) => a && a.domain === 'budget' && !a.done);

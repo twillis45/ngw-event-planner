@@ -213,7 +213,7 @@ import { parseStartMinutes } from '@app/lib/eventWhen';
 import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
 import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
-import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt, menuChoicesTally } from '@app/lib/playbooks';
+import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt, menuChoicesTally, menuBoardRowSub } from '@app/lib/playbooks';
 import InviteToTheList from './InviteToTheList';
 import NudgeTheList from './NudgeTheList';
 import { takeEventLink, isOwnEvent } from '@app/lib/eventLink';
@@ -288,7 +288,7 @@ import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow, cheaperBarOption } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence, placeIsOutdoors, outdoorsGuess } from '@app/lib/placeIntelligence';
-import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote, planHeadroomLine } from '@app/lib/budgetCopy';
+import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote, planHeadroomLine, expectedHeadroom } from '@app/lib/budgetCopy';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { deliverNotification, deliveryExcuse, notificationApiPresent, DELIVERY } from '@app/lib/notifyDelivery';
@@ -2665,6 +2665,10 @@ export default function HostShellV2() {
       return playbookDecisionBoard(event, undefined, profile) || { open: [], locked: [] };
     } catch { return { open: [], locked: [] }; }
   }, [event, profile]);
+  // IS ANY CALL STILL OPEN? ONE READER (audit 2 P0-5 / P1-3, 11/22/2026). The
+  // Calls sheet's "Open now · N to settle", the calm veto (hero calm, the
+  // completion beat, the next bar) and the all-clear payoff all read this.
+  const openCallsN = (decisionBoard.open || []).length;
   // "show the rest" for a paced calls board — mirrors queueOpen's expander pattern.
   const [callsOpen, setCallsOpen] = useState(false);
   // The open board AS THE HOST SEES IT — their pins floated, then the engine's
@@ -4172,9 +4176,23 @@ export default function HostShellV2() {
   // holds the notice up with a pulsing mark and no button until the next
   // toast replaces it, or endBusyToast() clears it when the wait ends quietly.
   const busyToastRef = useRef(false);
+  // Is the toast on screen an edit's Undo? (audit 2 P0-1) A newer edit retires
+  // it — see patchEvent — so the only Undo on screen is the last edit's.
+  const undoToastRef = useRef(false);
+  const retireUndoToast = () => {
+    if (!undoToastRef.current) return;
+    undoToastRef.current = false;
+    clearTimeout(toastTimer.current);
+    setToastMsg(null); setToastAction(null); setToastTone(null);
+  };
   const toast = (msg, action, tone, opts) => {
     const busy = !!(opts && opts.busy);
     busyToastRef.current = busy;
+    // Every toast that offers "Undo" is an edit's Undo, whoever raised it (the
+    // budget editor raises its own, ~setB).
+    undoToastRef.current = !busy && !!(action && action.label === 'Undo');
+    // ...and it is the only Undo on screen: the older edit's receipt retires.
+    if (undoToastRef.current) { try { setHeroReceipt(null); } catch { /* not mounted yet */ } }
     setToastMsg(msg);
     setToastAction(busy ? null : (action || ((opts && opts.sticky) ? { label: 'Got it', fn: dismissToast } : null)));
     setToastTone(tone || null);   // 'ok' ⇒ green confirmation; else neutral
@@ -4944,9 +4962,11 @@ export default function HostShellV2() {
   // Budget sheet). Uses the EXACT field the budget readout uses: money.committed > money.planned.
   // Not on a PAST event — then the overage is a final fact (shown in the recap), not a
   // live "worth keeping an eye on" heads-up (post-event wire 2026-07-22).
-  const _overBudget = (!isPastEvent(event) && money.planned && money.committed > money.planned) ? Math.round(money.committed - money.planned) : 0;
+  // ONE BASIS: EXPECTED (owner ruling 11/22/2026, audit 2 D-03) — expectedHeadroom.
+  const _room = !isPastEvent(event) ? expectedHeadroom(money) : null;
+  const _overBudget = _room != null && _room < 0 ? Math.round(-_room) : 0;
   const worries = _overBudget > 0
-    ? [..._baseWorries, { id: 'budget-over', category: 'money', title: `Known costs are $${_overBudget.toLocaleString()} over your budget`, route: { tab: 'Budget' } }]
+    ? [..._baseWorries, { id: 'budget-over', category: 'money', title: `Expected costs are $${_overBudget.toLocaleString()} over your budget`, route: { tab: 'Budget' } }]
     : _baseWorries;
   // BOARD RULING (2026-07-18): a vendor-confirm is a RECORD-ONLY self-report ("Mark as
   // locked in"), not a grounded next-step — it earns the command hero's one loud slot
@@ -5127,6 +5147,7 @@ export default function HostShellV2() {
   const calmVeto = calmVetoFor({
     moneyWorry: (worries || []).find(w => w && String(w.category) === 'money') || null,
     overdueCount: overdueShown,
+    openCalls: openCallsN,
   });
   const mayBeCalm = mayExhale(listIsCalm, calmVeto);
 
@@ -5290,8 +5311,11 @@ export default function HostShellV2() {
     const total = phaseCues && Number(phaseCues.totalCount);
     if (done == null) return;
     if (partsPrevRef.current != null && done > partsPrevRef.current && total) {
+      // "The plan is quiet" only when it is (audit 2 P1-3): Reunion's beat said
+      // so directly above an open permit call. The veto names what is open.
+      const still = calmVeto ? (calmVeto.kind === 'money' ? 'Spending is past your number.' : calmVeto.label.charAt(0).toUpperCase() + calmVeto.label.slice(1) + '.') : 'The plan is quiet.';
       setBeat(done >= total
-        ? 'That was the last one — all ' + total + ' handled. The plan is quiet.'
+        ? 'That was the last one — all ' + total + ' handled. ' + still
         : 'Handled — ' + done + ' of ' + total + '.');
       const t = setTimeout(() => setBeat(null), 6000);
       partsPrevRef.current = done;
@@ -5306,6 +5330,23 @@ export default function HostShellV2() {
   // panel wears a brief ok-ring pulse — the beat, never blocking.
   const [heroReceipt, setHeroReceipt] = useState(null);
   const receiptTimerRef = useRef(null);
+  const pendingSatisfiedRef = useRef([]);
+  // ONE WAY TO SET AN ASK DOWN (audit 2 P1-1, 11/22/2026): the hero Undo on
+  // Crab Feast's first food pick put the data back and left "Decide the menu."
+  // filtered out until reload, because the food editor's settle marked the ask
+  // satisfied without telling the receipt. Every settle now records the ask on
+  // the receipt its write raises (`pendingSatisfiedRef`, read by patchEvent)
+  // and on the receipt already up, so that receipt's Undo brings it back.
+  const settleAndSetDown = (id, write) => {
+    if (id != null) pendingSatisfiedRef.current = [...pendingSatisfiedRef.current, id];
+    try { if (write) write(); } finally {
+      if (id != null) {
+        pendingSatisfiedRef.current = pendingSatisfiedRef.current.filter((x) => x !== id);
+        setSatisfiedIds(ids => ids.includes(id) ? ids : [...ids, id]);
+        setHeroReceipt(r => (r && !(r.satisfied || []).includes(id) ? { ...r, satisfied: [...(r.satisfied || []), id] } : r));
+      }
+    }
+  };
   // ONE Undo for every receipt the board shows (hero card or calm board). It
   // puts back the edit and the ask that edit set down (`satisfied`).
   const undoHeroReceipt = () => {
@@ -8607,10 +8648,23 @@ export default function HostShellV2() {
         const toHero = folds ? !!last.toHero : (askModeRef.current && stage === 'plan' && !sheet);
         lastUndoRef.current = { eventId, prev: undoPrev, msg, at: Date.now(), toHero };
         const undoFn = () => { lastUndoRef.current = null; return patchEvent(undoPrev, 'Undone.', { noUndo: true }); };
+        // ONE UNDO, THE LAST EDIT'S (audit 2 P0-1, 11/22/2026). "Budget set to
+        // $400 · Undo" stayed up through a venue save and a food pick, beside
+        // the hero's own Undo, and tapping it cleared the budget under the pick.
+        // A newer edit retires the older Undo, wherever it was offered.
+        // THE ASK THIS PICK SET DOWN (audit 2 P1-1): the hero's settle records
+        // it in pendingSatisfiedRef before the write, so the receipt holds it
+        // whatever order the two land in, and its Undo brings the ask back.
+        const pend = pendingSatisfiedRef.current; pendingSatisfiedRef.current = [];
         if (toHero) {
+          retireUndoToast();
           // A folded write keeps the ask its pick set down (`satisfied`, below):
           // the Undo that puts the pick back puts the ask back.
-          setHeroReceipt(r => ({ msg, fn: undoFn, satisfied: folds && r ? r.satisfied : undefined }));
+          setHeroReceipt(r => {
+            const kept = folds && r && Array.isArray(r.satisfied) ? r.satisfied : [];
+            const sat = [...new Set([...kept, ...pend])];
+            return { msg, fn: undoFn, satisfied: sat.length ? sat : undefined };
+          });
           // Route through the ONE haptic vocabulary (feedback) instead of a bespoke
           // vibrate(8) — a receipt lands with the same 10ms tick as every other state
           // change, and respects the silent-haptics layer (audit 2026-07-22).
@@ -8618,7 +8672,7 @@ export default function HostShellV2() {
           if (receiptTimerRef.current) clearTimeout(receiptTimerRef.current);
           receiptTimerRef.current = setTimeout(() => setHeroReceipt(null), 7000);
         } else {
-          toast(msg, { label: 'Undo', fn: undoFn }, 'ok');
+          toast(msg, { label: 'Undo', fn: pend.length ? () => { setSatisfiedIds(ids => ids.filter(x => !pend.includes(x))); return undoFn(); } : undoFn }, 'ok');
         }
       }
       // A non-undoable write may still carry one action (opts.action) — e.g.
@@ -9394,12 +9448,11 @@ export default function HostShellV2() {
           {event.guestMode !== 'list' && guestN > 0 && (
             <CtaRow>
               <button className="cta" onClick={() => {
-                patchEvent({ guestCount: guestN, guestEstimate: guestN, guestCountSource: 'host' },
-                  guestN + ' locked in — food, seats, and buys now size from it.');
                 // Answering the ask advances the loop (W14b): the engine stops
                 // generating this action once guestCount is set, but the session
                 // mark makes the roll immediate, same as every decision settle.
-                if (a && a.id) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]);
+                settleAndSetDown(a && a.id ? a.id : null, () => patchEvent({ guestCount: guestN, guestEstimate: guestN, guestCountSource: 'host' },
+                  guestN + ' locked in — food, seats, and buys now size from it.'));
               }}>Lock {guestN} in</button>
             </CtaRow>
           )}
@@ -9413,7 +9466,7 @@ export default function HostShellV2() {
             return (
               <div style={{ marginTop: ASK_RHYTHM.whyToCta }}>
                 <span className="of">Your caterer is set for {event.catererCount} · {yes} confirmed</span>
-                {countResolutionRows(() => { if (a && a.id) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); })}
+                {countResolutionRows(() => settleAndSetDown(a && a.id ? a.id : null))}
               </div>
             );
           })()}
@@ -9729,11 +9782,10 @@ export default function HostShellV2() {
       // write, close the editor, and satisfied-roll this action so the next queue
       // item rises.
       const fnd = { ...fndBase, settle: (v) => {
-        fndBase.settle(v);
-        setEditor(null);
         // A food cue re-derives with the next open menu question and leaves the
         // queue on its own when none is left (owner's iPad, 11/21/2026).
-        if (a && a.id != null && !Array.isArray(a.records)) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]);
+        settleAndSetDown(a && a.id != null && !Array.isArray(a.records) ? a.id : null, () => fndBase.settle(v));
+        setEditor(null);
       } };
       // PARITY (Figma 369:60): the decision leads with the guide-voice grounding (Newsreader
       // italic) — the proposed "why" when we have a pick, else the ask-mode why. Was missing on
@@ -9781,7 +9833,7 @@ export default function HostShellV2() {
       // The two count resolutions render as tactile .decopt rows — ONE shared
       // definition (countResolutionRows) also composed by the guests editor's
       // drift bridge (W14), so a mismatched count is fixable wherever it shows.
-      return countResolutionRows(() => { if (a && a.id) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); });
+      return countResolutionRows(() => settleAndSetDown(a && a.id ? a.id : null));
     }
     return null;
   };
@@ -10790,6 +10842,16 @@ export default function HostShellV2() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId, elegantMode, askMode, nearDayPlan, queueOpen, queue, actions]);
   const isPast = isPastEvent(event);                      // lib/closeoutIntel — tense authority
+  // THE DAY'S PENCIL OFFER, ONCE: an untimed day proposes a start (or asks her to
+  // confirm ours). Read by the offer card and by the walk-through's button, which
+  // steps down to soft while the offer is up — one lit button on The Day (owner,
+  // 11/22/2026, "One lit button on the day"; audit 2 lane F P2-1).
+  const dayPencilOffer = (() => {
+    if (isPast || ros.some(r => r && r.time)) return null;
+    let prop = null; try { prop = proposeStartTime(event, wx); } catch (_e) { prop = null; }
+    const derived = String(event.startTimeSource || '') === 'derived' && String(event.startTime || '').trim();
+    return (prop || derived) ? { prop, derived } : null;
+  })();
   // DAY-OF resume: entering The Day on the day itself picks up at the first
   // cue not already done (event.rosDone persists across reloads — the same
   // per-cue flag the production app writes; effectiveRos overlays it).
@@ -10866,10 +10928,10 @@ export default function HostShellV2() {
     if (yes > 0) w.push(yes + ' confirmed');
     else if (guests) w.push('planned for ' + guests);
     if (foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount >= foodPlan.itemCount) w.push('food shopped');
-    if (money.planned && money.committed <= money.planned) w.push('budget on plan');
+    { const r = expectedHeadroom(money); if (r != null && r >= 0) w.push('budget on plan'); }
     if (outdoor && String(event.rainPlan || '').trim()) w.push('rain backup set');
     return w.slice(0, 4);
-  }, [liveDay, event, foodPlan, money.planned, money.committed, outdoor, guests]);
+  }, [liveDay, event, foodPlan, money.planned, money.expected, outdoor, guests]);
   // Who's helping — DERIVED people (ros owners + arriving confirmed vendors),
   // never a CRM. Caterer rows drop when the host is cooking (original rule).
   // RULED (parity audit): dayHelpers is V2-only day-crew intelligence with no
@@ -12179,19 +12241,29 @@ export default function HostShellV2() {
                   const isCoi = jc.kind === 'coi';
                   const cues = isConf ? ros.filter(r => r && r.time && r.label).slice(0, 5) : [];
                   const next = (queue && queue.length && !listIsCalm) ? queue[0] : null;
+                  // ONE BUNDLE IS NOT EVERY CALL (audit 2 P0-5): "All decided. Every
+                  // open call is made" showed over its own "Next: Note dietary needs"
+                  // and over Calls to make reading "Open now". The payoff claims the
+                  // whole plan only when nothing is open (openCallsN, the next card).
+                  const callsLeft = openCallsN > 0;
+                  const anythingOpen = !!next || callsLeft;
                   const nextLabel = next
                     ? 'Next: ' + String(next.title || 'your next step').replace(/\.+$/, '')
+                    : callsLeft ? 'See the ' + (openCallsN === 1 ? 'call' : 'calls') + ' still to make'
                     : 'Nothing else needs you right now';
                   return (
                     <div className={'allclear' + (solemn ? ' solemn' : '')} role="status">
                       <h2 className="ac-head">{solemn
-                        ? (isConf ? 'The day’s in order.' : isCoi ? 'Everyone’s cleared to help.' : 'It’s all settled.')
-                        : (isConf ? 'All untangled.' : isCoi ? 'All covered.' : 'All decided.')}</h2>
+                        ? (isConf ? 'The day’s in order.' : isCoi ? 'Everyone’s cleared to help.' : anythingOpen ? (jc.count === 1 ? 'That’s settled.' : 'Those are settled.') : 'It’s all settled.')
+                        : (isConf ? 'All untangled.' : isCoi ? 'All covered.' : anythingOpen ? (jc.count === 1 ? 'That’s decided.' : 'Those are decided.') : 'All decided.')}</h2>
                       <p className="ac-voice">{isConf
                         ? (cues.length ? 'Every vendor has its own hour now — here’s the day, in order.'
                                        : 'Every vendor has its own hour now — nothing’s fighting for setup.')
                         : isCoi ? 'Every vendor’s proof is on file — you’re clear to let them on-site.'
-                        : 'Every open call is made — each one has an answer now.'}</p>
+                        : anythingOpen
+                          ? (jc.count === 1 ? 'That call has its answer now.' : 'Each of those ' + jc.count + ' calls has an answer now.')
+                            + (callsLeft ? ' ' + calmVetoFor({ openCalls: openCallsN }).label.replace(/^./, (c) => c.toUpperCase()) + ' in Calls to make.' : '')
+                          : 'Every open call is made — each one has an answer now.'}</p>
                       {isConf && cues.length > 0 && (
                         <ul className="ac-tl">
                           {cues.map((c, i) => (
@@ -12205,9 +12277,9 @@ export default function HostShellV2() {
                       <div className="ac-bar" aria-hidden="true"><span /></div>
                       <div className="ac-meta">
                         <span className="ac-count">{jc.count} of {jc.count} · {isConf ? 'in sync' : isCoi ? 'on file' : 'decided'}</span>
-                        <span className="ac-clear">{isConf ? 'nothing clashing' : isCoi ? 'nothing missing' : 'nothing pending'}</span>
+                        <span className="ac-clear">{isConf ? 'nothing clashing' : isCoi ? 'nothing missing' : callsLeft ? openCallsN + ' still to make' : next ? 'more below' : 'nothing pending'}</span>
                       </div>
-                      <button className="ac-next" onClick={() => setJustCleared(null)}>{nextLabel}<span aria-hidden="true"> ›</span></button>
+                      <button className="ac-next" onClick={() => { setJustCleared(null); if (!next && callsLeft) setSheet({ kind: 'decisions' }); }}>{nextLabel}<span aria-hidden="true"> ›</span></button>
                     </div>
                   );
                 }
@@ -12273,7 +12345,7 @@ export default function HostShellV2() {
                       if (od && !heroSpeaksThisOverdue && !solemn) slips.push(od === 1 ? 'one decision is past its easy window' : 'a few decisions are past their easy window');
                     } catch { /* board unavailable */ }
                     if (compression && compression.headline) slips.push('time got tight');
-                    if (money.planned && money.committed > money.planned) slips.push('spending is past your number');
+                    { const r = expectedHeadroom(money); if (r != null && r < 0) slips.push('spending is past your number'); }
                     if (slips.length) {
                       // ── THE FRAME GOES, THE FACT STAYS (Grandmother, board re-sit 2026-07-30) ──
                       // She read "Mostly on course — time got tight. Worth a look today." sitting
@@ -12328,6 +12400,11 @@ export default function HostShellV2() {
                       // than leaving the host to find it.
                       statusNode = <p className={'verdict' + (elegantMode ? '' : ' slipping')}>
                         {calmVeto.label.charAt(0).toUpperCase() + calmVeto.label.slice(1)} — still worth doing, or tick {calmVeto.count === 1 ? 'it' : 'them'} off below.
+                      </p>;
+                    } else if (listIsCalm && calmVeto && calmVeto.kind === 'open-calls') {
+                      // A QUIET QUEUE IS NOT A QUIET PLAN WHILE A CALL IS OPEN (audit 2 P1-3).
+                      statusNode = <p className="verdict">
+                        {calmVeto.label.charAt(0).toUpperCase() + calmVeto.label.slice(1)} — settle {calmVeto.count === 1 ? 'it' : 'them'} in Calls to make.
                       </p>;
                     } else if (listIsCalm) {
                       statusNode = <p className="verdict">{solemn
@@ -12681,6 +12758,14 @@ export default function HostShellV2() {
                         onClick={() => setSheet({ kind: 'tasks', focus: null })}>
                         {overdueRows.length > 5 ? `See all ${overdueRows.length} in your checklist` : 'Open your checklist'}
                       </button>
+                    </div>
+                  )
+                  : (calmVeto && calmVeto.kind === 'open-calls')
+                  ? (
+                    <div data-calls-open-here>
+                      {/* The verdict above already says it when the day is counted. */}
+                      {!(days !== null && days > 0) && <div>{calmVeto.label.charAt(0).toUpperCase() + calmVeto.label.slice(1)}.</div>}
+                      <button className="mini" style={{ marginTop: 'var(--sp-2)' }} onClick={() => setSheet({ kind: 'decisions' })}>Open Calls to make</button>
                     </div>
                   )
                   : worries.length
@@ -13129,7 +13214,7 @@ export default function HostShellV2() {
                   // The receipt remembers the ask this pick set down, so its Undo
                   // brings the ask back (undoHeroReceipt) — otherwise an undone
                   // pick left its question filtered out of the queue.
-                  const panel = renderDecision({ ...nd, settle: (v) => { nd.settle(v); trackCompletion(a, getActionReason(a, { event }), 'settled'); if (!(a.id === 'phase:food' && Array.isArray(a.records))) { setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); setHeroReceipt(r => (r ? { ...r, satisfied: [...(r.satisfied || []), a.id] } : r)); } } });
+                  const panel = renderDecision({ ...nd, settle: (v) => { settleAndSetDown(!(a.id === 'phase:food' && Array.isArray(a.records)) ? a.id : null, () => nd.settle(v)); trackCompletion(a, getActionReason(a, { event }), 'settled'); } });
                   // A menu question carries the spread link here as in the food editor (ruling 3).
                   return a.id === 'phase:food' ? <>{panel}{spreadLink()}</> : panel;
                 })() : null;
@@ -14269,7 +14354,7 @@ export default function HostShellV2() {
                     </div>
                     {/* over-budget warn moved from inline style to the .over class so
                         the numeral <b> rule can defer to it (b stays warn, not gray). */}
-                    <div className={'t-sub' + (money.planned && money.committed > money.planned && !isPast ? ' over' : '')}>
+                    <div className={'t-sub' + ((expectedHeadroom(money) ?? 0) < 0 && !isPast ? ' over' : '')}>
                       {/* "spoken for" carries its own est. marker now (app-wide
                           estimate pass, 2026-07-29). It is the biggest number on
                           the tile and a MIXTURE — real spend plus every not-yet-
@@ -14278,7 +14363,7 @@ export default function HostShellV2() {
                           vocabulary as `spent` right beside it: "(est.)" when the
                           whole figure is a guess, "· $N est." when only part is.
                           Never a second vocabulary (UX_08). */}
-                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? <span className="over-seg">{' · ' + fmt(money.committed - money.planned) + ' over'}</span> : ''}{spend.moneyDiscrepancies && spend.moneyDiscrepancies.length > 0 ? ' · payment records differ' : ''}</>
+                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{(expectedHeadroom(money) ?? 0) < 0 ? <span className="over-seg">{' · ' + fmt(-expectedHeadroom(money)) + ' over, expected'}</span> : ''}{spend.moneyDiscrepancies && spend.moneyDiscrepancies.length > 0 ? ' · payment records differ' : ''}</>
                         : (suggestedTotal
                           /* NO POPULATION. This read "mid-range for an event
                              this size", and the comment here claimed it shared
@@ -15067,7 +15152,7 @@ export default function HostShellV2() {
                     // the open menu questions while it lands on Plan.
                     ? { key: 'food', label: 'The spread & shopping', sub: (() => {
                       const k = foodSheetKind(event, foodPlan);
-                      if (k === 'foodplan') return 'the menu · ' + ((openFoodChoices(event, foodPlan) || []).length) + ' to decide';
+                      if (k === 'foodplan') return menuBoardRowSub(event, foodPlan); // one count with the hero (D-12)
                       return 'food & drinks · ' + foodPlan.boughtCount + ' of ' + foodPlan.itemCount + ' bought';
                     })(), go: openSpread } : null,
                   crab.relevant
@@ -15844,11 +15929,9 @@ export default function HostShellV2() {
                       consistently: an untimed day pencils the WHOLE run of show from one grounded start
                       (not nine taps). Accepting writes event.startTime; playbookRunOfShow reflows every
                       moment to a real clock. Handles: OUR derived guess awaiting a yes · a fresh proposal. */}
-                  {!isPast && !ros.some(r => r && r.time) && (() => {
-                    let prop = null; try { prop = proposeStartTime(event, wx); } catch (_e) { prop = null; }
-                    const derived = String(event.startTimeSource || '') === 'derived' && String(event.startTime || '').trim();
+                  {dayPencilOffer && (() => {
+                    const { prop, derived } = dayPencilOffer;
                     const reading = derived ? startTimeReading(event) : null;
-                    if (!prop && !derived) return null;
                     // Composed from the parity kit at COMPACT density — same propose atoms as
                     // budget B1, tighter card rhythm. The eyebrow/why/accept shape is the
                     // shared Propose-Don't-Ask primitive (day-of 331:61 + budget 344:61).
@@ -15920,7 +16003,7 @@ export default function HostShellV2() {
                               style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--steel-soft)', fontWeight: 600, cursor: 'pointer' }}>Set a time ›</button>
                           </>)) : null}
                         </p>
-                        <button className="cta" style={{ marginTop: 'var(--sp-4)' }} onClick={() => {
+                        <button className={'cta' + (dayPencilOffer ? ' soft' : '')} style={{ marginTop: 'var(--sp-4)' }} onClick={() => {
                           const cue = cur;
                           // DAY-OF ONLY: write the per-cue done flag (event.rosDone; effectiveRos overlays it).
                           if (days === 0 && cue && cue.id) {
@@ -16551,7 +16634,7 @@ export default function HostShellV2() {
                 {/* Hero copy (host request 2026-07-11): the open count is the star —
                     decisionBoard is the ONE decision source (queue item 10). */}
                 {(() => {
-                  const openN = (decisionBoard.open || []).length;
+                  const openN = openCallsN;
                   const lockedN = (decisionBoard.locked || []).length;
                   // Wave-2b: parked-for-later decisions keep the sheet honest even with
                   // zero open work — the hero must still render (not vanish) so the
@@ -26700,7 +26783,9 @@ export default function HostShellV2() {
               try { recovery = buildBudgetRecoveryPlan(event, foodPP.priceFactor); } catch { recovery = null; }
               let swapPick = null;
               try { swapPick = recovery && recovery.status === 'recovery_available' ? pickDroppableBudgetRow(event, foodPP.priceFactor) : null; } catch { swapPick = null; }
-              const left = money.planned ? money.planned - money.committed : null;
+              // ONE BASIS: EXPECTED (owner ruling 11/22/2026, audit 2 D-03): the
+              // star reads what the hero copy, the ledger and After read.
+              const left = expectedHeadroom(money);
               return (
                 <>
                   {/* PRINCIPLES REDESIGN (host directive): summary before detail —
@@ -26733,7 +26818,7 @@ export default function HostShellV2() {
                       : heroCopy.caveat || null;
                     return (
                     <SheetHero
-                      eyebrow={over ? 'Over by' : 'Left to spend'}
+                      eyebrow={over ? 'Expected over by' : 'Expected left to spend'}
                       star={fmt(Math.abs(left || 0))}
                       tone={over ? 'danger' : hcState === 'near' ? 'warn' : 'ok'}
                       sub={warmSub}
@@ -26744,7 +26829,7 @@ export default function HostShellV2() {
                             — and this is the surface that exists to be honest
                             about money, so it says so in full rather than
                             leaving the host to infer it from the rows. */}
-                        <b>{fmt(money.committed)}</b> spoken for, of a <b>{fmt(money.planned)}</b> budget{money.committedEstimated > 0 ? (money.committedEstimated === money.committed
+                        <b>{fmt(money.expected)}</b> expected · <b>{fmt(money.committed)}</b> spoken for, of a <b>{fmt(money.planned)}</b> budget{money.committedEstimated > 0 ? (money.committedEstimated === money.committed
                           /* SAY "ALL OF IT" RATHER THAN THE NUMBER AGAIN (2026-09-26).
                              Measured over all 45 playbooks at 30 guests: committedEstimated
                              EQUALS committed on 45 of 45 — every event, because before a host
