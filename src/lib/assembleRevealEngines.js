@@ -327,7 +327,9 @@ function buildBlockerStage(blocker) {
     const branch = String(blocker.branchLabel || '').replace(/^U\.S\.\s+/, '').trim();
     blockerCopy['official-ceremony'] = {
       title: 'The official ceremony',
-      what: `Is the official ${branch ? branch + ' ' : ''}retirement ceremony part of this party, or held separately?`,
+      // The headline (nextDecision) is the question; this line says what the
+      // answer decides, so the card doesn't ask it twice (live #224, 11/22/2026).
+      what: 'Your answer decides whether the official protocol joins your run of show.',
       why: 'If it’s part of this party, the official protocol joins your run of show. If it’s held separately, the night stays as you planned it.',
       // The headline IS the question, as on the timing ask (a bare "Choose
       // one." headlined the board on the owner's phone, 11/22/2026).

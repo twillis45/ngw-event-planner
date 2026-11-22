@@ -88,7 +88,9 @@ test('Ceremony: one question, in her event’s words; no generic timing ask', as
     if (await b.count()) { await b.click(); await settled(page); await page.waitForTimeout(600); }
   }
   const t = await bodyText(page);
-  expect(t).toMatch(/Is the official Army retirement ceremony part of this party, or held separately\?/);
+  expect(t).toMatch(/Is the official Army retirement ceremony part of this party\?/);
+  // Asked once on the card: the body says what the answer decides.
+  expect(t).not.toMatch(/or held separately\?/);
   expect(t).not.toMatch(/Ceremony Timing/);
   expect(t).not.toMatch(/When does the ceremony happen\?/);
 });
