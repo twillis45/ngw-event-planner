@@ -5306,6 +5306,14 @@ export default function HostShellV2() {
   // panel wears a brief ok-ring pulse — the beat, never blocking.
   const [heroReceipt, setHeroReceipt] = useState(null);
   const receiptTimerRef = useRef(null);
+  // ONE Undo for every receipt the board shows (hero card or calm board). It
+  // puts back the edit and the ask that edit set down (`satisfied`).
+  const undoHeroReceipt = () => {
+    const r = heroReceipt;
+    setHeroReceipt(null);
+    if (r && Array.isArray(r.satisfied) && r.satisfied.length) setSatisfiedIds(ids => ids.filter(x => !r.satisfied.includes(x)));
+    try { if (r && r.fn) r.fn(); } catch { /* undo failed */ }
+  };
   const askModeRef = useRef(false);
   // ALL-CLEAR PAYOFF (host 2026-07-18): when a whole bundle goes N→0 on THIS event,
   // the hero shows the earned moment before advancing — {kind, count}. Conflicts get
@@ -8592,10 +8600,17 @@ export default function HostShellV2() {
       // through, so its toast is always a confirmation ⇒ green. Errors never come through
       // here (they call toast() directly with no tone), so they stay neutral.
       if (undoable) {
-        lastUndoRef.current = { eventId, prev: undoPrev, msg, at: Date.now() };
+        // A write folded into the last edit goes where that edit's receipt went:
+        // the pick that quiets the board is answered on the board, so its
+        // receipt (now saying both) must not move to a toast and leave the
+        // board's Undo restoring only half (Wanda audit follow-up, 11/22/2026).
+        const toHero = folds ? !!last.toHero : (askModeRef.current && stage === 'plan' && !sheet);
+        lastUndoRef.current = { eventId, prev: undoPrev, msg, at: Date.now(), toHero };
         const undoFn = () => { lastUndoRef.current = null; return patchEvent(undoPrev, 'Undone.', { noUndo: true }); };
-        if (askModeRef.current && stage === 'plan' && !sheet) {
-          setHeroReceipt({ msg, fn: undoFn });
+        if (toHero) {
+          // A folded write keeps the ask its pick set down (`satisfied`, below):
+          // the Undo that puts the pick back puts the ask back.
+          setHeroReceipt(r => ({ msg, fn: undoFn, satisfied: folds && r ? r.satisfied : undefined }));
           // Route through the ONE haptic vocabulary (feedback) instead of a bespoke
           // vibrate(8) — a receipt lands with the same 10ms tick as every other state
           // change, and respects the silent-haptics layer (audit 2026-07-22).
@@ -12326,6 +12341,17 @@ export default function HostShellV2() {
                   }
                 }
                 const dateLong = event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : '';
+                // THE PICK THAT QUIETS THE BOARD KEEPS ITS UNDO (Wanda audit
+                // follow-up, 11/22/2026). The receipt lives inside the hero card,
+                // and the pick that empties the queue leaves no hero card: the one
+                // pick that could not be undone in place. The calm boards carry it.
+                const calmReceipt = heroReceipt ? (
+                  <div className="receipt">
+                    <span className="rdot" aria-hidden="true" />
+                    <span className="rmsg">{heroReceipt.msg}</span>
+                    <button className="mini" onClick={undoHeroReceipt}>Undo</button>
+                  </div>
+                ) : null;
                 if (askMode) {
                   return (<>
                     {/* ONE ask string, computed once at heroAskText (~2357) so the card-title
@@ -12379,6 +12405,7 @@ export default function HostShellV2() {
                         to this branch's — so it was dead code that misread as shipped copy
                         and misled a design review. */}
                     {statusNode}
+                    {calmReceipt}
                     <button className="cp-look" onClick={() => { try {
                       // The below-fold scrolls the .app container, which silently ignores
                       // scrollTo({behavior:'smooth'}) here — only a direct scrollTop assignment
@@ -12402,7 +12429,7 @@ export default function HostShellV2() {
                         {/* "on track" is a PACE word. The engine knows handled-or-open per
                             essential and nothing about rate — the same false precision the
                             host killed the continuous fill for. Use the engine's own noun. */}
-                        <p className="cp-prog">{hairlineLabel(orient) || `${cpDone} of ${cpTotal} plan parts handled`}</p>
+                        <p className="cp-prog">{hairlineLabel(orient, { calm: true }) || `${cpDone} of ${cpTotal} plan parts handled`}</p>
                         {partNames && <p className="cp-parts">{partNames}</p>}
                         {/* The denominator moves, so say when. This is the whole reason
                             phaseProgress now emits nextLedgerChange. */}
@@ -12518,6 +12545,7 @@ export default function HostShellV2() {
                     {!isPast && days !== null && days > 1 && spanNights(event) > 0 && (() => { try { return ` — ${spanNights(event) + 1} days, through ${new Date(event.endDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`; } catch { return ''; } })()}
                   </p>
                   {statusNode}
+                  {calmReceipt}
                 </>);
               })()}{beat && <p className="verdict beat">{beat}</p>}</div>
               {/* .eanswer — display:contents everywhere EXCEPT tablet-land (>=1024), where
@@ -12841,7 +12869,7 @@ export default function HostShellV2() {
                             <div className="receipt">
                               <span className="rdot" aria-hidden="true" />
                               <span className="rmsg">{heroReceipt.msg}</span>
-                              <button className="mini" onClick={() => { const f = heroReceipt && heroReceipt.fn; setHeroReceipt(null); try { if (f) f(); } catch { /* undo failed */ } }}>Undo</button>
+                              <button className="mini" onClick={undoHeroReceipt}>Undo</button>
                             </div>
                           )}
                           {conflictItems.length > 1 && (
@@ -12906,7 +12934,7 @@ export default function HostShellV2() {
                             <div className="receipt">
                               <span className="rdot" aria-hidden="true" />
                               <span className="rmsg">{heroReceipt.msg}</span>
-                              <button className="mini" onClick={() => { const f = heroReceipt && heroReceipt.fn; setHeroReceipt(null); try { if (f) f(); } catch { /* undo failed */ } }}>Undo</button>
+                              <button className="mini" onClick={undoHeroReceipt}>Undo</button>
                             </div>
                           )}
                           {/* ── REPOINTED: AN EXPANDER BECAME THE DOOR (board re-sit 2026-07-30) ──
@@ -13097,7 +13125,10 @@ export default function HostShellV2() {
                   // from the engine's own `unlocks`/`gateHolder` — never a guess.
                   // The food item is the exception: it re-derives with the next open
                   // menu question, and leaves the queue itself when none is left.
-                  const panel = renderDecision({ ...nd, settle: (v) => { nd.settle(v); trackCompletion(a, getActionReason(a, { event }), 'settled'); if (!(a.id === 'phase:food' && Array.isArray(a.records))) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); } });
+                  // The receipt remembers the ask this pick set down, so its Undo
+                  // brings the ask back (undoHeroReceipt) — otherwise an undone
+                  // pick left its question filtered out of the queue.
+                  const panel = renderDecision({ ...nd, settle: (v) => { nd.settle(v); trackCompletion(a, getActionReason(a, { event }), 'settled'); if (!(a.id === 'phase:food' && Array.isArray(a.records))) { setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); setHeroReceipt(r => (r ? { ...r, satisfied: [...(r.satisfied || []), a.id] } : r)); } } });
                   // A menu question carries the spread link here as in the food editor (ruling 3).
                   return a.id === 'phase:food' ? <>{panel}{spreadLink()}</> : panel;
                 })() : null;
@@ -13336,7 +13367,7 @@ export default function HostShellV2() {
                         <div className="receipt">
                           <span className="rdot" aria-hidden="true" />
                           <span className="rmsg">{heroReceipt.msg}</span>
-                          <button className="mini" onClick={() => { const f = heroReceipt && heroReceipt.fn; setHeroReceipt(null); try { if (f) f(); } catch { /* undo failed */ } }}>Undo</button>
+                          <button className="mini" onClick={undoHeroReceipt}>Undo</button>
                         </div>
                       )}
                       {/* The horizon whisper — only when the path rows do NOT
