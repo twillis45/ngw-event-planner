@@ -61,7 +61,7 @@ describe.each(Object.entries(EXPECT))('%s', (type, x) => {
 
 test('another playbook with a cash bar gets sets from its own lines; a pick that is not a cash bar asks nothing', () => {
   const gala = cashBarCoverSets(getPlaybook('Fundraiser / Gala'));
-  expect(gala.map(([l]) => l)).toEqual(['The non-alcoholic drinks and ice', NOTHING]);
+  expect(gala.map(([l]) => l)).toEqual(['The non-alcoholic drinks', 'The drink tickets, plus the non-alcoholic drinks', NOTHING]);
   expect(cashBarCoverSets(getPlaybook('Birthday'))).toBeNull();
 });
 
@@ -90,4 +90,54 @@ describe('one cash-bar rule, on the named drinks call', () => {
     expect(ids).toEqual(kept);
     expect(playbookFoodPlan(ev(type, { [id]: 'Cash bar', [BAR_COVER_ID]: NOTHING })).list.filter((l) => l.cat === 'beverage' && !l.skipped)).toEqual([]);
   });
+});
+
+// ─── THE GALA'S DRINK TICKETS ASK IT TOO (#220 Open, 11/22/2026) ─────────────
+// "Two drink tickets, then cash" is a cash bar after the tickets, but the one
+// cash-pick test read only "cash … bar", so the Gala asked the follow-up after
+// "Cash bar" and never after the tickets. Every cash pick on the drinks call
+// raises the same follow-up, through the same rule.
+describe('Fundraiser / Gala: two drink tickets, then cash', () => {
+  const TICKETS = 'Two drink tickets, then cash';
+  const pb = getPlaybook('Fundraiser / Gala');
+  const shown = (picks) => {
+    const b = playbookDecisionBoard(ev('Fundraiser / Gala', picks));
+    return [...(b.open || []), ...(b.locked || [])].some((r) => r && (r.id === BAR_COVER_ID || r.decisionId === BAR_COVER_ID || String(r.key || '').endsWith(BAR_COVER_ID)));
+  };
+  test('the tickets pick asks what the host still covers, like the cash bar', () => {
+    expect(shown({ bar: 'Cash bar' })).toBe(true);
+    expect(shown({ bar: TICKETS })).toBe(true);
+    expect(shown({ bar: 'Wine and beer with dinner' })).toBe(false);
+    expect(shown({ bar: 'Dry' })).toBe(false);
+  });
+  test('one follow-up, one rule: the same decision whichever cash pick raised it', () => {
+    const fu = injectedDecisionsFor(ev('Fundraiser / Gala'), pb).filter((d) => d.id === BAR_COVER_ID);
+    expect(fu).toHaveLength(1);
+    expect(fu[0].whenChoice).toEqual({ id: 'bar', in: [TICKETS, 'Cash bar'] });
+  });
+  test('the answer prices the tickets pick: covering nothing buys no drinks', () => {
+    const ids = (picks) => playbookFoodPlan(ev('Fundraiser / Gala', picks)).list.filter((l) => l.cat === 'beverage' && !l.skipped).map((l) => l.id).sort();
+    expect(ids({ bar: TICKETS, [BAR_COVER_ID]: NOTHING })).toEqual([]);
+    const tickets = cashBarCoverSets(pb).find(([l]) => /ticket/i.test(l));
+    expect(tickets).toBeTruthy();
+    expect(ids({ bar: TICKETS, [BAR_COVER_ID]: tickets[0] })).toEqual([...tickets[1]].sort());
+  });
+});
+
+// ─── AN OPTION NAMES ONLY WHAT IT PRICES (#220 Open, 11/22/2026) ─────────────
+// The Gala's built set read "The non-alcoholic drinks and ice", and the Gala
+// has no ice line: the option named a drink it never bought. Every set, on
+// every playbook, names ice only when one of its own lines is ice.
+test('no cash-bar option names ice it does not price', () => {
+  const { ALL_PLAYBOOKS } = require('../playbooks');
+  const bad = [];
+  for (const p of ALL_PLAYBOOKS) {
+    const sets = cashBarCoverSets(p);
+    if (!sets) continue;
+    const item = (id) => ((p.purchases || []).find((x) => x.id === id) || {}).item || '';
+    for (const [label, lines] of sets) {
+      if (/\bice\b/i.test(label) && !lines.some((id) => /\bice\b/i.test(item(id)))) bad.push(`${p.type}: ${label}`);
+    }
+  }
+  expect(bad).toEqual([]);
 });

@@ -17,9 +17,8 @@ const CONTEXT = {
 const FULL_BAR_IS_BASELINE = 'A full bar is the cited baseline (owner ruling 11/21/2026), and the playbook has no spirits line beyond what this pick already buys.';
 // The cash-bar follow-up (bar_cover, 11/21/2026) now prices every cash pick on
 // the drinks call by what the host still covers, so those picks left the full
-// bar's groups. Gala's "Two drink tickets, then cash" names no cash bar, so no
-// follow-up asks after it.
-const TICKETS_UNASKED = 'OWNER CALL: two drink tickets is part hosted, and the cash-bar follow-up asks only after a cash-bar pick, so how many tickets the host covers is not asked yet.';
+// bar's groups. Gala's "Two drink tickets, then cash" raises it too (#220
+// Open, 11/22/2026), so it left the hosted group for the cash one.
 
 // [type, the picks that price the same, why]
 const SAME_TIER = [
@@ -50,8 +49,8 @@ const SAME_TIER = [
     'OWNER CALL: one line covers beer or sodas at every pick, and there is no coffee line; no split is sourced.'],
   ['Wedding', ['Open bar (full)', 'Beer + wine + signature'], FULL_BAR_IS_BASELINE],
   ['Client Dinner', ['Wine with dinner only', 'One round, then wine', 'Full bar'], 'OWNER CALL: the playbook has no cocktail or spirits line.'],
-  ['Fundraiser / Gala', ['Wine and beer with dinner', 'Open bar included in the ticket', 'Two drink tickets, then cash'], `${FULL_BAR_IS_BASELINE} ${TICKETS_UNASKED}`],
-  ['Fundraiser / Gala', ['Cash bar', 'Dry'], 'Guests buy every drink at a cash bar; before the follow-up is answered the host covers its first set, the zero-proof, which is what a dry party buys.'],
+  ['Fundraiser / Gala', ['Wine and beer with dinner', 'Open bar included in the ticket'], FULL_BAR_IS_BASELINE],
+  ['Fundraiser / Gala', ['Cash bar', 'Dry', 'Two drink tickets, then cash'], 'Guests buy every drink at a cash bar, and the tickets are a cash bar after them; before the follow-up is answered the host covers its first set, the zero-proof, which is what a dry party buys. Answering "The drink tickets" buys the bar line back.'],
 ];
 
 const total = (type, picks) => {
