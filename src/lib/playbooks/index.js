@@ -3382,8 +3382,14 @@ export function playbookDayOfChecklist(event) {
   // sources on every element. The Day showed only the generic safety floor and
   // said "we have no day-of list written". Only elements the protocol marks as a
   // days-lead item are added, in its own words.
+  // ASKED ONCE, NEVER PRESUMED (owner, 11/22/2026): the same answer the run of
+  // show's ceremony beat reads. Unanswered or "Held separately", the flag and
+  // the Retirement Order are not this party's to check.
   const mil = (() => {
-    try { const m = militaryRetirementContext(event); return m && m.authored && Array.isArray(m.protocol) ? m : null; } catch (_e) { return null; }
+    try {
+      if (officialCeremonyAnswer(event) !== 'this-party') return null;
+      const m = militaryRetirementContext(event); return m && m.authored && Array.isArray(m.protocol) ? m : null;
+    } catch (_e) { return null; }
   })();
   const milItems = mil
     ? mil.protocol.filter((p) => p && p.id && p.label && p.lead === 'days').map((p) => ({ id: `mil_${p.id}`, label: p.label, detail: p.note || '', severity: 'med' }))

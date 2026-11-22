@@ -99,8 +99,10 @@ describe('item 12 — cleaning advice follows the venue', () => {
 });
 
 describe('item 16 — The Day reads the Army ceremony it already has', () => {
+  // Same ruling for the day-of list (11/22/2026): its ceremony checks read the
+  // same answer as the run of show (theCeremonyChecksWaitForTheAnswer).
   test('the day-of list carries the ceremony, not only the generic safety floor', () => {
-    const rc = playbookDayOfChecklist(demo());
+    const rc = playbookDayOfChecklist({ ...demo(), officialCeremony: 'this-party' });
     const ids = rc.items.map((i) => i.id);
     expect(ids).toEqual(expect.arrayContaining(['mil_flag_presentation', 'mil_retirement_order']));
     expect(rc.isDefault).toBe(false);
