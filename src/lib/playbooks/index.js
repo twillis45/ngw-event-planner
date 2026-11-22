@@ -1447,7 +1447,14 @@ export const FOOD_APPROACH_DECISIONS = [
 ];
 // "Order in" here means the MEAL arrives made (ordered-in trays, takeout) — a
 // bare "Order from a market" (buying raw ingredients) must NOT match.
-export const CATERER_OPTION_RE = /cater|private chef|\bchef\b|drop-?off|order(ed)?[- ]?in\b|pizza|tray|takeout|take-?out|restaurant/i;
+// "Trays" counts only as an ORDER ("Order trays", "Order pizza/trays"): on a
+// buffet ("Buffet / trays") a tray is the serving dish, and Graduation's
+// menu-format pick flipped a host who cooks to catered (audit 2 lane A P0-4).
+export const CATERER_OPTION_RE = /(?:cater|private chef|\bchef\b|drop-?off|order(ed)?[- ]?in\b|pizza|\border(?:ed)?\b[^;]*?\btrays?\b|takeout|take-?out|restaurant)/i;
+// The menu questions asked AFTER the approach (what is served, how it is laid
+// out). Her answer to who carries the meal outranks a pick here: a menu option
+// that happens to say "pizza" is the menu, not a hire (audit 2 lane A P0-4).
+const MENU_FORMAT_DECISIONS = new Set(['menu', 'food_menu']);
 // The community carries the meal (a repast committee, neighbors signing up) — a
 // third state beside caterer/host-cooks: the HOST is not buying the food.
 // Deliberately NOT bare "potluck": a potluck host still plans and part-buys the
@@ -1489,12 +1496,13 @@ export function foodApproach(event) {
   // An EXPLICIT host pick on any candidate outranks another candidate's authored
   // default — otherwise a defaulted decision earlier in the list silently vetoes
   // the one the host actually answered.
-  for (const dec of candidates) {
-    if (picks[dec.id] != null) return result(dec.id, picks[dec.id]);
-  }
   // The generic panel also records a real host answer. It outranks unanswered
-  // authored defaults, while a specific authored answer above still wins.
+  // authored defaults, while a specific authored answer above still wins —
+  // except a menu-format pick, which says what is served, not who makes it.
   const generic = String(picks.sourcing || '').trim();
+  for (const dec of candidates) {
+    if (picks[dec.id] != null && !(generic && MENU_FORMAT_DECISIONS.has(dec.id))) return result(dec.id, picks[dec.id]);
+  }
   if (generic) return result(null, generic);
   for (const dec of candidates) {
     const pick = choicePickFor(event, dec.id);
