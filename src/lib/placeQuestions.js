@@ -179,7 +179,9 @@ export function placeQuestionsFor(event) {
   // gave. Real RSVPs and a locked count both read as hers, so the only thing
   // refused is the app's own guess.
   const band = (() => { try { return attendanceBand(ev); } catch (_e) { return null; } })();
-  const headcount = band && band.applicable && band.countFromHost ? Number(band.planning) || 0 : 0;
+  // HER COUNT, the one the guest tile shows (audit 2 lane A P1-4): "an outdoor
+  // event for 57" sat over "50 guests" — 57 was the planning top of her 50.
+  const headcount = band && band.applicable && band.countFromHost ? (Number(band.planned) || Number(band.planning) || 0) : 0;
   const outdoors = (() => { try { return placeIsOutdoors(ev); } catch (_e) { return false; } })();
 
   if (outdoors && headcount >= PERMIT_THRESHOLD

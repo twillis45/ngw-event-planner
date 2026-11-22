@@ -59,6 +59,10 @@ export function parseVenueLocation(v) {
   const city = m[1].trim();
   const stateRaw = m[2].trim();
   if (!isPlausibleCityText(city)) return null;
+  // A STATE PARK IS NOT A TOWN (audit 2 lane A P1-4): "Sandy Point State Park,
+  // MD" became the town, and the hero asked "Pick the place in Sandy Point State
+  // Park." on every save. "College Park" and "Highland Park" are towns.
+  if (/\b(?:state|national|county|regional|memorial)\s+(?:park|forest|beach|seashore)\b/i.test(city)) return null;
   const abbr = stateRaw.toUpperCase();
   if (US_STATE_ABBR.has(abbr)) return { city, state: abbr };
   const byName = US_STATE_NAME_TO_ABBR[stateRaw.toLowerCase()];

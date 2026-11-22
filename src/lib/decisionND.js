@@ -15,6 +15,7 @@
 //   NormalizedDecision = { id, options:[{value,label,note?}], proposed:{value,why}|null,
 //                          selected?:string|null, why?:string }
 import { playbookDecisionOptions, foodApproach, openFoodChoices, getPlaybook, decisionSettledByData } from './playbooks';
+import { venueKindOf } from './knownFacts';
 import { decisionApproach } from './doItForMe';
 
 // A playbook `decision:*` board row → its authored options, notes and grounded
@@ -89,6 +90,10 @@ function foodCallOf(event) {
   const pb = (() => { try { return getPlaybook(event && event.type); } catch { return null; } })();
   return (pb && Array.isArray(pb.decisions) && pb.decisions.find(d => d && d.foodCall === true)) || null;
 }
+// A MEAL AT A RESTAURANT IS SERVED THERE (audit 2 lane A P1-4): a client
+// dinner at Harbor Grill, a bachelor party at an ale house and a hotel night
+// were offered "We'll cook it" and "Potluck". The place serves it.
+const SERVED_AT = { restaurant: 'The restaurant serves it', bar: 'The restaurant serves it', hotel: 'The hotel serves it' };
 export function foodDecisionND(event, guests, boardRows, claimed) {
   const picks = (event && event.foodChoices) || {};
   const call = foodCallOf(event);
@@ -107,6 +112,17 @@ export function foodDecisionND(event, guests, boardRows, claimed) {
       if (nd) return { ...nd, selected: picks[leverId] || null, ask: row.ask || null };
     }
   } catch { /* fall through to the generic trio */ }
+  const place = (() => { try { return venueKindOf(event); } catch { return null; } })();
+  const servedAt = place && !place.isHome ? SERVED_AT[place.kind] : null;
+  if (servedAt) {
+    return {
+      id: 'phase:food',
+      options: [{ value: 'caterer', label: servedAt, note: null }],
+      proposed: { value: 'caterer', why: `${place.name} serves the meal.` },
+      selected: picks.sourcing || null,
+      why: null,
+    };
+  }
   const gn = Number(guests) || 0;
   const proposed = gn >= 40
     ? { value: 'caterer', why: `At about ${gn} guests, most hosts hand the food to a caterer — cooking for that many is a lot to own on the day.` }

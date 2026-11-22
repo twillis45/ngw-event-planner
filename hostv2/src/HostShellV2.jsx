@@ -3205,7 +3205,9 @@ export default function HostShellV2() {
   const settleND = (nd, v) => {
     if (!nd) return;
     if (nd.id === 'phase:food') {
-      const label = (FOOD_SOURCING_OPTIONS.find(([, val]) => val === v) || ['it'])[0];
+      // The option's own words ("The restaurant serves it"), else the trio's.
+      const label = ((nd.options || []).find(o => o && o.value === v) || {}).label
+        || (FOOD_SOURCING_OPTIONS.find(([, val]) => val === v) || ['it'])[0];
       // Through the builder — a host tap on the food-sourcing control.
       patchEvent(settleChoicePatch(event, 'sourcing', v, 'host'),
         'Food planned: ' + label.toLowerCase() + '. Plan updated.');

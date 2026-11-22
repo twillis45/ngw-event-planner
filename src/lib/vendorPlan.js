@@ -82,6 +82,13 @@ export function buildVendorPlan(event, opts = {}) {
   if (catererChosen && !categories.some(c => normalizeCategory(c.category) === 'catering')) {
     categories = [...categories, { category: 'Catering', required: true }];
   }
+  // A FULL-SERVICE VENUE IS THE CATERER (audit 2 lane A P1-4): a Wedding host
+  // who picked "Full-service venue (in-house catering)" was told "No caterer
+  // booked yet — Book your caterer." Her pick, never the default, says the
+  // venue's kitchen feeds the room; the venue booking covers that role.
+  if (Object.values(picks || {}).some((v) => /in-house catering/i.test(String(v)))) {
+    categories = categories.filter((c) => normalizeCategory(c.category) !== 'catering');
+  }
   if (!categories.length) return { relevant: false, categories: [] };
 
   const guests = num(ev.guestCount) || num(ev.guestEstimate)

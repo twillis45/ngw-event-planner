@@ -909,6 +909,12 @@ export function parseSmartEventText(text, opts = {}) {
     // nothing, because the phrase sat inside a clause that gave the type. Kept
     // verbatim; "my mom's" is her mother's home, not hers, and reads that way.
     || t.match(/\b(?:in|at)\s+((?:the\s+|a\s+)?church(?:\s+(?:fellowship|social|banquet|activity|activities|community))?(?:\s+(?:hall|room|basement|center|centre|building|gym))?)\b/i)
+    // A RESTAURANT SHE PLACED BUT DID NOT NAME (audit 2 lane B #32): "brunch
+    // for 12 at a restaurant downtown" kept no place and listed the phrase as
+    // unused, twice; the plan then offered "We'll cook it". Kept verbatim, so
+    // the kind reader knows it is a restaurant. A town after it ("at a
+    // restaurant in Atlanta") is still reported, as ruled in #228.
+    || t.match(/\bat\s+(a\s+restaurant\s+(?:downtown|uptown|nearby|close by|in town))\b/i)
     || t.match(new RegExp('\\b(?:in|at)\\s+((?:my|our)\\s+' + REL_ONE + '(?:[\'\u2019]s|s[\'\u2019]))(?=\\s*(?:[,.;!?]|$)|\\s+(?:in|on|for|this|next|with|from|over|during|and)\\b|\\s+\\d)', 'i'));
   const venuePhrase = vm ? vm[1].charAt(0).toUpperCase() + vm[1].slice(1) : '';
   // "at Vida's" with no place noun after it still names a place (11/15/2026,
