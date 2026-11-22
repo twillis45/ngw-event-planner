@@ -290,7 +290,8 @@ import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow, cheaperBarOption } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence, placeIsOutdoors, outdoorsGuess } from '@app/lib/placeIntelligence';
-import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote, planHeadroomLine, expectedHeadroom, afterSpendVerdict } from '@app/lib/budgetCopy';
+import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote, planHeadroomLine, expectedHeadroom, afterSpendVerdict, budgetProposalCta } from '@app/lib/budgetCopy';
+import { CRAB_REFERENCE_MARKET } from '@app/lib/crabServing';
 import { priceSourceNote } from '@app/lib/priceBasis';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
@@ -10187,10 +10188,12 @@ export default function HostShellV2() {
               (issue #100: "Use $200" over "$293 expected"). Both numbers, said
               plainly — see lib/budgetCopy.js#planCostsAboveNote. */}
           {(() => {
+            // The lit button below carries the plan's figure (A P1-7), so the
+            // quiet link here is the band's middle — the sentence's other path.
             const over = (() => { try { return planCostsAboveNote(spend && spend.expected, typical); } catch (_e) { return null; } })();
             return over ? (
               <Grounding gap={8}>
-                {over.text} <button className="tap-44" style={linkBtn} onClick={() => setB(over.cover)}>Use {fmt(over.cover)}</button>
+                {over.text} <button className="tap-44" style={linkBtn} onClick={() => setB(typical)}>Use {fmt(typical)} and trim</button>
               </Grounding>
             ) : null;
           })()}
@@ -10252,10 +10255,19 @@ export default function HostShellV2() {
               </details>
             );
           })()}
-          <CtaRow>
-            <button className="cta" onClick={() => setB(typical)}>Use {fmt(typical)}</button>
-            <button className="mini" onClick={() => setBudgetChanging(true)}>Change</button>
-          </CtaRow>
+          {/* ONE LIT NUMBER, THE ONE THE SENTENCE RECOMMENDS (audit A P1-7).
+              It lit "Use $1,000" under "your plan's own lines already add up
+              to about $1,360 — more than this $1,000". budgetProposalCta picks
+              the plan's figure when the plan costs more than the middle. */}
+          {(() => {
+            const cta = (() => { try { return budgetProposalCta(spend && spend.expected, typical); } catch (_e) { return { lit: typical, alt: null }; } })();
+            return (
+              <CtaRow>
+                <button className="cta" onClick={() => setB(cta.lit)}>Use {fmt(cta.lit)}</button>
+                <button className="mini" onClick={() => setBudgetChanging(true)}>Change</button>
+              </CtaRow>
+            );
+          })()}
           {/* ── THE OTHER TWO NUMBERS ARE AS UNCHECKABLE AS THE FIRST ──────
               Tufte's objection at the 2026-10-06 board, and it lands: the
               entire argument for showing a per-head is that $13,200 is not a
@@ -21511,7 +21523,7 @@ export default function HostShellV2() {
                     );
                   })()}
                   <p className="grounding" style={{ marginTop: 'var(--sp-2)' }}>
-                    Reference prices: Captain White's, Maine Ave Fish Market, July 2026 — one verified DMV point, not the market. Cost only counts prices you put in. Crabs count toward “spoken for” the moment they’re priced.
+                    Reference prices: {CRAB_REFERENCE_MARKET}, July 2026 — one verified DMV point, not the market. Cost only counts prices you put in. Crabs count toward “spoken for” the moment they’re priced.
                   </p>
                 </>
               );

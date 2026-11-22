@@ -178,6 +178,18 @@ export function planCostsAboveNote(expected, suggested) {
   };
 }
 
+/**
+ * Which figure the budget proposal lights (audit 2 A P1-7). When the plan's own
+ * lines already cost more than the band's middle, the sentence above the
+ * buttons recommends the plan's figure, so that is the lit one and the middle
+ * becomes the quiet alternative. Otherwise the middle stays lit, alone.
+ */
+export function budgetProposalCta(expected, suggested) {
+  const over = planCostsAboveNote(expected, suggested);
+  const s = Math.round(Number(suggested));
+  return over ? { lit: over.cover, alt: s } : { lit: s, alt: null };
+}
+
 // ─── THE ROOMS ARE ON TOP OF THIS, AND THE HOST HAS THE NUMBER ──────────────
 //
 // `belowLodgingFloor` has been on the estimate result since 2026-09-22 with

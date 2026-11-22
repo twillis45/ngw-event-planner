@@ -46,6 +46,11 @@
 /** A crab feast HAS sides (the playbook buys corn, slaw, potato salad, hush puppies),
  *  so `withSides` is the default planning column. `mainOnly` is the crabs-are-the-
  *  whole-meal column, which every source prices noticeably higher. */
+// The crab order's one reference market, named where its location is recorded
+// (dmvVendors.captainWhites below: it left the Maine Ave Fish Market in Nov
+// 2021). The shell prints this, so the two cannot disagree again (audit A P1-9).
+export const CRAB_REFERENCE_MARKET = "Captain White's Seafood, Oxon Hill, MD";
+
 export const CRAB_SERVING_GUIDE = Object.freeze({
   sources: Object.freeze({
     camerons: "Cameron's Seafood — https://www.cameronsseafood.com/blogs/recipes/how-much-crab-should-i-order",

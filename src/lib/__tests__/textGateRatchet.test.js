@@ -435,7 +435,11 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // calling lib/plusOneCount — a structural claim no browser run can see: a
 // second copy renders exactly like the first until the data has a "+3". The
 // behavior half is the e2e aPlusOneRowSaysWhoItBrings.spec.mjs.
-const MAX_HOSTV2_TEXT_GATES = 64;
+// 65 on 11/22/2026: moneySaysWhatItRestsOn.test.js asserts file CONTENT — no
+// shell string places Captain White's at the Maine Ave Fish Market (it reads
+// CRAB_REFERENCE_MARKET), and the budget proposal's lit button reads
+// budgetProposalCta, whose behavior is unit-tested in the same file.
+const MAX_HOSTV2_TEXT_GATES = 65;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;
