@@ -17,6 +17,63 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 22, 2026 (morning) — #224: the Wanda audit, fixed — her night as she wrote it, counts that agree, no dead-end asks
+
+**Owner:** "Look at the complete Wanda 50th birthday and 30 year retirement event and workflow. Make sure we've learned from what we've developed especially the last week." An audit of `ev-x-wanda` on the live build, at phone width, found 15 P0, 15 P1 and 9 P2 (`scratchpad/wanda-audit/FINDINGS.md`). Four lanes fixed them, each test-first.
+
+- **Hero:**
+  - A blocker's ask renders its own picks: no hero dead-ends. Spec `noHeroDeadEnds` walks 13 samples, six asks each.
+  - The reason line prints only under its own item.
+  - One Undo undoes a pick and the checklist that followed it.
+  - Her run of show settles the ceremony timing; when the timing is asked, it uses her words ("When does the retirement presentation happen?").
+- **Owner rulings (11/22/2026):**
+  - **Run of show:** "Hers wins, beats suggested". Any stored row the playbook didn't write is hers; playbook beats are "Add to your night?" suggestions, never before the venue opens.
+  - **Ceremony:** "Ask once". "Is the official Army retirement ceremony part of this party?" is stored as `event.officialCeremony`. "Held separately" drops the protocol calls, and the timing waits on it.
+  - **Surprise:** "Hide marked surprises". Run-of-show rows and vendors can be marked; marked items are stripped from the family link (`family_view.py` and `FamilyViewV2`). Host-is-honoree drops the surprise framing.
+- **People and vendors (one reader each):**
+  - `plusOneCount` ("+3 (Nia + 2 boys)" is three people), read by the guest sheet, seating, attendance, kids and budget recovery. Headcount mode isn't re-sized to replies.
+  - `vendorCounts` / `hiredVendors`: friends helping are not hired vendors. They owe no paperwork, and `coiStatus: 'n/a'` means not required.
+  - A compound booking step needs its own booked vendor per role; the role table is `BOOKING_ROLES` (photobooth is its own role).
+  - The host is not her own helper (`isHostName`).
+- **Money and food (one reader each):**
+  - A budget built from rows is set everywhere.
+  - The menu count is `menuChoicesTally` (hero and Plan agree).
+  - Dietary needs come from `dietCountsFor` (guest rows count in headcount mode).
+  - A quoted or booked caterer prices the food (`catererPriceOf`).
+  - After reads the expected total.
+  - A caterer pick retires the cooking steps and rentals.
+  - Noting allergies no longer files the invite call.
+  - Retirement gains the signature-cocktail batch line (an existing cited line). "Full open bar" is `costPending`.
+- **Also:**
+  - Lodging opens the event's own stays.
+  - One place line on Space and the invite.
+  - The invite carries the 50th, the dress code and the town.
+  - Make it yours reads `story`/`meaning`.
+  - Venue doesn't re-ask a booked hall.
+  - The dress-code risk is settled.
+- **Integration fixes:**
+  - The role tables were merged (the Wedding sign step now also skips friends and booths).
+  - The timing tests answer the ceremony first.
+  - The ceremony ask is headlined by its question, not "Choose one.".
+  - Three off-ladder spacings were snapped.
+  - tokenGate color baseline 120 → 119.
+- **Open, owner calls:**
+  - "Full open bar" source (`costPending`).
+  - Your money shows two bases ("Left to spend" committed vs. "$225 over" expected).
+  - "Settled 0" under a paid venue: the sheet's settled rule and the board's are two definitions.
+  - "+10 plus-ones" wording.
+  - Other samples with stored schedules now show them (only `sampleHostPlaybookDemo` besides Wanda).
+- **Open, queued:**
+  - The day-of checklist lists Army ceremony items before the ceremony is answered.
+  - Space asks for a day-of contact the venue lists.
+  - "All quiet" after the last pick has no Undo and a stale "5 of 7".
+  - The caterer quote is offered as a trimmable shopping line.
+  - "Fill the chafing dishes" under a caterer.
+  - A headcount host who cooks gets no vegetarian main priced.
+  - The `isNamedBringer` host words.
+  - `lodgingIntel` counts a plus-one as one couple.
+- 🔴 **Trap: lanes pass alone and fail together.** The spacing ratchet and the timing tests were each green in their lane and red on the combined tree. Run full jest on the integrated tree before pushing, every time.
+
 ## November 22, 2026 (early morning) — #223: a holiday inside a trip is its night, owed dates lead, one start time, food doors ask one rule, the dinner's steps together, the Gala's drink tickets
 
 - **Dates (owner: "trip wins"; "dates first as the main ask"; "Both can edit"):**
