@@ -8306,15 +8306,15 @@ button.vc-pill::after{
 
 /* ── Wanda audit, 11/22/2026: the run of show's suggestions, the surprise
    mark, her own stays, and the separate-ceremony line. Tokens only. ── */
-.ros-sugg{ margin:0 0 var(--sp-3); background:var(--card); border-radius:var(--r-md); padding:var(--sp-3) 14px; }
+.ros-sugg{ margin:0 0 var(--sp-3); background:var(--card); border-radius:var(--r-md); padding:var(--sp-3) var(--sp-4); }
 .ros-sugg-lead{ margin:0 0 var(--sp-2); }
 .ros-sugg-row{ align-items:center; gap:var(--sp-2); flex-wrap:wrap; }
 .ros-sugg-when{ min-width:54px; }
 .ros-sugg-what{ flex:1; min-width:0; }
 .ros-sugg-rel{ color:var(--carbon-muted); }
-.vendor-surprise{ margin:0 8px 10px 0; }
+.vendor-surprise{ margin:0 var(--sp-2) var(--sp-3) 0; }
 .stay-place{ margin-bottom:var(--sp-3); }
 .stay-place-name{ margin-bottom:4px; }
-.stay-row{ margin:0 0 6px; }
+.stay-row{ margin:0 0 var(--sp-2); }
 .stay-row b{ color:var(--ink-soft); }
 .ceremony-separate{ margin:0 0 var(--sp-5); }
