@@ -73,7 +73,7 @@ const KIND_WORDS = [
   ['courthouse', /\b(courthouse|city hall|registry office|county clerk)\b/i],
   // "café" ends in a letter that \b does not count as a word letter, so it is
   // matched on its own: with a trailing \b, "La Plazuela Café" was no kind.
-  ['restaurant', /\b(restaurant|bistro|grill|kitchen|cafe|trattoria|steakhouse|tavern|brasserie|osteria|diner|eatery|cantina|taqueria|pizzeria|chophouse|supper club)\b|\bcafé(?![\p{L}\p{N}_])/iu],
+  ['restaurant', /\b(restaurant|bistro|grill|kitchen|cafe|trattoria|steakhouse|tavern|brasserie|osteria|diner|eatery|cantina|taqueria|pizzeria|chophouse|supper club|ale\s?house)\b|\bcafé(?![\p{L}\p{N}_])/iu],
   ['bar', /\b(bar|pub|brewery|brewing|taproom|winery|lounge|beer garden)\b/i],
   ['hotel', /\b(hotel|resort|marriott|hilton|hyatt|westin|sheraton)\b/i],
   // Not a VFW or Legion post: whether one is a hall, a bar or a restaurant room
@@ -427,7 +427,20 @@ function readCall(event, d) {
   if (id === 'overnight_guests') return overnightCall(event, d);
   if (id === 'theme' || id === 'theme_colors') return themeCall(event, d);
   if (id === 'dest_travelmix') return travelMixCall(event, d);
+  if (id === 'cooklocation') return spotCall(event, d);
   return null;
+}
+
+// WHERE THE FRYER GOES, read from the place she named (audit 2 lane A P1-4):
+// a Fish Fry at "Church lot, Annapolis, MD" proposed "Backyard / driveway".
+// An option answers when the venue's name holds one of its own place words
+// ("church lot", "backyard"); otherwise nothing is settled.
+function spotCall(event, d) {
+  const place = venueKindOf(event);
+  if (!place || !place.name) return null;
+  const name = String(place.name).toLowerCase();
+  const hits = opts(d).filter((o) => o.split('/').map((w) => w.trim().toLowerCase()).some((w) => w.length >= 4 && name.includes(w)));
+  return hits.length === 1 ? { settled: { pick: hits[0], because: place.isHome ? 'Your place' : fromPlan(place.line) } } : null;
 }
 
 export function settledFromFacts(event, d) {

@@ -266,6 +266,9 @@ const sweet16 = {
   purchases: [
     {
       id: 'p_pizza',
+      // "Light bites + dessert table only" buys no mains (audit 2 lane G #5:
+      // it bought 21 lb of them and priced like the slider bar).
+      whenChoice: { id: 'food_menu', not: ['Light bites + dessert table only'] },
       item: 'Pizza / slider / taco-bar food (≈0.5 lb/guest of mains)',
       category: 'food',
       qtyPerGuest: 0.5,

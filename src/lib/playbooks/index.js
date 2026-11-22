@@ -956,6 +956,13 @@ export function catererPriceOf(event) {
 }
 export function decisionSettledByData(event, decision) {
   if (!event || !decision || !Array.isArray(decision.options) || !decision.options.length) return null;
+  // A GENERIC FOOD ANSWER ON FILE IS THIS CALL'S ANSWER (Crab Feast, audit 2
+  // lane A P1-5): "We'll cook it" is "Steam them myself". Data-declared
+  // (`fromSourcing`), and only an authored option.
+  if (decision.fromSourcing && event.foodChoices && event.foodChoices.sourcing != null) {
+    const mapped = decision.fromSourcing[String(event.foodChoices.sourcing)];
+    if (mapped && decision.options.includes(mapped)) return { pick: mapped, because: 'Your food answer' };
+  }
   if (FOOD_HANDLING_DECISION_IDS.has(decision.id)) {
     const opt = decision.options.find((o) => /\bcater/i.test(String(o)));
     const caterer = opt ? bookedVendorIn(event, 'catering') : null;
@@ -1447,7 +1454,17 @@ export const FOOD_APPROACH_DECISIONS = [
 ];
 // "Order in" here means the MEAL arrives made (ordered-in trays, takeout) — a
 // bare "Order from a market" (buying raw ingredients) must NOT match.
-export const CATERER_OPTION_RE = /cater|private chef|\bchef\b|drop-?off|order(ed)?[- ]?in\b|pizza|tray|takeout|take-?out|restaurant/i;
+// "Trays" counts only as an ORDER ("Order trays", "Order pizza/trays"): on a
+// buffet ("Buffet / trays") a tray is the serving dish, and Graduation's
+// menu-format pick flipped a host who cooks to catered (audit 2 lane A P0-4).
+// A caterer for PART of the meal is not the meal's caterer: "Drop-off catering
+// for 1 course" dropped all six courses she still cooks and priced a whole
+// catered meal (audit 2 lane G #5). Hence the leading lookahead.
+export const CATERER_OPTION_RE = /^(?!.*\b(?:1|one)\s+course\b).*?(?:cater|private chef|\bchef\b|drop-?off|order(ed)?[- ]?in\b|pizza|\border(?:ed)?\b[^;]*?\btrays?\b|takeout|take-?out|restaurant)/is;
+// The menu questions asked AFTER the approach (what is served, how it is laid
+// out). Her answer to who carries the meal outranks a pick here: a menu option
+// that happens to say "pizza" is the menu, not a hire (audit 2 lane A P0-4).
+const MENU_FORMAT_DECISIONS = new Set(['menu', 'food_menu']);
 // The community carries the meal (a repast committee, neighbors signing up) — a
 // third state beside caterer/host-cooks: the HOST is not buying the food.
 // Deliberately NOT bare "potluck": a potluck host still plans and part-buys the
@@ -1489,14 +1506,27 @@ export function foodApproach(event) {
   // An EXPLICIT host pick on any candidate outranks another candidate's authored
   // default — otherwise a defaulted decision earlier in the list silently vetoes
   // the one the host actually answered.
-  for (const dec of candidates) {
-    if (picks[dec.id] != null) return result(dec.id, picks[dec.id]);
-  }
   // The generic panel also records a real host answer. It outranks unanswered
-  // authored defaults, while a specific authored answer above still wins.
+  // authored defaults, while a specific authored answer above still wins —
+  // except a menu-format pick, which says what is served, not who makes it.
   const generic = String(picks.sourcing || '').trim();
-  if (generic) return result(null, generic);
   for (const dec of candidates) {
+    if (picks[dec.id] != null && !(generic && MENU_FORMAT_DECISIONS.has(dec.id))) return result(dec.id, picks[dec.id]);
+  }
+  if (generic) return result(null, generic);
+  // A BOOKED CATERER CARRIES THE MEAL (audit 2 lane G #4). Where the caterer
+  // option lives on a call that is not about food handling (Dinner Party's
+  // `help`, The Cookout's `grill_master`, Low Country's `cook`), the booking
+  // settled nothing there, and the plan kept the grocery meal the caterer
+  // brings. The food-handling calls already read the booking (choicePickFor →
+  // decisionSettledByData); the others read it here, without settling their
+  // own question (a bartender or a cleaner is still hers to decide).
+  const bookedCaterer = (() => { try { return bookedVendorIn(event, 'catering'); } catch (_e) { return null; } })();
+  for (const dec of candidates) {
+    if (bookedCaterer && !FOOD_HANDLING_DECISION_IDS.has(dec.id)) {
+      const opt = dec.options.find((o) => /\bcater/i.test(String(o)) && CATERER_OPTION_RE.test(String(o)));
+      return result(dec.id, opt || 'caterer');
+    }
     const pick = choicePickFor(event, dec.id);
     if (pick != null) return result(dec.id, pick);
   }
@@ -1506,6 +1536,21 @@ export function foodApproach(event) {
 export const hostIsCooking = (event) => foodApproach(event).usesCaterer === false;
 // A caterer IS in scope. True only when we can tell.
 export const hostUsesCaterer = (event) => foodApproach(event).usesCaterer === true;
+// A CATERER IS HIRED, not just a meal that arrives made (audit 2 lane A P1-12).
+// usesCaterer is true for an order too ("Order pizza/trays"), so the grocery
+// lines drop; a step that presumes a caterer ("Confirm your caterer…", "Pay …
+// the caterer's final headcount charge") needs one hired: booked, a plan whose
+// every option is catered, or a pick that names hiring one — the same reading
+// vendorPlan's catererChosen gives "HIRING ONE, NOT ORDERING ONE".
+export function catererHired(event, fa) {
+  const a = fa || foodApproach(event);
+  if (!a || a.usesCaterer !== true) return false;
+  if ((() => { try { return !!bookedVendorIn(event, 'catering'); } catch (_e) { return false; } })()) return true;
+  const pb = getPlaybook(event && event.type);
+  const dec = a.decisionId && pb && Array.isArray(pb.decisions) ? pb.decisions.find((d) => d && d.id === a.decisionId) : null;
+  if (dec && dec.servedByCaterer === true) return true;
+  return /cater|\bchef\b|drop-?off|pitmaster/i.test(String(a.pick || ''));
+}
 
 // Day offset from a task's `when` token: 'T-10d' → -10, 'T0' → 0, 'T0 -0:30' → 0
 // (the intra-day hours are ignored — only the day phase matters here). null if absent.
@@ -1811,6 +1856,10 @@ export function playbookChecklist(event, asOf) {
   // exists and isn't a caterer); null/undecided leaves every task in place.
   const fa = foodApproach(event);
   const dropCaterer = fa.usesCaterer === false;
+  // A meal that arrives made but with no one hired (an order of trays) keeps
+  // the grocery list off and the caterer's paperwork off too (P1-12).
+  const noCatererHired = fa.usesCaterer === true && !catererHired(event, fa);
+  const BOOKS_A_CATERER = /\b(book|contract|choose|find|decide|tour|sign|hire|if catering|vs|or confirm|yourself)\b/i;
 
   // The milestones the air-travel floor moved, keyed by id, so a task can
   // inherit its own milestone's date rather than a second copy of the rule.
@@ -1855,6 +1904,7 @@ export function playbookChecklist(event, asOf) {
     // bites + grazing table yourself"): with no caterer, that half IS the work
     // (Day Party, #220 Open, 11/22/2026). Its caterer and truck picks rename it.
     if (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label)) continue;
+    if (noCatererHired && /\bcaterer/i.test(t.label) && !BOOKS_A_CATERER.test(t.label)) continue;
     // ── THE AIR-TRAVEL FLOOR REACHES THE CHECKLIST (2026-09-23) ─────────────
     // The floor was built into `playbookMilestones` and stopped there. Measured:
     // `playbookMilestones` has exactly one consumer, `playbookAreaNextStep`,
@@ -1927,7 +1977,7 @@ export function playbookChecklist(event, asOf) {
   // so the food CHOICE visibly reshapes "what's left" (it was previously inert in the task list;
   // the cook choice already recedes caterer tasks via the dropCaterer gate above). Deduped so a
   // playbook that already authors a caterer task isn't doubled.
-  if (fa.usesCaterer === true && !rows.some((r) => /cater/i.test(r.task))) {
+  if (fa.usesCaterer === true && catererHired(event, fa) && !rows.some((r) => /cater/i.test(r.task))) {
     const off = -7;
     rows.push({
       id: `pbt-${event.id}-fa-caterer`,
@@ -5267,7 +5317,7 @@ export function playbookFoodPlan(event, opts = {}) {
     .filter(isMenuDecision)
     .filter((d) => !DESTINATION_DECISION_IDS.has(d.id))
     .filter((d) => choiceShown(event, d.whenChoice))
-    .map((d) => ({ id: d.id, label: d.label, options: d.options, default: d.default, why: d.why || '', chosen: picks[d.id] || d.default }));
+    .map((d) => ({ id: d.id, label: d.label, options: d.options, default: d.default, why: d.why || '', chosen: picks[d.id] || d.default, ...(d.fromSourcing ? { fromSourcing: d.fromSourcing } : null) }));
 
   // Sprint 60F — make the spread REACT to the menu/sourcing choices. A purchase
   // tagged whenChoice:{id,in:[...]} appears only when the effective pick for that

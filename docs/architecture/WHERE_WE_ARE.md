@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 22, 2026 (evening) — food follows what she said, and the place she named
+
+**"We'll cook it" stays cooked, and a booked caterer replaces the grocery list.** Restaurants, full-service venues, a church lot and a state park are read for what they are, and Crab Feast asks steam-or-order before it plans either.
+
 ## November 22, 2026 (evening) — what guests, family, helpers and vendors see matches the host
 
 **The invite, emails, family page, helper page and vendor brief print the same dates, place line and host name the host sees.** The server enforces adults-only and no-plus-ones on replies, and the vendor brief carries the diets guests reported.

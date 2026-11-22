@@ -29,7 +29,10 @@ test('with a budget given, three days out the board leads with the menu, not the
   expect(Number(saved.totalBudget)).toBe(200);             // premise: the budget was heard
   const top = page.locator('h2').first();
   await expect(top).not.toHaveText(/Get the food/i);
-  await expect(top).toHaveText(/menu|serving/i);
+  // The food call leads. Since #233 (audit A P2-1) a food ask with no ruled
+  // record line is headlined by its own question, so Friendsgiving's reads
+  // "Who cooks what?" rather than the generic "Decide the menu.".
+  await expect(top).toHaveText(/menu|serving|who cooks/i);
 });
 
 test('with no budget, the owner\'s exact line leads with the budget, still not the shop', async ({ page }) => {

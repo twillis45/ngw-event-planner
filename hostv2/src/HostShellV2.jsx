@@ -68,7 +68,7 @@ import { heroAskFor, heroRecord } from '@app/lib/heroAsk'; // the ASK vocabulary
 // ONE selected decision across the hero, the panel and the CTA — see src/lib/selectedAction.js
 import { resolveSelection, decisionIdentityFor } from '@app/lib/selectedAction';
 import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — see src/lib/decisionEvidence.js
-import { boardDecisionND, foodDecisionND, blockerDecisionND, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
+import { boardDecisionND, foodDecisionND, blockerDecisionND, foodPanelQuestion, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, travelHazard, guestTravelMessage } from '@app/lib/weather';
@@ -3205,7 +3205,9 @@ export default function HostShellV2() {
   const settleND = (nd, v) => {
     if (!nd) return;
     if (nd.id === 'phase:food') {
-      const label = (FOOD_SOURCING_OPTIONS.find(([, val]) => val === v) || ['it'])[0];
+      // The option's own words ("The restaurant serves it"), else the trio's.
+      const label = ((nd.options || []).find(o => o && o.value === v) || {}).label
+        || (FOOD_SOURCING_OPTIONS.find(([, val]) => val === v) || ['it'])[0];
       // Through the builder — a host tap on the food-sourcing control.
       patchEvent(settleChoicePatch(event, 'sourcing', v, 'host'),
         'Food planned: ' + label.toLowerCase() + '. Plan updated.');
@@ -3221,7 +3223,10 @@ export default function HostShellV2() {
         : (((b && b.title) || 'Decided') + ' — set.'));
       return;
     }
-    const row = [...(decisionBoard.open || []), ...(decisionBoard.locked || [])].find(x => x && x.id === nd.id);
+    // A playbook's own food call (Crab Feast's steam-or-order) is asked as the
+    // food item even while the board files it for later, so its write path
+    // looks there too.
+    const row = [...(decisionBoard.open || []), ...(decisionBoard.locked || []), ...(decisionBoard.deferred || [])].find(x => x && x.id === nd.id);
     if (row) settleDecision(row, v);
   };
   // The canonical payload's write half — same dispatcher, reached through the
@@ -5295,7 +5300,23 @@ export default function HostShellV2() {
         const row = open.find(r => r && String(r.id) === String(idn.decisionId));
         return row ? boardDecisionND(event, row) : null;
       },
-      actionAsk: (a) => heroAskFor(a, event),
+      // THE FOOD ITEM'S EDITOR ASKS A CALL OF ITS OWN (audit 2 lane A P2-1).
+      // The food cue carries no decision identity, so its headline came from the
+      // title ladder — "Decide the menu." — over the grill master, the bartender
+      // or the Super Bowl. When the panel it opens (wiredKind 'food' →
+      // foodND(records), the same builder) shows a playbook call, the headline is
+      // that call's question. The generic trio has none and keeps the ladder.
+      // phase:food with records is not this path: there the record line names
+      // the question beside its count (owner's iPad ruling, 11/21/2026).
+      actionAsk: (a) => {
+        if (a && a.domain === 'food'
+          && !/^fp-diet/.test(String((a.route && a.route.focusField) || ''))) {
+          const nd = (() => { try { return foodDecisionND(event, guests, [...open, ...(decisionBoard.locked || [])], a.records); } catch { return null; } })();
+          const q = foodPanelQuestion(nd);
+          if (q) return q;
+        }
+        return heroAskFor(a, event);
+      },
     });
   })();
   // The board ROW behind the selection (authored assurance, overdue status) — the
@@ -9854,7 +9875,9 @@ export default function HostShellV2() {
       return (
         <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 'var(--sp-3)' }}>
           {foodGuide && <GuideLine gap={0}>{foodGuide}</GuideLine>}
-          {renderDecision(fnd)}
+          {/* The guide line above already says the ask-mode why; the panel
+              does not print it a second time (audit 2 lane A P2-2). */}
+          {renderDecision(foodGuide ? { ...fnd, why: null } : fnd)}
           {spreadLink()}
         </div>
       );
