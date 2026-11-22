@@ -1892,6 +1892,11 @@ export function playbookChecklist(event, asOf) {
     if (!t || !t.id || !t.label) continue;
     // Choice gate — a task tagged whenChoice appears only for the matching pick.
     if (!choiceShown(event, t.whenChoice)) continue;
+    // Stand-down gate — a task tagged standsDownWhen retires once the host has
+    // ANSWERED one of those ways (never on a default; see standsDown). The same
+    // vocabulary decisions use. First use: the wedding's license steps after a
+    // symbolic ceremony (audit 2 lane A P2-8, 11/22/2026).
+    if (t.standsDownWhen && standsDown(event, t.standsDownWhen)) continue;
     // Arrival-mode gate — a task tagged whenMode appears only for matching modes.
     // Needed alongside the choice gate: when a destination DECISION is dropped
     // for a mode, choiceShown sees no pick and treats it as unanswered, so the
