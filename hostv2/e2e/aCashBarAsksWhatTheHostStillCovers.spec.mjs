@@ -81,8 +81,9 @@ test('the Gala: two drink tickets ask what the host still covers, and no option 
   const card = sheet.getByText('What you still cover at a cash bar').first();
   await expect(card).toBeVisible();
   await card.click();
-  await expect(sheet.getByText('The non-alcoholic drinks').first()).toBeVisible();
+  // The tickets pick starts on the tickets (owner, 11/22/2026), the zero-proof one tap away.
+  await expect(sheet.locator('.decopt.pick').getByText('The drink tickets, plus the non-alcoholic drinks')).toBeVisible();
   await sheet.getByRole('button', { name: /Other ways/ }).first().click();
-  await expect(sheet.getByText('The drink tickets, plus the non-alcoholic drinks').first()).toBeVisible();
+  await expect(sheet.getByText('The non-alcoholic drinks', { exact: true }).first()).toBeVisible();
   await expect(sheet.getByText(/non-alcoholic drinks and ice/)).toHaveCount(0);
 });

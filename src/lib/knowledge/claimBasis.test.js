@@ -25,7 +25,7 @@ import { isGroundedCost } from './costProvenance';
 // these tests assert THAT — with the anti-laundering teeth intact below.
 const citable = (prov) => isGroundedItemQty(prov) || isGroundedCost(prov);
 import {
-  classifyClaim, basisDistribution, CLAIM_BASIS, CLAIM_VERIFICATION, HOST_LABELS,
+  classifyClaim, basisDistribution, CLAIM_BASIS, CLAIM_VERIFICATION, HOST_LABELS, ENGINE_TIERS,
 } from './claimBasis';
 
 const allProvenances = () => ALL_PLAYBOOKS.flatMap((pb) => (pb.purchases || []).map((p) => p.provenance));
@@ -92,7 +92,10 @@ describe('the two authored dimensions are read separately', () => {
     const authored = new Set(allProvenances()
       .map((p) => (typeof p === 'string' ? p : p && typeof p === 'object' ? p.tier : null))
       .filter(Boolean));
-    for (const key of Object.keys(CLAIM_BASIS)) expect(authored.has(key)).toBe(true);
+    // ENGINE_TIERS are written by the engine from the host's own answer, never
+    // by an author; each must NOT be authored, so neither list can launder the other.
+    for (const key of Object.keys(CLAIM_BASIS)) expect(authored.has(key) || ENGINE_TIERS.includes(key)).toBe(true);
+    for (const key of ENGINE_TIERS) expect([key, authored.has(key), !!CLAIM_BASIS[key]]).toEqual([key, false, true]);
   });
 });
 

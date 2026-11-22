@@ -11,7 +11,7 @@
 import { rsvpState, rsvpIsSettled } from '../rsvp';
 import { guestCountFor } from '../guestCountFor';
 import { cookDecisionFor, cookTasksFor, cookRisksFor } from './cookLever';
-import { cashBarDecisionsFor, cashBarKeeps } from './cashBarCover';
+import { cashBarDecisionsFor, cashBarKeeps, aliasedChoices } from './cashBarCover';
 import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
 import { matchGuestIndexByName } from '../guestMerge';
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
@@ -158,7 +158,7 @@ const DECISION_INJECTORS = [
   (event, pb) => cookDecisionsFor(pb),
   (event) => militaryDecisionsFor(event),
   // With a cash bar, what the host still covers (owner, 11/21/2026).
-  (event, pb) => cashBarDecisionsFor(pb),
+  (event, pb) => cashBarDecisionsFor(pb, (id) => aliasedChoices(event && event.foodChoices)[id]),
 ];
 
 // ─── namedHelperCount — how many people the host has said are helping ────────
@@ -1039,7 +1039,8 @@ export function stepCallsAnswered(event, task) {
 }
 export function choicePickFor(event, id) {
   if (!event || !id) return null;
-  const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  // A retired answer wording reads as its current one (cashBarCover, 11/22/2026).
+  const picks = aliasedChoices(event.foodChoices);
   const pb = getPlaybook(event.type);
   const dec = pb && Array.isArray(pb.decisions) ? pb.decisions.find((d) => d.id === id) : null;
   if (picks[id]) {
@@ -1257,8 +1258,18 @@ export function taskLabelFor(event, t) {
 export function resolveAnsweredCopy(base, copyByAnswer, event) {
   if (!copyByAnswer) return base;
   const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  // A BOOKED VENDOR ANSWERS TOO (owner, 11/22/2026: "booked caterer counts").
+  // With no pick, a record that settles the call (decisionSettledByData: a
+  // booked Catering vendor settles the food call on its caterer option) names
+  // the copy the same as that pick would. Never the authored default.
+  const pb = event ? getPlaybook(event.type) : null;
+  const settledPick = (decisionId) => {
+    const d = pb && Array.isArray(pb.decisions) ? pb.decisions.find((x) => x && x.id === decisionId) : null;
+    if (!d) return null;
+    try { const st = decisionSettledByData(event, d); return (st && st.pick) || null; } catch (_e) { return null; }
+  };
   for (const decisionId of Object.keys(copyByAnswer)) {
-    const answered = picks[decisionId];
+    const answered = picks[decisionId] || settledPick(decisionId);
     if (answered && copyByAnswer[decisionId][answered] != null) return copyByAnswer[decisionId][answered];
   }
   return base;
@@ -3802,7 +3813,8 @@ export function playbookDecisionBoard(event, asOf, profile) {
     ...((pb && Array.isArray(pb.decisions)) ? pb.decisions : []),
     ...injectedDecisionsFor(event, pb),
   ];
-  const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  // A retired answer wording reads as its current one (cashBarCover, 11/22/2026).
+  const picks = aliasedChoices(event.foodChoices);
   // The fact bag, built ONCE for the whole board (it is identical for every row)
   // and handed to decisionPriorityFields so an authored rationale that asserts
   // the host is on their own can stand down when the app knows they are not.
@@ -5043,7 +5055,10 @@ export function playbookFoodPlan(event, opts = {}) {
     return false;
   };
   const hostBuysIt = (p) => !(p.category === 'beverage'
-    && (_cashKeeps ? !_cashKeeps.has(p.id) : (!/\bice\b/i.test(p.item || '') && _drinkLeaves(p))));
+    && (_cashKeeps ? !_cashKeeps.ids.has(p.id) : (!/\bice\b/i.test(p.item || '') && _drinkLeaves(p))));
+  // The count a cash pick states (two drink tickets → 2 a guest), at the line's
+  // own rate; null for every other line (cashBarCover, owner 11/22/2026).
+  const _statedPerGuest = (p) => (_cashKeeps && _cashKeeps.perGuest[p.id] != null ? _cashKeeps.perGuest[p.id] : null);
 
   // Food-approach → budget. When the host chose a CATERER (vs cooking), they aren't buying the
   // homemade FOOD lines — the caterer brings them — so those drop here (mirrors the BYOB rule
@@ -5370,7 +5385,9 @@ export function playbookFoodPlan(event, opts = {}) {
       // Everything below (sizing, pricing, copy) reads the GOVERNED purchase, so a
       // published KCR moves the host's numbers without any surface knowing.
       // Identity when nothing is published.
-      const p = governedPurchase(playbook, p0);
+      const _pg = governedPurchase(playbook, p0);
+      const _stated = _statedPerGuest(_pg);
+      const p = _stated != null ? { ..._pg, qtyPerGuest: _stated } : _pg;
       // In-place swap chosen for this line (event.foodSwap[id] = the alternative's name).
       const swappedName = (p.id in swapMap && String(swapMap[p.id] || '').trim()) ? String(swapMap[p.id]).trim() : null;
       // If the chosen alternative carries its OWN price/qty data, the line RE-PRICES to it
@@ -5567,7 +5584,8 @@ export function playbookFoodPlan(event, opts = {}) {
         // Governance, carried to the surface (5C.10). `provenance` is what a host
         // can read; `qtyGrounded` is whether the quantity is sourced; `governedFields`
         // names which numbers came from a published KCR rather than the authored file.
-        provenance: purchaseProvenance(playbook, p0) || null,
+        // A count the host's own pick states carries that basis, not the line's estimate.
+        provenance: (_stated != null && _cashKeeps.provenance) || purchaseProvenance(playbook, p0) || null,
         costProvenance: purchaseCostProvenance(playbook, p0) || null,
         // What MOVED this price, carried out with it. `classifyClaim` reads it so
         // a sourced badge cannot go on vouching for a base rate after an
@@ -5579,7 +5597,7 @@ export function playbookFoodPlan(event, opts = {}) {
             note: _choiceBasis.note || '',
           }
           : null,
-        qtyGrounded: isGroundedItemQty(purchaseProvenance(playbook, p0)),
+        qtyGrounded: _stated != null ? false : isGroundedItemQty(purchaseProvenance(playbook, p0)),
         governedFields: p._governed || [],
       };
     });
