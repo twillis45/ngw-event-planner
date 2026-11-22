@@ -42,3 +42,19 @@ describe('Day Party: the do-it-yourself bites step', () => {
 });
 
 // The gate still drops a caterer-only step when the host cooks: foodApproach.test.js.
+
+// OWNER: "booked caterer counts" (11/22/2026). A Catering vendor she booked
+// settles the food call the same as the caterer pick, so the step names it.
+describe('Day Party: a booked caterer counts as the caterer pick', () => {
+  const booked = (status) => ({ ...ev({}), vendors: [{ id: 'v-cat', name: 'Harvest Table', category: 'Catering', status }] });
+  const row = (e) => (playbookChecklist(e) || []).find((r) => r.id === 'pbt-dp-lock-t_food_lock');
+  test('pick only: the caterer copy', () => {
+    expect(row(ev({ food: 'Caterer drop-off small plates' })).task).toBe('Lock food: confirm the caterer’s drop-off window');
+  });
+  test('booked vendor only, no pick: the same caterer copy, and the do-it-yourself half drops', () => {
+    expect(row(booked('Booked')).task).toBe('Lock food: confirm the caterer’s drop-off window');
+  });
+  test('a caterer still being considered is not booked: the step keeps both paths', () => {
+    expect(row(booked('Considering')).task).toMatch(/yourself/);
+  });
+});
