@@ -372,7 +372,9 @@ export function applyStudioMatte(override) {
   // Status-pill TEXT (--ok on --ok-tint) ran 4.35:1 at α=0.14 — large-text-only.
   // Lightened the tint to α=0.10 (a subtler wash) → 4.64:1, clearing small-text
   // AA for the pill label without touching the green itself (2026-07-13 audit).
-  set('--ok-tint', isLight ? tint(LINEN.ok, 0.08) : tint(bundle.successGreen, 0.10));
+  // Dark α .10 -> .07: the meta gray on the green "Free while in preview"
+  // panel read 4.39:1 at the glow's top stop (lane F re-run, 11/22/2026).
+  set('--ok-tint', isLight ? tint(LINEN.ok, 0.08) : tint(bundle.successGreen, 0.07));
   set('--warn', isLight ? LINEN.warn : bundle.amber);
   // Audit I2: was α 0.15 while --ok-tint/--danger-tint are 0.10 — amber chips
   // rendered visibly denser than green/red beside them. Normalized to 0.10.

@@ -70,6 +70,8 @@ const ON_TINT = [
   // The pass sheet's grounding line: meta gray on a steel panel (lane F, 3.99
   // in dark at the glow's top stop).
   ['--muted', '--steel-tint'],
+  // and on the green "Free while in preview" panel (lane F re-run, 4.39 dark).
+  ['--muted', '--ok-tint'],
 ];
 const INKS = ['--ink', '--ink-soft', '--muted', '--faint', '--steel-soft', '--ok', '--danger', '--danger-text', '--warn', '--progress'];
 
