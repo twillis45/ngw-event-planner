@@ -285,7 +285,7 @@ import { refundLine } from '@app/lib/refundRule';
 // The device's pass price (G86 price test): every place the pass's price shows reads it here.
 import { devicePassPriceCents, passPriceLabel, withPassPrice } from '@app/lib/passPrice';
 import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
-import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
+import { pickDroppableBudgetRow, cheaperBarOption } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence, placeIsOutdoors, outdoorsGuess } from '@app/lib/placeIntelligence';
 import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote, planHeadroomLine } from '@app/lib/budgetCopy';
@@ -9417,6 +9417,8 @@ export default function HostShellV2() {
     if (kind === 'diet') {
       // The ENGINE's dietary model: dietCounts adds a real priced veg main and
       // flags related lines; dietaryNoted closes the cue (headcount events).
+      // Reads the ONE count (lib/dietRows: the host's tally, else the guest
+      // rows); writes only the host's own map (Wanda audit P0-13).
       const dc = event.dietCounts || {};
       const counts = dietCountsFor(event);
       const setD = (k, delta) => {
@@ -27081,11 +27083,19 @@ export default function HostShellV2() {
                           </span>
                         </div>
                       ))}
-                      {swapPick && swapPick.row && (
-                        <p className="grounding" style={{ margin: '6px 0 0', fontWeight: 650, color: 'var(--ink-soft)' }}>
-                          The one-line fix: drop “{swapPick.row.category || swapPick.row.label}” (~{fmt(swapPick.drop)}) and you’re back under.
-                        </p>
-                      )}
+                      {swapPick && swapPick.row && (() => {
+                        // A cheaper bar before no bar (Wanda audit P2-9): when the
+                        // row is the bar and the drinks call has a cash bar the
+                        // plan prices for less, that is the fix it offers.
+                        const bar = (() => { try { return cheaperBarOption(event, swapPick, foodPP.priceFactor); } catch { return null; } })();
+                        return (
+                          <p className="grounding" style={{ margin: '6px 0 0', fontWeight: 650, color: 'var(--ink-soft)' }}>
+                            {bar
+                              ? `A cheaper fix than dropping “${swapPick.row.category || swapPick.row.label}”: a cash bar, where your plan prices what you’d still cover at ~${fmt(bar.cover)}${bar.clears ? ' — and you’re back under' : ''}.`
+                              : `The one-line fix: drop “${swapPick.row.category || swapPick.row.label}” (~${fmt(swapPick.drop)}) and you’re back under.`}
+                          </p>
+                        );
+                      })()}
                       {(recovery.protectedItems || []).length > 0 && (
                         <p className="grounding" style={{ margin: '6px 0 0' }}>Protected — not on the cut list: {(recovery.protectedItems || []).slice(0, 3).map(x => x.label || x).join(', ')}.</p>
                       )}
