@@ -259,9 +259,17 @@ test.describe('GOLD-09 — the pass entitlement reaches the shell', () => {
       }, 80);
     }, [eventFixture(), EVENT_ID]);
     await page.goto(`${BASE}?pass_paid=1&event_id=${encodeURIComponent(EVENT_ID)}`, { waitUntil: 'load' });
-    await page.waitForTimeout(9000);
+    // WAIT FOR THE NOTICE, NOT A FIXED 9s (CI #240, WebKit phone, 11/23/2026).
+    // The notice comes after three asks spaced by CLAIM_RETRY_DELAYS_MS
+    // ([2000, 4000] in src/lib/passEntitlement.js) plus boot and three round
+    // trips. That is ~6s of designed wait before any page work, so a fixed 9s
+    // sleep left a slow WebKit runner ~0.5s short: it saw only "Confirming your
+    // pass…". The premise and the truthfulness check below are unchanged.
+    const notYet = (list) => list.filter((t) => /haven.t seen|not seen|yet/i.test(t));
+    await expect.poll(async () => notYet(await page.evaluate(() => window.__toastsSeen)).length,
+      { timeout: 20_000, message: 'premise: no not-yet notice' }).toBeGreaterThanOrEqual(1);
     const toasts = await page.evaluate(() => window.__toastsSeen);
-    const notice = toasts.filter((t) => /haven.t seen|not seen|yet/i.test(t));
+    const notice = notYet(toasts);
     expect(notice.length, `premise: no not-yet notice. Toasts seen: ${JSON.stringify(toasts)}`).toBeGreaterThanOrEqual(1);
     expect(toasts.filter((t) => /payment went through|you paid|payment (is|was) (complete|received)/i.test(t)),
       'an unconfirmed return claimed the payment').toHaveLength(0);
