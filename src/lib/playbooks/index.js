@@ -2040,6 +2040,31 @@ export function playbookChecklist(event, asOf) {
       provenance: { source: `${playbook.type} playbook`, taskId: 'fa-caterer', derived: 'food-approach', ...(celebration ? { group: DINNER_GROUP } : null) },
     });
   }
+  // A POTLUCK ASKS WHO BRINGS WHAT (batch 11; audit 2 lane C P2-4). A pick
+  // that hands dishes to the guests (`friendsBringWhen`) moved them to "Your
+  // guests" at $0, and nothing asked her who is bringing which. One step, for
+  // every playbook, while any such dish has no name on it (foodOwner, the one
+  // place a bringer is named); a playbook that authors its own who-brings-what
+  // step keeps its own. Two weeks out is The Cookout's own lead for "Plan the
+  // spread + assign dishes (who brings what)", the corpus's one authored date
+  // for this job.
+  {
+    const owners = foodOwnerMap(event);
+    const unnamed = (playbook.purchases || []).filter((p) => p && p.category === 'food' && p.friendsBringWhen
+      && choiceShown(event, p.friendsBringWhen) && choiceShown(event, p.whenChoice) && !isNamedBringer(owners[p.id]));
+    const authored = rows.some((r) => /bringing what|brings? what|assign (the )?dishes/i.test(String(r.task || '')));
+    if (unnamed.length && !authored) {
+      const off = -14;
+      rows.push({
+        id: `pbt-${event.id}-fa-bringers`,
+        task: 'Ask who is bringing which dish, and put their names on the Bringing list',
+        category: 'planning', phase: 'food', week: taskPhaseLabel(off), owner: '',
+        leadDays: off,
+        dueInDays: dte + off,
+        provenance: { source: `${playbook.type} playbook`, taskId: 'fa-bringers', derived: 'food-approach' },
+      });
+    }
+  }
   // THE MEALS OUT GET BOOKED (owner, 11/21/2026). On a destination trip, only
   // a meal the host marked "out together" adds a step: a table for the group
   // has to be reserved. It is labeled with its day, so the steps read grouped
