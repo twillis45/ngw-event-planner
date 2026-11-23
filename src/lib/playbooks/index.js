@@ -118,7 +118,7 @@ import { effectiveHuman, isGroundedHuman } from '../knowledge/humanContext';
 import { effectiveDietary, isGroundedDietary } from '../knowledge/dietaryContext';
 import { effectiveBudget, isGroundedBudget } from '../knowledge/budgetContext';
 import { effectiveChildcare, isGroundedChildcare } from '../knowledge/childcareContext';
-import { authoredQuestion } from '../askVoice';
+import { authoredQuestion, questionFrom, normalizeAsk } from '../askVoice';
 // Imported here rather than beside its re-export below: an `import` in the
 // module BODY is an eslint `import/first` ERROR, and CRA treats it as a compile
 // failure — `gate:cra` has been red since f43155cc (2026-08-16) and Pages has not
@@ -1511,6 +1511,18 @@ const COMMUNITY_OPTION_RE = /brought by|committee|church|neighbors?|sign.?up/i;
 // same reason — "Order a cake (or plan to bake)" is a milestone, handled
 // separately, and a bakery option must never be pruned by a word it contains.
 const HOST_COOKS_OPTION_RE = /\bbake it\b|cook\/grill yourself|cook it yourself|\bcook them yourself\b|grill (?:it|them) yourself/i;
+// ─── THE CALL'S QUESTION, ONE SOURCE (owner ruling 4a, 11/23/2026) ───────────
+// The words a call is asked in: its authored `ask`, else its label when it was
+// authored as a question, else its label made one. Calls to make, the step that
+// IS the call, and the hero built from that step all speak this.
+export function callQuestion(d) {
+  if (!d) return null;
+  return normalizeAsk(d.ask) || authoredQuestion(d.label) || questionFrom(d.label);
+}
+/** The playbook's food-approach call ("who cooks"), by its declared registry, or null. */
+export function whoCooksCallId(type) {
+  try { return foodApproach({ type }).decisionId || null; } catch (_e) { return null; }
+}
 export function foodApproach(event) {
   const pb = getPlaybook(event && event.type);
   const decisions = pb && Array.isArray(pb.decisions) ? pb.decisions : [];
@@ -1918,6 +1930,8 @@ export function playbookChecklist(event, asOf) {
   // A meal that arrives made but with no one hired (an order of trays) keeps
   // the grocery list off and the caterer's paperwork off too (P1-12).
   const noCatererHired = fa.usesCaterer === true && !catererHired(event, fa);
+  const _whoCooksId = whoCooksCallId(event.type);
+  const _whoCooksQ = _whoCooksId ? callQuestion((playbook.decisions || []).find((d) => d && d.id === _whoCooksId)) : null;
 
   // The milestones the air-travel floor moved, keyed by id, so a task can
   // inherit its own milestone's date rather than a second copy of the rule.
@@ -2013,7 +2027,11 @@ export function playbookChecklist(event, asOf) {
       // connecting-room ask on the lodging call). Tasks without one are untouched.
       // taskLabelFor picks the arrival-mode wording BEFORE the answered-copy
       // override, so a task can vary by both without either clobbering the other.
-      task: (stepLeftAsk(event, t) || booksLeftLabel(event, t, resolveAnsweredCopy(taskLabelFor(event, t), t.copyByAnswer, event)))
+      // THE WHO-COOKS STEP SPEAKS ITS CALL (owner ruling 4a, 11/23/2026): a step
+      // answered by the playbook's food-approach call alone is that call, so its
+      // row (and the hero built from it) asks the call's own question.
+      task: (_whoCooksQ && Array.isArray(t.answeredBy) && t.answeredBy.length === 1 && t.answeredBy[0] === _whoCooksId ? _whoCooksQ
+        : (stepLeftAsk(event, t) || booksLeftLabel(event, t, resolveAnsweredCopy(taskLabelFor(event, t), t.copyByAnswer, event))))
         + (t.kidsLine && kidsComing ? ` — ${t.kidsLine}` : ''),
       // 'event-day' buckets a T0 task under THE DAY tab; everything else is planning.
       category: eventDay ? 'event-day' : 'planning',
