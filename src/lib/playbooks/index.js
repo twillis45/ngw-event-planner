@@ -1900,14 +1900,19 @@ export function playbookPacing(event) {
 // WHEN A STEP READS WITHOUT ITS CATERER: shared by the checklist builder (the
 // row's words) and lib/stepTarget (the row's declared facts, cause 1 part 2),
 // so a row's label variant and its facts variant are one decision.
-const BOOKS_A_CATERER = /\b(book|contract|choose|find|decide|tour|sign|hire|if catering|vs|or confirm|yourself)\b/i;
+// THE STEP DECLARES IT (cause 1, remainder b, 11/23/2026): `catererOut` lists
+// when its caterer comes out: 'host-cooks' (she chose no caterer) and
+// 'none-hired' (the meal arrives made, no caterer hired). It was read off the
+// label's words (/cater(er|ing)/ unless "vs", "instead", "yourself"…; /caterer/
+// unless "book", "sign", "hire"…); the declarations were derived once from
+// that rule and committed. A step that declares nothing keeps its caterer.
 function catererTakenOut(t, dropCaterer, noCatererHired) {
-  return (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label))
-    || (noCatererHired && /\bcaterer/i.test(t.label) && !BOOKS_A_CATERER.test(t.label));
+  const out = Array.isArray(t.catererOut) ? t.catererOut : [];
+  return (dropCaterer && out.includes('host-cooks')) || (noCatererHired && out.includes('none-hired'));
 }
 /** Does this step read (and count) without its caterer for this event? */
 export function stepWithoutCaterer(event, t) {
-  if (!event || !t || !t.label) return false;
+  if (!event || !t) return false;
   const fa = foodApproach(event);
   return catererTakenOut(t, fa.usesCaterer === false, fa.usesCaterer === true && !catererHired(event, fa));
 }

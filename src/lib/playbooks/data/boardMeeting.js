@@ -64,7 +64,7 @@ const boardMeeting = {
     { id: 't_packet', target: 'none', facts: [], milestoneId: 'bm_packet', phase: 'documents', label: 'Assemble + distribute the full board packet via the secure portal ~1 week out', when: 'T-7d' },
     { id: 't_quorum', target: 'chase', facts: ['replies-chased'], milestoneId: 'bm_quorum', phase: 'guest', label: 'Chase RSVPs, confirm quorum math, send roll-call + dial-in details and any pre-reads', when: 'T-3d' },
     { id: 't_avtest', target: 'none', facts: [], milestoneId: 'bm_avtest', phase: 'setup', label: 'Dry-run the hybrid setup: join remote, share a slide, test mic/camera/dial-in, check screen visibility for remote directors', when: 'T-1d' },
-    { id: 't_setup', target: 'day', facts: ['or:catering-moot', 'and:caterer-booked'], milestoneId: 'bm_setup', phase: 'setup', label: 'Set seating + name cards, power/AV at each seat, screens on, catering staged, minute-taker positioned', when: 'T0 -1h' },
+    { id: 't_setup', target: 'day', facts: ['or:catering-moot', 'and:caterer-booked'], catererOut: ['host-cooks'], milestoneId: 'bm_setup', phase: 'setup', label: 'Set seating + name cards, power/AV at each seat, screens on, catering staged, minute-taker positioned', when: 'T0 -1h' },
     { id: 't_minutes', target: 'day', facts: [], milestoneId: 'event', phase: 'documents', label: 'Take minutes: record quorum, motions, votes (roll call for remote), and every action item with an owner', when: 'T0' },
     { id: 't_followup', target: 'none', facts: [], milestoneId: 'bm_followup', phase: 'documents', label: 'Circulate draft minutes + action-item tracker within 48h; collect/shred printed packets or revoke portal access', when: 'T0 +1d' },
   ],

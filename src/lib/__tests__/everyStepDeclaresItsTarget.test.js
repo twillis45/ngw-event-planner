@@ -386,3 +386,82 @@ describe('the calls and roles a step stands for are found by id, never by words'
     }
   });
 });
+
+// ─── A STEP DECLARES WHEN ITS CATERER COMES OUT (cause 1, remainder b) ──────
+// The checklist builder dropped a step, or read its labelWithoutCaterer, from
+// WORDS in its label: /cater(er|ing)/ without "vs", "instead", "yourself"…
+// when she cooks, and /\bcaterer/ without "book", "sign", "hire"… when the
+// meal arrives made with no caterer hired. Each step now declares
+// `catererOut` ('host-cooks', 'none-hired'), derived once from that rule and
+// committed; stepWithoutCaterer reads it, and so do the builder and the
+// step's facts.
+describe('a step declares when its caterer comes out, never by its words', () => {
+  const { cookTasksFor } = require('../playbooks/cookLever');
+  const KNOWN = ['host-cooks', 'none-hired'];
+  const V = (cat, status) => ({ id: 'v-' + cat, name: cat + ' Co', category: cat, status, cost: 900 });
+  const stepsOf = (pb) => [...(pb.tasks || []), ...cookTasksFor(pb), ...pbm.DESTINATION_TASKS];
+  const statesOf = (pb) => eventsFor(pb).flatMap((e) => [e, { ...e, vendors: [V('Catering', 'Booked')] }, { ...e, vendors: [V('Catering', 'Considering')] }]);
+  const WORDS = ['Give the caterer the final count', 'Book the caterer or cook it yourself', 'Tidy up', 'Catering staged; caterer paid'];
+
+  test('every declaration is known, and a step with a no-caterer label declares when it applies', () => {
+    const bad = [];
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const s of stepsOf(pb)) {
+        if (s.catererOut == null) { if (s.labelWithoutCaterer) bad.push(`${pb.type}:${s.id} labelWithoutCaterer with no catererOut`); continue; }
+        if (!Array.isArray(s.catererOut) || !s.catererOut.length || !s.catererOut.every((k) => KNOWN.includes(k))) bad.push(`${pb.type}:${s.id} → ${JSON.stringify(s.catererOut)}`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
+  test('every step, in every caterer state: the same answer whatever its label says', () => {
+    const wrong = [];
+    let n = 0;
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const ev of statesOf(pb)) {
+        for (const s of stepsOf(pb)) {
+          n += 1;
+          const own = pbm.stepWithoutCaterer(ev, s);
+          for (const w of WORDS) if (pbm.stepWithoutCaterer(ev, { ...s, label: w }) !== own) { wrong.push(`${pb.type}:${s.id} "${w}"`); break; }
+        }
+      }
+    }
+    expect(wrong.slice(0, 40)).toEqual([]);
+    expect(n).toBeGreaterThan(100000);
+  });
+
+  test('the checklist keeps, drops and rewords the same steps whatever their labels say', () => {
+    const wrong = [];
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      const states = statesOf(pb);
+      // The authored steps it keeps, and which of them read their no-caterer
+      // label. (The derived rows' own dedupes are not this rule.)
+      const own = new Set((pb.tasks || []).map((t) => t.id));
+      const shape = () => states.map((ev) => (pbm.playbookChecklist(ev, asOf) || [])
+        .filter((r) => own.has(r.provenance && r.provenance.taskId))
+        .map((r) => r.id + ((pb.tasks || []).some((t) => t.labelWithoutCaterer && t.labelWithoutCaterer === r.task) ? ':without' : '')).join(','));
+      const before = shape();
+      const saved = (pb.tasks || []).map((t) => t.label);
+      try {
+        (pb.tasks || []).forEach((t) => { t.label = 'Tidy up'; });
+        const neutral = shape();
+        (pb.tasks || []).forEach((t) => { t.label = 'Give the caterer the final count'; });
+        const caterer = shape();
+        if (neutral.join('|') !== before.join('|') || caterer.join('|') !== before.join('|')) wrong.push(pb.type);
+      } finally {
+        (pb.tasks || []).forEach((t, i) => { t.label = saved[i]; });
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  test('the rule reads no words', () => {
+    const code = fs.readFileSync(path.join(__dirname, '..', 'playbooks', 'index.js'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+    const at = code.indexOf('function catererTakenOut(');
+    expect(at).toBeGreaterThan(-1);
+    const rule = code.slice(at, code.indexOf('export function playbookChecklist', at));
+    expect(rule).not.toMatch(/\.(?:label|task|text|title)\b/);
+    expect(rule).not.toMatch(/\.test\(/);
+    expect(code).not.toMatch(/BOOKS_A_CATERER/);
+  });
+});
