@@ -12551,9 +12551,9 @@ export default function HostShellV2() {
                             aria-label={areaLabelFor(p.id) + (p.handled ? ' — handled' : p.now ? ' — still open, and the question above is about it' : ' — still open') + '. Open it.'}
                             onClick={() => openPart(p)}>
                             <i aria-hidden="true" />
-                            {/* No NOW tag at the 13" (owner ruling 10, 11/23/2026):
-                                the current part's name is bold instead. */}
-                            <span className="tt-pl">{p.handled ? '✓ ' : ''}{areaLabelFor(p.id)}{p.now && !tallRail ? <em className="tt-now">Now</em> : null}</span>
+                            {/* No NOW tag on any tall iPad (owner ruling 10, 11/23/2026,
+                                every surface): the current part's name is bold instead. */}
+                            <span className="tt-pl">{p.handled ? '✓ ' : ''}{areaLabelFor(p.id)}</span>
                           </button>
                         );
                       })}
@@ -12581,8 +12581,8 @@ export default function HostShellV2() {
                       </span>
                       {/* One date once: when the next dated work IS the day the
                           count grows, the grow-note already names it. */}
-                      {/* Not "dated work needs you now" at the 13" (owner ruling 10). */}
-                      {horizonPhrase && !(tallRail && planHorizon.days <= 0) && !(ledgerExpiry && ledgerExpiryShort && planHorizonShort === ledgerExpiryShort) && <span>{horizonPhrase}</span>}
+                      {/* Never "dated work needs you now" (owner ruling 10, every surface). */}
+                      {horizonPhrase && planHorizon.days > 0 && !(ledgerExpiry && ledgerExpiryShort && planHorizonShort === ledgerExpiryShort) && <span>{horizonPhrase}</span>}
                     </div>
                   </nav>
                 )}

@@ -91,11 +91,12 @@ for (const theme of ['dark', 'light']) {
       expect.soft(r.on.bg, `${where}: selected is not the primary button's fill`).not.toBe(r.primary);
       expect.soft(r.status, `${where}: selected is not a status color`).not.toContain(r.on.bg);
       expect.soft(`${r.on.bg} ${r.on.edge}`, `${where}: selected differs from unselected`).not.toBe(`${r.off.bg} ${r.off.edge}`);
-      // THE PHASE IS OUTLINED, NOT FILLED, on the phone's pill and in the 13"
-      // rail (owner rulings 4 and 8, 11/23/2026: no fill on the pill; "the
+      // THE PHASE IS OUTLINED, NOT FILLED, on the phone's pill, the tall bar and
+      // the 13" rail (owner rulings 4 and 8, 11/23/2026: no fill on the nav; "the
       // current stage outlined (not filled)"). Held to that, and to the one
       // selected ink; the one-fill rule below holds everywhere else.
-      const outlined = (inBar && await page.locator('[data-tt-bar][data-pill]').count() > 0) || inRail;
+      // (Every tall iPad's bar too, owner 11/23/2026: no fill on any nav.)
+      const outlined = inBar || inRail;
       if (outlined) {
         expect.soft(r.on.bg, `${where}: the phase has no fill`).toBe('rgba(0, 0, 0, 0)');
         expect.soft(parseFloat(r.on.edge.split(' ').find((t) => /px$/.test(t)) || '0'), `${where}: the phase is outlined`).toBeGreaterThan(0);

@@ -70,3 +70,43 @@ test('a tall portrait tablet: one section gap from the hero to Where you stand, 
   expect(m.standBottom, 'Where you stand is on the first screen').toBeLessThanOrEqual(m.screenBottom);
   expect(m.foldBottom, '"The rest of your plan" is on the first screen').toBeLessThanOrEqual(m.screenBottom);
 });
+
+// ── NO NOW, NO "NEEDS YOU NOW", NO FILL ON THE BAR (owner rulings 4 and 10,
+// every surface, 11/23/2026) ─────────────────────────────────────────────────
+// The 768-1023 tall mode kept the NOW tag, "dated work needs you now" and a
+// filled bar after the 13" lost them; the rulings hold on every tall iPad.
+// The current part's name is bold instead. The bar and every control in it are
+// transparent or the page color; the scroller ends at the bar's top edge.
+test('a tall portrait tablet: no NOW tag, no "needs you now", the current part bold, and no fill on the bar', async ({ page }, info) => {
+  await created(page);
+  const vp = page.viewportSize();
+  if (!tallViewport(vp)) {
+    expect(await page.locator('.stagewrap[data-tall="1"]').count(), `${info.project.name}: not a tall portrait tablet`).toBe(0);
+    return;
+  }
+  const m = await page.evaluate(() => {
+    const visibleText = [...document.querySelectorAll('.app *')].filter((e) => e.children.length === 0 && e.getBoundingClientRect().height > 0 && !e.closest('[inert]')).map((e) => e.textContent).join(' ');
+    const parts = [...document.querySelectorAll('[data-tt-ribbon] [data-part]')].map((p) => ({ state: p.dataset.state, w: Number(getComputedStyle(p.querySelector('.tt-pl')).fontWeight) }));
+    const page = getComputedStyle(document.querySelector('.stagewrap')).backgroundColor;
+    const bar = document.querySelector('[data-tt-bar]');
+    const fills = [];
+    if (bar) for (const e of [bar, ...bar.querySelectorAll('*')]) {
+      const r = e.getBoundingClientRect(); if (!r.width || !r.height) continue;
+      const cs = getComputedStyle(e);
+      if ((cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== page) || cs.backgroundImage !== 'none') fills.push(`${e.tagName}.${String(e.className)} ${cs.backgroundColor}`);
+    }
+    const app = document.querySelector('.app').getBoundingClientRect();
+    return { now: /\bNOW\b/.test(visibleText) || !!document.querySelector('.tt-now'), needsNow: /needs you now/i.test(visibleText), parts, fills,
+      bar: !!bar, appBottom: app.bottom, barTop: bar ? bar.getBoundingClientRect().top : null };
+  });
+  expect(m.now, 'no NOW tag').toBe(false);
+  expect(m.needsNow, 'no "dated work needs you now"').toBe(false);
+  const cur = m.parts.filter((p) => p.state === 'now');
+  expect(cur, 'premise: the ribbon marks the current part').toHaveLength(1);
+  expect(cur[0].w, 'the current part is bold').toBeGreaterThanOrEqual(700);
+  for (const p of m.parts.filter((x) => x.state !== 'now')) expect(p.w).toBeLessThan(700);
+  if (m.bar) {
+    expect(m.fills, 'no fill on the bar or its controls').toEqual([]);
+    expect(m.appBottom, 'the content stops above the bar').toBeLessThanOrEqual(m.barTop + 0.5);
+  }
+});

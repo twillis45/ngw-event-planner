@@ -8539,7 +8539,6 @@ button.vc-pill::after{
 .tt-part.is-open, .tt-part.is-now{ color:var(--ink); font-weight:650; }
 .tt-part.is-open > i{ background:transparent; box-shadow:inset 0 0 0 1.5px var(--steel-soft); }
 .tt-part.is-now > i{ background:var(--steel-soft); }
-.tt-now{ display:inline-block; vertical-align:1px; margin-left:4px; padding:2px 8px; border-radius:999px; background:var(--steel-soft); color:var(--bg); font-style:normal; font-size:11px; font-weight:750; letter-spacing:.1em; text-transform:uppercase; }
 .tt-rib-foot{ display:flex; justify-content:space-between; align-items:center; gap:16px; margin-top:0; color:var(--muted); font-size:13px; }
 .tt-rib-count{ min-height:var(--tap-min,46px); margin:0 !important; padding:0; background:none; border:0; color:inherit; font:inherit; cursor:pointer; text-align:left; }
 .tt-rib-count:hover{ color:var(--ink); }
@@ -8690,9 +8689,9 @@ button.tt-row{ cursor:pointer; }
    12px) only pads the hero's foot, and would add to it. */
 .stagewrap[data-tall="1"] .hero.elegant .escreen.on > .ecenter :last-child{ margin-bottom:0; }
 .stagewrap[data-tall="1"] .hero.elegant .escreen.on > .tt-fold-slot{ margin-top:var(--sp-4); }
-/* The current part's name is bold; no NOW tag (ruling 10). */
-.stagewrap[data-tall="1"][data-rail="1"] .tt-part.is-now{ font-weight:750; }
-.stagewrap[data-tall="1"][data-rail="1"] .tt-part.is-open{ font-weight:600; }
+/* The current part's name is bold; no NOW tag (ruling 10, every tall iPad). */
+.stagewrap[data-tall="1"] .tt-part.is-now{ font-weight:750; }
+.stagewrap[data-tall="1"] .tt-part.is-open{ font-weight:600; }
 /* YOUR EVENT: the phases in the rail, the current one outlined, not filled. */
 .srail-stage{ border:0; }
 .srail-stage.is-stage{ color:var(--ink); font-weight:650; background:none; border:1px solid var(--line); }
@@ -8725,3 +8724,13 @@ button.tt-row{ cursor:pointer; }
 /* One glyph per worry row at the 13" upright: the tall rows' own › (render
    17), not the rail board's → beside it. */
 .stagewrap[data-tall="1"][data-rail="1"] .hero.elegant .ef-watch .ef-g{ display:none; }
+
+/* THE 768-1023 BAR, NO FILL (owner, every surface, 11/23/2026): the bar sits
+   on the page color with a hairline above it, as the phone's pill sits with
+   none; the phase is outlined, not filled; the actions are outlines. The
+   scroller already ends at its top edge, so nothing scrolls under it. */
+.stagewrap[data-tall="1"] .tt-bar{ background:none; }
+.stagewrap[data-tall="1"] .tt-bar .tt-seg{ background:none; box-shadow:inset 0 0 0 1px var(--line-soft); }
+.stagewrap[data-tall="1"] .tt-bar .tt-seg .tt-seg-b{ background:none; box-shadow:none; border:1px solid transparent; }
+.stagewrap[data-tall="1"] .tt-bar .tt-seg .tt-seg-b.on{ background:none; box-shadow:none; border-color:var(--steel-soft); color:var(--ink); font-weight:700; }
+.stagewrap[data-tall="1"]:has(> .app.dark-stage){ background-color:var(--carbon); }
