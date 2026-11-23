@@ -149,7 +149,10 @@ const PART_ASK = {
 };
 // A section hero that is still asking. Deliberately narrow: an open COUNT, an
 // unset value, a "still need".
-const SHEET_OPEN = /\b\d+ (open|to settle|still to confirm|left to)\b|\bnot set yet\b|\bstill needs?\b|no place picked yet/i;
+// "left to" counts open work ("3 left to confirm"), never money: part 1 of the
+// six-cause fix (#242, owner 11/23) labels the budget "$767 left to spend",
+// which is a figure, not an open count.
+const SHEET_OPEN = /\b\d+ (open|to settle|still to confirm|left to(?! spend))\b|\bnot set yet\b|\bstill needs?\b|no place picked yet/i;
 // A section hero that claims done.
 const SHEET_DONE = /\ball set\b|everyone[’']s locked in|the stay is set|everyone has a room|every step is handled|nothing left to/i;
 

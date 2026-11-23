@@ -216,7 +216,11 @@ test('a legacy self-contained link is not live after its event', async ({ page }
 test('the host names a day-of contact in the share panel, and it is saved on the event', async ({ page }) => {
   const EVENT = { id: 'cust-brief-dayof', name: 'Backyard Birthday', type: 'Birthday Party', date: dateIn(40),
     guestEstimate: 20, guestMode: 'count', guestCountSource: 'host', passRequired: false, passReasons: [],
-    budget: [], guests: [], timeline: [], vendors: [{ id: 'v-cat', name: 'Capital Rotisserie', category: 'Catering' }] };
+    budget: [], guests: [], timeline: [], vendors: [{ id: 'v-cat', name: 'Capital Rotisserie', category: 'Catering' }],
+    // A vendor's brief carries the place (lib/outwardReady, #242 cause 6): the
+    // delivery has to find the door, so a brief for an event with no address is
+    // refused (see the test below). This one has a place, so it can go out.
+    venueName: 'Dock Hall', venueAddress: '9 Dock Rd', venueCity: 'Annapolis', venueState: 'MD', venueZip: '21401', venueKind: 'venue' };
   await page.addInitScript((e) => {
     if (localStorage.getItem('ngw-hostv2-custom-events')) return;   // seed once; reloads keep the host’s edits
     localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
@@ -243,4 +247,29 @@ test('the host names a day-of contact in the share panel, and it is saved on the
     const ev = stored.find((x) => x.id === EVENT.id) || {};
     return [ev.briefContactName, ev.briefContactPhone];
   }).toEqual(['Sam Ortiz', '(555) 010-3000']);
+});
+
+// #242 cause 6 (owner, 11/23): nothing goes out without a findable place. The
+// same share panel, on an event with no address, mints no link and says why.
+test('a vendor brief for an event with no address is not shared, and the host is told why', async ({ page }) => {
+  const EVENT = { id: 'cust-brief-noplace', name: 'Backyard Birthday', type: 'Birthday Party', date: dateIn(40),
+    guestEstimate: 20, guestMode: 'count', guestCountSource: 'host', passRequired: false, passReasons: [],
+    budget: [], guests: [], timeline: [], vendors: [{ id: 'v-cat', name: 'Capital Rotisserie', category: 'Catering' }] };
+  await page.addInitScript((e) => {
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
+    localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
+    localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
+  }, EVENT);
+  let mints = 0;
+  await page.route(`${API}/api/events/*/vendor-brief-links`, (route) => { mints += 1; return route.fulfill({ status: 200, json: { ok: true, code: CODE } }); });
+  await page.goto('?elegant=1');
+  await settled(page);
+  await openSectionByName(page, 'People you’re hiring');
+  await settled(page);
+  await page.locator('.vcard', { hasText: 'Capital Rotisserie' }).first().evaluate((c) => c.click());
+  await page.getByRole('button', { name: 'Send Capital Rotisserie the details', exact: true }).click();
+  await expect(page.getByText(/Add the street address first/).first()).toBeVisible();
+  await expect(page.locator('[data-brief-url]')).toHaveCount(0);
+  expect(mints, 'no link is minted for a brief that cannot go out').toBe(0);
 });
