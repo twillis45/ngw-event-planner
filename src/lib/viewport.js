@@ -68,6 +68,22 @@ export function readLayoutWidth() {
   return WIDESCREEN;
 }
 
+// ── PORTRAIT, ASKED THE SAME WAY (tall-iPad package, owner 11/22/2026) ─────
+// The tall-tablet mode needs a shape as well as a band, and it is read from the
+// same place: the engine's own (orientation:portrait) answer, so the markup and
+// the stylesheet's orientation queries cannot disagree after a turn. Where
+// matchMedia is missing, innerHeight >= innerWidth stands in.
+const mqPortrait = () => {
+  try { return typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia('(orientation: portrait)') : null; }
+  catch { return null; }
+};
+export function readPortrait() {
+  const l = mqPortrait();
+  if (l) return !!l.matches;
+  if (typeof window === 'undefined') return false;
+  return window.innerHeight >= window.innerWidth;
+}
+
 // One resize listener shared by every hook instance. The donor registered a
 // listener per call site; hostv2 renders far more subscribers per screen, and N
 // listeners each calling setState on the same resize is N renders for one event.
@@ -83,8 +99,7 @@ function subscribe(fn) {
     const fire = () => { const w = readLayoutWidth(); subs.forEach((f) => f(w)); };
     window.addEventListener('resize', fire);
     window.addEventListener('orientationchange', fire);
-    [BREAKPOINTS.tablet, BREAKPOINTS.tabletLand, BREAKPOINTS.desktop, WIDESCREEN].forEach((px) => {
-      const l = mq(px);
+    [...[BREAKPOINTS.tablet, BREAKPOINTS.tabletLand, BREAKPOINTS.desktop, WIDESCREEN].map(mq), mqPortrait()].forEach((l) => {
       if (l && typeof l.addEventListener === 'function') l.addEventListener('change', fire);
       else if (l && typeof l.addListener === 'function') l.addListener(fire);
     });
@@ -99,6 +114,17 @@ export function useBreakpoint() {
     return next === prev ? prev : next;   // never re-render on a width change that stays in-band
   })), []);
   return bp;
+}
+
+// Live portrait flag: a turn flips it through the orientation list's own
+// `change`, the same moment the stylesheet's orientation queries flip.
+export function usePortrait() {
+  const [portrait, setPortrait] = useState(() => readPortrait());
+  useEffect(() => subscribe(() => setPortrait((prev) => {
+    const next = readPortrait();
+    return next === prev ? prev : next;
+  })), []);
+  return portrait;
 }
 
 export function useWideScreen() {

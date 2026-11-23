@@ -217,3 +217,53 @@ export function segmentsText(orientationResult) {
   const tail = o.blocker ? ' One item is past its date.' : '';
   return head + body + tail;
 }
+
+// ─── THE TALL-TABLET RIBBON (owner, 11/22/2026) ─────────────────────────────
+// The tall-iPad board leads with the plan-parts ledger as a ribbon. These two
+// read the SAME phaseProgress items the chips and the .eprog strips read; they
+// add one fact: which open part the hero question is about (NOW).
+
+// The hero item's own fields, mapped to a ledger part. Never the headline prose.
+const DOMAIN_PART = Object.freeze({
+  food: 'food', menu: 'food', catering: 'food', shopping: 'shopping',
+  budget: 'budget', money: 'budget',
+  vendors: 'vendors', vendor: 'vendors',
+  guests: 'headcount', attendance: 'headcount', headcount: 'headcount',
+  date: 'datetime', datetime: 'datetime',
+  venue: 'location', location: 'location',
+  lodging: 'lodging', rain: 'rain', weather: 'rain', crabs: 'crabs',
+});
+
+/**
+ * heroPartId(action, items) -> the id of the OPEN ledger part the hero is
+ * about, or null. A phase decision identity ('phase:food') wins; then the
+ * item's domain/category. A handled part is never the one being asked for.
+ */
+export function heroPartId(action, items) {
+  if (!action) return null;
+  const list = Array.isArray(items) ? items : [];
+  const open = (id) => !!id && list.some((it) => it && it.id === id && !it.handled);
+  const phase = /^phase:(\w+)$/.exec(String(action.decisionId || action.id || ''));
+  if (phase && open(phase[1])) return phase[1];
+  for (const k of [action.domain, action.category]) {
+    const id = DOMAIN_PART[String(k || '').toLowerCase()];
+    if (open(id)) return id;
+  }
+  return null;
+}
+
+/**
+ * planRibbon(phaseCues, heroAction) -> { parts:[{id, handled, now, route,
+ * cueLabel}], done, total, allHandled } or null when there is no ledger.
+ */
+export function planRibbon(phaseCues, heroAction) {
+  const items = (phaseCues && Array.isArray(phaseCues.items)) ? phaseCues.items.filter(Boolean) : [];
+  if (!items.length) return null;
+  const nowId = heroPartId(heroAction, items);
+  const parts = items.map((it) => ({
+    id: it.id, handled: !!it.handled, now: !it.handled && it.id === nowId,
+    route: it.route || null, cueLabel: it.cueLabel || null,
+  }));
+  const done = parts.filter((p) => p.handled).length;
+  return { parts, done, total: parts.length, allHandled: done === parts.length };
+}
