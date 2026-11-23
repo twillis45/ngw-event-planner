@@ -256,8 +256,11 @@ for (const theme of ['dark', 'light']) {
         const esc = document.querySelector('.escreen.on');
         const bar = document.querySelector('[data-tt-bar]').getBoundingClientRect();
         const b = esc.querySelector('.bento'); const f = esc.querySelector('.efold');
-        return { barTop: bar.top, bento: b && b.getBoundingClientRect().bottom, fold: f && f.getBoundingClientRect().bottom, esc: esc.getBoundingClientRect().bottom };
+        const tapMin = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tap-min')) || 44;
+        return { barTop: bar.top, bento: b && b.getBoundingClientRect().bottom, fold: f && f.getBoundingClientRect().bottom, foldH: f && f.getBoundingClientRect().height, tapMin, esc: esc.getBoundingClientRect().bottom };
       });
+      // The fold control is a tap target: it never shrinks below the floor to fit.
+      expect(m.foldH, `the fold control's tap box (${m.foldH}px)`).toBeGreaterThanOrEqual(m.tapMin);
       expect(m.bento, 'Where you stand is on the first screen').not.toBeNull();
       expect(m.fold, 'the fold control is on the first screen').not.toBeNull();
       expect(m.bento, `Where you stand ends above the bar (${Math.round(m.bento - m.barTop)}px over)`).toBeLessThanOrEqual(m.barTop);
@@ -294,5 +297,80 @@ test('turning an 11" iPad: rail and no bar in landscape, bar and no rail in port
     expect(m.side, `${where}: sideways scroll`).toBe(false);
     expect(m.past, `${where}: past the edge`).toBe(0);
   }
+  await ctx.close();
+});
+
+// ── THE WEATHER RIDES THE HEADER, IT DOES NOT FLOAT (owner ruling, 11/23/2026) ──
+// On a tall iPad the weather pill (shown only near the event date) moves into
+// the header's date line: the same glyph and forecast line, the same tap that
+// opens it in place. Nothing floats over the board at any depth. Phones and
+// landscape keep the floating pill.
+const wxBoot = async (browser, ev, sky) => {
+  const ctx = await browser.newContext({ viewport: { width: 834, height: 1194 }, hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  const noon = new Date(ev.date + 'T12:00:00');
+  await page.route('**/api/weather/geocode**', (r) => r.fulfill({ json: { result: { lat: 38.8, lon: -76.98 } } }));
+  await page.route('**/api/weather/onecall**', (r) => r.fulfill({ json: { timezone_offset: -noon.getTimezoneOffset() * 60, hourly: [],
+    daily: [{ dt: Math.floor(noon.getTime() / 1000), ...sky }] } }));
+  await page.addInitScript((e) => {
+    if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e])); localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString()); localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
+  }, ev);
+  await page.goto('./');
+  await expect(page.locator('[data-tt-head]')).toBeVisible({ timeout: 20_000 });
+  await settled(page); await page.waitForTimeout(1200);
+  return { ctx, page };
+};
+const WX_EV = { id: 'cust-tall-wx', name: 'Vida’s Friendsgiving', type: 'Friendsgiving', date: dateIn(3), startTime: '16:00', startTimeSource: 'host',
+  createdAt: new Date(Date.now() - 20 * 864e5).toISOString(), venue: 'Vida’s place', venueCity: 'Oxon Hill', venueState: 'MD', indoorOutdoor: 'indoor',
+  guestMode: 'count', guestCount: 15, guests: [], vendors: [], budget: [], timeline: [] };
+const SNOW = { pop: 0.6, weather: [{ main: 'Snow', description: 'snow', icon: '13d' }], temp: { min: 25, max: 33 } };
+const floatingWx = (page) => page.evaluate(() => [...document.querySelectorAll('.wxpill')]
+  .filter((e) => e.getBoundingClientRect().height > 0)
+  .map((e) => ({ inHead: !!e.closest('[data-tt-head]'), pos: getComputedStyle(e).position })));
+
+test('tall iPad: near the date, the weather sits in the header’s date line and opens in place; nothing floats', async ({ browser }) => {
+  const { ctx, page } = await wxBoot(browser, WX_EV, SNOW);
+  const wx = page.locator('[data-tt-head] .wxpill');
+  await expect(wx).toBeVisible();
+  await expect(wx).toContainText(/Snow forecast/);
+  await expect(wx.locator('[data-wx-glyph="snow"]')).toHaveCount(1);
+  // On the date line, beside the date.
+  const line = await page.evaluate(() => {
+    const r1 = document.querySelector('[data-tt-head] .tt-r1').getBoundingClientRect();
+    const w = document.querySelector('[data-tt-head] .wxpill-head').getBoundingClientRect();
+    return { r1Top: r1.top, r1Bottom: r1.bottom, wTop: w.top, wBottom: w.bottom };
+  });
+  expect(line.wTop).toBeGreaterThanOrEqual(line.r1Top - 1);
+  expect(line.wBottom).toBeLessThanOrEqual(line.r1Bottom + 1);
+  for (const frac of [0, 0.5, 1]) {
+    await page.evaluate((f) => { const a = document.querySelector('.app'); a.scrollTop = Math.round((a.scrollHeight - a.clientHeight) * f); }, frac);
+    await page.waitForTimeout(500);
+    for (const w of await floatingWx(page)) {
+      expect(w.inHead, `weather outside the header at ${frac}`).toBe(true);
+      expect(['fixed', 'absolute', 'sticky'], `weather floats at ${frac}`).not.toContain(w.pos);
+    }
+  }
+  await page.evaluate(() => { document.querySelector('.app').scrollTop = 0; });
+  await wx.locator('.wxpill-head').click();
+  await expect(wx.locator('.wxpill-head')).toHaveAttribute('aria-expanded', 'true');
+  await expect(wx.locator('.wx-body')).toBeVisible();
+  await wx.locator('[data-wx-travel-note]').click();
+  await expect(page.locator('.sheet').last()).toContainText('the forecast shows snow.');
+  await ctx.close();
+});
+
+test('tall iPad: with nothing to say about the weather, the header carries none', async ({ browser }) => {
+  const { ctx, page } = await wxBoot(browser, WX_EV, { pop: 0.8, weather: [{ main: 'Rain', description: 'moderate rain', icon: '10d' }], temp: { min: 48, max: 57 } });
+  await expect(page.locator('.wxpill')).toHaveCount(0);
+  await ctx.close();
+});
+
+test('tall iPad: an outdoor rain alert rides the header too', async ({ browser }) => {
+  const { ctx, page } = await wxBoot(browser, { ...WX_EV, id: 'cust-tall-wx-out', type: 'Cookout', name: 'Block cookout', indoorOutdoor: 'outdoor', venue: 'Watkins Park' },
+    { pop: 0.85, weather: [{ main: 'Rain', description: 'heavy rain', icon: '10d' }], temp: { min: 62, max: 74 } });
+  await expect(page.locator('[data-tt-head] .wxpill')).toBeVisible();
+  for (const w of await floatingWx(page)) expect(w.inHead).toBe(true);
   await ctx.close();
 });

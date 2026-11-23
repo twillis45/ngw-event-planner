@@ -7,7 +7,7 @@
 // Scoped to the rail viewports for the same reason as
 // theCouplesSheSaidReachTheList: "Guests" is one click there, and what is under
 // test is the receipt, not the phone's navigation.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const RAIL = /tablet-land|tablet-tall|desktop|wide/;
 const EV = {
@@ -28,9 +28,10 @@ const addNames = async (page, lines) => {
     localStorage.setItem('ngw-v2-welcomed', '1');
   }, EV);
   await page.goto('./');
-  const row = page.getByRole('button', { name: /^Guests$/ }).first();
-  await row.waitFor({ state: 'visible', timeout: 20000 });
-  await row.click();
+  // The Guests door wherever this viewport has it: the rail, or on a tall
+  // iPad (no rail, 11/22/2026) the bar's All sections index.
+  await settled(page);
+  await openSectionByName(page, 'Guests', { settle: 0 });
   await page.getByLabel(/Add guest names/i).fill(lines.join('\n'));
   await page.getByRole('button', { name: 'Add them' }).click();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].guests.length))
@@ -39,13 +40,13 @@ const addNames = async (page, lines) => {
 };
 
 test('a name already on the list is added AND named in the receipt', async ({ page }, testInfo) => {
-  test.skip(!RAIL.test(testInfo.project.name), 'the section rail exists at tablet-land and above');
+  test.skip(!RAIL.test(testInfo.project.name), 'one tap to Guests: the rail from tablet-land, the bar’s index on a tall iPad');
   const toasts = await addNames(page, ['Bea Chen', 'Ana Rivera']);
   expect(toasts.some((t) => /Ana Rivera is on the list twice/.test(t)), JSON.stringify(toasts)).toBe(true);
 });
 
 test('CONTROL — distinct names say nothing about twice', async ({ page }, testInfo) => {
-  test.skip(!RAIL.test(testInfo.project.name), 'the section rail exists at tablet-land and above');
+  test.skip(!RAIL.test(testInfo.project.name), 'one tap to Guests: the rail from tablet-land, the bar’s index on a tall iPad');
   const toasts = await addNames(page, ['Bea Chen', 'Jo Lane']);
   expect(toasts.some((t) => /twice/.test(t)), JSON.stringify(toasts)).toBe(false);
 });

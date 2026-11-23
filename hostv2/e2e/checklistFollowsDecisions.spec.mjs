@@ -190,7 +190,7 @@ test('the crab swap, driven through the decision board itself', async ({ page })
 
   // 2. Change the decision the way a host does: open the call, disclose the
   //    alternatives, pick a different one.
-  await page.locator('.srail-row', { hasText: 'Calls to make' }).first().click();
+  await openSectionByName(page, 'Calls to make', { settle: 0 });
   await settled(page);
   const board = page.locator('.sheet').last();
   await board.locator('button', { hasText: 'Other ways' }).first().click();
