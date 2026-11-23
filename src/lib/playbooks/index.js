@@ -5338,6 +5338,18 @@ export function beverageTierFor(pick) {
   return BEV_TIERS.find((x) => x.re.test(p) && !(x.unless && x.unless.test(p))) || null;
 }
 
+// THE VEGETARIAN MAIN, AT ITS SOURCES (owner ruling, 11/23/2026). It was the
+// engine's own $6-12 a serving, which every registered price undercut. The band
+// is the per-serving prices the sources state; Amy's organic tray is left out
+// because no source gives its serving count.
+const VEG_MAIN_PER_SERVING = [1, 2.87];
+const VEG_MAIN_PROVENANCE = Object.freeze({
+  tier: 'researched', confidence: 'medium', verificationStatus: 'cited',
+  sources: ['costco-prepared-2026', 'lasagna-retail-2026'], lastVerified: '2026-11-23',
+  claim: 'A vegetarian main bought or made at retail prices, per serving, 2026: Costco stuffed bell peppers at $4.99/lb, under $1 a serving; Stouffer\'s vegetable lasagna family tray at $10.79 (Lowes Foods) and $11.49 (Price Chopper) for the four servings its label states, $2.70-2.87 a serving. $1-2.87 a serving (was the engine\'s uncited $6-12).',
+  sufficientWhen: 'A serving count for an organic tray (Amy\'s family size is $16.49 at Kroger) would say whether a higher ceiling belongs here.',
+});
+
 // The drop-off catering tier, as the two registered catering guides publish it.
 const DROPOFF_CATERING_PROVENANCE = Object.freeze({
   tier: 'researched', confidence: 'medium', verificationStatus: 'cited',
@@ -6116,8 +6128,9 @@ export function playbookFoodPlan(event, opts = {}) {
       id: 'diet-veg', group: 'Food', item: `${vegDish} (for ${vegN} ${vegN === 1 ? 'guest' : 'guests'})`,
       short: `${vegDish} · ${vegN}`, owner: '', qty: vegN, unit: 'servings', essential: true, where: ['Grocery'],
       qtyOverridden: false, baseQty: vegN, perGuest: null,
-      low: Math.round(vegN * 6 * pf), high: Math.round(vegN * 12 * pf), units: vegN, unitBase: 'servings',
-      perUnitLow: Math.round(6 * pf), perUnitHigh: Math.round(12 * pf),
+      low: Math.round(vegN * VEG_MAIN_PER_SERVING[0] * pf), high: Math.round(vegN * VEG_MAIN_PER_SERVING[1] * pf), units: vegN, unitBase: 'servings',
+      perUnitLow: roundCurrency(VEG_MAIN_PER_SERVING[0] * pf), perUnitHigh: roundCurrency(VEG_MAIN_PER_SERVING[1] * pf),
+      costProvenance: VEG_MAIN_PROVENANCE,
       skipped: !!skip['diet-veg'], locked: ('diet-veg' in lockedMap) ? Math.max(0, roundCurrency(Number(lockedMap['diet-veg']) || 0)) : null,
       note: 'So your vegetarian/vegan guests have a real main, not just sides.', forgotten: false, dietDerived: true,
       // The regional factor moved this band, so the line says so (audit G #6).
