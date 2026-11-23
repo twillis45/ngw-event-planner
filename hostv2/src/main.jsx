@@ -25,6 +25,7 @@ window.__BUILD__ = BUILD;
 // The escape hatch is a URL a host can be read over the phone:
 //   <site>/hostv2/?nosw=1   turns it off on that device and keeps it off.
 import { registerOfflineShell } from './offline/register';
+import { watchLayoutViewport } from './layoutViewport.js';
 
 // A VENDOR IS NEVER GIVEN A WORKER. That was true by redirect (a synchronous
 // replace() pre-empted the `load` listener below); now that the brief renders
@@ -80,6 +81,10 @@ function fitPhone() {
 }
 window.addEventListener('resize', fitPhone);
 fitPhone();
+
+// An iPad turned mid-session can keep the old layout width (#236); see
+// layoutViewport.js. Writes nothing on any screen where the widths agree.
+try { watchLayoutViewport(); } catch (_) { /* never block boot */ }
 
 // ?rsvp=CODE is the PUBLIC self-RSVP invite (same mechanic as the original
 // app) — guests get the invite page, never the host shell.

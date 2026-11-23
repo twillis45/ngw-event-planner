@@ -43,22 +43,57 @@ export const isWideBp = (bp) => bp === 'desktop' || bp === 'tablet-land';
 
 const readWidth = () => (typeof window === 'undefined' ? BREAKPOINTS.desktop : window.innerWidth);
 
+// ── THE BAND IS READ FROM THE STYLESHEET'S OWN QUESTION (#236, 11/22/2026) ──
+// This used to be bpOf(window.innerWidth). On iOS those are two different
+// widths: innerWidth follows the VISIBLE area, while media queries and every
+// block width follow the LAYOUT viewport. The owner's iPad, turned mid-session,
+// kept the old layout width while innerWidth reported the new one, so the
+// markup raised the rail (innerWidth 1210) inside a stylesheet still laying out
+// 834 (body on --bg-band, the <1024 ground; pixel-sampled from her screenshot).
+// matchMedia asks the engine the same question the stylesheet asks, so data-bp
+// cannot disagree with the CSS it drives. It also stops a pinch zoom, which
+// shrinks innerWidth on iOS, from dropping the rail. innerWidth stays as the
+// fallback where matchMedia does not exist (jsdom, very old engines).
+const mq = (px) => {
+  try { return typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(`(min-width:${px}px)`) : null; }
+  catch { return null; }
+};
+// The width bpOf/WIDESCREEN tests need, answered at each threshold by the
+// engine: the smallest threshold not met, minus one, or the largest met.
+export function readLayoutWidth() {
+  const steps = [BREAKPOINTS.tablet, BREAKPOINTS.tabletLand, BREAKPOINTS.desktop, WIDESCREEN];
+  const lists = steps.map(mq);
+  if (lists.some((l) => !l)) return readWidth();
+  for (let i = 0; i < steps.length; i += 1) if (!lists[i].matches) return steps[i] - 1;
+  return WIDESCREEN;
+}
+
 // One resize listener shared by every hook instance. The donor registered a
 // listener per call site; hostv2 renders far more subscribers per screen, and N
 // listeners each calling setState on the same resize is N renders for one event.
+// The media lists' own `change` events are listened to as well: they fire when
+// the engine's layout width crosses a threshold, which is the moment the CSS
+// flips, whether or not a `resize` arrived with a current width.
 const subs = new Set();
 let bound = false;
 function subscribe(fn) {
   subs.add(fn);
   if (!bound && typeof window !== 'undefined') {
     bound = true;
-    window.addEventListener('resize', () => { const w = readWidth(); subs.forEach((f) => f(w)); });
+    const fire = () => { const w = readLayoutWidth(); subs.forEach((f) => f(w)); };
+    window.addEventListener('resize', fire);
+    window.addEventListener('orientationchange', fire);
+    [BREAKPOINTS.tablet, BREAKPOINTS.tabletLand, BREAKPOINTS.desktop, WIDESCREEN].forEach((px) => {
+      const l = mq(px);
+      if (l && typeof l.addEventListener === 'function') l.addEventListener('change', fire);
+      else if (l && typeof l.addListener === 'function') l.addListener(fire);
+    });
   }
   return () => { subs.delete(fn); };
 }
 
 export function useBreakpoint() {
-  const [bp, setBp] = useState(() => bpOf(readWidth()));
+  const [bp, setBp] = useState(() => bpOf(readLayoutWidth()));
   useEffect(() => subscribe((w) => setBp((prev) => {
     const next = bpOf(w);
     return next === prev ? prev : next;   // never re-render on a width change that stays in-band
@@ -67,7 +102,7 @@ export function useBreakpoint() {
 }
 
 export function useWideScreen() {
-  const [wide, setWide] = useState(() => readWidth() >= WIDESCREEN);
+  const [wide, setWide] = useState(() => readLayoutWidth() >= WIDESCREEN);
   useEffect(() => subscribe((w) => setWide((prev) => {
     const next = w >= WIDESCREEN;
     return next === prev ? prev : next;

@@ -4789,6 +4789,13 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
 .stagewrap[data-bp="tablet-land"] > .app > .content{
   max-width:860px; margin-inline:auto;
 }
+/* THE WELCOME IS FULL-BLEED (owner, Safari iPad, 11/22/2026). The two reading
+   measures above, and `.content{max-width:720px}` in the 640–1279 block, also
+   caught `.content.welcome`, the surface that paints the carbon atmosphere, so
+   the front door drew as an inset panel with bands either side while the board
+   one tap later fills the screen. Its words keep their 30rem column
+   (`.content.welcome section`); the surface spans. */
+.stagewrap[data-bp] > .app > .content.welcome{ max-width:none; margin-inline:0; }
 
 /* ── The void. The elegant hero centres itself vertically, which is right on a
    phone (the ask should sit in the thumb's reading line) and wrong the moment
