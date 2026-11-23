@@ -11528,8 +11528,8 @@ export default function HostShellV2() {
                   {/* A WAY BACK (P1-1): Create opened over a plan of hers keeps
                       the plan one tap away; where it lands is the one rule. */}
                   {eventIsTheHostsOwn && (
-                    <button onClick={() => setStage(landingStage({ event, ownPlan: true, now: new Date() }))}
-                      style={{ background: 'none', border: 'none', padding: '0 0 var(--sp-2)', alignSelf: 'flex-start', fontFamily: 'var(--sans)', fontSize: 14, color: 'var(--muted)', cursor: 'pointer', minHeight: 44 }}>
+                    <button className="mini" data-back-to-plan onClick={() => setStage(landingStage({ event, ownPlan: true, now: new Date() }))}
+                      style={{ alignSelf: 'flex-start', marginBottom: 'var(--sp-2)' }}>
                       ‹ Back to my plan
                     </button>
                   )}
@@ -16990,7 +16990,7 @@ export default function HostShellV2() {
                       <div className="f-name">What do you call it?</div>
                       <p className="grounding" style={{ margin: '2px 0 var(--sp-2)' }}>Everyone you send it to sees this name.</p>
                       <form className="actions-row" style={{ alignItems: 'center' }} onSubmit={(e) => { e.preventDefault(); const v = String(new FormData(e.currentTarget).get('evname') || '').trim(); if (v) patchEvent({ name: v }, 'Named “' + v + '”.'); }}>
-                        <input className="field" name="evname" aria-label="The event’s name" placeholder={event.name || ''} style={{ maxWidth: 260 }} />
+                        <input className="field" name="evname" aria-label="The event’s name" placeholder={event.name || ''} />
                         <button className="mini" type="submit">Save the name</button>
                       </form>
                     </div>
