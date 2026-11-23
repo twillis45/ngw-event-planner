@@ -17,7 +17,7 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
-## November 23, 2026 — #2xx: batch 10, the price research pass (owner-approved)
+## November 23, 2026 — #238: batch 10, the price research pass (owner-approved)
 
 - **The work list:** the 100 lines #234 labeled "Estimate — no price source yet". For each, one real, named, current store price was fetched (Target search and product pages, FRED/BLS, USDA AMS, Paperlust, Hip2Save, Finder), converted to the line's unit with the arithmetic in the claim. Walmart (robot check), ezCater and Staples (403) could not be fetched and are not used.
 - **Counts, out of 100:**
