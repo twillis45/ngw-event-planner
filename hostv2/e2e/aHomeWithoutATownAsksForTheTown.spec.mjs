@@ -46,7 +46,8 @@ test('a Thanksgiving at home with no town asks for the town over the town card',
   // Its title ("Your town") is not spoken a second time under an ask that
   // already names the town (heroRecord's dedup); its line is.
   const body = page.locator('.ecenter').filter({ has: ask }).first();
-  await expect(body).toContainText('The place is set.');
+  await expect(body).toContainText('Your home is set — weather and shopping need the city.');
+  await expect(body.getByLabel('Venue')).toHaveAttribute('placeholder', 'City, state or ZIP');
   await expect(body).not.toContainText('location');
   expect((await page.title()).startsWith(TOWN_ASK)).toBe(true);
 

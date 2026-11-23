@@ -1716,7 +1716,7 @@ export default function HostShellV2() {
   const renderVenueCapture = ({ ctaClass = 'cta', wrapStyle = { display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }, wrapClass, autoFocus = false, placeOnly = false } = {}) => (
     <>
       <div className={wrapClass} style={wrapStyle}>
-        <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
+        <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder={venueFor(event).needsCityForWeather ? 'City, state or ZIP' : 'Name or address'}
           value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); setPendingPick(null); fetchAddrSugs(e.target.value); }} aria-label="Venue" autoFocus={autoFocus} />
         {/* Not lit while there is nothing to save (Wanda audit P1-2). */}
         <button className={ctaClass} onClick={saveVenue} disabled={!String(venueDraft || '').trim()}>Save</button>

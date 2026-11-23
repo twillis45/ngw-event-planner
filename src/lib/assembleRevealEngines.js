@@ -345,9 +345,9 @@ function buildBlockerStage(blocker) {
   if (blocker.type === 'venue-selection' && blocker.homeNeedsTown) {
     blockerCopy['venue-selection'] = {
       ...blockerCopy['venue-selection'],
-      title: 'Your town',
+      title: 'Your city',
       what: 'Which town is your place in?',
-      why: 'The place is set. Weather, the rain note and shopping read the town.',
+      why: 'Your home is set — weather and shopping need the city.',
       nextDecision: ASK_KINDS.town,
     };
   }
