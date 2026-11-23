@@ -165,8 +165,12 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   const _locationMissing = _locStatus === 'missing';
   // The town. Unchanged in meaning — including the at-home carve-out and the
   // 2026-08-03 promotion to 3 when missing, both reasoned above.
-  add('location', true, !_locationMissing, 'Add the location',
-    { tab: 'Event Details', focusField: 'event-venue' }, _locationMissing ? 3 : 5, { askKind: 'location' });
+  // At home her place is set; what is missing is the town, so that is the ask
+  // (live 11/23/2026: "Add the location." sat over "Your town — The place is set.").
+  const _atHome = venueFor(ev).isHome;
+  add('location', true, !_locationMissing, _atHome ? 'Add your town' : 'Add the location',
+    { tab: 'Event Details', focusField: 'event-venue' }, _locationMissing ? 3 : 5,
+    _atHome ? { ask: 'Add your town.' } : { askKind: 'location' });
   // The address. APPLIES ONLY ONCE THERE IS A TOWN — otherwise it and the row
   // above would both fire on a blank event, which is two asks for one thing and
   // the duplicate surface this product forbids. `venue_only` counts as settled:
