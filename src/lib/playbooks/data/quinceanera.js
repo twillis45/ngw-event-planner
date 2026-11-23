@@ -302,7 +302,7 @@ const quinceanera = {
     },
     {
       id: 'p_appetizers',
-      item: 'Botanas — chips, salsa & guacamole, taquitos',
+      item: 'Botanas — tortilla chips',
       category: 'food',
       qtyPerGuest: 3,
       unit: 'pieces',
@@ -313,6 +313,9 @@ const quinceanera = {
       note: 'Light bites while guests arrive and photos are taken keeps the room comfortable before the seated dinner.',
       alternatives: ['Chips + salsa + guacamole station — budget appetizer swap', 'Taquitos (frozen) baked tray — cheaper passed app option'],
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['target-taquitos-2026', 'dips-snackstation-2026'], lastVerified: '2026-11-23', claim: 'Botanas per piece: frozen taquitos at Target 11/23/2026, $0.32 (Delimex 20 for $6.49) to $0.70 (GOYA 20 for $13.99); party-size guacamole, queso and hummus $0.50-0.65 a 2oz serving. Corrected from $0.75-2.50 to $0.30-0.70 a piece.', sufficientWhen: 'A caterer\'s price, if the botanas are catered.' } },
+    { id: 'p_appetizers_salsa', partOf: 'p_appetizers', pricedWith: 'p_appetizers', item: 'Salsa', category: 'food', qtyPerGuest: 3, unit: 'pieces', where: ['Caterer', 'Grocery / warehouse club'], essential: false, buyAt: 'T-1d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the botanas line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_appetizers_guac', partOf: 'p_appetizers', pricedWith: 'p_appetizers', item: 'Guacamole', category: 'food', qtyPerGuest: 3, unit: 'pieces', where: ['Caterer', 'Grocery / warehouse club'], essential: false, buyAt: 'T-1d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the botanas line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_appetizers_taquitos', partOf: 'p_appetizers', pricedWith: 'p_appetizers', item: 'Taquitos', category: 'food', qtyPerGuest: 3, unit: 'pieces', where: ['Caterer', 'Grocery / warehouse club'], essential: false, buyAt: 'T-1d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the botanas line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
     {
       id: 'p_cake',
       item: 'Tiered quinceañera cake (to the color story; serves the headcount)',
@@ -328,7 +331,7 @@ const quinceanera = {
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'partial', sources: ['paperlust-weddingcake-2026'], lastVerified: '2026-11-23', claim: 'Tiered celebration cakes 2026: Publix tiered $150-800; custom bakery $3-8 a slice, so 100 guests is $300-800; a typical wedding-cake budget $300-700. This $250-700 band sits inside them.', sufficientWhen: 'A bakery quote for this design and serving count.' } },
     {
       id: 'p_beverages',
-      item: 'Aguas frescas, soda & juice (coffee; + alcohol for adults if served)',
+      item: 'Soda (coffee; + alcohol for adults if served)',
       category: 'beverage',
       qtyPerGuest: 4,
       unit: 'servings',
@@ -338,6 +341,8 @@ const quinceanera = {
       buyAt: 'T-3d',
       note: 'Plan ~1 drink/guest/hr over a 6-hour event. Aguas frescas and soda for everyone; if the family serves alcohol for adults, confirm whether the venue requires a licensed bar and that minors are not served.',
       provenance: { tier: 'norm', confidence: 'med', verificationStatus: 'synthesized', note: 'US beverage norm: ~1 drink/guest/hr over the event.', claim: '~1 drink per guest per hour is the US standard beverage planning norm for a 6-hour event', sufficientWhen: 'US beverage industry planning guides from ≥2 sources confirm the ~1 drink/guest/hr norm for events of comparable duration' }, costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['aguasfrescas-2026', 'soda-12pack-2026', 'juice-rtd-2026'], lastVerified: '2026-11-23', claim: 'Non-alcoholic drinks per serving: horchata or tamarindo from a packet about $0.19 an 8oz serving; a can of soda $0.25-0.60; ready-to-drink juice $0.69-1.04 an 8oz serving. Corrected from $0.75-3 to $0.20-1.05 a serving. Alcohol for adults is not priced in this line.', sufficientWhen: 'A shelf price at the host\'s own store.' } },
+    { id: 'p_beverages_aguas', partOf: 'p_beverages', pricedWith: 'p_beverages', item: 'Aguas frescas', category: 'beverage', qtyPerGuest: 4, unit: 'servings', where: ['Warehouse club', 'Grocery', 'Beverage / liquor supplier'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the soda line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_beverages_juice', partOf: 'p_beverages', pricedWith: 'p_beverages', item: 'Juice', category: 'beverage', qtyPerGuest: 4, unit: 'servings', where: ['Warehouse club', 'Grocery', 'Beverage / liquor supplier'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the soda line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
     {
       id: 'p_ice',
       item: 'Ice for drinks and bar service',
@@ -352,7 +357,7 @@ const quinceanera = {
       provenance: { tier: 'norm', confidence: 'high', verificationStatus: 'synthesized', note: 'US norm: ~1-1.5 lb ice/guest for a full bar event.', claim: '~1-1.5 lb of ice per guest is the US standard for a full bar event', sufficientWhen: 'US event-planning and catering guides from ≥2 sources confirm the ~1-1.5 lb ice/guest norm for a full bar event' }, costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['ice-retail-2026', 'ice-warehouse-2026'], lastVerified: '2026-08-16', claim: 'Bagged ice 2026: warehouse clubs run 10-12c per pound (a 20lb bag is $1.75-2.50 at Sams Club, $1.80-2.50 at Costco); grocery and gas-station bags cluster 23-31c/lb; small bags reach 41-45c/lb.', sufficientWhen: 'Current shelf prices for one 20lb bag at a warehouse club and one at a grocery store confirm the per-pound spread.' } },
     {
       id: 'p_florals',
-      item: 'Florals: centerpieces, ceremony flowers, bouquet, court accents',
+      item: 'Florals: centerpieces',
       category: 'decor',
       qtyFlat: 1,
       unit: 'package',
@@ -362,9 +367,12 @@ const quinceanera = {
       buyAt: 'T-1d',
       note: 'Centerpieces on every table plus the entrance, the head table, and ceremony pieces. Booked with the florist at 3 months out to the color story; delivered the day before or the morning of.',
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'researched', confidence: 'low', verificationStatus: 'cited', sources: ['florals-weddingwire-2026', 'florals-fiftyflowers-2026'], lastVerified: '2026-08-18', claim: 'Per-centerpiece pricing (not a package total): $90-300/elevated centerpiece retail, $100-300+ wholesale bulk, per two sources. This is a GENERIC WEDDING-MARKET PROXY, not quinceañera-specific pricing, and prices per piece rather than the whole-package unit this row uses — a rough multi-table sum is broadly consistent with the existing $600-2500 package band but was not independently verified at the package level.', sufficientWhen: 'A quinceañera-specific florist package quote, at the headcount/table-count this band assumes, would replace this per-piece proxy.' } },
+    { id: 'p_florals_ceremony', partOf: 'p_florals', pricedWith: 'p_florals', item: 'Ceremony flowers', category: 'decor', qtyFlat: 1, unit: 'package', where: ['Florist', 'Wholesale flower market (DIY)'], essential: true, buyAt: 'T-1d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the florals line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_florals_bouquet', partOf: 'p_florals', pricedWith: 'p_florals', item: 'A bouquet', category: 'decor', qtyFlat: 1, unit: 'package', where: ['Florist', 'Wholesale flower market (DIY)'], essential: true, buyAt: 'T-1d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the florals line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_florals_accents', partOf: 'p_florals', pricedWith: 'p_florals', item: 'Court accents (boutonnieres, wrist corsages)', category: 'decor', qtyFlat: 1, unit: 'package', where: ['Florist', 'Wholesale flower market (DIY)'], essential: true, buyAt: 'T-1d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the florals line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
     {
       id: 'p_decor',
-      item: 'Decor: backdrop, entrance arch, linens (if not venue-supplied), signage, balloons',
+      item: 'Decor: a backdrop',
       category: 'decor',
       qtyFlat: 1,
       unit: 'package',
@@ -374,9 +382,13 @@ const quinceanera = {
       buyAt: 'T-3d',
       note: 'The backdrop and entrance set the theme and anchor photos and the grand entrance. Confirm what linens and a dance floor the venue includes so you do not pay twice.',
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
+    { id: 'p_decor_arch', partOf: 'p_decor', pricedWith: 'p_decor', item: 'An entrance arch', category: 'decor', qtyFlat: 1, unit: 'package', where: ['Event decorator', 'Party store', 'Online (Etsy/Amazon)'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the decor line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_decor_linens', partOf: 'p_decor', pricedWith: 'p_decor', item: 'Linens (if not venue-supplied)', category: 'decor', qtyFlat: 1, unit: 'package', where: ['Event decorator', 'Party store', 'Online (Etsy/Amazon)'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the decor line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_decor_signage', partOf: 'p_decor', pricedWith: 'p_decor', item: 'Signage', category: 'decor', qtyFlat: 1, unit: 'package', where: ['Event decorator', 'Party store', 'Online (Etsy/Amazon)'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the decor line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_decor_balloons', partOf: 'p_decor', pricedWith: 'p_decor', item: 'Balloons', category: 'decor', qtyFlat: 1, unit: 'package', where: ['Event decorator', 'Party store', 'Online (Etsy/Amazon)'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the decor line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
     {
       id: 'p_doll_crown',
-      item: 'Ceremonial items: last doll (última muñeca), tiara/crown, scepter, heels, toast glasses, candles/roses',
+      item: 'Ceremonial items: last doll (última muñeca)',
       category: 'decor',
       qtyFlat: 1,
       unit: 'set',
@@ -386,6 +398,11 @@ const quinceanera = {
       buyAt: 'T-14d',
       note: 'COMMONLY FORGOTTEN under the bigger vendor decisions. The heels for the changing of the shoes, the last doll, the crown and scepter, the toast glasses, and any candles or roses are small purchases that carry the most meaningful moments — gather them in one kit at 2 weeks out and assign who hands off each.',
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
+    { id: 'p_doll_crown_tiara', partOf: 'p_doll_crown', pricedWith: 'p_doll_crown', item: 'Tiara / crown', category: 'decor', qtyFlat: 1, unit: 'set', where: ['Quinceañera boutique', 'Online', 'Party store'], essential: true, buyAt: 'T-14d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the ceremonial items line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_doll_crown_scepter', partOf: 'p_doll_crown', pricedWith: 'p_doll_crown', item: 'Scepter', category: 'decor', qtyFlat: 1, unit: 'set', where: ['Quinceañera boutique', 'Online', 'Party store'], essential: true, buyAt: 'T-14d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the ceremonial items line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_doll_crown_heels', partOf: 'p_doll_crown', pricedWith: 'p_doll_crown', item: 'Heels', category: 'decor', qtyFlat: 1, unit: 'set', where: ['Quinceañera boutique', 'Online', 'Party store'], essential: true, buyAt: 'T-14d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the ceremonial items line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_doll_crown_glasses', partOf: 'p_doll_crown', pricedWith: 'p_doll_crown', item: 'Toast glasses', category: 'decor', qtyFlat: 1, unit: 'set', where: ['Quinceañera boutique', 'Online', 'Party store'], essential: true, buyAt: 'T-14d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the ceremonial items line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_doll_crown_candles', partOf: 'p_doll_crown', pricedWith: 'p_doll_crown', item: 'Candles / roses', category: 'decor', qtyFlat: 1, unit: 'set', where: ['Quinceañera boutique', 'Online', 'Party store'], essential: true, buyAt: 'T-14d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the ceremonial items line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
     {
       id: 'p_favors',
       item: 'Recuerdos (favors) for guests',
@@ -414,7 +431,7 @@ const quinceanera = {
     },
     {
       id: 'p_cleanup',
-      item: 'Cleanup supplies: trash bags, bins, paper towels, gift transport boxes',
+      item: 'Cleanup supplies: trash bags',
       category: 'cleanup',
       qtyFlat: 1,
       unit: 'kit',
@@ -424,6 +441,9 @@ const quinceanera = {
       buyAt: 'T-3d',
       note: 'COMMONLY FORGOTTEN: boxes to carry home the many gifts, the doll, the crown, and leftover cake at the end of a long night. Confirm whether the venue handles end-of-night trash or you do.',
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
+    { id: 'p_cleanup_bins', partOf: 'p_cleanup', pricedWith: 'p_cleanup', item: 'Trash bins', category: 'cleanup', qtyFlat: 1, unit: 'kit', where: ['Grocery', 'Warehouse club'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the cleanup supplies line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_cleanup_towels', partOf: 'p_cleanup', pricedWith: 'p_cleanup', item: 'Paper towels', category: 'cleanup', qtyFlat: 1, unit: 'kit', where: ['Grocery', 'Warehouse club'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the cleanup supplies line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_cleanup_boxes', partOf: 'p_cleanup', pricedWith: 'p_cleanup', item: 'Gift transport boxes', category: 'cleanup', qtyFlat: 1, unit: 'kit', where: ['Grocery', 'Warehouse club'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the cleanup supplies line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
   ],
 
   rentalsGap: [

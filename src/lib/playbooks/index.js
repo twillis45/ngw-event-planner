@@ -505,6 +505,13 @@ function shortItem(item) {
   return String(item || '').split(/[(—–]| - /)[0].trim();
 }
 
+// "A grill lighter" → "grill lighter"; "Paper plates" → "paper plates"; "LED
+// tea lights" keeps its capitals. The noun a price note names a line by.
+function priceNoun(item) {
+  const s = shortItem(item).replace(/^(a|an|the)\s+/i, '').replace(/[:,]\s*$/, '').trim();
+  return /^[A-Z]{2}/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1);
+}
+
 // "lb" → "lbs"; "bottle (½ bottle/guest rule)" → "bottles"; "loaf per 4 guests" →
 // "loaves" (the per-N belongs to qtyPer, not the unit). Pluralized by qty.
 // A UNIT OF MEASURE LEADING A PHRASE IS THE WORD THAT PLURALIZES (11/20/2026):
@@ -6476,6 +6483,12 @@ export function playbookFoodPlan(event, opts = {}) {
   // (bringingRows leaves the parts out), not three times.
   {
     const _lineById = new Map(list.filter(Boolean).map((i) => [i.id, i]));
+    // A part whose dish is not on the list at all (a pick drops the line, as
+    // BYOB drops the drinks) leaves with it: soda is part of "the drinks".
+    for (let i = list.length - 1; i >= 0; i -= 1) {
+      const p = list[i] && _purchaseById.get(list[i].id);
+      if (p && p.partOf && !_lineById.has(p.partOf)) list.splice(i, 1);
+    }
     for (const it of list) {
       const p = it && _purchaseById.get(it.id);
       const dish = p && p.partOf ? _lineById.get(p.partOf) : null;
@@ -6492,6 +6505,27 @@ export function playbookFoodPlan(event, opts = {}) {
       } else if (dish.hostTakes) {
         it.hostTakes = true;
       }
+      // A PART PRICED WITH ITS DISH (owner ruling 11/23/2026, batch 4). The
+      // other 44 playbooks' combined lines were split without a fetched price
+      // for each part, and a price is never invented. So a part authored
+      // `pricedWith` its dish has no price of its own: the dish keeps the band
+      // (and citation) it always had, which covered the whole set, and the
+      // playbook's total is unchanged. Each says where the price is.
+      if (p.pricedWith && p.pricedWith === p.partOf) {
+        it.pricedWith = p.pricedWith;
+        it.low = 0;
+        it.high = 0;
+        // Its quantity is the dish's; it prices nothing per guest of its own.
+        it.perGuest = null;
+        it.priceNote = `Priced with the ${priceNoun(dish.item)}`;
+        (dish.priceCovers = dish.priceCovers || []).push(it.id);
+      }
+    }
+    for (const dish of list) {
+      if (!dish || !Array.isArray(dish.priceCovers) || !dish.priceCovers.length) continue;
+      const nouns = dish.priceCovers.map((id) => priceNoun((_lineById.get(id) || {}).item)).filter(Boolean);
+      const said = nouns.length > 1 ? `${nouns.slice(0, -1).join(', ')} and ${nouns[nouns.length - 1]}` : nouns[0];
+      dish.priceNote = `Price covers the ${said} too`;
     }
   }
 

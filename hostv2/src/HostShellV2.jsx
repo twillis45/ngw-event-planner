@@ -25218,6 +25218,10 @@ export default function HostShellV2() {
                                     // never part of it.
                                     foodPlan.hasRealCount ? perUnitBand(it.perUnitLow, it.perUnitHigh, it.unitBase) : null,
                                     it.basis || null,
+                                    // A split part priced with its dish says where its price
+                                    // is, and the dish says what its price covers (batch 4,
+                                    // owner ruling 11/23/2026). From playbookFoodPlan.
+                                    it.priceNote || null,
                                     it.forgotten ? 'often forgotten' : null,
                                     // A PERSON IS NOT A SHOP, second site. This printed
                                     // `it.where` raw, so a repast line read

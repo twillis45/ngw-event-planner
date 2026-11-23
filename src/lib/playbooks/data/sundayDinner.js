@@ -362,7 +362,7 @@ const sundayDinner = {
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_sweet-tea',
-      item: 'Sweet tea and lemonade (and water on the table)',
+      item: 'Sweet tea (and water on the table)',
       category: 'beverage',
       qtyPerGuest: 2,
       unit: 'servings',
@@ -373,6 +373,7 @@ const sundayDinner = {
       note: 'Sweet tea, lemonade, and water carry a family meal. It often follows church and includes kids — keep alcohol minimal.',
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' },
       costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'partial', sources: ['icedtea-lemonade-2026'], lastVerified: '2026-11-23', claim: 'Ready-to-drink sweet tea and lemonade by the gallon 2026 runs $0.21-0.28 an 8oz cup (Turkey Hill lemonade tea $3.28, Milos sweet tea $3.94, Milos half-and-half $4.48, sixteen cups a gallon), and a made-at-home gallon $0.20-0.35 a cup, which is this band. Owner ruling 11/23/2026: was $0.50-1.50 a serving, which the source does not support.', sufficientWhen: 'One gallon of store-brand sweet tea priced at a named store.' } },
+    { id: 'p_sweet-tea_lemonade', partOf: 'p_sweet-tea', pricedWith: 'p_sweet-tea', item: 'Lemonade', category: 'beverage', qtyPerGuest: 2, unit: 'servings', where: ['grocery store'], essential: true, buyAt: 'T-2d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the sweet tea line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
     {
       id: 'p_wine',
       item: 'Wine for the grown folks (optional)',
@@ -387,7 +388,7 @@ const sundayDinner = {
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['wine-retail-2026', 'wine-statewide-2026'], lastVerified: '2026-08-16', claim: 'US retail wine 2026: everyday table wine (the grocery shelf) $8-15 a bottle, mid-range $15-30, premium above that; state averages cluster tightly with the cheapest around $10.97-11.14.', sufficientWhen: 'Current shelf prices for one everyday and one mid-range bottle at a grocery store confirm the range.' } },
     {
       id: 'p_foil-oil',
-      item: 'Frying oil, foil, parchment, and paper towels',
+      item: 'Frying oil',
       category: 'logistics',
       qtyFlat: 1,
       unit: 'set',
@@ -397,9 +398,12 @@ const sundayDinner = {
       buyAt: 'T-2d',
       note: 'A fresh jug of oil if you are frying, plus the foil and towels every soul-food kitchen runs through.',
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
+    { id: 'p_foil-oil_foil', partOf: 'p_foil-oil', pricedWith: 'p_foil-oil', item: 'Aluminum foil', category: 'logistics', qtyFlat: 1, unit: 'set', where: ['grocery store', 'warehouse club'], essential: true, buyAt: 'T-2d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the frying oil line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_foil-oil_parchment', partOf: 'p_foil-oil', pricedWith: 'p_foil-oil', item: 'Parchment paper', category: 'logistics', qtyFlat: 1, unit: 'set', where: ['grocery store', 'warehouse club'], essential: true, buyAt: 'T-2d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the frying oil line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_foil-oil_towels', partOf: 'p_foil-oil', pricedWith: 'p_foil-oil', item: 'Paper towels', category: 'logistics', qtyFlat: 1, unit: 'set', where: ['grocery store', 'warehouse club'], essential: true, buyAt: 'T-2d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the frying oil line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
     {
       id: 'p_togo',
-      item: 'To-go containers and foil plates (love language)',
+      item: 'To-go containers (love language)',
       category: 'cleanup',
       qtyPerGuest: 1,
       unit: 'container',
@@ -411,6 +415,7 @@ const sundayDinner = {
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' },
       costProvenance: { tier: 'researched', confidence: 'low', verificationStatus: 'cited', sources: ['disposable-kit-2026', 'foil-wrap-2026'], lastVerified: '2026-08-16', claim: 'A SUM of two components: disposable foil pans and containers at $1.18-4.45 each in small packs or $22.99 per 50 in bulk, plus aluminium foil at $0.08-0.14 per square foot ($5.99 for 75 sq ft standard). Cited to each; the summed band is low-confidence by construction.', sufficientWhen: 'Current shelf prices for one container pack and one foil roll at the same store, summed, confirm the band.' }
     },
+    { id: 'p_togo_plates', partOf: 'p_togo', pricedWith: 'p_togo', item: 'Foil plates', category: 'cleanup', qtyPerGuest: 1, unit: 'container', where: ['grocery store', 'dollar store', 'warehouse club'], essential: true, buyAt: 'T-2d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the to-go containers line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
     {
       id: 'p_napkins',
       item: 'Napkins and serving spoons',
