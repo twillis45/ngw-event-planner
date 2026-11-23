@@ -59,6 +59,7 @@
 import { computeDayAlerts } from './dayAlerts';
 import { deriveVendorPromiseConflicts } from './vendorAccountability/conflicts';
 import { inferPromisesFromVendor } from './vendorAccountability/derive';
+import { normalizeAsk } from './askVoice';
 import { openArrivalAsks } from './vendorAsks';
 import { playbookRisks, playbookDecisionBoard } from './playbooks';
 import { raisesToCommandBoard } from './riskSeverity';
@@ -222,6 +223,10 @@ export const SURFACES = [
           severity: String(c.severity || '').toLowerCase() === 'critical' ? 'critical' : 'attention',
           title: c.title || 'Two vendors need the same thing',
           why: c.explanation || c.recommendedAction || null,
+          // THE CONFLICT DECLARES ITS ASK (six root causes, cause 1, 11/23/2026):
+          // the hero read this title's words, so "… arrives before venue access"
+          // asked "Add the location." Each conflict names its own next act.
+          ask: normalizeAsk(c.recommendedAction) || 'Untangle your vendors.',
           route: { tab: 'Vendors', vendorId: c.affectedVendorId },
           // IDENTITY-CLASS FIX (2026-07-15): the key must be a STABLE RECORD. The
           // old `c.id || c.affectedVendorId` used c.id — which is minted fresh every

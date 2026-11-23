@@ -7478,7 +7478,9 @@ export default function HostShellV2() {
       if (!tripIsMultiDay(event)) return null;
       const cel = celebrationApplies(event);
       const est = foodPlan && foodPlan.hasRealCount
-        ? listTotal(foodPlan)
+        // The Spread's own "all in" (lib/planCosts), seating gear included, so
+        // the celebration layer and the Spread's hero stay one number.
+        ? (({ low, high }) => ({ low, high }))(allInTotal(foodPlan, capacity))
         : null;
       return {
         cel,
@@ -7491,7 +7493,7 @@ export default function HostShellV2() {
         tripMoney: tripFoodMoney(event, { foodEstimate: est }),
       };
     } catch (_e) { return null; }
-  }, [event, foodPlan]);
+  }, [event, foodPlan, capacity]);
   const tripMealsNow = (event.tripMeals && typeof event.tripMeals === 'object') ? event.tripMeals : {};
   const pickDinnerNight = (d) => patchEvent(
     { celebration: { ...((event.celebration && typeof event.celebration === 'object') ? event.celebration : {}), night: d.iso } },
