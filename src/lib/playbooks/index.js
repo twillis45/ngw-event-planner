@@ -14,6 +14,7 @@ import { plusOneCount } from '../plusOneCount';
 import { isHostName } from '../hostNameFor';
 import { cookDecisionFor, cookTasksFor, cookRisksFor } from './cookLever';
 import { cashBarDecisionsFor, cashBarKeeps, aliasedChoices } from './cashBarCover';
+import { cateredCourseDecisionsFor, cateredCourseCovers, cateredCoursePendingWhy } from './cateredCourse';
 import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
 import { matchGuestIndexByName } from '../guestMerge';
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
@@ -164,6 +165,8 @@ const DECISION_INJECTORS = [
   (event) => militaryDecisionsFor(event),
   // With a cash bar, what the host still covers (owner, 11/21/2026).
   (event, pb) => cashBarDecisionsFor(pb, (id) => aliasedChoices(event && event.foodChoices)[id]),
+  // With one catered course, which course it is (owner, 11/23/2026).
+  (event, pb) => cateredCourseDecisionsFor(pb),
 ];
 
 // ─── namedHelperCount — how many people the host has said are helping ────────
@@ -5567,7 +5570,10 @@ export function playbookFoodPlan(event, opts = {}) {
   // somebody else's to carry and costed at zero (see `_attributeCommunity`).
   const _communityBrings = _fa.communityBrings === true;
   const _foodOffPlate = _usesCaterer;
-  const hostCooksIt = (p) => !(_foodOffPlate && p.category === 'food');
+  // ONE CATERED COURSE, NAMED (owner, 11/23/2026): the course she says the
+  // caterer brings leaves the list; the rest she still cooks (cateredCourse.js).
+  const _courseCovered = (() => { try { return cateredCourseCovers(playbook, pickFor); } catch (_e) { return null; } })();
+  const hostCooksIt = (p) => !(_foodOffPlate && p.category === 'food') && !(_courseCovered && _courseCovered.ids.has(p.id));
   // The bringer's name in the host's OWN words — read out of the option they
   // picked, never invented. Falls back to the neutral collective noun.
   const _bringerLabel = (() => {
@@ -6465,7 +6471,9 @@ export function playbookFoodPlan(event, opts = {}) {
     type: playbook.type,
     // The picks priced as something else until a source exists (`costPending`),
     // for the host to be told so (audit G #2). [] when none applies.
-    pricePending: pricePendingFor(playbook, pickFor, (d) => choiceShown(event, d.whenChoice)),
+    // A named catered course is still pending, and its reason names it.
+    pricePending: pricePendingFor(playbook, pickFor, (d) => choiceShown(event, d.whenChoice))
+      .map((p) => (_courseCovered && p.id === _courseCovered.decisionId ? { ...p, why: cateredCoursePendingWhy(_courseCovered.course) } : p)),
     guests,
     guestCountResolved: gc.resolved,
     hasRealCount,
