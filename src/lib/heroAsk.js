@@ -39,6 +39,10 @@ export const ASK_KINDS = Object.freeze({
   'start-time': 'Confirm the start time.',
   date: 'Pick the day.',
   location: 'Add the location.',
+  // At home the place is set (her home); what is missing is the town. The one
+  // sentence for it: the venue gate, the checklist row and the town card's own
+  // decision line all speak this (live 11/23/2026).
+  town: 'Add your town.',
   conflict: 'Untangle your vendors.',
   decisions: 'Settle your decisions.',
   'catering-count': 'Fix the catering count.',
