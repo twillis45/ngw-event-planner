@@ -331,7 +331,7 @@ const SEARCH_ONLY = Object.freeze([
   { id: 'p_bread', item: 'Bread / rolls / crackers', term: 'bread' }, // Nature's Own Honey Wheat Bread, Non-GMO Sandwi… $4.59 ($2.29 sale) · 20 oz
   { id: 'p_bread', item: 'Dinner rolls', term: 'dinner rolls' }, // King’s Hawaiian Savory Butter Rolls $10.99 ($8.00 sale) · 24 oz
   { id: 'p_candles', item: 'Mishumaa saba — seven Kwanzaa candles (1 black, 3 red, 3 green)', term: 'taper candles' }, // Tuscany Candle Taper Candles - White $3.99 · 6 ct / 10 in
-  { id: 'p_condiments', item: 'BBQ sauce', term: 'bbq sauce' }, // Sweet Baby Ray's BBQ Sauce $3.69 ($2.59 sale) · 18 oz
+  { id: 'p_condiments', item: 'Condiments, BBQ sauce, hot sauce, cheese, lettuce, onion, pickles', term: 'bbq sauce' }, // Sweet Baby Ray's BBQ Sauce $3.69 ($2.59 sale) · 18 oz
   { id: 'p_corn', item: 'Corn (frozen or canned kernels, or corn pudding)', term: 'frozen corn' }, // Harris Teeter Steamable Yellow Corn $1.69 ($1.33 sale) · 12 oz
   { id: 'p_dessert', item: 'Bakery tart or cake (or ice cream & cookies)', term: 'cake' }, // Private Selection Cinnamon Roll Four Layer Cak… $23.00 · 59 oz (16 servings)
   { id: 'p_dessert', item: 'Banana pudding, pound cake & peach cobbler (red velvet)', term: 'banana pudding' }, // Jell-O Banana Cream Artificially Flavored Inst… $1.79 ($1.50 sale) · 3.4 oz
@@ -378,13 +378,13 @@ const SEARCH_ONLY = Object.freeze([
   { id: 'p_salsa', item: 'Salsa roja ingredients (tomatoes, onion, garlic, peppers)', term: 'roma tomatoes' }, // Fresh Roma Tomato $3.79 · 1 lb
   { id: 'p_season', item: 'Crawfish/crab boil seasoning (Zatarain\'s / Louisiana Fish Fry)', term: 'crab boil' }, // Zatarain's Crawfish, Shrimp & Crab Boil $2.19 · 3 oz
   { id: 'p_season', item: 'Seasoning (salt, pepper, garlic, paprika, Cajun/seasoned salt)', term: 'seasoned salt' }, // Lawry's Seasoned Salt $4.39 ($2.00 sale) · 8 oz
-  { id: 'p_seasoning', item: 'Dry rub / seasoning', term: 'bbq rub' }, // Rib Rack BBQ Rub $5.39 ($3.99 sale) · 5.5 oz
+  { id: 'p_seasoning', item: 'Dry rub / seasoning + marinade', term: 'bbq rub' }, // Rib Rack BBQ Rub $5.39 ($3.99 sale) · 5.5 oz
   { id: 'p_seasoning', item: 'Old Bay / crab boil seasoning (dry + liquid)', term: 'old bay seasoning' }, // OLD BAY Classic Seafood Seasoning $6.59 · 6 oz
   { id: 'p_serveware', item: 'Buffet serveware: chafing dishes / warmers', term: 'chafing dish' }, // Eco-Foil Half Size Steam Table $13.99 · 10 ct
   { id: 'p_sides', item: 'Chips', term: 'potato chips' }, // Fruit and Vegetable Tray Fresh Cut In Store Da… $16.00 · 64 oz
   { id: 'p_sides', item: 'Potato chips', term: 'potato chips' }, // Harris Teeter Ripple Potato Chips $3.39 ($2.00 sale) · 8 oz
+  { id: 'p_sides', item: 'Coleslaw, potato salad, hush puppies', term: 'coleslaw' }, // Harris Teeter Fresh Foods Market Homestyle Shr… $5.99 ($4.99 sale) · 15 oz
   { id: 'p_sides', item: 'Coleslaw', term: 'coleslaw' }, // Harris Teeter Fresh Foods Market Homestyle Shr… $5.99 ($4.99 sale) · 15 oz
-  { id: 'p_sides', item: 'Coleslaw, potato salad, hush puppy mix, fries', term: 'coleslaw' }, // Harris Teeter Fresh Foods Market Homestyle Shr… $5.99 ($4.99 sale) · 15 oz
   { id: 'p_sides', item: 'Collard greens', term: 'collard greens' }, // Jumbo Collard Greens Bunch $2.99 ($2.00 sale) · 1 ct
   { id: 'p_sides', item: 'Garden salad & roasted vegetables', term: 'salad kit' }, // Fresh Express Chopped Caesar Salad Kit $5.49 ($3.99 sale) · 10.4 oz
   { id: 'p_sides', item: 'Rice & peas, candied yams & mac & cheese (cornbread, plantains)', term: 'long grain rice' }, // Harris Teeter Long Grain White Rice $1.79 · 32 oz
@@ -450,7 +450,7 @@ export const TERM_BY_ID = Object.freeze([
   { id: 'p_beer_wine', term: 'beer' }, // Samuel Adams Winter Break Seasonal Variety Beer $17.99 · 12 cans / 12 fl oz
   { id: 'p_beerwine', term: 'beer' }, // Samuel Adams Winter Break Seasonal Variety Beer $17.99 · 12 cans / 12 fl oz
   { id: 'p_beverages', term: 'soda' }, // Sprite Lemon-Lime Caffeine Free Soda Cans $11.99 · 12 pk / 12 fl oz
-  { id: 'p_bites', term: 'chicken wings' }, // Boar's Head Charcuterie Trio Uncured Milano Sa… $12.99 ($9.99 sale) · 6 oz
+  { id: 'p_bites', term: 'chicken wings' }, // batch 4 (11/23/2026): the line's main is now this product; not probed live (was 'charcuterie')
   { id: 'p_blackeyedpeas', term: 'black eyed peas' }, // Harris Teeter Black Eyed Peas $1.39 ($0.75 sale) · 16 fl oz
   { id: 'p_board', term: 'charcuterie' }, // Boar's Head Charcuterie Trio Uncured Milano Sa… $12.99 ($9.99 sale) · 6 oz
   { id: 'p_bread_cornbread', term: 'cornbread mix' }, // Krusteaz Honey Cornbread and Muffin Mix, Honey… $2.99 ($2.50 sale) · 15 oz
@@ -473,7 +473,7 @@ export const TERM_BY_ID = Object.freeze([
   { id: 'p_chili', term: 'chili beans' }, // Bush's Pinto Beans in a Mild Chili Sauce 16 oz $2.79 ($1.67 sale) · 16 oz
   { id: 'p_chips', term: 'potato chips' }, // Harris Teeter Ripple Potato Chips $3.39 ($2.00 sale) · 8 oz
   { id: 'p_cider', term: 'sparkling cider' }, // Martinelli's Sparkling Apple Cider $5.99 ($3.99 sale) · 1 ct / 25.4 fl oz
-  { id: 'p_clean', term: 'dish soap' }, // Harris Teeter Tall 13 Gallon Drawstring Kitche… $5.99 ($5.39 sale) · 22 ct
+  { id: 'p_clean', term: 'dish soap' }, // batch 4 (11/23/2026): the line's main is now this product; not probed live (was 'trash bags')
   { id: 'p_cleanup', term: 'trash bags' }, // Harris Teeter Tall 13 Gallon Drawstring Kitche… $5.99 ($5.39 sale) · 22 ct
   { id: 'p_cleanup_detergent', term: 'dishwasher detergent' }, // Cascade Complete Fresh Scent Gel Dishwasher De… $9.99 ($6.99 sale) · 75 fl oz
   { id: 'p_cleanup_soap', term: 'dish soap' }, // Harris Teeter Ultra Concentrated Dishwashing L… $2.49 · 24 fl oz
@@ -511,7 +511,7 @@ export const TERM_BY_ID = Object.freeze([
   { id: 'p_foil_pans', term: 'foil pans' }, // Eco-foil Cook N Carry Utility Pan with Lid 4CT $11.39 · 4 ct
   { id: 'p_fruit', term: 'grapes' }, // Harris Teeter Fresh Seedless Red Grapes $4.49 ($2.99 sale) · 1 lb
   { id: 'p_fuel', term: 'charcoal' }, // Kingsford Original Charcoal Briquettes, BBQ Ch… $16.99 · 16 lb
-  { id: 'p_garnish', term: 'fresh mint' }, // Fresh Large Limes - Each $0.33 · 1 each
+  { id: 'p_garnish', term: 'fresh mint' }, // batch 4 (11/23/2026): the line's main is now this product; not probed live (was 'limes')
   { id: 'p_giftlog', term: 'notebook' }, // Top Flight 100-Sheet College Rule Memo Book -… $1.99 · 3 x 5 in
   { id: 'p_glassware', term: 'champagne flutes' }, // True Stemless Champagne Flute Set $9.99 · 1 ct
   { id: 'p_gravy', term: 'chicken stock' }, // Harris Teeter Chicken Stock $2.39 ($1.67 sale) · 32 oz
@@ -597,7 +597,7 @@ export const TERM_BY_ID = Object.freeze([
   { id: 'p_serveware_cups', term: 'plastic cups' }, // Harris Teeter Textured Plastic Cups $6.49 ($4.49 sale) · 50 ct
   { id: 'p_serveware_napkins', term: 'paper napkins' }, // Bounty White Paper Napkins $4.99 ($2.99 sale) · 200 ct
   { id: 'p_serveware_spoons', term: 'serving utensils' }, // Harris Teeter Occasions 3 Piece Servingware Set $2.49 · 3 pc
-  { id: 'p_serving', term: 'serving spoons' }, // Eco-foil Cook N Carry Utility Pan with Lid 4CT $11.39 · 4 ct
+  { id: 'p_serving', term: 'serving spoons' }, // batch 4 (11/23/2026): the line's main is now this product; not probed live (was 'foil pans')
   { id: 'p_sides_mac', term: 'elbow macaroni' }, // Harris Teeter Elbow Macaroni $1.99 ($1.18 sale) · 16 oz
   { id: 'p_sides_potato', term: 'potato salad' }, // Harris Teeter Fresh Foods Market Original Pota… $5.99 ($4.99 sale) · 16 oz
   { id: 'p_signature', term: 'cocktail mixer' }, // Cocktail Crate Classic Old Fashioned Craft Coc… $8.99 · 12.7 fl oz
@@ -617,7 +617,7 @@ export const TERM_BY_ID = Object.freeze([
   { id: 'p_sweet', term: 'cookies' }, // Chocolate Chip Cookies $3.00 · 12 count
   { id: 'p_sweet-tea', term: 'sweet tea' }, // Milo's Famous Sweet Iced Tea $5.39 ($3.99 sale) · 1 gal
   { id: 'p_sweet_potatoes', term: 'sweet potatoes' }, // Sweet Potato $1.99 ($0.39 sale) · 1 lb
-  { id: 'p_table', term: 'tablecloth' }, // Sunshine Bouquet Majestic TG Bouquet $16.00 ($12.00 sale) · 1 ea
+  { id: 'p_table', term: 'tablecloth' }, // batch 4 (11/23/2026): the line's main is now this product; not probed live (was 'fresh flowers')
   { id: 'p_tableware', term: 'paper plates' }, // Dixie 8.5-Inch Disposable Paper Plates $4.39 ($3.29 sale) · 48 ct
   { id: 'p_tea_dry', term: 'sweet tea' }, // Milo's Famous Sweet Iced Tea $5.39 ($3.99 sale) · 1 gal
   { id: 'p_thermometer', term: 'meat thermometer' }, // GoodCook Classic Stainless Steel Meat Thermome… $9.99 ($8.00 sale) · 1 ct
@@ -658,8 +658,6 @@ export const TERM_BY_ID = Object.freeze([
   { id: 'p_coffee_sugar', term: 'granulated sugar' },
   { id: 'p_dish_sponges', term: 'sponges' },
   { id: 'p_dish_bags', term: 'trash bags' },
-  { id: 'p_softdrinks_juice', term: 'juice' },
-  { id: 'p_softdrinks_water', term: 'bottled water' },
   { id: 'p_candles_lighter', term: 'lighter' },
   { id: 'p_tableware_cups', term: 'disposable cups' },
   { id: 'p_tableware_napkins', term: 'paper napkins' },
@@ -764,26 +762,11 @@ export const TERM_BY_ID = Object.freeze([
   { id: 'p_disposables_plates', term: 'paper plates' },
   { id: 'p_food_wings', term: 'chicken wings' },
   { id: 'p_guestbook_pen', term: 'pens' },
-  { id: 'p_burgers_dogs_hotdogs', term: 'hot dogs' },
-  { id: 'p_burgers_dogs_links', term: 'smoked sausage' },
-  { id: 'p_mac_cheese', term: 'sharp cheddar cheese' },
-  { id: 'p_condiments_ketchup', term: 'ketchup' },
-  { id: 'p_condiments_hotsauce', term: 'hot sauce' },
-  { id: 'p_condiments_pickles', term: 'pickles' },
-  { id: 'p_seasoning_marinade', term: 'marinade' },
-  { id: 'p_red_drink_sugar', term: 'granulated sugar' },
-  { id: 'p_soda_water_water', term: 'bottled water' },
-  { id: 'p_grown_folks_mixers', term: 'cola' },
-  { id: 'p_fuel_fluid', term: 'lighter fluid' },
-  { id: 'p_foil_pans_foil', term: 'aluminum foil' },
-  { id: 'p_foil_pans_spoons', term: 'serving spoons' },
-  { id: 'p_togo_foil', term: 'aluminum foil' },
-  { id: 'p_togo_zip', term: 'zipper bags' },
-  { id: 'p_cleanup_gloves', term: 'disposable gloves' },
-  { id: 'p_cleanup_sanitizing', term: 'disinfecting wipes' },
   { id: 'p_cornmeal_flour', term: 'all purpose flour' },
   { id: 'p_hotsauce_lemons', term: 'lemons' },
   { id: 'p_starch_sauce', term: 'pasta sauce' },
+  { id: 'p_sides_hushpuppy', term: 'hush puppy mix' },
+  { id: 'p_sides_fries', term: 'frozen fries' },
   { id: 'p_containers_foil', term: 'aluminum foil' },
   { id: 'p_cleanup_heavyfoil', term: 'heavy duty aluminum foil' },
   { id: 'p_grown_mixers', term: 'cola' },
@@ -806,8 +789,7 @@ export const TERM_BY_ID = Object.freeze([
   { id: 'p_water_tea_tea', term: 'iced tea' },
   { id: 'p_heat_bugspray', term: 'bug spray' },
   { id: 'p_heat_citronella', term: 'citronella candle' },
-  { id: 'p_butter_dishes', term: 'disposable bowls' },
-  { id: 'p_sides_hushpuppies', term: 'hush puppy mix' },
+  { id: 'p_softdrinks_water', term: 'bottled water' },
   { id: 'p_softdrinks_tea', term: 'iced tea' },
   { id: 'p_towels_wipes', term: 'wet wipes' },
   { id: 'p_tableware_bowls', term: 'disposable bowls' },
@@ -842,6 +824,7 @@ export const TERM_BY_ID = Object.freeze([
   { id: 'p_cleanup_boxes', term: 'storage boxes' },
   { id: 'p_drinks_coffee', term: 'ground coffee' },
   { id: 'p_serveware_cutlery', term: 'plastic cutlery' },
+  { id: 'p_togo_foil', term: 'aluminum foil' },
   { id: 'p_serving_pans', term: 'foil pans' },
   { id: 'p_serving_sterno', term: 'sterno' },
   { id: 'p_table_flowers', term: 'fresh flowers' },
@@ -855,7 +838,6 @@ export const TERM_BY_ID = Object.freeze([
   { id: 'p_snacks_water', term: 'bottled water' },
   { id: 'p_firstaid_sunscreen', term: 'sunscreen' },
   { id: 'p_pledgecards_pens', term: 'pens' },
-  { id: 'p_wine_cider_white', term: 'white wine' },
   { id: 'p_nonalc_zeroproof', term: 'mocktail' },
   { id: 'p_path_lights_step', term: 'light bulbs' },
   { id: 'p_water_coffee_coffee', term: 'ground coffee' },
@@ -966,7 +948,6 @@ export const NO_STORE_TERM = Object.freeze({
   'p_signin_clipboard': 'a clipboard: no match (Old Town, 11/23/2026).',
   'p_sash_banner': 'a banner from a party store.',
   'p_sash_decor': 'party decor from a party store.',
-  'p_grown_folks_liquor': 'spirits: probed 11/23/2026 at Harris Teeter Old Town Alexandria VA and McHenry Row Baltimore MD, liquor terms return sauces and mixers; spirits come from a liquor store.',
   'p_extinguisher_gloves': 'heat-resistant gloves are a hardware or grill-shop item: no match (Old Town, 11/23/2026).',
   'p_cleanup_jug': 'a used-oil jug: an empty container the host keeps, or an auto-parts store item.',
   'p_grown_liquor': 'spirits: probed 11/23/2026 at Harris Teeter Old Town Alexandria VA and McHenry Row Baltimore MD, liquor terms return sauces and mixers; spirits come from a liquor store.',
