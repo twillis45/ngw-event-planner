@@ -1967,6 +1967,9 @@ export function playbookChecklist(event, asOf) {
   // 11/23/2026) keeps the generic caterer row below off the list. It was
   // read off the rows' words (/cater/).
   let _coversCaterer = false;
+  // A step that asks who brings which dish (`assignsDishes`, owner ruling 3b)
+  // keeps the generic who-brings row off. It was read off the rows' words.
+  let _assignsDishes = false;
   for (let t of taskList) {
     if (!t || !t.id || !t.label) continue;
     // Choice gate — a task tagged whenChoice appears only for the matching pick.
@@ -2030,6 +2033,7 @@ export function playbookChecklist(event, asOf) {
     // under THE DAY tab, which is the same lie in a different place.
     const eventDay = offset === 0;
     if (t.coversCaterer === true) _coversCaterer = true;
+    if (t.assignsDishes === true) _assignsDishes = true;
     rows.push({
       id: `pbt-${event.id}-${t.id}`,
       // The step's declared target (lib/stepTarget): where its work is done.
@@ -2111,8 +2115,7 @@ export function playbookChecklist(event, asOf) {
     const owners = foodOwnerMap(event);
     const unnamed = (playbook.purchases || []).filter((p) => p && p.category === 'food' && p.friendsBringWhen
       && choiceShown(event, p.friendsBringWhen) && choiceShown(event, p.whenChoice) && !isNamedBringer(owners[p.id]));
-    const authored = rows.some((r) => /bringing what|brings? what|assign (the )?dishes/i.test(String(r.task || '')));
-    if (unnamed.length && !authored) {
+    if (unnamed.length && !_assignsDishes) {
       const off = -14;
       rows.push({
         id: `pbt-${event.id}-fa-bringers`,

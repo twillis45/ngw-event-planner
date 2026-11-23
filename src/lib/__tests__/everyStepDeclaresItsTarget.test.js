@@ -667,4 +667,19 @@ describe('the checklist builder’s derived rows read declarations, never row te
     expect(wrong).toEqual([]);
   });
 
+  test('3b: the who-brings row comes and goes the same whatever the steps say', () => {
+    const wrong = [];
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      const same = swapped(pb, 'fa-bringers', ['Tidy up', 'Assign dishes: who brings what']);
+      if (!same.every(Boolean)) wrong.push(pb.type);
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  test('the builder holds no rule over a row’s text', () => {
+    const code = fs.readFileSync(path.join(__dirname, '..', 'playbooks', 'index.js'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+    const at = code.indexOf('export function playbookChecklist(');
+    const body = code.slice(at, code.indexOf('\n}\n', at));
+    expect(body).not.toMatch(/\.test\(\s*(?:String\()?r\.task/);
+  });
 });
