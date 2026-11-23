@@ -448,13 +448,13 @@ const quinceanera = {
   ],
 
   risks: [
-    { id: 'r_late_booking', trigger: 'Date set late — church, salón, or top vendors already booked', severity: 'high', mitigation: 'Lock the date, the church (if a Mass), and the venue at 9 months out, then core vendors by 6 months out; quince season Saturdays go a year out.' },
-    { id: 'r_gown_delay', trigger: 'Ballgown arrives late or does not fit at the final fitting', severity: 'high', mitigation: 'Order the gown by 8 months out, schedule alterations early, and hold the final fitting at 30 days out with buffer for re-alterations.' },
-    { id: 'r_court_unready', trigger: 'Court members drop out or the vals/surprise dance is under-rehearsed', severity: 'high', mitigation: 'Pick a court that will commit, book a choreographer at 4 months out, run weekly rehearsals, and keep one or two alternates ready.' },
-    { id: 'r_vendor_dropout', trigger: 'A core vendor (caterer, DJ, photographer) cancels or no-shows', severity: 'high', mitigation: 'Sign contracts with deposits, confirm every vendor at a week out, and keep a backup contact and a phone playlist on a charged device.' },
-    { id: 'r_budget_overrun', trigger: 'Costs spiral past the family budget across many vendors', severity: 'med', mitigation: 'Build the budget at 9 months out, line up padrinos/sponsors for specific items, and track deposits vs balances as each vendor is booked.' },
-    { id: 'r_headcount', trigger: 'Final guest count drifts from RSVPs at a large family event', severity: 'med', mitigation: 'Send invitations by 88 days out, chase RSVPs, lock the count at 30 days out, and order ~5-10% over for the caterer.' },
-    { id: 'r_weather', trigger: 'Outdoor or tented portion hit by rain or heat', severity: 'med', mitigation: 'Have an indoor fallback or a tented backup, move ice up in heat, and confirm a rain plan with the venue a week out.' },
+    { id: 'r_late_booking', target: 'vendors-tab', trigger: 'Date set late — church, salón, or top vendors already booked', severity: 'high', mitigation: 'Lock the date, the church (if a Mass), and the venue at 9 months out, then core vendors by 6 months out; quince season Saturdays go a year out.' },
+    { id: 'r_gown_delay', target: 'seating', trigger: 'Ballgown arrives late or does not fit at the final fitting', severity: 'high', mitigation: 'Order the gown by 8 months out, schedule alterations early, and hold the final fitting at 30 days out with buffer for re-alterations.' },
+    { id: 'r_court_unready', target: 'none', trigger: 'Court members drop out or the vals/surprise dance is under-rehearsed', severity: 'high', mitigation: 'Pick a court that will commit, book a choreographer at 4 months out, run weekly rehearsals, and keep one or two alternates ready.' },
+    { id: 'r_vendor_dropout', target: 'vendors-tab', trigger: 'A core vendor (caterer, DJ, photographer) cancels or no-shows', severity: 'high', mitigation: 'Sign contracts with deposits, confirm every vendor at a week out, and keep a backup contact and a phone playlist on a charged device.' },
+    { id: 'r_budget_overrun', target: 'vendors-tab', trigger: 'Costs spiral past the family budget across many vendors', severity: 'med', mitigation: 'Build the budget at 9 months out, line up padrinos/sponsors for specific items, and track deposits vs balances as each vendor is booked.' },
+    { id: 'r_headcount', target: 'vendors-tab', trigger: 'Final guest count drifts from RSVPs at a large family event', severity: 'med', mitigation: 'Send invitations by 88 days out, chase RSVPs, lock the count at 30 days out, and order ~5-10% over for the caterer.' },
+    { id: 'r_weather', target: 'rain', trigger: 'Outdoor or tented portion hit by rain or heat', severity: 'med', mitigation: 'Have an indoor fallback or a tented backup, move ice up in heat, and confirm a rain plan with the venue a week out.' },
   ],
 
   contingencies: [

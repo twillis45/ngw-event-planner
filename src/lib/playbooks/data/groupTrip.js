@@ -201,12 +201,12 @@ const groupTrip = {
   vendors: [],
 
   risks: [
-    { id: 'r_soft_yes', trigger: 'Someone who said "probably" drops out after the place is booked', severity: 'high', mitigation: 'Count only the people who have paid a deposit. Golf the High Sierra: "Get a hard commitment from everyone" before booking anything.' },
-    { id: 'r_scam', trigger: 'The rental listing is a scam', severity: 'high', mitigation: 'The FTC: anyone who says you can only pay by wire transfer, gift card, payment app, or cryptocurrency is a scammer. Search the address with the owner\'s name and check the rental company\'s own site. Pay by credit card, which the CFPB notes can be disputed in writing within 60 days of the statement.' },
-    { id: 'r_cancel', trigger: 'Plans change after the place is paid for', severity: 'med', mitigation: 'Read the listing\'s cancellation policy before booking; on Airbnb it is shown on the listing, from Flexible to Strict. A group booking months out should favor a flexible one.' },
-    { id: 'r_extras', trigger: 'Small shared costs pile up and nobody settles them', severity: 'low', mitigation: 'Decide before the trip whether you settle up each day or at the end (SmarterTravel), keep the receipts, and send one final bill for the extras afterward (GolfN).' },
-    { id: 'r_party', trigger: 'The rental is treated as a party house', severity: 'med', mitigation: 'Airbnb bans disruptive gatherings regardless of size, and enforcement can run to removing the account. Put it in the house norms.' },
-    { id: 'r_slow_round', trigger: 'A big group\'s round runs long and the next plan slips', severity: 'low', whenChoice: PLAYING, mitigation: 'Golf the High Sierra: "20 players do not finish in 4 hours. Plan for 5.5."' },
+    { id: 'r_soft_yes', target: 'vendors-tab', trigger: 'Someone who said "probably" drops out after the place is booked', severity: 'high', mitigation: 'Count only the people who have paid a deposit. Golf the High Sierra: "Get a hard commitment from everyone" before booking anything.' },
+    { id: 'r_scam', target: 'vendors-tab', trigger: 'The rental listing is a scam', severity: 'high', mitigation: 'The FTC: anyone who says you can only pay by wire transfer, gift card, payment app, or cryptocurrency is a scammer. Search the address with the owner\'s name and check the rental company\'s own site. Pay by credit card, which the CFPB notes can be disputed in writing within 60 days of the statement.' },
+    { id: 'r_cancel', target: 'none', trigger: 'Plans change after the place is paid for', severity: 'med', mitigation: 'Read the listing\'s cancellation policy before booking; on Airbnb it is shown on the listing, from Flexible to Strict. A group booking months out should favor a flexible one.' },
+    { id: 'r_extras', target: 'none', trigger: 'Small shared costs pile up and nobody settles them', severity: 'low', mitigation: 'Decide before the trip whether you settle up each day or at the end (SmarterTravel), keep the receipts, and send one final bill for the extras afterward (GolfN).' },
+    { id: 'r_party', target: 'vendors-tab', trigger: 'The rental is treated as a party house', severity: 'med', mitigation: 'Airbnb bans disruptive gatherings regardless of size, and enforcement can run to removing the account. Put it in the house norms.' },
+    { id: 'r_slow_round', target: 'none', trigger: 'A big group\'s round runs long and the next plan slips', severity: 'low', whenChoice: PLAYING, mitigation: 'Golf the High Sierra: "20 players do not finish in 4 hours. Plan for 5.5."' },
   ],
 
   contingencies: [],

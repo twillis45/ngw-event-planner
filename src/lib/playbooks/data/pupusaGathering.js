@@ -97,11 +97,11 @@ const pupusaGathering = {
   ],
 
   risks: [
-    { id: 'r_curtido_time', trigger: 'Curtido made too late — not soured', severity: 'med', mitigation: 'Make it at 4 days out–3d so it can ferment; buy a backup jar of curtido as insurance.' },
-    { id: 'r_comal_burn', trigger: 'Hot comal / griddle burns — grease pop, hot edge, kids near the station', severity: 'high', mitigation: 'Keep the comal pushed back and stable; use a dry towel/mitt, never wet; keep children away from the griddle edge; pat shaped pupusas dry so water does not spit oil; keep the handle turned in.' },
-    { id: 'r_bottleneck', trigger: 'One comal, one cook — pupusas back up and guests wait', severity: 'med', mitigation: 'Recruit shaping hands; pre-portion fillings; run a second griddle; serve the curtido/salsa and drinks first so the wait feels social, not hungry.' },
-    { id: 'r_supply', trigger: 'Quesillo / loroco / fresh masa sold out', severity: 'med', mitigation: 'Source at 5 days out from a Latin market; mozzarella subs for quesillo; instant masa harina subs for fresh masa.' },
-    { id: 'r_foodsafe', trigger: 'Pork/cheese fillings or cooked pupusas left out too long', severity: 'med', mitigation: 'Keep raw chicharrón and quesillo refrigerated until use; griddle pork-filled pupusas through; don\'t leave cooked pupusas at room temp more than ~2h.' },
+    { id: 'r_curtido_time', target: 'vendors-tab', trigger: 'Curtido made too late — not soured', severity: 'med', mitigation: 'Make it at 4 days out–3d so it can ferment; buy a backup jar of curtido as insurance.' },
+    { id: 'r_comal_burn', target: 'none', trigger: 'Hot comal / griddle burns — grease pop, hot edge, kids near the station', severity: 'high', mitigation: 'Keep the comal pushed back and stable; use a dry towel/mitt, never wet; keep children away from the griddle edge; pat shaped pupusas dry so water does not spit oil; keep the handle turned in.' },
+    { id: 'r_bottleneck', target: 'food', trigger: 'One comal, one cook — pupusas back up and guests wait', severity: 'med', mitigation: 'Recruit shaping hands; pre-portion fillings; run a second griddle; serve the curtido/salsa and drinks first so the wait feels social, not hungry.' },
+    { id: 'r_supply', target: 'none', trigger: 'Quesillo / loroco / fresh masa sold out', severity: 'med', mitigation: 'Source at 5 days out from a Latin market; mozzarella subs for quesillo; instant masa harina subs for fresh masa.' },
+    { id: 'r_foodsafe', target: 'none', trigger: 'Pork/cheese fillings or cooked pupusas left out too long', severity: 'med', mitigation: 'Keep raw chicharrón and quesillo refrigerated until use; griddle pork-filled pupusas through; don\'t leave cooked pupusas at room temp more than ~2h.' },
   ],
 
   contingencies: [

@@ -177,20 +177,20 @@ const holidayParty = {
   ],
 
   risks: [
-    { id: 'r_overserve', trigger: 'Self-serve full bar + no one watching → guests over-served', severity: 'critical', mitigation: 'Use a bartender who controls the pour, ID-checks, and cuts people off; close the bar ~30-45 min before end; serve food all night and a prominent water station; assign a sober helper to watch the room. Over-serving is the root of the night’s worst outcomes.' },
-    { id: 'r_saferides', trigger: 'An impaired guest is about to drive home', severity: 'critical', mitigation: 'Pre-stage a safe-rides plan: rideshare credit/codes, a designated-driver ask in the invite, a couch/guest-room offer, and quietly hold/hand keys. Never let an impaired guest drive — social-host (and at corporate events, employer) liability can attach to harm they cause.' },
+    { id: 'r_overserve', target: 'food', trigger: 'Self-serve full bar + no one watching → guests over-served', severity: 'critical', mitigation: 'Use a bartender who controls the pour, ID-checks, and cuts people off; close the bar ~30-45 min before end; serve food all night and a prominent water station; assign a sober helper to watch the room. Over-serving is the root of the night’s worst outcomes.' },
+    { id: 'r_saferides', target: 'none', trigger: 'An impaired guest is about to drive home', severity: 'critical', mitigation: 'Pre-stage a safe-rides plan: rideshare credit/codes, a designated-driver ask in the invite, a couch/guest-room offer, and quietly hold/hand keys. Never let an impaired guest drive — social-host (and at corporate events, employer) liability can attach to harm they cause.' },
     // SOURCED 11/20/2026 (seasonal leftovers). The old copy, "~20 home candle
     // fires a day, 60% from something burnable left too close", had no source
     // id; it is NFPA's 2015-2019 figure as an Illinois fire-marshal page quotes
     // it. NFPA's own page now reports 2020-2024: about 5,894 a year, over half
     // started by décor too close. "A foot" is NFPA's own 12-inch tip.
-    { id: 'r_candles', trigger: 'Candles or holiday decor too close to something that burns', severity: 'medium', sources: ['nfpa-candles-2026'], mitigation: 'NFPA counts about 5,894 home candle fires a year, and over half start when something that burns is too close to the flame. Keep candles 12 inches from anything that can burn, nothing drapey near them, and every candle out before the room empties — batteries beat flames near garland and gift wrap.' },
-    { id: 'r_headcount', trigger: 'Final headcount still not confirmed 5 days out', severity: 'high', mitigation: 'Chase RSVPs; give the caterer + bartender a guaranteed count; over-cater food ~10%, alcohol on consignment so unopened bottles return.' },
-    { id: 'r_underbar', trigger: 'Bar runs dry mid-party', severity: 'high', mitigation: 'Stock to ~1 drink/guest/hour with a buffer; buy returnable where allowed; keep a backup case of wine + the batched signature to stretch; never let it run fully dry.' },
-    { id: 'r_coldfood', trigger: 'Hot apps go cold / stations run empty', severity: 'med', mitigation: 'Use chafers/warmers + sterno; stagger replenishment from the kitchen instead of putting everything out at once; assign a food-watch helper.' },
-    { id: 'r_venue_late', trigger: 'Venue or caterer booked too late for December', severity: 'high', mitigation: 'Lock venue + caterer at 5 weeks to 4 weeks out; December is peak — confirm in writing with deposits and a final-count date.' },
-    { id: 'r_coats', trigger: 'No coat plan → pile of coats on a bed, lost/mixed up', severity: 'low', mitigation: 'Set a labeled coat rack with hangers near the entry; for corporate, a coat-check helper for the first hour.' },
-    { id: 'r_dietary', trigger: 'No labeled veg/allergy-safe option', severity: 'med', mitigation: 'Collect dietary at RSVP; clearly label a veg + a GF option at every station.' },
+    { id: 'r_candles', target: 'none', trigger: 'Candles or holiday decor too close to something that burns', severity: 'medium', sources: ['nfpa-candles-2026'], mitigation: 'NFPA counts about 5,894 home candle fires a year, and over half start when something that burns is too close to the flame. Keep candles 12 inches from anything that can burn, nothing drapey near them, and every candle out before the room empties — batteries beat flames near garland and gift wrap.' },
+    { id: 'r_headcount', target: 'vendors-tab', trigger: 'Final headcount still not confirmed 5 days out', severity: 'high', mitigation: 'Chase RSVPs; give the caterer + bartender a guaranteed count; over-cater food ~10%, alcohol on consignment so unopened bottles return.' },
+    { id: 'r_underbar', target: 'none', trigger: 'Bar runs dry mid-party', severity: 'high', mitigation: 'Stock to ~1 drink/guest/hour with a buffer; buy returnable where allowed; keep a backup case of wine + the batched signature to stretch; never let it run fully dry.' },
+    { id: 'r_coldfood', target: 'food', trigger: 'Hot apps go cold / stations run empty', severity: 'med', mitigation: 'Use chafers/warmers + sterno; stagger replenishment from the kitchen instead of putting everything out at once; assign a food-watch helper.' },
+    { id: 'r_venue_late', target: 'vendors-tab', trigger: 'Venue or caterer booked too late for December', severity: 'high', mitigation: 'Lock venue + caterer at 5 weeks to 4 weeks out; December is peak — confirm in writing with deposits and a final-count date.' },
+    { id: 'r_coats', target: 'none', trigger: 'No coat plan → pile of coats on a bed, lost/mixed up', severity: 'low', mitigation: 'Set a labeled coat rack with hangers near the entry; for corporate, a coat-check helper for the first hour.' },
+    { id: 'r_dietary', target: 'none', trigger: 'No labeled veg/allergy-safe option', severity: 'med', mitigation: 'Collect dietary at RSVP; clearly label a veg + a GF option at every station.' },
   ],
 
   contingencies: [

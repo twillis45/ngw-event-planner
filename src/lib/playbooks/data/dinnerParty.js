@@ -166,12 +166,12 @@ const dinnerParty = {
 
   // Risks (canonical dinner-party.playbook.json — Sprint 55K parity backfill).
   risks: [
-    { id: 'r_dietary', trigger: 'Menu locked before allergies collected', severity: 'critical', mitigation: 'Collect dietary/allergy with the invite; confirm again at RSVP close; always plate one safe vegetarian main.' },
-    { id: 'r_headcount', trigger: 'Final headcount still not confirmed 3 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-cater proteins by ~10%, not 30%.' },
-    { id: 'r_overcook', trigger: 'Too many à-la-minute dishes', severity: 'high', mitigation: 'Design the menu so ≥2 of 3 courses are make-ahead; the host should plate, not cook, once guests arrive.' },
-    { id: 'r_ice', trigger: 'No ice / warm drinks', severity: 'med', mitigation: 'Buy ~1.5 lb ice/guest day-of; pre-chill whites 3h ahead.' },
-    { id: 'r_capacity', trigger: 'More RSVPs than chairs/place settings', severity: 'med', mitigation: 'Confirm seating + serveware capacity at a week out; secure a borrow/rent source before invites over-fill.' },
-    { id: 'r_cleanup', trigger: 'No cleanup plan → host trapped at the sink', severity: 'low', mitigation: "Stage a bus tub + empty dishwasher pre-party; clear into the tub, don't wash mid-party; consider a cleaner." },
+    { id: 'r_dietary', target: 'food', trigger: 'Menu locked before allergies collected', severity: 'critical', mitigation: 'Collect dietary/allergy with the invite; confirm again at RSVP close; always plate one safe vegetarian main.' },
+    { id: 'r_headcount', target: 'none', trigger: 'Final headcount still not confirmed 3 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-cater proteins by ~10%, not 30%.' },
+    { id: 'r_overcook', target: 'food', trigger: 'Too many à-la-minute dishes', severity: 'high', mitigation: 'Design the menu so ≥2 of 3 courses are make-ahead; the host should plate, not cook, once guests arrive.' },
+    { id: 'r_ice', target: 'none', trigger: 'No ice / warm drinks', severity: 'med', mitigation: 'Buy ~1.5 lb ice/guest day-of; pre-chill whites 3h ahead.' },
+    { id: 'r_capacity', target: 'seating', trigger: 'More RSVPs than chairs/place settings', severity: 'med', mitigation: 'Confirm seating + serveware capacity at a week out; secure a borrow/rent source before invites over-fill.' },
+    { id: 'r_cleanup', target: 'none', trigger: 'No cleanup plan → host trapped at the sink', severity: 'low', mitigation: "Stage a bus tub + empty dishwasher pre-party; clear into the tub, don't wash mid-party; consider a cleaner." },
   ],
 
   // Contingencies (canonical dinner-party.eos.json — Sprint 55K parity backfill).

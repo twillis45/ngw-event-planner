@@ -106,12 +106,12 @@ const fishFry = {
   ],
 
   risks: [
-    { id: 'r_hotoil', trigger: 'Hot-oil burn, overflow, or grease fire from the propane fryer', severity: 'high', mitigation: 'USFA fryer rules: LEVEL ground at least 10 feet from the house, never under eaves. Size the oil with a WATER test before heating, clip on a thermometer (no thermostat means oil can overheat to ignition), and fry only fully-thawed, patted-dry fish — ice meets hot oil violently. NEVER leave it unattended; 3-foot kid-and-pet zone. Keep a Class B/K extinguisher and a metal lid in reach — water makes a grease fire worse.' },
-    { id: 'r_fuel', trigger: 'Propane runs out / burner won\'t light mid-fry', severity: 'high', mitigation: 'Test-fire the burner at a week out; start with a FULL tank and a backup on hand.' },
-    { id: 'r_undersold', trigger: 'Fundraiser plates under-sell or no-show', severity: 'med', mitigation: 'Take pre-orders + pre-pay where possible; set a realistic target; plan to sell walk-up and to-go plates to clear extras.' },
-    { id: 'r_fishqty', trigger: 'Run out of fish (or buy way too much)', severity: 'med', mitigation: 'Lock the count at 3 days out; plan ~0.5 lb/person; buy fresh the day before so it isn\'t sitting.' },
-    { id: 'r_soggy', trigger: 'Fish goes soggy / cold holding for a crowd', severity: 'low', mitigation: 'Fry in small batches, hold on wire racks (not stacked on paper), keep the line moving so fish goes out hot.' },
-    { id: 'r_oildisposal', trigger: 'Hot oil moved too soon / poured down the drain', severity: 'med', mitigation: 'Let oil cool FULLY (hours) before moving; strain to reuse or seal in a jug for disposal — never the sink.' },
+    { id: 'r_hotoil', target: 'none', trigger: 'Hot-oil burn, overflow, or grease fire from the propane fryer', severity: 'high', mitigation: 'USFA fryer rules: LEVEL ground at least 10 feet from the house, never under eaves. Size the oil with a WATER test before heating, clip on a thermometer (no thermostat means oil can overheat to ignition), and fry only fully-thawed, patted-dry fish — ice meets hot oil violently. NEVER leave it unattended; 3-foot kid-and-pet zone. Keep a Class B/K extinguisher and a metal lid in reach — water makes a grease fire worse.' },
+    { id: 'r_fuel', target: 'none', trigger: 'Propane runs out / burner won\'t light mid-fry', severity: 'high', mitigation: 'Test-fire the burner at a week out; start with a FULL tank and a backup on hand.' },
+    { id: 'r_undersold', target: 'none', trigger: 'Fundraiser plates under-sell or no-show', severity: 'med', mitigation: 'Take pre-orders + pre-pay where possible; set a realistic target; plan to sell walk-up and to-go plates to clear extras.' },
+    { id: 'r_fishqty', target: 'none', trigger: 'Run out of fish (or buy way too much)', severity: 'med', mitigation: 'Lock the count at 3 days out; plan ~0.5 lb/person; buy fresh the day before so it isn\'t sitting.' },
+    { id: 'r_soggy', target: 'none', trigger: 'Fish goes soggy / cold holding for a crowd', severity: 'low', mitigation: 'Fry in small batches, hold on wire racks (not stacked on paper), keep the line moving so fish goes out hot.' },
+    { id: 'r_oildisposal', target: 'rain', trigger: 'Hot oil moved too soon / poured down the drain', severity: 'med', mitigation: 'Let oil cool FULLY (hours) before moving; strain to reuse or seal in a jug for disposal — never the sink.' },
   ],
 
   contingencies: [

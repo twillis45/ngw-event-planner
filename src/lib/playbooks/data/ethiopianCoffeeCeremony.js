@@ -102,12 +102,12 @@ const ethiopianCoffeeCeremony = {
   ],
 
   risks: [
-    { id: 'r_openflame', trigger: 'Open-flame brazier / live charcoal near guests, rugs, or children', severity: 'high', mitigation: 'Set the brazier on a stable heatproof surface away from foot traffic; keep it attended; have a lid, water, or extinguisher within reach; never leave coals unattended.' },
-    { id: 'r_burn', trigger: 'Hot jebena, roasting pan, or coals cause burns', severity: 'high', mitigation: 'Use a cloth/holder for the jebena handle and neck; pour from height carefully; keep a clear zone around the hot pan; let everything cool fully before washing.' },
-    { id: 'r_smoke', trigger: 'Indoor bean-roast + incense smoke triggers detectors or overwhelms the room', severity: 'med', mitigation: 'Roast outdoors or by an open door; run a vent hood/fan; crack windows; warn guests with respiratory sensitivity; keep incense modest.' },
-    { id: 'r_fasting', trigger: 'No vegan/fasting option, or niter kibbeh hidden in "vegan" dishes on a fasting day', severity: 'med', mitigation: 'Always cook a full ye-tsom spread (shiro/misir/gomen) in plain oil; label dishes; confirm whether the date is a fasting day before finalizing the menu.' },
-    { id: 'r_rush', trigger: 'Ceremony rushed; guests leave before the third (Baraka) round', severity: 'med', mitigation: 'Set expectations at invite that it runs ~2–3h; do not hurry the rounds — Baraka is the blessing and staying is the point.' },
-    { id: 'r_jebena', trigger: 'No jebena, or a new clay pot cracks/leaks unseasoned', severity: 'high', mitigation: 'Source/borrow the jebena at a week out; season a new clay pot before the day; keep a backup brewing vessel.' },
+    { id: 'r_openflame', target: 'none', trigger: 'Open-flame brazier / live charcoal near guests, rugs, or children', severity: 'high', mitigation: 'Set the brazier on a stable heatproof surface away from foot traffic; keep it attended; have a lid, water, or extinguisher within reach; never leave coals unattended.' },
+    { id: 'r_burn', target: 'none', trigger: 'Hot jebena, roasting pan, or coals cause burns', severity: 'high', mitigation: 'Use a cloth/holder for the jebena handle and neck; pour from height carefully; keep a clear zone around the hot pan; let everything cool fully before washing.' },
+    { id: 'r_smoke', target: 'rain', trigger: 'Indoor bean-roast + incense smoke triggers detectors or overwhelms the room', severity: 'med', mitigation: 'Roast outdoors or by an open door; run a vent hood/fan; crack windows; warn guests with respiratory sensitivity; keep incense modest.' },
+    { id: 'r_fasting', target: 'food', trigger: 'No vegan/fasting option, or niter kibbeh hidden in "vegan" dishes on a fasting day', severity: 'med', mitigation: 'Always cook a full ye-tsom spread (shiro/misir/gomen) in plain oil; label dishes; confirm whether the date is a fasting day before finalizing the menu.' },
+    { id: 'r_rush', target: 'none', trigger: 'Ceremony rushed; guests leave before the third (Baraka) round', severity: 'med', mitigation: 'Set expectations at invite that it runs ~2–3h; do not hurry the rounds — Baraka is the blessing and staying is the point.' },
+    { id: 'r_jebena', target: 'none', trigger: 'No jebena, or a new clay pot cracks/leaks unseasoned', severity: 'high', mitigation: 'Source/borrow the jebena at a week out; season a new clay pot before the day; keep a backup brewing vessel.' },
   ],
 
   contingencies: [

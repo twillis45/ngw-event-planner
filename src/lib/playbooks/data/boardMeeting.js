@@ -94,12 +94,12 @@ const boardMeeting = {
   ],
 
   risks: [
-    { id: 'r_av', trigger: 'Hybrid/AV fails — remote directors cannot see, hear, or be heard', severity: 'high', mitigation: 'Dry-run end-to-end the day before; have an AV/tech-support contact on call; keep a dial-in fallback and a backup hotspot.' },
-    { id: 'r_quorum', trigger: 'Not enough directors attend to meet quorum', severity: 'high', mitigation: 'Confirm RSVPs at 3 days out against the quorum threshold; offer remote join; if short, reschedule or limit to non-binding discussion.' },
-    { id: 'r_packet', trigger: 'Board packet late or incomplete — directors arrive unprepared', severity: 'high', mitigation: 'Hard report deadlines at 10 days out; distribute the full packet ~1 week out; send a reminder pre-read at 3 days out.' },
-    { id: 'r_confidential', trigger: 'Confidential materials leaked or left behind', severity: 'high', mitigation: 'Use a permissioned portal with MFA; number printed copies and collect/shred them; confirm NDAs are on file before distribution.' },
-    { id: 'r_minutes', trigger: 'No designated minute-taker / votes and action items not captured', severity: 'med', mitigation: 'Assign the minute-taker at 3 weeks out, free of facilitation duties; use roll-call voting so remote votes are recorded by name.' },
-    { id: 'r_access', trigger: 'External directors stuck at security/parking, meeting starts late', severity: 'med', mitigation: 'Pre-clear a visitor access list, badges, and parking at 2 weeks out; send directions + a day-of contact with the dial-in details.' },
+    { id: 'r_av', target: 'none', trigger: 'Hybrid/AV fails — remote directors cannot see, hear, or be heard', severity: 'high', mitigation: 'Dry-run end-to-end the day before; have an AV/tech-support contact on call; keep a dial-in fallback and a backup hotspot.' },
+    { id: 'r_quorum', target: 'timeline', trigger: 'Not enough directors attend to meet quorum', severity: 'high', mitigation: 'Confirm RSVPs at 3 days out against the quorum threshold; offer remote join; if short, reschedule or limit to non-binding discussion.' },
+    { id: 'r_packet', target: 'none', trigger: 'Board packet late or incomplete — directors arrive unprepared', severity: 'high', mitigation: 'Hard report deadlines at 10 days out; distribute the full packet ~1 week out; send a reminder pre-read at 3 days out.' },
+    { id: 'r_confidential', target: 'timeline', trigger: 'Confidential materials leaked or left behind', severity: 'high', mitigation: 'Use a permissioned portal with MFA; number printed copies and collect/shred them; confirm NDAs are on file before distribution.' },
+    { id: 'r_minutes', target: 'none', trigger: 'No designated minute-taker / votes and action items not captured', severity: 'med', mitigation: 'Assign the minute-taker at 3 weeks out, free of facilitation duties; use roll-call voting so remote votes are recorded by name.' },
+    { id: 'r_access', target: 'none', trigger: 'External directors stuck at security/parking, meeting starts late', severity: 'med', mitigation: 'Pre-clear a visitor access list, badges, and parking at 2 weeks out; send directions + a day-of contact with the dial-in details.' },
   ],
 
   contingencies: [

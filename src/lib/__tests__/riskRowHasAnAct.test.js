@@ -99,22 +99,31 @@ describe('the checklist router earns the handoff', () => {
     for (const f of fs.readdirSync(DATA).filter((n) => n.endsWith('.js'))) {
       const src = fs.readFileSync(path.join(DATA, f), 'utf8');
       for (const m of src.matchAll(
-        /\{\s*id:\s*'(r_[^']+)',\s*trigger:\s*'((?:[^'\\]|\\.)*)',\s*severity:\s*'([^']*)',\s*mitigation:\s*'((?:[^'\\]|\\.)*)'/g)) {
+        /\{\s*id:\s*'(r_[^']+)',\s*(?:target:\s*'[^']*',\s*)?trigger:\s*'((?:[^'\\]|\\.)*)',\s*severity:\s*'([^']*)',\s*mitigation:\s*'((?:[^'\\]|\\.)*)'/g)) {
         out.push({ file: f, id: m[1], mitigation: m[4] });
       }
     }
     return out;
   }
 
-  // SIX ROOT CAUSES, cause 1 (11/23/2026): the checklist no longer reads a
-  // row's words to choose its button, so a mitigation added to the checklist
-  // is an honest check-off unless a step declares its target. The risk row's
-  // own act ("Plan for this" or "Add to my checklist") is unchanged above; what
-  // changed is that no guessed button appears on the added row.
-  test('an added mitigation is a check-off, never a button guessed from its words', () => {
+  // SIX ROOT CAUSES, cause 1 (11/23/2026): a mitigation added to the
+  // checklist (`risk-<id>`) is routed by its RISK's declared target, the same
+  // declaration its "Plan for this" reads — never by its words.
+  test('an added mitigation follows its risk’s declared target, never its words', () => {
     const risks = allRisks();
     expect(risks.length).toBeGreaterThan(200);   // never assert over an empty set
-    const guessed = risks.filter((r) => !!checklistRouteFor(r.mitigation, { taskId: 'risk-' + r.id }, { id: 'e', type: 'Birthday' }));
-    expect(guessed).toEqual([]);
+    const { ALL_PLAYBOOKS } = require('../playbooks');
+    const { stepTargetKey, targetFor } = require('../stepTarget');
+    const wrong = [];
+    for (const pb of ALL_PLAYBOOKS) {
+      const ev = { id: 'e', type: pb.type };
+      for (const r of (pb.risks || [])) {
+        const hit = checklistRouteFor('rain crab vendor budget', { taskId: 'risk-' + r.id }, ev);
+        const want = targetFor(stepTargetKey(ev, { id: 'risk-' + r.id }), ev);
+        if (JSON.stringify(hit) !== JSON.stringify(want ? (want.href ? { label: want.label, href: want.href } : { label: want.label, route: want.route }) : null)) wrong.push(pb.type + ':' + r.id);
+      }
+    }
+    expect(wrong).toEqual([]);
   });
+
 });

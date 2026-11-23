@@ -461,37 +461,37 @@ const sundayDinner = {
 
   risks: [
     {
-      id: 'r-foodsafe',
+      id: 'r-foodsafe', target: 'none',
       trigger: 'Undercooked chicken or cross-contamination from the raw bird',
       severity: 'high',
       mitigation: 'Cook chicken to 165°F internal at the thickest part (fried or baked); brine/season in the REFRIGERATOR, never on the counter; discard used brine; and wash hands, boards, and utensils after the raw bird before they touch the sides.',
     },
     {
-      id: 'r-late-shop',
+      id: 'r-late-shop', target: 'none',
       trigger: 'Shopping slips to Sunday morning',
       severity: 'medium',
       mitigation: 'Buy by Friday or Saturday — a fresh bird and good greens are scarce Sunday before church.',
     },
     {
-      id: 'r-stove-jam',
+      id: 'r-stove-jam', target: 'none',
       trigger: 'Frying the main and finishing hot sides on the same burners at once',
       severity: 'medium',
       mitigation: 'Make greens and dessert the day before; choose a baked main if your stove is small so the sides have room.',
     },
     {
-      id: 'r-seating-short',
+      id: 'r-seating-short', target: 'seating',
       trigger: 'Not enough chairs or place settings for every generation',
       severity: 'low',
       mitigation: 'Count chairs against headcount on Saturday; add a leaf or a kids table and borrow seats early.',
     },
     {
-      id: 'r-runs-late',
+      id: 'r-runs-late', target: 'food',
       trigger: 'Meal pushed too far past church time',
       severity: 'low',
       mitigation: 'Target sitting down within a couple hours of service so the elders and little ones eat before they fade.',
     },
     {
-      id: 'r-no-leftovers',
+      id: 'r-no-leftovers', target: 'food',
       trigger: 'Nothing left to send people home with',
       severity: 'low',
       mitigation: 'Cook a little long and hold back a portion before service so every plate-to-go is full.',

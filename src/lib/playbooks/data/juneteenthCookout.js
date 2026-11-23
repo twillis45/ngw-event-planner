@@ -129,13 +129,13 @@ const juneteenthCookout = {
   ],
 
   risks: [
-    { id: 'r_meaning_skipped', trigger: 'The day runs as just a party and the freedom history is never marked', severity: 'high', mitigation: 'Lock the meaning moment at 18 days out and assign someone to lead it; build the reflection into the timeline right before the meal so it can\'t get lost.' },
-    { id: 'r_heat', trigger: 'Mid-June heat with no shade, water, or rain plan', severity: 'high', mitigation: 'Confirm shade + fans + water at 4 days out; shade the food and the elders; have a canopy/indoor fallback for rain or extreme heat.' },
-    { id: 'r_fuel', trigger: 'Out of charcoal/wood or empty propane — ribs need hours', severity: 'high', mitigation: 'Check + buy fuel at 3 days out; keep a spare bag/tank; start the smoke early.' },
-    { id: 'r_foodsafe', trigger: 'Perishables (potato salad, mac, meats) sit out in the heat, or raw meat cross-contaminates cooked', severity: 'high', mitigation: 'Keep cold sides on ice; don\'t leave perishables out >1h above 90°F; grill chicken to 165°F; restock the buffet in waves. Use separate platters/utensils for raw vs cooked meat; never reuse raw-meat marinade as sauce unless boiled first.' },
-    { id: 'r_sourcing', trigger: 'Black-owned caterer/bakery booked out near the holiday', severity: 'med', mitigation: 'Book by 16 days out; have a host-cooks or grocery-cake fallback identified.' },
-    { id: 'r_ice', trigger: 'Ice melts, red drink and grown section go warm', severity: 'med', mitigation: 'Buy ~2 lb ice/guest day-of; keep a shaded backup cooler.' },
-    { id: 'r_caricature', trigger: 'Decor or theming drifts into caricature / stereotype', severity: 'med', mitigation: 'Keep red-black-green restrained and dignified; center heritage, history, and quality food — never costume or kitsch.' },
+    { id: 'r_meaning_skipped', target: 'timeline', trigger: 'The day runs as just a party and the freedom history is never marked', severity: 'high', mitigation: 'Lock the meaning moment at 18 days out and assign someone to lead it; build the reflection into the timeline right before the meal so it can\'t get lost.' },
+    { id: 'r_heat', target: 'rain', trigger: 'Mid-June heat with no shade, water, or rain plan', severity: 'high', mitigation: 'Confirm shade + fans + water at 4 days out; shade the food and the elders; have a canopy/indoor fallback for rain or extreme heat.' },
+    { id: 'r_fuel', target: 'none', trigger: 'Out of charcoal/wood or empty propane — ribs need hours', severity: 'high', mitigation: 'Check + buy fuel at 3 days out; keep a spare bag/tank; start the smoke early.' },
+    { id: 'r_foodsafe', target: 'none', trigger: 'Perishables (potato salad, mac, meats) sit out in the heat, or raw meat cross-contaminates cooked', severity: 'high', mitigation: 'Keep cold sides on ice; don\'t leave perishables out >1h above 90°F; grill chicken to 165°F; restock the buffet in waves. Use separate platters/utensils for raw vs cooked meat; never reuse raw-meat marinade as sauce unless boiled first.' },
+    { id: 'r_sourcing', target: 'vendors-tab', trigger: 'Black-owned caterer/bakery booked out near the holiday', severity: 'med', mitigation: 'Book by 16 days out; have a host-cooks or grocery-cake fallback identified.' },
+    { id: 'r_ice', target: 'none', trigger: 'Ice melts, red drink and grown section go warm', severity: 'med', mitigation: 'Buy ~2 lb ice/guest day-of; keep a shaded backup cooler.' },
+    { id: 'r_caricature', target: 'rain', trigger: 'Decor or theming drifts into caricature / stereotype', severity: 'med', mitigation: 'Keep red-black-green restrained and dignified; center heritage, history, and quality food — never costume or kitsch.' },
   ],
 
   contingencies: [

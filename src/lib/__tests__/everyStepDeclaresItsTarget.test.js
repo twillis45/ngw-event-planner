@@ -159,3 +159,34 @@ describe('"Mark done" marks the step; it never records a send', () => {
     expect(bad).toEqual([]);
   });
 });
+
+// ─── RISKS DECLARE THEIRS (cause 1, remainder) ───────────────────────────────
+describe('a risk row and its checklist step route by the risk’s declared target', () => {
+  const { riskTargetFor, RISK_TYPE_TARGETS, stepTargetKey: key, isKnownTarget: known } = require('../stepTarget');
+  const { cookRisksFor } = require('../playbooks/cookLever');
+  test('every playbook risk and every derived risk type declares a known target; the prose never decides', () => {
+    const bad = [];
+    let n = 0;
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      const ev = { id: 'ev-r', type: pb.type };
+      for (const r of [...(pb.risks || []), ...cookRisksFor(pb)]) {
+        n += 1;
+        if (!known(r.target)) { bad.push(`${pb.type}:${r.id} → ${r.target}`); continue; }
+        const own = riskTargetFor(ev, { id: r.id, trigger: r.trigger, mitigation: r.mitigation });
+        const decoy = riskTargetFor(ev, { id: r.id, trigger: DECOY, mitigation: 'rain weather crab vendor seat budget food' });
+        if (JSON.stringify(own) !== JSON.stringify(decoy)) bad.push(`${pb.type}:${r.id} changes with its words`);
+        if (key(ev, { id: 'risk-' + r.id }) !== r.target) bad.push(`${pb.type}:${r.id} mitigation step lost its target`);
+      }
+    }
+    for (const [t, k] of Object.entries(RISK_TYPE_TARGETS)) if (!known(k)) bad.push(`derived ${t} → ${k}`);
+    expect(bad).toEqual([]);
+    expect(n).toBeGreaterThan(300);
+  });
+  test('the shell’s risk router is the lib’s, and reads no prose', () => {
+    const shell = fs.readFileSync(path.join(__dirname, '../../../hostv2/src/HostShellV2.jsx'), 'utf8');
+    const at = shell.indexOf('const riskRouteFor = ');
+    const body = shell.slice(at, shell.indexOf('\n', at));
+    expect(/riskTargetFor\(/.test(body)).toBe(true);
+    expect(/trigger|mitigation|description|\.test\(/.test(body)).toBe(false);
+  });
+});

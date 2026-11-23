@@ -105,11 +105,11 @@ const bridalShower = {
   ],
 
   risks: [
-    { id: 'r_headcount', trigger: 'Final headcount still not locked 4 days out', severity: 'high', mitigation: 'Chase RSVPs with the bride / co-hosts; buy fresh food and confirm seats after the count locks.' },
-    { id: 'r_giftlog', trigger: 'No gift-tracking plan during the opening', severity: 'high', mitigation: 'Assign one person to log each gift → giver as it is opened; the bride needs this list for thank-you notes.' },
-    { id: 'r_guestlist', trigger: 'Shower guest not on the wedding guest list', severity: 'med', mitigation: 'Vet the shower list against the wedding list with the bride before invites go out — never invite to the shower someone not invited to the wedding.' },
-    { id: 'r_bar', trigger: 'Bubbly/juice under-bought for the mimosa bar', severity: 'med', mitigation: 'Plan ~1 bottle per 4–5 guests; keep 1–2 backup bottles chilled and a full no-alcohol punch so no one is left out.' },
-    { id: 'r_overrun', trigger: 'Gift opening runs long and guests disengage', severity: 'low', mitigation: 'Cap games to 1–2 short rounds; play soft music and pass favors during the opening to keep energy up.' },
+    { id: 'r_headcount', target: 'seating', trigger: 'Final headcount still not locked 4 days out', severity: 'high', mitigation: 'Chase RSVPs with the bride / co-hosts; buy fresh food and confirm seats after the count locks.' },
+    { id: 'r_giftlog', target: 'none', trigger: 'No gift-tracking plan during the opening', severity: 'high', mitigation: 'Assign one person to log each gift → giver as it is opened; the bride needs this list for thank-you notes.' },
+    { id: 'r_guestlist', target: 'none', trigger: 'Shower guest not on the wedding guest list', severity: 'med', mitigation: 'Vet the shower list against the wedding list with the bride before invites go out — never invite to the shower someone not invited to the wedding.' },
+    { id: 'r_bar', target: 'none', trigger: 'Bubbly/juice under-bought for the mimosa bar', severity: 'med', mitigation: 'Plan ~1 bottle per 4–5 guests; keep 1–2 backup bottles chilled and a full no-alcohol punch so no one is left out.' },
+    { id: 'r_overrun', target: 'none', trigger: 'Gift opening runs long and guests disengage', severity: 'low', mitigation: 'Cap games to 1–2 short rounds; play soft music and pass favors during the opening to keep energy up.' },
   ],
 
   contingencies: [

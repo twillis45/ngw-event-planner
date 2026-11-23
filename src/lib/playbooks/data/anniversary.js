@@ -147,15 +147,15 @@ const anniversary = {
   ],
 
   risks: [
-    { id: 'r_slideshow', trigger: 'Slideshow built late or never tested on the real screen', severity: 'high', mitigation: 'Ask for photos at 24 days out; build by a week out; test on the actual screen/projector + speakers with a phone/laptop backup ready.' },
-    { id: 'r_photos', trigger: 'Family never sends photos for the slideshow', severity: 'high', mitigation: 'Send a shared album link early with a hard "send by" date; chase the key people; have a fallback set from the couple’s own albums.' },
-    { id: 'r_headcount', trigger: 'Final headcount still not confirmed 3 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh + final alcohol AFTER the count locks; over-cater by ~10%, not 30%.' },
-    { id: 'r_cake', trigger: 'Cake ordered too late / wrong size', severity: 'med', mitigation: 'Order at 2 weeks out sized to headcount (2-tier ~25-40, 8" ~15-24); confirm pickup/delivery time the day before.' },
-    { id: 'r_toast_low', trigger: 'Not enough champagne for everyone to toast', severity: 'med', mitigation: 'Budget ~1 bottle per 6-8 guests for one pour each; keep a zero-proof sparkling so non-drinkers can raise a glass too.' },
-    { id: 'r_surprise', trigger: 'A surprise leaks, or the couple arrives off-cue', severity: 'med', mitigation: 'Limit who knows logistics; assign one person to manage the arrival and the "now" signal; have a graceful plan if it leaks (it becomes a co-host).' },
-    { id: 'r_access', trigger: 'Older or mobility-limited guests can’t navigate the space', severity: 'med', mitigation: 'Ask accessibility needs on the invite; ensure seating, a clear path, parking, and audible toast/slideshow placement.' },
-    { id: 'r_ice', trigger: 'No ice / warm drinks', severity: 'med', mitigation: 'Buy ~1.5 lb ice/guest day-of; pre-chill whites + champagne ~3h ahead.' },
-    { id: 'r_cleanup', trigger: 'No cleanup plan → host trapped at the sink', severity: 'low', mitigation: 'Stage a bus tub + empty dishwasher pre-party; clear into the tub, don’t wash mid-party; consider a cleaner.' },
+    { id: 'r_slideshow', target: 'none', trigger: 'Slideshow built late or never tested on the real screen', severity: 'high', mitigation: 'Ask for photos at 24 days out; build by a week out; test on the actual screen/projector + speakers with a phone/laptop backup ready.' },
+    { id: 'r_photos', target: 'none', trigger: 'Family never sends photos for the slideshow', severity: 'high', mitigation: 'Send a shared album link early with a hard "send by" date; chase the key people; have a fallback set from the couple’s own albums.' },
+    { id: 'r_headcount', target: 'none', trigger: 'Final headcount still not confirmed 3 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh + final alcohol AFTER the count locks; over-cater by ~10%, not 30%.' },
+    { id: 'r_cake', target: 'none', trigger: 'Cake ordered too late / wrong size', severity: 'med', mitigation: 'Order at 2 weeks out sized to headcount (2-tier ~25-40, 8" ~15-24); confirm pickup/delivery time the day before.' },
+    { id: 'r_toast_low', target: 'budget-tab', trigger: 'Not enough champagne for everyone to toast', severity: 'med', mitigation: 'Budget ~1 bottle per 6-8 guests for one pour each; keep a zero-proof sparkling so non-drinkers can raise a glass too.' },
+    { id: 'r_surprise', target: 'timeline', trigger: 'A surprise leaks, or the couple arrives off-cue', severity: 'med', mitigation: 'Limit who knows logistics; assign one person to manage the arrival and the "now" signal; have a graceful plan if it leaks (it becomes a co-host).' },
+    { id: 'r_access', target: 'seating', trigger: 'Older or mobility-limited guests can’t navigate the space', severity: 'med', mitigation: 'Ask accessibility needs on the invite; ensure seating, a clear path, parking, and audible toast/slideshow placement.' },
+    { id: 'r_ice', target: 'none', trigger: 'No ice / warm drinks', severity: 'med', mitigation: 'Buy ~1.5 lb ice/guest day-of; pre-chill whites + champagne ~3h ahead.' },
+    { id: 'r_cleanup', target: 'none', trigger: 'No cleanup plan → host trapped at the sink', severity: 'low', mitigation: 'Stage a bus tub + empty dishwasher pre-party; clear into the tub, don’t wash mid-party; consider a cleaner.' },
   ],
 
   contingencies: [

@@ -457,13 +457,13 @@ const sweet16 = {
   ],
 
   risks: [
-    { id: 'r_uninvited', trigger: 'Word spreads online and uninvited teens / crashers show up', severity: 'high', mitigation: 'Keep the address off public posts, use a guest list with a name-check adult on the door, and require parent pickup.' },
-    { id: 'r_alcohol', trigger: 'A teen brings or sneaks in alcohol', severity: 'high', mitigation: 'State a no-alcohol rule on the invite, run a no-leave-and-return policy, station an adult at the bar, and watch the parking lot.' },
-    { id: 'r_supervision', trigger: 'Too few adults to supervise a room of energized teens', severity: 'med', mitigation: 'Lock at least 1 adult per ~10-12 teens with assigned posts (door, bar, floor) before the day.' },
-    { id: 'r_dj_noshow', trigger: 'DJ cancels or no-shows', severity: 'high', mitigation: 'Get a signed contract + deposit, confirm 1 week out, and keep a backup phone playlist on a charged device with the PA.' },
-    { id: 'r_food_short', trigger: 'Final headcount jumps or teens eat more than planned', severity: 'med', mitigation: 'Order ~10-15% over the RSVP count and keep a quick add-on order (extra pizzas) on standby.' },
-    { id: 'r_dead_floor', trigger: 'Nobody dances and the energy stalls', severity: 'med', mitigation: 'Dim the lights, have the DJ open with known hits, run the grand entrance and a group photo to gather everyone, then keep the floor moving.' },
-    { id: 'r_weather', trigger: 'Outdoor/at-home party hit by rain or heat', severity: 'med', mitigation: 'Have an indoor fallback or tent; move ice/drinks up to 1.5 lb/guest in heat.' },
+    { id: 'r_uninvited', target: 'none', trigger: 'Word spreads online and uninvited teens / crashers show up', severity: 'high', mitigation: 'Keep the address off public posts, use a guest list with a name-check adult on the door, and require parent pickup.' },
+    { id: 'r_alcohol', target: 'none', trigger: 'A teen brings or sneaks in alcohol', severity: 'high', mitigation: 'State a no-alcohol rule on the invite, run a no-leave-and-return policy, station an adult at the bar, and watch the parking lot.' },
+    { id: 'r_supervision', target: 'none', trigger: 'Too few adults to supervise a room of energized teens', severity: 'med', mitigation: 'Lock at least 1 adult per ~10-12 teens with assigned posts (door, bar, floor) before the day.' },
+    { id: 'r_dj_noshow', target: 'vendors-tab', trigger: 'DJ cancels or no-shows', severity: 'high', mitigation: 'Get a signed contract + deposit, confirm 1 week out, and keep a backup phone playlist on a charged device with the PA.' },
+    { id: 'r_food_short', target: 'none', trigger: 'Final headcount jumps or teens eat more than planned', severity: 'med', mitigation: 'Order ~10-15% over the RSVP count and keep a quick add-on order (extra pizzas) on standby.' },
+    { id: 'r_dead_floor', target: 'vendors-tab', trigger: 'Nobody dances and the energy stalls', severity: 'med', mitigation: 'Dim the lights, have the DJ open with known hits, run the grand entrance and a group photo to gather everyone, then keep the floor moving.' },
+    { id: 'r_weather', target: 'rain', trigger: 'Outdoor/at-home party hit by rain or heat', severity: 'med', mitigation: 'Have an indoor fallback or tent; move ice/drinks up to 1.5 lb/guest in heat.' },
   ],
 
   contingencies: [

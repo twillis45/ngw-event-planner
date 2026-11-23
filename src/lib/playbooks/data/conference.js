@@ -113,13 +113,13 @@ const conference = {
   ],
 
   risks: [
-    { id: 'r_keynote_fail', trigger: 'General-session / keynote AV failure (audio drops, screens dark, no playback) in front of the full room', severity: 'high', mitigation: 'Contract a real production partner; full tech rehearsal the day before; redundant audio + backup laptop/clicker; a show-caller on comms; backup speaker content offline.' },
-    { id: 'r_speaker_drop', trigger: 'A keynote or major speaker cancels close to the date', severity: 'high', mitigation: 'Signed contracts with cancellation terms; keep a warm backup/moderator; build a panel or pre-recorded fallback for the slot.' },
-    { id: 'r_reg_short', trigger: 'Registration / sponsor revenue tracking well below target', severity: 'high', mitigation: 'Open early-bird at 4 months out; weekly pacing against goal; reforecast budget at 2 months out; trim scope (rooms, scenic, catering tier) if short.' },
-    { id: 'r_attrition', trigger: 'Hotel room block under-fills and attrition clause bills back', severity: 'med', mitigation: 'Right-size the block; negotiate a generous attrition % + cutoff; promote the block in every comm; release unsold rooms before the penalty date.' },
-    { id: 'r_count_wrong', trigger: 'Final F&B guarantee submitted on a wrong/stale number', severity: 'high', mitigation: 'Reconcile registration vs. guarantee at a week out; build a no-show buffer; know the venue\'s overset % so you can flex up day-of.' },
-    { id: 'r_safety', trigger: 'Medical, security, or evacuation incident with no plan', severity: 'high', mitigation: 'Written emergency + evac plan with venue; on-site medic/first aid; security staffing; accessibility (ADA seating, captioning, ramps) confirmed pre-show.' },
-    { id: 'r_print_late', trigger: 'Badges / signage miss their print lead time', severity: 'med', mitigation: 'Order at 30 days out; keep on-site badge printing as the fallback; finalize the sign list against the room/track map early.' },
+    { id: 'r_keynote_fail', target: 'vendors-tab', trigger: 'General-session / keynote AV failure (audio drops, screens dark, no playback) in front of the full room', severity: 'high', mitigation: 'Contract a real production partner; full tech rehearsal the day before; redundant audio + backup laptop/clicker; a show-caller on comms; backup speaker content offline.' },
+    { id: 'r_speaker_drop', target: 'vendors-tab', trigger: 'A keynote or major speaker cancels close to the date', severity: 'high', mitigation: 'Signed contracts with cancellation terms; keep a warm backup/moderator; build a panel or pre-recorded fallback for the slot.' },
+    { id: 'r_reg_short', target: 'rain', trigger: 'Registration / sponsor revenue tracking well below target', severity: 'high', mitigation: 'Open early-bird at 4 months out; weekly pacing against goal; reforecast budget at 2 months out; trim scope (rooms, scenic, catering tier) if short.' },
+    { id: 'r_attrition', target: 'none', trigger: 'Hotel room block under-fills and attrition clause bills back', severity: 'med', mitigation: 'Right-size the block; negotiate a generous attrition % + cutoff; promote the block in every comm; release unsold rooms before the penalty date.' },
+    { id: 'r_count_wrong', target: 'none', trigger: 'Final F&B guarantee submitted on a wrong/stale number', severity: 'high', mitigation: 'Reconcile registration vs. guarantee at a week out; build a no-show buffer; know the venue\'s overset % so you can flex up day-of.' },
+    { id: 'r_safety', target: 'seating', trigger: 'Medical, security, or evacuation incident with no plan', severity: 'high', mitigation: 'Written emergency + evac plan with venue; on-site medic/first aid; security staffing; accessibility (ADA seating, captioning, ramps) confirmed pre-show.' },
+    { id: 'r_print_late', target: 'none', trigger: 'Badges / signage miss their print lead time', severity: 'med', mitigation: 'Order at 30 days out; keep on-site badge printing as the fallback; finalize the sign list against the room/track map early.' },
   ],
 
   contingencies: [

@@ -211,13 +211,13 @@ const theCookout = {
   ],
 
   risks: [
-    { id: 'r_weather', trigger: 'Rain or extreme heat with no plan', severity: 'high', mitigation: 'Check the forecast at 3 days out; secure canopies + an indoor/garage fallback; start earlier to dodge peak heat; keep water and shade flowing.' },
-    { id: 'r_grillmaster', trigger: 'Grill master flakes or is overwhelmed running it solo all day', severity: 'high', mitigation: 'Lock the grill master at 3 weeks out with a named backup; line up a second grill/smoker at 40+ so one person isn\'t the bottleneck.' },
-    { id: 'r_spread_gaps', trigger: 'Duplicate sides, missing greens/mac, or an untrusted potato salad', severity: 'med', mitigation: 'Assign the spread on purpose at 2 weeks out — one person per dish, the trusted hands on the potato salad; confirm assignments at 3 days out.' },
-    { id: 'r_fuel', trigger: 'Run out of charcoal/wood/propane mid-cook', severity: 'high', mitigation: 'Buy extra fuel at 3 days out; keep a spare bag/tank on hand for the long cook.' },
-    { id: 'r_ice', trigger: 'Ice runs out; drinks and red drink go warm', severity: 'med', mitigation: 'Buy ~2 lb/guest day-of (all-day heat melts it fast); know the nearest store for a midday ice run.' },
-    { id: 'r_foodsafe', trigger: 'Perishable sides sit out in the heat too long, or raw meat cross-contaminates cooked', severity: 'high', mitigation: 'Keep cold sides on ice; don\'t leave mayo-based dishes (potato salad, slaw) out >1h above 90°F; grill meat to safe temps (chicken 165°F). Use SEPARATE platters and utensils for raw vs cooked meat — never put cooked meat back on the raw-marinade plate.' },
-    { id: 'r_togo_shortfall', trigger: 'Run out of to-go containers — guests can\'t make a plate', severity: 'low', mitigation: 'Buy ~1.5 to-go containers/guest; keep foil and zip bags as backup so everybody leaves with a plate.' },
+    { id: 'r_weather', target: 'rain', trigger: 'Rain or extreme heat with no plan', severity: 'high', mitigation: 'Check the forecast at 3 days out; secure canopies + an indoor/garage fallback; start earlier to dodge peak heat; keep water and shade flowing.' },
+    { id: 'r_grillmaster', target: 'none', trigger: 'Grill master flakes or is overwhelmed running it solo all day', severity: 'high', mitigation: 'Lock the grill master at 3 weeks out with a named backup; line up a second grill/smoker at 40+ so one person isn\'t the bottleneck.' },
+    { id: 'r_spread_gaps', target: 'none', trigger: 'Duplicate sides, missing greens/mac, or an untrusted potato salad', severity: 'med', mitigation: 'Assign the spread on purpose at 2 weeks out — one person per dish, the trusted hands on the potato salad; confirm assignments at 3 days out.' },
+    { id: 'r_fuel', target: 'none', trigger: 'Run out of charcoal/wood/propane mid-cook', severity: 'high', mitigation: 'Buy extra fuel at 3 days out; keep a spare bag/tank on hand for the long cook.' },
+    { id: 'r_ice', target: 'none', trigger: 'Ice runs out; drinks and red drink go warm', severity: 'med', mitigation: 'Buy ~2 lb/guest day-of (all-day heat melts it fast); know the nearest store for a midday ice run.' },
+    { id: 'r_foodsafe', target: 'none', trigger: 'Perishable sides sit out in the heat too long, or raw meat cross-contaminates cooked', severity: 'high', mitigation: 'Keep cold sides on ice; don\'t leave mayo-based dishes (potato salad, slaw) out >1h above 90°F; grill meat to safe temps (chicken 165°F). Use SEPARATE platters and utensils for raw vs cooked meat — never put cooked meat back on the raw-marinade plate.' },
+    { id: 'r_togo_shortfall', target: 'none', trigger: 'Run out of to-go containers — guests can\'t make a plate', severity: 'low', mitigation: 'Buy ~1.5 to-go containers/guest; keep foil and zip bags as backup so everybody leaves with a plate.' },
   ],
 
   contingencies: [

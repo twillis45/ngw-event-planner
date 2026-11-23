@@ -360,7 +360,7 @@ import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
 import { mayExhale, calmVetoFor } from '@app/lib/exhaleGate';
 import { checklistRouteFor } from '@app/lib/taskRoute';
 import { editorKindFor, isBalanceDueAction, stepRowIdOf } from '@app/lib/heroEditor';
-import { stepIsASend } from '@app/lib/stepTarget';
+import { stepIsASend, riskTargetFor } from '@app/lib/stepTarget';
 import { withSettled, withoutSettled, unsettledActions } from '@app/lib/settledAsks';
 import { landingStage } from '@app/lib/landingStage';
 import { planPartsProgress, planPartsLine } from '@app/lib/planProgress';
@@ -2806,17 +2806,9 @@ export default function HostShellV2() {
   // map a risk to the surface that actually addresses it, most specific first.
   // Returns a routeSheet() route or null — no route means no button, never a dead
   // CTA. rain-plan/crab-plan land on the exact plan; the rest on the right sheet.
-  const riskRouteFor = (r) => {
-    const t = (String((r && (r.trigger || r.description)) || '') + ' ' + String((r && r.mitigation) || '')).toLowerCase();
-    if (/rain|weather|forecast|outdoor|storm|heat wave|\bsky\b/.test(t)) return { focusField: 'rain-plan' };
-    if (/crab|shellfish|\bboil\b/.test(t)) return { focusField: 'crab-plan' };
-    if (/vendor|\bcoi\b|insurance|deposit|contract|photographer|caterer|\bdj\b|rental/.test(t)) return { tab: 'Vendors' };
-    if (/seat|accessible|wheelchair|mobility|\btable\b|capacity|\bfit\b/.test(t)) return { tab: 'Seating' };
-    if (/timeline|schedule|arrival|compress|run of show|running late|behind|time window/.test(t)) return { tab: 'Timeline' };
-    if (/budget|\bcost\b|overspend|\bspend\b|\bmoney\b/.test(t)) return { tab: 'Budget' };
-    if (/\bfood\b|portion|allergen|\bdiet\b|\bmeal\b|\bmenu\b/.test(t)) return { tab: 'Planning', focusField: 'food' };
-    return null;
-  };
+  // The risk's DECLARED target (lib/stepTarget.riskTargetFor, cause 1): a
+  // playbook risk's own `target`, a derived risk's type. Never its prose.
+  const riskRouteFor = (r) => { const t = riskTargetFor(event, r); return (t && t.route) || null; };
   // Grounded "why this applies" (re-audit candidate a): append a clause drawn ONLY
   // from real event facts — never invented, empty when the fact is absent. Weather
   // is the canonical case the audit flagged: the risk copy is authored, but the

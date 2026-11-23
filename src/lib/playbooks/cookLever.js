@@ -147,7 +147,7 @@ export function cookRisksFor(pb) {
   const L = cookLeverOf(pb);
   if (!L || L.kind === 'grill') return [];   // the cookouts author their own fire safety
   return [{
-    id: 'r_cm_grill_indoors',
+    id: 'r_cm_grill_indoors', target: 'rain',
     trigger: 'Cold or rain tempts the grill into the garage or under an overhang',
     severity: 'high',
     // Follows the charcoal-bag warning already grounded in fireSafetyContext.

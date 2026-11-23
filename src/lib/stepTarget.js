@@ -22,7 +22,7 @@
 // Guard: src/lib/__tests__/everyStepDeclaresItsTarget.test.js.
 
 import { getPlaybook, ALL_PLAYBOOKS, DESTINATION_TASKS, DERIVED_STEP_TARGETS } from './playbooks';
-import { cookTasksFor } from './playbooks/cookLever';
+import { cookTasksFor, cookRisksFor } from './playbooks/cookLever';
 import { DINNER_OWN_STEPS } from './tripMeals';
 import { isVendorBooked } from './workstreams';
 import { venueFor } from './venueFor';
@@ -114,7 +114,38 @@ export const STEP_TARGETS = Object.freeze({
   'trip-details': { label: 'Draft the trip details', route: { focusField: 'draft-trip-details' } },
   rooms: { label: 'Plan who sleeps where', route: { focusField: 'lodging-rooms' } },
   reconfirm: { label: 'Reconfirm each booking', route: { focusField: 'reconfirm-sweep' } },
+  // Risk targets (a risk's "Plan for this" and the step its mitigation becomes).
+  rain: { label: 'Plan for weather', route: { focusField: 'rain-plan' }, editor: 'rain' },
+  seating: { label: 'Open seating', route: { tab: 'Seating' } },
+  timeline: { label: 'Open the timeline', route: { tab: 'Timeline' } },
+  'budget-tab': { label: 'Open your money', route: { tab: 'Budget' } },
+  food: { label: 'Open the food plan', route: { tab: 'Planning', focusField: 'food' } },
 });
+
+// ── RISKS DECLARE THEIR TARGET TOO (cause 1, remainder) ──────────────────────
+// The risk rows' "Plan for this" was a keyword regex over the risk's prose
+// (HostShellV2 riskRouteFor). Playbook risks now carry `target` (derived once
+// from that regex, committed); the engine's derived risks are typed, and each
+// type declares its target here. A mitigation added to the checklist
+// (`risk-<id or type>`) is routed by the same declaration.
+export const RISK_TYPE_TARGETS = Object.freeze({
+  budget: 'budget-tab', 'ceremony-timing': 'timeline', 'compound-confusion': 'none', compression: 'timeline',
+  'dress-code-confirmation': 'none', food: 'food', 'guest-count-confirmation': 'guests', guests: 'guests',
+  lodging: 'stay', 'official-ceremony': 'timeline', shopping: 'food', timeline: 'timeline',
+  vendors: 'vendors-tab', 'venue-selection': 'venue', 'weather-ceremony': 'rain',
+});
+function declaredRiskTarget(event, key) {
+  if (!key) return null;
+  if (RISK_TYPE_TARGETS[key]) return RISK_TYPE_TARGETS[key];
+  const pb = event ? (() => { try { return getPlaybook(event.type); } catch (_e) { return null; } })() : null;
+  const r = pb ? [...(pb.risks || []), ...cookRisksFor(pb)].find((x) => x && x.id === key) : null;
+  return (r && r.target) || null;
+}
+/** riskTargetFor(event, risk) → targetFor(...) for a risk row (by id or type). */
+export function riskTargetFor(event, risk) {
+  if (!risk) return null;
+  return targetFor((typeof risk.target === 'string' && risk.target) || declaredRiskTarget(event, risk.id || risk.type), event);
+}
 // `call:<decisionId>` opens that call on Calls to make. A few calls have their
 // own verb; every other is "Make the call".
 const CALL_LABEL = { tribute: 'Plan the tribute', slideshow: 'Plan the slideshow', meaning: 'Plan the meaning moment', toast: 'Plan the toasts', vision: 'Pick the style' };
@@ -158,6 +189,9 @@ export function stepTargetKey(event, row) {
   const pid = row.provenance && row.provenance.taskId;
   const found = declaredStepTarget(event, pid || stepIdOf(event, row.id || row.taskId));
   if (found) return found;
+  // A risk's mitigation, added to the checklist as `risk-<id or type>`.
+  const rid = String(row.id || row.taskId || '');
+  if (rid.startsWith('risk-')) return declaredRiskTarget(event, rid.slice(5));
   // A row carried over from ANOTHER event id (a duplicated or re-keyed plan)
   // still ends in its step id: `pbt-<old id>-<step id>`. Matched by id, the
   // longest step id that ends it.

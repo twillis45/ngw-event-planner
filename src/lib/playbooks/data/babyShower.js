@@ -94,10 +94,10 @@ const babyShower = {
   ],
 
   risks: [
-    { id: 'r_dietary', trigger: 'Menu not screened for pregnancy-safe foods', severity: 'high', mitigation: 'Avoid raw fish, soft/unpasteurized cheese, deli meats, high-mercury fish; label items; offer mocktails.' },
-    { id: 'r_headcount', trigger: 'Final headcount still not locked 4 days out', severity: 'high', mitigation: 'Chase RSVPs with the parent(s); buy fresh after the count locks.' },
-    { id: 'r_gifts', trigger: 'No gift-tracking plan', severity: 'med', mitigation: 'Assign someone to log gifts as opened for thank-you notes.' },
-    { id: 'r_overwhelm', trigger: 'Guest of honor over-scheduled with games', severity: 'low', mitigation: 'Keep it to 1–2 short games; protect rest time for a pregnant guest of honor.' },
+    { id: 'r_dietary', target: 'food', trigger: 'Menu not screened for pregnancy-safe foods', severity: 'high', mitigation: 'Avoid raw fish, soft/unpasteurized cheese, deli meats, high-mercury fish; label items; offer mocktails.' },
+    { id: 'r_headcount', target: 'none', trigger: 'Final headcount still not locked 4 days out', severity: 'high', mitigation: 'Chase RSVPs with the parent(s); buy fresh after the count locks.' },
+    { id: 'r_gifts', target: 'none', trigger: 'No gift-tracking plan', severity: 'med', mitigation: 'Assign someone to log gifts as opened for thank-you notes.' },
+    { id: 'r_overwhelm', target: 'timeline', trigger: 'Guest of honor over-scheduled with games', severity: 'low', mitigation: 'Keep it to 1–2 short games; protect rest time for a pregnant guest of honor.' },
   ],
 
   contingencies: [
