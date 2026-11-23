@@ -83,6 +83,10 @@ describe.each(GROUPS)('%s: %s = "%s"', (type, dec, pickVal, gone, kept) => {
 });
 
 describe('the rows that stay say who does the work now', () => {
+  test('Holiday Party "Zero-proof / dry" with her caterer: the caterer gets the count, no bartender', () => {
+    const ev = seed('Holiday Party', { alcohol_service: 'Zero-proof / dry', food_format: 'Drop-off catering (you set up)' });
+    expect(label(ev, 't_rsvp_chase')).toBe('Chase non-responders; give the caterer the final guaranteed count');
+  });
   test.each([
     ['The Cookout', 'grill_master', 'Host grills', 't_meat_shop', 'Buy the ribs, chicken, burgers, dogs, links + the spread groceries'],
     ['The Cookout', 'grill_master', 'Host grills', 't_grill', 'Fire the pit and work batches all afternoon; elders served first; bless the food before the plates go'],
@@ -94,7 +98,10 @@ describe('the rows that stay say who does the work now', () => {
     ['Elopement', 'photography', 'Self/timer + phone', 't_book_photog', 'Book the officiant; confirm they know the location + permit'],
     ['Elopement', 'photography', 'Self/timer + phone', 't_confirm', 'Confirm the officiant’s arrival, check the forecast, set the day-of timeline, order/pick up the small meal + champagne'],
     ['Elopement', 'photography', 'Self/timer + phone', 't_sign', 'Sign the license with officiant + witnesses; set the timer to capture it; mail/return to the clerk'],
-    ['Holiday Party', 'alcohol_service', 'Zero-proof / dry', 't_rsvp_chase', 'Chase non-responders; give the caterer the final guaranteed count'],
+    // No caterer is hired here (the drop-off food default is not her pick,
+    // batch 11), so the row keeps the chase without the caterer; with her
+    // caterer pick it reads the dry copy (the test after this table).
+    ['Holiday Party', 'alcohol_service', 'Zero-proof / dry', 't_rsvp_chase', 'Chase non-responders and lock the final guaranteed count'],
     ['Holiday Party', 'alcohol_service', 'Zero-proof / dry', 't_shop_alc', 'Zero-proof drinks + mixers + ice plan + paper goods + cleanup kit (non-perishable)'],
     ['Holiday Party', 'alcohol_service', 'Zero-proof / dry', 't_replenish', 'Keep apps + drinks + water replenished; assign a helper to watch the food'],
   ])('%s %s "%s": %s', (type, dec, pickVal, id, want) => {
