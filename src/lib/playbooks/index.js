@@ -1510,7 +1510,10 @@ const HOST_COOKS_OPTION_RE = /\bbake it\b|cook\/grill yourself|cook it yourself|
 export function foodApproach(event) {
   const pb = getPlaybook(event && event.type);
   const decisions = pb && Array.isArray(pb.decisions) ? pb.decisions : [];
-  const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  // A retired answer wording reads as its current one (cashBarCover's
+  // ANSWER_ALIASES), the same as choicePickFor: Friendsgiving's old "Ordered in"
+  // answer is now "Hire a caterer" (11/23/2026).
+  const picks = aliasedChoices(event && event.foodChoices);
   const nulls = { decisionId: null, pick: null, usesCaterer: null, communityBrings: null, cooking: null };
   const result = (decisionId, pick) => {
     const dec = decisionId ? decisions.find((d) => d && d.id === decisionId) : null;
@@ -5342,6 +5345,21 @@ const DROPOFF_CATERING_PROVENANCE = Object.freeze({
   claim: '2026 US drop-off catering per person: $15-30 at Chefry (trays, no staff) and $15-35 at The Catering Finder. This $15-35 a guest band is that tier; buffet and staffed service price above it, and both exclude the service charge and gratuity.',
 });
 
+// ─── A VENDOR PRICED BY HER PICK (owner ruling, 11/23/2026) ──────────────────
+// A vendor row can price differently by the food answer she picked:
+// `costRangeByPick: { '<option>': { costRange, costProvenance } }`. Friendsgiving's
+// "Order a prepared dinner" and "Hire a caterer" share one vendor row and carry
+// two cited bands. ONE reader for the food plan's catering line and the vendor
+// plan's estimate, so the two cannot price the same pick differently. An
+// unlisted or missing pick reads the row's own `costRange`/`costProvenance`.
+export function vendorRateFor(vendor, pick) {
+  if (!vendor) return null;
+  const byPick = vendor.costRangeByPick && typeof vendor.costRangeByPick === 'object' ? vendor.costRangeByPick : null;
+  const hit = byPick && pick != null ? byPick[String(pick)] : null;
+  if (hit && Array.isArray(hit.costRange)) return { costRange: hit.costRange, costProvenance: hit.costProvenance || null };
+  return { costRange: Array.isArray(vendor.costRange) ? vendor.costRange : null, costProvenance: vendor.costProvenance || vendor.provenance || null };
+}
+
 export function playbookFoodPlan(event, opts = {}) {
   if (!event) return null;
   const pf = Number(opts.priceFactor) > 0 ? Number(opts.priceFactor) : 1;
@@ -5554,12 +5572,15 @@ export function playbookFoodPlan(event, opts = {}) {
   // below, never at its own (now cited) $10-25 (11/21/2026).
   const _catVendor = _usesCaterer ? ((playbook.vendors || []).find((v) => v && v.cateringRate === true && /guest/i.test(String(v.costUnit || '')))
     || (playbook.vendors || []).find((v) => v && /cater/i.test(String(v.category)) && /guest/i.test(String(v.costUnit || '')))) : null;
-  const _cateringRate = _catVendor && Array.isArray(_catVendor.costRange) ? _catVendor.costRange : (_usesCaterer ? [15, 35] : null);
+  // The band of the answer she picked, where the vendor prices by pick
+  // (vendorRateFor); otherwise the vendor's own band.
+  const _catRate = _catVendor ? vendorRateFor(_catVendor, _fa.pick) : null;
+  const _cateringRate = _catRate && Array.isArray(_catRate.costRange) ? _catRate.costRange : (_usesCaterer ? [15, 35] : null);
   // The [15, 35] fallback is the drop-off tier both registered catering guides
   // publish, so it carries their citation (audit G #1); a vendor's own band
   // carries the vendor's block, or none.
   const _cateringProv = _catVendor
-    ? (_catVendor.costProvenance || null)
+    ? (_catRate.costProvenance || null)
     : (_usesCaterer ? DROPOFF_CATERING_PROVENANCE : null);
 
   // GENERAL choice→cost mechanism (single source of truth): any playbook decision can declare, in the

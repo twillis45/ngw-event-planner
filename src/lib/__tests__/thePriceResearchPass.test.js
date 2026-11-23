@@ -85,7 +85,9 @@ describe('the research pass: fetched store prices cite or correct each band', ()
       expect(UNSOURCED_PRICE_LINES[`${type}:${id}`]).toMatch(/assumption/);
     }
   });
-  test('43 lines remain labeled, each with its reason', () => {
-    expect(Object.keys(UNSOURCED_PRICE_LINES)).toHaveLength(43);
+  // 43 after this pass; 42 once #239 cited both of Friendsgiving's ordered
+  // answers (friendsgivingOrdersTwoWays.test.js).
+  test('42 lines remain labeled, each with its reason', () => {
+    expect(Object.keys(UNSOURCED_PRICE_LINES)).toHaveLength(42);
   });
 });

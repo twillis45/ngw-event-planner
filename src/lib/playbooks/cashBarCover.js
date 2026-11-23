@@ -51,8 +51,13 @@ const ticketProvenance = (n) => ({
 // naming ice it never priced. A saved answer under the old words is read as
 // the new one wherever answers are read (`aliasedChoices`, in choicePickFor and
 // the board), so it shows as her pick and prices the same.
+// The table is keyed by decision id and holds only retired wordings no live
+// option uses, so a mapping cannot capture another playbook's answer.
+// Friendsgiving's one ordered answer split in two (owner ruling, 11/23/2026):
+// a saved "Ordered in" reads as the caterer, the hire its words named.
 const ANSWER_ALIASES = {
   [BAR_COVER_ID]: { 'The non-alcoholic drinks and ice': 'The non-alcoholic drinks' },
+  hosting_model: { 'Ordered in — a restaurant or caterer cooks, the group splits the bill': 'Hire a caterer' },
 };
 /** The host's answers with any retired wording read as its current wording. Same object when nothing is aliased. */
 export function aliasedChoices(choices) {
