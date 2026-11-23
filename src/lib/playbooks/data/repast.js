@@ -269,7 +269,7 @@ const repast = {
       { when: 'T0 -0:45', what: 'Lay out warming trays for the brought dishes; set the memory table and guest book; ready the to-go containers' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Family arrives from the service; meet them at the door and seat them' },
+      { when: 'T0', what: 'Family arrives from the service; meet them at the door and seat them' },
       { when: 'T0 +20m', what: 'Blessing over the food' },
       { when: 'T0 +30m', what: 'Serve: the immediate family first, then the elders, then everyone' },
       { when: 'T0 +1:15', what: 'Open sharing if the family wants it — no program, no microphone rules' },

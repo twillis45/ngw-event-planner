@@ -285,7 +285,7 @@ const crabFeast = {
       { when: 'T0 -0:10', what: 'Stage the shell bucket(s) and a trash/recycle station within reach of the table; set sides out buffet-style' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: paper down, mallets out, drinks on ice' },
+      { when: 'T0', what: 'Doors: paper down, mallets out, drinks on ice' },
       { when: 'T0 +30m', what: 'First steam hits the table — Old Bay, vinegar, shell bucket' },
       { when: 'T0 +1:15', what: 'Sides out and the second steam goes on' },
       { when: 'T0 +2h', what: 'Second round to the table; refill the seasoning and the paper towels' },

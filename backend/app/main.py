@@ -126,11 +126,15 @@ async def health():
     # `commit` is the SHA Render deployed: RENDER_GIT_COMMIT is one of Render's
     # default variables for git-backed services ("The commit SHA for a service
     # or deploy", render.com/docs/environment-variables). Unset means "unknown",
-    # never a guess. Only these four keys; no other env reaches this body.
+    # never a guess. `version` is the calendar release name (vYYYY.MM.DD.N
+    # without the v, owner 11/22/2026) from RELEASE_VERSION when the host sets
+    # it; Render does not, so "unknown" until configured. Only these five keys;
+    # no other env reaches this body.
     return {
         "ok": True,
         "service": "ngw-events-api",
         "commit": os.environ.get("RENDER_GIT_COMMIT") or "unknown",
+        "version": os.environ.get("RELEASE_VERSION") or "unknown",
         "started_at": _STARTED_AT,
     }
 

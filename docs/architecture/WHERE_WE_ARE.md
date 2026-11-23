@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 22, 2026 (night) — every release has a name, and the small words read right
+
+**Each main merge is tagged vYYYY.MM.DD.N, the footer shows "Version 2026.11.22.3 (abc1234)" and opens a plain What's new list, and Sentry knows which build threw.** Polish: doors open at the start time, warnings wear honey in dark, the ruled food card says its call once, a symbolic ceremony files no license, and the family page shows the dress code.
+
 ## November 22, 2026 (evening) — every price says what it rests on
 
 **A price is cited, hers, her caterer's quote, or labeled "Estimate — no price source yet", and a census test holds it there.** Pending prices are shown as pending, the Spread and Your money count the same guests, and the budget hero lights the number its sentence recommends.

@@ -155,7 +155,7 @@ const housewarming = {
       { when: 'T0 -55m', what: 'Set the board out, scatter snack bowls along the tour path, light unscented candles, decide and clear the house-tour route' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: drinks out, coats somewhere obvious, music on' },
+      { when: 'T0', what: 'Doors: drinks out, coats somewhere obvious, music on' },
       { when: 'T0 +30m', what: 'The tour — do it once, for whoever’s here, not five times' },
       { when: 'T0 +1h', what: 'Grazing table opens; keep it topped up in waves' },
       { when: 'T0 +1:45', what: 'The toast: short, thank whoever helped you move' },

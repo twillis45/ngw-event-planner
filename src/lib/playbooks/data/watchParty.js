@@ -661,7 +661,7 @@ const watchParty = {
       { when: 'T0 -0:30', what: 'Food OUT and ready; slow cooker on; trash + recycling bins set; stream/channel confirmed' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: TV on the pre-game, drinks on ice, seats claimed',
+      { when: 'T0', what: 'Doors: TV on the pre-game, drinks on ice, seats claimed',
         copyByAnswer: { major_event: {
           'Daytona 500': 'Doors: TV on the pre-race coverage, drinks on ice, seats claimed',
           'Kentucky Derby': 'Doors: TV on the pre-race coverage, mint juleps poured, seats claimed',

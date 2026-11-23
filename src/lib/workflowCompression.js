@@ -298,12 +298,16 @@ export const URGENCY_META = {
     short: 'fits plan',
     explanation: 'Falls in the current or upcoming phase — handle when you reach it.',
   },
+  // "Consider replacing" sat on steps with nothing to replace ("Write the vision
+  // brief", "Order the ballgown"; audit 2 lane A P2-4, 11/22/2026). The grade
+  // means: long past its window, with no runway to catch up. That is true of
+  // any step, so the words are: do it now, or let it go.
   risk_lost: {
     key: 'risk_lost',
-    label: 'Consider replacing',
+    label: 'Do it now or let it go',
     tone: 'warn',
-    short: 'consider swap',
-    explanation: 'The standard timing window has passed — you can still do this, but a faster substitute may serve you better.',
+    short: 'do it or let it go',
+    explanation: 'The usual window for this has passed — do it now in whatever form still fits, or let it go.',
   },
   skippable: {
     key: 'skippable',

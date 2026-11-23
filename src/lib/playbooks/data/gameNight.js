@@ -128,7 +128,7 @@ const gameNight = {
       { when: 'T0 -0:30', what: 'Snack + drink station (and food tray) AWAY from the table; ice out; napkins/hand wipes + scorepad + pen on the table; trash/recycling spot; first game laid out' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: snacks out, drinks poured, table cleared' },
+      { when: 'T0', what: 'Doors: snacks out, drinks poured, table cleared' },
       { when: 'T0 +20m', what: 'A quick filler game while the last people arrive' },
       { when: 'T0 +45m', what: 'Teach the headliner — rules read aloud once, properly' },
       { when: 'T0 +1h', what: 'The headline game' },

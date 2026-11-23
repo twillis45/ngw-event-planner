@@ -4,10 +4,13 @@
 // test/theBuildSaysWhichCommit.test.mjs pins it.
 
 // eslint-disable-next-line no-undef
-export const BUILD = typeof __NGW_BUILD__ !== 'undefined' ? __NGW_BUILD__ : { commit: 'dev', builtAt: null };
+export const BUILD = typeof __NGW_BUILD__ !== 'undefined' ? __NGW_BUILD__ : { commit: 'dev', builtAt: null, version: null };
 
 export function buildLabel(build) {
   const commit = (build && build.commit) || 'dev';
+  // A tagged release reads by its calendar version, commit in parentheses
+  // (owner, 11/22/2026): "Version 2026.11.22.3 (abc1234)".
+  if (build && build.version) return 'Version ' + build.version + (commit === 'dev' ? '' : ' (' + commit.slice(0, 7) + ')');
   if (commit === 'dev') return 'Version dev';
   const t = build.builtAt ? new Date(build.builtAt) : null;
   const when = t && Number.isFinite(t.getTime())

@@ -126,7 +126,7 @@ const ethiopianCoffeeCeremony = {
       { when: 'T0 -0:30', what: 'Light the charcoal brazier (let it ash over); ready the roasting pan, mortar/grinder, and incense on a heatproof surface' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Gather: guests seated, grass down, incense lit' },
+      { when: 'T0', what: 'Gather: guests seated, grass down, incense lit' },
       { when: 'T0 +15m', what: 'Wash and roast the beans; carry the pan around so everyone smells it' },
       { when: 'T0 +35m', what: 'Grind and brew; snacks go out while the jebena works' },
       { when: 'T0 +50m', what: 'Abol — the first pour, served to the eldest first' },

@@ -167,3 +167,13 @@ test('she can delete her own questions', async ({ page }) => {
   expect(calls.del).toEqual([{ guest_key: '11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }]);
   await expect(ask.locator('.guest-msg')).toHaveCount(0);
 });
+
+// A REPLY COUNT SAYS REPLIES, NOT PEOPLE (audit 2 E P2-1, 11/22/2026). The
+// server's goingCount counts yes REPLIES; one yes can bring a plus-one, and
+// "4 going" sat beside the host's people count. The line says who said yes.
+test('the invite counts yes replies as replies, not as people going', async ({ page }) => {
+  await serve(page);
+  await open(page);
+  await expect(page.getByText('4 have said yes')).toBeVisible();
+  await expect(page.locator('body')).not.toContainText(/\b4 going\b/);
+});

@@ -303,7 +303,7 @@ const ptaBoosterFundraiser = {
       { when: 'T0 -0:30', what: 'All-crew huddle: shifts, the lost-child point person and meeting spot, the allergy plan, where first aid lives' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Gate opens: wristbands on, presale list checked, the line kept moving' },
+      { when: 'T0', what: 'Gate opens: wristbands on, presale list checked, the line kept moving' },
       { when: 'T0 +30m', what: 'Full swing: booths running, stand serving, floaters plugging holes' },
       { when: 'T0 +1h', what: 'Dinner peak at the stand and the trucks; second food wave staged' },
       { when: 'T0 +1:30', what: 'Announcements on the PA: the goal, the total so far, and the sponsors thanked by name' },

@@ -146,7 +146,7 @@ const crawfishBoil = {
       // Same ownership fix as lowCountryBoil: papering and stripping are the two
       // jobs everybody assumes somebody else took, and the strip is the one
       // nobody volunteers for once the eating is done.
-      { when: 'T0 +5m', what: 'Doors: table papered and taped down by two people before anyone arrives, drinks on ice, burner lit and attended' },
+      { when: 'T0', what: 'Doors: table papered and taped down by two people before anyone arrives, drinks on ice, burner lit and attended' },
       { when: 'T0 +45m', what: 'First boil dumps on the table — corn, potatoes, sausage with it' },
       { when: 'T0 +1:30', what: 'Second sack goes in; keep the seasoning and the drinks moving' },
       { when: 'T0 +2:15', what: 'Second dump; show the first-timers how to pinch and suck' },

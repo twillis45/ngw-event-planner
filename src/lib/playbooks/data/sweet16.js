@@ -487,7 +487,7 @@ const sweet16 = {
       { when: 'T0-30m', what: 'Adults take posts (door, bar, floor); music on as guests arrive' },
     ],
     program: [
-      { when: 'T0 +15m', what: 'Doors: adults on their posts, music on, phones charging station out' },
+      { when: 'T0', what: 'Doors: adults on their posts, music on, phones charging station out' },
       { when: 'T0 +30m', what: 'The entrance — her moment, everyone watching, get it on video' },
       { when: 'T0 +1h', what: 'Food out; keep the line moving and the drinks non-alcoholic' },
       { when: 'T0 +1:45', what: 'Speeches: parents keep it to two minutes, then her friends' },

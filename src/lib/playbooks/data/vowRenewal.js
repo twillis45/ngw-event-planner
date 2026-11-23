@@ -193,7 +193,7 @@ const vowRenewal = {
       { when: 'T0 -0:30', what: 'Final touches; queue the processional track; pour welcome drinks for early arrivals and start seating guests' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: seat guests, music on, hand out any programs' },
+      { when: 'T0', what: 'Doors: seat guests, music on, hand out any programs' },
       { when: 'T0 +20m', what: 'The renewal: walk in together, the vows you wrote, rings if you’re exchanging' },
       { when: 'T0 +45m', what: 'Photos with family while the room resets and drinks go out' },
       { when: 'T0 +1:15', what: 'Meal: blessing, then serve — elders and anyone with mobility needs first' },

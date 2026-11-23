@@ -115,8 +115,10 @@ const wedding = {
     { id: 't_after_giftlog', milestoneId: 'w_after_gifts', phase: 'guest', label: 'Open the card box with the guest list open beside it: write down the giver and the gift as each envelope is opened, and never separate a card from its box first', when: 'T0 +7d' },
     { id: 't_after_shipped', milestoneId: 'w_after_gifts', phase: 'guest', label: 'Add the gifts that came by mail from the registry and from guests who could not travel — they are the easiest ones to leave off the thank-you list', when: 'T0 +7d' },
     { id: 't_after_thanks', milestoneId: 'w_after_gifts', phase: 'guest', label: 'Write the thank-you notes off that log, naming the actual gift, and start with the people who traveled to be there', when: 'T0 +7d' },
-    { id: 't_after_license', milestoneId: 'w_after_records', phase: 'planning', label: 'Confirm the officiant filed the signed license with the county, then order two or three certified copies of the marriage certificate — every name change asks for an original, not a photocopy', when: 'T0 +30d' },
-    { id: 't_after_namechange', milestoneId: 'w_after_records', phase: 'planning', label: 'If anyone is changing their name, do it in order: Social Security first, then the driver\'s license, then passport, banks, and payroll', when: 'T0 +30d' },
+    // A symbolic ceremony files no license and changes no names; these two
+    // retire once she ANSWERS it (the default never retires them).
+    { id: 't_after_license', milestoneId: 'w_after_records', phase: 'planning', standsDownWhen: { id: 'ceremony', in: ['Symbolic / personal'] }, label: 'Confirm the officiant filed the signed license with the county, then order two or three certified copies of the marriage certificate — every name change asks for an original, not a photocopy', when: 'T0 +30d' },
+    { id: 't_after_namechange', milestoneId: 'w_after_records', phase: 'planning', standsDownWhen: { id: 'ceremony', in: ['Symbolic / personal'] }, label: 'If anyone is changing their name, do it in order: Social Security first, then the driver\'s license, then passport, banks, and payroll', when: 'T0 +30d' },
     { id: 't_after_gallery', milestoneId: 'w_after_records', phase: 'planning', label: 'Hold the photographer and videographer to the delivery date in their contract, and send them the shortlist of shots you want first for family who are waiting', when: 'T0 +30d' },
     { id: 't_after_preserve', milestoneId: 'w_after_returns', phase: 'vendor', label: 'Deal with the things that spoil: the top tier of the cake wrapped and frozen, and the bouquet to a preserver — drying and pressing both want the flowers within days, not weeks', when: 'T0 +2d' },
   ],
@@ -184,7 +186,7 @@ const wedding = {
       { when: 'T0 -2h', what: 'Final venue walk-through; place escort cards, favors, signage, guest book; sound check; first look + portraits' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: ushers seat guests, prelude music on, programs handed out' },
+      { when: 'T0', what: 'Doors: ushers seat guests, prelude music on, programs handed out' },
       { when: 'T0 +30m', what: 'Ceremony: processional, vows, rings, pronouncement, recessional' },
       { when: 'T0 +1h', what: 'Cocktail hour: couple and party take portraits while guests hit the bar' },
       { when: 'T0 +2h', what: 'Grand entrance and first dance; guests find their seats' },

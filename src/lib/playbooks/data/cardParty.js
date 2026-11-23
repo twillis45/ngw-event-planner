@@ -141,7 +141,7 @@ const cardParty = {
       { when: 'T0 -0:30', what: 'Food station + bar set AWAY from the tables; punch + water + ice out; cups/plates/napkins stacked; 2 decks + score pad + pen on every table; trash/recycling visible' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: tables set, drinks poured, partners sorted' },
+      { when: 'T0', what: 'Doors: tables set, drinks poured, partners sorted' },
       { when: 'T0 +20m', what: 'First hands — set the stakes and the house rules out loud' },
       { when: 'T0 +1:30', what: 'Break: food out, refill drinks, rotate partners if you’re rotating' },
       { when: 'T0 +2:05', what: 'Second round' },

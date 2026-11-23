@@ -62,7 +62,10 @@ function FamilyPage({ plan }) {
   const where = formatVenueAddress(plan);
   const rep = plan.replies || null;
   const repLine = rep ? [
-    rep.yes ? `${rep.yes} coming` : '', rep.maybe ? `${rep.maybe} maybe` : '',
+    // Replies, not people (audit 2 E P2-1, 11/22/2026): the server counts reply
+    // rows, and a reply can bring a plus-one, so "12 coming" read as heads
+    // beside the host's own people count. It says who said yes.
+    rep.yes ? `${rep.yes} said yes` : '', rep.maybe ? `${rep.maybe} maybe` : '',
     rep.no ? `${rep.no} can’t make it` : '', rep.waiting ? `${rep.waiting} haven’t answered` : '',
   ].filter(Boolean).join(' · ') : '';
   const ros = (() => {
@@ -82,6 +85,8 @@ function FamilyPage({ plan }) {
             <h1 className="inv2-name lp-display">{plan.name || 'The party'}</h1>
             {when && <p className="inv2-fine vb2-when" data-family="when">{when}</p>}
             {where && <p className="inv2-fine vb2-tight" data-family="where">{where}</p>}
+            {/* The dress code the invite shows (audit 2 E P2-7); the server already sends it. */}
+            {String(plan.dressCode || '').trim() && <p className="inv2-fine vb2-tight" data-family="dress">Dress: {String(plan.dressCode).trim()}</p>}
             {plan.hashtag && <p className="inv2-fine vb2-tight" data-family="hashtag">{plan.hashtag}</p>}
             <hr className="inv2-rule" />
 

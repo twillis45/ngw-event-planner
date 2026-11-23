@@ -548,7 +548,9 @@ export default function InviteV2({ code }) {
       const n = event.goingCount;
       if (n == null) return null;
       if (n <= 0) return null;   // owner, 11/11/2026: no "Be the first to say yes"
-      return n === 1 ? '1 person is going' : `${n} going`;
+      // A count of REPLIES, not people (audit 2 E P2-1, 11/22/2026): one yes
+      // can bring a plus-one, and "7 going" sat beside the host's 17 people.
+      return n === 1 ? '1 has said yes' : `${n} have said yes`;
     }
     const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
     if (!yes.length) return null;
@@ -560,9 +562,9 @@ export default function InviteV2({ code }) {
       if (first && !names.includes(first)) names.push(first);
       if (names.length >= 2) break;
     }
-    if (names.length >= 2 && yes.length > 2) return `${names[0]}, ${names[1]} + ${yes.length - 2} going`;
+    if (names.length >= 2 && yes.length > 2) return `${names[0]}, ${names[1]} + ${yes.length - 2} more said yes`;
     if (names.length >= 2) return `${names[0]} & ${names[1]} are in`;
-    if (names.length === 1 && yes.length > 1) return `${names[0]} + ${yes.length - 1} going`;
+    if (names.length === 1 && yes.length > 1) return `${names[0]} + ${yes.length - 1} more said yes`;
     if (names.length === 1) return `${names[0]} is in`;
     return yes.length === 1 ? '1 guest is in' : `${yes.length} guests are in`;
   })();

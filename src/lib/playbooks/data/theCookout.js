@@ -238,7 +238,7 @@ const theCookout = {
       { when: 'T0 -0:30', what: 'Lay out foil pans warm, sturdy plates, sturdy cutlery; stage trash + recycling bins; cue the playlist' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: drinks on ice, music on, first people at the grill' },
+      { when: 'T0', what: 'Doors: drinks on ice, music on, first people at the grill' },
       { when: 'T0 +45m', what: 'First plates off the grill — feed the elders and kids first' },
       // The header of this file promises "shade and seating for every age
       // including the elders", and the beat above only sets SERVICE ORDER.

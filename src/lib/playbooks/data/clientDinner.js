@@ -176,7 +176,7 @@ const clientDinner = {
       { when: 'T0 -5m', what: 'Your own team in position, phones away, first drinks ordered for arrivals' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Greet at the door, not at the table; drinks in hands before anyone sits' },
+      { when: 'T0', what: 'Greet at the door, not at the table; drinks in hands before anyone sits' },
       { when: 'T0 +15m', what: 'Seated to the plan; the short thank-you if there is one' },
       { when: 'T0 +30m', what: 'First course; conversation stays personal — nobody opens with business' },
       { when: 'T0 +1:15', what: 'Main course, and the window where the real conversation happens' },

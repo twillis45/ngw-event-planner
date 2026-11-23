@@ -235,7 +235,7 @@ const halloweenParty = {
       { when: 'T0 -0:45', what: 'Costume on, playlist started low, spooky zone armed, first-aid kit placed where you can name its spot' },
     ],
     program: [
-      { when: 'T0 +15m', what: 'Arrivals: costumes admired at the door, kids pointed to the stations, adults to the drinks' },
+      { when: 'T0', what: 'Arrivals: costumes admired at the door, kids pointed to the stations, adults to the drinks' },
       { when: 'T0 +45m', what: 'Food out in full; the photo corner starts working the room' },
       { when: 'T0 +1:30', what: 'The costume contest: gather everyone, run the categories, keep it under fifteen minutes' },
       { when: 'T0 +1:50', what: 'Prizes handed out and the winners photographed while the room is still assembled' },

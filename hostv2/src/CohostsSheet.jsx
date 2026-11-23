@@ -96,7 +96,7 @@ export default function CohostsSheet({ event, signedIn, onLine, onLeft, onSignIn
           </div>
           {busy === 'invite' && <BusyLine>Inviting {email.trim()}, and emailing them the link…</BusyLine>}
           {err && <p className="grounding" role="alert" style={{ margin: 'var(--sp-2) 0 0', color: 'var(--danger)' }}>{err}</p>}
-          {warn && <p className="grounding" role="status" data-cohost-warn style={{ margin: 'var(--sp-2) 0 0', color: 'var(--warn)', fontWeight: 600 }}>{warn}</p>}
+          {warn && <p className="grounding warn-note" role="status" data-cohost-warn style={{ margin: 'var(--sp-2) 0 0' }}>{warn}</p>}
           {state === undefined ? <p className="grounding" style={{ margin: 'var(--sp-3) 0 0' }}>Loading co-hosts…</p>
             : state.error ? <p className="grounding" style={{ margin: 'var(--sp-3) 0 0' }}>{state.error === 'unavailable' ? 'Co-hosts didn’t load. Check your connection.' : state.error}</p>
               : state.cohosts.length > 0 && (

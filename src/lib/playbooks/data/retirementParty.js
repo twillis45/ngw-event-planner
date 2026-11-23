@@ -263,7 +263,7 @@ const retirementParty = {
       { when: 'T0 -30m', what: 'Final setup check: greet early arrivals, confirm the buffet/bar and seating are ready, first appetizers out', copyByAnswer: { surprise: { 'Full surprise': 'SURPRISE prep: get guests in and quiet, brief the co-conspirator and the lookout, position the surprise guest out of sight, first appetizers out', 'Soft surprise (honoree knows, not the details)': 'Get guests settled in and greeted, quietly confirm arrival timing with your co-conspirator for the honoree, first appetizers out' } } },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: guests in and settled, drinks out, sign the card on the way in' },
+      { when: 'T0', what: 'Doors: guests in and settled, drinks out, sign the card on the way in' },
       { when: 'T0 +20m', what: 'The honoree arrives — or the room quiets for the surprise', copyByAnswer: { surprise: { 'Announced celebration': 'The honoree arrives' } } },
       { when: 'T0 +45m', what: 'Dinner served; blessing first if that’s your family' },
       // militaryCeremonyBeat: on a military retirement whose branch protocol is

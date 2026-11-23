@@ -112,7 +112,7 @@ const babyShower = {
       { when: 'T0 -2h', what: 'Mocktail + coffee station, ice; stage trash/recycling' },
     ],
     program: [
-      { when: 'T0 +5m', what: 'Doors: drinks out, the gift table somewhere obvious, guest book open' },
+      { when: 'T0', what: 'Doors: drinks out, the gift table somewhere obvious, guest book open' },
       { when: 'T0 +30m', what: 'Mingling and one easy game while stragglers arrive' },
       { when: 'T0 +1h', what: 'Food out' },
       { when: 'T0 +1:45', what: 'Gifts: someone logs who gave what as she opens them' },
