@@ -264,7 +264,7 @@ import { storeSearchTerm } from '@app/lib/knowledge/storeUnitMap';
 const icSearchTerm = (line) => storeSearchTerm(line);
 import { parseSmartEventText, HOST_TYPES } from '@app/lib/smartParseEvent';
 import { townFieldsToPersist } from '@app/lib/townFieldsToPersist';
-import { createSetDown, undoThatBringsBack, settleCountRow } from './setDown.js';
+import { createSetDown, undoThatBringsBack, settleCountRow, carrySettled } from './setDown.js';
 import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcomeGate';
 // The engine's tuned haptic bands. Free to import — feedback.js has zero
 // imports of its own — and it carries the two guards this shell was missing:
@@ -361,6 +361,7 @@ import { mayExhale, calmVetoFor } from '@app/lib/exhaleGate';
 import { checklistRouteFor } from '@app/lib/taskRoute';
 import { editorKindFor, isBalanceDueAction, stepRowIdOf } from '@app/lib/heroEditor';
 import { stepIsASend } from '@app/lib/stepTarget';
+import { withSettled, withoutSettled, unsettledActions } from '@app/lib/settledAsks';
 import { vendorObligations } from '@app/lib/vendorObligations';
 import { heartPlaceholders, heartFieldsFor } from '@app/lib/heartPrompts';
 import { parseMin } from '@app/lib/dayAlerts';
@@ -5028,7 +5029,16 @@ export default function HostShellV2() {
   // has 3 open items after the sourcing pick). Without this the host re-sees the same hero after
   // deciding. Accumulates (not one id) so satisfying the next doesn't un-filter the last; cleared
   // on event switch. Elegant loop only.
-  const [satisfiedIds, setSatisfiedIds] = useState([]);
+  // SETTLED IS SAVED WITH THE EVENT (six root causes, cause 2): this was a
+  // useState, cleared on load and on every event switch, so an answered ask
+  // came back after a reload (Thanksgiving P1-2). One field, one reader, one
+  // writer: lib/settledAsks. The settle writes it in the same save as the
+  // answer (patchEvent below), so that answer's Undo brings the ask back.
+  const settledIdsRef = useRef(new Set());   // ids a write already saved this settle
+  const writeSettled = (ids, on) => {
+    const p = on ? withSettled(event, ids) : withoutSettled(event, ids);
+    if (p) patchEvent(p, '', { noUndo: true, keepsUndo: true });
+  };
   // ── REASONING CONTINUITY v1 — instrumentation ────────────────────────────────
   // One shape for all three events so a reason KIND can be judged on evidence and
   // retired if it earns nothing. No PII: ids and enums only, never the host's copy.
@@ -5079,14 +5089,13 @@ export default function HostShellV2() {
       });
     } catch { /* never break a settle */ }
   }, [analyticsCtx]);
-  useEffect(() => { setSatisfiedIds([]); }, [eventId]);
   const queueRanked = elegantMode
     ? [
-        ...actions.filter(a => a && !satisfiedIds.includes(a.id) && !(isVendorConfirmAction(a) && !confirmGating)),
+        ...unsettledActions(actions, event).filter(a => !(isVendorConfirmAction(a) && !confirmGating)),
         // Foundational pick-decisions (Ceremony Timing, …) join the queue AFTER the ranked
         // actions — so after the last real action is settled the hero rolls to them (staying in
         // the ask flow), instead of jumping to the calm "all quiet" screen with a decision still open.
-        ...blockerDecisions.filter(bd => !satisfiedIds.includes(bd.id)),
+        ...unsettledActions(blockerDecisions, event),
       ]
     : actions;
   // THE HONEST FLOOR HAS ONE ACTION (Figma 922:121; gold run GOLD-01, 11/5/2026).
@@ -5434,7 +5443,9 @@ export default function HostShellV2() {
   // The rules (and the order they run in) live in ./setDown.js, under vitest.
   const settleAndSetDown = createSetDown({
     pending: pendingSatisfiedRef,
-    markSatisfied: (id) => setSatisfiedIds(ids => ids.includes(id) ? ids : [...ids, id]),
+    // A write that carried this settle already saved it (patchEvent); a settle
+    // with no write of its own saves it here.
+    markSatisfied: (id) => { if (settledIdsRef.current.delete(String(id))) return; writeSettled([id], true); },
     addToReceipt: (id) => setHeroReceipt(r => (r && !(r.satisfied || []).includes(id) ? { ...r, satisfied: [...(r.satisfied || []), id] } : r)),
   });
   // ONE Undo for every receipt the board shows (hero card or calm board). It
@@ -5442,7 +5453,7 @@ export default function HostShellV2() {
   const undoHeroReceipt = () => {
     const r = heroReceipt;
     setHeroReceipt(null);
-    if (r && Array.isArray(r.satisfied) && r.satisfied.length) setSatisfiedIds(ids => ids.filter(x => !r.satisfied.includes(x)));
+    if (r && Array.isArray(r.satisfied) && r.satisfied.length) writeSettled(r.satisfied, false);
     try { if (r && r.fn) r.fn(); } catch { /* undo failed */ }
   };
   const askModeRef = useRef(false);
@@ -8633,6 +8644,10 @@ export default function HostShellV2() {
     // restores exactly those values via the same path (marked noUndo so the
     // "Undone." toast doesn't itself offer an undo). Opt out with {noUndo:true}
     // for writes that shouldn't be reversible — e.g. real guest replies landing.
+    // The asks this write sets down are saved IN it (cause 2), before the Undo
+    // snapshot below, so the answer's Undo restores the ask with the answer.
+    const carried = carrySettled(obj, event, pendingSatisfiedRef.current);
+    obj = carried.obj;
     const undoable = !!msg && !(opts && opts.noUndo);
     let undoPrev = null;
     if (undoable) { undoPrev = {}; for (const k of Object.keys(obj || {})) undoPrev[k] = event[k]; }
@@ -8644,7 +8659,7 @@ export default function HostShellV2() {
     const folds = undoable && !!(opts && opts.followsLast) && !!last && last.eventId === eventId && (Date.now() - last.at) < 7000;
     if (folds) { undoPrev = { ...undoPrev, ...last.prev }; msg = last.msg + ' ' + msg; }
     // Any write that is not itself undoable ends the chain: what follows it does not follow her edit.
-    if (!undoable) lastUndoRef.current = null;
+    if (!undoable && !(opts && opts.keepsUndo)) lastUndoRef.current = null;
     let result;
     let savedEv = null;
     // AN EVENT FROM THE ACCOUNT BECOMES THIS DEVICE'S OWN ON ITS FIRST EDIT
@@ -8707,6 +8722,7 @@ export default function HostShellV2() {
     }
     setSaveFailed(null);
     saveFailedRef.current = false;
+    carried.ids.forEach((id) => settledIdsRef.current.add(id));
     // A rejected local edit must never start a cloud write or show a receipt.
     // `opts.cloud` (issue #100, D-7): a write whose INPUT came from the account —
     // replies the backend returned to an authenticated read-back — must reach the
@@ -8763,7 +8779,7 @@ export default function HostShellV2() {
           if (receiptTimerRef.current) clearTimeout(receiptTimerRef.current);
           receiptTimerRef.current = setTimeout(() => setHeroReceipt(null), 7000);
         } else {
-          toast(msg, { label: 'Undo', fn: undoThatBringsBack(pend, undoFn, (back) => setSatisfiedIds(ids => ids.filter(x => !back.includes(x)))) }, 'ok');
+          toast(msg, { label: 'Undo', fn: undoThatBringsBack(pend, undoFn, (back) => writeSettled(back, false)) }, 'ok');
         }
       }
       // A non-undoable write may still carry one action (opts.action) — e.g.

@@ -16,6 +16,19 @@
 // the ask set down (batch 11, #229 Left: "the bundle Undo paths are
 // unverified"). settleCountRow runs the write through the settle.
 
+import { withSettled } from '@app/lib/settledAsks';
+
+// SETTLED IS SAVED WITH THE ANSWER (six root causes, cause 2, 11/23/2026). The
+// asks a write sets down (`pending`, while the settle runs) ride IN that write
+// as the event's `settledAsks` field (lib/settledAsks), so a reload keeps them
+// set down, and the write's own Undo — which puts back every key it touched —
+// brings them back. Returns the write to save and the ids it carried.
+export function carrySettled(obj, event, pending) {
+  const ids = Array.isArray(pending) ? pending.map(String) : [];
+  const p = ids.length ? withSettled(event, ids) : null;
+  return p ? { obj: { ...obj, ...p }, ids } : { obj, ids: [] };
+}
+
 export function createSetDown({ pending, markSatisfied, addToReceipt }) {
   return (id, write) => {
     if (id != null) pending.current = [...pending.current, id];
