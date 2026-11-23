@@ -8483,7 +8483,24 @@ button.vc-pill::after{
    question and above Where you stand; the fold control ends it. */
 .stagewrap[data-tall="1"] .hero.elegant .escreen.on{ min-height:calc(100cqh - var(--sp-4)); padding-bottom:4px; box-sizing:border-box; }
 .stagewrap[data-tall="1"] .hero.elegant .escreen.on > .ecenter{ flex:0 0 auto; margin-top:auto; justify-content:flex-start; }
-.stagewrap[data-tall="1"] .hero.elegant .escreen.on > .tt-stand-slot{ margin-top:auto; padding-top:20px; }
+/* The two spare gaps (above the question, above Where you stand) never close
+   below 24px; on a short iPad the ask and Where you stand give way instead. */
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on > .tt-rib{ margin-bottom:24px; }
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on > .tt-stand-slot{ margin-top:auto; padding-top:24px; }
+/* No caret rides this head on a tall iPad, so it keeps no caret-sized floor. */
+.stagewrap[data-tall="1"] .hero.elegant .tt-stand-slot > .bento > .bento-head{ min-height:0; margin:0 0 4px; }
+/* SHORT PORTRAIT IPADS (parent review 11/23/2026: 744x1133, 810x1080, 768x1024).
+   In the owner's order, after the gaps reach their floor: the ask steps down
+   (floor 40px), then Where you stand's own padding tightens. Nothing hides. */
+@media (max-height:1149px){
+  .stagewrap[data-tall="1"] .hero.elegant .ask{ font-size:clamp(40px,7.5cqw,56px); }
+  .stagewrap[data-tall="1"] .hero.elegant .tt-stand-slot > .bento .tile{ padding-block:4px; }
+  .stagewrap[data-tall="1"] .hero.elegant .tt-stand-slot > .bento .t-num{ margin:2px 0; }
+  .stagewrap[data-tall="1"] .hero.elegant .tt-stand-slot > .bento{ padding-block:8px; }
+}
+@media (max-height:1099px){
+  .stagewrap[data-tall="1"] .hero.elegant .ask{ font-size:40px; }
+}
 .stagewrap[data-tall="1"] .tt-stand-slot > .bento{ flex:0 0 auto; height:auto; min-height:0; margin:0; }
 .stagewrap[data-tall="1"] .tt-fold-slot > .efold{ margin:4px 0 0; padding:8px 0 4px; }
 
@@ -8525,14 +8542,13 @@ button.vc-pill::after{
 .tt-act{ display:flex; align-items:center; justify-content:center; gap:8px; height:52px; padding:0 16px; white-space:nowrap; border:1px solid var(--line-soft); border-radius:999px; background:none; color:var(--ink); font:inherit; font-size:15px; font-weight:600; cursor:pointer; }
 .tt-act.q{ color:var(--muted); font-weight:550; }
 .tt-act .srail-i{ width:18px; height:18px; }
-/* Everything that floats at the foot stands above the bar, never under it:
-   the docked next action, the weather pill's ladder, and the toast — each
-   keeps its own spacing, measured from the bar's top edge instead of the
-   frame's bottom. */
-.stagewrap[data-tall="1"] .next-bar{ left:var(--tt-gut); right:var(--tt-gut); bottom:calc(var(--tt-bar-h) + 12px); }
+/* What still floats at the foot stands above the bar, never under it: the
+   weather pill and the toast, measured from the bar's top edge instead of the
+   frame's bottom. The NEXT bar is not shown on a tall iPad (owner ruling,
+   11/23/2026): the bar's Plan button takes its job. */
 .stagewrap[data-tall="1"] .wxpill{ left:var(--tt-gut); right:var(--tt-gut); bottom:calc(var(--tt-bar-h) + 12px); }
-.stagewrap[data-tall="1"] .wxpill.wxpill-mid{ bottom:calc(var(--tt-bar-h) + 88px); }
-.stagewrap[data-tall="1"] .wxpill.wxpill-raised{ bottom:calc(var(--tt-bar-h) + 140px); }
+.stagewrap[data-tall="1"] .wxpill.wxpill-mid,
+.stagewrap[data-tall="1"] .wxpill.wxpill-raised{ bottom:calc(var(--tt-bar-h) + 12px); }
 .stagewrap[data-tall="1"] .toast{ bottom:calc(var(--tt-bar-h) + 60px); }
 
 /* BELOW THE FOLD: one treatment for Worth having a plan for and Who's confirmed. */

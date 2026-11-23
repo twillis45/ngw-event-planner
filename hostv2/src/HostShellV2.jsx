@@ -5670,6 +5670,12 @@ export default function HostShellV2() {
     const price = passPriceLabel();
     return st && st.state === 'held' ? 'this event has it' : (price ? price + ' · ' : '') + (st && st.state === 'needed' ? 'this event needs it' : 'one event');
   };
+  // BACK TO THE QUESTION: the NEXT bar's scroll, in one place. The hero zone
+  // when something is asked (or a calm veto stands), else the action list.
+  const backToHero = () => {
+    if ((queue.length && !listIsCalm) || calmVeto) { try { heroZoneRef.current && heroZoneRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* no hero zone */ } return; }
+    document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' });
+  };
   // The phase switch: the menu's segmented control and the tall iPad's bar.
   const goPhase = (s) => { if (s === 'create') startNewEvent(); else { setStage(s); setSheet(null); } };
   // One door per part: the chips and the ribbon open exactly the same thing.
@@ -11331,7 +11337,11 @@ export default function HostShellV2() {
                 phase wears the one selected look by construction. */}
             <div className="navseg tt-seg" role="group" aria-label="Where in the event">
               {[['create', 'Create'], ['plan', 'Plan'], ['day', 'The Day'], ['after', 'After']].map(([k, label]) => (
-                <button key={k} type="button" className={'navseg-b tt-seg-b' + (stage === k ? ' on' : '')} aria-pressed={stage === k} onClick={() => goPhase(k)}>{label}</button>
+                <button key={k} type="button" className={'navseg-b tt-seg-b' + (stage === k ? ' on' : '')} aria-pressed={stage === k}
+                  /* The NEXT bar's job on a tall iPad (owner ruling, 11/23/2026):
+                     Plan, tapped on Plan with the question scrolled away, goes
+                     back to the question. */
+                  onClick={() => { if (k === 'plan' && stage === 'plan' && !heroInView) { backToHero(); return; } goPhase(k); }}>{label}</button>
               ))}
             </div>
             <button type="button" className="tt-act" onClick={() => setSheet({ kind: 'sections' })}>
@@ -11349,7 +11359,7 @@ export default function HostShellV2() {
       {/* has-nextbar: the .next-bar is absolutely positioned over the scroll area,
           so the container reserves room for it exactly while it shows — same
           condition as its render below. See the note at .next-bar in styles.css. */}
-      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + ((wxImpact || travelWx) && stage === 'plan' ? ' has-wxpill' : '') + (stage === 'plan' && !heroInView ? ' has-nextbar' : '')} id="app" ref={appRef} inert={splash !== 'gone'}
+      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + ((wxImpact || travelWx) && stage === 'plan' ? ' has-wxpill' : '') + (stage === 'plan' && !heroInView && !tallTablet ? ' has-nextbar' : '')} id="app" ref={appRef} inert={splash !== 'gone'}
         data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'} data-tall={tallTablet ? '1' : '0'}>
         {/* dash-hold: same mechanism as .welcome.splash-hold — any one-shot
             entrance animation in here (sweepcard's cardin, etc.) pauses at
@@ -12416,7 +12426,9 @@ export default function HostShellV2() {
                         <span data-tt-ledger-change>{` · ${areaLabelFor(ledgerExpiry.id).toLowerCase()} starts ${ledgerExpiryShort}`}</span>
                       )}
                       </span>
-                      {horizonPhrase && <span>{horizonPhrase}</span>}
+                      {/* One date once: when the next dated work IS the day the
+                          count grows, the grow-note already names it. */}
+                      {horizonPhrase && !(ledgerExpiry && ledgerExpiryShort && planHorizonShort === ledgerExpiryShort) && <span>{horizonPhrase}</span>}
                     </div>
                   </nav>
                 )}
@@ -29554,7 +29566,9 @@ export default function HostShellV2() {
           CTA is pinned to the frame bottom at all times on the Plan surface — it no longer
           scrolls away with the hero. Taps straight through to the first queued action (the
           same onCta path the named card uses), or scrolls to the full list when calm. */}
-      {stage === 'plan' && !heroInView && (
+      {/* Not on a tall iPad (owner ruling, 11/23/2026): there the bar's Plan
+          button takes the host back to the question, and The Day runs the day. */}
+      {stage === 'plan' && !heroInView && !tallTablet && (
         <button
           /* NOT "ALL QUIET" OVER LATE STEPS (owner screenshot 11/18/2026: the bar
              read "Next · All quiet" on a board whose top said "8 things are past
@@ -29566,8 +29580,7 @@ export default function HostShellV2() {
           title={(days === 0 || dayHero) ? 'Run the day' : (listIsCalm ? (calmVeto ? calmVeto.label : 'All quiet') : String(queue[0].title || ''))}
           onClick={() => {
             if (days === 0 || dayHero) { setStage('day'); return; }
-            if ((queue.length && !listIsCalm) || calmVeto) { try { heroZoneRef.current && heroZoneRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* no hero zone */ } return; }
-            document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' });
+            backToHero();
           }}
           aria-label="Next thing that needs you"
         >
