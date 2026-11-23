@@ -103,7 +103,7 @@ import { normalizeCategory } from '../vendorAccountability/playbooks.js';
 import { vendorDisplayName } from '../vendorDisplayName';
 import { destinationContextFor, isGroundedDestination } from '../knowledge/destinationContext';
 import { venueFor, isHomeVenueName } from '../venueFor';
-import { settledFromFacts, knownPartOf, allergyAsk, confirmAskFor } from '../knownFacts';
+import { settledFromFacts, knownPartOf, allergyAsk, confirmAskFor, hostHeadcount } from '../knownFacts';
 import { placeIsOutdoors } from '../placeIntelligence';
 import { effectiveAccessibility, isGroundedAccessibility } from '../knowledge/accessibilityContext';
 import { isGroundedCost } from '../knowledge/costProvenance';
@@ -955,7 +955,29 @@ export function catererPriceOf(event) {
   const v = booked || vs.find((x) => /\bquot/i.test(String(x.status || '')));
   return v ? { vendor: v, cost: Math.round(Number(v.cost)), booked: !!booked } : null;
 }
+// ── A CALL MADE OF TWO FACTS (batch 11, #229 Left) ──────────────────────────
+// Anniversary's "Confirm guest count + collect dietary/accessibility needs" has
+// no options: it is two facts the event already keeps. It was asked after she
+// gave her count and tapped "That's everyone — noted". A decision authoring
+// `settledWhen` settles when every part it names is on record:
+//   headcount  her own count (hostHeadcount: typed, locked, picked or a list,
+//              never the playbook's typical);
+//   needs      the needs noted, or recorded on the guest rows (dietaryResolved).
+// No option is claimed; the settled row says the two facts.
+function settledByParts(event, decision) {
+  const parts = decision.settledWhen;
+  const n = (() => { try { return hostHeadcount(event); } catch (_e) { return null; } })();
+  const needs = (() => { try { return dietaryResolved(event); } catch (_e) { return { resolved: false }; } })();
+  const said = [];
+  for (const part of parts) {
+    if (part === 'headcount') { if (!n) return null; said.push(`${n} ${n === 1 ? 'guest' : 'guests'}`); }
+    else if (part === 'needs') { if (!needs.resolved || needs.reason === 'no-list') return null; said.push(needs.reason === 'noted' ? 'needs noted' : 'needs on the guest list'); }
+    else return null;
+  }
+  return { pick: null, because: said.join(' · ') };
+}
 export function decisionSettledByData(event, decision) {
+  if (event && decision && Array.isArray(decision.settledWhen) && decision.settledWhen.length) return settledByParts(event, decision);
   if (!event || !decision || !Array.isArray(decision.options) || !decision.options.length) return null;
   // A GENERIC FOOD ANSWER ON FILE IS THIS CALL'S ANSWER (Crab Feast, audit 2
   // lane A P1-5): "We'll cook it" is "Steam them myself". Data-declared
