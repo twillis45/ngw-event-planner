@@ -512,12 +512,17 @@ function shortItem(item) {
 // the last word took the s. When the phrase opens with a measure ("cups",
 // "lb"), that word is the noun being counted and the rest describes it; any
 // other phrase ("snack serving") still pluralizes its last word.
-function shortUnit(unit, qty) {
+const INVARIANT_UNIT_RE = /^(oz|ct|qt|pt|gal|pk|doz)$/i;
+export function shortUnit(unit, qty) {
   // strip a parenthetical rule-of-thumb AND a compound "per N guests" tail.
   let u = String(unit || '').split('(')[0].split(/\s+per\s+/i)[0].trim();
   if (!u) return '';
   const plural = (w) => {
     if (/s$/i.test(w)) return w;
+    // AN ABBREVIATION IS NOT A WORD (#240 trap, fixed in batch 4, 11/23/2026):
+    // "oz" ends in z, so the x/z/ch/sh rule below made it "ozes". These read
+    // the same for one or many. "lb" is not here: its plural is "lbs".
+    if (INVARIANT_UNIT_RE.test(w.split(/\s+/).pop())) return w;  // "fl oz" too
     if (/(?:x|z|ch|sh)$/i.test(w)) return w + 'es';            // batch → batches, box → boxes
     if (/f$/i.test(w)) return w.replace(/f$/i, 'ves');          // loaf → loaves
     return w + 's';
