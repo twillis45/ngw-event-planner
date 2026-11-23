@@ -74,7 +74,7 @@ const dayParty = {
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
     { id: 't_food', target: 'call:food', facts: ['calls-answered'], answeredBy: ['food'], milestoneId: 'dp_bookdj', phase: 'vendor', label: 'Decide the food level: passed bites and grazing, light bites only, a food truck, or catered drop-off', when: 'T-28d' },
-    { id: 't_food_lock', target: 'spread', facts: ['or:catering-moot', 'and:caterer-booked'], factsByAnswer: { food: { 'Light passed bites + grazing table': [], 'Light bites only': [], 'Food truck': [] } }, milestoneId: 'dp_bookdj', phase: 'vendor', label: 'Lock food: confirm the food truck or caterer window, or plan the passed bites + grazing table yourself', when: 'T-28d',
+    { id: 't_food_lock', target: 'spread', facts: ['or:catering-moot', 'and:caterer-booked'], coversCaterer: true, factsByAnswer: { food: { 'Light passed bites + grazing table': [], 'Light bites only': [], 'Food truck': [] } }, milestoneId: 'dp_bookdj', phase: 'vendor', label: 'Lock food: confirm the food truck or caterer window, or plan the passed bites + grazing table yourself', when: 'T-28d',
       copyByAnswer: { food: {
         'Light passed bites + grazing table': 'Lock food: plan the passed bites + grazing table yourself',
         'Light bites only': 'Lock food: plan the light bites yourself',

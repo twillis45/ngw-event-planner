@@ -639,3 +639,32 @@ describe('a composite declares the foundation parts it bundles', () => {
     }
   });
 });
+
+// ─── THE BUILDER'S OWN DEDUPES READ DECLARATIONS (owner ruling 3, 11/23/2026)
+// The checklist builder added its generic "Confirm your caterer…" row unless
+// some row's text contained "cater" (3a), and its "Ask who is bringing which
+// dish" row unless some row's text named who brings what (3b). Each step now
+// declares it: `coversCaterer`, `assignsDishes`.
+describe('the checklist builder’s derived rows read declarations, never row text', () => {
+  const V = (cat, status) => ({ id: 'v-' + cat, name: cat + ' Co', category: cat, status, cost: 900 });
+  const statesOf = (pb) => eventsFor(pb).flatMap((e) => [e, { ...e, vendors: [V('Catering', 'Booked')] }]);
+  const swapped = (pb, id, words) => {
+    const states = statesOf(pb);
+    const has = () => states.map((ev) => (pbm.playbookChecklist(ev, asOf) || []).some((r) => r.provenance && r.provenance.taskId === id)).join(',');
+    const before = has();
+    const saved = (pb.tasks || []).map((t) => t.label);
+    try {
+      return words.map((w) => { (pb.tasks || []).forEach((t) => { t.label = w; }); return has() === before; });
+    } finally { (pb.tasks || []).forEach((t, i) => { t.label = saved[i]; }); }
+  };
+
+  test('3a: the generic caterer row comes and goes the same whatever the steps say', () => {
+    const wrong = [];
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      const same = swapped(pb, 'fa-caterer', ['Tidy up', 'Call the caterer']);
+      if (!same.every(Boolean)) wrong.push(pb.type);
+    }
+    expect(wrong).toEqual([]);
+  });
+
+});

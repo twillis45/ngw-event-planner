@@ -1963,6 +1963,10 @@ export function playbookChecklist(event, asOf) {
   // (the Spread is sized for the dinner), so they carry the dinner's group.
   let celebration = false;
   try { celebration = celebrationAppliesWith(event, playbook); } catch (_e) { celebration = false; }
+  // A step that covers the caterer (`coversCaterer`, owner ruling 3a,
+  // 11/23/2026) keeps the generic caterer row below off the list. It was
+  // read off the rows' words (/cater/).
+  let _coversCaterer = false;
   for (let t of taskList) {
     if (!t || !t.id || !t.label) continue;
     // Choice gate — a task tagged whenChoice appears only for the matching pick.
@@ -2025,6 +2029,7 @@ export function playbookChecklist(event, asOf) {
     // Day-of is offset ZERO exactly. A post-event task bucketed here would sit
     // under THE DAY tab, which is the same lie in a different place.
     const eventDay = offset === 0;
+    if (t.coversCaterer === true) _coversCaterer = true;
     rows.push({
       id: `pbt-${event.id}-${t.id}`,
       // The step's declared target (lib/stepTarget): where its work is done.
@@ -2079,7 +2084,7 @@ export function playbookChecklist(event, asOf) {
   // so the food CHOICE visibly reshapes "what's left" (it was previously inert in the task list;
   // the cook choice already recedes caterer tasks via the dropCaterer gate above). Deduped so a
   // playbook that already authors a caterer task isn't doubled.
-  if (fa.usesCaterer === true && catererHired(event, fa) && !rows.some((r) => /cater/i.test(r.task))) {
+  if (fa.usesCaterer === true && catererHired(event, fa) && !_coversCaterer) {
     const off = -7;
     rows.push({
       id: `pbt-${event.id}-fa-caterer`,
