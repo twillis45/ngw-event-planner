@@ -6405,6 +6405,35 @@ export function playbookFoodPlan(event, opts = {}) {
     });
   }
 
+  // ── A PART OF A DISH GOES WITH ITS DISH (owner ruling, 11/23/2026) ────────
+  // "Separate combined shopping lines into individual items": "Potatoes, butter
+  // & cream (the mash)" became three lines, so each has its own store term and
+  // price. A purchase authored `partOf: '<dish id>'` is one of those parts. It
+  // follows its dish, never its own record: a friend who brings the mash brings
+  // its butter, "Not serving it" takes the butter off too, and "I'll make it
+  // myself" puts it back on her list. The Bringing list asks for the dish once
+  // (bringingRows leaves the parts out), not three times.
+  {
+    const _lineById = new Map(list.filter(Boolean).map((i) => [i.id, i]));
+    for (const it of list) {
+      const p = it && _purchaseById.get(it.id);
+      const dish = p && p.partOf ? _lineById.get(p.partOf) : null;
+      if (!dish) continue;
+      it.partOf = p.partOf;
+      if (dish.skipped) it.skipped = true;
+      if (dish.broughtByCommunity) {
+        it.broughtByCommunity = true;
+        it.broughtByLabel = dish.broughtByLabel;
+        it.friendBrings = !!dish.friendBrings;
+        it.broughtBy = dish.broughtBy || '';
+        it.low = 0;
+        it.high = 0;
+      } else if (dish.hostTakes) {
+        it.hostTakes = true;
+      }
+    }
+  }
+
   // A locked cost is fixed — it collapses the item's range to one committed number.
   // excludeFromFoodTotal (CRAB-BUDGET-1): this line's real $ already lives in a
   // separate total elsewhere (buildCrabPlan/hostSpending) — zero its own

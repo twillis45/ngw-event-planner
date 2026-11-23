@@ -137,8 +137,10 @@ test('a brought dish is not bought, not skipped, and not in the counts; an old "
   for (const dish of ['Potatoes', 'Sweet potatoes', 'Green beans', 'Mac and cheese', 'Cranberry']) {
     await expect(food.locator('.frow', { hasText: dish })).toHaveCount(0);
   }
-  // The host's own skip stays a skip.
-  await expect(food.locator('.frow.skipped', { hasText: 'rolls' })).toHaveCount(1);
+  // The host's own skip stays a skip, and the rolls' butter (its own line since
+  // the 11/23/2026 split, part of the rolls) is skipped with them.
+  await expect(food.locator('.frow.skipped', { hasText: 'Dinner rolls' })).toHaveCount(1);
+  await expect(food.locator('.frow.skipped', { hasText: 'Butter for the rolls' })).toHaveCount(1);
   // "N of M bought" and "Check off all M" count what she buys, and only that.
   const active = await food.locator('.frow:not(.skipped)').count();
   await expect(food.locator('.fg-sub')).toHaveText(new RegExp(`^0 of ${active} bought`));

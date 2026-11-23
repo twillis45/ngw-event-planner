@@ -8,10 +8,15 @@
 import { storeSearchTerm } from '../knowledge/storeUnitMap';
 import { getPlaybook } from '../playbooks';
 
+// 11/23/2026 (owner ruling: split the combined lines). The gravy line is now
+// the stock (its backup jar, p_gravy_jar, keeps "turkey gravy"); the
+// containers search "plastic containers", because "to go containers" matched
+// nothing at The Yards, DC, and "plastic containers" matches at The Yards and
+// Old Town Alexandria; and the rolls carry "dinner rolls" (below).
 const EXPECT = {
-  p_turkey: 'frozen whole turkey', p_gravy: 'turkey gravy', p_main_alt: 'spiral ham', p_stuffing: 'stuffing mix',
-  p_apps: 'cheese tray', p_drinks: 'sparkling water', p_ice: 'ice', p_labels: 'labels', p_serveware: 'paper plates',
-  p_thermometer: 'meat thermometer', p_containers: 'to go containers', p_cleanup: 'trash bags',
+  p_turkey: 'frozen whole turkey', p_gravy: 'chicken stock', p_gravy_jar: 'turkey gravy', p_main_alt: 'spiral ham', p_stuffing: 'stuffing mix',
+  p_apps: 'cheese tray', p_drinks: 'sparkling water', p_drinks_cider: 'sparkling cider', p_ice: 'ice', p_labels: 'labels', p_serveware: 'paper plates',
+  p_thermometer: 'meat thermometer', p_containers: 'plastic containers', p_cleanup: 'trash bags',
 };
 
 const lines = () => {
@@ -29,8 +34,12 @@ test.each(Object.entries(EXPECT))('%s searches the store for "%s"', (id, term) =
   expect(storeSearchTerm(line)).toBe(term);
 });
 
-test('the rolls keep searching by name: "Dinner rolls & butter" already matches', () => {
-  expect(storeSearchTerm(lines().find((l) => l.id === 'p_rolls'))).toBeNull();
+// The rolls searched by name ("Dinner rolls & butter" matched Pillsbury crescent
+// DOUGH). Since 11/23/2026 every line carries a term (everyShoppingLineHasAStoreTerm)
+// and the butter is its own line, so the rolls search "dinner rolls".
+test('the rolls search "dinner rolls", and their butter is its own line', () => {
+  expect(storeSearchTerm(lines().find((l) => l.id === 'p_rolls'))).toBe('dinner rolls');
+  expect(storeSearchTerm(lines().find((l) => l.id === 'p_rolls_butter'))).toBe('butter');
 });
 
 // AND THE TERM REACHES THE WIRE. The shell calls storePrices with
@@ -59,7 +68,7 @@ describe('what the app actually sends', () => {
     expect(sent.p_turkey.term).toBe('frozen whole turkey');
     expect(sent.p_ice.term).toBe('ice');
     expect(sent.p_turkey.name).toBe(lines().find((l) => l.id === 'p_turkey').item);   // name stays the key
-    expect(sent.p_rolls.term).toBeUndefined();
+    expect(sent.p_rolls.term).toBe('dinner rolls');
   });
 
   test('an older playbook line gets its curated term too (it never did)', async () => {

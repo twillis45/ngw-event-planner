@@ -153,7 +153,10 @@ test('6 · shopping list wording: units pluralize as units, countable things are
   expect(line(tg, 'p_mac').unit).toBe('lbs dry pasta');
   expect(line(tg, 'p_rolls').qty).toBe(20);            // 1.5 × 13 = 19.5 → 20 rolls
   expect(line(tg, 'p_turkey').qty).toBe(19.5);         // a weight stays a weight
-  expect(line(tg, 'p_appetizers').qty).toBe(39);
+  // Was 39 bites: the grazing line is now one cheese tray, with its crackers,
+  // nuts and crudité as their own lines (owner ruling 11/23/2026, split lines).
+  expect(line(tg, 'p_appetizers').qty).toBe(1);
+  expect(line(tg, 'p_appetizers_nuts').qty).toBe(6.5);  // a weight: 0.5 oz × 13
   const nye = playbookFoodPlan(NYE());
   expect(line(nye, 'p_flutes').qty).toBe(26);           // 1.2 × 21 = 25.2 → 26 flutes
   const hp = playbookFoodPlan(HP());
@@ -193,7 +196,10 @@ test('8 · the board\'s "N left" counts the list the host actually shops', () =>
   const plan = playbookFoodPlan(e);
   const shopping = deriveEventPhaseProgress(e, new Date('2026-11-20T15:00:00Z')).items.find((i) => i.id === 'shopping');
   expect(shopping.cueLabel).toBe(`Buy the remaining items · ${plan.shoppingCount} left`);
-  expect(plan.shoppingCount).toBe(11);
+  // 11 until 11/23/2026, when the owner's ruling split the combined lines one
+  // line per product: gravy 1→3, rolls 1→2, snacks 1→3, drinks 1→2, labels
+  // 1→2, plates-cups-napkins-spoons 1→4, cleanup 1→3. Each is its own buy.
+  expect(plan.shoppingCount).toBe(23);
 });
 
 // ── 9 ──────────────────────────────────────────────────────────────────────

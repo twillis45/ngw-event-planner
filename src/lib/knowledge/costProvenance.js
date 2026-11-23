@@ -2559,6 +2559,22 @@ export const COST_SOURCES = {
     limitations: ['commercial_interest_disclosed'],
     claim: 'Sweet potatoes at Target, 11/23/2026: Good & Gather Fresh Sweet Potatoes 3lb bag $2.99 (was $4.19), $1.00-1.40 a pound; Fresh Organic Sweet Potato 3lb bag $5.99, $2.00 a pound; a single fresh sweet potato $0.99 each (was $1.59). Per-pound figures are our division.',
   },
+  // ── THE OWNER'S STORE, READ LIVE (owner ruling 11/23/2026: separate the
+  // combined shopping lines, each with its own price) ────────────────────────
+  // Harris Teeter Old Town Alexandria is the store the owner priced her
+  // Thanksgiving list at. Read through the app's own store-price proxy
+  // (POST /api/shopping/kroger/search-list, no line ids, so nothing was
+  // recorded), which takes Kroger's first product for each term at this
+  // locationId. Regular price first, the sale price in parentheses where the
+  // store sent one. One store, one day: a sale price ends.
+  'harristeeter-oldtown-2026': {
+    org: 'Harris Teeter, Old Town Alexandria VA (Kroger-family store 09700398), shelf prices read through the Kroger Products API (fetched)',
+    url: 'https://api.kroger.com/v1/products?filter.locationId=09700398',
+    fetched: '2026-11-23',
+    sourceClass: 'commercial_practitioner',
+    limitations: ['commercial_interest_disclosed'],
+    claim: 'Harris Teeter Old Town Alexandria, 11/23/2026: russet potatoes 5 lb bag $5.99 ($5.00 sale), loose russets $1.79/lb; Harris Teeter salted or unsalted butter quarters 16 oz $3.59; half and half 16 fl oz $2.29; heavy cream 16 fl oz $3.79; chicken stock 32 oz $2.39 ($1.67 sale); chicken broth 32 oz $1.69; all-purpose flour 5 lb $2.99 ($2.29 sale); cornstarch 16 oz $1.99; Heinz HomeStyle turkey gravy jar 12 oz $3.99 ($2.00 sale); elbow macaroni 16 oz $1.99 ($1.18 sale); sharp cheddar 8 oz $3.49 ($2.99 sale); whole milk half gallon $2.59; Great Midwest gourmet cheese tray 18 oz $14.99; Pepperidge Farm Trio entertainment crackers 10 oz $4.79 ($4.00 sale); salted roasted mixed nuts 32 oz $15.99 ($12.99 sale); peeled baby carrots 16 oz $2.19 ($1.50 sale); Apothic Red 750 ml $10.00; Barefoot Pinot Grigio 1.5 l $11.99; Whitehaven Sauvignon Blanc 750 ml $17.99; Martinelli\'s sparkling apple cider 25.4 fl oz $5.99 ($3.99 sale); HT Traders sparkling water 12 pk $6.49 ($3.99 sale); HT Traders ground coffee 11 oz $12.99 ($7.99 sale); black tea 48 bags $3.79; whipped topping 6.5 oz $2.99 ($2.50 sale); Tillamook vanilla bean ice cream 1.5 qt $8.99 ($5.79 sale); Handi-foil Extra Deep Super King roaster pan $16.99; Reynolds heavy-duty foil 50 sq ft $6.99 ($5.99 sale); kitchen twine 300 ft $8.49; one-gallon slider storage bags 15 ct $2.79 ($2.00 sale); Avery removable labels 72 ct $1.89; Sharpie fine point 2 ct $4.29; tall 13 gallon drawstring trash bags 22 ct $5.99 ($5.39 sale); dishwashing liquid 24 fl oz $2.49; Bounty Select-A-Size 6 double rolls $17.49 ($12.99 sale); Cascade gel dishwasher detergent 75 fl oz $9.99 ($6.99 sale); Dixie 8.5 inch paper plates 48 ct $4.39 ($3.29 sale); textured plastic cups 50 ct $6.49 ($4.49 sale); Bounty paper napkins 200 ct $4.99 ($2.99 sale); Occasions 3-piece servingware set $2.49. No roasting rack matched ("roast rack" returned a barbecue sauce).',
+  },
   'target-bakery-2026': {
     org: 'Target, search results for "bakery cupcakes" (fetched)',
     url: 'https://www.target.com/s?searchTerm=bakery+cupcakes',

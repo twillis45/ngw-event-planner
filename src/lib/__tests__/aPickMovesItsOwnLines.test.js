@@ -37,7 +37,8 @@ describe('A3/A4: a potluck pick marks the lines the guests bring, at $0 to the h
     // Host grills set explicitly: at 30 guests the recommended pick is the pitmaster.
     ['Get-Together', { potluck: 'Potluck sides', food_style: 'Host grills everything' }, ['p_sides']],
     ['Get-Together', { potluck: 'Host provides all', food_style: 'Potluck — guests bring sides' }, ['p_sides']],
-    ['Friendsgiving', { hosting_model: 'Host cooks most of it — friends bring drinks and dessert' }, ['p_dessert', 'p_drinks']],
+    // p_drinks_cider is part of p_drinks (split 11/23/2026) and goes with it.
+    ['Friendsgiving', { hosting_model: 'Host cooks most of it — friends bring drinks and dessert' }, ['p_dessert', 'p_drinks', 'p_drinks_cider']],
     ['Friendsgiving', { drinks: 'One or two friends own the drinks' }, expect.arrayContaining(['p_drinks'])],
     ['Card Party', {}, ['p_board', 'p_chips', 'p_dessert']],
     ['Card Party', { food_model: 'Potluck (everybody brings a dish)' }, ['p_board', 'p_chips', 'p_dessert', 'p_deviled', 'p_wings']],
