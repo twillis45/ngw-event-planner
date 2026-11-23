@@ -1,5 +1,15 @@
 # Where We Are -- live status board
 
+## November 23, 2026 — a tall iPad gets its own board
+
+**Owner ruling, 11/22/2026: the tall-iPad package is approved whole.** On a tablet held in portrait (640–1279 wide, taller than wide, read from matchMedia like the band since #236), the left rail and the ☰ eyebrow are gone. A header names the event and is its switcher. A ribbon shows the seven plan parts, with NOW on the part the question is about. The board runs full width on two shared edges (48px, or 64px from 960). The first screen ends with Where you stand and "The rest of your plan". A docked bar carries Create · Plan · The Day · After, All sections and Search.
+
+- This reverses the 7/22 648px hero cap and the 8/17 "question fills the screen" for **portrait tablets only**. Landscape iPads and desktops keep today's layout, rail included. Phones are unchanged.
+- A 13" iPad in portrait (1024 wide) no longer gets the rail (`showsRail` is false in tall-tablet mode).
+- "All sections" opens the existing Sections sheet, laid out as an index. It has the same doors, plus Feeling stuck? and the pass row. Calendar, Split the costs, Share with family and Co-hosts now have real icons.
+- On a tall iPad, Who's confirmed shows its "Still waiting" sentence as two row groups (vendors; helpers & tasks), built from the same classification. Their counts equal the chips.
+- The ribbon's count line names the next growth of the count: "4 of 7 handled · shopping starts Mar 13" (audit C P1-8; owner's word "starts").
+
 ## November 22, 2026 (night) — every release has a name, and the small words read right
 
 **Each main merge is tagged vYYYY.MM.DD.N, the footer shows "Version 2026.11.22.3 (abc1234)" and opens a plain What's new list, and Sentry knows which build threw.** Polish: doors open at the start time, warnings wear honey in dark, the ruled food card says its call once, a symbolic ceremony files no license, and the family page shows the dress code.
