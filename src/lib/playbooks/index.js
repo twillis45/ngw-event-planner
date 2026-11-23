@@ -1550,7 +1550,14 @@ export function catererHired(event, fa) {
   const pb = getPlaybook(event && event.type);
   const dec = a.decisionId && pb && Array.isArray(pb.decisions) ? pb.decisions.find((d) => d && d.id === a.decisionId) : null;
   if (dec && dec.servedByCaterer === true) return true;
-  return /cater|\bchef\b|drop-?off|pitmaster/i.test(String(a.pick || ''));
+  // HER PICK, NOT OUR DEFAULT (batch 11, #233 Left). Holiday Party and
+  // Retirement Party default their food call to drop-off catering, so the
+  // default read as a hire and "Pay the caterer…" showed before she had made
+  // the call. A pick names a hire only when it is hers: on the call itself, or
+  // the generic food answer (no decision id, or a call that maps it).
+  const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  const hers = a.decisionId == null || picks[a.decisionId] != null || !!(dec && dec.fromSourcing && picks.sourcing != null);
+  return hers && /cater|\bchef\b|drop-?off|pitmaster/i.test(String(a.pick || ''));
 }
 
 // Day offset from a task's `when` token: 'T-10d' → -10, 'T0' → 0, 'T0 -0:30' → 0
@@ -1888,7 +1895,7 @@ export function playbookChecklist(event, asOf) {
   // (the Spread is sized for the dinner), so they carry the dinner's group.
   let celebration = false;
   try { celebration = celebrationAppliesWith(event, playbook); } catch (_e) { celebration = false; }
-  for (const t of taskList) {
+  for (let t of taskList) {
     if (!t || !t.id || !t.label) continue;
     // Choice gate — a task tagged whenChoice appears only for the matching pick.
     if (!choiceShown(event, t.whenChoice)) continue;
@@ -1909,8 +1916,19 @@ export function playbookChecklist(event, asOf) {
     // and a step that also offers the do-it-yourself path ("…or plan the passed
     // bites + grazing table yourself"): with no caterer, that half IS the work
     // (Day Party, #220 Open, 11/22/2026). Its caterer and truck picks rename it.
-    if (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label)) continue;
-    if (noCatererHired && /\bcaterer/i.test(t.label) && !BOOKS_A_CATERER.test(t.label)) continue;
+    // A STEP THAT NAMES THE CATERER BESIDE OTHER WORK keeps the other work
+    // (batch 11): "Chase non-responders; give caterer + bartender the final
+    // guaranteed count" still owes the chase, and "Pay the venue and caterer
+    // balances…" still owes the venue. Such a step authors `labelWithoutCaterer`,
+    // the same step with the caterer taken out, and reads it while no caterer
+    // is hired; a step without one drops whole, as before.
+    const _noCaterer = (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label))
+      || (noCatererHired && /\bcaterer/i.test(t.label) && !BOOKS_A_CATERER.test(t.label));
+    if (_noCaterer) {
+      if (!t.labelWithoutCaterer) continue;
+      // Its answered copy is written for the caterer version, so it stays off.
+      t = { ...t, label: t.labelWithoutCaterer, copyByAnswer: undefined };
+    }
     // ── THE AIR-TRAVEL FLOOR REACHES THE CHECKLIST (2026-09-23) ─────────────
     // The floor was built into `playbookMilestones` and stopped there. Measured:
     // `playbookMilestones` has exactly one consumer, `playbookAreaNextStep`,
