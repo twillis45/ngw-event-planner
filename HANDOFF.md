@@ -44,8 +44,23 @@ Before that, 2026-11-02 (sixtieth entry:
     - boardMatrix at landscape, tablet-land and wide: 34 passed.
   - WebKit cannot launch here (`webkit-2311` is not installed), so the critical-journeys config did not run.
 - 🔴 **Trap: `npx vite build` is not `npm run e2e:build`.** The plain build bakes no `REACT_APP_API_BASE_URL`, so the provider-failure spec "fails" for a reason the code never had. Always rebuild with `e2e:build` before e2e.
+- **11/23, after #241's CI (owner rulings and parent review):**
+  - The 768x1024 overflow is **accepted** (owner). The spec's 32px cap stays.
+  - **The weather pill rides the header on a tall iPad** (owner). It sits on the date line, with the same glyph, forecast line and in-place body, and only when the pill would show. Nothing floats. Phones and landscape keep the floating pill. e2e: in `aTallIPadGetsItsOwnBoard` (red first).
+  - **The fold control keeps the 46px tap floor at every height.** CI's Linux fonts made it 41px at 768x1024 (`everyTapIsFortyFourSquare`). That was a real failure, not the flake my report called it. The room comes from its own margin. The spec now asserts the floor at six sizes.
+  - **I never ran the `tablet-tall` project (1024x1366, a tall iPad).** CI found 26 failures there. Every one was a spec that opened a section by a rail or board button name.
+    - These specs now use the shared door, `openSectionByName` (rail, else the tall iPad's index, else the phone menu): the five Guests specs, `twoTabsLoseNothing`, `runTwo`/`runThree`, `multiDayDoor`, `rankedReorder` and `checklistFollowsDecisions`.
+    - `fixtures.hasRail` now knows a portrait tablet has no rail. `railCollapse` and the `motionContinuity` rail-collapse case are scoped with it (owner ruling 11/22).
+    - No product gap was found: every section the specs reach is one tap away through All sections, and Your days is a tile there.
+  - `theVendorPageLivesInTheNewApp` "day-of contact" at tablet-tall: 2 failures in 78 local runs (`[data-brief-url]` not found), 0 in 10 at tablet-land, and none in 36 more runs with artifacts kept. The tall-iPad code does not touch the brief mint or the card. The only tall-specific step is the section opening from the index sheet instead of a rail row. **Unexplained; treat it as an open flake, not a pass.**
+  - **Gates for this push:**
+    - jest 13,817 passed, 1 skipped (907 suites); vitest 158/158; parity passes.
+    - e2e, each project alone:
+      - `tablet-tall`: 966 passed, 1 failed (`aVendorDraftTextsTheVendor`, 24/24 alone).
+      - `tablet`: 938 passed, 3 failed (`motionContinuity:34`, `theInviteReplyLeads:183`, `coreJourneyTruth:27`). Each passed 3/3 alone; another agent's e2e run shared the machine.
+      - `mobile`: 986 passed, 0 failed.
+      - desktop: the tall spec and the weather, rail and motion specs, 66 passed.
 - **Owner calls left:**
-  - The 768x1024 overflow above.
   - The NEXT bar's wording on phones (not ruled; unchanged).
 
 ## November 23, 2026 (later) — #240: every shopping line has a store search term; Thanksgiving's and Friendsgiving's combined lines split
