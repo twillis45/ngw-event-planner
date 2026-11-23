@@ -1,9 +1,11 @@
 import { test, expect, settled } from './fixtures.mjs';
 // The one sentence for this ask, read from where the app reads it, so a change
 // of wording is a change in one place (heroAsk's ASK_KINDS.town).
-import { ASK_KINDS } from '../../src/lib/heroAsk.js';
+import { readFileSync } from 'node:fs';
+// Read as text, not imported: CI's Node loads src/lib as CommonJS (11/23/2026, shard 4).
+const HERO_ASK_SRC = readFileSync(new URL('../../src/lib/heroAsk.js', import.meta.url), 'utf8');
 
-const TOWN_ASK = ASK_KINDS.town;
+const TOWN_ASK = /\btown:\s*'([^']+)'/.exec(HERO_ASK_SRC)[1];
 
 // ─── AT HOME WITH NO TOWN, THE HERO ASKS FOR THE TOWN (live 11/23/2026) ──────
 // The owner's sentence, typed the way a host types it. It is at her house and
