@@ -465,3 +465,90 @@ describe('a step declares when its caterer comes out, never by its words', () =>
     expect(code).not.toMatch(/BOOKS_A_CATERER/);
   });
 });
+
+// ─── A COMPOSITE STEP IS DECLARED (cause 1, remainder c) ────────────────────
+// A "Set date, headcount, menu" step bundles foundation parts, so the hero
+// never leads with it half done: it is decomposed to the first open
+// foundation domino, or skipped once every part is handled. Which steps are
+// composites was read from WORDS (/^set\b/ + a separator + a foundation word),
+// in CommandCenter's compression tier and decomposeSetComposite. Each step now
+// declares `composite` (with `compositeByAnswer` where its words vary by a
+// pick), derived once from that rule and committed; lib/stepTarget
+// stepIsSetComposite is the one reader.
+describe('a composite step is declared, never read off its words', () => {
+  const { useFrozenClock, daysFromNow } = require('../../testUtils/frozenClock');
+  useFrozenClock();
+  const st = require('../stepTarget');
+  const COMPOSITE_WORDS = 'Set date, headcount, menu';
+  const PLAIN_WORDS = 'Tidy up';
+
+  test('every declaration is a boolean, and each answer variant has a copy variant', () => {
+    const bad = [];
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const s of everyDeclaredStep(pb)) {
+        if (s.composite != null && typeof s.composite !== 'boolean') bad.push(`${pb.type}:${s.id} composite ${JSON.stringify(s.composite)}`);
+        for (const [d, byVal] of Object.entries(s.compositeByAnswer || {})) {
+          for (const [v, b] of Object.entries(byVal || {})) {
+            if (typeof b !== 'boolean') bad.push(`${pb.type}:${s.id} ${d}=${v}`);
+            if (!(s.copyByAnswer && s.copyByAnswer[d] && s.copyByAnswer[d][v] != null)) bad.push(`${pb.type}:${s.id} ${d}=${v} has no copy variant`);
+          }
+        }
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
+  test('every row of every playbook: the same answer whatever it says; a row she wrote is never a composite', () => {
+    expect(typeof st.stepIsSetComposite).toBe('function');
+    const wrong = [];
+    let rows = 0;
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const ev of eventsFor(pb)) {
+        for (const r of (pbm.playbookChecklist(ev, asOf) || [])) {
+          rows += 1;
+          const own = st.stepIsSetComposite(ev, r);
+          if (st.stepIsSetComposite(ev, { ...r, task: COMPOSITE_WORDS }) !== own || st.stepIsSetComposite(ev, { ...r, task: PLAIN_WORDS }) !== own) wrong.push(`${pb.type}:${r.id}`);
+        }
+      }
+      if (st.stepIsSetComposite({ id: 'ev-own', type: pb.type }, { id: 'ev-own-t1', task: COMPOSITE_WORDS })) wrong.push(`${pb.type}: her own row`);
+    }
+    expect(wrong.slice(0, 40)).toEqual([]);
+    expect(rows).toBeGreaterThan(5000);
+  });
+
+  test('the hero leads with the same step, or the same domino, whatever the rows say', () => {
+    const { selectEventNextAction } = require('../../CommandCenter');
+    const pick = (a) => (a ? { category: a.category, stepRowId: a.stepRowId || null, leadIsStep: a.leadIsStep, primaryRoute: a.primaryRoute || null, askKind: a.askKind || null } : null);
+    const wrong = [];
+    let led = 0;
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      const picks = {};
+      for (const d of pb.decisions || []) { const o = (d.options || [])[0]; const l = typeof o === 'string' ? o : (o && (o.label || o.value)); if (l) picks[d.id] = l; }
+      for (const d of [21, 14, 10, 7, 5, 3, 2, 1]) {
+        const ev = { id: 'ev-c', type: pb.type, name: 'N', date: daysFromNow(d), guestMode: 'count', guestCount: 30, totalBudget: 9000, venue: 'The Hall', venueCity: 'Austin, TX', startTime: '18:00', guests: [], vendors: [], budget: [], foodChoices: picks, dietaryNoted: true };
+        const rows = (pbm.playbookChecklist(ev) || []).map((r) => ({ ...r, done: !(r.dueInDays >= 0) }));
+        const own = pick(selectEventNextAction({ ...ev, timeline: rows }));
+        // The tier that reads it: a step leading the tight-timeline hero.
+        if (!own || own.category !== 'compression' || !own.stepRowId) continue;
+        led += 1;
+        for (const w of [COMPOSITE_WORDS, PLAIN_WORDS]) {
+          const other = pick(selectEventNextAction({ ...ev, timeline: rows.map((r) => (r.id === own.stepRowId ? { ...r, task: w } : r)) }));
+          if (JSON.stringify(other) !== JSON.stringify(own)) wrong.push(`${pb.type} T-${d} "${w}": ${JSON.stringify(other)} ≠ ${JSON.stringify(own)}`);
+        }
+      }
+    }
+    expect(wrong.slice(0, 20)).toEqual([]);
+    expect(led).toBeGreaterThan(0);
+  });
+
+  test('the hero reads the declaration: no composite rule over a title', () => {
+    const code = fs.readFileSync(path.join(__dirname, '../../CommandCenter.jsx'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+    expect(code).not.toMatch(/_isSetCompositeTitle/);
+    const at = code.indexOf('function decomposeSetComposite(');
+    expect(at).toBeGreaterThan(-1);
+    const body = code.slice(at, code.indexOf('\n}\n', at));
+    expect(body).toMatch(/stepIsSetComposite\(/);
+    expect(body).not.toMatch(/\.test\(cmd\.title\)|_isSetComposite/);
+    expect((code.match(/stepIsSetComposite\(/g) || []).length).toBe(2);
+  });
+});

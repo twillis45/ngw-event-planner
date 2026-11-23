@@ -462,7 +462,7 @@ const watchParty = {
     { id: 't_reset', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Pack leftovers, bag trash + recycling (cans/bottles), wipe surfaces, run the dishwasher', when: 'T0 +4:00' },
     // Multi-day tournament format only, and only once the host says this is
     // more than one sitting — a repeatable list, not a re-invented one each time.
-    { id: 't_repeatable_list', target: 'list', facts: ['then:food-bought'], milestoneId: 'wp_invite', phase: 'shopping', label: 'Set up a repeatable shopping list — you\'re hosting this again, not once, so build a list you can restock quickly rather than one big shop', when: 'T-7d', whenChoice: { id: 'tourney_span', in: ['A few key games', 'Following the whole run'] } },
+    { id: 't_repeatable_list', target: 'list', facts: ['then:food-bought'], composite: true, milestoneId: 'wp_invite', phase: 'shopping', label: 'Set up a repeatable shopping list — you\'re hosting this again, not once, so build a list you can restock quickly rather than one big shop', when: 'T-7d', whenChoice: { id: 'tourney_span', in: ['A few key games', 'Following the whole run'] } },
 
     // ── THE FIRST ADDITIVE PER-SPORT TASKS (2026-09-17, EIGHTH PASS) ─────────
     // Measured before writing any of these: 7 of the 8 tasks above are IDENTICAL

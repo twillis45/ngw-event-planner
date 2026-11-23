@@ -240,7 +240,7 @@ const sweet16 = {
   ],
 
   tasks: [
-    { id: 't_budget', target: 'money', facts: ['budget-set'], milestoneId: 'lock_date_venue', phase: 'plan', label: 'Set a budget and confirm it with the birthday teen', when: 'T-90d' },
+    { id: 't_budget', target: 'money', facts: ['budget-set'], composite: true, milestoneId: 'lock_date_venue', phase: 'plan', label: 'Set a budget and confirm it with the birthday teen', when: 'T-90d' },
     { id: 't_venue_walk', target: 'place-notes', facts: [], milestoneId: 'lock_date_venue', phase: 'plan', label: 'Tour venue/hall: capacity, power for DJ, parking, restrooms, curfew', when: 'T-88d',
       copyByAnswer: { music_source: { 'Self-run playlist + rented PA/lights': 'Tour venue/hall: capacity, power for the PA and lights, parking, restrooms, curfew' } } },
     { id: 't_dj_brief', target: 'vendors', facts: [], milestoneId: 'book_dj', phase: 'plan', label: 'Brief DJ on theme, must-play/do-not-play list, MC duties, grand entrance song', when: 'T-84d',
