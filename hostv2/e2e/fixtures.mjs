@@ -123,10 +123,10 @@ export const dateIn = (days = 0) => {
 };
 
 /** True where the section rail is rendered and can be used as the door.
- *  Not on a tall iPad (owner ruling 11/22/2026): a tablet band held in portrait
- *  has the docked bar instead, so 1024x1366 (tablet-tall) has no rail. */
-export const hasRail = (viewport) => !!viewport && viewport.width >= RAIL_MIN_WIDTH
-  && !(viewport.width < 1280 && viewport.height > viewport.width);
+ *  From 1024 in either orientation: the 13" iPad held upright (1024x1366,
+ *  tablet-tall) has the rail again (owner ruling 8, 11/23/2026; 11/22 had
+ *  given it the bar). The 768–1023 portrait tablets are below 1024 anyway. */
+export const hasRail = (viewport) => !!viewport && viewport.width >= RAIL_MIN_WIDTH;
 
 
 // ─── THE BOOT BEAT WAS A SLEEP IN FRONT OF A BROKEN STATE-WAIT (2026-08-15) ──
@@ -190,6 +190,25 @@ export const sheetSettled = (page, timeout = 15_000) =>
     return (sh.innerText || '').trim().length > 40;          // and it has content
   }, null, { timeout });
 
+// ─── THE PHONE'S PILL TUCKS AWAY ON SCROLL DOWN (owner ruling 5, 11/23/2026) ─
+// It comes back when she scrolls up, so a door that starts on the pill first
+// scrolls the board up a little, the way she would, and waits for it. A no-op
+// where there is no pill, or it is showing.
+export const revealBar = async (page) => {
+  const hidden = page.locator('[data-tt-bar].is-hidden');
+  if (!(await hidden.count())) return;
+  await page.evaluate(() => { const a = document.querySelector('.app'); if (a) a.scrollTop = Math.max(0, a.scrollTop - 80); });
+  await expect(hidden).toHaveCount(0, { timeout: 5000 });
+  await page.waitForTimeout(300);   // its slide back in (240ms)
+};
+
+// Wait for the board to carry whichever door this viewport has before a
+// helper chooses its path: called right after `goto`, the choice was made on
+// an empty page and fell through to the ☰, which a phone no longer has (owner
+// ruling 1, 11/23/2026).
+const anyDoor = (page, timeout = 15_000) =>
+  page.locator('.srail-row, [data-tt-bar], .ev-eyebrow').first().waitFor({ state: 'attached', timeout });
+
 // ─── THE SECTION DOOR MOVES WITH THE VIEWPORT ───────────────────────────────
 //
 // Below the rail band, the way into a section is two taps: the eyebrow menu,
@@ -206,6 +225,7 @@ export const sheetSettled = (page, timeout = 15_000) =>
 // section; which door this viewport has is not a spec's business.
 export const openSectionByName = async (page, name, opts = {}) => {
   const timeout = opts.timeout || 8000;
+  await anyDoor(page);
   const rail = page.locator('.srail-row', { hasText: name });
   if (await page.locator('.srail-row').count()) {
     await rail.first().click({ timeout });
@@ -217,6 +237,7 @@ export const openSectionByName = async (page, name, opts = {}) => {
       await page.keyboard.press('Escape');
       await page.waitForTimeout(250);
     }
+    await revealBar(page);
     await page.locator('[data-tt-bar]').getByRole('button', { name: 'All sections' }).click({ timeout });
     await page.locator('.sheet').last().locator('[data-door]', { hasText: name }).first().click({ timeout });
   } else {
@@ -265,13 +286,22 @@ export const openEventsSheet = async (page, opts = {}) => {
 // menu's segmented control everywhere else.
 export const goToStage = async (page, label, opts = {}) => {
   const timeout = opts.timeout || 8000;
+  await anyDoor(page);
   const closeSheets = async () => {
     if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
   };
   const bar = page.locator('[data-tt-bar]');
   if (await bar.count()) {
     await closeSheets();
+    await revealBar(page);
     await bar.getByRole('button', { name: label, exact: true }).click({ timeout });
+    return;
+  }
+  // The 13" iPad upright: the rail's Your event group (owner ruling 8, 11/23/2026).
+  const railStage = page.locator('.srail [data-rail-stage]', { hasText: label });
+  if (await railStage.count()) {
+    await closeSheets();
+    await railStage.first().click({ timeout });
     return;
   }
   // The menu may already be open (a spec that read Jump to first).
@@ -287,11 +317,13 @@ export const goToStage = async (page, label, opts = {}) => {
 // or the menu's row on a phone. "Feeling stuck?" is reached the same way.
 export const openMenuDoor = async (page, label, opts = {}) => {
   const timeout = opts.timeout || 8000;
+  await anyDoor(page);
   const rail = page.locator('.srail-row', { hasText: label });
   if (await rail.count()) { await rail.first().click({ timeout }); return; }
   const bar = page.locator('[data-tt-bar]');
   if (await bar.count()) {
     if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(250); }
+    await revealBar(page);
     await bar.getByRole('button', { name: 'All sections' }).click({ timeout });
     await page.locator('.sheet').last().locator('[data-door]', { hasText: label }).first().click({ timeout });
     return;
@@ -304,8 +336,11 @@ export const openMenuDoor = async (page, label, opts = {}) => {
 // bar's "All sections" opens (which carries the same pass row). `passRow`
 // finds that row in either.
 export const openJumpTo = async (page) => {
+  // The 13" iPad upright: the rail is the menu, always open (owner ruling 8).
+  if (await page.locator('.srail [data-rail-stage]').count()) return;
   const bar = page.locator('[data-tt-bar]');
   if (await bar.count()) {
+    await revealBar(page);
     await bar.getByRole('button', { name: 'All sections' }).click();
     await expect(page.locator('#sheet-title')).toHaveText('Everything in your plan');
     return;
@@ -313,4 +348,4 @@ export const openJumpTo = async (page) => {
   await page.locator('[aria-label="Menu"]').first().click();
   await expect(page.locator('#sheet-title')).toHaveText('Jump to');
 };
-export const passRow = (page) => page.locator('.nav-pass, .tt-index-pass');
+export const passRow = (page) => page.locator('.nav-pass, .tt-index-pass, .srail:has([data-rail-stage]) .srail-pass');

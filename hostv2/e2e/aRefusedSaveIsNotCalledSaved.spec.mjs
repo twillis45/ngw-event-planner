@@ -163,11 +163,9 @@ const makeAnEdit = async (page) => {
 const openSettings = async (page) => {
   const header = page.locator('[aria-label="You and settings"]').first();
   if (await header.count() && await header.isVisible()) await header.click();
-  else {
-    await page.locator('[aria-label="Menu"]').first().click();
-    await page.waitForTimeout(600);
-    await page.locator('.navrow', { hasText: 'You & settings' }).first().click();
-  }
+  // 11/23/2026 (navigation package): the phone has no ☰; the shared door
+  // helper reaches the section on every layout (WebKit runs this at 390).
+  else await openSectionByName(page, 'You & settings');
   await page.waitForTimeout(800);
 };
 

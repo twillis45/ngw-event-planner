@@ -4,7 +4,7 @@
 // reach without a real sign-in: a signed-out host is told to keep the plan
 // first; an event this device co-hosts (loaded with `_cohostOf`, the host's
 // studio) says so, offers Leave, and has no Delete in the events list.
-import { test, expect, settled, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName, openEventsSheet } from './fixtures.mjs';
 
 const boot = (page, ev) => page.addInitScript((e) => {
   if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
@@ -38,8 +38,9 @@ test('a co-hosted event says so, offers Leave, and has no Delete', async ({ page
   await expect(sheet.locator('[data-cohost-invite]')).toHaveCount(0);
   // The events list: labeled, and no Delete.
   await page.keyboard.press('Escape');
-  await page.locator('[aria-label="Menu"]').first().click();
-  await page.locator('button', { hasText: /^This event/ }).first().click();
+  // The events sheet through the shared door: the phone has no ☰ since owner
+  // ruling 1 (11/23/2026); its title opens this sheet.
+  await openEventsSheet(page);
   await expect(page.locator('[data-cohosting]').first()).toHaveText('Co-hosting');
   await expect(page.getByRole('button', { name: /^Delete Vida’s Friendsgiving$/ })).toHaveCount(0);
 });
