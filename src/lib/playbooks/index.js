@@ -1162,17 +1162,18 @@ function stepLeftAsk(event, t) {
   const kp = d ? decisionKnownPart(event, d) : null;
   return (kp && kp.step) || null;
 }
-// The calls a checklist step stands for: by its engine row id, or (for a
-// caller holding only the row's words, like the checklist's button) by the
-// authored label it was drafted from. [] when it names none.
+// The calls a checklist step stands for: the `answeredBy` its step declares,
+// found by its engine row id (`pbt-<event>-<step>`), never by its words. A row
+// holding only words (one she wrote, even in a step's own words) stands for
+// none (cause 1, remainder a, 11/23/2026). [] when it names none.
+function declaredStepByRowId(event, task, tasks) {
+  const id = task && typeof task.id === 'string' && task.id.startsWith('pbt-') ? task.id : null;
+  return id ? tasks.find((x) => x && id === `pbt-${event.id}-${x.id}`) || null : null;
+}
 export function stepCalls(event, task) {
   if (!event || !task) return [];
   const pb = getPlaybook(event.type);
-  const tasks = (pb && pb.tasks) || [];
-  const id = typeof task.id === 'string' && task.id.startsWith('pbt-') ? task.id : null;
-  const words = String(task.task || '').trim();
-  const t = id ? tasks.find((x) => x && id === `pbt-${event.id}-${x.id}`)
-    : (words ? tasks.find((x) => x && (x.label === words || stepLeftAsk(event, x) === words)) : null);
+  const t = declaredStepByRowId(event, task, (pb && pb.tasks) || []);
   return t && Array.isArray(t.answeredBy) ? t.answeredBy : [];
 }
 // ─── A STEP THAT LISTS ITS ROLES NAMES ONLY THOSE LEFT (queued from #222) ───
@@ -1187,18 +1188,13 @@ function booksLeftLabel(event, t, base) {
   const left = books.filter((r) => !roleBooked(event, r));
   return left.length && left.length < books.length ? String(base).replace(list, left.join(', ')) : base;
 }
-// The roles a checklist step lists: by its engine row id, or by its words
-// (the authored label, or the label with only the roles left). [] when none.
+// The roles a checklist step lists: the `books` its step declares, found by
+// its engine row id, never by its words (as stepCalls). [] when none.
 export function stepBooks(event, task) {
   if (!event || !task) return [];
   const pb = getPlaybook(event.type);
-  const tasks = ((pb && pb.tasks) || []).filter((x) => x && Array.isArray(x.books) && x.books.length);
-  if (!tasks.length) return [];
-  const id = typeof task.id === 'string' && task.id.startsWith('pbt-') ? task.id : null;
-  const words = String(task.task || task.text || '').trim();
-  const t = id ? tasks.find((x) => id === `pbt-${event.id}-${x.id}`)
-    : (words ? tasks.find((x) => x.label === words || booksLeftLabel(event, x, x.label) === words) : null);
-  return t ? t.books : [];
+  const t = declaredStepByRowId(event, task, (pb && pb.tasks) || []);
+  return t && Array.isArray(t.books) && t.books.length ? t.books : [];
 }
 export function stepCallsAnswered(event, task) {
   if (!event || !task || typeof task.id !== 'string' || !task.id.startsWith('pbt-')) return false;

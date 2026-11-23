@@ -325,3 +325,64 @@ describe('every step declares the facts that prove it done', () => {
     expect(reader).not.toMatch(/row\.(?:task|text|title|label)\b/);
   });
 });
+
+// ─── THE CALLS AND ROLES A STEP STANDS FOR ARE ITS DECLARATION (cause 1, remainder a)
+// stepCalls / stepBooks found the step a row stands for by its id, or, for a
+// caller holding only words, by the authored label (or the label with only the
+// roles left). A row the host wrote in the same words as a playbook step was
+// read as that step's calls and roles. The step declares them (`answeredBy`,
+// `books`) and a row finds its step by id, never its words.
+describe('the calls and roles a step stands for are found by id, never by words', () => {
+  const { stepCalls, stepBooks } = pbm;
+  const declared = (pb, rowId, evId) => (pb.tasks || []).find((t) => t && rowId === `pbt-${evId}-${t.id}`) || null;
+  const BOOKED = (cats) => cats.map((c, i) => ({ id: 'k' + i, name: c + ' Co', category: c, status: 'Booked' }));
+  const states = (pb) => eventsFor(pb).flatMap((ev) => [ev, { ...ev, vendors: BOOKED(['Photography', 'Catering']) },
+    { ...ev, vendors: BOOKED(['Wedding Planner', 'Photography', 'Catering', 'DJ']) }]);
+
+  test('every row of every playbook: the declaration by id, whatever the row says', () => {
+    const wrong = [];
+    let rows = 0;
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const ev of states(pb)) {
+        for (const r of (pbm.playbookChecklist(ev, asOf) || [])) {
+          rows += 1;
+          const st = declared(pb, r.id, ev.id);
+          const calls = (st && Array.isArray(st.answeredBy)) ? st.answeredBy : [];
+          const books = (st && Array.isArray(st.books) && st.books.length) ? st.books : [];
+          for (const task of [r.task, DECOY]) {
+            if (JSON.stringify(stepCalls(ev, { id: r.id, task })) !== JSON.stringify(calls)) wrong.push(`${pb.type}:${r.id} calls`);
+            if (JSON.stringify(stepBooks(ev, { id: r.id, task })) !== JSON.stringify(books)) wrong.push(`${pb.type}:${r.id} books`);
+          }
+        }
+      }
+    }
+    expect(wrong.slice(0, 40)).toEqual([]);
+    expect(rows).toBeGreaterThan(10000);
+  });
+
+  test('a row holding only words (one she wrote, in a step’s own words) stands for no call and no role', () => {
+    const wrong = [];
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const ev of states(pb)) {
+        for (const r of (pbm.playbookChecklist(ev, asOf) || [])) {
+          if (stepCalls(ev, { task: r.task }).length) wrong.push(`${pb.type}: "${r.task.slice(0, 50)}" calls`);
+          if (stepBooks(ev, { task: r.task }).length || stepBooks(ev, { text: r.task }).length) wrong.push(`${pb.type}: "${r.task.slice(0, 50)}" books`);
+          if (stepCalls(ev, { id: 'ev-own-t1', task: r.task }).length) wrong.push(`${pb.type}: own row "${r.task.slice(0, 50)}" calls`);
+        }
+      }
+    }
+    expect([...new Set(wrong)].slice(0, 40)).toEqual([]);
+  });
+
+  test('the readers hold no rule over a row’s words', () => {
+    const code = fs.readFileSync(path.join(__dirname, '..', 'playbooks', 'index.js'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+    for (const name of ['stepCalls', 'stepBooks']) {
+      const at = code.indexOf(`export function ${name}(`);
+      expect(at).toBeGreaterThan(-1);
+      let i = code.indexOf('{', code.indexOf(')', at)), depth = 0, body = '';
+      for (let j = i; j < code.length; j++) { if (code[j] === '{') depth++; else if (code[j] === '}') { depth--; if (!depth) { body = code.slice(i, j + 1); break; } } }
+      expect(body).not.toMatch(/\.(?:task|text|label|title)\b/);
+      expect(body).not.toMatch(/stepLeftAsk|booksLeftLabel/);
+    }
+  });
+});
