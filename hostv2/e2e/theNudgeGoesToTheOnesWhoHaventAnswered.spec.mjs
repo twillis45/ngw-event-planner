@@ -205,7 +205,10 @@ test('the board asks 3 days before the host’s reply-by date, and its row opens
 });
 
 test('with no reply-by date set, the chase step is the prompt, and tapping it opens the nudge', async ({ page }) => {
-  const ev = { ...event(), rsvpDeadline: undefined,
+  // 11/23/2026: a step finds its button by its declared id (part 1 of the
+  // six-cause fix), so the chase step sits on a type whose playbook declares
+  // it. Friendsgiving has no t_rsvp_chase; Dinner Party does (target 'chase').
+  const ev = { ...event(), type: 'Dinner Party', rsvpDeadline: undefined,
     timeline: [{ id: 't_rsvp_chase', task: 'Chase non-responders; lock the count', week: 'This week', done: false }] };
   const posts = await boot(page, [200], ev);
   await openSectionByName(page, 'Your checklist');
