@@ -77,18 +77,25 @@ describe('the research pass: fetched store prices cite or correct each band', ()
     expect(isGroundedCost(l.costProvenance)).toBe(true);
     expect(UNSOURCED_PRICE_LINES[`${type}:${id}`]).toBeUndefined();
   });
+  // Friendsgiving's gravy and potatoes and Thanksgiving's mac were labeled
+  // here until 11/23/2026, when the owner's ruling split each into one line per
+  // product: each part now carries its own fetched shelf price, and the
+  // portion assumption moved to the part's quantity provenance, where it is
+  // labeled as ours (everyShoppingLineHasAStoreTerm; the split lines' own
+  // `provenance.note`). Sunday Dinner's mac is not split and stays labeled.
   test('a band built on our own portions is labeled, not cited', () => {
-    for (const [type, id] of [['Friendsgiving', 'p_gravy'], ['Thanksgiving Hosting', 'p_mac'], ['Sunday Dinner', 'p_mac'], ['Friendsgiving', 'p_potatoes']]) {
+    for (const [type, id] of [['Sunday Dinner', 'p_mac']]) {
       const cp = line(type, id).costProvenance;
       expect(cp.tier).toBe('estimate');
       expect(cp.claim).toMatch(/our assumption/i);
       expect(UNSOURCED_PRICE_LINES[`${type}:${id}`]).toMatch(/assumption/);
     }
   });
-  // 43 after this pass; 42 once #239 cited both of Friendsgiving's ordered
-  // answers (friendsgivingOrdersTwoWays.test.js), 41 once it cited the
-  // vegetarian main (theVegetarianMainIsPricedAtItsSources.test.js).
-  test('41 lines remain labeled, each with its reason', () => {
-    expect(Object.keys(UNSOURCED_PRICE_LINES)).toHaveLength(41);
+  // 43 after this pass; #239 cited both of Friendsgiving's ordered answers and
+  // the vegetarian main (41), and the split of Thanksgiving's and
+  // Friendsgiving's combined lines cited ten more (TG coffee, gravy, mac,
+  // potatoes, roasting kit; FG gravy, labels, mac, potatoes, serveware).
+  test('31 lines remain labeled, each with its reason', () => {
+    expect(Object.keys(UNSOURCED_PRICE_LINES)).toHaveLength(31);
   });
 });

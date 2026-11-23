@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 23, 2026 (later) — every shopping line can find itself at the store
+
+**Every line the store lookup sends now has a curated search term or a written reason it cannot, and a census test fails on any line that has neither.** The owner's Thanksgiving found 9 of 12 at her Harris Teeter because terms were keyed by exact item text, and the Thanksgiving turkey differed from Friendsgiving's by one word. Terms are now keyed by line id wherever an id means one product, so a reworded line keeps its term. By the owner's ruling the same day, Thanksgiving Hosting's and Friendsgiving's combined lines are split one line per product, each priced from the owner's own store (Harris Teeter Old Town Alexandria, read live) and BLS/Target, with every portion labeled as our assumption; the parts of a guest's dish go with the dish. At her store both lists now match every line (39/39, 36/36, from 10/19 and 19/20). The other playbooks' combined lines still carry one main-buy term each until they are split.
+
 ## November 23, 2026 — three price rulings: ordering in is two answers, the vegetarian main is cited, one catered course is named
 
 **Friendsgiving's "Ordered in" is now "Order a prepared dinner" ($10-25 a guest) or "Hire a caterer" ($15-35), each cited, and only the caterer brings caterer steps.** The engine prices a vendor by her pick (`vendorRateFor`). A saved "Ordered in" reads as the caterer. The vegetarian main moves from an uncited $6-12 to a cited $1-2.87 a serving. After "Drop-off catering for 1 course", Dinner Party asks which course and takes it off the shopping list; its price stays pending, now naming the course (#239).

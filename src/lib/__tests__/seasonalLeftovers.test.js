@@ -71,17 +71,21 @@ test('3 · Friendsgiving lists a dessert, and a friend brings it', () => {
   expect(d.friendBrings).toBe(true);
   expect(d.broughtByLabel).toBe('Your friends');
   expect([d.low, d.high]).toEqual([0, 0]);
-  // Not the host's to buy, so the "N left" count does not move (11 before).
-  expect(plan.shoppingCount).toBe(11);
+  // Not the host's to buy, so the "N left" count does not move (11 before;
+  // 23 since the 11/23/2026 split of the combined lines, one line per product).
+  expect(plan.shoppingCount).toBe(23);
   // "Host cooks most of it — friends bring drinks and dessert" says so itself.
   const hostCooks = playbookFoodPlan(FG({ foodChoices: { hosting_model: 'Host cooks most of it — friends bring drinks and dessert' } }));
   expect(line(hostCooks, 'p_dessert').friendBrings).toBe(true);
   // Ordered in: the caterer path, no dishes arrive — the same as the sides.
   const ordered = playbookFoodPlan(FG({ foodChoices: { hosting_model: 'Ordered in — a restaurant or caterer cooks, the group splits the bill' } }));
   expect(line(ordered, 'p_dessert')).toBeUndefined();
-  // Thanksgiving keeps its one pie line and gains no second dessert.
+  // Thanksgiving keeps its one pie line and gains no second dessert. The
+  // whipped cream and ice cream for the pie file under Dessert since the
+  // coffee-and-fixings line was split (owner ruling 11/23/2026): toppings the
+  // host buys, not a second dessert dish.
   const tg = playbookFoodPlan(TG());
-  expect(tg.list.filter((l) => l.group === 'Dessert').map((l) => l.id)).toEqual(['p_pies']);
+  expect(tg.list.filter((l) => l.group === 'Dessert').map((l) => l.id)).toEqual(['p_pies', 'p_coffee_whipped', 'p_coffee_icecream']);
 });
 
 // ── 4 ──────────────────────────────────────────────────────────────────────

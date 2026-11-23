@@ -16,9 +16,11 @@
 // `foodSkip` stays its own fact: the dish is not being served.
 import { playbookFoodPlan, openFoodChoices, hostBuysLine, foodOwnerMap, isNamedBringer } from './playbooks';
 
-/** The dishes someone else is carrying and that are being served. */
+/** The dishes someone else is carrying and that are being served. A part of a
+ *  dish (`partOf`: the mash's butter) goes with its dish and is not asked for
+ *  on its own (owner ruling 11/23/2026, split shopping lines). */
 export function bringingRows(plan) {
-  return ((plan && plan.list) || []).filter((i) => i && i.broughtByCommunity && !i.skipped);
+  return ((plan && plan.list) || []).filter((i) => i && i.broughtByCommunity && !i.skipped && !i.partOf);
 }
 
 /** "N of M named" for the Bringing bar and the Plan row. */
