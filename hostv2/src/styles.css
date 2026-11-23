@@ -8502,12 +8502,27 @@ button.vc-pill::after{
   .stagewrap[data-tall="1"] .hero.elegant .ask{ font-size:40px; }
 }
 .stagewrap[data-tall="1"] .tt-stand-slot > .bento{ flex:0 0 auto; height:auto; min-height:0; margin:0; }
-.stagewrap[data-tall="1"] .tt-fold-slot > .efold{ margin:4px 0 0; padding:8px 0 4px; }
+/* The fold control keeps the app's tap floor at every height (CI, 11/23/2026:
+   41px at 768x1024 on Linux font metrics). Its room comes from its own margin,
+   never from the tap box. */
+.stagewrap[data-tall="1"] .tt-fold-slot > .efold{ margin:0; padding:8px 0 4px; min-height:var(--tap-min,46px); box-sizing:border-box; justify-content:center; }
 
 /* THE HEADER — no fill, scrolls with the page. */
 .tt-head{ margin:0 0 8px; padding:16px 0 0; background:none; border:0; }
 .tt-r1{ display:flex; align-items:center; gap:12px; color:var(--muted); font-size:12px; font-weight:650; letter-spacing:.12em; text-transform:uppercase; }
 .tt-r1-solo{ margin:16px 0 8px; }
+/* THE WEATHER ON THE DATE LINE (owner ruling 11/23/2026): the pill, placed in
+   the header, is the line's last item, in the line's own quiet voice. It opens
+   in place below the line, the same body it opens today; it never floats. */
+.tt-r1{ flex-wrap:wrap; }
+.tt-wx-slot:empty{ display:none; }
+.tt-wx-slot{ display:contents; }
+.stagewrap[data-tall="1"] .tt-r1 .wxpill{ position:static; left:auto; right:auto; bottom:auto; transform:none; animation:none; margin:0; padding:0;
+  background:none; border:0; border-radius:0; box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; overflow:visible;
+  text-transform:none; letter-spacing:normal; font-weight:550; font-size:13px; color:var(--muted); }
+.stagewrap[data-tall="1"] .tt-r1 .wxpill-head{ display:inline-flex; align-items:center; gap:8px; min-height:var(--tap-min,46px); margin:0 !important; padding:0; background:none; border:0; color:inherit; font:inherit; cursor:pointer; text-align:left; }
+.stagewrap[data-tall="1"] .tt-r1 .wxpill.open{ flex-basis:100%; }
+.stagewrap[data-tall="1"] .tt-r1 .wxpill .wx-body{ padding:8px 0 4px; color:var(--ink); }
 .tt-chip{ padding:4px 12px; border-radius:999px; background:var(--steel-tint); color:var(--ink); letter-spacing:.1em; }
 .tt-title{ display:inline-flex; align-items:baseline; gap:8px; margin:12px 0 0 !important; padding:0; min-height:var(--tap-min,46px); background:none; border:0; text-align:left; cursor:pointer; color:var(--ink); font:inherit; }
 .tt-name{ font-size:24px; line-height:1.2; font-weight:700; letter-spacing:-.01em; }
@@ -8543,12 +8558,8 @@ button.vc-pill::after{
 .tt-act.q{ color:var(--muted); font-weight:550; }
 .tt-act .srail-i{ width:18px; height:18px; }
 /* What still floats at the foot stands above the bar, never under it: the
-   weather pill and the toast, measured from the bar's top edge instead of the
-   frame's bottom. The NEXT bar is not shown on a tall iPad (owner ruling,
-   11/23/2026): the bar's Plan button takes its job. */
-.stagewrap[data-tall="1"] .wxpill{ left:var(--tt-gut); right:var(--tt-gut); bottom:calc(var(--tt-bar-h) + 12px); }
-.stagewrap[data-tall="1"] .wxpill.wxpill-mid,
-.stagewrap[data-tall="1"] .wxpill.wxpill-raised{ bottom:calc(var(--tt-bar-h) + 12px); }
+   toast, measured from the bar's top edge. The NEXT bar is not shown on a tall
+   iPad and the weather rides the header (owner rulings, 11/23/2026). */
 .stagewrap[data-tall="1"] .toast{ bottom:calc(var(--tt-bar-h) + 60px); }
 
 /* BELOW THE FOLD: one treatment for Worth having a plan for and Who's confirmed. */

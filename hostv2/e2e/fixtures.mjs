@@ -122,8 +122,11 @@ export const dateIn = (days = 0) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-/** True where the section rail is rendered and can be used as the door. */
-export const hasRail = (viewport) => !!viewport && viewport.width >= RAIL_MIN_WIDTH;
+/** True where the section rail is rendered and can be used as the door.
+ *  Not on a tall iPad (owner ruling 11/22/2026): a tablet band held in portrait
+ *  has the docked bar instead, so 1024x1366 (tablet-tall) has no rail. */
+export const hasRail = (viewport) => !!viewport && viewport.width >= RAIL_MIN_WIDTH
+  && !(viewport.width < 1280 && viewport.height > viewport.width);
 
 
 // ─── THE BOOT BEAT WAS A SLEEP IN FRONT OF A BROKEN STATE-WAIT (2026-08-15) ──

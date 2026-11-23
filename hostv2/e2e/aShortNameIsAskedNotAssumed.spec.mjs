@@ -4,7 +4,7 @@
 // still read no reply. Owner ruling (option 3): never attach it on a guess — the
 // lib flags the row (`maybeSameAs`) and the Guests sheet asks the host. Rail
 // viewports only, as theCouplesSheSaidReachTheList explains.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const RAIL = /tablet-land|tablet-tall|desktop|wide/;
 const EV = {
@@ -27,16 +27,17 @@ const open = async (page) => {
     localStorage.setItem('ngw-v2-welcomed', '1');
   }, EV);
   await page.goto('./');
-  const row = page.getByRole('button', { name: /^Guests$/ }).first();
-  await row.waitFor({ state: 'visible', timeout: 20000 });
-  await row.click();
+  // The Guests door wherever this viewport has it: the rail, or on a tall
+  // iPad (no rail, 11/22/2026) the bar's All sections index.
+  await settled(page);
+  await openSectionByName(page, 'Guests', { settle: 0 });
   const ask = page.getByRole('group', { name: 'Is eve Eve Brooks?' });
   await expect(ask).toBeVisible({ timeout: 20000 });
   return ask;
 };
 
 test('"Same person" moves the reply onto Eve Brooks and the row goes', async ({ page }, testInfo) => {
-  test.skip(!RAIL.test(testInfo.project.name), 'the section rail exists at tablet-land and above');
+  test.skip(!RAIL.test(testInfo.project.name), 'one tap to Guests: the rail from tablet-land, the bar’s index on a tall iPad');
   const ask = await open(page);
   await ask.getByRole('button', { name: 'Same person' }).click();
   await expect.poll(async () => (await stored(page)).length).toBe(2);
@@ -46,13 +47,14 @@ test('"Same person" moves the reply onto Eve Brooks and the row goes', async ({ 
 });
 
 test('"Different people" keeps both and does not ask again', async ({ page }, testInfo) => {
-  test.skip(!RAIL.test(testInfo.project.name), 'the section rail exists at tablet-land and above');
+  test.skip(!RAIL.test(testInfo.project.name), 'one tap to Guests: the rail from tablet-land, the bar’s index on a tall iPad');
   const ask = await open(page);
   await ask.getByRole('button', { name: 'Different people' }).click();
   await expect.poll(async () => (await stored(page)).find((g) => g.id === 'g-rsvp-k1').maybeSameAs).toBeUndefined();
   expect((await stored(page)).length).toBe(3);
   await page.reload();
-  await page.getByRole('button', { name: /^Guests$/ }).first().click();
+  await settled(page);
+  await openSectionByName(page, 'Guests', { settle: 0 });
   await page.getByLabel(/Add guest names/i).waitFor({ state: 'visible', timeout: 20000 });
   await expect(page.getByRole('group', { name: 'Is eve Eve Brooks?' })).toHaveCount(0);
 });

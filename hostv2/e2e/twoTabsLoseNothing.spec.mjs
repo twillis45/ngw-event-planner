@@ -4,20 +4,21 @@
 // when tab B — still holding the older list — added one of its own. B wrote its
 // stale guests array over A's. Rail viewports, as theCouplesSheSaidReachTheList
 // explains; two pages in one context share storage the way two tabs do.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const RAIL = /tablet-land|tablet-tall|desktop|wide/;
 const EV = { id: 'E2E_two_tabs', type: 'Get-Together', name: 'Book club', date: '2027-03-12', guestMode: 'list', guestEstimate: 6, budget: [], vendors: [], timeline: [], guests: [] };
 
 const addGuest = async (page, name) => {
-  await page.getByRole('button', { name: /^Guests$/ }).first().click();
+  // The Guests door wherever this viewport has it (rail, or a tall iPad's index).
+  await openSectionByName(page, 'Guests', { settle: 0 });
   await page.getByLabel(/Add guest names/i).fill(name);
   await page.getByRole('button', { name: 'Add them' }).click();
   await page.getByRole('button', { name: 'Close', exact: true }).first().click().catch(() => {});
 };
 
 test('a guest added in one tab survives an edit in the other', async ({ page, context }, testInfo) => {
-  test.skip(!RAIL.test(testInfo.project.name), 'the section rail exists at tablet-land and above');
+  test.skip(!RAIL.test(testInfo.project.name), 'one tap to Guests: the rail from tablet-land, the bar’s index on a tall iPad');
   await context.addInitScript((e) => {
     if (localStorage.getItem('ngw-hostv2-last-event')) return;
     localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
@@ -28,8 +29,8 @@ test('a guest added in one tab survives an edit in the other', async ({ page, co
   await page.goto('./');
   const tabB = await context.newPage();
   await tabB.goto(page.url());
-  await page.getByRole('button', { name: /^Guests$/ }).first().waitFor({ timeout: 20000 });
-  await tabB.getByRole('button', { name: /^Guests$/ }).first().waitFor({ timeout: 20000 });
+  await settled(page);
+  await settled(tabB);
   await addGuest(page, 'Tab One Tina');
   await addGuest(tabB, 'Tab Two Tom');
   const names = () => page.evaluate(() => (JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].guests || []).map((g) => g.name).sort().join('|'));
