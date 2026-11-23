@@ -81,6 +81,24 @@ Before that, 2026-11-02 (sixtieth entry:
   - `aTallIPadGetsItsOwnBoard` + boardMatrix on all projects: 179 passed.
 - 🔴 **The full mobile+desktop projects (2,557 tests) did not finish.** They run about 5 hours in this container. The tall-iPad agent's e2e shared ports 5233/5244/5277 at the same time, and the partial runs failed under that load: every failure rerun alone passed except the 7 above.
 - 🔴 **Trap: two agents' e2e runs collide on fixed ports.** Use a throwaway config with moved ports; 8 specs hard-code 5277 or 5255.
+- **Follow-up round (coordinator, same night):**
+  - **Done:**
+    - **Risks declare their targets.** That covers 339 playbook risks plus 15 derived risk types. The risk row's "Plan for this" and a mitigation added to the checklist both read `riskTargetFor`. The census and the shell scan were extended.
+    - **The server sends ask `outward_gaps`.** This covers the invite email's `invite_gaps`, the helper-job email and the vendor-brief mint (a 422 that says "Nothing was sent").
+    - **pytest was installed here and run:** 1,124 passed, plus the new tests.
+    - **`event_created` fires once with `unsaved: true` on "Open my plan".** The e2e asserts it.
+  - **Not done, with the reason:**
+    - **P1-7.** The decisions raiser only raises calls that are past their window; a time-sensitive call never reaches the queue. Raising them, and ranking them by the Calls list's urgency, broke 18 tests that encode owner rulings: the budget comes first (11/18), the shop that closes leads, the menu panel, and the brand-new tight event that is calm (reachability). Which one wins is an owner call. The attempt was reverted.
+    - **Cause 1 still has these text readers:** the coming-up rows (`routeUpNext`), `milestoneActionRoute` (milestones and WCGW), the hero ask copy ladder (`heroAsk`), and which facts a step's text satisfies (`taskSatisfied` and `timelineStepResolved`).
+    - **Cause 3 still has these:** a per-head reader, item-count meanings and labels, seating-sheet costs in the totals, the "Venue address: handled" fact, who-cooks copy, and guest-count wording.
+- **Gates after the follow-up:**
+  - Root jest: 13,857 passed, 1 skipped.
+  - vitest: 164 passed.
+  - `e2e:build` exit 0.
+  - backend pytest: 1,124 passed, plus the new tests.
+  - e2e, 54 specs (stages, creation, invite, money, checklist, The Day, risks, boardMatrix, tall) on mobile, desktop and tablet-tall: 723 passed, 34 skipped, 1 failed.
+  - The failure is `checklistFollowsDecisions` "the crab swap" on tablet-tall, which clicks the left rail. A tall iPad has no rail since #241, and #241's spec sweep (its `openSection` helper) owns that spec.
+  - The rest of the suite is left to CI.
 - 🔴 **Trap: a row's words no longer route it.** A new playbook step must declare `target`, or the census fails. A new derived row must add its id to `DERIVED_STEP_TARGETS`.
 
 ## November 23, 2026 — a tall iPad gets its own board (owner rulings 11/22: the tall-iPad package)
