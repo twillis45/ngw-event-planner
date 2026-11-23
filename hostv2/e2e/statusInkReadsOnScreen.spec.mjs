@@ -16,7 +16,7 @@
 // composited), with one addition: an element's opacity is taken at the LOWEST
 // keyframe of any running opacity animation on it or an ancestor, so a line
 // that dips under AA once every seven seconds fails here every time.
-import { test, expect, openSectionByName, settled, sheetSettled, dateIn } from './fixtures.mjs';
+import { test, expect, openSectionByName, settled, sheetSettled, dateIn, goToStage, openMenuDoor } from './fixtures.mjs';
 import { previewUrl } from '../deployBase.mjs';
 
 const measure = ([sel, scopeSel]) => {
@@ -115,9 +115,10 @@ const passgate = async (page) => {
   await page.route(PASSGATE_API + '/api/stripe/pass**', (route) => route.fulfill({ status: 200, json: { event_id: PASS_EV.id, held: false } }));
 };
 
+// Through the shared doors (the phone has no ☰ since owner ruling 1, 11/23/2026).
 const menu = async (page, label) => {
-  await page.locator('.ev-eyebrow').first().click();
-  await page.locator('.sheet').last().getByRole('button', { name: label, exact: false }).first().click();
+  if (['Create', 'Plan', 'The Day', 'After'].includes(label)) await goToStage(page, label);
+  else await openMenuDoor(page, label);
   await page.waitForTimeout(1200);
 };
 

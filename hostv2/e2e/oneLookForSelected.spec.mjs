@@ -67,27 +67,44 @@ for (const theme of ['dark', 'light']) {
     test.setTimeout(120_000);
     await boot(page, theme);
     const seen = [];
+    const selInk = [];
     for (const s of SURFACES) {
-      // A tall iPad's phase switch is the docked bar, not a sheet (11/22/2026).
+      // A tall iPad's phase switch is the docked bar, not a sheet (11/22/2026);
+      // a phone's is its pill, and a 13" iPad's the rail's Your event group
+      // (owner rulings 4 and 8, 11/23/2026).
       const inBar = s.name === '__jump' && await page.locator('[data-tt-bar]').count() > 0;
+      const inRail = s.name === '__jump' && !inBar && await page.locator('.srail [data-rail-stage]').count() > 0;
       if (s.name === '__jump') {
         if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
-        if (!inBar) await page.locator('.ev-eyebrow').first().click();
+        if (!inBar && !inRail) await page.locator('.ev-eyebrow').first().click();
       } else {
         await openSectionByName(page, s.name, { settle: 600 });
       }
-      if (!inBar) await sheetSettled(page);
+      if (!inBar && !inRail) await sheetSettled(page);
       if (s.pick) { await page.locator('.sheet').last().locator(s.pick).first().click(); await page.waitForTimeout(400); }
-      const r = await page.evaluate(read, [s.on, s.off, inBar ? '[data-tt-bar]' : null]);
-      const where = `${theme} · ${s.name === '__jump' ? (inBar ? 'the bar' : 'Jump to') : s.name}`;
+      const sel = inRail ? ['.srail-stage.is-stage', '.srail-stage:not(.is-stage)', '.srail'] : [s.on, s.off, inBar ? '[data-tt-bar]' : null];
+      const r = await page.evaluate(read, sel);
+      const where = `${theme} · ${s.name === '__jump' ? (inBar ? 'the bar' : inRail ? 'the rail' : 'Jump to') : s.name}`;
       expect(r.on, `${where}: premise, a selected ${s.on} renders`).not.toBeNull();
       expect(r.off, `${where}: premise, an unselected neighbor renders`).not.toBeNull();
       expect.soft(r.on.img, `${where}: selected is not a gradient`).toBe('none');
       expect.soft(r.on.bg, `${where}: selected is not the primary button's fill`).not.toBe(r.primary);
       expect.soft(r.status, `${where}: selected is not a status color`).not.toContain(r.on.bg);
       expect.soft(`${r.on.bg} ${r.on.edge}`, `${where}: selected differs from unselected`).not.toBe(`${r.off.bg} ${r.off.edge}`);
+      // THE PHASE IS OUTLINED, NOT FILLED, on the phone's pill and in the 13"
+      // rail (owner rulings 4 and 8, 11/23/2026: no fill on the pill; "the
+      // current stage outlined (not filled)"). Held to that, and to the one
+      // selected ink; the one-fill rule below holds everywhere else.
+      const outlined = (inBar && await page.locator('[data-tt-bar][data-pill]').count() > 0) || inRail;
+      if (outlined) {
+        expect.soft(r.on.bg, `${where}: the phase has no fill`).toBe('rgba(0, 0, 0, 0)');
+        expect.soft(parseFloat(r.on.edge.split(' ').find((t) => /px$/.test(t)) || '0'), `${where}: the phase is outlined`).toBeGreaterThan(0);
+        selInk.push(r.on.ink);
+        continue;
+      }
       seen.push({ where, bg: r.on.bg, ink: r.on.ink, label: r.on.label });
     }
+    for (const ink of selInk) expect.soft(ink, 'the outlined phase wears the one selected ink').toBe(seen[0] && seen[0].ink);
     const looks = [...new Set(seen.map((s) => `${s.bg} / ${s.ink}`))];
     expect.soft(looks, `one selected look across ${seen.map((s) => `${s.where} "${s.label}" = ${s.bg} / ${s.ink}`).join('; ')}`).toHaveLength(1);
   });

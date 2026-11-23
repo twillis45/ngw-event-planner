@@ -1,4 +1,4 @@
-import { test, expect, settled, dateIn, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, dateIn, openSectionByName, openWhatsCounted } from './fixtures.mjs';
 
 const base = (over = {}) => ({ id: 'c5-event', type: 'Birthday', name: 'Core journeys', date: dateIn(80), guestMode: 'count', guestCount: 40, guestCountSource: 'host', totalBudget: 5000, venue: 'Community Hall', venueKind: 'venue', venueCity: 'Baltimore', venueState: 'MD', startTime: '17:00', startTimeSource: 'derived', startTimeBasis: 'rule-of-thumb', guests: [], vendors: [], budget: [], timeline: [], ...over });
 const boot = async (page, ev) => {
@@ -73,6 +73,9 @@ test('the horizon does not tell a destination host to wait past a real lodging d
   const text = await page.locator('body').innerText();
   expect(text).not.toMatch(/the rest can wait till/i);
   const label = new Date(deadline + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  // On a phone the progress is one line since owner ruling 3 (11/23/2026); the
+  // dated-work line sits behind its door, What's counted.
+  if (await page.locator('[data-pp-prog]').count()) await openWhatsCounted(page);
   await expect(page.getByText(new RegExp('next dated work: ' + label, 'i')).first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('plan-horizon.png'), fullPage: true });

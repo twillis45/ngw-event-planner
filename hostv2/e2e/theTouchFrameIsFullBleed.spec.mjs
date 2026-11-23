@@ -76,12 +76,17 @@ test.describe('touch: the frame is full-bleed with square corners', () => {
       // A tablet held upright is the tall-iPad layout (owner, 11/22/2026): no
       // rail; the board runs full width and ends at a docked bar the width of
       // the screen. Every other touch size keeps the rail beside the board.
-      if (h > w && w < 1280) {
+      // From 1024 upright (the 13"), the tall layout keeps the rail and has no
+      // bar (owner ruling 8, 11/23/2026): the rail's inner layout holds there.
+      if (h > w && w < 1024) {
         expect(m.tall, 'portrait tablet: the tall layout').toBe(true);
         expect(m.rail, 'portrait tablet: no rail').toBe('0');
         expect(m.board.x, 'board from the left edge').toBe(0);
         expect(m.board.w, 'board the width of the screen').toBe(m.vw);
         expect(m.bar, 'the docked bar').toEqual({ x: 0, y: m.board.y + m.board.h, w: m.vw, h: m.vh - (m.board.y + m.board.h) });
+      } else if (h > w && w < 1280) {
+        expect(m.tall, 'the 13" upright: the tall layout').toBe(true);
+        innerLayoutHolds(m);
       } else {
         innerLayoutHolds(m);
       }

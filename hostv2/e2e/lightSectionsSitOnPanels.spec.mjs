@@ -12,7 +12,7 @@
 // that skips the panel fails here without anyone having to list it.
 //
 // Dark keeps today's look; the last test holds it to that.
-import { test, expect, openSectionByName, dateIn } from './fixtures.mjs';
+import { test, expect, openSectionByName, dateIn, goToStage } from './fixtures.mjs';
 
 const EVENT = {
   id: 'panels-ev', name: 'Maya’s 40th Birthday', type: 'Birthday', createdAt: '2026-11-01',
@@ -97,7 +97,9 @@ test('light: the board\'s below-fold blocks and the pick sit on white panels', a
   // confirmed" share one treatment there: full-width hairline rows with no
   // card or box. Ruling 25's panels hold for every other block; those two
   // are held to the newer ruling instead — no fill, and rows edged with --line-soft.
-  if (await page.locator('[data-tt-bar]').count()) {
+  // The tall board is [data-tall="1"] (the 13" keeps it with the rail and no
+  // bar since owner ruling 8; a phone's pill is a bar but not a tall board).
+  if (await page.locator('.stagewrap[data-tall="1"]').count()) {
     const isRowList = (r) => /ef-watch|who-confirmed/.test(r.what);
     onAPanel(rows.filter((r) => !isRowList(r)), 'board');
     for (const r of rows.filter(isRowList)) expect.soft(r.bg, `tall board: ${r.what} has no box`).toBe('rgba(0, 0, 0, 0)');
@@ -193,8 +195,8 @@ test('dark sits its sections on the same panels as light, and The Day too', asyn
       counts[`${name} (${theme})`] = await page.evaluate(raised, '.sheet');
     }
     if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
-    await page.locator('.ev-eyebrow').first().click();
-    await page.locator('.sheet').last().getByRole('button', { name: 'The Day', exact: false }).first().click();
+    // The phase through the shared door (the phone's pill since owner ruling 4, 11/23/2026).
+    await goToStage(page, 'The Day');
     await page.waitForTimeout(1200);
     counts[`The Day (${theme})`] = await page.evaluate(raised, '.day-sec');
     await ctx.close();
@@ -215,8 +217,8 @@ test('on the day, The Day shows the same panels in both themes', async ({ browse
     const page = await ctx.newPage();
     await page.clock.setFixedTime(new Date(EVENT.date + 'T15:00:00'));
     await boot(page, theme);
-    await page.locator('.ev-eyebrow').first().click();
-    await page.locator('.sheet').last().getByRole('button', { name: 'The Day', exact: false }).first().click();
+    // The phase through the shared door (the phone's pill since owner ruling 4, 11/23/2026).
+    await goToStage(page, 'The Day');
     await page.waitForTimeout(1200);
     counts[`The Day (${theme})`] = await page.evaluate(raised, '.day-sec');
     await ctx.close();
@@ -251,8 +253,8 @@ test('The Day keeps its text off every panel edge, in both themes', async ({ bro
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();
     await boot(page, theme);
-    await page.locator('.ev-eyebrow').first().click();
-    await page.locator('.sheet').last().getByRole('button', { name: 'The Day', exact: false }).first().click();
+    // The phase through the shared door (the phone's pill since owner ruling 4, 11/23/2026).
+    await goToStage(page, 'The Day');
     await page.waitForTimeout(1200);
     const rows = await page.evaluate(() => {
       const out = [];

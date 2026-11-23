@@ -12,7 +12,11 @@
 //
 // Self-pinned to 390px: the list is reached the phone way, as in
 // herOwnEventIsFirst.spec.mjs.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, openEventsSheet } from './fixtures.mjs';
+
+// The board's header: the tall header on a phone since owner ruling 1
+// (11/23/2026), the ☰ eyebrow where it remains.
+const HEAD = '[data-tt-head], .ev-eyebrow';
 
 const TEST_ROW = /Test —/;
 
@@ -27,18 +31,21 @@ const seed = async (page, lastEvent) => {
 };
 
 const openTheList = async (page) => {
-  await page.locator('.ev-eyebrow').first().click();
-  await page.locator('.navrow', { hasText: 'This event' }).first().click();
+  await openEventsSheet(page);
   await expect(page.getByRole('heading', { name: 'Your events' })).toBeVisible({ timeout: 15000 });
 };
 
 const searchFor = async (page, q) => {
   // The board must be up before the shortcut has a listener; then open Search
   // by its own button (⌘K is the same toggle).
-  await expect(page.locator('.ev-eyebrow').first()).toBeVisible({ timeout: 20000 });
+  await expect(page.locator(HEAD).first()).toBeVisible({ timeout: 20000 });
   if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(250); }
-  await page.locator('.ev-eyebrow').first().click();
-  await page.locator('.navrow', { hasText: /^Search/ }).first().click();
+  // Search is the pill's on a phone (owner ruling 4), the menu's row elsewhere.
+  if (await page.locator('[data-tt-bar]').count()) await page.locator('[data-tt-bar]').getByRole('button', { name: 'Search', exact: true }).click();
+  else {
+    await page.locator('.ev-eyebrow').first().click();
+    await page.locator('.navrow', { hasText: /^Search/ }).first().click();
+  }
   const input = page.locator('.palette-input');
   await expect(input).toBeVisible({ timeout: 10000 });
   await input.fill(q);
@@ -77,7 +84,7 @@ test('with the demo tools on, all six fixtures list in both places', async ({ pa
 test('hidden from the list, a fixture still boots by id', async ({ page }) => {
   await seed(page, 'test-day-before-vendors');
   await page.goto('?elegant=1&demo=0');
-  await expect(page.locator('.ev-eyebrow').first()).toBeVisible({ timeout: 20000 });
+  await expect(page.locator(HEAD).first()).toBeVisible({ timeout: 20000 });
   // The board is the fixture's own, booted by id with the list filtered.
   await expect(page.locator('.app')).toContainText(/Test — Dinner/i);
 });

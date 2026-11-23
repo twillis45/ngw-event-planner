@@ -60,7 +60,9 @@ test.describe('section rail collapse', () => {
     expect(narrow).toBeLessThanOrEqual(72);
 
     // ...and still carries it after, when the label is gone from the tree.
-    const labelsPainted = await page.locator('.srail-l').evaluateAll(
+    // The 13" upright's phase rows (owner ruling 8, 11/23/2026) have no icon,
+    // so collapsed they keep their short word; every icon row loses its label.
+    const labelsPainted = await page.locator('.srail-row:not(.srail-stage) .srail-l').evaluateAll(
       (ns) => ns.filter((x) => getComputedStyle(x).display !== 'none').length);
     expect(labelsPainted).toBe(0);
 

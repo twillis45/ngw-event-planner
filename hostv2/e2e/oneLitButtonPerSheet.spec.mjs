@@ -51,10 +51,15 @@ const sectionNames = async (page) => {
   if (await page.locator('.srail-row').count()) {
     return page.locator('.srail-row').evaluateAll((rows) => rows.map((r) => (r.querySelector('.srail-l, .srail-name') || r).innerText.split('\n')[0].trim()).filter(Boolean));
   }
-  await page.locator('.ev-eyebrow').first().click();
-  await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click();
+  // The index (the pill's or the bar's All sections), else the ☰ menu's Jump to.
+  if (await page.locator('[data-tt-bar]').count()) {
+    await page.locator('[data-tt-bar]').getByRole('button', { name: 'All sections', exact: true }).click();
+  } else {
+    await page.locator('.ev-eyebrow').first().click();
+    await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click();
+  }
   await sheetSettled(page);
-  const names = await page.locator('.sheet').last().locator('.sec-row .f-name').allInnerTexts();
+  const names = await page.locator('.sheet').last().locator('.sec-row .f-name, [data-door] > span').allInnerTexts();
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
   return names.map((n) => n.trim()).filter(Boolean);

@@ -20,16 +20,29 @@ test('at 320×640 the progress labels are whole and the handle keeps a gap', asy
     localStorage.setItem('ngw-v2-welcomed', '1');
   }, day(1));
   await page.goto('./?elegant=1');
-  await page.locator('.eprog-labels').first().waitFor({ state: 'visible', timeout: 20000 });
+  // The progress moved on top as one line (owner ruling 3, 11/23/2026); the
+  // same two claims, on it: the line is whole, and the handle keeps clear of
+  // the text above it. And the pill fits 320 (ruling 4).
+  await page.locator('[data-pp-line]').first().waitFor({ state: 'visible', timeout: 20000 });
   const m = await page.evaluate(() => {
-    const spans = [...document.querySelectorAll('.eprog-labels > span')];
+    const line = document.querySelector('[data-pp-line]');
     const grab = document.querySelector('.efold-grab');
-    const lowest = Math.max(...spans.map((s) => s.getBoundingClientRect().bottom));
+    const esc = document.querySelector('.escreen.on');
+    const above = [...esc.querySelectorAll('*')].filter((e) => e.children.length === 0 && (e.textContent || '').trim() && !e.closest('.efold') && e.getBoundingClientRect().height > 0);
+    const lowest = Math.max(...above.map((s) => s.getBoundingClientRect().bottom));
+    const lr = line.getBoundingClientRect();
     return {
-      clipped: spans.filter((s) => s.scrollWidth > s.clientWidth + 1).map((s) => s.innerText),
+      clipped: line.scrollWidth > line.clientWidth + 1 || lr.right > innerWidth,
+      lines: (() => { const r = document.createRange(); r.selectNodeContents(line); return new Set([...r.getClientRects()].filter((x) => x.width > 0).map((x) => Math.round(x.bottom))).size; })(),
+      text: line.innerText,
       gap: grab ? grab.getBoundingClientRect().top - lowest : null,
+      pill: [...document.querySelectorAll('[data-tt-bar] button')].map((b) => { const r = b.getBoundingClientRect(); return { w: r.width, h: r.height, right: r.right }; }),
+      sw: document.documentElement.scrollWidth, iw: innerWidth,
     };
   });
-  expect(m.clipped, 'no label is cut off').toEqual([]);
+  expect(m.clipped, `the progress line is whole: "${m.text}"`).toBe(false);
+  expect(m.lines, 'one line').toBe(1);
   expect(m.gap, 'the handle sits clear of the text').toBeGreaterThanOrEqual(8);
+  expect(m.sw).toBeLessThanOrEqual(m.iw);
+  for (const b of m.pill) { expect(b.w).toBeGreaterThanOrEqual(44); expect(b.h).toBeGreaterThanOrEqual(44); expect(b.right).toBeLessThanOrEqual(m.iw); }
 });

@@ -10,9 +10,12 @@
 import { test, expect } from '@playwright/test';
 import { settled, sheetSettled, dateIn } from './fixtures.mjs';
 
+// The 13" keeps the tall board but, since owner ruling 8 (11/23/2026), has the
+// rail and no bar: its edges sit 48px inside the content column, and the
+// bar-only checks below run at 11" (theNavigationPackage measures the 13").
 const SIZES = [
   ['11"', { width: 834, height: 1194 }, 48],
-  ['13"', { width: 1024, height: 1366 }, 64],
+  ['13"', { width: 1024, height: 1366 }, 48],
 ];
 
 const boot = async (browser, vp, theme) => {
@@ -36,10 +39,12 @@ const visible = (page, sel) => page.evaluate((s) => [...document.querySelectorAl
 
 for (const theme of ['dark', 'light']) {
   for (const [name, vp, gut] of SIZES) {
+    const bar = vp.width < 1024;   // ruling 8: the 13" upright has the rail, not the bar
     test.describe(`${name} portrait, ${theme}`, () => {
-      test('no rail and no eyebrow; the header names the event and its title opens the events sheet', async ({ browser }) => {
+      test(`${bar ? 'no rail' : 'the rail (ruling 8)'} and no eyebrow; the header names the event and its title opens the events sheet`, async ({ browser }) => {
         const { ctx, page } = await boot(browser, vp, theme);
-        expect(await visible(page, '.srail'), 'rail').toBe(false);
+        expect(await visible(page, '.srail'), 'rail').toBe(!bar);
+        expect(await visible(page, '[data-tt-bar]'), 'bar').toBe(bar);
         expect(await visible(page, '.ev-eyebrow'), 'eyebrow').toBe(false);
         await expect(page.locator('[data-tt-title]')).toContainText('Wanda’s 50th');
         await expect(page.locator('[data-tt-head] [data-sample-event]')).toBeVisible();
@@ -85,7 +90,9 @@ for (const theme of ['dark', 'light']) {
         const m = await page.evaluate(() => {
           const sels = ['[data-tt-head]', '[data-tt-ribbon]', '.hero.elegant .ask', '.escreen.on .hero-card, .escreen.on .opt-list, .escreen.on .ans-card', '.escreen.on .bento', '.ef-watch', '[data-who-confirmed]', '.tt-bar-in'];
           const out = {};
-          for (const s of sels) { const e = document.querySelector(s); if (!e) continue; const r = e.getBoundingClientRect(); out[s] = [Math.round(r.left), Math.round(innerWidth - r.right)]; }
+          // Measured from the content column (.app): the screen edge at 11", the rail's edge at 13".
+          const app = document.querySelector('.app').getBoundingClientRect();
+          for (const s of sels) { const e = document.querySelector(s); if (!e) continue; const r = e.getBoundingClientRect(); out[s] = [Math.round(r.left - app.left), Math.round(app.right - r.right)]; }
           return { out, iw: innerWidth, sw: document.documentElement.scrollWidth };
         });
         expect(m.sw, 'no sideways scroll').toBeLessThanOrEqual(m.iw);
@@ -94,11 +101,11 @@ for (const theme of ['dark', 'light']) {
           // The ask is a headline, not a box: only its left edge is shared.
           if (s !== '.hero.elegant .ask') expect(Math.abs(r - gut), `${s} right ${r}`).toBeLessThanOrEqual(2);
         }
-        expect(Object.keys(m.out).length).toBeGreaterThanOrEqual(7);
+        expect(Object.keys(m.out).length).toBeGreaterThanOrEqual(bar ? 7 : 6);
         await ctx.close();
       });
 
-      test('the first screen ends at the fold, above the bar, and nothing sits under the bar', async ({ browser }) => {
+      if (bar) test('the first screen ends at the fold, above the bar, and nothing sits under the bar', async ({ browser }) => {
         const { ctx, page } = await boot(browser, vp, theme);
         const m = await page.evaluate(() => {
           const bar = document.querySelector('[data-tt-bar]').getBoundingClientRect();
@@ -132,7 +139,7 @@ for (const theme of ['dark', 'light']) {
       // The floating NEXT bar is not shown on a tall iPad; the bar is the one
       // docked thing. Text clipped by the scroller is what the eye sees; at
       // every depth, the end included, none of it may meet the bar.
-      test('no NEXT bar at any depth, and no visible text meets the bar, mid-scroll or at the end', async ({ browser }) => {
+      if (bar) test('no NEXT bar at any depth, and no visible text meets the bar, mid-scroll or at the end', async ({ browser }) => {
         const { ctx, page } = await boot(browser, vp, theme);
         let scrolledPastHero = false;
         for (const frac of [0.25, 0.5, 0.75, 1, 1]) {
@@ -160,7 +167,7 @@ for (const theme of ['dark', 'light']) {
         await ctx.close();
       });
 
-      test('Plan, tapped on Plan with the question scrolled away, goes back to the question', async ({ browser }) => {
+      if (bar) test('Plan, tapped on Plan with the question scrolled away, goes back to the question', async ({ browser }) => {
         const { ctx, page } = await boot(browser, vp, theme);
         await page.evaluate(() => { const a = document.querySelector('.app'); a.scrollTop = a.scrollHeight; });
         await page.waitForTimeout(600);
@@ -172,7 +179,7 @@ for (const theme of ['dark', 'light']) {
         await ctx.close();
       });
 
-      test('the bar: phases, All sections, Search; the index lists every door once, with real icons', async ({ browser }) => {
+      if (bar) test('the bar: phases, All sections, Search; the index lists every door once, with real icons', async ({ browser }) => {
         const { ctx, page } = await boot(browser, vp, theme);
         const bar = page.locator('[data-tt-bar]');
         await expect(bar.getByRole('button', { name: 'Plan' })).toHaveAttribute('aria-pressed', 'true');
@@ -248,7 +255,9 @@ for (const theme of ['dark', 'light']) {
   for (const [name, vp] of [
     ['iPad mini 6', { width: 744, height: 1133 }], ['iPad 9.7"', { width: 768, height: 1024 }],
     ['iPad 10.2"', { width: 810, height: 1080 }], ['iPad Air', { width: 820, height: 1180 }],
-    ['iPad Pro 11"', { width: 834, height: 1194 }], ['iPad Pro 13"', { width: 1024, height: 1366 }],
+    // Not the 13" (1024x1366): it has no bar since owner ruling 8 (11/23/2026);
+    // its first screen is measured in theNavigationPackage (ruling 9).
+    ['iPad Pro 11"', { width: 834, height: 1194 }],
   ]) {
     test(`${name} ${vp.width}x${vp.height}, ${theme}: Where you stand and the fold sit above the bar`, async ({ browser }) => {
       const { ctx, page } = await boot(browser, vp, theme);
