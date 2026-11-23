@@ -365,6 +365,8 @@ import { withSettled, withoutSettled, unsettledActions } from '@app/lib/settledA
 import { landingStage } from '@app/lib/landingStage';
 import { planPartsProgress, planPartsLine } from '@app/lib/planProgress';
 import { moneyFigures, headroomLabel, MONEY_LABELS } from '@app/lib/moneyFigures';
+import { outwardGaps, outwardPrompt } from '@app/lib/outwardReady';
+import { eventNameFrom } from '@app/lib/eventName';
 import { timeAnchorFields } from '@app/lib/eventAnchor';
 import { startTimeFieldWords } from '@app/lib/eventWhen';
 import { vendorObligations } from '@app/lib/vendorObligations';
@@ -4659,6 +4661,8 @@ export default function HostShellV2() {
   };
   const cancelSignInToSend = () => { pendingBriefRef.current = null; setBriefSignIn(null); };
   const shareVendorBrief = async (v) => {
+    // Nothing goes out with a placeholder (lib/outwardReady, cause 6).
+    { const og = outwardGaps(event, 'vendor'); if (og.length) { toast(outwardPrompt(og) + ' Nothing was shared.'); return; } }
     // MODEL D — door 1, at the only honest gate point: GENERATING a brief for
     // a new vendor (board 2026-08-18: "never mid-conversation" — an
     // already-shared vendor passes unconditionally inside briefAllowed).
@@ -9129,6 +9133,8 @@ export default function HostShellV2() {
   const sendHelperJob = async (taskId) => {
     const resp = helperForTask(taskId);
     if (!resp) return;
+    // Nothing goes out with a placeholder (lib/outwardReady, cause 6).
+    { const og = outwardGaps(event, 'helper'); if (og.length) { toast(outwardPrompt(og) + ' Nothing was sent.'); return; } }
     const first = String(resp.helperName || 'them').split(/\s+/)[0];
     let appUrl;
     try { appUrl = publicAppUrl(); }
@@ -10508,7 +10514,11 @@ export default function HostShellV2() {
       // 11/5/2026): "Vida is hosting a girls' game night" saved as "My Game
       // Night". The honoree still wins when there is one; the host is kept on
       // `hostName`, never promoted to honoree — nobody is being celebrated.
-      name: effName ? effName + '’s ' + milestoneName : (parsed.hostName ? parsed.hostName + '’s ' + milestoneName : 'My ' + milestoneName),
+      // NAMED FROM HER OWN WORDS (lib/eventName, six root causes cause 6): her
+      // honoree or her own name when she gave one, else the occasion phrase
+      // her sentence opens with — never "My <Type>". A bare occasion is a
+      // placeholder that lib/outwardReady asks her to replace before a send.
+      name: eventNameFrom({ sentence: smartText, honoree: effName, hostName: parsed.hostName, milestoneName }).name,
       honoree: effName || '',
       // …and when she did not name herself, the invitation is from the name
       // her profile already holds (hostNameFor), not a blank she is asked to fill.
@@ -16960,7 +16970,7 @@ export default function HostShellV2() {
                       : 'That’s everything a guest needs. Your invite is written with it.'}
                   </p>
                   <ul style={{ listStyle: 'none', margin: '0 0 var(--sp-3)', padding: 0 }}>
-                    {[['date', 'The day'], ['time', 'The time guests arrive'], ['place', 'Where it is']].map(([k, label]) => (
+                    {[['date', 'The day'], ['time', 'The time guests arrive'], ['place', 'Where it is'], ['name', 'The event’s name'], ['address', 'The street address']].filter(([k]) => k !== 'name' && k !== 'address' ? true : gaps.includes(k)).map(([k, label]) => (
                       <li key={k} data-invite-check-item={k} data-ok={has(k) ? '1' : '0'} className="grounding" style={{ margin: '0 0 4px' }}>
                         <b style={{ color: has(k) ? 'var(--ok)' : 'var(--warn)' }}>{has(k) ? '✓' : '•'}</b>{' '}
                         {label}{has(k) ? '' : k === 'time' && String(event.startTime || '').trim() ? ': we suggested one, say if it’s right' : ': missing'}
@@ -16972,6 +16982,23 @@ export default function HostShellV2() {
                     <div style={{ marginTop: 'var(--sp-3)' }}>
                       <div className="f-name">Where is it?</div>
                       {renderVenueCapture({ ctaClass: 'mini', wrapClass: 'actions-row', wrapStyle: { alignItems: 'center', marginTop: 'var(--sp-2)' }, placeOnly: true })}
+                    </div>
+                  )}
+                  {/* The one outward guard's asks (lib/outwardReady, cause 6). */}
+                  {!has('name') && (
+                    <div style={{ marginTop: 'var(--sp-3)' }} data-outward-name>
+                      <div className="f-name">What do you call it?</div>
+                      <p className="grounding" style={{ margin: '2px 0 var(--sp-2)' }}>Everyone you send it to sees this name.</p>
+                      <form className="actions-row" style={{ alignItems: 'center' }} onSubmit={(e) => { e.preventDefault(); const v = String(new FormData(e.currentTarget).get('evname') || '').trim(); if (v) patchEvent({ name: v }, 'Named “' + v + '”.'); }}>
+                        <input className="field" name="evname" aria-label="The event’s name" placeholder={event.name || ''} style={{ maxWidth: 260 }} />
+                        <button className="mini" type="submit">Save the name</button>
+                      </form>
+                    </div>
+                  )}
+                  {has('place') && !has('address') && (
+                    <div style={{ marginTop: 'var(--sp-3)' }} data-outward-address>
+                      <div className="f-name">What is the street address?</div>
+                      {renderVenueCapture({ ctaClass: 'mini', wrapClass: 'actions-row', wrapStyle: { alignItems: 'center', marginTop: 'var(--sp-2)' } })}
                     </div>
                   )}
                   <div className="actions-row" style={{ marginTop: 'var(--sp-4)' }}>
@@ -18099,7 +18126,11 @@ export default function HostShellV2() {
               <CalendarSheet event={event} forecast={dayWx && forecastLine(dayWx) ? { date: dayWx.date, line: forecastLine(dayWx), kind: skyKind(dayWx) } : null} onOpenChecklist={() => setSheet({ kind: 'tasks' })}
                 signedIn={Boolean(session)} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} onSignIn={signInFromSheet} />
             )}
-            {sheet.kind === 'family' && (
+            {/* The family link asks the one outward guard first (cause 6). */}
+            {sheet.kind === 'family' && outwardGaps(event, 'family').length > 0 && (
+              <p className="v-meta" data-outward-blocked style={{ padding: 'var(--sp-2) 0' }}>{outwardPrompt(outwardGaps(event, 'family'))} Then the family link can go out.</p>
+            )}
+            {sheet.kind === 'family' && outwardGaps(event, 'family').length === 0 && (
               <FamilyLinkSheet event={event} signedIn={Boolean(session)} appUrl={publicAppUrl()}
                 onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} onSignIn={signInFromSheet} />
             )}

@@ -465,7 +465,10 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // e2e anUnsavedPlanSurvivesAReload).
 // 70 → 71 (same day, cause 3): oneNumberOneReader.test.js pins that the shell
 // prints parts handled, the money room and "confirmed" through the readers.
-const MAX_HOSTV2_TEXT_GATES = 71;
+// 71 → 72 (same day, cause 6): nothingGoesOutWithAPlaceholder.test.js pins that the
+// shell names from her words and that the helper, vendor and family paths ask
+// lib/outwardReady (the behavior is the lib's, tested over every playbook).
+const MAX_HOSTV2_TEXT_GATES = 72;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;
