@@ -164,7 +164,7 @@ const genderReveal = {
   ],
 
   tasks: [
-    { id: 't_handoff', target: 'vendors', facts: [], shopClock: true, milestoneId: 'gr_handoff', phase: 'reveal', label: 'Give baker/shop the sealed envelope; confirm neutral exterior so parents are surprised', when: 'T-18d' },
+    { id: 't_handoff', target: 'vendors', facts: [], milestoneId: 'gr_handoff', phase: 'reveal', label: 'Give baker/shop the sealed envelope; confirm neutral exterior so parents are surprised', when: 'T-18d' },
     { id: 't_invite', target: 'invite', facts: ['invites-out'], milestoneId: 'gr_invite', phase: 'guest', label: 'Send invites with RSVP-by, dietary ask, and "wear pink or blue" note', when: 'T-14d' },
     { id: 't_capture', target: 'vendors', facts: [], milestoneId: 'gr_capture', phase: 'reveal', label: 'Assign a photographer/videographer; frame the parents + reveal in one shot; charge devices', when: 'T-10d' },
     { id: 't_rsvp', target: 'chase', facts: ['replies-chased'], milestoneId: 'gr_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count', when: 'T-4d' },
@@ -174,8 +174,8 @@ const genderReveal = {
     // Every reveal_method option is a safe one, so the pick is the safe method.
     { id: 't_reveal_safety', target: 'call:reveal_method', facts: ['calls-answered'], answeredBy: ['reveal_method'], milestoneId: 'gr_reveal_pickup_plan', phase: 'reveal', label: 'Pick a safe reveal method: no pyro, explosives, or hot smoke', when: 'T-3d' },
     { id: 't_reveal_fire', target: 'none', facts: [], milestoneId: 'gr_reveal_pickup_plan', phase: 'reveal', label: 'Check fire conditions if the reveal is outdoors and it has been dry', when: 'T-3d' },
-    { id: 't_nonperish_shop', target: 'list', facts: [], milestoneId: 'gr_shop_nonperish', phase: 'shopping', label: 'Decor, favors, guessing board, mocktail mixers, game + paper goods', when: 'T-3d' },
-    { id: 't_fresh_shop', target: 'none', facts: [], milestoneId: 'gr_shop_fresh', phase: 'shopping', label: 'Fresh snacks; pick up cake/reveal item; keep cake refrigerated', when: 'T-1d' },
+    { id: 't_nonperish_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'gr_shop_nonperish', phase: 'shopping', label: 'Decor, favors, guessing board, mocktail mixers, game + paper goods', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'none', facts: [], shopClock: true, milestoneId: 'gr_shop_fresh', phase: 'shopping', label: 'Fresh snacks; pick up cake/reveal item; keep cake refrigerated', when: 'T-1d' },
     { id: 't_prep', target: 'none', facts: [], milestoneId: 'gr_setup', phase: 'food', label: 'Prep make-ahead bites; batch the mocktail; assemble favors', when: 'T-1d evening' },
     { id: 't_decorate', target: 'day', facts: [], milestoneId: 'gr_setup', phase: 'setup', label: 'Pink/blue decor, snack + drink station, set up the guessing board, stage the reveal spot', when: 'T0 -2h' },
     { id: 't_reset', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Collect confetti/powder debris, pack leftovers + cake, save photos, bag trash + recycling', when: 'T0 +2:30' },

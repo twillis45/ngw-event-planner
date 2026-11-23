@@ -731,3 +731,76 @@ describe('the shop clock reads a declaration, never a row’s words', () => {
     expect(code).not.toMatch(/shop\(ping\)\?/);
   });
 });
+
+// ─── EACH PLAYBOOK'S SHOP CLOCK IS ITS REAL GROCERY RUN (owner ruling 1, round 2)
+// Round 1 reproduced the word rule's picks: Gender Reveal's clock was the
+// sealed envelope for the bakery (T-18d), Watch Party's was building a
+// shopping list (T-7d), and 32 playbooks had none because their runs never
+// said "shop". Each host-shell playbook now declares `shopClock` on its own
+// grocery run(s); the clock is the earliest one still open. A playbook with
+// no grocery run declares none, and says why here.
+describe('each host-shell playbook’s shop clock is its real grocery run', () => {
+  const { useFrozenClock, daysFromNow } = require('../../testUtils/frozenClock');
+  useFrozenClock();
+  const { HOST_TYPES } = require('../smartParseEvent');
+  const { deriveEventPhaseProgress } = require('../phaseProgress');
+  const { taskLeadDays } = require('../taskLead');
+  const HOST = pbm.ALL_PLAYBOOKS.filter((pb) => HOST_TYPES.includes(pb.type));
+  const RUNS = {
+    'Dinner Party': ['t_pantry_shop', 't_fresh_shop'], Birthday: ['t_decor_shop', 't_food_shop'],
+    'Baby Shower': ['t_nonperish_shop', 't_fresh_shop'], 'Get-Together': ['t_nonperish_shop', 't_fresh_shop'],
+    Graduation: ['t_nonperish_shop', 't_food_shop'], 'Watch Party': ['t_nonperish_shop', 't_fresh_shop'],
+    'Game Night': ['t_shop'], Housewarming: ['t_dry_shop', 't_fresh_shop'], 'Bridal Shower': ['t_nonperish_shop', 't_fresh_shop'],
+    'Gender Reveal': ['t_nonperish_shop', 't_fresh_shop'], 'Engagement Party': ['t_pantry_shop', 't_fresh_shop'],
+    Anniversary: ['t_pantry_shop', 't_fresh_shop'], 'Holiday Party': ['t_shop_alc', 't_shop_fresh'], 'Sweet 16': ['t_shop'],
+    'Retirement Party': ['t_pantry_shop', 't_fresh_shop'], Reunion: ['t-shop-dry', 't-shop-fresh'],
+    'Bachelorette Party': ['t_nonperish_shop', 't_fresh_shop'], 'Bachelor Party': ['t_nonperish_shop', 't_fresh_shop'],
+    'Vow Renewal': ['t_pantry_shop', 't_fresh_shop'], 'The Cookout': ['t_nonperish_shop', 't_meat_shop'],
+    'Fish Fry': ['t_nonperish', 't_fish'], 'Card Party': ['t_shop'], 'Sunday Dinner': ['t-shop'],
+    'Day Party': ['t_nonperish_shop', 't_fresh_shop'], 'Juneteenth Cookout': ['t_nonperish_shop', 't_fresh_shop'],
+    'Crab Feast': ['t_shop'], 'Crawfish Boil': ['t_nonperish'], 'Low Country Boil': ['t_nonperish', 't_shrimp'],
+    'Pupusa Gathering': ['t_source'], 'Ethiopian Coffee Ceremony': ['t_pantry', 't_freshpickup'], Repast: ['t_supplies'],
+    'Kwanzaa Gathering': ['t_nonperish_shop', 't_fresh_shop'], 'Thanksgiving Hosting': ['t_shop'],
+    Friendsgiving: ['t_shop', 't_shop_basics'], 'Halloween Party': ['t_shop_food'], "New Year's Eve Party": ['t_shop'],
+    'PTA / Booster Fundraiser': ['t_shop'],
+  };
+  // The host-shell playbooks with no grocery run of their own, and why.
+  const NO_RUN = {
+    Wedding: 'the caterer and the venue feed the guests; no step is a grocery run',
+    Elopement: 'a restaurant or package meal; no step buys food',
+    'Quinceañera': 'catered; the steps book the caterer and baker, none shops',
+    'Surprise Proposal': 'its one purchase is flowers, candles and a sign for the moment, not food',
+    'Client Dinner': 'a restaurant dinner; its one purchase is the client gift',
+    'Fundraiser / Gala': 'catered; no step buys food',
+    'Group Trip': 'meals are planned per day on the trip (house, out, own); no step is a grocery run',
+  };
+  test('every host-shell playbook declares its grocery runs, or is listed with why it has none', () => {
+    const got = {};
+    for (const pb of HOST) {
+      const ids = (pb.tasks || []).filter((t) => t.shopClock === true).map((t) => t.id);
+      if (ids.length) got[pb.type] = ids;
+    }
+    expect(got).toEqual(RUNS);
+    for (const pb of HOST) expect([pb.type, !!RUNS[pb.type] !== !!NO_RUN[pb.type]]).toEqual([pb.type, true]);
+    expect(Object.keys(RUNS).length + Object.keys(NO_RUN).length).toBe(HOST.length);
+  });
+  test('in the final week the clock is the earliest open grocery run', () => {
+    const wrong = [];
+    let clocked = 0;
+    for (const pb of HOST) {
+      for (const d of [6, 2]) {
+        const ev = { id: 'sc', type: pb.type, name: 'N', date: daysFromNow(d), guestMode: 'count', guestCount: 30, totalBudget: 9000, venue: 'The Hall', venueCity: 'Austin, TX', startTime: '18:00', guests: [], vendors: [], budget: [], foodChoices: {}, dietaryNoted: true };
+        const rows = pbm.playbookChecklist(ev) || [];
+        const runs = rows.filter((r) => (RUNS[pb.type] || []).includes(r.provenance && r.provenance.taskId))
+          .map((r) => taskLeadDays(r)).filter((x) => x != null).sort((a, b) => a - b);
+        const items = (deriveEventPhaseProgress({ ...ev, timeline: rows }).items || []).filter((i) => (i.id === 'food' || i.id === 'shopping') && i.closingWindow);
+        const lead = items.length ? items[0].leadDays : null;
+        if (lead != null) clocked += 1;
+        if (lead != null && lead !== runs[0]) wrong.push(`${pb.type} T-${d}: clock ${lead}, earliest run ${runs[0]}`);
+        if (lead == null && runs.length && items.length === 0 && (deriveEventPhaseProgress({ ...ev, timeline: rows }).items || []).some((i) => i.id === 'shopping')) wrong.push(`${pb.type} T-${d}: a run and no clock`);
+      }
+    }
+    expect(wrong).toEqual([]);
+    expect(clocked).toBeGreaterThan(30);
+  });
+});

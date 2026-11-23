@@ -70,8 +70,8 @@ const birthday = {
   tasks: [
     { id: 't_invite', target: 'invite', facts: ['invites-out'], milestoneId: 'bd_invite', phase: 'guest', label: 'Send invites with date/time/place + RSVP-by + allergy ask', when: 'T-18d' },
     { id: 't_rsvp', target: 'chase', facts: ['replies-chased'], milestoneId: 'bd_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count', when: 'T-3d' },
-    { id: 't_decor_shop', target: 'list', facts: [], milestoneId: 'bd_shop_nonperish', phase: 'shopping', label: 'Decor, balloons, drinks, paper goods, favors run', when: 'T-3d' },
-    { id: 't_food_shop', target: 'spread', facts: [], milestoneId: 'bd_shop_fresh', phase: 'shopping', label: 'Food + pick up the cake', when: 'T-1d' },
+    { id: 't_decor_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'bd_shop_nonperish', phase: 'shopping', label: 'Decor, balloons, drinks, paper goods, favors run', when: 'T-3d' },
+    { id: 't_food_shop', target: 'spread', facts: [], shopClock: true, milestoneId: 'bd_shop_fresh', phase: 'shopping', label: 'Food + pick up the cake', when: 'T-1d' },
     // ── MOVED OFF A DEAD SURFACE, 2026-09-23 ─────────────────────────────────
     // This was a `schedules.preparation` row at T-1d. It carried the conditional
     // copy below — authored the same week — and reached NO HOST, because the day
