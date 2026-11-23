@@ -55,7 +55,7 @@ from ..db import get_pool
 from ..auth import require_planner
 from ..config import APP_BASE_URL
 from ..email_frame import clock12, frame, hue_for, paragraphs_html, when_fact, where_fact
-from ..outward import event_days, host_name_for, place_line
+from ..outward import event_days, host_name_for, place_line, outward_refusal
 from ..email_pictures import with_picture
 from ..emailer import send_thread_email
 from .rsvp import _assert_event_studio_read, _client_ip
@@ -567,6 +567,10 @@ async def email_helper_job(
         if not row:
             raise HTTPException(409, "Save this event to your account before emailing from it.")
         data = _event_data(row)
+        # Nothing goes out with a placeholder (six root causes, cause 6).
+        refusal = outward_refusal(data, "helper")
+        if refusal:
+            raise HTTPException(422, refusal)
         guests = data.get("guests") if isinstance(data.get("guests"), list) else []
         if not _is_helper_name(payload.helper_name):
             raise HTTPException(404, "helper not found on this event")

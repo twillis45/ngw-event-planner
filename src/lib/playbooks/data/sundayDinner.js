@@ -9,6 +9,9 @@
 
 const sundayDinner = {
   type: 'Sunday Dinner',
+  // What the time she types means (lib/eventAnchor, cause 5; owner ruling 11/23/2026):
+  // when dinner hits the table. Arrivals come first, by this playbook's own serve cue.
+  timeAnchor: { means: 'serve', serveAt: 'T0 +30m' },
   vegMain: 'Smothered mushroom & bean main + cornbread',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
@@ -220,18 +223,18 @@ const sundayDinner = {
   ],
 
   tasks: [
-    { id: 't-pick-main', answeredBy: ['the-main', 'who-cooks-what'], milestoneId: 'm-menu-set', phase: 'planning', label: 'Decide the main and confirm who cooks it', when: 'T-4d' },
-    { id: 't-assign-sides', milestoneId: 'm-menu-set', phase: 'planning', label: 'Assign sides, bread, and dessert across the family so nothing doubles up', when: 'T-4d' },
-    { id: 't-headcount', milestoneId: 'm-menu-set', phase: 'planning', label: 'Confirm headcount including elders and kids; note any dietary needs', when: 'T-4d' },
-    { id: 't-shop', milestoneId: 'm-shopping', phase: 'logistics', label: 'Buy the bird/roast, greens, mac ingredients, cornbread/biscuit fixings, dessert, sweet tea and lemonade', when: 'T-2d' },
-    { id: 't-containers', milestoneId: 'm-shopping', phase: 'logistics', label: 'Buy or set aside to-go containers and foil for plates to send home', when: 'T-2d' },
-    { id: 't-greens-ahead', milestoneId: 'm-make-ahead', phase: 'preparation', label: 'Slow-cook the greens with smoked meat — they are better a day later', when: 'T-1d' },
-    { id: 't-dessert-ahead', milestoneId: 'm-make-ahead', phase: 'preparation', label: 'Bake the cobbler or pie the night before so the oven is free Sunday', when: 'T-1d' },
-    { id: 't-brine', milestoneId: 'm-make-ahead', phase: 'preparation', label: 'Brine or season the chicken overnight if frying', when: 'T-1d' },
-    { id: 't-set-table', milestoneId: 'm-table-set', phase: 'setup', label: 'Count chairs against headcount, add a leaf or kids table, set place settings', when: 'T-1d' },
-    { id: 't-cook-day', milestoneId: 'm-meal', phase: 'execution', label: 'Cook the main and finish hot sides (mac, yams, cornbread) timed to land together', when: 'T0' },
-    { id: 't-grace', milestoneId: 'm-meal', phase: 'execution', label: 'Gather everyone, say grace, and make plates for the elders first', when: 'T0' },
-    { id: 't-wrap-plates', milestoneId: 'm-plates-out', phase: 'cleanup', label: 'Fix to-go plates for whoever is leaving; box leftovers; run the dishes', when: 'T0' },
+    { id: 't-pick-main', target: 'spread', answeredBy: ['the-main', 'who-cooks-what'], milestoneId: 'm-menu-set', phase: 'planning', label: 'Decide the main and confirm who cooks it', when: 'T-4d' },
+    { id: 't-assign-sides', target: 'spread', milestoneId: 'm-menu-set', phase: 'planning', label: 'Assign sides, bread, and dessert across the family so nothing doubles up', when: 'T-4d' },
+    { id: 't-headcount', target: 'guests', milestoneId: 'm-menu-set', phase: 'planning', label: 'Confirm headcount including elders and kids; note any dietary needs', when: 'T-4d' },
+    { id: 't-shop', target: 'list', milestoneId: 'm-shopping', phase: 'logistics', label: 'Buy the bird/roast, greens, mac ingredients, cornbread/biscuit fixings, dessert, sweet tea and lemonade', when: 'T-2d' },
+    { id: 't-containers', target: 'list', milestoneId: 'm-shopping', phase: 'logistics', label: 'Buy or set aside to-go containers and foil for plates to send home', when: 'T-2d' },
+    { id: 't-greens-ahead', target: 'none', milestoneId: 'm-make-ahead', phase: 'preparation', label: 'Slow-cook the greens with smoked meat — they are better a day later', when: 'T-1d' },
+    { id: 't-dessert-ahead', target: 'none', milestoneId: 'm-make-ahead', phase: 'preparation', label: 'Bake the cobbler or pie the night before so the oven is free Sunday', when: 'T-1d' },
+    { id: 't-brine', target: 'none', milestoneId: 'm-make-ahead', phase: 'preparation', label: 'Brine or season the chicken overnight if frying', when: 'T-1d' },
+    { id: 't-set-table', target: 'guests', milestoneId: 'm-table-set', phase: 'setup', label: 'Count chairs against headcount, add a leaf or kids table, set place settings', when: 'T-1d' },
+    { id: 't-cook-day', target: 'day', milestoneId: 'm-meal', phase: 'execution', label: 'Cook the main and finish hot sides (mac, yams, cornbread) timed to land together', when: 'T0' },
+    { id: 't-grace', target: 'day', milestoneId: 'm-meal', phase: 'execution', label: 'Gather everyone, say grace, and make plates for the elders first', when: 'T0' },
+    { id: 't-wrap-plates', target: 'day', milestoneId: 'm-plates-out', phase: 'cleanup', label: 'Fix to-go plates for whoever is leaving; box leftovers; run the dishes', when: 'T0' },
   ],
 
   purchases: [
@@ -458,37 +461,37 @@ const sundayDinner = {
 
   risks: [
     {
-      id: 'r-foodsafe',
+      id: 'r-foodsafe', target: 'none',
       trigger: 'Undercooked chicken or cross-contamination from the raw bird',
       severity: 'high',
       mitigation: 'Cook chicken to 165°F internal at the thickest part (fried or baked); brine/season in the REFRIGERATOR, never on the counter; discard used brine; and wash hands, boards, and utensils after the raw bird before they touch the sides.',
     },
     {
-      id: 'r-late-shop',
+      id: 'r-late-shop', target: 'none',
       trigger: 'Shopping slips to Sunday morning',
       severity: 'medium',
       mitigation: 'Buy by Friday or Saturday — a fresh bird and good greens are scarce Sunday before church.',
     },
     {
-      id: 'r-stove-jam',
+      id: 'r-stove-jam', target: 'none',
       trigger: 'Frying the main and finishing hot sides on the same burners at once',
       severity: 'medium',
       mitigation: 'Make greens and dessert the day before; choose a baked main if your stove is small so the sides have room.',
     },
     {
-      id: 'r-seating-short',
+      id: 'r-seating-short', target: 'seating',
       trigger: 'Not enough chairs or place settings for every generation',
       severity: 'low',
       mitigation: 'Count chairs against headcount on Saturday; add a leaf or a kids table and borrow seats early.',
     },
     {
-      id: 'r-runs-late',
+      id: 'r-runs-late', target: 'food',
       trigger: 'Meal pushed too far past church time',
       severity: 'low',
       mitigation: 'Target sitting down within a couple hours of service so the elders and little ones eat before they fade.',
     },
     {
-      id: 'r-no-leftovers',
+      id: 'r-no-leftovers', target: 'food',
       trigger: 'Nothing left to send people home with',
       severity: 'low',
       mitigation: 'Cook a little long and hold back a portion before service so every plate-to-go is full.',

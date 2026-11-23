@@ -99,8 +99,10 @@ test('the buttons under one row keep one even gap between them', async ({ page }
   await mockHost(page);
   await openChecklist(page);
   const chairs = (await lefts(page)).filter((b) => /folding chairs/.test(b.row));
-  // the row link, then "Jordan Avery — not told yet", "Send Jordan their job", "Call Jordan", "Mark Jordan Avery confirmed"
-  expect(chairs.length).toBe(5);
+  // "Jordan Avery — not told yet", "Send Jordan their job", "Call Jordan", "Mark Jordan Avery confirmed".
+  // A row the host wrote has no row link since 11/23/2026 (six root causes,
+  // cause 1: no button is guessed from a row's words), so four, not five.
+  expect(chairs.length).toBe(4);
   const gaps = chairs.slice(1).map((b, i) => b.top - chairs[i].bottom);
   // one gap (12px, --sp-3) between every pair — it was 3px under the row link and 12 below
   expect(Math.max(...gaps) - Math.min(...gaps), JSON.stringify(gaps)).toBeLessThanOrEqual(2);

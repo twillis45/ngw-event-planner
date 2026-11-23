@@ -16,6 +16,8 @@
 
 const repast = {
   type: 'Repast',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Baked mac & cheese + greens & candied yam plate',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
@@ -87,24 +89,24 @@ const repast = {
   ],
 
   tasks: [
-    { id: 't_place', milestoneId: 'rp_place', phase: 'planning', label: 'Reserve the fellowship hall (or restaurant); set the time to begin right after the burial', when: 'T-5d' },
-    { id: 't_accept', milestoneId: 'rp_food', phase: 'planning', label: 'Let the church / committee carry the meal; quietly track who is bringing what so the family never has to ask', when: 'T-4d' },
-    { id: 't_spread', milestoneId: 'rp_spread', phase: 'guest', label: 'Share the repast place and time — on the program, at the service, and by word of mouth', when: 'T-3d' },
-    { id: 't_memory', milestoneId: 'rp_memory', phase: 'planning', label: 'Set out a guest book and a few photographs; ready a quiet corner for anyone who needs a moment', when: 'T-2d' },
-    { id: 't_supplies', milestoneId: 'rp_supplies', phase: 'shopping', label: 'Pick up serving ware, drinks, ice, and to-go containers for the family and elders', when: 'T-1d' },
-    { id: 't_setup', milestoneId: 'rp_setup', phase: 'setup', label: 'Arrive early; set tables, warming, drinks, and seating so the room is ready and calm', when: 'T0 -1:30' },
-    { id: 't_plates', milestoneId: 'event', phase: 'food', label: 'Make up to-go plates for the immediate family and the elders before the food goes', when: 'T0 +1:30' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Quietly pack leftovers for the family, wash and return dishes, leave the hall as you found it', when: 'T0 +3:00' },
+    { id: 't_place', target: 'details', milestoneId: 'rp_place', phase: 'planning', label: 'Reserve the fellowship hall (or restaurant); set the time to begin right after the burial', when: 'T-5d' },
+    { id: 't_accept', target: 'spread', milestoneId: 'rp_food', phase: 'planning', label: 'Let the church / committee carry the meal; quietly track who is bringing what so the family never has to ask', when: 'T-4d' },
+    { id: 't_spread', target: 'share-invite', milestoneId: 'rp_spread', phase: 'guest', label: 'Share the repast place and time — on the program, at the service, and by word of mouth', when: 'T-3d' },
+    { id: 't_memory', target: 'guests', milestoneId: 'rp_memory', phase: 'planning', label: 'Set out a guest book and a few photographs; ready a quiet corner for anyone who needs a moment', when: 'T-2d' },
+    { id: 't_supplies', target: 'list', milestoneId: 'rp_supplies', phase: 'shopping', label: 'Pick up serving ware, drinks, ice, and to-go containers for the family and elders', when: 'T-1d' },
+    { id: 't_setup', target: 'day', milestoneId: 'rp_setup', phase: 'setup', label: 'Arrive early; set tables, warming, drinks, and seating so the room is ready and calm', when: 'T0 -1:30' },
+    { id: 't_plates', target: 'day', milestoneId: 'event', phase: 'food', label: 'Make up to-go plates for the immediate family and the elders before the food goes', when: 'T0 +1:30' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Quietly pack leftovers for the family, wash and return dishes, leave the hall as you found it', when: 'T0 +3:00' },
 
     // ── THE DAYS AFTER — carried by the coordinator, never by the family ──
-    { id: 't_dishes_wash', milestoneId: 'rp_dishes_back', phase: 'cleanup', label: 'Wash the brought pans and platters and take each one back yourself — a dish taped with a name is easy to return, an unnamed one becomes the family\'s problem', when: 'T0 +2d' },
-    { id: 't_dishes_word', milestoneId: 'rp_dishes_back', phase: 'cleanup', label: 'When you hand a dish back, tell them their greens went first, or that people asked who made the pound cake — that is the thanks that matters, and it costs the family nothing', when: 'T0 +2d' },
-    { id: 't_food_home', milestoneId: 'rp_family_food', phase: 'food', label: 'Take the packed plates to the family\'s house and put them in the refrigerator and freezer yourself — meal-sized, labeled, so a plate is a two-minute decision on a bad evening', when: 'T0 +1d' },
-    { id: 't_food_travelers', milestoneId: 'rp_family_food', phase: 'food', label: 'Send a plate with anyone staying at the house or driving a long way home, so the family is not feeding houseguests this week either', when: 'T0 +1d' },
-    { id: 't_keepsakes_deliver', milestoneId: 'rp_keepsakes', phase: 'memory', label: 'Bring the guest book, the photographs from the memory table, and any cards or envelopes to the family together, in one box, and set it down without asking anything of them', when: 'T0 +3d' },
-    { id: 't_keepsakes_list', milestoneId: 'rp_keepsakes', phase: 'memory', label: 'Write down who brought food and who traveled, and put the list in the box — if the family wants to write to anyone one day, it will be there; nobody is being asked to write notes', when: 'T0 +3d' },
-    { id: 't_check_in', milestoneId: 'rp_check_in', phase: 'guest', label: 'Call or stop by around three weeks out, when the visitors have stopped coming and the house has gone quiet', when: 'T0 +21d' },
-    { id: 't_check_in_offer', milestoneId: 'rp_check_in', phase: 'guest', label: 'Offer one specific thing rather than "let me know if you need anything" — a grocery run Thursday, the lawn, a ride to the bank', when: 'T0 +21d' },
+    { id: 't_dishes_wash', target: 'spread', milestoneId: 'rp_dishes_back', phase: 'cleanup', label: 'Wash the brought pans and platters and take each one back yourself — a dish taped with a name is easy to return, an unnamed one becomes the family\'s problem', when: 'T0 +2d' },
+    { id: 't_dishes_word', target: 'spread', milestoneId: 'rp_dishes_back', phase: 'cleanup', label: 'When you hand a dish back, tell them their greens went first, or that people asked who made the pound cake — that is the thanks that matters, and it costs the family nothing', when: 'T0 +2d' },
+    { id: 't_food_home', target: 'list', milestoneId: 'rp_family_food', phase: 'food', label: 'Take the packed plates to the family\'s house and put them in the refrigerator and freezer yourself — meal-sized, labeled, so a plate is a two-minute decision on a bad evening', when: 'T0 +1d' },
+    { id: 't_food_travelers', target: 'none', milestoneId: 'rp_family_food', phase: 'food', label: 'Send a plate with anyone staying at the house or driving a long way home, so the family is not feeding houseguests this week either', when: 'T0 +1d' },
+    { id: 't_keepsakes_deliver', target: 'space', milestoneId: 'rp_keepsakes', phase: 'memory', label: 'Bring the guest book, the photographs from the memory table, and any cards or envelopes to the family together, in one box, and set it down without asking anything of them', when: 'T0 +3d' },
+    { id: 't_keepsakes_list', target: 'spread', milestoneId: 'rp_keepsakes', phase: 'memory', label: 'Write down who brought food and who traveled, and put the list in the box — if the family wants to write to anyone one day, it will be there; nobody is being asked to write notes', when: 'T0 +3d' },
+    { id: 't_check_in', target: 'none', milestoneId: 'rp_check_in', phase: 'guest', label: 'Call or stop by around three weeks out, when the visitors have stopped coming and the house has gone quiet', when: 'T0 +21d' },
+    { id: 't_check_in_offer', target: 'spread', milestoneId: 'rp_check_in', phase: 'guest', label: 'Offer one specific thing rather than "let me know if you need anything" — a grocery run Thursday, the lawn, a ride to the bank', when: 'T0 +21d' },
   ],
 
   purchases: [
@@ -246,11 +248,11 @@ const repast = {
   ],
 
   risks: [
-    { id: 'r_family_cooking', trigger: 'The grieving family is being asked to cook or coordinate the meal', severity: 'high', mitigation: 'This is the one thing to protect against. A friend or committee carries the food and the details; the family is fed, not feeding. Accept every offer of help.' },
-    { id: 'r_noplace', trigger: 'No room reserved for after the burial', severity: 'high', mitigation: 'Confirm the fellowship hall, restaurant, or home at 5 days out so people have somewhere to go straight from the service.' },
-    { id: 'r_food_gap', trigger: 'Too little food, or many duplicate dishes', severity: 'med', mitigation: 'One coordinator quietly tracks who is bringing what at 4 days out, filling gaps so there is plenty and nothing is missing.' },
-    { id: 'r_elders', trigger: 'Elders or the immediate family left standing, unfed, or without a plate to take home', severity: 'med', mitigation: 'Seat the elders and family first; serve them first; make up their to-go plates before the food runs low.' },
-    { id: 'r_overwhelm', trigger: 'Someone is overcome with grief and has nowhere to step away', severity: 'low', mitigation: 'Keep a quiet room or a calm corner available, with water and tissues, so anyone can take a moment.' },
+    { id: 'r_family_cooking', target: 'food', trigger: 'The grieving family is being asked to cook or coordinate the meal', severity: 'high', mitigation: 'This is the one thing to protect against. A friend or committee carries the food and the details; the family is fed, not feeding. Accept every offer of help.' },
+    { id: 'r_noplace', target: 'none', trigger: 'No room reserved for after the burial', severity: 'high', mitigation: 'Confirm the fellowship hall, restaurant, or home at 5 days out so people have somewhere to go straight from the service.' },
+    { id: 'r_food_gap', target: 'food', trigger: 'Too little food, or many duplicate dishes', severity: 'med', mitigation: 'One coordinator quietly tracks who is bringing what at 4 days out, filling gaps so there is plenty and nothing is missing.' },
+    { id: 'r_elders', target: 'seating', trigger: 'Elders or the immediate family left standing, unfed, or without a plate to take home', severity: 'med', mitigation: 'Seat the elders and family first; serve them first; make up their to-go plates before the food runs low.' },
+    { id: 'r_overwhelm', target: 'none', trigger: 'Someone is overcome with grief and has nowhere to step away', severity: 'low', mitigation: 'Keep a quiet room or a calm corner available, with water and tissues, so anyone can take a moment.' },
   ],
 
   contingencies: [

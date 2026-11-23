@@ -4,6 +4,7 @@
 // (Thanksgiving is 11/26/2026), so each number below was read off the engine
 // that prints it. One test per defect; each was watched failing on 3d491f2e
 // before its fix.
+import { routeByWords } from '../__fixtures__/stepByWords';
 import {
   ALL_PLAYBOOKS, playbookFoodPlan, playbookRisks, playbookDecisionBoard, playbookChecklist,
 } from '../playbooks';
@@ -123,7 +124,7 @@ test('5 · each checklist row opens the surface that does its job', () => {
   const tg = TG();
   const rows = playbookChecklist(tg, '2026-11-20');
   const find = (re) => rows.find((r) => re.test(r.task));
-  const route = (r) => checklistRouteFor(r.task, { week: r.week, category: r.category }, tg);
+  const route = (r) => routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, tg);
 
   const turkey = route(find(/^Order the turkey/));
   expect(turkey.route).toEqual({ tab: 'Planning', focusField: 'food-plan' });
@@ -136,14 +137,14 @@ test('5 · each checklist row opens the surface that does its job', () => {
   for (const pb of ALL_PLAYBOOKS) {
     const e = ev(pb.type, '2026-12-31', 20);
     for (const r of playbookChecklist(e, '2026-10-01')) {
-      const hit = checklistRouteFor(r.task, { week: r.week, category: r.category }, e);
+      const hit = routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, e);
       if (r.category === 'planning' && hit && hit.route && hit.route.tab === 'Event Day Schedule' && !/run[- ]of[- ]show|order of events|oven map|agenda|daily flow|vows?|readings?/i.test(r.task)) {
         offenders.push(`${pb.type}: ${r.task.slice(0, 60)}`);
       }
     }
   }
   expect(offenders).toEqual([]);
-  expect(checklistRouteFor('Simmer the carcass with the vegetable ends into stock', { category: 'planning' }, tg)).toBeNull();
+  expect(routeByWords('Simmer the carcass with the vegetable ends into stock', { category: 'planning' }, tg)).toBeNull();
 });
 
 // ── 6 ──────────────────────────────────────────────────────────────────────

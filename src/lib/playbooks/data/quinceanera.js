@@ -20,6 +20,8 @@
 
 const quinceanera = {
   type: 'Quinceañera',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'quinceanera',
   family: 'full_service',
   recordKind: 'client',
@@ -256,29 +258,29 @@ const quinceanera = {
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
     // With no padrinos, the work is the budget alone.
-    { id: 't_budget', answeredBy: ['padrinos'], milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Decide whether padrinos cover pieces of the celebration', when: 'T-270d' },
-    { id: 't_budget_set', milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Set the budget with the family, and line up the padrinos who may cover the cake, gown, flowers, or music', when: 'T-270d',
+    { id: 't_budget', target: 'call:padrinos', answeredBy: ['padrinos'], milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Decide whether padrinos cover pieces of the celebration', when: 'T-270d' },
+    { id: 't_budget_set', target: 'money', milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Set the budget with the family, and line up the padrinos who may cover the cake, gown, flowers, or music', when: 'T-270d',
       copyByAnswer: { padrinos: { 'No, the family covers everything directly': 'Set the budget with the family' } } },
-    { id: 't_church', milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'If holding a Mass, book the parish and priest; confirm any preparation requirements and readings', when: 'T-268d' },
-    { id: 't_venue_walk', milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Tour venues: capacity, included tables/chairs/linens/floor, parking, curfew, in-house vs outside caterer', when: 'T-265d' },
-    { id: 't_gown_order', milestoneId: 'order_gown_court', phase: 'plan', label: 'Order the ballgown; choose and order damas\' dresses and chambelanes\' suits to the color story', when: 'T-240d' },
-    { id: 't_vendor_book', milestoneId: 'book_core_vendors', phase: 'plan', label: 'Book caterer, photographer + videographer, DJ/banda, and baker; sign contracts and pay deposits', when: 'T-180d' },
-    { id: 't_court', milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Confirm damas and chambelanes who will commit to rehearsals; book the choreographer; set a weekly rehearsal slot', when: 'T-120d' },
+    { id: 't_church', target: 'vendors', milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'If holding a Mass, book the parish and priest; confirm any preparation requirements and readings', when: 'T-268d' },
+    { id: 't_venue_walk', target: 'place-notes', milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Tour venues: capacity, included tables/chairs/linens/floor, parking, curfew, in-house vs outside caterer', when: 'T-265d' },
+    { id: 't_gown_order', target: 'vendors-tab', milestoneId: 'order_gown_court', phase: 'plan', label: 'Order the ballgown; choose and order damas\' dresses and chambelanes\' suits to the color story', when: 'T-240d' },
+    { id: 't_vendor_book', target: 'vendors', milestoneId: 'book_core_vendors', phase: 'plan', label: 'Book caterer, photographer + videographer, DJ/banda, and baker; sign contracts and pay deposits', when: 'T-180d' },
+    { id: 't_court', target: 'vendors', milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Confirm damas and chambelanes who will commit to rehearsals; book the choreographer; set a weekly rehearsal slot', when: 'T-120d' },
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
-    { id: 't_vals_song', answeredBy: ['vals_song'], milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Choose the vals music plan', when: 'T-118d' },
-    { id: 't_vals_share', milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Finalize the vals song and any surprise-dance track, and share them with the choreographer', when: 'T-118d' },
-    { id: 't_florist', milestoneId: 'florist_decor_invites', phase: 'plan', label: 'Book florist and decor/centerpieces to the color story; reserve a backdrop and entrance arch', when: 'T-90d' },
-    { id: 't_invites', milestoneId: 'florist_decor_invites', phase: 'plan', label: 'Send invitations with RSVP date and Mass + reception times; track replies for the count', when: 'T-88d' },
-    { id: 't_rehearse', milestoneId: 'vals_rehearsals', phase: 'plan', label: 'Run weekly vals and surprise-dance rehearsals; confirm court attire fittings', when: 'T-60d' },
-    { id: 't_fitting', milestoneId: 'final_fitting_count', phase: 'plan', label: 'Final gown and court fittings; lock headcount and give the caterer the final count', when: 'T-30d' },
-    { id: 't_ceremony_items', milestoneId: 'runofshow_ceremony_prep', phase: 'plan', label: 'Gather the heels, the last doll, the crown/tiara, the toast glasses, and candles/roses; assign each moment to a person', when: 'T-14d' },
-    { id: 't_runofshow', milestoneId: 'runofshow_ceremony_prep', phase: 'plan', label: 'Write the reception run-of-show: entrance, vals, shoes, doll, crowning, toast, father-daughter dance, dinner, open floor', when: 'T-14d' },
-    { id: 't_final_rehearsal', milestoneId: 'final_rehearsal_pickups', phase: 'prep', label: 'Hold the final full rehearsal; brief the MC; confirm every vendor and court member by phone', when: 'T-7d' },
-    { id: 't_pickups', milestoneId: 'final_rehearsal_pickups', phase: 'prep', label: 'Pick up the gown, confirm cake and flower delivery windows, and stage all ceremonial items', when: 'T-2d' },
-    { id: 't_dayof', milestoneId: 'event_day', phase: 'event', label: 'Hair/makeup, Mass, photos, then reception; run the ceremonial moments to the timeline', when: 'T0' },
-    { id: 't_cleanup', milestoneId: 'event_day', phase: 'cleanup', label: 'Settle vendor balances and tips, recover rental deposits, gather gifts and the doll/crown, final venue walkthrough', when: 'T0 +6:00' },
+    { id: 't_vals_song', target: 'call:vals_song', answeredBy: ['vals_song'], milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Choose the vals music plan', when: 'T-118d' },
+    { id: 't_vals_share', target: 'none', milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Finalize the vals song and any surprise-dance track, and share them with the choreographer', when: 'T-118d' },
+    { id: 't_florist', target: 'vendors', milestoneId: 'florist_decor_invites', phase: 'plan', label: 'Book florist and decor/centerpieces to the color story; reserve a backdrop and entrance arch', when: 'T-90d' },
+    { id: 't_invites', target: 'invite', milestoneId: 'florist_decor_invites', phase: 'plan', label: 'Send invitations with RSVP date and Mass + reception times; track replies for the count', when: 'T-88d' },
+    { id: 't_rehearse', target: 'vendors-tab', milestoneId: 'vals_rehearsals', phase: 'plan', label: 'Run weekly vals and surprise-dance rehearsals; confirm court attire fittings', when: 'T-60d' },
+    { id: 't_fitting', target: 'vendors-tab', milestoneId: 'final_fitting_count', phase: 'plan', label: 'Final gown and court fittings; lock headcount and give the caterer the final count', when: 'T-30d' },
+    { id: 't_ceremony_items', target: 'none', milestoneId: 'runofshow_ceremony_prep', phase: 'plan', label: 'Gather the heels, the last doll, the crown/tiara, the toast glasses, and candles/roses; assign each moment to a person', when: 'T-14d' },
+    { id: 't_runofshow', target: 'build-day', milestoneId: 'runofshow_ceremony_prep', phase: 'plan', label: 'Write the reception run-of-show: entrance, vals, shoes, doll, crowning, toast, father-daughter dance, dinner, open floor', when: 'T-14d' },
+    { id: 't_final_rehearsal', target: 'vendors', milestoneId: 'final_rehearsal_pickups', phase: 'prep', label: 'Hold the final full rehearsal; brief the MC; confirm every vendor and court member by phone', when: 'T-7d' },
+    { id: 't_pickups', target: 'vendor-deliveries', milestoneId: 'final_rehearsal_pickups', phase: 'prep', label: 'Pick up the gown, confirm cake and flower delivery windows, and stage all ceremonial items', when: 'T-2d' },
+    { id: 't_dayof', target: 'day', milestoneId: 'event_day', phase: 'event', label: 'Hair/makeup, Mass, photos, then reception; run the ceremonial moments to the timeline', when: 'T0' },
+    { id: 't_cleanup', target: 'day', milestoneId: 'event_day', phase: 'cleanup', label: 'Settle vendor balances and tips, recover rental deposits, gather gifts and the doll/crown, final venue walkthrough', when: 'T0 +6:00' },
   ],
 
   purchases: [
@@ -446,13 +448,13 @@ const quinceanera = {
   ],
 
   risks: [
-    { id: 'r_late_booking', trigger: 'Date set late — church, salón, or top vendors already booked', severity: 'high', mitigation: 'Lock the date, the church (if a Mass), and the venue at 9 months out, then core vendors by 6 months out; quince season Saturdays go a year out.' },
-    { id: 'r_gown_delay', trigger: 'Ballgown arrives late or does not fit at the final fitting', severity: 'high', mitigation: 'Order the gown by 8 months out, schedule alterations early, and hold the final fitting at 30 days out with buffer for re-alterations.' },
-    { id: 'r_court_unready', trigger: 'Court members drop out or the vals/surprise dance is under-rehearsed', severity: 'high', mitigation: 'Pick a court that will commit, book a choreographer at 4 months out, run weekly rehearsals, and keep one or two alternates ready.' },
-    { id: 'r_vendor_dropout', trigger: 'A core vendor (caterer, DJ, photographer) cancels or no-shows', severity: 'high', mitigation: 'Sign contracts with deposits, confirm every vendor at a week out, and keep a backup contact and a phone playlist on a charged device.' },
-    { id: 'r_budget_overrun', trigger: 'Costs spiral past the family budget across many vendors', severity: 'med', mitigation: 'Build the budget at 9 months out, line up padrinos/sponsors for specific items, and track deposits vs balances as each vendor is booked.' },
-    { id: 'r_headcount', trigger: 'Final guest count drifts from RSVPs at a large family event', severity: 'med', mitigation: 'Send invitations by 88 days out, chase RSVPs, lock the count at 30 days out, and order ~5-10% over for the caterer.' },
-    { id: 'r_weather', trigger: 'Outdoor or tented portion hit by rain or heat', severity: 'med', mitigation: 'Have an indoor fallback or a tented backup, move ice up in heat, and confirm a rain plan with the venue a week out.' },
+    { id: 'r_late_booking', target: 'vendors-tab', trigger: 'Date set late — church, salón, or top vendors already booked', severity: 'high', mitigation: 'Lock the date, the church (if a Mass), and the venue at 9 months out, then core vendors by 6 months out; quince season Saturdays go a year out.' },
+    { id: 'r_gown_delay', target: 'seating', trigger: 'Ballgown arrives late or does not fit at the final fitting', severity: 'high', mitigation: 'Order the gown by 8 months out, schedule alterations early, and hold the final fitting at 30 days out with buffer for re-alterations.' },
+    { id: 'r_court_unready', target: 'none', trigger: 'Court members drop out or the vals/surprise dance is under-rehearsed', severity: 'high', mitigation: 'Pick a court that will commit, book a choreographer at 4 months out, run weekly rehearsals, and keep one or two alternates ready.' },
+    { id: 'r_vendor_dropout', target: 'vendors-tab', trigger: 'A core vendor (caterer, DJ, photographer) cancels or no-shows', severity: 'high', mitigation: 'Sign contracts with deposits, confirm every vendor at a week out, and keep a backup contact and a phone playlist on a charged device.' },
+    { id: 'r_budget_overrun', target: 'vendors-tab', trigger: 'Costs spiral past the family budget across many vendors', severity: 'med', mitigation: 'Build the budget at 9 months out, line up padrinos/sponsors for specific items, and track deposits vs balances as each vendor is booked.' },
+    { id: 'r_headcount', target: 'vendors-tab', trigger: 'Final guest count drifts from RSVPs at a large family event', severity: 'med', mitigation: 'Send invitations by 88 days out, chase RSVPs, lock the count at 30 days out, and order ~5-10% over for the caterer.' },
+    { id: 'r_weather', target: 'rain', trigger: 'Outdoor or tented portion hit by rain or heat', severity: 'med', mitigation: 'Have an indoor fallback or a tented backup, move ice up in heat, and confirm a rain plan with the venue a week out.' },
   ],
 
   contingencies: [

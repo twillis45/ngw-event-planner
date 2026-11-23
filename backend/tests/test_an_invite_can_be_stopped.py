@@ -72,7 +72,7 @@ class Pool:
 
 @pytest.fixture
 def env(monkeypatch):
-    db = {"event": {"name": "My Friendsgiving", "guests": [{"name": "Guest One", "email": GUEST}]}, "msgs": [], "stops": {}}
+    db = {"event": {"name": "Reyes Friendsgiving", "guests": [{"name": "Guest One", "email": GUEST}]}, "msgs": [], "stops": {}}
     sent = []
     async def gp(): return Pool(Conn(db))
     async def planner(*a, **k): return {"id": "u1", "email": "host@example.test", "via": "supabase"}
@@ -91,7 +91,7 @@ def env(monkeypatch):
 def send(env):
     return env.c.post("/api/events/ev1/communication/channels/CLIENT/messages", json={
         "message_type": "standard", "body": "You’re invited.", "deliver_email": True,
-        "recipient_email": GUEST, "recipient_name": "Guest One", "subject": "You’re invited — My Friendsgiving",
+        "recipient_email": GUEST, "recipient_name": "Guest One", "subject": "You’re invited — Reyes Friendsgiving",
         "author_name": "Vida Reyes"})
 
 
@@ -140,7 +140,7 @@ def test_an_invite_send_is_the_invitation_and_keeps_its_stop_link(env):
     env.db["event"].update({"date": "2026-11-21", "startTime": "16:00", "startTimeSource": "host", "venue": "Vida's", "rsvpCode": "Code123456789012"})
     r = env.c.post("/api/events/ev1/communication/channels/CLIENT/messages", json={
         "message_type": "standard", "body": "We’d love to have you.", "deliver_email": True, "invite": True,
-        "recipient_email": GUEST, "recipient_name": "Guest One", "subject": "You’re invited — My Friendsgiving",
+        "recipient_email": GUEST, "recipient_name": "Guest One", "subject": "You’re invited — Reyes Friendsgiving",
         "author_name": "Vida Reyes"})
     assert r.status_code == 200
     k = env.sent[0]
@@ -164,7 +164,7 @@ def test_an_invite_missing_its_place_is_refused_and_nothing_is_sent(env):
         env.db["event"].pop(k, None)
     r = env.c.post("/api/events/ev1/communication/channels/CLIENT/messages", json={
         "message_type": "standard", "body": "We’d love to have you.", "deliver_email": True, "invite": True,
-        "recipient_email": GUEST, "recipient_name": "Guest One", "subject": "You’re invited — My Friendsgiving",
+        "recipient_email": GUEST, "recipient_name": "Guest One", "subject": "You’re invited — Reyes Friendsgiving",
         "author_name": "Vida Reyes"})
     assert r.status_code == 422 and "missing the place" in r.json()["detail"]
     assert env.sent == []

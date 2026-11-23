@@ -18,6 +18,8 @@
 
 const bacheloretteParty = {
   type: 'Bachelorette Party',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'bachelorette',
   family: 'host_driven',
   recordKind: 'client',
@@ -62,16 +64,16 @@ const bacheloretteParty = {
   tasks: [
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and writing it down is its own step, due the same day.
-    { id: 't_costsplit', answeredBy: ['costsplit'], milestoneId: 'bp_setdate', phase: 'planning', label: "Agree the per-person number and the 'we cover the bride' rule", when: 'T-30d' },
-    { id: 't_costsplit_write', milestoneId: 'bp_setdate', phase: 'planning', label: 'Put the money rule in writing for the group', when: 'T-30d' },
-    { id: 't_book', milestoneId: 'bp_book', phase: 'logistics', label: 'Book lodging, dinner reservation (deposit/card), party bus or pre-stage rideshare', when: 'T-21d' },
-    { id: 't_invite', milestoneId: 'bp_invite', phase: 'guest', label: 'Send itinerary + cost-split + RSVP-by + dietary/no-alcohol ask; collect deposits via app', when: 'T-18d' },
-    { id: 't_safety', milestoneId: 'bp_safety', phase: 'safety', label: 'Name a sober point person, set a buddy system + meetup spot, pre-load rideshare, share live location, save the Airbnb/hotel address in everyone\'s phone', when: 'T-7d' },
-    { id: 't_rsvp', milestoneId: 'bp_rsvp_close', phase: 'guest', label: 'Chase non-responders; confirm reservation party size + transport seat count', when: 'T-4d' },
-    { id: 't_nonperish_shop', milestoneId: 'bp_shop_nonperish', phase: 'shopping', label: 'Sash/banner/decor, favors + matching items, games, liquor, mixers, paper goods', when: 'T-3d' },
-    { id: 't_fresh_shop', milestoneId: 'bp_shop_fresh', phase: 'shopping', label: 'Apps/grazing, garnishes, bubbly, juice, electrolytes, and LOTS of water', when: 'T-1d' },
-    { id: 't_setup', milestoneId: 'bp_setup', phase: 'setup', label: 'Build grazing board, batch the cocktail, hang sash/decor, set games + a visible water station', when: 'T0 -3h' },
-    { id: 't_close', milestoneId: 'event', phase: 'cleanup', label: 'Account for every guest, ride the bride home first/safe, pack favors + gifts, water + trash sweep, settle the tab/split', when: 'T0 +6:00' },
+    { id: 't_costsplit', target: 'money', answeredBy: ['costsplit'], milestoneId: 'bp_setdate', phase: 'planning', label: "Agree the per-person number and the 'we cover the bride' rule", when: 'T-30d' },
+    { id: 't_costsplit_write', target: 'money', milestoneId: 'bp_setdate', phase: 'planning', label: 'Put the money rule in writing for the group', when: 'T-30d' },
+    { id: 't_book', target: 'vendors', milestoneId: 'bp_book', phase: 'logistics', label: 'Book lodging, dinner reservation (deposit/card), party bus or pre-stage rideshare', when: 'T-21d' },
+    { id: 't_invite', target: 'invite', milestoneId: 'bp_invite', phase: 'guest', label: 'Send itinerary + cost-split + RSVP-by + dietary/no-alcohol ask; collect deposits via app', when: 'T-18d' },
+    { id: 't_safety', target: 'assign', milestoneId: 'bp_safety', phase: 'safety', label: 'Name a sober point person, set a buddy system + meetup spot, pre-load rideshare, share live location, save the Airbnb/hotel address in everyone\'s phone', when: 'T-7d' },
+    { id: 't_rsvp', target: 'chase', milestoneId: 'bp_rsvp_close', phase: 'guest', label: 'Chase non-responders; confirm reservation party size + transport seat count', when: 'T-4d' },
+    { id: 't_nonperish_shop', target: 'list', milestoneId: 'bp_shop_nonperish', phase: 'shopping', label: 'Sash/banner/decor, favors + matching items, games, liquor, mixers, paper goods', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'list', milestoneId: 'bp_shop_fresh', phase: 'shopping', label: 'Apps/grazing, garnishes, bubbly, juice, electrolytes, and LOTS of water', when: 'T-1d' },
+    { id: 't_setup', target: 'day', milestoneId: 'bp_setup', phase: 'setup', label: 'Build grazing board, batch the cocktail, hang sash/decor, set games + a visible water station', when: 'T0 -3h' },
+    { id: 't_close', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Account for every guest, ride the bride home first/safe, pack favors + gifts, water + trash sweep, settle the tab/split', when: 'T0 +6:00' },
   ],
 
   purchases: [
@@ -108,12 +110,12 @@ const bacheloretteParty = {
   ],
 
   risks: [
-    { id: 'r_overserve', trigger: 'The bride (or a guest) is over-served and the night becomes unsafe', severity: 'high', mitigation: 'Pace to ~1 drink/guest/hr (2 in the first hour); enforce water-for-every-drink at a visible station; keep food out the whole pre-game; the sober point person watches the bride and calls last-call early if needed. Over-serving is the #1 thing that turns a fun night dangerous.' },
-    { id: 'r_riders', trigger: 'No safe, sober way to get the bride + group home after drinking', severity: 'high', mitigation: 'Pre-book the party bus or pre-load rideshare for every leg; name a designated sober "ride captain"; run a buddy system (no one leaves alone) with a meetup spot; share live locations; save the lodging address in every phone. NO ONE who has been drinking drives — this is non-negotiable.' },
-    { id: 'r_separated', trigger: 'Someone gets separated from the group at a crowded bar/club', severity: 'high', mitigation: 'Buddy pairs assigned at the start, an agreed meetup spot + time, a group thread, and a head-count by name before each move and before leaving — account for every guest, every transition.' },
-    { id: 'r_money', trigger: 'Cost-split unclear / deposits not collected → host eats the cost or guests feel blindsided', severity: 'high', mitigation: 'Publish the per-person number and the "cover the bride" rule before anyone books; collect deposits via a payment app at invite; track who has paid. Travel is typically the one cost guests cover for themselves.' },
-    { id: 'r_reservation', trigger: 'Dinner reservation or transport falls through / party size wrong', severity: 'med', mitigation: 'Book early with a card on file, reconfirm 48h out with the final count, and hold a backup restaurant + a rideshare fallback.' },
-    { id: 'r_bridevibe', trigger: 'Plan drifts from what the bride actually wants', severity: 'med', mitigation: 'Confirm the vibe + hard-nos with the bride privately up front; she should feel celebrated, not managed — keep one surprise small and safe.' },
+    { id: 'r_overserve', target: 'food', trigger: 'The bride (or a guest) is over-served and the night becomes unsafe', severity: 'high', mitigation: 'Pace to ~1 drink/guest/hr (2 in the first hour); enforce water-for-every-drink at a visible station; keep food out the whole pre-game; the sober point person watches the bride and calls last-call early if needed. Over-serving is the #1 thing that turns a fun night dangerous.' },
+    { id: 'r_riders', target: 'none', trigger: 'No safe, sober way to get the bride + group home after drinking', severity: 'high', mitigation: 'Pre-book the party bus or pre-load rideshare for every leg; name a designated sober "ride captain"; run a buddy system (no one leaves alone) with a meetup spot; share live locations; save the lodging address in every phone. NO ONE who has been drinking drives — this is non-negotiable.' },
+    { id: 'r_separated', target: 'none', trigger: 'Someone gets separated from the group at a crowded bar/club', severity: 'high', mitigation: 'Buddy pairs assigned at the start, an agreed meetup spot + time, a group thread, and a head-count by name before each move and before leaving — account for every guest, every transition.' },
+    { id: 'r_money', target: 'vendors-tab', trigger: 'Cost-split unclear / deposits not collected → host eats the cost or guests feel blindsided', severity: 'high', mitigation: 'Publish the per-person number and the "cover the bride" rule before anyone books; collect deposits via a payment app at invite; track who has paid. Travel is typically the one cost guests cover for themselves.' },
+    { id: 'r_reservation', target: 'none', trigger: 'Dinner reservation or transport falls through / party size wrong', severity: 'med', mitigation: 'Book early with a card on file, reconfirm 48h out with the final count, and hold a backup restaurant + a rideshare fallback.' },
+    { id: 'r_bridevibe', target: 'none', trigger: 'Plan drifts from what the bride actually wants', severity: 'med', mitigation: 'Confirm the vibe + hard-nos with the bride privately up front; she should feel celebrated, not managed — keep one surprise small and safe.' },
   ],
 
   contingencies: [

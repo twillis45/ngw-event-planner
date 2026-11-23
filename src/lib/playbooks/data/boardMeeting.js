@@ -13,6 +13,8 @@
 
 const boardMeeting = {
   type: 'Board Meeting',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'board',
   family: 'corporate',
   recordKind: 'client',
@@ -54,17 +56,17 @@ const boardMeeting = {
   ],
 
   tasks: [
-    { id: 't_agenda', milestoneId: 'bm_agenda', phase: 'planning', label: 'Build the agenda with the chair; request reports/decks from each presenter with a hard due date', when: 'T-21d' },
-    { id: 't_priorminutes', milestoneId: 'bm_packet', phase: 'documents', label: 'Pull prior-meeting minutes for approval; flag open action items from last time', when: 'T-10d' },
-    { id: 't_av_book', milestoneId: 'bm_logistics', phase: 'logistics', label: 'Book AV tech / video platform; confirm screen, dial-in, and a tech-support contact for the day', when: 'T-14d' },
-    { id: 't_access', milestoneId: 'bm_logistics', phase: 'logistics', label: 'Arrange parking, visitor badges, and a building/reception access list for external directors', when: 'T-14d' },
-    { id: 't_nda', milestoneId: 'bm_logistics', phase: 'documents', label: 'Confirm NDAs/confidentiality on file; set portal permissions or number the printed packets', when: 'T-14d' },
-    { id: 't_packet', milestoneId: 'bm_packet', phase: 'documents', label: 'Assemble + distribute the full board packet via the secure portal ~1 week out', when: 'T-7d' },
-    { id: 't_quorum', milestoneId: 'bm_quorum', phase: 'guest', label: 'Chase RSVPs, confirm quorum math, send roll-call + dial-in details and any pre-reads', when: 'T-3d' },
-    { id: 't_avtest', milestoneId: 'bm_avtest', phase: 'setup', label: 'Dry-run the hybrid setup: join remote, share a slide, test mic/camera/dial-in, check screen visibility for remote directors', when: 'T-1d' },
-    { id: 't_setup', milestoneId: 'bm_setup', phase: 'setup', label: 'Set seating + name cards, power/AV at each seat, screens on, catering staged, minute-taker positioned', when: 'T0 -1h' },
-    { id: 't_minutes', milestoneId: 'event', phase: 'documents', label: 'Take minutes: record quorum, motions, votes (roll call for remote), and every action item with an owner', when: 'T0' },
-    { id: 't_followup', milestoneId: 'bm_followup', phase: 'documents', label: 'Circulate draft minutes + action-item tracker within 48h; collect/shred printed packets or revoke portal access', when: 'T0 +1d' },
+    { id: 't_agenda', target: 'build-day', milestoneId: 'bm_agenda', phase: 'planning', label: 'Build the agenda with the chair; request reports/decks from each presenter with a hard due date', when: 'T-21d' },
+    { id: 't_priorminutes', target: 'none', milestoneId: 'bm_packet', phase: 'documents', label: 'Pull prior-meeting minutes for approval; flag open action items from last time', when: 'T-10d' },
+    { id: 't_av_book', target: 'vendors', milestoneId: 'bm_logistics', phase: 'logistics', label: 'Book AV tech / video platform; confirm screen, dial-in, and a tech-support contact for the day', when: 'T-14d' },
+    { id: 't_access', target: 'parking', milestoneId: 'bm_logistics', phase: 'logistics', label: 'Arrange parking, visitor badges, and a building/reception access list for external directors', when: 'T-14d' },
+    { id: 't_nda', target: 'none', milestoneId: 'bm_logistics', phase: 'documents', label: 'Confirm NDAs/confidentiality on file; set portal permissions or number the printed packets', when: 'T-14d' },
+    { id: 't_packet', target: 'none', milestoneId: 'bm_packet', phase: 'documents', label: 'Assemble + distribute the full board packet via the secure portal ~1 week out', when: 'T-7d' },
+    { id: 't_quorum', target: 'chase', milestoneId: 'bm_quorum', phase: 'guest', label: 'Chase RSVPs, confirm quorum math, send roll-call + dial-in details and any pre-reads', when: 'T-3d' },
+    { id: 't_avtest', target: 'none', milestoneId: 'bm_avtest', phase: 'setup', label: 'Dry-run the hybrid setup: join remote, share a slide, test mic/camera/dial-in, check screen visibility for remote directors', when: 'T-1d' },
+    { id: 't_setup', target: 'day', milestoneId: 'bm_setup', phase: 'setup', label: 'Set seating + name cards, power/AV at each seat, screens on, catering staged, minute-taker positioned', when: 'T0 -1h' },
+    { id: 't_minutes', target: 'day', milestoneId: 'event', phase: 'documents', label: 'Take minutes: record quorum, motions, votes (roll call for remote), and every action item with an owner', when: 'T0' },
+    { id: 't_followup', target: 'none', milestoneId: 'bm_followup', phase: 'documents', label: 'Circulate draft minutes + action-item tracker within 48h; collect/shred printed packets or revoke portal access', when: 'T0 +1d' },
   ],
 
   purchases: [
@@ -92,12 +94,12 @@ const boardMeeting = {
   ],
 
   risks: [
-    { id: 'r_av', trigger: 'Hybrid/AV fails — remote directors cannot see, hear, or be heard', severity: 'high', mitigation: 'Dry-run end-to-end the day before; have an AV/tech-support contact on call; keep a dial-in fallback and a backup hotspot.' },
-    { id: 'r_quorum', trigger: 'Not enough directors attend to meet quorum', severity: 'high', mitigation: 'Confirm RSVPs at 3 days out against the quorum threshold; offer remote join; if short, reschedule or limit to non-binding discussion.' },
-    { id: 'r_packet', trigger: 'Board packet late or incomplete — directors arrive unprepared', severity: 'high', mitigation: 'Hard report deadlines at 10 days out; distribute the full packet ~1 week out; send a reminder pre-read at 3 days out.' },
-    { id: 'r_confidential', trigger: 'Confidential materials leaked or left behind', severity: 'high', mitigation: 'Use a permissioned portal with MFA; number printed copies and collect/shred them; confirm NDAs are on file before distribution.' },
-    { id: 'r_minutes', trigger: 'No designated minute-taker / votes and action items not captured', severity: 'med', mitigation: 'Assign the minute-taker at 3 weeks out, free of facilitation duties; use roll-call voting so remote votes are recorded by name.' },
-    { id: 'r_access', trigger: 'External directors stuck at security/parking, meeting starts late', severity: 'med', mitigation: 'Pre-clear a visitor access list, badges, and parking at 2 weeks out; send directions + a day-of contact with the dial-in details.' },
+    { id: 'r_av', target: 'none', trigger: 'Hybrid/AV fails — remote directors cannot see, hear, or be heard', severity: 'high', mitigation: 'Dry-run end-to-end the day before; have an AV/tech-support contact on call; keep a dial-in fallback and a backup hotspot.' },
+    { id: 'r_quorum', target: 'timeline', trigger: 'Not enough directors attend to meet quorum', severity: 'high', mitigation: 'Confirm RSVPs at 3 days out against the quorum threshold; offer remote join; if short, reschedule or limit to non-binding discussion.' },
+    { id: 'r_packet', target: 'none', trigger: 'Board packet late or incomplete — directors arrive unprepared', severity: 'high', mitigation: 'Hard report deadlines at 10 days out; distribute the full packet ~1 week out; send a reminder pre-read at 3 days out.' },
+    { id: 'r_confidential', target: 'timeline', trigger: 'Confidential materials leaked or left behind', severity: 'high', mitigation: 'Use a permissioned portal with MFA; number printed copies and collect/shred them; confirm NDAs are on file before distribution.' },
+    { id: 'r_minutes', target: 'none', trigger: 'No designated minute-taker / votes and action items not captured', severity: 'med', mitigation: 'Assign the minute-taker at 3 weeks out, free of facilitation duties; use roll-call voting so remote votes are recorded by name.' },
+    { id: 'r_access', target: 'none', trigger: 'External directors stuck at security/parking, meeting starts late', severity: 'med', mitigation: 'Pre-clear a visitor access list, badges, and parking at 2 weeks out; send directions + a day-of contact with the dial-in details.' },
   ],
 
   contingencies: [

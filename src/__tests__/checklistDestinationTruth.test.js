@@ -12,6 +12,7 @@
 // playbook rows carrying a CTA (402/486) — rows without one are real-world
 // work (kitchen prep), which stays honest, but the floor must not slide back.
 // After the same-day coverage wave it stands at 87% (423/486).
+const { routeByWords } = require('../lib/__fixtures__/stepByWords');
 const { resolveRoute } = require('../lib/routeResolver');
 const { checklistRouteFor } = require('../lib/taskRoute');
 const { ALL_PLAYBOOKS, playbookChecklist } = require('../lib/playbooks');
@@ -22,7 +23,7 @@ const EV = { id: 'dest', type: 'Reunion', date: iso(45), guests: 24, venueCity: 
 // that event's playbook, so measuring every playbook's rows against the one
 // Reunion fixture read every other playbook's call rows as buttonless.
 const kindOf = (task, meta = {}, ev = EV) => {
-  const hit = checklistRouteFor(task, meta, ev);
+  const hit = routeByWords(task, meta, ev);
   if (!hit) return null;
   if (hit.href) return 'external:' + hit.href;
   const r = resolveRoute(hit.route);
@@ -43,8 +44,8 @@ describe('each routing family lands on its own surface', () => {
     ['Proteins, buns, produce, condiments', 'food'],
     ['Build the arrivals/departures grid', 'air'],
     ['Chase non-responders by household; lock an adult/kid headcount', 'guests'],
-    ['Book the photographer; agree the coverage window', 'vendors'],
-    ['Check the forecast; confirm a rain plan', 'rain'],
+    ['Book photographer; agree the coverage window', 'vendors'],
+    ['Check the forecast; confirm shade/rain plan', 'rain'],
     ['Reserve any tents, extra tables/chairs, or a bounce house', 'space'],
   ])('"%s" → %s', (task, expected) => {
     expect(kindOf(task)).toBe(expected);
@@ -62,7 +63,9 @@ describe('each routing family lands on its own surface', () => {
   });
 
   test('a day-of row goes to the day board, never a planning sheet', () => {
-    expect(kindOf('Set out the to-go containers', { category: 'event-day' })).toBe('stage:day');
+    // Its declared target, not the word "set out" (cause 1): Reunion's
+    // registration table is a day-of step and opens the day board.
+    expect(kindOf('Set up the registration table: name tags, sign-in sheet, marker', { category: 'event-day' })).toBe('stage:day');
   });
 });
 
@@ -79,7 +82,7 @@ describe('coverage floor across every playbook', () => {
       for (const t of rows) {
         const task = typeof t === 'string' ? t : t.task;
         total += 1;
-        const k = kindOf(task, { week: t.week, category: t.category }, ev);
+        const k = kindOf(task, { taskId: t.id, week: t.week, category: t.category }, ev);
         if (k) withCta += 1;
         // A POSITIVE leadDays is days AFTER the event.
         if (typeof t.leadDays === 'number' && t.leadDays > 0) { postTotal += 1; if (k) postCta += 1; }

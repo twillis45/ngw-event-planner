@@ -14,6 +14,8 @@
 
 const lowCountryBoil = {
   type: 'Low Country Boil',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Corn, potato & mushroom boil platter',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
@@ -57,15 +59,15 @@ const lowCountryBoil = {
   ],
 
   tasks: [
-    { id: 't_invite', milestoneId: 'lcb_invite', phase: 'guest', label: 'Invite folks; get a rough head count so you can size shrimp and the pot', when: 'T-8d' },
-    { id: 't_gear', milestoneId: 'lcb_gear_check', phase: 'logistics', label: 'Test-fire the burner, weigh/shake the propane tank, pick a level spot away from the house, find the boil basket and a long paddle', when: 'T-7d' },
-    { id: 't_count', milestoneId: 'lcb_headcount', phase: 'guest', label: 'Lock the count; plan ~0.5 lb shrimp + ~0.5 lb sausage + 1-2 red potatoes + 1-1.5 ears corn per adult', when: 'T-3d' },
-    { id: 't_nonperish', milestoneId: 'lcb_shop_nonperish', phase: 'shopping', label: 'Old Bay/crab boil, smoked sausage, small red potatoes, corn, butter, lemons, cocktail sauce, hot sauce, drinks, ice, newspaper/kraft paper, cleanup', when: 'T-3d' },
-    { id: 't_shrimp', milestoneId: 'lcb_shop_shrimp', phase: 'shopping', label: 'Buy fresh head-on or shell-on shrimp (and crab/crawfish/clams if doing add-ins) the day before', when: 'T-1d' },
-    { id: 't_prep', milestoneId: 'lcb_prep', phase: 'food', label: 'Scrub potatoes, shuck and halve corn, slice sausage into rounds, mix cocktail sauce, melt butter, set out hot sauce + lemon; ice down the drinks', when: 'T0 -3:00' },
-    { id: 't_heat', milestoneId: 'lcb_setup', phase: 'setup', label: 'Set burner on LEVEL ground away from the house, fill the pot no more than ~2/3, add Old Bay/crab boil, bring to a rolling boil; cover the table with newspaper/kraft paper', when: 'T0 -1:00' },
-    { id: 't_boil', milestoneId: 'event', phase: 'food', label: 'Staged drop: potatoes ~15 min, add sausage ~5 min, add corn ~3 min, then SHRIMP LAST ~3 min until just pink; lift the basket to drain, dump down the middle of the table', when: 'T0' },
-    { id: 't_cool', milestoneId: 'event', phase: 'cleanup', label: 'Cut the propane, let the pot and water cool FULLY before moving, roll up the paper with the shells inside, wrap leftovers, bag trash', when: 'T0 +4:00' },
+    { id: 't_invite', target: 'invite', milestoneId: 'lcb_invite', phase: 'guest', label: 'Invite folks; get a rough head count so you can size shrimp and the pot', when: 'T-8d' },
+    { id: 't_gear', target: 'none', milestoneId: 'lcb_gear_check', phase: 'logistics', label: 'Test-fire the burner, weigh/shake the propane tank, pick a level spot away from the house, find the boil basket and a long paddle', when: 'T-7d' },
+    { id: 't_count', target: 'guests', milestoneId: 'lcb_headcount', phase: 'guest', label: 'Lock the count; plan ~0.5 lb shrimp + ~0.5 lb sausage + 1-2 red potatoes + 1-1.5 ears corn per adult', when: 'T-3d' },
+    { id: 't_nonperish', target: 'list', milestoneId: 'lcb_shop_nonperish', phase: 'shopping', label: 'Old Bay/crab boil, smoked sausage, small red potatoes, corn, butter, lemons, cocktail sauce, hot sauce, drinks, ice, newspaper/kraft paper, cleanup', when: 'T-3d' },
+    { id: 't_shrimp', target: 'list', milestoneId: 'lcb_shop_shrimp', phase: 'shopping', label: 'Buy fresh head-on or shell-on shrimp (and crab/crawfish/clams if doing add-ins) the day before', when: 'T-1d' },
+    { id: 't_prep', target: 'day', milestoneId: 'lcb_prep', phase: 'food', label: 'Scrub potatoes, shuck and halve corn, slice sausage into rounds, mix cocktail sauce, melt butter, set out hot sauce + lemon; ice down the drinks', when: 'T0 -3:00' },
+    { id: 't_heat', target: 'day', milestoneId: 'lcb_setup', phase: 'setup', label: 'Set burner on LEVEL ground away from the house, fill the pot no more than ~2/3, add Old Bay/crab boil, bring to a rolling boil; cover the table with newspaper/kraft paper', when: 'T0 -1:00' },
+    { id: 't_boil', target: 'day', milestoneId: 'event', phase: 'food', label: 'Staged drop: potatoes ~15 min, add sausage ~5 min, add corn ~3 min, then SHRIMP LAST ~3 min until just pink; lift the basket to drain, dump down the middle of the table', when: 'T0' },
+    { id: 't_cool', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Cut the propane, let the pot and water cool FULLY before moving, roll up the paper with the shells inside, wrap leftovers, bag trash', when: 'T0 +4:00' },
   ],
 
   purchases: [
@@ -111,12 +113,12 @@ const lowCountryBoil = {
   ],
 
   risks: [
-    { id: 'r_allergy', trigger: 'A guest with a shellfish allergy (shrimp + any clams/crab/crawfish add-ins)', severity: 'high', mitigation: 'Shrimp and clams are major shellfish allergens and a reaction can be anaphylaxis-grade. Ask guests ahead; pull a separate portion of sausage, corn, and potatoes from the pot BEFORE the shrimp go in and keep it away from the dumped communal table (shared cross-contact is unavoidable once it\'s on the paper). Know the nearest ER; keep any guest\'s epinephrine auto-injector on hand.' },
-    { id: 'r_burner', trigger: 'Propane burner tips, flares, or runs out / boiling-water scald or burn', severity: 'high', mitigation: 'Set the burner on LEVEL, stable ground well away from the house, deck, and overhangs, and keep kids and pets back. Fill the pot no more than ~2/3 so it doesn\'t boil over onto the flame. NEVER leave the burner unattended. Use heavy heat gloves and a long paddle; lift the heavy scalding basket with two hands (or two people). Keep a Class B extinguisher within reach and start with a FULL propane tank plus a backup.' },
-    { id: 'r_overcook', trigger: 'Shrimp overcook and go rubbery (wrong drop order/timing)', severity: 'med', mitigation: 'Stage the drop strictly by cook time: POTATOES first (~15 min), then SAUSAGE (~5 min), then CORN (~3 min), then SHRIMP LAST and only ~2-3 min until just pink. Kill the heat the moment the shrimp turn pink and pull the basket immediately — they keep cooking in the hot water.' },
-    { id: 'r_shrimpqty', trigger: 'Run out of shrimp (or buy way too much)', severity: 'med', mitigation: 'Lock the count at 3 days out; plan ~0.5 lb shrimp/adult; buy fresh the day before so it isn\'t sitting, and call ahead so the market doesn\'t sell out.' },
-    { id: 'r_bland', trigger: 'Bland boil — under-seasoned water', severity: 'low', mitigation: 'Season the water aggressively with Old Bay + crab boil so it tastes strong on its own; the potatoes and shrimp soak it up. Let everything steep a couple of minutes after the heat is off, and serve hot sauce/lemon on the side to adjust.' },
-    { id: 'r_weather', trigger: 'Rain or wind on an outdoor backyard/beach boil', severity: 'low', mitigation: 'Have a canopy or covered spot for the burner (never enclose it — propane needs ventilation), and a rain date or indoor fallback for the eating table.' },
+    { id: 'r_allergy', target: 'crab', trigger: 'A guest with a shellfish allergy (shrimp + any clams/crab/crawfish add-ins)', severity: 'high', mitigation: 'Shrimp and clams are major shellfish allergens and a reaction can be anaphylaxis-grade. Ask guests ahead; pull a separate portion of sausage, corn, and potatoes from the pot BEFORE the shrimp go in and keep it away from the dumped communal table (shared cross-contact is unavoidable once it\'s on the paper). Know the nearest ER; keep any guest\'s epinephrine auto-injector on hand.' },
+    { id: 'r_burner', target: 'crab', trigger: 'Propane burner tips, flares, or runs out / boiling-water scald or burn', severity: 'high', mitigation: 'Set the burner on LEVEL, stable ground well away from the house, deck, and overhangs, and keep kids and pets back. Fill the pot no more than ~2/3 so it doesn\'t boil over onto the flame. NEVER leave the burner unattended. Use heavy heat gloves and a long paddle; lift the heavy scalding basket with two hands (or two people). Keep a Class B extinguisher within reach and start with a FULL propane tank plus a backup.' },
+    { id: 'r_overcook', target: 'none', trigger: 'Shrimp overcook and go rubbery (wrong drop order/timing)', severity: 'med', mitigation: 'Stage the drop strictly by cook time: POTATOES first (~15 min), then SAUSAGE (~5 min), then CORN (~3 min), then SHRIMP LAST and only ~2-3 min until just pink. Kill the heat the moment the shrimp turn pink and pull the basket immediately — they keep cooking in the hot water.' },
+    { id: 'r_shrimpqty', target: 'none', trigger: 'Run out of shrimp (or buy way too much)', severity: 'med', mitigation: 'Lock the count at 3 days out; plan ~0.5 lb shrimp/adult; buy fresh the day before so it isn\'t sitting, and call ahead so the market doesn\'t sell out.' },
+    { id: 'r_bland', target: 'crab', trigger: 'Bland boil — under-seasoned water', severity: 'low', mitigation: 'Season the water aggressively with Old Bay + crab boil so it tastes strong on its own; the potatoes and shrimp soak it up. Let everything steep a couple of minutes after the heat is off, and serve hot sauce/lemon on the side to adjust.' },
+    { id: 'r_weather', target: 'rain', trigger: 'Rain or wind on an outdoor backyard/beach boil', severity: 'low', mitigation: 'Have a canopy or covered spot for the burner (never enclose it — propane needs ventilation), and a rain date or indoor fallback for the eating table.' },
   ],
 
   contingencies: [

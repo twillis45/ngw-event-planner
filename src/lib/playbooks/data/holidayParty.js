@@ -10,6 +10,8 @@
 
 const holidayParty = {
   type: 'Holiday Party',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Butternut squash & sage stuffed shells',
   solveFamily: 'holiday_party',
   // home_hosted, matching eventTaxonomy.mjs (11/20/2026, seasonal leftovers):
@@ -90,47 +92,47 @@ const holidayParty = {
   ],
 
   tasks: [
-    { id: 't_invite', milestoneId: 'hp_invite', phase: 'guest', label: 'Send invite: date/time/venue, dress code, plus-one + dietary ask, soft RSVP-by date', when: 'T-28d' },
+    { id: 't_invite', target: 'invite', milestoneId: 'hp_invite', phase: 'guest', label: 'Send invite: date/time/venue, dress code, plus-one + dietary ask, soft RSVP-by date', when: 'T-28d' },
     // Linked (owner, 11/21/2026): the step is the call, so the pick clears it.
-    { id: 't_menu_lock', answeredBy: ['food_format'], milestoneId: 'hp_catering', phase: 'food', label: 'Lock the menu: ~10-12 bites/guest across hot + cold + a veg + a sweet (or ~0.5 lb/guest buffet)', when: 'T-28d' },
-    { id: 't_bar_model', milestoneId: 'hp_bar', phase: 'beverage', label: 'Confirm bartender + service model; brief them to control the pour and ID/cut-off', when: 'T-21d',
+    { id: 't_menu_lock', target: 'spread', answeredBy: ['food_format'], milestoneId: 'hp_catering', phase: 'food', label: 'Lock the menu: ~10-12 bites/guest across hot + cold + a veg + a sweet (or ~0.5 lb/guest buffet)', when: 'T-28d' },
+    { id: 't_bar_model', target: 'vendors', milestoneId: 'hp_bar', phase: 'beverage', label: 'Confirm bartender + service model; brief them to control the pour and ID/cut-off', when: 'T-21d',
       // A dry party has no pour to control (owner, 11/21/2026). The count, the
       // shopping and the refills are still work, and drop the bar from their words.
       whenChoice: { id: 'alcohol_service', not: ['Zero-proof / dry'] } },
-    { id: 't_playlist', milestoneId: 'hp_decor_music', phase: 'setup', label: 'Build a 4-hour festive playlist (arrival → peak → wind-down) or brief the DJ', when: 'T-14d' },
-    { id: 't_decor_plan', milestoneId: 'hp_decor_music', phase: 'decor', label: 'Plan decor: lighting/string lights, greenery, candles, table accents, a photo moment', when: 'T-14d' },
-    { id: 't_rides_plan', milestoneId: 'hp_safe_rides', phase: 'planning', label: 'Write the safe-rides plan: rideshare codes, designated-driver asks, who watches for over-serving, who can crash', when: 'T-10d' },
-    { id: 't_toast', milestoneId: 'hp_safe_rides', phase: 'planning', label: 'Draft a 2-3 minute host/leadership toast; pick the moment (~60-75 min in, before food fades)', when: 'T-7d' },
-    { id: 't_rsvp_chase', milestoneId: 'hp_rsvp_close', phase: 'guest', label: 'Chase non-responders; give caterer + bartender the final guaranteed count', labelWithoutCaterer: 'Chase non-responders and lock the final guaranteed count', when: 'T-5d',
+    { id: 't_playlist', target: 'none', milestoneId: 'hp_decor_music', phase: 'setup', label: 'Build a 4-hour festive playlist (arrival → peak → wind-down) or brief the DJ', when: 'T-14d' },
+    { id: 't_decor_plan', target: 'list', milestoneId: 'hp_decor_music', phase: 'decor', label: 'Plan decor: lighting/string lights, greenery, candles, table accents, a photo moment', when: 'T-14d' },
+    { id: 't_rides_plan', target: 'rides', milestoneId: 'hp_safe_rides', phase: 'planning', label: 'Write the safe-rides plan: rideshare codes, designated-driver asks, who watches for over-serving, who can crash', when: 'T-10d' },
+    { id: 't_toast', target: 'none', milestoneId: 'hp_safe_rides', phase: 'planning', label: 'Draft a 2-3 minute host/leadership toast; pick the moment (~60-75 min in, before food fades)', when: 'T-7d' },
+    { id: 't_rsvp_chase', target: 'chase', milestoneId: 'hp_rsvp_close', phase: 'guest', label: 'Chase non-responders; give caterer + bartender the final guaranteed count', labelWithoutCaterer: 'Chase non-responders and lock the final guaranteed count', when: 'T-5d',
       copyByAnswer: { alcohol_service: { 'Zero-proof / dry': 'Chase non-responders; give the caterer the final guaranteed count' } } },
-    { id: 't_nametags', milestoneId: 'hp_setup', phase: 'setup', label: 'Pre-print/stage name tags + markers at the entry table (corporate)', when: 'T-1d' },
-    { id: 't_shop_alc', milestoneId: 'hp_shop_nonperish', phase: 'shopping', label: 'Alcohol + mixers + ice plan + non-alc + paper goods + cleanup kit (non-perishable)', when: 'T-3d',
+    { id: 't_nametags', target: 'guests', milestoneId: 'hp_setup', phase: 'setup', label: 'Pre-print/stage name tags + markers at the entry table (corporate)', when: 'T-1d' },
+    { id: 't_shop_alc', target: 'list', milestoneId: 'hp_shop_nonperish', phase: 'shopping', label: 'Alcohol + mixers + ice plan + non-alc + paper goods + cleanup kit (non-perishable)', when: 'T-3d',
       copyByAnswer: { alcohol_service: { 'Zero-proof / dry': 'Zero-proof drinks + mixers + ice plan + paper goods + cleanup kit (non-perishable)' } } },
-    { id: 't_shop_fresh', milestoneId: 'hp_shop_fresh', phase: 'shopping', label: 'Fresh food/garnish/flowers; pick up rentals; buy ice last (~1.5 lb/guest)', when: 'T-1d' },
-    { id: 't_setup_stations', milestoneId: 'hp_setup', phase: 'setup', label: 'Set food stations + bar; stage glassware, garnish caddy, water station, trash/recycling', when: 'T0 -3h' },
-    { id: 't_setup_decor', milestoneId: 'hp_setup', phase: 'setup', label: 'Hang decor + lighting, set candles, stage the photo moment, start the playlist low', when: 'T0 -2h' },
-    { id: 't_coat_entry', milestoneId: 'hp_setup', phase: 'setup', label: 'Set the entry: coat rack/check, name-tag table, welcome drink staged', when: 'T0 -1h' },
-    { id: 't_welcome', milestoneId: 'event', phase: 'event', label: 'Greet at the door, hand a welcome drink, point to coats + name tags', when: 'T0 +0:00' },
-    { id: 't_replenish', milestoneId: 'event', phase: 'food', label: 'Keep apps + bar + water replenished; assign a helper to watch food + over-serving', when: 'ongoing',
+    { id: 't_shop_fresh', target: 'list', milestoneId: 'hp_shop_fresh', phase: 'shopping', label: 'Fresh food/garnish/flowers; pick up rentals; buy ice last (~1.5 lb/guest)', when: 'T-1d' },
+    { id: 't_setup_stations', target: 'day', milestoneId: 'hp_setup', phase: 'setup', label: 'Set food stations + bar; stage glassware, garnish caddy, water station, trash/recycling', when: 'T0 -3h' },
+    { id: 't_setup_decor', target: 'day', milestoneId: 'hp_setup', phase: 'setup', label: 'Hang decor + lighting, set candles, stage the photo moment, start the playlist low', when: 'T0 -2h' },
+    { id: 't_coat_entry', target: 'day', milestoneId: 'hp_setup', phase: 'setup', label: 'Set the entry: coat rack/check, name-tag table, welcome drink staged', when: 'T0 -1h' },
+    { id: 't_welcome', target: 'day', milestoneId: 'event', phase: 'event', label: 'Greet at the door, hand a welcome drink, point to coats + name tags', when: 'T0 +0:00' },
+    { id: 't_replenish', target: 'list', milestoneId: 'event', phase: 'food', label: 'Keep apps + bar + water replenished; assign a helper to watch food + over-serving', when: 'ongoing',
       copyByAnswer: { alcohol_service: { 'Zero-proof / dry': 'Keep apps + drinks + water replenished; assign a helper to watch the food' } } },
-    { id: 't_make_toast', milestoneId: 'event', phase: 'event', label: 'Lower music, make the host/leadership toast, raise a glass', when: 'T0 +1:15' },
-    { id: 't_wind_down', milestoneId: 'event', phase: 'event', label: 'Wind-down: coffee/dessert out, slow the music, surface rideshare/DD plan to anyone impaired', when: 'T0 +3:30' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Post-party reset: bottles to recycling, rentals stacked for return, leftovers + trash out', when: 'T0 +4:30' },
-    { id: 't_left_car', milestoneId: 'hp_morning_after', phase: 'guest', label: 'Text whoever left a car overnight before you need the driveway — tell them the car is fine, and agree on a pickup time', when: 'T0 +1d' },
-    { id: 't_lost_found', milestoneId: 'hp_morning_after', phase: 'guest', label: 'Photograph the coats, scarves, and dishes left behind and post them once to the group — one message now beats six one-off texts in January', when: 'T0 +1d' },
-    { id: 't_rentals_back', milestoneId: 'hp_rental_return', phase: 'cleanup', label: 'Return the glassware, linens, and cocktail tables by the hour on the contract — read the return time before you sleep in, because December windows are short and the late fee is per day', when: 'T0 +1d' },
-    { id: 't_rental_count', whenRented: true, milestoneId: 'hp_rental_return', phase: 'cleanup', label: 'Count the rentals back against the packing slip and note anything broken yourself — a chipped glass you report costs less than one they find', when: 'T0 +1d' },
-    { id: 't_final_invoices', milestoneId: 'hp_settle', phase: 'payment', label: 'Pay the caterer and bartender their final balance and settle the gratuity you promised — staff worked a December night for you', labelWithoutCaterer: 'Pay any staff you hired their final balance and settle the gratuity you promised — staff worked a December night for you', when: 'T0 +3d' },
-    { id: 't_thanks_bar', milestoneId: 'hp_settle', phase: 'guest', label: 'Thank the bartender and anyone who stayed to help by name — the same people are who you want back next December', when: 'T0 +3d' },
+    { id: 't_make_toast', target: 'day', milestoneId: 'event', phase: 'event', label: 'Lower music, make the host/leadership toast, raise a glass', when: 'T0 +1:15' },
+    { id: 't_wind_down', target: 'day', milestoneId: 'event', phase: 'event', label: 'Wind-down: coffee/dessert out, slow the music, surface rideshare/DD plan to anyone impaired', when: 'T0 +3:30' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Post-party reset: bottles to recycling, rentals stacked for return, leftovers + trash out', when: 'T0 +4:30' },
+    { id: 't_left_car', target: 'none', milestoneId: 'hp_morning_after', phase: 'guest', label: 'Text whoever left a car overnight before you need the driveway — tell them the car is fine, and agree on a pickup time', when: 'T0 +1d' },
+    { id: 't_lost_found', target: 'updates', milestoneId: 'hp_morning_after', phase: 'guest', label: 'Photograph the coats, scarves, and dishes left behind and post them once to the group — one message now beats six one-off texts in January', when: 'T0 +1d' },
+    { id: 't_rentals_back', target: 'space', milestoneId: 'hp_rental_return', phase: 'cleanup', label: 'Return the glassware, linens, and cocktail tables by the hour on the contract — read the return time before you sleep in, because December windows are short and the late fee is per day', when: 'T0 +1d' },
+    { id: 't_rental_count', target: 'vendors', whenRented: true, milestoneId: 'hp_rental_return', phase: 'cleanup', label: 'Count the rentals back against the packing slip and note anything broken yourself — a chipped glass you report costs less than one they find', when: 'T0 +1d' },
+    { id: 't_final_invoices', target: 'vendors', milestoneId: 'hp_settle', phase: 'payment', label: 'Pay the caterer and bartender their final balance and settle the gratuity you promised — staff worked a December night for you', labelWithoutCaterer: 'Pay any staff you hired their final balance and settle the gratuity you promised — staff worked a December night for you', when: 'T0 +3d' },
+    { id: 't_thanks_bar', target: 'guest-list', milestoneId: 'hp_settle', phase: 'guest', label: 'Thank the bartender and anyone who stayed to help by name — the same people are who you want back next December', when: 'T0 +3d' },
     // MOVED OFF A DEAD SURFACE, 2026-09-23. Was a `schedules.preparation` row at
     // `T-1d evening`. The BATCHED cocktail is this playbook's whole drinks
     // strategy — `p_signature`'s own note says "Batch ahead so no one mixes to
     // order" — and the only thing that ever performed the batching was a row no
     // host could see. Buying the base is not making the punch.
-    { id: 't_batch_drink', milestoneId: 'hp_setup', phase: 'beverage', label: 'Batch the signature cocktail and prep the garnish caddy the night before, so nobody is mixing to order', when: 'T-1d' },
-    { id: 't_expense', milestoneId: 'hp_settle', phase: 'payment', label: 'File the expense report while the receipts are still in one pile: venue, catering, bar, rentals, decor — company reimbursement windows close hard at year end', when: 'T0 +3d', whenChoice: { id: 'corporate_layer', in: ['Yes — corporate / mixed teams'] } },
-    { id: 't_decor_down', milestoneId: 'hp_decor_down', phase: 'decor', label: 'Take the lights, greenery, and table accents down and box them by room, labeled — the hour you spend now is the hour you save next December', when: 'T0 +7d' },
-    { id: 't_decor_notes', milestoneId: 'hp_decor_down', phase: 'planning', label: 'Write down what ran out, what nobody touched, and what you would move — three lines now is next year\'s plan', when: 'T0 +7d' },
+    { id: 't_batch_drink', target: 'none', milestoneId: 'hp_setup', phase: 'beverage', label: 'Batch the signature cocktail and prep the garnish caddy the night before, so nobody is mixing to order', when: 'T-1d' },
+    { id: 't_expense', target: 'list', milestoneId: 'hp_settle', phase: 'payment', label: 'File the expense report while the receipts are still in one pile: venue, catering, bar, rentals, decor — company reimbursement windows close hard at year end', when: 'T0 +3d', whenChoice: { id: 'corporate_layer', in: ['Yes — corporate / mixed teams'] } },
+    { id: 't_decor_down', target: 'none', milestoneId: 'hp_decor_down', phase: 'decor', label: 'Take the lights, greenery, and table accents down and box them by room, labeled — the hour you spend now is the hour you save next December', when: 'T0 +7d' },
+    { id: 't_decor_notes', target: 'none', milestoneId: 'hp_decor_down', phase: 'planning', label: 'Write down what ran out, what nobody touched, and what you would move — three lines now is next year\'s plan', when: 'T0 +7d' },
   ],
 
   purchases: [
@@ -175,20 +177,20 @@ const holidayParty = {
   ],
 
   risks: [
-    { id: 'r_overserve', trigger: 'Self-serve full bar + no one watching → guests over-served', severity: 'critical', mitigation: 'Use a bartender who controls the pour, ID-checks, and cuts people off; close the bar ~30-45 min before end; serve food all night and a prominent water station; assign a sober helper to watch the room. Over-serving is the root of the night’s worst outcomes.' },
-    { id: 'r_saferides', trigger: 'An impaired guest is about to drive home', severity: 'critical', mitigation: 'Pre-stage a safe-rides plan: rideshare credit/codes, a designated-driver ask in the invite, a couch/guest-room offer, and quietly hold/hand keys. Never let an impaired guest drive — social-host (and at corporate events, employer) liability can attach to harm they cause.' },
+    { id: 'r_overserve', target: 'food', trigger: 'Self-serve full bar + no one watching → guests over-served', severity: 'critical', mitigation: 'Use a bartender who controls the pour, ID-checks, and cuts people off; close the bar ~30-45 min before end; serve food all night and a prominent water station; assign a sober helper to watch the room. Over-serving is the root of the night’s worst outcomes.' },
+    { id: 'r_saferides', target: 'none', trigger: 'An impaired guest is about to drive home', severity: 'critical', mitigation: 'Pre-stage a safe-rides plan: rideshare credit/codes, a designated-driver ask in the invite, a couch/guest-room offer, and quietly hold/hand keys. Never let an impaired guest drive — social-host (and at corporate events, employer) liability can attach to harm they cause.' },
     // SOURCED 11/20/2026 (seasonal leftovers). The old copy, "~20 home candle
     // fires a day, 60% from something burnable left too close", had no source
     // id; it is NFPA's 2015-2019 figure as an Illinois fire-marshal page quotes
     // it. NFPA's own page now reports 2020-2024: about 5,894 a year, over half
     // started by décor too close. "A foot" is NFPA's own 12-inch tip.
-    { id: 'r_candles', trigger: 'Candles or holiday decor too close to something that burns', severity: 'medium', sources: ['nfpa-candles-2026'], mitigation: 'NFPA counts about 5,894 home candle fires a year, and over half start when something that burns is too close to the flame. Keep candles 12 inches from anything that can burn, nothing drapey near them, and every candle out before the room empties — batteries beat flames near garland and gift wrap.' },
-    { id: 'r_headcount', trigger: 'Final headcount still not confirmed 5 days out', severity: 'high', mitigation: 'Chase RSVPs; give the caterer + bartender a guaranteed count; over-cater food ~10%, alcohol on consignment so unopened bottles return.' },
-    { id: 'r_underbar', trigger: 'Bar runs dry mid-party', severity: 'high', mitigation: 'Stock to ~1 drink/guest/hour with a buffer; buy returnable where allowed; keep a backup case of wine + the batched signature to stretch; never let it run fully dry.' },
-    { id: 'r_coldfood', trigger: 'Hot apps go cold / stations run empty', severity: 'med', mitigation: 'Use chafers/warmers + sterno; stagger replenishment from the kitchen instead of putting everything out at once; assign a food-watch helper.' },
-    { id: 'r_venue_late', trigger: 'Venue or caterer booked too late for December', severity: 'high', mitigation: 'Lock venue + caterer at 5 weeks to 4 weeks out; December is peak — confirm in writing with deposits and a final-count date.' },
-    { id: 'r_coats', trigger: 'No coat plan → pile of coats on a bed, lost/mixed up', severity: 'low', mitigation: 'Set a labeled coat rack with hangers near the entry; for corporate, a coat-check helper for the first hour.' },
-    { id: 'r_dietary', trigger: 'No labeled veg/allergy-safe option', severity: 'med', mitigation: 'Collect dietary at RSVP; clearly label a veg + a GF option at every station.' },
+    { id: 'r_candles', target: 'none', trigger: 'Candles or holiday decor too close to something that burns', severity: 'medium', sources: ['nfpa-candles-2026'], mitigation: 'NFPA counts about 5,894 home candle fires a year, and over half start when something that burns is too close to the flame. Keep candles 12 inches from anything that can burn, nothing drapey near them, and every candle out before the room empties — batteries beat flames near garland and gift wrap.' },
+    { id: 'r_headcount', target: 'vendors-tab', trigger: 'Final headcount still not confirmed 5 days out', severity: 'high', mitigation: 'Chase RSVPs; give the caterer + bartender a guaranteed count; over-cater food ~10%, alcohol on consignment so unopened bottles return.' },
+    { id: 'r_underbar', target: 'none', trigger: 'Bar runs dry mid-party', severity: 'high', mitigation: 'Stock to ~1 drink/guest/hour with a buffer; buy returnable where allowed; keep a backup case of wine + the batched signature to stretch; never let it run fully dry.' },
+    { id: 'r_coldfood', target: 'food', trigger: 'Hot apps go cold / stations run empty', severity: 'med', mitigation: 'Use chafers/warmers + sterno; stagger replenishment from the kitchen instead of putting everything out at once; assign a food-watch helper.' },
+    { id: 'r_venue_late', target: 'vendors-tab', trigger: 'Venue or caterer booked too late for December', severity: 'high', mitigation: 'Lock venue + caterer at 5 weeks to 4 weeks out; December is peak — confirm in writing with deposits and a final-count date.' },
+    { id: 'r_coats', target: 'none', trigger: 'No coat plan → pile of coats on a bed, lost/mixed up', severity: 'low', mitigation: 'Set a labeled coat rack with hangers near the entry; for corporate, a coat-check helper for the first hour.' },
+    { id: 'r_dietary', target: 'none', trigger: 'No labeled veg/allergy-safe option', severity: 'med', mitigation: 'Collect dietary at RSVP; clearly label a veg + a GF option at every station.' },
   ],
 
   contingencies: [

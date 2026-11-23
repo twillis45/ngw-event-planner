@@ -961,7 +961,7 @@ export default function InviteV2({ code }) {
                   {spanEnd(event) !== String(event.date).slice(0, 10)
                     ? <> – {dfmt(spanEnd(event), { weekday: 'long', month: 'long', day: 'numeric' })}</>
                     : null}
-                  {whenLabel ? <span className="inv2-when-time"> · {whenLabel.label}</span> : null}
+                  {whenLabel ? <span className="inv2-when-time"> · {whenLabel.label}{whenLabel.serveLabel ? `, dinner at ${whenLabel.serveLabel}` : ''}</span> : null}
                 </div></>)}
               {formatVenueAddress(event) && (<><div className="inv2-label lp">Where</div>
                 <div className="inv2-val lp" data-invite-where>{formatVenueAddress(event)}</div></>)}

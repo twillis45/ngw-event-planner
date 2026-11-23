@@ -9,6 +9,8 @@
 
 const backyardBbq = {
   type: 'Get-Together',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Grilled portobello caps + veggie skewers',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
@@ -54,13 +56,13 @@ const backyardBbq = {
   ],
 
   tasks: [
-    { id: 't_invite', milestoneId: 'bbq_invite', phase: 'guest', label: 'Group text invite; assign sides/drinks if potluck', when: 'T-10d' },
-    { id: 't_weather', milestoneId: 'bbq_rsvp', phase: 'guest', label: 'Check the forecast; confirm shade/rain plan; loose headcount', when: 'T-3d' },
-    { id: 't_nonperish_shop', milestoneId: 'bbq_shop_nonperish', phase: 'shopping', label: 'Drinks, charcoal/propane, disposables, bug spray, sunscreen', when: 'T-3d' },
-    { id: 't_fresh_shop', milestoneId: 'bbq_shop_fresh', phase: 'shopping', label: 'Proteins, buns, produce, condiments', when: 'T-1d' },
-    { id: 't_prep', milestoneId: 'bbq_setup', phase: 'food', label: 'Marinate proteins; prep cold sides', when: 'T-1d evening' },
-    { id: 't_grill', milestoneId: 'event', phase: 'food', label: 'Fire up the grill on the lead your fuel needs — the fire task on your checklist has the number; cook in batches', when: 'T0 -0:45' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Cool + scrape the grill, pack leftovers, bag trash + recycling, fold chairs/canopy', when: 'T0 +4:00' },
+    { id: 't_invite', target: 'invite', milestoneId: 'bbq_invite', phase: 'guest', label: 'Group text invite; assign sides/drinks if potluck', when: 'T-10d' },
+    { id: 't_weather', target: 'weather', milestoneId: 'bbq_rsvp', phase: 'guest', label: 'Check the forecast; confirm shade/rain plan; loose headcount', when: 'T-3d' },
+    { id: 't_nonperish_shop', target: 'list', milestoneId: 'bbq_shop_nonperish', phase: 'shopping', label: 'Drinks, charcoal/propane, disposables, bug spray, sunscreen', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'list', milestoneId: 'bbq_shop_fresh', phase: 'shopping', label: 'Proteins, buns, produce, condiments', when: 'T-1d' },
+    { id: 't_prep', target: 'none', milestoneId: 'bbq_setup', phase: 'food', label: 'Marinate proteins; prep cold sides', when: 'T-1d evening' },
+    { id: 't_grill', target: 'day', milestoneId: 'event', phase: 'food', label: 'Fire up the grill on the lead your fuel needs — the fire task on your checklist has the number; cook in batches', when: 'T0 -0:45' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Cool + scrape the grill, pack leftovers, bag trash + recycling, fold chairs/canopy', when: 'T0 +4:00' },
   ],
 
   purchases: [
@@ -100,12 +102,12 @@ const backyardBbq = {
   ],
 
   risks: [
-    { id: 'r_weather', trigger: 'Rain or extreme heat, no plan', severity: 'high', mitigation: 'Check the forecast at 3 days out; secure a canopy/indoor fallback; move earlier/later to dodge peak heat.' },
-    { id: 'r_fuel', trigger: 'Out of charcoal / empty propane tank', severity: 'high', mitigation: 'Check + buy fuel at 3 days out; keep a spare bag/tank.' },
-    { id: 'r_grillfire', trigger: 'Grill flare-up or grease fire', severity: 'high', mitigation: 'NFPA/USFA rules: grill outdoors only, well away from the house, deck rails, and eaves — never a porch or balcony — with a 3-foot kid-and-pet zone, and never left alone while lit. A dirty grill is the top fire factor, so scrape the grease. If a grease fire starts: lid on, burner off, never water; any doubt — everyone away and 911. Cool coals go in a lidded metal can.' },
-    { id: 'r_ice', trigger: 'Ice melts, drinks go warm', severity: 'med', mitigation: 'Buy ~2 lb ice/guest day-of (outdoor melts fast); keep a shaded backup cooler.' },
-    { id: 'r_foodsafe', trigger: 'Food left out in the heat', severity: 'high', mitigation: 'Keep cold food on ice; don\'t leave perishables out >1h in 90°F+; grill to safe temps.' },
-    { id: 'r_bugs', trigger: 'Mosquitoes / sun run guests off', severity: 'low', mitigation: 'Bug spray, citronella, shade, and water available.' },
+    { id: 'r_weather', target: 'rain', trigger: 'Rain or extreme heat, no plan', severity: 'high', mitigation: 'Check the forecast at 3 days out; secure a canopy/indoor fallback; move earlier/later to dodge peak heat.' },
+    { id: 'r_fuel', target: 'none', trigger: 'Out of charcoal / empty propane tank', severity: 'high', mitigation: 'Check + buy fuel at 3 days out; keep a spare bag/tank.' },
+    { id: 'r_grillfire', target: 'rain', trigger: 'Grill flare-up or grease fire', severity: 'high', mitigation: 'NFPA/USFA rules: grill outdoors only, well away from the house, deck rails, and eaves — never a porch or balcony — with a 3-foot kid-and-pet zone, and never left alone while lit. A dirty grill is the top fire factor, so scrape the grease. If a grease fire starts: lid on, burner off, never water; any doubt — everyone away and 911. Cool coals go in a lidded metal can.' },
+    { id: 'r_ice', target: 'rain', trigger: 'Ice melts, drinks go warm', severity: 'med', mitigation: 'Buy ~2 lb ice/guest day-of (outdoor melts fast); keep a shaded backup cooler.' },
+    { id: 'r_foodsafe', target: 'food', trigger: 'Food left out in the heat', severity: 'high', mitigation: 'Keep cold food on ice; don\'t leave perishables out >1h in 90°F+; grill to safe temps.' },
+    { id: 'r_bugs', target: 'none', trigger: 'Mosquitoes / sun run guests off', severity: 'low', mitigation: 'Bug spray, citronella, shade, and water available.' },
   ],
 
   contingencies: [

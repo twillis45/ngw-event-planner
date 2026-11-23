@@ -3,6 +3,7 @@
 // stays. event.roomPlan is the single record; each person's "rooming with" on
 // the lodging roster is derived from it; a stored roommate is ignored.
 // e2e twin: hostv2/e2e/oneRoomPlanSaysWhoSleepsWhere.spec.mjs.
+import { routeByWords } from '../__fixtures__/stepByWords';
 import { checklistRouteFor } from '../taskRoute';
 import { resolveRoute } from '../routeResolver';
 import { taskSatisfied } from '../taskEngine';
@@ -21,7 +22,7 @@ const zero = () => 0;
 test('premise: the row is in the playbook', () => { expect(ROW).toBeTruthy(); });
 
 test('the row opens the room plan in Where everyone stays', () => {
-  const hit = checklistRouteFor(ROW.task, { week: ROW.week, category: ROW.category }, ev());
+  const hit = routeByWords(ROW.task, { taskId: ROW.id, week: ROW.week, category: ROW.category }, ev());
   expect(hit && hit.label).toBe('Plan who sleeps where');
   expect(resolveRoute(hit.route)).toEqual({ kind: 'lodging', focus: 'rooms' });
 });

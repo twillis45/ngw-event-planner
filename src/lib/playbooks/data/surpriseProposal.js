@@ -15,6 +15,8 @@
 
 const surpriseProposal = {
   type: 'Surprise Proposal',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'proposal',
   family: 'host_driven',
   recordKind: 'client',
@@ -60,23 +62,23 @@ const surpriseProposal = {
   ],
 
   tasks: [
-    { id: 't_ringsize', milestoneId: 'pr_ring_size', phase: 'planning', label: 'Discreetly get ring size — borrow a ring off the right finger, or ask a sibling/best friend; size up if unsure', when: 'T-45d' },
-    { id: 't_finance', milestoneId: 'pr_ring_order', phase: 'planning', label: 'Set ring budget + financing; factor tax + insurance; order (custom 4-6 wk)', when: 'T-42d' },
-    { id: 't_location', milestoneId: 'pr_location', phase: 'planning', label: 'Pick a spot that means something to you both; choose golden hour (sunset/sunrise) on a low-crowd weekday', when: 'T-35d' },
-    { id: 't_book_photog', milestoneId: 'pr_photographer', phase: 'vendor', label: 'Book a proposal photographer (3-8 wk out); share the spot, the timing, and the cover story', when: 'T-30d' },
-    { id: 't_permit', milestoneId: 'pr_permit', phase: 'logistics', label: 'Call the park/venue office — props/flowers/candles/signs and even photography often need a permit; ask about open flame (use LED)', when: 'T-25d' },
-    { id: 't_cover', milestoneId: 'pr_coverstory', phase: 'planning', label: 'Write a simple, believable reason to be there + dressed up ("free mini-shoot", reservation, friend\'s thing); rehearse it', when: 'T-21d' },
+    { id: 't_ringsize', target: 'none', milestoneId: 'pr_ring_size', phase: 'planning', label: 'Discreetly get ring size — borrow a ring off the right finger, or ask a sibling/best friend; size up if unsure', when: 'T-45d' },
+    { id: 't_finance', target: 'vendor-docs', milestoneId: 'pr_ring_order', phase: 'planning', label: 'Set ring budget + financing; factor tax + insurance; order (custom 4-6 wk)', when: 'T-42d' },
+    { id: 't_location', target: 'none', milestoneId: 'pr_location', phase: 'planning', label: 'Pick a spot that means something to you both; choose golden hour (sunset/sunrise) on a low-crowd weekday', when: 'T-35d' },
+    { id: 't_book_photog', target: 'vendors', milestoneId: 'pr_photographer', phase: 'vendor', label: 'Book a proposal photographer (3-8 wk out); share the spot, the timing, and the cover story', when: 'T-30d' },
+    { id: 't_permit', target: 'place-rules', milestoneId: 'pr_permit', phase: 'logistics', label: 'Call the park/venue office — props/flowers/candles/signs and even photography often need a permit; ask about open flame (use LED)', when: 'T-25d' },
+    { id: 't_cover', target: 'none', milestoneId: 'pr_coverstory', phase: 'planning', label: 'Write a simple, believable reason to be there + dressed up ("free mini-shoot", reservation, friend\'s thing); rehearse it', when: 'T-21d' },
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
-    { id: 't_celebration', answeredBy: ['celebration_style'], milestoneId: 'pr_celebration', phase: 'planning', label: 'Decide how you celebrate after the yes', when: 'T-14d' },
-    { id: 't_celebration_book', milestoneId: 'pr_celebration', phase: 'planning', label: 'Book the dinner reservation and/or stage family + friends at a nearby spot for the post-yes reveal', when: 'T-14d' },
-    { id: 't_scout', milestoneId: 'pr_scout', phase: 'logistics', label: 'Walk the spot with the photographer; mark where partner stands/faces, where the photographer hides, gates/parking/closing times', when: 'T-7d' },
-    { id: 't_pickup', milestoneId: 'pr_ringpickup', phase: 'planning', label: 'Pick up the ring; verify fit; add it to insurance/rider; have a secure pocket plan for the day', when: 'T-5d' },
-    { id: 't_decor', milestoneId: 'pr_decor', phase: 'setup', label: 'Buy flowers + LED candles + a "Marry Me" sign; brief the ring-bearer / helper on exact cue + handoff', when: 'T-2d' },
-    { id: 't_backup', milestoneId: 'pr_backup', phase: 'logistics', label: 'Check the forecast; confirm a Plan B location/time you are equally happy with; brief everyone on the trigger to switch', when: 'T-1d' },
-    { id: 't_moment', milestoneId: 'event', phase: 'logistics', label: 'Ring in pocket; arrive early; photographer in position; deliver the cover story; pause, turn, ask', when: 'T0' },
-    { id: 't_reveal', milestoneId: 'event', phase: 'logistics', label: 'After the yes: champagne toast, photographer joins for portraits, then the dinner / family reveal', when: 'T0 +0:30' },
+    { id: 't_celebration', target: 'call:celebration_style', answeredBy: ['celebration_style'], milestoneId: 'pr_celebration', phase: 'planning', label: 'Decide how you celebrate after the yes', when: 'T-14d' },
+    { id: 't_celebration_book', target: 'vendors', milestoneId: 'pr_celebration', phase: 'planning', label: 'Book the dinner reservation and/or stage family + friends at a nearby spot for the post-yes reveal', when: 'T-14d' },
+    { id: 't_scout', target: 'parking', milestoneId: 'pr_scout', phase: 'logistics', label: 'Walk the spot with the photographer; mark where partner stands/faces, where the photographer hides, gates/parking/closing times', when: 'T-7d' },
+    { id: 't_pickup', target: 'vendor-docs', milestoneId: 'pr_ringpickup', phase: 'planning', label: 'Pick up the ring; verify fit; add it to insurance/rider; have a secure pocket plan for the day', when: 'T-5d' },
+    { id: 't_decor', target: 'list', milestoneId: 'pr_decor', phase: 'setup', label: 'Buy flowers + LED candles + a "Marry Me" sign; brief the ring-bearer / helper on exact cue + handoff', when: 'T-2d' },
+    { id: 't_backup', target: 'weather', milestoneId: 'pr_backup', phase: 'logistics', label: 'Check the forecast; confirm a Plan B location/time you are equally happy with; brief everyone on the trigger to switch', when: 'T-1d' },
+    { id: 't_moment', target: 'day', milestoneId: 'event', phase: 'logistics', label: 'Ring in pocket; arrive early; photographer in position; deliver the cover story; pause, turn, ask', when: 'T0' },
+    { id: 't_reveal', target: 'day', milestoneId: 'event', phase: 'logistics', label: 'After the yes: champagne toast, photographer joins for portraits, then the dinner / family reveal', when: 'T0 +0:30' },
   ],
 
   purchases: [
@@ -106,13 +108,13 @@ const surpriseProposal = {
   ],
 
   risks: [
-    { id: 'r_leak', trigger: 'The surprise leaks (someone talks, partner gets suspicious, plans visible on a shared device/calendar)', severity: 'high', mitigation: 'Keep the circle to 2-3 people doing a job; use a private device/incognito; vague cover-story language in texts; loop people in late and only as needed.' },
-    { id: 'r_ring', trigger: 'Ring not ready / wrong size by the date', severity: 'high', mitigation: 'Confirm size early (ask the circle); order at 6 weeks out; custom runs 4-6 wk; pick up at 5 days out and verify fit; size up if unsure (easier to size down).' },
-    { id: 'r_nophoto', trigger: 'No one captures the moment (photographer cancels / no-shows / mis-positioned)', severity: 'high', mitigation: 'Book early, confirm 48h out, scout positioning together at a week out; have a backup shooter or a pre-set hidden phone on a tripod. You cannot re-shoot a real "yes".' },
-    { id: 'r_weather', trigger: 'Rain / extreme weather or a crowded "secret" spot', severity: 'med', mitigation: 'Confirm forecast the day before; pre-pick a Plan B location/time you love equally; choose a low-crowd weekday window; have an indoor fallback.' },
-    { id: 'r_permit', trigger: 'Park/venue blocks the setup (props, flowers, candles, sign — or even photography — need a permit)', severity: 'med', mitigation: 'Call the office at 25 days out; get the permit; use LED not open flame; bring a no-setup fallback (handheld sign + bouquet) that needs no permit.' },
-    { id: 'r_coverstory', trigger: 'Cover story falls apart — partner won\'t come, is underdressed, or is in a bad mood', severity: 'med', mitigation: 'Keep it simple, low-pressure, slightly exciting; rehearse it; recruit the partner\'s person to nudge timing/outfit; keep the date flexible if it goes sideways.' },
-    { id: 'r_logistics', trigger: 'Gates locked, lot closed, ring-bearer misses the cue, ring falls out of pocket', severity: 'low', mitigation: 'Scout closing/parking times at a week out; brief the helper on the exact cue + handoff; slim secure ring box; arrive early.' },
+    { id: 'r_leak', target: 'none', trigger: 'The surprise leaks (someone talks, partner gets suspicious, plans visible on a shared device/calendar)', severity: 'high', mitigation: 'Keep the circle to 2-3 people doing a job; use a private device/incognito; vague cover-story language in texts; loop people in late and only as needed.' },
+    { id: 'r_ring', target: 'seating', trigger: 'Ring not ready / wrong size by the date', severity: 'high', mitigation: 'Confirm size early (ask the circle); order at 6 weeks out; custom runs 4-6 wk; pick up at 5 days out and verify fit; size up if unsure (easier to size down).' },
+    { id: 'r_nophoto', target: 'vendors-tab', trigger: 'No one captures the moment (photographer cancels / no-shows / mis-positioned)', severity: 'high', mitigation: 'Book early, confirm 48h out, scout positioning together at a week out; have a backup shooter or a pre-set hidden phone on a tripod. You cannot re-shoot a real "yes".' },
+    { id: 'r_weather', target: 'rain', trigger: 'Rain / extreme weather or a crowded "secret" spot', severity: 'med', mitigation: 'Confirm forecast the day before; pre-pick a Plan B location/time you love equally; choose a low-crowd weekday window; have an indoor fallback.' },
+    { id: 'r_permit', target: 'none', trigger: 'Park/venue blocks the setup (props, flowers, candles, sign — or even photography — need a permit)', severity: 'med', mitigation: 'Call the office at 25 days out; get the permit; use LED not open flame; bring a no-setup fallback (handheld sign + bouquet) that needs no permit.' },
+    { id: 'r_coverstory', target: 'none', trigger: 'Cover story falls apart — partner won\'t come, is underdressed, or is in a bad mood', severity: 'med', mitigation: 'Keep it simple, low-pressure, slightly exciting; rehearse it; recruit the partner\'s person to nudge timing/outfit; keep the date flexible if it goes sideways.' },
+    { id: 'r_logistics', target: 'none', trigger: 'Gates locked, lot closed, ring-bearer misses the cue, ring falls out of pocket', severity: 'low', mitigation: 'Scout closing/parking times at a week out; brief the helper on the exact cue + handoff; slim secure ring box; arrive early.' },
   ],
 
   contingencies: [

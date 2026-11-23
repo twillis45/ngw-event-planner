@@ -32,7 +32,7 @@ import app.routers.cohosts as co
 import app.routers.helper_link as hl
 
 STOP = "https://api.example.test/api/public/email/stop/tok-aaaaaaaaaaaaaaaaaaaa"
-EVENT = {"name": "My Friendsgiving", "type": "Friendsgiving", "date": "2026-11-21", "startTime": "4:00 PM",
+EVENT = {"name": "Reyes Friendsgiving", "type": "Friendsgiving", "date": "2026-11-21", "startTime": "4:00 PM",
          "venue": "Vida's", "venueAddress": "271 Whitaker Rd", "rsvpCode": "rsvp-code-aaaaaaaaaaaa",
          "hostName": "Casey Rivera"}
 
@@ -61,13 +61,13 @@ def test_the_hosts_message_wears_the_frame():
     for part in (html, text):
         assert "Sent by Casey Rivera with No Guesswork Events." in part
         assert STOP in part and "Stop emails about this event" in part
-        assert "My Friendsgiving" in part and "Hi Rosa," in part
+        assert "Reyes Friendsgiving" in part and "Hi Rosa," in part
     assert "Can you confirm 3 PM?<br>Thanks" in html
 
 
 def test_the_reply_notice_and_the_announcement_wear_the_frame():
     for compose in (gn.compose_reply_notice, gn.compose_announcement):
-        from_name, subject, html, headers, text = compose("Casey", "My Friendsgiving", "Doors at 4.", "rsvp-1", "gtok-1")
+        from_name, subject, html, headers, text = compose("Casey", "Reyes Friendsgiving", "Doors at 4.", "rsvp-1", "gtok-1")
         stop = gn.unsubscribe_url("gtok-1")
         assert framed(html) and "Sent by Casey with No Guesswork Events." in html
         assert stop in html and stop in text and "Stop these emails" in html
@@ -76,7 +76,7 @@ def test_the_reply_notice_and_the_announcement_wear_the_frame():
 
 
 def test_the_cohost_invite_wears_the_frame():
-    html, text = co.compose_cohost_invite("My Friendsgiving", "sam.cohost@example.test", "Casey Rivera")
+    html, text = co.compose_cohost_invite("Reyes Friendsgiving", "sam.cohost@example.test", "Casey Rivera")
     assert framed(html, "matte") and "Sent by Casey Rivera with No Guesswork Events." in html
     assert "co-host" in html and "sam.cohost@example.test" in text
 
@@ -94,8 +94,8 @@ def test_the_approval_email_wears_the_frame(monkeypatch):
 
 
 def test_host_emails_wear_the_frame_without_the_invitation():
-    _s, html, text = ha.compose("rsvp", "Jordan", "My Friendsgiving", "Yes")
-    s2, html2, text2 = hr.compose_week_before("My Friendsgiving", dt.date(2026, 11, 21), "tok-r")
+    _s, html, text = ha.compose("rsvp", "Jordan", "Reyes Friendsgiving", "Yes")
+    s2, html2, text2 = hr.compose_week_before("Reyes Friendsgiving", dt.date(2026, 11, 21), "tok-r")
     assert framed(html, "matte") and framed(html2, "matte")
     assert "Sent by No Guesswork Events." in html and "Sent by No Guesswork Events." in html2
     assert he.stop_url("tok-r") in html2 and "Stop plan reminders" in html2
@@ -124,7 +124,7 @@ def test_the_helper_email_reads_the_afternoon_either_way(stored):
         assert "4:00 PM" in part and "4:00 AM" not in part and "16:00" not in part
         assert "Saturday" in part and "November 21" in part
         assert "Vida" in part and "271 Whitaker Rd" in part
-    assert subject == "Your job for My Friendsgiving"
+    assert subject == "Your job for Reyes Friendsgiving"
     # The jobs, each on its own line; the allergy note names the allergen, never the guest.
     assert "• The stuffing — keep it nut-free, a guest is allergic\n• Set up chairs" in text
     assert "• The stuffing — keep it nut-free, a guest is allergic<br>• Set up chairs" in html
@@ -258,7 +258,7 @@ def test_the_studio_sends_it_and_it_is_recorded(env):
     (row,) = env.db.msgs
     d = row["metadata"]["delivery"]
     assert d["kind"] == "helper" and d["status"] == "accepted" and d["resend_id"] == "re_1"
-    assert d["recipient_email"] == "jordan.helper@example.test" and d["subject"] == "Your job for My Friendsgiving"
+    assert d["recipient_email"] == "jordan.helper@example.test" and d["subject"] == "Your job for Reyes Friendsgiving"
 
 
 def test_a_claimed_cohost_may_send(env):

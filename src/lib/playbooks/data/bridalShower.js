@@ -14,6 +14,8 @@
 
 const bridalShower = {
   type: 'Bridal Shower',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',
   family: 'host_driven',
   recordKind: 'client',
@@ -60,14 +62,14 @@ const bridalShower = {
   ],
 
   tasks: [
-    { id: 't_invite', milestoneId: 'br_invite', phase: 'guest', label: 'Send invites with registry, RSVP-by, dietary ask', when: 'T-21d' },
-    { id: 't_rsvp', milestoneId: 'br_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count and seat plan', when: 'T-4d' },
-    { id: 't_giftlog', milestoneId: 'br_setup', phase: 'planning', label: 'Set up the gift log (who-gave-what) for thank-you notes', when: 'T-1d' },
-    { id: 't_nonperish_shop', milestoneId: 'br_shop_nonperish', phase: 'shopping', label: 'Decor, favors, prizes, bubbly, mixers, games, paper goods', when: 'T-3d' },
-    { id: 't_fresh_shop', milestoneId: 'br_shop_fresh', phase: 'shopping', label: 'Fresh food, cake/desserts, juice, flowers', when: 'T-1d' },
-    { id: 't_prep', milestoneId: 'br_setup', phase: 'food', label: 'Make-ahead bites + dessert; assemble favors; set games', when: 'T-1d evening' },
-    { id: 't_decorate', milestoneId: 'br_setup', phase: 'setup', label: 'Decorate, set the table, food + coffee/mimosa bar, gift area', when: 'T0 -3h' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Finalize gift list for thank-yous, pack leftovers + gifts, favors out, bag trash + recycling', when: 'T0 +3:00' },
+    { id: 't_invite', target: 'invite', milestoneId: 'br_invite', phase: 'guest', label: 'Send invites with registry, RSVP-by, dietary ask', when: 'T-21d' },
+    { id: 't_rsvp', target: 'chase', milestoneId: 'br_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count and seat plan', when: 'T-4d' },
+    { id: 't_giftlog', target: 'guest-list', milestoneId: 'br_setup', phase: 'planning', label: 'Set up the gift log (who-gave-what) for thank-you notes', when: 'T-1d' },
+    { id: 't_nonperish_shop', target: 'list', milestoneId: 'br_shop_nonperish', phase: 'shopping', label: 'Decor, favors, prizes, bubbly, mixers, games, paper goods', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'spread', milestoneId: 'br_shop_fresh', phase: 'shopping', label: 'Fresh food, cake/desserts, juice, flowers', when: 'T-1d' },
+    { id: 't_prep', target: 'none', milestoneId: 'br_setup', phase: 'food', label: 'Make-ahead bites + dessert; assemble favors; set games', when: 'T-1d evening' },
+    { id: 't_decorate', target: 'day', milestoneId: 'br_setup', phase: 'setup', label: 'Decorate, set the table, food + coffee/mimosa bar, gift area', when: 'T0 -3h' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Finalize gift list for thank-yous, pack leftovers + gifts, favors out, bag trash + recycling', when: 'T0 +3:00' },
   ],
 
   purchases: [
@@ -103,11 +105,11 @@ const bridalShower = {
   ],
 
   risks: [
-    { id: 'r_headcount', trigger: 'Final headcount still not locked 4 days out', severity: 'high', mitigation: 'Chase RSVPs with the bride / co-hosts; buy fresh food and confirm seats after the count locks.' },
-    { id: 'r_giftlog', trigger: 'No gift-tracking plan during the opening', severity: 'high', mitigation: 'Assign one person to log each gift → giver as it is opened; the bride needs this list for thank-you notes.' },
-    { id: 'r_guestlist', trigger: 'Shower guest not on the wedding guest list', severity: 'med', mitigation: 'Vet the shower list against the wedding list with the bride before invites go out — never invite to the shower someone not invited to the wedding.' },
-    { id: 'r_bar', trigger: 'Bubbly/juice under-bought for the mimosa bar', severity: 'med', mitigation: 'Plan ~1 bottle per 4–5 guests; keep 1–2 backup bottles chilled and a full no-alcohol punch so no one is left out.' },
-    { id: 'r_overrun', trigger: 'Gift opening runs long and guests disengage', severity: 'low', mitigation: 'Cap games to 1–2 short rounds; play soft music and pass favors during the opening to keep energy up.' },
+    { id: 'r_headcount', target: 'seating', trigger: 'Final headcount still not locked 4 days out', severity: 'high', mitigation: 'Chase RSVPs with the bride / co-hosts; buy fresh food and confirm seats after the count locks.' },
+    { id: 'r_giftlog', target: 'none', trigger: 'No gift-tracking plan during the opening', severity: 'high', mitigation: 'Assign one person to log each gift → giver as it is opened; the bride needs this list for thank-you notes.' },
+    { id: 'r_guestlist', target: 'none', trigger: 'Shower guest not on the wedding guest list', severity: 'med', mitigation: 'Vet the shower list against the wedding list with the bride before invites go out — never invite to the shower someone not invited to the wedding.' },
+    { id: 'r_bar', target: 'none', trigger: 'Bubbly/juice under-bought for the mimosa bar', severity: 'med', mitigation: 'Plan ~1 bottle per 4–5 guests; keep 1–2 backup bottles chilled and a full no-alcohol punch so no one is left out.' },
+    { id: 'r_overrun', target: 'none', trigger: 'Gift opening runs long and guests disengage', severity: 'low', mitigation: 'Cap games to 1–2 short rounds; play soft music and pass favors during the opening to keep energy up.' },
   ],
 
   contingencies: [

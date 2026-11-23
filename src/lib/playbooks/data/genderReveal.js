@@ -20,6 +20,8 @@
 
 const genderReveal = {
   type: 'Gender Reveal',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',
   family: 'host_driven',
   recordKind: 'client',
@@ -162,21 +164,21 @@ const genderReveal = {
   ],
 
   tasks: [
-    { id: 't_handoff', milestoneId: 'gr_handoff', phase: 'reveal', label: 'Give baker/shop the sealed envelope; confirm neutral exterior so parents are surprised', when: 'T-18d' },
-    { id: 't_invite', milestoneId: 'gr_invite', phase: 'guest', label: 'Send invites with RSVP-by, dietary ask, and "wear pink or blue" note', when: 'T-14d' },
-    { id: 't_capture', milestoneId: 'gr_capture', phase: 'reveal', label: 'Assign a photographer/videographer; frame the parents + reveal in one shot; charge devices', when: 'T-10d' },
-    { id: 't_rsvp', milestoneId: 'gr_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count', when: 'T-4d' },
+    { id: 't_handoff', target: 'vendors', milestoneId: 'gr_handoff', phase: 'reveal', label: 'Give baker/shop the sealed envelope; confirm neutral exterior so parents are surprised', when: 'T-18d' },
+    { id: 't_invite', target: 'invite', milestoneId: 'gr_invite', phase: 'guest', label: 'Send invites with RSVP-by, dietary ask, and "wear pink or blue" note', when: 'T-14d' },
+    { id: 't_capture', target: 'vendors', milestoneId: 'gr_capture', phase: 'reveal', label: 'Assign a photographer/videographer; frame the parents + reveal in one shot; charge devices', when: 'T-10d' },
+    { id: 't_rsvp', target: 'chase', milestoneId: 'gr_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count', when: 'T-4d' },
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
     // Every reveal_method option is a safe one, so the pick is the safe method.
-    { id: 't_reveal_safety', answeredBy: ['reveal_method'], milestoneId: 'gr_reveal_pickup_plan', phase: 'reveal', label: 'Pick a safe reveal method: no pyro, explosives, or hot smoke', when: 'T-3d' },
-    { id: 't_reveal_fire', milestoneId: 'gr_reveal_pickup_plan', phase: 'reveal', label: 'Check fire conditions if the reveal is outdoors and it has been dry', when: 'T-3d' },
-    { id: 't_nonperish_shop', milestoneId: 'gr_shop_nonperish', phase: 'shopping', label: 'Decor, favors, guessing board, mocktail mixers, game + paper goods', when: 'T-3d' },
-    { id: 't_fresh_shop', milestoneId: 'gr_shop_fresh', phase: 'shopping', label: 'Fresh snacks; pick up cake/reveal item; keep cake refrigerated', when: 'T-1d' },
-    { id: 't_prep', milestoneId: 'gr_setup', phase: 'food', label: 'Prep make-ahead bites; batch the mocktail; assemble favors', when: 'T-1d evening' },
-    { id: 't_decorate', milestoneId: 'gr_setup', phase: 'setup', label: 'Pink/blue decor, snack + drink station, set up the guessing board, stage the reveal spot', when: 'T0 -2h' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Collect confetti/powder debris, pack leftovers + cake, save photos, bag trash + recycling', when: 'T0 +2:30' },
+    { id: 't_reveal_safety', target: 'call:reveal_method', answeredBy: ['reveal_method'], milestoneId: 'gr_reveal_pickup_plan', phase: 'reveal', label: 'Pick a safe reveal method: no pyro, explosives, or hot smoke', when: 'T-3d' },
+    { id: 't_reveal_fire', target: 'none', milestoneId: 'gr_reveal_pickup_plan', phase: 'reveal', label: 'Check fire conditions if the reveal is outdoors and it has been dry', when: 'T-3d' },
+    { id: 't_nonperish_shop', target: 'list', milestoneId: 'gr_shop_nonperish', phase: 'shopping', label: 'Decor, favors, guessing board, mocktail mixers, game + paper goods', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'none', milestoneId: 'gr_shop_fresh', phase: 'shopping', label: 'Fresh snacks; pick up cake/reveal item; keep cake refrigerated', when: 'T-1d' },
+    { id: 't_prep', target: 'none', milestoneId: 'gr_setup', phase: 'food', label: 'Prep make-ahead bites; batch the mocktail; assemble favors', when: 'T-1d evening' },
+    { id: 't_decorate', target: 'day', milestoneId: 'gr_setup', phase: 'setup', label: 'Pink/blue decor, snack + drink station, set up the guessing board, stage the reveal spot', when: 'T0 -2h' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Collect confetti/powder debris, pack leftovers + cake, save photos, bag trash + recycling', when: 'T0 +2:30' },
   ],
 
   purchases: [
@@ -212,12 +214,12 @@ const genderReveal = {
   ],
 
   risks: [
-    { id: 'r_reveal_stunt', trigger: 'Reveal uses fireworks, Tannerite/explosive targets, homemade pyro, or hot/burning smoke devices — especially near dry brush', severity: 'high', mitigation: 'Use only food-, balloon-, biodegradable-confetti-, or rated non-pyro powder-cannon reveals. No explosives or open flame. If outdoor, check fire conditions and keep water/extinguisher nearby; never reveal near dry grass or brush.' },
-    { id: 'r_secret_leak', trigger: 'Hosts open the envelope or the wrong color is prepped', severity: 'high', mitigation: 'Hand the sealed result straight to the baker/shop; never open it; have them confirm color privately and pick up the item neutral.' },
-    { id: 'r_capture_miss', trigger: 'The un-repeatable reveal moment is not captured on camera', severity: 'med', mitigation: 'Assign a dedicated shooter, frame parents + reveal in one shot, charge devices, do a quick test, and have a backup phone filming.' },
-    { id: 'r_headcount', trigger: 'Final headcount still not locked 4 days out', severity: 'med', mitigation: 'Chase RSVPs with the parents; buy fresh food after the count locks.' },
-    { id: 'r_smoke_health', trigger: 'Colored smoke device irritates asthmatic/allergic guests', severity: 'med', mitigation: 'Prefer confetti/powder over smoke; if any smoke is used keep it outdoors, downwind, and away from kids and sensitive guests.' },
-    { id: 'r_powder_inhale', trigger: 'Powder cannon fired into faces / too close to guests', severity: 'low', mitigation: 'Aim up and away, keep guests back several feet, use only non-toxic rated powder.' },
+    { id: 'r_reveal_stunt', target: 'rain', trigger: 'Reveal uses fireworks, Tannerite/explosive targets, homemade pyro, or hot/burning smoke devices — especially near dry brush', severity: 'high', mitigation: 'Use only food-, balloon-, biodegradable-confetti-, or rated non-pyro powder-cannon reveals. No explosives or open flame. If outdoor, check fire conditions and keep water/extinguisher nearby; never reveal near dry grass or brush.' },
+    { id: 'r_secret_leak', target: 'none', trigger: 'Hosts open the envelope or the wrong color is prepped', severity: 'high', mitigation: 'Hand the sealed result straight to the baker/shop; never open it; have them confirm color privately and pick up the item neutral.' },
+    { id: 'r_capture_miss', target: 'none', trigger: 'The un-repeatable reveal moment is not captured on camera', severity: 'med', mitigation: 'Assign a dedicated shooter, frame parents + reveal in one shot, charge devices, do a quick test, and have a backup phone filming.' },
+    { id: 'r_headcount', target: 'food', trigger: 'Final headcount still not locked 4 days out', severity: 'med', mitigation: 'Chase RSVPs with the parents; buy fresh food after the count locks.' },
+    { id: 'r_smoke_health', target: 'rain', trigger: 'Colored smoke device irritates asthmatic/allergic guests', severity: 'med', mitigation: 'Prefer confetti/powder over smoke; if any smoke is used keep it outdoors, downwind, and away from kids and sensitive guests.' },
+    { id: 'r_powder_inhale', target: 'none', trigger: 'Powder cannon fired into faces / too close to guests', severity: 'low', mitigation: 'Aim up and away, keep guests back several feet, use only non-toxic rated powder.' },
   ],
 
   contingencies: [

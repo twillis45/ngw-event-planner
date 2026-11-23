@@ -4,6 +4,7 @@
 // never spending. PTA's ask row drafts the sponsor ask; the thank / banner /
 // recognition / prospectus rows open the sponsor list.
 // e2e twin: hostv2/e2e/sponsorsAreMoneyComingIn.spec.mjs.
+import { routeByWords } from '../__fixtures__/stepByWords';
 import { checklistRouteFor } from '../taskRoute';
 import { resolveRoute } from '../routeResolver';
 import { taskSatisfied } from '../taskEngine';
@@ -23,7 +24,7 @@ const SPONSORS = [
 
 test('PTA: the ask row drafts the sponsor ask on the draft sheet, and is done once a sponsor is on the list', () => {
   const r = row('PTA / Booster Fundraiser', /^Ask local businesses to sponsor/);
-  const hit = checklistRouteFor(r.task, { week: r.week, category: r.category }, ev('PTA / Booster Fundraiser'));
+  const hit = routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, ev('PTA / Booster Fundraiser'));
   expect(hit.label).toBe('Draft the sponsor ask');
   expect(resolveRoute(hit.route)).toEqual({ kind: 'draft', focus: 'sponsor-ask' });
   expect(taskSatisfied(ev('PTA / Booster Fundraiser'), { task: r.task })).toBe(false);
@@ -41,7 +42,7 @@ describe.each([
   const r = row(type, re);
   test('opens the sponsor list in Your money', () => {
     expect(r).toBeTruthy();
-    const hit = checklistRouteFor(r.task, { week: r.week, category: r.category }, ev(type));
+    const hit = routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, ev(type));
     expect(hit.label).toBe('Open your sponsors');
     expect(resolveRoute(hit.route)).toEqual({ kind: 'budget', focus: 'sponsors' });
   });

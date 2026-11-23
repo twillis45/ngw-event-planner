@@ -451,7 +451,24 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 //   against a fixture tree (maps stripped, upload no-ops without a token) and
 //   reads the job graph. It is counted because its fixture paths name
 //   build/hostv2; no browser run can see a deploy workflow.
-const MAX_HOSTV2_TEXT_GATES = 67;
+// 67 → 69 (11/23/2026, six root causes): two gates on file CONTENT, each a
+// structural claim no browser run can see:
+//   everyStepDeclaresItsTarget.test.js: the shell's wiredKind is the lib's
+//   editorKindFor and reads no title (the behavior is the lib's, tested over
+//   every playbook; the gate pins that the shell keeps no second copy).
+//   aSettledAskSurvivesAReload.test.js: the shell holds no useState copy of
+//   "settled" and the queue reads lib/settledAsks (behavior: vitest
+//   aSettleIsSavedWithTheEvent + the jest census).
+// 69 → 70 (same day, cause 4): oneRuleForWhereSheLands.test.js pins that the
+// shell's first stage, a switch and opening a plan read lib/landingStage, and
+// that the reveal and Create carry the two ruled buttons (the behavior is the
+// e2e anUnsavedPlanSurvivesAReload).
+// 70 → 71 (same day, cause 3): oneNumberOneReader.test.js pins that the shell
+// prints parts handled, the money room and "confirmed" through the readers.
+// 71 → 72 (same day, cause 6): nothingGoesOutWithAPlaceholder.test.js pins that the
+// shell names from her words and that the helper, vendor and family paths ask
+// lib/outwardReady (the behavior is the lib's, tested over every playbook).
+const MAX_HOSTV2_TEXT_GATES = 72;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

@@ -15,7 +15,7 @@ def test_the_helper_ask_is_sent_with_its_picture(env, pics):  # noqa: F811
     token, alt = picture(m["body_html"])
     assert ep.card_path(token) in pics
     alt = _html.unescape(alt)
-    assert alt.startswith("Casey asked you to help. My Friendsgiving. When: Saturday, November 21 · 4:00 PM. "
+    assert alt.startswith("Casey asked you to help. Reyes Friendsgiving. When: Saturday, November 21 · 4:00 PM. "
                           "Where: Vida's, 271 Whitaker Rd. You’ve got: • The stuffing")
     assert "I can do it" in m["body_html"] and "I can’t" in m["body_html"]
     assert m["headers"]["List-Unsubscribe-Post"] == "List-Unsubscribe=One-Click"

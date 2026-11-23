@@ -14,10 +14,15 @@ import { factsATickRecords, taskSatisfied } from '../taskEngine';
 const ev = (extra = {}) => ({ id: 'e', type: 'Dinner Party', guests: [], vendors: [], ...extra });
 const step = (task) => ({ id: 's', task, done: false });
 
-test('ticking an invite step records that the invite went out', () => {
-  const p = factsATickRecords(ev(), step('Send invites with date/time/place + RSVP-by + allergy ask'));
-  expect(Object.keys(p)).toEqual(['invitesSentAt']);
-  expect(Number.isNaN(Date.parse(p.invitesSentAt))).toBe(false);
+// SUPERSEDED FOR SENDS (owner, 11/23/2026, six root causes): "Mark done must
+// never record an action as performed (e.g. invite sent) when nothing was
+// sent — it marks the step done." On the Thanksgiving walkthrough the hero's
+// "Mark done" was the only way off a wrong editor, and tapping it told the
+// guest sheet the invite had gone out. A tick records only what noting it
+// makes true (dietaryNoted); a send is recorded by the send.
+test('ticking an invite step marks the step done and records no send', () => {
+  expect(factsATickRecords(ev(), step('Send invites with date/time/place + RSVP-by + allergy ask'))).toEqual({});
+  expect(factsATickRecords(ev(), step('Invite everyone with the date, the serve time, and the dietary and overnight ask'))).toEqual({});
 });
 
 test('ticking "collect dietary needs" records that they were noted', () => {

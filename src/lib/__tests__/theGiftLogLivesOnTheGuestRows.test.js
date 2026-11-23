@@ -3,6 +3,7 @@
 // takes What it was + $ cash/card; "Couldn't come, sent a gift" draws from the
 // No/Maybe guests; the cash is totaled; the thank-you names the gift.
 // e2e twin: hostv2/e2e/theGiftLogLivesOnTheGuestRows.spec.mjs.
+import { routeByWords } from '../__fixtures__/stepByWords';
 import { checklistRouteFor } from '../taskRoute';
 import { resolveRoute } from '../routeResolver';
 import { taskSatisfied } from '../taskEngine';
@@ -23,7 +24,7 @@ test('premise: the three Birthday gift rows are in the playbook', () => {
 
 test.each([['cash', () => CASH], ['mailed', () => ABSENT], ['go through', () => GOTHRU]])('the %s row opens After on Thank-yous & gifts', (_n, get) => {
   const r = get();
-  const hit = checklistRouteFor(r.task, { week: r.week, category: r.category }, ev());
+  const hit = routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, ev());
   expect(hit && hit.label).toBe('Log gifts and cash');
   expect(resolveRoute(hit.route)).toEqual({ kind: 'stage:after', focus: 'gifts' });
 });

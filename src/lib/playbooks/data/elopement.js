@@ -14,6 +14,8 @@
 
 const elopement = {
   type: 'Elopement',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'elopement',
   family: 'travel_led',
   recordKind: 'client',
@@ -60,9 +62,9 @@ const elopement = {
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
-    { id: 't_research_license', answeredBy: ['license_jurisdiction'], milestoneId: 'elope_license_research', phase: 'legal', label: 'Decide which county or state issues your marriage license', when: 'T-75d' },
-    { id: 't_research_clerk', milestoneId: 'elope_license_research', phase: 'legal', label: 'Look up the county clerk: waiting period, validity window, witness count, ID + fee, whether online-ordained officiants are accepted', when: 'T-75d' },
-    { id: 't_book_photog', milestoneId: 'elope_book_photographer', phase: 'vendor', label: 'Book elopement photographer (and officiant); confirm they know the location + permit', when: 'T-75d',
+    { id: 't_research_license', target: 'call:license_jurisdiction', answeredBy: ['license_jurisdiction'], milestoneId: 'elope_license_research', phase: 'legal', label: 'Decide which county or state issues your marriage license', when: 'T-75d' },
+    { id: 't_research_clerk', target: 'none', milestoneId: 'elope_license_research', phase: 'legal', label: 'Look up the county clerk: waiting period, validity window, witness count, ID + fee, whether online-ordained officiants are accepted', when: 'T-75d' },
+    { id: 't_book_photog', target: 'vendors', milestoneId: 'elope_book_photographer', phase: 'vendor', label: 'Book elopement photographer (and officiant); confirm they know the location + permit', when: 'T-75d',
       // A timer and a phone hire no photographer (owner, 11/21/2026). The
       // officiant is in all three rows, so they say what is left, not stand down.
       copyByAnswer: { photography: { 'Self/timer + phone': 'Book the officiant; confirm they know the location + permit' } } },
@@ -79,16 +81,16 @@ const elopement = {
     // in full 2026-09-23). Eight rather than six because this is a START-BY
     // date and because an elopement is usually travelled to — the rings have to
     // be in hand before the trip, not before the ceremony.
-    { id: 't_rings', milestoneId: 'elope_book_photographer', phase: 'planning', label: 'Order and size the rings — allow 6–8 weeks for making, engraving and any resize', when: 'T-56d' },
-    { id: 't_permit', milestoneId: 'elope_permit', phase: 'legal', label: 'Submit special-use permit for the park/site; note any monitor fee and per-vehicle entrance fee', when: 'T-60d' },
-    { id: 't_travel', milestoneId: 'elope_travel', phase: 'logistics', label: 'Book flights/drive plan + lodging near the site; build buffer days for weather', when: 'T-60d' },
-    { id: 't_attire_vows', milestoneId: 'elope_attire', phase: 'planning', label: 'Choose attire + any alterations; write and practice vows', when: 'T-30d' },
-    { id: 't_get_license', milestoneId: 'elope_get_license', phase: 'legal', label: 'Appear in person at the clerk\'s office for the license (both parties, valid ID); confirm it covers the ceremony date', when: 'T-7d' },
-    { id: 't_confirm', milestoneId: 'elope_confirm', phase: 'logistics', label: 'Confirm photographer/officiant arrival, check the forecast, set the day-of timeline, order/pick up the small meal + champagne', when: 'T-1d',
+    { id: 't_rings', target: 'none', milestoneId: 'elope_book_photographer', phase: 'planning', label: 'Order and size the rings — allow 6–8 weeks for making, engraving and any resize', when: 'T-56d' },
+    { id: 't_permit', target: 'place-rules', milestoneId: 'elope_permit', phase: 'legal', label: 'Submit special-use permit for the park/site; note any monitor fee and per-vehicle entrance fee', when: 'T-60d' },
+    { id: 't_travel', target: 'airports', milestoneId: 'elope_travel', phase: 'logistics', label: 'Book flights/drive plan + lodging near the site; build buffer days for weather', when: 'T-60d' },
+    { id: 't_attire_vows', target: 'vendors-tab', milestoneId: 'elope_attire', phase: 'planning', label: 'Choose attire + any alterations; write and practice vows', when: 'T-30d' },
+    { id: 't_get_license', target: 'none', milestoneId: 'elope_get_license', phase: 'legal', label: 'Appear in person at the clerk\'s office for the license (both parties, valid ID); confirm it covers the ceremony date', when: 'T-7d' },
+    { id: 't_confirm', target: 'vendors', milestoneId: 'elope_confirm', phase: 'logistics', label: 'Confirm photographer/officiant arrival, check the forecast, set the day-of timeline, order/pick up the small meal + champagne', when: 'T-1d',
       copyByAnswer: { photography: { 'Self/timer + phone': 'Confirm the officiant’s arrival, check the forecast, set the day-of timeline, order/pick up the small meal + champagne' } } },
-    { id: 't_sign', milestoneId: 'event', phase: 'legal', label: 'Sign the license with officiant + witnesses; photographer captures it; mail/return to the clerk', when: 'T0',
+    { id: 't_sign', target: 'day', milestoneId: 'event', phase: 'legal', label: 'Sign the license with officiant + witnesses; photographer captures it; mail/return to the clerk', when: 'T0',
       copyByAnswer: { photography: { 'Self/timer + phone': 'Sign the license with officiant + witnesses; set the timer to capture it; mail/return to the clerk' } } },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Pack out everything (leave no trace), recycle bottles, send announcement if telling family after', when: 'T0 +6:00' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Pack out everything (leave no trace), recycle bottles, send announcement if telling family after', when: 'T0 +6:00' },
   ],
 
   purchases: [
@@ -117,12 +119,12 @@ const elopement = {
   ],
 
   risks: [
-    { id: 'r_license', trigger: 'Marriage license waiting period, witness requirement, or validity window not satisfied', severity: 'high', mitigation: 'Research the issuing county at 75 days out; appear in person at a week out (inside the validity window, past any waiting period); confirm witness count and that your officiant type is accepted.' },
-    { id: 'r_permit', trigger: 'No permit (or denied) for a park/site that requires one', severity: 'high', mitigation: 'Apply at 2 months out; many parks cap permits and need 3–4+ weeks lead. Keep a no-permit fallback location (courthouse, private property) ready.' },
-    { id: 'r_photographer', trigger: 'Photographer unavailable or books out', severity: 'high', mitigation: 'Book at 75 days out — top elopement photographers fill months ahead. Hold a backup, and a tripod+timer plan as last resort.' },
-    { id: 'r_weather', trigger: 'Storm, road/trail closure, or wildfire smoke at an outdoor site', severity: 'med', mitigation: 'Build buffer days into travel; pick a flexible date; pre-scout an indoor/lower-elevation alternate; check forecast + park alerts the day before.' },
-    { id: 'r_witness', trigger: 'State requires witnesses and the couple is eloping alone', severity: 'med', mitigation: 'Confirm the witness rule early; arrange the officiant, photographer, guide, or a willing stranger to sign — or choose a self-solemnize state.' },
-    { id: 'r_family', trigger: 'Family hurt by being excluded or surprised', severity: 'med', mitigation: 'Decide the tell-plan intentionally at 2 months out; consider a heartfelt note, a video call into the moment, or a small gathering after.' },
+    { id: 'r_license', target: 'none', trigger: 'Marriage license waiting period, witness requirement, or validity window not satisfied', severity: 'high', mitigation: 'Research the issuing county at 75 days out; appear in person at a week out (inside the validity window, past any waiting period); confirm witness count and that your officiant type is accepted.' },
+    { id: 'r_permit', target: 'none', trigger: 'No permit (or denied) for a park/site that requires one', severity: 'high', mitigation: 'Apply at 2 months out; many parks cap permits and need 3–4+ weeks lead. Keep a no-permit fallback location (courthouse, private property) ready.' },
+    { id: 'r_photographer', target: 'vendors-tab', trigger: 'Photographer unavailable or books out', severity: 'high', mitigation: 'Book at 75 days out — top elopement photographers fill months ahead. Hold a backup, and a tripod+timer plan as last resort.' },
+    { id: 'r_weather', target: 'rain', trigger: 'Storm, road/trail closure, or wildfire smoke at an outdoor site', severity: 'med', mitigation: 'Build buffer days into travel; pick a flexible date; pre-scout an indoor/lower-elevation alternate; check forecast + park alerts the day before.' },
+    { id: 'r_witness', target: 'vendors-tab', trigger: 'State requires witnesses and the couple is eloping alone', severity: 'med', mitigation: 'Confirm the witness rule early; arrange the officiant, photographer, guide, or a willing stranger to sign — or choose a self-solemnize state.' },
+    { id: 'r_family', target: 'none', trigger: 'Family hurt by being excluded or surprised', severity: 'med', mitigation: 'Decide the tell-plan intentionally at 2 months out; consider a heartfelt note, a video call into the moment, or a small gathering after.' },
   ],
 
   contingencies: [

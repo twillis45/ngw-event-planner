@@ -311,3 +311,42 @@ def diet_counts_for(ev: dict) -> dict:
     for k, v in (host.items() if isinstance(host, dict) else ()):
         merged[k] = _num(v)
     return merged
+
+
+# ── nothing goes out with a placeholder (src/lib/outwardReady.js) ────────────
+# Six root causes, cause 6 (11/23/2026): the server copy of the app's one
+# outward guard, for the emails composed here. Same rules: a name creation
+# filled in ("My …", empty, the bare type) and an at-home event with no street
+# are refused, with the same plain asks.
+_ASKS = {
+    "name": "Give your event a name first. It is the title everyone sees.",
+    "address": "Add the street address first. Guests need it to find you.",
+}
+
+
+def is_placeholder_name(ev: dict) -> bool:
+    ev = ev or {}
+    name = _clean(ev.get("name"))
+    if not name or re.match(r"(?i)^my\s", name):
+        return True
+    t = _clean(ev.get("type"))
+    short = re.sub(r"(?i)^the\s+", "", t)
+    bare = {t.lower(), short.lower(), re.sub(r"(?i)\s+party$", "", short).lower()} - {""}
+    return name.lower() in bare
+
+
+def outward_gaps(ev: dict, surface: str = "invite") -> list:
+    gaps = []
+    if is_placeholder_name(ev):
+        gaps.append({"key": "name", "ask": _ASKS["name"]})
+    v = venue_for(ev or {})
+    findable = bool(v.get("address")) if v.get("isHome") else bool(v.get("name") or v.get("address"))
+    if not findable:
+        gaps.append({"key": "address", "ask": _ASKS["address"]})
+    return gaps
+
+
+def outward_refusal(ev: dict, surface: str):
+    """The plain sentence a refused send answers with, or None when it may go."""
+    gaps = outward_gaps(ev, surface)
+    return " ".join(g["ask"] for g in gaps) + " Nothing was sent." if gaps else None

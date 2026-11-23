@@ -6,6 +6,8 @@
 
 const sweet16 = {
   type: 'Sweet 16',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'sweet16',
   family: 'full_service',
   recordKind: 'client',
@@ -235,32 +237,32 @@ const sweet16 = {
   ],
 
   tasks: [
-    { id: 't_budget', milestoneId: 'lock_date_venue', phase: 'plan', label: 'Set a budget and confirm it with the birthday teen', when: 'T-90d' },
-    { id: 't_venue_walk', milestoneId: 'lock_date_venue', phase: 'plan', label: 'Tour venue/hall: capacity, power for DJ, parking, restrooms, curfew', when: 'T-88d',
+    { id: 't_budget', target: 'money', milestoneId: 'lock_date_venue', phase: 'plan', label: 'Set a budget and confirm it with the birthday teen', when: 'T-90d' },
+    { id: 't_venue_walk', target: 'place-notes', milestoneId: 'lock_date_venue', phase: 'plan', label: 'Tour venue/hall: capacity, power for DJ, parking, restrooms, curfew', when: 'T-88d',
       copyByAnswer: { music_source: { 'Self-run playlist + rented PA/lights': 'Tour venue/hall: capacity, power for the PA and lights, parking, restrooms, curfew' } } },
-    { id: 't_dj_brief', milestoneId: 'book_dj', phase: 'plan', label: 'Brief DJ on theme, must-play/do-not-play list, MC duties, grand entrance song', when: 'T-84d',
+    { id: 't_dj_brief', target: 'vendors', milestoneId: 'book_dj', phase: 'plan', label: 'Brief DJ on theme, must-play/do-not-play list, MC duties, grand entrance song', when: 'T-84d',
       // A self-run playlist has no DJ to brief (owner, 11/21/2026); the floor,
       // the entrance and the venue walk are still work, and say so without one.
       whenChoice: { id: 'music_source', not: ['Self-run playlist + rented PA/lights'] } },
-    { id: 't_guestlist', milestoneId: 'theme_invites', phase: 'plan', label: 'Build guest list with parent contacts; note adult-to-teen ratio', when: 'T-40d' },
-    { id: 't_invites', milestoneId: 'theme_invites', phase: 'plan', label: 'Send invitations with RSVP date, drop-off/pickup times, and no-alcohol note', when: 'T-35d' },
-    { id: 't_decor_order', milestoneId: 'book_photo_booth', phase: 'plan', label: 'Order themed decor, balloon arch, backdrop, and favors', when: 'T-30d' },
-    { id: 't_social', milestoneId: 'book_photo_booth', phase: 'plan', label: 'Set up the social moment: custom hashtag + photo-booth frame/filter', when: 'T-28d' },
+    { id: 't_guestlist', target: 'guests', milestoneId: 'theme_invites', phase: 'plan', label: 'Build guest list with parent contacts; note adult-to-teen ratio', when: 'T-40d' },
+    { id: 't_invites', target: 'invite', milestoneId: 'theme_invites', phase: 'plan', label: 'Send invitations with RSVP date, drop-off/pickup times, and no-alcohol note', when: 'T-35d' },
+    { id: 't_decor_order', target: 'list', milestoneId: 'book_photo_booth', phase: 'plan', label: 'Order themed decor, balloon arch, backdrop, and favors', when: 'T-30d' },
+    { id: 't_social', target: 'hashtag', milestoneId: 'book_photo_booth', phase: 'plan', label: 'Set up the social moment: custom hashtag + photo-booth frame/filter', when: 'T-28d' },
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
-    { id: 't_menu', answeredBy: ['food_menu'], milestoneId: 'confirm_catering', phase: 'plan', label: 'Decide what food you’re serving', when: 'T-14d' },
-    { id: 't_menu_order', milestoneId: 'confirm_catering', phase: 'plan', label: 'Finalize menu, count dietary needs, place food order/deposit', when: 'T-14d' },
-    { id: 't_chaperones', milestoneId: 'finalize_headcount', phase: 'plan', label: 'Confirm chaperones, assign door + bar + floor watchers, set house rules', when: 'T-7d' },
-    { id: 't_timeline', milestoneId: 'finalize_headcount', phase: 'plan', label: 'Write the run-of-show: arrivals, entrance, dinner, dance, cake, send-off', when: 'T-7d' },
-    { id: 't_shop', milestoneId: 'shop_perishables', phase: 'prep', label: 'Buy mocktail mixers, soda, ice, cake, and fresh garnishes', when: 'T-1d' },
-    { id: 't_prep_food', milestoneId: 'shop_perishables', phase: 'prep', label: 'Prep make-ahead food and pre-batch mocktail syrups', when: 'T-1d' },
-    { id: 't_decorate', milestoneId: 'setup_dayof', phase: 'setup', label: 'Hang decor, set photo booth, build the mocktail/soda bar', when: 'T0' },
-    { id: 't_floor', milestoneId: 'setup_dayof', phase: 'setup', label: 'Clear and mark the dance floor; place lights; DJ sound check', when: 'T0',
+    { id: 't_menu', target: 'call:food_menu', answeredBy: ['food_menu'], milestoneId: 'confirm_catering', phase: 'plan', label: 'Decide what food you’re serving', when: 'T-14d' },
+    { id: 't_menu_order', target: 'spread', milestoneId: 'confirm_catering', phase: 'plan', label: 'Finalize menu, count dietary needs, place food order/deposit', when: 'T-14d' },
+    { id: 't_chaperones', target: 'assign', milestoneId: 'finalize_headcount', phase: 'plan', label: 'Confirm chaperones, assign door + bar + floor watchers, set house rules', when: 'T-7d' },
+    { id: 't_timeline', target: 'build-day', milestoneId: 'finalize_headcount', phase: 'plan', label: 'Write the run-of-show: arrivals, entrance, dinner, dance, cake, send-off', when: 'T-7d' },
+    { id: 't_shop', target: 'list', milestoneId: 'shop_perishables', phase: 'prep', label: 'Buy mocktail mixers, soda, ice, cake, and fresh garnishes', when: 'T-1d' },
+    { id: 't_prep_food', target: 'none', milestoneId: 'shop_perishables', phase: 'prep', label: 'Prep make-ahead food and pre-batch mocktail syrups', when: 'T-1d' },
+    { id: 't_decorate', target: 'day', milestoneId: 'setup_dayof', phase: 'setup', label: 'Hang decor, set photo booth, build the mocktail/soda bar', when: 'T0' },
+    { id: 't_floor', target: 'day', milestoneId: 'setup_dayof', phase: 'setup', label: 'Clear and mark the dance floor; place lights; DJ sound check', when: 'T0',
       copyByAnswer: { music_source: { 'Self-run playlist + rented PA/lights': 'Clear and mark the dance floor; place lights; sound check the PA' } } },
-    { id: 't_entrance', milestoneId: 'setup_dayof', phase: 'setup', label: 'Stage the grand entrance: clear path, cue spotlight + song with DJ', when: 'T0',
+    { id: 't_entrance', target: 'day', milestoneId: 'setup_dayof', phase: 'setup', label: 'Stage the grand entrance: clear path, cue spotlight + song with DJ', when: 'T0',
       copyByAnswer: { music_source: { 'Self-run playlist + rented PA/lights': 'Stage the grand entrance: clear path, cue the spotlight + song with whoever runs the playlist' } } },
-    { id: 't_cleanup', milestoneId: 'setup_dayof', phase: 'cleanup', label: 'Pack rentals, bag trash, recover deposits, confirm all teens picked up', when: 'T0' },
+    { id: 't_cleanup', target: 'day', milestoneId: 'setup_dayof', phase: 'cleanup', label: 'Pack rentals, bag trash, recover deposits, confirm all teens picked up', when: 'T0' },
   ],
 
   purchases: [
@@ -455,13 +457,13 @@ const sweet16 = {
   ],
 
   risks: [
-    { id: 'r_uninvited', trigger: 'Word spreads online and uninvited teens / crashers show up', severity: 'high', mitigation: 'Keep the address off public posts, use a guest list with a name-check adult on the door, and require parent pickup.' },
-    { id: 'r_alcohol', trigger: 'A teen brings or sneaks in alcohol', severity: 'high', mitigation: 'State a no-alcohol rule on the invite, run a no-leave-and-return policy, station an adult at the bar, and watch the parking lot.' },
-    { id: 'r_supervision', trigger: 'Too few adults to supervise a room of energized teens', severity: 'med', mitigation: 'Lock at least 1 adult per ~10-12 teens with assigned posts (door, bar, floor) before the day.' },
-    { id: 'r_dj_noshow', trigger: 'DJ cancels or no-shows', severity: 'high', mitigation: 'Get a signed contract + deposit, confirm 1 week out, and keep a backup phone playlist on a charged device with the PA.' },
-    { id: 'r_food_short', trigger: 'Final headcount jumps or teens eat more than planned', severity: 'med', mitigation: 'Order ~10-15% over the RSVP count and keep a quick add-on order (extra pizzas) on standby.' },
-    { id: 'r_dead_floor', trigger: 'Nobody dances and the energy stalls', severity: 'med', mitigation: 'Dim the lights, have the DJ open with known hits, run the grand entrance and a group photo to gather everyone, then keep the floor moving.' },
-    { id: 'r_weather', trigger: 'Outdoor/at-home party hit by rain or heat', severity: 'med', mitigation: 'Have an indoor fallback or tent; move ice/drinks up to 1.5 lb/guest in heat.' },
+    { id: 'r_uninvited', target: 'none', trigger: 'Word spreads online and uninvited teens / crashers show up', severity: 'high', mitigation: 'Keep the address off public posts, use a guest list with a name-check adult on the door, and require parent pickup.' },
+    { id: 'r_alcohol', target: 'none', trigger: 'A teen brings or sneaks in alcohol', severity: 'high', mitigation: 'State a no-alcohol rule on the invite, run a no-leave-and-return policy, station an adult at the bar, and watch the parking lot.' },
+    { id: 'r_supervision', target: 'none', trigger: 'Too few adults to supervise a room of energized teens', severity: 'med', mitigation: 'Lock at least 1 adult per ~10-12 teens with assigned posts (door, bar, floor) before the day.' },
+    { id: 'r_dj_noshow', target: 'vendors-tab', trigger: 'DJ cancels or no-shows', severity: 'high', mitigation: 'Get a signed contract + deposit, confirm 1 week out, and keep a backup phone playlist on a charged device with the PA.' },
+    { id: 'r_food_short', target: 'none', trigger: 'Final headcount jumps or teens eat more than planned', severity: 'med', mitigation: 'Order ~10-15% over the RSVP count and keep a quick add-on order (extra pizzas) on standby.' },
+    { id: 'r_dead_floor', target: 'vendors-tab', trigger: 'Nobody dances and the energy stalls', severity: 'med', mitigation: 'Dim the lights, have the DJ open with known hits, run the grand entrance and a group photo to gather everyone, then keep the floor moving.' },
+    { id: 'r_weather', target: 'rain', trigger: 'Outdoor/at-home party hit by rain or heat', severity: 'med', mitigation: 'Have an indoor fallback or tent; move ice/drinks up to 1.5 lb/guest in heat.' },
   ],
 
   contingencies: [

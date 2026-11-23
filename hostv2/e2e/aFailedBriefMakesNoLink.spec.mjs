@@ -23,6 +23,10 @@ const MINT = API + '/api/events/*/vendor-brief-links';
 const CODE = 'abcdefghij1234567890xy';
 const EVENT = { id: 'cust-brief-mint', name: 'Backyard Birthday', type: 'Birthday Party', date: dateIn(40),
   guestEstimate: 20, guestMode: 'count', guestCountSource: 'host', passRequired: false, passReasons: [],
+  // 11/23/2026: part 1 shares a brief only for an event a vendor can find, so
+  // the event carries its address; a brief with none is tested in
+  // theVendorPageLivesInTheNewApp.
+  venueName: 'Dock Hall', venueAddress: '9 Dock Rd', venueCity: 'Annapolis', venueState: 'MD', venueZip: '21401', venueKind: 'venue',
   budget: [], guests: [], timeline: [], vendors: [{ id: 'v-dj', name: 'Spin Cycle', category: 'DJ' }] };
 
 const track = (page, name) => page.evaluate((n) => (window.__NGW_TRACK__ || []).filter((r) => r.event === n), name);

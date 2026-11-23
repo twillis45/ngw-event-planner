@@ -18,6 +18,8 @@
 
 const wedding = {
   type: 'Wedding',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Wild mushroom & spinach wellington',
   solveFamily: 'wedding',
   family: 'full_service',
@@ -92,35 +94,35 @@ const wedding = {
   tasks: [
     // Split in two (owner, 11/21/2026), like Reunion's food step: the two calls
     // clear it once both are picked, and the brief is its own step, due the same day.
-    { id: 't_budget', answeredBy: ['budget', 'guestcount'], milestoneId: 'w_budget', phase: 'planning', label: 'Agree total budget, who pays, and the guest-count target', when: 'T-365d' },
-    { id: 't_vision_brief', milestoneId: 'w_budget', phase: 'planning', label: 'Write the vision brief', when: 'T-365d' },
-    { id: 't_venue', milestoneId: 'w_venue', phase: 'venue', label: 'Tour, compare, sign venue contract + deposit; lock the date', when: 'T-365d' },
+    { id: 't_budget', target: 'money', answeredBy: ['budget', 'guestcount'], milestoneId: 'w_budget', phase: 'planning', label: 'Agree total budget, who pays, and the guest-count target', when: 'T-365d' },
+    { id: 't_vision_brief', target: 'call:vision', milestoneId: 'w_budget', phase: 'planning', label: 'Write the vision brief', when: 'T-365d' },
+    { id: 't_venue', target: 'vendors', milestoneId: 'w_venue', phase: 'venue', label: 'Tour, compare, sign venue contract + deposit; lock the date', when: 'T-365d' },
     // `books` names the roles the label lists, in its words: the step says only
     // the ones not yet booked (event.vendors) and is done when all are.
-    { id: 't_keyvendors', milestoneId: 'w_keyvendors', phase: 'vendor', label: 'Sign planner, photographer, caterer, band/DJ (these book a year out)', books: ['planner', 'photographer', 'caterer', 'band/DJ'], when: 'T-300d' },
-    { id: 't_attire', milestoneId: 'w_attire', phase: 'planning', label: 'Order dress/attire; schedule alterations runway', when: 'T-240d' },
-    { id: 't_design', milestoneId: 'w_design', phase: 'vendor', label: 'Book florist, rentals, baker, officiant; order stationery; build registry + website', when: 'T-180d' },
-    { id: 't_invites', milestoneId: 'w_invites', phase: 'guest', label: 'Mail invitations 6–8 wks out; track RSVPs + meal choices', when: 'T-90d' },
-    { id: 't_details', milestoneId: 'w_details', phase: 'planning', label: 'Menu tasting, hair/makeup trial, build run-of-show, draft seating chart', when: 'T-60d' },
-    { id: 't_finalcount', milestoneId: 'w_finalcount', phase: 'vendor', label: 'Give caterer FINAL headcount; pay remaining vendor balances; prep tip envelopes', when: 'T-14d' },
-    { id: 't_runofshow', milestoneId: 'w_runofshow', phase: 'planning', label: 'Send run-of-show to every vendor; confirm arrival times; DECIDE the rain plan', when: 'T-7d' },
-    { id: 't_rehearsal', milestoneId: 'w_rehearsal', phase: 'setup', label: 'Rehearsal + dinner; pack emergency kit; stage welcome bags, favors, signage, seating cards', when: 'T-1d' },
-    { id: 't_dayof', milestoneId: 'event', phase: 'event', label: 'Hair/makeup → first look → ceremony → cocktail → reception → toasts → first dance → cake → send-off', when: 'T0' },
-    { id: 't_after_rentals', whenRented: true, milestoneId: 'w_after_returns', phase: 'vendor', label: 'Return the rentals on the contract\'s clock — linens, glassware, chairs, arch — and count them against the rental sheet before they leave, because a missing dozen forks is billed at replacement price', when: 'T0 +2d' },
-    { id: 't_after_dress', milestoneId: 'w_after_returns', phase: 'vendor', label: 'Get the dress and the rented suits out of the car: suits back by their return date, and the dress to the cleaner for preservation while the champagne and grass stains are still fresh', when: 'T0 +2d' },
-    { id: 't_after_borrowed', milestoneId: 'w_after_returns', phase: 'vendor', label: 'Give back what family lent you — the cake stand, the veil, the frames from the memory table, the coolers — with a note of whose is whose', when: 'T0 +2d' },
-    { id: 't_after_balances', milestoneId: 'w_after_balances', phase: 'vendor', label: 'Pay any final balance that came due after the day: overtime hours, the extra bar consumption, the vendor meals nobody counted', when: 'T0 +5d' },
-    { id: 't_after_tips', milestoneId: 'w_after_balances', phase: 'vendor', label: 'Send gratuities to anyone the tip envelopes missed — the setup crew, the second shooter, the person who parked cars all night', when: 'T0 +5d' },
-    { id: 't_after_deposits', milestoneId: 'w_after_balances', phase: 'vendor', label: 'Chase the money coming back to you: the venue damage deposit and any rental security hold, both of which are refunded only if you ask', when: 'T0 +5d' },
-    { id: 't_after_giftlog', milestoneId: 'w_after_gifts', phase: 'guest', label: 'Open the card box with the guest list open beside it: write down the giver and the gift as each envelope is opened, and never separate a card from its box first', when: 'T0 +7d' },
-    { id: 't_after_shipped', milestoneId: 'w_after_gifts', phase: 'guest', label: 'Add the gifts that came by mail from the registry and from guests who could not travel — they are the easiest ones to leave off the thank-you list', when: 'T0 +7d' },
-    { id: 't_after_thanks', milestoneId: 'w_after_gifts', phase: 'guest', label: 'Write the thank-you notes off that log, naming the actual gift, and start with the people who traveled to be there', when: 'T0 +7d' },
+    { id: 't_keyvendors', target: 'vendors', milestoneId: 'w_keyvendors', phase: 'vendor', label: 'Sign planner, photographer, caterer, band/DJ (these book a year out)', books: ['planner', 'photographer', 'caterer', 'band/DJ'], when: 'T-300d' },
+    { id: 't_attire', target: 'vendors-tab', milestoneId: 'w_attire', phase: 'planning', label: 'Order dress/attire; schedule alterations runway', when: 'T-240d' },
+    { id: 't_design', target: 'vendors', milestoneId: 'w_design', phase: 'vendor', label: 'Book florist, rentals, baker, officiant; order stationery; build registry + website', when: 'T-180d' },
+    { id: 't_invites', target: 'invite', milestoneId: 'w_invites', phase: 'guest', label: 'Mail invitations 6–8 wks out; track RSVPs + meal choices', when: 'T-90d' },
+    { id: 't_details', target: 'build-day', milestoneId: 'w_details', phase: 'planning', label: 'Menu tasting, hair/makeup trial, build run-of-show, draft seating chart', when: 'T-60d' },
+    { id: 't_finalcount', target: 'vendors', milestoneId: 'w_finalcount', phase: 'vendor', label: 'Give caterer FINAL headcount; pay remaining vendor balances; prep tip envelopes', when: 'T-14d' },
+    { id: 't_runofshow', target: 'build-day', milestoneId: 'w_runofshow', phase: 'planning', label: 'Send run-of-show to every vendor; confirm arrival times; DECIDE the rain plan', when: 'T-7d' },
+    { id: 't_rehearsal', target: 'list', milestoneId: 'w_rehearsal', phase: 'setup', label: 'Rehearsal + dinner; pack emergency kit; stage welcome bags, favors, signage, seating cards', when: 'T-1d' },
+    { id: 't_dayof', target: 'day', milestoneId: 'event', phase: 'event', label: 'Hair/makeup → first look → ceremony → cocktail → reception → toasts → first dance → cake → send-off', when: 'T0' },
+    { id: 't_after_rentals', target: 'vendors', whenRented: true, milestoneId: 'w_after_returns', phase: 'vendor', label: 'Return the rentals on the contract\'s clock — linens, glassware, chairs, arch — and count them against the rental sheet before they leave, because a missing dozen forks is billed at replacement price', when: 'T0 +2d' },
+    { id: 't_after_dress', target: 'list', milestoneId: 'w_after_returns', phase: 'vendor', label: 'Get the dress and the rented suits out of the car: suits back by their return date, and the dress to the cleaner for preservation while the champagne and grass stains are still fresh', when: 'T0 +2d' },
+    { id: 't_after_borrowed', target: 'borrowed', milestoneId: 'w_after_returns', phase: 'vendor', label: 'Give back what family lent you — the cake stand, the veil, the frames from the memory table, the coolers — with a note of whose is whose', when: 'T0 +2d' },
+    { id: 't_after_balances', target: 'money', milestoneId: 'w_after_balances', phase: 'vendor', label: 'Pay any final balance that came due after the day: overtime hours, the extra bar consumption, the vendor meals nobody counted', when: 'T0 +5d' },
+    { id: 't_after_tips', target: 'none', milestoneId: 'w_after_balances', phase: 'vendor', label: 'Send gratuities to anyone the tip envelopes missed — the setup crew, the second shooter, the person who parked cars all night', when: 'T0 +5d' },
+    { id: 't_after_deposits', target: 'vendors', milestoneId: 'w_after_balances', phase: 'vendor', label: 'Chase the money coming back to you: the venue damage deposit and any rental security hold, both of which are refunded only if you ask', when: 'T0 +5d' },
+    { id: 't_after_giftlog', target: 'guests', milestoneId: 'w_after_gifts', phase: 'guest', label: 'Open the card box with the guest list open beside it: write down the giver and the gift as each envelope is opened, and never separate a card from its box first', when: 'T0 +7d' },
+    { id: 't_after_shipped', target: 'guest-list', milestoneId: 'w_after_gifts', phase: 'guest', label: 'Add the gifts that came by mail from the registry and from guests who could not travel — they are the easiest ones to leave off the thank-you list', when: 'T0 +7d' },
+    { id: 't_after_thanks', target: 'guest-list', milestoneId: 'w_after_gifts', phase: 'guest', label: 'Write the thank-you notes off that log, naming the actual gift, and start with the people who traveled to be there', when: 'T0 +7d' },
     // A symbolic ceremony files no license and changes no names; these two
     // retire once she ANSWERS it (the default never retires them).
-    { id: 't_after_license', milestoneId: 'w_after_records', phase: 'planning', standsDownWhen: { id: 'ceremony', in: ['Symbolic / personal'] }, label: 'Confirm the officiant filed the signed license with the county, then order two or three certified copies of the marriage certificate — every name change asks for an original, not a photocopy', when: 'T0 +30d' },
-    { id: 't_after_namechange', milestoneId: 'w_after_records', phase: 'planning', standsDownWhen: { id: 'ceremony', in: ['Symbolic / personal'] }, label: 'If anyone is changing their name, do it in order: Social Security first, then the driver\'s license, then passport, banks, and payroll', when: 'T0 +30d' },
-    { id: 't_after_gallery', milestoneId: 'w_after_records', phase: 'planning', label: 'Hold the photographer and videographer to the delivery date in their contract, and send them the shortlist of shots you want first for family who are waiting', when: 'T0 +30d' },
-    { id: 't_after_preserve', milestoneId: 'w_after_returns', phase: 'vendor', label: 'Deal with the things that spoil: the top tier of the cake wrapped and frozen, and the bouquet to a preserver — drying and pressing both want the flowers within days, not weeks', when: 'T0 +2d' },
+    { id: 't_after_license', target: 'none', milestoneId: 'w_after_records', phase: 'planning', standsDownWhen: { id: 'ceremony', in: ['Symbolic / personal'] }, label: 'Confirm the officiant filed the signed license with the county, then order two or three certified copies of the marriage certificate — every name change asks for an original, not a photocopy', when: 'T0 +30d' },
+    { id: 't_after_namechange', target: 'none', milestoneId: 'w_after_records', phase: 'planning', standsDownWhen: { id: 'ceremony', in: ['Symbolic / personal'] }, label: 'If anyone is changing their name, do it in order: Social Security first, then the driver\'s license, then passport, banks, and payroll', when: 'T0 +30d' },
+    { id: 't_after_gallery', target: 'vendors', milestoneId: 'w_after_records', phase: 'planning', label: 'Hold the photographer and videographer to the delivery date in their contract, and send them the shortlist of shots you want first for family who are waiting', when: 'T0 +30d' },
+    { id: 't_after_preserve', target: 'none', milestoneId: 'w_after_returns', phase: 'vendor', label: 'Deal with the things that spoil: the top tier of the cake wrapped and frozen, and the bouquet to a preserver — drying and pressing both want the flowers within days, not weeks', when: 'T0 +2d' },
   ],
 
   purchases: [
@@ -158,14 +160,14 @@ const wedding = {
   ],
 
   risks: [
-    { id: 'r_weather', trigger: 'Outdoor ceremony/reception with no rain plan', severity: 'high', mitigation: 'Decide the rain plan at booking (tent on hold or indoor backup); make the call ~24–48h out and notify all vendors + guests.' },
-    { id: 'r_count', trigger: 'Final headcount wrong or late to the caterer', severity: 'high', mitigation: 'Lock RSVPs, chase non-responders, and give the caterer the FINAL count at 2 weeks out — most contracts bill off it and won\'t go down after.' },
-    { id: 'r_vendor_payment', trigger: 'Outstanding vendor balances on the day', severity: 'high', mitigation: 'Pay all final balances by 2 weeks out; pre-stage labeled tip envelopes and assign one person to hand them out so the couple never touches money.' },
-    { id: 'r_gift_theft', trigger: 'Gift table or card box walks off at a big reception', severity: 'medium', mitigation: 'The insurance-industry pattern (Markel/III): name one trusted gift attendant, use a locked card box, keep the table in a populated corner away from exits, and ship registry gifts home. Gifts are also an insurable rider on event policies.' },
-    { id: 'r_vendor_noshow', trigger: 'A key vendor cancels, is double-booked, or no-shows', severity: 'high', mitigation: 'Sign contracts (not verbal holds), confirm arrival times at a week out, keep a backup officiant/DJ contact, and verify vendor COI where the venue requires it.' },
-    { id: 'r_timeline', trigger: 'No run-of-show / hair + makeup runs long', severity: 'med', mitigation: 'Build an hour-by-hour timeline at 2 months out, pad hair/makeup (start early, ~45 min/face + bride buffer), and have the coordinator hold the schedule on the day.' },
-    { id: 'r_seating', trigger: 'Seating chart unresolved as RSVPs trickle in', severity: 'med', mitigation: 'Draft seating at 2 months out, finalize after the headcount lock, and proofread escort cards + signage against the final list.' },
-    { id: 'r_permits', trigger: 'Missing alcohol license, permits, or venue COI for an off-site bar', severity: 'med', mitigation: 'Confirm who holds the liquor license and any insurance/permits at booking; a self-supplied bar may need licensed bartenders + a permit.' },
+    { id: 'r_weather', target: 'rain', trigger: 'Outdoor ceremony/reception with no rain plan', severity: 'high', mitigation: 'Decide the rain plan at booking (tent on hold or indoor backup); make the call ~24–48h out and notify all vendors + guests.' },
+    { id: 'r_count', target: 'vendors-tab', trigger: 'Final headcount wrong or late to the caterer', severity: 'high', mitigation: 'Lock RSVPs, chase non-responders, and give the caterer the FINAL count at 2 weeks out — most contracts bill off it and won\'t go down after.' },
+    { id: 'r_vendor_payment', target: 'vendors-tab', trigger: 'Outstanding vendor balances on the day', severity: 'high', mitigation: 'Pay all final balances by 2 weeks out; pre-stage labeled tip envelopes and assign one person to hand them out so the couple never touches money.' },
+    { id: 'r_gift_theft', target: 'vendors-tab', trigger: 'Gift table or card box walks off at a big reception', severity: 'medium', mitigation: 'The insurance-industry pattern (Markel/III): name one trusted gift attendant, use a locked card box, keep the table in a populated corner away from exits, and ship registry gifts home. Gifts are also an insurable rider on event policies.' },
+    { id: 'r_vendor_noshow', target: 'vendors-tab', trigger: 'A key vendor cancels, is double-booked, or no-shows', severity: 'high', mitigation: 'Sign contracts (not verbal holds), confirm arrival times at a week out, keep a backup officiant/DJ contact, and verify vendor COI where the venue requires it.' },
+    { id: 'r_timeline', target: 'timeline', trigger: 'No run-of-show / hair + makeup runs long', severity: 'med', mitigation: 'Build an hour-by-hour timeline at 2 months out, pad hair/makeup (start early, ~45 min/face + bride buffer), and have the coordinator hold the schedule on the day.' },
+    { id: 'r_seating', target: 'seating', trigger: 'Seating chart unresolved as RSVPs trickle in', severity: 'med', mitigation: 'Draft seating at 2 months out, finalize after the headcount lock, and proofread escort cards + signage against the final list.' },
+    { id: 'r_permits', target: 'vendors-tab', trigger: 'Missing alcohol license, permits, or venue COI for an off-site bar', severity: 'med', mitigation: 'Confirm who holds the liquor license and any insurance/permits at booking; a self-supplied bar may need licensed bartenders + a permit.' },
   ],
 
   contingencies: [

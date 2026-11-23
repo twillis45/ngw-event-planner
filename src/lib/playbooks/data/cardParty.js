@@ -16,6 +16,8 @@
 
 const cardParty = {
   type: 'Card Party',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
@@ -61,22 +63,22 @@ const cardParty = {
   ],
 
   tasks: [
-    { id: 't_invite', milestoneId: 'cp_invite', phase: 'guest', label: 'Send the invite with date, time, and "we are playing Spades/Bid" — ask for a firm RSVP and count heads in fours so every table stays full (line up a fifth/spare to fill a no-show seat)', when: 'T-10d' },
+    { id: 't_invite', target: 'invite', milestoneId: 'cp_invite', phase: 'guest', label: 'Send the invite with date, time, and "we are playing Spades/Bid" — ask for a firm RSVP and count heads in fours so every table stays full (line up a fifth/spare to fill a no-show seat)', when: 'T-10d' },
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
-    { id: 't_rules', answeredBy: ['game_format'], milestoneId: 'cp_rules', phase: 'plan', label: 'Pick the game: Spades, Bid Whist, both, or a bracket', when: 'T-7d' },
-    { id: 't_rules_post', milestoneId: 'cp_rules', phase: 'plan', label: 'Post the house rules: talking across the table (or not), renege calls, blind nil / Boston, and the cut', when: 'T-7d' },
-    { id: 't_kit', milestoneId: 'cp_rules', phase: 'plan', label: 'Confirm the kit: 2+ reliable, complete decks PER TABLE (one in play, one shuffling), jokers IN for Bid Whist / OUT for Spades, a score pad + pen per table', when: 'T-7d' },
-    { id: 't_tables', milestoneId: 'cp_tables', phase: 'setup', label: 'Count card tables and chairs: one 34" square table + 4 chairs per group of four. Borrow or rent folding card tables if short; test bright, even light over every seat', when: 'T-5d' },
-    { id: 't_menu', milestoneId: 'cp_menu', phase: 'food', label: 'Lock the grazing spread (one pot + finger foods + sweets); if potluck, assign categories by text so the proteins, sides, and desserts all get covered', when: 'T-5d' },
-    { id: 't_shop', milestoneId: 'cp_shop', phase: 'shopping', label: 'Main shop: pot ingredients, wings/meatball fixings, deviled-egg + charcuterie makings, chips/dip, liquor/mixers/wine/beer, punch base, water, napkins, cups/plates, trash bags', when: 'T-1d' },
-    { id: 't_prep', milestoneId: 'cp_shop', phase: 'food', label: 'Prep ahead: boil + fill deviled eggs, build the charcuterie, portion dips, season/marinate proteins, mix the punch base, start chilling all drinks', when: 'T-1d evening' },
-    { id: 't_cook', milestoneId: 'cp_cook', phase: 'food', label: 'Put the pot on (chili/gumbo) low and slow; bake/fry the wings + meatballs so they hit warm as the first table sits down', when: 'T0 -3:00' },
-    { id: 't_space', milestoneId: 'cp_space', phase: 'setup', label: 'Square up the tables with a real seat per player, bright even light over each, partners able to sit across; queue a low playlist (grown and groovy — under the table talk)', when: 'T0 -1:00' },
-    { id: 't_station', milestoneId: 'cp_space', phase: 'setup', label: 'Set the food station and the bar AWAY from the tables: spread laid out, punch + water + ice out, cups/plates/napkins stacked; decks + score pad + pen on every table; trash + recycling visible', when: 'T0 -0:30' },
-    { id: 't_refresh', milestoneId: 'event', phase: 'food', label: 'Snack refresh ~2 hours in: top up the spread, refill the pot bowl, restock the bar + ice + water, swap a full trash bag — keep the room fed without breaking the tables', when: 'T0 +2:00' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Wind down: clear cups/plates, bag trash + recycling, pack leftovers, gather every deck (count back to 52 / 54), fold and stack the card tables', when: 'T0 +4:00' },
+    { id: 't_rules', target: 'call:game_format', answeredBy: ['game_format'], milestoneId: 'cp_rules', phase: 'plan', label: 'Pick the game: Spades, Bid Whist, both, or a bracket', when: 'T-7d' },
+    { id: 't_rules_post', target: 'assign', milestoneId: 'cp_rules', phase: 'plan', label: 'Post the house rules: talking across the table (or not), renege calls, blind nil / Boston, and the cut', when: 'T-7d' },
+    { id: 't_kit', target: 'space', milestoneId: 'cp_rules', phase: 'plan', label: 'Confirm the kit: 2+ reliable, complete decks PER TABLE (one in play, one shuffling), jokers IN for Bid Whist / OUT for Spades, a score pad + pen per table', when: 'T-7d' },
+    { id: 't_tables', target: 'vendors', milestoneId: 'cp_tables', phase: 'setup', label: 'Count card tables and chairs: one 34" square table + 4 chairs per group of four. Borrow or rent folding card tables if short; test bright, even light over every seat', when: 'T-5d' },
+    { id: 't_menu', target: 'list', milestoneId: 'cp_menu', phase: 'food', label: 'Lock the grazing spread (one pot + finger foods + sweets); if potluck, assign categories by text so the proteins, sides, and desserts all get covered', when: 'T-5d' },
+    { id: 't_shop', target: 'list', milestoneId: 'cp_shop', phase: 'shopping', label: 'Main shop: pot ingredients, wings/meatball fixings, deviled-egg + charcuterie makings, chips/dip, liquor/mixers/wine/beer, punch base, water, napkins, cups/plates, trash bags', when: 'T-1d' },
+    { id: 't_prep', target: 'none', milestoneId: 'cp_shop', phase: 'food', label: 'Prep ahead: boil + fill deviled eggs, build the charcuterie, portion dips, season/marinate proteins, mix the punch base, start chilling all drinks', when: 'T-1d evening' },
+    { id: 't_cook', target: 'day', milestoneId: 'cp_cook', phase: 'food', label: 'Put the pot on (chili/gumbo) low and slow; bake/fry the wings + meatballs so they hit warm as the first table sits down', when: 'T0 -3:00' },
+    { id: 't_space', target: 'day', milestoneId: 'cp_space', phase: 'setup', label: 'Square up the tables with a real seat per player, bright even light over each, partners able to sit across; queue a low playlist (grown and groovy — under the table talk)', when: 'T0 -1:00' },
+    { id: 't_station', target: 'day', milestoneId: 'cp_space', phase: 'setup', label: 'Set the food station and the bar AWAY from the tables: spread laid out, punch + water + ice out, cups/plates/napkins stacked; decks + score pad + pen on every table; trash + recycling visible', when: 'T0 -0:30' },
+    { id: 't_refresh', target: 'day', milestoneId: 'event', phase: 'food', label: 'Snack refresh ~2 hours in: top up the spread, refill the pot bowl, restock the bar + ice + water, swap a full trash bag — keep the room fed without breaking the tables', when: 'T0 +2:00' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Wind down: clear cups/plates, bag trash + recycling, pack leftovers, gather every deck (count back to 52 / 54), fold and stack the card tables', when: 'T0 +4:00' },
   ],
 
   purchases: [
@@ -112,14 +114,14 @@ const cardParty = {
   ],
 
   risks: [
-    { id: 'r_foodsafe', trigger: 'Perishable grazing food (deviled eggs, a pot of chili/gumbo, saucy wings) sits out all night', severity: 'med', mitigation: 'Deviled eggs, mayo dishes, and proteins are perishable — don\'t leave them out more than 2 hours. Keep the pot hot (slow cooker) and cold dishes cold/on ice, refresh in waves, and refrigerate leftovers promptly.' },
-    { id: 'r_odd', trigger: 'Headcount not a multiple of four — a table sits a hand short', severity: 'med', mitigation: 'Count RSVPs in fours; line up a flexible fifth/sixth to fill a no-show seat, or set a rotating "next up" so nobody sits out long.' },
-    { id: 'r_deck', trigger: 'A deck is worn, marked, or short a card mid-hand', severity: 'med', mitigation: 'Two complete decks per table (one in play, one shuffling); count every deck to 52/54 before guests; keep a fresh sealed deck in reserve.' },
-    { id: 'r_sauce', trigger: 'Saucy wings/meatballs grease up the cards', severity: 'med', mitigation: 'Keep saucy proteins at the food station, never on the card tables; napkins on every table and plenty at the spread; dry one-hand snacks for the table.' },
-    { id: 'r_light', trigger: 'A table is too dim to read cards', severity: 'med', mitigation: 'Bright, even light over each table set at 5 days out; test from all four seats; a clip/floor lamp for the dim corner.' },
-    { id: 'r_loud', trigger: 'Music too loud to hear the table talk and the calls', severity: 'low', mitigation: 'Keep the playlist low — grown and groovy, under the trash talk; the table is the entertainment, not the speakers.' },
-    { id: 'r_heated', trigger: 'A renege call or a partner spat gets heated', severity: 'low', mitigation: 'House rules posted up front (renege, talking across, Boston/nil) so a disputed call has a settled answer; keep it competitive-but-loving — laugh it off and re-deal.' },
-    { id: 'r_drinks', trigger: 'Short on ice, water, or mixers late in a long night', severity: 'low', mitigation: 'Over-stock water/soda and ice; keep a backup bag of ice and a reserve mixer/case on hand.' },
+    { id: 'r_foodsafe', target: 'food', trigger: 'Perishable grazing food (deviled eggs, a pot of chili/gumbo, saucy wings) sits out all night', severity: 'med', mitigation: 'Deviled eggs, mayo dishes, and proteins are perishable — don\'t leave them out more than 2 hours. Keep the pot hot (slow cooker) and cold dishes cold/on ice, refresh in waves, and refrigerate leftovers promptly.' },
+    { id: 'r_odd', target: 'seating', trigger: 'Headcount not a multiple of four — a table sits a hand short', severity: 'med', mitigation: 'Count RSVPs in fours; line up a flexible fifth/sixth to fill a no-show seat, or set a rotating "next up" so nobody sits out long.' },
+    { id: 'r_deck', target: 'seating', trigger: 'A deck is worn, marked, or short a card mid-hand', severity: 'med', mitigation: 'Two complete decks per table (one in play, one shuffling); count every deck to 52/54 before guests; keep a fresh sealed deck in reserve.' },
+    { id: 'r_sauce', target: 'seating', trigger: 'Saucy wings/meatballs grease up the cards', severity: 'med', mitigation: 'Keep saucy proteins at the food station, never on the card tables; napkins on every table and plenty at the spread; dry one-hand snacks for the table.' },
+    { id: 'r_light', target: 'seating', trigger: 'A table is too dim to read cards', severity: 'med', mitigation: 'Bright, even light over each table set at 5 days out; test from all four seats; a clip/floor lamp for the dim corner.' },
+    { id: 'r_loud', target: 'seating', trigger: 'Music too loud to hear the table talk and the calls', severity: 'low', mitigation: 'Keep the playlist low — grown and groovy, under the trash talk; the table is the entertainment, not the speakers.' },
+    { id: 'r_heated', target: 'none', trigger: 'A renege call or a partner spat gets heated', severity: 'low', mitigation: 'House rules posted up front (renege, talking across, Boston/nil) so a disputed call has a settled answer; keep it competitive-but-loving — laugh it off and re-deal.' },
+    { id: 'r_drinks', target: 'none', trigger: 'Short on ice, water, or mixers late in a long night', severity: 'low', mitigation: 'Over-stock water/soda and ice; keep a backup bag of ice and a reserve mixer/case on hand.' },
   ],
 
   contingencies: [

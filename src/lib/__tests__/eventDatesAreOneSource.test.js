@@ -145,7 +145,8 @@ describe('census: nothing in the host shell writes the dates or the start time e
   test('both start-time editors write through eventStartTimePatch', () => {
     const src = fs.readFileSync(path.join(SHELL_DIR, 'HostShellV2.jsx'), 'utf8');
     // Date & time's time field and the run of show's "guests arrive" field.
-    const inputs = src.match(/aria-label="What time guests arrive"/g) || [];
+    // The label now says what the time means (cause 5: startTimeFieldWords).
+    const inputs = src.match(/aria-label=\{startTimeFieldWords\(event\)\.aria\}/g) || [];
     expect(inputs.length).toBe(2);
     expect((src.match(/writeStartTime\(\{ startTime: e\.target\.value \}/g) || []).length).toBe(2);
     expect(src).toMatch(/const writeStartTime = \(next, msg\) => \{\s*const p = eventStartTimePatch\(event, next\);/);

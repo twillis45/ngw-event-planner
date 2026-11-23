@@ -1,5 +1,17 @@
 # Where We Are -- live status board
 
+## November 23, 2026 (night) — six root causes, fixed where they start
+
+**The owner's Thanksgiving walkthrough found seven P0/P1 symptoms, which came from six mechanisms. Each mechanism is now gone everywhere, and a test over all 47 playbooks guards it.**
+
+1. **A step's editor and button came from words in its title.** Each step now declares a target. The invite step opens the invite, the turkey opens the list, and only the dietary step shows the allergy counter. "Mark done" records no send.
+2. **"Settled" was kept only for the session.** It is now saved on the event, so a reload keeps it, and Undo brings the ask back.
+3. **One number came from several places.** Each of these now has a single reader: parts handled (the strip, what's counted and the tall ribbon), the money figures with their names ("Room left in your budget" versus "left to spend"), and "confirmed", which now means replies only.
+   - Not done: per-head, item counts, seating costs in the shopping total, and hero order by calls urgency.
+4. **No single rule set the landing stage.** One rule now decides it. "Open my plan (not saved yet)" keeps the plan through a reload, Create has a way back, and on the day of the event the app opens on The Day.
+5. **The typed time had no defined meaning.** For the five sit-down dinners it now means the time dinner is served; for every other playbook it means arrivals. Thanksgiving at 3pm gives arrivals at 2:00 and dinner at 3:00 everywhere.
+6. **Guest-facing output could show placeholders.** The event is named from her sentence ("Thanksgiving Dinner"). One guard stops the invite, the helper link, the vendor brief and the family link until a real name and a street (at home) are in place.
+
 ## November 23, 2026 — a tall iPad gets its own board
 
 **Owner ruling, 11/22/2026: the tall-iPad package is approved whole.** On a tablet held in portrait (640–1279 wide, taller than wide, read from matchMedia like the band since #236), the left rail and the ☰ eyebrow are gone. A header names the event and is its switcher. A ribbon shows the seven plan parts, with NOW on the part the question is about. The board runs full width on two shared edges (48px, or 64px from 960). The first screen ends with Where you stand and "The rest of your plan". A docked bar carries Create · Plan · The Day · After, All sections and Search.

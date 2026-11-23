@@ -436,8 +436,10 @@ export function timelineStepResolved(event, task) {
 // records dietaryNoted, so the food sheet stops saying "none yet". Only
 // "it happened" facts belong here — never a value (a date, a budget, a menu)
 // that a tick cannot know. Already-recorded facts are never overwritten.
+// NOT a send (owner, 11/23/2026, six root causes): `invitesSentAt` left this
+// list. "Mark done" marks the step done; it never records that an invite went
+// out when nothing was sent. A send is recorded by the send.
 const TICK_FACTS = [
-  ['invitesSentAt', () => new Date().toISOString()],
   ['dietaryNoted', () => true],
 ];
 export function factsATickRecords(event, task) {

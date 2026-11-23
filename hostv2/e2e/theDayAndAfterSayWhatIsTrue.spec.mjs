@@ -46,9 +46,18 @@ const boot = async (page, ev, when) => {
   await settled(page);
 };
 const hero = (page) => page.locator('.hero .hzone').first();
+// OWNER RULING 11/23/2026 (b), six root causes cause 4: on a day of the event
+// the app opens on The Day. These tests read the plan's hero on that day, so
+// they assert the landing first, then step to Plan.
+const landsOnTheDayThenPlan = async (page) => {
+  await expect(page.locator('button[aria-current="true"]', { hasText: /^The Day$/ }).first()).toBeAttached();
+  await page.evaluate(() => { const b = [...document.querySelectorAll('button[aria-current]')].find((x) => x.innerText.trim() === 'Plan'); if (b) b.click(); });
+  await settled(page);
+};
 
 test('8 AM on the wedding day: the hero is the run of show, and its first cue', async ({ page }) => {
   await boot(page, WEDDING, '2027-10-16T08:00:00');
+  await landsOnTheDayThenPlan(page);
   await expect(hero(page).locator('h2.ask')).toHaveText('It’s today.');
   const cue = hero(page).locator('[data-dayof-cue]');
   await expect(cue).toContainText('Up first');
@@ -58,6 +67,7 @@ test('8 AM on the wedding day: the hero is the run of show, and its first cue', 
 
 test('9 PM on the wedding day: the cue the clock is on, not the 8 AM one', async ({ page }) => {
   await boot(page, WEDDING, '2027-10-16T21:10:00');
+  await landsOnTheDayThenPlan(page);
   const cue = hero(page).locator('[data-dayof-cue]');
   await expect(cue).toContainText('Happening now');
   await expect(cue).toContainText(/send-off/i);
@@ -66,6 +76,7 @@ test('9 PM on the wedding day: the cue the clock is on, not the 8 AM one', async
 
 test('a trip’s day 1 and day 3 are the same trip-day hero, with no venue ask', async ({ page }) => {
   await boot(page, TRIP, '2027-05-13T09:00:00');
+  await landsOnTheDayThenPlan(page);
   await expect(hero(page).locator('h2.ask')).toHaveText('Day 1 of 4.');
   await expect(identityLine(page)).toContainText('DAY 1 OF 4', { useInnerText: true });
   await expect(page.getByRole('main')).not.toContainText(/Pick the place|Where is the event\?/);
@@ -73,6 +84,7 @@ test('a trip’s day 1 and day 3 are the same trip-day hero, with no venue ask',
   await page.clock.setFixedTime(new Date('2027-05-15T09:00:00'));
   await page.reload();
   await settled(page);
+  await landsOnTheDayThenPlan(page);
   await expect(hero(page).locator('h2.ask')).toHaveText('Day 3 of 4.');
   await expect(page.getByRole('main')).not.toContainText(/Pick the place|Where is the event\?|the basics are all settled/);
 });

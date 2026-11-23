@@ -15,6 +15,8 @@
 
 const ethiopianCoffeeCeremony = {
   type: 'Ethiopian Coffee Ceremony',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
@@ -56,15 +58,15 @@ const ethiopianCoffeeCeremony = {
   ],
 
   tasks: [
-    { id: 't_fasting_check', milestoneId: 'buna_setdate', phase: 'planning', label: 'Check the church calendar — is the date a fasting (ye-tsom) day? It shapes the whole menu', when: 'T-10d' },
-    { id: 't_invite', milestoneId: 'buna_invite', phase: 'guest', label: 'Invite guests; gently note the ceremony is unhurried and runs across three rounds — plan to stay for Baraka', when: 'T-8d' },
-    { id: 't_equipment', milestoneId: 'buna_source_equipment', phase: 'shopping', label: 'Source/borrow a jebena, small cini cups, a brazier or stovetop pan, mortar (mukecha) or grinder', when: 'T-7d' },
-    { id: 't_pantry', milestoneId: 'buna_source_pantry', phase: 'shopping', label: 'Green coffee beans, frankincense, berbere, niter kibbeh, wat ingredients; order/reserve injera at an Ethiopian market', when: 'T-5d' },
-    { id: 't_cook', milestoneId: 'buna_cook', phase: 'food', label: 'Cook the wats a day ahead — doro wat (chicken + berbere + hard-boiled egg) and a vegan shiro/misir/gomen spread; they deepen overnight', when: 'T-1d' },
-    { id: 't_freshpickup', milestoneId: 'buna_freshpickup', phase: 'shopping', label: 'Pick up fresh injera; cut/gather fresh grass (ketema); pop popcorn (fandisha)', when: 'T0 morning' },
-    { id: 't_setup', milestoneId: 'buna_setup', phase: 'setup', label: 'Strew grass, set the low ceremony table/tray, lay out cini cups, ready charcoal + incense', when: 'T0 -1h' },
-    { id: 't_ceremony', milestoneId: 'event', phase: 'event', label: 'Wash + roast beans (pass the pan so guests smell the smoke), grind, brew in the jebena, pour from height; serve Abol, then Tona, then Baraka', when: 'T0' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Cool the brazier + jebena fully, hand-wash the clay pot + cups, sweep the grass, air out incense smoke, pack leftovers', when: 'T0 +3h' },
+    { id: 't_fasting_check', target: 'spread', milestoneId: 'buna_setdate', phase: 'planning', label: 'Check the church calendar — is the date a fasting (ye-tsom) day? It shapes the whole menu', when: 'T-10d' },
+    { id: 't_invite', target: 'invite', milestoneId: 'buna_invite', phase: 'guest', label: 'Invite guests; gently note the ceremony is unhurried and runs across three rounds — plan to stay for Baraka', when: 'T-8d' },
+    { id: 't_equipment', target: 'list', milestoneId: 'buna_source_equipment', phase: 'shopping', label: 'Source/borrow a jebena, small cini cups, a brazier or stovetop pan, mortar (mukecha) or grinder', when: 'T-7d' },
+    { id: 't_pantry', target: 'spread', milestoneId: 'buna_source_pantry', phase: 'shopping', label: 'Green coffee beans, frankincense, berbere, niter kibbeh, wat ingredients; order/reserve injera at an Ethiopian market', when: 'T-5d' },
+    { id: 't_cook', target: 'none', milestoneId: 'buna_cook', phase: 'food', label: 'Cook the wats a day ahead — doro wat (chicken + berbere + hard-boiled egg) and a vegan shiro/misir/gomen spread; they deepen overnight', when: 'T-1d' },
+    { id: 't_freshpickup', target: 'day', milestoneId: 'buna_freshpickup', phase: 'shopping', label: 'Pick up fresh injera; cut/gather fresh grass (ketema); pop popcorn (fandisha)', when: 'T0 morning' },
+    { id: 't_setup', target: 'day', milestoneId: 'buna_setup', phase: 'setup', label: 'Strew grass, set the low ceremony table/tray, lay out cini cups, ready charcoal + incense', when: 'T0 -1h' },
+    { id: 't_ceremony', target: 'day', milestoneId: 'event', phase: 'event', label: 'Wash + roast beans (pass the pan so guests smell the smoke), grind, brew in the jebena, pour from height; serve Abol, then Tona, then Baraka', when: 'T0' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Cool the brazier + jebena fully, hand-wash the clay pot + cups, sweep the grass, air out incense smoke, pack leftovers', when: 'T0 +3h' },
   ],
 
   purchases: [
@@ -100,12 +102,12 @@ const ethiopianCoffeeCeremony = {
   ],
 
   risks: [
-    { id: 'r_openflame', trigger: 'Open-flame brazier / live charcoal near guests, rugs, or children', severity: 'high', mitigation: 'Set the brazier on a stable heatproof surface away from foot traffic; keep it attended; have a lid, water, or extinguisher within reach; never leave coals unattended.' },
-    { id: 'r_burn', trigger: 'Hot jebena, roasting pan, or coals cause burns', severity: 'high', mitigation: 'Use a cloth/holder for the jebena handle and neck; pour from height carefully; keep a clear zone around the hot pan; let everything cool fully before washing.' },
-    { id: 'r_smoke', trigger: 'Indoor bean-roast + incense smoke triggers detectors or overwhelms the room', severity: 'med', mitigation: 'Roast outdoors or by an open door; run a vent hood/fan; crack windows; warn guests with respiratory sensitivity; keep incense modest.' },
-    { id: 'r_fasting', trigger: 'No vegan/fasting option, or niter kibbeh hidden in "vegan" dishes on a fasting day', severity: 'med', mitigation: 'Always cook a full ye-tsom spread (shiro/misir/gomen) in plain oil; label dishes; confirm whether the date is a fasting day before finalizing the menu.' },
-    { id: 'r_rush', trigger: 'Ceremony rushed; guests leave before the third (Baraka) round', severity: 'med', mitigation: 'Set expectations at invite that it runs ~2–3h; do not hurry the rounds — Baraka is the blessing and staying is the point.' },
-    { id: 'r_jebena', trigger: 'No jebena, or a new clay pot cracks/leaks unseasoned', severity: 'high', mitigation: 'Source/borrow the jebena at a week out; season a new clay pot before the day; keep a backup brewing vessel.' },
+    { id: 'r_openflame', target: 'none', trigger: 'Open-flame brazier / live charcoal near guests, rugs, or children', severity: 'high', mitigation: 'Set the brazier on a stable heatproof surface away from foot traffic; keep it attended; have a lid, water, or extinguisher within reach; never leave coals unattended.' },
+    { id: 'r_burn', target: 'none', trigger: 'Hot jebena, roasting pan, or coals cause burns', severity: 'high', mitigation: 'Use a cloth/holder for the jebena handle and neck; pour from height carefully; keep a clear zone around the hot pan; let everything cool fully before washing.' },
+    { id: 'r_smoke', target: 'rain', trigger: 'Indoor bean-roast + incense smoke triggers detectors or overwhelms the room', severity: 'med', mitigation: 'Roast outdoors or by an open door; run a vent hood/fan; crack windows; warn guests with respiratory sensitivity; keep incense modest.' },
+    { id: 'r_fasting', target: 'food', trigger: 'No vegan/fasting option, or niter kibbeh hidden in "vegan" dishes on a fasting day', severity: 'med', mitigation: 'Always cook a full ye-tsom spread (shiro/misir/gomen) in plain oil; label dishes; confirm whether the date is a fasting day before finalizing the menu.' },
+    { id: 'r_rush', target: 'none', trigger: 'Ceremony rushed; guests leave before the third (Baraka) round', severity: 'med', mitigation: 'Set expectations at invite that it runs ~2–3h; do not hurry the rounds — Baraka is the blessing and staying is the point.' },
+    { id: 'r_jebena', target: 'none', trigger: 'No jebena, or a new clay pot cracks/leaks unseasoned', severity: 'high', mitigation: 'Source/borrow the jebena at a week out; season a new clay pot before the day; keep a backup brewing vessel.' },
   ],
 
   contingencies: [

@@ -225,7 +225,7 @@ import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_NUDGE } from '@app/lib/knowledge/geoCostIndex';
 import { firstStoreIn, storesIn } from '@app/lib/communitySource';
 import { typeIsRestatedByName } from '@app/lib/eventMasthead';
-import { confirmedCovers, confirmedRsvpCovers } from '@app/lib/confirmedCovers';
+import { confirmedCovers, confirmedRsvpCovers, coversWithWord } from '@app/lib/confirmedCovers';
 import { shoppingHint } from '@app/lib/shoppableUnit';
 import { markSignal, lastSignalNote } from './offline/lastSignal';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, rosSuggestions, hostRosRows, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, sizingRange, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum, dietaryNoted, playbookPacing } from '@app/lib/playbooks';
@@ -264,7 +264,7 @@ import { storeSearchTerm } from '@app/lib/knowledge/storeUnitMap';
 const icSearchTerm = (line) => storeSearchTerm(line);
 import { parseSmartEventText, HOST_TYPES } from '@app/lib/smartParseEvent';
 import { townFieldsToPersist } from '@app/lib/townFieldsToPersist';
-import { createSetDown, undoThatBringsBack, settleCountRow } from './setDown.js';
+import { createSetDown, undoThatBringsBack, settleCountRow, carrySettled } from './setDown.js';
 import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcomeGate';
 // The engine's tuned haptic bands. Free to import — feedback.js has zero
 // imports of its own — and it carries the two guards this shell was missing:
@@ -359,6 +359,16 @@ import { celebrationApplies, tripFoodMoney, aroundSummary, dinnerParts, RESTAURA
 import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
 import { mayExhale, calmVetoFor } from '@app/lib/exhaleGate';
 import { checklistRouteFor } from '@app/lib/taskRoute';
+import { editorKindFor, isBalanceDueAction, stepRowIdOf } from '@app/lib/heroEditor';
+import { stepIsASend, riskTargetFor, stepTargetFor } from '@app/lib/stepTarget';
+import { withSettled, withoutSettled, unsettledActions } from '@app/lib/settledAsks';
+import { landingStage } from '@app/lib/landingStage';
+import { planPartsProgress, planPartsLine } from '@app/lib/planProgress';
+import { moneyFigures, headroomLabel, MONEY_LABELS } from '@app/lib/moneyFigures';
+import { outwardGaps, outwardPrompt } from '@app/lib/outwardReady';
+import { eventNameFrom } from '@app/lib/eventName';
+import { timeAnchorFields } from '@app/lib/eventAnchor';
+import { startTimeFieldWords } from '@app/lib/eventWhen';
 import { vendorObligations } from '@app/lib/vendorObligations';
 import { heartPlaceholders, heartFieldsFor } from '@app/lib/heartPrompts';
 import { parseMin } from '@app/lib/dayAlerts';
@@ -1154,7 +1164,14 @@ const MOVE_NOTICE = moveNotice(domainMove());
 
 export default function HostShellV2() {
   const [bootDraft] = useState(readCreateDraft);
-  const [stage, setStage] = useState(() => (bootDraft ? 'create' : 'plan'));
+  // WHERE SHE LANDS is one rule (lib/landingStage, six root causes cause 4): a
+  // plan of hers outranks words left in Create, and its own day opens The Day.
+  const [stage, setStage] = useState(() => landingStage({
+    event: ALL_SAMPLES.find(e => e && e.id === BOOT_EVENT_ID) || null,
+    ownPlan: CUSTOM_EVENTS_AT_LOAD.some(c => c && c.id === BOOT_EVENT_ID) || REAL_EVENTS.some(e => e && e.id === BOOT_EVENT_ID),
+    draftText: bootDraft,
+    now: new Date(),
+  }));
   const [eventId, setEventId] = useState(BOOT_EVENT_ID);
   // EVERY event created here (array — creating a second never overwrites the
   // first). Each stores itself whole; edits land directly on the array entry.
@@ -2789,17 +2806,9 @@ export default function HostShellV2() {
   // map a risk to the surface that actually addresses it, most specific first.
   // Returns a routeSheet() route or null — no route means no button, never a dead
   // CTA. rain-plan/crab-plan land on the exact plan; the rest on the right sheet.
-  const riskRouteFor = (r) => {
-    const t = (String((r && (r.trigger || r.description)) || '') + ' ' + String((r && r.mitigation) || '')).toLowerCase();
-    if (/rain|weather|forecast|outdoor|storm|heat wave|\bsky\b/.test(t)) return { focusField: 'rain-plan' };
-    if (/crab|shellfish|\bboil\b/.test(t)) return { focusField: 'crab-plan' };
-    if (/vendor|\bcoi\b|insurance|deposit|contract|photographer|caterer|\bdj\b|rental/.test(t)) return { tab: 'Vendors' };
-    if (/seat|accessible|wheelchair|mobility|\btable\b|capacity|\bfit\b/.test(t)) return { tab: 'Seating' };
-    if (/timeline|schedule|arrival|compress|run of show|running late|behind|time window/.test(t)) return { tab: 'Timeline' };
-    if (/budget|\bcost\b|overspend|\bspend\b|\bmoney\b/.test(t)) return { tab: 'Budget' };
-    if (/\bfood\b|portion|allergen|\bdiet\b|\bmeal\b|\bmenu\b/.test(t)) return { tab: 'Planning', focusField: 'food' };
-    return null;
-  };
+  // The risk's DECLARED target (lib/stepTarget.riskTargetFor, cause 1): a
+  // playbook risk's own `target`, a derived risk's type. Never its prose.
+  const riskRouteFor = (r) => { const t = riskTargetFor(event, r); return (t && t.route) || null; };
   // Grounded "why this applies" (re-audit candidate a): append a clause drawn ONLY
   // from real event facts — never invented, empty when the fact is absent. Weather
   // is the canonical case the audit flagged: the risk copy is authored, but the
@@ -3524,15 +3533,16 @@ export default function HostShellV2() {
   // ROW-LEVEL CTA RULE (Todd): a coming-up item lands on the exact field that
   // answers it — the crab order, the pickers count, the space list — never a
   // sheet top when a closer target exists.
+  // A coming-up row lands by its KIND and, for a step, the step's DECLARED
+  // target (lib/stepTarget, cause 1) — the crab, pickers and space regexes over
+  // its label are gone.
   const routeUpNext = (u) => {
-    const t = String(u.label || '');
-    if (/pickers|light eaters/i.test(t)) { setSheet({ kind: 'crabs', focus: 'pickers' }); return; }
-    if (/crab house|pre-?order|bushel|dozen|steam/i.test(t)) { setSheet({ kind: 'crabs', focus: 'order' }); return; }
-    if (/rent or borrow|steamer pot|propane|tables|chairs|canopy/i.test(t)) { setSheet({ kind: 'space' }); return; }
     if (u.kind === 'lodging') { goToLodgingCockpit(); return; }
     if (u.kind === 'ground') { setSheet({ kind: 'ground', focus: 'riders' }); return; } // land on the rows that still need a ride
     if (u.kind === 'air') { setSheet({ kind: 'air', focus: u.guestId != null ? u.guestId : null }); return; } // land on the exact conflicted row
     if (u.kind === 'call') { setSheet({ kind: 'decisions', focus: u.id || null }); return; }
+    const st = u.taskId ? stepTargetFor(event, { id: u.taskId }) : null;
+    if (st && st.route && routeSheet(st.route)) return;
     setSheet({ kind: 'tasks', focus: u.taskId || null });
   };
 
@@ -3961,7 +3971,9 @@ export default function HostShellV2() {
 
   const switchEvent = (id) => {
     redoEventId.current = null; // moving to another event abandons any pending create correction
-    setEventId(id); setHandledOpen(false); setStage('plan'); setEditor(null); setSheet(null); setDayIdx(0);
+    const to = [...customs, ...hydratedEvents, ...ALL_SAMPLES].find(e => e && e.id === id) || null;
+    const own = isCustomEventId(id) || REAL_EVENTS.some(e => e && e.id === id) || hydratedEvents.some(e => e && e.id === id);
+    setEventId(id); setHandledOpen(false); setStage(landingStage({ event: to, ownPlan: own, now: new Date() })); setEditor(null); setSheet(null); setDayIdx(0);
     if (!isCustomEventId(id)) { try { setPatch(JSON.parse(localStorage.getItem(LS_PATCH(id))) || {}); } catch { setPatch({}); } }
     // Build-map #3: an explicit pick is the resume pointer. Sync it to the
     // account (signed-in only — local LS_LAST_EVENT already covers same-device)
@@ -4642,6 +4654,8 @@ export default function HostShellV2() {
   };
   const cancelSignInToSend = () => { pendingBriefRef.current = null; setBriefSignIn(null); };
   const shareVendorBrief = async (v) => {
+    // Nothing goes out with a placeholder (lib/outwardReady, cause 6).
+    { const og = outwardGaps(event, 'vendor'); if (og.length) { toast(outwardPrompt(og) + ' Nothing was shared.'); return; } }
     // MODEL D — door 1, at the only honest gate point: GENERATING a brief for
     // a new vendor (board 2026-08-18: "never mid-conversation" — an
     // already-shared vendor passes unconditionally inside briefAllowed).
@@ -5035,7 +5049,16 @@ export default function HostShellV2() {
   // has 3 open items after the sourcing pick). Without this the host re-sees the same hero after
   // deciding. Accumulates (not one id) so satisfying the next doesn't un-filter the last; cleared
   // on event switch. Elegant loop only.
-  const [satisfiedIds, setSatisfiedIds] = useState([]);
+  // SETTLED IS SAVED WITH THE EVENT (six root causes, cause 2): this was a
+  // useState, cleared on load and on every event switch, so an answered ask
+  // came back after a reload (Thanksgiving P1-2). One field, one reader, one
+  // writer: lib/settledAsks. The settle writes it in the same save as the
+  // answer (patchEvent below), so that answer's Undo brings the ask back.
+  const settledIdsRef = useRef(new Set());   // ids a write already saved this settle
+  const writeSettled = (ids, on) => {
+    const p = on ? withSettled(event, ids) : withoutSettled(event, ids);
+    if (p) patchEvent(p, '', { noUndo: true, keepsUndo: true });
+  };
   // ── REASONING CONTINUITY v1 — instrumentation ────────────────────────────────
   // One shape for all three events so a reason KIND can be judged on evidence and
   // retired if it earns nothing. No PII: ids and enums only, never the host's copy.
@@ -5086,14 +5109,13 @@ export default function HostShellV2() {
       });
     } catch { /* never break a settle */ }
   }, [analyticsCtx]);
-  useEffect(() => { setSatisfiedIds([]); }, [eventId]);
   const queueRanked = elegantMode
     ? [
-        ...actions.filter(a => a && !satisfiedIds.includes(a.id) && !(isVendorConfirmAction(a) && !confirmGating)),
+        ...unsettledActions(actions, event).filter(a => !(isVendorConfirmAction(a) && !confirmGating)),
         // Foundational pick-decisions (Ceremony Timing, …) join the queue AFTER the ranked
         // actions — so after the last real action is settled the hero rolls to them (staying in
         // the ask flow), instead of jumping to the calm "all quiet" screen with a decision still open.
-        ...blockerDecisions.filter(bd => !satisfiedIds.includes(bd.id)),
+        ...unsettledActions(blockerDecisions, event),
       ]
     : actions;
   // THE HONEST FLOOR HAS ONE ACTION (Figma 922:121; gold run GOLD-01, 11/5/2026).
@@ -5234,8 +5256,12 @@ export default function HostShellV2() {
   // The hairline computed `done >= total` inline; the calm pole computed its own
   // cpDone/cpTotal with a DIFFERENT fallback. Two readings of one ledger is exactly
   // how the two checklists in the R3 defect drifted apart. Derived here, once.
-  const planTotal = Number(phaseCues && phaseCues.totalCount) || 0;
-  const planDone = Number(phaseCues && phaseCues.completedCount) || 0;
+  // ONE PROGRESS READER (lib/planProgress, six root causes cause 3): the strip,
+  // the hairline, the calm pole, what's counted, the menu line and the tall
+  // ribbon all count the same parts (P1-3 printed 6 of 7, "4 handled" and six).
+  const planParts = planPartsProgress(phaseCues);
+  const planTotal = planParts ? planParts.total : 0;
+  const planDone = planParts ? planParts.done : 0;
   const planComplete = planTotal > 0 && planDone >= planTotal;
   // The date this ledger's denominator next moves (phaseProgress). A completion
   // claim made without it is a claim with a fuse — see the field's own comment.
@@ -5410,8 +5436,8 @@ export default function HostShellV2() {
   const partsPrevRef = useRef(null);
   useEffect(() => { partsPrevRef.current = null; setBeat(null); }, [event.id]);
   useEffect(() => {
-    const done = phaseCues && Number.isFinite(Number(phaseCues.completedCount)) ? Number(phaseCues.completedCount) : null;
-    const total = phaseCues && Number(phaseCues.totalCount);
+    const done = planParts ? planDone : null;
+    const total = planTotal;
     if (done == null) return;
     if (partsPrevRef.current != null && done > partsPrevRef.current && total) {
       // "The plan is quiet" only when it is (audit 2 P1-3): Reunion's beat said
@@ -5426,7 +5452,7 @@ export default function HostShellV2() {
     }
     partsPrevRef.current = done;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phaseCues && phaseCues.completedCount]);
+  }, [planDone]);
   // HERO RECEIPT (host ruling 2026-07-17): completion satisfaction lives IN the
   // panel, not a toast at the fold. Muted sentence; the STATE is the green
   // done-dot (Confirmations-Green, footprint shrunk per UX_02). The advancing
@@ -5443,7 +5469,9 @@ export default function HostShellV2() {
   // The rules (and the order they run in) live in ./setDown.js, under vitest.
   const settleAndSetDown = createSetDown({
     pending: pendingSatisfiedRef,
-    markSatisfied: (id) => setSatisfiedIds(ids => ids.includes(id) ? ids : [...ids, id]),
+    // A write that carried this settle already saved it (patchEvent); a settle
+    // with no write of its own saves it here.
+    markSatisfied: (id) => { if (settledIdsRef.current.delete(String(id))) return; writeSettled([id], true); },
     addToReceipt: (id) => setHeroReceipt(r => (r && !(r.satisfied || []).includes(id) ? { ...r, satisfied: [...(r.satisfied || []), id] } : r)),
   });
   // ONE Undo for every receipt the board shows (hero card or calm board). It
@@ -5451,7 +5479,7 @@ export default function HostShellV2() {
   const undoHeroReceipt = () => {
     const r = heroReceipt;
     setHeroReceipt(null);
-    if (r && Array.isArray(r.satisfied) && r.satisfied.length) setSatisfiedIds(ids => ids.filter(x => !r.satisfied.includes(x)));
+    if (r && Array.isArray(r.satisfied) && r.satisfied.length) writeSettled(r.satisfied, false);
     try { if (r && r.fn) r.fn(); } catch { /* undo failed */ }
   };
   const askModeRef = useRef(false);
@@ -5560,10 +5588,10 @@ export default function HostShellV2() {
         // #3 activation: on a real return, carry the readiness fraction NOW and
         // the delta since last visit — the "you moved N forward" momentum reward
         // that no always-on tile shows. Pure exposure of the phaseCues ledger.
-        if (phaseCues && phaseCues.totalCount > 0) {
-          n.readyNow = { done: phaseCues.completedCount, total: phaseCues.totalCount };
+        if (planTotal > 0) {
+          n.readyNow = { done: planDone, total: planTotal };
           const prevDone = prev && prev.ready ? Number(prev.ready.done) : null;
-          n.readyDelta = (prevDone != null && Number.isFinite(prevDone)) ? (phaseCues.completedCount - prevDone) : null;
+          n.readyDelta = (prevDone != null && Number.isFinite(prevDone)) ? (planDone - prevDone) : null;
         }
         setReturnLine(n);
       } else setReturnLine(null);
@@ -6551,12 +6579,9 @@ export default function HostShellV2() {
   // locks..."), and `event.timeline` is a real store that eight engines read —
   // workflowCompression, dayAlerts, dayBefore, disclosure, helperResponsibility,
   // decisionMemory, duplicateEvent, vendorQuestions. Writing the mitigation
-  // there turns displayed advice into tracked work, and the checklist's OWN
-  // router (`checklistActionFor` → lib/taskRoute) then gives the new step a
-  // destination — an engine that already exists and reads these strings better
-  // than the risk regex does. Measured on the same 246: `checklistRouteFor`
-  // resolves 209 of them, including every dead birthday row and
-  // `r_saferides` → "Open rides".
+  // there turns displayed advice into tracked work. (It no longer gets a button
+  // guessed from its words: the checklist reads only a step's declared target,
+  // six root causes cause 1, so an added mitigation is an honest check-off.)
   //
   // Same row shape and same one-write-reaches-everything argument as addHelper
   // above. `week:''`/`leadDays:null` is an honest unscheduled step, not an
@@ -6576,7 +6601,7 @@ export default function HostShellV2() {
     }
     patchEvent(
       { timeline: [...existing, { id, task, owner: '', done: false, week: '', leadDays: null, category: 'planning' }] },
-      'On your checklist now — it carries its own next step.',
+      'On your checklist now.',
     );
   };
 
@@ -7266,8 +7291,10 @@ export default function HostShellV2() {
     // from the same rule that ticks the step when the section is done first.
     // Checking only; unchecking never un-sends (asymmetric, like the buys above).
     if (tl[i].done) extra = { ...extra, ...factsATickRecords(event, event.timeline[i]) };
+    // A tick on a send step sends nothing and records no send — say so (cause 1).
+    const sentNothing = tl[i].done && stepIsASend(event, tl[i]) ? ' Nothing was sent from here.' : '';
     patchEvent({ timeline: tl, ...extra },
-      (tl[i].done ? 'Done: ' : 'Reopened: ') + String(tl[i].task || '').slice(0, 50) + '… — ' + open + ' still open.' + boughtNote);
+      (tl[i].done ? 'Done: ' : 'Reopened: ') + String(tl[i].task || '').slice(0, 50) + '… — ' + open + ' still open.' + boughtNote + sentNothing);
   };
 
   // No timeline yet → draft one from the playbook's REAL task list, honoring
@@ -8742,6 +8769,10 @@ export default function HostShellV2() {
     // restores exactly those values via the same path (marked noUndo so the
     // "Undone." toast doesn't itself offer an undo). Opt out with {noUndo:true}
     // for writes that shouldn't be reversible — e.g. real guest replies landing.
+    // The asks this write sets down are saved IN it (cause 2), before the Undo
+    // snapshot below, so the answer's Undo restores the ask with the answer.
+    const carried = carrySettled(obj, event, pendingSatisfiedRef.current);
+    obj = carried.obj;
     const undoable = !!msg && !(opts && opts.noUndo);
     let undoPrev = null;
     if (undoable) { undoPrev = {}; for (const k of Object.keys(obj || {})) undoPrev[k] = event[k]; }
@@ -8753,7 +8784,7 @@ export default function HostShellV2() {
     const folds = undoable && !!(opts && opts.followsLast) && !!last && last.eventId === eventId && (Date.now() - last.at) < 7000;
     if (folds) { undoPrev = { ...undoPrev, ...last.prev }; msg = last.msg + ' ' + msg; }
     // Any write that is not itself undoable ends the chain: what follows it does not follow her edit.
-    if (!undoable) lastUndoRef.current = null;
+    if (!undoable && !(opts && opts.keepsUndo)) lastUndoRef.current = null;
     let result;
     let savedEv = null;
     // AN EVENT FROM THE ACCOUNT BECOMES THIS DEVICE'S OWN ON ITS FIRST EDIT
@@ -8816,6 +8847,7 @@ export default function HostShellV2() {
     }
     setSaveFailed(null);
     saveFailedRef.current = false;
+    carried.ids.forEach((id) => settledIdsRef.current.add(id));
     // A rejected local edit must never start a cloud write or show a receipt.
     // `opts.cloud` (issue #100, D-7): a write whose INPUT came from the account —
     // replies the backend returned to an authenticated read-back — must reach the
@@ -8872,7 +8904,7 @@ export default function HostShellV2() {
           if (receiptTimerRef.current) clearTimeout(receiptTimerRef.current);
           receiptTimerRef.current = setTimeout(() => setHeroReceipt(null), 7000);
         } else {
-          toast(msg, { label: 'Undo', fn: undoThatBringsBack(pend, undoFn, (back) => setSatisfiedIds(ids => ids.filter(x => !back.includes(x)))) }, 'ok');
+          toast(msg, { label: 'Undo', fn: undoThatBringsBack(pend, undoFn, (back) => writeSettled(back, false)) }, 'ok');
         }
       }
       // A non-undoable write may still carry one action (opts.action) — e.g.
@@ -9098,6 +9130,8 @@ export default function HostShellV2() {
   const sendHelperJob = async (taskId) => {
     const resp = helperForTask(taskId);
     if (!resp) return;
+    // Nothing goes out with a placeholder (lib/outwardReady, cause 6).
+    { const og = outwardGaps(event, 'helper'); if (og.length) { toast(outwardPrompt(og) + ' Nothing was sent.'); return; } }
     const first = String(resp.helperName || 'them').split(/\s+/)[0];
     let appUrl;
     try { appUrl = publicAppUrl(); }
@@ -9274,40 +9308,10 @@ export default function HostShellV2() {
   };
 
   // Which engine actions have a real in-place edit here. Everything else stays an
-  // honest route toast — never a button that pretends.
-  const wiredKind = (a) => {
-    // The dietary note lives in the food domain but is answered at the allergy
-    // counts, not the food-approach panel (owner's iPad, 11/21/2026).
-    if (/^fp-diet/.test(String((a.route && a.route.focusField) || ''))) return 'diet';
-    if (['date', 'guests', 'budget', 'food'].includes(a.domain)) return a.domain;
-    if (a.domain === 'starttime' || a.domain === 'datetime') return 'date';   // day + hour share the date editor
-    // Engine top actions carry their CATEGORY as domain ('start', 'readiness'…);
-    // recognize them by their real deep-link target or category.
-    // SPECIFIC deep-link targets first — category fallbacks LAST. (The rain
-    // essential arrives under the 'readiness' category; mapping the whole
-    // category to budget put the budget editor on the rain card.)
-    const f = (a.route && a.route.focusField) || '';
-    if (f === 'rain-plan' || /rain backup/i.test(a.title || '')) return 'rain';
-    if (f === 'venue' || f === 'event-venue' || /\b(location|venue)\b/i.test(a.title || '')) return 'venue';
-    if (f === 'event-date' || f === 'event-start') return 'date';   // the date editor holds the time too
-    if (f === 'guests-entry') return 'guests';
-    if (/dietary|allerg/i.test(a.title || '') || /^fp-diet/.test(f)) return 'diet';
-    // ── A ROW POINTER IS NOT A DECISION (PR #70, driven 2026-07-31) ──────────
-    // `route.foodFocus` is the id of an unbought LINE in the spread — it says
-    // "scroll to this row and highlight it". Mapping it to the food editor
-    // handed the food SOURCING decision to every shopping action that carried
-    // one: on Game Night the host got "We'll cook it · A caterer handles it ·
-    // Potluck", with their own months-old answer already marked chosen, under
-    // an item about how many snack servings to buy. The board had no open
-    // decision at all. `food-plan` stays — that focusField genuinely names the
-    // food plan itself, not a row inside it.
-    if (f === 'food-plan') return 'food';
-    if (/catering count/i.test(a.title || '')) return 'count';
-    if (/final (guest|catering) count|confirm .*(guest|catering) count/i.test(a.title || '')) return 'lockcount';
-    if (f === 'hsp-budget' || (a.domain === 'readiness' && /budget/i.test(a.title || ''))) return 'budget';
-    if (a.domain === 'start') return 'guests';
-    return null;
-  };
+  // honest route toast — never a button that pretends. The kind comes from what
+  // the card declares (lib/heroEditor: its editor, its step's target, its
+  // domain and route) and never from its title (six root causes, cause 1).
+  const wiredKind = (a) => editorKindFor(a, event);
 
   // ── SETTLING IS OPT-IN (dead-row class, 2026-07-28) ─────────────────────────
   // The settle branch below writes setEditor(key), and the editor slot renders
@@ -9333,14 +9337,14 @@ export default function HostShellV2() {
     // The nudge's own route wins over the chase shortcut below: an overdue
     // "Chase non-responders" step and the reply-by row both open the nudge.
     if (a.route && a.route.focusField === 'rsvp-nudge') { openNudge(); return; }
-    if (/chase|rsvp/i.test(String(a.cta || '') + ' ' + String(a.title || ''))) { setSheet({ kind: 'guests' }); return; }
+    // (A chase card used to be recognized by "chase"/"rsvp" in its words and sent
+    // to the guest sheet; its route says where it goes, and routeSheet follows it.)
     // ELEGANT (host "no take-me-to on the hero"): an overdue-payment task RESOLVES IN PLACE —
     // "Mark as paid" writes vendor.balancePaid (the exact field surfaceRegistry reads to clear
-    // it) and fires the receipt, instead of routing away with "Take me to it".
-    if (elegantMode && /^send payment to/i.test(String(a.title || ''))) {
-      const vid = a.route && a.route.vendorId;
-      const nm = String(a.title).replace(/^send payment to\s*/i, '').replace(/\.$/, '').trim();
-      const v = (event.vendors || []).find(x => x && (vid ? x.id === vid : String(x.name || '').trim() === nm));
+    // it) and fires the receipt, instead of routing away with "Take me to it". Recognized by
+    // its route (the vendor's payment section) and the vendor's open balance, not its title.
+    if (elegantMode && isBalanceDueAction(a, event)) {
+      const v = (event.vendors || []).find(x => x && x.id === a.route.vendorId);
       if (v) { writeVendor(v.id, { balancePaid: true }, (v.name || 'This vendor') + ' — balance marked paid.'); return; }
     }
     // ELEGANT (host "pull action into confirm vendor"): a plain vendor-confirm resolves IN PLACE
@@ -9667,7 +9671,7 @@ export default function HostShellV2() {
             if (!drift) return null;
             return (
               <div style={{ marginTop: ASK_RHYTHM.whyToCta }}>
-                <span className="of">Your caterer is set for {event.catererCount} · {yes} confirmed</span>
+                <span className="of">Your caterer is set for {event.catererCount} · {yes} {coversWithWord(event).word}</span>
                 {countResolutionRows((write) => settleAndSetDown(a && a.id ? a.id : null, write))}
               </div>
             );
@@ -9927,11 +9931,11 @@ export default function HostShellV2() {
           return (
             <>
               <div className="actions-row" style={{ width: '100%', marginTop: 'var(--sp-2)', alignItems: 'center' }}>
-                <span className="of">guests arrive:</span>
+                <span className="of">{startTimeFieldWords(event).label}</span>
                 <input className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                   value={event.startTime || ''}
                   onChange={e => writeStartTime({ startTime: e.target.value }, 'Start time set — the day now runs on a real clock.')}
-                  aria-label="What time guests arrive" />
+                  aria-label={startTimeFieldWords(event).aria} />
                 {prop && (
                   <button className="mini" onClick={() => writeStartTime({ startTime: prop.hhmm },
                     'Start time set — the day now runs on a real clock.')}>
@@ -10027,7 +10031,7 @@ export default function HostShellV2() {
           <div className="chips hc-row">
             <div className="line" style={{ flex: '1 0 100%', alignItems: 'center' }}>
               <span className="of" style={{ color: matches ? 'var(--ok)' : 'var(--warn)', fontWeight: 600 }}>
-                {matches ? 'Matches confirmed — ' + held : 'Held at ' + held + ' · ' + yes + ' confirmed'}
+                {matches ? 'Matches ' + coversWithWord(event).word + ' — ' + held : 'Held at ' + held + ' · ' + yes + ' ' + coversWithWord(event).word}
               </span>
               <button className="mini" onClick={() => setChoiceOpen('catererCount')}>Change</button>
             </div>
@@ -10507,7 +10511,11 @@ export default function HostShellV2() {
       // 11/5/2026): "Vida is hosting a girls' game night" saved as "My Game
       // Night". The honoree still wins when there is one; the host is kept on
       // `hostName`, never promoted to honoree — nobody is being celebrated.
-      name: effName ? effName + '’s ' + milestoneName : (parsed.hostName ? parsed.hostName + '’s ' + milestoneName : 'My ' + milestoneName),
+      // NAMED FROM HER OWN WORDS (lib/eventName, six root causes cause 6): her
+      // honoree or her own name when she gave one, else the occasion phrase
+      // her sentence opens with — never "My <Type>". A bare occasion is a
+      // placeholder that lib/outwardReady asks her to replace before a send.
+      name: eventNameFrom({ sentence: smartText, honoree: effName, hostName: parsed.hostName, milestoneName }).name,
       honoree: effName || '',
       // …and when she did not name herself, the invitation is from the name
       // her profile already holds (hostNameFor), not a blank she is asked to fill.
@@ -10693,7 +10701,11 @@ export default function HostShellV2() {
     // clock from the first second, the host is told plainly that we picked it and why, and
     // nothing OUTWARD — a guest's invitation, a vendor's brief — states the hour until they
     // have confirmed it. An unconfirmed hour is ours, not theirs.
+    const _hadTime = !!String(ev.startTime || '').trim();
     try { Object.assign(ev, defaultStartTime(ev, null) || {}); } catch (_e) { /* no grounding — the list asks */ }
+    // WHAT HER TIME MEANS, stamped once (lib/eventAnchor, cause 5): for a
+    // meal-centered playbook the time she typed is when dinner hits the table.
+    try { Object.assign(ev, timeAnchorFields(ev, { defaultApplied: !_hadTime && !!String(ev.startTime || '').trim() })); } catch (_e) { /* an unstamped event keeps the arrival meaning */ }
     // Canonical checklist over the real event object (date-relative offsets,
     // choice/caterer gates). No date yet → honestly empty; drafts later.
     // THE GAMES SHE ASKED FOR ARE HER PICK (run 2, R2-15): "team-oriented games"
@@ -10847,22 +10859,45 @@ export default function HostShellV2() {
   // On sign-in the draft joins the store (written straight through, so the
   // hydrate that follows in the same tick reads it and uploads it), and she
   // lands where she was going.
-  keepDraftOnSignIn.current = () => {
+  // The draft joins this device's store: on sign-in (kept) or when she opens
+  // it unsaved (owner ruling 11/23/2026 (a), "Open my plan (not saved yet)").
+  // Either way it survives a reload here; the sign-in upload sends a plan that
+  // never reached an account, and the "Not saved yet. Sign in to keep it" row
+  // asks for that later. Returns the event, or null when it could not be held.
+  const commitDraftToDevice = (reason) => {
     const ev = draftRef.current;
-    if (!ev) return;
+    if (!ev) return null;
     const list = readCustomEventsSafe();
     const next = list.some(c => c && c.id === ev.id) ? list : [...list, ev];
-    const res = saveCustomEvents(next, { reason: 'hostshell:keep-draft-on-sign-in', eventId: ev.id });
-    if (!res || res.ok === false) { toast('Couldn’t keep the plan on this browser — it’s still on screen.'); return; }
+    const res = saveCustomEvents(next, { reason, eventId: ev.id });
+    if (!res || res.ok === false) { toast('Couldn’t keep the plan on this browser — it’s still on screen.'); return null; }
     draftRef.current = null;
     setCustoms(cur => cur.some(c => c && c.id === ev.id) ? cur : [...cur, ev]);
     setDraftEvent(null);
     setEventId(ev.id);
     didResume.current = true;
-    try { trackEvent(ANALYTICS.EVENT_CREATED, { is_first: list.length === 0, event_type: ev.type }); } catch (_e) { /* a counter never blocks a creation */ }
     try { localStorage.setItem(LS_WELCOMED, '1'); } catch { /* private mode */ }
+    return { ev, list };
+  };
+  const openDraftUnsaved = () => {
+    const held = commitDraftToDevice('hostshell:open-draft-unsaved');
+    if (!held) return;
+    // A NEW HOST IS COUNTED WHEN SHE OPENS HER PLAN (coordinator, 11/23/2026):
+    // opened unsaved, she may never sign in, and the funnel must not lose her.
+    // `unsaved: true` marks it; a later sign-in keeps the same plan without a
+    // second count (the draft is already held, so keepDraftOnSignIn returns).
+    try { trackEvent(ANALYTICS.EVENT_CREATED, { is_first: held.list.length === 0, event_type: held.ev.type, unsaved: true }); } catch (_e) { /* a counter never blocks a plan */ }
+    keepIntentRef.current = null;
+    setSheet(null);
+    setStage(landingStage({ event: held.ev, ownPlan: true, now: new Date() }));
+  };
+  keepDraftOnSignIn.current = () => {
+    const held = commitDraftToDevice('hostshell:keep-draft-on-sign-in');
+    if (!held) return;
+    const { ev, list } = held;
+    try { trackEvent(ANALYTICS.EVENT_CREATED, { is_first: list.length === 0, event_type: ev.type }); } catch (_e) { /* a counter never blocks a creation */ }
     const intent = keepIntentRef.current; keepIntentRef.current = null;
-    if (intent === 'plan') { setSheet(null); setStage('plan'); }
+    if (intent === 'plan') { setSheet(null); setStage(landingStage({ event: ev, ownPlan: true, now: new Date() })); }
     else if (intent === 'invite') setSheet(null);
   };
   // ── A PLAN MADE BEFORE ACCOUNTS WERE NEEDED (owner ruling, 11/12/2026) ───
@@ -11137,8 +11172,9 @@ export default function HostShellV2() {
   const dayWhispers = useMemo(() => {
     if (!liveDay) return [];
     const w = [];
-    const yes = confirmedHeads;   // COVERS, not rows — see confirmedHeads
-    if (yes > 0) w.push(yes + ' confirmed');
+    // "Confirmed" only for replies (lib/confirmedCovers.coversWithWord, cause 3, P1-5).
+    const cw = coversWithWord(event);
+    if (cw.n > 0 && cw.word === 'confirmed') w.push(cw.n + ' confirmed');
     else if (guests) w.push('planned for ' + guests);
     if (foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount >= foodPlan.itemCount) w.push('food shopped');
     { const r = expectedHeadroom(money); if (r != null && r >= 0) w.push('budget on plan'); }
@@ -11491,6 +11527,14 @@ export default function HostShellV2() {
                    blank; the instant the host types, the stage collapses to the
                    top and the recognition flow takes over. */
                 <div className={'create-stage' + (smartText.trim() === '' ? ' centered' : '')}>
+                  {/* A WAY BACK (P1-1): Create opened over a plan of hers keeps
+                      the plan one tap away; where it lands is the one rule. */}
+                  {eventIsTheHostsOwn && (
+                    <button className="mini" data-back-to-plan onClick={() => setStage(landingStage({ event, ownPlan: true, now: new Date() }))}
+                      style={{ alignSelf: 'flex-start', marginBottom: 'var(--sp-2)' }}>
+                      ‹ Back to my plan
+                    </button>
+                  )}
                   <div className="eyebrow">New event</div>
                   <h1 className="mega create-prompt">What are we planning?</h1>
                   {/* ── IT NAMED A REGISTER, NOT A TASK (host, 2026-10-06) ───────
@@ -12311,6 +12355,8 @@ export default function HostShellV2() {
                           </details>}
                           <div className={'actions-row pre' + (resolved ? ' in' : '')} style={{ marginTop: 'var(--sp-2)' }}>
                             <button ref={revealCtaRef} className={'cta big' + (resolved ? ' glow-once' : '')} onClick={() => (draftEvent ? askToKeep('plan') : setStage('plan'))}>{draftEvent ? 'Keep this plan' : 'Open your plan'}</button>
+                            {/* Owner ruling 11/23/2026 (a): her plan, unsaved, one tap away. */}
+                            {draftEvent && <button className="cta ghost" onClick={openDraftUnsaved}>Open my plan (not saved yet)</button>}
                             <button className="cta ghost" onClick={() => (draftEvent ? askToKeep('invite') : shareInviteLink())}>Check and share invite</button>
                             <button className="cta ghost" onClick={() => { clearRevealTimers(); redoEventId.current = revealEv ? revealEv.id : null; setRevealed(false); }}>Change an answer</button>
                           </div>
@@ -13670,13 +13716,13 @@ export default function HostShellV2() {
                           // In-place settles wear `.stay` (glyph doctrine: no arrow on a
                           // non-navigating CTA) — which also makes them visible to the
                           // Layer-2 loop-advance probe (2026-07-22).
-                          const isSettle = isVendorConfirmAction(a) || /^send payment to/i.test(String(a.title || ''));
+                          const isSettle = isVendorConfirmAction(a) || isBalanceDueAction(a, event);
                           // canSettle: this button lives INSIDE the card loop, so
                           // `editor === key` at the slot above genuinely mounts an editor.
                           // Ruling 31: lit on the hero card only; every card under it is soft.
                           return <button className={isHero ? 'cta' : 'cta soft'} onClick={() => onCta(a, key, { canSettle: true })}>{
                           isVendorConfirmAction(a) ? 'Mark as locked in'
-                          : /^send payment to/i.test(String(a.title || '')) ? 'Mark as paid'
+                          : isBalanceDueAction(a, event) ? 'Mark as paid'
                           /* NO generic "Take me to it" on the hero (host standing rule): name the real
                              destination when a route is genuinely all we have. One shared helper
                              now, so the four render sites can't drift apart again. */
@@ -13694,7 +13740,7 @@ export default function HostShellV2() {
                           const norm = (x) => String(x || '').toLowerCase().replace(/\s+/g, ' ').trim();
                           // By id when the action names its step (tier 2's taskId, a route's
                           // taskId); else by the card's title, which may be cut short.
-                          const rid = a.taskId || (a.route && a.route.taskId);
+                          const rid = stepRowIdOf(a);
                           const head = norm(a.title).replace(/[.…]+$/, '');
                           const ti = (event.timeline || []).findIndex((t) => t && !t.done
                             && ((rid && t.id === rid) || (head.length >= 12 && norm(t.task).startsWith(head))));
@@ -13812,9 +13858,9 @@ export default function HostShellV2() {
               </div>{/* /ecenter — the centered ask+action region */}
               {/* Progress hairline — pinned to the FOOT of the first screen (F13), after the
                   one action, above the fold. Real engine numbers. */}
-              {elegantMode && askMode && !tallTablet && phaseCues && phaseCues.totalCount > 0 && (() => {
-                const done = Number(phaseCues.completedCount) || 0;
-                const total = Number(phaseCues.totalCount) || 0;
+              {elegantMode && askMode && !tallTablet && planTotal > 0 && (() => {
+                const done = planDone;
+                const total = planTotal;
                 return (
                   // PART 9 — the ONE progress visual, SEGMENTED.
                   //
@@ -14512,9 +14558,9 @@ export default function HostShellV2() {
                       // Engine-authored numbers: completedCount/totalCount and the
                       // ranked nextCue come straight from deriveEventPhaseProgress
                       // (the engine returns counts + nextCue + items — never re-derive).
-                      const hasCues = !!(phaseCues && phaseCues.totalCount);
-                      const essDone = hasCues ? phaseCues.completedCount : plan.progress.done;
-                      const essTotal = hasCues ? phaseCues.totalCount : plan.progress.total;
+                      const hasCues = planTotal > 0;
+                      const essDone = hasCues ? planDone : plan.progress.done;
+                      const essTotal = hasCues ? planTotal : plan.progress.total;
                       const openTasks = (event.timeline || []).filter(t => t && !t.done && !isTimelineStepResolved(t)).length;
                       const nextCue = hasCues ? phaseCues.nextCue : null;
                       // Numerals in the muted sub get a <b> (one CSS contrast
@@ -14989,8 +15035,11 @@ export default function HostShellV2() {
                     const lc = (plan.planningState && plan.planningState.recommendationLifecycle) || [];
                     if (!lc.length) return null;
                     const n = (s) => lc.filter(i => i.state === s).length;
+                    // "N handled" here counted RECOMMENDATIONS (a different unit) and
+                    // printed "4 handled" under a "6 of 7" strip (P1-3). Handled is the
+                    // plan's parts, from the one reader.
                     const bits = [
-                      n('Completed') ? n('Completed') + ' handled' : null,
+                      planParts ? planPartsLine(planParts) : null,
                       n('Working') ? n('Working') + ' in progress' : null,
                       n('Blocked') ? n('Blocked') + ' need' + (n('Blocked') === 1 ? 's' : '') + ' unblocking' : null,
                     ].filter(Boolean);
@@ -15023,7 +15072,7 @@ export default function HostShellV2() {
                   )}
                   {phaseCues && Array.isArray(phaseCues.items) && phaseCues.items.length > 0 && (
                     <>
-                      <div className="shelf-label" style={{ margin: '6px 0 var(--sp-1)' }}>{phaseCues.totalCount === 1 ? 'The 1 part of your plan this count reads' : `The ${phaseCues.totalCount} parts of your plan this count reads`}</div>
+                      <div className="shelf-label" style={{ margin: '6px 0 var(--sp-1)' }}>{planTotal === 1 ? 'The 1 part of your plan this count reads' : `The ${planTotal} parts of your plan this count reads`}</div>
                       {/* RECON MODEL grounding: why this number and the inventories
                           below it can never be compared one-to-one. */}
                       <p className="grounding" style={{ margin: '0 0 6px' }}>
@@ -16195,11 +16244,11 @@ export default function HostShellV2() {
                             : <>These moments are in order but not on a clock — set a start time and every line below becomes a real one.</>}
                         </p>
                         <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
-                          <span className="of">guests arrive:</span>
+                          <span className="of">{startTimeFieldWords(event).label}</span>
                           <input className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                             value={event.startTime || ''}
                             onChange={e => writeStartTime({ startTime: e.target.value }, 'Start time set — the whole day reads from it now.')}
-                            aria-label="What time guests arrive" />
+                            aria-label={startTimeFieldWords(event).aria} />
                           {derived ? (
                             <button className="mini" onClick={() => writeStartTime({ confirm: true },
                               'Start time confirmed — the whole day reads from it now.')}>
@@ -16925,7 +16974,7 @@ export default function HostShellV2() {
                       : 'That’s everything a guest needs. Your invite is written with it.'}
                   </p>
                   <ul style={{ listStyle: 'none', margin: '0 0 var(--sp-3)', padding: 0 }}>
-                    {[['date', 'The day'], ['time', 'The time guests arrive'], ['place', 'Where it is']].map(([k, label]) => (
+                    {[['date', 'The day'], ['time', 'The time guests arrive'], ['place', 'Where it is'], ['name', 'The event’s name'], ['address', 'The street address']].filter(([k]) => k !== 'name' && k !== 'address' ? true : gaps.includes(k)).map(([k, label]) => (
                       <li key={k} data-invite-check-item={k} data-ok={has(k) ? '1' : '0'} className="grounding" style={{ margin: '0 0 4px' }}>
                         <b style={{ color: has(k) ? 'var(--ok)' : 'var(--warn)' }}>{has(k) ? '✓' : '•'}</b>{' '}
                         {label}{has(k) ? '' : k === 'time' && String(event.startTime || '').trim() ? ': we suggested one, say if it’s right' : ': missing'}
@@ -16937,6 +16986,23 @@ export default function HostShellV2() {
                     <div style={{ marginTop: 'var(--sp-3)' }}>
                       <div className="f-name">Where is it?</div>
                       {renderVenueCapture({ ctaClass: 'mini', wrapClass: 'actions-row', wrapStyle: { alignItems: 'center', marginTop: 'var(--sp-2)' }, placeOnly: true })}
+                    </div>
+                  )}
+                  {/* The one outward guard's asks (lib/outwardReady, cause 6). */}
+                  {!has('name') && (
+                    <div style={{ marginTop: 'var(--sp-3)' }} data-outward-name>
+                      <div className="f-name">What do you call it?</div>
+                      <p className="grounding" style={{ margin: '2px 0 var(--sp-2)' }}>Everyone you send it to sees this name.</p>
+                      <form className="actions-row" style={{ alignItems: 'center' }} onSubmit={(e) => { e.preventDefault(); const v = String(new FormData(e.currentTarget).get('evname') || '').trim(); if (v) patchEvent({ name: v }, 'Named “' + v + '”.'); }}>
+                        <input className="field" name="evname" aria-label="The event’s name" placeholder={event.name || ''} />
+                        <button className="mini" type="submit">Save the name</button>
+                      </form>
+                    </div>
+                  )}
+                  {has('place') && !has('address') && (
+                    <div style={{ marginTop: 'var(--sp-3)' }} data-outward-address>
+                      <div className="f-name">What is the street address?</div>
+                      {renderVenueCapture({ ctaClass: 'mini', wrapClass: 'actions-row', wrapStyle: { alignItems: 'center', marginTop: 'var(--sp-2)' } })}
                     </div>
                   )}
                   <div className="actions-row" style={{ marginTop: 'var(--sp-4)' }}>
@@ -18064,7 +18130,12 @@ export default function HostShellV2() {
               <CalendarSheet event={event} forecast={dayWx && forecastLine(dayWx) ? { date: dayWx.date, line: forecastLine(dayWx), kind: skyKind(dayWx) } : null} onOpenChecklist={() => setSheet({ kind: 'tasks' })}
                 signedIn={Boolean(session)} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} onSignIn={signInFromSheet} />
             )}
-            {sheet.kind === 'family' && (
+            {/* The family link asks the one outward guard first (cause 6). */}
+            {/* Signed out, the sheet's own ask (sign in first) comes before this. */}
+            {sheet.kind === 'family' && session && outwardGaps(event, 'family').length > 0 && (
+              <p className="v-meta" data-outward-blocked style={{ padding: 'var(--sp-2) 0' }}>{outwardPrompt(outwardGaps(event, 'family'))} Then the family link can go out.</p>
+            )}
+            {sheet.kind === 'family' && (!session || outwardGaps(event, 'family').length === 0) && (
               <FamilyLinkSheet event={event} signedIn={Boolean(session)} appUrl={publicAppUrl()}
                 onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} onSignIn={signInFromSheet} />
             )}
@@ -21155,8 +21226,7 @@ export default function HostShellV2() {
               // nextCue the hero uses, deep-linked), how the app works, a way to
               // ask a specific question, and the foundations people get stuck on.
               const nc = phaseCues && phaseCues.nextCue;
-              const ready = (phaseCues && phaseCues.totalCount)
-                ? `${phaseCues.completedCount} of ${phaseCues.totalCount} parts of your plan handled` : null;
+              const ready = planPartsLine(planParts);
               // Foundations — only the ones NOT yet done, so the list shrinks as
               // the host makes progress (real state, never a static checklist).
               const foundations = [
@@ -21217,7 +21287,7 @@ export default function HostShellV2() {
                 guests: guests || null,
                 guestBand: expect ? `likely ${expect.low}–${expect.high} on the day${expect.note ? ` (${expect.note})` : ''}` : null,
                 wx,
-                readiness: (phaseCues && phaseCues.totalCount) ? { done: phaseCues.completedCount, total: phaseCues.totalCount, nextLabel: phaseCues.nextCue && phaseCues.nextCue.label } : null,
+                readiness: planTotal ? { done: planDone, total: planTotal, nextLabel: phaseCues.nextCue && phaseCues.nextCue.label } : null,
                 eventName: event.name,
               };
               const ask = (text) => {
@@ -22976,7 +23046,7 @@ export default function HostShellV2() {
                     // uses 'rowfocus' for exactly this; this was the one sheet that
                     // never got migrated to it.
                     const { lead, detail } = splitTask(t.task);
-                    const action = checklistActionFor(t.task, { week: t.week, category: t.category });
+                    const action = checklistActionFor(t.task, { taskId: t.id, week: t.week, category: t.category });
                     // The visitors-bureau row carries its own brief (host directive
                     // 2026-07-28): contact capture + the asks with direct links.
                     const isCvbRow = /visitors bureau|convention .{0,3}visitors|\bcvb\b/i.test(String(t.task || ''));
@@ -27223,6 +27293,9 @@ export default function HostShellV2() {
               // ONE BASIS: EXPECTED (owner ruling 11/22/2026, audit 2 D-03): the
               // star reads what the hero copy, the ledger and After read.
               const left = expectedHeadroom(money);
+              // Each money number has one name (lib/moneyFigures, cause 3): the star
+              // is the ROOM in the budget, and what she still has to pay is said too.
+              const mf = moneyFigures(money);
               return (
                 <>
                   {/* PRINCIPLES REDESIGN (host directive): summary before detail —
@@ -27255,7 +27328,7 @@ export default function HostShellV2() {
                       : heroCopy.caveat || null;
                     return (
                     <SheetHero
-                      eyebrow={over ? 'Expected over by' : 'Expected left to spend'}
+                      eyebrow={headroomLabel(mf)}
                       star={fmt(Math.abs(left || 0))}
                       tone={over ? 'danger' : hcState === 'near' ? 'warn' : 'ok'}
                       sub={warmSub}
@@ -27278,7 +27351,7 @@ export default function HostShellV2() {
                           ? <> — all of it still an estimate</>
                           : <> (<b>{fmt(money.committedEstimated)}</b> of that still an estimate)</>) : null}{money.spent ? <> · <b>{fmt(money.spent)}</b> actually spent{money.spentEstimated > 0 ? (money.spentEstimated === money.spent
                           ? <> — all of it still estimated</>
-                          : <> (<b>{fmt(money.spentEstimated)}</b> of it still estimated)</>) : null}</> : null}{guestPhrase ? ' · sized for ' + guestPhrase : ''}.
+                          : <> (<b>{fmt(money.spentEstimated)}</b> of it still estimated)</>) : null}</> : null} · <b>{fmt(mf.leftToSpend)}</b> {MONEY_LABELS.leftToSpend.toLowerCase()}{guestPhrase ? ' · sized for ' + guestPhrase : ''}.
                       </>}
                     />
                     );
@@ -27344,7 +27417,7 @@ export default function HostShellV2() {
                               explains a chart the host is not looking at. */}
                           <span><i className="mbar-dot" style={{ background: over ? 'var(--danger)' : 'var(--steel-soft)' }} />{fmt(spent)} spent</span>
                           {pledged > 0 && <span><i className="mbar-dot" style={{ background: over ? 'var(--danger-solid)' : 'var(--steel)' }} />{fmt(pledged)} spoken for</span>}
-                          <span className="mbar-cap">{over ? fmt(committed - planned) + ' over ' + fmt(planned) : fmt(free) + ' of ' + fmt(planned) + ' left'}</span>
+                          <span className="mbar-cap">{over ? fmt(committed - planned) + ' over ' + fmt(planned) : fmt(free) + ' of ' + fmt(planned) + ' ' + MONEY_LABELS.unpledged}</span>
                         </div>
                       </div>
                     );
@@ -27515,7 +27588,7 @@ export default function HostShellV2() {
                                 )}
                                 {foodPlan.realCount > 0
                                   ? <>{foodPlan.realCount} of {foodPlan.itemCount} priced for real, the rest estimated.</>
-                                  : <>All {foodPlan.itemCount} item{foodPlan.itemCount === 1 ? '' : 's'} still estimated — add a real price anytime (bought or not).</>}
+                                  : <>All {foodPlan.itemCount} food item{foodPlan.itemCount === 1 ? '' : 's'} still estimated — add a real price anytime (bought or not).</>}
                                 {/* SILENCE READS AS "THESE ARE YOUR PRICES" (2026-09-18).
                                     priceContext is set only when the regional factor is
                                     NOT 1 (~:1460), and rendered only when truthy — so a

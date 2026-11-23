@@ -10,6 +10,8 @@
 
 const gameNight = {
   type: 'Game Night',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
@@ -55,21 +57,21 @@ const gameNight = {
   ],
 
   tasks: [
-    { id: 't_invite', milestoneId: 'gn_invite', phase: 'guest', label: 'Send the invite with date, time, and a one-line "what we are playing"; ask for a rough RSVP to size food/seats', when: 'T-7d' },
+    { id: 't_invite', target: 'invite', milestoneId: 'gn_invite', phase: 'guest', label: 'Send the invite with date, time, and a one-line "what we are playing"; ask for a rough RSVP to size food/seats', when: 'T-7d' },
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
-    { id: 't_pick_games', answeredBy: ['game_type'], milestoneId: 'gn_games', phase: 'plan', label: 'Decide what kind of games to play', when: 'T-3d' },
-    { id: 't_pick_games_list', milestoneId: 'gn_games', phase: 'plan', label: 'Pick 3-4 games spanning quick fillers to one longer headliner; add a 5-10 min filler for lulls', when: 'T-3d' },
-    { id: 't_split_teams', milestoneId: 'gn_games', phase: 'plan', label: 'Plan the teams: even sides, mix people who arrive together, and a quick re-split between games so no side runs away with the night', when: 'T-1d', whenChoice: { id: 'game_type', in: ['Team games'] } },
-    { id: 't_check_games', milestoneId: 'gn_games', phase: 'plan', label: 'Open every game box to confirm all pieces/cards/dice; READ or queue the rules of any NEW game so you can teach it in 5 min', when: 'T-3d' },
-    { id: 't_menu', milestoneId: 'gn_menu', phase: 'food', label: 'Lock low-mess, one-hand finger foods that will not grease up the cards; coordinate categories if potluck', when: 'T-3d' },
-    { id: 't_shop', milestoneId: 'gn_shop', phase: 'shopping', label: 'Main shop: snacks, drinks, ice, napkins/hand wipes, cups/plates, trash bags', when: 'T-1d' },
-    { id: 't_prep', milestoneId: 'gn_shop', phase: 'food', label: 'Pre-portion dips, assemble the snack/charcuterie board, start chilling all drinks', when: 'T-1d evening' },
-    { id: 't_space', milestoneId: 'gn_space', phase: 'setup', label: 'Clear + wipe the main table; a seat per guest; bright over-table lighting; queue a low playlist', when: 'T0 -1:00' },
-    { id: 't_station', milestoneId: 'gn_space', phase: 'setup', label: 'Set the snack + drink station (and a food tray) AWAY from the game table; ice out; napkins/hand wipes + scorepad + pen on the table; trash + recycling spot visible', when: 'T0 -0:30' },
-    { id: 't_refresh', milestoneId: 'event', phase: 'food', label: 'Mid-night refresh: top up bowls, restock drinks + ice, swap a full trash bag', when: 'T0 +1:30' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Clear cups/plates, bag trash + recycling, consolidate leftovers; reshelve every game (pieces back in the box)', when: 'T0 +3:00' },
+    { id: 't_pick_games', target: 'call:game_type', answeredBy: ['game_type'], milestoneId: 'gn_games', phase: 'plan', label: 'Decide what kind of games to play', when: 'T-3d' },
+    { id: 't_pick_games_list', target: 'none', milestoneId: 'gn_games', phase: 'plan', label: 'Pick 3-4 games spanning quick fillers to one longer headliner; add a 5-10 min filler for lulls', when: 'T-3d' },
+    { id: 't_split_teams', target: 'none', milestoneId: 'gn_games', phase: 'plan', label: 'Plan the teams: even sides, mix people who arrive together, and a quick re-split between games so no side runs away with the night', when: 'T-1d', whenChoice: { id: 'game_type', in: ['Team games'] } },
+    { id: 't_check_games', target: 'none', milestoneId: 'gn_games', phase: 'plan', label: 'Open every game box to confirm all pieces/cards/dice; READ or queue the rules of any NEW game so you can teach it in 5 min', when: 'T-3d' },
+    { id: 't_menu', target: 'spread', milestoneId: 'gn_menu', phase: 'food', label: 'Lock low-mess, one-hand finger foods that will not grease up the cards; coordinate categories if potluck', when: 'T-3d' },
+    { id: 't_shop', target: 'list', milestoneId: 'gn_shop', phase: 'shopping', label: 'Main shop: snacks, drinks, ice, napkins/hand wipes, cups/plates, trash bags', when: 'T-1d' },
+    { id: 't_prep', target: 'list', milestoneId: 'gn_shop', phase: 'food', label: 'Pre-portion dips, assemble the snack/charcuterie board, start chilling all drinks', when: 'T-1d evening' },
+    { id: 't_space', target: 'day', milestoneId: 'gn_space', phase: 'setup', label: 'Clear + wipe the main table; a seat per guest; bright over-table lighting; queue a low playlist', when: 'T0 -1:00' },
+    { id: 't_station', target: 'day', milestoneId: 'gn_space', phase: 'setup', label: 'Set the snack + drink station (and a food tray) AWAY from the game table; ice out; napkins/hand wipes + scorepad + pen on the table; trash + recycling spot visible', when: 'T0 -0:30' },
+    { id: 't_refresh', target: 'day', milestoneId: 'event', phase: 'food', label: 'Mid-night refresh: top up bowls, restock drinks + ice, swap a full trash bag', when: 'T0 +1:30' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Clear cups/plates, bag trash + recycling, consolidate leftovers; reshelve every game (pieces back in the box)', when: 'T0 +3:00' },
   ],
 
   purchases: [
@@ -102,12 +104,12 @@ const gameNight = {
   ],
 
   risks: [
-    { id: 'r_greasy', trigger: 'Messy, greasy, or saucy snacks at the game table', severity: 'med', mitigation: 'Dry, one-hand finger foods only; keep dips/messy items at a separate station with napkins + hand wipes.' },
-    { id: 'r_rules', trigger: 'A new game stalls the night while everyone reads the rulebook', severity: 'med', mitigation: 'Read/queue the rules of any NEW game before guests arrive; be able to teach it in ~5 min; keep a known crowd-pleaser ready.' },
-    { id: 'r_pieces', trigger: 'A game is missing cards/dice/pieces, found after guests arrive', severity: 'med', mitigation: 'Open + check every box at 3 days out; have at least one backup game.' },
-    { id: 'r_seats', trigger: 'More players than seats at the table', severity: 'med', mitigation: 'Confirm headcount; set a real seat per guest at setup; keep folding chairs nearby.' },
-    { id: 'r_light', trigger: 'Room too dim to read cards/boards', severity: 'low', mitigation: 'Add bright, even over-table lighting before doors; test it from each seat.' },
-    { id: 'r_drinks', trigger: 'Short on drinks or ice late', severity: 'low', mitigation: 'Over-stock non-alcoholic + ice; keep a backup case + a spare bag of ice.' },
+    { id: 'r_greasy', target: 'seating', trigger: 'Messy, greasy, or saucy snacks at the game table', severity: 'med', mitigation: 'Dry, one-hand finger foods only; keep dips/messy items at a separate station with napkins + hand wipes.' },
+    { id: 'r_rules', target: 'none', trigger: 'A new game stalls the night while everyone reads the rulebook', severity: 'med', mitigation: 'Read/queue the rules of any NEW game before guests arrive; be able to teach it in ~5 min; keep a known crowd-pleaser ready.' },
+    { id: 'r_pieces', target: 'none', trigger: 'A game is missing cards/dice/pieces, found after guests arrive', severity: 'med', mitigation: 'Open + check every box at 3 days out; have at least one backup game.' },
+    { id: 'r_seats', target: 'seating', trigger: 'More players than seats at the table', severity: 'med', mitigation: 'Confirm headcount; set a real seat per guest at setup; keep folding chairs nearby.' },
+    { id: 'r_light', target: 'seating', trigger: 'Room too dim to read cards/boards', severity: 'low', mitigation: 'Add bright, even over-table lighting before doors; test it from each seat.' },
+    { id: 'r_drinks', target: 'none', trigger: 'Short on drinks or ice late', severity: 'low', mitigation: 'Over-stock non-alcoholic + ice; keep a backup case + a spare bag of ice.' },
   ],
 
   contingencies: [

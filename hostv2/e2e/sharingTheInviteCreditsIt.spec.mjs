@@ -23,7 +23,9 @@ const CODE = 'e2einvitecredit0001';   // checkRsvpCapability needs 16+ character
 const INVITE = 'Send the invite with date, time, and a one-line "what we are playing"';
 
 const hostEvent = () => ({
-  id: EVENT_ID, name: 'Game night', type: 'Game Night',
+  // Her own name for it: a bare type is a placeholder the invite asks her to
+  // replace (six root causes, cause 6, lib/outwardReady).
+  id: EVENT_ID, name: 'Ana’s game night', type: 'Game Night',
   date: dateIn(2), createdAt: new Date().toISOString(),
   rsvpCode: CODE, guestMode: 'list', guestEstimate: 6, guestCountSource: 'host',
   budget: [], vendors: [],

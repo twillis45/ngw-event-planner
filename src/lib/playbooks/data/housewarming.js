@@ -14,6 +14,8 @@
 
 const housewarming = {
   type: 'Housewarming',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
@@ -62,15 +64,15 @@ const housewarming = {
   ],
 
   tasks: [
-    { id: 't_invite', milestoneId: 'hw_invite', phase: 'guest', label: 'Send invite: address, parking note, open-house window, shoes-off heads-up, and your gift stance ("no gifts, just come" or "we have a spot for them")', when: 'T-12d' },
-    { id: 't_buffer', milestoneId: 'hw_rsvp', phase: 'guest', label: 'Estimate peak overlap (assume ~50-60% of an open-house list is present at once) and plan food/drink to that, not the full list', when: 'T-3d' },
-    { id: 't_dry_shop', milestoneId: 'hw_shop_dry', phase: 'shopping', label: 'Drinks, soda, water, paper goods, napkins, trash bags, decor, candles, non-perishable snacks', when: 'T-3d' },
-    { id: 't_fresh_shop', milestoneId: 'hw_shop_fresh', phase: 'shopping', label: 'Cheese, charcuterie, fruit, veg, dips, fresh herbs/garnish, flowers (buy ~24h out)', when: 'T-1d' },
-    { id: 't_board', milestoneId: 'hw_prep', phase: 'food', label: 'Pre-build the grazing board on a tray (cover + fridge), portion dips, prep any passed bites that hold cold', when: 'T-1d evening' },
-    { id: 't_clean_pre', milestoneId: 'hw_setup', phase: 'cleanup', label: 'Pre-clean: empty dishwasher, clear sink, stage a trash + recycling station and a tub for used glasses', when: 'T0 -3h' },
-    { id: 't_entry', milestoneId: 'hw_setup', phase: 'setup', label: 'Set the entry: shoe tray + basket, coat space (hooks or a cleared bed), a small friendly sign, and a clear gift-landing spot', when: 'T0 -2h' },
-    { id: 't_station', milestoneId: 'hw_setup', phase: 'beverage', label: 'Build the self-serve drinks station: beer/wine/soda, ice tub, cups/glasses, opener, signature-cocktail batch in a pitcher', when: 'T0 -2h' },
-    { id: 't_board_out', milestoneId: 'hw_setup', phase: 'food', label: 'Set the board out, scatter a couple of snack bowls along the tour path, light unscented candles', when: 'T0 -1h' },
+    { id: 't_invite', target: 'invite', milestoneId: 'hw_invite', phase: 'guest', label: 'Send invite: address, parking note, open-house window, shoes-off heads-up, and your gift stance ("no gifts, just come" or "we have a spot for them")', when: 'T-12d' },
+    { id: 't_buffer', target: 'spread', milestoneId: 'hw_rsvp', phase: 'guest', label: 'Estimate peak overlap (assume ~50-60% of an open-house list is present at once) and plan food/drink to that, not the full list', when: 'T-3d' },
+    { id: 't_dry_shop', target: 'list', milestoneId: 'hw_shop_dry', phase: 'shopping', label: 'Drinks, soda, water, paper goods, napkins, trash bags, decor, candles, non-perishable snacks', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'list', milestoneId: 'hw_shop_fresh', phase: 'shopping', label: 'Cheese, charcuterie, fruit, veg, dips, fresh herbs/garnish, flowers (buy ~24h out)', when: 'T-1d' },
+    { id: 't_board', target: 'none', milestoneId: 'hw_prep', phase: 'food', label: 'Pre-build the grazing board on a tray (cover + fridge), portion dips, prep any passed bites that hold cold', when: 'T-1d evening' },
+    { id: 't_clean_pre', target: 'day', milestoneId: 'hw_setup', phase: 'cleanup', label: 'Pre-clean: empty dishwasher, clear sink, stage a trash + recycling station and a tub for used glasses', when: 'T0 -3h' },
+    { id: 't_entry', target: 'day', milestoneId: 'hw_setup', phase: 'setup', label: 'Set the entry: shoe tray + basket, coat space (hooks or a cleared bed), a small friendly sign, and a clear gift-landing spot', when: 'T0 -2h' },
+    { id: 't_station', target: 'day', milestoneId: 'hw_setup', phase: 'beverage', label: 'Build the self-serve drinks station: beer/wine/soda, ice tub, cups/glasses, opener, signature-cocktail batch in a pitcher', when: 'T0 -2h' },
+    { id: 't_board_out', target: 'day', milestoneId: 'hw_setup', phase: 'food', label: 'Set the board out, scatter a couple of snack bowls along the tour path, light unscented candles', when: 'T0 -1h' },
     // MOVED OFF A DEAD SURFACE, 2026-09-23. These were one `schedules.cleanup`
     // row at `T0 +1d morning` — a post-event token the day board drops by rule —
     // so nothing here ever reached a host. This playbook's own day-of reset task
@@ -81,11 +83,11 @@ const housewarming = {
     // recommends borrowing over renting in two places. The thank-yous had no
     // carrier at all — the gift contingency says to log who brought what "later
     // for thank-yous", and no task ever wrote them.
-    { id: 't_after_returns', milestoneId: 'event', phase: 'cleanup', label: 'Get the borrowed chairs, platters and coolers back to whoever lent them, while you still remember which is whose', when: 'T0 +1d' },
-    { id: 't_after_thanks', milestoneId: 'event', phase: 'guest', label: 'Send the thank-yous for housewarming gifts off the log you made on the night', when: 'T0 +1d' },
-    { id: 't_greet', milestoneId: 'event', phase: 'event', label: 'Greet at the door, take coats, point to drinks + gift spot, offer a quick tour to each cluster as they arrive', when: 'T0 +0:00' },
-    { id: 't_refill', milestoneId: 'event', phase: 'food', label: 'Quietly top up the board, refill ice, and clear stray cups into the staged tub through the party', when: 'ongoing' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Quick reset: leftovers covered, glasses to the dishwasher, bottles to recycling, trash out — finish the rest in the morning', when: 'T0 +3:30' },
+    { id: 't_after_returns', target: 'borrowed', milestoneId: 'event', phase: 'cleanup', label: 'Get the borrowed chairs, platters and coolers back to whoever lent them, while you still remember which is whose', when: 'T0 +1d' },
+    { id: 't_after_thanks', target: 'guest-list', milestoneId: 'event', phase: 'guest', label: 'Send the thank-yous for housewarming gifts off the log you made on the night', when: 'T0 +1d' },
+    { id: 't_greet', target: 'day', milestoneId: 'event', phase: 'event', label: 'Greet at the door, take coats, point to drinks + gift spot, offer a quick tour to each cluster as they arrive', when: 'T0 +0:00' },
+    { id: 't_refill', target: 'list', milestoneId: 'event', phase: 'food', label: 'Quietly top up the board, refill ice, and clear stray cups into the staged tub through the party', when: 'ongoing' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Quick reset: leftovers covered, glasses to the dishwasher, bottles to recycling, trash out — finish the rest in the morning', when: 'T0 +3:30' },
   ],
 
   purchases: [
@@ -124,13 +126,13 @@ const housewarming = {
   ],
 
   risks: [
-    { id: 'r_entry', trigger: 'No coat/shoe/entry plan — 25 pairs of shoes pile at a new front door', severity: 'med', mitigation: 'Decide shoes-on/off at a week out; stage a shoe tray + basket, a cleared coat space, and a small sign before anyone arrives.' },
-    { id: 'r_ice', trigger: 'No ice / warm drinks', severity: 'med', mitigation: 'Buy ~1-1.5 lb ice/guest the day of; keep a backup bag in the freezer and bottles pre-chilled.' },
-    { id: 'r_overlap', trigger: 'Everyone arrives at once instead of spreading across the window', severity: 'med', mitigation: 'Size food/drink to peak overlap (~50-60% of the list) and keep a non-perishable backup (extra crackers, nuts, frozen apps) ready to deploy.' },
-    { id: 'r_gifts', trigger: 'Guests bring gifts with nowhere to put them / host stance unclear', severity: 'low', mitigation: 'State the gift stance on the invite; if welcoming gifts, set an obvious landing table near the door.' },
-    { id: 'r_spill', trigger: 'Spill on new floors / carpet', severity: 'med', mitigation: 'Stain spray + paper towels staged in advance; act fast, blot don\'t rub; coasters out on wood surfaces.' },
-    { id: 'r_runlow', trigger: 'Snacks or drinks run low mid-party', severity: 'low', mitigation: 'Keep a non-perishable reserve and a short nearby-store run as backup; switch to the batched cocktail/punch to stretch alcohol.' },
-    { id: 'r_tour', trigger: 'House tour becomes an awkward herd through private rooms', severity: 'low', mitigation: 'Pre-decide the tour path, close doors to off-limits rooms, and tour small clusters as they arrive rather than one big group.' },
+    { id: 'r_entry', target: 'none', trigger: 'No coat/shoe/entry plan — 25 pairs of shoes pile at a new front door', severity: 'med', mitigation: 'Decide shoes-on/off at a week out; stage a shoe tray + basket, a cleared coat space, and a small sign before anyone arrives.' },
+    { id: 'r_ice', target: 'none', trigger: 'No ice / warm drinks', severity: 'med', mitigation: 'Buy ~1-1.5 lb ice/guest the day of; keep a backup bag in the freezer and bottles pre-chilled.' },
+    { id: 'r_overlap', target: 'food', trigger: 'Everyone arrives at once instead of spreading across the window', severity: 'med', mitigation: 'Size food/drink to peak overlap (~50-60% of the list) and keep a non-perishable backup (extra crackers, nuts, frozen apps) ready to deploy.' },
+    { id: 'r_gifts', target: 'seating', trigger: 'Guests bring gifts with nowhere to put them / host stance unclear', severity: 'low', mitigation: 'State the gift stance on the invite; if welcoming gifts, set an obvious landing table near the door.' },
+    { id: 'r_spill', target: 'none', trigger: 'Spill on new floors / carpet', severity: 'med', mitigation: 'Stain spray + paper towels staged in advance; act fast, blot don\'t rub; coasters out on wood surfaces.' },
+    { id: 'r_runlow', target: 'none', trigger: 'Snacks or drinks run low mid-party', severity: 'low', mitigation: 'Keep a non-perishable reserve and a short nearby-store run as backup; switch to the batched cocktail/punch to stretch alcohol.' },
+    { id: 'r_tour', target: 'none', trigger: 'House tour becomes an awkward herd through private rooms', severity: 'low', mitigation: 'Pre-decide the tour path, close doors to off-limits rooms, and tour small clusters as they arrive rather than one big group.' },
   ],
 
   contingencies: [

@@ -5,6 +5,7 @@
 // invite; the ticks come back on the reply as `datePicks`; the host's
 // "Use these dates" sets the dates and settles the step.
 // e2e twin: hostv2/e2e/theDatePollAsksOnTheInvite.spec.mjs.
+import { routeByWords } from '../__fixtures__/stepByWords';
 import { checklistRouteFor } from '../taskRoute';
 import { resolveRoute } from '../routeResolver';
 import { taskSatisfied } from '../taskEngine';
@@ -29,7 +30,7 @@ describe.each([
   test('premise: the row is in the playbook', () => { expect(r).toBeTruthy(); });
 
   test('its button is "Ask on the invite" and it opens Date & time on the dates to offer', () => {
-    const hit = checklistRouteFor(r.task, { week: r.week, category: r.category }, ev(type));
+    const hit = routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, ev(type));
     expect(hit && hit.label).toBe('Ask on the invite');
     expect(resolveRoute(hit.route)).toEqual({ kind: 'date', focus: 'options' });
   });

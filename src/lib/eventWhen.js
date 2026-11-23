@@ -36,12 +36,59 @@ export function parseStartMinutes(s) {
   return h * 60 + mm;
 }
 
+// ─── WHAT THE TIME SHE TYPED MEANS (six root causes, cause 5) ────────────────
+// Thanksgiving walkthrough P1-4 (11/23/2026): she typed "3pm"; the decisions
+// sheet said dinner hits the table at 3 PM while the day's schedule had
+// arrivals at 3 and dinner at 4. The typed time had no defined meaning.
+//
+// OWNER RULING 11/23/2026: for meal-centered events the time she types is when
+// dinner hits the table; arrivals come before it, by the playbook's own stated
+// lead. Every playbook DECLARES its meaning (`timeAnchor`, lib/eventAnchor),
+// and creation stamps it on the event, once:
+//   event.startTimeMeans  'serve' | 'arrival'   (absent → 'arrival', the
+//                         meaning every event had before this ruling)
+//   event.arrivalLeadMin  minutes from arrival to the meal (serve events)
+// The stamp lives on the event so this file stays import-free (the guest's
+// invite reads it). Everything that schedules — the run of show, the invite,
+// the decisions copy, the calendar — reads eventClock.
+export const TIME_MEANS = Object.freeze({ SERVE: 'serve', ARRIVAL: 'arrival' });
+
+/**
+ * eventClock(event) → { means, leadMin, typedMin, arrivalMin, serveMin }
+ * typedMin is the time she gave (null when none); arrivalMin is the run of
+ * show's anchor (when guests arrive); serveMin is when the meal is served when
+ * the event says so (null otherwise). Precise times only.
+ */
+export function eventClock(event) {
+  const means = event && event.startTimeMeans === TIME_MEANS.SERVE ? TIME_MEANS.SERVE : TIME_MEANS.ARRIVAL;
+  const lead = Number(event && event.arrivalLeadMin);
+  const leadMin = means === TIME_MEANS.SERVE && Number.isFinite(lead) && lead > 0 ? Math.round(lead) : 0;
+  const typedMin = parseStartMinutes(event && event.startTime);
+  if (typedMin == null) return { means, leadMin, typedMin: null, arrivalMin: null, serveMin: null };
+  if (means === TIME_MEANS.SERVE) return { means, leadMin, typedMin, arrivalMin: Math.max(0, typedMin - leadMin), serveMin: typedMin };
+  return { means, leadMin, typedMin, arrivalMin: typedMin, serveMin: null };
+}
+
+/** "15:00" → "3:00 PM". */
+export function clockLabel12(min) {
+  if (min == null || !Number.isFinite(min)) return '';
+  const h24 = Math.floor(min / 60) % 24;
+  const mm = min % 60;
+  return `${h24 % 12 === 0 ? 12 : h24 % 12}:${String(mm).padStart(2, '0')} ${h24 >= 12 ? 'PM' : 'AM'}`;
+}
+
+/** When guests arrive, in minutes — the run of show's anchor. Precise only. */
+export function eventArrivalMinutes(event) {
+  return eventClock(event).arrivalMin;
+}
+
 /**
  * The event's start, in minutes from midnight — precise time first, bucket second.
  * null when the host has told us NOTHING about when the day starts.
  */
 export function eventStartMinutes(event) {
-  const exact = parseStartMinutes(event && event.startTime);
+  // When guests arrive: for a serve-anchored event, the lead before the meal.
+  const exact = eventArrivalMinutes(event);
   if (exact != null) return exact;
   const tod = String((event && event.timeOfDay) || '').trim().toLowerCase();
   const hour = ANCHOR_HOUR[tod];
@@ -65,13 +112,13 @@ export function eventStartLabel(event) {
   // a guest must never be handed an hour the host never chose. (The same rule the reply-by
   // date learned the hard way.) Unconfirmed ⇒ fall through to the bucket, or to nothing.
   const derived = event && String(event.startTimeSource || '') === 'derived';
-  const exact = derived ? null : parseStartMinutes(event && event.startTime);
-  if (exact != null) {
-    const h24 = Math.floor(exact / 60);
-    const mm = exact % 60;
-    const ap = h24 >= 12 ? 'PM' : 'AM';
-    const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-    return { kind: 'exact', label: `${h12}:${String(mm).padStart(2, '0')} ${ap}` };
+  const clock = derived ? null : eventClock(event);
+  if (clock && clock.arrivalMin != null) {
+    // A guest is told when to ARRIVE; a meal-centered event also says when it
+    // is served (cause 5: "dinner at 3:00 PM" means arrivals before it).
+    return clock.serveMin != null
+      ? { kind: 'exact', label: clockLabel12(clock.arrivalMin), serveLabel: clockLabel12(clock.serveMin) }
+      : { kind: 'exact', label: clockLabel12(clock.arrivalMin) };
   }
   const tod = String((event && event.timeOfDay) || '').trim();
   if (tod && ANCHOR_HOUR[tod.toLowerCase()] != null) {
@@ -80,4 +127,11 @@ export function eventStartLabel(event) {
     return { kind: 'bucket', label: tod.charAt(0).toUpperCase() + tod.slice(1).toLowerCase() };
   }
   return null;
+}
+
+/** The words beside the time field: what the time she sets there means. */
+export function startTimeFieldWords(event) {
+  return eventClock(event).means === TIME_MEANS.SERVE
+    ? { label: 'dinner on the table:', aria: 'What time dinner hits the table' }
+    : { label: 'guests arrive:', aria: 'What time guests arrive' };
 }

@@ -36,6 +36,9 @@
 
 const clientDinner = {
   type: 'Client Dinner',
+  // What the time she types means (lib/eventAnchor, cause 5; owner ruling 11/23/2026):
+  // when dinner hits the table. Arrivals come first, by this playbook's own serve cue.
+  timeAnchor: { means: 'serve', serveAt: 'T0 +30m' },
   solveFamily: 'client_dinner',
   family: 'corporate',
   recordKind: 'client',
@@ -92,37 +95,37 @@ const clientDinner = {
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
-    { id: 't_objective', answeredBy: ['objective'], milestoneId: 'cd_objective', phase: 'planning', label: 'Decide what this dinner is for', when: 'T-21d' },
-    { id: 't_objective_write', milestoneId: 'cd_objective', phase: 'planning', label: 'Write the one outcome this dinner is for, in a sentence, and name who owns it', when: 'T-21d' },
-    { id: 't_guestlist', milestoneId: 'cd_guestlist', phase: 'guest', label: 'Build the guest list for both sides and ask the client to confirm who they are bringing', when: 'T-18d' },
-    { id: 't_invite', milestoneId: 'cd_guestlist', phase: 'guest', label: 'Send the invitation with date, time, restaurant, dress, and the dietary and accessibility ask', when: 'T-18d' },
-    { id: 't_reserve', milestoneId: 'cd_reserve', phase: 'venue', label: 'Book the private dining room and get the food-and-beverage minimum and cancellation terms in writing', when: 'T-18d', whenChoice: { id: 'venue_type', in: ['Private dining room', 'Reserved section of a restaurant', "Chef's table or tasting menu"] } },
-    { id: 't_reserve_table', milestoneId: 'cd_reserve', phase: 'venue', label: 'Book the table and ask for the quietest corner the restaurant has, away from the bar and the kitchen door', when: 'T-18d', whenChoice: { id: 'venue_type', in: ['Main dining room table'] } },
+    { id: 't_objective', target: 'call:objective', answeredBy: ['objective'], milestoneId: 'cd_objective', phase: 'planning', label: 'Decide what this dinner is for', when: 'T-21d' },
+    { id: 't_objective_write', target: 'none', milestoneId: 'cd_objective', phase: 'planning', label: 'Write the one outcome this dinner is for, in a sentence, and name who owns it', when: 'T-21d' },
+    { id: 't_guestlist', target: 'guests', milestoneId: 'cd_guestlist', phase: 'guest', label: 'Build the guest list for both sides and ask the client to confirm who they are bringing', when: 'T-18d' },
+    { id: 't_invite', target: 'invite', milestoneId: 'cd_guestlist', phase: 'guest', label: 'Send the invitation with date, time, restaurant, dress, and the dietary and accessibility ask', when: 'T-18d' },
+    { id: 't_reserve', target: 'vendors', milestoneId: 'cd_reserve', phase: 'venue', label: 'Book the private dining room and get the food-and-beverage minimum and cancellation terms in writing', when: 'T-18d', whenChoice: { id: 'venue_type', in: ['Private dining room', 'Reserved section of a restaurant', "Chef's table or tasting menu"] } },
+    { id: 't_reserve_table', target: 'vendors', milestoneId: 'cd_reserve', phase: 'venue', label: 'Book the table and ask for the quietest corner the restaurant has, away from the bar and the kitchen door', when: 'T-18d', whenChoice: { id: 'venue_type', in: ['Main dining room table'] } },
     // NOISE — silent in 35 of 39 playbooks per the 2026-08-21 census, and the
     // single most common way a client dinner is wasted: a room you cannot talk in.
-    { id: 't_noise', milestoneId: 'cd_reserve', phase: 'venue', label: 'Ask the restaurant what else is booked in the room that night and whether the music can be turned down', when: 'T-14d' },
+    { id: 't_noise', target: 'none', milestoneId: 'cd_reserve', phase: 'venue', label: 'Ask the restaurant what else is booked in the room that night and whether the music can be turned down', when: 'T-14d' },
     // ACCESSIBILITY — silent in 32 of 39. A guest you are courting should never
     // be the person who has to ask about the stairs.
-    { id: 't_access', milestoneId: 'cd_reserve', phase: 'venue', label: 'Confirm step-free entry, an accessible restroom, and a seat that works for anyone with mobility or hearing needs', when: 'T-14d' },
-    { id: 't_budget', milestoneId: 'cd_budget', phase: 'planning', label: 'Set a per-head spend cap and check it against your expense policy before the menu is chosen', when: 'T-14d' },
-    { id: 't_policy', milestoneId: 'cd_budget', phase: 'planning', label: "Check the client's own gift and hospitality policy — some accounts cap or bar what you may spend on them", when: 'T-14d' },
-    { id: 't_check', milestoneId: 'cd_budget', phase: 'planning', label: 'Leave a card on file with the restaurant and agree the gratuity now, so no check reaches the table', when: 'T-14d', whenChoice: { id: 'check_owner', in: ['Host pays, card on file with the restaurant'] } },
-    { id: 't_dietary', milestoneId: 'cd_dietary', phase: 'guest', label: 'Ask every guest for allergies, dietary needs and whether they drink, and send the list to the restaurant in writing', when: 'T-10d' },
-    { id: 't_menu', milestoneId: 'cd_dietary', phase: 'food', label: 'Agree the set menu or the ordering approach with the restaurant, inside the per-head cap', when: 'T-10d' },
-    { id: 't_nonalc', milestoneId: 'cd_dietary', phase: 'beverage', label: 'Confirm the restaurant has a real zero-proof list, so a guest who is not drinking is not handed soda water', when: 'T-10d' },
-    { id: 't_talkingpoints', milestoneId: 'cd_prep', phase: 'planning', label: 'Write the talking points: what to raise, what to leave alone, and the one ask', when: 'T-5d' },
-    { id: 't_brief', milestoneId: 'cd_prep', phase: 'planning', label: 'Brief your own attendees on the objective, the talking points, and who leads which topic', when: 'T-5d' },
-    { id: 't_av', milestoneId: 'cd_prep', phase: 'setup', label: 'Confirm a screen and power in the room, and test the laptop connection before guests arrive', when: 'T-5d', whenChoice: { id: 'program', in: ['A five-minute update or demo', 'A formal presentation'] } },
-    { id: 't_gift', milestoneId: 'cd_prep', phase: 'guest', label: 'Buy and wrap the client gift, and check the value against both companies’ gift policies', when: 'T-3d' },
-    { id: 't_seating', milestoneId: 'cd_prep', phase: 'guest', label: 'Draw the seating plan so the decision-maker sits beside the person who needs that conversation', when: 'T-3d' },
-    { id: 't_confirm', milestoneId: 'cd_confirm', phase: 'venue', label: 'Reconfirm the reservation, the headcount, the dietary list and the arrival time with the restaurant', when: 'T-2d' },
-    { id: 't_logistics', milestoneId: 'cd_confirm', phase: 'guest', label: 'Send guests the address, the parking or valet detail, and a phone number to reach you on the night', when: 'T-2d' },
-    { id: 't_arrive', milestoneId: 'cd_setup', phase: 'setup', label: 'Arrive thirty minutes early, walk the room, check the table and place cards, and confirm the payment arrangement with the manager', when: 'T0' },
-    { id: 't_rides', milestoneId: 'event', phase: 'event', label: 'Arrange rides home for anyone who has been drinking before the evening winds down', when: 'T0' },
-    { id: 't_notes', milestoneId: 'cd_followup', phase: 'planning', label: 'Write down what you learned and what you promised, before you leave the restaurant', when: 'T0' },
-    { id: 't_thanks', milestoneId: 'cd_followup', phase: 'planning', label: 'Send the thank-you note and every follow-up you promised at the table, within one business day', when: 'T0 +1d' },
-    { id: 't_expense', milestoneId: 'cd_followup', phase: 'planning', label: 'File the expense report with the itemized receipt and the full attendee list', when: 'T0 +2d' },
-    { id: 't_crm', milestoneId: 'cd_followup', phase: 'planning', label: 'Log the outcome and the agreed next step against the account, so the evening turns into a decision', when: 'T0 +2d' },
+    { id: 't_access', target: 'place-notes', milestoneId: 'cd_reserve', phase: 'venue', label: 'Confirm step-free entry, an accessible restroom, and a seat that works for anyone with mobility or hearing needs', when: 'T-14d' },
+    { id: 't_budget', target: 'money', milestoneId: 'cd_budget', phase: 'planning', label: 'Set a per-head spend cap and check it against your expense policy before the menu is chosen', when: 'T-14d' },
+    { id: 't_policy', target: 'money', milestoneId: 'cd_budget', phase: 'planning', label: "Check the client's own gift and hospitality policy — some accounts cap or bar what you may spend on them", when: 'T-14d' },
+    { id: 't_check', target: 'money', milestoneId: 'cd_budget', phase: 'planning', label: 'Leave a card on file with the restaurant and agree the gratuity now, so no check reaches the table', when: 'T-14d', whenChoice: { id: 'check_owner', in: ['Host pays, card on file with the restaurant'] } },
+    { id: 't_dietary', target: 'diet', milestoneId: 'cd_dietary', phase: 'guest', label: 'Ask every guest for allergies, dietary needs and whether they drink, and send the list to the restaurant in writing', when: 'T-10d' },
+    { id: 't_menu', target: 'spread', milestoneId: 'cd_dietary', phase: 'food', label: 'Agree the set menu or the ordering approach with the restaurant, inside the per-head cap', when: 'T-10d' },
+    { id: 't_nonalc', target: 'list', milestoneId: 'cd_dietary', phase: 'beverage', label: 'Confirm the restaurant has a real zero-proof list, so a guest who is not drinking is not handed soda water', when: 'T-10d' },
+    { id: 't_talkingpoints', target: 'none', milestoneId: 'cd_prep', phase: 'planning', label: 'Write the talking points: what to raise, what to leave alone, and the one ask', when: 'T-5d' },
+    { id: 't_brief', target: 'none', milestoneId: 'cd_prep', phase: 'planning', label: 'Brief your own attendees on the objective, the talking points, and who leads which topic', when: 'T-5d' },
+    { id: 't_av', target: 'guests', milestoneId: 'cd_prep', phase: 'setup', label: 'Confirm a screen and power in the room, and test the laptop connection before guests arrive', when: 'T-5d', whenChoice: { id: 'program', in: ['A five-minute update or demo', 'A formal presentation'] } },
+    { id: 't_gift', target: 'list', milestoneId: 'cd_prep', phase: 'guest', label: 'Buy and wrap the client gift, and check the value against both companies’ gift policies', when: 'T-3d' },
+    { id: 't_seating', target: 'space', milestoneId: 'cd_prep', phase: 'guest', label: 'Draw the seating plan so the decision-maker sits beside the person who needs that conversation', when: 'T-3d' },
+    { id: 't_confirm', target: 'guests', milestoneId: 'cd_confirm', phase: 'venue', label: 'Reconfirm the reservation, the headcount, the dietary list and the arrival time with the restaurant', when: 'T-2d' },
+    { id: 't_logistics', target: 'parking', milestoneId: 'cd_confirm', phase: 'guest', label: 'Send guests the address, the parking or valet detail, and a phone number to reach you on the night', when: 'T-2d' },
+    { id: 't_arrive', target: 'day', milestoneId: 'cd_setup', phase: 'setup', label: 'Arrive thirty minutes early, walk the room, check the table and place cards, and confirm the payment arrangement with the manager', when: 'T0' },
+    { id: 't_rides', target: 'day', milestoneId: 'event', phase: 'event', label: 'Arrange rides home for anyone who has been drinking before the evening winds down', when: 'T0' },
+    { id: 't_notes', target: 'day', milestoneId: 'cd_followup', phase: 'planning', label: 'Write down what you learned and what you promised, before you leave the restaurant', when: 'T0' },
+    { id: 't_thanks', target: 'guest-list', milestoneId: 'cd_followup', phase: 'planning', label: 'Send the thank-you note and every follow-up you promised at the table, within one business day', when: 'T0 +1d' },
+    { id: 't_expense', target: 'none', milestoneId: 'cd_followup', phase: 'planning', label: 'File the expense report with the itemized receipt and the full attendee list', when: 'T0 +2d' },
+    { id: 't_crm', target: 'none', milestoneId: 'cd_followup', phase: 'planning', label: 'Log the outcome and the agreed next step against the account, so the evening turns into a decision', when: 'T0 +2d' },
   ],
 
   // The restaurant cooks — so this list is only what the HOST actually buys.
@@ -145,15 +148,15 @@ const clientDinner = {
   ],
 
   risks: [
-    { id: 'r_nooutcome', trigger: 'The dinner has no named objective, so nothing happens afterwards', severity: 'high', mitigation: 'Write the outcome as one sentence at three weeks out, brief your own side on it at five days, and capture what was promised before you leave the restaurant.' },
-    { id: 'r_dietary', trigger: 'A guest is served something they cannot eat, in front of their own team', severity: 'high', mitigation: 'Collect allergies and dietary needs with the invitation, send them to the restaurant in writing at ten days out, and reconfirm at two days out. Never rely on a guest raising it at the table.' },
-    { id: 'r_noise', trigger: 'The room is too loud to hold the conversation the dinner exists for', severity: 'high', mitigation: 'Book a private room where you can; ask what else is booked in it, ask for the music to be turned down, and avoid tables near the bar or the kitchen door.' },
-    { id: 'r_check', trigger: 'The check arrives at the table, or the spend blows the expense policy', severity: 'med', mitigation: 'Set a per-head cap before the menu is chosen, leave a card on file with agreed gratuity, and check the client’s own hospitality policy — some accounts cap or bar what you may spend.' },
-    { id: 'r_overserve', trigger: 'Someone at the table — yours or theirs — is over-served', severity: 'high', mitigation: 'Decide the alcohol level in advance, make sure the zero-proof option is a real one, never let the host order the last round, and arrange rides home before the evening winds down.' },
-    { id: 'r_guestlist', trigger: 'Your side outnumbers or outranks theirs and the table feels like an ambush', severity: 'med', mitigation: 'Match seniority on both sides and keep your headcount no larger than theirs; confirm their attendees before you finalize yours.' },
-    { id: 'r_seating', trigger: 'Seating left to chance and the two people who needed to talk never do', severity: 'med', mitigation: 'Draw the seating plan at three days out around the conversation you need, and use place cards so it survives the room.' },
-    { id: 'r_confidential', trigger: 'A specific commercial conversation happens where it can be overheard', severity: 'med', mitigation: 'A private room with a door is the control. In an open dining room, keep numbers and names off the table and move the specifics to the follow-up call.' },
-    { id: 'r_nofollowup', trigger: 'Nothing you promised at the table is sent afterwards', severity: 'high', mitigation: 'Write down every promise before you leave, send the follow-ups within one business day, and log the agreed next step against the account.' },
+    { id: 'r_nooutcome', target: 'none', trigger: 'The dinner has no named objective, so nothing happens afterwards', severity: 'high', mitigation: 'Write the outcome as one sentence at three weeks out, brief your own side on it at five days, and capture what was promised before you leave the restaurant.' },
+    { id: 'r_dietary', target: 'seating', trigger: 'A guest is served something they cannot eat, in front of their own team', severity: 'high', mitigation: 'Collect allergies and dietary needs with the invitation, send them to the restaurant in writing at ten days out, and reconfirm at two days out. Never rely on a guest raising it at the table.' },
+    { id: 'r_noise', target: 'none', trigger: 'The room is too loud to hold the conversation the dinner exists for', severity: 'high', mitigation: 'Book a private room where you can; ask what else is booked in it, ask for the music to be turned down, and avoid tables near the bar or the kitchen door.' },
+    { id: 'r_check', target: 'seating', trigger: 'The check arrives at the table, or the spend blows the expense policy', severity: 'med', mitigation: 'Set a per-head cap before the menu is chosen, leave a card on file with agreed gratuity, and check the client’s own hospitality policy — some accounts cap or bar what you may spend.' },
+    { id: 'r_overserve', target: 'seating', trigger: 'Someone at the table — yours or theirs — is over-served', severity: 'high', mitigation: 'Decide the alcohol level in advance, make sure the zero-proof option is a real one, never let the host order the last round, and arrange rides home before the evening winds down.' },
+    { id: 'r_guestlist', target: 'seating', trigger: 'Your side outnumbers or outranks theirs and the table feels like an ambush', severity: 'med', mitigation: 'Match seniority on both sides and keep your headcount no larger than theirs; confirm their attendees before you finalize yours.' },
+    { id: 'r_seating', target: 'seating', trigger: 'Seating left to chance and the two people who needed to talk never do', severity: 'med', mitigation: 'Draw the seating plan at three days out around the conversation you need, and use place cards so it survives the room.' },
+    { id: 'r_confidential', target: 'seating', trigger: 'A specific commercial conversation happens where it can be overheard', severity: 'med', mitigation: 'A private room with a door is the control. In an open dining room, keep numbers and names off the table and move the specifics to the follow-up call.' },
+    { id: 'r_nofollowup', target: 'seating', trigger: 'Nothing you promised at the table is sent afterwards', severity: 'high', mitigation: 'Write down every promise before you leave, send the follow-ups within one business day, and log the agreed next step against the account.' },
   ],
 
   contingencies: [

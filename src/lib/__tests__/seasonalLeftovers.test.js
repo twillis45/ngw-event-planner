@@ -3,6 +3,7 @@
 // found while writing the Thanksgiving, Friendsgiving, holiday party and New
 // Year's Eve guides, and left out of its scope. One test per defect; each was
 // watched failing on 145d08fc before its fix.
+import { routeByWords } from '../__fixtures__/stepByWords';
 import { ALL_PLAYBOOKS, playbookFoodPlan, playbookRisks, playbookDayOfChecklist } from '../playbooks';
 import { notIncludedFor, notIncludedSummary } from '../budgetEstimator';
 import { budgetFamilyForType } from '../budgetEstimator/confidence';
@@ -121,10 +122,10 @@ test('5 · the candle risk cites NFPA, and every number in it is in the source',
 // ── 6 ──────────────────────────────────────────────────────────────────────
 test('6 · building a playlist has nowhere in the app to go, so it gets no button', () => {
   const hp = HP();
-  expect(checklistRouteFor('Build a 4-hour festive playlist (arrival → peak → wind-down) or brief the DJ', { category: 'planning' }, hp)).toBeNull();
-  expect(checklistRouteFor('Build a playlist celebrating Black artists (blues, soul, funk)', { category: 'planning' }, hp)).toBeNull();
+  expect(routeByWords('Build a 4-hour festive playlist (arrival → peak → wind-down) or brief the DJ', { category: 'planning' }, hp)).toBeNull();
+  expect(routeByWords('Build a playlist celebrating Black artists (blues, soul, funk)', { category: 'planning' }, hp)).toBeNull();
   // A row that leads with booking or briefing the DJ is still vendor work.
-  const vendor = (t) => (checklistRouteFor(t, { category: 'planning' }, hp) || {}).route;
-  expect(vendor('Book the DJ or build the playlist (old-school R&B, line dances)')).toEqual(expect.objectContaining({ tab: 'Vendors' }));
+  const vendor = (t) => (routeByWords(t, { category: 'planning' }, hp) || {}).route;
+  expect(vendor('Book the DJ or build the playlist')).toEqual(expect.objectContaining({ tab: 'Vendors' }));
   expect(vendor('Brief DJ on theme, must-play/do-not-play list, MC duties')).toEqual(expect.objectContaining({ tab: 'Vendors' }));
 });

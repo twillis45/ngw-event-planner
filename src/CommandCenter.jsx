@@ -96,7 +96,7 @@ import { daysUntil } from './lib/dates';
 // the same outbound/planner signal used elsewhere. Without this, a sent approval
 // is misread as an unsent draft and the next action wrongly says "send it" /
 // "Waiting on: You" when it's really "nudge the client" / "Waiting on: Client".
-import { milestoneActionRoute, checklistRouteFor } from './lib/taskRoute';
+import { milestoneActionRoute, checklistRouteFor, stepRoute } from './lib/taskRoute';
 import { confirmedCovers } from './lib/confirmedCovers';
 export { milestoneActionRoute };
 const approvalIsSent = (m) => !!m.requestSentAt || m.direction === 'outbound' || m.sender === 'planner' || /sent|delivered/i.test(m.deliveryStatus || '');
@@ -2180,6 +2180,11 @@ export function eventPlan(event, ctx = null) {
     // ("Catch up on this step."). Dropped here, the headline fell to the CTA
     // and read "Map the spread." over an allergy step.
     leadIsStep: top.leadIsStep === true,
+    // THE EIGHTH and NINTH (six root causes, cause 1): the step row a ladder hero
+    // stands for, and the in-place editor a producer declares — lib/heroEditor
+    // reads these instead of the title.
+    ...(top.stepRowId ? { stepRowId: top.stepRowId } : null),
+    ...(top.editor ? { editor: top.editor } : null),
     consequence: top.consequence || null,
     cta: top.primaryCta || null,
     route: top.primaryRoute || null,
@@ -3383,6 +3388,8 @@ export function _selectEventNextActionInner(event, prices = null) {
       level: 'attention',
       category: 'caterer',
       title: 'Confirm final catering count.',
+      // The catering-count editor answers this card (declared, not read off the title).
+      editor: 'count',
       consequence: `The caterer is set for ${event.catererCount}, but your count now comes to ${d.confirmedHeadcount}. Until those match, seating, meal counts, and the day's timing are all working from the wrong number.`,
       primaryCta: 'Fix catering count',
       primaryRoute: { tab: 'Vendors', vendorId: d.cateringVendor.id },
@@ -3561,7 +3568,7 @@ export function _selectEventNextActionInner(event, prices = null) {
         ? String(row.task || row.title).trim().replace(/[.\s]+$/, '') : null;
       if (!txt) return null;
       let hit = null;
-      try { hit = checklistRouteFor(txt, { week: row.week, category: row.category }, event) || null; }
+      try { hit = checklistRouteFor(txt, { taskId: row.id, week: row.week, category: row.category }, event) || null; }
       catch (_e) { hit = null; }
       // A route back onto the tasks sheet is the very thing this ruling forbids.
       if (!hit || !hit.route || hit.route.tab === 'Planning Tasks' || hit.route.tab === 'Timeline') return null;
@@ -3591,15 +3598,9 @@ export function _selectEventNextActionInner(event, prices = null) {
       if (!atomic) _skipCompression = true;
       else { firstText = atomic.title.replace(/[.\s]+$/, ''); firstRoute = atomic.route || firstRoute; firstLead = null; _decomposed = true; }
     }
-    // A food/menu lead task should DEEP-LINK to the menu the host actually makes (the "Your choices"
-    // card focuses + scrolls to the open choice), not dump them on the generic tasks tab. When a
-    // pickable menu decision is open, use its foodFocus route; otherwise land on the Plan tab.
-    if (firstText && /\bmenu\b/i.test(firstText)) {
-      const _foodDec = topPlaybookDecision(event);
-      firstRoute = (_foodDec && _foodDec.primaryRoute && _foodDec.primaryRoute.foodFocus)
-        ? _foodDec.primaryRoute
-        : { tab: 'Planning' };
-    }
+    // (A lead whose words said "menu" was re-routed to the open menu call here.
+    // The step's declared target is its route now, words or not — six root
+    // causes, cause 1.)
     if (!_skipCompression) {
       const more = Math.max(0, doNow - 1);
       // The lead row was chosen BECAUSE the router could place it, so label and
@@ -3632,6 +3633,9 @@ export function _selectEventNextActionInner(event, prices = null) {
         // headline reads this so it never mines the step's prose for a topic
         // (owner screenshot 11/18/2026: "Decide the menu." over the kitchen walk).
         leadIsStep: !!firstText && !_decomposed,
+        // The checklist row this hero IS (by id), so the board's editor and its
+        // "Mark done" read the step's declared target, never its title.
+        ...(!_decomposed && _lead && _lead.row && _lead.row.id ? { stepRowId: _lead.row.id } : null),
         moreCount: more,
         primaryRoute: routerHit.route,
         // WAVE-5 RANKING (2026-07-15): built from a timeline task → carries its
@@ -3774,7 +3778,7 @@ export function _selectEventNextActionInner(event, prices = null) {
       // to the timeline (anchored to the milestone) when it isn't a domain action.
       // EARLIEST-KEYWORD-WINS router, shared with every Next Up row (see
       // milestoneActionRoute) so the hero and the rows can never disagree.
-      primaryRoute: milestoneActionRoute(nextUp.label, event, nextUp.id),
+      primaryRoute: stepRoute(event, nextUp.id),
       // WAVE-5 RANKING (2026-07-15): built from a timeline task — its authored
       // lead rides along (null when the task carries none).
       leadDays: nextUp.leadDays ?? null,
@@ -4832,7 +4836,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
           <SectionHeader label="Next Up" action="Full timeline →" onAction={() => onTabChange?.('Timeline')} />
           {nextUpRows.length > 0 ? (
             <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
-              {nextUpRows.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} onOpen={() => { const r = milestoneActionRoute(t.label, event, t.id); onTabChange?.(r.tab, r.vendorId || r.timelineId, r.focusField ? { focusField: r.focusField } : undefined); }} />)}
+              {nextUpRows.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} onOpen={() => { const r = stepRoute(event, t.id); onTabChange?.(r.tab, r.vendorId || r.timelineId, r.focusField ? { focusField: r.focusField } : undefined); }} />)}
             </div>
           ) : <EmptyState>No upcoming milestones in window.</EmptyState>}
         </div>
@@ -5056,7 +5060,7 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
               <SectionHeader label="Next Up" action="Full timeline →" onAction={() => onTabChange?.('Timeline')} />
               {nextUpRows.length > 0 ? (
                 <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
-                  {nextUpRows.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} onOpen={() => { const r = milestoneActionRoute(t.label, event, t.id); onTabChange?.(r.tab, r.vendorId || r.timelineId, r.focusField ? { focusField: r.focusField } : undefined); }} />)}
+                  {nextUpRows.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} onOpen={() => { const r = stepRoute(event, t.id); onTabChange?.(r.tab, r.vendorId || r.timelineId, r.focusField ? { focusField: r.focusField } : undefined); }} />)}
                 </div>
               ) : <EmptyState>No upcoming milestones.</EmptyState>}
             </div>

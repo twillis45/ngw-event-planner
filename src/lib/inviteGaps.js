@@ -13,6 +13,7 @@
 // set?) and startTimeIsConfirmed (did the host choose this hour?).
 import { venueFor } from './venueFor';
 import { startTimeIsConfirmed } from './startTime';
+import { outwardGaps } from './outwardReady';
 
 /** The facts still missing, in the order a guest reads them. Empty when ready. */
 export function inviteGaps(event) {
@@ -21,5 +22,8 @@ export function inviteGaps(event) {
   if (!/^\d{4}-\d{2}-\d{2}/.test(String(ev.date || ''))) gaps.push('date');
   if (!startTimeIsConfirmed(ev)) gaps.push('time');
   if (!venueFor(ev).isSet) gaps.push('place');
+  // AND NO PLACEHOLDER (six root causes, cause 6): the one outward guard's
+  // name and findable-address checks, so the invite asks them here too.
+  for (const g of outwardGaps(ev, 'invite')) if (!(g.key === 'address' && gaps.includes('place'))) gaps.push(g.key);
   return gaps;
 }

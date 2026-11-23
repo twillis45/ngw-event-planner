@@ -18,6 +18,8 @@
 
 const conference = {
   type: 'Conference',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'corporate',
   family: 'corporate',
   recordKind: 'client',
@@ -66,19 +68,19 @@ const conference = {
   ],
 
   tasks: [
-    { id: 't_rfp', milestoneId: 'conf_venue', phase: 'planning', label: 'Issue venue RFP, run site visits, negotiate + sign contract (watch attrition + F&B minimums)', when: 'T-180d' },
-    { id: 't_keynote', milestoneId: 'conf_keynotes', phase: 'program', label: 'Shortlist + contract keynotes via bureau/direct; lock fees, travel, AV rider', when: 'T-150d' },
-    { id: 't_prospectus', milestoneId: 'conf_sponsors', phase: 'sponsorship', label: 'Build tiered prospectus + expo floor plan; open sponsor/exhibitor sales', when: 'T-150d' },
-    { id: 't_reg_open', milestoneId: 'conf_registration', phase: 'registration', label: 'Configure registration platform, ticket types, payment + refund policy; open early-bird', when: 'T-120d' },
-    { id: 't_tracks', milestoneId: 'conf_agenda', phase: 'program', label: 'Build multi-track agenda; recruit session speakers; assign rooms + room sets', when: 'T-120d' },
-    { id: 't_av_design', milestoneId: 'conf_av', phase: 'production', label: 'Contract AV/production; design general-session stage, screens, and per-track kits', when: 'T-90d' },
-    { id: 't_beo', milestoneId: 'conf_beo', phase: 'catering', label: 'Finalize BEOs: breaks (coffee/tea refresh every ~90 min), plated/buffet lunches, reception bar', when: 'T-45d' },
-    { id: 't_print_order', milestoneId: 'conf_print', phase: 'production', label: 'Order badges + lanyards, directional + wayfinding signage, sponsor signage, swag, programs', when: 'T-30d' },
-    { id: 't_app', milestoneId: 'conf_app_comms', phase: 'comms', label: 'Publish attendee app/agenda; send know-before-you-go (parking, check-in, wifi, map)', when: 'T-14d' },
-    { id: 't_guarantee', milestoneId: 'conf_guarantee', phase: 'catering', label: 'Lock final headcount guarantee + set counts per room/function to the venue', when: 'T-7d' },
-    { id: 't_rehearse', milestoneId: 'conf_rehearsal', phase: 'production', label: 'Walk every speaker on stage; mic/slide/clicker check; producer dry-runs the show cues', when: 'T-1d' },
-    { id: 't_showcall', milestoneId: 'event', phase: 'event', label: 'Open registration desk; show-call general session; manage track turnovers, breaks, expo, reception', when: 'T0' },
-    { id: 't_survey', milestoneId: 'event', phase: 'cleanup', label: 'Send post-event survey; reconcile vendor invoices + sponsor deliverables; debrief', when: 'T0 +2d' },
+    { id: 't_rfp', target: 'vendors', milestoneId: 'conf_venue', phase: 'planning', label: 'Issue venue RFP, run site visits, negotiate + sign contract (watch attrition + F&B minimums)', when: 'T-180d' },
+    { id: 't_keynote', target: 'vendors', milestoneId: 'conf_keynotes', phase: 'program', label: 'Shortlist + contract keynotes via bureau/direct; lock fees, travel, AV rider', when: 'T-150d' },
+    { id: 't_prospectus', target: 'sponsors', milestoneId: 'conf_sponsors', phase: 'sponsorship', label: 'Build tiered prospectus + expo floor plan; open sponsor/exhibitor sales', when: 'T-150d' },
+    { id: 't_reg_open', target: 'money', milestoneId: 'conf_registration', phase: 'registration', label: 'Configure registration platform, ticket types, payment + refund policy; open early-bird', when: 'T-120d' },
+    { id: 't_tracks', target: 'build-day', milestoneId: 'conf_agenda', phase: 'program', label: 'Build multi-track agenda; recruit session speakers; assign rooms + room sets', when: 'T-120d' },
+    { id: 't_av_design', target: 'vendors', milestoneId: 'conf_av', phase: 'production', label: 'Contract AV/production; design general-session stage, screens, and per-track kits', when: 'T-90d' },
+    { id: 't_beo', target: 'spread', milestoneId: 'conf_beo', phase: 'catering', label: 'Finalize BEOs: breaks (coffee/tea refresh every ~90 min), plated/buffet lunches, reception bar', when: 'T-45d' },
+    { id: 't_print_order', target: 'list', milestoneId: 'conf_print', phase: 'production', label: 'Order badges + lanyards, directional + wayfinding signage, sponsor signage, swag, programs', when: 'T-30d' },
+    { id: 't_app', target: 'build-day', milestoneId: 'conf_app_comms', phase: 'comms', label: 'Publish attendee app/agenda; send know-before-you-go (parking, check-in, wifi, map)', when: 'T-14d' },
+    { id: 't_guarantee', target: 'guests', milestoneId: 'conf_guarantee', phase: 'catering', label: 'Lock final headcount guarantee + set counts per room/function to the venue', when: 'T-7d' },
+    { id: 't_rehearse', target: 'vendors', milestoneId: 'conf_rehearsal', phase: 'production', label: 'Walk every speaker on stage; mic/slide/clicker check; producer dry-runs the show cues', when: 'T-1d' },
+    { id: 't_showcall', target: 'day', milestoneId: 'event', phase: 'event', label: 'Open registration desk; show-call general session; manage track turnovers, breaks, expo, reception', when: 'T0' },
+    { id: 't_survey', target: 'vendors', milestoneId: 'event', phase: 'cleanup', label: 'Send post-event survey; reconcile vendor invoices + sponsor deliverables; debrief', when: 'T0 +2d' },
   ],
 
   purchases: [
@@ -111,13 +113,13 @@ const conference = {
   ],
 
   risks: [
-    { id: 'r_keynote_fail', trigger: 'General-session / keynote AV failure (audio drops, screens dark, no playback) in front of the full room', severity: 'high', mitigation: 'Contract a real production partner; full tech rehearsal the day before; redundant audio + backup laptop/clicker; a show-caller on comms; backup speaker content offline.' },
-    { id: 'r_speaker_drop', trigger: 'A keynote or major speaker cancels close to the date', severity: 'high', mitigation: 'Signed contracts with cancellation terms; keep a warm backup/moderator; build a panel or pre-recorded fallback for the slot.' },
-    { id: 'r_reg_short', trigger: 'Registration / sponsor revenue tracking well below target', severity: 'high', mitigation: 'Open early-bird at 4 months out; weekly pacing against goal; reforecast budget at 2 months out; trim scope (rooms, scenic, catering tier) if short.' },
-    { id: 'r_attrition', trigger: 'Hotel room block under-fills and attrition clause bills back', severity: 'med', mitigation: 'Right-size the block; negotiate a generous attrition % + cutoff; promote the block in every comm; release unsold rooms before the penalty date.' },
-    { id: 'r_count_wrong', trigger: 'Final F&B guarantee submitted on a wrong/stale number', severity: 'high', mitigation: 'Reconcile registration vs. guarantee at a week out; build a no-show buffer; know the venue\'s overset % so you can flex up day-of.' },
-    { id: 'r_safety', trigger: 'Medical, security, or evacuation incident with no plan', severity: 'high', mitigation: 'Written emergency + evac plan with venue; on-site medic/first aid; security staffing; accessibility (ADA seating, captioning, ramps) confirmed pre-show.' },
-    { id: 'r_print_late', trigger: 'Badges / signage miss their print lead time', severity: 'med', mitigation: 'Order at 30 days out; keep on-site badge printing as the fallback; finalize the sign list against the room/track map early.' },
+    { id: 'r_keynote_fail', target: 'vendors-tab', trigger: 'General-session / keynote AV failure (audio drops, screens dark, no playback) in front of the full room', severity: 'high', mitigation: 'Contract a real production partner; full tech rehearsal the day before; redundant audio + backup laptop/clicker; a show-caller on comms; backup speaker content offline.' },
+    { id: 'r_speaker_drop', target: 'vendors-tab', trigger: 'A keynote or major speaker cancels close to the date', severity: 'high', mitigation: 'Signed contracts with cancellation terms; keep a warm backup/moderator; build a panel or pre-recorded fallback for the slot.' },
+    { id: 'r_reg_short', target: 'rain', trigger: 'Registration / sponsor revenue tracking well below target', severity: 'high', mitigation: 'Open early-bird at 4 months out; weekly pacing against goal; reforecast budget at 2 months out; trim scope (rooms, scenic, catering tier) if short.' },
+    { id: 'r_attrition', target: 'none', trigger: 'Hotel room block under-fills and attrition clause bills back', severity: 'med', mitigation: 'Right-size the block; negotiate a generous attrition % + cutoff; promote the block in every comm; release unsold rooms before the penalty date.' },
+    { id: 'r_count_wrong', target: 'none', trigger: 'Final F&B guarantee submitted on a wrong/stale number', severity: 'high', mitigation: 'Reconcile registration vs. guarantee at a week out; build a no-show buffer; know the venue\'s overset % so you can flex up day-of.' },
+    { id: 'r_safety', target: 'seating', trigger: 'Medical, security, or evacuation incident with no plan', severity: 'high', mitigation: 'Written emergency + evac plan with venue; on-site medic/first aid; security staffing; accessibility (ADA seating, captioning, ramps) confirmed pre-show.' },
+    { id: 'r_print_late', target: 'none', trigger: 'Badges / signage miss their print lead time', severity: 'med', mitigation: 'Order at 30 days out; keep on-site badge printing as the fallback; finalize the sign list against the room/track map early.' },
   ],
 
   contingencies: [

@@ -9,6 +9,9 @@
 
 const dinnerParty = {
   type: 'Dinner Party',
+  // What the time she types means (lib/eventAnchor, cause 5; owner ruling 11/23/2026):
+  // when dinner hits the table. Arrivals come first, by this playbook's own serve cue.
+  timeAnchor: { means: 'serve', serveAt: 'T0 +1h' },
   vegMain: 'Mushroom & lentil wellington',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
@@ -75,21 +78,21 @@ const dinnerParty = {
   ],
 
   tasks: [
-    { id: 't_invite', milestoneId: 'dp_invite', phase: 'guest', label: 'Text/email invite with date, time, address, dietary-ask, and a soft RSVP-by date', when: 'T-18d' },
-    { id: 't_rsvp_chase', milestoneId: 'dp_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the seated count', when: 'T-3d' },
-    { id: 't_pantry_shop', milestoneId: 'dp_shop_pantry', phase: 'shopping', label: 'Pantry + alcohol + paper goods run (non-perishables, can buy early)', when: 'T-3d' },
-    { id: 't_fresh_shop', milestoneId: 'dp_shop_fresh', phase: 'shopping', label: 'Produce, proteins, bread, dairy, flowers (buy 24-36h out, not sooner)', when: 'T-1d' },
-    { id: 't_braise', milestoneId: 'dp_prep_ahead', phase: 'food', label: "Cook anything that's better reheated (braises, stews, sauces, soups)", when: 'T-1d evening' },
-    { id: 't_dessert', milestoneId: 'dp_prep_ahead', phase: 'food', label: 'Make dessert ahead (tart/cake/set custard chill overnight)', when: 'T-1d evening' },
-    { id: 't_mise', milestoneId: 'dp_prep_ahead', phase: 'food', label: 'Mise en place: chop, marinate, portion, label containers', when: 'T-1d evening' },
-    { id: 't_table', milestoneId: 'dp_setup', phase: 'setup', label: 'Set the table: linens, plates, glasses, flatware, napkins, place cards, centerpiece, candles', when: 'T0 afternoon' },
-    { id: 't_chill', milestoneId: 'dp_setup', phase: 'beverage', label: 'Chill white wine + sparkling 2-3h before; set up the bar/drinks station + ice', when: 'T0 -3h' },
-    { id: 't_clean_pre', milestoneId: 'dp_setup', phase: 'cleanup', label: 'Pre-clean: empty dishwasher, clear sink, set up a bus tub / trash + recycling station', when: 'T0 -2h' },
-    { id: 't_appetizer', milestoneId: 'event', phase: 'food', label: 'Plate/serve appetizer as guests arrive (room-temp friendly)', when: 'T0 +0:15' },
-    { id: 't_main', milestoneId: 'event', phase: 'food', label: 'Reheat + plate mains; rest proteins; dress salad last-minute', when: 'T0 +1:00' },
-    { id: 't_clear', milestoneId: 'event', phase: 'cleanup', label: "Clear courses into the staged bus tub (don't wash mid-party)", when: 'ongoing' },
-    { id: 't_coffee', milestoneId: 'event', phase: 'beverage', label: 'Coffee/tea + dessert + digestifs', when: 'T0 +2:30' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Post-party reset: leftovers into containers, run dishwasher, hand-wash delicates, trash out, linens to soak', when: 'T0 +4:00' },
+    { id: 't_invite', target: 'invite', milestoneId: 'dp_invite', phase: 'guest', label: 'Text/email invite with date, time, address, dietary-ask, and a soft RSVP-by date', when: 'T-18d' },
+    { id: 't_rsvp_chase', target: 'chase', milestoneId: 'dp_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the seated count', when: 'T-3d' },
+    { id: 't_pantry_shop', target: 'list', milestoneId: 'dp_shop_pantry', phase: 'shopping', label: 'Pantry + alcohol + paper goods run (non-perishables, can buy early)', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'list', milestoneId: 'dp_shop_fresh', phase: 'shopping', label: 'Produce, proteins, bread, dairy, flowers (buy 24-36h out, not sooner)', when: 'T-1d' },
+    { id: 't_braise', target: 'none', milestoneId: 'dp_prep_ahead', phase: 'food', label: "Cook anything that's better reheated (braises, stews, sauces, soups)", when: 'T-1d evening' },
+    { id: 't_dessert', target: 'spread', milestoneId: 'dp_prep_ahead', phase: 'food', label: 'Make dessert ahead (tart/cake/set custard chill overnight)', when: 'T-1d evening' },
+    { id: 't_mise', target: 'none', milestoneId: 'dp_prep_ahead', phase: 'food', label: 'Mise en place: chop, marinate, portion, label containers', when: 'T-1d evening' },
+    { id: 't_table', target: 'day', milestoneId: 'dp_setup', phase: 'setup', label: 'Set the table: linens, plates, glasses, flatware, napkins, place cards, centerpiece, candles', when: 'T0 afternoon' },
+    { id: 't_chill', target: 'day', milestoneId: 'dp_setup', phase: 'beverage', label: 'Chill white wine + sparkling 2-3h before; set up the bar/drinks station + ice', when: 'T0 -3h' },
+    { id: 't_clean_pre', target: 'day', milestoneId: 'dp_setup', phase: 'cleanup', label: 'Pre-clean: empty dishwasher, clear sink, set up a bus tub / trash + recycling station', when: 'T0 -2h' },
+    { id: 't_appetizer', target: 'day', milestoneId: 'event', phase: 'food', label: 'Plate/serve appetizer as guests arrive (room-temp friendly)', when: 'T0 +0:15' },
+    { id: 't_main', target: 'day', milestoneId: 'event', phase: 'food', label: 'Reheat + plate mains; rest proteins; dress salad last-minute', when: 'T0 +1:00' },
+    { id: 't_clear', target: 'none', milestoneId: 'event', phase: 'cleanup', label: "Clear courses into the staged bus tub (don't wash mid-party)", when: 'ongoing' },
+    { id: 't_coffee', target: 'day', milestoneId: 'event', phase: 'beverage', label: 'Coffee/tea + dessert + digestifs', when: 'T0 +2:30' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Post-party reset: leftovers into containers, run dishwasher, hand-wash delicates, trash out, linens to soak', when: 'T0 +4:00' },
   ],
 
   purchases: [
@@ -163,12 +166,12 @@ const dinnerParty = {
 
   // Risks (canonical dinner-party.playbook.json — Sprint 55K parity backfill).
   risks: [
-    { id: 'r_dietary', trigger: 'Menu locked before allergies collected', severity: 'critical', mitigation: 'Collect dietary/allergy with the invite; confirm again at RSVP close; always plate one safe vegetarian main.' },
-    { id: 'r_headcount', trigger: 'Final headcount still not confirmed 3 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-cater proteins by ~10%, not 30%.' },
-    { id: 'r_overcook', trigger: 'Too many à-la-minute dishes', severity: 'high', mitigation: 'Design the menu so ≥2 of 3 courses are make-ahead; the host should plate, not cook, once guests arrive.' },
-    { id: 'r_ice', trigger: 'No ice / warm drinks', severity: 'med', mitigation: 'Buy ~1.5 lb ice/guest day-of; pre-chill whites 3h ahead.' },
-    { id: 'r_capacity', trigger: 'More RSVPs than chairs/place settings', severity: 'med', mitigation: 'Confirm seating + serveware capacity at a week out; secure a borrow/rent source before invites over-fill.' },
-    { id: 'r_cleanup', trigger: 'No cleanup plan → host trapped at the sink', severity: 'low', mitigation: "Stage a bus tub + empty dishwasher pre-party; clear into the tub, don't wash mid-party; consider a cleaner." },
+    { id: 'r_dietary', target: 'food', trigger: 'Menu locked before allergies collected', severity: 'critical', mitigation: 'Collect dietary/allergy with the invite; confirm again at RSVP close; always plate one safe vegetarian main.' },
+    { id: 'r_headcount', target: 'none', trigger: 'Final headcount still not confirmed 3 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-cater proteins by ~10%, not 30%.' },
+    { id: 'r_overcook', target: 'food', trigger: 'Too many à-la-minute dishes', severity: 'high', mitigation: 'Design the menu so ≥2 of 3 courses are make-ahead; the host should plate, not cook, once guests arrive.' },
+    { id: 'r_ice', target: 'none', trigger: 'No ice / warm drinks', severity: 'med', mitigation: 'Buy ~1.5 lb ice/guest day-of; pre-chill whites 3h ahead.' },
+    { id: 'r_capacity', target: 'seating', trigger: 'More RSVPs than chairs/place settings', severity: 'med', mitigation: 'Confirm seating + serveware capacity at a week out; secure a borrow/rent source before invites over-fill.' },
+    { id: 'r_cleanup', target: 'none', trigger: 'No cleanup plan → host trapped at the sink', severity: 'low', mitigation: "Stage a bus tub + empty dishwasher pre-party; clear into the tub, don't wash mid-party; consider a cleaner." },
   ],
 
   // Contingencies (canonical dinner-party.eos.json — Sprint 55K parity backfill).

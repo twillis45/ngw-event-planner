@@ -19,6 +19,8 @@
 
 const kwanzaaGathering = {
   type: 'Kwanzaa Gathering',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Jollof rice + black-eyed pea & collard stew',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
@@ -67,20 +69,20 @@ const kwanzaaGathering = {
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
-    { id: 't_program_plan', answeredBy: ['program'], milestoneId: 'kw_program', phase: 'planning', label: 'Decide who leads the principle discussion and the libation', when: 'T-18d' },
-    { id: 't_program_prep', milestoneId: 'kw_program', phase: 'planning', label: 'Choose the night\'s principle (or the order across nights); print/save the reading + a question or two for discussion; ask the elder/host/children who will light the candle and pour the libation', when: 'T-18d' },
-    { id: 't_symbols_check', milestoneId: 'kw_symbols', phase: 'planning', label: 'Lay out the Seven Symbols you own (mkeka, kinara, unity cup); list what to buy — mishumaa saba candles, muhindi (corn), fresh mazao', when: 'T-14d' },
-    { id: 't_gifts', milestoneId: 'kw_gifts', phase: 'planning', label: 'Plan zawadi — handmade, a heritage book/art, or sourced from Black-owned makers; start anything that needs making', when: 'T-14d' },
-    { id: 't_invite', milestoneId: 'kw_invite', phase: 'guest', label: 'Send invites; note it\'s a Kwanzaa gathering and which principle/night; assign potluck heritage dishes if shared', when: 'T-14d' },
-    { id: 't_music', milestoneId: 'kw_program', phase: 'planning', label: 'Gather music (African, African American, and diaspora traditions) and any drumming/dance for the Karamu; keep volume low during the reading', when: 'T-7d' },
-    { id: 't_confirm', milestoneId: 'kw_rsvp', phase: 'guest', label: 'Confirm headcount; lock potluck assignments so the spread has no gaps', when: 'T-4d' },
-    { id: 't_nonperish_shop', milestoneId: 'kw_shop_nonperish', phase: 'shopping', label: 'Mishumaa saba candles (1 black, 3 red, 3 green), muhindi (corn), red/black/green decor, drinks, disposables, cleanup kit', when: 'T-3d' },
-    { id: 't_fresh_shop', milestoneId: 'kw_shop_fresh', phase: 'shopping', label: 'Proteins, sides produce, mazao (fruit/crops for the table), bakery desserts, juice/cider for the libation + unity cup', when: 'T-1d' },
-    { id: 't_prep', milestoneId: 'kw_setup', phase: 'food', label: 'Cook stews/one-pot dishes a day ahead (they hold and reheat well); make cold sides; arrange the mazao bowl', when: 'T-1d evening' },
-    { id: 't_settable', milestoneId: 'kw_setup', phase: 'setup', label: 'Lay the mkeka; set the kinara with the mishumaa saba (black center, three red left, three green right); place muhindi (one ear per child), mazao, the unity cup, and the zawadi', when: 'T0 -1:30' },
-    { id: 't_ceremony', milestoneId: 'event', phase: 'event', label: 'BEFORE the meal: gather everyone, pour the libation honoring the ancestors, pass the unity cup, light the candle(s), read the principle, and open it for discussion — the meaning leads, then the meal', when: 'T0 +0:20' },
-    { id: 't_gifts_give', milestoneId: 'event', phase: 'event', label: 'Share the zawadi — especially with the children — tying each to a principle or to heritage', when: 'T0 +1:30' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Safely extinguish the candles, pack leftovers, bag trash + recycling, store the kinara/mkeka/unity cup for next year, return borrowed dishes', when: 'T0 +3:00' },
+    { id: 't_program_plan', target: 'call:program', answeredBy: ['program'], milestoneId: 'kw_program', phase: 'planning', label: 'Decide who leads the principle discussion and the libation', when: 'T-18d' },
+    { id: 't_program_prep', target: 'build-day', milestoneId: 'kw_program', phase: 'planning', label: 'Choose the night\'s principle (or the order across nights); print/save the reading + a question or two for discussion; ask the elder/host/children who will light the candle and pour the libation', when: 'T-18d' },
+    { id: 't_symbols_check', target: 'list', milestoneId: 'kw_symbols', phase: 'planning', label: 'Lay out the Seven Symbols you own (mkeka, kinara, unity cup); list what to buy — mishumaa saba candles, muhindi (corn), fresh mazao', when: 'T-14d' },
+    { id: 't_gifts', target: 'none', milestoneId: 'kw_gifts', phase: 'planning', label: 'Plan zawadi — handmade, a heritage book/art, or sourced from Black-owned makers; start anything that needs making', when: 'T-14d' },
+    { id: 't_invite', target: 'invite', milestoneId: 'kw_invite', phase: 'guest', label: 'Send invites; note it\'s a Kwanzaa gathering and which principle/night; assign potluck heritage dishes if shared', when: 'T-14d' },
+    { id: 't_music', target: 'none', milestoneId: 'kw_program', phase: 'planning', label: 'Gather music (African, African American, and diaspora traditions) and any drumming/dance for the Karamu; keep volume low during the reading', when: 'T-7d' },
+    { id: 't_confirm', target: 'guests', milestoneId: 'kw_rsvp', phase: 'guest', label: 'Confirm headcount; lock potluck assignments so the spread has no gaps', when: 'T-4d' },
+    { id: 't_nonperish_shop', target: 'list', milestoneId: 'kw_shop_nonperish', phase: 'shopping', label: 'Mishumaa saba candles (1 black, 3 red, 3 green), muhindi (corn), red/black/green decor, drinks, disposables, cleanup kit', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'list', milestoneId: 'kw_shop_fresh', phase: 'shopping', label: 'Proteins, sides produce, mazao (fruit/crops for the table), bakery desserts, juice/cider for the libation + unity cup', when: 'T-1d' },
+    { id: 't_prep', target: 'spread', milestoneId: 'kw_setup', phase: 'food', label: 'Cook stews/one-pot dishes a day ahead (they hold and reheat well); make cold sides; arrange the mazao bowl', when: 'T-1d evening' },
+    { id: 't_settable', target: 'day', milestoneId: 'kw_setup', phase: 'setup', label: 'Lay the mkeka; set the kinara with the mishumaa saba (black center, three red left, three green right); place muhindi (one ear per child), mazao, the unity cup, and the zawadi', when: 'T0 -1:30' },
+    { id: 't_ceremony', target: 'day', milestoneId: 'event', phase: 'event', label: 'BEFORE the meal: gather everyone, pour the libation honoring the ancestors, pass the unity cup, light the candle(s), read the principle, and open it for discussion — the meaning leads, then the meal', when: 'T0 +0:20' },
+    { id: 't_gifts_give', target: 'day', milestoneId: 'event', phase: 'event', label: 'Share the zawadi — especially with the children — tying each to a principle or to heritage', when: 'T0 +1:30' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Safely extinguish the candles, pack leftovers, bag trash + recycling, store the kinara/mkeka/unity cup for next year, return borrowed dishes', when: 'T0 +3:00' },
   ],
 
   purchases: [
@@ -119,12 +121,12 @@ const kwanzaaGathering = {
   ],
 
   risks: [
-    { id: 'r_meaning_skipped', trigger: 'It runs as just a dinner and the candle-lighting / principle discussion never happens', severity: 'high', mitigation: 'Lock the program at 18 days out and assign who lights the candle, reads the principle, and pours the libation; build the ceremony into the timeline right before the meal so it can\'t get lost.' },
-    { id: 'r_symbols_missing', trigger: 'No kinara or the right candles on the night — the ceremony can\'t happen as intended', severity: 'high', mitigation: 'Confirm the Seven Symbols at 2 weeks out and buy candles by 3 days out (sets sell out late December); have a borrow/backup plan for the kinara and unity cup.' },
-    { id: 'r_candle_safety', trigger: 'Seven open flames near children, fabric (mkeka), and a crowded table', severity: 'med', mitigation: 'Place the kinara on a stable, heat-safe surface away from edges and reach of small children; never leave lit candles unattended; extinguish before guests leave.' },
-    { id: 'r_respect', trigger: 'Theming or "explaining" Kwanzaa drifts into caricature, or it\'s framed as religious', severity: 'med', mitigation: 'Keep it dignity-first: Kwanzaa is cultural, not religious, created by Dr. Maulana Karenga in 1966; center the principles, the ancestors, and heritage; keep red/black/green restrained — never costume or kitsch.' },
-    { id: 'r_commercial_gifts', trigger: 'Zawadi default to last-minute commercial gifts, against the spirit of the day', severity: 'low', mitigation: 'Decide the gift approach at 2 weeks out; favor handmade (Kuumba), heritage/educational, or Black-owned-sourced (Ujamaa) — especially for children.' },
-    { id: 'r_food_gaps', trigger: 'Potluck overlaps or leaves gaps in the Karamu spread', severity: 'low', mitigation: 'Assign dishes by category at 4 days out (a main, greens, black-eyed peas, a starch, a dessert) so the communal table is complete.' },
+    { id: 'r_meaning_skipped', target: 'timeline', trigger: 'It runs as just a dinner and the candle-lighting / principle discussion never happens', severity: 'high', mitigation: 'Lock the program at 18 days out and assign who lights the candle, reads the principle, and pours the libation; build the ceremony into the timeline right before the meal so it can\'t get lost.' },
+    { id: 'r_symbols_missing', target: 'none', trigger: 'No kinara or the right candles on the night — the ceremony can\'t happen as intended', severity: 'high', mitigation: 'Confirm the Seven Symbols at 2 weeks out and buy candles by 3 days out (sets sell out late December); have a borrow/backup plan for the kinara and unity cup.' },
+    { id: 'r_candle_safety', target: 'seating', trigger: 'Seven open flames near children, fabric (mkeka), and a crowded table', severity: 'med', mitigation: 'Place the kinara on a stable, heat-safe surface away from edges and reach of small children; never leave lit candles unattended; extinguish before guests leave.' },
+    { id: 'r_respect', target: 'rain', trigger: 'Theming or "explaining" Kwanzaa drifts into caricature, or it\'s framed as religious', severity: 'med', mitigation: 'Keep it dignity-first: Kwanzaa is cultural, not religious, created by Dr. Maulana Karenga in 1966; center the principles, the ancestors, and heritage; keep red/black/green restrained — never costume or kitsch.' },
+    { id: 'r_commercial_gifts', target: 'none', trigger: 'Zawadi default to last-minute commercial gifts, against the spirit of the day', severity: 'low', mitigation: 'Decide the gift approach at 2 weeks out; favor handmade (Kuumba), heritage/educational, or Black-owned-sourced (Ujamaa) — especially for children.' },
+    { id: 'r_food_gaps', target: 'seating', trigger: 'Potluck overlaps or leaves gaps in the Karamu spread', severity: 'low', mitigation: 'Assign dishes by category at 4 days out (a main, greens, black-eyed peas, a starch, a dessert) so the communal table is complete.' },
   ],
 
   contingencies: [

@@ -15,7 +15,7 @@ import app.routers.invite_cards as ic
 from app.invite_email import compose_invite_email
 from test_an_invite_can_be_stopped import GUEST, env  # noqa: F401  (the route fixture)
 
-EV = {"name": "My Friendsgiving", "date": "2026-11-26", "startTime": "16:00", "startTimeSource": "host",
+EV = {"name": "Reyes Friendsgiving", "date": "2026-11-26", "startTime": "16:00", "startTimeSource": "host",
       "venue": "Vida's place", "rsvpCode": "Code123456789012"}
 CARD = "https://api.test/api/public/invite-card/Code123456789012?v=abc123def456"
 
@@ -30,7 +30,7 @@ def test_with_a_picture_the_email_leads_with_it_and_it_opens_the_invitation():
     assert f'src="{CARD}"' in html
     a = html.index('<a href="https://twillis45.github.io/ngw-event-planner/hostv2/?rsvp=Code123456789012"')
     assert a < html.index(CARD)                                            # the picture is the link
-    assert 'alt="Invitation: My Friendsgiving. Thursday, November 26 · 4:00 PM. Vida&#x27;s place. Hosted by Vida Reyes"' in html
+    assert 'alt="Invitation: Reyes Friendsgiving. Thursday, November 26 · 4:00 PM. Vida&#x27;s place. Hosted by Vida Reyes"' in html
     assert ">When<" not in html                                            # the picture carries the facts; no second card
     for b in ("Open your invitation", "Or pick your answer", "&amp;reply=Yes", "&amp;reply=No", "&amp;reply=Maybe", "See you there!"):
         assert b in html

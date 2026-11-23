@@ -12,6 +12,8 @@
 
 const fishFry = {
   type: 'Fish Fry',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Fried green tomatoes + hush puppies plate',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
@@ -56,15 +58,15 @@ const fishFry = {
   ],
 
   tasks: [
-    { id: 't_word', milestoneId: 'ff_spread_word', phase: 'guest', label: 'Put the word out; if selling plates, set price + take pre-orders and a target count', when: 'T-10d' },
-    { id: 't_fryer', milestoneId: 'ff_fryer_check', phase: 'logistics', label: 'Test-fire the burner, weigh/shake the propane tank, pick the level fry spot away from the house, locate the fire extinguisher', when: 'T-7d' },
-    { id: 't_count', milestoneId: 'ff_headcount', phase: 'guest', label: 'Lock the plate/head count; plan ~0.5 lb fish per person', when: 'T-3d' },
-    { id: 't_nonperish', milestoneId: 'ff_shop_nonperish', phase: 'shopping', label: 'Oil (a lot), cornmeal, seasoning, hot sauce, lemons, white bread, drinks, to-go containers, foil, cleanup', when: 'T-3d' },
-    { id: 't_fish', milestoneId: 'ff_shop_fish', phase: 'shopping', label: 'Buy fresh whiting/catfish/porgies + slaw cabbage, potatoes, sides produce', when: 'T-1d' },
-    { id: 't_season', milestoneId: 'ff_prep', phase: 'food', label: 'Season/soak the fish; set up the seasoned-cornmeal dredge station; make slaw, potato salad, spaghetti sauce ahead', when: 'T-1d evening' },
-    { id: 't_heatoil', milestoneId: 'ff_setup', phase: 'setup', label: 'Set fryer on level ground, fill oil to the line (never over), bring to ~350°F; NEVER leave it unattended', when: 'T0 -1:00' },
-    { id: 't_fry', milestoneId: 'event', phase: 'food', label: 'Fry in small batches hot and fresh; hold on a sheet-pan rack; keep the line moving', when: 'T0' },
-    { id: 't_cooloil', milestoneId: 'event', phase: 'cleanup', label: 'Cut the propane, let the oil cool FULLY before moving it, strain/store or dispose of oil, wrap leftovers, bag trash', when: 'T0 +4:00' },
+    { id: 't_word', target: 'list', milestoneId: 'ff_spread_word', phase: 'guest', label: 'Put the word out; if selling plates, set price + take pre-orders and a target count', when: 'T-10d' },
+    { id: 't_fryer', target: 'none', milestoneId: 'ff_fryer_check', phase: 'logistics', label: 'Test-fire the burner, weigh/shake the propane tank, pick the level fry spot away from the house, locate the fire extinguisher', when: 'T-7d' },
+    { id: 't_count', target: 'guests', milestoneId: 'ff_headcount', phase: 'guest', label: 'Lock the plate/head count; plan ~0.5 lb fish per person', when: 'T-3d' },
+    { id: 't_nonperish', target: 'list', milestoneId: 'ff_shop_nonperish', phase: 'shopping', label: 'Oil (a lot), cornmeal, seasoning, hot sauce, lemons, white bread, drinks, to-go containers, foil, cleanup', when: 'T-3d' },
+    { id: 't_fish', target: 'list', milestoneId: 'ff_shop_fish', phase: 'shopping', label: 'Buy fresh whiting/catfish/porgies + slaw cabbage, potatoes, sides produce', when: 'T-1d' },
+    { id: 't_season', target: 'spread', milestoneId: 'ff_prep', phase: 'food', label: 'Season/soak the fish; set up the seasoned-cornmeal dredge station; make slaw, potato salad, spaghetti sauce ahead', when: 'T-1d evening' },
+    { id: 't_heatoil', target: 'day', milestoneId: 'ff_setup', phase: 'setup', label: 'Set fryer on level ground, fill oil to the line (never over), bring to ~350°F; NEVER leave it unattended', when: 'T0 -1:00' },
+    { id: 't_fry', target: 'day', milestoneId: 'event', phase: 'food', label: 'Fry in small batches hot and fresh; hold on a sheet-pan rack; keep the line moving', when: 'T0' },
+    { id: 't_cooloil', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Cut the propane, let the oil cool FULLY before moving it, strain/store or dispose of oil, wrap leftovers, bag trash', when: 'T0 +4:00' },
   ],
 
   purchases: [
@@ -104,12 +106,12 @@ const fishFry = {
   ],
 
   risks: [
-    { id: 'r_hotoil', trigger: 'Hot-oil burn, overflow, or grease fire from the propane fryer', severity: 'high', mitigation: 'USFA fryer rules: LEVEL ground at least 10 feet from the house, never under eaves. Size the oil with a WATER test before heating, clip on a thermometer (no thermostat means oil can overheat to ignition), and fry only fully-thawed, patted-dry fish — ice meets hot oil violently. NEVER leave it unattended; 3-foot kid-and-pet zone. Keep a Class B/K extinguisher and a metal lid in reach — water makes a grease fire worse.' },
-    { id: 'r_fuel', trigger: 'Propane runs out / burner won\'t light mid-fry', severity: 'high', mitigation: 'Test-fire the burner at a week out; start with a FULL tank and a backup on hand.' },
-    { id: 'r_undersold', trigger: 'Fundraiser plates under-sell or no-show', severity: 'med', mitigation: 'Take pre-orders + pre-pay where possible; set a realistic target; plan to sell walk-up and to-go plates to clear extras.' },
-    { id: 'r_fishqty', trigger: 'Run out of fish (or buy way too much)', severity: 'med', mitigation: 'Lock the count at 3 days out; plan ~0.5 lb/person; buy fresh the day before so it isn\'t sitting.' },
-    { id: 'r_soggy', trigger: 'Fish goes soggy / cold holding for a crowd', severity: 'low', mitigation: 'Fry in small batches, hold on wire racks (not stacked on paper), keep the line moving so fish goes out hot.' },
-    { id: 'r_oildisposal', trigger: 'Hot oil moved too soon / poured down the drain', severity: 'med', mitigation: 'Let oil cool FULLY (hours) before moving; strain to reuse or seal in a jug for disposal — never the sink.' },
+    { id: 'r_hotoil', target: 'none', trigger: 'Hot-oil burn, overflow, or grease fire from the propane fryer', severity: 'high', mitigation: 'USFA fryer rules: LEVEL ground at least 10 feet from the house, never under eaves. Size the oil with a WATER test before heating, clip on a thermometer (no thermostat means oil can overheat to ignition), and fry only fully-thawed, patted-dry fish — ice meets hot oil violently. NEVER leave it unattended; 3-foot kid-and-pet zone. Keep a Class B/K extinguisher and a metal lid in reach — water makes a grease fire worse.' },
+    { id: 'r_fuel', target: 'none', trigger: 'Propane runs out / burner won\'t light mid-fry', severity: 'high', mitigation: 'Test-fire the burner at a week out; start with a FULL tank and a backup on hand.' },
+    { id: 'r_undersold', target: 'none', trigger: 'Fundraiser plates under-sell or no-show', severity: 'med', mitigation: 'Take pre-orders + pre-pay where possible; set a realistic target; plan to sell walk-up and to-go plates to clear extras.' },
+    { id: 'r_fishqty', target: 'none', trigger: 'Run out of fish (or buy way too much)', severity: 'med', mitigation: 'Lock the count at 3 days out; plan ~0.5 lb/person; buy fresh the day before so it isn\'t sitting.' },
+    { id: 'r_soggy', target: 'none', trigger: 'Fish goes soggy / cold holding for a crowd', severity: 'low', mitigation: 'Fry in small batches, hold on wire racks (not stacked on paper), keep the line moving so fish goes out hot.' },
+    { id: 'r_oildisposal', target: 'rain', trigger: 'Hot oil moved too soon / poured down the drain', severity: 'med', mitigation: 'Let oil cool FULLY (hours) before moving; strain to reuse or seal in a jug for disposal — never the sink.' },
   ],
 
   contingencies: [

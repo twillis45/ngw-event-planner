@@ -5,6 +5,7 @@
 // the celebration is; "Your days" and the invite read it. The trip's other meals
 // are planned per day, and the money splits into "The celebration" and "Around
 // it" through one calculation.
+import { routeByWords } from '../__fixtures__/stepByWords';
 import { getPlaybook, playbookFoodPlan, ALL_PLAYBOOKS } from '../playbooks';
 import { guestItinerary, guestFacingDays } from '../itinerary';
 import {
@@ -220,7 +221,7 @@ describe('Your days is its own sheet, and the meal steps open it', () => {
   const { checklistRouteFor } = require('../taskRoute');
   const { resolveRoute } = require('../routeResolver');
   test('a "Reserve a table for the group dinner" step routes to Your days', () => {
-    const hit = checklistRouteFor('Wed, Jun 16 · Reserve a table for the group dinner', { category: 'planning' }, SF());
+    const hit = routeByWords('Wed, Jun 16 · Reserve a table for the group dinner', { category: 'planning' }, SF());
     expect(hit && hit.route).toEqual({ focusField: 'your-days' });
     expect(resolveRoute(hit.route)).toEqual({ kind: 'days' });
   });

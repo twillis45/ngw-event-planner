@@ -14,6 +14,8 @@
 
 const crawfishBoil = {
   type: 'Crawfish Boil',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Loaded boiled potatoes, corn & mushroom platter',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
@@ -59,15 +61,15 @@ const crawfishBoil = {
   ],
 
   tasks: [
-    { id: 't_source', milestoneId: 'cb_source', phase: 'food', label: 'Call seafood markets / crawfish suppliers; reserve sacks; ask price-per-pound, size, and whether they\'re running clean', when: 'T-10d' },
-    { id: 't_rig', milestoneId: 'cb_rig_check', phase: 'logistics', label: 'Test-fire the jet burner, check the pot + basket + paddle, weigh/shake the propane tank, pick the LEVEL boil spot away from the house, kids, and traffic', when: 'T-7d' },
-    { id: 't_count', milestoneId: 'cb_headcount', phase: 'guest', label: 'Lock the headcount; confirm sacks at ~3-5 lb live crawfish per adult eater (heavy eaters more)', when: 'T-3d' },
-    { id: 't_nonperish', milestoneId: 'cb_shop_nonperish', phase: 'shopping', label: 'Boil seasoning (Zatarain\'s / Louisiana Fish Fry), cayenne, salt, lemons, potatoes, corn, sausage, onions, garlic, mushrooms, drinks, paper/newspaper, cleanup', when: 'T-3d' },
-    { id: 't_pickup', milestoneId: 'cb_pickup', phase: 'food', label: 'Pick up the LIVE crawfish in the sack; keep cool, damp, and shaded — never sealed/airtight or submerged; boil same day if possible', when: 'T-1d / T0 morning' },
-    { id: 't_purge', milestoneId: 'cb_purge', phase: 'food', label: 'Purge the live crawfish in a tub of clean water (cull the dead/crushed), rinse until water runs clear; cut potatoes/corn/sausage/onions; mix the seasoning', when: 'T0 -2:00' },
-    { id: 't_heat', milestoneId: 'cb_setup', phase: 'setup', label: 'Set burner on level ground, fill pot ~½-⅔ with water + seasoning, cover table in paper, bring to a ROLLING boil; NEVER leave the pot unattended', when: 'T0 -1:00' },
-    { id: 't_boil', milestoneId: 'event', phase: 'food', label: 'Boil potatoes/onions/garlic first, then corn + sausage, then crawfish for ~3-5 min; cut the heat and SOAK ~20-30 min for flavor; dump on the table', when: 'T0' },
-    { id: 't_cool', milestoneId: 'event', phase: 'cleanup', label: 'Cut the propane, let the pot/water cool before moving; roll up the paper with the shells, bag it, ice down leftovers, break down the rig', when: 'T0 +5:00' },
+    { id: 't_source', target: 'list', milestoneId: 'cb_source', phase: 'food', label: 'Call seafood markets / crawfish suppliers; reserve sacks; ask price-per-pound, size, and whether they\'re running clean', when: 'T-10d' },
+    { id: 't_rig', target: 'none', milestoneId: 'cb_rig_check', phase: 'logistics', label: 'Test-fire the jet burner, check the pot + basket + paddle, weigh/shake the propane tank, pick the LEVEL boil spot away from the house, kids, and traffic', when: 'T-7d' },
+    { id: 't_count', target: 'guests', milestoneId: 'cb_headcount', phase: 'guest', label: 'Lock the headcount; confirm sacks at ~3-5 lb live crawfish per adult eater (heavy eaters more)', when: 'T-3d' },
+    { id: 't_nonperish', target: 'list', milestoneId: 'cb_shop_nonperish', phase: 'shopping', label: 'Boil seasoning (Zatarain\'s / Louisiana Fish Fry), cayenne, salt, lemons, potatoes, corn, sausage, onions, garlic, mushrooms, drinks, paper/newspaper, cleanup', when: 'T-3d' },
+    { id: 't_pickup', target: 'list', milestoneId: 'cb_pickup', phase: 'food', label: 'Pick up the LIVE crawfish in the sack; keep cool, damp, and shaded — never sealed/airtight or submerged; boil same day if possible', when: 'T-1d / T0 morning' },
+    { id: 't_purge', target: 'day', milestoneId: 'cb_purge', phase: 'food', label: 'Purge the live crawfish in a tub of clean water (cull the dead/crushed), rinse until water runs clear; cut potatoes/corn/sausage/onions; mix the seasoning', when: 'T0 -2:00' },
+    { id: 't_heat', target: 'day', milestoneId: 'cb_setup', phase: 'setup', label: 'Set burner on level ground, fill pot ~½-⅔ with water + seasoning, cover table in paper, bring to a ROLLING boil; NEVER leave the pot unattended', when: 'T0 -1:00' },
+    { id: 't_boil', target: 'day', milestoneId: 'event', phase: 'food', label: 'Boil potatoes/onions/garlic first, then corn + sausage, then crawfish for ~3-5 min; cut the heat and SOAK ~20-30 min for flavor; dump on the table', when: 'T0' },
+    { id: 't_cool', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Cut the propane, let the pot/water cool before moving; roll up the paper with the shells, bag it, ice down leftovers, break down the rig', when: 'T0 +5:00' },
   ],
 
   purchases: [
@@ -112,14 +114,14 @@ const crawfishBoil = {
   ],
 
   risks: [
-    { id: 'r_allergy', trigger: 'A guest with a shellfish allergy at a crawfish boil', severity: 'high', mitigation: 'Crawfish is a major shellfish allergen and a reaction can be anaphylaxis-grade. Ask guests ahead of time; cook a separate portion of potatoes, corn, and sausage BEFORE the crawfish go in and keep it well away from the boil and the dumped table (the shared paper-covered table is unavoidable cross-contact). Know the nearest ER; if anyone carries an epinephrine auto-injector, keep it on hand.' },
-    { id: 'r_burner', trigger: 'Burn, scald, or boil-over from the propane burner and big pot of boiling water', severity: 'high', mitigation: 'Set the burner on LEVEL, stable ground well away from the house, deck, fences, and overhangs. Don\'t overfill — water rises hard when the sack and fixings go in. NEVER leave the pot unattended and keep kids and pets well back from the burner and the boiling water. Use the basket and long-handled tools, wear closed shoes and heat gloves, and have a clear path to set hot things down.' },
-    { id: 'r_fuel', trigger: 'Propane runs out / jet burner won\'t light mid-boil', severity: 'high', mitigation: 'Test-fire the burner at a week out; start with a FULL tank and keep a backup on hand — a high-BTU burner empties a tank fast.' },
-    { id: 'r_deadcrawfish', trigger: 'Live crawfish die or arrive weak before the boil', severity: 'high', mitigation: 'Buy as close to boil day as possible; keep the sack cool, damp, and shaded — never sealed airtight, never submerged in standing water, never on hot pavement. Boil same day. Cull (throw out) any that are already dead or crushed before they go in the pot.' },
-    { id: 'r_gritty', trigger: 'Gritty / muddy crawfish from skipping the purge', severity: 'med', mitigation: 'Purge and rinse in clean water until it runs clear before boiling, and cull the dead ones. (Skip aggressive salt purges, which can stress/kill them — a clean-water rinse is the common practical step.)' },
-    { id: 'r_overcook', trigger: 'Overcooked, mushy, hard-to-peel crawfish', severity: 'med', mitigation: 'Boil the crawfish only ~3-5 minutes, then CUT the heat and let them SOAK ~20-30 minutes — the soak both seasons and finishes them gently. Dropping in frozen corn helps cool the pot for the soak.' },
-    { id: 'r_supply', trigger: 'Sacks sell out or price/size swings with the catch', severity: 'med', mitigation: 'Reserve sacks early (10 days out) in spring while they\'re running; confirm at T-3d; have a boiled-by-the-pound fallback place in your pocket.' },
-    { id: 'r_ice', trigger: 'Run out of ice on a long, warm spring afternoon', severity: 'low', mitigation: 'Over-buy ice (~2.5 lb/guest) and grab more day-of; keep drinks and the live sack in separate coolers.' },
+    { id: 'r_allergy', target: 'crab', trigger: 'A guest with a shellfish allergy at a crawfish boil', severity: 'high', mitigation: 'Crawfish is a major shellfish allergen and a reaction can be anaphylaxis-grade. Ask guests ahead of time; cook a separate portion of potatoes, corn, and sausage BEFORE the crawfish go in and keep it well away from the boil and the dumped table (the shared paper-covered table is unavoidable cross-contact). Know the nearest ER; if anyone carries an epinephrine auto-injector, keep it on hand.' },
+    { id: 'r_burner', target: 'crab', trigger: 'Burn, scald, or boil-over from the propane burner and big pot of boiling water', severity: 'high', mitigation: 'Set the burner on LEVEL, stable ground well away from the house, deck, fences, and overhangs. Don\'t overfill — water rises hard when the sack and fixings go in. NEVER leave the pot unattended and keep kids and pets well back from the burner and the boiling water. Use the basket and long-handled tools, wear closed shoes and heat gloves, and have a clear path to set hot things down.' },
+    { id: 'r_fuel', target: 'crab', trigger: 'Propane runs out / jet burner won\'t light mid-boil', severity: 'high', mitigation: 'Test-fire the burner at a week out; start with a FULL tank and keep a backup on hand — a high-BTU burner empties a tank fast.' },
+    { id: 'r_deadcrawfish', target: 'crab', trigger: 'Live crawfish die or arrive weak before the boil', severity: 'high', mitigation: 'Buy as close to boil day as possible; keep the sack cool, damp, and shaded — never sealed airtight, never submerged in standing water, never on hot pavement. Boil same day. Cull (throw out) any that are already dead or crushed before they go in the pot.' },
+    { id: 'r_gritty', target: 'none', trigger: 'Gritty / muddy crawfish from skipping the purge', severity: 'med', mitigation: 'Purge and rinse in clean water until it runs clear before boiling, and cull the dead ones. (Skip aggressive salt purges, which can stress/kill them — a clean-water rinse is the common practical step.)' },
+    { id: 'r_overcook', target: 'crab', trigger: 'Overcooked, mushy, hard-to-peel crawfish', severity: 'med', mitigation: 'Boil the crawfish only ~3-5 minutes, then CUT the heat and let them SOAK ~20-30 minutes — the soak both seasons and finishes them gently. Dropping in frozen corn helps cool the pot for the soak.' },
+    { id: 'r_supply', target: 'none', trigger: 'Sacks sell out or price/size swings with the catch', severity: 'med', mitigation: 'Reserve sacks early (10 days out) in spring while they\'re running; confirm at T-3d; have a boiled-by-the-pound fallback place in your pocket.' },
+    { id: 'r_ice', target: 'none', trigger: 'Run out of ice on a long, warm spring afternoon', severity: 'low', mitigation: 'Over-buy ice (~2.5 lb/guest) and grab more day-of; keep drinks and the live sack in separate coolers.' },
   ],
 
   contingencies: [

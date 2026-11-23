@@ -13,6 +13,7 @@
 // Dates are local YYYY-MM-DD strings and all arithmetic runs on local midnights
 // (the dates.js convention), so a calendar never shifts a day across a time
 // zone. PURE except for the optional `now`.
+import { eventClock } from './eventWhen';
 import { localISO, getToday } from './dates';
 import { taskLeadDays, taskIsOverdue } from './taskLead';
 import { inferPromisesFromVendor, promiseNeedsHost } from './vendorAccountability/derive';
@@ -40,7 +41,10 @@ const clockLabel = (mins) => `${(Math.floor(mins / 60) % 12) || 12}:${pad2(mins 
 // Start in minutes, and whether the host set it (a 'derived' hour is the app's
 // suggestion: shown in the app as one, never written into a calendar as fact).
 const eventStart = (ev) => {
-  const mins = clockMinutes(ev.startTime);
+  // The calendar entry starts when guests arrive (lib/eventWhen.eventClock, cause 5).
+  const typed = clockMinutes(ev.startTime);
+  const c = eventClock(ev);
+  const mins = typed == null ? null : (c.arrivalMin != null ? c.arrivalMin : typed);
   return mins == null ? null : { mins, suggested: String(ev.startTimeSource || '') === 'derived' };
 };
 

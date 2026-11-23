@@ -99,29 +99,31 @@ describe('the checklist router earns the handoff', () => {
     for (const f of fs.readdirSync(DATA).filter((n) => n.endsWith('.js'))) {
       const src = fs.readFileSync(path.join(DATA, f), 'utf8');
       for (const m of src.matchAll(
-        /\{\s*id:\s*'(r_[^']+)',\s*trigger:\s*'((?:[^'\\]|\\.)*)',\s*severity:\s*'([^']*)',\s*mitigation:\s*'((?:[^'\\]|\\.)*)'/g)) {
+        /\{\s*id:\s*'(r_[^']+)',\s*(?:target:\s*'[^']*',\s*)?trigger:\s*'((?:[^'\\]|\\.)*)',\s*severity:\s*'([^']*)',\s*mitigation:\s*'((?:[^'\\]|\\.)*)'/g)) {
         out.push({ file: f, id: m[1], mitigation: m[4] });
       }
     }
     return out;
   }
 
-  test('it resolves a large majority of authored mitigations', () => {
+  // SIX ROOT CAUSES, cause 1 (11/23/2026): a mitigation added to the
+  // checklist (`risk-<id>`) is routed by its RISK's declared target, the same
+  // declaration its "Plan for this" reads — never by its words.
+  test('an added mitigation follows its risk’s declared target, never its words', () => {
     const risks = allRisks();
     expect(risks.length).toBeGreaterThan(200);   // never assert over an empty set
-    const routed = risks.filter((r) => {
-      try { return !!checklistRouteFor(r.mitigation, {}, null); } catch { return false; }
-    });
-    // Measured 209/246 on 2026-08-08. Held with headroom so ordinary authoring
-    // does not trip it, but a real regression in the router does.
-    expect(routed.length / risks.length).toBeGreaterThan(0.75);
+    const { ALL_PLAYBOOKS } = require('../playbooks');
+    const { stepTargetKey, targetFor } = require('../stepTarget');
+    const wrong = [];
+    for (const pb of ALL_PLAYBOOKS) {
+      const ev = { id: 'e', type: pb.type };
+      for (const r of (pb.risks || [])) {
+        const hit = checklistRouteFor('rain crab vendor budget', { taskId: 'risk-' + r.id }, ev);
+        const want = targetFor(stepTargetKey(ev, { id: 'risk-' + r.id }), ev);
+        if (JSON.stringify(hit) !== JSON.stringify(want ? (want.href ? { label: want.label, href: want.href } : { label: want.label, route: want.route }) : null)) wrong.push(pb.type + ':' + r.id);
+      }
+    }
+    expect(wrong).toEqual([]);
   });
 
-  test('the safe-rides mitigation routes — the one the board led with', () => {
-    const hit = checklistRouteFor(
-      'Pre-stage a safe-rides plan: rideshare credit/codes, a designated-driver ask in the invite, '
-      + 'a couch/guest-room offer, and quietly hold/hand keys.', {}, null);
-    expect(hit).toBeTruthy();
-    expect(hit.route).toBeTruthy();
-  });
 });

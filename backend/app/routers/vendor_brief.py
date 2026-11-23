@@ -41,7 +41,7 @@ from pydantic import BaseModel, Field
 
 from ..db import get_pool
 from ..host_alerts import alert_host
-from ..outward import diet_counts_for, host_name_for
+from ..outward import diet_counts_for, host_name_for, outward_refusal
 from ..auth import require_planner
 from .. import config
 from .rsvp import _assert_event_studio_read, _client_ip
@@ -292,6 +292,10 @@ async def mint_vendor_brief_link(
             raise HTTPException(404, "event not found")
         if not _find_vendor(_event_data(row), payload.vendor_id):
             raise HTTPException(404, "vendor not found on this event")
+        # Nothing goes out with a placeholder (six root causes, cause 6).
+        refusal = outward_refusal(_event_data(row), "vendor")
+        if refusal:
+            raise HTTPException(422, refusal)
 
         existing = await conn.fetchval(
             """select code from public.vendor_brief_links

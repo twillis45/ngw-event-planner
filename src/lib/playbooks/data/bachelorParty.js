@@ -15,6 +15,8 @@
 
 const bachelorParty = {
   type: 'Bachelor Party',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'bachelorette',
   family: 'host_driven',
   recordKind: 'client',
@@ -55,24 +57,24 @@ const bachelorParty = {
   ],
 
   tasks: [
-    { id: 't_groomcheck', milestoneId: 'bp_setdate', phase: 'planning', label: 'Confirm with the GROOM: what he actually wants + any hard no\'s', when: 'T-30d' },
+    { id: 't_groomcheck', target: 'none', milestoneId: 'bp_setdate', phase: 'planning', label: 'Confirm with the GROOM: what he actually wants + any hard no\'s', when: 'T-30d' },
     // The step IS the call (owner, 11/21/2026): the cap, the split method and
     // the comped groom are all the costsplit answer, so it is linked, not split.
-    { id: 't_split', answeredBy: ['costsplit'], milestoneId: 'bp_setdate', phase: 'planning', label: 'Agree the budget cap + cost-split method; groom is comped', when: 'T-30d' },
-    { id: 't_book', milestoneId: 'bp_book', phase: 'logistics', label: 'Book tee time / table / suite / tickets; get confirmations in writing', when: 'T-21d' },
-    { id: 't_rides', milestoneId: 'bp_transport', phase: 'logistics', label: 'Lock the safe-rides plan: DD or pre-booked rideshare/van + the cash for it', when: 'T-14d' },
-    { id: 't_buddy', milestoneId: 'bp_transport', phase: 'planning', label: 'Name a buddy for the groom + a sober point-person; share the plan in the group chat', when: 'T-14d' },
-    { id: 't_collect', milestoneId: 'bp_rsvp', phase: 'guest', label: 'Lock headcount; collect each person\'s share (cover the groom)', when: 'T-5d' },
-    { id: 't_nonperish_shop', milestoneId: 'bp_shop_nonperish', phase: 'shopping', label: 'Beer, whiskey, mixers, WATER, disposables, snacks', when: 'T-3d' },
-    { id: 't_fresh_shop', milestoneId: 'bp_shop_fresh', phase: 'shopping', label: 'Proteins / wings / pizza order, fresh food', when: 'T-1d' },
+    { id: 't_split', target: 'call:costsplit', answeredBy: ['costsplit'], milestoneId: 'bp_setdate', phase: 'planning', label: 'Agree the budget cap + cost-split method; groom is comped', when: 'T-30d' },
+    { id: 't_book', target: 'vendors', milestoneId: 'bp_book', phase: 'logistics', label: 'Book tee time / table / suite / tickets; get confirmations in writing', when: 'T-21d' },
+    { id: 't_rides', target: 'rides', milestoneId: 'bp_transport', phase: 'logistics', label: 'Lock the safe-rides plan: DD or pre-booked rideshare/van + the cash for it', when: 'T-14d' },
+    { id: 't_buddy', target: 'assign', milestoneId: 'bp_transport', phase: 'planning', label: 'Name a buddy for the groom + a sober point-person; share the plan in the group chat', when: 'T-14d' },
+    { id: 't_collect', target: 'guests', milestoneId: 'bp_rsvp', phase: 'guest', label: 'Lock headcount; collect each person\'s share (cover the groom)', when: 'T-5d' },
+    { id: 't_nonperish_shop', target: 'list', milestoneId: 'bp_shop_nonperish', phase: 'shopping', label: 'Beer, whiskey, mixers, WATER, disposables, snacks', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'list', milestoneId: 'bp_shop_fresh', phase: 'shopping', label: 'Proteins / wings / pizza order, fresh food', when: 'T-1d' },
     // MOVED OFF A DEAD SURFACE, 2026-09-23. Was a `schedules.preparation` row at
     // T-1d. `t_fresh_shop` buys the proteins and `bp_shop_fresh` is the milestone
     // for buying them; nothing marinated them. Charging phones and confirming
     // rides, which shared that dead row, are NOT repeated here — both already
     // have live carriers (`T0 -3h` in the setup block, and `t_rides`).
-    { id: 't_prep_protein', milestoneId: 'bp_shop_fresh', phase: 'food', label: 'Prep or marinate the proteins the night before, or place the pizza order so it only needs a phone call on the day', when: 'T-1d' },
-    { id: 't_setup', milestoneId: 'bp_setup', phase: 'setup', label: 'Stock the base, build the bar + a visible water/food station, confirm rides', when: 'T0 -2h' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Get the groom home/to bed safe, headcount the crew, pack leftovers, bag bottles/cans, settle the split', when: 'T0 +8:00' },
+    { id: 't_prep_protein', target: 'none', milestoneId: 'bp_shop_fresh', phase: 'food', label: 'Prep or marinate the proteins the night before, or place the pizza order so it only needs a phone call on the day', when: 'T-1d' },
+    { id: 't_setup', target: 'day', milestoneId: 'bp_setup', phase: 'setup', label: 'Stock the base, build the bar + a visible water/food station, confirm rides', when: 'T0 -2h' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Get the groom home/to bed safe, headcount the crew, pack leftovers, bag bottles/cans, settle the split', when: 'T0 +8:00' },
   ],
 
   purchases: [
@@ -106,12 +108,12 @@ const bachelorParty = {
   ],
 
   risks: [
-    { id: 'r_overserve', trigger: 'Over-serving — the groom or a guest drinks past safe limits', severity: 'high', mitigation: 'Pace it: ~1 drink/guest/hour, water between rounds, hearty food out the whole time, and a hard stop / switch-to-water near the end. A sober point-person watches the room and is empowered to slow things down. This is the host\'s duty of care, not a buzzkill.' },
-    { id: 'r_saferides', trigger: 'No safe way home for a drinking crew — nobody sober, no rides booked', severity: 'high', mitigation: 'Lock transport at 2 weeks out: a designated driver who stays sober (stocked with N/A drinks) OR a pre-booked party bus / van / rideshare with the cash set aside. NOBODY who has been drinking drives. A base with beds means worst case, everyone crashes there.' },
-    { id: 'r_groomhome', trigger: 'The groom is too drunk / gets separated — doesn\'t make it home safe', severity: 'high', mitigation: 'Buddy system: one named guy is the groom\'s buddy all night and does not leave his side; the sober point-person has the plan to get him back to the base and to bed. Phones charged, location-share on, meeting spot agreed. Getting the groom home safe is the ONE non-negotiable success metric.' },
-    { id: 'r_booking', trigger: 'Activity / table / suite sold out or unconfirmed', severity: 'high', mitigation: 'Book at 3 weeks out and get every confirmation in writing; hold a backup (poker night at the base) that needs no reservation.' },
-    { id: 'r_money', trigger: 'Cost blow-up — hidden costs, no split agreed, best man eats it', severity: 'med', mitigation: 'Agree a per-head CAP and the split METHOD up front; collect shares before the day (cover the groom); track spend so the end-of-night Venmo is clean.' },
-    { id: 'r_legal', trigger: 'Rowdy crew — noise, property damage, or trouble at a venue', severity: 'med', mitigation: 'Respect the venue/rental rules and the deposit; keep it to the booked spaces; the sober point-person heads off anything that\'s heading sideways before it costs the crew.' },
+    { id: 'r_overserve', target: 'food', trigger: 'Over-serving — the groom or a guest drinks past safe limits', severity: 'high', mitigation: 'Pace it: ~1 drink/guest/hour, water between rounds, hearty food out the whole time, and a hard stop / switch-to-water near the end. A sober point-person watches the room and is empowered to slow things down. This is the host\'s duty of care, not a buzzkill.' },
+    { id: 'r_saferides', target: 'none', trigger: 'No safe way home for a drinking crew — nobody sober, no rides booked', severity: 'high', mitigation: 'Lock transport at 2 weeks out: a designated driver who stays sober (stocked with N/A drinks) OR a pre-booked party bus / van / rideshare with the cash set aside. NOBODY who has been drinking drives. A base with beds means worst case, everyone crashes there.' },
+    { id: 'r_groomhome', target: 'none', trigger: 'The groom is too drunk / gets separated — doesn\'t make it home safe', severity: 'high', mitigation: 'Buddy system: one named guy is the groom\'s buddy all night and does not leave his side; the sober point-person has the plan to get him back to the base and to bed. Phones charged, location-share on, meeting spot agreed. Getting the groom home safe is the ONE non-negotiable success metric.' },
+    { id: 'r_booking', target: 'seating', trigger: 'Activity / table / suite sold out or unconfirmed', severity: 'high', mitigation: 'Book at 3 weeks out and get every confirmation in writing; hold a backup (poker night at the base) that needs no reservation.' },
+    { id: 'r_money', target: 'budget-tab', trigger: 'Cost blow-up — hidden costs, no split agreed, best man eats it', severity: 'med', mitigation: 'Agree a per-head CAP and the split METHOD up front; collect shares before the day (cover the groom); track spend so the end-of-night Venmo is clean.' },
+    { id: 'r_legal', target: 'vendors-tab', trigger: 'Rowdy crew — noise, property damage, or trouble at a venue', severity: 'med', mitigation: 'Respect the venue/rental rules and the deposit; keep it to the booked spaces; the sober point-person heads off anything that\'s heading sideways before it costs the crew.' },
   ],
 
   contingencies: [

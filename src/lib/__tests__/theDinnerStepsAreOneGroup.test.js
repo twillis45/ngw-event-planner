@@ -8,6 +8,7 @@
 //
 // Acceptance case: Mom's 80th birthday in Santa Fe, about 30 flying in for 3
 // nights, dinner at an adobe courtyard.
+import { routeByWords } from '../__fixtures__/stepByWords';
 import { playbookChecklist } from '../playbooks';
 import { taskSatisfied } from '../taskEngine';
 import { checklistRouteFor } from '../taskRoute';
@@ -69,9 +70,9 @@ describe('the dinner\'s steps tick from the dinner\'s own parts', () => {
 
 describe('each dinner step opens where its part is owned', () => {
   test('the night opens the dinner; the place opens Venue', () => {
-    const night = checklistRouteFor(DINNER_NIGHT_STEP, { category: 'planning' }, SF());
+    const night = routeByWords(DINNER_NIGHT_STEP, { category: 'planning' }, SF());
     expect(resolveRoute(night.route)).toMatchObject({ kind: 'celebration' });
-    const place = checklistRouteFor(DINNER_PLACE_STEP, { category: 'planning' }, SF());
+    const place = routeByWords(DINNER_PLACE_STEP, { category: 'planning' }, SF());
     expect(resolveRoute(place.route)).toMatchObject({ kind: 'venue' });
   });
 });

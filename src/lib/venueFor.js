@@ -173,6 +173,11 @@ export function venueFor(event) {
   // A BARE CITY NEVER COUNTS: `address` is street-gated above and `name` is
   // city-rejected, so neither half can be satisfied by a town.
   const addressSettled = !!(name || address);
+  // ── A GUEST CAN FIND THE DOOR (six root causes, cause 6, 11/23/2026) ─────
+  // The OUTWARD verdict (lib/outwardReady): an invite to "my house in Fort
+  // Washington, MD" cannot be found. At home only a street counts; elsewhere
+  // the production verdict above (a named place is its address).
+  const findable = isHome ? !!address : addressSettled;
   // Same finding as isSet: with no name, an event holding a real street had
   // nothing to show for itself but its town. Show the street the host typed —
   // it is the most specific thing known about where this is.
@@ -220,7 +225,7 @@ export function venueFor(event) {
   // `confirmed`: the host said so, as opposed to the plan having been told.
   const display = name || address;
   const confirmed = !!ev.venueConfirmed;
-  return { name, kind, isHome, city, state, zip, address, fullAddress, townLine, isSet, addressSettled, needsCityForWeather, displayLine, mapsQuery, display, confirmed };
+  return { name, kind, isHome, city, state, zip, address, fullAddress, townLine, isSet, addressSettled, findable, needsCityForWeather, displayLine, mapsQuery, display, confirmed };
 }
 
 // ── The address helpers venueFor composes with ───────────────────────────────

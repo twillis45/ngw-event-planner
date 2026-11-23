@@ -6,6 +6,7 @@
 // so a brunch still at "Inquired" got a "just confirming we're all set" note.
 // Only a BOOKED vendor is reconfirmed now, in the sheet, in the 0–3-days-out
 // banner (same list) and in the board's reconfirm raise (the same predicate).
+import { routeByWords } from '../__fixtures__/stepByWords';
 import { checklistRouteFor } from '../taskRoute';
 import { resolveRoute } from '../routeResolver';
 import { playbookChecklist } from '../playbooks';
@@ -18,7 +19,7 @@ test('the row\'s button is "Reconfirm each booking", landing on the sweep for bo
   const e = { id: 'dest', type: 'Group Trip', date: '2026-12-31', guestEstimate: 8, guestMode: 'count', guestCountSource: 'host', venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX' };
   const r = (playbookChecklist(e, '2026-10-01') || []).find((x) => /^Confirm every reservation/.test(x.task));
   expect(r).toBeTruthy();
-  const hit = checklistRouteFor(r.task, { week: r.week, category: r.category }, e);
+  const hit = routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, e);
   expect(hit && hit.label).toBe('Reconfirm each booking');
   expect(resolveRoute(hit.route)).toEqual({ kind: 'sweep', focus: 'bookings' });
 });

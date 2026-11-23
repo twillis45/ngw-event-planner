@@ -7,6 +7,7 @@
 // `false` (the host makes or buys it herself), or absent (the playbook's
 // default, `friendsBringWhen` or the community rule). Every surface reads the
 // engine's `broughtBy` and `broughtByCommunity`, which come from it.
+import { routeByWords } from '../__fixtures__/stepByWords';
 import { playbookFoodPlan, hostBuysLine, namedHelperCount } from '../playbooks';
 import { migrateBringing, foodSheetKind, bringingRows } from '../foodBringing';
 import { deriveHelperResponsibilities } from '../helperResponsibility';
@@ -130,7 +131,7 @@ describe('every other reader takes the name from the record', () => {
     expect(deriveHelperResponsibilities(TG({ foodOwner: { p_mac: false } })).responsibilities).toEqual([]);
   });
   test('the checklist\'s "assign every dish" step opens the assignment', () => {
-    const r = checklistRouteFor('Assign every dish by name — the stuffing, the potatoes, the cranberry, each pie — so nothing arrives twice and nothing is missing');
+    const r = routeByWords('Assign every dish by name — the stuffing, the potatoes, the cranberry, each pie — so nothing arrives twice and nothing is missing');
     expect(r && resolveRoute(r.route)).toEqual({ kind: 'bringing', focus: null });
   });
 });

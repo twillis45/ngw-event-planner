@@ -279,6 +279,8 @@ const FORMAT_NO_HALFTIME = [...FORMAT_COMBAT, ...FORMAT_CONTINUOUS, ...FORMAT_BR
 
 const watchParty = {
   type: 'Watch Party',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
@@ -417,8 +419,8 @@ const watchParty = {
   ],
 
   tasks: [
-    { id: 't_invite', milestoneId: 'wp_invite', phase: 'guest', label: 'Group text invite; assign snacks/drinks if potluck', when: 'T-7d' },
-    { id: 't_stream', milestoneId: 'wp_rsvp', phase: 'guest', label: 'Confirm headcount; verify the game channel/stream works on the TV', when: 'T-3d' },
+    { id: 't_invite', target: 'invite', milestoneId: 'wp_invite', phase: 'guest', label: 'Group text invite; assign snacks/drinks if potluck', when: 'T-7d' },
+    { id: 't_stream', target: 'guests', milestoneId: 'wp_rsvp', phase: 'guest', label: 'Confirm headcount; verify the game channel/stream works on the TV', when: 'T-3d' },
     // ── A TASK MAY NOT NAME FOOD THE HOST REMOVED (2026-09-17) ───────────────
     // These three labels hard-coded the menu: "chili meat/beans", "Make chili",
     // "Beer, soda, water, chips". Removing chili from the shopping list writes
@@ -433,34 +435,34 @@ const watchParty = {
     // its contents bought nothing and could only ever drift. Naming the ACT and
     // pointing at the live list is true on every render, whatever the host adds
     // or removes — and it is one fewer place to keep in sync.
-    { id: 't_nonperish_shop', milestoneId: 'wp_shop_nonperish', phase: 'shopping', label: 'Shop the non-perishables on your list', when: 'T-3d' },
-    { id: 't_fresh_shop', milestoneId: 'wp_shop_fresh', phase: 'shopping', label: 'Shop the fresh items on your list', when: 'T-1d' },
+    { id: 't_nonperish_shop', target: 'list', milestoneId: 'wp_shop_nonperish', phase: 'shopping', label: 'Shop the non-perishables on your list', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'spread', milestoneId: 'wp_shop_fresh', phase: 'shopping', label: 'Shop the fresh items on your list', when: 'T-1d' },
     // Prep is an instruction, not a list pointer, so it cannot simply defer —
     // but it can stop naming dishes that may not exist. Generic is less vivid
     // and always true; the specific version was vivid and wrong the moment
     // chili came off. Gating a clause on whether a PURCHASE is still present
     // would need new engine surface (whenChoice keys off decisions, not
     // purchases) — worth doing deliberately, not inside a copy fix.
-    { id: 't_prep', milestoneId: 'wp_setup', phase: 'food', label: 'Prep what can be made ahead; thaw anything frozen; clear the fridge for drinks', when: 'T-1d evening' },
+    { id: 't_prep', target: 'none', milestoneId: 'wp_setup', phase: 'food', label: 'Prep what can be made ahead; thaw anything frozen; clear the fridge for drinks', when: 'T-1d evening' },
     // t_cook now speaks the chosen method. The BACK-TIMING is the point: every
     // branch still lands food out ~30 min before kickoff, but the start time and
     // the equipment differ, and the old single label implied an oven for all five.
-    { id: 't_cook', milestoneId: 'event', phase: 'food', label: 'Cook the hot food so everything is OUT and READY ~30 min before kickoff', when: 'T0 -1:30',
+    { id: 't_cook', target: 'day', milestoneId: 'event', phase: 'food', label: 'Cook the hot food so everything is OUT and READY ~30 min before kickoff', when: 'T0 -1:30',
       copyByAnswer: { cook_method: {
         'Grill or smoker outside': 'If you are grilling, light it with time to spare — food OUT and READY ~30 min before kickoff, and you back inside with it',
         'Slow cooker or warming tray': 'Hot dishes should already be holding by now — taste, adjust, and move them to the serving spot',
         'Air fryer, in batches': 'Start the batches — first trays go into a low oven to hold while the rest cook',
         'Store-bought hot or delivered': 'Collect or receive the food, get it onto serving trays, and have it OUT ~30 min before kickoff',
       } } },
-    { id: 't_halftime', milestoneId: 'event', phase: 'food', label: 'Halftime refresh: restock food, swap empties for fresh trash bag, top up ice', when: 'T0 +2:00', whenChoice: { id: 'major_event', not: FORMAT_NO_HALFTIME }, copyByAnswer: { reg_sport: {
+    { id: 't_halftime', target: 'day', milestoneId: 'event', phase: 'food', label: 'Halftime refresh: restock food, swap empties for fresh trash bag, top up ice', when: 'T0 +2:00', whenChoice: { id: 'major_event', not: FORMAT_NO_HALFTIME }, copyByAnswer: { reg_sport: {
       'Baseball (MLB)': 'Seventh-inning stretch: restock food, swap empties for fresh trash bag, top up ice',
       'Hockey (NHL)': 'First intermission: restock food, swap empties for fresh trash bag, top up ice',
       'Soccer': 'Half-time: restock food, swap empties for fresh trash bag, top up ice',
     } } },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Pack leftovers, bag trash + recycling (cans/bottles), wipe surfaces, run the dishwasher', when: 'T0 +4:00' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Pack leftovers, bag trash + recycling (cans/bottles), wipe surfaces, run the dishwasher', when: 'T0 +4:00' },
     // Multi-day tournament format only, and only once the host says this is
     // more than one sitting — a repeatable list, not a re-invented one each time.
-    { id: 't_repeatable_list', milestoneId: 'wp_invite', phase: 'shopping', label: 'Set up a repeatable shopping list — you\'re hosting this again, not once, so build a list you can restock quickly rather than one big shop', when: 'T-7d', whenChoice: { id: 'tourney_span', in: ['A few key games', 'Following the whole run'] } },
+    { id: 't_repeatable_list', target: 'list', milestoneId: 'wp_invite', phase: 'shopping', label: 'Set up a repeatable shopping list — you\'re hosting this again, not once, so build a list you can restock quickly rather than one big shop', when: 'T-7d', whenChoice: { id: 'tourney_span', in: ['A few key games', 'Following the whole run'] } },
 
     // ── THE FIRST ADDITIVE PER-SPORT TASKS (2026-09-17, EIGHTH PASS) ─────────
     // Measured before writing any of these: 7 of the 8 tasks above are IDENTICAL
@@ -487,7 +489,7 @@ const watchParty = {
     // for the undercard or misses the main event. Boxing cards are built the
     // same way. This is the single most useful thing the app can tell a combat
     // host, and it could not be said before.
-    { id: 't_combat_maincard', milestoneId: 'wp_invite', phase: 'guest', label: 'Tell guests the MAIN CARD time, not the broadcast start — prelims run hours earlier, so "come for the fight" lands people at the wrong end of the night', when: 'T-3d', whenChoice: { id: 'major_event', in: FORMAT_COMBAT } },
+    { id: 't_combat_maincard', target: 'guests', milestoneId: 'wp_invite', phase: 'guest', label: 'Tell guests the MAIN CARD time, not the broadcast start — prelims run hours earlier, so "come for the fight" lands people at the wrong end of the night', when: 'T-3d', whenChoice: { id: 'major_event', in: FORMAT_COMBAT } },
     // Combat again, and deliberately NOT a duplicate of t_stream (T-3d, "does
     // the channel work at all"). This is the day-of sign-in: documented advice
     // is to load the stream about half an hour ahead so a login or entitlement
@@ -495,19 +497,19 @@ const watchParty = {
     // phase 'guest' to match t_stream, its closest sibling (the T-3d "does the
     // channel work at all" check) — 'setup' would have been a phase value no
     // other task in this playbook uses, and an orphan category groups oddly.
-    { id: 't_combat_signin', milestoneId: 'event', phase: 'guest', label: 'Sign in and actually play the stream ~30 min before the main card — login trouble is easier to fix before anyone arrives', when: 'T0 -0:30', whenChoice: { id: 'major_event', in: FORMAT_COMBAT } },
+    { id: 't_combat_signin', target: 'day', milestoneId: 'event', phase: 'guest', label: 'Sign in and actually play the stream ~30 min before the main card — login trouble is easier to fix before anyone arrives', when: 'T0 -0:30', whenChoice: { id: 'major_event', in: FORMAT_COMBAT } },
 
     // MULTI-DAY TOURNAMENT — March Madness has a HARD deadline nothing else here
     // has: brackets lock at the first tip of the first game and cannot be
     // changed afterwards (NCAA/ESPN bracket rules). A host who plans to "do
     // brackets at the party" has already missed it if the party starts after
     // that first tip. That is a timing fact, not a preference.
-    { id: 't_mm_bracket', milestoneId: 'wp_invite', phase: 'guest', label: 'Get everyone\'s bracket in BEFORE the first tip — brackets lock when the first game starts and cannot be changed after', when: 'T-1d', whenChoice: { id: 'major_event', in: ['March Madness'] } },
+    { id: 't_mm_bracket', target: 'none', milestoneId: 'wp_invite', phase: 'guest', label: 'Get everyone\'s bracket in BEFORE the first tip — brackets lock when the first game starts and cannot be changed after', when: 'T-1d', whenChoice: { id: 'major_event', in: ['March Madness'] } },
     // Also March Madness specifically: the opening rounds run up to EIGHT games
     // at once, so one TV guarantees missing finishes. Sourced to the tournament's
     // own multi-view coverage; not generalised to the other multi-day events,
     // whose simultaneity was not researched this pass.
-    { id: 't_mm_screen', milestoneId: 'wp_setup', phase: 'guest', label: 'Set up a second screen — the early rounds run up to eight games at once, and one TV means missing the finishes', when: 'T-1d', whenChoice: { id: 'major_event', in: ['March Madness'] } },
+    { id: 't_mm_screen', target: 'none', milestoneId: 'wp_setup', phase: 'guest', label: 'Set up a second screen — the early rounds run up to eight games at once, and one TV means missing the finishes', when: 'T-1d', whenChoice: { id: 'major_event', in: ['March Madness'] } },
 
     // CONTINUOUS COVERAGE — the format defined by having NO discrete break. The
     // playbook already models that by gating t_halftime OFF for these events,
@@ -515,29 +517,29 @@ const watchParty = {
     // all: there is no natural moment to reset the room. Documented Wimbledon
     // hosting advice lands on the same point from the other side — stock enough
     // glassware that you are never washing up mid-session.
-    { id: 't_continuous_reset', milestoneId: 'wp_setup', phase: 'food', label: 'Put out more glasses and plates than you think you need — coverage runs for hours with no break to reset in, and nobody wants to be at the sink mid-match', when: 'T-1d', whenChoice: { id: 'major_event', in: FORMAT_CONTINUOUS } },
+    { id: 't_continuous_reset', target: 'list', milestoneId: 'wp_setup', phase: 'food', label: 'Put out more glasses and plates than you think you need — coverage runs for hours with no break to reset in, and nobody wants to be at the sink mid-match', when: 'T-1d', whenChoice: { id: 'major_event', in: FORMAT_CONTINUOUS } },
     // Wimbledon's own dress tradition, the same INVITE-time shape as Derby hats:
     // told on the day, a guest has already dressed.
-    { id: 't_wimbledon_whites', milestoneId: 'wp_invite', phase: 'guest', label: 'Ask for Wimbledon whites on the invite — it is the tradition, and guests need the notice to play along', when: 'T-7d', whenChoice: { id: 'major_event', in: ['Wimbledon'] } },
+    { id: 't_wimbledon_whites', target: 'guests', milestoneId: 'wp_invite', phase: 'guest', label: 'Ask for Wimbledon whites on the invite — it is the tradition, and guests need the notice to play along', when: 'T-7d', whenChoice: { id: 'major_event', in: ['Wimbledon'] } },
 
     // BROADCAST EVENT — neither of these has a ball to watch, so the thing that
     // makes them a party has to be READY before the broadcast starts. Both point
     // at purchases this playbook already carries (p_draftboard, p_ballot); they
     // add the timing those purchases imply and never stated.
-    { id: 't_draft_board_up', milestoneId: 'wp_setup', phase: 'guest', label: 'Get the draft board up before the first pick — a draft has no ball to watch, so the board is what makes it a room', when: 'T0 -0:30', whenChoice: { id: 'major_event', in: ['NFL Draft'] } },
-    { id: 't_awards_ballots', milestoneId: 'wp_setup', phase: 'guest', label: 'Hand out the prediction ballots before the show starts — once the first award is read, nobody can enter honestly', when: 'T0 -0:15', whenChoice: { id: 'major_event', in: ['Awards Show'] } },
+    { id: 't_draft_board_up', target: 'day', milestoneId: 'wp_setup', phase: 'guest', label: 'Get the draft board up before the first pick — a draft has no ball to watch, so the board is what makes it a room', when: 'T0 -0:30', whenChoice: { id: 'major_event', in: ['NFL Draft'] } },
+    { id: 't_awards_ballots', target: 'day', milestoneId: 'wp_setup', phase: 'guest', label: 'Hand out the prediction ballots before the show starts — once the first award is read, nobody can enter honestly', when: 'T0 -0:15', whenChoice: { id: 'major_event', in: ['Awards Show'] } },
 
     // DERBY — gated to Kentucky Derby rather than the racing format, because
     // these two are Derby traditions specifically and are not Daytona's.
     // Attire is an INVITE-time fact: hats are the documented expectation
     // (kentuckyderby.com's own at-home hosting guidance), and a guest told on
     // the day has already got dressed. That timing is the whole point.
-    { id: 't_derby_attire', milestoneId: 'wp_invite', phase: 'guest', label: 'Put the dress code on the invite — hats are the tradition, and guests need the notice to play along', when: 'T-7d', whenChoice: { id: 'major_event', in: ['Kentucky Derby'] } },
+    { id: 't_derby_attire', target: 'guests', milestoneId: 'wp_invite', phase: 'guest', label: 'Put the dress code on the invite — hats are the tradition, and guests need the notice to play along', when: 'T-7d', whenChoice: { id: 'major_event', in: ['Kentucky Derby'] } },
     // The pool is the documented way a room stays in it across an all-day card:
     // the Derby is about two minutes at the end of a 14-race day, so without
     // something to hold them the room drifts until post time. Drawing horses
     // costs nothing; a cash buy-in or printed sheets would be a priced claim.
-    { id: 't_derby_pool', milestoneId: 'wp_setup', phase: 'guest', label: 'Set up the pool before post time — let everyone draw a horse, so the whole card has something riding on it instead of just the last two minutes', when: 'T-1d', whenChoice: { id: 'major_event', in: ['Kentucky Derby'] } },
+    { id: 't_derby_pool', target: 'none', milestoneId: 'wp_setup', phase: 'guest', label: 'Set up the pool before post time — let everyone draw a horse, so the whole card has something riding on it instead of just the last two minutes', when: 'T-1d', whenChoice: { id: 'major_event', in: ['Kentucky Derby'] } },
   ],
 
   purchases: [
@@ -620,17 +622,17 @@ const watchParty = {
     // risks it should never have shown) as a bug fix, not a feature — that bug
     // predates this session (introduced when r_derby_time/r_rivalry were first
     // authored, pass one).
-    { id: 'r_kickoff', trigger: 'Food not ready when the game starts', severity: 'high', mitigation: 'Back-time the cook so everything is OUT ~30 min before kickoff; use the slow cooker for hot dishes; pre-order pizza for delivery at kickoff.' },
-    { id: 'r_stream', trigger: 'Game not on / stream or channel fails', severity: 'high', mitigation: 'Test the exact channel/stream at 3 days out; know the backup (antenna, alternate app, or a nearby bar) before guests arrive.' },
-    { id: 'r_drinks', trigger: 'Run out of drinks or ice mid-game', severity: 'med', mitigation: 'Buy a buffer (~4 drinks + ~1.5 lb ice/guest); top up ice at halftime; ask a guest to do a beer run.', copyByAnswer: { mitigation: { major_event: Object.fromEntries(FORMAT_NO_HALFTIME.map((k) => [k, 'Buy a buffer (~4 drinks + ~1.5 lb ice/guest); top up ice partway through; ask a guest to do a beer run.'])) } } },
+    { id: 'r_kickoff', target: 'food', trigger: 'Food not ready when the game starts', severity: 'high', mitigation: 'Back-time the cook so everything is OUT ~30 min before kickoff; use the slow cooker for hot dishes; pre-order pizza for delivery at kickoff.' },
+    { id: 'r_stream', target: 'none', trigger: 'Game not on / stream or channel fails', severity: 'high', mitigation: 'Test the exact channel/stream at 3 days out; know the backup (antenna, alternate app, or a nearby bar) before guests arrive.' },
+    { id: 'r_drinks', target: 'none', trigger: 'Run out of drinks or ice mid-game', severity: 'med', mitigation: 'Buy a buffer (~4 drinks + ~1.5 lb ice/guest); top up ice at halftime; ask a guest to do a beer run.', copyByAnswer: { mitigation: { major_event: Object.fromEntries(FORMAT_NO_HALFTIME.map((k) => [k, 'Buy a buffer (~4 drinks + ~1.5 lb ice/guest); top up ice partway through; ask a guest to do a beer run.'])) } } },
     // r_grill_cold is Watch-Party's OWN: missing the game is a cost no other
     // playbook has. The generic carbon-monoxide risk that sat beside it moved to
     // playbooks/cookLever.js, where every indoor playbook gets it from one copy.
-    { id: 'r_grill_cold', trigger: 'Grilling outside means missing the game — and cold slows the grill down', severity: 'med', mitigation: 'Start earlier than you would in summer — cold air and a cold grate both slow the cook, and no published figure says by how much, so give yourself margin rather than a number. Get a speaker or a phone stream to the door, and hand one guest the job of calling the score.', whenChoice: [{ id: 'menu', in: ['Wings + chips/dip', 'Chili bar'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
-    { id: 'r_seating', trigger: 'Not enough seats / bad sightlines', severity: 'med', mitigation: 'Borrow extra chairs; arrange seating toward the screen before anyone arrives.' },
-    { id: 'r_trash', trigger: 'Trash/recycling overflows, surfaces get sticky', severity: 'low', mitigation: 'Put out a clearly-marked recycling bag for cans; swap trash bags at halftime; keep paper towels at the food table.', copyByAnswer: { mitigation: { major_event: Object.fromEntries(FORMAT_NO_HALFTIME.map((k) => [k, 'Put out a clearly-marked recycling bag for cans; swap trash bags partway through; keep paper towels at the food table.'])) } } },
-    { id: 'r_derby_time', trigger: 'Guests miss the actual race — it is over in about two minutes', severity: 'med', mitigation: 'Post time is announced well ahead — call it out 10 minutes before, get everyone off their phones and in front of the screen, and hold any toast until after the race, not during it.', whenChoice: { id: 'major_event', in: ['Kentucky Derby'] } },
-    { id: 'r_rivalry', trigger: 'Mixed-fandom tension between the two schools\' fans in the room', severity: 'low', mitigation: 'Keep it lighthearted — split seating by team side if it helps, and set the tone before kickoff that it stays fun.', whenChoice: { id: 'major_event', in: ['College Football National Championship'] } },
+    { id: 'r_grill_cold', target: 'none', trigger: 'Grilling outside means missing the game — and cold slows the grill down', severity: 'med', mitigation: 'Start earlier than you would in summer — cold air and a cold grate both slow the cook, and no published figure says by how much, so give yourself margin rather than a number. Get a speaker or a phone stream to the door, and hand one guest the job of calling the score.', whenChoice: [{ id: 'menu', in: ['Wings + chips/dip', 'Chili bar'] }, { id: 'cook_method', in: ['Grill or smoker outside'] }] },
+    { id: 'r_seating', target: 'seating', trigger: 'Not enough seats / bad sightlines', severity: 'med', mitigation: 'Borrow extra chairs; arrange seating toward the screen before anyone arrives.' },
+    { id: 'r_trash', target: 'seating', trigger: 'Trash/recycling overflows, surfaces get sticky', severity: 'low', mitigation: 'Put out a clearly-marked recycling bag for cans; swap trash bags at halftime; keep paper towels at the food table.', copyByAnswer: { mitigation: { major_event: Object.fromEntries(FORMAT_NO_HALFTIME.map((k) => [k, 'Put out a clearly-marked recycling bag for cans; swap trash bags partway through; keep paper towels at the food table.'])) } } },
+    { id: 'r_derby_time', target: 'none', trigger: 'Guests miss the actual race — it is over in about two minutes', severity: 'med', mitigation: 'Post time is announced well ahead — call it out 10 minutes before, get everyone off their phones and in front of the screen, and hold any toast until after the race, not during it.', whenChoice: { id: 'major_event', in: ['Kentucky Derby'] } },
+    { id: 'r_rivalry', target: 'seating', trigger: 'Mixed-fandom tension between the two schools\' fans in the room', severity: 'low', mitigation: 'Keep it lighthearted — split seating by team side if it helps, and set the tone before kickoff that it stays fun.', whenChoice: { id: 'major_event', in: ['College Football National Championship'] } },
   ],
 
   contingencies: [

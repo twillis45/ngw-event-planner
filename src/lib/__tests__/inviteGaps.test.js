@@ -2,7 +2,8 @@
 // info is included." The day, the hour the HOST set, and the place.
 import { inviteGaps } from '../inviteGaps';
 
-const READY = { date: '2026-11-26', startTime: '16:00', startTimeSource: 'host', venue: 'Vida’s place' };
+// A real name: since cause 6 (11/23/2026) a placeholder name is a gap too.
+const READY = { name: 'Vida’s Friendsgiving', date: '2026-11-26', startTime: '16:00', startTimeSource: 'host', venue: 'Vida’s place' };
 
 test('an invite with the day, the hour and the place is ready', () => {
   expect(inviteGaps(READY)).toEqual([]);
@@ -14,7 +15,8 @@ test.each([
   ['no start time', { ...READY, startTime: '' }, ['time']],
   ['a start time the app proposed, not the host', { ...READY, startTimeSource: 'derived' }, ['time']],
   ['no place', { ...READY, venue: '' }, ['place']],
-  ['nothing at all', {}, ['date', 'time', 'place']],
+  ['nothing at all', {}, ['date', 'time', 'place', 'name']],
+  ['a placeholder name (six root causes, cause 6)', { ...READY, name: 'My Friendsgiving' }, ['name']],
 ])('%s', (_name, ev, want) => {
   expect(inviteGaps(ev)).toEqual(want);
 });
