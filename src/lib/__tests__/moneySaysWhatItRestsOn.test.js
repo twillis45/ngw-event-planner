@@ -21,8 +21,10 @@ const ev = (type, extra = {}) => ({
 describe('G #2 — a pick priced as another until a source exists says so', () => {
   const pending = ALL_PLAYBOOKS.flatMap((pb) => (pb.decisions || []).filter((d) => d.costPending).map((d) => [pb.type, d]));
 
-  test('all nine owner-listed decisions name which picks are pending', () => {
-    expect(pending.length).toBe(9);
+  // Ten since batch 11: Dinner Party's one catered course (#233 Left), which no
+  // source prices and whose course the pick does not name.
+  test('all ten listed decisions name which picks are pending', () => {
+    expect(pending.length).toBe(10);
     for (const [type, d] of pending) {
       expect(`${type}:${d.id}:${Array.isArray(d.costPendingPicks)}`).toBe(`${type}:${d.id}:true`);
       for (const p of d.costPendingPicks) expect(d.options).toContain(p);

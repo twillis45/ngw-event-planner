@@ -68,7 +68,10 @@ test('a line-rule decision has a line gated on it, and every gate names a real o
 test('the picks that change the cost with no source yet, each saying why (owner calls)', () => {
   const pending = ALL_PLAYBOOKS.flatMap((pb) => (pb.decisions || []).filter((d) => d.costPending).map((d) => `${pb.type} · ${d.id}`)).sort();
   expect(pending).toEqual([
-    'Crawfish Boil · heat', 'Crawfish Boil · sides', 'Day Party · food', 'Ethiopian Coffee Ceremony · injera_source',
+    'Crawfish Boil · heat', 'Crawfish Boil · sides', 'Day Party · food',
+    // Batch 11 (#233 Left): one catered course has no source and names no course.
+    'Dinner Party · help',
+    'Ethiopian Coffee Ceremony · injera_source',
     'Fish Fry · fish', 'PTA / Booster Fundraiser · concessions', 'Pupusa Gathering · curtido_ahead', 'Pupusa Gathering · make_vs_order',
     'Retirement Party · bar',
   ]);
