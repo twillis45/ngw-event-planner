@@ -2951,35 +2951,6 @@ export function eventPlan(event, ctx = null) {
     if (di > slot) { const [d] = nextActions.splice(di, 1); nextActions.splice(slot, 0, d); }
   }
 
-  // ── A TIME-SENSITIVE CALL THAT CLOSES FIRST LEADS (owner ruling 11/23/2026) ──
-  // Thanksgiving P1-7: "Is anyone staying overnight?" wore "time-sensitive" in
-  // Calls to make while the hero moved on to shopping. A time-sensitive call
-  // (lib/urgency, the same reader as that tag) is raised to the head ONLY when
-  // its window closes strictly before the head's deadline. A tie or a later
-  // window changes nothing. The heads the rulings above placed keep their
-  // place: a critical, the budget and the rungs before it, the days owed, the
-  // event day's own steps, and a shop window that does not reopen.
-  {
-    const dOut = event.date ? daysFrom(event.date) : null;
-    const head = nextActions[0] || null;
-    const RULED = new Set(['budget', 'date', 'guests', 'day']);
-    const ruledHead = head && (head.level === 'critical' || RULED.has(head.domain) || head.closingWindow === true);
-    if (dOut != null && dOut > 0 && !ruledHead) {
-      let board = null;
-      try { board = playbookDecisionBoard(event); } catch (_e) { board = null; }
-      const claims = (a, id) => !!a && (a.id === 'decision:' + id
-        || (Array.isArray(a.records) && a.records.some((x) => String(x && (x.id || x)) === String(id))));
-      const row = timeSensitiveCallToRaise((board && board.open) || [], head, dOut, (id) => claims(head, id));
-      if (row) {
-        const at = nextActions.findIndex((a) => claims(a, row.id));
-        const call = at >= 0
-          ? nextActions.splice(at, 1)[0]
-          : raiseToAction({ ...decisionRaise(row, dOut), surface: 'decisions', label: 'Calls to make', domain: 'plan', key: String(row.id) }, 'decision:' + row.id);
-        nextActions.unshift({ ...call, timeSensitive: true });
-      }
-    }
-  }
-
   // ── WAVE-6: ONE POST-SNOOZE TRUTH ───────────────────────────────────────────
   // Snooze applies HERE, inside the single source — `nextActions` is post-snooze
   // and `setAside` carries what the host set down (with its comeback date), so
@@ -2994,6 +2965,41 @@ export function eventPlan(event, ctx = null) {
     if (isSnoozed(event, a.id)) {
       setAside.unshift({ ...a, snoozedUntil: snoozedUntil(event, a.id) });
       nextActions.splice(i, 1);
+    }
+  }
+
+  // ── A TIME-SENSITIVE CALL THAT CLOSES FIRST LEADS (owner ruling 11/23/2026) ──
+  // Thanksgiving P1-7: "Is anyone staying overnight?" wore "time-sensitive" in
+  // Calls to make while the hero moved on to shopping. A time-sensitive call
+  // (lib/urgency, the same reader as that tag) is raised to the head ONLY when
+  // its window closes strictly before the head's deadline. A tie or a later
+  // window changes nothing. The heads the rulings above placed keep their
+  // place: a critical, the budget and the rungs before it, the days owed, the
+  // event day's own steps, and a shop window that does not reopen.
+  {
+    const dOut = event.date ? daysFrom(event.date) : null;
+    const head = nextActions[0] || null;
+    const RULED = new Set(['budget', 'date', 'guests', 'day']);
+    // The menu panel (owner, 11/21/2026): a food item naming its open menu
+    // questions offers them in turn, so it keeps the head too.
+    const menuPanel = head && head.domain === 'food' && Array.isArray(head.records) && head.records.length > 0;
+    const ruledHead = head && (head.level === 'critical' || RULED.has(head.domain) || head.closingWindow === true || menuPanel);
+    // No head, nothing to close before: an emptied queue stays empty.
+    if (head && dOut != null && dOut > 0 && !ruledHead) {
+      let board = null;
+      try { board = playbookDecisionBoard(event); } catch (_e) { board = null; }
+      const claims = (a, id) => !!a && (a.id === 'decision:' + id
+        || (Array.isArray(a.records) && a.records.some((x) => String(x && (x.id || x)) === String(id))));
+      // After the snooze: the head she sees, and never a call she set down.
+      const open = ((board && board.open) || []).filter((r) => !isSnoozed(event, 'decision:' + r.id));
+      const row = timeSensitiveCallToRaise(open, head, dOut, (id) => claims(head, id));
+      if (row) {
+        const at = nextActions.findIndex((a) => claims(a, row.id));
+        const call = at >= 0
+          ? nextActions.splice(at, 1)[0]
+          : raiseToAction({ ...decisionRaise(row, dOut), surface: 'decisions', label: 'Calls to make', domain: 'plan', key: String(row.id) }, 'decision:' + row.id);
+        nextActions.unshift({ ...call, timeSensitive: true });
+      }
     }
   }
 

@@ -13,7 +13,7 @@
 // One reader (lib/urgency) decides both the Calls list's tag and this raise.
 import { eventPlan } from '../../CommandCenter';
 import { buildExperienceContext } from '../experienceContext';
-import { playbookDecisionBoard, ALL_PLAYBOOKS } from '../playbooks';
+import { playbookDecisionBoard, ALL_PLAYBOOKS, openFoodChoices } from '../playbooks';
 import { urgencyOf, actionDeadline, timeSensitiveCallToRaise } from '../urgency';
 import { useFrozenClock, daysFromNow } from '../../testUtils/frozenClock';
 
@@ -82,7 +82,8 @@ describe('across every playbook', () => {
         if (displaced && !(u.closesInDays < actionDeadline(displaced, dOut))) bad.push(`${e.id}: ${id} (${u.closesInDays}) does not close before ${displaced.id} (${actionDeadline(displaced, dOut)})`);
         continue;
       }
-      if (head.level === 'critical' || RULED.has(head.domain) || head.closingWindow === true) continue;
+      const menuPanel = head.domain === 'food' && Array.isArray(head.records) && head.records.length > 0;
+      if (head.level === 'critical' || RULED.has(head.domain) || head.closingWindow === true || menuPanel) continue;
       const deadline = actionDeadline(head, dOut);
       const earlier = rows.filter((r) => {
         const u = urgencyOf(r);
@@ -107,10 +108,17 @@ describe('across every playbook', () => {
 });
 
 describe('Thanksgiving, 9 to 12 days out (the walkthrough)', () => {
-  // The menu is chosen, so the hero has moved on to the food and the shop.
-  const picked = { hosting_model: 'Host cooks the whole meal', turkey_method: 'Roast it whole' };
+  // The menu is chosen, so the hero has moved on to the shop (the walkthrough's
+  // state). Every open menu question is answered with its default; the menu
+  // panel, which offers them in turn, keeps the head while any is open.
+  const menuDone = (d) => {
+    const base = ev('Thanksgiving Hosting', d);
+    const out = {};
+    for (const c of openFoodChoices(base) || []) out[c.id] = c.default || (c.options || [])[0];
+    return out;
+  };
   test.each([9, 10, 11, 12])('"Is anyone staying overnight?" surfaces in the hero at %i days out', (d) => {
-    const e = ev('Thanksgiving Hosting', d, { foodChoices: picked });
+    const e = ev('Thanksgiving Hosting', d, { foodChoices: menuDone(d) });
     const row = ((playbookDecisionBoard(e) || {}).open || []).find((r) => r.id === 'overnight_guests');
     expect(urgencyOf(row).timeSensitive).toBe(true);
     const head = plan(e).nextActions[0];
@@ -119,9 +127,20 @@ describe('Thanksgiving, 9 to 12 days out (the walkthrough)', () => {
     expect(head.ask).toBe('Is anyone staying overnight?');
   });
   test('answered, it leaves the hero', () => {
-    const e = ev('Thanksgiving Hosting', 10, { foodChoices: { ...picked, overnight_guests: 'No — everyone is local' } });
+    const e = ev('Thanksgiving Hosting', 10, { foodChoices: { ...menuDone(10), overnight_guests: 'No — everyone is local' } });
     expect(plan(e).nextActions.map((a) => a.id)).not.toContain('decision:overnight_guests');
   });
 });
 // The Calls list's tag reads urgencyOf too: pinned in oneNumberOneReader's
 // shell check (a hostv2 file read, kept to the existing gate).
+
+describe('what she set down stays down', () => {
+  test('a snoozed call is not raised, and the head it is measured against is the one after the snooze', () => {
+    const base = ev('Thanksgiving Hosting', 10);
+    const picks = {};
+    for (const c of openFoodChoices(base) || []) picks[c.id] = c.default || (c.options || [])[0];
+    const e = ev('Thanksgiving Hosting', 10, { foodChoices: picks, snoozed: { 'decision:overnight_guests': daysFromNow(5) } });
+    const p = plan(e);
+    expect(p.nextActions.map((a) => a.id)).not.toContain('decision:overnight_guests');
+  });
+});
