@@ -10,7 +10,7 @@
 // The rule now: a sheet opened from inside another has ONE control in its
 // header, "Close", and it returns to the sheet it came from. "‹ Sections" shows
 // only where the sheet is a section. Checked again after the phone turns.
-import { test, expect, settled, sheetSettled, openSectionByName, dateIn } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled, openSectionByName, dateIn, openEventsSheet } from './fixtures.mjs';
 
 const EVENT = {
   id: 'oneback-ev', name: 'Maya’s 40th Birthday', type: 'Birthday', createdAt: '2026-11-01',
@@ -97,6 +97,8 @@ test('"‹ Sections" is on a section, and not on sheets that are not one', async
   // Your events is a list of events, not a section of this one.
   const rail = page.locator('.srail-row[aria-label="This event"]');
   if (await rail.count()) await rail.first().click();
+  // A tall iPad's events list opens from the board's title (11/22/2026).
+  else if (await page.locator('[data-tt-title]').count()) await openEventsSheet(page);
   else {
     await page.locator('[aria-label="Menu"]').first().click();
     await sheetSettled(page);

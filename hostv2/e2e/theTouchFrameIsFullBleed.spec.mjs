@@ -49,7 +49,8 @@ const measure = (page) => page.evaluate(() => {
     vw: innerWidth, vh: innerHeight, coarse: matchMedia('(pointer: coarse)').matches, rail: sw.dataset.rail,
     frame: B(sw),
     radii: [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomRightRadius, cs.borderBottomLeftRadius],
-    srail: B(document.querySelector('.srail')), board: B(sw.querySelector(':scope > .app')),
+    srail: document.querySelector('.srail') ? B(document.querySelector('.srail')) : null, board: B(sw.querySelector(':scope > .app')),
+    tall: sw.dataset.tall === '1', bar: document.querySelector('[data-tt-bar]') ? B(document.querySelector('[data-tt-bar]')) : null,
   };
 });
 
@@ -72,7 +73,18 @@ test.describe('touch: the frame is full-bleed with square corners', () => {
       expect(m.coarse, 'the context reports a coarse pointer').toBe(true);
       expect(m.frame, 'frame at 0,0, the size of the screen').toEqual({ x: 0, y: 0, w: m.vw, h: m.vh });
       expect(m.radii, 'all four corners square').toEqual(['0px', '0px', '0px', '0px']);
-      innerLayoutHolds(m);
+      // A tablet held upright is the tall-iPad layout (owner, 11/22/2026): no
+      // rail; the board runs full width and ends at a docked bar the width of
+      // the screen. Every other touch size keeps the rail beside the board.
+      if (h > w && w < 1280) {
+        expect(m.tall, 'portrait tablet: the tall layout').toBe(true);
+        expect(m.rail, 'portrait tablet: no rail').toBe('0');
+        expect(m.board.x, 'board from the left edge').toBe(0);
+        expect(m.board.w, 'board the width of the screen').toBe(m.vw);
+        expect(m.bar, 'the docked bar').toEqual({ x: 0, y: m.board.y + m.board.h, w: m.vw, h: m.vh - (m.board.y + m.board.h) });
+      } else {
+        innerLayoutHolds(m);
+      }
       await ctx.close();
     });
   }

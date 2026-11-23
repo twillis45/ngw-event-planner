@@ -1,4 +1,4 @@
-import { isWideBp } from './viewport';
+import { isWideBp, bpOf, readLayoutWidth, readPortrait } from './viewport';
 // ─── responsiveSurface — which shell composition a surface gets ──────────────
 //
 // Phase 5G-C1. The C1 acceptance path spans TWO host experiences — "where the
@@ -166,7 +166,32 @@ export function showsRail(state) {
   const { bp } = (state || {});
   // The forced phone stage is a phone in every respect, including its navigation.
   if (phoneStageForced()) return false;
+  // A TALL TABLET HAS NO RAIL (owner, 11/22/2026). A 13" iPad in portrait is
+  // exactly 1024 wide — the tablet-land band — so the band alone raised a rail
+  // on a portrait screen. Its navigation is the docked bottom bar instead.
+  if (isTallTablet(state)) return false;
   return isWideBp(bp);   // the ONE definition, from viewport.js
+}
+
+/**
+ * isTallTablet({ bp, portrait }) -> boolean — the tall-iPad mode.
+ *
+ * Owner ruling 11/22/2026 (the tall-iPad package): a tablet band (640–1279)
+ * held in portrait gets the full-width board, the header-as-switcher, the
+ * progress ribbon and a docked bottom bar, and no left rail. Landscape tablets
+ * and desktops keep today's layout, rail included. Phones are unchanged.
+ * `bp` comes from useBreakpoint() and `portrait` from usePortrait(), both read
+ * from matchMedia (#236), so this cannot disagree with the stylesheet.
+ */
+export function isTallTablet(state) {
+  const { bp, portrait } = (state || {});
+  if (phoneStageForced()) return false;
+  return (bp === 'tablet' || bp === 'tablet-land') && portrait === true;
+}
+
+/** The one reader, from the engine directly: band by matchMedia, shape by matchMedia. */
+export function readTallTablet() {
+  return isTallTablet({ bp: bpOf(readLayoutWidth()), portrait: readPortrait() });
 }
 
 /**

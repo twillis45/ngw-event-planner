@@ -74,8 +74,11 @@ const measureVoid = (page) =>
       elegant: !!escreen,
       // Guarded so a missing node fails loudly on the `elegant` assertion below
       // rather than producing a passing NaN comparison.
+      // On a tall iPad (11/22/2026) the header and the parts ribbon open the
+      // first screen; they are content, not void, so the gap is read from
+      // the last of them.
       gap: (escreen && first)
-        ? Math.round(first.getBoundingClientRect().top - escreen.getBoundingClientRect().top)
+        ? Math.round(first.getBoundingClientRect().top - ((escreen.querySelector(':scope > [data-tt-ribbon]') || escreen.querySelector(':scope > [data-tt-head]') || escreen).getBoundingClientRect()[escreen.querySelector(':scope > [data-tt-head]') ? 'bottom' : 'top']))
         : null,
       justify: ecenter ? getComputedStyle(ecenter).justifyContent : null,
     };

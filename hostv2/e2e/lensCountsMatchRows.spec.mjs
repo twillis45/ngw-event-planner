@@ -26,10 +26,7 @@ const boot = async (page) => {
 const openVendors = async (page) => {
   const rail = page.locator('.srail-row', { hasText: /People you/ });
   if (await rail.count()) { await rail.first().click(); } else {
-    await page.locator('.ev-eyebrow').first().click();
-    await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click();
-    await settled(page);
-    await page.locator('.sheet').last().getByText(/People you/).first().click();
+    await openSectionByName(page, /People you/);
   }
   await settled(page);
 };

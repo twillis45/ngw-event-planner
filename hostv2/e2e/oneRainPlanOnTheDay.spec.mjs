@@ -3,7 +3,7 @@
 // own tick (event.safetyChecked.weather) while the rain section and readiness
 // read event.rainPlan. A saved plan now confirms the row, and with none saved
 // the row opens the rain editor instead of storing a second answer.
-import { test, expect, settled, dateIn } from './fixtures.mjs';
+import { test, expect, settled, dateIn, goToStage } from './fixtures.mjs';
 
 const boot = async (page, extra) => {
   await page.addInitScript(([e]) => {
@@ -15,8 +15,7 @@ const boot = async (page, extra) => {
   }, [{ id: 'rain-day', type: 'Cookout', name: 'Cookout', date: dateIn(10), guestCount: 30, guests: [], vendors: [], budget: [], timeline: [], ...extra }]);
   await page.goto('?elegant=1');
   await settled(page);
-  await page.locator('.ev-eyebrow').first().click({ timeout: 8000 });
-  await page.locator('.navseg-b', { hasText: 'The Day' }).first().click({ timeout: 8000 });
+  await goToStage(page, 'The Day');
   await settled(page);
   return page.locator('.dayof-card [data-dayof-item="weather"]');
 };

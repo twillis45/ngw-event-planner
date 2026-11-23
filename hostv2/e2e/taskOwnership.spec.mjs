@@ -8,7 +8,7 @@
 // The board also required the 44px target be PROVEN by hit-test rather than
 // read off the CSS, because a computed ::after expander can be clipped to
 // nothing by an ancestor and the rule still looks correct.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const boot = async (page) => {
   await page.addInitScript(() => {
@@ -25,10 +25,7 @@ const boot = async (page) => {
   await settled(page);
   const rail = page.locator('.srail-row', { hasText: 'Your checklist' });
   if (await rail.count()) { await rail.first().click(); } else {
-    await page.locator('.ev-eyebrow').first().click();
-    await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click();
-    await settled(page);
-    await page.locator('.sheet').last().getByText('Your checklist', { exact: false }).first().click();
+    await openSectionByName(page, 'Your checklist');
   }
   await settled(page);
   const draft = page.getByRole('button', { name: /Draft my checklist/i });

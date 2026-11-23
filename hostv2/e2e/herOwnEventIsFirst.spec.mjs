@@ -15,7 +15,7 @@
 //
 // This gate is about POSITION, not about the string. It fails if the host's own
 // event sits below any sample, however the shelves are labeled.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, openEventsSheet } from './fixtures.mjs';
 
 const MINE = 'My Graduation';
 
@@ -42,8 +42,7 @@ const seed = async (page) => {
 const openTheList = async (page) => {
   await seed(page);
   await page.goto('?elegant=1');
-  await page.locator('.ev-eyebrow').first().click();
-  await page.locator('.navrow', { hasText: 'This event' }).first().click();
+  await openEventsSheet(page);
   await expect(page.getByRole('heading', { name: 'Your events' })).toBeVisible({ timeout: 15000 });
 };
 

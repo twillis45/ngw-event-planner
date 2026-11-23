@@ -80,10 +80,13 @@ const seed = async (page, which) => {
 const state = (page) => page.evaluate(() => {
   const mq = (w) => matchMedia(`(min-width:${w}px)`).matches;
   const sw = document.querySelector('.stagewrap');
+  // The tall iPad (owner, 11/22/2026): a tablet band held in portrait has no
+  // rail. Both halves are the engine's own answers, as the band is.
+  const cssTall = mq(640) && !mq(1280) && matchMedia('(orientation: portrait)').matches;
   return {
     cssBand: mq(1280) ? 'desktop' : mq(1024) ? 'tablet-land' : mq(640) ? 'tablet' : 'mobile',
-    bp: sw.dataset.bp, rail: sw.dataset.rail,
-    cssRail: mq(1024), metaWrites: window.__metaWrites,
+    bp: sw.dataset.bp, rail: sw.dataset.rail, tall: sw.dataset.tall === '1', cssTall,
+    cssRail: mq(1024) && !cssTall, metaWrites: window.__metaWrites,
   };
 });
 
@@ -114,6 +117,7 @@ for (const [size, P, L] of [
       const s = await state(page);
       expect(s.bp, 'data-bp names the band the stylesheet is laying out').toBe(s.cssBand);
       expect(s.rail === '1', 'the rail is up only where the stylesheet has room for it').toBe(s.cssRail);
+      expect(s.tall, 'the tall-iPad layout follows the engine’s band and shape').toBe(s.cssTall);
       expect(s.metaWrites, 'the viewport meta is re-processed').toBeGreaterThan(0);
       expect(s.metaWrites, 'once per mismatch, not in a loop').toBeLessThanOrEqual(2);
     });

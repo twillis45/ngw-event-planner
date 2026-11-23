@@ -92,7 +92,25 @@ test('light: the board\'s below-fold blocks and the pick sit on white panels', a
   const rows = await page.evaluate(probe, '.hero.elegant .then-fold, .hero.elegant .ef-watch, .hero.elegant .bento, [data-who-confirmed]');
   const names = rows.map((r) => r.what).join('\n');
   for (const want of ['then-fold', 'ef-watch', 'bento', 'section.who-confirmed']) expect(names, `premise: ${want} was measured`).toContain(want);
-  onAPanel(rows, 'board');
+  // ── A TALL IPAD'S TWO LISTS ARE ROWS, NOT BOXES (owner, 11/22/2026) ──────
+  // The tall-iPad package ruled that "Worth having a plan for" and "Who's
+  // confirmed" share one treatment there: full-width hairline rows with no
+  // card or box. Ruling 25's panels hold for every other block; those two
+  // are held to the newer ruling instead — no fill, and rows edged with --line-soft.
+  if (await page.locator('[data-tt-bar]').count()) {
+    const isRowList = (r) => /ef-watch|who-confirmed/.test(r.what);
+    onAPanel(rows.filter((r) => !isRowList(r)), 'board');
+    for (const r of rows.filter(isRowList)) expect.soft(r.bg, `tall board: ${r.what} has no box`).toBe('rgba(0, 0, 0, 0)');
+    const edges = await page.evaluate(() => {
+      const tok = (n) => { const d = document.createElement('div'); d.style.color = `var(${n})`; document.body.appendChild(d); const c = getComputedStyle(d).color; d.remove(); return c; };
+      const soft = tok('--line-soft');
+      return [...document.querySelectorAll('.ef-watch .watch-row, [data-who-row]')].map((e) => getComputedStyle(e).borderTopColor === soft && parseFloat(getComputedStyle(e).borderTopWidth) >= 1);
+    });
+    expect(edges.length, 'premise: the tall board has row lists').toBeGreaterThan(0);
+    expect(edges.every(Boolean), 'every row is edged with --line-soft').toBe(true);
+  } else {
+    onAPanel(rows, 'board');
+  }
   // The pick is on white (its steel edge stays: it is the selected option).
   const pick = await page.evaluate(probe, '.decopt.pick');
   expect(pick.length, 'premise: the board shows its pick').toBeGreaterThan(0);

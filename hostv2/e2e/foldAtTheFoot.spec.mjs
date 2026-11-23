@@ -61,7 +61,10 @@ const boot = async (page) => {
 };
 
 const geometry = (page) => page.evaluate(() => {
-  const vh = window.innerHeight;
+  // The first screen is what the scroller shows: on a tall iPad (11/22/2026)
+  // it ends at the docked bar's top edge, and anything past that is behind it.
+  const app = document.querySelector('.app');
+  const vh = Math.min(window.innerHeight, app ? app.getBoundingClientRect().bottom : window.innerHeight);
   const fold = document.querySelector('.efold');
   // Element nodes only — NOT `*`. Driving this in Chrome dev caught it: Vite
   // inlines the stylesheet as a <style> tag, and the CSS comment documenting

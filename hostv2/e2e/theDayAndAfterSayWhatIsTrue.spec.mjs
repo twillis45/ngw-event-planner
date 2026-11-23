@@ -10,7 +10,7 @@
 //                open Calls, no "all clear" over an unpaid balance, and the
 //                unpaid balance is what "still owed" names.
 // Events are the audit's own seeds (audit2/C/scripts/events.js).
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, identityLine } from './fixtures.mjs';
 
 const WEDDING = {
   id: 'aud-wedding', name: 'Maya & Jordan’s Wedding', type: 'Wedding', date: '2027-10-16', startTime: '16:00', startTimeSource: 'host',
@@ -67,7 +67,7 @@ test('9 PM on the wedding day: the cue the clock is on, not the 8 AM one', async
 test('a trip’s day 1 and day 3 are the same trip-day hero, with no venue ask', async ({ page }) => {
   await boot(page, TRIP, '2027-05-13T09:00:00');
   await expect(hero(page).locator('h2.ask')).toHaveText('Day 1 of 4.');
-  await expect(page.locator('.ev-eyebrow')).toContainText('DAY 1 OF 4');
+  await expect(identityLine(page)).toContainText('DAY 1 OF 4', { useInnerText: true });
   await expect(page.getByRole('main')).not.toContainText(/Pick the place|Where is the event\?/);
 
   await page.clock.setFixedTime(new Date('2027-05-15T09:00:00'));
@@ -79,7 +79,7 @@ test('a trip’s day 1 and day 3 are the same trip-day hero, with no venue ask',
 
 test('the day after a trip counts from its last day, and is not "the day"', async ({ page }) => {
   await boot(page, TRIP, '2027-05-17T10:00:00');
-  await expect(page.locator('.ev-eyebrow')).toContainText('1 DAY AGO');
+  await expect(identityLine(page)).toContainText('1 DAY AGO', { useInnerText: true });
   await expect(hero(page).locator('h2.ask')).toHaveText('All 4 days, done.');
   await expect(hero(page)).toContainText('yesterday');
 });

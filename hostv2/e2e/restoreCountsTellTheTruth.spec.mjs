@@ -1,4 +1,4 @@
-import { test, expect, settled, dateIn } from './fixtures.mjs';
+import { test, expect, settled, dateIn, openMenuDoor } from './fixtures.mjs';
 
 const EVENT = { id: 'cust-restore-counts', name: 'Current saved event', type: 'Cookout', date: dateIn(45), guestEstimate: 20, vendors: [], guests: [], budget: [], timeline: [] };
 const restored = { ...EVENT, name: 'Restored older event' };
@@ -15,8 +15,7 @@ const boot = async page => {
   const rail = page.locator('.srail-row', { hasText: 'You & settings' });
   if (await rail.count()) await rail.first().click();
   else {
-    await page.locator('.ev-eyebrow').first().click();
-    await page.locator('.sheet').last().getByText('You & settings', { exact: false }).first().click();
+    await openMenuDoor(page, 'You & settings');
   }
   await expect(page.getByRole('button', { name: 'Restore from a file', exact: true })).toBeVisible();
 };

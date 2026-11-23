@@ -53,6 +53,8 @@ const SELF_PINNED = [
   '**/anIPadTurnedMidSessionReLaysOut.spec.mjs',
   // Opens its own context per tablet geometry (the welcome, 11/22/2026).
   '**/theWelcomeIsFullBleedOnATablet.spec.mjs',
+  // Opens its own 11" and 13" portrait contexts and turns one (tall iPad, 11/22/2026).
+  '**/aTallIPadGetsItsOwnBoard.spec.mjs',
   '**/tapTargets.spec.mjs',
   // Drives its own three geometries (one lit button per sheet, batch 4, 11/21/2026).
   '**/oneLitButtonPerSheet.spec.mjs',

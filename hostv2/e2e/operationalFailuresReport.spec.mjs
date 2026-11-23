@@ -1,4 +1,4 @@
-import { test, expect, settled, openSectionByName, dateIn } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName, dateIn, openMenuDoor } from './fixtures.mjs';
 import { previewUrl } from '../deployBase.mjs';
 
 const EVENT = { id: 'cust-private-reporting', name: 'Private planning notes', type: 'Cookout', date: dateIn(45), venueCity: 'Annapolis', state: 'MD', guestEstimate: 40, guestMode: 'count', guestCountSource: 'playbook-typical', passRequired: true, passReasons: ['destination'], budget: [], vendors: [], guests: [], timeline: [] };
@@ -74,8 +74,7 @@ test('pass view, checkout intent, and a real checkout failure are counted separa
   const rail = page.locator('.srail-row', { hasText: 'You & settings' });
   if (await rail.count()) await rail.first().click();
   else {
-    await page.locator('.ev-eyebrow').first().click();
-    await page.locator('.sheet').last().getByText('You & settings', { exact: false }).first().click();
+    await openMenuDoor(page, 'You & settings');
   }
   await page.getByRole('button', { name: /^The One-Event Pass/ }).first().click();
   await expect.poll(async () => (await events(page, 'pass_sheet_viewed')).length).toBe(1);
@@ -93,8 +92,7 @@ test('a signed-out checkout says to sign in, not that checkout is unavailable', 
   const rail = page.locator('.srail-row', { hasText: 'You & settings' });
   if (await rail.count()) await rail.first().click();
   else {
-    await page.locator('.ev-eyebrow').first().click();
-    await page.locator('.sheet').last().getByText('You & settings', { exact: false }).first().click();
+    await openMenuDoor(page, 'You & settings');
   }
   await page.getByRole('button', { name: /^The One-Event Pass/ }).first().click();
   await page.getByRole('button', { name: 'Get the pass — $39', exact: true }).click();
@@ -124,8 +122,7 @@ test('a sample event offers no pass checkout, and says why', async ({ page }) =>
   const rail = page.locator('.srail-row', { hasText: 'You & settings' });
   if (await rail.count()) await rail.first().click();
   else {
-    await page.locator('.ev-eyebrow').first().click();
-    await page.locator('.sheet').last().getByText('You & settings', { exact: false }).first().click();
+    await openMenuDoor(page, 'You & settings');
   }
   await page.getByRole('button', { name: /^The One-Event Pass/ }).first().click();
   await expect(page.locator('.sheet').last()).toContainText('This is a sample event');
@@ -144,8 +141,7 @@ test('a refunded event\'s second purchase says why it was refused, not that chec
   const rail = page.locator('.srail-row', { hasText: 'You & settings' });
   if (await rail.count()) await rail.first().click();
   else {
-    await page.locator('.ev-eyebrow').first().click();
-    await page.locator('.sheet').last().getByText('You & settings', { exact: false }).first().click();
+    await openMenuDoor(page, 'You & settings');
   }
   await page.getByRole('button', { name: /^The One-Event Pass/ }).first().click();
   await page.getByRole('button', { name: 'Get the pass — $39', exact: true }).click();
@@ -162,8 +158,7 @@ test('You & settings offers a way to email a person', async ({ page }) => {
   const rail = page.locator('.srail-row', { hasText: 'You & settings' });
   if (await rail.count()) await rail.first().click();
   else {
-    await page.locator('.ev-eyebrow').first().click();
-    await page.locator('.sheet').last().getByText('You & settings', { exact: false }).first().click();
+    await openMenuDoor(page, 'You & settings');
   }
   const help = page.locator('a.help-email');
   await expect(help).toContainText('events@noguessworksystems.com');
