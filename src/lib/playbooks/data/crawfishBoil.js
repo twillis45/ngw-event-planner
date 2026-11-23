@@ -17,6 +17,8 @@ const crawfishBoil = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Loaded boiled potatoes, corn & mushroom platter',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Cajun potatoes, corn & mushrooms boiled in their own pot',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

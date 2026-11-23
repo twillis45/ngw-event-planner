@@ -8,6 +8,8 @@
 
 const babyShower = {
   type: 'Baby Shower',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Hummus & roasted veggie wraps + quinoa salad',
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'baby_shower',

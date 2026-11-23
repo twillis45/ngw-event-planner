@@ -58,6 +58,8 @@ const ptaBoosterFundraiser = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Cheese pizza slices plus a fruit-and-veggie tray at the stand',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Bean & rice bowls plus a fruit-and-veggie tray at the stand',
   solveFamily: 'gala',
   family: 'host_driven',
   recordKind: 'client',

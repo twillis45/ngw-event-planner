@@ -23,6 +23,8 @@ const crabFeast = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Grilled corn + veggie + Old Bay potato skewers',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Old Bay potato, corn & veggie skewers, grilled with olive oil',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

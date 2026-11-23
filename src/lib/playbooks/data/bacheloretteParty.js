@@ -18,6 +18,8 @@
 
 const bacheloretteParty = {
   type: 'Bachelorette Party',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Mezze platter (falafel, hummus, tabbouleh)',
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'bachelorette',

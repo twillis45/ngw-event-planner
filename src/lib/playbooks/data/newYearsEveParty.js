@@ -41,6 +41,8 @@ const newYearsEveParty = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Mushroom-and-gruyere puff pastry bites',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Mushroom & thyme bites in vegan puff pastry',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

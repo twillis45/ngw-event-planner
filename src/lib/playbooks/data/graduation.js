@@ -9,6 +9,8 @@
 
 const graduation = {
   type: 'Graduation',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Black bean & grilled veggie tacos (corn tortillas)',
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'graduation',

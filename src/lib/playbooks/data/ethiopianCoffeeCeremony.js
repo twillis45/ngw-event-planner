@@ -15,6 +15,8 @@
 
 const ethiopianCoffeeCeremony = {
   type: 'Ethiopian Coffee Ceremony',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Shiro & misir wat with gomen on injera (ye-tsom fasting plate)',
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',

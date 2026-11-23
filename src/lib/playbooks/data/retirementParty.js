@@ -21,6 +21,8 @@ const retirementParty = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Roasted vegetable & goat cheese tart',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Ratatouille over herbed white beans',
   solveFamily: 'retirement_party',
   family: 'host_driven',
   recordKind: 'client',

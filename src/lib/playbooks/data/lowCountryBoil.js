@@ -17,6 +17,8 @@ const lowCountryBoil = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Corn, potato & mushroom boil platter',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Old Bay corn, potato & mushroom boil, cooked in its own pot',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

@@ -15,6 +15,8 @@ const fishFry = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Fried green tomatoes + hush puppies plate',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Mustard-and-cornmeal fried okra & cauliflower + spaghetti in red sauce',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

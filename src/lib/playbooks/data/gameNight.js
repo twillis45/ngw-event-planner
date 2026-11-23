@@ -10,6 +10,8 @@
 
 const gameNight = {
   type: 'Game Night',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Falafel bites + hummus & veggie cups',
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',

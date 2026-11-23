@@ -6,6 +6,8 @@
 
 const sweet16 = {
   type: 'Sweet 16',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Black bean & veggie taco bar (corn tortillas, guacamole, salsa)',
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'sweet16',

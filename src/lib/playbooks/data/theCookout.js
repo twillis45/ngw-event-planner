@@ -20,6 +20,8 @@ const theCookout = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Grilled portobello burgers + veggie skewers',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Grilled portobello burgers (vegan buns) + veggie skewers',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

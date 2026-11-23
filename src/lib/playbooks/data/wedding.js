@@ -21,6 +21,8 @@ const wedding = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Wild mushroom & spinach wellington',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Wild mushroom & spinach wellington (vegan puff pastry)',
   solveFamily: 'wedding',
   family: 'full_service',
   recordKind: 'client',

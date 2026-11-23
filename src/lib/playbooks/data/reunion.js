@@ -24,6 +24,8 @@ const reunion = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Grilled veggie skewers + portobello burgers',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Grilled veggie skewers + portobello burgers (vegan buns)',
   solveFamily: 'reunion',
   family: 'host_driven',
   recordKind: 'client',

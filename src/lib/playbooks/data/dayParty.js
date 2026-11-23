@@ -19,6 +19,8 @@
 
 const dayParty = {
   type: 'Day Party',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Grilled veggie & chickpea skewers + mango black bean salad',
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',
