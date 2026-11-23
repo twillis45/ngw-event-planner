@@ -362,6 +362,7 @@ import { checklistRouteFor } from '@app/lib/taskRoute';
 import { editorKindFor, isBalanceDueAction, stepRowIdOf } from '@app/lib/heroEditor';
 import { stepIsASend, riskTargetFor, stepTargetFor } from '@app/lib/stepTarget';
 import { withSettled, withoutSettled, unsettledActions } from '@app/lib/settledAsks';
+import { urgencyOf } from '@app/lib/urgency';
 import { landingStage } from '@app/lib/landingStage';
 import { planPartsProgress, planPartsLine } from '@app/lib/planProgress';
 import { moneyFigures, headroomLabel, MONEY_LABELS } from '@app/lib/moneyFigures';
@@ -17351,7 +17352,7 @@ export default function HostShellV2() {
                           <span className="f-main">
                             <span className="f-name">{r.title || r.label}
                               {lateChip}
-                              {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
+                              {urgencyOf(r).timeSensitive && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                             </span>
                             {lateLine && <span className="v-meta">{lateLine}</span>}
                           </span>
@@ -17366,7 +17367,7 @@ export default function HostShellV2() {
                             {lateChip}
                             {/* Wave-2b short-runway escalation: a subtle time-sensitive cue in
                                 the existing tag vocabulary (warn), only when not already overdue. */}
-                            {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
+                            {urgencyOf(r).timeSensitive && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                           </span>
                           {lateLine && <span className="v-meta">{lateLine}</span>}
                         </span>
@@ -17432,7 +17433,7 @@ export default function HostShellV2() {
                           <span className="f-main">
                             <span className="f-name">{r.title || r.label}
                               {lateChip}
-                              {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
+                              {urgencyOf(r).timeSensitive && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                             </span>
                             {lateLine && <span className="v-meta">{lateLine}</span>}
                             {renderEditor(r)}
@@ -17457,7 +17458,7 @@ export default function HostShellV2() {
                             {lateChip}
                             {/* Wave-2b short-runway escalation: a subtle time-sensitive cue in
                                 the existing tag vocabulary (warn), only when not already overdue. */}
-                            {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
+                            {urgencyOf(r).timeSensitive && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                           </span>
                           {lateLine && <span className="v-meta">{lateLine}</span>}
                         </span>

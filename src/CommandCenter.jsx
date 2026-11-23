@@ -58,7 +58,8 @@ import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacit
 import { deriveEventPhaseProgress, cueActionLabel } from './lib/phaseProgress';
 import { startTimeIsConfirmed } from './lib/startTime';
 import { taskIsOverdue, taskDueInDays, taskLeadDays } from './lib/taskLead';
-import { raiseAll, surfaceMeta } from './lib/surfaceRegistry';
+import { raiseAll, surfaceMeta, decisionRaise } from './lib/surfaceRegistry';
+import { timeSensitiveCallToRaise } from './lib/urgency';
 // WAVE-6 (2026-07-15): snooze is applied INSIDE eventPlan — nextActions is the
 // post-snooze truth and setAside carries what the host set down (one truth, no
 // consumer can speak a set-aside item).
@@ -1449,6 +1450,71 @@ export function selectStudioCommand(events = []) {
   };
 }
 
+// A registry raise → the action the queue carries (pass 1 of the registry
+// splice in eventPlan, and the time-sensitive call raised by owner ruling
+// 11/23/2026). One mapping, so a call reads the same whichever rule raised it.
+function raiseToAction(r, itemKey) {
+  return {
+    // WAVE-5 RANKING (2026-07-15): `domain` is the surface's PLAIN domain
+    // ('vendors' | 'risks' | 'day'), not the old 'surface:*' form — the shell's
+    // DOMAIN_LENS files a vendor raise under the Vendors lens off exactly this
+    // word. The snooze/dedup key (itemKey/id) is separate.
+    // ── PASS THROUGH BY DEFAULT (2026-08-17) ────────────────────────────
+    // This was an explicit field list, and the comments below record TWO
+    // fields that died here one at a time — `sourceCategory` (2026-07-22)
+    // and `ask` (2026-07-31, "a consumer with no producer reads as a working
+    // feature"). It is the same silent-drop machine the raiseAll normalizer
+    // was, and it was fixed the same way there earlier today.
+    //
+    // The census that found it also found the live third instance:
+    // `ifDelayed` is absent from this list, so a raise carrying it would die
+    // crossing here even once a producer exists.
+    //
+    // The raise now spreads through whole and only genuine coercions are
+    // named. Pinned by raiseSurvivesToAction.test.js, which drives a field no
+    // consumer names — because a gate that enumerates fields cannot catch the
+    // field nobody thought of, which is how these two got through.
+    ...r,
+    id: itemKey, domain: r.domain,
+    title: r.title,
+    // DOCTRINE (2026-07-22): the raiser's declared classification rides the
+    // action to the shell — the shell must never re-sniff it from title
+    // prose (the Layer-2 harness caught this exact field dropping here).
+    sourceCategory: r.sourceCategory != null ? r.sourceCategory : null,
+    // AUTHORED ASK TRANSPORT (2026-07-31). Same doctrine as sourceCategory
+    // directly above, and it was missing: a raiser that knows its own job may
+    // author the host-facing ask, and heroAskFor prefers `a.ask` over its own
+    // prose classification. That preference had NO producer reaching it —
+    // this object never copied `r.ask`, so the one authored ask in the repo
+    // ('Seat your guests.') was dropped here and the shell fell back to
+    // sniffing the title, which is exactly what authoring the ask was meant
+    // to stop. A consumer with no producer reads as a working feature.
+    ask: r.ask != null ? r.ask : null,
+    consequence: r.why,
+    route: r.route, primaryRoute: r.route,
+    cta: 'Go', ctaLabel: 'Go',
+    level: r.severity, category: 'surface',
+    done: false, source: 'surfaceRegistry', surface: r.surface,
+    // WAVE-6: the raiser's own clock (decision daysOut, payDueDate, COI line,
+    // reconfirm window) — null where the engine has none. leadDays is what the
+    // snooze cap reads; with it, a past-window decision is REFUSED a snooze
+    // (the wave-6 proof: 4 past-window decisions were offered "back Jul 20").
+    dueInDays: r.dueInDays != null ? r.dueInDays : null,
+    leadDays: r.leadDays != null ? r.leadDays : null,
+    // Consequence signals from the raiser, null where it has none. The
+    // ranking below reads these; a raiser that declares nothing ranks on
+    // time alone exactly as before, so this is additive.
+    priorityScore: Number.isFinite(r.priorityScore) ? r.priorityScore : null,
+    gateHolder: r.gateHolder === true,
+    unlocks: Number.isFinite(r.unlocks) ? r.unlocks : 0,
+    // THE EVIDENCE ENVELOPE (2026-07-31) — the board's rank sentence, its
+    // grounded axes and their cited sources, carried whole so a selected
+    // recommendation can say what it stands on. Null where the raiser has
+    // none; nothing is invented here.
+    evidence: r.evidence || null,
+  };
+}
+
 // ── eventPlan(event) — THE single source of truth for "what to do next + progress" ──
 // One generator answers both questions so no surface can go stale or disagree:
 //   • nextActions — ordered, deduped-by-domain list of the NOT-DONE actions. [0] is THE
@@ -2550,65 +2616,7 @@ export function eventPlan(event, ctx = null) {
         continue;
       }
       seen.add(itemKey); seenTitles.add(titleKey(r.title));
-      registryActions.push({
-        // WAVE-5 RANKING (2026-07-15): `domain` is the surface's PLAIN domain
-        // ('vendors' | 'risks' | 'day'), not the old 'surface:*' form — the shell's
-        // DOMAIN_LENS files a vendor raise under the Vendors lens off exactly this
-        // word. The snooze/dedup key (itemKey/id) is separate.
-        // ── PASS THROUGH BY DEFAULT (2026-08-17) ────────────────────────────
-        // This was an explicit field list, and the comments below record TWO
-        // fields that died here one at a time — `sourceCategory` (2026-07-22)
-        // and `ask` (2026-07-31, "a consumer with no producer reads as a working
-        // feature"). It is the same silent-drop machine the raiseAll normalizer
-        // was, and it was fixed the same way there earlier today.
-        //
-        // The census that found it also found the live third instance:
-        // `ifDelayed` is absent from this list, so a raise carrying it would die
-        // crossing here even once a producer exists.
-        //
-        // The raise now spreads through whole and only genuine coercions are
-        // named. Pinned by raiseSurvivesToAction.test.js, which drives a field no
-        // consumer names — because a gate that enumerates fields cannot catch the
-        // field nobody thought of, which is how these two got through.
-        ...r,
-        id: itemKey, domain: r.domain,
-        title: r.title,
-        // DOCTRINE (2026-07-22): the raiser's declared classification rides the
-        // action to the shell — the shell must never re-sniff it from title
-        // prose (the Layer-2 harness caught this exact field dropping here).
-        sourceCategory: r.sourceCategory != null ? r.sourceCategory : null,
-        // AUTHORED ASK TRANSPORT (2026-07-31). Same doctrine as sourceCategory
-        // directly above, and it was missing: a raiser that knows its own job may
-        // author the host-facing ask, and heroAskFor prefers `a.ask` over its own
-        // prose classification. That preference had NO producer reaching it —
-        // this object never copied `r.ask`, so the one authored ask in the repo
-        // ('Seat your guests.') was dropped here and the shell fell back to
-        // sniffing the title, which is exactly what authoring the ask was meant
-        // to stop. A consumer with no producer reads as a working feature.
-        ask: r.ask != null ? r.ask : null,
-        consequence: r.why,
-        route: r.route, primaryRoute: r.route,
-        cta: 'Go', ctaLabel: 'Go',
-        level: r.severity, category: 'surface',
-        done: false, source: 'surfaceRegistry', surface: r.surface,
-        // WAVE-6: the raiser's own clock (decision daysOut, payDueDate, COI line,
-        // reconfirm window) — null where the engine has none. leadDays is what the
-        // snooze cap reads; with it, a past-window decision is REFUSED a snooze
-        // (the wave-6 proof: 4 past-window decisions were offered "back Jul 20").
-        dueInDays: r.dueInDays != null ? r.dueInDays : null,
-        leadDays: r.leadDays != null ? r.leadDays : null,
-        // Consequence signals from the raiser, null where it has none. The
-        // ranking below reads these; a raiser that declares nothing ranks on
-        // time alone exactly as before, so this is additive.
-        priorityScore: Number.isFinite(r.priorityScore) ? r.priorityScore : null,
-        gateHolder: r.gateHolder === true,
-        unlocks: Number.isFinite(r.unlocks) ? r.unlocks : 0,
-        // THE EVIDENCE ENVELOPE (2026-07-31) — the board's rank sentence, its
-        // grounded axes and their cited sources, carried whole so a selected
-        // recommendation can say what it stands on. Null where the raiser has
-        // none; nothing is invented here.
-        evidence: r.evidence || null,
-      });
+      registryActions.push(raiseToAction(r, itemKey));
     }
     // ── Pass 2: per-item snoozes drop children BEFORE bundling ─────────────────
     // (so a bundle's count reflects only what is actually up; a critical ignores
@@ -2941,6 +2949,35 @@ export function eventPlan(event, ctx = null) {
     let slot = 0;
     for (let k = 0; k < di; k++) if (nextActions[k] && nextActions[k].level === 'critical') slot = k + 1;
     if (di > slot) { const [d] = nextActions.splice(di, 1); nextActions.splice(slot, 0, d); }
+  }
+
+  // ── A TIME-SENSITIVE CALL THAT CLOSES FIRST LEADS (owner ruling 11/23/2026) ──
+  // Thanksgiving P1-7: "Is anyone staying overnight?" wore "time-sensitive" in
+  // Calls to make while the hero moved on to shopping. A time-sensitive call
+  // (lib/urgency, the same reader as that tag) is raised to the head ONLY when
+  // its window closes strictly before the head's deadline. A tie or a later
+  // window changes nothing. The heads the rulings above placed keep their
+  // place: a critical, the budget and the rungs before it, the days owed, the
+  // event day's own steps, and a shop window that does not reopen.
+  {
+    const dOut = event.date ? daysFrom(event.date) : null;
+    const head = nextActions[0] || null;
+    const RULED = new Set(['budget', 'date', 'guests', 'day']);
+    const ruledHead = head && (head.level === 'critical' || RULED.has(head.domain) || head.closingWindow === true);
+    if (dOut != null && dOut > 0 && !ruledHead) {
+      let board = null;
+      try { board = playbookDecisionBoard(event); } catch (_e) { board = null; }
+      const claims = (a, id) => !!a && (a.id === 'decision:' + id
+        || (Array.isArray(a.records) && a.records.some((x) => String(x && (x.id || x)) === String(id))));
+      const row = timeSensitiveCallToRaise((board && board.open) || [], head, dOut, (id) => claims(head, id));
+      if (row) {
+        const at = nextActions.findIndex((a) => claims(a, row.id));
+        const call = at >= 0
+          ? nextActions.splice(at, 1)[0]
+          : raiseToAction({ ...decisionRaise(row, dOut), surface: 'decisions', label: 'Calls to make', domain: 'plan', key: String(row.id) }, 'decision:' + row.id);
+        nextActions.unshift({ ...call, timeSensitive: true });
+      }
+    }
   }
 
   // ── WAVE-6: ONE POST-SNOOZE TRUTH ───────────────────────────────────────────

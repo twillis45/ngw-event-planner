@@ -77,5 +77,9 @@ describe('one number, one reader, on every playbook', () => {
     expect(/if \(yes > 0\) w\.push\(yes \+ ' confirmed'\)/.test(SRC)).toBe(false);
     expect(/phaseCues\.completedCount/.test(SRC)).toBe(false);
     expect(/planPartsProgress\(phaseCues\)/.test(SRC)).toBe(true);
+    // How urgent a call is (P1-7): the Calls list's "time-sensitive" tag reads
+    // lib/urgency, the same reader the hero queue raises a call by.
+    expect(/r\.timeCritical && r\.status !== 'overdue'/.test(SRC)).toBe(false);
+    expect((SRC.match(/urgencyOf\(r\)\.timeSensitive/g) || []).length).toBe(4);
   });
 });

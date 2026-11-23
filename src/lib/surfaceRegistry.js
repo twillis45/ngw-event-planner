@@ -96,6 +96,53 @@ function conflictRecordKey(c) {
   return c && c.affectedVendorId != null ? String(c.affectedVendorId) : null;
 }
 
+// ONE decision row → ONE raise. The overdue-decisions surface below maps every
+// overdue row through this, and eventPlan's time-sensitive step (owner ruling
+// 11/23/2026, lib/urgency) raises a time-sensitive row through the SAME shape,
+// so a call reads the same whichever rule brought it into the queue.
+// `days` is days to the event.
+export function decisionRaise(r, days) {
+  return {
+    severity: 'attention',
+    title: `Resolve "${r.label}".`,
+    why: r.because || null,
+    // The decision's own row: routeSheet's 'Decisions' branch focuses the
+    // sheet on decisionId (same addressing the shell uses for a single call).
+    route: { tab: 'Decisions', decisionId: r.id },
+    // WAVE-6: the decision RECORD — eventPlan folds this into the canonical
+    // cross-producer id ('decision:<id>') so a snooze follows the debt whether
+    // the ladder's tier or this raiser surfaces it.
+    key: r.id,
+    // WAVE-6: the board's own clock. daysOut IS days-from-today until the
+    // decision's window (dte + authored offset), so dueInDays = daysOut and
+    // leadDays = daysOut − dte recovers the authored T-Nd exactly. This is
+    // what lets the snooze cap REFUSE on a past-window decision — the wave-6
+    // proof caught 4 of them being offered "back Jul 20".
+    dueInDays: Number.isFinite(r.daysOut) ? r.daysOut : null,
+    leadDays: Number.isFinite(r.daysOut) ? r.daysOut - days : null,
+    // ── THE BOARD'S CONSEQUENCE SURVIVES THE BOUNDARY (2026-07-31) ──────
+    // playbookDecisionBoard scores every row on weight, reversibility,
+    // heart, and how much it unblocks (gateHolder / _dependedOnCount), then
+    // sorts on it. Until now only `daysOut` crossed this boundary, so all
+    // of that ranking was computed and thrown away: downstream, every
+    // decision was just a date, and the action list re-sorted them on the
+    // date alone. The consequential call and the incidental one arrived
+    // indistinguishable, and whichever had the nearer window won.
+    // These are the board's OWN numbers, not new ones invented here.
+    priorityScore: Number.isFinite(r.priorityScore) ? r.priorityScore : null,
+    gateHolder: r.gateHolder === true,
+    unlocks: Number.isFinite(r._dependedOnCount) ? r._dependedOnCount : 0,
+    // The authored question, so the host reads the decision as written.
+    ask: r.ask || null,
+    // ── THE EVIDENCE ENVELOPE (2026-07-31) ────────────────────────────
+    // The board already computed the rank sentence, the importance basis
+    // and thirteen grounded axes with cited sources. Carried whole from
+    // here so a recommendation can answer "why this?" downstream. Read-only
+    // projection of THIS row — see lib/decisionEvidence.js.
+    evidence: evidenceFromDecisionRow(r),
+  };
+}
+
 export const SURFACES = [
   // ── Risks ──────────────────────────────────────────────────────────────────
   // The engine has always run. It reached exactly ONE passive index row ("What could go
@@ -912,45 +959,7 @@ export const SURFACES = [
       try { board = playbookDecisionBoard(event); } catch (_e) { return []; }
       return ((board && board.open) || [])
         .filter((r) => r && r.id && r.status === 'overdue')
-        .map((r) => ({
-          severity: 'attention',
-          title: `Resolve "${r.label}".`,
-          why: r.because || null,
-          // The decision's own row: routeSheet's 'Decisions' branch focuses the
-          // sheet on decisionId (same addressing the shell uses for a single call).
-          route: { tab: 'Decisions', decisionId: r.id },
-          // WAVE-6: the decision RECORD — eventPlan folds this into the canonical
-          // cross-producer id ('decision:<id>') so a snooze follows the debt whether
-          // the ladder's tier or this raiser surfaces it.
-          key: r.id,
-          // WAVE-6: the board's own clock. daysOut IS days-from-today until the
-          // decision's window (dte + authored offset), so dueInDays = daysOut and
-          // leadDays = daysOut − dte recovers the authored T-Nd exactly. This is
-          // what lets the snooze cap REFUSE on a past-window decision — the wave-6
-          // proof caught 4 of them being offered "back Jul 20".
-          dueInDays: Number.isFinite(r.daysOut) ? r.daysOut : null,
-          leadDays: Number.isFinite(r.daysOut) ? r.daysOut - days : null,
-          // ── THE BOARD'S CONSEQUENCE SURVIVES THE BOUNDARY (2026-07-31) ──────
-          // playbookDecisionBoard scores every row on weight, reversibility,
-          // heart, and how much it unblocks (gateHolder / _dependedOnCount), then
-          // sorts on it. Until now only `daysOut` crossed this boundary, so all
-          // of that ranking was computed and thrown away: downstream, every
-          // decision was just a date, and the action list re-sorted them on the
-          // date alone. The consequential call and the incidental one arrived
-          // indistinguishable, and whichever had the nearer window won.
-          // These are the board's OWN numbers, not new ones invented here.
-          priorityScore: Number.isFinite(r.priorityScore) ? r.priorityScore : null,
-          gateHolder: r.gateHolder === true,
-          unlocks: Number.isFinite(r._dependedOnCount) ? r._dependedOnCount : 0,
-          // The authored question, so the host reads the decision as written.
-          ask: r.ask || null,
-          // ── THE EVIDENCE ENVELOPE (2026-07-31) ────────────────────────────
-          // The board already computed the rank sentence, the importance basis
-          // and thirteen grounded axes with cited sources. Carried whole from
-          // here so a recommendation can answer "why this?" downstream. Read-only
-          // projection of THIS row — see lib/decisionEvidence.js.
-          evidence: evidenceFromDecisionRow(r),
-        }));
+        .map((r) => decisionRaise(r, days));
     },
   },
 
