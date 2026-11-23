@@ -5433,10 +5433,26 @@ const VEG_MAIN_PROVENANCE = Object.freeze({
 const VEG_MAIN_DEFAULT = 'Stuffed peppers + grilled veg platter';
 const VEGAN_MAIN_DEFAULT = 'Black bean & rice stuffed peppers + grilled veg platter (dairy-free)';
 const authored = (v) => ((typeof v === 'string' && v.trim()) ? v.trim() : '');
-/** The meatless main this event plans: `{ name, vegan }`. */
+// CHECK LABELS (owner ruling 1, 11/23/2026). A vegan dish that leans on a bought
+// item which can hide an animal product declares it (`vegMainVeganCheck`), and
+// the line names only those. Read from the declaration, never the dish's words.
+const VEGAN_LABEL_CHECKS = Object.freeze({
+  pastry: ['butter'], buns: ['eggs', 'milk'], tortillas: ['lard'], 'refried beans': ['lard'],
+});
+const listOf = (xs, joiner) => (xs.length < 3 ? xs.join(` ${joiner} `) : `${xs.slice(0, -1).join(', ')}, ${joiner} ${xs[xs.length - 1]}`);
+const labelCheckSentence = (keys) => (keys.length
+  ? `Check labels: ${listOf(keys, 'and')} can contain ${listOf([...new Set(keys.flatMap((k) => VEGAN_LABEL_CHECKS[k]))], 'or')}.`
+  : '');
+/** The meatless main this event plans: `{ name, vegan }`, plus `check` (the
+ *  declared label checks) when it is the vegan one. */
 export function plannedVegMain(playbook, event) {
   const pb = playbook || {};
-  if (veganCount(event) > 0) return { name: authored(pb.vegMainVegan) || VEGAN_MAIN_DEFAULT, vegan: true };
+  if (veganCount(event) > 0) {
+    const authoredName = authored(pb.vegMainVegan);
+    const check = authoredName && Array.isArray(pb.vegMainVeganCheck)
+      ? pb.vegMainVeganCheck.filter((k) => VEGAN_LABEL_CHECKS[k]) : [];
+    return { name: authoredName || VEGAN_MAIN_DEFAULT, vegan: true, check };
+  }
   return { name: authored(pb.vegMain) || VEG_MAIN_DEFAULT, vegan: false };
 }
 
@@ -6215,7 +6231,7 @@ export function playbookFoodPlan(event, opts = {}) {
   // A caterer cooks for every guest, the vegetarians included (the same gate
   // hostCooksIt reads): no grocery main on top of the catering line.
   if (vegN > 0 && !_foodOffPlate) {
-    const { name: vegDish, vegan: veganMain } = plannedVegMain(playbook, event);
+    const { name: vegDish, vegan: veganMain, check: veganCheck } = plannedVegMain(playbook, event);
     list.push({
       id: 'diet-veg', group: 'Food', item: `${vegDish} (for ${vegN} ${vegN === 1 ? 'guest' : 'guests'})`,
       short: `${vegDish} · ${vegN}`, owner: '', qty: vegN, unit: 'servings', essential: true, where: ['Grocery'],
@@ -6225,7 +6241,7 @@ export function playbookFoodPlan(event, opts = {}) {
       costProvenance: VEG_MAIN_PROVENANCE,
       skipped: !!skip['diet-veg'], locked: ('diet-veg' in lockedMap) ? Math.max(0, roundCurrency(Number(lockedMap['diet-veg']) || 0)) : null,
       note: veganMain
-        ? 'So your vegan and vegetarian guests have a real main, not just sides. This one is vegan: no meat, fish, dairy, eggs or honey.'
+        ? ['So your vegan and vegetarian guests have a real main, not just sides. This one is vegan: no meat, fish, dairy, eggs or honey.', labelCheckSentence(veganCheck)].filter(Boolean).join(' ')
         : 'So your vegetarian/vegan guests have a real main, not just sides.',
       forgotten: false, dietDerived: true,
       ...(veganMain ? { vegan: true } : {}),

@@ -99,6 +99,66 @@ describe('with a vegan guest, the planned main is the declared vegan one', () =>
   });
 });
 
+// ─── CHECK LABELS (owner ruling 1, 11/23/2026) ───────────────────────────────
+// Some vegan dishes lean on a bought item that can hide an animal product:
+// pastry (butter), buns (eggs or milk), tortillas and refried beans (lard). The
+// line names the ones that apply, by the dish's DECLARATION
+// (`vegMainVeganCheck`). The word lists below are this census's guard on the
+// declarations, never the rule.
+describe('a vegan main that leans on a bought item says to check its label', () => {
+  const NAMES = {
+    pastry: /\b(pastry|phyllo|filo|wellington)\b/i,
+    buns: /\b(buns?|burgers?|sliders?)\b/i,
+    tortillas: /\b(tortillas?|wraps?|tacos?|enchiladas?|quesadillas?)\b/i,
+    'refried beans': /\b(refried|frijoles)\b/i,
+  };
+  const CONTAINS = { pastry: ['butter'], buns: ['eggs', 'milk'], tortillas: ['lard'], 'refried beans': ['lard'] };
+  const declared = (pb) => (Array.isArray(pb.vegMainVeganCheck) ? pb.vegMainVeganCheck : []);
+  const list = (xs, joiner) => (xs.length < 3 ? xs.join(` ${joiner} `) : `${xs.slice(0, -1).join(', ')}, ${joiner} ${xs[xs.length - 1]}`);
+  const sentence = (keys) => `Check labels: ${list(keys, 'and')} can contain ${list([...new Set(keys.flatMap((k) => CONTAINS[k]))], 'or')}.`;
+
+  test('only known items are declared', () => {
+    const bad = HOST.filter((pb) => declared(pb).some((k) => !CONTAINS[k])).map((pb) => [pb.type, declared(pb)]);
+    expect(bad).toEqual([]);
+  });
+
+  test('census: every vegan dish that names one of the items declares its check', () => {
+    const missing = HOST.map((pb) => [pb.type, Object.keys(NAMES).filter((k) => NAMES[k].test(pb.vegMainVegan || '') && !declared(pb).includes(k))])
+      .filter(([, m]) => m.length);
+    expect(missing).toEqual([]);
+    // Ten dishes lean on one: four puff pastries, three bunned burgers, three tortillas.
+    expect(HOST.filter((pb) => declared(pb).length).length).toBe(10);
+  });
+
+  test('the reader carries the check, and every vegan line the plan reaches shows it', () => {
+    const wrong = [];
+    for (const pb of HOST) {
+      const keys = declared(pb);
+      const m = plannedVegMain(pb, { dietCounts: { Vegan: 1 } });
+      if (JSON.stringify(m.check) !== JSON.stringify(keys)) wrong.push(`${pb.type}: reader ${JSON.stringify(m.check)}`);
+      for (const ev of statesFor(pb, { dietCounts: { Vegetarian: 1, Vegan: 1 } })) {
+        const line = vegLine(ev);
+        if (!line) continue;
+        const shows = keys.length ? line.note.endsWith(` ${sentence(keys)}`) : !/check labels/i.test(line.note);
+        if (!shows) { wrong.push(`${pb.type}: ${line.note}`); break; }
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  test('the owner\'s wording, one item and several', () => {
+    expect(sentence(['pastry'])).toBe('Check labels: pastry can contain butter.');
+    expect(sentence(['pastry', 'buns', 'tortillas'])).toBe('Check labels: pastry, buns, and tortillas can contain butter, eggs, milk, or lard.');
+    const line = vegLine({ id: 'c', type: 'The Cookout', guestCount: 30, guests: [], dietCounts: { Vegan: 1 } });
+    expect(line.note).toMatch(/Check labels: buns can contain eggs or milk\.$/);
+  });
+
+  test('a vegetarian-only line carries no label check', () => {
+    const line = vegLine({ id: 'c', type: 'The Cookout', guestCount: 30, guests: [], dietCounts: { Vegetarian: 1 } });
+    expect(line.note).not.toMatch(/check labels/i);
+  });
+});
+
 describe('with only vegetarians, nothing changes', () => {
   test('the reader plans the authored vegetarian main, or the old default', () => {
     for (const pb of [...HOST, { type: 'No authored main' }]) {

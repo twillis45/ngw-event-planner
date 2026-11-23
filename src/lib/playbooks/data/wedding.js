@@ -23,6 +23,8 @@ const wedding = {
   vegMain: 'Wild mushroom & spinach wellington',
   // The meatless main when any guest is vegan, declared free of every animal product.
   vegMainVegan: 'Wild mushroom & spinach wellington (vegan puff pastry)',
+  // Bought items its label must be checked for (pastry: butter; buns: eggs or milk; tortillas: lard).
+  vegMainVeganCheck: ['pastry'],
   solveFamily: 'wedding',
   family: 'full_service',
   recordKind: 'client',
