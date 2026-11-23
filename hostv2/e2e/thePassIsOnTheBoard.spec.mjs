@@ -16,7 +16,7 @@
 //
 // On the passgate bundle (5266, or PW_PASSGATE_PORT), the only one with billing
 // live; every request to its API host is answered below.
-import { test, expect, settled, dateIn } from './fixtures.mjs';
+import { test, expect, settled, dateIn, openJumpTo, passRow } from './fixtures.mjs';
 import { previewUrl } from '../deployBase.mjs';
 
 const API = 'https://passgate-mock.invalid';
@@ -40,10 +40,6 @@ const boot = async (page, event, { held = false } = {}) => {
   await settled(page);
 };
 
-const openJumpTo = async (page) => {
-  await page.locator('[aria-label="Menu"]').first().click();
-  await expect(page.locator('#sheet-title')).toHaveText('Jump to');
-};
 
 test('a destination event that needs the pass says so in its first screen, and opens the pass', async ({ page }) => {
   await boot(page, ev({ isDestination: true, passRequired: true, passReasons: ['destination'] }));
@@ -70,8 +66,8 @@ test('an event stamped only as a "next event" (Model D) shows no pill: it is fre
   await expect(page.getByText(/Lake House Weekend/i).first()).toBeVisible();
   await expect(page.locator('.pass-status')).toHaveCount(0);
   await openJumpTo(page);
-  await expect(page.locator('.nav-pass')).toContainText('$39 · one event');
-  await expect(page.locator('.nav-pass')).not.toContainText('needs it');
+  await expect(passRow(page)).toContainText('$39 · one event');
+  await expect(passRow(page)).not.toContainText('needs it');
 });
 
 test('a free event shows no pass pill, and Jump to still reaches the pass', async ({ page }) => {
@@ -80,7 +76,7 @@ test('a free event shows no pass pill, and Jump to still reaches the pass', asyn
   await expect(page.getByText(/Lake House Weekend/i).first()).toBeVisible();
   await expect(page.locator('.pass-status')).toHaveCount(0);
   await openJumpTo(page);
-  const row = page.locator('.nav-pass');
+  const row = passRow(page);
   await expect(row).toContainText('The One-Event Pass');
   await expect(row).toContainText('$39 · one event');
   await row.click();
@@ -90,7 +86,7 @@ test('a free event shows no pass pill, and Jump to still reaches the pass', asyn
 test('Jump to says when this event needs the pass', async ({ page }) => {
   await boot(page, ev({ isDestination: true, passRequired: true, passReasons: ['destination'] }));
   await openJumpTo(page);
-  await expect(page.locator('.nav-pass')).toContainText('$39 · this event needs it');
+  await expect(passRow(page)).toContainText('$39 · this event needs it');
 });
 
 test('once bought, the first screen is quiet and Jump to says the event has it', async ({ page }) => {
@@ -98,5 +94,5 @@ test('once bought, the first screen is quiet and Jump to says the event has it',
   await expect(page.getByText(/Lake House Weekend/i).first()).toBeVisible();
   await expect(page.locator('.pass-status-needed')).toHaveCount(0);
   await openJumpTo(page);
-  await expect(page.locator('.nav-pass')).toContainText('this event has it');
+  await expect(passRow(page)).toContainText('this event has it');
 });

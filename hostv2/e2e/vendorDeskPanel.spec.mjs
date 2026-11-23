@@ -9,7 +9,7 @@
 // by reading CSS instead of measuring: a rule can be present and beaten, scoped
 // to the wrong ancestor, or overridden a thousand lines later. All measured on
 // a live drive.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const boot = async (page) => {
   await page.addInitScript(() => {
@@ -22,10 +22,7 @@ const boot = async (page) => {
   await settled(page);
   const rail = page.locator('.srail-row', { hasText: /People you/ });
   if (await rail.count()) { await rail.first().click(); } else {
-    await page.locator('.ev-eyebrow').first().click();
-    await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click();
-    await settled(page);
-    await page.locator('.sheet').last().getByText(/People you/).first().click();
+    await openSectionByName(page, /People you/);
   }
   await settled(page);
 };

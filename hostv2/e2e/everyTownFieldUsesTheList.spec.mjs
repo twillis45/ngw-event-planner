@@ -6,7 +6,7 @@
 // were bare inputs: "Your area" in You & settings, and the lodging cockpit's
 // one-gap town field. Both now use the same component, so typing "Annap"
 // offers "Annapolis, MD" — the shape the app saves a state from.
-import { test, expect, settled, dateIn } from './fixtures.mjs';
+import { test, expect, settled, dateIn, openMenuDoor } from './fixtures.mjs';
 
 const seed = (page, ev) => page.addInitScript((e) => {
   if (sessionStorage.getItem('seeded')) return;
@@ -31,9 +31,7 @@ test('"Your area" offers the city list and saves the picked town with its state'
   const header = page.locator('[aria-label="You and settings"]').first();
   if (await header.count() && await header.isVisible()) await header.click();
   else {
-    await page.locator('[aria-label="Menu"]').first().click();
-    await page.waitForTimeout(600);
-    await page.locator('.navrow', { hasText: 'You & settings' }).first().click();
+    await openMenuDoor(page, 'You & settings');
   }
   await expect(page.locator('#sheet-title')).toHaveText('You & settings', { timeout: 8000 });
   const area = page.getByRole('textbox', { name: 'Your area' });

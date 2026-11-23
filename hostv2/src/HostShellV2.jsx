@@ -320,8 +320,8 @@ import { classifyClaim } from '@app/lib/knowledge/claimBasis';
 // this product ended up with six readers of "is the budget set".
 import { timingDisagreementNote } from '@app/lib/knowledge/timingProvenance';
 import { iceRecommendation, ICE_CHANGE_FACTORS } from '@app/lib/knowledge/claimFamilies';
-import { orientation as deriveOrientation, segmentsText, hairlineLabel } from '@app/lib/eventOrientation';
-import { stagewrapClass, showsRail } from '@app/lib/responsiveSurface';
+import { orientation as deriveOrientation, segmentsText, hairlineLabel, planRibbon } from '@app/lib/eventOrientation';
+import { stagewrapClass, showsRail, isTallTablet } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { syncProfile as cloudSyncProfile, saveProfile as cloudSaveProfile, installProfileOnlineFlush } from '@app/lib/api/profile';
 import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent as cloudDeleteEvent, getPendingEventIds, resolveConflict, undoKeepMine, undoUseTheirs, cloudCopyIsStale, sameEventContent, forgetAccountCache } from '@app/lib/api/events';
@@ -329,7 +329,7 @@ import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, 
 import { signInCode } from '@app/lib/signInCode';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { buildVendorDetailsMessage, vendorGreetingName, detailsSmsHref, detailsMailtoHref, draftSmsHref } from '@app/lib/vendorDetailsMessage';
-import { summarizeWhoIsConfirmed, whoIsConfirmedLines } from '@app/lib/whoIsConfirmed';
+import { summarizeWhoIsConfirmed, whoIsConfirmedLines, whoIsConfirmedGroups } from '@app/lib/whoIsConfirmed';
 import { mintVendorBriefLinkResult, mintStatusClass, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import { mintHelperLinkResult, isHelperLinkApiConfigured, fetchHelperConfirmations, emailHelperJob, helperEmailWords } from '@app/lib/api/helperLink';
 import { appEmailWords, messageEmailResult } from '@app/lib/appEmail';
@@ -364,7 +364,7 @@ import { parseMin } from '@app/lib/dayAlerts';
 // tablet, desktop and widescreen were the phone layout stretched. The bp lands
 // on the root as a data attribute rather than forking JSX at every call site:
 // layout is the stylesheet's job, and one attribute lets it do that job.
-import { useBreakpoint, useWideScreen } from '@app/lib/viewport';
+import { useBreakpoint, useWideScreen, usePortrait } from '@app/lib/viewport';
 import { sectionGroups, ASK_LABEL } from '@app/lib/sectionDirectory';
 import { sectionIcon } from './sectionIcons';
 
@@ -1306,6 +1306,10 @@ export default function HostShellV2() {
   // every pixel of a drag.
   const bp = useBreakpoint();
   const isWideScreen = useWideScreen();
+  // THE TALL IPAD (owner rulings, 11/22/2026): a tablet band held in portrait.
+  // No rail, no ☰ eyebrow; a header-switcher, the parts ribbon, a full-width
+  // board and a docked bottom bar instead. lib/responsiveSurface owns the rule.
+  const portrait = usePortrait();
   const splashTimer = useRef(null);
   const endSplash = () => setSplash(s => {
     if (s !== 'up') return s;
@@ -1358,6 +1362,9 @@ export default function HostShellV2() {
     peopleMode = q.get('people') === '1';
     if (q.get('voice') === 'sans') elegantVoice = 'sans';
   } catch { /* leave both false */ }
+  // The tall iPad is a layout of the elegant board (the default since 7/21);
+  // the ?elegant=0 fallback keeps its own v2 chrome at every size.
+  const tallTablet = elegantMode && isTallTablet({ bp, portrait });
   const splashSeenRecently = (() => {
     const now = Date.now();
     const withinWindow = (iso) => {
@@ -1534,7 +1541,9 @@ export default function HostShellV2() {
   // styles.css:5378) and the elegant `.bento-head` everywhere else (which
   // styles.css:5395 hides at exactly that same breakpoint). A function, not a
   // component, so it cannot remount the caret on every parent render.
-  const countedCaret = (extra) => (
+  // On a tall iPad the ribbon IS what's counted (owner, 11/22/2026): one copy,
+  // so the caret is not rendered there.
+  const countedCaret = (extra) => tallTablet ? null : (
     <span role="button" tabIndex={0} aria-expanded={handledOpen} aria-controls="whats-counted"
       className="counted-caret"
       /* display lives in CSS, not here: the ≤480px tap floor switches it to
@@ -5228,6 +5237,8 @@ export default function HostShellV2() {
   const ledgerExpiry = (phaseCues && phaseCues.nextLedgerChange) || null;
   const planHorizon = nextPlanAttentionDate(plan, ledgerExpiry);
   const planHorizonShort = planHorizon ? new Date(planHorizon.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null;
+  // The dated-work phrase the hairline prints, shared with the tall ribbon's foot.
+  const horizonPhrase = planHorizonShort ? (planHorizon.days <= 0 ? 'dated work needs you now' : `next dated work: ${planHorizonShort}`) : null;
   const ledgerExpiryShort = ledgerExpiry ? (() => {
     try { return new Date(ledgerExpiry.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return null; }
   })() : null;
@@ -5640,7 +5651,96 @@ export default function HostShellV2() {
   // sheet cannot start widening silently.
   const stageMode = stagewrapClass({ stage, sheet: sheet && sheet.kind });
   // Same surface identity, one band wider: is the persistent section rail up?
-  const railUp = showsRail({ bp, stage, sheet: sheet && sheet.kind });
+  const railUp = showsRail({ bp, portrait: elegantMode && portrait, stage, sheet: sheet && sheet.kind });
+  // The tall iPad's first-screen slots (Where you stand, the fold control).
+  const [ttStandSlot, setTtStandSlot] = useState(null);
+  const [ttFoldSlot, setTtFoldSlot] = useState(null);
+  // THE RIBBON (owner, 11/22/2026): the plan-parts ledger the chips and the
+  // .eprog strips read, plus which open part the hero question is about.
+  const tallRibbon = tallTablet ? planRibbon(phaseCues, askMode ? queue[0] : null) : null;
+  // The part the hero question is about, as the ribbon marks it (NOW).
+  const tallNowPart = (tallRibbon && (tallRibbon.parts.find((p) => p.now) || {}).id) || undefined;
+  // The pass row's right side, for THIS event (passStatus): the menu's row
+  // and the tall iPad's index row say it the same way.
+  const passNote = () => {
+    let st = null;
+    try { st = passStatus(event); } catch { st = null; }
+    const price = passPriceLabel();
+    return st && st.state === 'held' ? 'this event has it' : (price ? price + ' · ' : '') + (st && st.state === 'needed' ? 'this event needs it' : 'one event');
+  };
+  // The phase switch: the menu's segmented control and the tall iPad's bar.
+  const goPhase = (s) => { if (s === 'create') startNewEvent(); else { setStage(s); setSheet(null); } };
+  // One door per part: the chips and the ribbon open exactly the same thing.
+  const openPart = (c) => {
+    if (!c) return;
+    if (c.id === 'datetime' || c.id === 'date') { setSheet({ kind: 'date' }); return; }
+    if (c.id === 'location') { setSheet({ kind: 'venue' }); return; }
+    if (c.route && routeSheet(c.route)) return;
+    if (c.cueLabel) toast(c.cueLabel);
+  };
+  // THE BOARD'S IDENTITY LINE, AS FIELDS (tall iPad, 11/22/2026). The eyebrow
+  // prints these joined; the tall-tablet header lays the same values out in
+  // rows. One derivation, two layouts.
+  const boardEyebrow = () => {
+    /* ── ONE ORDERED LIST, NOT A CONCATENATION (2026-08-07) ───────
+       This was a single expression that grew by append: countdown,
+       then type, then the span, then — when the board found the
+       screen never says WHOSE event it is — the name, which landed
+       LAST, behind the metadata. Identity reading after the dates
+       is the complaint half-answered.
+       Rebuilt as an ordered list so position is a line of code
+       rather than an accident of when a clause was added:
+           urgency · IDENTITY · type · when
+       The working-planner seat: "'225 DAYS · RETIREMENT + BIRTHDAY'
+       is not an event, that is a category." And: a countdown is a
+       feeling, a date is a calendar entry — so both, always. */
+    const parts = [];
+    // 1. urgency
+    // A trip's days are its own (audit 2 lane C P1-4, P1-5): "DAY 3 OF 4"
+    // while it runs, and "N DAYS AGO" counted from its LAST day.
+    const agoEnd = (() => { try { return daysUntilEnd(event); } catch (_e) { return days; } })();
+    if (days != null && days > 0) parts.push(days === 1 ? '1 DAY' : days + ' DAYS');
+    else if (dayHero && dayHero.dayCount > 1) parts.push(`DAY ${dayHero.dayIndex} OF ${dayHero.dayCount}`);
+    else if (days === 0) parts.push('TODAY');
+    else if (agoEnd != null && agoEnd < 0) parts.push(agoEnd === -1 ? '1 DAY AGO' : Math.abs(agoEnd) + ' DAYS AGO');
+    else if (days != null && days < 0) parts.push('TODAY');
+    else if (targetMonthLabel(event)) { parts.push(String(targetMonthLabel(event)).toUpperCase()); parts.push('PICK A DAY'); }
+    else parts.push('NO DATE YET');
+    // 2. identity — the name, unless the type slot is ALREADY showing
+    //    it (eventTypeLabel falls back to event.name, so a typeless
+    //    event would otherwise print its name twice).
+    const typeLabel = String(eventTypeLabel(event) || event.type || event.name || '').trim();
+    const name = String(event.name || '').trim();
+    const out = { urgency: parts, name: (name && name.toUpperCase() !== typeLabel.toUpperCase()) ? name : '', type: '', when: '' };
+    // 3. type — UNLESS THE NAME ALREADY SAID IT (2026-09-24).
+    //    This element was ported as "countdown · event name,
+    //    uppercase" — two facts. It now carries four, each added
+    //    deliberately, and the SUM is what broke: 85 characters
+    //    at 11.5px/700/uppercase with 1.035px of tracking wrapped
+    //    to four lines on a 390px phone, last line an orphan.
+    //    Host: "not easily readable."
+    //
+    //    No fact is dropped — a RESTATEMENT is. Four of the five
+    //    shipped sample events name their own type ("A repast for
+    //    Deacon Willie Hayes · REPAST"), and the fifth, "Wanda
+    //    turns 50 · BIRTHDAY", does not and keeps it. The old
+    //    check was exact equality, which caught only the case
+    //    where the name IS the type.
+    if (typeLabel && !typeIsRestatedByName(name, typeLabel)) out.type = typeLabel;
+    // 4. when — the span for multi-day (host report 2026-07-27, "I
+    //    don't see the multi day"), otherwise the absolute date,
+    //    which the single-day case never carried at all.
+    try {
+      if (spanNights(event) > 0) {
+        const f = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        out.when = f(event.date) + '–' + f(event.endDate);
+      } else if (event.date) {
+        out.when = new Date(event.date + 'T12:00:00')
+          .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      }
+    } catch { /* a malformed date drops its cell, never the eyebrow */ }
+    return out;
+  };
   // §26: the People rail band. Two terms, and BOTH are load-bearing.
   //
   // `railUp` alone runs from 1024 — the exact misreading styles.css:5640
@@ -11133,7 +11233,7 @@ export default function HostShellV2() {
   return (
     <div className={['stagewrap', stageMode].filter(Boolean).join(' ')}
       data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'}
-      data-railmin={railUp && railMin ? '1' : '0'}>
+      data-railmin={railUp && railMin ? '1' : '0'} data-tall={tallTablet ? '1' : '0'}>
       {/* ── THE PERSISTENT SECTION RAIL (VIEWPORT_PORT_RULING step 3) ─────────
           Six of six leaders (Motion, Height, Wrike, Bonsai, Asana, Plane) put
           global nav in a persistent left rail and never behind a hamburger at
@@ -11213,6 +11313,31 @@ export default function HostShellV2() {
           </div>
         </nav>
       )}
+      {/* ── THE TALL IPAD'S DOCKED BAR (owner rulings, 11/22/2026) ───────────
+          The rail's job on a portrait tablet: the phases (the SAME goPhase the
+          menu's segmented control calls), the index (the Sections sheet), and
+          search (the same palette). Docked, full width, its inner row on the
+          board's two edges. .app ends at its top edge, so nothing scrolls
+          under it; a sheet covers it like any other chrome. */}
+      {tallTablet && (
+        <nav className="tt-bar" data-tt-bar aria-label="Your plan">
+          <div className="tt-bar-in">
+            {/* The menu's own segmented control (.navseg), so the selected
+                phase wears the one selected look by construction. */}
+            <div className="navseg tt-seg" role="group" aria-label="Where in the event">
+              {[['create', 'Create'], ['plan', 'Plan'], ['day', 'The Day'], ['after', 'After']].map(([k, label]) => (
+                <button key={k} type="button" className={'navseg-b tt-seg-b' + (stage === k ? ' on' : '')} aria-pressed={stage === k} onClick={() => goPhase(k)}>{label}</button>
+              ))}
+            </div>
+            <button type="button" className="tt-act" onClick={() => setSheet({ kind: 'sections' })}>
+              {sectionIcon('sections')}<span>All sections</span>
+            </button>
+            <button type="button" className="tt-act q" onClick={() => { setSheet(null); setPaletteOpen(true); }}>
+              {sectionIcon('search')}<span>Search</span>
+            </button>
+          </div>
+        </nav>
+      )}
       {/* has-wxpill: the scroll-end spacer must also clear the weather pill's band
           when it's pinned (Layer-2 harness: "Add a rain backup" sat 35px under the
           pill at true scroll-end, 2026-07-22). */}
@@ -11220,7 +11345,7 @@ export default function HostShellV2() {
           so the container reserves room for it exactly while it shows — same
           condition as its render below. See the note at .next-bar in styles.css. */}
       <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + ((wxImpact || travelWx) && stage === 'plan' ? ' has-wxpill' : '') + (stage === 'plan' && !heroInView ? ' has-nextbar' : '')} id="app" ref={appRef} inert={splash !== 'gone'}
-        data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'}>
+        data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'} data-tall={tallTablet ? '1' : '0'}>
         {/* dash-hold: same mechanism as .welcome.splash-hold — any one-shot
             entrance animation in here (sweepcard's cardin, etc.) pauses at
             frame one while the splash is up and releases the instant it
@@ -12215,7 +12340,83 @@ export default function HostShellV2() {
                   (countdown · event name, uppercase) — the big serif name + venue + kicker
                   move OFF the ask screen (the serif name belongs on the pull-down Overview).
                   Everything below composes with generous negative space. */}
-              {elegantMode && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
+              {elegantMode && tallTablet && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
+                /* ── THE TALL IPAD'S HEADER (owner rulings, 11/22/2026) ──────────
+                    Replaces the ☰ eyebrow on a portrait tablet. The same values
+                    the eyebrow prints (boardEyebrow), laid out in rows; the title
+                    is the event switcher and opens the same events sheet "This
+                    event" opens. The theme is its own field: when the name ends
+                    with it (" — Black & Gold") the title does not say it twice.
+                    No fill, not sticky: it scrolls with the board. */
+                <>
+                <header className="tt-head" data-tt-head>
+                  {(() => {
+                    const e = boardEyebrow();
+                    const theme = String(event.theme || '').trim();
+                    const nm = String(event.name || '').trim();
+                    const tail = theme ? ' — ' + theme : '';
+                    const title = (tail && nm.endsWith(tail) && nm.length > tail.length) ? nm.slice(0, -tail.length) : nm;
+                    const sub = [theme, e.type].filter(Boolean).join(' · ');
+                    return (
+                      <>
+                        <div className="tt-r1">
+                          {!eventIsTheHostsOwn && <span className="tt-chip" data-sample-event>Sample</span>}
+                          <span>{e.when}{e.when && e.urgency.length ? ' · ' : ''}<span data-tt-urgency>{e.urgency.join(' · ')}</span></span>
+                        </div>
+                        <button type="button" className="tt-title" data-tt-title aria-haspopup="dialog" title="Your events"
+                          onClick={() => setSheet({ kind: 'events' })}>
+                          <span className="tt-name">{title || e.type || 'This event'}</span>
+                          <span className="tt-caret" aria-hidden="true">▾</span>
+                        </button>
+                        {sub && <div className="tt-sub">{sub}</div>}
+                      </>
+                    );
+                  })()}
+                </header>
+                {/* THE RIBBON: the plan's parts, one tap each to what its chip opens.
+                    Not on the day (the run of show leads) and not after. */}
+                {tallRibbon && !dayHero && !isPast && (
+                  <nav className="tt-rib" data-tt-ribbon aria-label="Parts of your plan">
+                    <div className="tt-parts">
+                      {tallRibbon.parts.map((p) => {
+                        const st = p.now ? 'now' : p.handled ? 'done' : 'open';
+                        return (
+                          <button key={p.id} type="button" className={'tt-part is-' + st} data-part={p.id} data-state={st}
+                            aria-label={areaLabelFor(p.id) + (p.handled ? ' — handled' : p.now ? ' — still open, and the question above is about it' : ' — still open') + '. Open it.'}
+                            onClick={() => openPart(p)}>
+                            <i aria-hidden="true" />
+                            <span className="tt-pl">{p.handled ? '✓ ' : ''}{areaLabelFor(p.id)}{p.now ? <em className="tt-now">Now</em> : null}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="tt-rib-foot" data-tt-ribbon-foot>
+                      {/* The count opens the detail behind it (the readiness pills,
+                          "Worth finding out", what she said the plan doesn't hold):
+                          the "▾ what's counted" caret is not on this layout, and
+                          that panel must keep a door. */}
+                      <span className="tt-rib-l">
+                      <button type="button" className="tt-rib-count" aria-expanded={handledOpen} aria-controls="whats-counted"
+                        onClick={() => setHandledOpen((o) => {
+                          if (!o) setTimeout(() => { try { const el = document.getElementById('whats-counted'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* the panel is still open */ } }, 80);
+                          return !o;
+                        })}>
+                        {tallRibbon.allHandled ? `All ${tallRibbon.total} handled` : `${tallRibbon.done} of ${tallRibbon.total} handled`}
+                      </button>
+                      {/* THE DENOMINATOR MOVES, SO SAY WHEN (audit C P1-8): the
+                          ledger's next change (phaseProgress nextLedgerChange, e.g.
+                          shopping joining the plan) is named here, so "4 of 7"
+                          never silently becomes "4 of 8". */}
+                      {ledgerExpiry && ledgerExpiryShort && (
+                        <span data-tt-ledger-change>{` · ${areaLabelFor(ledgerExpiry.id).toLowerCase()} starts ${ledgerExpiryShort}`}</span>
+                      )}
+                      </span>
+                      {horizonPhrase && <span>{horizonPhrase}</span>}
+                    </div>
+                  </nav>
+                )}
+                </>
+              ) : elegantMode && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
                   {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
@@ -12228,64 +12429,8 @@ export default function HostShellV2() {
                       leaving the countdown slot silently empty. Figma 922:121 puts
                       "NO DATE YET" here; when the host named a month, say the month. */}
                   <span className="eb-text">{(() => {
-                    /* ── ONE ORDERED LIST, NOT A CONCATENATION (2026-08-07) ───────
-                       This was a single expression that grew by append: countdown,
-                       then type, then the span, then — when the board found the
-                       screen never says WHOSE event it is — the name, which landed
-                       LAST, behind the metadata. Identity reading after the dates
-                       is the complaint half-answered.
-                       Rebuilt as an ordered list so position is a line of code
-                       rather than an accident of when a clause was added:
-                           urgency · IDENTITY · type · when
-                       The working-planner seat: "'225 DAYS · RETIREMENT + BIRTHDAY'
-                       is not an event, that is a category." And: a countdown is a
-                       feeling, a date is a calendar entry — so both, always. */
-                    const parts = [];
-                    // 1. urgency
-                    // A trip's days are its own (audit 2 lane C P1-4, P1-5): "DAY 3 OF 4"
-                    // while it runs, and "N DAYS AGO" counted from its LAST day.
-                    const agoEnd = (() => { try { return daysUntilEnd(event); } catch (_e) { return days; } })();
-                    if (days != null && days > 0) parts.push(days === 1 ? '1 DAY' : days + ' DAYS');
-                    else if (dayHero && dayHero.dayCount > 1) parts.push(`DAY ${dayHero.dayIndex} OF ${dayHero.dayCount}`);
-                    else if (days === 0) parts.push('TODAY');
-                    else if (agoEnd != null && agoEnd < 0) parts.push(agoEnd === -1 ? '1 DAY AGO' : Math.abs(agoEnd) + ' DAYS AGO');
-                    else if (days != null && days < 0) parts.push('TODAY');
-                    else if (targetMonthLabel(event)) { parts.push(String(targetMonthLabel(event)).toUpperCase()); parts.push('PICK A DAY'); }
-                    else parts.push('NO DATE YET');
-                    // 2. identity — the name, unless the type slot is ALREADY showing
-                    //    it (eventTypeLabel falls back to event.name, so a typeless
-                    //    event would otherwise print its name twice).
-                    const typeLabel = String(eventTypeLabel(event) || event.type || event.name || '').trim();
-                    const name = String(event.name || '').trim();
-                    if (name && name.toUpperCase() !== typeLabel.toUpperCase()) parts.push(name.toUpperCase());
-                    // 3. type — UNLESS THE NAME ALREADY SAID IT (2026-09-24).
-                    //    This element was ported as "countdown · event name,
-                    //    uppercase" — two facts. It now carries four, each added
-                    //    deliberately, and the SUM is what broke: 85 characters
-                    //    at 11.5px/700/uppercase with 1.035px of tracking wrapped
-                    //    to four lines on a 390px phone, last line an orphan.
-                    //    Host: "not easily readable."
-                    //
-                    //    No fact is dropped — a RESTATEMENT is. Four of the five
-                    //    shipped sample events name their own type ("A repast for
-                    //    Deacon Willie Hayes · REPAST"), and the fifth, "Wanda
-                    //    turns 50 · BIRTHDAY", does not and keeps it. The old
-                    //    check was exact equality, which caught only the case
-                    //    where the name IS the type.
-                    if (typeLabel && !typeIsRestatedByName(name, typeLabel)) parts.push(typeLabel.toUpperCase());
-                    // 4. when — the span for multi-day (host report 2026-07-27, "I
-                    //    don't see the multi day"), otherwise the absolute date,
-                    //    which the single-day case never carried at all.
-                    try {
-                      if (spanNights(event) > 0) {
-                        const f = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                        parts.push((f(event.date) + '–' + f(event.endDate)).toUpperCase());
-                      } else if (event.date) {
-                        parts.push(new Date(event.date + 'T12:00:00')
-                          .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase());
-                      }
-                    } catch { /* a malformed date drops its cell, never the eyebrow */ }
-                    return parts.filter(Boolean).join('  ·  ');
+                    const e = boardEyebrow();
+                    return [...e.urgency, e.name.toUpperCase(), e.type.toUpperCase(), e.when.toUpperCase()].filter(Boolean).join('  ·  ');
                   })()}</span>
                   <span className="eb-caret" aria-hidden="true">▾</span>
                 </button>
@@ -12573,7 +12718,7 @@ export default function HostShellV2() {
                   return (<>
                     {/* ONE ask string, computed once at heroAskText (~2357) so the card-title
                         dedup and the browser tab speak exactly what is rendered here. */}
-                    <h2 className="ask" key={'ask-' + String(queue[0].id || queue[0].title || '')}>{heroAskText}</h2>
+                    <h2 className="ask" key={'ask-' + String(queue[0].id || queue[0].title || '')} data-hero-part={tallNowPart}>{heroAskText}</h2>
                     {/* With no date this slot would read "null days". The frame puts
                         the honest sentence here instead — and when the host named a
                         MONTH we can do better than "no date yet" and say which one. */}
@@ -13644,7 +13789,7 @@ export default function HostShellV2() {
               </div>{/* /ecenter — the centered ask+action region */}
               {/* Progress hairline — pinned to the FOOT of the first screen (F13), after the
                   one action, above the fold. Real engine numbers. */}
-              {elegantMode && askMode && phaseCues && phaseCues.totalCount > 0 && (() => {
+              {elegantMode && askMode && !tallTablet && phaseCues && phaseCues.totalCount > 0 && (() => {
                 const done = Number(phaseCues.completedCount) || 0;
                 const total = Number(phaseCues.totalCount) || 0;
                 return (
@@ -13741,14 +13886,18 @@ export default function HostShellV2() {
                       <span>{hoverSeg
                         ? (hoverSeg.handled ? 'handled' : 'still open')
                         : (done >= total ? 'this one’s still open' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first'
-                          : (planHorizonShort ? (planHorizon.days <= 0 ? 'dated work needs you now' : `next dated work: ${planHorizonShort}`) : 'more in your plan')))}</span>
+                          : (horizonPhrase || 'more in your plan')))}</span>
                     </div>
                   </div>
                 );
               })()}
+              {/* The tall iPad's first screen ends with Where you stand and the fold
+                  control (owner, 11/22/2026); both are portaled into these slots. */}
+              {tallTablet && <div className="tt-stand-slot" ref={setTtStandSlot} />}
+              {tallTablet && <div className="tt-fold-slot" ref={setTtFoldSlot} />}
               </div>{/* /escreen — first-screen bound ends; the see-all follows below the fold */}
               {/* Fold boundary below the first screen (grabbable — taps scroll to the see-all). */}
-              {elegantMode && (askMode || (listIsCalm && !isPast && days !== null && days > 0)) && (
+              {elegantMode && (askMode || (listIsCalm && !isPast && days !== null && days > 0)) && ((el) => (tallTablet && ttFoldSlot ? createPortal(el, ttFoldSlot) : el))(
                 /* CALM JOINED (host "where's the handle" 2026-07-23): the calm board
                    PROMISES "the heads-ups below" — it needs the same fold handle as the
                    ask board (F13/F14: one skeleton holds both poles). Past keeps its
@@ -14117,7 +14266,8 @@ export default function HostShellV2() {
                 // lib/worryLabel: the raiser's prefix off, a playbook trigger read as
                 // a condition ("If …"), and the phone's first-clause rule (board
                 // anti-pattern 8, 2026-08-07) — moved there so it is tested.
-                const wlabel = (w) => worryLabel(w && w.title, { wide: railUp });
+                // A tall iPad has the width to say the whole trigger (owner, 11/22/2026).
+                const wlabel = (w) => worryLabel(w && w.title, { wide: railUp || tallTablet });
                 // Does the destination actually vary across this lane? If every
                 // row resolves to the same place, the destination is a property of
                 // the LANE and repeating it per row is noise.
@@ -14274,6 +14424,10 @@ export default function HostShellV2() {
                 </>
               )}
 
+              {/* THE TALL IPAD MOVES "WHERE YOU STAND" UP (owner, 11/22/2026): onto
+                  the first screen, under the pick, in a slot inside .escreen. The
+                  same element, portaled — never a second copy. */}
+              {((el) => (tallTablet && ttStandSlot ? createPortal(el, ttStandSlot) : el))(
               <div className="bento" style={elegantMode && isPast ? { display: 'none' } : undefined}>
                 {/* "WHERE YOU STAND" WAS A PSEUDO-ELEMENT (board, 2026-08-07).
                     styles.css:889 carried it as `.bento::before{content:"Where
@@ -14427,7 +14581,7 @@ export default function HostShellV2() {
                                   const isNext = !c.handled && nextId && c.id === nextId;
                                   return (
                                     <button key={c.id || ix} type="button" className="chip"
-                                      onClick={e => { e.stopPropagation(); if (c.id === 'datetime' || c.id === 'date') { setSheet({ kind: 'date' }); return; } if (c.id === 'location') { setSheet({ kind: 'venue' }); return; } if (c.route && routeSheet(c.route)) return; if (c.cueLabel) toast(c.cueLabel); }}
+                                      onClick={e => { e.stopPropagation(); openPart(c); }}
                                       aria-label={areaLabelFor(c.id) + (c.handled ? ' — handled' : ' — still open') + '. Open it.'}
                                       style={{ padding: '5px 11px', fontSize: 'var(--t-pill)', fontWeight: c.handled ? 550 : 700, letterSpacing: '.02em', display: 'inline-flex', alignItems: 'center', gap: 5, color: c.handled ? 'var(--faint)' : isNext ? 'var(--steel-soft)' : 'var(--ink-soft)' }}>
                                       <span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: '50%', display: 'inline-block', background: c.handled ? 'var(--ok)' : 'var(--faint)', opacity: c.handled ? 0.9 : 0.55 }} />
@@ -14517,7 +14671,7 @@ export default function HostShellV2() {
                     </div>
                   </div>
                 </button>
-              </div>
+              </div>)}
 
               {/* ── THE CONTEXT PANE — the column's SELECTED state ──────────────
                   Renders only when a row is picked and only on a real canvas.
@@ -14698,10 +14852,56 @@ export default function HostShellV2() {
                     {l.flagged && (
                       <button className="mini rowlink" data-who-flagged style={{ display: 'block', marginTop: 'var(--sp-2)', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }} onClick={go.vendors}>{l.flagged}</button>
                     )}
-                    {l.cantDo && (
+                    {l.cantDo && !tallTablet && (
                       <p className="vc-detail warn-note" data-who-cant style={{ margin: 'var(--sp-2) 0 0', overflowWrap: 'anywhere' }}>{l.cantDo}</p>
                     )}
-                    {l.waiting && (
+                    {tallTablet ? (() => {
+                      /* ── THE SENTENCE AS ROWS (tall iPad, owner 11/22/2026) ──────
+                         The same classification the sentence is built from
+                         (lib/whoIsConfirmed), counted as the chips count. A row
+                         taps only where a real destination exists: a vendor opens
+                         its own card; a helper's job opens where its route lands. */
+                      let g = null;
+                      try { g = whoIsConfirmedGroups(event, confirmationByVendor, helperAnswerByKey); } catch { g = null; }
+                      if (!g) return null;
+                      const routable = (r) => { try { return !!(r && resolveRoute(r)); } catch { return false; } };
+                      return (
+                        <>
+                          {g.vendors && g.vendors.count > 0 && (
+                            <div className="tt-who-g" data-who-group="vendors">
+                              <h3 className="tt-who-h"><span>Vendors</span><span data-who-count>{g.vendors.count} not confirmed</span></h3>
+                              {g.vendors.rows.map((r) => (
+                                <button key={r.id} type="button" className="tt-row" data-who-row onClick={() => setSheet({ kind: 'vendors', focus: r.id })}>
+                                  <span className="tt-row-t">{r.label}</span>
+                                  {r.note && <span className="tt-row-w">{r.note}</span>}
+                                  <span className="chev" aria-hidden="true">›</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {g.helpers && g.helpers.count > 0 && (
+                            <div className="tt-who-g" data-who-group="helpers">
+                              <h3 className="tt-who-h"><span>Helpers &amp; tasks</span><span data-who-count>{g.helpers.count} not confirmed</span></h3>
+                              {g.helpers.rows.map((r, i) => {
+                                const inner = (
+                                  <>
+                                    <span className="tt-row-t">{r.label}</span>
+                                    <span className="tt-row-w">{r.note ? `${r.name} ${r.note}` : r.name}</span>
+                                  </>
+                                );
+                                return routable(r.route) ? (
+                                  <button key={i} type="button" className="tt-row" data-who-row onClick={() => routeSheet(r.route)}>
+                                    {inner}<span className="chev" aria-hidden="true">›</span>
+                                  </button>
+                                ) : (
+                                  <div key={i} className="tt-row" data-who-row>{inner}</div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })() : l.waiting && (
                       <p className="vc-detail" data-who-waiting style={{ margin: 'var(--sp-2) 0 0', overflowWrap: 'anywhere' }}>{l.waiting}</p>
                     )}
                     {qLine && (
@@ -15473,7 +15673,12 @@ export default function HostShellV2() {
                   no way off this screen at all. Same button, same handler, no new surface —
                   restoring the "ONE element every elegant screen keeps" invariant that
                   branch's own comment already claims. */}
-              {elegantMode && (
+              {/* On a tall iPad the bar is the menu (owner, 11/22/2026); the sample
+                  still says so, on its own line. */}
+              {elegantMode && tallTablet && !eventIsTheHostsOwn && (
+                <div className="tt-r1 tt-r1-solo"><span className="tt-chip" data-sample-event>Sample</span></div>
+              )}
+              {elegantMode && !tallTablet && (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
                   {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
@@ -15718,7 +15923,12 @@ export default function HostShellV2() {
               {/* Same day-of nav dead-end fix as the liveDay branch above — see
                   that comment. This is the branch a same-day event with no ROS
                   times set yet actually renders (host-confirmed dead end). */}
-              {elegantMode && (
+              {/* On a tall iPad the bar is the menu (owner, 11/22/2026); the sample
+                  still says so, on its own line. */}
+              {elegantMode && tallTablet && !eventIsTheHostsOwn && (
+                <div className="tt-r1 tt-r1-solo"><span className="tt-chip" data-sample-event>Sample</span></div>
+              )}
+              {elegantMode && !tallTablet && (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
                   {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
@@ -16347,7 +16557,12 @@ export default function HostShellV2() {
             <section role="main">
               {/* Same day-of nav dead-end fix as the Day tab — see the comment
                   on the liveDay day-sec branch above. After had the identical gap. */}
-              {elegantMode && (
+              {/* On a tall iPad the bar is the menu (owner, 11/22/2026); the sample
+                  still says so, on its own line. */}
+              {elegantMode && tallTablet && !eventIsTheHostsOwn && (
+                <div className="tt-r1 tt-r1-solo"><span className="tt-chip" data-sample-event>Sample</span></div>
+              )}
+              {elegantMode && !tallTablet && (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
                   {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
@@ -20618,6 +20833,43 @@ export default function HostShellV2() {
               // only one list can keep. The sheet renders it below tablet-land,
               // the rail at and above; both call the same function.
               const groups = sectionGroups({ event, travel, crab, outdoor, passCents: devicePassPriceCents() });
+              // ── THE TALL IPAD'S INDEX (owner rulings, 11/22/2026) ──────────
+              // "All sections" on the bar opens THIS sheet, laid out as the index:
+              // the search field (the same palette as the bar's Search), the
+              // same doors as tiles, "Feeling stuck?" beside Ask in More (the
+              // old menu's rows land here), and the pass as a row at the foot.
+              // Every door appears once; nothing here is a second list.
+              if (tallTablet) {
+                const passRow = groups.flatMap((g) => g.rows).find((r) => r.k === 'pass');
+                return (
+                  <>
+                    <button type="button" className="tt-index-search" data-tt-index-search onClick={() => { setSheet(null); setPaletteOpen(true); }}>
+                      {sectionIcon('search')}<span>Search your plan</span>
+                    </button>
+                    {groups.map((g) => {
+                      const rows = g.rows.filter((r) => r.k !== 'pass').flatMap((r) => (r.k === 'ask' ? [r, { k: 'help', label: 'Feeling stuck?' }] : [r]));
+                      return rows.length ? (
+                        <div key={g.title} className="tt-index-g">
+                          <div className="shelf-label">{g.title}</div>
+                          <div className="tt-tiles">
+                            {rows.map((r) => (
+                              <button key={r.k} type="button" className="tt-tile" data-door={r.k} onClick={() => go(r.k)}>
+                                {sectionIcon(r.k)}<span>{r.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null;
+                    })}
+                    {passRow && (
+                      <button type="button" className="tt-index-pass" data-door="pass" onClick={() => go('pass')}>
+                        {sectionIcon('pass')}<span className="tt-ip-l">{passRow.label}</span>
+                        <span className="tt-ip-r">{passNote()}<span className="chev" aria-hidden="true">›</span></span>
+                      </button>
+                    )}
+                  </>
+                );
+              }
               return (
                 <>
                   {/* SAME HERO TREATMENT AS EVERY OTHER SHEET (host, 2026-08-07).
@@ -21116,7 +21368,7 @@ export default function HostShellV2() {
                 <div className="shelf-label" style={{ margin: '0 0 9px' }}>Where in the event</div>
                 <div className="navseg">
                   {[['create', 'Create'], ['plan', 'Plan'], ['day', 'The Day'], ['after', 'After']].map(([s, label]) => (
-                    <button key={s} className={'navseg-b' + (stage === s ? ' on' : '')} onClick={() => { if (s === 'create') startNewEvent(); else { setStage(s); setSheet(null); } }}>{label}</button>
+                    <button key={s} className={'navseg-b' + (stage === s ? ' on' : '')} onClick={() => goPhase(s)}>{label}</button>
                   ))}
                 </div>
                 <div className="navrows">
@@ -21151,10 +21403,7 @@ export default function HostShellV2() {
                       Only while billing is live; the right side says the truth
                       for THIS event, from passStatus. */}
                   {isBillingLive() && (() => {
-                    let st = null;
-                    try { st = passStatus(event); } catch { st = null; }
-                    const price = passPriceLabel();
-                    const note = st && st.state === 'held' ? 'this event has it' : (price ? price + ' · ' : '') + (st && st.state === 'needed' ? 'this event needs it' : 'one event');
+                    const note = passNote();
                     return (
                       <button className="navrow nav-pass" onClick={() => setSheet({ kind: 'pass' })}>
                         <span className="nr-l">The One-Event Pass</span>

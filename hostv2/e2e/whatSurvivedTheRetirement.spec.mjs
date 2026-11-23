@@ -13,7 +13,7 @@
 // "Event Boss", and "Ask the Boss" survived the sweep in five host-visible
 // places because the guard proving the rename read the frozen CRA shell and
 // matched the two-word name only. This is the screen it was wrong about.
-import { test, expect, settled, dateIn } from './fixtures.mjs';
+import { test, expect, settled, dateIn, openSectionByName, openJumpTo } from './fixtures.mjs';
 
 const boot = async (page, { id, type, choices }) => {
   await page.addInitScript(([evId, evType, evChoices, SEED_DATE]) => {
@@ -47,10 +47,7 @@ const boot = async (page, { id, type, choices }) => {
 const openSection = async (page, label) => {
   const row = page.locator('.srail-row', { hasText: label }).first();
   if (await row.count()) { await row.click(); } else {
-    await page.locator('.ev-eyebrow').first().click();
-    await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click();
-    await settled(page);
-    await page.locator('.sheet').last().getByText(label, { exact: false }).first().click();
+    await openSectionByName(page, label);
   }
   await settled(page);
 };
@@ -240,7 +237,7 @@ test.describe('the rename reached the door that says the name', () => {
     expect(body).not.toContain('the boss');
     expect(body).not.toContain('event boss');
 
-    await page.locator('.ev-eyebrow').first().click();
+    await openJumpTo(page);
     await settled(page);
     const nav = (await page.locator('.sheet').last().innerText()).toLowerCase();
     expect(nav).not.toContain('the boss');

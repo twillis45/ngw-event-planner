@@ -3,7 +3,7 @@
 // opens a short, plain list of recent changes in place (src/whatsNew.json),
 // with no new tab or sheet, and closes again. It must be a real 44px target.
 // The list's content and its guard are pinned in test/whatsNewIsCurrent.test.mjs.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, openMenuDoor } from './fixtures.mjs';
 
 const boot = async (page) => {
   await page.addInitScript(() => {
@@ -25,9 +25,7 @@ const openSettings = async (page) => {
   const header = page.locator('[aria-label="You and settings"]').first();
   if (await header.count() && await header.isVisible()) await header.click();
   else {
-    await page.locator('[aria-label="Menu"]').first().click();
-    await page.waitForTimeout(600);
-    await page.locator('.navrow', { hasText: 'You & settings' }).first().click();
+    await openMenuDoor(page, 'You & settings');
   }
   await expect(page.locator('#sheet-title')).toHaveText('You & settings', { timeout: 8000 });
 };

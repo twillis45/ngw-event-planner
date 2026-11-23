@@ -12,7 +12,7 @@
 // are the fixed carbon stages under 30% lightness (the creation reveal and the
 // welcome are dark in both themes by design). Scrims over a light page must be
 // warm, not neutral black.
-import { test, expect, openSectionByName, settled, sheetSettled } from './fixtures.mjs';
+import { test, expect, openSectionByName, settled, sheetSettled, goToStage } from './fixtures.mjs';
 
 const coolSurfaces = () => {
   const rgba = (s) => (s.match(/[\d.]+/g) || []).map(Number);
@@ -63,10 +63,9 @@ const boot = async (page, fresh) => {
   await page.route('https://e2e-mock.invalid/**', (route) => route.fulfill({ status: 404, json: { detail: 'not found' } }));
   await page.goto('./?elegant=1');
 };
+// The phase switch wherever it is: the menu, or a tall iPad's docked bar.
 const viaMenu = async (page, label) => {
-  if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
-  await page.locator('.ev-eyebrow').first().click();
-  await page.locator('.sheet').last().getByRole('button', { name: label, exact: false }).first().click();
+  await goToStage(page, label);
   await page.waitForTimeout(1200);
 };
 

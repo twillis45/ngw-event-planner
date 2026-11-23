@@ -5,7 +5,7 @@
 // and RSVP endpoints, which return the street address. A "Run it again" copy
 // also kept its source's code, so one link stood for two events (the server
 // resolves a code to ONE). Both now mint a 22-character token.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, openEventsSheet } from './fixtures.mjs';
 
 const stored = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]'));
 const TOKEN = /^[A-Za-z0-9]{22}$/;
@@ -36,8 +36,7 @@ test('a "Run it again" copy gets its own invite code', async ({ page }) => {
     localStorage.setItem('ngw-v2-welcomed', '1');
   }, SRC);
   await page.goto('?elegant=1');
-  await page.locator('.ev-eyebrow').first().click();
-  await page.locator('.navrow', { hasText: 'This event' }).first().click();
+  await openEventsSheet(page);
   await expect(page.getByRole('heading', { name: 'Your events' })).toBeVisible({ timeout: 15000 });
   await page.locator('.runagain').first().click();
   await expect.poll(async () => (await stored(page)).length).toBe(2);

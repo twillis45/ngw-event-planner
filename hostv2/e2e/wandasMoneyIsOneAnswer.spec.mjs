@@ -9,7 +9,7 @@
 //          against $5,000".
 //   P2-9   the money fix said "drop Open Bar" when the drinks call has a
 //          cash bar the plan prices for less.
-import { test, expect, settled, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName, goToStage } from './fixtures.mjs';
 
 const boot = async (page) => {
   await page.addInitScript(() => {
@@ -60,8 +60,7 @@ test('the Spread prices the catering at the quote', async ({ page }) => {
 
 test('After says what its expected total says', async ({ page }) => {
   await boot(page);
-  await page.locator('.ev-eyebrow').first().click();
-  await page.locator('.sheet').last().locator('button').filter({ hasText: /^After$/ }).first().click({ force: true });
+  await goToStage(page, 'After');
   const main = page.getByRole('main');
   await expect(main).toContainText('Expected total');
   await expect(main).not.toContainText('of headroom');

@@ -52,6 +52,14 @@ test('a sheet rises from the row that opened it, not from a constant', async ({ 
   const rowsFor = async () => {
     const rail = page.locator('.srail-row:not(.srail-min)');
     if (await rail.count()) return rail;
+    // A tall iPad (11/22/2026): no rail, no eyebrow; its bar opens the index,
+    // whose doors are tiles.
+    const bar = page.locator('[data-tt-bar]');
+    if (await bar.count()) {
+      await bar.getByRole('button', { name: 'All sections' }).click({ timeout: 8000 });
+      await settled(page);
+      return page.locator('.sheet').last().locator('.tt-tile');
+    }
     await page.locator('.ev-eyebrow').first().click({ timeout: 8000 });
     await page.locator('.sheet').last()
       .getByText('Jump to a section', { exact: false }).first().click({ timeout: 8000 });

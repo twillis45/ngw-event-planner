@@ -159,7 +159,8 @@ test('every dated state actually sits where its label says', async ({ page }) =>
     // measuring the container instead of the artifact, which is the mistake
     // this file keeps recording.
     const shown = await page.evaluate(() => {
-      const el = document.querySelector('.eb-text');
+      // A tall iPad prints the same urgency in its header (11/22/2026).
+      const el = document.querySelector('.eb-text') || document.querySelector('[data-tt-urgency]');
       const t = (el ? el.textContent : '').replace(/\s+/g, ' ').trim();
       if (!t) return null;
       const past = /(\d+)\s*DAYS?\s+AGO/i.exec(t);
@@ -565,6 +566,27 @@ for (const state of STATES) {
         // Content-sized, the claim is that the handle FOLLOWS the content: its
         // gap below the escreen is the fold's own margin + top padding and
         // nothing more, so no void opens between the ask and the handle.
+        // ── A TALL IPAD ENDS ITS FIRST SCREEN WITH THE HANDLE (owner, 11/22/2026) ──
+        // The handle is the LAST item inside `.escreen` there, above the docked
+        // bar. The same two claims, from inside: at the reserved height the
+        // handle sits above the bar; content-sized, it is still the escreen's
+        // last thing, with nothing after it but the escreen's own padding.
+        if (await page.locator('[data-tt-bar]').count()) {
+          const t = await page.evaluate(() => {
+            const esc = document.querySelector('.escreen.on');
+            const fold = esc && esc.querySelector('.efold');
+            const e = esc.getBoundingClientRect(); const f = fold ? fold.getBoundingClientRect() : null;
+            return { escH: e.height, escBottom: e.bottom, minH: parseFloat(getComputedStyle(esc).minHeight),
+              pad: parseFloat(getComputedStyle(esc).paddingBottom), foldBottom: f ? f.bottom : null,
+              barTop: document.querySelector('[data-tt-bar]').getBoundingClientRect().top };
+          });
+          expect(t.foldBottom, 'the handle is inside the first screen').not.toBeNull();
+          if (t.escH <= t.minH + 1) expect(t.foldBottom, `reserved height (${Math.round(t.escH)}px): the handle is above the bar`).toBeLessThanOrEqual(t.barTop);
+          const tail = t.escBottom - t.foldBottom;
+          expect(tail, 'nothing on the first screen after the handle').toBeGreaterThanOrEqual(0);
+          expect(tail, 'nothing on the first screen after the handle').toBeLessThanOrEqual(t.pad + 1);
+          return;
+        }
         const g = await page.evaluate(() => {
           const esc = document.querySelector('.escreen');
           const fold = document.querySelector('.efold');

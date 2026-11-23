@@ -12,7 +12,7 @@
 // (the Sample tag reuses `.eb-sample`, the sample chip the header already has).
 // This spec measures the rendered pixels, not the source, so a dim that comes
 // back from anywhere — an inline style, a class, an ancestor — fails it.
-import { test, expect, settled, sheetSettled, openSectionByName, dateIn } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled, openSectionByName, dateIn, openEventsSheet } from './fixtures.mjs';
 
 // Composited WCAG contrast of an element's text against what is really behind it.
 // Waits for any finite animation on the element or an ancestor first: a row
@@ -120,10 +120,7 @@ test('Your events: the Sample tag clears AA', async ({ page }) => {
   // row where there is a rail, the menu's row where there is not.
   const rail = page.locator('.srail-row[aria-label="This event"]');
   if (await rail.count()) await rail.first().click();
-  else {
-    await page.locator('[aria-label="Menu"]').first().click();
-    await page.locator('.sheet').last().locator('button', { hasText: /^This event/ }).first().click();
-  }
+  else await openEventsSheet(page);
   await expect(page.locator('#sheet-title')).toHaveText('Your events', { timeout: 8000 });
   await sheetSettled(page);
   const tag = page.locator('.sheet .frow .f-name > span', { hasText: /^sample$/i }).first();

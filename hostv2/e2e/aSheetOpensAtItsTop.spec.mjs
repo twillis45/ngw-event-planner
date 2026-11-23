@@ -74,6 +74,19 @@ const openFromAScrolledSheet = async (page, name) => {
     expect(await scrollSheetToEnd(page), 'premise: the open section scrolled').toBeGreaterThan(0);
     before = await titleNow(page);
     await page.locator('.srail-row', { hasText: name }).first().click();
+  } else if (await page.locator('[data-tt-bar]').count()) {
+    // A tall iPad (11/22/2026): the bar's All sections opens the index.
+    if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(250); }
+    await page.locator('[data-tt-bar]').getByRole('button', { name: 'All sections' }).click();
+    await sheetSettled(page);
+    // On a tall screen the whole index can fit (a 1920 window turned upright):
+    // then there is no scrolled door to open from, and only the landing is
+    // checked. Where it can scroll, it must have.
+    const fits = await page.evaluate(() => { const b = [...document.querySelectorAll('.sheet')].pop().querySelector(':scope > .sheet-body'); return b.scrollHeight <= b.clientHeight + 1; });
+    const scrolled = await scrollSheetToEnd(page);
+    if (!fits) expect(scrolled, 'premise: the index scrolled').toBeGreaterThan(0);
+    before = await titleNow(page);
+    await page.locator('.sheet').last().locator('[data-door]', { hasText: name }).first().click();
   } else {
     if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(250); }
     await page.locator('.ev-eyebrow').first().click();
