@@ -224,7 +224,7 @@ import { readArrival, rememberArrival, arrivalFor, spendArrival, exampleSentence
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_NUDGE } from '@app/lib/knowledge/geoCostIndex';
 import { firstStoreIn, storesIn } from '@app/lib/communitySource';
-import { typeIsRestatedByName } from '@app/lib/eventMasthead';
+import { typeLineFor } from '@app/lib/eventMasthead';
 import { confirmedCovers, confirmedRsvpCovers, coversWithWord } from '@app/lib/confirmedCovers';
 import { shoppingHint } from '@app/lib/shoppableUnit';
 import { markSignal, lastSignalNote } from './offline/lastSignal';
@@ -323,7 +323,7 @@ import { classifyClaim } from '@app/lib/knowledge/claimBasis';
 import { timingDisagreementNote } from '@app/lib/knowledge/timingProvenance';
 import { iceRecommendation, ICE_CHANGE_FACTORS } from '@app/lib/knowledge/claimFamilies';
 import { orientation as deriveOrientation, segmentsText, hairlineLabel, planRibbon } from '@app/lib/eventOrientation';
-import { stagewrapClass, showsRail, isTallTablet } from '@app/lib/responsiveSurface';
+import { stagewrapClass, showsRail, isTallTablet, navLayout } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { syncProfile as cloudSyncProfile, saveProfile as cloudSaveProfile, installProfileOnlineFlush } from '@app/lib/api/profile';
 import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent as cloudDeleteEvent, getPendingEventIds, resolveConflict, undoKeepMine, undoUseTheirs, cloudCopyIsStale, sameEventContent, forgetAccountCache } from '@app/lib/api/events';
@@ -1389,6 +1389,17 @@ export default function HostShellV2() {
   // The tall iPad is a layout of the elegant board (the default since 7/21);
   // the ?elegant=0 fallback keeps its own v2 chrome at every size.
   const tallTablet = elegantMode && isTallTablet({ bp, portrait });
+  // THE NAVIGATION PACKAGE (owner rulings, 11/23/2026), one reader (navLayout):
+  // a phone wears the tall header, the progress on top and a bottom pill (no
+  // ☰, no NEXT bar); a 13" iPad held upright keeps the tall board with the
+  // rail always up and no bottom bar; 768–1023 portrait keeps its bar.
+  const navMode = navLayout({ bp, portrait, elegant: elegantMode });
+  const phonePill = navMode === 'pill';
+  const tallRail = navMode === 'tall-rail';
+  // The tall header and its company (the Day/After sample line, the fold slot).
+  const ttHead = tallTablet || phonePill;
+  // The docked bar: the 768–1023 portrait bar, or the phone's pill.
+  const barShown = navMode === 'bar' || phonePill;
   const splashSeenRecently = (() => {
     const now = Date.now();
     const withinWindow = (iso) => {
@@ -1567,7 +1578,8 @@ export default function HostShellV2() {
   // component, so it cannot remount the caret on every parent render.
   // On a tall iPad the ribbon IS what's counted (owner, 11/22/2026): one copy,
   // so the caret is not rendered there.
-  const countedCaret = (extra) => tallTablet ? null : (
+  // The phone's progress line is its door too (owner ruling 3, 11/23/2026).
+  const countedCaret = (extra) => (tallTablet || phonePill) ? null : (
     <span role="button" tabIndex={0} aria-expanded={handledOpen} aria-controls="whats-counted"
       className="counted-caret"
       /* display lives in CSS, not here: the ≤480px tap floor switches it to
@@ -3307,9 +3319,26 @@ export default function HostShellV2() {
       else if (delta < -6) setDockHidden(false);
       lastScrollY.current = y;
     };
+    // A new stage starts with the nav showing: a short stage never scrolls,
+    // so nothing else would bring back a pill tucked away on the last one.
+    setDockHidden(false); lastScrollY.current = app.scrollTop;
     app.addEventListener('scroll', onScroll, { passive: true });
     return () => app.removeEventListener('scroll', onScroll);
   }, [stage]);
+  // THE PHONE'S FIRST SCREEN ENDS AT THE FOLD, JUST ABOVE THE PILL (owner
+  // ruling 7, 11/23/2026). The screen is the scroller's height less what sits
+  // above it on the board (the sign-in row, the content's padding), which
+  // comes and goes; measured after each render into --pp-above, which the
+  // first-screen rule reads. Nothing below the screen feeds it back.
+  useEffect(() => {
+    const app = appRef.current;
+    if (!app) return;
+    if (!phonePill) { if (app.style.getPropertyValue('--pp-above')) app.style.removeProperty('--pp-above'); return; }
+    const esc = app.querySelector('.escreen.on');
+    if (!esc) return;
+    const v = Math.max(0, Math.round(esc.getBoundingClientRect().top - app.getBoundingClientRect().top + app.scrollTop)) + 'px';
+    if (app.style.getPropertyValue('--pp-above') !== v) app.style.setProperty('--pp-above', v);
+  });
   const [tuneCost, setTuneCost] = useState(''); // lock-the-cost input in the tune panel
   // Did the host actually TYPE in the cost field, vs accept the store-based
   // prefill? Only a typed value is a real receipt (event.foodReal); accepting
@@ -5707,10 +5736,10 @@ export default function HostShellV2() {
   // The header's weather slot (owner ruling 11/23/2026): on a tall iPad the
   // weather pill rides the date line instead of floating over the board.
   const [ttWxSlot, setTtWxSlot] = useState(null);
-  const placeWx = (el) => (tallTablet ? (ttWxSlot ? createPortal(el, ttWxSlot) : null) : el);
+  const placeWx = (el) => (ttHead ? (ttWxSlot ? createPortal(el, ttWxSlot) : null) : el);
   // THE RIBBON (owner, 11/22/2026): the plan-parts ledger the chips and the
   // .eprog strips read, plus which open part the hero question is about.
-  const tallRibbon = tallTablet ? planRibbon(phaseCues, askMode ? queue[0] : null) : null;
+  const tallRibbon = ttHead ? planRibbon(phaseCues, askMode ? queue[0] : null) : null;
   // The part the hero question is about, as the ribbon marks it (NOW).
   const tallNowPart = (tallRibbon && (tallRibbon.parts.find((p) => p.now) || {}).id) || undefined;
   // The pass row's right side, for THIS event (passStatus): the menu's row
@@ -5785,7 +5814,8 @@ export default function HostShellV2() {
     //    turns 50 · BIRTHDAY", does not and keeps it. The old
     //    check was exact equality, which caught only the case
     //    where the name IS the type.
-    if (typeLabel && !typeIsRestatedByName(name, typeLabel)) out.type = typeLabel;
+    // The type line only when it adds (owner ruling 2, 11/23/2026): one rule.
+    out.type = typeLineFor(name, typeLabel);
     // 4. when — the span for multi-day (host report 2026-07-27, "I
     //    don't see the multi day"), otherwise the absolute date,
     //    which the single-day case never carried at all.
@@ -11305,7 +11335,7 @@ export default function HostShellV2() {
   return (
     <div className={['stagewrap', stageMode].filter(Boolean).join(' ')}
       data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'}
-      data-railmin={railUp && railMin ? '1' : '0'} data-tall={tallTablet ? '1' : '0'}>
+      data-railmin={railUp && railMin ? '1' : '0'} data-tall={tallTablet ? '1' : '0'} data-pill={phonePill ? '1' : '0'}>
       {/* ── THE PERSISTENT SECTION RAIL (VIEWPORT_PORT_RULING step 3) ─────────
           Six of six leaders (Motion, Height, Wrike, Bonsai, Asana, Plane) put
           global nav in a persistent left rail and never behind a hamburger at
@@ -11338,6 +11368,23 @@ export default function HostShellV2() {
             </svg>
             <span className="srail-l">{railMin ? 'Widen' : 'Narrow'}</span>
           </button>
+          {/* YOUR EVENT (owner ruling 8, 11/23/2026): on a 13" iPad held upright
+              the rail is the one menu, so the phases join it, first. The same
+              goPhase the bar and the menu call; the current phase is outlined,
+              not filled. Plan, tapped on Plan with the question scrolled away,
+              goes back to the question (the NEXT bar's job, as on the bar). */}
+          {tallRail && (
+            <div className="srail-g" key="__stages">
+              <div className="shelf-label srail-t">Your event</div>
+              {[['create', 'Create'], ['plan', 'Plan'], ['day', 'The Day'], ['after', 'After']].map(([k, label]) => (
+                <button key={k} type="button" className={'srail-row srail-stage' + (stage === k ? ' is-stage' : '')} data-rail-stage={k}
+                  aria-current={stage === k ? 'page' : undefined} aria-label={label} title={label}
+                  onClick={() => { if (k === 'plan' && stage === 'plan' && !heroInView) { backToHero(); return; } goPhase(k); }}>
+                  <span className="srail-l">{label}</span>
+                </button>
+              ))}
+            </div>
+          )}
           {sectionGroups({ event, travel, crab, outdoor, passCents: devicePassPriceCents() }).map((g) => (
             <div className="srail-g" key={g.title}>
               <div className="shelf-label srail-t">{g.title}</div>
@@ -11345,16 +11392,22 @@ export default function HostShellV2() {
                 // The spread is one door whichever tab it opened on.
                 const here = sheet && (sheet.kind === 'bringing' || sheet.kind === 'foodplan' ? 'food' : sheet.kind) === r.k;
                 return (
-                  <button key={r.k} className={'srail-row' + (here ? ' on' : '')}
+                  <button key={r.k} className={'srail-row' + (here ? ' on' : '') + (r.k === 'pass' ? ' srail-pass' : '')}
                     aria-current={here ? 'page' : undefined}
                     /* Named on the BUTTON, not only by the label span: collapsed,
                        that span is display:none and leaves the a11y tree with it,
                        so a row named only by its text would go nameless exactly
                        when its icon is all the user has. */
-                    aria-label={r.label} title={r.label}
+                    aria-label={tallRail && r.k === 'pass' ? r.label + ' · ' + passNote() : r.label} title={r.label}
                     onClick={() => goToSection(r.k)}>
                     {sectionIcon(r.k)}
-                    <span className="srail-l">{r.label}</span>
+                    <span className="srail-l">{r.label}
+                      {/* The ☰ menu's pass row said where this event stands
+                          (passNote). At the 13" upright the rail is the only
+                          menu, so its pass row says it (owner, 11/23/2026:
+                          every menu item stays reachable). */}
+                      {tallRail && r.k === 'pass' && <span className="srail-note" data-pass-note>{' · ' + passNote()}</span>}
+                    </span>
                   </button>
                 );
               })}
@@ -11391,8 +11444,13 @@ export default function HostShellV2() {
           search (the same palette). Docked, full width, its inner row on the
           board's two edges. .app ends at its top edge, so nothing scrolls
           under it; a sheet covers it like any other chrome. */}
-      {tallTablet && (
-        <nav className="tt-bar" data-tt-bar aria-label="Your plan">
+      {/* THE PHONE'S PILL (owner rulings 4–6, 11/23/2026) is this same bar:
+          the phases, a thin divider, then All sections and Search as icons,
+          in one outlined pill with no fill. It hides while she scrolls down
+          and comes back when she scrolls up (the dock's own reading,
+          dockHidden). Not at the 13" portrait iPad: the rail is its menu. */}
+      {barShown && (
+        <nav className={'tt-bar' + (phonePill ? ' tt-pill' + (dockHidden ? ' is-hidden' : '') : '')} data-tt-bar data-pill={phonePill ? '' : undefined} aria-label="Your plan" inert={phonePill && dockHidden ? true : undefined}>
           <div className="tt-bar-in">
             {/* The menu's own segmented control (.navseg), so the selected
                 phase wears the one selected look by construction. */}
@@ -11405,11 +11463,12 @@ export default function HostShellV2() {
                   onClick={() => { if (k === 'plan' && stage === 'plan' && !heroInView) { backToHero(); return; } goPhase(k); }}>{label}</button>
               ))}
             </div>
-            <button type="button" className="tt-act" onClick={() => setSheet({ kind: 'sections' })}>
-              {sectionIcon('sections')}<span>All sections</span>
+            {phonePill && <span className="tt-pill-div" data-pill-divider aria-hidden="true" />}
+            <button type="button" className="tt-act" aria-label={phonePill ? 'All sections' : undefined} onClick={() => setSheet({ kind: 'sections' })}>
+              {sectionIcon('sections')}{!phonePill && <span>All sections</span>}
             </button>
-            <button type="button" className="tt-act q" onClick={() => { setSheet(null); setPaletteOpen(true); }}>
-              {sectionIcon('search')}<span>Search</span>
+            <button type="button" className="tt-act q" aria-label={phonePill ? 'Search' : undefined} onClick={() => { setSheet(null); setPaletteOpen(true); }}>
+              {sectionIcon('search')}{!phonePill && <span>Search</span>}
             </button>
           </div>
         </nav>
@@ -11420,8 +11479,8 @@ export default function HostShellV2() {
       {/* has-nextbar: the .next-bar is absolutely positioned over the scroll area,
           so the container reserves room for it exactly while it shows — same
           condition as its render below. See the note at .next-bar in styles.css. */}
-      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + ((wxImpact || travelWx) && stage === 'plan' ? ' has-wxpill' : '') + (stage === 'plan' && !heroInView && !tallTablet ? ' has-nextbar' : '')} id="app" ref={appRef} inert={splash !== 'gone'}
-        data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'} data-tall={tallTablet ? '1' : '0'}>
+      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + ((wxImpact || travelWx) && stage === 'plan' ? ' has-wxpill' : '') + (stage === 'plan' && !heroInView && !ttHead ? ' has-nextbar' : '')} id="app" ref={appRef} inert={splash !== 'gone'}
+        data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'} data-tall={tallTablet ? '1' : '0'} data-pill={phonePill ? '1' : '0'}>
         {/* dash-hold: same mechanism as .welcome.splash-hold — any one-shot
             entrance animation in here (sweepcard's cardin, etc.) pauses at
             frame one while the splash is up and releases the instant it
@@ -12426,7 +12485,7 @@ export default function HostShellV2() {
                   (countdown · event name, uppercase) — the big serif name + venue + kicker
                   move OFF the ask screen (the serif name belongs on the pull-down Overview).
                   Everything below composes with generous negative space. */}
-              {elegantMode && tallTablet && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
+              {elegantMode && ttHead && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
                 /* ── THE TALL IPAD'S HEADER (owner rulings, 11/22/2026) ──────────
                     Replaces the ☰ eyebrow on a portrait tablet. The same values
                     the eyebrow prints (boardEyebrow), laid out in rows; the title
@@ -12463,7 +12522,7 @@ export default function HostShellV2() {
                 </header>
                 {/* THE RIBBON: the plan's parts, one tap each to what its chip opens.
                     Not on the day (the run of show leads) and not after. */}
-                {tallRibbon && !dayHero && !isPast && (
+                {tallRibbon && tallTablet && !dayHero && !isPast && (
                   <nav className="tt-rib" data-tt-ribbon aria-label="Parts of your plan">
                     <div className="tt-parts">
                       {tallRibbon.parts.map((p) => {
@@ -12473,7 +12532,9 @@ export default function HostShellV2() {
                             aria-label={areaLabelFor(p.id) + (p.handled ? ' — handled' : p.now ? ' — still open, and the question above is about it' : ' — still open') + '. Open it.'}
                             onClick={() => openPart(p)}>
                             <i aria-hidden="true" />
-                            <span className="tt-pl">{p.handled ? '✓ ' : ''}{areaLabelFor(p.id)}{p.now ? <em className="tt-now">Now</em> : null}</span>
+                            {/* No NOW tag at the 13" (owner ruling 10, 11/23/2026):
+                                the current part's name is bold instead. */}
+                            <span className="tt-pl">{p.handled ? '✓ ' : ''}{areaLabelFor(p.id)}{p.now && !tallRail ? <em className="tt-now">Now</em> : null}</span>
                           </button>
                         );
                       })}
@@ -12501,9 +12562,37 @@ export default function HostShellV2() {
                       </span>
                       {/* One date once: when the next dated work IS the day the
                           count grows, the grow-note already names it. */}
-                      {horizonPhrase && !(ledgerExpiry && ledgerExpiryShort && planHorizonShort === ledgerExpiryShort) && <span>{horizonPhrase}</span>}
+                      {/* Not "dated work needs you now" at the 13" (owner ruling 10). */}
+                      {horizonPhrase && !(tallRail && planHorizon.days <= 0) && !(ledgerExpiry && ledgerExpiryShort && planHorizonShort === ledgerExpiryShort) && <span>{horizonPhrase}</span>}
                     </div>
                   </nav>
+                )}
+                {/* THE PHONE'S PROGRESS, ON TOP (owner ruling 3, 11/23/2026): the
+                    ribbon's own parts (planRibbon, the one progress reader) as six
+                    thin segments under the title, the current part's lit, and one
+                    line. The line and the bars are one door to the existing
+                    What's counted panel, as the ribbon's count is on a tall iPad.
+                    No NOW, no "this one first". */}
+                {tallRibbon && phonePill && !dayHero && !isPast && (
+                  <div className="pp-prog" data-pp-prog>
+                    <button type="button" className="pp-prog-b" aria-expanded={handledOpen} aria-controls="whats-counted"
+                      aria-label={(tallRibbon.allHandled ? `All ${tallRibbon.total}` : `${tallRibbon.done} of ${tallRibbon.total}`) + ' parts of your plan handled. What’s counted.'}
+                      onClick={() => setHandledOpen((o) => {
+                        if (!o) setTimeout(() => { try { const el = document.getElementById('whats-counted'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* the panel is still open */ } }, 80);
+                        return !o;
+                      })}>
+                      <span className="pp-segs" aria-hidden="true">
+                        {tallRibbon.parts.map((p) => (
+                          <i key={p.id} data-seg={p.id} data-state={p.now ? 'now' : p.handled ? 'done' : 'open'} className={'pp-seg is-' + (p.now ? 'now' : p.handled ? 'done' : 'open')} />
+                        ))}
+                      </span>
+                      <span className="pp-line" data-pp-line>
+                        {tallRibbon.allHandled ? `All ${tallRibbon.total} handled` : `${tallRibbon.done} of ${tallRibbon.total} handled`}
+                        <span className="pp-dot" aria-hidden="true"> · </span>
+                        <span className="pp-wc">What’s counted ›</span>
+                      </span>
+                    </button>
+                  </div>
                 )}
                 </>
               ) : elegantMode && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
@@ -12881,11 +12970,14 @@ export default function HostShellV2() {
                         {/* "on track" is a PACE word. The engine knows handled-or-open per
                             essential and nothing about rate — the same false precision the
                             host killed the continuous fill for. Use the engine's own noun. */}
-                        <p className="cp-prog">{hairlineLabel(orient, { calm: true }) || `${cpDone} of ${cpTotal} plan parts handled`}</p>
-                        {partNames && <p className="cp-parts">{partNames}</p>}
+                        {/* ONE PLACE (owner, 11/23/2026): where the progress sits on
+                            top (the tall ribbon, the phone's line), the count is said there. */}
+                        {!(ttHead && tallRibbon) && <p className="cp-prog">{hairlineLabel(orient, { calm: true }) || `${cpDone} of ${cpTotal} plan parts handled`}</p>}
+                        {partNames && !(ttHead && tallRibbon) && <p className="cp-parts">{partNames}</p>}
                         {/* The denominator moves, so say when. This is the whole reason
-                            phaseProgress now emits nextLedgerChange. */}
-                        {ledgerExpiry && ledgerExpiryShort && (
+                            phaseProgress now emits nextLedgerChange. The tall ribbon's
+                            foot already says it there. */}
+                        {ledgerExpiry && ledgerExpiryShort && !(tallTablet && tallRibbon) && (
                           <p className="cp-prog">{ledgerExpiryShort} is when {ledgerExpiry.what}.</p>
                         )}
                       </>
@@ -13879,7 +13971,7 @@ export default function HostShellV2() {
               </div>{/* /ecenter — the centered ask+action region */}
               {/* Progress hairline — pinned to the FOOT of the first screen (F13), after the
                   one action, above the fold. Real engine numbers. */}
-              {elegantMode && askMode && !tallTablet && planTotal > 0 && (() => {
+              {elegantMode && askMode && !ttHead && planTotal > 0 && (() => {
                 const done = planDone;
                 const total = planTotal;
                 return (
@@ -13984,10 +14076,10 @@ export default function HostShellV2() {
               {/* The tall iPad's first screen ends with Where you stand and the fold
                   control (owner, 11/22/2026); both are portaled into these slots. */}
               {tallTablet && <div className="tt-stand-slot" ref={setTtStandSlot} />}
-              {tallTablet && <div className="tt-fold-slot" ref={setTtFoldSlot} />}
+              {ttHead && <div className="tt-fold-slot" ref={setTtFoldSlot} />}
               </div>{/* /escreen — first-screen bound ends; the see-all follows below the fold */}
               {/* Fold boundary below the first screen (grabbable — taps scroll to the see-all). */}
-              {elegantMode && (askMode || (listIsCalm && !isPast && days !== null && days > 0)) && ((el) => (tallTablet && ttFoldSlot ? createPortal(el, ttFoldSlot) : el))(
+              {elegantMode && (askMode || (listIsCalm && !isPast && days !== null && days > 0)) && ((el) => (ttHead && ttFoldSlot ? createPortal(el, ttFoldSlot) : el))(
                 /* CALM JOINED (host "where's the handle" 2026-07-23): the calm board
                    PROMISES "the heads-ups below" — it needs the same fold handle as the
                    ask board (F13/F14: one skeleton holds both poles). Past keeps its
@@ -15031,6 +15123,14 @@ export default function HostShellV2() {
                   The id is the caret's aria-controls target. */}
               <div id="whats-counted" className={'slidepanel' + (handledOpen ? ' open' : '')} inert={!handledOpen}>
                 <div className="slidepanel-inner">
+                  {/* THE DATE THE PLAN NEXT NEEDS HER, BEHIND THE ONE DOOR (owner
+                      ruling 3, 11/23/2026). The phone's progress is one line now,
+                      "N of M handled · What's counted ›"; the hairline's horizon
+                      ("next dated work: Dec 3", audit 2026-08-04) moves here
+                      rather than leaving the phone. Not "needs you now". */}
+                  {phonePill && horizonPhrase && planHorizon && planHorizon.days > 0 && (
+                    <p className="grounding" data-horizon style={{ margin: '0 0 var(--sp-3)' }}>{horizonPhrase.charAt(0).toUpperCase() + horizonPhrase.slice(1)}.</p>
+                  )}
                   {/* WHAT THESE TWO NUMBERS ARE (host, 2026-07-14).
                       The hero shows "3 of 5" in one tile and "3 things need you" in the other,
                       and never once says what an AREA is, what a THING is, or why the two
@@ -15769,10 +15869,10 @@ export default function HostShellV2() {
                   branch's own comment already claims. */}
               {/* On a tall iPad the bar is the menu (owner, 11/22/2026); the sample
                   still says so, on its own line. */}
-              {elegantMode && tallTablet && !eventIsTheHostsOwn && (
+              {elegantMode && ttHead && !eventIsTheHostsOwn && (
                 <div className="tt-r1 tt-r1-solo"><span className="tt-chip" data-sample-event>Sample</span></div>
               )}
-              {elegantMode && !tallTablet && (
+              {elegantMode && !ttHead && (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
                   {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
@@ -16019,10 +16119,10 @@ export default function HostShellV2() {
                   times set yet actually renders (host-confirmed dead end). */}
               {/* On a tall iPad the bar is the menu (owner, 11/22/2026); the sample
                   still says so, on its own line. */}
-              {elegantMode && tallTablet && !eventIsTheHostsOwn && (
+              {elegantMode && ttHead && !eventIsTheHostsOwn && (
                 <div className="tt-r1 tt-r1-solo"><span className="tt-chip" data-sample-event>Sample</span></div>
               )}
-              {elegantMode && !tallTablet && (
+              {elegantMode && !ttHead && (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
                   {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
@@ -16653,10 +16753,10 @@ export default function HostShellV2() {
                   on the liveDay day-sec branch above. After had the identical gap. */}
               {/* On a tall iPad the bar is the menu (owner, 11/22/2026); the sample
                   still says so, on its own line. */}
-              {elegantMode && tallTablet && !eventIsTheHostsOwn && (
+              {elegantMode && ttHead && !eventIsTheHostsOwn && (
                 <div className="tt-r1 tt-r1-solo"><span className="tt-chip" data-sample-event>Sample</span></div>
               )}
-              {elegantMode && !tallTablet && (
+              {elegantMode && !ttHead && (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
                   {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
@@ -20955,7 +21055,8 @@ export default function HostShellV2() {
               // same doors as tiles, "Feeling stuck?" beside Ask in More (the
               // old menu's rows land here), and the pass as a row at the foot.
               // Every door appears once; nothing here is a second list.
-              if (tallTablet) {
+              // The phone's pill opens the same index (owner ruling 4, 11/23/2026).
+              if (ttHead) {
                 const passRow = groups.flatMap((g) => g.rows).find((r) => r.k === 'pass');
                 return (
                   <>
@@ -29670,7 +29771,8 @@ export default function HostShellV2() {
           same onCta path the named card uses), or scrolls to the full list when calm. */}
       {/* Not on a tall iPad (owner ruling, 11/23/2026): there the bar's Plan
           button takes the host back to the question, and The Day runs the day. */}
-      {stage === 'plan' && !heroInView && !tallTablet && (
+      {/* Nor on a phone (owner ruling 6, 11/23/2026): the pill's Plan does it. */}
+      {stage === 'plan' && !heroInView && !ttHead && (
         <button
           /* NOT "ALL QUIET" OVER LATE STEPS (owner screenshot 11/18/2026: the bar
              read "Next · All quiet" on a board whose top said "8 things are past
