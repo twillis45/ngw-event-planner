@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 23, 2026 — the leftovers: pay steps wait, the day follows her answers, Undo brings the ask back
+
+**A caterer pay step waits for a caterer she hired, Crab Feast's day reads as pickup unless she steams, a state park keeps its state, and nothing asks her to return rentals she never rented.** The rain backup waits for its window, "next dated work" names a checklist date, a locked count retires its headcount risk, a potluck asks who brings what, Anniversary's count + needs call settles on both facts, a lone hero item names itself, and the count rows' Undo now brings the ask back (#237; HANDOFF has the detail and the two owner calls).
+
 ## November 22, 2026 (night) — every release has a name, and the small words read right
 
 **Each main merge is tagged vYYYY.MM.DD.N, the footer shows "Version 2026.11.22.3 (abc1234)" and opens a plain What's new list, and Sentry knows which build threw.** Polish: doors open at the start time, warnings wear honey in dark, the ruled food card says its call once, a symbolic ceremony files no license, and the family page shows the dress code.
