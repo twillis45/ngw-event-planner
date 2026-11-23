@@ -51,6 +51,16 @@ const dinnerParty = {
       ] },
   ],
 
+  // THE COURSES, for the one-course catering follow-up (cateredCourse.js, owner
+  // ruling 11/23/2026): which lines each course is, so the course the caterer
+  // brings leaves the shopping list.
+  courses: [
+    ['The appetizer', ['p_appetizer']],
+    ['The main', ['p_protein']],
+    ['The sides', ['p_starch', 'p_veg']],
+    ['Dessert', ['p_dessert']],
+  ],
+
   milestones: [
     { id: 'dp_setdate', name: 'Set date + guest count + budget', offsetDays: 21, owner: 'host', category: 'planning', risk: null },
     { id: 'dp_invite', name: 'Send invites + ask dietary/allergy + RSVP', offsetDays: 18, owner: 'host', dependsOn: ['dp_setdate'], category: 'guest', risk: { ifDelayed: 'Low RSVP visibility → wrong food quantities', severity: 'med' } },

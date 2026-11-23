@@ -41,10 +41,18 @@
 const HOST_MAIN = 'Potluck — host makes the main, friends each bring an assigned dish';
 const ALL_ASSIGNED = 'Full potluck — even the main is assigned to a friend';
 const HOST_COOKS = 'Host cooks most of it — friends bring drinks and dessert';
-const ORDERED = 'Ordered in — a restaurant or caterer cooks, the group splits the bill';
+// ORDERING IN IS TWO ANSWERS (owner ruling, 11/23/2026). It was one, "Ordered
+// in — a restaurant or caterer cooks, the group splits the bill", priced at one
+// uncited band. A prepared dinner is ordered food (no one is hired: no caterer
+// contract or deposit); a caterer is a hire. Each is priced at its own cited
+// band through the vendor's `costRangeByPick` below. A saved event holding the
+// old words reads as the caterer (cashBarCover's ANSWER_ALIASES).
+const PREPARED = 'Order a prepared dinner (market or restaurant)';
+const CATERER = 'Hire a caterer';
+const ORDERED = [PREPARED, CATERER];
 // The host buys and roasts the main only in these two.
 const HOST_BUYS_MAIN = [HOST_MAIN, HOST_COOKS];
-// Friends carry dishes in under these three; under ORDERED nobody cooks.
+// Friends carry dishes in under these three; when the dinner is ordered, nobody cooks.
 const DISHES_ARRIVE = [HOST_MAIN, ALL_ASSIGNED, HOST_COOKS];
 
 const TURKEY = 'Roast turkey';
@@ -88,7 +96,7 @@ const friendsgiving = {
     {
       id: 'hosting_model',
       label: 'Who cooks what?',
-      options: [HOST_MAIN, ALL_ASSIGNED, HOST_COOKS, ORDERED],
+      options: [HOST_MAIN, ALL_ASSIGNED, HOST_COOKS, PREPARED, CATERER],
       default: HOST_MAIN,
       defaultWhy: 'The default follows Food Network\'s advice: you keep the turkey and gravy, since nobody wants to carry a hot bird across town, and each friend owns one dish. Change it if a friend is known for their turkey, you\'d rather cook it all, or the group wants to order in.',
       when: 'T-21d',
@@ -97,7 +105,7 @@ const friendsgiving = {
       // NO costFactors, on purpose: the cost effect is WHICH LINES APPEAR. The
       // host's main and gravy show only when the host buys the main, the grocery
       // side lines (one per dish) only when the host cooks — under a potluck the
-      // same dishes are assigned to friends by name in t_assign, and "Ordered in" is the caterer path
+      // same dishes are assigned to friends by name in t_assign, and the two ordered answers are the caterer path
       // (CATERER_OPTION_RE). A multiplier on top would scale lines that are not
       // there — the Watch Party `major_event` pattern, noted in playbookContract.
       weight: 'high', reversibility: 'costly', emotionalWeight: 'med', difmCapable: 'needs-host',
@@ -212,7 +220,8 @@ const friendsgiving = {
     { id: 't_assign', milestoneId: 'fg_assign', phase: 'food', label: 'Assign each friend a dish by name: mashed potatoes, stuffing, green bean casserole, sweet potatoes, cranberry sauce, mac and cheese, corn, a real vegan dish, rolls, dessert. Nothing twice, nothing missing', when: 'T-14d', whenChoice: { id: 'hosting_model', in: [HOST_MAIN, ALL_ASSIGNED] } },
     { id: 't_assign_main', milestoneId: 'fg_assign', phase: 'food', label: 'Ask one friend to own the main, and agree on its size and when it arrives', when: 'T-14d', whenChoice: { id: 'hosting_model', in: [ALL_ASSIGNED] } },
     { id: 't_assign_light', milestoneId: 'fg_assign', phase: 'food', label: 'Ask friends to bring the drinks and the desserts, and say who brings which', when: 'T-14d', whenChoice: { id: 'hosting_model', in: [HOST_COOKS] } },
-    { id: 't_order', milestoneId: 'fg_assign', phase: 'food', label: 'Choose the restaurant or caterer, book it for the headcount, and get the per-person price in writing so the split is simple', when: 'T-14d', whenChoice: { id: 'hosting_model', in: [ORDERED] } },
+    { id: 't_order', milestoneId: 'fg_assign', phase: 'food', label: 'Choose the caterer, book it for the headcount, and get the per-person price in writing so the split is simple', when: 'T-14d', whenChoice: { id: 'hosting_model', in: [CATERER] } },
+    { id: 't_order_prepared', milestoneId: 'fg_assign', phase: 'food', label: 'Order the prepared dinner from the market or restaurant for the headcount, and get the total in writing so the split is simple', when: 'T-14d', whenChoice: { id: 'hosting_model', in: [PREPARED] } },
     { id: 't_kitchen', milestoneId: 'fg_plan', phase: 'planning', label: 'If it is not at your place, walk the kitchen with whoever lives there: oven size, refrigerator space, serving dishes, and parking', when: 'T-14d' },
     { id: 't_allergy_route', milestoneId: 'fg_assign', phase: 'food', label: 'Tell each cook what to keep out of their dish, for example: "no nuts in the stuffing, please — someone at the table is allergic"', when: 'T-14d', whenChoice: { id: 'dietary_table', in: ['One or two needs — label dishes and plan a safe plate', 'Several — plan dishes everyone can eat'] } },
     { id: 't_buy_bird', milestoneId: 'fg_main', phase: 'food', label: 'Buy the turkey: about a pound and a quarter per guest, in a size that fits your oven. A frozen bird now; a fresh one reserved now and picked up a day or two before. Over about 20 pounds, roast two smaller birds or a bird and a breast instead', when: 'T-7d', whenChoice: [{ id: 'hosting_model', in: HOST_BUYS_MAIN }, { id: 'main_dish', in: BIRD }] },
@@ -220,11 +229,12 @@ const friendsgiving = {
     { id: 't_drinks', milestoneId: 'fg_drinks', phase: 'shopping', label: 'Buy water and one good alcohol-free drink; tell friends what to bring to drink', when: 'T-7d' },
     { id: 't_thaw', milestoneId: 'fg_thaw', phase: 'food', label: 'Move the frozen turkey to the refrigerator: it thaws at about a day for every four to five pounds, so a bird over 20 pounds needs to start a day earlier', when: 'T-5d', whenChoice: HOST_HAS_BIRD },
     { id: 't_confirm', milestoneId: 'fg_confirm', phase: 'guest', label: 'Confirm the headcount and every dish: who is bringing what, whether it arrives hot or cold, and whether it needs the oven', when: 'T-4d', whenChoice: { id: 'hosting_model', in: DISHES_ARRIVE } },
-    { id: 't_confirm_order', milestoneId: 'fg_confirm', phase: 'guest', label: 'Confirm the final headcount and pickup or delivery time with the restaurant or caterer', when: 'T-4d', whenChoice: { id: 'hosting_model', in: [ORDERED] } },
+    { id: 't_confirm_order', milestoneId: 'fg_confirm', phase: 'guest', label: 'Confirm the final headcount and delivery time with the caterer', when: 'T-4d', whenChoice: { id: 'hosting_model', in: [CATERER] } },
+    { id: 't_confirm_prepared', milestoneId: 'fg_confirm', phase: 'guest', label: 'Confirm the order size and the pickup or delivery time with the market or restaurant', when: 'T-4d', whenChoice: { id: 'hosting_model', in: [PREPARED] } },
     { id: 't_fill_gaps', milestoneId: 'fg_confirm', phase: 'food', label: 'Fill any gap now with one grocery run, not on the day', when: 'T-4d', whenChoice: { id: 'hosting_model', in: DISHES_ARRIVE } },
     { id: 't_transport_note', milestoneId: 'fg_confirm', phase: 'guest', label: 'Send the cooks one note: hot dishes leave home hot and wrapped in towels, cold dishes travel in a cooler, and tell me if yours needs the oven', when: 'T-3d', whenChoice: { id: 'hosting_model', in: DISHES_ARRIVE } },
     { id: 't_shop', milestoneId: 'fg_shop', phase: 'shopping', label: 'Shop for the main, the basics, and any gap, then check the list against the dish assignments', when: 'T-2d', whenChoice: HOST_HAS_MAIN },
-    { id: 't_shop_basics', milestoneId: 'fg_shop', phase: 'shopping', label: 'Shop for the basics: ice, plates, labels, and leftover containers', when: 'T-2d', whenChoice: { id: 'hosting_model', in: [ALL_ASSIGNED, ORDERED] } },
+    { id: 't_shop_basics', milestoneId: 'fg_shop', phase: 'shopping', label: 'Shop for the basics: ice, plates, labels, and leftover containers', when: 'T-2d', whenChoice: { id: 'hosting_model', in: [ALL_ASSIGNED, ...ORDERED] } },
     { id: 't_oven_slots', milestoneId: 'fg_setup', phase: 'planning', label: 'Write the oven and stovetop slots for the friends who need to reheat, so five dishes do not land at once', when: 'T-1d', whenChoice: { id: 'hosting_model', in: DISHES_ARRIVE } },
     { id: 't_buffet', milestoneId: 'fg_setup', phase: 'setup', label: 'Set the buffet: a spot and a spoon for every dish, labels and a marker, the allergy-safe dishes at the front', when: 'T-1d' },
     { id: 't_cooler', milestoneId: 'fg_setup', phase: 'setup', label: 'Clear refrigerator space for cold dishes and fill a cooler with ice for drinks', when: 'T-1d' },
@@ -299,7 +309,15 @@ const friendsgiving = {
   ],
 
   vendors: [
-    { category: 'Caterer or prepared dinner (market or restaurant)', required: false, altToDIY: 'A potluck: each friend brings one dish, for a fraction of the cost', when: 'T-14d', costRange: [18, 40], costUnit: 'per guest' },
+    // PRICED BY HER PICK (owner ruling, 11/23/2026). The band follows the ordered
+    // answer she chose (`costRangeByPick`, read by the engine's vendorRateFor);
+    // before she picks one, the row spans both cited bands.
+    { category: 'Caterer or prepared dinner (market or restaurant)', required: false, altToDIY: 'A potluck: each friend brings one dish, for a fraction of the cost', when: 'T-14d', costRange: [10, 35], costUnit: 'per guest',
+      costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['thanksgiving-prepared-fox5-2026', 'thanksgiving-prepared-grocerydive-2026', 'catering-chefry-2026', 'catering-perperson-2026'], lastVerified: '2026-11-23', claim: 'From a prepared dinner to a caterer, 2026: prepared Thanksgiving dinners at posted prices run about $10-25 a guest (Sam\'s Club $10.00 to Costco $25.00); drop-off catering runs $15-30 (Chefry) and $15-35 (The Catering Finder) a person. The $10-35 band spans both until the ordered answer is picked.' },
+      costRangeByPick: {
+        [PREPARED]: { costRange: [10, 25], costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['thanksgiving-prepared-fox5-2026', 'thanksgiving-prepared-grocerydive-2026'], lastVerified: '2026-11-23', claim: 'Prepared Thanksgiving dinners 2026 at posted prices: Sam\'s Club about $10.00 a guest, Heinen\'s $16.00, Bob Evans $17.25, Cracker Barrel $19.00-23.75, Costco $25.00. Mass-chain heat-and-serve dinners cluster at $10-25 a guest; only a Maggiano\'s carryout bundle ($42-55) clears $25.', sufficientWhen: 'A local restaurant carryout price beside the national chains would say whether a higher ceiling belongs here.' } },
+        [CATERER]: { costRange: [15, 35], costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['catering-chefry-2026', 'catering-perperson-2026'], lastVerified: '2026-11-23', claim: '2026 US drop-off catering per person: $15-30 at Chefry (trays, no staff) and $15-35 at The Catering Finder. Buffet and staffed service price above this band, and both exclude the service charge and gratuity.', sufficientWhen: 'A local caterer quote for this menu at this headcount; staffed service prices above this band.' } },
+      } },
     { category: 'Restaurant reservation or private room', required: false, altToDIY: 'Host at someone\'s home: the restaurant buys a night without dishes, at restaurant prices', when: 'T-21d', costRange: [30, 75], costUnit: 'per guest' },
   ],
 

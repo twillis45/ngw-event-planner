@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 23, 2026 — three price rulings: ordering in is two answers, the vegetarian main is cited, one catered course is named
+
+**Friendsgiving's "Ordered in" is now "Order a prepared dinner" ($10-25 a guest) or "Hire a caterer" ($15-35), each cited, and only the caterer brings caterer steps.** The engine prices a vendor by her pick (`vendorRateFor`). A saved "Ordered in" reads as the caterer. The vegetarian main moves from an uncited $6-12 to a cited $1-2.87 a serving. After "Drop-off catering for 1 course", Dinner Party asks which course and takes it off the shopping list; its price stays pending, now naming the course (#239).
+
 ## November 23, 2026 — the price research pass: most estimates now name a store
 
 **58 of the 100 lines labeled "Estimate — no price source yet" now cite a fetched, named, current price, and 36 of those bands moved to what the price supports.** 42 stay labeled with their reasons: kits priced on assumed counts, the Watch Party pipeline lines, the vegetarian main (contradicted by the registered prices; needs an engine change), and Friendsgiving's caterer (one answer covers two prices). Owner rulings: Sunday Dinner sweet tea is cited at $0.20-0.35, and both signage packages are itemized sums that stay labeled.

@@ -16,7 +16,7 @@
 //   - every multiplier applied is named in `factorsApplied` so the UI can
 //     always answer "why is this more/less expensive than the base range"
 
-import { getPlaybook, resolveAnsweredCopy, DESTINATION_VENDOR_CATEGORIES, foodApproach } from './playbooks';
+import { getPlaybook, resolveAnsweredCopy, DESTINATION_VENDOR_CATEGORIES, foodApproach, vendorRateFor } from './playbooks';
 import { normalizeCategory } from './vendorAccountability/playbooks';
 import { isVendorBooked } from './workstreams';
 
@@ -142,8 +142,12 @@ export function buildVendorPlan(event, opts = {}) {
 
     let estimateLow = null;
     let estimateHigh = null;
-    if (Array.isArray(cat.costRange) && cat.costRange.length === 2) {
-      const [lo, hi] = cat.costRange;
+    // Her pick's band where the row prices by pick (vendorRateFor, the reader
+    // the food plan's catering line uses too).
+    const rate = vendorRateFor(cat, approach.pick) || {};
+    const range = Array.isArray(rate.costRange) ? rate.costRange : null;
+    if (range && range.length === 2) {
+      const [lo, hi] = range;
       estimateLow = Math.round(num(lo) * unitMultiplier * metroFactor * rushFactor);
       estimateHigh = Math.round(num(hi) * unitMultiplier * metroFactor * rushFactor);
     }
@@ -154,7 +158,7 @@ export function buildVendorPlan(event, opts = {}) {
     } else if (estimateLow != null && estimateHigh != null) {
       const rangeStr = estimateLow === estimateHigh ? `about ${fmt(estimateLow)}` : `about ${fmt(estimateLow)}–${fmt(estimateHigh)}`;
       estimateCopy = perGuest
-        ? `${rangeStr}, before your quotes come in — ${fmt(cat.costRange[0])}–${fmt(cat.costRange[1])}/guest at national baseline.`
+        ? `${rangeStr}, before your quotes come in — ${fmt(range[0])}–${fmt(range[1])}/guest at national baseline.`
         : `${rangeStr}, before your quotes come in.`;
     }
 
@@ -167,7 +171,7 @@ export function buildVendorPlan(event, opts = {}) {
       when: cat.when || null,
       altToDIY: resolveAnsweredCopy(cat.altToDIY, cat.copyByAnswer, ev) || null,
       costUnit: perGuest ? 'per guest' : 'flat',
-      baseRange: Array.isArray(cat.costRange) ? cat.costRange : null,
+      baseRange: range,
       estimateLow,
       estimateHigh,
       estimateCopy,
@@ -197,9 +201,9 @@ export function buildVendorPlan(event, opts = {}) {
       // band that answered for itself. Nothing is invented here — a row with no
       // authored provenance reports null and the floor key, which is the true
       // state.
-      costProvenance: (cat.costProvenance || cat.provenance) || null,
+      costProvenance: rate.costProvenance || null,
       provenanceKeys: [
-        ...((cat.costProvenance || cat.provenance || !Array.isArray(cat.costRange)) ? [] : ['vendor.playbookCostRange']),
+        ...((rate.costProvenance || !range) ? [] : ['vendor.playbookCostRange']),
         ...factorsApplied.map((f) => (f.key === 'metro' ? 'vendor.metroMarkets' : 'vendor.rushFactor')),
       ],
     };

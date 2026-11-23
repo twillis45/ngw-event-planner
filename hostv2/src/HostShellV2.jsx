@@ -343,6 +343,7 @@ import { MAX_DATE_OPTIONS, dateOptionsOf, datePollTally, dateOptionPatch, nextDa
 import { giftCashTotal, isAbsentGiver, thankYouGiftLine } from '@app/lib/giftLog';
 import { borrowedList, markReturned, addBorrowed } from '@app/lib/borrowedList';
 import { BAR_COVER_ID } from '@app/lib/playbooks/cashBarCover';
+import { CATERED_COURSE_ID } from '@app/lib/playbooks/cateredCourse';
 import { SPONSOR_TYPES, sponsorsOf, sponsorTotals, addSponsor, markSponsor, draftSponsorAsk, draftSponsorReport } from '@app/lib/sponsors';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { knownStateCode, preferState, nominatimToSuggestion } from '@app/lib/addressSuggest';
@@ -3148,9 +3149,11 @@ export default function HostShellV2() {
             wrong implementation of a correct ruling is worse than waiting. */}
         {/* A CASH BAR'S FOLLOW-UP MOVES THE BUDGET (owner, 11/21/2026): its
             answer is the drink lines the plan buys, so "nothing else changes"
-            would be false there. */}
+            would be false there. Nor after "which course does the caterer
+            bring?" (owner, 11/23/2026): its answer leaves the shopping list. */}
         <p className="decopts-lead">Tap one to settle it — {String(nd.id || '').endsWith(BAR_COVER_ID)
-          ? 'the drinks line in your budget moves to match.' : 'nothing else changes.'}</p>
+          ? 'the drinks line in your budget moves to match.'
+          : String(nd.id || '').endsWith(CATERED_COURSE_ID) ? 'that course comes off your shopping list.' : 'nothing else changes.'}</p>
         {proposedOpt ? (
           <>
             {optRow(proposedOpt, true)}

@@ -7,7 +7,9 @@
 // That stand-in is now said, the way every other unsourced pick is
 // (costPending → "Price pending a source"), instead of shown as a real price.
 // Which course, and so which grocery line to drop, is hers to say: an owner
-// call, not ours to guess.
+// call, not ours to guess. The owner ruled 11/23/2026 (#239): a follow-up asks
+// which course, and its answer takes that course off the list
+// (aCateredCourseAsksWhichCourse.test.js). Before she answers, this holds.
 import { playbookFoodPlan, foodApproach } from '../playbooks';
 
 const ev = (foodChoices = {}) => ({

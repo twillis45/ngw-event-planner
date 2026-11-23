@@ -14,6 +14,7 @@ import { plusOneCount } from '../plusOneCount';
 import { isHostName } from '../hostNameFor';
 import { cookDecisionFor, cookTasksFor, cookRisksFor } from './cookLever';
 import { cashBarDecisionsFor, cashBarKeeps, aliasedChoices } from './cashBarCover';
+import { cateredCourseDecisionsFor, cateredCourseCovers, cateredCoursePendingWhy } from './cateredCourse';
 import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
 import { matchGuestIndexByName } from '../guestMerge';
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
@@ -164,6 +165,8 @@ const DECISION_INJECTORS = [
   (event) => militaryDecisionsFor(event),
   // With a cash bar, what the host still covers (owner, 11/21/2026).
   (event, pb) => cashBarDecisionsFor(pb, (id) => aliasedChoices(event && event.foodChoices)[id]),
+  // With one catered course, which course it is (owner, 11/23/2026).
+  (event, pb) => cateredCourseDecisionsFor(pb),
 ];
 
 // ─── namedHelperCount — how many people the host has said are helping ────────
@@ -1510,7 +1513,10 @@ const HOST_COOKS_OPTION_RE = /\bbake it\b|cook\/grill yourself|cook it yourself|
 export function foodApproach(event) {
   const pb = getPlaybook(event && event.type);
   const decisions = pb && Array.isArray(pb.decisions) ? pb.decisions : [];
-  const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  // A retired answer wording reads as its current one (cashBarCover's
+  // ANSWER_ALIASES), the same as choicePickFor: Friendsgiving's old "Ordered in"
+  // answer is now "Hire a caterer" (11/23/2026).
+  const picks = aliasedChoices(event && event.foodChoices);
   const nulls = { decisionId: null, pick: null, usesCaterer: null, communityBrings: null, cooking: null };
   const result = (decisionId, pick) => {
     const dec = decisionId ? decisions.find((d) => d && d.id === decisionId) : null;
@@ -5335,12 +5341,39 @@ export function beverageTierFor(pick) {
   return BEV_TIERS.find((x) => x.re.test(p) && !(x.unless && x.unless.test(p))) || null;
 }
 
+// THE VEGETARIAN MAIN, AT ITS SOURCES (owner ruling, 11/23/2026). It was the
+// engine's own $6-12 a serving, which every registered price undercut. The band
+// is the per-serving prices the sources state; Amy's organic tray is left out
+// because no source gives its serving count.
+const VEG_MAIN_PER_SERVING = [1, 2.87];
+const VEG_MAIN_PROVENANCE = Object.freeze({
+  tier: 'researched', confidence: 'medium', verificationStatus: 'cited',
+  sources: ['costco-prepared-2026', 'lasagna-retail-2026'], lastVerified: '2026-11-23',
+  claim: 'A vegetarian main bought or made at retail prices, per serving, 2026: Costco stuffed bell peppers at $4.99/lb, under $1 a serving; Stouffer\'s vegetable lasagna family tray at $10.79 (Lowes Foods) and $11.49 (Price Chopper) for the four servings its label states, $2.70-2.87 a serving. $1-2.87 a serving (was the engine\'s uncited $6-12).',
+  sufficientWhen: 'A serving count for an organic tray (Amy\'s family size is $16.49 at Kroger) would say whether a higher ceiling belongs here.',
+});
+
 // The drop-off catering tier, as the two registered catering guides publish it.
 const DROPOFF_CATERING_PROVENANCE = Object.freeze({
   tier: 'researched', confidence: 'medium', verificationStatus: 'cited',
   sources: ['catering-chefry-2026', 'catering-perperson-2026'], lastVerified: '2026-11-22',
   claim: '2026 US drop-off catering per person: $15-30 at Chefry (trays, no staff) and $15-35 at The Catering Finder. This $15-35 a guest band is that tier; buffet and staffed service price above it, and both exclude the service charge and gratuity.',
 });
+
+// ─── A VENDOR PRICED BY HER PICK (owner ruling, 11/23/2026) ──────────────────
+// A vendor row can price differently by the food answer she picked:
+// `costRangeByPick: { '<option>': { costRange, costProvenance } }`. Friendsgiving's
+// "Order a prepared dinner" and "Hire a caterer" share one vendor row and carry
+// two cited bands. ONE reader for the food plan's catering line and the vendor
+// plan's estimate, so the two cannot price the same pick differently. An
+// unlisted or missing pick reads the row's own `costRange`/`costProvenance`.
+export function vendorRateFor(vendor, pick) {
+  if (!vendor) return null;
+  const byPick = vendor.costRangeByPick && typeof vendor.costRangeByPick === 'object' ? vendor.costRangeByPick : null;
+  const hit = byPick && pick != null ? byPick[String(pick)] : null;
+  if (hit && Array.isArray(hit.costRange)) return { costRange: hit.costRange, costProvenance: hit.costProvenance || null };
+  return { costRange: Array.isArray(vendor.costRange) ? vendor.costRange : null, costProvenance: vendor.costProvenance || vendor.provenance || null };
+}
 
 export function playbookFoodPlan(event, opts = {}) {
   if (!event) return null;
@@ -5537,7 +5570,10 @@ export function playbookFoodPlan(event, opts = {}) {
   // somebody else's to carry and costed at zero (see `_attributeCommunity`).
   const _communityBrings = _fa.communityBrings === true;
   const _foodOffPlate = _usesCaterer;
-  const hostCooksIt = (p) => !(_foodOffPlate && p.category === 'food');
+  // ONE CATERED COURSE, NAMED (owner, 11/23/2026): the course she says the
+  // caterer brings leaves the list; the rest she still cooks (cateredCourse.js).
+  const _courseCovered = (() => { try { return cateredCourseCovers(playbook, pickFor); } catch (_e) { return null; } })();
+  const hostCooksIt = (p) => !(_foodOffPlate && p.category === 'food') && !(_courseCovered && _courseCovered.ids.has(p.id));
   // The bringer's name in the host's OWN words — read out of the option they
   // picked, never invented. Falls back to the neutral collective noun.
   const _bringerLabel = (() => {
@@ -5554,12 +5590,15 @@ export function playbookFoodPlan(event, opts = {}) {
   // below, never at its own (now cited) $10-25 (11/21/2026).
   const _catVendor = _usesCaterer ? ((playbook.vendors || []).find((v) => v && v.cateringRate === true && /guest/i.test(String(v.costUnit || '')))
     || (playbook.vendors || []).find((v) => v && /cater/i.test(String(v.category)) && /guest/i.test(String(v.costUnit || '')))) : null;
-  const _cateringRate = _catVendor && Array.isArray(_catVendor.costRange) ? _catVendor.costRange : (_usesCaterer ? [15, 35] : null);
+  // The band of the answer she picked, where the vendor prices by pick
+  // (vendorRateFor); otherwise the vendor's own band.
+  const _catRate = _catVendor ? vendorRateFor(_catVendor, _fa.pick) : null;
+  const _cateringRate = _catRate && Array.isArray(_catRate.costRange) ? _catRate.costRange : (_usesCaterer ? [15, 35] : null);
   // The [15, 35] fallback is the drop-off tier both registered catering guides
   // publish, so it carries their citation (audit G #1); a vendor's own band
   // carries the vendor's block, or none.
   const _cateringProv = _catVendor
-    ? (_catVendor.costProvenance || null)
+    ? (_catRate.costProvenance || null)
     : (_usesCaterer ? DROPOFF_CATERING_PROVENANCE : null);
 
   // GENERAL choice→cost mechanism (single source of truth): any playbook decision can declare, in the
@@ -6095,8 +6134,9 @@ export function playbookFoodPlan(event, opts = {}) {
       id: 'diet-veg', group: 'Food', item: `${vegDish} (for ${vegN} ${vegN === 1 ? 'guest' : 'guests'})`,
       short: `${vegDish} · ${vegN}`, owner: '', qty: vegN, unit: 'servings', essential: true, where: ['Grocery'],
       qtyOverridden: false, baseQty: vegN, perGuest: null,
-      low: Math.round(vegN * 6 * pf), high: Math.round(vegN * 12 * pf), units: vegN, unitBase: 'servings',
-      perUnitLow: Math.round(6 * pf), perUnitHigh: Math.round(12 * pf),
+      low: Math.round(vegN * VEG_MAIN_PER_SERVING[0] * pf), high: Math.round(vegN * VEG_MAIN_PER_SERVING[1] * pf), units: vegN, unitBase: 'servings',
+      perUnitLow: roundCurrency(VEG_MAIN_PER_SERVING[0] * pf), perUnitHigh: roundCurrency(VEG_MAIN_PER_SERVING[1] * pf),
+      costProvenance: VEG_MAIN_PROVENANCE,
       skipped: !!skip['diet-veg'], locked: ('diet-veg' in lockedMap) ? Math.max(0, roundCurrency(Number(lockedMap['diet-veg']) || 0)) : null,
       note: 'So your vegetarian/vegan guests have a real main, not just sides.', forgotten: false, dietDerived: true,
       // The regional factor moved this band, so the line says so (audit G #6).
@@ -6431,7 +6471,9 @@ export function playbookFoodPlan(event, opts = {}) {
     type: playbook.type,
     // The picks priced as something else until a source exists (`costPending`),
     // for the host to be told so (audit G #2). [] when none applies.
-    pricePending: pricePendingFor(playbook, pickFor, (d) => choiceShown(event, d.whenChoice)),
+    // A named catered course is still pending, and its reason names it.
+    pricePending: pricePendingFor(playbook, pickFor, (d) => choiceShown(event, d.whenChoice))
+      .map((p) => (_courseCovered && p.id === _courseCovered.decisionId ? { ...p, why: cateredCoursePendingWhy(_courseCovered.course) } : p)),
     guests,
     guestCountResolved: gc.resolved,
     hasRealCount,

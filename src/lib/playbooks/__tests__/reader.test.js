@@ -898,7 +898,16 @@ describe('#16 — diet counts drive food + budget', () => {
     expect(line).toBeTruthy();
     expect(line.dietDerived).toBe(true);
     expect(line.qty).toBe(3); // 2 veg + 1 vegan
-    expect(p1.foodHigh).toBeGreaterThan(p0.foodHigh); // flows into the budget
+    // Flows into the budget. This read p1.foodHigh > p0.foodHigh until #239
+    // priced the main at its sources ($1-2.87 a serving, was $6-12): the three
+    // vegetarians come off the protein base, which now costs more than their
+    // main, so the total no longer has to rise. What must hold is that the
+    // line is priced and counted: skipping it lowers the total.
+    expect(p0.foodHigh).toBeGreaterThan(0);
+    expect(line.high).toBeGreaterThan(0);
+    const p2 = playbookFoodPlan({ ...base, dietCounts: { Vegetarian: 2, Vegan: 1 }, foodSkip: { 'diet-veg': true } });
+    expect(p2.list.find((i) => i.id === 'diet-veg').skipped).toBe(true);
+    expect(p2.foodHigh).toBeLessThan(p1.foodHigh);
     // The veg main must be a REAL, named dish — never a generic placeholder.
     expect(line.item).not.toMatch(/plant[- ]based main|veg main|veggie main/i);
     expect(line.item).toMatch(/portobello/i); // The Cookout's authored vegMain

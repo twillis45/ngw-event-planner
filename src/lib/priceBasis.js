@@ -39,10 +39,8 @@ const ENGINE_KEY = (id) => `*:${id}`;
 // Lines priced with no cited source, by name, each with why. Engine lines are
 // keyed `*:<id>`. Remove a line from here in the same change that cites it.
 export const UNSOURCED_PRICE_LINES = Object.freeze({
-  '*:diet-veg': 'The vegetarian main\'s $6-12 a serving is the engine\'s own figure (playbooks/index.js). The registered prices contradict it: a prepared vegetable lasagna is about $2.70 a serving (Stouffer\'s, lasagna-retail-2026) to about $4.12 (Amy\'s), and Costco stuffed peppers under $1 (costco-prepared-2026). Correcting it means editing the engine, which the 11/23/2026 pass left to the owner.',
   'Ethiopian Coffee Ceremony:p_fandisha': 'An estimate built from cited unit prices (target-popcorn-2026, bread-retail-2026): the portions (an ounce of kernels, a tenth of a loaf) are our assumption, so the $0.30-0.80 band is labeled, not cited. No fetched price for himbasha.',
   'Ethiopian Coffee Ceremony:p_grass': 'No US retail price exists for ketema strewing grass (florist-greenery-2026 prices ornamental grasses at $13.20-36.00 a bunch, a different product); the 11/23/2026 pass found none to fetch.',
-  'Friendsgiving:fa-catering': 'Its one food answer, "Ordered in — a restaurant or caterer cooks", does not tell a prepared dinner (cited at $10-25, thanksgiving-prepared-fox5-2026) from a caterer (cited at $15-35, the catering guides), and the engine prices one vendor band per playbook, so the owner\'s split could not be made in data alone (11/23/2026).',
   'Friendsgiving:p_gravy': 'An estimate built from cited unit prices (target-gravy-2026): one to two cartons of broth plus a backup jar is our assumption, so the $3.70-9.50 batch is labeled, not cited.',
   'Friendsgiving:p_labels': 'A bundle of several products priced as one kit ($3-8); no fetched source prices the bundle.',
   'Friendsgiving:p_mac': 'An estimate built from cited unit prices (BLS pasta, cheddar and milk): half a pound to a pound of cheese and two cups of milk per pound of pasta is our assumption, so the $5-8 band is labeled, not cited.',
