@@ -198,6 +198,10 @@ describe('eventPlan — ordering, dedup, and the #1 = the hero everywhere', () =
 
 import { SURFACES } from '../surfaceRegistry';
 import { playbookFoodPlan, playbookRisks } from '../playbooks';
+// INPUTS ONLY changed (six root causes, cause 1, part 2): a row is proven by
+// the facts its step DECLARES, never by its words, so each row literal below
+// carries `facts`: the declaration a step with its words carries (derived once
+// from the retired text rules, as the playbooks' were). Assertions unchanged.
 
 const isoLocal = (n) => {
   const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + n);
@@ -379,7 +383,7 @@ describe('deriveCommandCenterData — Next Up drops satisfied + uses real-date t
   // Week-Of phase so the task lands in the Next-Up window for an event ~6 days out
   // (proves the drop is from effectiveDone, not the phase filter).
   const bbqWithSetdate = (over = {}) => baseBBQ({
-    timeline: [{ id: 't1', week: 'Week Of', owner: 'Host', done: false, task: 'Set date, headcount, menu' }],
+    timeline: [{ id: 't1', week: 'Week Of', owner: 'Host', done: false, task: 'Set date, headcount, menu', facts: ['date-set'] }],
     ...over,
   });
 
@@ -387,7 +391,7 @@ describe('deriveCommandCenterData — Next Up drops satisfied + uses real-date t
     const ev = baseBBQ({
       date: isoForOffset(6),
       guests: [{ rsvp: 'Yes' }],
-      timeline: [{ id: 't9', week: 'Week Of', owner: 'Host', done: false, task: 'Buy the ice' }],
+      timeline: [{ id: 't9', week: 'Week Of', owner: 'Host', done: false, task: 'Buy the ice', facts: ['then:food-bought'] }],
     });
     const d = deriveCommandCenterData(ev);
     expect(d.nextUp.length).toBeGreaterThan(0);
@@ -416,7 +420,7 @@ describe('deriveCommandCenterData — Next Up drops satisfied + uses real-date t
     const ev = baseBBQ({
       date: isoForOffset(6),
       guests: [{ rsvp: 'Yes' }],
-      timeline: [{ id: 't9', week: 'Week Of', owner: 'Host', done: false, task: 'Buy the ice' }],
+      timeline: [{ id: 't9', week: 'Week Of', owner: 'Host', done: false, task: 'Buy the ice', facts: ['then:food-bought'] }],
     });
     const d = deriveCommandCenterData(ev);
     const row = d.nextUp.find((r) => /ice/i.test(r.label));

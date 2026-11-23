@@ -11,6 +11,9 @@ import { playbookChecklist } from '../playbooks';
 import { buildTravelPlan } from '../travelPlan';
 import { roomPlanOf, startRoomPlan, setRoomCount, assignRoom, cycleHabit, drawLots, roommatesOf, roomListText, renameRoom } from '../roomPlan';
 import { duplicateEvent } from '../duplicateEvent';
+// INPUTS ONLY changed (six root causes, cause 1, part 2): the row is passed
+// with its id, the way the app identifies it; its step's declared facts, not
+// its words, prove it handled. Assertions unchanged.
 
 const NAMES = ['Ana Ruiz', 'Bree Cole', 'Cam Ito', 'Dee Park', 'Em Shah', 'Fay Lund', 'Gia Moss', 'Hope Diaz'];
 const ev = (extra = {}) => ({ id: 'rp', type: 'Group Trip', isDestination: true, date: '2027-01-10', endDate: '2027-01-13', guestMode: 'list',
@@ -28,7 +31,7 @@ test('the row opens the room plan in Where everyone stays', () => {
 });
 
 test('the row is done once everyone is in a room, not before', () => {
-  const t = { task: ROW.task };
+  const t = { id: ROW.id, task: ROW.task };
   expect(taskSatisfied(ev(), t)).toBe(false);
   const half = ev({ roomPlan: { rooms: [{ id: 'r1', name: 'Room 1', guestIds: ['g1', 'g2'] }] } });
   expect(taskSatisfied(half, t)).toBe(false);

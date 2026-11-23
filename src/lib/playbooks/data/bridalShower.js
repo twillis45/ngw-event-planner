@@ -51,7 +51,7 @@ const bridalShower = {
   ],
 
   milestones: [
-    { id: 'br_setdate', name: 'Set date, guest list, budget with the bride', offsetDays: 35, owner: 'host', category: 'planning', risk: null },
+    { id: 'br_setdate', name: 'Set date, guest list, budget with the bride', facts: ['date-set'], offsetDays: 35, owner: 'host', category: 'planning', risk: null },
     { id: 'br_invite', name: 'Send invites + registry + RSVP / dietary ask', offsetDays: 21, owner: 'host', dependsOn: ['br_setdate'], category: 'guest', risk: { ifDelayed: 'Low RSVP visibility → wrong quantities and seat count', severity: 'med' } },
     { id: 'br_menu', name: 'Lock the menu + bar (brunch + a sweet + mimosa/punch)', offsetDays: 14, owner: 'host', dependsOn: ['br_invite', 'br_setdate'], category: 'food', risk: { ifDelayed: 'No shopping list possible', severity: 'med' } },
     { id: 'br_rsvp_close', name: 'Lock final headcount + seating', offsetDays: 4, owner: 'host', dependsOn: ['br_invite'], category: 'guest', risk: { ifDelayed: 'Over/under-buy food + favors; not enough seats', severity: 'high' } },
@@ -62,14 +62,14 @@ const bridalShower = {
   ],
 
   tasks: [
-    { id: 't_invite', target: 'invite', milestoneId: 'br_invite', phase: 'guest', label: 'Send invites with registry, RSVP-by, dietary ask', when: 'T-21d' },
-    { id: 't_rsvp', target: 'chase', milestoneId: 'br_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count and seat plan', when: 'T-4d' },
-    { id: 't_giftlog', target: 'guest-list', milestoneId: 'br_setup', phase: 'planning', label: 'Set up the gift log (who-gave-what) for thank-you notes', when: 'T-1d' },
-    { id: 't_nonperish_shop', target: 'list', milestoneId: 'br_shop_nonperish', phase: 'shopping', label: 'Decor, favors, prizes, bubbly, mixers, games, paper goods', when: 'T-3d' },
-    { id: 't_fresh_shop', target: 'spread', milestoneId: 'br_shop_fresh', phase: 'shopping', label: 'Fresh food, cake/desserts, juice, flowers', when: 'T-1d' },
-    { id: 't_prep', target: 'none', milestoneId: 'br_setup', phase: 'food', label: 'Make-ahead bites + dessert; assemble favors; set games', when: 'T-1d evening' },
-    { id: 't_decorate', target: 'day', milestoneId: 'br_setup', phase: 'setup', label: 'Decorate, set the table, food + coffee/mimosa bar, gift area', when: 'T0 -3h' },
-    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Finalize gift list for thank-yous, pack leftovers + gifts, favors out, bag trash + recycling', when: 'T0 +3:00' },
+    { id: 't_invite', target: 'invite', facts: ['invites-out'], milestoneId: 'br_invite', phase: 'guest', label: 'Send invites with registry, RSVP-by, dietary ask', when: 'T-21d' },
+    { id: 't_rsvp', target: 'chase', facts: ['replies-chased'], milestoneId: 'br_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count and seat plan', when: 'T-4d' },
+    { id: 't_giftlog', target: 'guest-list', facts: [], milestoneId: 'br_setup', phase: 'planning', label: 'Set up the gift log (who-gave-what) for thank-you notes', when: 'T-1d' },
+    { id: 't_nonperish_shop', target: 'list', facts: [], milestoneId: 'br_shop_nonperish', phase: 'shopping', label: 'Decor, favors, prizes, bubbly, mixers, games, paper goods', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'spread', facts: [], milestoneId: 'br_shop_fresh', phase: 'shopping', label: 'Fresh food, cake/desserts, juice, flowers', when: 'T-1d' },
+    { id: 't_prep', target: 'none', facts: [], milestoneId: 'br_setup', phase: 'food', label: 'Make-ahead bites + dessert; assemble favors; set games', when: 'T-1d evening' },
+    { id: 't_decorate', target: 'day', facts: [], milestoneId: 'br_setup', phase: 'setup', label: 'Decorate, set the table, food + coffee/mimosa bar, gift area', when: 'T0 -3h' },
+    { id: 't_reset', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Finalize gift list for thank-yous, pack leftovers + gifts, favors out, bag trash + recycling', when: 'T0 +3:00' },
   ],
 
   purchases: [

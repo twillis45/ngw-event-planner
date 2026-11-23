@@ -98,15 +98,18 @@ describe('rule 5 — the circular ask', () => {
   // instruction — an ask that cannot act on the thing being raised.
   test('a food item is never asked about a dimension it is not about', () => {
     const wrong = [];
+    // INPUTS ONLY changed (six root causes, cause 1, part 2): each food item
+    // DECLARES the dimension it asks (`askKind`); the hero no longer reads it
+    // out of the title. The assertion is unchanged.
     const cases = [
-      { title: 'Who provides the food', mustNotBe: 'Decide the menu.' },
-      { title: 'Who is catering the repast', mustNotBe: 'Decide the menu.' },
-      { title: 'Potluck or catered', mustNotBe: 'Decide the menu.' },
-      { title: 'Dietary needs and allergies', mustNotBe: 'Decide the menu.' },
-      { title: 'Buffet or plated service', mustNotBe: 'Decide the menu.' },
+      { title: 'Who provides the food', askKind: 'food-provider', mustNotBe: 'Decide the menu.' },
+      { title: 'Who is catering the repast', askKind: 'food-provider', mustNotBe: 'Decide the menu.' },
+      { title: 'Potluck or catered', askKind: 'food-provider', mustNotBe: 'Decide the menu.' },
+      { title: 'Dietary needs and allergies', askKind: 'food-dietary', mustNotBe: 'Decide the menu.' },
+      { title: 'Buffet or plated service', askKind: 'food-service', mustNotBe: 'Decide the menu.' },
     ];
     for (const c of cases) {
-      const ask = heroAskFor({ title: c.title, domain: 'food' }, {});
+      const ask = heroAskFor({ title: c.title, domain: 'food', askKind: c.askKind }, {});
       if (ask === c.mustNotBe) wrong.push({ ...c, ask });
     }
     expect({ rule: RULES.TRUTHFUL, wrong }).toEqual({ rule: RULES.TRUTHFUL, wrong: [] });
@@ -122,9 +125,10 @@ describe('rule 5 — the circular ask', () => {
   });
 
   test('the food ask names the dimension that is actually missing', () => {
-    expect(heroAskFor({ title: 'Who provides the food', domain: 'food' }, {})).toBe('Decide who provides the food.');
-    expect(heroAskFor({ title: 'Buffet or plated service', domain: 'food' }, {})).toBe('Choose how the food is served.');
-    expect(heroAskFor({ title: 'Dietary needs and allergies', domain: 'food' }, {})).toBe('Note the dietary needs.');
+    // INPUTS ONLY changed (cause 1, part 2): the dimension is declared.
+    expect(heroAskFor({ title: 'Who provides the food', domain: 'food', askKind: 'food-provider' }, {})).toBe('Decide who provides the food.');
+    expect(heroAskFor({ title: 'Buffet or plated service', domain: 'food', askKind: 'food-service' }, {})).toBe('Choose how the food is served.');
+    expect(heroAskFor({ title: 'Dietary needs and allergies', domain: 'food', askKind: 'food-dietary' }, {})).toBe('Note the dietary needs.');
   });
 });
 
@@ -405,15 +409,20 @@ describe('rule 5 — a money item says what the host actually does', () => {
   // branch because that list had no `send`.
   const ev = { vendors: [{ id: 'v1', name: 'Hearthstone Catering Co', category: 'Catering' }] };
 
+  // INPUTS ONLY changed (six root causes, cause 1, part 2): a payment item
+  // DECLARES that it is one and which vendor it pays (`askKind`, `vendorId`),
+  // as the ladder's and the registry's payment producers now do. The noun
+  // comes from that vendor's category. The assertions are unchanged.
+  const pay = (title) => ({ title, domain: 'vendors', askKind: 'vendor-pay', vendorId: 'v1' });
   test('a payment title never falls to the placeholder', () => {
-    const ask = heroAskFor({ title: 'Send payment to Hearthstone Catering Co', domain: 'vendors' }, ev);
+    const ask = heroAskFor(pay('Send payment to Hearthstone Catering Co'), ev);
     expect(ask).not.toBe('Your next step.');
   });
 
   test('and it names PAYING, not sending', () => {
-    expect(heroAskFor({ title: 'Send payment to Hearthstone Catering Co', domain: 'vendors' }, ev))
+    expect(heroAskFor(pay('Send payment to Hearthstone Catering Co'), ev))
       .toBe('Pay your caterer.');
-    expect(heroAskFor({ title: 'Send the balance to Hearthstone Catering Co', domain: 'vendors' }, ev))
+    expect(heroAskFor(pay('Send the balance to Hearthstone Catering Co'), ev))
       .toBe('Pay your caterer.');
   });
 

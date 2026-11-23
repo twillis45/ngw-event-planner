@@ -246,7 +246,9 @@ test.describe('checklist buttons are justified', () => {
 
   test('a row your plan already handled offers no assignment and no urgency', async ({ page }) => {
     await withRows([
-      { id: 't-date', task: 'Set the date', offsetDays: 60 },
+      // 11/23/2026 (part 2, owner ruling): a row is done by the facts it
+      // declares, never by its words, so the handled row declares its fact.
+      { id: 't-date', task: 'Set the date', offsetDays: 60, facts: ['date-set'] },
       { id: 't-open', task: 'Bring folding chairs', offsetDays: 60 },
     ])(page);
     await mockHost(page);

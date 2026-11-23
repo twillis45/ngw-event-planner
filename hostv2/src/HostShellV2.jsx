@@ -362,6 +362,10 @@ import { checklistRouteFor } from '@app/lib/taskRoute';
 import { editorKindFor, isBalanceDueAction, stepRowIdOf } from '@app/lib/heroEditor';
 import { stepIsASend, riskTargetFor, stepTargetFor } from '@app/lib/stepTarget';
 import { withSettled, withoutSettled, unsettledActions } from '@app/lib/settledAsks';
+import { urgencyOf } from '@app/lib/urgency';
+import { COUNT_LABELS } from '@app/lib/itemCounts';
+import { perHead, perHeadRange, perHeadText } from '@app/lib/perHead';
+import { listTotal, allInTotal } from '@app/lib/planCosts';
 import { landingStage } from '@app/lib/landingStage';
 import { planPartsProgress, planPartsLine } from '@app/lib/planProgress';
 import { moneyFigures, headroomLabel, MONEY_LABELS } from '@app/lib/moneyFigures';
@@ -5320,6 +5324,17 @@ export default function HostShellV2() {
   // resolveSelection (lib/selectedAction) owns the rule: an action is a decision
   // only when it DECLARES one. The resolvers below only fetch; they never decide
   // whether there is something to fetch.
+  // ── THE RUNGS THAT OWN THE HERO, BY DECLARED KIND (six root causes, cause 1,
+  // part 2). These tested the item's TITLE for /conflict/ and /collect.*coi|
+  // vendor coi/. The producers declare it now: the conflicts bundle declares
+  // askKind 'conflict' (a single conflict raise never owned this rung: no
+  // conflict's title says "conflict"), and a COI step declares askKind 'coi'
+  // (the classification also rides as sourceCategory). Read here and at every
+  // other place the hero and its card ask the same question.
+  const heroRungKind = (a) => (!a ? null
+    : (a.kind === 'bundle' && a.askKind === 'conflict') ? 'conflict'
+    : (a.askKind === 'coi' || a.sourceCategory === 'coi') ? 'coi'
+    : null);
   const heroSelection = (() => {
     const q0 = queue[0];
     if (!q0) return null;
@@ -5334,8 +5349,8 @@ export default function HostShellV2() {
     // "When does the ceremony happen?" with no options, no button and the
     // "in the full app" chip, with the NEXT bar pointing at it.
     const rungOwnsHero = !elegantMode || !askMode || days === 0
-      || (/conflict/i.test(String(q0.title || '')) && !!conflictItems[0])
-      || q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || ''));
+      || (heroRungKind(q0) === 'conflict' && !!conflictItems[0])
+      || heroRungKind(q0) === 'coi';
     const open = decisionBoard.open || [];
     return resolveSelection(q0, {
       boardRow: rungOwnsHero ? null : (idn) => open.find(r => r && String(r.id) === String(idn.decisionId)) || null,
@@ -5414,9 +5429,9 @@ export default function HostShellV2() {
     // ask ("When does the retirement presentation happen?"), so it stays in the
     // ask flow after roll-to-next. Its picks render under it (heroSelection).
     if (elegantMode && /^blocker:/.test(String(q0.id || '')) && q0.ask) return q0.ask;
-    if (elegantMode && /conflict/i.test(String(q0.title || '')) && conflictItems[0]) return conflictItems[0].ask;
+    if (elegantMode && heroRungKind(q0) === 'conflict' && conflictItems[0]) return conflictItems[0].ask;
     // COI-collection task → the REAL first step (coiNextAction), not "Your next step."
-    if (elegantMode && (q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || '')))) return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
+    if (elegantMode && heroRungKind(q0) === 'coi') return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
     // THE CANONICAL SELECTION SPEAKS (PR #70). resolveSelection already ran the
     // whole ask ladder for this item — the authored question for the decision it
     // actually carries, else the identity-free wording fallback (heroAskFor, the
@@ -7478,7 +7493,9 @@ export default function HostShellV2() {
       if (!tripIsMultiDay(event)) return null;
       const cel = celebrationApplies(event);
       const est = foodPlan && foodPlan.hasRealCount
-        ? { low: (foodPlan.foodLow || 0) + (foodPlan.suppliesLow || 0), high: (foodPlan.foodHigh || 0) + (foodPlan.suppliesHigh || 0) }
+        // The Spread's own "all in" (lib/planCosts), seating gear included, so
+        // the celebration layer and the Spread's hero stay one number.
+        ? (({ low, high }) => ({ low, high }))(allInTotal(foodPlan, capacity))
         : null;
       return {
         cel,
@@ -7491,7 +7508,7 @@ export default function HostShellV2() {
         tripMoney: tripFoodMoney(event, { foodEstimate: est }),
       };
     } catch (_e) { return null; }
-  }, [event, foodPlan]);
+  }, [event, foodPlan, capacity]);
   const tripMealsNow = (event.tripMeals && typeof event.tripMeals === 'object') ? event.tripMeals : {};
   const pickDinnerNight = (d) => patchEvent(
     { celebration: { ...((event.celebration && typeof event.celebration === 'object') ? event.celebration : {}), night: d.iso } },
@@ -7559,7 +7576,7 @@ export default function HostShellV2() {
   // options are the CTAs; opening the detail is secondary.
   const spreadLink = () => (foodPlan ? (
     <button className="spread-link" style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0, fontFamily: 'var(--sans)', fontSize: 'var(--t-meta)', fontWeight: 600, letterSpacing: 0, color: 'var(--steel-soft)', cursor: 'pointer' }}
-      onClick={openSpread}>Open the spread ({foodPlan.itemCount} {foodPlan.itemCount === 1 ? 'item' : 'items'}) ›</button>
+      onClick={openSpread}>Open the spread ({COUNT_LABELS.listItems(foodPlan.shoppingCount || 0)}) ›</button>
   ) : null);
 
   // ── ONE PLACE ANSWERS "IS THERE ANYWHERE TO PUT THE SHOPPING" ────────────
@@ -7838,7 +7855,7 @@ export default function HostShellV2() {
           {priceCoverage.storeTotal > 0
             ? `${fmt(priceCoverage.storeSum)} priced at your store`
             : shopTally.bought > 0
-              ? `${fmt((foodPlan.spentLow || 0) + (foodPlan.suppliesSpentLow || 0))} in the cart · ${fmt(Math.max(0, ((foodPlan.foodLow || 0) + (foodPlan.suppliesLow || 0)) - ((foodPlan.spentLow || 0) + (foodPlan.suppliesSpentLow || 0))))} to go`
+              ? `${fmt((foodPlan.spentLow || 0) + (foodPlan.suppliesSpentLow || 0))} in the cart · ${fmt(Math.max(0, listTotal(foodPlan).low - ((foodPlan.spentLow || 0) + (foodPlan.suppliesSpentLow || 0))))} to go`
               : 'nothing in the cart yet'}
         </span>
       )}
@@ -10264,7 +10281,7 @@ export default function HostShellV2() {
                 <span style={{
                   fontSize: 22, fontWeight: 700, letterSpacing: '-.02em',
                   color: 'var(--ink)', fontVariantNumeric: 'tabular-nums',
-                }}>{`${fmt(Math.round(typical / guests))} a head`}</span>
+                }}>{perHeadText(perHeadRange(typical, typical, guests), fmt)}</span>
               )}
               {/* The separator binds FORWARD, not back: at 390px the suffix
                   wraps after the per-head figure, and a trailing "·" left
@@ -10405,10 +10422,10 @@ export default function HostShellV2() {
           {(low || high) ? (
             <Grounding gap={16}>
               or {low ? <button className="tier-link" onClick={() => setB(low)}>Lean {fmt(low)}</button> : null}
-              {low && guests > 0 ? ` (${fmt(Math.round(low / guests))} a head)` : ''}
+              {low && guests > 0 ? ` (${perHeadText(perHeadRange(low, low, guests), fmt)})` : ''}
               {low && high ? ' · ' : ''}
               {high ? <button className="tier-link" onClick={() => setB(high)}>All-out {fmt(high)}</button> : null}
-              {high && guests > 0 ? ` (${fmt(Math.round(high / guests))} a head)` : ''}
+              {high && guests > 0 ? ` (${perHeadText(perHeadRange(high, high, guests), fmt)})` : ''}
             </Grounding>
           ) : null}
         </AskColumn>
@@ -13236,7 +13253,7 @@ export default function HostShellV2() {
                   // to only COUNT, now faced one at a time. Slice 1 hands the host to
                   // the affected vendor to apply the fix — an in-place one-tap resolve
                   // waits on conflicts.js emitting a structured proposedFix (phase 2).
-                  if (elegantMode && askMode && i === 0 && /conflict/i.test(String(a.title || '')) && conflictItems[0]) {
+                  if (elegantMode && askMode && i === 0 && heroRungKind(a) === 'conflict' && conflictItems[0]) {
                     const it = conflictItems[0];
                     const res = it.resolution || {};
                     // DECLUTTERED (host 2026-07-18): tight one-line situation (detailShort),
@@ -13576,9 +13593,9 @@ export default function HostShellV2() {
                 // DOCTRINE (host, 2026-07-22): classification rides the ACTION —
                 // a.sourceCategory === 'coi', declared by coiNextAction and carried by
                 // every COI emitter. Title-prose sniffing broke on the fifth title
-                // shape; the narrow regex stays ONLY for legacy checklist-task rows
-                // ("Collect COIs…") which carry no sourceCategory.
-                const isCoiTask = elegantMode && isHero && !decHeroActions && (a.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(a.title || '')));
+                // shape. The narrow regex that stayed for checklist rows ("Collect
+                // COIs…") is gone too (cause 1, part 2): a row's words decide nothing.
+                const isCoiTask = elegantMode && isHero && !decHeroActions && heroRungKind(a) === 'coi';
                 const coiHero = (isCoiTask && coiFirst) ? coiFirst : null;
                 // Every vendor's COI is handled but the solver task still lingers open — don't
                 // fall back to the ugly generic "Overdue · Decide". Show the calm done state.
@@ -14057,8 +14074,9 @@ export default function HostShellV2() {
                 const moneyRows = (() => { try { return (moneyDatesFor(event) || {}).rows || null; } catch { return null; } })();
                 const openThen = (a, key) => {
                   if (a.kind === 'bundle') {
-                    if (/decision/i.test(String(a.title || ''))) { setSheet({ kind: 'decisions' }); return; }
-                    if (/conflict/i.test(String(a.title || ''))) { setSheet({ kind: 'vendors' }); return; }
+                    // By the bundle's declared kind, never its title (cause 1, part 2).
+                    if (a.askKind === 'decisions') { setSheet({ kind: 'decisions' }); return; }
+                    if (a.askKind === 'conflict') { setSheet({ kind: 'vendors' }); return; }
                   }
                   // A Then row renders no editor slot, so it does NOT pass canSettle —
                   // onCta routes it to the surface that owns the field. (Four rows here
@@ -17357,7 +17375,7 @@ export default function HostShellV2() {
                           <span className="f-main">
                             <span className="f-name">{r.title || r.label}
                               {lateChip}
-                              {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
+                              {urgencyOf(r).timeSensitive && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                             </span>
                             {lateLine && <span className="v-meta">{lateLine}</span>}
                           </span>
@@ -17372,7 +17390,7 @@ export default function HostShellV2() {
                             {lateChip}
                             {/* Wave-2b short-runway escalation: a subtle time-sensitive cue in
                                 the existing tag vocabulary (warn), only when not already overdue. */}
-                            {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
+                            {urgencyOf(r).timeSensitive && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                           </span>
                           {lateLine && <span className="v-meta">{lateLine}</span>}
                         </span>
@@ -17438,7 +17456,7 @@ export default function HostShellV2() {
                           <span className="f-main">
                             <span className="f-name">{r.title || r.label}
                               {lateChip}
-                              {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
+                              {urgencyOf(r).timeSensitive && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                             </span>
                             {lateLine && <span className="v-meta">{lateLine}</span>}
                             {renderEditor(r)}
@@ -17463,7 +17481,7 @@ export default function HostShellV2() {
                             {lateChip}
                             {/* Wave-2b short-runway escalation: a subtle time-sensitive cue in
                                 the existing tag vocabulary (warn), only when not already overdue. */}
-                            {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
+                            {urgencyOf(r).timeSensitive && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                           </span>
                           {lateLine && <span className="v-meta">{lateLine}</span>}
                         </span>
@@ -21280,8 +21298,8 @@ export default function HostShellV2() {
                 money,
                 foodPlan: foodPlan ? {
                   foodLow: foodPlan.foodLow, foodHigh: foodPlan.foodHigh,
-                  perHeadLow: foodPlan.guests ? foodPlan.foodLow / foodPlan.guests : null,
-                  perHeadHigh: foodPlan.guests ? foodPlan.foodHigh / foodPlan.guests : null,
+                  perHeadLow: perHead(foodPlan.foodLow, foodPlan.guests),
+                  perHeadHigh: perHead(foodPlan.foodHigh, foodPlan.guests),
                   guests: foodPlan.guests || guests,
                 } : null,
                 guests: guests || null,
@@ -23651,7 +23669,7 @@ export default function HostShellV2() {
                         the footer, the category split is in Plan, and the scope
                         note is one line lower. */}
                     <BigValue style={{ fontVariantNumeric: 'tabular-nums', ...(done ? { color: 'var(--ok)' } : null) }}>
-                      {fmt((foodPlan.foodLow || 0) + (foodPlan.suppliesLow || 0))}–{fmt((foodPlan.foodHigh || 0) + (foodPlan.suppliesHigh || 0))}
+                      {fmt(allInTotal(foodPlan, capacity).low)}–{fmt(allInTotal(foodPlan, capacity).high)}
                     </BigValue>
                     {/* ── "ALL IN" HAS TO BE ALL IN (2026-10-06) ──────────────
                         The headline above sums food AND supplies; this line used
@@ -23666,7 +23684,8 @@ export default function HostShellV2() {
                         there. The engine gained an all-in pair instead and this
                         line reads that. */}
                     <Grounding gap={ASK_RHYTHM.valueToWhy}>
-                      estimate, all in · {fmt(foodPlan.perGuestAllInLow)}–{fmt(foodPlan.perGuestAllInHigh)} a head · {fGuestPhrase} guests
+                      {/* "All in" counts the seating sheet's gear too (lib/planCosts), as Your money does. */}
+                      estimate, all in · {perHeadText(perHeadRange(allInTotal(foodPlan, capacity).low, allInTotal(foodPlan, capacity).high, foodPlan.guests), fmt)} · {fGuestPhrase} guests{allInTotal(foodPlan, capacity).gearHigh > 0 ? ' · seating & gear included' : ''}
                     </Grounding>
                     {/* BOTH MONEY TRUTHS, NEITHER PRETENDING TO BE THE OTHER.
                         Host ruling 2026-09-24 ("do one of each") after the review
@@ -24189,7 +24208,7 @@ export default function HostShellV2() {
                       <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, list: true }))}>
                         <span className="fstat-l">The list</span>
                         <span className="fstat-v" style={listDone ? { color: 'var(--ok)' } : null}>
-                          {listDone ? 'all bought' : `${shopTally.total} item${shopTally.total === 1 ? '' : 's'}`}
+                          {listDone ? 'all bought' : COUNT_LABELS.listItems(shopTally.total)}
                           <span className="fstat-chev" aria-hidden="true">›</span>
                         </span>
                       </button>
@@ -27584,11 +27603,11 @@ export default function HostShellV2() {
                                   // The plan sizes to the attendance CEILING, so it can sit
                                   // above the host's own number ("21" for her 20). Said, not
                                   // left to read as a typo (50-host run, 11/16/2026).
-                                  <>Full food and drink plan: ≈ {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head across {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}{Number(event.guestEstimate) > 0 && foodPlan.guests > Number(event.guestEstimate) ? ` (your ${Number(event.guestEstimate)} plus a little extra)` : ''}. </>
+                                  <>Full food and drink plan: ≈ {perHeadText({ low: foodPlan.perGuestLow, high: foodPlan.perGuestHigh }, fmt)} across {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}{Number(event.guestEstimate) > 0 && foodPlan.guests > Number(event.guestEstimate) ? ` (your ${Number(event.guestEstimate)} plus a little extra)` : ''}. </>
                                 )}
                                 {foodPlan.realCount > 0
                                   ? <>{foodPlan.realCount} of {foodPlan.itemCount} priced for real, the rest estimated.</>
-                                  : <>All {foodPlan.itemCount} food item{foodPlan.itemCount === 1 ? '' : 's'} still estimated — add a real price anytime (bought or not).</>}
+                                  : <>All {COUNT_LABELS.foodItems(foodPlan.itemCount)} still estimated — add a real price anytime (bought or not).</>}
                                 {/* SILENCE READS AS "THESE ARE YOUR PRICES" (2026-09-18).
                                     priceContext is set only when the regional factor is
                                     NOT 1 (~:1460), and rendered only when truthy — so a

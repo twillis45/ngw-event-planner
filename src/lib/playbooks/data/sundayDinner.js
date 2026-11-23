@@ -158,6 +158,7 @@ const sundayDinner = {
   milestones: [
     {
       id: 'm-menu-set',
+      facts: ['menu-decided'],
       name: 'Menu and assignments locked',
       offsetDays: 4,
       owner: 'host',
@@ -223,18 +224,18 @@ const sundayDinner = {
   ],
 
   tasks: [
-    { id: 't-pick-main', target: 'spread', answeredBy: ['the-main', 'who-cooks-what'], milestoneId: 'm-menu-set', phase: 'planning', label: 'Decide the main and confirm who cooks it', when: 'T-4d' },
-    { id: 't-assign-sides', target: 'spread', milestoneId: 'm-menu-set', phase: 'planning', label: 'Assign sides, bread, and dessert across the family so nothing doubles up', when: 'T-4d' },
-    { id: 't-headcount', target: 'guests', milestoneId: 'm-menu-set', phase: 'planning', label: 'Confirm headcount including elders and kids; note any dietary needs', when: 'T-4d' },
-    { id: 't-shop', target: 'list', milestoneId: 'm-shopping', phase: 'logistics', label: 'Buy the bird/roast, greens, mac ingredients, cornbread/biscuit fixings, dessert, sweet tea and lemonade', when: 'T-2d' },
-    { id: 't-containers', target: 'list', milestoneId: 'm-shopping', phase: 'logistics', label: 'Buy or set aside to-go containers and foil for plates to send home', when: 'T-2d' },
-    { id: 't-greens-ahead', target: 'none', milestoneId: 'm-make-ahead', phase: 'preparation', label: 'Slow-cook the greens with smoked meat — they are better a day later', when: 'T-1d' },
-    { id: 't-dessert-ahead', target: 'none', milestoneId: 'm-make-ahead', phase: 'preparation', label: 'Bake the cobbler or pie the night before so the oven is free Sunday', when: 'T-1d' },
-    { id: 't-brine', target: 'none', milestoneId: 'm-make-ahead', phase: 'preparation', label: 'Brine or season the chicken overnight if frying', when: 'T-1d' },
-    { id: 't-set-table', target: 'guests', milestoneId: 'm-table-set', phase: 'setup', label: 'Count chairs against headcount, add a leaf or kids table, set place settings', when: 'T-1d' },
-    { id: 't-cook-day', target: 'day', milestoneId: 'm-meal', phase: 'execution', label: 'Cook the main and finish hot sides (mac, yams, cornbread) timed to land together', when: 'T0' },
-    { id: 't-grace', target: 'day', milestoneId: 'm-meal', phase: 'execution', label: 'Gather everyone, say grace, and make plates for the elders first', when: 'T0' },
-    { id: 't-wrap-plates', target: 'day', milestoneId: 'm-plates-out', phase: 'cleanup', label: 'Fix to-go plates for whoever is leaving; box leftovers; run the dishes', when: 'T0' },
+    { id: 't-pick-main', target: 'spread', facts: ['calls-answered'], answeredBy: ['the-main', 'who-cooks-what'], milestoneId: 'm-menu-set', phase: 'planning', label: 'Decide the main and confirm who cooks it', when: 'T-4d' },
+    { id: 't-assign-sides', target: 'spread', facts: [], milestoneId: 'm-menu-set', phase: 'planning', label: 'Assign sides, bread, and dessert across the family so nothing doubles up', when: 'T-4d' },
+    { id: 't-headcount', target: 'guests', facts: ['or:dietary-noted', 'guest-count'], milestoneId: 'm-menu-set', phase: 'planning', label: 'Confirm headcount including elders and kids; note any dietary needs', when: 'T-4d' },
+    { id: 't-shop', target: 'list', facts: [], milestoneId: 'm-shopping', phase: 'logistics', label: 'Buy the bird/roast, greens, mac ingredients, cornbread/biscuit fixings, dessert, sweet tea and lemonade', when: 'T-2d' },
+    { id: 't-containers', target: 'list', facts: [], milestoneId: 'm-shopping', phase: 'logistics', label: 'Buy or set aside to-go containers and foil for plates to send home', when: 'T-2d' },
+    { id: 't-greens-ahead', target: 'none', facts: [], milestoneId: 'm-make-ahead', phase: 'preparation', label: 'Slow-cook the greens with smoked meat — they are better a day later', when: 'T-1d' },
+    { id: 't-dessert-ahead', target: 'none', facts: [], milestoneId: 'm-make-ahead', phase: 'preparation', label: 'Bake the cobbler or pie the night before so the oven is free Sunday', when: 'T-1d' },
+    { id: 't-brine', target: 'none', facts: [], milestoneId: 'm-make-ahead', phase: 'preparation', label: 'Brine or season the chicken overnight if frying', when: 'T-1d' },
+    { id: 't-set-table', target: 'guests', facts: [], milestoneId: 'm-table-set', phase: 'setup', label: 'Count chairs against headcount, add a leaf or kids table, set place settings', when: 'T-1d' },
+    { id: 't-cook-day', target: 'day', facts: [], milestoneId: 'm-meal', phase: 'execution', label: 'Cook the main and finish hot sides (mac, yams, cornbread) timed to land together', when: 'T0' },
+    { id: 't-grace', target: 'day', facts: [], milestoneId: 'm-meal', phase: 'execution', label: 'Gather everyone, say grace, and make plates for the elders first', when: 'T0' },
+    { id: 't-wrap-plates', target: 'day', facts: [], milestoneId: 'm-plates-out', phase: 'cleanup', label: 'Fix to-go plates for whoever is leaving; box leftovers; run the dishes', when: 'T0' },
   ],
 
   purchases: [

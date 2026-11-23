@@ -72,7 +72,6 @@ const { inviteCardModel } = require('../inviteCard');
 const { tripIsMultiDay, tripDays } = require('../tripMeals');
 const { venueFor, formatVenueAddress } = require('../venueFor');
 const { derivePlaceIntelligence } = require('../placeIntelligence');
-const { eventLocationStatus } = require('../locationAssist');
 const { guestDietCounts } = require('../dietRows');
 const { deriveHelperResponsibilities } = require('../helperResponsibility');
 const { hostNameFor, isHostName } = require('../hostNameFor');
@@ -472,20 +471,15 @@ agree('venue · invite card "Where" = the board\'s address line', {}, (ev) => {
   expect(where ? where.value : '').toBe(formatVenueAddress(ev) || '');
 });
 
-// D-09: at home, the ledger counts the address settled from a NAME
-// ("Backyard" → venue_only), while Space's Guest arrival asks for the street
-// ("Add your street address so guests know exactly where to go").
-const D09 = 'D-09 home address: ledger handled, Space asks';
-agree('venue · ledger "address settled" = Space guest-arrival handled', {
-  'var-backyard-city': D09,
-}, (ev) => {
-  // The ledger's venueaddress part: applies once there is a town, settled on
-  // venue_only / full_address (phaseProgress reads eventLocationStatus).
-  const status = eventLocationStatus(ev);
-  if (status === 'missing') return;
-  const ledgerSettled = status === 'venue_only' || status === 'full_address';
+// D-09 (fixed, 11/23/2026): at home, the ledger counted the address settled
+// from a NAME ("Backyard" → venue_only), while Space's Guest arrival asked for
+// the street. Both read venueFor's `findable` now; this asks the ledger's own
+// part rather than re-deriving its rule.
+agree('venue · ledger "address settled" = Space guest-arrival handled', {}, (ev) => {
+  const part = ppItem(ev, 'venueaddress');
+  if (!part) return;                  // the part applies once there is a town
   const arrival = derivePlaceIntelligence(ev).sections.find((x) => x.key === 'arrival');
-  expect(arrival.state === 'handled').toBe(ledgerSettled);
+  expect(arrival.state === 'handled').toBe(part.handled);
 });
 
 // ═══ 7 · DIETARY COUNTS ═════════════════════════════════════════════════════

@@ -20,6 +20,10 @@ import { taskIsOverdue } from '../taskLead';
 import { timelineStepResolved } from '../taskEngine';
 import { getEventReadiness } from '../../CommandCenter';
 import { playbookFoodPlan, hostBuysLine } from '../playbooks';
+// INPUTS ONLY changed (six root causes, cause 1, part 2): a row is proven by
+// the facts its step DECLARES, never by its words, so each row literal below
+// carries `facts`: the declaration a step with its words carries (derived once
+// from the retired text rules, as the playbooks' were). Assertions unchanged.
 
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const inDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return ymd(d); };
@@ -40,7 +44,7 @@ describe('a retired step', () => {
     const tl = [
       retired,
       { id: 'b', task: 'Rent folding tables', leadDays: -24, retired: true },
-      { id: 'c', task: 'Book the photo booth', leadDays: -23, retired: true },
+      { id: 'c', task: 'Book the photo booth', facts: ['roles:photobooth'], leadDays: -23, retired: true },
     ];
     const r = getEventReadiness(base({ timeline: tl }));
     expect(r.timeline.status).not.toBe('AT_RISK');
@@ -53,7 +57,7 @@ describe('a retired step', () => {
 });
 
 describe('the arrivals grid with a real flight on it', () => {
-  const grid = { id: 'g', task: 'Build the arrivals / departures grid', leadDays: -25 };
+  const grid = { id: 'g', task: 'Build the arrivals / departures grid', facts: ['then:arrivals-grid'], leadDays: -25 };
   const dest = (air) => base({
     isDestination: true, timeline: [grid],
     guests: [{ id: 'g1', name: 'Jordan Avery', rsvp: 'Yes', travel: air ? { air } : {} }],
@@ -69,7 +73,7 @@ describe('the arrivals grid with a real flight on it', () => {
 });
 
 describe('a food shop whose list is all bought', () => {
-  const shop = { id: 's', task: 'Buy the food and drinks for the party', leadDays: -25 };
+  const shop = { id: 's', task: 'Buy the food and drinks for the party', facts: ['then:food-bought'], leadDays: -25 };
   const party = (gotAll) => {
     const ev = base({ type: 'Birthday', timeline: [shop] });
     const list = (playbookFoodPlan(ev) || {}).list || [];

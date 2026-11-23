@@ -6,7 +6,15 @@ import { taskSatisfied } from '../taskEngine';
 import { openFoodChoices } from '../playbooks';
 
 const base = { id: 'e', type: 'Thanksgiving Host', guestEstimate: 12, guests: [], vendors: [] };
-const step = (task) => ({ task });
+// INPUTS ONLY changed (six root causes, cause 1, part 2): a row is proven by
+// the facts its step DECLARES, never by its words. Each row below carries the
+// declaration a step with these words carries (derived once from the retired
+// text rules, as the playbooks' were). Assertions unchanged.
+const FACTS = {
+  'The big grocery run: check the list against the menu': ['then:food-bought'],
+  'Write the full menu, with who makes each dish': ['menu-decided'],
+};
+const step = (task) => ({ task, facts: FACTS[task] });
 const WRITE = 'Write the full menu, with who makes each dish';
 
 test('(premise) Thanksgiving has more than one menu question', () => {

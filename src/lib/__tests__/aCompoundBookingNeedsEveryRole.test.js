@@ -13,6 +13,10 @@
 // is not a booking.
 import W from '../../data/wandaGoldEvent';
 import { taskSatisfied } from '../taskEngine';
+// INPUTS ONLY changed (six root causes, cause 1, part 2): a row is proven by
+// the facts its step DECLARES, never by its words, so each row literal below
+// carries `facts`: the declaration a step with its words carries (derived once
+// from the retired text rules, as the playbooks' were). Assertions unchanged.
 
 const STEP = W.timeline.find((t) => t.id === 'ev-x-wanda-t3');
 const withStatus = (ids, status) => ({
@@ -46,7 +50,7 @@ describe('Book photobooth + night-of photographer', () => {
 
 describe('the role readers', () => {
   const ev = (vendors) => ({ ...W, timeline: [], vendors });
-  const book = { task: 'Book the photographer' };
+  const book = { task: 'Book the photographer', facts: ['roles:photographer'] };
 
   test('a booked photobooth is not a photographer', () => {
     expect(taskSatisfied(ev([{ id: 'b', name: 'Snap Booth Co.', category: 'Photobooth', status: 'Confirmed' }]), book)).toBe(false);
@@ -57,7 +61,7 @@ describe('the role readers', () => {
   });
 
   test('one vendor cannot fill two roles', () => {
-    const both = { task: 'Book the DJ and the photographer' };
+    const both = { task: 'Book the DJ and the photographer', facts: ['roles:photographer+dj'] };
     expect(taskSatisfied(ev([{ id: 'x', name: 'Photo & DJ Combo', category: 'Photography', status: 'Confirmed' }]), both)).toBe(false);
     expect(taskSatisfied(ev([
       { id: 'x', name: 'Lens Co.', category: 'Photography', status: 'Confirmed' },

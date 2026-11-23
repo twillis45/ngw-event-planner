@@ -14,6 +14,10 @@ import { taskSatisfied } from '../taskEngine';
 import { checklistRouteFor } from '../taskRoute';
 import { resolveRoute } from '../routeResolver';
 import { DINNER_GROUP, DINNER_NIGHT_STEP, DINNER_PLACE_STEP, groupDinnerSteps } from '../tripMeals';
+// INPUTS ONLY changed (six root causes, cause 1, part 2): a row is proven by
+// the facts its step DECLARES, never by its words, so each row literal below
+// carries `facts`: the declaration a step with its words carries (derived once
+// from the retired text rules, as the playbooks' were). Assertions unchanged.
 
 const SF = (extra = {}) => ({
   id: 'sf', name: 'Mom’s 80th Birthday', honoree: 'Mom', type: 'Birthday',
@@ -57,14 +61,16 @@ describe('the dinner has its own steps, and they carry the dinner group', () => 
   });
 });
 
+// INPUTS ONLY changed (six root causes, cause 1, part 2): each dinner step is
+// passed by its id (`cel-<key>`), never found by its words. Assertions unchanged.
 describe('the dinner\'s steps tick from the dinner\'s own parts', () => {
   test('the night step is done once the night is picked', () => {
-    expect(taskSatisfied(SF(), { task: DINNER_NIGHT_STEP })).toBe(false);
-    expect(taskSatisfied(SF({ celebration: { place: 'adobe courtyard', night: '2027-06-15' } }), { task: DINNER_NIGHT_STEP })).toBe(true);
+    expect(taskSatisfied(SF(), { id: 'cel-night', task: DINNER_NIGHT_STEP })).toBe(false);
+    expect(taskSatisfied(SF({ celebration: { place: 'adobe courtyard', night: '2027-06-15' } }), { id: 'cel-night', task: DINNER_NIGHT_STEP })).toBe(true);
   });
   test('the place step is done once a place (not home) is named in Venue', () => {
-    expect(taskSatisfied(SF(), { task: DINNER_PLACE_STEP })).toBe(false);
-    expect(taskSatisfied(SF({ venue: 'Casa Courtyard' }), { task: DINNER_PLACE_STEP })).toBe(true);
+    expect(taskSatisfied(SF(), { id: 'cel-place', task: DINNER_PLACE_STEP })).toBe(false);
+    expect(taskSatisfied(SF({ venue: 'Casa Courtyard' }), { id: 'cel-place', task: DINNER_PLACE_STEP })).toBe(true);
   });
 });
 
@@ -79,7 +85,7 @@ describe('each dinner step opens where its part is owned', () => {
 
 describe('groupDinnerSteps: the list renders the group as one block', () => {
   const tl = [
-    { id: 'a', task: 'Send invites' },
+    { id: 'a', task: 'Send invites', facts: ['invites-out'] },
     { id: 'cake', task: 'Cake + candles moment' },
     { id: 'b', task: 'Chill drinks' },
     { id: 'night', task: DINNER_NIGHT_STEP },

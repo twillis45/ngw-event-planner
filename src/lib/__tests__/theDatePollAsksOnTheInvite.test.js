@@ -13,6 +13,9 @@ import { playbookChecklist } from '../playbooks';
 import { dateOptionsOf, datePollTally, dateOptionPatch, datePollSettled, rangeLabel, nextDateOptionId } from '../datePoll';
 import { mergeGuestReplies } from '../guestMerge';
 import { duplicateEvent } from '../duplicateEvent';
+// INPUTS ONLY changed (six root causes, cause 1, part 2): the row is passed
+// with its id, the way the app identifies it; its step's declared facts, not
+// its words, prove it handled. Assertions unchanged.
 
 const ev = (type, extra = {}) => ({ id: 'dp', type, date: '', guestMode: 'list', venueCity: 'Gulf Shores, AL', ...extra });
 const row = (type, re) => (playbookChecklist(ev(type, { date: '2027-02-13' }), '2026-10-01') || []).find((r) => re.test(r.task));
@@ -36,7 +39,7 @@ describe.each([
   });
 
   test('offering ranges is not the step done; using one of them is', () => {
-    const t = { task: r.task };
+    const t = { id: r.id, task: r.task };
     expect(taskSatisfied(ev(type), t)).toBe(false);
     expect(taskSatisfied(ev(type, { dateOptions: OPTS }), t)).toBe(false);
     expect(taskSatisfied(ev(type, { dateOptions: OPTS, dateOptionUsed: 'd2', date: '2027-02-13' }), t)).toBe(true);

@@ -47,7 +47,7 @@ const elopement = {
   ],
 
   milestones: [
-    { id: 'elope_decide', name: 'Choose location, date, and who comes', offsetDays: 90, owner: 'couple', category: 'planning', risk: { ifDelayed: 'Permit/photographer windows close', severity: 'med' } },
+    { id: 'elope_decide', name: 'Choose location, date, and who comes', facts: ['venue-set'], offsetDays: 90, owner: 'couple', category: 'planning', risk: { ifDelayed: 'Permit/photographer windows close', severity: 'med' } },
     { id: 'elope_license_research', name: 'Research marriage-license rules for the jurisdiction', offsetDays: 75, owner: 'couple', dependsOn: ['elope_decide'], category: 'legal', risk: { ifDelayed: 'Discover a waiting period or witness requirement too late', severity: 'high' } },
     { id: 'elope_book_photographer', name: 'Book photographer + officiant', offsetDays: 75, owner: 'couple', dependsOn: ['elope_decide'], category: 'vendor', risk: { ifDelayed: 'First-choice photographer booked; no keepsake of the day', severity: 'high' } },
     { id: 'elope_permit', name: 'Apply for park/location permit', offsetDays: 60, owner: 'couple', dependsOn: ['elope_decide'], category: 'legal', risk: { ifDelayed: 'Permit denied or unavailable; ceremony is not allowed on site', severity: 'high' } },
@@ -62,9 +62,9 @@ const elopement = {
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
-    { id: 't_research_license', target: 'call:license_jurisdiction', answeredBy: ['license_jurisdiction'], milestoneId: 'elope_license_research', phase: 'legal', label: 'Decide which county or state issues your marriage license', when: 'T-75d' },
-    { id: 't_research_clerk', target: 'none', milestoneId: 'elope_license_research', phase: 'legal', label: 'Look up the county clerk: waiting period, validity window, witness count, ID + fee, whether online-ordained officiants are accepted', when: 'T-75d' },
-    { id: 't_book_photog', target: 'vendors', milestoneId: 'elope_book_photographer', phase: 'vendor', label: 'Book elopement photographer (and officiant); confirm they know the location + permit', when: 'T-75d',
+    { id: 't_research_license', target: 'call:license_jurisdiction', facts: ['calls-answered'], answeredBy: ['license_jurisdiction'], milestoneId: 'elope_license_research', phase: 'legal', label: 'Decide which county or state issues your marriage license', when: 'T-75d' },
+    { id: 't_research_clerk', target: 'none', facts: [], milestoneId: 'elope_license_research', phase: 'legal', label: 'Look up the county clerk: waiting period, validity window, witness count, ID + fee, whether online-ordained officiants are accepted', when: 'T-75d' },
+    { id: 't_book_photog', target: 'vendors', facts: ['roles:photographer+officiant'], factsByAnswer: { photography: { 'Self/timer + phone': ['roles:officiant'] } }, milestoneId: 'elope_book_photographer', phase: 'vendor', label: 'Book elopement photographer (and officiant); confirm they know the location + permit', when: 'T-75d',
       // A timer and a phone hire no photographer (owner, 11/21/2026). The
       // officiant is in all three rows, so they say what is left, not stand down.
       copyByAnswer: { photography: { 'Self/timer + phone': 'Book the officiant; confirm they know the location + permit' } } },
@@ -81,16 +81,16 @@ const elopement = {
     // in full 2026-09-23). Eight rather than six because this is a START-BY
     // date and because an elopement is usually travelled to — the rings have to
     // be in hand before the trip, not before the ceremony.
-    { id: 't_rings', target: 'none', milestoneId: 'elope_book_photographer', phase: 'planning', label: 'Order and size the rings — allow 6–8 weeks for making, engraving and any resize', when: 'T-56d' },
-    { id: 't_permit', target: 'place-rules', milestoneId: 'elope_permit', phase: 'legal', label: 'Submit special-use permit for the park/site; note any monitor fee and per-vehicle entrance fee', when: 'T-60d' },
-    { id: 't_travel', target: 'airports', milestoneId: 'elope_travel', phase: 'logistics', label: 'Book flights/drive plan + lodging near the site; build buffer days for weather', when: 'T-60d' },
-    { id: 't_attire_vows', target: 'vendors-tab', milestoneId: 'elope_attire', phase: 'planning', label: 'Choose attire + any alterations; write and practice vows', when: 'T-30d' },
-    { id: 't_get_license', target: 'none', milestoneId: 'elope_get_license', phase: 'legal', label: 'Appear in person at the clerk\'s office for the license (both parties, valid ID); confirm it covers the ceremony date', when: 'T-7d' },
-    { id: 't_confirm', target: 'vendors', milestoneId: 'elope_confirm', phase: 'logistics', label: 'Confirm photographer/officiant arrival, check the forecast, set the day-of timeline, order/pick up the small meal + champagne', when: 'T-1d',
+    { id: 't_rings', target: 'none', facts: [], milestoneId: 'elope_book_photographer', phase: 'planning', label: 'Order and size the rings — allow 6–8 weeks for making, engraving and any resize', when: 'T-56d' },
+    { id: 't_permit', target: 'place-rules', facts: [], milestoneId: 'elope_permit', phase: 'legal', label: 'Submit special-use permit for the park/site; note any monitor fee and per-vehicle entrance fee', when: 'T-60d' },
+    { id: 't_travel', target: 'airports', facts: [], milestoneId: 'elope_travel', phase: 'logistics', label: 'Book flights/drive plan + lodging near the site; build buffer days for weather', when: 'T-60d' },
+    { id: 't_attire_vows', target: 'vendors-tab', facts: [], milestoneId: 'elope_attire', phase: 'planning', label: 'Choose attire + any alterations; write and practice vows', when: 'T-30d' },
+    { id: 't_get_license', target: 'none', facts: [], milestoneId: 'elope_get_license', phase: 'legal', label: 'Appear in person at the clerk\'s office for the license (both parties, valid ID); confirm it covers the ceremony date', when: 'T-7d' },
+    { id: 't_confirm', target: 'vendors', facts: [], milestoneId: 'elope_confirm', phase: 'logistics', label: 'Confirm photographer/officiant arrival, check the forecast, set the day-of timeline, order/pick up the small meal + champagne', when: 'T-1d',
       copyByAnswer: { photography: { 'Self/timer + phone': 'Confirm the officiant’s arrival, check the forecast, set the day-of timeline, order/pick up the small meal + champagne' } } },
-    { id: 't_sign', target: 'day', milestoneId: 'event', phase: 'legal', label: 'Sign the license with officiant + witnesses; photographer captures it; mail/return to the clerk', when: 'T0',
+    { id: 't_sign', target: 'day', facts: [], milestoneId: 'event', phase: 'legal', label: 'Sign the license with officiant + witnesses; photographer captures it; mail/return to the clerk', when: 'T0',
       copyByAnswer: { photography: { 'Self/timer + phone': 'Sign the license with officiant + witnesses; set the timer to capture it; mail/return to the clerk' } } },
-    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Pack out everything (leave no trace), recycle bottles, send announcement if telling family after', when: 'T0 +6:00' },
+    { id: 't_reset', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Pack out everything (leave no trace), recycle bottles, send announcement if telling family after', when: 'T0 +6:00' },
   ],
 
   purchases: [

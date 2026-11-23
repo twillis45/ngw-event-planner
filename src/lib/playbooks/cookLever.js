@@ -137,7 +137,8 @@ export function cookTasksFor(pb) {
   const rows = L.kind === 'grill' ? GRILL_TASKS : INDOOR_TASKS;
   const id = L.kind === 'grill' ? 'fire_type' : 'cook_method';
   return rows.map(([tid, answer, when, slot, label]) => ({
-    id: tid, target: COOK_TARGETS[tid], milestoneId: slot === 't0' ? t0 : t1, phase, label, when,
+    // No stored fact proves a cooking act; the host's tick does (lib/stepFacts).
+    id: tid, target: COOK_TARGETS[tid], facts: [], milestoneId: slot === 't0' ? t0 : t1, phase, label, when,
     whenChoice: [{ id: L.decision, in: L.hostCooks }, { id, in: [answer] }],
   }));
 }

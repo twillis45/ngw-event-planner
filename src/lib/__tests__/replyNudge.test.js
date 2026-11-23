@@ -12,6 +12,10 @@ import { taskSatisfied, effectiveDone } from '../taskEngine';
 import { raiseAll } from '../surfaceRegistry';
 import { checklistRouteFor } from '../taskRoute';
 import { resolveRoute } from '../routeResolver';
+// INPUTS ONLY changed (six root causes, cause 1, part 2): a row is proven by
+// the facts its step DECLARES, never by its words, so each row literal below
+// carries `facts`: the declaration a step with its words carries (derived once
+// from the retired text rules, as the playbooks' were). Assertions unchanged.
 
 // YYYY-MM-DD for `days` from today, in local time.
 const isoIn = (days) => {
@@ -138,7 +142,7 @@ describe('the timing rule: the host’s own date, never automatic', () => {
 });
 
 describe('the checklist step tells the truth', () => {
-  const step = { id: 't_rsvp_chase', task: 'Chase non-responders; lock the seated count', done: false };
+  const step = { id: 't_rsvp_chase', task: 'Chase non-responders; lock the seated count', facts: ['replies-chased'], done: false };
 
   test('done when everyone invited has answered or been nudged', () => {
     const ev = EV({ guests: EV().guests.filter((g) => g.id !== 'g4').map((g) => (g.rsvp ? g : { ...g, nudgedAt: atDaysAgo(0), nudgedVia: 'email' })) });

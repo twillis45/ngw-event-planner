@@ -167,20 +167,22 @@ describe('census: nothing in the host shell writes the dates or the start time e
 import { taskSatisfied } from '../taskEngine';
 import { deriveEventPhaseProgress } from '../phaseProgress';
 
+// INPUTS ONLY changed (six root causes, cause 1, part 2): each row carries the
+// facts its step declares (never its words). Assertions unchanged.
 describe('a checklist row that asks for the date is done once the date is set', () => {
   const pick = 'Pick the date and time to fit the audience — kids parties run early afternoon into dusk';
   test('date and her hour → done; no date, our hour, or days owed → open', () => {
-    expect(taskSatisfied({ date: '2026-10-31', startTime: '18:00', startTimeSource: 'host' }, { task: pick })).toBe(true);
-    expect(taskSatisfied({ date: '2026-10-31', startTime: '18:00', startTimeSource: 'derived' }, { task: pick })).toBe(false);
-    expect(taskSatisfied({ startTime: '18:00', startTimeSource: 'host' }, { task: pick })).toBe(false);
-    expect(taskSatisfied({ date: '2026-10-31', startTime: '18:00', startTimeSource: 'host', datesToConfirm: true }, { task: pick })).toBe(false);
+    expect(taskSatisfied({ date: '2026-10-31', startTime: '18:00', startTimeSource: 'host' }, { task: pick, facts: ['date-and-time-picked'] })).toBe(true);
+    expect(taskSatisfied({ date: '2026-10-31', startTime: '18:00', startTimeSource: 'derived' }, { task: pick, facts: ['date-and-time-picked'] })).toBe(false);
+    expect(taskSatisfied({ startTime: '18:00', startTimeSource: 'host' }, { task: pick, facts: ['date-and-time-picked'] })).toBe(false);
+    expect(taskSatisfied({ date: '2026-10-31', startTime: '18:00', startTimeSource: 'host', datesToConfirm: true }, { task: pick, facts: ['date-and-time-picked'] })).toBe(false);
   });
   const poll = 'Offer two or three date ranges and give everyone three days to answer';
   test('a trip typed with its range is not asked to poll for it', () => {
-    expect(taskSatisfied({ type: 'Group Trip', date: '2026-12-03', endDate: '2026-12-06' }, { task: poll })).toBe(true);
-    expect(taskSatisfied({ type: 'Group Trip', date: '2026-12-03', datesToConfirm: true }, { task: poll })).toBe(false);
+    expect(taskSatisfied({ type: 'Group Trip', date: '2026-12-03', endDate: '2026-12-06' }, { task: poll, facts: ['dates-polled'] })).toBe(true);
+    expect(taskSatisfied({ type: 'Group Trip', date: '2026-12-03', datesToConfirm: true }, { task: poll, facts: ['dates-polled'] })).toBe(false);
     expect(taskSatisfied({ type: 'Group Trip', date: '2026-12-03', endDate: '2026-12-06',
-      dateOptions: [{ id: 'a', start: '2026-12-03', end: '2026-12-06' }] }, { task: poll })).toBe(false);
+      dateOptions: [{ id: 'a', start: '2026-12-03', end: '2026-12-06' }] }, { task: poll, facts: ['dates-polled'] })).toBe(false);
   });
 });
 

@@ -39,7 +39,9 @@ test('6 · food moved closer uses real remaining count', () => {
   const prev = buildReturnSnapshot(base, NOW);
   expect(prev.foodLeft).toBeGreaterThan(2);
   const plan = require('../playbooks').playbookFoodPlan(base);
-  const got = {}; plan.list.filter(i => i && !i.skipped).slice(0, prev.foodLeft - 2).forEach(i => { got[i.id] = true; });
+  // Lines she buys (lib/itemCounts): a dish a friend brings was never hers to tick.
+  const { hostBuysLine } = require('../playbooks');
+  const got = {}; plan.list.filter(i => i && !i.skipped && hostBuysLine(i)).slice(0, prev.foodLeft - 2).forEach(i => { got[i.id] = true; });
   const r = deriveReturnNarration(ev({ foodGot: got }), prev, LATER);
   expect(r.line).toMatch(/food moved closer — 2 items left to buy/);
 });

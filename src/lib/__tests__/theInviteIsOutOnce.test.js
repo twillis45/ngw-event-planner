@@ -2,7 +2,16 @@
 import { taskSatisfied, invitesOut, factsATickRecords } from '../taskEngine';
 
 const ev = (extra = {}) => ({ id: 'e', type: 'Holiday Party', guests: [], vendors: [], ...extra });
-const step = (task) => ({ task });
+// INPUTS ONLY changed (six root causes, cause 1, part 2): a row is proven by
+// the facts its step DECLARES, never by its words. Each row below carries the
+// declaration a step with these words carries (derived once from the retired
+// text rules, as the playbooks' were). Assertions unchanged.
+const FACTS = {
+  'Send invitations with the date and dress code; track replies for the count': ['invites-out'],
+  'Send invites + collect RSVP, dietary, plus-ones': ['invites-out'],
+  'Track RSVPs as they come in': [],
+};
+const step = (task) => ({ task, facts: FACTS[task] });
 
 test('a guest who answered proves the invite went out', () => {
   expect(invitesOut(ev({ guests: [{ id: 'a', rsvp: 'Yes' }] }))).toBe(true);

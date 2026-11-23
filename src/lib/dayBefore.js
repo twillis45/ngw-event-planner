@@ -11,12 +11,14 @@
 // sections with nothing open say so calmly (stop worrying about it); every
 // row's route obeys the deep-link doctrine (first-undone anchors); the guest
 // final-details message is LINKED, never embedded (host plan ≠ guest copy).
-import { playbookFoodPlan, playbookCapacity, effectiveRos, guestCountResolved, hostBuysLine } from './playbooks';
+import { playbookFoodPlan, playbookCapacity, effectiveRos, guestCountResolved } from './playbooks';
+import { linesLeftToBuy } from './itemCounts';
 import { rainPlanStatus, RAIN_PLAN_TARGET } from './weather';
 import { deriveHelperResponsibilities } from './helperResponsibility';
 import { isVendorConfirmed } from './workstreams';
 import { effectiveDone } from './taskEngine';
 import { daysUntil } from './dates';
+import { byGuestMode } from './guestMode';
 
 const daysTo = (dateStr, now = new Date()) => {
   if (!dateStr) return null;
@@ -54,7 +56,7 @@ export function buildDayBeforePlan(event, now = new Date()) {
   try {
     const plan = playbookFoodPlan(ev);
     if (plan && Array.isArray(plan.list)) {
-      const unboughtList = plan.list.filter(i => hostBuysLine(i) && !i.skipped && !((ev.foodGot || {})[i.id]));
+      const unboughtList = linesLeftToBuy(plan, ev);
       const unboughtFoodList = unboughtList.filter(i => i.group !== 'Supplies');
       unboughtFood = unboughtFoodList.length;
       unboughtListSupplies = unboughtList.length - unboughtFood;
@@ -125,7 +127,11 @@ export function buildDayBeforePlan(event, now = new Date()) {
       return [{
         key: 'count', label: 'Final guest count', open: pending ? gcnt.pending : 1,
         detail: pending
-          ? `${gcnt.pending} still ${gcnt.pending === 1 ? 'hasn’t' : 'haven’t'} said — chase the maybes, then buy to the confirmed count.`
+          // The wording follows her guest mode (owner ruling 4b): by headcount, no chasing.
+          ? byGuestMode(ev, {
+            list: `${gcnt.pending} still ${gcnt.pending === 1 ? 'hasn’t' : 'haven’t'} said — chase the maybes, then buy to the confirmed count.`,
+            count: 'Confirm your final count, then buy to it.',
+          })
           : 'No count yet — food, drinks, ice, and rentals all scale from headcount.',
         route: { tab: 'Guests', focusField: 'guests-entry' },
         cta: pending ? 'Settle the count' : 'Add who’s coming',

@@ -227,6 +227,7 @@ const reunion = {
   milestones: [
     {
       id: 'set-date-venue',
+      facts: ['venue-set'],
       name: 'Lock date and venue / pavilion',
       offsetDays: 75,
       owner: 'host',
@@ -235,6 +236,7 @@ const reunion = {
     },
     {
       id: 'build-guest-list',
+      facts: ['guest-count'],
       name: 'Build the household guest list and contacts',
       offsetDays: 70,
       owner: 'host',
@@ -382,91 +384,91 @@ const reunion = {
   ],
 
   tasks: [
-    { id: 't-venue-call', target: 'details', milestoneId: 'set-date-venue', phase: 'planning', label: 'Call the park / reserve the pavilion and confirm what it includes (tables, grills, power, parking)', when: 'T-75d' },
-    { id: 't-permit-check', target: 'place-rules', milestoneId: 'set-date-venue', phase: 'planning', label: 'Check whether a reservation permit, alcohol rule, or amplified-sound rule applies', when: 'T-72d' },
-    { id: 't-list-households', target: 'guests', milestoneId: 'build-guest-list', phase: 'planning', label: 'List every household and a contact for each; flag out-of-town travelers', when: 'T-70d' },
-    { id: 't-recruit-volunteers', target: 'space', milestoneId: 'build-guest-list', phase: 'planning', label: 'Recruit 3-5 volunteers (setup, grill, registration table, kids, cleanup)', when: 'T-66d' },
-    { id: 't-send-invite', target: 'invite', milestoneId: 'send-save-the-dates', phase: 'planning', label: 'Send save-the-date / invite with date, place, time, and what to bring', when: 'T-56d' },
+    { id: 't-venue-call', target: 'details', facts: [], milestoneId: 'set-date-venue', phase: 'planning', label: 'Call the park / reserve the pavilion and confirm what it includes (tables, grills, power, parking)', when: 'T-75d' },
+    { id: 't-permit-check', target: 'place-rules', facts: [], milestoneId: 'set-date-venue', phase: 'planning', label: 'Check whether a reservation permit, alcohol rule, or amplified-sound rule applies', when: 'T-72d' },
+    { id: 't-list-households', target: 'guests', facts: [], milestoneId: 'build-guest-list', phase: 'planning', label: 'List every household and a contact for each; flag out-of-town travelers', when: 'T-70d' },
+    { id: 't-recruit-volunteers', target: 'space', facts: [], milestoneId: 'build-guest-list', phase: 'planning', label: 'Recruit 3-5 volunteers (setup, grill, registration table, kids, cleanup)', when: 'T-66d' },
+    { id: 't-send-invite', target: 'invite', facts: ['invites-out'], milestoneId: 'send-save-the-dates', phase: 'planning', label: 'Send save-the-date / invite with date, place, time, and what to bring', when: 'T-56d' },
     // Split in two (owner ruling, 11/21/2026): the call clears on the pick, and
     // telling guests is its own step, due the same day, open until ticked.
-    { id: 't-decide-food', target: 'spread', answeredBy: ['food-model'], milestoneId: 'choose-food-model', phase: 'planning', label: 'Decide potluck vs host-cooked BBQ vs catered', when: 'T-55d' },
-    { id: 't-tell-food', target: 'guests', milestoneId: 'choose-food-model', phase: 'guest', label: 'Tell guests the food plan', when: 'T-55d' },
-    { id: 't-signup-categories', target: 'spread', milestoneId: 'open-potluck-signup', phase: 'planning', label: 'Set up the dish sign-up by category (or last-name letter) and share the link', when: 'T-42d', whenChoice: { id: 'food-model', in: ['Potluck (assigned by household)'] } },
-    { id: 't-host-staples', target: 'list', milestoneId: 'open-potluck-signup', phase: 'planning', label: 'Claim the host staples nobody signs up for: ice, drinks, paper goods, condiments', when: 'T-40d', whenChoice: { id: 'food-model', in: ['Potluck (assigned by household)'] } },
-    { id: 't-book-catering', target: 'guests', milestoneId: 'book-vendors', phase: 'planning', label: 'If catering/food truck: book and pay deposit, confirm headcount window', when: 'T-40d' },
-    { id: 't-book-rentals', target: 'space', milestoneId: 'book-vendors', phase: 'planning', label: 'Reserve any tents, extra tables/chairs, or a bounce house', when: 'T-38d' },
-    { id: 't-restroom-plan', target: 'place-notes', milestoneId: 'book-vendors', phase: 'planning', label: 'Confirm restrooms — park facilities or order a portable unit for a remote site', when: 'T-36d' },
-    { id: 't-chase-rsvps', target: 'chase', milestoneId: 'collect-rsvps', phase: 'planning', label: 'Chase non-responders by household; lock an adult/kid headcount', when: 'T-21d' },
-    { id: 't-photographer', target: 'assign', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Name the group-photo shooter and put the photo on the schedule at a fixed time', when: 'T-14d',
+    { id: 't-decide-food', target: 'spread', facts: ['calls-answered'], answeredBy: ['food-model'], milestoneId: 'choose-food-model', phase: 'planning', label: 'Decide potluck vs host-cooked BBQ vs catered', when: 'T-55d' },
+    { id: 't-tell-food', target: 'guests', facts: ['menu-decided'], milestoneId: 'choose-food-model', phase: 'guest', label: 'Tell guests the food plan', when: 'T-55d' },
+    { id: 't-signup-categories', target: 'spread', facts: [], milestoneId: 'open-potluck-signup', phase: 'planning', label: 'Set up the dish sign-up by category (or last-name letter) and share the link', when: 'T-42d', whenChoice: { id: 'food-model', in: ['Potluck (assigned by household)'] } },
+    { id: 't-host-staples', target: 'list', facts: [], milestoneId: 'open-potluck-signup', phase: 'planning', label: 'Claim the host staples nobody signs up for: ice, drinks, paper goods, condiments', when: 'T-40d', whenChoice: { id: 'food-model', in: ['Potluck (assigned by household)'] } },
+    { id: 't-book-catering', target: 'guests', facts: ['deposits-paid'], milestoneId: 'book-vendors', phase: 'planning', label: 'If catering/food truck: book and pay deposit, confirm headcount window', when: 'T-40d' },
+    { id: 't-book-rentals', target: 'space', facts: [], milestoneId: 'book-vendors', phase: 'planning', label: 'Reserve any tents, extra tables/chairs, or a bounce house', when: 'T-38d' },
+    { id: 't-restroom-plan', target: 'place-notes', facts: [], milestoneId: 'book-vendors', phase: 'planning', label: 'Confirm restrooms — park facilities or order a portable unit for a remote site', when: 'T-36d' },
+    { id: 't-chase-rsvps', target: 'chase', facts: ['replies-chased'], milestoneId: 'collect-rsvps', phase: 'planning', label: 'Chase non-responders by household; lock an adult/kid headcount', when: 'T-21d' },
+    { id: 't-photographer', target: 'assign', facts: [], milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Name the group-photo shooter and put the photo on the schedule at a fixed time', when: 'T-14d',
       // No group photo (owner, 11/21/2026): "Skip / candids only" retires the four group-photo steps.
       whenChoice: { id: 'group-photo', not: ['Skip / candids only'] } },
-    { id: 't-runofshow', target: 'build-day', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Write the run-of-show: arrival, photo, meal, games, cleanup — assign each to a volunteer', when: 'T-13d' },
-    { id: 't-nametags', target: 'guests', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Prep name tags, markers, and a sign-in / contact-update sheet for the registration table', when: 'T-12d' },
-    { id: 't-weather-check', target: 'weather', milestoneId: 'confirm-weather-plan', phase: 'planning', label: 'Check the 7-day forecast; confirm the rain backup (indoor space or tent on hold)', when: 'T-7d', whenChoice: { id: 'venue-setting', ask: 'Outside, inside, or outside with somewhere to move to?', in: ['Outdoor park pavilion', 'Backyard', 'Outdoor with indoor backup'] } },
-    { id: 't-shop-dry', target: 'list', milestoneId: 'shop-nonperishables', phase: 'purchasing', label: 'Buy drinks, water, paper goods, trash bags, sunscreen, bug spray, games', when: 'T-3d' },
-    { id: 't-shop-fresh', target: 'list', milestoneId: 'shop-perishables-ice', phase: 'purchasing', label: 'Buy protein, perishables, and ice (day before or morning of)', when: 'T-1d' },
-    { id: 't-load-coolers', target: 'day', milestoneId: 'setup-day', phase: 'setup', label: 'Ice the coolers, set up drink stations, light the grill', when: 'T0' },
-    { id: 't-set-tables', target: 'day', milestoneId: 'setup-day', phase: 'setup', label: 'Set tables, shade canopies, seating; stage the food/serving table', when: 'T0' },
-    { id: 't-reg-table', target: 'day', milestoneId: 'setup-day', phase: 'setup', label: 'Set up the registration table: name tags, sign-in sheet, marker', when: 'T0' },
-    { id: 't-trash-stations', target: 'day', milestoneId: 'setup-day', phase: 'setup', label: 'Place trash + recycling bins at multiple points with spare bags', when: 'T0' },
-    { id: 't-call-photo', target: 'day', milestoneId: 'setup-day', phase: 'execution', label: 'At the set time, call everyone in for the group photo before anyone leaves', when: 'T0', whenChoice: { id: 'group-photo', not: ['Skip / candids only'] } },
-    { id: 't-cleanup-sweep', target: 'day', milestoneId: 'setup-day', phase: 'cleanup', label: 'Bag trash, collect rentals/coolers, walk the site for left items and litter', when: 'T0+5h' },
+    { id: 't-runofshow', target: 'build-day', facts: [], milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Write the run-of-show: arrival, photo, meal, games, cleanup — assign each to a volunteer', when: 'T-13d' },
+    { id: 't-nametags', target: 'guests', facts: [], milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Prep name tags, markers, and a sign-in / contact-update sheet for the registration table', when: 'T-12d' },
+    { id: 't-weather-check', target: 'weather', facts: [], milestoneId: 'confirm-weather-plan', phase: 'planning', label: 'Check the 7-day forecast; confirm the rain backup (indoor space or tent on hold)', when: 'T-7d', whenChoice: { id: 'venue-setting', ask: 'Outside, inside, or outside with somewhere to move to?', in: ['Outdoor park pavilion', 'Backyard', 'Outdoor with indoor backup'] } },
+    { id: 't-shop-dry', target: 'list', facts: [], milestoneId: 'shop-nonperishables', phase: 'purchasing', label: 'Buy drinks, water, paper goods, trash bags, sunscreen, bug spray, games', when: 'T-3d' },
+    { id: 't-shop-fresh', target: 'list', facts: ['then:food-bought'], milestoneId: 'shop-perishables-ice', phase: 'purchasing', label: 'Buy protein, perishables, and ice (day before or morning of)', when: 'T-1d' },
+    { id: 't-load-coolers', target: 'day', facts: [], milestoneId: 'setup-day', phase: 'setup', label: 'Ice the coolers, set up drink stations, light the grill', when: 'T0' },
+    { id: 't-set-tables', target: 'day', facts: [], milestoneId: 'setup-day', phase: 'setup', label: 'Set tables, shade canopies, seating; stage the food/serving table', when: 'T0' },
+    { id: 't-reg-table', target: 'day', facts: [], milestoneId: 'setup-day', phase: 'setup', label: 'Set up the registration table: name tags, sign-in sheet, marker', when: 'T0' },
+    { id: 't-trash-stations', target: 'day', facts: [], milestoneId: 'setup-day', phase: 'setup', label: 'Place trash + recycling bins at multiple points with spare bags', when: 'T0' },
+    { id: 't-call-photo', target: 'day', facts: [], milestoneId: 'setup-day', phase: 'execution', label: 'At the set time, call everyone in for the group photo before anyone leaves', when: 'T0', whenChoice: { id: 'group-photo', not: ['Skip / candids only'] } },
+    { id: 't-cleanup-sweep', target: 'day', facts: [], milestoneId: 'setup-day', phase: 'cleanup', label: 'Bag trash, collect rentals/coolers, walk the site for left items and litter', when: 'T0+5h' },
 
     // ── W1.3 enrichment — every row below is whenChoice-gated so the bare
     // local single-day reunion's checklist is byte-identical to before. ──
 
     // COMMITTEE (planning-team → 'A cousins committee (3-6 people)')
-    { id: 't-committee-recruit', target: 'none', milestoneId: 'set-date-venue', phase: 'planning', label: 'Ask one relative from each branch of the family to join the reunion committee — three to six people is the sweet spot', when: 'T-74d', whenChoice: { id: 'planning-team', in: ['A cousins committee (3-6 people)'] } },
-    { id: 't-committee-lanes', target: 'spread', milestoneId: 'build-guest-list', phase: 'planning', label: 'Split the committee into lanes — food, where everyone stays, the program, and the money — with one named owner per lane', when: 'T-70d', whenChoice: { id: 'planning-team', in: ['A cousins committee (3-6 people)'] } },
-    { id: 't-committee-cadence', target: 'none', milestoneId: 'build-guest-list', phase: 'planning', label: 'Set a short committee check-in call every other week and a group thread for everything in between', when: 'T-68d', whenChoice: { id: 'planning-team', in: ['A cousins committee (3-6 people)'] } },
-    { id: 't-committee-money', target: 'money', milestoneId: 'build-guest-list', phase: 'planning', label: 'Agree the money rule up front: one treasurer handles every dollar in and out, keeps the ledger, and shares the running total with the whole committee', when: 'T-66d', whenChoice: { id: 'planning-team', in: ['A cousins committee (3-6 people)'] } },
+    { id: 't-committee-recruit', target: 'none', facts: [], milestoneId: 'set-date-venue', phase: 'planning', label: 'Ask one relative from each branch of the family to join the reunion committee — three to six people is the sweet spot', when: 'T-74d', whenChoice: { id: 'planning-team', in: ['A cousins committee (3-6 people)'] } },
+    { id: 't-committee-lanes', target: 'spread', facts: [], milestoneId: 'build-guest-list', phase: 'planning', label: 'Split the committee into lanes — food, where everyone stays, the program, and the money — with one named owner per lane', when: 'T-70d', whenChoice: { id: 'planning-team', in: ['A cousins committee (3-6 people)'] } },
+    { id: 't-committee-cadence', target: 'none', facts: [], milestoneId: 'build-guest-list', phase: 'planning', label: 'Set a short committee check-in call every other week and a group thread for everything in between', when: 'T-68d', whenChoice: { id: 'planning-team', in: ['A cousins committee (3-6 people)'] } },
+    { id: 't-committee-money', target: 'money', facts: [], milestoneId: 'build-guest-list', phase: 'planning', label: 'Agree the money rule up front: one treasurer handles every dollar in and out, keeps the ledger, and shares the running total with the whole committee', when: 'T-66d', whenChoice: { id: 'planning-team', in: ['A cousins committee (3-6 people)'] } },
 
     // MULTI-DAY + TRAVEL/LODGING (reunion-span → 'A full weekend (2-3 days)').
     // The lodging DECISION is the generic dest_lodging modifier (room block /
     // guaranteed block / self-book / host-arranged rental) — these tasks are the
     // reunion-shaped work around it, including the family-hosted spread the
     // generic options don't cover.
-    { id: 't-weekend-venue', target: 'none', milestoneId: 'set-date-venue', phase: 'planning', label: 'Confirm a gathering spot for every day — the main-day pavilion, plus somewhere easy for the arrival evening and the goodbye morning', when: 'T-70d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
-    { id: 't-weekend-arc', target: 'none', milestoneId: 'book-vendors', phase: 'planning', label: 'Sketch the weekend arc — an easy arrival evening, the big reunion day, and a goodbye breakfast before everyone hits the road', when: 'T-40d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
-    { id: 't-family-host-map', target: 'spread', milestoneId: 'book-vendors', phase: 'planning', label: 'Map who is hosting whom — guest rooms and air mattresses claimed by name before anyone lands, with the overflow pointed at the group hotel options', when: 'T-30d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
-    { id: 't-arrival-windows', target: 'none', milestoneId: 'collect-rsvps', phase: 'planning', label: 'Collect each household\'s arrival window — who gets in the night before, who lands the morning of the big day', when: 'T-21d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
-    { id: 't-airport-runs', target: 'none', milestoneId: 'collect-rsvps', phase: 'planning', label: 'Match every non-driver to a ride — who picks up whom, with phone numbers swapped before travel day', when: 'T-14d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] }, whenMode: { not: ['drive'] } },
-    { id: 't-perday-ros', target: 'build-day', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Write a run-of-show for each day — even the easy arrival evening gets a where-and-when, so nobody is calling around for the plan', when: 'T-13d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
-    { id: 't-memory-moment', target: 'none', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Plan the main day\'s memory moment — an elder walks the family tree, a word for those lost this year — kept simple and open to everyone', when: 'T-12d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+    { id: 't-weekend-venue', target: 'none', facts: [], milestoneId: 'set-date-venue', phase: 'planning', label: 'Confirm a gathering spot for every day — the main-day pavilion, plus somewhere easy for the arrival evening and the goodbye morning', when: 'T-70d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+    { id: 't-weekend-arc', target: 'none', facts: [], milestoneId: 'book-vendors', phase: 'planning', label: 'Sketch the weekend arc — an easy arrival evening, the big reunion day, and a goodbye breakfast before everyone hits the road', when: 'T-40d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+    { id: 't-family-host-map', target: 'spread', facts: [], milestoneId: 'book-vendors', phase: 'planning', label: 'Map who is hosting whom — guest rooms and air mattresses claimed by name before anyone lands, with the overflow pointed at the group hotel options', when: 'T-30d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+    { id: 't-arrival-windows', target: 'none', facts: [], milestoneId: 'collect-rsvps', phase: 'planning', label: 'Collect each household\'s arrival window — who gets in the night before, who lands the morning of the big day', when: 'T-21d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+    { id: 't-airport-runs', target: 'none', facts: [], milestoneId: 'collect-rsvps', phase: 'planning', label: 'Match every non-driver to a ride — who picks up whom, with phone numbers swapped before travel day', when: 'T-14d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] }, whenMode: { not: ['drive'] } },
+    { id: 't-perday-ros', target: 'build-day', facts: [], milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Write a run-of-show for each day — even the easy arrival evening gets a where-and-when, so nobody is calling around for the plan', when: 'T-13d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+    { id: 't-memory-moment', target: 'none', facts: [], milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Plan the main day\'s memory moment — an elder walks the family tree, a word for those lost this year — kept simple and open to everyone', when: 'T-12d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
 
     // SHARED PAYMENTS (cost-share → 'Each family chips in a set amount')
-    { id: 't-costshare-amount', target: 'list', milestoneId: 'send-save-the-dates', phase: 'planning', label: 'Set the per-family amount and say plainly what it covers — the pavilion, the meat, shirts, paper goods — in the invitation itself', when: 'T-56d', whenChoice: { id: 'cost-share', in: ['Each family chips in a set amount'] } },
-    { id: 't-costshare-deadline', target: 'guests', milestoneId: 'collect-rsvps', phase: 'planning', label: 'Give the chip-in a real deadline about three weeks out, and send one kind reminder to the households that miss it', when: 'T-21d', whenChoice: { id: 'cost-share', in: ['Each family chips in a set amount'] } },
-    { id: 't-costshare-ledger', target: 'guests', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Keep the treasurer\'s ledger current — every household\'s payment in, every receipt out, visible to anyone who asks', when: 'T-14d', whenChoice: { id: 'cost-share', in: ['Each family chips in a set amount'] } },
-    { id: 't-costshare-settle', target: 'money', milestoneId: 'setup-day', phase: 'cleanup', label: 'Settle up within the week — the treasurer reimburses everyone who fronted receipts, then shares the final tally with the family', when: 'T0+1d', whenChoice: { id: 'cost-share', in: ['Each family chips in a set amount'] } },
+    { id: 't-costshare-amount', target: 'list', facts: ['invites-out'], milestoneId: 'send-save-the-dates', phase: 'planning', label: 'Set the per-family amount and say plainly what it covers — the pavilion, the meat, shirts, paper goods — in the invitation itself', when: 'T-56d', whenChoice: { id: 'cost-share', in: ['Each family chips in a set amount'] } },
+    { id: 't-costshare-deadline', target: 'guests', facts: [], milestoneId: 'collect-rsvps', phase: 'planning', label: 'Give the chip-in a real deadline about three weeks out, and send one kind reminder to the households that miss it', when: 'T-21d', whenChoice: { id: 'cost-share', in: ['Each family chips in a set amount'] } },
+    { id: 't-costshare-ledger', target: 'guests', facts: ['nothing-owed'], milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Keep the treasurer\'s ledger current — every household\'s payment in, every receipt out, visible to anyone who asks', when: 'T-14d', whenChoice: { id: 'cost-share', in: ['Each family chips in a set amount'] } },
+    { id: 't-costshare-settle', target: 'money', facts: ['nothing-owed'], milestoneId: 'setup-day', phase: 'cleanup', label: 'Settle up within the week — the treasurer reimburses everyone who fronted receipts, then shares the final tally with the family', when: 'T0+1d', whenChoice: { id: 'cost-share', in: ['Each family chips in a set amount'] } },
 
     // PHOTOGRAPHY (group-photo → 'Hire a photographer for 1 hour')
-    { id: 't-book-photographer', target: 'vendors', milestoneId: 'book-vendors', phase: 'planning', label: 'Book the photographer for a one-hour window that covers the group photo and the start of the meal', when: 'T-21d', whenChoice: { id: 'group-photo', in: ['Hire a photographer for 1 hour'] } },
-    { id: 't-shot-list', target: 'vendors', milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Send the photographer the shot list — the whole group, each family branch, the elders, the four-generations frame', when: 'T-7d', whenChoice: { id: 'group-photo', in: ['Hire a photographer for 1 hour'] } },
+    { id: 't-book-photographer', target: 'vendors', facts: ['roles:photographer'], milestoneId: 'book-vendors', phase: 'planning', label: 'Book the photographer for a one-hour window that covers the group photo and the start of the meal', when: 'T-21d', whenChoice: { id: 'group-photo', in: ['Hire a photographer for 1 hour'] } },
+    { id: 't-shot-list', target: 'vendors', facts: [], milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Send the photographer the shot list — the whole group, each family branch, the elders, the four-generations frame', when: 'T-7d', whenChoice: { id: 'group-photo', in: ['Hire a photographer for 1 hour'] } },
 
     // SHIRTS (reunion-shirts → 'Yes — matching shirts')
-    { id: 't-shirt-sizes', target: 'guests', milestoneId: 'send-save-the-dates', phase: 'planning', label: 'Collect shirt sizes by household as RSVPs come in — adult and kid counts per size', when: 'T-42d', whenChoice: { id: 'reunion-shirts', in: ['Yes — matching shirts'] } },
-    { id: 't-shirt-order', target: 'none', milestoneId: 'book-vendors', phase: 'planning', label: 'Place the shirt order — bulk printers need two to three weeks, and a reorder never arrives in time', when: 'T-28d', whenChoice: { id: 'reunion-shirts', in: ['Yes — matching shirts'] } },
-    { id: 't-shirt-handout', target: 'day', milestoneId: 'setup-day', phase: 'setup', label: 'Hand out shirts at the registration table, checked off by household', when: 'T0', whenChoice: { id: 'reunion-shirts', in: ['Yes — matching shirts'] } },
+    { id: 't-shirt-sizes', target: 'guests', facts: [], milestoneId: 'send-save-the-dates', phase: 'planning', label: 'Collect shirt sizes by household as RSVPs come in — adult and kid counts per size', when: 'T-42d', whenChoice: { id: 'reunion-shirts', in: ['Yes — matching shirts'] } },
+    { id: 't-shirt-order', target: 'none', facts: [], milestoneId: 'book-vendors', phase: 'planning', label: 'Place the shirt order — bulk printers need two to three weeks, and a reorder never arrives in time', when: 'T-28d', whenChoice: { id: 'reunion-shirts', in: ['Yes — matching shirts'] } },
+    { id: 't-shirt-handout', target: 'day', facts: [], milestoneId: 'setup-day', phase: 'setup', label: 'Hand out shirts at the registration table, checked off by household', when: 'T0', whenChoice: { id: 'reunion-shirts', in: ['Yes — matching shirts'] } },
 
     // ── AFTER THE DAY — negative-offset milestones, see the block above ──
-    { id: 't-photo-send', target: 'guests', milestoneId: 'share-group-photo', phase: 'photo', label: 'Send the full-resolution group photo to one contact in every household — the file itself, not a link that expires, because half the family will want it printed', when: 'T0 +3d', whenChoice: { id: 'group-photo', not: ['Skip / candids only'] } },
-    { id: 't-photo-album', target: 'guest-list', milestoneId: 'share-group-photo', phase: 'photo', label: 'Open one shared album and ask everyone to drop their phone photos in this week, while the day is still on the camera roll', when: 'T0 +3d' },
-    { id: 't-photo-mail', target: 'none', milestoneId: 'share-group-photo', phase: 'photo', label: 'Print the group photo for the elders and anyone who does not use a phone for pictures, and mail it', when: 'T0 +3d', whenChoice: { id: 'group-photo', not: ['Skip / candids only'] } },
-    { id: 't-return-rentals', target: 'vendors', whenRented: true, milestoneId: 'return-borrowed', phase: 'cleanup', label: 'Return the tents, tables, chairs, and any bounce house by the time on the rental contract — late days bill as full days', when: 'T0 +2d' },
-    { id: 't-return-family', target: 'borrowed', milestoneId: 'return-borrowed', phase: 'cleanup', label: 'Get every borrowed cooler, canopy, roaster, and folding chair back to the household it came from, matched against the list you made loading in', when: 'T0 +2d' },
-    { id: 't-settle-receipts', target: 'list', milestoneId: 'settle-shared-cost', phase: 'budget', label: 'Collect every receipt — pavilion fee, meat, ice, paper goods, shirts, rentals — and total what the day actually cost against what came in', when: 'T0 +7d' },
-    { id: 't-settle-reimburse', target: 'money', milestoneId: 'settle-shared-cost', phase: 'budget', label: 'Pay back everyone who fronted money, by name and in full, before anyone has to ask', when: 'T0 +7d' },
-    { id: 't-settle-share', target: 'money', milestoneId: 'settle-shared-cost', phase: 'budget', label: 'Send the family the plain final tally — what came in, what went out, and what is left in the pot for next time', when: 'T0 +7d' },
+    { id: 't-photo-send', target: 'guests', facts: [], milestoneId: 'share-group-photo', phase: 'photo', label: 'Send the full-resolution group photo to one contact in every household — the file itself, not a link that expires, because half the family will want it printed', when: 'T0 +3d', whenChoice: { id: 'group-photo', not: ['Skip / candids only'] } },
+    { id: 't-photo-album', target: 'guest-list', facts: [], milestoneId: 'share-group-photo', phase: 'photo', label: 'Open one shared album and ask everyone to drop their phone photos in this week, while the day is still on the camera roll', when: 'T0 +3d' },
+    { id: 't-photo-mail', target: 'none', facts: [], milestoneId: 'share-group-photo', phase: 'photo', label: 'Print the group photo for the elders and anyone who does not use a phone for pictures, and mail it', when: 'T0 +3d', whenChoice: { id: 'group-photo', not: ['Skip / candids only'] } },
+    { id: 't-return-rentals', target: 'vendors', facts: [], whenRented: true, milestoneId: 'return-borrowed', phase: 'cleanup', label: 'Return the tents, tables, chairs, and any bounce house by the time on the rental contract — late days bill as full days', when: 'T0 +2d' },
+    { id: 't-return-family', target: 'borrowed', facts: ['borrowed-back'], milestoneId: 'return-borrowed', phase: 'cleanup', label: 'Get every borrowed cooler, canopy, roaster, and folding chair back to the household it came from, matched against the list you made loading in', when: 'T0 +2d' },
+    { id: 't-settle-receipts', target: 'list', facts: [], milestoneId: 'settle-shared-cost', phase: 'budget', label: 'Collect every receipt — pavilion fee, meat, ice, paper goods, shirts, rentals — and total what the day actually cost against what came in', when: 'T0 +7d' },
+    { id: 't-settle-reimburse', target: 'money', facts: ['nothing-owed'], milestoneId: 'settle-shared-cost', phase: 'budget', label: 'Pay back everyone who fronted money, by name and in full, before anyone has to ask', when: 'T0 +7d' },
+    { id: 't-settle-share', target: 'money', facts: [], milestoneId: 'settle-shared-cost', phase: 'budget', label: 'Send the family the plain final tally — what came in, what went out, and what is left in the pot for next time', when: 'T0 +7d' },
     // MOVED OFF A DEAD SURFACE, 2026-09-23. Was a `schedules.preparation` row at
     // T-7d. The playbook BOOKS caterers and rentals at T-40d/T-38d and then never
     // touched them again — a reconfirmation pass a week out is a different step
     // from booking, and it is the one that catches a van that was never actually
     // reserved.
-    { id: 't-reconfirm-vendors', target: 'vendors', milestoneId: 'confirm-weather-plan', phase: 'vendor', label: 'Reconfirm every booked vendor and rental a week out: date, delivery window, headcount, and who they call on the day', when: 'T-7d' },
-    { id: 't-update-roster', target: 'guests', milestoneId: 'carry-the-next-one', phase: 'guest', label: 'Type the sign-in sheet into the family contact list while the handwriting is fresh — new addresses, new phone numbers, new babies, and who moved', when: 'T0 +14d' },
-    { id: 't-next-date', target: 'none', milestoneId: 'carry-the-next-one', phase: 'planning', label: 'Ask the family for the next reunion year and month now, while everyone is still saying "we should do this more often"', when: 'T0 +14d' },
-    { id: 't-next-committee', target: 'none', milestoneId: 'carry-the-next-one', phase: 'planning', label: 'Name who is carrying the next one — a host or a committee, out loud and in writing — so it is not one person\'s job by default again', when: 'T0 +14d' },
+    { id: 't-reconfirm-vendors', target: 'vendors', facts: [], milestoneId: 'confirm-weather-plan', phase: 'vendor', label: 'Reconfirm every booked vendor and rental a week out: date, delivery window, headcount, and who they call on the day', when: 'T-7d' },
+    { id: 't-update-roster', target: 'guests', facts: [], milestoneId: 'carry-the-next-one', phase: 'guest', label: 'Type the sign-in sheet into the family contact list while the handwriting is fresh — new addresses, new phone numbers, new babies, and who moved', when: 'T0 +14d' },
+    { id: 't-next-date', target: 'none', facts: [], milestoneId: 'carry-the-next-one', phase: 'planning', label: 'Ask the family for the next reunion year and month now, while everyone is still saying "we should do this more often"', when: 'T0 +14d' },
+    { id: 't-next-committee', target: 'none', facts: [], milestoneId: 'carry-the-next-one', phase: 'planning', label: 'Name who is carrying the next one — a host or a committee, out loud and in writing — so it is not one person\'s job by default again', when: 'T0 +14d' },
   ],
 
   purchases: [

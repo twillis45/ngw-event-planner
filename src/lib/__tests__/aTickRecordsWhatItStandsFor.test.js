@@ -12,7 +12,21 @@
 import { factsATickRecords, taskSatisfied } from '../taskEngine';
 
 const ev = (extra = {}) => ({ id: 'e', type: 'Dinner Party', guests: [], vendors: [], ...extra });
-const step = (task) => ({ id: 's', task, done: false });
+// INPUTS ONLY changed (six root causes, cause 1, part 2): a row is proven by
+// the facts its step DECLARES, never by its words. Each row below carries the
+// declaration a step with these words carries (derived once from the retired
+// text rules, as the playbooks' were). Assertions unchanged.
+const FACTS = {
+  'Ask every guest for allergies, dietary needs and whether they drink': ['or:dietary-noted'],
+  'Chase non-responders; lock the final count + any dietary needs': ['replies-chased'],
+  'Collect dietary needs and decide the fix for each': ['or:dietary-noted'],
+  'Invite everyone with the date, the serve time, and the dietary and overnight ask': ['invites-out'],
+  'Marinate proteins; prep cold sides': [],
+  'Send invites with date/time/place + RSVP-by + allergy ask': ['invites-out'],
+  'Send invites with registry, RSVP-by, dietary ask': ['invites-out'],
+  'Send the invite': ['invites-out'],
+};
+const step = (task) => ({ id: 's', task, facts: FACTS[task], done: false });
 
 // SUPERSEDED FOR SENDS (owner, 11/23/2026, six root causes): "Mark done must
 // never record an action as performed (e.g. invite sent) when nothing was

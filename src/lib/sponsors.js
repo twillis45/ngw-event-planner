@@ -12,8 +12,6 @@
 import { fmtLongDate } from './doItForMe';
 import { decisionAnswered } from './playbooks';
 
-// The ask: PTA's one-page sponsor ask.
-export const SPONSOR_ASK_ROW = /^ask local businesses to sponsor\b/i;
 // The rows the sponsor list answers: thanks, the banner, the recognition owed,
 // the prospectus (Gala, Conference).
 export const SPONSOR_LIST_ROW = /^thank (?:the )?sponsors\b|^order the sponsor thank-you banner\b|^collect sponsor logos\b|\bprospectus\b/i;

@@ -49,7 +49,7 @@ const crawfishBoil = {
   ],
 
   milestones: [
-    { id: 'cb_setdate', name: 'Set date (spring, while crawfish are running), headcount, sacks', offsetDays: 14, owner: 'host', category: 'planning', risk: { ifDelayed: 'Miss the season or mis-size the boil', severity: 'med' } },
+    { id: 'cb_setdate', name: 'Set date (spring, while crawfish are running), headcount, sacks', facts: ['date-set'], offsetDays: 14, owner: 'host', category: 'planning', risk: { ifDelayed: 'Miss the season or mis-size the boil', severity: 'med' } },
     { id: 'cb_source', name: 'Find a live-crawfish source + reserve the sacks', offsetDays: 10, owner: 'host', dependsOn: ['cb_setdate'], category: 'food', risk: { ifDelayed: 'Sacks sell out; price/size swings with the catch', severity: 'high' } },
     { id: 'cb_rig_check', name: 'Check the pot, jet burner, propane & safe boil spot', offsetDays: 7, owner: 'host', dependsOn: ['cb_setdate'], category: 'logistics', risk: { ifDelayed: 'Dead burner or empty tank on boil day', severity: 'high' } },
     { id: 'cb_headcount', name: 'Lock headcount; confirm sack order', offsetDays: 3, owner: 'host', dependsOn: ['cb_source'], category: 'guest', risk: { ifDelayed: 'Order wrong amount of live crawfish', severity: 'med' } },
@@ -61,15 +61,15 @@ const crawfishBoil = {
   ],
 
   tasks: [
-    { id: 't_source', target: 'list', milestoneId: 'cb_source', phase: 'food', label: 'Call seafood markets / crawfish suppliers; reserve sacks; ask price-per-pound, size, and whether they\'re running clean', when: 'T-10d' },
-    { id: 't_rig', target: 'none', milestoneId: 'cb_rig_check', phase: 'logistics', label: 'Test-fire the jet burner, check the pot + basket + paddle, weigh/shake the propane tank, pick the LEVEL boil spot away from the house, kids, and traffic', when: 'T-7d' },
-    { id: 't_count', target: 'guests', milestoneId: 'cb_headcount', phase: 'guest', label: 'Lock the headcount; confirm sacks at ~3-5 lb live crawfish per adult eater (heavy eaters more)', when: 'T-3d' },
-    { id: 't_nonperish', target: 'list', milestoneId: 'cb_shop_nonperish', phase: 'shopping', label: 'Boil seasoning (Zatarain\'s / Louisiana Fish Fry), cayenne, salt, lemons, potatoes, corn, sausage, onions, garlic, mushrooms, drinks, paper/newspaper, cleanup', when: 'T-3d' },
-    { id: 't_pickup', target: 'list', milestoneId: 'cb_pickup', phase: 'food', label: 'Pick up the LIVE crawfish in the sack; keep cool, damp, and shaded — never sealed/airtight or submerged; boil same day if possible', when: 'T-1d / T0 morning' },
-    { id: 't_purge', target: 'day', milestoneId: 'cb_purge', phase: 'food', label: 'Purge the live crawfish in a tub of clean water (cull the dead/crushed), rinse until water runs clear; cut potatoes/corn/sausage/onions; mix the seasoning', when: 'T0 -2:00' },
-    { id: 't_heat', target: 'day', milestoneId: 'cb_setup', phase: 'setup', label: 'Set burner on level ground, fill pot ~½-⅔ with water + seasoning, cover table in paper, bring to a ROLLING boil; NEVER leave the pot unattended', when: 'T0 -1:00' },
-    { id: 't_boil', target: 'day', milestoneId: 'event', phase: 'food', label: 'Boil potatoes/onions/garlic first, then corn + sausage, then crawfish for ~3-5 min; cut the heat and SOAK ~20-30 min for flavor; dump on the table', when: 'T0' },
-    { id: 't_cool', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Cut the propane, let the pot/water cool before moving; roll up the paper with the shells, bag it, ice down leftovers, break down the rig', when: 'T0 +5:00' },
+    { id: 't_source', target: 'list', facts: [], milestoneId: 'cb_source', phase: 'food', label: 'Call seafood markets / crawfish suppliers; reserve sacks; ask price-per-pound, size, and whether they\'re running clean', when: 'T-10d' },
+    { id: 't_rig', target: 'none', facts: [], milestoneId: 'cb_rig_check', phase: 'logistics', label: 'Test-fire the jet burner, check the pot + basket + paddle, weigh/shake the propane tank, pick the LEVEL boil spot away from the house, kids, and traffic', when: 'T-7d' },
+    { id: 't_count', target: 'guests', facts: ['guest-count'], milestoneId: 'cb_headcount', phase: 'guest', label: 'Lock the headcount; confirm sacks at ~3-5 lb live crawfish per adult eater (heavy eaters more)', when: 'T-3d' },
+    { id: 't_nonperish', target: 'list', facts: [], milestoneId: 'cb_shop_nonperish', phase: 'shopping', label: 'Boil seasoning (Zatarain\'s / Louisiana Fish Fry), cayenne, salt, lemons, potatoes, corn, sausage, onions, garlic, mushrooms, drinks, paper/newspaper, cleanup', when: 'T-3d' },
+    { id: 't_pickup', target: 'list', facts: [], milestoneId: 'cb_pickup', phase: 'food', label: 'Pick up the LIVE crawfish in the sack; keep cool, damp, and shaded — never sealed/airtight or submerged; boil same day if possible', when: 'T-1d / T0 morning' },
+    { id: 't_purge', target: 'day', facts: [], milestoneId: 'cb_purge', phase: 'food', label: 'Purge the live crawfish in a tub of clean water (cull the dead/crushed), rinse until water runs clear; cut potatoes/corn/sausage/onions; mix the seasoning', when: 'T0 -2:00' },
+    { id: 't_heat', target: 'day', facts: [], milestoneId: 'cb_setup', phase: 'setup', label: 'Set burner on level ground, fill pot ~½-⅔ with water + seasoning, cover table in paper, bring to a ROLLING boil; NEVER leave the pot unattended', when: 'T0 -1:00' },
+    { id: 't_boil', target: 'day', facts: [], milestoneId: 'event', phase: 'food', label: 'Boil potatoes/onions/garlic first, then corn + sausage, then crawfish for ~3-5 min; cut the heat and SOAK ~20-30 min for flavor; dump on the table', when: 'T0' },
+    { id: 't_cool', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Cut the propane, let the pot/water cool before moving; roll up the paper with the shells, bag it, ice down leftovers, break down the rig', when: 'T0 +5:00' },
   ],
 
   purchases: [

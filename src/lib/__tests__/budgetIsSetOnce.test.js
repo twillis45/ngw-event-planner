@@ -21,6 +21,10 @@ import { deriveEventPhaseProgress } from '../phaseProgress';
 import { taskSatisfied } from '../taskEngine';
 import { buildAssembleRevealStages } from '../assembleRevealEngines';
 import { pickDroppableBudgetRow } from '../budgetSwap';
+// INPUTS ONLY changed (six root causes, cause 1, part 2): a row is proven by
+// the facts its step DECLARES, never by its words, so each row literal below
+// carries `facts`: the declaration a step with its words carries (derived once
+// from the retired text rules, as the playbooks' were). Assertions unchanged.
 
 const iso = (d) => { const x = new Date(); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
 
@@ -107,8 +111,8 @@ describe('every reader now agrees on the shipped shape', () => {
   });
 
   test('the checklist agrees with the ledger, both ways', () => {
-    expect(taskSatisfied(ROWS_ONLY(), { task: 'Set the budget' })).toBe(true);
-    expect(taskSatisfied(NEITHER(), { task: 'Set the budget' })).toBe(false);
+    expect(taskSatisfied(ROWS_ONLY(), { task: 'Set the budget', facts: ['budget-set'] })).toBe(true);
+    expect(taskSatisfied(NEITHER(), { task: 'Set the budget', facts: ['budget-set'] })).toBe(false);
   });
 
   test('budgetSwap knows the ceiling moves when the total is derived', () => {

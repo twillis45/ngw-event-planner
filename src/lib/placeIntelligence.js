@@ -87,7 +87,8 @@ export function derivePlaceIntelligence(event = {}) {
   // venueFor's addressSettled ("handled") while this asked "Add the address…"
   // under the same named hall. A named venue IS the address here too; a home
   // still needs its street, because "our place" is not somewhere guests can find.
-  const hasAddress = atHome ? !!vf.address : !!vf.addressSettled;
+  // venueFor's outward verdict, the one the ledger's venueaddress part reads.
+  const hasAddress = vf.findable;
   const outdoors = placeIsOutdoors(event);
   const indoorOnly = event.indoorOutdoor === 'indoor';
   const hasVendors = (event.vendors || []).some((v) => v && has(v.name));

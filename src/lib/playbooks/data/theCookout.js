@@ -128,8 +128,8 @@ const theCookout = {
   ],
 
   milestones: [
-    { id: 'co_setdate', name: 'Set date, headcount, name the grill master', offsetDays: 21, owner: 'host', category: 'planning', risk: { ifDelayed: 'No grill master locked; weather window unknown', severity: 'med' } },
-    { id: 'co_spread', name: 'Plan the spread + assign dishes (who brings what)', offsetDays: 14, owner: 'host', dependsOn: ['co_setdate'], category: 'planning', risk: { ifDelayed: 'Duplicate sides, missing greens/mac, untrusted potato salad', severity: 'med' } },
+    { id: 'co_setdate', name: 'Set date, headcount, name the grill master', facts: ['date-set'], offsetDays: 21, owner: 'host', category: 'planning', risk: { ifDelayed: 'No grill master locked; weather window unknown', severity: 'med' } },
+    { id: 'co_spread', name: 'Plan the spread + assign dishes (who brings what)', facts: ['menu-decided'], offsetDays: 14, owner: 'host', dependsOn: ['co_setdate'], category: 'planning', risk: { ifDelayed: 'Duplicate sides, missing greens/mac, untrusted potato salad', severity: 'med' } },
     { id: 'co_invite', name: 'Spread the word + confirm dish assignments + drinks plan', offsetDays: 12, owner: 'host', dependsOn: ['co_spread'], category: 'guest', risk: { ifDelayed: 'Wrong headcount, gaps in the spread', severity: 'med' } },
     { id: 'co_rentals', name: 'Lock shade, seating, tables, DJ/playlist', offsetDays: 10, owner: 'host', dependsOn: ['co_invite'], category: 'logistics', risk: { ifDelayed: 'No shade for elders, no music', severity: 'med' } },
     { id: 'co_headcount', name: 'Firm headcount + weather check', offsetDays: 3, owner: 'host', dependsOn: ['co_invite'], category: 'guest', risk: { ifDelayed: 'Wrong protein quantity; no rain plan', severity: 'high' } },
@@ -145,22 +145,22 @@ const theCookout = {
     // moot when the host grills or a pitmaster is hired, so it shows only for
     // the designated one. The buying and the grilling are still work under
     // either pick, so those two say who does them instead of standing down.
-    { id: 't_grillmaster', target: 'assign', milestoneId: 'co_setdate', phase: 'planning', label: 'Name the grill master out loud; confirm they are in and have a backup', when: 'T-21d', whenChoice: { id: 'grill_master', in: ['Designated grill master (uncle / family pitmaster)'] } },
-    { id: 't_spread', target: 'spread', milestoneId: 'co_spread', phase: 'planning', label: 'Map the spread: meat + mac & cheese, potato salad, baked beans, greens, cornbread, slaw, desserts — assign each to the person known for it', when: 'T-14d' },
-    { id: 't_invite', target: 'invite', milestoneId: 'co_invite', phase: 'guest', label: 'Spread the word (group text / flyer); lock who is bringing what; confirm the potato salad is claimed by the trusted hands', when: 'T-12d' },
-    { id: 't_music', target: 'vendors', milestoneId: 'co_rentals', phase: 'logistics', label: 'Book the DJ or build the playlist (old-school R&B, line dances, grown-folks slow jams); test the speaker', when: 'T-10d' },
-    { id: 't_seating', target: 'space', milestoneId: 'co_rentals', phase: 'logistics', label: 'Confirm canopies, chairs, tables; reserve a shaded, comfortable spot for the elders and a dedicated spades table', when: 'T-10d' },
-    { id: 't_weather', target: 'weather', milestoneId: 'co_headcount', phase: 'guest', label: 'Check the forecast; firm the headcount; confirm shade/rain plan', when: 'T-3d' },
-    { id: 't_nonperish_shop', target: 'list', milestoneId: 'co_shop_nonperish', phase: 'shopping', label: 'Drinks (red drink mix, soda, water, grown-folks section), fuel, disposables, foil pans, to-go containers, trash bags', when: 'T-3d' },
-    { id: 't_meat_shop', target: 'list', milestoneId: 'co_shop_meat', phase: 'shopping', label: 'Grill master buys ribs, chicken, burgers, dogs, links + the spread groceries', when: 'T-2d',
+    { id: 't_grillmaster', target: 'assign', facts: [], milestoneId: 'co_setdate', phase: 'planning', label: 'Name the grill master out loud; confirm they are in and have a backup', when: 'T-21d', whenChoice: { id: 'grill_master', in: ['Designated grill master (uncle / family pitmaster)'] } },
+    { id: 't_spread', target: 'spread', facts: ['menu-decided'], milestoneId: 'co_spread', phase: 'planning', label: 'Map the spread: meat + mac & cheese, potato salad, baked beans, greens, cornbread, slaw, desserts — assign each to the person known for it', when: 'T-14d' },
+    { id: 't_invite', target: 'invite', facts: [], milestoneId: 'co_invite', phase: 'guest', label: 'Spread the word (group text / flyer); lock who is bringing what; confirm the potato salad is claimed by the trusted hands', when: 'T-12d' },
+    { id: 't_music', target: 'vendors', facts: ['roles:dj'], milestoneId: 'co_rentals', phase: 'logistics', label: 'Book the DJ or build the playlist (old-school R&B, line dances, grown-folks slow jams); test the speaker', when: 'T-10d' },
+    { id: 't_seating', target: 'space', facts: [], milestoneId: 'co_rentals', phase: 'logistics', label: 'Confirm canopies, chairs, tables; reserve a shaded, comfortable spot for the elders and a dedicated spades table', when: 'T-10d' },
+    { id: 't_weather', target: 'weather', facts: [], milestoneId: 'co_headcount', phase: 'guest', label: 'Check the forecast; firm the headcount; confirm shade/rain plan', when: 'T-3d' },
+    { id: 't_nonperish_shop', target: 'list', facts: [], milestoneId: 'co_shop_nonperish', phase: 'shopping', label: 'Drinks (red drink mix, soda, water, grown-folks section), fuel, disposables, foil pans, to-go containers, trash bags', when: 'T-3d' },
+    { id: 't_meat_shop', target: 'list', facts: [], factsByAnswer: { grill_master: { 'Hire a pitmaster / caterer': ['then:food-bought'] } }, milestoneId: 'co_shop_meat', phase: 'shopping', label: 'Grill master buys ribs, chicken, burgers, dogs, links + the spread groceries', when: 'T-2d',
       copyByAnswer: { grill_master: { 'Host grills': 'Buy the ribs, chicken, burgers, dogs, links + the spread groceries', 'Hire a pitmaster / caterer': 'Buy the spread groceries, and the meat unless the pitmaster brings it' } } },
-    { id: 't_season', target: 'none', milestoneId: 'co_prep', phase: 'food', label: 'Season / marinate the meat overnight; start slow-cooked items (greens, beans, ribs prep)', when: 'T-1d evening' },
-    { id: 't_cook_spread', target: 'none', milestoneId: 'co_prep', phase: 'food', label: 'Cook the make-ahead spread: baked mac & cheese, potato salad, beans, greens, desserts', when: 'T-1d / T0 morning' },
-    { id: 't_setup', target: 'day', milestoneId: 'co_setup', phase: 'setup', label: 'Set up canopies + seating, coolers + ice, food + drink tables, spades table, music; light the pit early', when: 'T0 -2:00' },
-    { id: 't_grill', target: 'day', milestoneId: 'event', phase: 'food', label: 'Grill master fires the pit and works batches all afternoon; elders served first; bless the food before the plates go', when: 'T0',
+    { id: 't_season', target: 'none', facts: [], milestoneId: 'co_prep', phase: 'food', label: 'Season / marinate the meat overnight; start slow-cooked items (greens, beans, ribs prep)', when: 'T-1d evening' },
+    { id: 't_cook_spread', target: 'none', facts: [], milestoneId: 'co_prep', phase: 'food', label: 'Cook the make-ahead spread: baked mac & cheese, potato salad, beans, greens, desserts', when: 'T-1d / T0 morning' },
+    { id: 't_setup', target: 'day', facts: [], milestoneId: 'co_setup', phase: 'setup', label: 'Set up canopies + seating, coolers + ice, food + drink tables, spades table, music; light the pit early', when: 'T0 -2:00' },
+    { id: 't_grill', target: 'day', facts: [], milestoneId: 'event', phase: 'food', label: 'Grill master fires the pit and works batches all afternoon; elders served first; bless the food before the plates go', when: 'T0',
       copyByAnswer: { grill_master: { 'Host grills': 'Fire the pit and work batches all afternoon; elders served first; bless the food before the plates go', 'Hire a pitmaster / caterer': 'The pitmaster works the pit all afternoon; elders served first; bless the food before the plates go' } } },
-    { id: 't_togo', target: 'day', milestoneId: 'event', phase: 'food', label: 'Set out foil pans + to-go containers so everybody can make a plate to take home', when: 'T0 +4:00' },
-    { id: 't_cleanup', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Cool + scrape the grill, pack leftovers into to-go pans, bag trash + recycling, fold canopies/chairs', when: 'T0 +7:00' },
+    { id: 't_togo', target: 'day', facts: [], milestoneId: 'event', phase: 'food', label: 'Set out foil pans + to-go containers so everybody can make a plate to take home', when: 'T0 +4:00' },
+    { id: 't_cleanup', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Cool + scrape the grill, pack leftovers into to-go pans, bag trash + recycling, fold canopies/chairs', when: 'T0 +7:00' },
   ],
 
   purchases: [

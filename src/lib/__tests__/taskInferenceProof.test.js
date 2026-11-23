@@ -8,7 +8,47 @@
 // not just the instance: presence facts may prove SET-type tasks, never ACTS.
 const { taskSatisfied } = require('../taskEngine');
 
-const t = (task) => ({ task });
+// INPUTS ONLY changed (six root causes, cause 1, part 2): a row is proven by
+// the facts its step DECLARES, never by its words. Each row below carries the
+// declaration a step with these words carries (derived once from the retired
+// text rules, as the playbooks' were; where the words are a playbook's own,
+// its committed step declares the same). The assertions are unchanged.
+const FACTS = {
+  'At home or a venue / restaurant?': [],
+  'Book caterer and pay deposits': ['deposits-paid'],
+  'Book florist, rentals, baker, officiant': ['roles:florist+baker+officiant'],
+  'Book photographer; agree the coverage window': ['roles:photographer'],
+  'Book the DJ; share the vibe and the do-not-play list': [],
+  'Book the venue': ['venue-set'],
+  'Call every vendor to reconfirm dates, counts, dietary, timings, AV': [],
+  'Check the forecast; confirm a Plan B location/time you are equally happy with; brief everyone on the trigger time': [],
+  'Clear and mark the dance floor; place lights; DJ sound check': [],
+  'Collect dietary restrictions from RSVPs': ['or:dietary-noted'],
+  'Confirm the final headcount': ['guest-count'],
+  'Confirm the room block or share group hotel options with guests': [],
+  'Fresh food/garnish/flowers; pick up rentals; buy ice last (~1.5 lb/guest)': ['then:food-bought'],
+  'Give caterer FINAL headcount and dietary list': [],
+  'Greet guests; pour welcome drinks and point folks to seats': [],
+  'Issue venue RFP, run site visits, negotiate + sign contract': ['venue-set'],
+  'Keep kids + pets back': [],
+  'Lock the guest count': ['guest-count'],
+  'Lock the menu (incl. a vegetarian main)': ['menu-decided'],
+  'Mail invitations 6–8 wks out; track RSVPs + meal choices': [],
+  'Name a sober point person, set a buddy system + meetup spot, pre-load rideshare, share live location': [],
+  'Order cake: flavor, size for headcount, message, pickup time': [],
+  'Pay the caterer deposit': ['deposits-paid'],
+  'Point arriving + seated guests to the guest book; make sure everyone signs': [],
+  'Recruit 3-5 volunteers (setup, grill, registration table, kids, cleanup)': [],
+  'Send run-of-show to every vendor; confirm arrival times; DECIDE the rain plan': [],
+  'Send the invitations': ['invites-out'],
+  'Settle vendor balances': ['nothing-owed'],
+  'Settle vendor balances and tips': ['nothing-owed'],
+  'Test on the ACTUAL screen/projector + speakers at the venue': [],
+  'Ticketed (paid) or free registration?': [],
+  'Tour venue/hall: capacity, power for DJ, parking': [],
+  'Walk the whole guest path, not just the room': [],
+};
+const t = (task) => ({ task, facts: FACTS[task] });
 
 // The bare-but-typed event that triggered the live sighting: a headcount, a
 // venue name, a budget — and absolutely no work done.

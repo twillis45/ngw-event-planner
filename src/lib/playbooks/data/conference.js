@@ -50,8 +50,8 @@ const conference = {
   ],
 
   milestones: [
-    { id: 'conf_venue', name: 'Book venue + lock dates (RFP, site visit, contract)', offsetDays: 180, owner: 'host', category: 'planning', risk: { ifDelayed: 'Preferred dates/venue gone; forced into worse space, higher rate, or a city move', severity: 'high' } },
-    { id: 'conf_budget_theme', name: 'Set budget, theme, and program framework', offsetDays: 165, owner: 'host', dependsOn: ['conf_venue'], category: 'planning', risk: { ifDelayed: 'Sponsor prospectus + speaker outreach stall waiting on the theme', severity: 'med' } },
+    { id: 'conf_venue', name: 'Book venue + lock dates (RFP, site visit, contract)', facts: ['venue-set'], offsetDays: 180, owner: 'host', category: 'planning', risk: { ifDelayed: 'Preferred dates/venue gone; forced into worse space, higher rate, or a city move', severity: 'high' } },
+    { id: 'conf_budget_theme', name: 'Set budget, theme, and program framework', facts: ['budget-set'], offsetDays: 165, owner: 'host', dependsOn: ['conf_venue'], category: 'planning', risk: { ifDelayed: 'Sponsor prospectus + speaker outreach stall waiting on the theme', severity: 'med' } },
     { id: 'conf_keynotes', name: 'Secure keynote / general-session speakers', offsetDays: 150, owner: 'host', dependsOn: ['conf_budget_theme'], category: 'program', risk: { ifDelayed: 'Top-tier keynotes book out months ahead; you lose the marquee name that sells tickets', severity: 'high' } },
     { id: 'conf_sponsors', name: 'Launch sponsor/exhibitor prospectus + sales', offsetDays: 150, owner: 'host', dependsOn: ['conf_budget_theme'], category: 'sponsorship', risk: { ifDelayed: 'Sponsor revenue (often the biggest line) comes in short; budget gap', severity: 'high' } },
     { id: 'conf_registration', name: 'Stand up registration platform + open ticket sales', offsetDays: 120, owner: 'host', dependsOn: ['conf_budget_theme'], category: 'registration', risk: { ifDelayed: 'Late open compresses the sales window; early-bird momentum lost', severity: 'high' } },
@@ -68,19 +68,19 @@ const conference = {
   ],
 
   tasks: [
-    { id: 't_rfp', target: 'vendors', milestoneId: 'conf_venue', phase: 'planning', label: 'Issue venue RFP, run site visits, negotiate + sign contract (watch attrition + F&B minimums)', when: 'T-180d' },
-    { id: 't_keynote', target: 'vendors', milestoneId: 'conf_keynotes', phase: 'program', label: 'Shortlist + contract keynotes via bureau/direct; lock fees, travel, AV rider', when: 'T-150d' },
-    { id: 't_prospectus', target: 'sponsors', milestoneId: 'conf_sponsors', phase: 'sponsorship', label: 'Build tiered prospectus + expo floor plan; open sponsor/exhibitor sales', when: 'T-150d' },
-    { id: 't_reg_open', target: 'money', milestoneId: 'conf_registration', phase: 'registration', label: 'Configure registration platform, ticket types, payment + refund policy; open early-bird', when: 'T-120d' },
-    { id: 't_tracks', target: 'build-day', milestoneId: 'conf_agenda', phase: 'program', label: 'Build multi-track agenda; recruit session speakers; assign rooms + room sets', when: 'T-120d' },
-    { id: 't_av_design', target: 'vendors', milestoneId: 'conf_av', phase: 'production', label: 'Contract AV/production; design general-session stage, screens, and per-track kits', when: 'T-90d' },
-    { id: 't_beo', target: 'spread', milestoneId: 'conf_beo', phase: 'catering', label: 'Finalize BEOs: breaks (coffee/tea refresh every ~90 min), plated/buffet lunches, reception bar', when: 'T-45d' },
-    { id: 't_print_order', target: 'list', milestoneId: 'conf_print', phase: 'production', label: 'Order badges + lanyards, directional + wayfinding signage, sponsor signage, swag, programs', when: 'T-30d' },
-    { id: 't_app', target: 'build-day', milestoneId: 'conf_app_comms', phase: 'comms', label: 'Publish attendee app/agenda; send know-before-you-go (parking, check-in, wifi, map)', when: 'T-14d' },
-    { id: 't_guarantee', target: 'guests', milestoneId: 'conf_guarantee', phase: 'catering', label: 'Lock final headcount guarantee + set counts per room/function to the venue', when: 'T-7d' },
-    { id: 't_rehearse', target: 'vendors', milestoneId: 'conf_rehearsal', phase: 'production', label: 'Walk every speaker on stage; mic/slide/clicker check; producer dry-runs the show cues', when: 'T-1d' },
-    { id: 't_showcall', target: 'day', milestoneId: 'event', phase: 'event', label: 'Open registration desk; show-call general session; manage track turnovers, breaks, expo, reception', when: 'T0' },
-    { id: 't_survey', target: 'vendors', milestoneId: 'event', phase: 'cleanup', label: 'Send post-event survey; reconcile vendor invoices + sponsor deliverables; debrief', when: 'T0 +2d' },
+    { id: 't_rfp', target: 'vendors', facts: ['venue-set'], milestoneId: 'conf_venue', phase: 'planning', label: 'Issue venue RFP, run site visits, negotiate + sign contract (watch attrition + F&B minimums)', when: 'T-180d' },
+    { id: 't_keynote', target: 'vendors', facts: [], milestoneId: 'conf_keynotes', phase: 'program', label: 'Shortlist + contract keynotes via bureau/direct; lock fees, travel, AV rider', when: 'T-150d' },
+    { id: 't_prospectus', target: 'sponsors', facts: [], milestoneId: 'conf_sponsors', phase: 'sponsorship', label: 'Build tiered prospectus + expo floor plan; open sponsor/exhibitor sales', when: 'T-150d' },
+    { id: 't_reg_open', target: 'money', facts: ['nothing-owed'], milestoneId: 'conf_registration', phase: 'registration', label: 'Configure registration platform, ticket types, payment + refund policy; open early-bird', when: 'T-120d' },
+    { id: 't_tracks', target: 'build-day', facts: [], milestoneId: 'conf_agenda', phase: 'program', label: 'Build multi-track agenda; recruit session speakers; assign rooms + room sets', when: 'T-120d' },
+    { id: 't_av_design', target: 'vendors', facts: [], milestoneId: 'conf_av', phase: 'production', label: 'Contract AV/production; design general-session stage, screens, and per-track kits', when: 'T-90d' },
+    { id: 't_beo', target: 'spread', facts: [], milestoneId: 'conf_beo', phase: 'catering', label: 'Finalize BEOs: breaks (coffee/tea refresh every ~90 min), plated/buffet lunches, reception bar', when: 'T-45d' },
+    { id: 't_print_order', target: 'list', facts: [], milestoneId: 'conf_print', phase: 'production', label: 'Order badges + lanyards, directional + wayfinding signage, sponsor signage, swag, programs', when: 'T-30d' },
+    { id: 't_app', target: 'build-day', facts: [], milestoneId: 'conf_app_comms', phase: 'comms', label: 'Publish attendee app/agenda; send know-before-you-go (parking, check-in, wifi, map)', when: 'T-14d' },
+    { id: 't_guarantee', target: 'guests', facts: ['guest-count'], milestoneId: 'conf_guarantee', phase: 'catering', label: 'Lock final headcount guarantee + set counts per room/function to the venue', when: 'T-7d' },
+    { id: 't_rehearse', target: 'vendors', facts: [], milestoneId: 'conf_rehearsal', phase: 'production', label: 'Walk every speaker on stage; mic/slide/clicker check; producer dry-runs the show cues', when: 'T-1d' },
+    { id: 't_showcall', target: 'day', facts: [], milestoneId: 'event', phase: 'event', label: 'Open registration desk; show-call general session; manage track turnovers, breaks, expo, reception', when: 'T0' },
+    { id: 't_survey', target: 'vendors', facts: ['nothing-owed'], milestoneId: 'event', phase: 'cleanup', label: 'Send post-event survey; reconcile vendor invoices + sponsor deliverables; debrief', when: 'T0 +2d' },
   ],
 
   purchases: [

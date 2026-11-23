@@ -91,6 +91,7 @@ import { buildCrabPlan } from '../crabPlan';
 import { isVendorBooked, bookedVendorIn, hiredVendors } from '../workstreams';
 import { crabsPerPicker, crabsPerBushel } from '../crabServing';
 import { kidCount, vegCount, KID_PROTEIN_FACTOR } from '../appetite';
+import { perHead } from '../perHead';
 import { getCompressionLevel, getStandardLeadProvenance, isGroundedLead } from '../workflowCompression';
 import { effectiveTimingProvenance, isGroundedTiming, timingConflict } from '../knowledge/timingProvenance';
 // PHASE 5A-2 — the ONE runtime reader of governed knowledge. Purchase provenance
@@ -117,7 +118,8 @@ import { effectiveHuman, isGroundedHuman } from '../knowledge/humanContext';
 import { effectiveDietary, isGroundedDietary } from '../knowledge/dietaryContext';
 import { effectiveBudget, isGroundedBudget } from '../knowledge/budgetContext';
 import { effectiveChildcare, isGroundedChildcare } from '../knowledge/childcareContext';
-import { authoredQuestion } from '../askVoice';
+import { authoredQuestion, questionFrom, normalizeAsk } from '../askVoice';
+import { byGuestMode } from '../guestMode';
 // Imported here rather than beside its re-export below: an `import` in the
 // module BODY is an eslint `import/first` ERROR, and CRA treats it as a compile
 // failure — `gate:cra` has been red since f43155cc (2026-08-16) and Pages has not
@@ -1510,6 +1512,18 @@ const COMMUNITY_OPTION_RE = /brought by|committee|church|neighbors?|sign.?up/i;
 // same reason — "Order a cake (or plan to bake)" is a milestone, handled
 // separately, and a bakery option must never be pruned by a word it contains.
 const HOST_COOKS_OPTION_RE = /\bbake it\b|cook\/grill yourself|cook it yourself|\bcook them yourself\b|grill (?:it|them) yourself/i;
+// ─── THE CALL'S QUESTION, ONE SOURCE (owner ruling 4a, 11/23/2026) ───────────
+// The words a call is asked in: its authored `ask`, else its label when it was
+// authored as a question, else its label made one. Calls to make, the step that
+// IS the call, and the hero built from that step all speak this.
+export function callQuestion(d) {
+  if (!d) return null;
+  return normalizeAsk(d.ask) || authoredQuestion(d.label) || questionFrom(d.label);
+}
+/** The playbook's food-approach call ("who cooks"), by its declared registry, or null. */
+export function whoCooksCallId(type) {
+  try { return foodApproach({ type }).decisionId || null; } catch (_e) { return null; }
+}
 export function foodApproach(event) {
   const pb = getPlaybook(event && event.type);
   const decisions = pb && Array.isArray(pb.decisions) ? pb.decisions : [];
@@ -1767,6 +1781,9 @@ export const DESTINATION_VENDOR_CATEGORIES = [
 // builder below stamps them and lib/stepTarget resolves a stored row's id
 // through the same map (six root causes, cause 1 — never the row's words).
 export const DERIVED_STEP_TARGETS = Object.freeze({ 'fa-caterer': 'vendors', 'fa-bringers': 'bringing', 'tm-out': 'your-days' });
+// …and the facts that prove each one done (six root causes, cause 1, part 2;
+// lib/stepFacts). Derived once from the retired text rules, committed.
+export const DERIVED_STEP_FACTS = Object.freeze({ 'fa-caterer': ['or:catering-moot', 'and:caterer-booked', 'guest-count'], 'fa-bringers': [], 'tm-out': [] });
 
 export const DESTINATION_TASKS = [
   // DESTINATION-4: kidsLine rides the same hotel call as the room block — the
@@ -1781,16 +1798,16 @@ export const DESTINATION_TASKS = [
   // unverified cities; completion = the host's own "contacted", never an
   // app-asserted outcome. A courtesy block a CVB sources is the ZERO-risk
   // lodging model — this task deliberately precedes the room-block one.
-  { id: 'dest_t_cvb', target: 'cvb', label: 'Call the destination’s visitors bureau — it’s free (hotel tax pays for it). Ask for: room-block options at 2-3 price points, their group planning kit, welcome bags, and a welcome letter for the program', when: 'T-240d' },
-  { id: 'dest_t_lodging', target: 'stay', label: 'Confirm the room block or share group hotel options with guests', when: 'T-210d', kidsLine: 'traveling with little kids? Ask about cribs and connecting rooms in the same call (one ask, not two)' },
+  { id: 'dest_t_cvb', target: 'cvb', facts: [], label: 'Call the destination’s visitors bureau — it’s free (hotel tax pays for it). Ask for: room-block options at 2-3 price points, their group planning kit, welcome bags, and a welcome letter for the program', when: 'T-240d' },
+  { id: 'dest_t_lodging', target: 'stay', facts: [], label: 'Confirm the room block or share group hotel options with guests', when: 'T-210d', kidsLine: 'traveling with little kids? Ask about cribs and connecting rooms in the same call (one ask, not two)' },
   // DESTINATION-4: an accessibility WALK, not a checkbox — venues answer "are you
   // accessible?" about the room; the trip fails on everything between the car
   // and the chair. Grounded in accessibility-consultant guidance.
-  { id: 'dest_t_access', target: 'place-notes', label: 'Walk the whole guest path, not just the room — door widths, the ground between rooms and the event space, and the distance from parking', when: 'T-90d' },
+  { id: 'dest_t_access', target: 'place-notes', facts: [], label: 'Walk the whole guest path, not just the room — door widths, the ground between rooms and the event space, and the distance from parking', when: 'T-90d' },
   // The grid matters on ANY trip — the base label is arrival-neutral so a road
   // trip is not told to track flights it does not have. modeLabel restores the
   // specific wording once the host says how people are getting there.
-  { id: 'dest_t_grid', target: 'arrivals', label: 'Build the arrivals/departures grid — who gets in when', when: 'T-60d',
+  { id: 'dest_t_grid', target: 'arrivals', facts: ['then:arrivals-grid'], label: 'Build the arrivals/departures grid — who gets in when', when: 'T-60d',
     modeLabel: {
       fly: 'Build the arrivals/departures grid — who’s flying in when',
       drive: 'Build the arrivals/departures grid — who’s driving in when, and roughly how long they’re on the road',
@@ -1800,13 +1817,13 @@ export const DESTINATION_TASKS = [
   // ANSWERED yes (whenChoice; the 'Not sure' default keeps it hidden, so an
   // unanswered question never claims a health need). No medical advice beyond
   // "worth a call to their doctor."
-  { id: 'dest_t_health', target: 'guests', label: 'Pace the schedule for the guests who need it — build in real rest, and if the destination is high-altitude or strenuous, a quick call to their doctor is worth it', when: 'T-60d', whenChoice: { id: 'dest_health', in: ['Yes'] } },
+  { id: 'dest_t_health', target: 'guests', facts: [], label: 'Pace the schedule for the guests who need it — build in real rest, and if the destination is high-altitude or strenuous, a quick call to their doctor is worth it', when: 'T-60d', whenChoice: { id: 'dest_health', in: ['Yes'] } },
   // whenMode as well as whenChoice: the dest_transport DECISION is dropped for a
   // driving trip, and choiceShown treats an absent pick as "unanswered -> show".
   // Without this gate the board correctly hid the question while the checklist
   // still asked the host to confirm a shuttle plan for a group that is driving.
-  { id: 'dest_t_transport', target: 'rides', label: 'Confirm the ground-transport plan — shuttle, self-drive, or real rideshare coverage', when: 'T-45d', whenMode: { not: ['drive'] }, whenChoice: { id: 'dest_transport', in: ['Yes, a shuttle or van', 'Not sure yet'] } },
-  { id: 'dest_t_info', target: 'travel', label: 'Send guests the getting-here info — how to get there, hotel, transport, cutoff dates', when: 'T-30d',
+  { id: 'dest_t_transport', target: 'rides', facts: [], label: 'Confirm the ground-transport plan — shuttle, self-drive, or real rideshare coverage', when: 'T-45d', whenMode: { not: ['drive'] }, whenChoice: { id: 'dest_transport', in: ['Yes, a shuttle or van', 'Not sure yet'] } },
+  { id: 'dest_t_info', target: 'travel', facts: [], label: 'Send guests the getting-here info — how to get there, hotel, transport, cutoff dates', when: 'T-30d',
     modeLabel: {
       fly: 'Send guests the getting-here info — airport, hotel, transport, cutoff dates',
       drive: 'Send guests the getting-here info — directions and parking, hotel, cutoff dates',
@@ -1815,8 +1832,8 @@ export const DESTINATION_TASKS = [
   // DESTINATION-4: kids get a real role in the adult event — not the center of
   // it, not parked away from it (Priya Parker's framing). Gated on kids actually
   // coming (whenKids → eventHasKids), never on event type.
-  { id: 'dest_t_kidsjob', target: 'none', label: 'Give the kids a real job in the event — welcome-bag duty, the guestbook, a camera to roam with — so they’re part of it, not parked off to the side', when: 'T-14d', whenKids: true },
-  { id: 'dest_t_welcome', target: 'none', label: 'Drop welcome bags at the hotel for out-of-town guests', when: 'T-1d' },
+  { id: 'dest_t_kidsjob', target: 'none', facts: [], label: 'Give the kids a real job in the event — welcome-bag duty, the guestbook, a camera to roam with — so they’re part of it, not parked off to the side', when: 'T-14d', whenKids: true },
+  { id: 'dest_t_welcome', target: 'none', facts: [], label: 'Drop welcome bags at the hotel for out-of-town guests', when: 'T-1d' },
 ];
 
 // ── DESTINATION-5 — the multi-day pacing template ─────────────────────────────
@@ -1884,6 +1901,20 @@ export function playbookPacing(event) {
 // sourcing choice reshapes the TASKS, not just the menu. Pure + soonest-due first.
 // The row's done-state is intentionally left to effectiveDone() at the render seam
 // (single-source task doctrine — derive, don't store).
+// WHEN A STEP READS WITHOUT ITS CATERER: shared by the checklist builder (the
+// row's words) and lib/stepTarget (the row's declared facts, cause 1 part 2),
+// so a row's label variant and its facts variant are one decision.
+const BOOKS_A_CATERER = /\b(book|contract|choose|find|decide|tour|sign|hire|if catering|vs|or confirm|yourself)\b/i;
+function catererTakenOut(t, dropCaterer, noCatererHired) {
+  return (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label))
+    || (noCatererHired && /\bcaterer/i.test(t.label) && !BOOKS_A_CATERER.test(t.label));
+}
+/** Does this step read (and count) without its caterer for this event? */
+export function stepWithoutCaterer(event, t) {
+  if (!event || !t || !t.label) return false;
+  const fa = foodApproach(event);
+  return catererTakenOut(t, fa.usesCaterer === false, fa.usesCaterer === true && !catererHired(event, fa));
+}
 export function playbookChecklist(event, asOf) {
   if (!event) return [];
   const playbook = getPlaybook(event.type);
@@ -1900,7 +1931,8 @@ export function playbookChecklist(event, asOf) {
   // A meal that arrives made but with no one hired (an order of trays) keeps
   // the grocery list off and the caterer's paperwork off too (P1-12).
   const noCatererHired = fa.usesCaterer === true && !catererHired(event, fa);
-  const BOOKS_A_CATERER = /\b(book|contract|choose|find|decide|tour|sign|hire|if catering|vs|or confirm|yourself)\b/i;
+  const _whoCooksId = whoCooksCallId(event.type);
+  const _whoCooksQ = _whoCooksId ? callQuestion((playbook.decisions || []).find((d) => d && d.id === _whoCooksId)) : null;
 
   // The milestones the air-travel floor moved, keyed by id, so a task can
   // inherit its own milestone's date rather than a second copy of the rule.
@@ -1958,8 +1990,7 @@ export function playbookChecklist(event, asOf) {
     // balances…" still owes the venue. Such a step authors `labelWithoutCaterer`,
     // the same step with the caterer taken out, and reads it while no caterer
     // is hired; a step without one drops whole, as before.
-    const _noCaterer = (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label))
-      || (noCatererHired && /\bcaterer/i.test(t.label) && !BOOKS_A_CATERER.test(t.label));
+    const _noCaterer = catererTakenOut(t, dropCaterer, noCatererHired);
     if (_noCaterer) {
       if (!t.labelWithoutCaterer) continue;
       // Its answered copy is written for the caterer version, so it stays off.
@@ -1997,7 +2028,11 @@ export function playbookChecklist(event, asOf) {
       // connecting-room ask on the lodging call). Tasks without one are untouched.
       // taskLabelFor picks the arrival-mode wording BEFORE the answered-copy
       // override, so a task can vary by both without either clobbering the other.
-      task: (stepLeftAsk(event, t) || booksLeftLabel(event, t, resolveAnsweredCopy(taskLabelFor(event, t), t.copyByAnswer, event)))
+      // THE WHO-COOKS STEP SPEAKS ITS CALL (owner ruling 4a, 11/23/2026): a step
+      // answered by the playbook's food-approach call alone is that call, so its
+      // row (and the hero built from it) asks the call's own question.
+      task: (_whoCooksQ && Array.isArray(t.answeredBy) && t.answeredBy.length === 1 && t.answeredBy[0] === _whoCooksId ? _whoCooksQ
+        : (stepLeftAsk(event, t) || booksLeftLabel(event, t, resolveAnsweredCopy(taskLabelFor(event, t), t.copyByAnswer, event))))
         + (t.kidsLine && kidsComing ? ` — ${t.kidsLine}` : ''),
       // 'event-day' buckets a T0 task under THE DAY tab; everything else is planning.
       category: eventDay ? 'event-day' : 'planning',
@@ -2425,7 +2460,11 @@ export function topPlaybookDecision(event, asOf) {
 
   if (blocksCount) {
     const pendingMsg = gc.reason === 'pending-rsvps'
-      ? `${gc.pending} guest${gc.pending === 1 ? '' : 's'} still pending — chase the maybes, then buy to the confirmed count.`
+      // The wording follows her guest mode (owner ruling 4b): by headcount, no chasing.
+      ? byGuestMode(event, {
+        list: `${gc.pending} guest${gc.pending === 1 ? '' : 's'} still pending — chase the maybes, then buy to the confirmed count.`,
+        count: 'Confirm your final count, then buy to it.',
+      })
       : 'Add a final guest count so every quantity is sized before you shop.';
     return {
       id: `pb-decision-${event.id}-guestCount`,
@@ -3507,7 +3546,7 @@ export function playbookRisks(event, domain) {
       return {
         id: r.id,
         trigger: resolveAnsweredCopy(String(kidWording || r.trigger).trim(), r.copyByAnswer && r.copyByAnswer.trigger, event),
-        mitigation: resolveAnsweredCopy(String(r.mitigation).trim(), r.copyByAnswer && r.copyByAnswer.mitigation, event),
+        mitigation: resolveAnsweredCopy(String(byGuestMode(event, { list: r.mitigation, count: r.mitigationByMode && r.mitigationByMode.count })).trim(), r.copyByAnswer && r.copyByAnswer.mitigation, event),
         severity: sev, rank: (sev in RISK_RANK) ? RISK_RANK[sev] : 2,
       };
     })
@@ -3713,7 +3752,10 @@ export function playbookMilestones(event, asOf) {
       // offset (days before the event), so the milestone's positive offsetDays flips.
       const dueDate = decisionDueDate(event.date, -m.offsetDays);
       return {
-        id: m.id, name: String(m.name || '').trim(), owner: m.owner || 'host',
+        // Its words follow her guest mode where it has count words (owner ruling 4b).
+        id: m.id, name: String(byGuestMode(event, { list: m.name, count: m.nameByMode && m.nameByMode.count }) || '').trim(), owner: m.owner || 'host',
+        // The facts that prove it handled (lib/stepFacts), declared, never read off its name.
+        facts: Array.isArray(m.facts) ? m.facts : [],
         category: m.category || 'planning', offsetDays: m.offsetDays,
         daysOut: dte === null ? null : (dte - m.offsetDays),
         dueDate, critical: !!(m.risk && (m.risk.severity === 'high' || m.risk.severity === 'critical')),
@@ -3750,7 +3792,7 @@ export function playbookAreaNextStep(event, area, asOf) {
   // milestones still surface. Single source: the SAME predicate the next-step engine uses.
   const ms = playbookMilestones(event, asOf)
     .filter((m) => cats.includes(m.category))
-    .filter((m) => !(m.category === 'planning' && taskSatisfied(event, { text: m.name })));
+    .filter((m) => !(m.category === 'planning' && taskSatisfied(event, { text: m.name, facts: m.facts })));
   if (!ms.length) return null;
   const dated = ms.filter((m) => m.daysOut !== null);
   let pick;
@@ -6558,8 +6600,9 @@ export function playbookFoodPlan(event, opts = {}) {
     // Cost PER HEAD — both totals are now priced at the same ceiling headcount (see
     // above), so both ends divide by `guests` too: per-guest × guests ties back
     // exactly to foodLow/foodHigh, and the range is pure price spread, matching them.
-    perGuestLow: guests > 0 ? Math.round(sum('low') / guests) : 0,
-    perGuestHigh: guests > 0 ? Math.round(sum('high') / guests) : 0,
+    // One division (lib/perHead), the same one every per-head figure reads.
+    perGuestLow: perHead(sum('low'), guests) || 0,
+    perGuestHigh: perHead(sum('high'), guests) || 0,
     // ── AND THE PAIR THAT MATCHES AN "ALL IN" TOTAL (2026-10-06) ───────────
     // `sum()` above is filtered by `isFood`, so perGuestLow/High are food
     // only. That is CORRECT where they are used: the money row prints
@@ -6573,12 +6616,8 @@ export function playbookFoodPlan(event, opts = {}) {
     // ADDITIVE, for the same reason as shoppingCount above: widening the
     // existing pair would break the surface that is right in order to fix the
     // one that is wrong.
-    perGuestAllInLow: guests > 0
-      ? Math.round((Math.max(0, Math.round(sum('low') / 5) * 5) + Math.max(0, Math.round(supSum('low') / 5) * 5)) / guests)
-      : 0,
-    perGuestAllInHigh: guests > 0
-      ? Math.round((Math.max(0, Math.round(sum('high') / 5) * 5) + Math.max(0, Math.round(supSum('high') / 5) * 5)) / guests)
-      : 0,
+    perGuestAllInLow: perHead(Math.max(0, Math.round(sum('low') / 5) * 5) + Math.max(0, Math.round(supSum('low') / 5) * 5), guests) || 0,
+    perGuestAllInHigh: perHead(Math.max(0, Math.round(sum('high') / 5) * 5) + Math.max(0, Math.round(supSum('high') / 5) * 5), guests) || 0,
     // bandLow/bandHigh still disclose the REAL attendance spread (60-86, say) as its
     // own honest fact — separate from the dollar figures above, never compounded in.
     bandLow: _guestsLow, bandHigh: guests,

@@ -26,3 +26,13 @@ export function guestPlanningMode(event) {
 // Should this event show reply-chasing UI (nudges, "haven't RSVP'd" alerts,
 // awaiting-reply pressure)? Only when the host actually manages replies.
 export const showsReplyTracking = (event) => guestPlanningMode(event) === 'rsvp_tracking';
+
+// ─── THE FINAL-COUNT LINE FOLLOWS HER MODE (owner ruling 4b, 11/23/2026) ─────
+// A host who chose "By headcount" was told nobody gets chased, then "chase
+// the maybes". The ONE reader that picks a line's wording by her mode: by
+// headcount (guestPlanningMode 'count_only') the count words, else the list
+// words. `words` is { list, count }; a line with no count words keeps its own.
+export function byGuestMode(event, words) {
+  const w = words || {};
+  return guestPlanningMode(event) === 'count_only' && w.count != null ? w.count : w.list;
+}

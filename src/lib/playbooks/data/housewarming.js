@@ -52,7 +52,7 @@ const housewarming = {
   ],
 
   milestones: [
-    { id: 'hw_setdate', name: 'Set date + window + rough headcount', offsetDays: 14, owner: 'host', category: 'planning', risk: null },
+    { id: 'hw_setdate', name: 'Set date + window + rough headcount', facts: ['date-set'], offsetDays: 14, owner: 'host', category: 'planning', risk: null },
     { id: 'hw_invite', name: 'Send invites (note open-house window, shoes-off, gift stance)', offsetDays: 12, owner: 'host', dependsOn: ['hw_setdate'], category: 'guest', risk: { ifDelayed: 'Thin RSVP read → wrong food/drink volumes', severity: 'med' } },
     { id: 'hw_plan', name: 'Lock food style + drink plan', offsetDays: 7, owner: 'host', dependsOn: ['hw_invite'], category: 'planning', risk: { ifDelayed: 'No shopping list possible', severity: 'med' } },
     { id: 'hw_rsvp', name: 'Read the RSVPs / estimate peak overlap', offsetDays: 3, owner: 'host', dependsOn: ['hw_invite'], category: 'guest', risk: { ifDelayed: 'Over- or under-buy snacks and drinks', severity: 'med' } },
@@ -64,15 +64,15 @@ const housewarming = {
   ],
 
   tasks: [
-    { id: 't_invite', target: 'invite', milestoneId: 'hw_invite', phase: 'guest', label: 'Send invite: address, parking note, open-house window, shoes-off heads-up, and your gift stance ("no gifts, just come" or "we have a spot for them")', when: 'T-12d' },
-    { id: 't_buffer', target: 'spread', milestoneId: 'hw_rsvp', phase: 'guest', label: 'Estimate peak overlap (assume ~50-60% of an open-house list is present at once) and plan food/drink to that, not the full list', when: 'T-3d' },
-    { id: 't_dry_shop', target: 'list', milestoneId: 'hw_shop_dry', phase: 'shopping', label: 'Drinks, soda, water, paper goods, napkins, trash bags, decor, candles, non-perishable snacks', when: 'T-3d' },
-    { id: 't_fresh_shop', target: 'list', milestoneId: 'hw_shop_fresh', phase: 'shopping', label: 'Cheese, charcuterie, fruit, veg, dips, fresh herbs/garnish, flowers (buy ~24h out)', when: 'T-1d' },
-    { id: 't_board', target: 'none', milestoneId: 'hw_prep', phase: 'food', label: 'Pre-build the grazing board on a tray (cover + fridge), portion dips, prep any passed bites that hold cold', when: 'T-1d evening' },
-    { id: 't_clean_pre', target: 'day', milestoneId: 'hw_setup', phase: 'cleanup', label: 'Pre-clean: empty dishwasher, clear sink, stage a trash + recycling station and a tub for used glasses', when: 'T0 -3h' },
-    { id: 't_entry', target: 'day', milestoneId: 'hw_setup', phase: 'setup', label: 'Set the entry: shoe tray + basket, coat space (hooks or a cleared bed), a small friendly sign, and a clear gift-landing spot', when: 'T0 -2h' },
-    { id: 't_station', target: 'day', milestoneId: 'hw_setup', phase: 'beverage', label: 'Build the self-serve drinks station: beer/wine/soda, ice tub, cups/glasses, opener, signature-cocktail batch in a pitcher', when: 'T0 -2h' },
-    { id: 't_board_out', target: 'day', milestoneId: 'hw_setup', phase: 'food', label: 'Set the board out, scatter a couple of snack bowls along the tour path, light unscented candles', when: 'T0 -1h' },
+    { id: 't_invite', target: 'invite', facts: ['invites-out'], milestoneId: 'hw_invite', phase: 'guest', label: 'Send invite: address, parking note, open-house window, shoes-off heads-up, and your gift stance ("no gifts, just come" or "we have a spot for them")', when: 'T-12d' },
+    { id: 't_buffer', target: 'spread', facts: [], milestoneId: 'hw_rsvp', phase: 'guest', label: 'Estimate peak overlap (assume ~50-60% of an open-house list is present at once) and plan food/drink to that, not the full list', when: 'T-3d' },
+    { id: 't_dry_shop', target: 'list', facts: [], milestoneId: 'hw_shop_dry', phase: 'shopping', label: 'Drinks, soda, water, paper goods, napkins, trash bags, decor, candles, non-perishable snacks', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'list', facts: [], milestoneId: 'hw_shop_fresh', phase: 'shopping', label: 'Cheese, charcuterie, fruit, veg, dips, fresh herbs/garnish, flowers (buy ~24h out)', when: 'T-1d' },
+    { id: 't_board', target: 'none', facts: [], milestoneId: 'hw_prep', phase: 'food', label: 'Pre-build the grazing board on a tray (cover + fridge), portion dips, prep any passed bites that hold cold', when: 'T-1d evening' },
+    { id: 't_clean_pre', target: 'day', facts: [], milestoneId: 'hw_setup', phase: 'cleanup', label: 'Pre-clean: empty dishwasher, clear sink, stage a trash + recycling station and a tub for used glasses', when: 'T0 -3h' },
+    { id: 't_entry', target: 'day', facts: [], milestoneId: 'hw_setup', phase: 'setup', label: 'Set the entry: shoe tray + basket, coat space (hooks or a cleared bed), a small friendly sign, and a clear gift-landing spot', when: 'T0 -2h' },
+    { id: 't_station', target: 'day', facts: [], milestoneId: 'hw_setup', phase: 'beverage', label: 'Build the self-serve drinks station: beer/wine/soda, ice tub, cups/glasses, opener, signature-cocktail batch in a pitcher', when: 'T0 -2h' },
+    { id: 't_board_out', target: 'day', facts: [], milestoneId: 'hw_setup', phase: 'food', label: 'Set the board out, scatter a couple of snack bowls along the tour path, light unscented candles', when: 'T0 -1h' },
     // MOVED OFF A DEAD SURFACE, 2026-09-23. These were one `schedules.cleanup`
     // row at `T0 +1d morning` — a post-event token the day board drops by rule —
     // so nothing here ever reached a host. This playbook's own day-of reset task
@@ -83,11 +83,11 @@ const housewarming = {
     // recommends borrowing over renting in two places. The thank-yous had no
     // carrier at all — the gift contingency says to log who brought what "later
     // for thank-yous", and no task ever wrote them.
-    { id: 't_after_returns', target: 'borrowed', milestoneId: 'event', phase: 'cleanup', label: 'Get the borrowed chairs, platters and coolers back to whoever lent them, while you still remember which is whose', when: 'T0 +1d' },
-    { id: 't_after_thanks', target: 'guest-list', milestoneId: 'event', phase: 'guest', label: 'Send the thank-yous for housewarming gifts off the log you made on the night', when: 'T0 +1d' },
-    { id: 't_greet', target: 'day', milestoneId: 'event', phase: 'event', label: 'Greet at the door, take coats, point to drinks + gift spot, offer a quick tour to each cluster as they arrive', when: 'T0 +0:00' },
-    { id: 't_refill', target: 'list', milestoneId: 'event', phase: 'food', label: 'Quietly top up the board, refill ice, and clear stray cups into the staged tub through the party', when: 'ongoing' },
-    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Quick reset: leftovers covered, glasses to the dishwasher, bottles to recycling, trash out — finish the rest in the morning', when: 'T0 +3:30' },
+    { id: 't_after_returns', target: 'borrowed', facts: ['borrowed-back'], milestoneId: 'event', phase: 'cleanup', label: 'Get the borrowed chairs, platters and coolers back to whoever lent them, while you still remember which is whose', when: 'T0 +1d' },
+    { id: 't_after_thanks', target: 'guest-list', facts: [], milestoneId: 'event', phase: 'guest', label: 'Send the thank-yous for housewarming gifts off the log you made on the night', when: 'T0 +1d' },
+    { id: 't_greet', target: 'day', facts: [], milestoneId: 'event', phase: 'event', label: 'Greet at the door, take coats, point to drinks + gift spot, offer a quick tour to each cluster as they arrive', when: 'T0 +0:00' },
+    { id: 't_refill', target: 'list', facts: [], milestoneId: 'event', phase: 'food', label: 'Quietly top up the board, refill ice, and clear stray cups into the staged tub through the party', when: 'ongoing' },
+    { id: 't_reset', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Quick reset: leftovers covered, glasses to the dishwasher, bottles to recycling, trash out — finish the rest in the morning', when: 'T0 +3:30' },
   ],
 
   purchases: [

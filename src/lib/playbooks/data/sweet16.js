@@ -165,6 +165,7 @@ const sweet16 = {
   milestones: [
     {
       id: 'lock_date_venue',
+      facts: ['guest-count'],
       name: 'Lock date, guest count, and venue',
       offsetDays: 90,
       owner: 'host',
@@ -182,6 +183,7 @@ const sweet16 = {
     },
     {
       id: 'theme_invites',
+      facts: ['invites-out'],
       name: 'Finalize theme and send invitations',
       offsetDays: 35,
       owner: 'host',
@@ -209,6 +211,7 @@ const sweet16 = {
     },
     {
       id: 'finalize_headcount',
+      facts: ['invites-out'],
       name: 'Final RSVP count + supervision plan locked',
       offsetDays: 7,
       owner: 'host',
@@ -237,32 +240,32 @@ const sweet16 = {
   ],
 
   tasks: [
-    { id: 't_budget', target: 'money', milestoneId: 'lock_date_venue', phase: 'plan', label: 'Set a budget and confirm it with the birthday teen', when: 'T-90d' },
-    { id: 't_venue_walk', target: 'place-notes', milestoneId: 'lock_date_venue', phase: 'plan', label: 'Tour venue/hall: capacity, power for DJ, parking, restrooms, curfew', when: 'T-88d',
+    { id: 't_budget', target: 'money', facts: ['budget-set'], milestoneId: 'lock_date_venue', phase: 'plan', label: 'Set a budget and confirm it with the birthday teen', when: 'T-90d' },
+    { id: 't_venue_walk', target: 'place-notes', facts: [], milestoneId: 'lock_date_venue', phase: 'plan', label: 'Tour venue/hall: capacity, power for DJ, parking, restrooms, curfew', when: 'T-88d',
       copyByAnswer: { music_source: { 'Self-run playlist + rented PA/lights': 'Tour venue/hall: capacity, power for the PA and lights, parking, restrooms, curfew' } } },
-    { id: 't_dj_brief', target: 'vendors', milestoneId: 'book_dj', phase: 'plan', label: 'Brief DJ on theme, must-play/do-not-play list, MC duties, grand entrance song', when: 'T-84d',
+    { id: 't_dj_brief', target: 'vendors', facts: [], milestoneId: 'book_dj', phase: 'plan', label: 'Brief DJ on theme, must-play/do-not-play list, MC duties, grand entrance song', when: 'T-84d',
       // A self-run playlist has no DJ to brief (owner, 11/21/2026); the floor,
       // the entrance and the venue walk are still work, and say so without one.
       whenChoice: { id: 'music_source', not: ['Self-run playlist + rented PA/lights'] } },
-    { id: 't_guestlist', target: 'guests', milestoneId: 'theme_invites', phase: 'plan', label: 'Build guest list with parent contacts; note adult-to-teen ratio', when: 'T-40d' },
-    { id: 't_invites', target: 'invite', milestoneId: 'theme_invites', phase: 'plan', label: 'Send invitations with RSVP date, drop-off/pickup times, and no-alcohol note', when: 'T-35d' },
-    { id: 't_decor_order', target: 'list', milestoneId: 'book_photo_booth', phase: 'plan', label: 'Order themed decor, balloon arch, backdrop, and favors', when: 'T-30d' },
-    { id: 't_social', target: 'hashtag', milestoneId: 'book_photo_booth', phase: 'plan', label: 'Set up the social moment: custom hashtag + photo-booth frame/filter', when: 'T-28d' },
+    { id: 't_guestlist', target: 'guests', facts: ['guest-count'], milestoneId: 'theme_invites', phase: 'plan', label: 'Build guest list with parent contacts; note adult-to-teen ratio', when: 'T-40d' },
+    { id: 't_invites', target: 'invite', facts: ['invites-out'], milestoneId: 'theme_invites', phase: 'plan', label: 'Send invitations with RSVP date, drop-off/pickup times, and no-alcohol note', when: 'T-35d' },
+    { id: 't_decor_order', target: 'list', facts: [], milestoneId: 'book_photo_booth', phase: 'plan', label: 'Order themed decor, balloon arch, backdrop, and favors', when: 'T-30d' },
+    { id: 't_social', target: 'hashtag', facts: [], milestoneId: 'book_photo_booth', phase: 'plan', label: 'Set up the social moment: custom hashtag + photo-booth frame/filter', when: 'T-28d' },
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
-    { id: 't_menu', target: 'call:food_menu', answeredBy: ['food_menu'], milestoneId: 'confirm_catering', phase: 'plan', label: 'Decide what food you’re serving', when: 'T-14d' },
-    { id: 't_menu_order', target: 'spread', milestoneId: 'confirm_catering', phase: 'plan', label: 'Finalize menu, count dietary needs, place food order/deposit', when: 'T-14d' },
-    { id: 't_chaperones', target: 'assign', milestoneId: 'finalize_headcount', phase: 'plan', label: 'Confirm chaperones, assign door + bar + floor watchers, set house rules', when: 'T-7d' },
-    { id: 't_timeline', target: 'build-day', milestoneId: 'finalize_headcount', phase: 'plan', label: 'Write the run-of-show: arrivals, entrance, dinner, dance, cake, send-off', when: 'T-7d' },
-    { id: 't_shop', target: 'list', milestoneId: 'shop_perishables', phase: 'prep', label: 'Buy mocktail mixers, soda, ice, cake, and fresh garnishes', when: 'T-1d' },
-    { id: 't_prep_food', target: 'none', milestoneId: 'shop_perishables', phase: 'prep', label: 'Prep make-ahead food and pre-batch mocktail syrups', when: 'T-1d' },
-    { id: 't_decorate', target: 'day', milestoneId: 'setup_dayof', phase: 'setup', label: 'Hang decor, set photo booth, build the mocktail/soda bar', when: 'T0' },
-    { id: 't_floor', target: 'day', milestoneId: 'setup_dayof', phase: 'setup', label: 'Clear and mark the dance floor; place lights; DJ sound check', when: 'T0',
+    { id: 't_menu', target: 'call:food_menu', facts: ['calls-answered'], answeredBy: ['food_menu'], milestoneId: 'confirm_catering', phase: 'plan', label: 'Decide what food you’re serving', when: 'T-14d' },
+    { id: 't_menu_order', target: 'spread', facts: ['or:dietary-noted', 'deposits-paid'], milestoneId: 'confirm_catering', phase: 'plan', label: 'Finalize menu, count dietary needs, place food order/deposit', when: 'T-14d' },
+    { id: 't_chaperones', target: 'assign', facts: [], milestoneId: 'finalize_headcount', phase: 'plan', label: 'Confirm chaperones, assign door + bar + floor watchers, set house rules', when: 'T-7d' },
+    { id: 't_timeline', target: 'build-day', facts: [], milestoneId: 'finalize_headcount', phase: 'plan', label: 'Write the run-of-show: arrivals, entrance, dinner, dance, cake, send-off', when: 'T-7d' },
+    { id: 't_shop', target: 'list', facts: ['then:food-bought'], milestoneId: 'shop_perishables', phase: 'prep', label: 'Buy mocktail mixers, soda, ice, cake, and fresh garnishes', when: 'T-1d' },
+    { id: 't_prep_food', target: 'none', facts: [], milestoneId: 'shop_perishables', phase: 'prep', label: 'Prep make-ahead food and pre-batch mocktail syrups', when: 'T-1d' },
+    { id: 't_decorate', target: 'day', facts: [], milestoneId: 'setup_dayof', phase: 'setup', label: 'Hang decor, set photo booth, build the mocktail/soda bar', when: 'T0' },
+    { id: 't_floor', target: 'day', facts: [], milestoneId: 'setup_dayof', phase: 'setup', label: 'Clear and mark the dance floor; place lights; DJ sound check', when: 'T0',
       copyByAnswer: { music_source: { 'Self-run playlist + rented PA/lights': 'Clear and mark the dance floor; place lights; sound check the PA' } } },
-    { id: 't_entrance', target: 'day', milestoneId: 'setup_dayof', phase: 'setup', label: 'Stage the grand entrance: clear path, cue spotlight + song with DJ', when: 'T0',
+    { id: 't_entrance', target: 'day', facts: [], milestoneId: 'setup_dayof', phase: 'setup', label: 'Stage the grand entrance: clear path, cue spotlight + song with DJ', when: 'T0',
       copyByAnswer: { music_source: { 'Self-run playlist + rented PA/lights': 'Stage the grand entrance: clear path, cue the spotlight + song with whoever runs the playlist' } } },
-    { id: 't_cleanup', target: 'day', milestoneId: 'setup_dayof', phase: 'cleanup', label: 'Pack rentals, bag trash, recover deposits, confirm all teens picked up', when: 'T0' },
+    { id: 't_cleanup', target: 'day', facts: [], milestoneId: 'setup_dayof', phase: 'cleanup', label: 'Pack rentals, bag trash, recover deposits, confirm all teens picked up', when: 'T0' },
   ],
 
   purchases: [

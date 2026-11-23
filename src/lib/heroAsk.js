@@ -7,7 +7,7 @@
 // the dedup predicate over real seeded events instead of a hand-copied mirror of it.
 //
 // PURE display mappers: no React, no component state, no event mutation.
-import { normalizeAsk, isCircularAsk } from './askVoice';
+import { normalizeAsk } from './askVoice';
 
 // REBALANCE 2026-07-17 — the ASK vocabulary. The display slot speaks the next
 // action in plain hand-holder words (2–4 words, ≤2 lines at display size); the
@@ -15,20 +15,68 @@ import { normalizeAsk, isCircularAsk } from './askVoice';
 // be proper nouns ("Confirm Semper Catering Co") — never display material.
 const HERO_NOUN = { cater: 'caterer', dj: 'DJ', music: 'DJ', photo: 'photographer', video: 'videographer', flor: 'florist', flower: 'florist', venue: 'venue', rental: 'rentals', bar: 'bartender', cake: 'baker', transport: 'driver' };
 
-// The food dimensions a host actually decides between, most-blocking first.
-// Provider comes before service style, which comes before the dishes: you cannot
-// choose a menu before you know who is cooking it, and a repast whose provider is
-// open is asking a sourcing question, not a culinary one.
-// Ordered, so a title naming two dimensions is asked about the one that gates.
-const FOOD_DIMENSION = [
-  { re: /\b(who|provider|providers|provid\w*|source|sourcing|cater\w*|potluck|cook(s|ing)?)\b/i, ask: 'Decide who provides the food.' },
-  { re: /\b(service|style|buffet|plated|seated|family[- ]style|passed|stationed|format)\b/i, ask: 'Choose how the food is served.' },
-  { re: /\b(dietary|allerg\w*|vegetarian|vegan|halal|kosher|gluten)\b/i, ask: 'Note the dietary needs.' },
-  { re: /\b(count|headcount|quantit\w*|how much|per guest|portions?)\b/i, ask: 'Fix the catering count.' },
-  { re: /\b(menu|dish\w*|serving|entree|main|sides?)\b/i, ask: 'Decide the menu.' },
-];
-function foodAsk(title) {
-  for (const d of FOOD_DIMENSION) if (d.re.test(title)) return d.ask;
+// ─── THE ASK KINDS — the one copy table (six root causes, cause 1, part 2) ───
+//
+// The hero's headline used to be chosen by words in the item's title: a ladder
+// of regexes over "budget", "venue", "guest", "serving", "conflict", "count",
+// "Confirm …", "Send payment to …". Every misfire this file's history records
+// was that mechanism: "3 guests still need a room" asked "Add who's coming.",
+// "Sort where everyone stays" asked "Add the location.", "… arrives before venue
+// access" asked "Add the location.", a step that said "serving" asked "Decide
+// the menu.".
+//
+// Now the producer, which knows what its item is, DECLARES it: `ask` (its own
+// sentence) or `askKind` (one of the kinds below). A vendor kind names the
+// vendor it is about by `vendorId` (or its route's), and the noun comes from
+// that vendor's category, never from the title. heroAskFor reads the
+// declaration and nothing else; a title is only ever spoken back as itself.
+// Pinned by heroAskReadsTheDeclaration.test.js over all 47 playbooks.
+export const ASK_KINDS = Object.freeze({
+  budget: 'Set your budget.',
+  'budget-over': 'Bring the plan inside your budget.',
+  guests: 'Add who’s coming.',
+  rsvp: 'Nudge your RSVPs.',
+  'start-time': 'Confirm the start time.',
+  date: 'Pick the day.',
+  location: 'Add the location.',
+  conflict: 'Untangle your vendors.',
+  decisions: 'Settle your decisions.',
+  'catering-count': 'Fix the catering count.',
+  'food-provider': 'Decide who provides the food.',
+  'food-service': 'Choose how the food is served.',
+  'food-dietary': 'Note the dietary needs.',
+  menu: 'Decide the menu.',
+  'get-food': 'Get the food.',
+  'catch-up': 'Catch up on this step.',
+});
+// A vendor kind's verb. The noun is the declared vendor's category.
+export const VENDOR_ASK_VERBS = Object.freeze({
+  'vendor-confirm': 'Confirm', 'vendor-book': 'Book', 'vendor-call': 'Call',
+  'vendor-chase': 'Chase', 'vendor-pay': 'Pay', 'vendor-reconfirm': 'Reconfirm',
+});
+// Kinds that are declared for the shell's own rungs (the conflict card, the COI
+// step) and that this table does not phrase: the shell speaks them itself.
+export const SHELL_ASK_KINDS = Object.freeze(['coi']);
+export function isKnownAskKind(k) {
+  return Object.prototype.hasOwnProperty.call(ASK_KINDS, k)
+    || Object.prototype.hasOwnProperty.call(VENDOR_ASK_VERBS, k)
+    || SHELL_ASK_KINDS.includes(k);
+}
+// An item that declares no kind is asked by its declared DOMAIN, where the
+// domain is a job (an item whose domain is not its job declares a kind or an ask).
+const DOMAIN_KIND = { budget: 'budget', guests: 'guests', start: 'guests', date: 'date', food: 'menu' };
+
+function vendorNoun(a, event) {
+  const route = (a && (a.route || a.primaryRoute)) || {};
+  const id = (a && a.vendorId != null) ? a.vendorId : route.vendorId;
+  const v = id != null ? ((event && event.vendors) || []).find((x) => x && String(x.id) === String(id)) : null;
+  const cat = String((v && (v.category || v.type)) || (a && a.vendorCategory) || '').toLowerCase();
+  const key = cat ? Object.keys(HERO_NOUN).find((k) => cat.includes(k)) : null;
+  return key ? HERO_NOUN[key] : 'vendor';
+}
+export function askForKind(kind, a, event) {
+  if (Object.prototype.hasOwnProperty.call(ASK_KINDS, kind)) return ASK_KINDS[kind];
+  if (Object.prototype.hasOwnProperty.call(VENDOR_ASK_VERBS, kind)) return VENDOR_ASK_VERBS[kind] + ' your ' + vendorNoun(a, event) + '.';
   return null;
 }
 // THE RULED FOOD CARD'S HEADLINE (polish, 11/22/2026). When the record line
@@ -42,158 +90,33 @@ export function foodCallsAsk(n) {
 
 export function heroAskFor(a, event) {
   try {
-    // AN AUTHORED ASK ALWAYS WINS (2026-07-30). Everything below classifies an item
-    // by its domain and its title prose, which is exactly the mechanism ruling C had
-    // to unpick elsewhere — and it misfires whenever a surface's DOMAIN is not its
-    // JOB. Live case: surfaceRegistry's `seating` surface declares domain 'guests',
-    // so "2 confirmed guests still need seats" fell into the guests branch below and
-    // the hero asked "Add who's coming." The guests were already added and confirmed;
-    // they needed seats. The host got a headcount stepper that could not act on the
-    // thing being raised, which is what a false ask always produces.
-    // A surface that knows its own job can now say so (`ask` on the raise) and this
-    // reads it first. Structural, and it generalises: any future surface whose domain
-    // and job differ authors one line instead of teaching this ladder a new regex.
-    // An authored ask that normalizes to nothing falls through to the ladder
-    // (batch 11): the placeholder was its fallback, and it named nothing.
+    // AN AUTHORED ASK ALWAYS WINS (2026-07-30). A surface that knows its own
+    // job says so (`ask` on the raise); live case: the seating surface declares
+    // domain 'guests', and "2 confirmed guests still need seats" was asked
+    // "Add who's coming." An authored ask that normalizes to nothing falls
+    // through (batch 11): the placeholder was its fallback, and it named nothing.
     if (a && a.ask) { const own = normalizeAsk(a.ask); if (own) return own; }
     // ── A LATE CHECKLIST STEP IS ASKED AS ONE (owner screenshot, 11/18/2026) ──
-    // The board led with the late Friendsgiving step "walk the kitchen …: oven
-    // size, refrigerator space, serving dishes, and parking" under the headline
-    // "Decide the menu." — the word "serving" sent the step's own prose into the
-    // food branch below. A late step is not a menu, budget or guest question; its
-    // card already names it. The headline says what kind of thing it is.
-    if (a && a.taskId && a.category === 'decision') return 'Catch up on this step.';
-    // Same defect, second door (owner screenshot, 6:24 PM 11/18/2026): when time
-    // gets tight the late steps arrive bunched as ONE compression item led by the
-    // first step — the kitchen walk again, again "Decide the menu." on "serving".
-    // A bunch led by a step is asked as a step. A bunch that decomposed to "Set
-    // the date." / "Set your budget." carries no leadIsStep and falls through.
-    if (a && a.category === 'compression' && a.leadIsStep) return 'Catch up on this step.';
-    const t = String((a && a.title) || '').replace(/\.+$/, '').trim();
-    const d = String((a && a.domain) || '').toLowerCase();
-    // A SET budget that the plan runs past is not asked to be set (11/22/2026).
-    if (/over (your|the) budget/i.test(t)) return 'Bring the plan inside your budget.';
-    if (d === 'budget' || /budget/i.test(t)) return 'Set your budget.';
+    // A late step is not a menu, budget or guest question; its card already
+    // names it. A bunch of late steps led by a step is asked as a step too.
+    if (a && a.taskId && a.category === 'decision') return ASK_KINDS['catch-up'];
+    if (a && a.category === 'compression' && a.leadIsStep) return ASK_KINDS['catch-up'];
+    // THE DECLARED KIND (cause 1, part 2): the producer says what its item asks.
+    if (a && a.askKind) { const k = askForKind(a.askKind, a, event); if (k) return k; }
     // ── A BUY LINE IS NOT A DECISION (PR #70, driven 2026-07-31) ──────────────
-    // "Buy chips, crackers, pretzels & popcorn — 13 snack servings tomorrow"
-    // reached the food branch below on the word "servings", which is a QUANTITY
-    // word the dimension ladder files under the menu. The host was told to
-    // "Decide the menu." over an item whose menu was long since decided and
-    // whose actual job is a shopping run.
-    //
-    // The foodFocus route says what this is: it points at an unbought LINE in
-    // the spread. That rung already existed — it just sat below the dimension
-    // ladder, so it never got to speak for any title containing a food word,
-    // which is every title it was written for. Ordering is the whole fix: an
-    // execution item is answered as execution before anything tries to read a
-    // decision out of its prose.
-    if (a && a.route && a.route.foodFocus) return 'Get the food.';
-    // ── THE FOOD BRANCH USED TO RESTATE ITS OWN ITEM ──────────────────────────
-    // Host report, 2026-07-31: a repast whose open decision is "Who provides the
-    // food" was asked "Decide the menu." — an instruction to do the thing the
-    // card is already named after, and one that names the WRONG dimension: the
-    // provider was the open question, not the dishes.
-    //
-    // The defect was the rule, not the string. This branch matched any title
-    // containing food/menu/serving and answered with a single fixed sentence, so
-    // every distinct food question collapsed into the same ask. It now reads the
-    // title to name the dimension actually missing, and foodAsk() returns null
-    // when it cannot tell — a null falls through to the ladder below rather than
-    // inventing a dimension the event has no evidence for.
-    if (d === 'food' || /serving|menu|food/i.test(t)) {
-      const ask = foodAsk(t);
-      if (ask && !isCircularAsk(ask, t)) return ask;
-      // Nothing narrower is known. Say the general thing ONLY if it still adds
-      // information; otherwise fall through and let a later rung speak.
-      if (!isCircularAsk('Decide the menu.', t)) return 'Decide the menu.';
-    }
-    if (d === 'guests' || d === 'start' || /guest|who.s coming|rsvp/i.test(t)) return /rsvp/i.test(t) ? 'Nudge your RSVPs.' : 'Add who’s coming.';
-    if (/start time/i.test(t)) return 'Confirm the start time.';
-    if (d === 'date' || /pick (a|the) day|\bdate\b/i.test(t)) return 'Pick the day.';
-    // ── "WHERE" IS A POSITION WORD, NOT A PLACE WORD ────────────────────────
-    // Driven live 2026-08-03 (?stage=phone, Santa Fe 80th): the lodging
-    // readiness cue "Sort where everyone stays" matched this branch on the bare
-    // word `where`, so the hero asked "Add the location." over an item about
-    // booking a house — while the card's own title and CTA below it correctly
-    // said "Sort / Open where everyone stays". One item, two voices.
-    //
-    // Same misfire as the seating case this file already documents: a surface
-    // whose DOMAIN is not its JOB gets classified by prose and answered wrong.
-    // "Who sits where" would have produced "Add the location." too.
-    //
-    // The branch now needs a real place word, or a `where` that is actually
-    // asking where the EVENT is. Anything else falls through to a later rung,
-    // which is the honest outcome — a wrong ask is worse than a general one.
-    if (/\blocation\b|\bvenue\b|\bwhere(?:'s| is| are)\s+(?:it|we|the event|things)\b/i.test(t)) return 'Add the location.';
-    if (/conflict/i.test(t)) return 'Untangle your vendors.';
-    const am = t.match(/^ask\s+.+?\s+about\s+(.{3,24})$/i);
-    if (am) return 'Ask about ' + am[1].toLowerCase().replace(/\.+$/, '') + '.';
-    if (/resolve .*decision|decisions? —|decisions? are past/i.test(t)) return 'Settle your decisions.';
-    if (/(catering|guest|final)\s+count/i.test(t)) return 'Fix the catering count.';
-    // "Send payment to Hearthstone Catering Co" reached the host as the dead
-    // placeholder "Your next step." (driven 2026-07-31, retirement party at
-    // T-29). The title is 39 chars so it fell past the 26-char cutoff, and it
-    // missed this branch for one reason: the verb list had no `send`.
-    //
-    // Adding the word alone would have produced "Send your caterer." — the verb
-    // is carried through to the ask, and the act here is not sending, it is
-    // PAYING. A payment title is normalized to its real verb first, so the
-    // money item says what the host actually does.
-    //
-    // The rewrite is the WHOLE fix — `send` is deliberately NOT added to the
-    // verb list below. Adding it regressed "Send the invites" to "Send your
-    // vendor.", because that branch appends a vendor noun to whatever verb it
-    // matched. Rewriting to a `Pay …` title instead feeds the branch a verb it
-    // already handles, and every non-payment `send` keeps falling through to
-    // the short-title path that was already saying the right thing.
-    const t2 = t.replace(/^send\s+(?:the\s+|a\s+)?(?:payment|balance|deposit|check|invoice)\s+(?:to|for)\s+/i, 'Pay ');
-    const vm = t2.match(/^(confirm|book|call|chase|pay|reconfirm)\s+(.+)$/i);
-    if (vm) {
-      const verb = vm[1].charAt(0).toUpperCase() + vm[1].slice(1).toLowerCase();
-      const rest = vm[2].toLowerCase();
-      const v = ((event && event.vendors) || []).find(x => x && x.name && rest.includes(String(x.name).toLowerCase().slice(0, 6)));
-      const catKey = v ? String(v.category || v.type || '').toLowerCase() : '';
-      const nounKey = Object.keys(HERO_NOUN).find(k => catKey.includes(k) || rest.includes(k));
-      return verb + ' your ' + (nounKey ? HERO_NOUN[nounKey] : 'vendor') + '.';
-    }
-    // (The foodFocus rung — a food-line buy carries an item title, never an
-    // instruction — now runs ABOVE the food dimension ladder; see the note there.)
-    // ── OPEN: A 26-CHARACTER CUTOFF DECIDES WHETHER THE HOST SEES THE ASK ──
-    // Frames 25/26 audit, driven 2026-07-29 on the retirement party. Its open
-    // decision is authored as a question — retirementParty.js venue:
-    // "At home, a restaurant, or the workplace?" (40 chars) — and the host got
-    // the placeholder "Your next step." with the options as a card label under
-    // it. Game Night's "What kind of games?" (20 chars) IS promoted to the hero.
-    // Same kind of item, opposite treatment, decided by string length alone.
-    //
-    // Two things block the obvious fix, both confirmed by driving it:
-    //  1. `a.title` reaches here with the question mark already gone —
-    //     decisionShortLabel (playbooks/index ~1990) strips it deliberately,
-    //     correctly, for the SHORT CARD form. So a /\?$/ test never fires.
-    //  2. Adding `ask: d.label` to playbooks' `open.push` (~2602) did NOT reach
-    //     this item — this queue entry is built by some other path, so the
-    //     authored question never arrives. Both attempts were reverted rather
-    //     than left in as a producer with no consumer.
-    // The fix needs that path identified first, then the AUTHORED question
-    // carried through as its own field. It must not be re-derived from the
-    // short label, and the cutoff must not be widened blindly — a long
-    // declarative title genuinely does not read as a hero; a question does.
+    // The foodFocus route points at an unbought LINE in the spread: an
+    // execution item is answered as execution.
+    if (a && a.route && a.route.foodFocus) return ASK_KINDS['get-food'];
+    const d = String((a && a.domain) || '').toLowerCase();
+    if (DOMAIN_KIND[d]) return ASK_KINDS[DOMAIN_KIND[d]];
+    const t = String((a && a.title) || '').replace(/\.+$/, '').trim();
     // ── THE LAST RESORT NAMES THE ACT (2026-08-17) ────────────────────────
-    // The 26-char rule itself is SOUND and stays: a long declarative title does
-    // not read as a hero. Measured across all 39 playbooks x 7 stages, 221 of
-    // 273 heads carry a title over 26 characters and NONE of them is a question,
-    // so a shape-based rule here would be inert — the length test is not what
-    // was hurting anyone.
-    //
-    // What was hurting: when every branch above declines, the host got "Your
-    // next step.", which names nothing. That is now the LAST resort rather than
-    // the first fallback. An action's own CTA is authored, and house doctrine
-    // already requires a CTA to name the act ("Collect dietary needs", "Settle
-    // it") — so it is a truthful ask when nothing better exists.
-    //
-    // 'Go' is EXCLUDED deliberately: it is the sanctioned routing sentinel the
-    // shell expands per destination (HostShellV2 ~403), not host copy. Promoting
-    // it would put the bare "Go." in the hero that ctaNamesTheAct forbids.
+    // Nothing declared: the item speaks for itself. A short title is its own
+    // ask (a long declarative title does not read as a hero: measured across
+    // 39 playbooks x 7 stages, 221 of 273 heads carry a title over 26
+    // characters and none is a question), else the authored CTA (house doctrine
+    // requires a CTA to name the act). 'Go' is EXCLUDED: it is the shell's
+    // routing sentinel, not host copy, and ctaNamesTheAct forbids a bare "Go.".
     const short = t.length <= 26 ? normalizeAsk(t + '.') : null;
     if (short) return short;
     const cta = String((a && (a.primaryCta || a.ctaLabel || a.cta)) || '').trim();
@@ -209,14 +132,11 @@ export function heroAskFor(a, event) {
     const first = a && Array.isArray(a.items) && a.items.length ? a.items[0] : null;
     if (first) {
       const fa = heroAskFor(first, event);
-      if (fa && fa !== 'Your next step.' && fa !== 'Catch up on this step.') return fa;
+      if (fa && fa !== 'Your next step.' && fa !== ASK_KINDS['catch-up']) return fa;
       const ft = normalizeAsk(String(first.title || '').replace(/\.+$/, '').trim() + '.');
       if (ft) return ft;
     }
-    // A LONE ITEM NAMES ITSELF (batch 11, #229 Left). The same rule the bundle
-    // follows just above, for an item with no bundle: when no rung could phrase
-    // an ask and there is no authored CTA, its own title is the truthful line —
-    // it is what the card under the headline is about. Only an item with no
+    // A LONE ITEM NAMES ITSELF (batch 11, #229 Left). Only an item with no
     // words at all keeps the placeholder; there is nothing else to name.
     if (t) { const own = normalizeAsk(t + '.'); if (own) return own; }
     return 'Your next step.';

@@ -15,7 +15,22 @@
 
 import { taskSatisfied, effectiveDone } from '../taskEngine';
 
-const t = (text) => ({ id: 'x', task: text });
+// INPUTS ONLY changed (six root causes, cause 1, part 2): a row is proven by
+// the facts its step DECLARES, never by its words. Each row below carries the
+// declaration a step with these words carries (derived once from the retired
+// text rules, as the playbooks' were). The assertions are unchanged; they now
+// prove the facts, which is where presence-vs-act is decided.
+const FACTS = {
+  'Chase the RSVPs': ['replies-chased'],
+  'Confirm all vendors — check balance due status': ['nothing-owed'],
+  'Confirm the final headcount': ['guest-count'],
+  'Negotiate vendor payment plans where possible': ['nothing-owed'],
+  'Pay the caterer balance once headcount is final': ['nothing-owed'],
+  'Pay the final balances': ['nothing-owed'],
+  'Send the invitations': ['invites-out'],
+  'Sign the contract and pay the deposit': ['deposits-paid'],
+};
+const t = (text) => ({ id: 'x', task: text, facts: FACTS[text] });
 
 const owed = (over = {}) => ({
   id: 'e-c2', type: 'Retirement Party', date: '2026-09-01',

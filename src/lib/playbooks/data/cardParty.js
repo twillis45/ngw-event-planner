@@ -52,7 +52,7 @@ const cardParty = {
   ],
 
   milestones: [
-    { id: 'cp_invite', name: 'Invite sent + headcount started (count in fours)', offsetDays: 10, owner: 'host', category: 'planning', risk: { ifDelayed: 'Cannot size tables, food, or drinks; odd headcount leaves a table short a hand', severity: 'med' } },
+    { id: 'cp_invite', name: 'Invite sent + headcount started (count in fours)', facts: ['invites-out'], offsetDays: 10, owner: 'host', category: 'planning', risk: { ifDelayed: 'Cannot size tables, food, or drinks; odd headcount leaves a table short a hand', severity: 'med' } },
     { id: 'cp_rules', name: 'Format + house rules set; kit confirmed', offsetDays: 7, owner: 'host', dependsOn: ['cp_invite'], category: 'planning', risk: { ifDelayed: 'Rules argued mid-hand; a deck short or no score pads stalls a table', severity: 'med' } },
     { id: 'cp_tables', name: 'Tables + chairs + lighting locked (one table per 4)', offsetDays: 5, owner: 'host', dependsOn: ['cp_invite'], category: 'setup', risk: { ifDelayed: 'Players crowd one table or play in bad light', severity: 'med' } },
     { id: 'cp_menu', name: 'Menu + drinks locked; potluck assignments out', offsetDays: 5, owner: 'host', dependsOn: ['cp_invite'], category: 'food', risk: { ifDelayed: 'Duplicate dishes / gaps in the spread', severity: 'low' } },
@@ -63,22 +63,22 @@ const cardParty = {
   ],
 
   tasks: [
-    { id: 't_invite', target: 'invite', milestoneId: 'cp_invite', phase: 'guest', label: 'Send the invite with date, time, and "we are playing Spades/Bid" — ask for a firm RSVP and count heads in fours so every table stays full (line up a fifth/spare to fill a no-show seat)', when: 'T-10d' },
+    { id: 't_invite', target: 'invite', facts: ['invites-out'], milestoneId: 'cp_invite', phase: 'guest', label: 'Send the invite with date, time, and "we are playing Spades/Bid" — ask for a firm RSVP and count heads in fours so every table stays full (line up a fifth/spare to fill a no-show seat)', when: 'T-10d' },
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
-    { id: 't_rules', target: 'call:game_format', answeredBy: ['game_format'], milestoneId: 'cp_rules', phase: 'plan', label: 'Pick the game: Spades, Bid Whist, both, or a bracket', when: 'T-7d' },
-    { id: 't_rules_post', target: 'assign', milestoneId: 'cp_rules', phase: 'plan', label: 'Post the house rules: talking across the table (or not), renege calls, blind nil / Boston, and the cut', when: 'T-7d' },
-    { id: 't_kit', target: 'space', milestoneId: 'cp_rules', phase: 'plan', label: 'Confirm the kit: 2+ reliable, complete decks PER TABLE (one in play, one shuffling), jokers IN for Bid Whist / OUT for Spades, a score pad + pen per table', when: 'T-7d' },
-    { id: 't_tables', target: 'vendors', milestoneId: 'cp_tables', phase: 'setup', label: 'Count card tables and chairs: one 34" square table + 4 chairs per group of four. Borrow or rent folding card tables if short; test bright, even light over every seat', when: 'T-5d' },
-    { id: 't_menu', target: 'list', milestoneId: 'cp_menu', phase: 'food', label: 'Lock the grazing spread (one pot + finger foods + sweets); if potluck, assign categories by text so the proteins, sides, and desserts all get covered', when: 'T-5d' },
-    { id: 't_shop', target: 'list', milestoneId: 'cp_shop', phase: 'shopping', label: 'Main shop: pot ingredients, wings/meatball fixings, deviled-egg + charcuterie makings, chips/dip, liquor/mixers/wine/beer, punch base, water, napkins, cups/plates, trash bags', when: 'T-1d' },
-    { id: 't_prep', target: 'none', milestoneId: 'cp_shop', phase: 'food', label: 'Prep ahead: boil + fill deviled eggs, build the charcuterie, portion dips, season/marinate proteins, mix the punch base, start chilling all drinks', when: 'T-1d evening' },
-    { id: 't_cook', target: 'day', milestoneId: 'cp_cook', phase: 'food', label: 'Put the pot on (chili/gumbo) low and slow; bake/fry the wings + meatballs so they hit warm as the first table sits down', when: 'T0 -3:00' },
-    { id: 't_space', target: 'day', milestoneId: 'cp_space', phase: 'setup', label: 'Square up the tables with a real seat per player, bright even light over each, partners able to sit across; queue a low playlist (grown and groovy — under the table talk)', when: 'T0 -1:00' },
-    { id: 't_station', target: 'day', milestoneId: 'cp_space', phase: 'setup', label: 'Set the food station and the bar AWAY from the tables: spread laid out, punch + water + ice out, cups/plates/napkins stacked; decks + score pad + pen on every table; trash + recycling visible', when: 'T0 -0:30' },
-    { id: 't_refresh', target: 'day', milestoneId: 'event', phase: 'food', label: 'Snack refresh ~2 hours in: top up the spread, refill the pot bowl, restock the bar + ice + water, swap a full trash bag — keep the room fed without breaking the tables', when: 'T0 +2:00' },
-    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Wind down: clear cups/plates, bag trash + recycling, pack leftovers, gather every deck (count back to 52 / 54), fold and stack the card tables', when: 'T0 +4:00' },
+    { id: 't_rules', target: 'call:game_format', facts: ['calls-answered'], answeredBy: ['game_format'], milestoneId: 'cp_rules', phase: 'plan', label: 'Pick the game: Spades, Bid Whist, both, or a bracket', when: 'T-7d' },
+    { id: 't_rules_post', target: 'assign', facts: [], milestoneId: 'cp_rules', phase: 'plan', label: 'Post the house rules: talking across the table (or not), renege calls, blind nil / Boston, and the cut', when: 'T-7d' },
+    { id: 't_kit', target: 'space', facts: [], milestoneId: 'cp_rules', phase: 'plan', label: 'Confirm the kit: 2+ reliable, complete decks PER TABLE (one in play, one shuffling), jokers IN for Bid Whist / OUT for Spades, a score pad + pen per table', when: 'T-7d' },
+    { id: 't_tables', target: 'vendors', facts: [], milestoneId: 'cp_tables', phase: 'setup', label: 'Count card tables and chairs: one 34" square table + 4 chairs per group of four. Borrow or rent folding card tables if short; test bright, even light over every seat', when: 'T-5d' },
+    { id: 't_menu', target: 'list', facts: ['menu-decided'], milestoneId: 'cp_menu', phase: 'food', label: 'Lock the grazing spread (one pot + finger foods + sweets); if potluck, assign categories by text so the proteins, sides, and desserts all get covered', when: 'T-5d' },
+    { id: 't_shop', target: 'list', facts: [], milestoneId: 'cp_shop', phase: 'shopping', label: 'Main shop: pot ingredients, wings/meatball fixings, deviled-egg + charcuterie makings, chips/dip, liquor/mixers/wine/beer, punch base, water, napkins, cups/plates, trash bags', when: 'T-1d' },
+    { id: 't_prep', target: 'none', facts: [], milestoneId: 'cp_shop', phase: 'food', label: 'Prep ahead: boil + fill deviled eggs, build the charcuterie, portion dips, season/marinate proteins, mix the punch base, start chilling all drinks', when: 'T-1d evening' },
+    { id: 't_cook', target: 'day', facts: [], milestoneId: 'cp_cook', phase: 'food', label: 'Put the pot on (chili/gumbo) low and slow; bake/fry the wings + meatballs so they hit warm as the first table sits down', when: 'T0 -3:00' },
+    { id: 't_space', target: 'day', facts: [], milestoneId: 'cp_space', phase: 'setup', label: 'Square up the tables with a real seat per player, bright even light over each, partners able to sit across; queue a low playlist (grown and groovy — under the table talk)', when: 'T0 -1:00' },
+    { id: 't_station', target: 'day', facts: [], milestoneId: 'cp_space', phase: 'setup', label: 'Set the food station and the bar AWAY from the tables: spread laid out, punch + water + ice out, cups/plates/napkins stacked; decks + score pad + pen on every table; trash + recycling visible', when: 'T0 -0:30' },
+    { id: 't_refresh', target: 'day', facts: [], milestoneId: 'event', phase: 'food', label: 'Snack refresh ~2 hours in: top up the spread, refill the pot bowl, restock the bar + ice + water, swap a full trash bag — keep the room fed without breaking the tables', when: 'T0 +2:00' },
+    { id: 't_reset', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Wind down: clear cups/plates, bag trash + recycling, pack leftovers, gather every deck (count back to 52 / 54), fold and stack the card tables', when: 'T0 +4:00' },
   ],
 
   purchases: [

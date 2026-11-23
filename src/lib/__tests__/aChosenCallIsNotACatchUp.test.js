@@ -111,7 +111,8 @@ describe('Reunion: the food call and telling guests are two steps', () => {
   test('the call clears on the pick', () => {
     const ev = seed('Reunion', { 'food-model': PICK() });
     const t = step(ev, 't-decide-food');
-    expect(t.task).toBe('Decide potluck vs host-cooked BBQ vs catered');
+    // Owner ruling 4a (11/23/2026): the who-cooks step speaks its call's question.
+    expect(t.task).toBe('How is food handled?');
     expect(timelineStepResolved(ev, t)).toBe(true);
   });
   test('telling guests stays open until it is ticked, due when the old step was', () => {
@@ -233,7 +234,8 @@ describe.each([
     't_contest_prizes', 'Set the contest categories and judges, and buy prizes worth winning — one per category plus a spare'],
   // The caterer pick: the work row confirms the caterer, and its do-it-yourself
   // half leaves (copyByAnswer; aCatererPickHidesOnlyWhatItRulesOut, 11/22/2026).
-  ['Day Party', 'food', 3, 't_food', 'Decide the food level: passed bites and grazing, light bites only, a food truck, or catered drop-off',
+  // Owner ruling 4a (11/23/2026): the who-cooks step speaks its call's question.
+  ['Day Party', 'food', 3, 't_food', 'Light passed bites, a grazing table, or a food truck?',
     't_food_lock', 'Lock food: confirm the caterer’s drop-off window'],
   ['Kwanzaa Gathering', 'program', 0, 't_program_plan', 'Decide who leads the principle discussion and the libation',
     't_program_prep', "Choose the night's principle (or the order across nights); print/save the reading + a question or two for discussion; ask the elder/host/children who will light the candle and pour the libation"],

@@ -14,6 +14,9 @@ const { hostSpending } = require('../hostSpending');
 const { expectedHeadroom } = require('../budgetCopy');
 const { moneyFigures, headroomLabel, MONEY_LABELS } = require('../moneyFigures');
 const { coversWithWord, confirmedRsvpCovers } = require('../confirmedCovers');
+const { derivePlaceIntelligence } = require('../placeIntelligence');
+const { planHeroCopy } = require('../planHeroCopy');
+const { buildReturnSnapshot } = require('../returnNarration');
 
 const dayOut = (n) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(12, 0, 0, 0); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const events = () => {
@@ -70,6 +73,97 @@ describe('one number, one reader, on every playbook', () => {
     expect(bad).toEqual([]);
   });
 
+  // ── The rest of cause 3 (P1-6 item counts, P2 "Venue address: handled") ──
+  test('the venue address: the ledger part and Space\'s Guest arrival read one fact', () => {
+    const bad = [];
+    for (const base of events()) {
+      for (const place of [
+        { venue: 'Our place', venueKind: 'home', venueAddress: '' },
+        { venue: 'Our place', venueKind: 'home', venueAddress: '12 Oak St, Fort Washington, MD' },
+        { venue: 'The Elks Lodge', venueKind: 'venue', venueAddress: '' },
+      ]) {
+        const ev = { ...base, ...place };
+        const part = (deriveEventPhaseProgress(ev).items || []).find((i) => i.id === 'venueaddress');
+        if (!part) continue;
+        const arrival = derivePlaceIntelligence(ev).sections.find((x) => x.key === 'arrival');
+        if ((arrival.state === 'handled') !== part.handled) bad.push(`${ev.id} ${place.venue}${place.venueAddress ? ' + street' : ''}: ledger ${part.handled}, arrival ${arrival.state}`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
+  test('item counts: every "left to buy" counts the same lines', () => {
+    const { itemCounts } = require('../itemCounts');
+    const bad = [];
+    for (const base of events()) {
+      const plan0 = pbm.playbookFoodPlan(base);
+      if (!plan0 || !plan0.list || !plan0.list.length) continue;
+      // Some lines bought, one a friend brings: the sets the counts disagreed on.
+      const got = {}; plan0.list.slice(0, 2).forEach((i) => { got[i.id] = true; });
+      const third = plan0.list[2];
+      const ev = { ...base, foodGot: got, ...(third ? { foodOwner: { [third.id]: 'Aunt May' } } : {}) };
+      const plan = pbm.playbookFoodPlan(ev);
+      const c = itemCounts(plan, ev);
+      if (c.leftToBuy !== c.listItems - c.listBought) bad.push(`${ev.id}: ${c.leftToBuy} left vs ${c.listItems} − ${c.listBought}`);
+      const shop = (deriveEventPhaseProgress(ev).items || []).find((i) => i.id === 'shopping');
+      if (shop && !shop.handled && !new RegExp(`· ${c.leftToBuy} left$`).test(shop.cueLabel)) bad.push(`${ev.id}: board "${shop.cueLabel}" vs ${c.leftToBuy}`);
+      const hero = planHeroCopy(ev);
+      if (hero && hero.state === 'shopping' && !hero.title.includes(`remaining ${c.leftToBuy} item`)) bad.push(`${ev.id}: hero "${hero.title}" vs ${c.leftToBuy}`);
+      const snap = buildReturnSnapshot(ev);
+      if (snap.foodLeft != null && snap.foodLeft !== c.leftToBuy) bad.push(`${ev.id}: return line ${snap.foodLeft} vs ${c.leftToBuy}`);
+    }
+    expect(bad).toEqual([]);
+  });
+
+  test('item counts: each count prints under its own label on the shell', () => {
+    const SRC = fs.readFileSync(path.join(__dirname, '../../../hostv2/src/HostShellV2.jsx'), 'utf8');
+    // "7 items" on the spread link and "11 items" on the list it opens.
+    expect(/\{foodPlan\.itemCount\} \{foodPlan\.itemCount === 1 \? 'item' : 'items'\}/.test(SRC)).toBe(false);
+    expect(/All \{foodPlan\.itemCount\} food item/.test(SRC)).toBe(false);
+    expect(/COUNT_LABELS\.foodItems\(/.test(SRC)).toBe(true);
+    expect(/COUNT_LABELS\.listItems\(/.test(SRC)).toBe(true);
+  });
+
+  test('a head: every per-head figure is one division of the total it sits beside', () => {
+    const { perHeadRange } = require('../perHead');
+    const bad = [];
+    for (const ev of events()) {
+      const p = pbm.playbookFoodPlan(ev);
+      if (!p || !(p.guests > 0)) continue;
+      const allIn = perHeadRange(p.foodLow + p.suppliesLow, p.foodHigh + p.suppliesHigh, p.guests);
+      if (allIn.low !== p.perGuestAllInLow || allIn.high !== p.perGuestAllInHigh) bad.push(`${ev.id}: all in ${p.perGuestAllInLow}–${p.perGuestAllInHigh} vs ${allIn.low}–${allIn.high}`);
+      // The food pair divides the unrounded food sum; it closes on the printed
+      // food total to within the total's own rounding (nearest $5).
+      if (Math.abs(p.perGuestLow * p.guests - p.foodLow) > 2.5 + p.guests / 2) bad.push(`${ev.id}: food low ${p.perGuestLow} × ${p.guests} vs ${p.foodLow}`);
+      if (Math.abs(p.perGuestHigh * p.guests - p.foodHigh) > 2.5 + p.guests / 2) bad.push(`${ev.id}: food high ${p.perGuestHigh} × ${p.guests} vs ${p.foodHigh}`);
+    }
+    expect(bad).toEqual([]);
+    const SRC = fs.readFileSync(path.join(__dirname, '../../../hostv2/src/HostShellV2.jsx'), 'utf8');
+    // The shell divides nothing by the guests itself.
+    expect(SRC.match(/Math\.round\(\w+ \/ guests\)\)?\} a head|\/ foodPlan\.guests/g)).toBe(null);
+    expect((SRC.match(/perHeadText\(/g) || []).length).toBe(5);
+  });
+
+  test('the shop\'s "all in" counts the seating sheet\'s gear, the plan costs Your money counts', () => {
+    const { allInTotal } = require('../planCosts');
+    const bad = [];
+    let withGear = 0;
+    for (const ev of events()) {
+      const fp = pbm.playbookFoodPlan(ev);
+      if (!fp || !fp.hasRealCount) continue;
+      let cap = null; try { cap = pbm.playbookCapacity(ev); } catch (_e) { cap = null; }
+      const all = allInTotal(fp, cap);
+      if (all.gearHigh > 0) withGear++;
+      const cats = hostSpending(ev).categories || [];
+      const exp = cats.filter((c) => ['Catering', 'Bar / Beverage', 'Supplies', 'Rentals'].includes(c.label)).reduce((t, c) => t + (Number(c.expected) || 0), 0);
+      if (exp < all.low - 5 || exp > all.high + 5) bad.push(`${ev.id}: money expects ${Math.round(exp)} for food, drinks, supplies and rentals; the shop says ${all.low}–${all.high}`);
+    }
+    expect(bad).toEqual([]);
+    expect(withGear).toBeGreaterThan(0);
+    const SRC = fs.readFileSync(path.join(__dirname, '../../../hostv2/src/HostShellV2.jsx'), 'utf8');
+    expect(/\(foodPlan\.foodLow \|\| 0\) \+ \(foodPlan\.suppliesLow \|\| 0\)/.test(SRC)).toBe(false);
+  });
+
   test('the shell prints these through the readers, not its own counts', () => {
     const SRC = fs.readFileSync(path.join(__dirname, '../../../hostv2/src/HostShellV2.jsx'), 'utf8');
     expect(/'Expected left to spend'/.test(SRC)).toBe(false);
@@ -77,5 +171,9 @@ describe('one number, one reader, on every playbook', () => {
     expect(/if \(yes > 0\) w\.push\(yes \+ ' confirmed'\)/.test(SRC)).toBe(false);
     expect(/phaseCues\.completedCount/.test(SRC)).toBe(false);
     expect(/planPartsProgress\(phaseCues\)/.test(SRC)).toBe(true);
+    // How urgent a call is (P1-7): the Calls list's "time-sensitive" tag reads
+    // lib/urgency, the same reader the hero queue raises a call by.
+    expect(/r\.timeCritical && r\.status !== 'overdue'/.test(SRC)).toBe(false);
+    expect((SRC.match(/urgencyOf\(r\)\.timeSensitive/g) || []).length).toBe(4);
   });
 });

@@ -5,7 +5,7 @@
 // playbook authors finds nothing, so it is routed as a row with no declared
 // target (no button), exactly like a row the host wrote herself.
 import { ALL_PLAYBOOKS, getPlaybook } from '../playbooks';
-import { everyDeclaredStep } from '../stepTarget';
+import { everyDeclaredStep, stepFactsFor } from '../stepTarget';
 import { checklistRouteFor } from '../taskRoute';
 
 const norm = (x) => String(x || '').trim().replace(/[.\s]+$/, '').toLowerCase();
@@ -59,4 +59,19 @@ export function routeByWords(words, meta = {}, event = null) {
   // The row's own playbook: a step quoted from another type is that type's row.
   const ev = event ? (event.type === hit.type ? event : { ...event, type: hit.type }) : { id: 'x', type: hit.type, guests: [], vendors: [] };
   return checklistRouteFor(words, { ...meta, taskId: hit.id }, ev);
+}
+
+/**
+ * A checklist row for the authored step these words are, carrying that step's
+ * declared facts (six root causes, cause 1, part 2: a row is proven handled by
+ * the facts its step declares, never by its words). Words no playbook authors
+ * make a row the host wrote herself, which declares nothing.
+ */
+export function rowByWords(words, event = null) {
+  const hit = stepIdByWords(words, event);
+  if (!hit) return { task: words };
+  const id = typeof hit === 'string' ? hit : hit.id;
+  const type = typeof hit === 'string' ? ((event && event.type) || 'Birthday') : hit.type;
+  const ev = { ...(event || {}), id: (event && event.id) || 'x', type };
+  return { task: words, facts: stepFactsFor(ev, { id }) || [] };
 }

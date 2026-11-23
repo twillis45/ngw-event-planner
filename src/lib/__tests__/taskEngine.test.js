@@ -1,6 +1,26 @@
 import { taskSatisfied, effectiveDone, cateringSelfProvided, hasNamedVendor } from '../taskEngine';
 
-const t = (task) => ({ task });
+// INPUTS ONLY changed (six root causes, cause 1, part 2): a row is proven by
+// the facts its step DECLARES, never by its words. Each row below carries the
+// declaration a step with these words carries (derived once from the retired
+// text rules, as the playbooks' were). The assertions are unchanged.
+const FACTS = {
+  'Book entertainment / DJ': ['roles:dj'],
+  'Book the DJ': ['roles:dj'],
+  'Book the caterer': ['or:catering-moot', 'caterer-booked'],
+  'Book the photographer': ['roles:photographer'],
+  'Book the venue': ['venue-set'],
+  'Confirm catering headcount': ['or:catering-moot', 'and:caterer-booked', 'guest-count'],
+  'Confirm the final headcount': ['guest-count'],
+  'Invite your guests': ['invites-out'],
+  'Secure the space': ['venue-set'],
+  'Set a spending plan': ['budget-set'],
+  'Set date, headcount, menu': ['date-set'],
+  'Set date, headcount, vibe': ['date-set'],
+  'Set the budget': ['budget-set'],
+  'Set the date and venue': ['date-set'],
+};
+const t = (task) => ({ task, facts: FACTS[task] });
 
 describe('taskSatisfied — derives from real event state', () => {
   // C2 — this test previously asserted the BUG on its second line: it pinned
@@ -83,7 +103,8 @@ describe('effectiveDone — manual done OR engine-proven', () => {
     expect(effectiveDone({}, { task: 'Buy nice candles', done: false })).toBe(false);
   });
   test('engine state makes a task done without any checkoff', () => {
-    expect(effectiveDone({ guestCount: 20 }, { task: 'Confirm headcount', done: false })).toBe(true);
+    // INPUT ONLY changed (cause 1, part 2): the row declares the fact that proves it.
+    expect(effectiveDone({ guestCount: 20 }, { task: 'Confirm headcount', facts: ['guest-count'], done: false })).toBe(true);
   });
   test('hasNamedVendor guards on a real name', () => {
     expect(hasNamedVendor({ vendors: [{ name: 'Lens & Co' }] })).toBe(true);

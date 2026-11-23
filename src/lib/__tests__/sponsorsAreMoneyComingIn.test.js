@@ -12,6 +12,9 @@ import { playbookChecklist } from '../playbooks';
 import { sponsorTotals, addSponsor, markSponsor, draftSponsorAsk, draftSponsorReport } from '../sponsors';
 import { hostSpending } from '../hostSpending';
 import { duplicateEvent } from '../duplicateEvent';
+// INPUTS ONLY changed (six root causes, cause 1, part 2): the row is passed
+// with its id, the way the app identifies it; its step's declared facts, not
+// its words, prove it handled. Assertions unchanged.
 
 const ev = (type, extra = {}) => ({ id: 'sp', type, name: 'Lincoln Elementary Fall Festival', date: '2027-01-30', guestEstimate: 300,
   guestMode: 'count', guestCountSource: 'host', venue: 'Lincoln Elementary', venueCity: 'Austin, TX', ...extra });
@@ -27,8 +30,8 @@ test('PTA: the ask row drafts the sponsor ask on the draft sheet, and is done on
   const hit = routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, ev('PTA / Booster Fundraiser'));
   expect(hit.label).toBe('Draft the sponsor ask');
   expect(resolveRoute(hit.route)).toEqual({ kind: 'draft', focus: 'sponsor-ask' });
-  expect(taskSatisfied(ev('PTA / Booster Fundraiser'), { task: r.task })).toBe(false);
-  expect(taskSatisfied(ev('PTA / Booster Fundraiser', { sponsors: SPONSORS.slice(1, 2) }), { task: r.task })).toBe(true);
+  expect(taskSatisfied(ev('PTA / Booster Fundraiser'), { id: r.id, task: r.task })).toBe(false);
+  expect(taskSatisfied(ev('PTA / Booster Fundraiser', { sponsors: SPONSORS.slice(1, 2) }), { id: r.id, task: r.task })).toBe(true);
 });
 
 describe.each([
@@ -48,7 +51,7 @@ describe.each([
   });
   test('stays the host’s tick: the rows name people and acts the list cannot prove', () => {
     const all = SPONSORS.map((s) => ({ ...s, received: true, thanked: true }));
-    expect(taskSatisfied(ev(type, { sponsors: all }), { task: r.task })).toBe(false);
+    expect(taskSatisfied(ev(type, { sponsors: all }), { id: r.id, task: r.task })).toBe(false);
   });
 });
 

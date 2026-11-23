@@ -11,6 +11,9 @@ import { checklistRouteFor } from '../taskRoute';
 import { resolveRoute } from '../routeResolver';
 import { taskSatisfied } from '../taskEngine';
 import { playbookChecklist } from '../playbooks';
+// INPUTS ONLY changed (six root causes, cause 1, part 2): the row is passed
+// with its id, the way the app identifies it; its step's declared facts, not
+// its words, prove it handled. Assertions unchanged.
 
 const ev = (type, extra = {}) => ({ id: 'alb', type, date: '2026-12-31', guestEstimate: 20, guestMode: 'count',
   guestCountSource: 'host', venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX', ...extra });
@@ -32,7 +35,7 @@ describe.each(ROWS)('%s: the album row', (type, re) => {
   });
 
   test('a saved album link is the step done; nothing, or a half-typed link, is not', () => {
-    const t = { task: r.task };
+    const t = { id: r.id, task: r.task };
     expect(taskSatisfied(ev(type), t)).toBe(false);
     expect(taskSatisfied(ev(type, { albumUrl: 'photos.app.goo.gl/abc' }), t)).toBe(false);
     expect(taskSatisfied(ev(type, { albumUrl: '   ' }), t)).toBe(false);
@@ -45,6 +48,6 @@ test('other album and photo rows keep their own rules (the link credits only the
   // guest list, and a saved link does not prove the ask went out.
   const b = row('Birthday', /^Start a shared album/);
   expect(b).toBeTruthy();
-  expect(taskSatisfied(ev('Birthday', { albumUrl: 'https://photos.app.goo.gl/abc' }), { task: b.task })).toBe(false);
+  expect(taskSatisfied(ev('Birthday', { albumUrl: 'https://photos.app.goo.gl/abc' }), { id: b.id, task: b.task })).toBe(false);
   expect(resolveRoute(routeByWords(b.task, { taskId: b.id, week: b.week, category: b.category }, ev('Birthday')).route).kind).toBe('guests');
 });

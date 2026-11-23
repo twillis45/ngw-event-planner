@@ -126,7 +126,7 @@ const crabFeast = {
   ],
 
   milestones: [
-    { id: 'cf_setdate', name: 'Set date, headcount & the steam-vs-order call', offsetDays: 10, owner: 'host', category: 'planning', risk: { ifDelayed: 'Crab house books up or sizes sell out on a summer weekend', severity: 'med' } },
+    { id: 'cf_setdate', name: 'Set date, headcount & the steam-vs-order call', facts: ['date-set'], offsetDays: 10, owner: 'host', category: 'planning', risk: { ifDelayed: 'Crab house books up or sizes sell out on a summer weekend', severity: 'med' } },
     { id: 'cf_source', name: 'Pick the crab house / market and check sizes + price', offsetDays: 10, owner: 'host', dependsOn: ['cf_setdate'], category: 'logistics', risk: { ifDelayed: 'No crabs / wrong size on the day; blue-crab price and supply swing seasonally', severity: 'high' } },
     { id: 'cf_invite', name: 'Invite guests & confirm adult pickers vs kids', offsetDays: 7, owner: 'host', dependsOn: ['cf_setdate'], category: 'guest', risk: { ifDelayed: 'Crab count off — pickers eat far more than kids', severity: 'med' } },
     { id: 'cf_reserve', name: 'Reserve / pre-order the crabs (and a pickup time if steamed)', offsetDays: 5, owner: 'host', dependsOn: ['cf_source', 'cf_invite'], category: 'logistics', risk: { ifDelayed: 'Crab house sells out of your size; hot pickup slot gone', severity: 'high' } },
@@ -139,21 +139,21 @@ const crabFeast = {
   ],
 
   tasks: [
-    { id: 't_source', target: 'crab', milestoneId: 'cf_source', phase: 'logistics', label: 'Call a couple of crab houses/markets; ask the day\'s sizes, live vs steamed price per dozen/bushel, and whether to pre-order', when: 'T-10d' },
-    { id: 't_invite', target: 'invite', milestoneId: 'cf_invite', phase: 'guest', label: 'Invite guests; note who are serious crab pickers vs kids/light eaters (it drives the count)', when: 'T-7d' },
-    { id: 't_reserve', target: 'crab', milestoneId: 'cf_reserve', phase: 'logistics', label: 'Pre-order the crabs by size and count', when: 'T-5d' },
+    { id: 't_source', target: 'crab', facts: [], milestoneId: 'cf_source', phase: 'logistics', label: 'Call a couple of crab houses/markets; ask the day\'s sizes, live vs steamed price per dozen/bushel, and whether to pre-order', when: 'T-10d' },
+    { id: 't_invite', target: 'invite', facts: ['invites-out'], milestoneId: 'cf_invite', phase: 'guest', label: 'Invite guests; note who are serious crab pickers vs kids/light eaters (it drives the count)', when: 'T-7d' },
+    { id: 't_reserve', target: 'crab', facts: [], milestoneId: 'cf_reserve', phase: 'logistics', label: 'Pre-order the crabs by size and count', when: 'T-5d' },
     // Sourcing-split tasks — the host's steam-vs-order choice reshapes what's left to do.
-    { id: 't_pickup', target: 'crab', milestoneId: 'cf_reserve', phase: 'logistics', label: 'Lock a hot pickup slot at the crab house near your start time — they steam & season, you just pick up', when: 'T-5d', whenChoice: { id: 'steam_vs_order', in: ['Order steamed for pickup'] } },
-    { id: 't_rentpot', target: 'vendors', milestoneId: 'cf_reserve', phase: 'logistics', label: 'Rent or borrow a rack steamer pot (40+ qt) + propane burner — you\'re steaming your own', when: 'T-7d', whenChoice: { id: 'steam_vs_order', in: ['Steam them myself', 'Buy live, steam in batches'] } },
-    { id: 't_count', target: 'crab', milestoneId: 'cf_headcount', phase: 'guest', label: 'Lock headcount; figure ~6–12 crabs per adult picker, ~half a bushel per 4–6 pickers, fewer for kids', when: 'T-3d' },
-    { id: 't_shop', target: 'list', milestoneId: 'cf_shop', phase: 'shopping', label: 'Buy Old Bay/J.O., apple-cider vinegar, sides, beer/soda/water/tea, butter, paper table cover, mallets & knives, paper towels, cleanup', when: 'T-3d' },
-    { id: 't_prep', target: 'spread', milestoneId: 'cf_prep', phase: 'food', label: 'Make coleslaw & potato salad; set out mallets, crab knives, bibs, butter & vinegar dishes, the paper-towel rolls', when: 'T-1d' },
-    { id: 't_corn', target: 'day', milestoneId: 'cf_setup', phase: 'food', label: 'Steam/boil the corn and (if doing your own) the shrimp; dust shrimp with Old Bay', when: 'T0 -1:00' },
-    { id: 't_steam', target: 'day', milestoneId: 'cf_pickup_steam', phase: 'food', label: 'Pick up the hot steamed crabs at your locked slot and get them to the table fast', when: 'T0', whenChoice: { id: 'steam_vs_order', in: ['Order steamed for pickup'] } },
-    { id: 't_steam_self', target: 'day', milestoneId: 'cf_pickup_steam', phase: 'food', label: 'Steam your own: water + apple-cider vinegar + beer below the rack, layer crabs, heavy Old Bay per layer, ~20–30 min until bright red', when: 'T0', whenChoice: { id: 'steam_vs_order', in: ['Steam them myself', 'Buy live, steam in batches'] } },
-    { id: 't_setup', target: 'day', milestoneId: 'cf_setup', phase: 'setup', label: 'Cover the tables in newspaper/brown paper, set tools and butter/vinegar, ice the drinks, stage a trash/recycle station and a shell bucket', when: 'T0 -0:30' },
-    { id: 't_dump', target: 'day', milestoneId: 'event', phase: 'food', label: 'Dump the hot crabs down the middle of the table, dust with extra Old Bay, and let everyone dig in; refill sides, drinks, and paper towels', when: 'T0' },
-    { id: 't_clean', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Roll the shell and paper straight off the table into trash bags; bag/double-bag the shell, wash mallets & dishes, store leftovers (pick extra crab meat)', when: 'T0 +4:00' },
+    { id: 't_pickup', target: 'crab', facts: [], milestoneId: 'cf_reserve', phase: 'logistics', label: 'Lock a hot pickup slot at the crab house near your start time — they steam & season, you just pick up', when: 'T-5d', whenChoice: { id: 'steam_vs_order', in: ['Order steamed for pickup'] } },
+    { id: 't_rentpot', target: 'vendors', facts: [], milestoneId: 'cf_reserve', phase: 'logistics', label: 'Rent or borrow a rack steamer pot (40+ qt) + propane burner — you\'re steaming your own', when: 'T-7d', whenChoice: { id: 'steam_vs_order', in: ['Steam them myself', 'Buy live, steam in batches'] } },
+    { id: 't_count', target: 'crab', facts: ['guest-count'], milestoneId: 'cf_headcount', phase: 'guest', label: 'Lock headcount; figure ~6–12 crabs per adult picker, ~half a bushel per 4–6 pickers, fewer for kids', when: 'T-3d' },
+    { id: 't_shop', target: 'list', facts: [], milestoneId: 'cf_shop', phase: 'shopping', label: 'Buy Old Bay/J.O., apple-cider vinegar, sides, beer/soda/water/tea, butter, paper table cover, mallets & knives, paper towels, cleanup', when: 'T-3d' },
+    { id: 't_prep', target: 'spread', facts: [], milestoneId: 'cf_prep', phase: 'food', label: 'Make coleslaw & potato salad; set out mallets, crab knives, bibs, butter & vinegar dishes, the paper-towel rolls', when: 'T-1d' },
+    { id: 't_corn', target: 'day', facts: [], milestoneId: 'cf_setup', phase: 'food', label: 'Steam/boil the corn and (if doing your own) the shrimp; dust shrimp with Old Bay', when: 'T0 -1:00' },
+    { id: 't_steam', target: 'day', facts: [], milestoneId: 'cf_pickup_steam', phase: 'food', label: 'Pick up the hot steamed crabs at your locked slot and get them to the table fast', when: 'T0', whenChoice: { id: 'steam_vs_order', in: ['Order steamed for pickup'] } },
+    { id: 't_steam_self', target: 'day', facts: [], milestoneId: 'cf_pickup_steam', phase: 'food', label: 'Steam your own: water + apple-cider vinegar + beer below the rack, layer crabs, heavy Old Bay per layer, ~20–30 min until bright red', when: 'T0', whenChoice: { id: 'steam_vs_order', in: ['Steam them myself', 'Buy live, steam in batches'] } },
+    { id: 't_setup', target: 'day', facts: [], milestoneId: 'cf_setup', phase: 'setup', label: 'Cover the tables in newspaper/brown paper, set tools and butter/vinegar, ice the drinks, stage a trash/recycle station and a shell bucket', when: 'T0 -0:30' },
+    { id: 't_dump', target: 'day', facts: [], milestoneId: 'event', phase: 'food', label: 'Dump the hot crabs down the middle of the table, dust with extra Old Bay, and let everyone dig in; refill sides, drinks, and paper towels', when: 'T0' },
+    { id: 't_clean', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Roll the shell and paper straight off the table into trash bags; bag/double-bag the shell, wash mallets & dishes, store leftovers (pick extra crab meat)', when: 'T0 +4:00' },
   ],
 
   purchases: [

@@ -46,7 +46,7 @@ const backyardBbq = {
   ],
 
   milestones: [
-    { id: 'bbq_setdate', name: 'Set date, headcount, menu', offsetDays: 14, owner: 'host', category: 'planning', risk: { ifDelayed: 'Weather window unknown', severity: 'low' } },
+    { id: 'bbq_setdate', name: 'Set date, headcount, menu', facts: ['date-set'], offsetDays: 14, owner: 'host', category: 'planning', risk: { ifDelayed: 'Weather window unknown', severity: 'low' } },
     { id: 'bbq_invite', name: 'Invite + assign potluck/drinks', offsetDays: 10, owner: 'host', dependsOn: ['bbq_setdate'], category: 'guest', risk: { ifDelayed: 'Duplicate sides, missing drinks', severity: 'low' } },
     { id: 'bbq_rsvp', name: 'Loose headcount + weather check', offsetDays: 3, owner: 'host', dependsOn: ['bbq_invite'], category: 'guest', risk: { ifDelayed: 'Wrong protein quantity; no rain plan', severity: 'med' } },
     { id: 'bbq_shop_nonperish', name: 'Buy drinks, fuel, disposables, bug/sun supplies', offsetDays: 3, owner: 'host', dependsOn: ['bbq_rsvp'], category: 'shopping', risk: null },
@@ -56,13 +56,13 @@ const backyardBbq = {
   ],
 
   tasks: [
-    { id: 't_invite', target: 'invite', milestoneId: 'bbq_invite', phase: 'guest', label: 'Group text invite; assign sides/drinks if potluck', when: 'T-10d' },
-    { id: 't_weather', target: 'weather', milestoneId: 'bbq_rsvp', phase: 'guest', label: 'Check the forecast; confirm shade/rain plan; loose headcount', when: 'T-3d' },
-    { id: 't_nonperish_shop', target: 'list', milestoneId: 'bbq_shop_nonperish', phase: 'shopping', label: 'Drinks, charcoal/propane, disposables, bug spray, sunscreen', when: 'T-3d' },
-    { id: 't_fresh_shop', target: 'list', milestoneId: 'bbq_shop_fresh', phase: 'shopping', label: 'Proteins, buns, produce, condiments', when: 'T-1d' },
-    { id: 't_prep', target: 'none', milestoneId: 'bbq_setup', phase: 'food', label: 'Marinate proteins; prep cold sides', when: 'T-1d evening' },
-    { id: 't_grill', target: 'day', milestoneId: 'event', phase: 'food', label: 'Fire up the grill on the lead your fuel needs — the fire task on your checklist has the number; cook in batches', when: 'T0 -0:45' },
-    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Cool + scrape the grill, pack leftovers, bag trash + recycling, fold chairs/canopy', when: 'T0 +4:00' },
+    { id: 't_invite', target: 'invite', facts: ['invites-out'], milestoneId: 'bbq_invite', phase: 'guest', label: 'Group text invite; assign sides/drinks if potluck', when: 'T-10d' },
+    { id: 't_weather', target: 'weather', facts: ['guest-count'], milestoneId: 'bbq_rsvp', phase: 'guest', label: 'Check the forecast; confirm shade/rain plan; loose headcount', when: 'T-3d' },
+    { id: 't_nonperish_shop', target: 'list', facts: [], milestoneId: 'bbq_shop_nonperish', phase: 'shopping', label: 'Drinks, charcoal/propane, disposables, bug spray, sunscreen', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'list', facts: [], milestoneId: 'bbq_shop_fresh', phase: 'shopping', label: 'Proteins, buns, produce, condiments', when: 'T-1d' },
+    { id: 't_prep', target: 'none', facts: [], milestoneId: 'bbq_setup', phase: 'food', label: 'Marinate proteins; prep cold sides', when: 'T-1d evening' },
+    { id: 't_grill', target: 'day', facts: [], milestoneId: 'event', phase: 'food', label: 'Fire up the grill on the lead your fuel needs — the fire task on your checklist has the number; cook in batches', when: 'T0 -0:45' },
+    { id: 't_reset', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Cool + scrape the grill, pack leftovers, bag trash + recycling, fold chairs/canopy', when: 'T0 +4:00' },
   ],
 
   purchases: [

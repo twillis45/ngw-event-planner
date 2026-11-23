@@ -567,14 +567,14 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-wedding-t3",
         "week": "9 months out",
-        "task": "Catering tasting + contract (menu lock)",
+        "task": "Catering tasting + contract (menu lock)", "facts": ["or:catering-moot", "and:caterer-booked", "menu-decided"],
         "done": true,
         "owner": "Marcus"
       },
       {
         "id": "ev-dmv-wedding-t4",
         "week": "8 months out",
-        "task": "Book florals, hair & makeup, cake",
+        "task": "Book florals, hair & makeup, cake", "facts": ["roles:baker"],
         "done": true,
         "owner": "Adaeze"
       },
@@ -595,7 +595,7 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-wedding-t7",
         "week": "4 months out",
-        "task": "Mail invitations + open RSVP tracking",
+        "task": "Mail invitations + open RSVP tracking", "facts": ["invites-out"],
         "done": true,
         "owner": "Adaeze"
       },
@@ -609,7 +609,7 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-wedding-t9",
         "week": "6 weeks out",
-        "task": "Finalize headcount, seating chart & meal counts",
+        "task": "Finalize headcount, seating chart & meal counts", "facts": ["guest-count"],
         "done": false,
         "owner": "Adaeze"
       },
@@ -623,7 +623,7 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-wedding-t11",
         "week": "Week of",
-        "task": "Rehearsal (10/9) + final vendor balance payments",
+        "task": "Rehearsal (10/9) + final vendor balance payments", "facts": ["nothing-owed"],
         "done": false,
         "owner": "Couple"
       }
@@ -1307,7 +1307,7 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-corporate-t3",
         "week": "Week of 4/14",
-        "task": "Sign venue contract and pay deposit; open registration on Cvent",
+        "task": "Sign venue contract and pay deposit; open registration on Cvent", "facts": ["deposits-paid"],
         "done": true,
         "owner": "Lead Planner"
       },
@@ -2041,7 +2041,7 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-gala-t5",
         "week": "Week of 11/9",
-        "task": "Book band, auctioneer, AV/livestream, florals, photography",
+        "task": "Book band, auctioneer, AV/livestream, florals, photography", "facts": ["roles:photographer+dj"],
         "done": true,
         "owner": "Event Chair"
       },
@@ -2055,14 +2055,14 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-gala-t7",
         "week": "Week of 12/14",
-        "task": "Caterer tasting; lock menu and entree selections",
+        "task": "Caterer tasting; lock menu and entree selections", "facts": ["or:catering-moot", "and:caterer-booked", "menu-decided"],
         "done": true,
         "owner": "Event Chair"
       },
       {
         "id": "ev-dmv-gala-t8",
         "week": "Week of 1/11",
-        "task": "Send invitations / e-invites; open RSVP and online giving page",
+        "task": "Send invitations / e-invites; open RSVP and online giving page", "facts": ["invites-out"],
         "done": false,
         "owner": "Comms"
       },
@@ -2083,7 +2083,7 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-gala-t11",
         "week": "Week of 2/8",
-        "task": "Submit guaranteed headcount, finalize seating chart, pay venue balance",
+        "task": "Submit guaranteed headcount, finalize seating chart, pay venue balance", "facts": ["nothing-owed"],
         "done": false,
         "owner": "Executive Director"
       }
@@ -2575,14 +2575,14 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-home-gathering-t1",
         "week": "6 weeks out",
-        "task": "Set the date (Sun 6/28), draft guest list (~30), and send the save-the-date in the family group chat",
+        "task": "Set the date (Sun 6/28), draft guest list (~30), and send the save-the-date in the family group chat", "facts": ["date-set"],
         "done": true,
         "owner": "Adaeze"
       },
       {
         "id": "ev-dmv-home-gathering-t2",
         "week": "5 weeks out",
-        "task": "Get caterer quotes; book Soul Daddy's Kitchen for the soul-food trays",
+        "task": "Get caterer quotes; book Soul Daddy's Kitchen for the soul-food trays", "facts": ["or:catering-moot", "caterer-booked"],
         "done": true,
         "owner": "Adaeze"
       },
@@ -2596,7 +2596,7 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-home-gathering-t4",
         "week": "4 weeks out",
-        "task": "Send invites and start the 'bring a dish' potluck signup so dishes don't double up",
+        "task": "Send invites and start the 'bring a dish' potluck signup so dishes don't double up", "facts": ["invites-out"],
         "done": true,
         "owner": "Adaeze"
       },
@@ -3230,7 +3230,7 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-bachelorette-t1",
         "week": "12 wks out (mid-June)",
-        "task": "Lock the date (Sept 5 weekend) + final headcount of ~12; create the group chat",
+        "task": "Lock the date (Sept 5 weekend) + final headcount of ~12; create the group chat", "facts": ["guest-count"],
         "done": true,
         "owner": "Tierra (MOH)"
       },
@@ -3272,14 +3272,14 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-bachelorette-t7",
         "week": "3 wks out",
-        "task": "Collect dietary needs and submit to brunch + winery",
+        "task": "Collect dietary needs and submit to brunch + winery", "facts": ["or:dietary-noted"],
         "done": true,
         "owner": "Tierra (MOH)"
       },
       {
         "id": "ev-dmv-bachelorette-t8",
         "week": "2 wks out",
-        "task": "Confirm Maybe/Pending RSVPs (Maya, Gabrielle) and final winery count",
+        "task": "Confirm Maybe/Pending RSVPs (Maya, Gabrielle) and final winery count", "facts": ["invites-out"],
         "done": false,
         "owner": "Tierra (MOH)"
       },
@@ -3300,7 +3300,7 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-bachelorette-t11",
         "week": "Weekend of",
-        "task": "Pay day-of balances (winery van, brunch, spa) and run the weekend",
+        "task": "Pay day-of balances (winery van, brunch, spa) and run the weekend", "facts": ["nothing-owed"],
         "done": false,
         "owner": "Tierra (MOH)"
       }
