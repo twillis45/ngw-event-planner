@@ -435,8 +435,8 @@ const watchParty = {
     // its contents bought nothing and could only ever drift. Naming the ACT and
     // pointing at the live list is true on every render, whatever the host adds
     // or removes — and it is one fewer place to keep in sync.
-    { id: 't_nonperish_shop', target: 'list', facts: [], milestoneId: 'wp_shop_nonperish', phase: 'shopping', label: 'Shop the non-perishables on your list', when: 'T-3d' },
-    { id: 't_fresh_shop', target: 'spread', facts: [], milestoneId: 'wp_shop_fresh', phase: 'shopping', label: 'Shop the fresh items on your list', when: 'T-1d' },
+    { id: 't_nonperish_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'wp_shop_nonperish', phase: 'shopping', label: 'Shop the non-perishables on your list', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'spread', facts: [], shopClock: true, milestoneId: 'wp_shop_fresh', phase: 'shopping', label: 'Shop the fresh items on your list', when: 'T-1d' },
     // Prep is an instruction, not a list pointer, so it cannot simply defer —
     // but it can stop naming dishes that may not exist. Generic is less vivid
     // and always true; the specific version was vivid and wrong the moment

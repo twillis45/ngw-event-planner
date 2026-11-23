@@ -62,8 +62,8 @@ const graduation = {
     { id: 't_invite', target: 'invite', facts: ['invites-out'], milestoneId: 'gr_invite', phase: 'guest', label: 'Send invites with the open-house window + RSVP-by', when: 'T-18d' },
     { id: 't_photos', target: 'list', facts: [], milestoneId: 'gr_signs', phase: 'decor', label: 'Collect grad photos; order prints, banner, yard sign', when: 'T-10d' },
     { id: 't_rsvp', target: 'spread', facts: [], milestoneId: 'gr_rsvp_close', phase: 'guest', label: 'Estimate total heads + buffer; lock food quantities', when: 'T-3d' },
-    { id: 't_nonperish_shop', target: 'list', facts: [], milestoneId: 'gr_shop_nonperish', phase: 'shopping', label: 'Decor, drinks, disposables, paper goods', when: 'T-3d' },
-    { id: 't_food_shop', target: 'spread', facts: [], milestoneId: 'gr_shop_fresh', phase: 'shopping', label: 'Food + cake pickup', when: 'T-1d' },
+    { id: 't_nonperish_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'gr_shop_nonperish', phase: 'shopping', label: 'Decor, drinks, disposables, paper goods', when: 'T-3d' },
+    { id: 't_food_shop', target: 'spread', facts: [], shopClock: true, milestoneId: 'gr_shop_fresh', phase: 'shopping', label: 'Food + cake pickup', when: 'T-1d' },
     // MOVED OFF A DEAD SURFACE, 2026-09-23. Was a `schedules.preparation` row at
     // T-1d, a block the day board drops by rule and nothing else reads, so it
     // reached no host. Graduation had no food-PREP task at all — only shopping

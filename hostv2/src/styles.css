@@ -3358,8 +3358,18 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
 .vc-chip.warn{color:var(--warn); background:var(--warn-tint)}
 .vc-chip.ok{color:var(--ok); background:var(--ok-tint)}
 .vc-chip.quiet{color:var(--progress); background:var(--progress-tint)}/* audit S1 */
-.vc-more{max-height:0; opacity:0; overflow:hidden;
+.vc-more{max-height:0; opacity:0; overflow:hidden; overflow:clip;
   transition:max-height var(--ms-slow) var(--ease-standard), opacity var(--ms-slow) var(--ease-standard)}
+/* CLIP, NOT HIDDEN (11/23/2026). `overflow:hidden` makes the fold a scroll
+   container. While the card is still opening, anything that brings a control
+   inside it into view (a tap's own scroll-into-view, keyboard focus,
+   goToVendorControl) scrolled the FOLD instead of the sheet: measured
+   scrollTop 297 with max-height mid-transition. As the box kept growing, the
+   browser clamped that offset back (297 -> 37 between pointerdown and click),
+   so the content slid under the finger and the tap landed on the card, not
+   on "Send … the details". `clip` cuts the same way but cannot be scrolled,
+   so a control stays where it was drawn until the reveal reaches it.
+   `hidden` stays first as the fallback for a browser without `clip`. */
 /* WAVE-B: headroom for the new arrival/money row + COI expiry field —
    340px clipped the expanded card once the write affordances landed.
    VENDOR-BRIEF-AUTHORING: 640px clipped it again once the on-site-contact/
@@ -3375,7 +3385,19 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
    hostv2/e2e/whereThisVendorStands.spec.mjs asserts scrollHeight <=
    clientHeight on the tallest seeded vendor, so the next block that outgrows
    this number turns a test red instead of quietly losing its own bottom. */
-.vcard.open .vc-more{max-height:2400px; opacity:1}
+.vcard.open .vc-more{max-height:2400px; opacity:1; animation:vc-uncap 0s var(--ms-slow) forwards}
+/* THE CAP COMES OFF ONCE THE CARD IS OPEN (11/23/2026). 2400px clipped a
+   FOURTH time, and this time nothing could see it: with "Send … the details"
+   open, a caterer's fold measured scrollHeight 3054 at 390px, so "Mark it
+   sent", the link and "Copy link" sat below the cut. Under `overflow:hidden`
+   the e2e still reached them only because a programmatic scroll could scroll
+   the fold itself; a host's finger could not. The max-height stays as the
+   reveal's travel; when the reveal is done, this lifts it (a discrete step
+   at the end of --ms-slow), so content added to an open card (a minted link,
+   a pasted reply) is never cut off again. Closing snaps shut instead of
+   easing from 2400px, which is what it already looked like for any card
+   shorter than the cap. */
+@keyframes vc-uncap{to{max-height:none}}
 
 /* ── THE DETAIL USES THE DEAD THIRD (vendors ruling clause 6) ────────────────
    At desktop the sheet had a third of its width doing nothing while an opened

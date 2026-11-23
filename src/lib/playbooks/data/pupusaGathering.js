@@ -60,7 +60,7 @@ const pupusaGathering = {
 
   tasks: [
     { id: 't_invite', target: 'invite', facts: ['invites-out'], milestoneId: 'pup_invite', phase: 'guest', label: 'Invite; ask 2–3 people to come early to shape (the tías-at-the-table part)', when: 'T-8d' },
-    { id: 't_source', target: 'spread', facts: [], milestoneId: 'pup_source', phase: 'shopping', label: 'Latin market run: masa harina (instant/fresh masa), quesillo, chicharrón, refried beans, loroco/ayote; reserve pupusería order if hybrid', when: 'T-5d' },
+    { id: 't_source', target: 'spread', facts: [], shopClock: true, milestoneId: 'pup_source', phase: 'shopping', label: 'Latin market run: masa harina (instant/fresh masa), quesillo, chicharrón, refried beans, loroco/ayote; reserve pupusería order if hybrid', when: 'T-5d' },
     { id: 't_curtido', target: 'none', facts: [], milestoneId: 'pup_curtido', phase: 'food', label: 'Make curtido (cabbage, carrot, onion, oregano, vinegar) — jar it and let it sour in the fridge', when: 'T-4d' },
     { id: 't_salsa_beans', target: 'spread', facts: [], milestoneId: 'pup_prep', phase: 'food', label: 'Make salsa roja + refried beans; mix revueltas filling; grate/portion quesillo; check the comal and have oil ready', when: 'T-1d' },
     { id: 't_setup', target: 'day', facts: [], milestoneId: 'pup_setup', phase: 'setup', label: 'Heat the comal, set the shaping table (masa bowl, water dish, fillings), lay the toppings line (curtido + salsa)', when: 'T0 -0:45' },

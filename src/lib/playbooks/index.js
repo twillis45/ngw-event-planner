@@ -1162,17 +1162,18 @@ function stepLeftAsk(event, t) {
   const kp = d ? decisionKnownPart(event, d) : null;
   return (kp && kp.step) || null;
 }
-// The calls a checklist step stands for: by its engine row id, or (for a
-// caller holding only the row's words, like the checklist's button) by the
-// authored label it was drafted from. [] when it names none.
+// The calls a checklist step stands for: the `answeredBy` its step declares,
+// found by its engine row id (`pbt-<event>-<step>`), never by its words. A row
+// holding only words (one she wrote, even in a step's own words) stands for
+// none (cause 1, remainder a, 11/23/2026). [] when it names none.
+function declaredStepByRowId(event, task, tasks) {
+  const id = task && typeof task.id === 'string' && task.id.startsWith('pbt-') ? task.id : null;
+  return id ? tasks.find((x) => x && id === `pbt-${event.id}-${x.id}`) || null : null;
+}
 export function stepCalls(event, task) {
   if (!event || !task) return [];
   const pb = getPlaybook(event.type);
-  const tasks = (pb && pb.tasks) || [];
-  const id = typeof task.id === 'string' && task.id.startsWith('pbt-') ? task.id : null;
-  const words = String(task.task || '').trim();
-  const t = id ? tasks.find((x) => x && id === `pbt-${event.id}-${x.id}`)
-    : (words ? tasks.find((x) => x && (x.label === words || stepLeftAsk(event, x) === words)) : null);
+  const t = declaredStepByRowId(event, task, (pb && pb.tasks) || []);
   return t && Array.isArray(t.answeredBy) ? t.answeredBy : [];
 }
 // ─── A STEP THAT LISTS ITS ROLES NAMES ONLY THOSE LEFT (queued from #222) ───
@@ -1187,18 +1188,15 @@ function booksLeftLabel(event, t, base) {
   const left = books.filter((r) => !roleBooked(event, r));
   return left.length && left.length < books.length ? String(base).replace(list, left.join(', ')) : base;
 }
-// The roles a checklist step lists: by its engine row id, or by its words
-// (the authored label, or the label with only the roles left). [] when none.
+// The roles a checklist step lists: the `books` its step declares, found by
+// its engine row id, never by its words (as stepCalls). [] when none.
 export function stepBooks(event, task) {
   if (!event || !task) return [];
   const pb = getPlaybook(event.type);
-  const tasks = ((pb && pb.tasks) || []).filter((x) => x && Array.isArray(x.books) && x.books.length);
-  if (!tasks.length) return [];
-  const id = typeof task.id === 'string' && task.id.startsWith('pbt-') ? task.id : null;
-  const words = String(task.task || task.text || '').trim();
-  const t = id ? tasks.find((x) => id === `pbt-${event.id}-${x.id}`)
-    : (words ? tasks.find((x) => x.label === words || booksLeftLabel(event, x, x.label) === words) : null);
-  return t ? t.books : [];
+  const t = declaredStepByRowId(event, task, (pb && pb.tasks) || []);
+  // Without its caterer, the roles it lists without the caterer.
+  const books = t && t.booksWithoutCaterer && t.labelWithoutCaterer && stepWithoutCaterer(event, t) ? t.booksWithoutCaterer : (t && t.books);
+  return Array.isArray(books) && books.length ? books : [];
 }
 export function stepCallsAnswered(event, task) {
   if (!event || !task || typeof task.id !== 'string' || !task.id.startsWith('pbt-')) return false;
@@ -1904,14 +1902,19 @@ export function playbookPacing(event) {
 // WHEN A STEP READS WITHOUT ITS CATERER: shared by the checklist builder (the
 // row's words) and lib/stepTarget (the row's declared facts, cause 1 part 2),
 // so a row's label variant and its facts variant are one decision.
-const BOOKS_A_CATERER = /\b(book|contract|choose|find|decide|tour|sign|hire|if catering|vs|or confirm|yourself)\b/i;
+// THE STEP DECLARES IT (cause 1, remainder b, 11/23/2026): `catererOut` lists
+// when its caterer comes out: 'host-cooks' (she chose no caterer) and
+// 'none-hired' (the meal arrives made, no caterer hired). It was read off the
+// label's words (/cater(er|ing)/ unless "vs", "instead", "yourself"…; /caterer/
+// unless "book", "sign", "hire"…); the declarations were derived once from
+// that rule and committed. A step that declares nothing keeps its caterer.
 function catererTakenOut(t, dropCaterer, noCatererHired) {
-  return (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label))
-    || (noCatererHired && /\bcaterer/i.test(t.label) && !BOOKS_A_CATERER.test(t.label));
+  const out = Array.isArray(t.catererOut) ? t.catererOut : [];
+  return (dropCaterer && out.includes('host-cooks')) || (noCatererHired && out.includes('none-hired'));
 }
 /** Does this step read (and count) without its caterer for this event? */
 export function stepWithoutCaterer(event, t) {
-  if (!event || !t || !t.label) return false;
+  if (!event || !t) return false;
   const fa = foodApproach(event);
   return catererTakenOut(t, fa.usesCaterer === false, fa.usesCaterer === true && !catererHired(event, fa));
 }
@@ -1960,6 +1963,13 @@ export function playbookChecklist(event, asOf) {
   // (the Spread is sized for the dinner), so they carry the dinner's group.
   let celebration = false;
   try { celebration = celebrationAppliesWith(event, playbook); } catch (_e) { celebration = false; }
+  // A step that covers the caterer (`coversCaterer`, owner ruling 3a,
+  // 11/23/2026) keeps the generic caterer row below off the list. It was
+  // read off the rows' words (/cater/).
+  let _coversCaterer = false;
+  // A step that asks who brings which dish (`assignsDishes`, owner ruling 3b)
+  // keeps the generic who-brings row off. It was read off the rows' words.
+  let _assignsDishes = false;
   for (let t of taskList) {
     if (!t || !t.id || !t.label) continue;
     // Choice gate — a task tagged whenChoice appears only for the matching pick.
@@ -1994,7 +2004,9 @@ export function playbookChecklist(event, asOf) {
     if (_noCaterer) {
       if (!t.labelWithoutCaterer) continue;
       // Its answered copy is written for the caterer version, so it stays off.
-      t = { ...t, label: t.labelWithoutCaterer, copyByAnswer: undefined };
+      // A step that lists its roles lists them without the caterer too
+      // (`booksWithoutCaterer`, owner ruling 1, 11/23/2026).
+      t = { ...t, label: t.labelWithoutCaterer, copyByAnswer: undefined, ...(t.booksWithoutCaterer ? { books: t.booksWithoutCaterer } : null) };
     }
     // ── THE AIR-TRAVEL FLOOR REACHES THE CHECKLIST (2026-09-23) ─────────────
     // The floor was built into `playbookMilestones` and stopped there. Measured:
@@ -2020,6 +2032,8 @@ export function playbookChecklist(event, asOf) {
     // Day-of is offset ZERO exactly. A post-event task bucketed here would sit
     // under THE DAY tab, which is the same lie in a different place.
     const eventDay = offset === 0;
+    if (t.coversCaterer === true) _coversCaterer = true;
+    if (t.assignsDishes === true) _assignsDishes = true;
     rows.push({
       id: `pbt-${event.id}-${t.id}`,
       // The step's declared target (lib/stepTarget): where its work is done.
@@ -2074,7 +2088,7 @@ export function playbookChecklist(event, asOf) {
   // so the food CHOICE visibly reshapes "what's left" (it was previously inert in the task list;
   // the cook choice already recedes caterer tasks via the dropCaterer gate above). Deduped so a
   // playbook that already authors a caterer task isn't doubled.
-  if (fa.usesCaterer === true && catererHired(event, fa) && !rows.some((r) => /cater/i.test(r.task))) {
+  if (fa.usesCaterer === true && catererHired(event, fa) && !_coversCaterer) {
     const off = -7;
     rows.push({
       id: `pbt-${event.id}-fa-caterer`,
@@ -2101,8 +2115,7 @@ export function playbookChecklist(event, asOf) {
     const owners = foodOwnerMap(event);
     const unnamed = (playbook.purchases || []).filter((p) => p && p.category === 'food' && p.friendsBringWhen
       && choiceShown(event, p.friendsBringWhen) && choiceShown(event, p.whenChoice) && !isNamedBringer(owners[p.id]));
-    const authored = rows.some((r) => /bringing what|brings? what|assign (the )?dishes/i.test(String(r.task || '')));
-    if (unnamed.length && !authored) {
+    if (unnamed.length && !_assignsDishes) {
       const off = -14;
       rows.push({
         id: `pbt-${event.id}-fa-bringers`,

@@ -38,6 +38,7 @@ import { expectedHeadroom } from './budgetCopy';
 import { daysUntil, spanEnd, getToday, localISO } from './dates';
 import { taskLeadDays, taskDueInDays } from './taskLead';
 import { timelineStepResolved } from './taskEngine';
+import { declaredStepFor } from './stepTarget';
 import { budgetFor } from './budgetFor';
 import { startTimeIsConfirmed } from './startTime';
 import { lodgingIsHeld, lodgingAsk } from './lodgingIntel';
@@ -295,8 +296,13 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   // THE SHOP CLOCK, read once for both rows below (issue #100 D-11): the
   // playbook's own open shop step carries the lead. Only in the final week.
   const shopWeek = !noDate && daysOut != null && daysOut <= 7 && usesFood && hasCount;
+  // THE CLOCK IS A DECLARED STEP (owner ruling 3c, 11/23/2026): a row carries
+  // it when its step declares `shopClock` (or the row does, a hand-authored
+  // sample). It was the row whose words said "shop"; the declarations were
+  // derived once from that rule. Which steps should carry it is an owner call.
+  const _shopClock = (t) => t.shopClock === true || ((() => { try { return declaredStepFor(ev, t); } catch (_e) { return null; } })() || {}).shopClock === true;
   const shopTask = shopWeek ? ((Array.isArray(ev.timeline) ? ev.timeline : [])
-    .filter((t) => t && !t.done && /\bshop(ping)?\b/i.test(String(t.task || '')))
+    .filter((t) => t && !t.done && _shopClock(t))
     .map((t) => ({ t, lead: taskLeadDays(t) }))
     .filter((x) => x.lead != null)
     .sort((a, b) => a.lead - b.lead)[0] || null) : null;

@@ -1,5 +1,5 @@
 // Caterer-vs-cook lever (foodApproach / hostIsCooking) + the engine gating it drives.
-import { foodApproach, hostIsCooking, hostUsesCaterer, playbookChecklist, playbookRunOfShow, playbookFoodPlan, getPlaybook } from '../index';
+import { foodApproach, hostIsCooking, hostUsesCaterer, playbookChecklist, playbookRunOfShow, playbookFoodPlan, getPlaybook, stepWithoutCaterer } from '../index';
 
 const future = (() => { const d = new Date('2026-01-01T00:00:00'); d.setDate(d.getDate() + 40); return d.toISOString().slice(0, 10); })();
 const ev = (type, foodChoices = {}) => ({ id: 'e', type, date: future, guestCount: 20, guestEstimate: 20, foodChoices });
@@ -42,8 +42,26 @@ describe('engine gating driven by the lever', () => {
     const cater = playbookChecklist(ev('Birthday', { food_style: 'Drop-off catering' }), future);
     // Whatever caterer tasks exist under "caterer" must not survive the cook choice…
     expect(hasCatererTask(cook)).toBe(false);
-    // …and the cook list is never LONGER than the caterer list on caterer rows.
-    expect(cook.length).toBeLessThanOrEqual(cater.length);
+    // …and cooking never adds catering work: the cook list never has MORE
+    // catering rows than the caterer list (owner ruling, 11/23/2026, round 2;
+    // it read "never LONGER", which a step that keeps its other work when she
+    // cooks, Birthday's last invoices, now legitimately breaks). A catering row
+    // is read off declarations, never words: the generic caterer row, a step
+    // that is purely catering, or one that covers the caterer and is not
+    // reading its no-caterer words.
+    const pb = getPlaybook('Birthday');
+    const cateringRows = (e, rows) => rows.filter((r) => {
+      const id = r.provenance && r.provenance.taskId;
+      if (id === 'fa-caterer') return true;
+      const st = (pb.tasks || []).find((t) => t.id === id);
+      if (!st) return false;
+      return st.catererOnly === true || (st.coversCaterer === true && !stepWithoutCaterer(e, st));
+    }).length;
+    const cookEv = ev('Birthday', { food_style: 'Cook/grill yourself' });
+    const caterEv = ev('Birthday', { food_style: 'Drop-off catering' });
+    expect(cateringRows(cookEv, cook)).toBeLessThanOrEqual(cateringRows(caterEv, cater));
+    expect(cateringRows(cookEv, cook)).toBe(0);
+    expect(cateringRows(caterEv, cater)).toBeGreaterThan(0);
   });
   test('playbookRunOfShow drops caterer cues when the host cooks', () => {
     const cookRos = playbookRunOfShow(ev('Birthday', { food_style: 'Cook/grill yourself' })) || [];

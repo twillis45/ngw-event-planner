@@ -85,6 +85,32 @@ export default defineConfig(({ command, mode }) => {
           handler: (html) => html.replaceAll('%SITE_BASE%', command === 'build' ? '../' : '/'),
         },
       },
+      // ── THE SITE ROOT, UNDER THE LOCAL PREVIEW (11/23/2026) ─────────────
+      // The built index links '../favicon.ico', '../icon-192.png' and
+      // '../hostv2-manifest.json'. The deploy serves those from the repo's
+      // root public/ (the CRA build), one level above this bundle; `vite
+      // preview` serves only dist, so locally they 404'd. CI never saw it:
+      // its Chromium is the headless shell, which fetches no page icons. A
+      // full Chromium does, logs "Failed to load resource: 404" for
+      // icon-192.png, and every spec asserting no console errors went red on
+      // the desk. This serves the same files the deploy does, from the same
+      // place, at the site root, and only under the E2E_BASE preview.
+      {
+        name: 'ngw-preview-site-root',
+        configurePreviewServer(server) {
+          if (!process.env.E2E_BASE) return;
+          const siteBase = HOSTV2_BASE.replace(/hostv2\/$/, '');
+          const types = { '.ico': 'image/x-icon', '.png': 'image/png', '.json': 'application/manifest+json' };
+          const files = ['favicon.ico', 'icon-192.png', 'icon-512.png', 'hostv2-manifest.json'];
+          server.middlewares.use((req, res, next) => {
+            const url = (req.url || '').split('?')[0];
+            const name = url.startsWith(siteBase) ? url.slice(siteBase.length) : null;
+            if (!name || !files.includes(name)) return next();
+            res.setHeader('Content-Type', types[path.extname(name)]);
+            res.end(fs.readFileSync(path.resolve(__dirname, '../public', name)));
+          });
+        },
+      },
       {
         name: 'ngw-build-stamp',
         transformIndexHtml: {

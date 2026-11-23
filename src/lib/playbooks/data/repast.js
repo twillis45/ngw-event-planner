@@ -90,10 +90,10 @@ const repast = {
 
   tasks: [
     { id: 't_place', target: 'details', facts: ['venue-set'], milestoneId: 'rp_place', phase: 'planning', label: 'Reserve the fellowship hall (or restaurant); set the time to begin right after the burial', when: 'T-5d' },
-    { id: 't_accept', target: 'spread', facts: [], milestoneId: 'rp_food', phase: 'planning', label: 'Let the church / committee carry the meal; quietly track who is bringing what so the family never has to ask', when: 'T-4d' },
+    { id: 't_accept', target: 'spread', facts: [], assignsDishes: true, milestoneId: 'rp_food', phase: 'planning', label: 'Let the church / committee carry the meal; quietly track who is bringing what so the family never has to ask', when: 'T-4d' },
     { id: 't_spread', target: 'share-invite', facts: [], milestoneId: 'rp_spread', phase: 'guest', label: 'Share the repast place and time — on the program, at the service, and by word of mouth', when: 'T-3d' },
     { id: 't_memory', target: 'guests', facts: ['roles:photographer'], milestoneId: 'rp_memory', phase: 'planning', label: 'Set out a guest book and a few photographs; ready a quiet corner for anyone who needs a moment', when: 'T-2d' },
-    { id: 't_supplies', target: 'list', facts: [], milestoneId: 'rp_supplies', phase: 'shopping', label: 'Pick up serving ware, drinks, ice, and to-go containers for the family and elders', when: 'T-1d' },
+    { id: 't_supplies', target: 'list', facts: [], shopClock: true, milestoneId: 'rp_supplies', phase: 'shopping', label: 'Pick up serving ware, drinks, ice, and to-go containers for the family and elders', when: 'T-1d' },
     { id: 't_setup', target: 'day', facts: [], milestoneId: 'rp_setup', phase: 'setup', label: 'Arrive early; set tables, warming, drinks, and seating so the room is ready and calm', when: 'T0 -1:30' },
     { id: 't_plates', target: 'day', facts: [], milestoneId: 'event', phase: 'food', label: 'Make up to-go plates for the immediate family and the elders before the food goes', when: 'T0 +1:30' },
     { id: 't_reset', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Quietly pack leftovers for the family, wash and return dishes, leave the hall as you found it', when: 'T0 +3:00' },

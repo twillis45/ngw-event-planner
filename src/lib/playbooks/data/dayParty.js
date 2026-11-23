@@ -74,7 +74,7 @@ const dayParty = {
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
     { id: 't_food', target: 'call:food', facts: ['calls-answered'], answeredBy: ['food'], milestoneId: 'dp_bookdj', phase: 'vendor', label: 'Decide the food level: passed bites and grazing, light bites only, a food truck, or catered drop-off', when: 'T-28d' },
-    { id: 't_food_lock', target: 'spread', facts: ['or:catering-moot', 'and:caterer-booked'], factsByAnswer: { food: { 'Light passed bites + grazing table': [], 'Light bites only': [], 'Food truck': [] } }, milestoneId: 'dp_bookdj', phase: 'vendor', label: 'Lock food: confirm the food truck or caterer window, or plan the passed bites + grazing table yourself', when: 'T-28d',
+    { id: 't_food_lock', target: 'spread', facts: ['or:catering-moot', 'and:caterer-booked'], coversCaterer: true, factsByAnswer: { food: { 'Light passed bites + grazing table': [], 'Light bites only': [], 'Food truck': [] } }, milestoneId: 'dp_bookdj', phase: 'vendor', label: 'Lock food: confirm the food truck or caterer window, or plan the passed bites + grazing table yourself', when: 'T-28d',
       copyByAnswer: { food: {
         'Light passed bites + grazing table': 'Lock food: plan the passed bites + grazing table yourself',
         'Light bites only': 'Lock food: plan the light bites yourself',
@@ -84,8 +84,8 @@ const dayParty = {
     { id: 't_permit', target: 'place-rules', facts: ['invites-out'], milestoneId: 'dp_permit', phase: 'logistics', label: 'Check city noise ordinance / daytime decibel + permit rules; tell the neighbors the date and end time (invite one or two)', when: 'T-21d' },
     { id: 't_invite', target: 'invite', facts: ['invites-out'], milestoneId: 'dp_invite', phase: 'guest', label: 'Send the invite — dress code, start AND end time, address, "21+ / grown folks" if applicable', when: 'T-21d' },
     { id: 't_rsvp', target: 'weather', facts: [], milestoneId: 'dp_rsvp', phase: 'guest', label: 'Confirm headcount; check the forecast + shade/rain plan; remind guests to line up a ride / rideshare', when: 'T-5d' },
-    { id: 't_nonperish_shop', target: 'list', facts: [], milestoneId: 'dp_shop_nonperish', phase: 'shopping', label: 'Liquor, punch base, mixers, beer/wine, lots of water, cups, disposables, decor, photo-wall backdrop', when: 'T-3d' },
-    { id: 't_fresh_shop', target: 'none', facts: [], milestoneId: 'dp_shop_fresh', phase: 'shopping', label: 'Fresh garnish (citrus, mint, berries), punch fruit, ingredients for bites', when: 'T-1d' },
+    { id: 't_nonperish_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'dp_shop_nonperish', phase: 'shopping', label: 'Liquor, punch base, mixers, beer/wine, lots of water, cups, disposables, decor, photo-wall backdrop', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'none', facts: [], shopClock: true, milestoneId: 'dp_shop_fresh', phase: 'shopping', label: 'Fresh garnish (citrus, mint, berries), punch fruit, ingredients for bites', when: 'T-1d' },
     { id: 't_batch', target: 'none', facts: [], milestoneId: 'dp_batch', phase: 'food', label: 'Batch the punch (dilute ~10% water), prep cold bites, chill all drinks overnight, build the playlist as a backup', when: 'T-1d evening' },
     { id: 't_setup', target: 'day', facts: [], milestoneId: 'dp_setup', phase: 'setup', label: 'Bar + drink station, DJ power + speakers, shade/canopy, seating pods, decor + photo wall, ice in coolers and tubs', when: 'T0 -2:00' },
     { id: 't_reset', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Last call ~30 min before end; cut the music down at the posted hour; pack leftovers, bag trash + recycling, return rentals, take down photo wall', when: 'T0 +5:00' },

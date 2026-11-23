@@ -98,6 +98,7 @@ import { daysUntil } from './lib/dates';
 // is misread as an unsent draft and the next action wrongly says "send it" /
 // "Waiting on: You" when it's really "nudge the client" / "Waiting on: Client".
 import { milestoneActionRoute, checklistRouteFor, stepRoute } from './lib/taskRoute';
+import { stepIsSetComposite } from './lib/stepTarget';
 import { confirmedCovers } from './lib/confirmedCovers';
 export { milestoneActionRoute };
 const approvalIsSent = (m) => !!m.requestSentAt || m.direction === 'outbound' || m.sender === 'planner' || /sent|delivered/i.test(m.deliveryStatus || '');
@@ -1763,14 +1764,12 @@ export function _eventFoundationActions(event) {
   return ladder;
 }
 
-// A playbook "planning" composite bundles several sub-goals into one milestone name
-// ("Set date, headcount, menu" / "Set date + guest count + budget"). Detect it so no hero
-// ever shows a half-done bundle — once the host handles ONE part (locks the headcount) the
-// whole string reads as stale ("why is it still telling me to set the headcount?").
-function _isSetCompositeTitle(t) {
-  return !!t && /^set\b/i.test(t) && /[,+&]|\band\b/i.test(t)
-    && /\b(date|headcount|guests?|count|menu|budget|list|format)\b/i.test(t);
-}
+// A playbook "planning" composite bundles several sub-goals into one step
+// ("Set date, headcount, menu" / "Set date + guest count + budget"), so no hero
+// ever shows a half-done bundle — once the host handles ONE part (locks the
+// headcount) the whole string reads as stale ("why is it still telling me to set
+// the headcount?"). The step DECLARES it (`composite`, lib/stepTarget
+// stepIsSetComposite; cause 1, remainder c), never read off its words.
 // Replace such a composite with the ATOMIC remaining foundational action (date → guests →
 // budget → food). Single source: the same _eventFoundationActions dominoes eventPlan uses,
 // so the decomposition is state-aware — a locked headcount drops 'guests' and the next
@@ -1788,7 +1787,8 @@ export function _stripLeadingDateClause(title, event) {
 }
 
 function decomposeSetComposite(cmd, event) {
-  if (!cmd || !_isSetCompositeTitle(cmd.title)) return cmd;
+  // The step this hero IS (by id), when it is one (the compression tier's lead).
+  if (!cmd || !cmd.stepRowId || !stepIsSetComposite(event, { id: cmd.stepRowId })) return cmd;
   const atomic = _eventFoundationActions(event).find((a) => !a.done);
   if (atomic) {
     return { ...cmd, title: atomic.title, consequence: atomic.consequence,
@@ -3666,7 +3666,7 @@ export function _selectEventNextActionInner(event, prices = null) {
     // domino below — the domino has no authored lead, and borrowing the bundle's
     // would be inventing one.
     let firstLead = first ? taskLeadDays(first) : null;
-    if (_isSetCompositeTitle(firstText)) {
+    if (first && stepIsSetComposite(event, first)) {
       const atomic = _eventFoundationActions(event).find((a) => !a.done);
       if (!atomic) _skipCompression = true;
       else { firstText = atomic.title.replace(/[.\s]+$/, ''); firstRoute = atomic.route || firstRoute; firstLead = null; _decomposed = true; _atomicAsk = { askKind: atomic.askKind || null, ask: atomic.ask || null }; }

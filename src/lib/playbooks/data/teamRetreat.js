@@ -67,7 +67,7 @@ const teamRetreat = {
     { id: 't_venue', target: 'stay', facts: [], milestoneId: 'tr_venue', phase: 'venue', label: 'Tour/shortlist retreat centers; sign contract + hold room block', when: 'T-75d' },
     { id: 't_facilitator', target: 'none', facts: [], milestoneId: 'tr_facilitator', phase: 'program', label: 'Brief facilitator on purpose; agree session goals and intensity', when: 'T-60d' },
     { id: 't_transport', target: 'airports', facts: ['then:arrivals-grid'], milestoneId: 'tr_transport', phase: 'logistics', label: 'Book flights/shuttles; build an arrivals/departures grid; plan airport transfers', when: 'T-45d' },
-    { id: 't_meals', target: 'vendors', facts: ['or:catering-moot', 'and:caterer-booked'], milestoneId: 'tr_activity_meals', phase: 'program', label: 'Confirm caterer, group dinner reservation, and the team-building activity (+ opt-out alt)', when: 'T-45d' },
+    { id: 't_meals', target: 'vendors', facts: ['or:catering-moot', 'and:caterer-booked'], catererOut: ['host-cooks', 'none-hired'], factsWithoutCaterer: [], otherVendors: ['restaurant', 'activity'], labelWithoutCaterer: 'Confirm the group dinner reservation and the team-building activity (+ opt-out alt)', milestoneId: 'tr_activity_meals', phase: 'program', label: 'Confirm caterer, group dinner reservation, and the team-building activity (+ opt-out alt)', when: 'T-45d' },
     { id: 't_survey', target: 'build-day', facts: [], milestoneId: 'tr_comms_dietary', phase: 'guest', label: 'Send agenda preview, packing list, expense/per-diem rules, dietary + accessibility survey', when: 'T-30d' },
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone

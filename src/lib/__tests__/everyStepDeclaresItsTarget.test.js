@@ -325,3 +325,482 @@ describe('every step declares the facts that prove it done', () => {
     expect(reader).not.toMatch(/row\.(?:task|text|title|label)\b/);
   });
 });
+
+// ─── THE CALLS AND ROLES A STEP STANDS FOR ARE ITS DECLARATION (cause 1, remainder a)
+// stepCalls / stepBooks found the step a row stands for by its id, or, for a
+// caller holding only words, by the authored label (or the label with only the
+// roles left). A row the host wrote in the same words as a playbook step was
+// read as that step's calls and roles. The step declares them (`answeredBy`,
+// `books`) and a row finds its step by id, never its words.
+describe('the calls and roles a step stands for are found by id, never by words', () => {
+  const { stepCalls, stepBooks } = pbm;
+  const declared = (pb, rowId, evId) => (pb.tasks || []).find((t) => t && rowId === `pbt-${evId}-${t.id}`) || null;
+  const BOOKED = (cats) => cats.map((c, i) => ({ id: 'k' + i, name: c + ' Co', category: c, status: 'Booked' }));
+  const states = (pb) => eventsFor(pb).flatMap((ev) => [ev, { ...ev, vendors: BOOKED(['Photography', 'Catering']) },
+    { ...ev, vendors: BOOKED(['Wedding Planner', 'Photography', 'Catering', 'DJ']) }]);
+
+  test('every row of every playbook: the declaration by id, whatever the row says', () => {
+    const wrong = [];
+    let rows = 0;
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const ev of states(pb)) {
+        for (const r of (pbm.playbookChecklist(ev, asOf) || [])) {
+          rows += 1;
+          const st = declared(pb, r.id, ev.id);
+          const calls = (st && Array.isArray(st.answeredBy)) ? st.answeredBy : [];
+          // Without its caterer, the roles it lists without the caterer (owner ruling 1).
+          const decl = st && st.booksWithoutCaterer && pbm.stepWithoutCaterer(ev, st) ? st.booksWithoutCaterer : (st && st.books);
+          const books = (Array.isArray(decl) && decl.length) ? decl : [];
+          for (const task of [r.task, DECOY]) {
+            if (JSON.stringify(stepCalls(ev, { id: r.id, task })) !== JSON.stringify(calls)) wrong.push(`${pb.type}:${r.id} calls`);
+            if (JSON.stringify(stepBooks(ev, { id: r.id, task })) !== JSON.stringify(books)) wrong.push(`${pb.type}:${r.id} books`);
+          }
+        }
+      }
+    }
+    expect(wrong.slice(0, 40)).toEqual([]);
+    expect(rows).toBeGreaterThan(10000);
+  });
+
+  test('a row holding only words (one she wrote, in a step’s own words) stands for no call and no role', () => {
+    const wrong = [];
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const ev of states(pb)) {
+        for (const r of (pbm.playbookChecklist(ev, asOf) || [])) {
+          if (stepCalls(ev, { task: r.task }).length) wrong.push(`${pb.type}: "${r.task.slice(0, 50)}" calls`);
+          if (stepBooks(ev, { task: r.task }).length || stepBooks(ev, { text: r.task }).length) wrong.push(`${pb.type}: "${r.task.slice(0, 50)}" books`);
+          if (stepCalls(ev, { id: 'ev-own-t1', task: r.task }).length) wrong.push(`${pb.type}: own row "${r.task.slice(0, 50)}" calls`);
+        }
+      }
+    }
+    expect([...new Set(wrong)].slice(0, 40)).toEqual([]);
+  });
+
+  test('the readers hold no rule over a row’s words', () => {
+    const code = fs.readFileSync(path.join(__dirname, '..', 'playbooks', 'index.js'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+    for (const name of ['stepCalls', 'stepBooks']) {
+      const at = code.indexOf(`export function ${name}(`);
+      expect(at).toBeGreaterThan(-1);
+      let i = code.indexOf('{', code.indexOf(')', at)), depth = 0, body = '';
+      for (let j = i; j < code.length; j++) { if (code[j] === '{') depth++; else if (code[j] === '}') { depth--; if (!depth) { body = code.slice(i, j + 1); break; } } }
+      expect(body).not.toMatch(/\.(?:task|text|label|title)\b/);
+      expect(body).not.toMatch(/stepLeftAsk|booksLeftLabel/);
+    }
+  });
+});
+
+// ─── A STEP DECLARES WHEN ITS CATERER COMES OUT (cause 1, remainder b) ──────
+// The checklist builder dropped a step, or read its labelWithoutCaterer, from
+// WORDS in its label: /cater(er|ing)/ without "vs", "instead", "yourself"…
+// when she cooks, and /\bcaterer/ without "book", "sign", "hire"… when the
+// meal arrives made with no caterer hired. Each step now declares
+// `catererOut` ('host-cooks', 'none-hired'), derived once from that rule and
+// committed; stepWithoutCaterer reads it, and so do the builder and the
+// step's facts.
+describe('a step declares when its caterer comes out, never by its words', () => {
+  const { cookTasksFor } = require('../playbooks/cookLever');
+  const KNOWN = ['host-cooks', 'none-hired'];
+  const V = (cat, status) => ({ id: 'v-' + cat, name: cat + ' Co', category: cat, status, cost: 900 });
+  const stepsOf = (pb) => [...(pb.tasks || []), ...cookTasksFor(pb), ...pbm.DESTINATION_TASKS];
+  const statesOf = (pb) => eventsFor(pb).flatMap((e) => [e, { ...e, vendors: [V('Catering', 'Booked')] }, { ...e, vendors: [V('Catering', 'Considering')] }]);
+  const WORDS = ['Give the caterer the final count', 'Book the caterer or cook it yourself', 'Tidy up', 'Catering staged; caterer paid'];
+
+  test('every declaration is known, and a step with a no-caterer label declares when it applies', () => {
+    const bad = [];
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const s of stepsOf(pb)) {
+        if (s.catererOut == null) { if (s.labelWithoutCaterer) bad.push(`${pb.type}:${s.id} labelWithoutCaterer with no catererOut`); continue; }
+        if (!Array.isArray(s.catererOut) || !s.catererOut.length || !s.catererOut.every((k) => KNOWN.includes(k))) bad.push(`${pb.type}:${s.id} → ${JSON.stringify(s.catererOut)}`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
+  test('every step, in every caterer state: the same answer whatever its label says', () => {
+    const wrong = [];
+    let n = 0;
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const ev of statesOf(pb)) {
+        for (const s of stepsOf(pb)) {
+          n += 1;
+          const own = pbm.stepWithoutCaterer(ev, s);
+          for (const w of WORDS) if (pbm.stepWithoutCaterer(ev, { ...s, label: w }) !== own) { wrong.push(`${pb.type}:${s.id} "${w}"`); break; }
+        }
+      }
+    }
+    expect(wrong.slice(0, 40)).toEqual([]);
+    expect(n).toBeGreaterThan(100000);
+  });
+
+  test('the checklist keeps, drops and rewords the same steps whatever their labels say', () => {
+    const wrong = [];
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      const states = statesOf(pb);
+      // The authored steps it keeps, and which of them read their no-caterer
+      // label. (The derived rows' own dedupes are not this rule.)
+      const own = new Set((pb.tasks || []).map((t) => t.id));
+      const shape = () => states.map((ev) => (pbm.playbookChecklist(ev, asOf) || [])
+        .filter((r) => own.has(r.provenance && r.provenance.taskId))
+        .map((r) => r.id + ((pb.tasks || []).some((t) => t.labelWithoutCaterer && t.labelWithoutCaterer === r.task) ? ':without' : '')).join(','));
+      const before = shape();
+      const saved = (pb.tasks || []).map((t) => t.label);
+      try {
+        (pb.tasks || []).forEach((t) => { t.label = 'Tidy up'; });
+        const neutral = shape();
+        (pb.tasks || []).forEach((t) => { t.label = 'Give the caterer the final count'; });
+        const caterer = shape();
+        // Which steps stay: the same as with their own words. Which read the
+        // no-caterer label: the same under either swap (with her own words, a
+        // label naming only the roles left can coincide with it).
+        const ids = (xs) => xs.map((x) => x.replace(/:without/g, '')).join('|');
+        if (ids(neutral) !== ids(before) || caterer.join('|') !== neutral.join('|')) wrong.push(pb.type);
+      } finally {
+        (pb.tasks || []).forEach((t, i) => { t.label = saved[i]; });
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  test('the rule reads no words', () => {
+    const code = fs.readFileSync(path.join(__dirname, '..', 'playbooks', 'index.js'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+    const at = code.indexOf('function catererTakenOut(');
+    expect(at).toBeGreaterThan(-1);
+    const rule = code.slice(at, code.indexOf('export function playbookChecklist', at));
+    expect(rule).not.toMatch(/\.(?:label|task|text|title)\b/);
+    expect(rule).not.toMatch(/\.test\(/);
+    expect(code).not.toMatch(/BOOKS_A_CATERER/);
+  });
+});
+
+// ─── A COMPOSITE STEP IS DECLARED (cause 1, remainder c) ────────────────────
+// A "Set date, headcount, menu" step bundles foundation parts, so the hero
+// never leads with it half done: it is decomposed to the first open
+// foundation domino, or skipped once every part is handled. Which steps are
+// composites was read from WORDS (/^set\b/ + a separator + a foundation word),
+// in CommandCenter's compression tier and decomposeSetComposite. Each step now
+// declares `composite` (with `compositeByAnswer` where its words vary by a
+// pick), derived once from that rule and committed; lib/stepTarget
+// stepIsSetComposite is the one reader.
+describe('a composite step is declared, never read off its words', () => {
+  const { useFrozenClock, daysFromNow } = require('../../testUtils/frozenClock');
+  useFrozenClock();
+  const st = require('../stepTarget');
+  const COMPOSITE_WORDS = 'Set date, headcount, menu';
+  const PLAIN_WORDS = 'Tidy up';
+
+  test('every declaration is a boolean, and each answer variant has a copy variant', () => {
+    const bad = [];
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const s of everyDeclaredStep(pb)) {
+        if (s.composite != null && typeof s.composite !== 'boolean') bad.push(`${pb.type}:${s.id} composite ${JSON.stringify(s.composite)}`);
+        for (const [d, byVal] of Object.entries(s.compositeByAnswer || {})) {
+          for (const [v, b] of Object.entries(byVal || {})) {
+            if (typeof b !== 'boolean') bad.push(`${pb.type}:${s.id} ${d}=${v}`);
+            if (!(s.copyByAnswer && s.copyByAnswer[d] && s.copyByAnswer[d][v] != null)) bad.push(`${pb.type}:${s.id} ${d}=${v} has no copy variant`);
+          }
+        }
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
+  test('every row of every playbook: the same answer whatever it says; a row she wrote is never a composite', () => {
+    expect(typeof st.stepIsSetComposite).toBe('function');
+    const wrong = [];
+    let rows = 0;
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const ev of eventsFor(pb)) {
+        for (const r of (pbm.playbookChecklist(ev, asOf) || [])) {
+          rows += 1;
+          const own = st.stepIsSetComposite(ev, r);
+          if (st.stepIsSetComposite(ev, { ...r, task: COMPOSITE_WORDS }) !== own || st.stepIsSetComposite(ev, { ...r, task: PLAIN_WORDS }) !== own) wrong.push(`${pb.type}:${r.id}`);
+        }
+      }
+      if (st.stepIsSetComposite({ id: 'ev-own', type: pb.type }, { id: 'ev-own-t1', task: COMPOSITE_WORDS })) wrong.push(`${pb.type}: her own row`);
+    }
+    expect(wrong.slice(0, 40)).toEqual([]);
+    expect(rows).toBeGreaterThan(5000);
+  });
+
+  test('the hero leads with the same step, or the same domino, whatever the rows say', () => {
+    const { selectEventNextAction } = require('../../CommandCenter');
+    const pick = (a) => (a ? { category: a.category, stepRowId: a.stepRowId || null, leadIsStep: a.leadIsStep, primaryRoute: a.primaryRoute || null, askKind: a.askKind || null } : null);
+    const wrong = [];
+    let led = 0;
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      const picks = {};
+      for (const d of pb.decisions || []) { const o = (d.options || [])[0]; const l = typeof o === 'string' ? o : (o && (o.label || o.value)); if (l) picks[d.id] = l; }
+      for (const d of [21, 14, 10, 7, 5, 3, 2, 1]) {
+        const ev = { id: 'ev-c', type: pb.type, name: 'N', date: daysFromNow(d), guestMode: 'count', guestCount: 30, totalBudget: 9000, venue: 'The Hall', venueCity: 'Austin, TX', startTime: '18:00', guests: [], vendors: [], budget: [], foodChoices: picks, dietaryNoted: true };
+        const rows = (pbm.playbookChecklist(ev) || []).map((r) => ({ ...r, done: !(r.dueInDays >= 0) }));
+        const own = pick(selectEventNextAction({ ...ev, timeline: rows }));
+        // The tier that reads it: a step leading the tight-timeline hero.
+        if (!own || own.category !== 'compression' || !own.stepRowId) continue;
+        led += 1;
+        for (const w of [COMPOSITE_WORDS, PLAIN_WORDS]) {
+          const other = pick(selectEventNextAction({ ...ev, timeline: rows.map((r) => (r.id === own.stepRowId ? { ...r, task: w } : r)) }));
+          if (JSON.stringify(other) !== JSON.stringify(own)) wrong.push(`${pb.type} T-${d} "${w}": ${JSON.stringify(other)} ≠ ${JSON.stringify(own)}`);
+        }
+      }
+    }
+    expect(wrong.slice(0, 20)).toEqual([]);
+    expect(led).toBeGreaterThan(0);
+  });
+
+  test('the hero reads the declaration: no composite rule over a title', () => {
+    const code = fs.readFileSync(path.join(__dirname, '../../CommandCenter.jsx'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+    expect(code).not.toMatch(/_isSetCompositeTitle/);
+    const at = code.indexOf('function decomposeSetComposite(');
+    expect(at).toBeGreaterThan(-1);
+    const body = code.slice(at, code.indexOf('\n}\n', at));
+    expect(body).toMatch(/stepIsSetComposite\(/);
+    expect(body).not.toMatch(/\.test\(cmd\.title\)|_isSetComposite/);
+    expect((code.match(/stepIsSetComposite\(/g) || []).length).toBe(2);
+  });
+});
+
+// ─── WHEN SHE COOKS, ONLY THE CATERING PART GOES (owner ruling 1, 11/23/2026)
+// A step whose caterer comes out when she cooks ('host-cooks') dropped whole
+// unless it authored a labelWithoutCaterer, so "Sign planner, photographer,
+// caterer, band/DJ" vanished and took the planner, the photographer and the
+// band with it. Each such step now declares either `otherVendors` (the
+// non-catering vendors it names) with its no-caterer label, or `catererOnly`
+// (its only job is catering, so it may drop).
+describe('when she cooks, only a step that is purely catering drops', () => {
+  const { cookTasksFor } = require('../playbooks/cookLever');
+  // The host shell's playbooks: the shell's occasion picker lists
+  // smartParseEvent.HOST_TYPES (Board Meeting, Conference and Team Retreat are
+  // not in it; owner ruling 2, round 2). Only steps that are purely catering
+  // (`catererOnly`) may drop when she cooks; every other one keeps its work
+  // in its no-caterer words (ruling 1, round 2: Quinceañera t_fitting too).
+  const { HOST_TYPES } = require('../smartParseEvent');
+  const HOST = pbm.ALL_PLAYBOOKS.filter((pb) => HOST_TYPES.includes(pb.type));
+  // Nothing pending: Birthday's last invoices keep the bartender (round 2, item 3).
+  const PENDING = new Set();
+  const stepsOf = (pb) => [...(pb.tasks || []), ...cookTasksFor(pb), ...pbm.DESTINATION_TASKS];
+  const cooks = (out) => Array.isArray(out) && out.includes('host-cooks');
+
+  test('every step whose caterer comes out when she cooks is classified', () => {
+    const bad = [];
+    expect(HOST.length).toBe(44);
+    expect(HOST.some((pb) => pb.type === 'Board Meeting')).toBe(false);
+    for (const pb of HOST) {
+      for (const s of stepsOf(pb)) {
+        if (!cooks(s.catererOut) || PENDING.has(`${pb.type}:${s.id}`)) continue;
+        const keeps = !!s.labelWithoutCaterer;
+        if (keeps === (s.catererOnly === true)) bad.push(`${pb.type}:${s.id} declares ${keeps ? 'both' : 'neither'}`);
+        if ((s.otherVendors || []).length && !keeps) bad.push(`${pb.type}:${s.id} names other vendors with no no-caterer label`);
+      }
+    }
+    expect(bad).toEqual([]);
+    for (const [type, id] of [['Wedding', 't_keyvendors'], ['Engagement Party', 't_book_bartender'], ['Retirement Party', 't_book_vendors'], ['Quinceañera', 't_vendor_book'], ['Fundraiser / Gala', 't_vendors']]) {
+      const s = (pbm.getPlaybook(type).tasks || []).find((t) => t.id === id);
+      expect([type, id, (s.otherVendors || []).length > 0]).toEqual([type, id, true]);
+    }
+  });
+
+  test('in every host-cooks state of every host-shell playbook, such a step stays on the list in its no-caterer words', () => {
+    const wrong = [];
+    let seen = 0;
+    for (const pb of HOST) {
+      const named = (pb.tasks || []).filter((s) => cooks(s.catererOut) && s.labelWithoutCaterer);
+      if (!named.length) continue;
+      for (const ev0 of eventsFor(pb)) {
+        if (pbm.foodApproach(ev0).usesCaterer !== false) continue;
+        for (const s of named) {
+          const ev = s.whenChoice ? { ...ev0, foodChoices: { ...(ev0.foodChoices || {}), [s.whenChoice.id]: s.whenChoice.in[0] } } : ev0;
+          if (pbm.foodApproach(ev).usesCaterer !== false) continue;
+          seen += 1;
+          const row = (pbm.playbookChecklist(ev, asOf) || []).find((r) => r.provenance && r.provenance.taskId === s.id);
+          if (!row) wrong.push(`${pb.type}:${s.id} disappeared`);
+          else if (!row.task.startsWith(s.labelWithoutCaterer)) wrong.push(`${pb.type}:${s.id} reads "${row.task}"`);
+        }
+      }
+    }
+    expect(wrong.slice(0, 40)).toEqual([]);
+    expect(seen).toBeGreaterThan(20);
+  });
+});
+
+// ─── A COMPOSITE NAMES THE FOUNDATION PARTS IT BUNDLES (owner ruling 2, 11/23/2026)
+// The retired word rule called "Set the table tonight … if the count calls
+// for one" a composite. A composite now declares `bundles`: the foundation
+// parts (date, guests, budget, menu) it sets, and only such a step is one.
+describe('a composite declares the foundation parts it bundles', () => {
+  const PARTS = ['date', 'guests', 'budget', 'menu'];
+  test('composite exactly when the step declares two or more foundation parts it bundles', () => {
+    const bad = [];
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const s of everyDeclaredStep(pb)) {
+        const parts = Array.isArray(s.bundles) ? s.bundles : [];
+        if (parts.some((p) => !PARTS.includes(p))) bad.push(`${pb.type}:${s.id} bundles ${JSON.stringify(parts)}`);
+        // Two or more parts make a bundle (owner ruling, round 2): one part is an atomic step.
+        if ((s.composite === true) !== (parts.length >= 2)) bad.push(`${pb.type}:${s.id} composite ${s.composite} bundles ${JSON.stringify(parts)}`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+  test('the ten ruled out are not composites', () => {
+    for (const [type, id] of [['Sweet 16', 't_budget'], ['Client Dinner', 't_budget'], ['PTA / Booster Fundraiser', 't_goal_budget'], ['Quinceañera', 't_budget_set'],['Thanksgiving Hosting', 't_table'], ['Vow Renewal', 't_setreception'], ["New Year's Eve Party", 't_early_countdown'],
+      ['Repast', 't_memory'], ['Watch Party', 't_repeatable_list'], ['Surprise Proposal', 't_finance']]) {
+      const s = (pbm.getPlaybook(type).tasks || []).find((t) => t.id === id);
+      expect([type, id, s.composite === true]).toEqual([type, id, false]);
+    }
+  });
+});
+
+// ─── THE BUILDER'S OWN DEDUPES READ DECLARATIONS (owner ruling 3, 11/23/2026)
+// The checklist builder added its generic "Confirm your caterer…" row unless
+// some row's text contained "cater" (3a), and its "Ask who is bringing which
+// dish" row unless some row's text named who brings what (3b). Each step now
+// declares it: `coversCaterer`, `assignsDishes`.
+describe('the checklist builder’s derived rows read declarations, never row text', () => {
+  const V = (cat, status) => ({ id: 'v-' + cat, name: cat + ' Co', category: cat, status, cost: 900 });
+  const statesOf = (pb) => eventsFor(pb).flatMap((e) => [e, { ...e, vendors: [V('Catering', 'Booked')] }]);
+  const swapped = (pb, id, words) => {
+    const states = statesOf(pb);
+    const has = () => states.map((ev) => (pbm.playbookChecklist(ev, asOf) || []).some((r) => r.provenance && r.provenance.taskId === id)).join(',');
+    const before = has();
+    const saved = (pb.tasks || []).map((t) => t.label);
+    try {
+      return words.map((w) => { (pb.tasks || []).forEach((t) => { t.label = w; }); return has() === before; });
+    } finally { (pb.tasks || []).forEach((t, i) => { t.label = saved[i]; }); }
+  };
+
+  test('3a: the generic caterer row comes and goes the same whatever the steps say', () => {
+    const wrong = [];
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      const same = swapped(pb, 'fa-caterer', ['Tidy up', 'Call the caterer']);
+      if (!same.every(Boolean)) wrong.push(pb.type);
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  test('3b: the who-brings row comes and goes the same whatever the steps say', () => {
+    const wrong = [];
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      const same = swapped(pb, 'fa-bringers', ['Tidy up', 'Assign dishes: who brings what']);
+      if (!same.every(Boolean)) wrong.push(pb.type);
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  test('the builder holds no rule over a row’s text', () => {
+    const code = fs.readFileSync(path.join(__dirname, '..', 'playbooks', 'index.js'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+    const at = code.indexOf('export function playbookChecklist(');
+    const body = code.slice(at, code.indexOf('\n}\n', at));
+    expect(body).not.toMatch(/\.test\(\s*(?:String\()?r\.task/);
+  });
+});
+
+// ─── THE SHOP CLOCK IS A DECLARED STEP (owner ruling 3c, 11/23/2026) ────────
+// phaseProgress gave the final week's food and shopping rows their closing
+// window from the open timeline row whose TEXT said "shop". Each step that
+// carries the clock now declares `shopClock` (a hand-authored sample row
+// carries it itself), derived once from that rule and committed; which steps
+// SHOULD carry it is an owner call (HANDOFF lists today's answers).
+describe('the shop clock reads a declaration, never a row’s words', () => {
+  const { useFrozenClock, daysFromNow } = require('../../testUtils/frozenClock');
+  useFrozenClock();
+  const { deriveEventPhaseProgress } = require('../phaseProgress');
+  const clock = (ev) => JSON.stringify((deriveEventPhaseProgress(ev).items || []).filter((i) => i.id === 'food' || i.id === 'shopping')
+    .map((i) => [i.id, i.leadDays == null ? null : i.leadDays, !!i.closingWindow]));
+  test('the food and shopping rows keep their clock whatever the rows say', () => {
+    const wrong = [];
+    let clocked = 0;
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      const picks = {};
+      for (const d of pb.decisions || []) { const o = (d.options || [])[0]; const l = typeof o === 'string' ? o : (o && (o.label || o.value)); if (l) picks[d.id] = l; }
+      for (const d of [6, 3, 1]) {
+        for (const choices of [{}, picks]) {
+          const ev = { id: 'sc', type: pb.type, name: 'N', date: daysFromNow(d), guestMode: 'count', guestCount: 30, totalBudget: 9000, venue: 'The Hall', venueCity: 'Austin, TX', startTime: '18:00', guests: [], vendors: [], budget: [], foodChoices: choices, dietaryNoted: true };
+          const rows = pbm.playbookChecklist(ev) || [];
+          const own = clock({ ...ev, timeline: rows });
+          if (own.includes('true')) clocked += 1;
+          for (const w of ['Tidy up', 'Main shop: snacks and drinks']) {
+            if (clock({ ...ev, timeline: rows.map((r) => ({ ...r, task: w })) }) !== own) { wrong.push(`${pb.type} T-${d} "${w}"`); break; }
+          }
+        }
+      }
+    }
+    expect(wrong.slice(0, 40)).toEqual([]);
+    expect(clocked).toBeGreaterThan(0);
+  });
+  test('phaseProgress holds no rule over a row’s words for the clock', () => {
+    const code = fs.readFileSync(path.join(__dirname, '..', 'phaseProgress.js'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+    expect(code).not.toMatch(/shop\(ping\)\?/);
+  });
+});
+
+// ─── EACH PLAYBOOK'S SHOP CLOCK IS ITS REAL GROCERY RUN (owner ruling 1, round 2)
+// Round 1 reproduced the word rule's picks: Gender Reveal's clock was the
+// sealed envelope for the bakery (T-18d), Watch Party's was building a
+// shopping list (T-7d), and 32 playbooks had none because their runs never
+// said "shop". Each host-shell playbook now declares `shopClock` on its own
+// grocery run(s); the clock is the earliest one still open. A playbook with
+// no grocery run declares none, and says why here.
+describe('each host-shell playbook’s shop clock is its real grocery run', () => {
+  const { useFrozenClock, daysFromNow } = require('../../testUtils/frozenClock');
+  useFrozenClock();
+  const { HOST_TYPES } = require('../smartParseEvent');
+  const { deriveEventPhaseProgress } = require('../phaseProgress');
+  const { taskLeadDays } = require('../taskLead');
+  const HOST = pbm.ALL_PLAYBOOKS.filter((pb) => HOST_TYPES.includes(pb.type));
+  const RUNS = {
+    'Dinner Party': ['t_pantry_shop', 't_fresh_shop'], Birthday: ['t_decor_shop', 't_food_shop'],
+    'Baby Shower': ['t_nonperish_shop', 't_fresh_shop'], 'Get-Together': ['t_nonperish_shop', 't_fresh_shop'],
+    Graduation: ['t_nonperish_shop', 't_food_shop'], 'Watch Party': ['t_nonperish_shop', 't_fresh_shop'],
+    'Game Night': ['t_shop'], Housewarming: ['t_dry_shop', 't_fresh_shop'], 'Bridal Shower': ['t_nonperish_shop', 't_fresh_shop'],
+    'Gender Reveal': ['t_nonperish_shop', 't_fresh_shop'], 'Engagement Party': ['t_pantry_shop', 't_fresh_shop'],
+    Anniversary: ['t_pantry_shop', 't_fresh_shop'], 'Holiday Party': ['t_shop_alc', 't_shop_fresh'], 'Sweet 16': ['t_shop'],
+    'Retirement Party': ['t_pantry_shop', 't_fresh_shop'], Reunion: ['t-shop-dry', 't-shop-fresh'],
+    'Bachelorette Party': ['t_nonperish_shop', 't_fresh_shop'], 'Bachelor Party': ['t_nonperish_shop', 't_fresh_shop'],
+    'Vow Renewal': ['t_pantry_shop', 't_fresh_shop'], 'The Cookout': ['t_nonperish_shop', 't_meat_shop'],
+    'Fish Fry': ['t_nonperish', 't_fish'], 'Card Party': ['t_shop'], 'Sunday Dinner': ['t-shop'],
+    'Day Party': ['t_nonperish_shop', 't_fresh_shop'], 'Juneteenth Cookout': ['t_nonperish_shop', 't_fresh_shop'],
+    'Crab Feast': ['t_shop'], 'Crawfish Boil': ['t_nonperish'], 'Low Country Boil': ['t_nonperish', 't_shrimp'],
+    'Pupusa Gathering': ['t_source'], 'Ethiopian Coffee Ceremony': ['t_pantry', 't_freshpickup'], Repast: ['t_supplies'],
+    'Kwanzaa Gathering': ['t_nonperish_shop', 't_fresh_shop'], 'Thanksgiving Hosting': ['t_shop'],
+    Friendsgiving: ['t_shop', 't_shop_basics'], 'Halloween Party': ['t_shop_food'], "New Year's Eve Party": ['t_shop'],
+    'PTA / Booster Fundraiser': ['t_shop'],
+  };
+  // The host-shell playbooks with no grocery run of their own, and why.
+  const NO_RUN = {
+    Wedding: 'the caterer and the venue feed the guests; no step is a grocery run',
+    Elopement: 'a restaurant or package meal; no step buys food',
+    'Quinceañera': 'catered; the steps book the caterer and baker, none shops',
+    'Surprise Proposal': 'its one purchase is flowers, candles and a sign for the moment, not food',
+    'Client Dinner': 'a restaurant dinner; its one purchase is the client gift',
+    'Fundraiser / Gala': 'catered; no step buys food',
+    'Group Trip': 'meals are planned per day on the trip (house, out, own); no step is a grocery run',
+  };
+  test('every host-shell playbook declares its grocery runs, or is listed with why it has none', () => {
+    const got = {};
+    for (const pb of HOST) {
+      const ids = (pb.tasks || []).filter((t) => t.shopClock === true).map((t) => t.id);
+      if (ids.length) got[pb.type] = ids;
+    }
+    expect(got).toEqual(RUNS);
+    for (const pb of HOST) expect([pb.type, !!RUNS[pb.type] !== !!NO_RUN[pb.type]]).toEqual([pb.type, true]);
+    expect(Object.keys(RUNS).length + Object.keys(NO_RUN).length).toBe(HOST.length);
+  });
+  test('in the final week the clock is the earliest open grocery run', () => {
+    const wrong = [];
+    let clocked = 0;
+    for (const pb of HOST) {
+      for (const d of [6, 2]) {
+        const ev = { id: 'sc', type: pb.type, name: 'N', date: daysFromNow(d), guestMode: 'count', guestCount: 30, totalBudget: 9000, venue: 'The Hall', venueCity: 'Austin, TX', startTime: '18:00', guests: [], vendors: [], budget: [], foodChoices: {}, dietaryNoted: true };
+        const rows = pbm.playbookChecklist(ev) || [];
+        const runs = rows.filter((r) => (RUNS[pb.type] || []).includes(r.provenance && r.provenance.taskId))
+          .map((r) => taskLeadDays(r)).filter((x) => x != null).sort((a, b) => a - b);
+        const items = (deriveEventPhaseProgress({ ...ev, timeline: rows }).items || []).filter((i) => (i.id === 'food' || i.id === 'shopping') && i.closingWindow);
+        const lead = items.length ? items[0].leadDays : null;
+        if (lead != null) clocked += 1;
+        if (lead != null && lead !== runs[0]) wrong.push(`${pb.type} T-${d}: clock ${lead}, earliest run ${runs[0]}`);
+        if (lead == null && runs.length && items.length === 0 && (deriveEventPhaseProgress({ ...ev, timeline: rows }).items || []).some((i) => i.id === 'shopping')) wrong.push(`${pb.type} T-${d}: a run and no clock`);
+      }
+    }
+    expect(wrong).toEqual([]);
+    expect(clocked).toBeGreaterThan(30);
+  });
+});
