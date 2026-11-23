@@ -37,7 +37,9 @@ import { readFileSync } from 'node:fs';
 // repo's root public/ (live: 200). The hostv2 preview serves only hostv2's own
 // build, so every test page 404'd on it — invisible in Chromium's headless
 // shell, which never fetches manifests, and a console error in every WebKit
-// spec that asserts none. Served here from the real file.
+// spec that asserts none. Served here from the real file. (Since 11/23/2026
+// the preview itself serves the site-root files under E2E_BASE — see the
+// ngw-preview-site-root plugin in vite.config.js; this route predates it.)
 const MANIFEST = readFileSync(new URL('../../public/hostv2-manifest.json', import.meta.url));
 
 export const test = base.extend({
