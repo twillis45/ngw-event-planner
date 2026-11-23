@@ -103,7 +103,7 @@ import { normalizeCategory } from '../vendorAccountability/playbooks.js';
 import { vendorDisplayName } from '../vendorDisplayName';
 import { destinationContextFor, isGroundedDestination } from '../knowledge/destinationContext';
 import { venueFor, isHomeVenueName } from '../venueFor';
-import { settledFromFacts, knownPartOf, allergyAsk, confirmAskFor } from '../knownFacts';
+import { settledFromFacts, knownPartOf, allergyAsk, confirmAskFor, hostHeadcount } from '../knownFacts';
 import { placeIsOutdoors } from '../placeIntelligence';
 import { effectiveAccessibility, isGroundedAccessibility } from '../knowledge/accessibilityContext';
 import { isGroundedCost } from '../knowledge/costProvenance';
@@ -955,7 +955,29 @@ export function catererPriceOf(event) {
   const v = booked || vs.find((x) => /\bquot/i.test(String(x.status || '')));
   return v ? { vendor: v, cost: Math.round(Number(v.cost)), booked: !!booked } : null;
 }
+// ── A CALL MADE OF TWO FACTS (batch 11, #229 Left) ──────────────────────────
+// Anniversary's "Confirm guest count + collect dietary/accessibility needs" has
+// no options: it is two facts the event already keeps. It was asked after she
+// gave her count and tapped "That's everyone — noted". A decision authoring
+// `settledWhen` settles when every part it names is on record:
+//   headcount  her own count (hostHeadcount: typed, locked, picked or a list,
+//              never the playbook's typical);
+//   needs      the needs noted, or recorded on the guest rows (dietaryResolved).
+// No option is claimed; the settled row says the two facts.
+function settledByParts(event, decision) {
+  const parts = decision.settledWhen;
+  const n = (() => { try { return hostHeadcount(event); } catch (_e) { return null; } })();
+  const needs = (() => { try { return dietaryResolved(event); } catch (_e) { return { resolved: false }; } })();
+  const said = [];
+  for (const part of parts) {
+    if (part === 'headcount') { if (!n) return null; said.push(`${n} ${n === 1 ? 'guest' : 'guests'}`); }
+    else if (part === 'needs') { if (!needs.resolved || needs.reason === 'no-list') return null; said.push(needs.reason === 'noted' ? 'needs noted' : 'needs on the guest list'); }
+    else return null;
+  }
+  return { pick: null, because: said.join(' · ') };
+}
 export function decisionSettledByData(event, decision) {
+  if (event && decision && Array.isArray(decision.settledWhen) && decision.settledWhen.length) return settledByParts(event, decision);
   if (!event || !decision || !Array.isArray(decision.options) || !decision.options.length) return null;
   // A GENERIC FOOD ANSWER ON FILE IS THIS CALL'S ANSWER (Crab Feast, audit 2
   // lane A P1-5): "We'll cook it" is "Steam them myself". Data-declared
@@ -1550,7 +1572,14 @@ export function catererHired(event, fa) {
   const pb = getPlaybook(event && event.type);
   const dec = a.decisionId && pb && Array.isArray(pb.decisions) ? pb.decisions.find((d) => d && d.id === a.decisionId) : null;
   if (dec && dec.servedByCaterer === true) return true;
-  return /cater|\bchef\b|drop-?off|pitmaster/i.test(String(a.pick || ''));
+  // HER PICK, NOT OUR DEFAULT (batch 11, #233 Left). Holiday Party and
+  // Retirement Party default their food call to drop-off catering, so the
+  // default read as a hire and "Pay the caterer…" showed before she had made
+  // the call. A pick names a hire only when it is hers: on the call itself, or
+  // the generic food answer (no decision id, or a call that maps it).
+  const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  const hers = a.decisionId == null || picks[a.decisionId] != null || !!(dec && dec.fromSourcing && picks.sourcing != null);
+  return hers && /cater|\bchef\b|drop-?off|pitmaster/i.test(String(a.pick || ''));
 }
 
 // Day offset from a task's `when` token: 'T-10d' → -10, 'T0' → 0, 'T0 -0:30' → 0
@@ -1888,7 +1917,7 @@ export function playbookChecklist(event, asOf) {
   // (the Spread is sized for the dinner), so they carry the dinner's group.
   let celebration = false;
   try { celebration = celebrationAppliesWith(event, playbook); } catch (_e) { celebration = false; }
-  for (const t of taskList) {
+  for (let t of taskList) {
     if (!t || !t.id || !t.label) continue;
     // Choice gate — a task tagged whenChoice appears only for the matching pick.
     if (!choiceShown(event, t.whenChoice)) continue;
@@ -1904,13 +1933,27 @@ export function playbookChecklist(event, asOf) {
     if (!modeShown(event, t.whenMode)) continue;
     // Kids gate — a task tagged whenKids appears only when kids are actually coming.
     if (t.whenKids && !kidsComing) continue;
+    // Rental gate — a task tagged whenRented (returning the rentals) appears only
+    // once something is rented (batch 11; audit 2 lane C P1-9).
+    if (t.whenRented && !somethingIsRented(event)) continue;
     // Caterer-action gate — drop booking/headcount-to-caterer tasks when the host cooks.
     // Keep decision-framing tasks ("…or confirm the host-cooks plan", "vs a caterer"),
     // and a step that also offers the do-it-yourself path ("…or plan the passed
     // bites + grazing table yourself"): with no caterer, that half IS the work
     // (Day Party, #220 Open, 11/22/2026). Its caterer and truck picks rename it.
-    if (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label)) continue;
-    if (noCatererHired && /\bcaterer/i.test(t.label) && !BOOKS_A_CATERER.test(t.label)) continue;
+    // A STEP THAT NAMES THE CATERER BESIDE OTHER WORK keeps the other work
+    // (batch 11): "Chase non-responders; give caterer + bartender the final
+    // guaranteed count" still owes the chase, and "Pay the venue and caterer
+    // balances…" still owes the venue. Such a step authors `labelWithoutCaterer`,
+    // the same step with the caterer taken out, and reads it while no caterer
+    // is hired; a step without one drops whole, as before.
+    const _noCaterer = (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label))
+      || (noCatererHired && /\bcaterer/i.test(t.label) && !BOOKS_A_CATERER.test(t.label));
+    if (_noCaterer) {
+      if (!t.labelWithoutCaterer) continue;
+      // Its answered copy is written for the caterer version, so it stays off.
+      t = { ...t, label: t.labelWithoutCaterer, copyByAnswer: undefined };
+    }
     // ── THE AIR-TRAVEL FLOOR REACHES THE CHECKLIST (2026-09-23) ─────────────
     // The floor was built into `playbookMilestones` and stopped there. Measured:
     // `playbookMilestones` has exactly one consumer, `playbookAreaNextStep`,
@@ -1996,6 +2039,31 @@ export function playbookChecklist(event, asOf) {
       dueInDays: dte + off,
       provenance: { source: `${playbook.type} playbook`, taskId: 'fa-caterer', derived: 'food-approach', ...(celebration ? { group: DINNER_GROUP } : null) },
     });
+  }
+  // A POTLUCK ASKS WHO BRINGS WHAT (batch 11; audit 2 lane C P2-4). A pick
+  // that hands dishes to the guests (`friendsBringWhen`) moved them to "Your
+  // guests" at $0, and nothing asked her who is bringing which. One step, for
+  // every playbook, while any such dish has no name on it (foodOwner, the one
+  // place a bringer is named); a playbook that authors its own who-brings-what
+  // step keeps its own. Two weeks out is The Cookout's own lead for "Plan the
+  // spread + assign dishes (who brings what)", the corpus's one authored date
+  // for this job.
+  {
+    const owners = foodOwnerMap(event);
+    const unnamed = (playbook.purchases || []).filter((p) => p && p.category === 'food' && p.friendsBringWhen
+      && choiceShown(event, p.friendsBringWhen) && choiceShown(event, p.whenChoice) && !isNamedBringer(owners[p.id]));
+    const authored = rows.some((r) => /bringing what|brings? what|assign (the )?dishes/i.test(String(r.task || '')));
+    if (unnamed.length && !authored) {
+      const off = -14;
+      rows.push({
+        id: `pbt-${event.id}-fa-bringers`,
+        task: 'Ask who is bringing which dish, and put their names on the Bringing list',
+        category: 'planning', phase: 'food', week: taskPhaseLabel(off), owner: '',
+        leadDays: off,
+        dueInDays: dte + off,
+        provenance: { source: `${playbook.type} playbook`, taskId: 'fa-bringers', derived: 'food-approach' },
+      });
+    }
   }
   // THE MEALS OUT GET BOOKED (owner, 11/21/2026). On a destination trip, only
   // a meal the host marked "out together" adds a step: a table for the group
@@ -3073,6 +3141,26 @@ const SUPPLY_INTEL = [
   { re: /trash|recycling|bin|bus tub|shell bucket/i,                        low: 8,  high: 20,  kind: 'buy',  label: 'cleanup' },
   { re: /heat lamp|patio heater|fan\b/i,                                    low: 30, high: 70,  kind: 'rent', label: 'climate' },
 ];
+// ── IS ANYTHING RENTED? (batch 11; audit 2 lane C P1-9) ─────────────────────
+// The day after a wedding with no rental anywhere, After's first thing owed was
+// "Return the rentals on the contract's clock…". A rental is on record when:
+//   · a vendor in the rentals category (tent, linens, tables & chairs…) is on
+//     the plan and not declined;
+//   · a budget line in that category carries an amount;
+//   · she got an item off the seating list that is a rental (supplyIntel 'rent')
+//     and does not own it.
+// Anything else is not known to be rented, so nothing waits to go back.
+export function somethingIsRented(event) {
+  const ev = event || {};
+  const isRentals = (c) => { try { return normalizeCategory(String(c || '')) === 'rentals'; } catch (_e) { return false; } };
+  const vendors = Array.isArray(ev.vendors) ? ev.vendors : [];
+  if (vendors.some((v) => v && !/declin|cancel/i.test(String(v.status || '')) && (isRentals(v.category) || isRentals(v.budgetCategory)))) return true;
+  const rows = Array.isArray(ev.budget) ? ev.budget : [];
+  if (rows.some((r) => r && isRentals(r.category) && ['actual', 'estimated', 'amount', 'planned', 'cost'].some((k) => Number(r[k]) > 0))) return true;
+  const got = (ev.capacityChecked && typeof ev.capacityChecked === 'object') ? ev.capacityChecked : {};
+  const owned = (ev.capacityOwned && typeof ev.capacityOwned === 'object') ? ev.capacityOwned : {};
+  return Object.keys(got).some((k) => got[k] && !owned[k] && (supplyIntel(k) || {}).kind === 'rent');
+}
 export function supplyIntel(name) {
   const s = String(name || '');
   if (!s) return null;
@@ -3369,6 +3457,18 @@ export function playbookRisks(event, domain) {
     // "Allergies not collected" is not a risk once she has noted them
     // (dietaryNoted, the one rule the checklist and the food sheet read).
     .filter((r) => !(/allergies (?:not )?collected|before allergies collected/i.test(String(r.trigger || '')) && dietaryNoted(event)))
+    // A HEADCOUNT RISK RETIRES ON A SETTLED COUNT (batch 11; audit 2 lane C
+    // P1-11), the same rule as the allergy row above: "Final headcount still
+    // not locked 3 days out" stayed up the day before and the day itself over
+    // her locked 30. "Not confirmed / locked" retires on a LOCKED count — the
+    // guestCount slot, which only the count editor and the lock write
+    // (guestCountFor), or the lock flag; an estimate is not a final count.
+    // "Wrong or late to the caterer" and a guarantee "on a stale number"
+    // retire once the caterer has been given a count (catererCount), or no
+    // caterer is hired.
+    .filter((r) => !(/final headcount still not (?:confirmed|locked)/i.test(String(r.trigger || '')) && (Number(event.guestCount) > 0 || event.guestCountLocked === true)))
+    .filter((r) => !(/wrong or late to the caterer|headcount guarantee is submitted on a stale/i.test(String(r.trigger || ''))
+      && (Number(event.catererCount) > 0 || !(() => { try { return catererHired(event); } catch (_e) { return true; } })())))
     .filter((r) => !dre || dre.test(`${r.id || ''} ${r.trigger}`)) // match the trigger/id, not the fix (mitigations mention "guest" generically)
     .map((r) => {
       const sev = String(r.severity || 'med').toLowerCase();

@@ -81,7 +81,9 @@ describe('the gate withholds, and only that', () => {
 describe('THE ACTUAL BOARD — the 80th birthday that found this', () => {
   const EV = (days) => ({
     id: 'e', name: "Mom's 80th", type: 'Birthday', date: iso(days),
-    guestMode: 'count', guestCount: 45, guests: [], totalBudget: 7000,
+    // Her estimate, not a locked count: a locked guestCount retires the
+    // "still not locked" row outright (aSettledCountRetiresItsRisk, batch 11).
+    guestMode: 'count', guestEstimate: 45, guestCountSource: 'host', guests: [], totalBudget: 7000,
     venueCity: 'Baltimore', budget: [], vendors: [],
   });
   const worryTitles = (days) => (eventPlan(EV(days)).worries || []).map((w) => String(w.title || ''));

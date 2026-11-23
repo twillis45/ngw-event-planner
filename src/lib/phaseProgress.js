@@ -20,7 +20,7 @@
 // Thin composition over existing single sources (guestCountResolved, weather
 // readers, dayBefore-style vendor gaps, playbook plans) — not a new engine.
 
-import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, openFoodChoices, hostBuysLine, menuChoicesTally } from './playbooks';
+import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, openFoodChoices, hostBuysLine, menuChoicesTally, getPlaybook } from './playbooks';
 import { rainPlanStatus } from './weather';
 import { placeIsOutdoors, OUTDOOR_TYPE } from './placeIntelligence';
 import { spanNights } from './dates';
@@ -33,7 +33,8 @@ import { vendorIsCommitted, vendorBalance } from './vendorMoney';
 import { hostSpending } from './hostSpending';
 import { expectedHeadroom } from './budgetCopy';
 import { daysUntil, spanEnd, getToday, localISO } from './dates';
-import { taskLeadDays } from './taskLead';
+import { taskLeadDays, taskDueInDays } from './taskLead';
+import { timelineStepResolved } from './taskEngine';
 import { budgetFor } from './budgetFor';
 import { startTimeIsConfirmed } from './startTime';
 import { lodgingIsHeld, lodgingAsk } from './lodgingIntel';
@@ -63,6 +64,21 @@ export function deriveEventPhaseProgress(event, now = new Date(), prices = null)
 }
 
 // ── Pre-event (and unknown-date) — applicable essentials only ─────────────────
+// The playbook's own earliest lead for the rain plan, in days, or null: a
+// tent / canopy / rentals vendor's `when`, or a step that names the rain plan.
+const RAIN_GEAR_VENDOR = /\btent|canopy|rental/i;
+const RAIN_PLAN_STEP = /\brain (?:plan|backup)\b/i;
+function rainLeadDays(type) {
+  let pb = null;
+  try { pb = getPlaybook(type); } catch (_e) { pb = null; }
+  if (!pb) return null;
+  const leads = [];
+  const lead = (when) => { const m = /^T-(\d+)d$/.exec(String(when || '').trim()); if (m) leads.push(Number(m[1])); };
+  for (const v of pb.vendors || []) if (v && RAIN_GEAR_VENDOR.test(String(v.category || ''))) lead(v.when);
+  for (const t of pb.tasks || []) if (t && RAIN_PLAN_STEP.test(String(t.label || ''))) lead(t.when);
+  return leads.length ? Math.max(...leads) : null;
+}
+
 function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   const noDate = phase === 'unknown';
   const items = [];
@@ -371,7 +387,16 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
     : (OUTDOOR_TYPE.test(String(ev.type || '')) || (() => { try { return placeIsOutdoors(ev); } catch { return false; } })());
   if (outdoor && !noDate) {
     const rp = (() => { try { return rainPlanStatus(ev); } catch { return { hasPlan: false }; } })();
-    add('rain', true, rp.hasPlan, 'Add a rain backup', { tab: 'Event Details', focusField: 'rain-plan' }, 5);
+    // THE RAIN PART WAITS FOR ITS WINDOW (batch 11; audit 2 lane C P1-1). At
+    // 300 days the 150-guest vineyard wedding led with "Add a rain backup."
+    // The playbook says when the rain plan is due: a tent or rental booking's
+    // lead, or the step that decides the rain plan (the wedding: rentals at
+    // T-180d, "DECIDE the rain plan" at T-7d). Before the earliest such lead the
+    // part still COUNTS (the denominator never moves on a clock), but ranks
+    // after every other part instead of leading. No lead authored: unchanged.
+    const lead = rainLeadDays(ev.type);
+    const early = lead != null && daysOut != null && daysOut > lead;
+    add('rain', true, rp.hasPlan, 'Add a rain backup', { tab: 'Event Details', focusField: 'rain-plan' }, early ? 10 : 5);
   }
 
   // Crab order — crab events with a plan started (CRAB-PRICING-1 handled state).
@@ -674,9 +699,26 @@ function postProgress(ev) {
 
 
 /** Earliest dated work already declared by eventPlan; never re-ranks its actions. */
-export function nextPlanAttentionDate(plan, ledgerChange, now) {
+// THE CHECKLIST'S OWN DATES COUNT (batch 11; audit 2 lane C P1-2). "next dated
+// work: Jun 5" (the day the shopping list opens) sat over a checklist with
+// "Send invites…" due May 25. Given the event, its open checklist steps
+// (`event.timeline`, the rows the checklist prints; a ticked, proven or retired
+// step is handled, timelineStepResolved) join the plan's rows and the ledger's
+// next change, each at its own due date (taskDueInDays, the one date rule).
+// Without the event the answer is the one it always was.
+export function nextPlanAttentionDate(plan, ledgerChange, now, event) {
   let earliest = ledgerChange && daysUntil(ledgerChange.date, now) != null
     ? { ...ledgerChange, days: daysUntil(ledgerChange.date, now) } : null;
+  const steps = event && Array.isArray(event.timeline) ? event.timeline : [];
+  for (const t of steps) {
+    if (!t || t.done) continue;
+    try { if (timelineStepResolved(event, t)) continue; } catch (_e) { continue; }
+    const due = (() => { try { return taskDueInDays(t, event, now); } catch (_e) { return null; } })();
+    if (due == null || (earliest && due >= earliest.days)) continue;
+    const date = getToday(now);
+    date.setDate(date.getDate() + due);
+    earliest = { date: localISO(date), days: due, id: t.id || null, what: t.task || null };
+  }
   const rows = [...((plan && plan.nextActions) || []), ...((plan && plan.worries) || []), ...((plan && plan.setAside) || [])];
   for (const action of rows) {
     if (!action || action.done) continue;
