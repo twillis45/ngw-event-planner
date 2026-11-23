@@ -21,6 +21,8 @@
 
 const reunion = {
   type: 'Reunion',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Grilled veggie skewers + portobello burgers',
   solveFamily: 'reunion',
   family: 'host_driven',

@@ -40,7 +40,8 @@ export function inviteCardModel(event) {
   if (ev.date) {
     const day = fmtLongSpan(ev);
     let time = '';
-    try { const w = eventStartLabel(ev); time = (w && w.label) || ''; } catch { /* no hour */ }
+    // Arrive-by, and the meal's hour when the event is meal-centered (cause 5).
+    try { const w = eventStartLabel(ev); time = w ? (w.serveLabel ? `${w.label}, dinner at ${w.serveLabel}` : (w.label || '')) : ''; } catch { /* no hour */ }
     facts.push({ label: 'When', value: day, sub: time });
   }
   const where = (() => { try { return formatVenueAddress(ev) || ''; } catch { return ''; } })();

@@ -47,6 +47,9 @@ const GUESTS_BRING_SIDES = { id: 'hosting_model', in: ['Host cooks the turkey an
 
 const thanksgivingHosting = {
   type: 'Thanksgiving Hosting',
+  // What the time she types means (lib/eventAnchor, cause 5; owner ruling 11/23/2026):
+  // when dinner hits the table. Arrivals come first, by this playbook's own serve cue.
+  timeAnchor: { means: 'serve', serveAt: 'T0 +1h' },
   vegMain: 'Stuffed acorn squash with wild rice',
   solveFamily: 'home_gathering',
   family: 'home_hosted',

@@ -20,6 +20,8 @@
 
 const quinceanera = {
   type: 'Quinceañera',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'quinceanera',
   family: 'full_service',
   recordKind: 'client',

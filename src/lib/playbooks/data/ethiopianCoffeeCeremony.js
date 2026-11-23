@@ -15,6 +15,8 @@
 
 const ethiopianCoffeeCeremony = {
   type: 'Ethiopian Coffee Ceremony',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

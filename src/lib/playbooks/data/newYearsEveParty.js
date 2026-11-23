@@ -38,6 +38,8 @@
 
 const newYearsEveParty = {
   type: "New Year's Eve Party",
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Mushroom-and-gruyere puff pastry bites',
   solveFamily: 'home_gathering',
   family: 'home_hosted',

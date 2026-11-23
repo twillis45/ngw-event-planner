@@ -18,6 +18,8 @@
 
 const retirementParty = {
   type: 'Retirement Party',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Roasted vegetable & goat cheese tart',
   solveFamily: 'retirement_party',
   family: 'host_driven',

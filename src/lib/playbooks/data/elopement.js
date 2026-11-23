@@ -14,6 +14,8 @@
 
 const elopement = {
   type: 'Elopement',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'elopement',
   family: 'travel_led',
   recordKind: 'client',

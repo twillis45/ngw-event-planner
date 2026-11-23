@@ -67,6 +67,9 @@ const HOST_HAS_BIRD = [{ id: 'hosting_model', in: HOST_BUYS_MAIN }, { id: 'main_
 
 const friendsgiving = {
   type: 'Friendsgiving',
+  // What the time she types means (lib/eventAnchor, cause 5; owner ruling 11/23/2026):
+  // when dinner hits the table. Arrivals come first, by this playbook's own serve cue.
+  timeAnchor: { means: 'serve', serveAt: 'T0 +1h' },
   vegMain: 'A big roasted-vegetable and wild rice dish that stands on its own as a main',
   solveFamily: 'home_gathering',
   family: 'home_hosted',

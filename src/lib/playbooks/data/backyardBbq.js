@@ -9,6 +9,8 @@
 
 const backyardBbq = {
   type: 'Get-Together',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Grilled portobello caps + veggie skewers',
   solveFamily: 'home_gathering',
   family: 'home_hosted',

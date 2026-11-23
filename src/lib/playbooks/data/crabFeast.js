@@ -20,6 +20,8 @@ import { CRAB_SERVING_GUIDE } from '../../crabServing.js';
 
 const crabFeast = {
   type: 'Crab Feast',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Grilled corn + veggie + Old Bay potato skewers',
   solveFamily: 'home_gathering',
   family: 'home_hosted',

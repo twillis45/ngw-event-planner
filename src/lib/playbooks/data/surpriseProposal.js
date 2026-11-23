@@ -15,6 +15,8 @@
 
 const surpriseProposal = {
   type: 'Surprise Proposal',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'proposal',
   family: 'host_driven',
   recordKind: 'client',

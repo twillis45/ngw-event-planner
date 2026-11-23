@@ -15,6 +15,8 @@
 
 const engagementParty = {
   type: 'Engagement Party',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Stuffed mushroom & spinach phyllo bites',
   solveFamily: 'engagement_party',
   family: 'host_driven',

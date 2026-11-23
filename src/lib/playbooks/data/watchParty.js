@@ -279,6 +279,8 @@ const FORMAT_NO_HALFTIME = [...FORMAT_COMBAT, ...FORMAT_CONTINUOUS, ...FORMAT_BR
 
 const watchParty = {
   type: 'Watch Party',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

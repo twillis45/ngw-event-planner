@@ -9,6 +9,8 @@
 
 const birthday = {
   type: 'Birthday',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'birthday',
   family: 'host_driven',
   recordKind: 'event',

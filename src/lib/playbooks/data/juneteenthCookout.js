@@ -15,6 +15,8 @@
 
 const juneteenthCookout = {
   type: 'Juneteenth Cookout',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Grilled portobello burgers + veggie skewers',
   solveFamily: 'home_gathering',
   family: 'home_hosted',

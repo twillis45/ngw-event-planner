@@ -10,6 +10,8 @@
 
 const anniversary = {
   type: 'Anniversary',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Wild mushroom risotto',
   solveFamily: 'anniversary',
   family: 'host_driven',

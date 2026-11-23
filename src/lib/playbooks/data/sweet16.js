@@ -6,6 +6,8 @@
 
 const sweet16 = {
   type: 'Sweet 16',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'sweet16',
   family: 'full_service',
   recordKind: 'client',

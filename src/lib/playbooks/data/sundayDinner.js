@@ -9,6 +9,9 @@
 
 const sundayDinner = {
   type: 'Sunday Dinner',
+  // What the time she types means (lib/eventAnchor, cause 5; owner ruling 11/23/2026):
+  // when dinner hits the table. Arrivals come first, by this playbook's own serve cue.
+  timeAnchor: { means: 'serve', serveAt: 'T0 +30m' },
   vegMain: 'Smothered mushroom & bean main + cornbread',
   solveFamily: 'home_gathering',
   family: 'home_hosted',

@@ -10,6 +10,8 @@
 
 const holidayParty = {
   type: 'Holiday Party',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Butternut squash & sage stuffed shells',
   solveFamily: 'holiday_party',
   // home_hosted, matching eventTaxonomy.mjs (11/20/2026, seasonal leftovers):

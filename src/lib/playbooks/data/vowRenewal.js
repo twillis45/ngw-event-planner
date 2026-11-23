@@ -14,6 +14,8 @@
 
 const vowRenewal = {
   type: 'Vow Renewal',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Wild mushroom risotto',
   solveFamily: 'vow_renewal',
   family: 'full_service',

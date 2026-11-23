@@ -18,6 +18,8 @@
 
 const conference = {
   type: 'Conference',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'corporate',
   family: 'corporate',
   recordKind: 'client',

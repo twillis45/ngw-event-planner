@@ -17,7 +17,7 @@ import { cashBarDecisionsFor, cashBarKeeps, aliasedChoices } from './cashBarCove
 import { cateredCourseDecisionsFor, cateredCourseCovers, cateredCoursePendingWhy } from './cateredCourse';
 import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
 import { matchGuestIndexByName } from '../guestMerge';
-import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
+import { ANCHOR_HOUR, parseStartMinutes, eventArrivalMinutes } from '../eventWhen';
 import { spanNights, spanEnd } from '../dates';
 import { aroundMeals, celebrationAppliesWith, DINNER_GROUP, DINNER_OWN_STEPS } from '../tripMeals';
 import { attendanceAdjustment } from '../hostIntel';
@@ -2748,7 +2748,10 @@ export function playbookRunOfShow(event) {
   // 3:00 PM?" — a PROPOSAL they accept, which writes event.startTime, after which every row
   // is a real time because it descends from a real decision.
   const tod = String(event.timeOfDay || '').toLowerCase();
-  const startMin = parseRosStartMin(event.startTime);
+  // The anchor is when guests ARRIVE (lib/eventWhen.eventClock, cause 5): for a
+  // meal-centered event the time she typed is the meal, and arrivals precede it
+  // by the playbook's own lead.
+  const startMin = eventArrivalMinutes(event);
   // RE-AUDIT HOLE (2026-07-14, fresh-eyes pass): this used to treat ANY parseable startTime
   // as 'exact' — but a new event now arrives with a DERIVED default (startTimeSource:
   // 'derived', the app's own grounded guess). Counting it as exact meant the Day view printed

@@ -5,6 +5,7 @@
 // only ever uses what the host already told us (name, type, date, time, place,
 // honoree, head count). An AI key can polish later; the honest baseline is here.
 
+import { eventClock, clockLabel12 } from './eventWhen';
 import { isVendorBooked } from './workstreams';
 import { transportDecision } from './travelPlan';
 import { venueFor } from './venueFor';
@@ -69,7 +70,13 @@ export function fmtLongSpan(event) {
 export function timePhrase(event) {
   const derived = !!(event && String(event.startTimeSource || '') === 'derived');
   const t = (!derived && event && event.startTime) ? String(event.startTime).trim() : '';
-  if (t) return t;
+  // A meal-centered event's typed time is the meal; guests are told when to
+  // arrive and when it is served (lib/eventWhen.eventClock, cause 5).
+  if (t) {
+    const c = eventClock(event);
+    if (c.serveMin != null && c.arrivalMin != null && c.arrivalMin !== c.serveMin) return `${clockLabel12(c.arrivalMin)} (dinner at ${clockLabel12(c.serveMin)})`;
+    return t;
+  }
   const tod = (event && event.timeOfDay ? String(event.timeOfDay) : '').toLowerCase().trim();
   if (['morning', 'afternoon', 'evening', 'night'].includes(tod)) return `in the ${tod}`;
   return '';

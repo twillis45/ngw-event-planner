@@ -14,6 +14,8 @@
 
 const crawfishBoil = {
   type: 'Crawfish Boil',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Loaded boiled potatoes, corn & mushroom platter',
   solveFamily: 'home_gathering',
   family: 'home_hosted',

@@ -45,6 +45,8 @@
 
 const fundraiserGala = {
   type: 'Fundraiser / Gala',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Wild mushroom and root vegetable wellington',
   solveFamily: 'gala',
   family: 'full_service',

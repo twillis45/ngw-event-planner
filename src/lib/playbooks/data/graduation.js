@@ -9,6 +9,8 @@
 
 const graduation = {
   type: 'Graduation',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'graduation',
   family: 'host_driven',
   recordKind: 'event',

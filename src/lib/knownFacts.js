@@ -25,7 +25,7 @@
 // playbooks/index.js and choiceProvenance.js can both read it.
 import { guestCountFor, SOURCE_PLAYBOOK_TYPICAL } from './guestCountFor';
 import { venueFor, isHomeVenueName } from './venueFor';
-import { parseStartMinutes } from './eventWhen';
+import { parseStartMinutes, eventClock } from './eventWhen';
 import { dietTagFor } from './dietRows';
 
 const opts = (d) => (d && Array.isArray(d.options) ? d.options.map(String) : []);
@@ -222,6 +222,18 @@ export function hostStartMinutes(event) {
   if (!event || !event.startTime || event.startTimeSource === 'derived') return null;
   return parseStartMinutes(event.startTime);
 }
+// What her clock says about the MEAL and about ARRIVALS (lib/eventWhen.eventClock,
+// cause 5). A serve-anchored event's typed time is the meal; an older event with
+// no stamp keeps the one meaning it always had.
+export function hostServeMinutes(event) {
+  if (hostStartMinutes(event) == null) return null;
+  const c = eventClock(event);
+  return c.serveMin != null ? c.serveMin : c.typedMin;
+}
+export function hostArrivalMinutes(event) {
+  if (hostStartMinutes(event) == null) return null;
+  return eventClock(event).arrivalMin;
+}
 export function timeOfDayFromMinutes(min) {
   if (min == null) return null;
   if (min < 12 * 60) return 'morning';
@@ -250,7 +262,7 @@ function hoursOf(option) {
   return /or later|\+/.test(s) ? [hrs[0], 24] : [Math.min(...hrs), Math.max(...hrs)];
 }
 function serveTimeCall(event, d) {
-  const min = hostStartMinutes(event);
+  const min = hostServeMinutes(event);
   if (min == null) return null;
   const options = opts(d);
   const bands = options.map(hoursOf);
@@ -265,7 +277,7 @@ function serveTimeCall(event, d) {
 }
 // Housewarming: a clock says when, not whether people drop in all afternoon.
 function windowCall(event, d) {
-  const min = hostStartMinutes(event);
+  const min = hostArrivalMinutes(event);
   if (min == null) return null;
   const options = opts(d);
   const fixed = options.find((o) => /fixed start/i.test(o) && (min < 17 * 60 ? /afternoon/i : /evening/i).test(o));

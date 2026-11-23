@@ -8,6 +8,8 @@
 
 const babyShower = {
   type: 'Baby Shower',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'baby_shower',
   family: 'host_driven',
   recordKind: 'event',

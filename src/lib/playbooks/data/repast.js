@@ -16,6 +16,8 @@
 
 const repast = {
   type: 'Repast',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   vegMain: 'Baked mac & cheese + greens & candied yam plate',
   solveFamily: 'home_gathering',
   family: 'home_hosted',

@@ -363,6 +363,8 @@ import { editorKindFor, isBalanceDueAction, stepRowIdOf } from '@app/lib/heroEdi
 import { stepIsASend } from '@app/lib/stepTarget';
 import { withSettled, withoutSettled, unsettledActions } from '@app/lib/settledAsks';
 import { landingStage } from '@app/lib/landingStage';
+import { timeAnchorFields } from '@app/lib/eventAnchor';
+import { startTimeFieldWords } from '@app/lib/eventWhen';
 import { vendorObligations } from '@app/lib/vendorObligations';
 import { heartPlaceholders, heartFieldsFor } from '@app/lib/heartPrompts';
 import { parseMin } from '@app/lib/dayAlerts';
@@ -9814,11 +9816,11 @@ export default function HostShellV2() {
           return (
             <>
               <div className="actions-row" style={{ width: '100%', marginTop: 'var(--sp-2)', alignItems: 'center' }}>
-                <span className="of">guests arrive:</span>
+                <span className="of">{startTimeFieldWords(event).label}</span>
                 <input className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                   value={event.startTime || ''}
                   onChange={e => writeStartTime({ startTime: e.target.value }, 'Start time set — the day now runs on a real clock.')}
-                  aria-label="What time guests arrive" />
+                  aria-label={startTimeFieldWords(event).aria} />
                 {prop && (
                   <button className="mini" onClick={() => writeStartTime({ startTime: prop.hhmm },
                     'Start time set — the day now runs on a real clock.')}>
@@ -10580,7 +10582,11 @@ export default function HostShellV2() {
     // clock from the first second, the host is told plainly that we picked it and why, and
     // nothing OUTWARD — a guest's invitation, a vendor's brief — states the hour until they
     // have confirmed it. An unconfirmed hour is ours, not theirs.
+    const _hadTime = !!String(ev.startTime || '').trim();
     try { Object.assign(ev, defaultStartTime(ev, null) || {}); } catch (_e) { /* no grounding — the list asks */ }
+    // WHAT HER TIME MEANS, stamped once (lib/eventAnchor, cause 5): for a
+    // meal-centered playbook the time she typed is when dinner hits the table.
+    try { Object.assign(ev, timeAnchorFields(ev, { defaultApplied: !_hadTime && !!String(ev.startTime || '').trim() })); } catch (_e) { /* an unstamped event keeps the arrival meaning */ }
     // Canonical checklist over the real event object (date-relative offsets,
     // choice/caterer gates). No date yet → honestly empty; drafts later.
     // THE GAMES SHE ASKED FOR ARE HER PICK (run 2, R2-15): "team-oriented games"
@@ -15992,11 +15998,11 @@ export default function HostShellV2() {
                             : <>These moments are in order but not on a clock — set a start time and every line below becomes a real one.</>}
                         </p>
                         <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
-                          <span className="of">guests arrive:</span>
+                          <span className="of">{startTimeFieldWords(event).label}</span>
                           <input className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                             value={event.startTime || ''}
                             onChange={e => writeStartTime({ startTime: e.target.value }, 'Start time set — the whole day reads from it now.')}
-                            aria-label="What time guests arrive" />
+                            aria-label={startTimeFieldWords(event).aria} />
                           {derived ? (
                             <button className="mini" onClick={() => writeStartTime({ confirm: true },
                               'Start time confirmed — the whole day reads from it now.')}>

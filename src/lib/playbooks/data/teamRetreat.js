@@ -15,6 +15,8 @@
 
 const teamRetreat = {
   type: 'Team Retreat',
+  // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
+  timeAnchor: { means: 'arrival' },
   solveFamily: 'team_retreat',
   family: 'corporate',
   recordKind: 'client',
