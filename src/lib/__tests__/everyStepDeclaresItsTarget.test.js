@@ -348,7 +348,9 @@ describe('the calls and roles a step stands for are found by id, never by words'
           rows += 1;
           const st = declared(pb, r.id, ev.id);
           const calls = (st && Array.isArray(st.answeredBy)) ? st.answeredBy : [];
-          const books = (st && Array.isArray(st.books) && st.books.length) ? st.books : [];
+          // Without its caterer, the roles it lists without the caterer (owner ruling 1).
+          const decl = st && st.booksWithoutCaterer && pbm.stepWithoutCaterer(ev, st) ? st.booksWithoutCaterer : (st && st.books);
+          const books = (Array.isArray(decl) && decl.length) ? decl : [];
           for (const task of [r.task, DECOY]) {
             if (JSON.stringify(stepCalls(ev, { id: r.id, task })) !== JSON.stringify(calls)) wrong.push(`${pb.type}:${r.id} calls`);
             if (JSON.stringify(stepBooks(ev, { id: r.id, task })) !== JSON.stringify(books)) wrong.push(`${pb.type}:${r.id} books`);
@@ -447,7 +449,11 @@ describe('a step declares when its caterer comes out, never by its words', () =>
         const neutral = shape();
         (pb.tasks || []).forEach((t) => { t.label = 'Give the caterer the final count'; });
         const caterer = shape();
-        if (neutral.join('|') !== before.join('|') || caterer.join('|') !== before.join('|')) wrong.push(pb.type);
+        // Which steps stay: the same as with their own words. Which read the
+        // no-caterer label: the same under either swap (with her own words, a
+        // label naming only the roles left can coincide with it).
+        const ids = (xs) => xs.map((x) => x.replace(/:without/g, '')).join('|');
+        if (ids(neutral) !== ids(before) || caterer.join('|') !== neutral.join('|')) wrong.push(pb.type);
       } finally {
         (pb.tasks || []).forEach((t, i) => { t.label = saved[i]; });
       }
@@ -550,5 +556,60 @@ describe('a composite step is declared, never read off its words', () => {
     expect(body).toMatch(/stepIsSetComposite\(/);
     expect(body).not.toMatch(/\.test\(cmd\.title\)|_isSetComposite/);
     expect((code.match(/stepIsSetComposite\(/g) || []).length).toBe(2);
+  });
+});
+
+// ─── WHEN SHE COOKS, ONLY THE CATERING PART GOES (owner ruling 1, 11/23/2026)
+// A step whose caterer comes out when she cooks ('host-cooks') dropped whole
+// unless it authored a labelWithoutCaterer, so "Sign planner, photographer,
+// caterer, band/DJ" vanished and took the planner, the photographer and the
+// band with it. Each such step now declares either `otherVendors` (the
+// non-catering vendors it names) with its no-caterer label, or `catererOnly`
+// (its only job is catering, so it may drop).
+describe('when she cooks, a step that names other vendors keeps them', () => {
+  const { cookTasksFor } = require('../playbooks/cookLever');
+  // Owner call pending (named in HANDOFF): steps that name no vendor but
+  // carry other work beside the caterer. They keep today's behavior.
+  const PENDING = new Set(['Board Meeting:t_setup', 'Quinceañera:t_fitting']);
+  const stepsOf = (pb) => [...(pb.tasks || []), ...cookTasksFor(pb), ...pbm.DESTINATION_TASKS];
+  const cooks = (out) => Array.isArray(out) && out.includes('host-cooks');
+
+  test('every step whose caterer comes out when she cooks is classified', () => {
+    const bad = [];
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const s of stepsOf(pb)) {
+        if (!cooks(s.catererOut) || PENDING.has(`${pb.type}:${s.id}`)) continue;
+        const named = Array.isArray(s.otherVendors) && s.otherVendors.length > 0;
+        if (named === (s.catererOnly === true)) bad.push(`${pb.type}:${s.id} declares ${named ? 'both' : 'neither'}`);
+        if (named && !s.labelWithoutCaterer) bad.push(`${pb.type}:${s.id} names other vendors with no no-caterer label`);
+      }
+    }
+    expect(bad).toEqual([]);
+    for (const [type, id] of [['Wedding', 't_keyvendors'], ['Engagement Party', 't_book_bartender'], ['Retirement Party', 't_book_vendors'], ['Quinceañera', 't_vendor_book'], ['Fundraiser / Gala', 't_vendors']]) {
+      const s = (pbm.getPlaybook(type).tasks || []).find((t) => t.id === id);
+      expect([type, id, (s.otherVendors || []).length > 0]).toEqual([type, id, true]);
+    }
+  });
+
+  test('in every host-cooks state of every playbook, such a step stays on the list in its no-caterer words', () => {
+    const wrong = [];
+    let seen = 0;
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      const named = (pb.tasks || []).filter((s) => cooks(s.catererOut) && (s.otherVendors || []).length);
+      if (!named.length) continue;
+      for (const ev0 of eventsFor(pb)) {
+        if (pbm.foodApproach(ev0).usesCaterer !== false) continue;
+        for (const s of named) {
+          const ev = s.whenChoice ? { ...ev0, foodChoices: { ...(ev0.foodChoices || {}), [s.whenChoice.id]: s.whenChoice.in[0] } } : ev0;
+          if (pbm.foodApproach(ev).usesCaterer !== false) continue;
+          seen += 1;
+          const row = (pbm.playbookChecklist(ev, asOf) || []).find((r) => r.provenance && r.provenance.taskId === s.id);
+          if (!row) wrong.push(`${pb.type}:${s.id} disappeared`);
+          else if (!row.task.startsWith(s.labelWithoutCaterer)) wrong.push(`${pb.type}:${s.id} reads "${row.task}"`);
+        }
+      }
+    }
+    expect(wrong.slice(0, 40)).toEqual([]);
+    expect(seen).toBeGreaterThan(20);
   });
 });

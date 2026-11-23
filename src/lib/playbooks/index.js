@@ -1194,7 +1194,9 @@ export function stepBooks(event, task) {
   if (!event || !task) return [];
   const pb = getPlaybook(event.type);
   const t = declaredStepByRowId(event, task, (pb && pb.tasks) || []);
-  return t && Array.isArray(t.books) && t.books.length ? t.books : [];
+  // Without its caterer, the roles it lists without the caterer.
+  const books = t && t.booksWithoutCaterer && t.labelWithoutCaterer && stepWithoutCaterer(event, t) ? t.booksWithoutCaterer : (t && t.books);
+  return Array.isArray(books) && books.length ? books : [];
 }
 export function stepCallsAnswered(event, task) {
   if (!event || !task || typeof task.id !== 'string' || !task.id.startsWith('pbt-')) return false;
@@ -1995,7 +1997,9 @@ export function playbookChecklist(event, asOf) {
     if (_noCaterer) {
       if (!t.labelWithoutCaterer) continue;
       // Its answered copy is written for the caterer version, so it stays off.
-      t = { ...t, label: t.labelWithoutCaterer, copyByAnswer: undefined };
+      // A step that lists its roles lists them without the caterer too
+      // (`booksWithoutCaterer`, owner ruling 1, 11/23/2026).
+      t = { ...t, label: t.labelWithoutCaterer, copyByAnswer: undefined, ...(t.booksWithoutCaterer ? { books: t.booksWithoutCaterer } : null) };
     }
     // ── THE AIR-TRAVEL FLOOR REACHES THE CHECKLIST (2026-09-23) ─────────────
     // The floor was built into `playbookMilestones` and stopped there. Measured:
