@@ -5657,6 +5657,10 @@ export default function HostShellV2() {
   // The tall iPad's first-screen slots (Where you stand, the fold control).
   const [ttStandSlot, setTtStandSlot] = useState(null);
   const [ttFoldSlot, setTtFoldSlot] = useState(null);
+  // The header's weather slot (owner ruling 11/23/2026): on a tall iPad the
+  // weather pill rides the date line instead of floating over the board.
+  const [ttWxSlot, setTtWxSlot] = useState(null);
+  const placeWx = (el) => (tallTablet ? (ttWxSlot ? createPortal(el, ttWxSlot) : null) : el);
   // THE RIBBON (owner, 11/22/2026): the plan-parts ledger the chips and the
   // .eprog strips read, plus which open part the hero question is about.
   const tallRibbon = tallTablet ? planRibbon(phaseCues, askMode ? queue[0] : null) : null;
@@ -12377,6 +12381,8 @@ export default function HostShellV2() {
                         <div className="tt-r1">
                           {!eventIsTheHostsOwn && <span className="tt-chip" data-sample-event>Sample</span>}
                           <span>{e.when}{e.when && e.urgency.length ? ' · ' : ''}<span data-tt-urgency>{e.urgency.join(' · ')}</span></span>
+                          {/* The weather pill lands here when it would show (near the date). */}
+                          <span className="tt-wx-slot" ref={setTtWxSlot} />
                         </div>
                         <button type="button" className="tt-title" data-tt-title aria-haspopup="dialog" title="Your events"
                           onClick={() => setSheet({ kind: 'events' })}>
@@ -29453,7 +29459,7 @@ export default function HostShellV2() {
       {/* The indoor heads-up rides the same pill (one weather surface on the
           board): a guest-travel headline, the plain forecast, and a drafted
           note to guests. No rain-plan prompt: indoors there is nothing to move. */}
-      {!wxImpact && travelWx && stage === 'plan' && (
+      {!wxImpact && travelWx && stage === 'plan' && placeWx(
         <div className={'wxpill' + (wxOpen ? ' open' : '') + (!heroInView ? ((elegantMode || dockHidden) ? ' wxpill-mid' : ' wxpill-raised') : '')} data-wx-travel={travelWx.kind}>
           <button className="wxpill-head" onClick={() => { setWxOpen(o => !o); feedback('tick'); }} aria-expanded={wxOpen}>
             <span className="wx-glyph" aria-hidden="true">{weatherGlyph(travelWx.glyph, { mono: true })}</span>
@@ -29474,7 +29480,7 @@ export default function HostShellV2() {
         </div>
       )}
 
-      {wxImpact && stage === 'plan' && (
+      {wxImpact && stage === 'plan' && placeWx(
         <div className={'wxpill' + (wxOpen ? ' open' : '') + (!heroInView ? ((elegantMode || dockHidden) ? ' wxpill-mid' : ' wxpill-raised') : '')}>
           <button className="wxpill-head" onClick={() => { setWxOpen(o => !o); feedback('tick'); }} aria-expanded={wxOpen}>
             {/* The day's own sky (weatherGlyphs, 11/18/2026), drawn in the rail's
