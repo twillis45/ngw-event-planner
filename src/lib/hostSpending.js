@@ -27,6 +27,7 @@ import { vendorOutstanding, moneyCategories, vendorIsCommitted } from './vendorM
 import { vendorDisplayName } from './vendorDisplayName';
 import { lodgingCommitted } from './lodgingIntel';
 import { foodSpanNote } from './foodSpan';
+import { priceSourceNote } from './priceBasis';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const mid = (lo, hi) => {
@@ -318,7 +319,12 @@ export function hostSpending(event, priceFactor, itemFactors) {
   const foodUnpriced = listWithheld && hasRealCount
     && !!(plan && (num(plan.foodLow) > 0 || num(plan.foodHigh) > 0));
 
-  return { expected, categories, moneyDiscrepancies, optionalLow, optionalHigh, optionalEstimate, optionalLines, priceBasis, total: roundCurrency(total), spent, spentFirm, spentEstimated, committed, committedEstimated, uncommitted, vendorOwed, unpricedBooked, lodgingCommitted: lodgingCommitted_, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, foodListApplies, foodUnpriced, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
+  // What the food and supply prices behind `expected` rest on (owner rule,
+  // 11/22/2026): how many are estimates with no source, and any pick priced as
+  // another until a source exists. Only when those prices are in the total.
+  const priceSources = (hasFood || suppliesEstimate > 0) ? priceSourceNote(plan) : null;
+
+  return { priceSources, expected, categories, moneyDiscrepancies, optionalLow, optionalHigh, optionalEstimate, optionalLines, priceBasis, total: roundCurrency(total), spent, spentFirm, spentEstimated, committed, committedEstimated, uncommitted, vendorOwed, unpricedBooked, lodgingCommitted: lodgingCommitted_, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, foodListApplies, foodUnpriced, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
 }
 
 export default hostSpending;

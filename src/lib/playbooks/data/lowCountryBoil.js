@@ -105,7 +105,7 @@ const lowCountryBoil = {
   ],
 
   vendors: [
-    { category: 'Lowcountry-boil caterer (full boil for a crowd)', required: false, altToDIY: 'Do the one-pot boil yourself — it is the event', when: 'T-7d', costRange: [15, 30], costUnit: 'per person' },
+    { category: 'Lowcountry-boil caterer (full boil for a crowd)', required: false, altToDIY: 'Do the one-pot boil yourself — it is the event', when: 'T-7d', costRange: [15, 30], costUnit: 'per person', costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['catering-chefry-2026', 'catering-perperson-2026'], lastVerified: '2026-11-22', claim: '2026 US catering per person: drop-off $15-30, buffet $25-55 and plated or full service $50-120 (Chefry); drop-off $15-35, drop-off buffet $28-50, buffet with servers $45-85 and full-service $75-150 (The Catering Finder). This $15-30 a guest band sits in the drop-off tier both guides publish ($15-30 at Chefry, $15-35 at The Catering Finder). Both exclude the 18-22% service charge and gratuity a caterer adds on top.', sufficientWhen: 'A local caterer quote for this menu at this headcount; staffed service prices above this band.' } },
     { category: 'Fresh / local shrimp supplier (dockside or market)', required: false, altToDIY: 'Buy at the grocery seafood counter', when: 'T-3d', costRange: [7, 13], costUnit: 'per lb' },
     { category: 'Pot + burner rental', required: false, altToDIY: 'Own or borrow the pot and burner', when: 'T-7d', costRange: [30, 80], costUnit: 'flat' },
   ],

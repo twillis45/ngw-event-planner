@@ -61,7 +61,7 @@ describe('a vendor cost range answers for itself', () => {
     // If a later pass authors real per-row provenance this number climbs and the
     // floor record steps aside for those rows — that is the intended direction,
     // and this line is where it becomes visible rather than silent.
-    expect(`${withRange} ranges, ${withProv} with provenance`).toBe('226 ranges, 2 with provenance'); // 2 on 11/21/2026: Thanksgiving's prepared dinner and Day Party's food truck cite their own fetched sources. // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
+    expect(`${withRange} ranges, ${withProv} with provenance`).toBe('226 ranges, 15 with provenance'); // 15 on 11/22/2026: thirteen catering vendors whose per-guest band sits inside the two registered catering guides now cite them (audit G #1). // 2 on 11/21/2026: Thanksgiving's prepared dinner and Day Party's food truck cite their own fetched sources. // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
   });
 
   test('THE DEFECT: the base range is now a contributor a surface can ask about', () => {

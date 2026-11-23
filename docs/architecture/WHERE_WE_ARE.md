@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 22, 2026 (evening) — every price says what it rests on
+
+**A price is cited, hers, her caterer's quote, or labeled "Estimate — no price source yet", and a census test holds it there.** Pending prices are shown as pending, the Spread and Your money count the same guests, and the budget hero lights the number its sentence recommends.
+
 ## November 22, 2026 (evening) — food follows what she said, and the place she named
 
 **"We'll cook it" stays cooked, and a booked caterer replaces the grocery list.** Restaurants, full-service venues, a church lot and a state park are read for what they are, and Crab Feast asks steam-or-order before it plans either.

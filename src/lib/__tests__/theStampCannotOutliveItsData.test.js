@@ -92,7 +92,7 @@ describe('THE DEFECT ITSELF, re-proved against the live corpus', () => {
       // verbatim, `lastVerified` included, so the row COUNT moved and the two
       // facts this test actually guards — the earliest date, and that nothing
       // predates the old constant — did not.
-      .toBe(`562 dated rows, earliest 2026-08-14, older than 2026-01: 0`); // 562 on 11/22/2026: Retirement's signature-cocktail batch (Wanda audit P1-4). // 561 on 11/21/2026: the pricing batch's new cited lines (crawfish boiled, dry soda/water/tea, the food truck, host wine, the seafood boil and others). // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
+      .toBe(`570 dated rows, earliest 2026-08-14, older than 2026-01: 0`); // 570 on 11/22/2026: eight lines cited to registered sources (audit G #1: Gala and Sweet 16 zero-proof, PTA drinks and first aid, Halloween drinks and batch cocktail, Day Party punch, NYE water and coffee). // 562 on 11/22/2026: Retirement's signature-cocktail batch (Wanda audit P1-4). // 561 on 11/21/2026: the pricing batch's new cited lines (crawfish boiled, dry soda/water/tea, the food truck, host wine, the seafood boil and others). // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
   });
 
   test('EVERY playbook now derives a stamp its own rows can stand behind', () => {
@@ -109,13 +109,15 @@ describe('THE DEFECT ITSELF, re-proved against the live corpus', () => {
     }
     expect(notNewer).toEqual([]);
     // Friendsgiving's rows were verified 11/15/2026, so it stamps its own month.
-    expect(labels).toEqual({ 'Aug 2026': 43, 'Nov 2026': 1 });
+    // 44 on 11/22/2026: the Gala's first dated rows (its zero-proof line, audit G #1).
+    expect(labels).toEqual({ 'Aug 2026': 44, 'Nov 2026': 1 });
     // Two playbooks have no researched price row at all. They previously showed
     // a confident "Jan 2026" over nothing; they now show no stamp. Named, so
     // that if one gains a priced row this count moves WITH a reason.
     // 11/19/2026 (G61): Group Trip has no priced row at all (none had a source),
     // so it stamps nothing rather than a date over nothing.
-    expect(noStamp.sort()).toEqual(['Client Dinner', 'Fundraiser / Gala', 'Group Trip']);
+    // 11/22/2026 (audit G #1): the Gala gained a cited zero-proof row and stamps it.
+    expect(noStamp.sort()).toEqual(['Client Dinner', 'Group Trip']);
   });
 
 });

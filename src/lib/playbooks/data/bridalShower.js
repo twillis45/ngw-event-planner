@@ -97,7 +97,7 @@ const bridalShower = {
 
   vendors: [
     { category: 'Venue / restaurant private room', required: false, altToDIY: 'Host at home or a free community room', when: 'T-35d', costRange: [150, 600], costUnit: 'flat' },
-    { category: 'Catering', required: false, altToDIY: 'DIY brunch / grocery platters', when: 'T-14d', costRange: [15, 35], costUnit: 'per guest' },
+    { category: 'Catering', required: false, altToDIY: 'DIY brunch / grocery platters', when: 'T-14d', costRange: [15, 35], costUnit: 'per guest', costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['catering-chefry-2026', 'catering-perperson-2026'], lastVerified: '2026-11-22', claim: '2026 US catering per person: drop-off $15-30, buffet $25-55 and plated or full service $50-120 (Chefry); drop-off $15-35, drop-off buffet $28-50, buffet with servers $45-85 and full-service $75-150 (The Catering Finder). This $15-35 a guest band sits in the drop-off tier, $15-35 at The Catering Finder and $15-30 at Chefry. Both exclude the 18-22% service charge and gratuity a caterer adds on top.', sufficientWhen: 'A local caterer quote for this menu at this headcount; staffed service prices above this band.' } },
     { category: 'Bakery', required: false, altToDIY: 'Grocery cake / homemade', when: 'T-7d', costRange: [35, 100], costUnit: 'flat' },
     { category: 'Florals', required: false, altToDIY: 'Grocery-store flowers', when: 'T-3d', costRange: [40, 120], costUnit: 'flat' },
   ],
