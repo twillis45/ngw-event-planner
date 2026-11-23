@@ -63,7 +63,7 @@ const surpriseProposal = {
 
   tasks: [
     { id: 't_ringsize', target: 'none', facts: [], milestoneId: 'pr_ring_size', phase: 'planning', label: 'Discreetly get ring size — borrow a ring off the right finger, or ask a sibling/best friend; size up if unsure', when: 'T-45d' },
-    { id: 't_finance', target: 'vendor-docs', facts: ['budget-set'], composite: true, milestoneId: 'pr_ring_order', phase: 'planning', label: 'Set ring budget + financing; factor tax + insurance; order (custom 4-6 wk)', when: 'T-42d' },
+    { id: 't_finance', target: 'vendor-docs', facts: ['budget-set'], milestoneId: 'pr_ring_order', phase: 'planning', label: 'Set ring budget + financing; factor tax + insurance; order (custom 4-6 wk)', when: 'T-42d' },
     { id: 't_location', target: 'none', facts: [], milestoneId: 'pr_location', phase: 'planning', label: 'Pick a spot that means something to you both; choose golden hour (sunset/sunrise) on a low-crowd weekday', when: 'T-35d' },
     { id: 't_book_photog', target: 'vendors', facts: [], milestoneId: 'pr_photographer', phase: 'vendor', label: 'Book a proposal photographer (3-8 wk out); share the spot, the timing, and the cover story', when: 'T-30d' },
     { id: 't_permit', target: 'place-rules', facts: [], milestoneId: 'pr_permit', phase: 'logistics', label: 'Call the park/venue office — props/flowers/candles/signs and even photography often need a permit; ask about open flame (use LED)', when: 'T-25d' },

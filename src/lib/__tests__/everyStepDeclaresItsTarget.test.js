@@ -613,3 +613,29 @@ describe('when she cooks, a step that names other vendors keeps them', () => {
     expect(seen).toBeGreaterThan(20);
   });
 });
+
+// ─── A COMPOSITE NAMES THE FOUNDATION PARTS IT BUNDLES (owner ruling 2, 11/23/2026)
+// The retired word rule called "Set the table tonight … if the count calls
+// for one" a composite. A composite now declares `bundles`: the foundation
+// parts (date, guests, budget, menu) it sets, and only such a step is one.
+describe('a composite declares the foundation parts it bundles', () => {
+  const PARTS = ['date', 'guests', 'budget', 'menu'];
+  test('composite exactly when the step declares foundation parts it bundles', () => {
+    const bad = [];
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const s of everyDeclaredStep(pb)) {
+        const parts = Array.isArray(s.bundles) ? s.bundles : [];
+        if (parts.some((p) => !PARTS.includes(p))) bad.push(`${pb.type}:${s.id} bundles ${JSON.stringify(parts)}`);
+        if ((s.composite === true) !== (parts.length > 0)) bad.push(`${pb.type}:${s.id} composite ${s.composite} bundles ${JSON.stringify(parts)}`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+  test('the six ruled out are not composites', () => {
+    for (const [type, id] of [['Thanksgiving Hosting', 't_table'], ['Vow Renewal', 't_setreception'], ["New Year's Eve Party", 't_early_countdown'],
+      ['Repast', 't_memory'], ['Watch Party', 't_repeatable_list'], ['Surprise Proposal', 't_finance']]) {
+      const s = (pbm.getPlaybook(type).tasks || []).find((t) => t.id === id);
+      expect([type, id, s.composite === true]).toEqual([type, id, false]);
+    }
+  });
+});

@@ -260,7 +260,7 @@ const quinceanera = {
     // and due date, open until ticked.
     // With no padrinos, the work is the budget alone.
     { id: 't_budget', target: 'call:padrinos', facts: ['calls-answered'], answeredBy: ['padrinos'], milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Decide whether padrinos cover pieces of the celebration', when: 'T-270d' },
-    { id: 't_budget_set', target: 'money', facts: ['budget-set'], composite: true, milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Set the budget with the family, and line up the padrinos who may cover the cake, gown, flowers, or music', when: 'T-270d',
+    { id: 't_budget_set', target: 'money', facts: ['budget-set'], composite: true, bundles: ['budget'], milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Set the budget with the family, and line up the padrinos who may cover the cake, gown, flowers, or music', when: 'T-270d',
       copyByAnswer: { padrinos: { 'No, the family covers everything directly': 'Set the budget with the family' } },
       compositeByAnswer: { padrinos: { 'No, the family covers everything directly': false } } },
     { id: 't_church', target: 'vendors', facts: [], milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'If holding a Mass, book the parish and priest; confirm any preparation requirements and readings', when: 'T-268d' },

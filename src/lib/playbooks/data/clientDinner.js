@@ -107,7 +107,7 @@ const clientDinner = {
     // ACCESSIBILITY — silent in 32 of 39. A guest you are courting should never
     // be the person who has to ask about the stairs.
     { id: 't_access', target: 'place-notes', facts: [], milestoneId: 'cd_reserve', phase: 'venue', label: 'Confirm step-free entry, an accessible restroom, and a seat that works for anyone with mobility or hearing needs', when: 'T-14d' },
-    { id: 't_budget', target: 'money', facts: ['menu-decided'], composite: true, milestoneId: 'cd_budget', phase: 'planning', label: 'Set a per-head spend cap and check it against your expense policy before the menu is chosen', when: 'T-14d' },
+    { id: 't_budget', target: 'money', facts: ['menu-decided'], composite: true, bundles: ['budget'], milestoneId: 'cd_budget', phase: 'planning', label: 'Set a per-head spend cap and check it against your expense policy before the menu is chosen', when: 'T-14d' },
     { id: 't_policy', target: 'money', facts: [], milestoneId: 'cd_budget', phase: 'planning', label: "Check the client's own gift and hospitality policy — some accounts cap or bar what you may spend on them", when: 'T-14d' },
     { id: 't_check', target: 'money', facts: [], milestoneId: 'cd_budget', phase: 'planning', label: 'Leave a card on file with the restaurant and agree the gratuity now, so no check reaches the table', when: 'T-14d', whenChoice: { id: 'check_owner', in: ['Host pays, card on file with the restaurant'] } },
     { id: 't_dietary', target: 'diet', facts: [], milestoneId: 'cd_dietary', phase: 'guest', label: 'Ask every guest for allergies, dietary needs and whether they drink, and send the list to the restaurant in writing', when: 'T-10d' },
