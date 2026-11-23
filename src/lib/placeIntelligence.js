@@ -18,6 +18,7 @@ import { rainPlanStatus, RAIN_PLAN_TARGET, isLikelyOutdoor } from './weather';
 import { guestSafeText } from './guestFacing';
 import { venueFor, formatVenueAddress } from './venueFor';
 import { bookedVendorIn } from './workstreams';
+import { ASK_KINDS } from './heroAsk';
 
 export const PLACE_STATES = {
   HANDLED: 'handled',
@@ -108,7 +109,7 @@ export function derivePlaceIntelligence(event = {}) {
   if (!venueResolved) {
     add('venue', 'Venue / location', PLACE_STATES.NEEDS,
       'Add it so guest directions and vendor plans stay accurate.',
-      atHome ? 'Add your city' : 'Add the location');
+      atHome ? ASK_KINDS.town.replace(/\.$/, '') : 'Add the location');
   } else {
     add('venue', 'Venue / location', PLACE_STATES.HANDLED, `Set: ${formatVenueAddress(event) || vf.name}`);
   }

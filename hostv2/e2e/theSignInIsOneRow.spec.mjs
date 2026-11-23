@@ -2,7 +2,7 @@
 //
 // Owner ruling 25, 11/21/2026 ("W1 and s2. Make sure the other theme matches
 // s2 dimensions"): the prompt that offers to keep a plan made on this device is
-// ONE row — "Not saved yet. Sign in to keep it.", a primary Sign in, and a ✕
+// ONE row — "Not saved yet.", a primary "Sign in to save" (owner, 11/23/2026), and a ✕
 // that does exactly what "Not now" did. Every target is 44x44, and the row has
 // the same box in dark and light. It replaced two equal gray buttons with no
 // primary.
@@ -66,13 +66,14 @@ test.describe('the sign-in is one row', () => {
         const page = await ctx.newPage();
         await boot(page, theme, size);
         const g = await geometry(page);
-        expect(g.text).toBe('Not saved yet. Sign in to keep it. Sign in ✕');
+        // Owner ruling 11/23/2026: the line is the state, the button names the act.
+        expect(g.text).toBe('Not saved yet. Sign in to save ✕');
         // One row: every child shares the same horizontal band.
         for (const a of g.mids) for (const b of g.mids) {
           expect(a.mid, `${theme}: a child of the row sits on another line`).toBeGreaterThan(b.top);
           expect(a.mid).toBeLessThan(b.bottom);
         }
-        expect(g.buttons.map((b) => b.name)).toEqual(['Sign in', 'Dismiss']);
+        expect(g.buttons.map((b) => b.name)).toEqual(['Sign in to save', 'Dismiss']);
         // Sign in is the primary: the .cta, lit with --cta-grad. The ✕ is not.
         expect(g.buttons[0].cls).toMatch(/\bcta\b/);
         expect(g.buttons[0].bg).toMatch(/gradient/);

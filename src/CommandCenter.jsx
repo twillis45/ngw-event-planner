@@ -3409,10 +3409,16 @@ export function _selectEventNextActionInner(event, prices = null) {
       if (b.type !== 'venue-selection') return null;
       try { const v = venueForEvent(event); return (v && v.city) ? String(v.city).trim() : null; } catch { return null; }
     })();
-    const _venueAsk = b.type !== 'venue-selection' ? null
+    // AT HOME WITH NO TOWN the place is set and the town is missing, so the
+    // gate DECLARES the town kind (live 11/23/2026: "Add the location." sat over
+    // this very item's "Your town — The place is set."). The blocker says so
+    // itself (`homeNeedsTown`); the words live once, in heroAsk's ASK_KINDS.
+    const _homeNeedsTown = b.type === 'venue-selection' && !!b.homeNeedsTown;
+    const _venueAsk = (b.type !== 'venue-selection' || _homeNeedsTown) ? null
       : (_town ? `Pick the place in ${_town}.` : 'Add the location.');
     return {
       ...(_venueAsk ? { ask: _venueAsk } : null),
+      ...(_homeNeedsTown ? { askKind: 'town' } : null),
       // THE LADDER RIDES THROUGH. Stamping a flat 'critical' here would put the
       // constant back one layer down and re-spend the alarm the countdown was
       // built to save — the hero would read as an emergency ten months out

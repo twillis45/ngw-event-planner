@@ -1716,7 +1716,7 @@ export default function HostShellV2() {
   const renderVenueCapture = ({ ctaClass = 'cta', wrapStyle = { display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }, wrapClass, autoFocus = false, placeOnly = false } = {}) => (
     <>
       <div className={wrapClass} style={wrapStyle}>
-        <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
+        <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder={venueFor(event).needsCityForWeather ? 'City, state or ZIP' : 'Name or address'}
           value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); setPendingPick(null); fetchAddrSugs(e.target.value); }} aria-label="Venue" autoFocus={autoFocus} />
         {/* Not lit while there is nothing to save (Wanda audit P1-2). */}
         <button className={ctaClass} onClick={saveVenue} disabled={!String(venueDraft || '').trim()}>Save</button>
@@ -12401,8 +12401,8 @@ export default function HostShellV2() {
                    The line, a primary Sign in, and a ✕ that is exactly the old
                    "Not now" (closeKeepAsk, no analytics). Doctrine 02, ruling 25. */
                 <div className="keep-ask" data-keep-ask data-move-notice={MOVE_NOTICE ? '' : undefined}>
-                  <p className="keep-ask-t">{MOVE_NOTICE || <><b>Not saved yet.</b> Sign in to keep it.</>}</p>
-                  <button className="cta" onClick={() => { setKeepAskClosed(c => [...c, keepAskEvent.id]); keepIntentRef.current = 'device_plan'; setSheet({ kind: 'settings', keep: true }); trackKeepPrompt('device_plan'); }}>Sign in</button>
+                  <p className="keep-ask-t">{MOVE_NOTICE || <b>Not saved yet.</b>}</p>
+                  <button className="cta" onClick={() => { setKeepAskClosed(c => [...c, keepAskEvent.id]); keepIntentRef.current = 'device_plan'; setSheet({ kind: 'settings', keep: true }); trackKeepPrompt('device_plan'); }}>Sign in to save</button>
                   <button className="keep-ask-x" aria-label="Dismiss" onClick={() => closeKeepAsk(keepAskEvent.id)}>✕</button>
                 </div>
               )}

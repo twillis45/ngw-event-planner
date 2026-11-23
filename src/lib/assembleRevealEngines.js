@@ -12,6 +12,7 @@ import { ceremonyName, CEREMONY_TIMING_CALL } from './knownFacts';
 // FEWER than remained, and the 30-day risk thresholds below fired a day early.
 import { daysUntil as daysToEvent, spanNights } from './dates';
 import { venueFor } from './venueFor';
+import { ASK_KINDS } from './heroAsk';
 import { budgetFor } from './budgetFor';
 import { lodgingIntel, lodgingKitchen } from './lodgingIntel';
 import { foodSpanText } from './foodSpan';
@@ -344,10 +345,10 @@ function buildBlockerStage(blocker) {
   if (blocker.type === 'venue-selection' && blocker.homeNeedsTown) {
     blockerCopy['venue-selection'] = {
       ...blockerCopy['venue-selection'],
-      title: 'Your town',
+      title: 'Your city',
       what: 'Which town is your place in?',
-      why: 'The place is set. Weather, the rain note and shopping read the town.',
-      nextDecision: 'Add the town.',
+      why: 'Your home is set — weather and shopping need the city.',
+      nextDecision: ASK_KINDS.town,
     };
   }
   const copy = blockerCopy[blocker.type] || {

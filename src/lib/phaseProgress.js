@@ -27,6 +27,7 @@ import { spanNights } from './dates';
 import { allergyAsk } from './knownFacts';
 import { eventLocationStatus } from './locationAssist';
 import { venueFor } from './venueFor';
+import { ASK_KINDS } from './heroAsk';
 import { linesLeftToBuy } from './itemCounts';
 import { buildCrabPlan } from './crabPlan';
 import { isVendorSettled } from './workstreams';
@@ -168,9 +169,9 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   // At home her place is set; what is missing is the town, so that is the ask
   // (live 11/23/2026: "Add the location." sat over "Your town — The place is set.").
   const _atHome = venueFor(ev).isHome;
-  add('location', true, !_locationMissing, _atHome ? 'Add your town' : 'Add the location',
+  add('location', true, !_locationMissing, _atHome ? ASK_KINDS.town.replace(/\.$/, '') : 'Add the location',
     { tab: 'Event Details', focusField: 'event-venue' }, _locationMissing ? 3 : 5,
-    _atHome ? { ask: 'Add your town.' } : { askKind: 'location' });
+    { askKind: _atHome ? 'town' : 'location' });
   // The address. APPLIES ONLY ONCE THERE IS A TOWN — otherwise it and the row
   // above would both fire on a blank event, which is two asks for one thing and
   // the duplicate surface this product forbids. `venue_only` counts as settled:
