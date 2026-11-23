@@ -25,8 +25,12 @@ test('a bundle of late steps names the step that leads it', () => {
   expect(ask).toMatch(/photo\/notes drop/);
 });
 
-test('a lone long title with no act keeps the honest last resort', () => {
-  expect(heroAskFor({ title: 'Reconcile the outstanding vendor balance ledger entries' })).toBe(PLACEHOLDER);
+// Batch 11 (#229 Left): the lone item now names itself the way a bundle's
+// first item does (aLoneItemNamesItself.test.js); the placeholder is left for
+// an item with no words.
+test('a lone long title with no act names itself', () => {
+  expect(heroAskFor({ title: 'Reconcile the outstanding vendor balance ledger entries' })).toBe('Reconcile the outstanding vendor balance ledger entries.');
+  expect(heroAskFor({})).toBe(PLACEHOLDER);
 });
 
 // A budget that is SET and over is not asked to be set (audit 2 follow-up,

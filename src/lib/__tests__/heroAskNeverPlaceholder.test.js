@@ -139,8 +139,11 @@ describe('the last resort names the act', () => {
   test("the 'Go' sentinel is never promoted into the hero", () => {
     // 'Go' is the shell's routing sentinel (HostShellV2 ~403 expands it per
     // destination), not host copy. ctaNamesTheAct forbids a bare "Go." on screen.
+    // Batch 11 (#229 Left): the item's own title now speaks where it used to
+    // fall to the placeholder; "Go." is still never what it says.
     const a = { title: 'Reconcile the outstanding vendor balance ledger entries', cta: 'Go' };
-    expect(heroAskFor(a)).toBe('Your next step.');
+    expect(heroAskFor(a)).not.toBe('Go.');
+    expect(heroAskFor(a)).toBe('Reconcile the outstanding vendor balance ledger entries.');
   });
 
   test('a short title still wins over the CTA — ladder order is unchanged', () => {
@@ -149,7 +152,10 @@ describe('the last resort names the act', () => {
 
   test('and the placeholder survives as the TRUE last resort', () => {
     // Deliberately kept: a bland string beats an empty hero, and its presence is
-    // what the corpus sweep above is measuring the absence of.
-    expect(heroAskFor({ title: 'Reconcile the outstanding vendor balance ledger entries' })).toBe('Your next step.');
+    // what the corpus sweep above is measuring the absence of. Since batch 11
+    // (#229 Left) a lone item with words names itself, so the placeholder is
+    // left only for an item with none.
+    expect(heroAskFor({ title: 'Reconcile the outstanding vendor balance ledger entries' })).toBe('Reconcile the outstanding vendor balance ledger entries.');
+    expect(heroAskFor({ title: '' })).toBe('Your next step.');
   });
 });

@@ -53,7 +53,9 @@ export function heroAskFor(a, event) {
     // A surface that knows its own job can now say so (`ask` on the raise) and this
     // reads it first. Structural, and it generalises: any future surface whose domain
     // and job differ authors one line instead of teaching this ladder a new regex.
-    if (a && a.ask) return normalizeAsk(a.ask) || 'Your next step.';
+    // An authored ask that normalizes to nothing falls through to the ladder
+    // (batch 11): the placeholder was its fallback, and it named nothing.
+    if (a && a.ask) { const own = normalizeAsk(a.ask); if (own) return own; }
     // ── A LATE CHECKLIST STEP IS ASKED AS ONE (owner screenshot, 11/18/2026) ──
     // The board led with the late Friendsgiving step "walk the kitchen …: oven
     // size, refrigerator space, serving dishes, and parking" under the headline
@@ -211,6 +213,12 @@ export function heroAskFor(a, event) {
       const ft = normalizeAsk(String(first.title || '').replace(/\.+$/, '').trim() + '.');
       if (ft) return ft;
     }
+    // A LONE ITEM NAMES ITSELF (batch 11, #229 Left). The same rule the bundle
+    // follows just above, for an item with no bundle: when no rung could phrase
+    // an ask and there is no authored CTA, its own title is the truthful line —
+    // it is what the card under the headline is about. Only an item with no
+    // words at all keeps the placeholder; there is nothing else to name.
+    if (t) { const own = normalizeAsk(t + '.'); if (own) return own; }
     return 'Your next step.';
   } catch { return 'Your next step.'; }
 }
