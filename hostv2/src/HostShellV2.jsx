@@ -18127,10 +18127,11 @@ export default function HostShellV2() {
                 signedIn={Boolean(session)} onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} onSignIn={signInFromSheet} />
             )}
             {/* The family link asks the one outward guard first (cause 6). */}
-            {sheet.kind === 'family' && outwardGaps(event, 'family').length > 0 && (
+            {/* Signed out, the sheet's own ask (sign in first) comes before this. */}
+            {sheet.kind === 'family' && session && outwardGaps(event, 'family').length > 0 && (
               <p className="v-meta" data-outward-blocked style={{ padding: 'var(--sp-2) 0' }}>{outwardPrompt(outwardGaps(event, 'family'))} Then the family link can go out.</p>
             )}
-            {sheet.kind === 'family' && outwardGaps(event, 'family').length === 0 && (
+            {sheet.kind === 'family' && (!session || outwardGaps(event, 'family').length === 0) && (
               <FamilyLinkSheet event={event} signedIn={Boolean(session)} appUrl={publicAppUrl()}
                 onSave={(patch, msg) => patchEvent(patch, msg)} onLine={(l) => toast(l)} onSignIn={signInFromSheet} />
             )}

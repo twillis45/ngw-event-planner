@@ -63,17 +63,20 @@ test('THE FIX: "Mark done" on the card ticks the step and the board moves on', a
   expect(done).toBe(true);
 });
 
-// A TICK RECORDS WHAT IT STANDS FOR (owner, 11/18/2026): ticking the invite
-// step is the same fact as "I already sent it", so the guest list stops asking.
-test('ticking the invite step tells the guest list it went out', async ({ page }) => {
+// SUPERSEDED FOR SENDS (owner, 11/23/2026, six root causes): "Mark done must
+// never record an action as performed (e.g. invite sent) when nothing was
+// sent." The tick marks the step; the receipt says nothing went out; the guest
+// list still offers "I already sent it" for her to say so herself.
+test('ticking the invite step marks it done and records no send', async ({ page }) => {
   const card = await openBoard(page);
   await card.locator('[data-mark-step-done]').click();
   await expect(card).toHaveCount(0);
+  await expect(page.getByText(/Nothing was sent from here\./).first()).toBeVisible();
   const sent = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].invitesSentAt);
-  expect(sent).toBeTruthy();
+  expect(sent).toBeFalsy();
   await openSectionByName(page, 'Guests');
   await expect(page.locator('.sheet').last()).toBeVisible();
-  await expect(page.locator('[data-invite-sent]')).toHaveCount(0);
+  await expect(page.locator('[data-invite-sent]').first()).toBeVisible();
 });
 
 test('(premise) before the tick, the guest list does offer "I already sent it"', async ({ page }) => {
