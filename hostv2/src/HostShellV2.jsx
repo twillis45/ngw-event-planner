@@ -360,7 +360,7 @@ import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
 import { mayExhale, calmVetoFor } from '@app/lib/exhaleGate';
 import { checklistRouteFor } from '@app/lib/taskRoute';
 import { editorKindFor, isBalanceDueAction, stepRowIdOf } from '@app/lib/heroEditor';
-import { stepIsASend, riskTargetFor } from '@app/lib/stepTarget';
+import { stepIsASend, riskTargetFor, stepTargetFor } from '@app/lib/stepTarget';
 import { withSettled, withoutSettled, unsettledActions } from '@app/lib/settledAsks';
 import { landingStage } from '@app/lib/landingStage';
 import { planPartsProgress, planPartsLine } from '@app/lib/planProgress';
@@ -3533,15 +3533,16 @@ export default function HostShellV2() {
   // ROW-LEVEL CTA RULE (Todd): a coming-up item lands on the exact field that
   // answers it — the crab order, the pickers count, the space list — never a
   // sheet top when a closer target exists.
+  // A coming-up row lands by its KIND and, for a step, the step's DECLARED
+  // target (lib/stepTarget, cause 1) — the crab, pickers and space regexes over
+  // its label are gone.
   const routeUpNext = (u) => {
-    const t = String(u.label || '');
-    if (/pickers|light eaters/i.test(t)) { setSheet({ kind: 'crabs', focus: 'pickers' }); return; }
-    if (/crab house|pre-?order|bushel|dozen|steam/i.test(t)) { setSheet({ kind: 'crabs', focus: 'order' }); return; }
-    if (/rent or borrow|steamer pot|propane|tables|chairs|canopy/i.test(t)) { setSheet({ kind: 'space' }); return; }
     if (u.kind === 'lodging') { goToLodgingCockpit(); return; }
     if (u.kind === 'ground') { setSheet({ kind: 'ground', focus: 'riders' }); return; } // land on the rows that still need a ride
     if (u.kind === 'air') { setSheet({ kind: 'air', focus: u.guestId != null ? u.guestId : null }); return; } // land on the exact conflicted row
     if (u.kind === 'call') { setSheet({ kind: 'decisions', focus: u.id || null }); return; }
+    const st = u.taskId ? stepTargetFor(event, { id: u.taskId }) : null;
+    if (st && st.route && routeSheet(st.route)) return;
     setSheet({ kind: 'tasks', focus: u.taskId || null });
   };
 

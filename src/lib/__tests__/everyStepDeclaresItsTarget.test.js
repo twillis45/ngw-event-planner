@@ -190,3 +190,13 @@ describe('a risk row and its checklist step route by the risk’s declared targe
     expect(/trigger|mitigation|description|\.test\(/.test(body)).toBe(false);
   });
 });
+
+describe('the coming-up rows route by kind and declared target, not by their label', () => {
+  test('routeUpNext reads no label', () => {
+    const shell = fs.readFileSync(path.join(__dirname, '../../../hostv2/src/HostShellV2.jsx'), 'utf8');
+    const at = shell.indexOf('const routeUpNext = (u) => {');
+    const body = shell.slice(at, shell.indexOf('\n  };', at));
+    expect(/u\.label|\.test\(/.test(body)).toBe(false);
+    expect(/stepTargetFor\(event/.test(body)).toBe(true);
+  });
+});
