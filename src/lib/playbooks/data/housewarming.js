@@ -118,7 +118,7 @@ const housewarming = {
 
   vendors: [
     { category: 'Cleaning', required: false, altToDIY: 'A next-morning cleaner (~$100-160) is the highest-ROI spend so the host enjoys their own first party in the new place', when: 'T-7d', costRange: [100, 160], costUnit: 'flat' },
-    { category: 'Catering / Order-in', required: false, altToDIY: 'A platter from a deli or a grazing-box order removes all cooking; vs a DIY board for a fraction of the cost', when: 'T-5d', costRange: [8, 18], costUnit: 'per guest' },
+    { category: 'Catering / Order-in', required: false, altToDIY: 'A platter from a deli or a grazing-box order removes all cooking; vs a DIY board for a fraction of the cost', when: 'T-5d', costRange: [8, 18], costUnit: 'per guest', costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['pizzamains-papajohns-2026', 'boxedlunch-restaurant-2026', 'paperlust-wedding-catering-2026'], lastVerified: '2026-11-23', claim: 'Order-in per person: a Papa John\'s large pizza at $17.99 feeds 3-4 (about $4.50-5.50 a person); a taco truck $9-15 a person (Paperlust 2026); a drop-off boxed lunch $12-18.95. This $8-18 a guest band runs from a pizza order to a boxed lunch.', sufficientWhen: 'A local caterer quote for this menu at this headcount.' } },
     { category: 'Bartender', required: false, altToDIY: 'Rarely needed — a batched signature cocktail + self-serve beer/wine covers it; only worth it for 30+ and a more formal vibe', when: 'T-7d', costRange: [150, 250], costUnit: 'flat' },
     { category: 'Florals', required: false, altToDIY: 'Grocery-store flowers ($16-40 total) read just as warm as a florist for a casual home party', when: 'T-2d', costRange: [16, 60], costUnit: 'flat' },
   ],

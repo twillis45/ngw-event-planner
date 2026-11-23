@@ -240,7 +240,7 @@ const repast = {
   ],
 
   vendors: [
-    { category: 'Caterer (soul food / home-style)', required: false, altToDIY: 'Let the church or repast committee bring the food', when: 'T-4d', costRange: [10, 20], costUnit: 'per guest' },
+    { category: 'Caterer (soul food / home-style)', required: false, altToDIY: 'Let the church or repast committee bring the food', when: 'T-4d', costRange: [15, 30], costUnit: 'per guest', costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['catering-chefry-2026', 'catering-perperson-2026'], lastVerified: '2026-11-23', claim: '2026 US catering per person: drop-off $15-30, buffet $25-55 and plated or full service $50-120 (Chefry); drop-off $15-35, drop-off buffet $28-50, buffet with servers $45-85 and full-service $75-150 (The Catering Finder). Both guides put drop-off catering at $15 a person and up, so the band was corrected from $10-20 to $15-30 a guest, the drop-off tier (11/23/2026). No soul-food caterer\'s current per-person price could be fetched (ezCater menus returned 403).', sufficientWhen: 'A local caterer quote for this menu at this headcount.' } },
     { category: 'Restaurant repast / luncheon room', required: false, altToDIY: 'Use the church fellowship hall', when: 'T-4d', costRange: [12, 25], costUnit: 'per guest' },
     { category: 'Repast committee / church kitchen', required: false, altToDIY: 'Friends and neighbors sign up to bring dishes', when: 'T-5d', costRange: [0, 0], costUnit: 'flat' },
   ],

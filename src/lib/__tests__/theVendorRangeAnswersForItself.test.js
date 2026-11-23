@@ -61,7 +61,7 @@ describe('a vendor cost range answers for itself', () => {
     // If a later pass authors real per-row provenance this number climbs and the
     // floor record steps aside for those rows — that is the intended direction,
     // and this line is where it becomes visible rather than silent.
-    expect(`${withRange} ranges, ${withProv} with provenance`).toBe('226 ranges, 15 with provenance'); // 15 on 11/22/2026: thirteen catering vendors whose per-guest band sits inside the two registered catering guides now cite them (audit G #1). // 2 on 11/21/2026: Thanksgiving's prepared dinner and Day Party's food truck cite their own fetched sources. // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
+    expect(`${withRange} ranges, ${withProv} with provenance`).toBe('226 ranges, 26 with provenance'); // 26 on 11/23/2026 (batch 10, the price research pass): eleven more per-guest caterer bands cite fetched or registered prices (Baby Shower, Birthday, Gender Reveal, Get-Together, Graduation, Housewarming, Kwanzaa, Repast, Sweet 16, The Cookout, Wedding). // 15 on 11/22/2026: thirteen catering vendors whose per-guest band sits inside the two registered catering guides now cite them (audit G #1). // 2 on 11/21/2026: Thanksgiving's prepared dinner and Day Party's food truck cite their own fetched sources. // 11/15/2026: the Friendsgiving playbook joined the corpus (46 types, 6 decisions); this count moved with it.
   });
 
   test('THE DEFECT: the base range is now a contributor a surface can ask about', () => {
@@ -124,10 +124,14 @@ describe('a vendor cost range answers for itself', () => {
 
     // …and with the record removed again, the floor is back.
     const rows = buildVendorPlan(ev({}), {}).categories;
-    // Every shipped row today reports null, because none authors one — stated so
-    // that the day one does, this line is what changes.
-    expect(rows.every((r) => r.costProvenance === null)).toBe(true);
-    expect(rows.every((r) => r.provenanceKeys.includes('vendor.playbookCostRange'))).toBe(true);
+    // Every shipped row reported null until 11/23/2026, when Wedding's Caterer
+    // band began citing its sources (batch 10, the price research pass). That
+    // row is named here, so the next one to author a record moves this line.
+    expect(rows.filter((r) => r.costProvenance !== null).map((r) => r.category)).toEqual(['Caterer']);
+    expect(rows.filter((r) => r.costProvenance === null).length).toBe(rows.length - 1);
+    expect(rows.filter((r) => r.costProvenance === null).every((r) => r.provenanceKeys.includes('vendor.playbookCostRange'))).toBe(true);
+    // …and the row that answered for itself carries no floor key.
+    expect(rows.find((r) => r.category === 'Caterer').provenanceKeys).toEqual([]);
   });
 
   test('NEGATIVE CONTROL: registering the base did not ground anything', () => {

@@ -86,7 +86,7 @@ const babyShower = {
 
   vendors: [
     { category: 'Venue / party room', required: false, altToDIY: 'Host at home or a free community room', when: 'T-28d', costRange: [100, 400], costUnit: 'flat' },
-    { category: 'Catering', required: false, altToDIY: 'DIY finger foods or grocery platters', when: 'T-14d', costRange: [12, 30], costUnit: 'per guest' },
+    { category: 'Catering', required: false, altToDIY: 'DIY finger foods or grocery platters', when: 'T-14d', costRange: [12, 30], costUnit: 'per guest', costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['boxedlunch-restaurant-2026', 'catering-chefry-2026'], lastVerified: '2026-11-23', claim: 'Drop-off boxed lunches start at $12 a box at one caterer ($18.95 at another, boxedlunch-restaurant-2026), and Chefry prices drop-off catering at $15-30 a person. This $12-30 a guest band runs from that $12 box to the Chefry drop-off ceiling. Caterers add an 18-22% service charge on top.', sufficientWhen: 'A local caterer quote for this menu at this headcount.' } },
     { category: 'Bakery', required: false, altToDIY: 'Grocery cake / homemade', when: 'T-7d', costRange: [30, 90], costUnit: 'flat' },
     { category: 'Florals', required: false, altToDIY: 'Grocery-store flowers', when: 'T-3d', costRange: [30, 80], costUnit: 'flat' },
   ],

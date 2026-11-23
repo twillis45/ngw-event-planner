@@ -47,3 +47,45 @@ describe('owner ruling 3: signage packages are an itemized sum, still labeled', 
     });
   }
 });
+
+describe('the research pass: fetched store prices cite or correct each band', () => {
+  const vendorBand = (type) => {
+    const v = (pb(type).vendors || []).find((x) => x && /cater|pitmaster/i.test(String(x.category)) && /guest/i.test(String(x.costUnit || '')));
+    return v;
+  };
+  test.each([
+    ['Repast', [15, 30]], ['Kwanzaa Gathering', [15, 30]], ['Graduation', [15, 25]],
+    ['Get-Together', [15, 25]], ['The Cookout', [15, 25]], ['Wedding', [70, 250]], ['Birthday', [10, 25]],
+  ])('%s: the caterer band is %j and cited', (type, band) => {
+    const v = vendorBand(type);
+    expect(v.costRange).toEqual(band);
+    expect(isGroundedCost(v.costProvenance)).toBe(true);
+  });
+  test.each([
+    ['Friendsgiving', 'p_main_alt', [2, 8]],
+    ['Thanksgiving Hosting', 'p_stuffing', [0.65, 1.3]],
+    ['Thanksgiving Hosting', 'p_leftover_containers', [0.75, 1.15]],
+    ['Fundraiser / Gala', 'p_placecards', [0.07, 0.5]],
+    ['Halloween Party', 'p_treats_nonfood', [0.07, 0.25]],
+    ['New Year\'s Eve Party', 'p_flutes', [0.28, 3.5]],
+    ['Quinceañera', 'p_appetizers', [0.3, 0.7]],
+    ['Quinceañera', 'p_beverages', [0.2, 1.05]],
+    ['Sweet 16', 'p_water', [0.13, 0.25]],
+  ])('%s %s: corrected to %j and cited', (type, id, band) => {
+    const l = line(type, id);
+    expect(l.unitCostRange).toEqual(band);
+    expect(isGroundedCost(l.costProvenance)).toBe(true);
+    expect(UNSOURCED_PRICE_LINES[`${type}:${id}`]).toBeUndefined();
+  });
+  test('a band built on our own portions is labeled, not cited', () => {
+    for (const [type, id] of [['Friendsgiving', 'p_gravy'], ['Thanksgiving Hosting', 'p_mac'], ['Sunday Dinner', 'p_mac'], ['Friendsgiving', 'p_potatoes']]) {
+      const cp = line(type, id).costProvenance;
+      expect(cp.tier).toBe('estimate');
+      expect(cp.claim).toMatch(/our assumption/i);
+      expect(UNSOURCED_PRICE_LINES[`${type}:${id}`]).toMatch(/assumption/);
+    }
+  });
+  test('43 lines remain labeled, each with its reason', () => {
+    expect(Object.keys(UNSOURCED_PRICE_LINES)).toHaveLength(43);
+  });
+});

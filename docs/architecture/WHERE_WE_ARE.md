@@ -1,5 +1,9 @@
 # Where We Are -- live status board
 
+## November 23, 2026 — the price research pass: most estimates now name a store
+
+**58 of the 100 lines labeled "Estimate — no price source yet" now cite a fetched, named, current price, and 36 of those bands moved to what the price supports.** 42 stay labeled with their reasons: kits priced on assumed counts, the Watch Party pipeline lines, the vegetarian main (contradicted by the registered prices; needs an engine change), and Friendsgiving's caterer (one answer covers two prices). Owner rulings: Sunday Dinner sweet tea is cited at $0.20-0.35, and both signage packages are itemized sums that stay labeled.
+
 ## November 23, 2026 — the leftovers: pay steps wait, the day follows her answers, Undo brings the ask back
 
 **A caterer pay step waits for a caterer she hired, Crab Feast's day reads as pickup unless she steams, a state park keeps its state, and nothing asks her to return rentals she never rented.** The rain backup waits for its window, "next dated work" names a checklist date, a locked count retires its headcount risk, a potluck asks who brings what, Anniversary's count + needs call settles on both facts, a lone hero item names itself, and the count rows' Undo now brings the ask back (#237; HANDOFF has the detail and the two owner calls).

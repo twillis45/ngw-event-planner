@@ -111,7 +111,7 @@ const kwanzaaGathering = {
   ],
 
   vendors: [
-    { category: 'Black-owned caterer / heritage cook', required: false, altToDIY: 'Host cooks or potluck', when: 'T-14d', costRange: [12, 25], costUnit: 'per guest' },
+    { category: 'Black-owned caterer / heritage cook', required: false, altToDIY: 'Host cooks or potluck', when: 'T-14d', costRange: [15, 30], costUnit: 'per guest', costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['catering-chefry-2026', 'catering-perperson-2026'], lastVerified: '2026-11-23', claim: '2026 US catering per person: drop-off $15-30, buffet $25-55 and plated or full service $50-120 (Chefry); drop-off $15-35, drop-off buffet $28-50, buffet with servers $45-85 and full-service $75-150 (The Catering Finder). Both guides put drop-off catering at $15 a person and up, so the band was corrected from $12-25 to $15-30 a guest, the drop-off tier (11/23/2026). No soul-food caterer\'s current per-person price could be fetched (ezCater menus returned 403).', sufficientWhen: 'A local caterer quote for this menu at this headcount.' } },
     { category: 'Black-owned bakery (sweet potato pie / desserts)', required: false, altToDIY: 'Bake or buy grocery dessert', when: 'T-10d', costRange: [25, 80], costUnit: 'flat' },
     { category: 'African/cultural shop (kinara, mkeka, unity cup, candles)', required: false, altToDIY: 'Reuse owned symbols or craft them (Kuumba)', when: 'T-14d', costRange: [40, 150], costUnit: 'flat' },
     { category: 'Drummer / dancer / cultural performer (Karamu)', required: false, altToDIY: 'Host playlist of African + diaspora music', when: 'T-14d', costRange: [150, 500], costUnit: 'flat' },
