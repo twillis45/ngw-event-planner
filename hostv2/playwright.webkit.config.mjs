@@ -38,7 +38,11 @@ export default defineConfig({
     { name: 'webkit-phone', dependencies: ['webkit-engine'], testMatch: critical,
       use: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 3 } },
     { name: 'webkit-desktop', dependencies: ['webkit-engine'],
-      testMatch: [...critical, '**/e2e/theWalkerReachesThePlan.spec.mjs'],
+      // An iPad turned or reloaded at a stale layout width (#236) pins its own
+      // iPad geometries, so it runs once, here, in Safari's engine.
+      testMatch: [...critical, '**/e2e/theWalkerReachesThePlan.spec.mjs', '**/e2e/anIPadTurnedMidSessionReLaysOut.spec.mjs',
+        // The front door is full-bleed on an iPad (owner, Safari, 11/22/2026).
+        '**/e2e/theWelcomeIsFullBleedOnATablet.spec.mjs'],
       use: { viewport: { width: 1440, height: 900 } } },
   ],
   webServer: [

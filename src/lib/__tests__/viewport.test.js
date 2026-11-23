@@ -102,3 +102,42 @@ describe('measureFor — width by content type', () => {
     expect(measureFor(undefined, true)).toBe(CONTENT_MEASURE.standard.wide);
   });
 });
+
+// #236: an iPad turned mid-session kept the old LAYOUT width while innerWidth
+// reported the new one, and the markup raised the rail into a stylesheet still
+// laying out the old width. The band is now read from matchMedia, which asks
+// the engine the stylesheet's own question.
+describe('readLayoutWidth — the band the stylesheet sees, not innerWidth', () => {
+  const realMM = window.matchMedia;
+  const realIW = Object.getOwnPropertyDescriptor(window, 'innerWidth');
+  const layoutAt = (layout) => {
+    window.matchMedia = (q) => ({ matches: layout >= Number(/min-width:(\d+)px/.exec(q)[1]), addEventListener() {} });
+  };
+  const innerAt = (w) => Object.defineProperty(window, 'innerWidth', { configurable: true, value: w });
+  afterEach(() => {
+    window.matchMedia = realMM;
+    if (realIW) Object.defineProperty(window, 'innerWidth', realIW);
+  });
+  // eslint-disable-next-line global-require
+  const { readLayoutWidth } = require('../viewport');
+
+  it('follows the layout width when innerWidth disagrees (the turned iPad)', () => {
+    layoutAt(834); innerAt(1210);
+    expect(bpOf(readLayoutWidth())).toBe('tablet');
+    layoutAt(1210); innerAt(834);
+    expect(bpOf(readLayoutWidth())).toBe('tablet-land');
+  });
+
+  it('names the same band as bpOf at every width, boundaries included', () => {
+    for (const w of [390, 639, 640, 834, 1023, 1024, 1194, 1279, 1280, 1366, 1535, 1536, 1920]) {
+      layoutAt(w);
+      expect(bpOf(readLayoutWidth())).toBe(bpOf(w));
+      expect(readLayoutWidth() >= WIDESCREEN).toBe(w >= WIDESCREEN);
+    }
+  });
+
+  it('falls back to innerWidth where matchMedia does not exist', () => {
+    window.matchMedia = undefined; innerAt(1100);
+    expect(readLayoutWidth()).toBe(1100);
+  });
+});
