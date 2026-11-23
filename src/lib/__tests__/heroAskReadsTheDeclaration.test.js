@@ -182,3 +182,27 @@ describe('the hero ask reads what its producer declares', () => {
     expect([...bad].slice(0, 25)).toEqual([]);
   });
 });
+
+// The kinds the shell's own rungs read (rungOwnsHero, the conflict card, the
+// COI card, the "Then" bundle rows): each producer declares exactly that kind.
+describe('the kinds the shell reads are the ones the producers declare', () => {
+  test('the conflicts bundle, the decisions bundle and every COI step declare their kind', () => {
+    const want = [
+      ['bundle:vendor-conflicts', (a) => a.id === 'bundle:vendor-conflicts', 'conflict'],
+      ['bundle:decisions', (a) => a.id === 'bundle:decisions', 'decisions'],
+      ['a COI step', (a) => a.sourceCategory === 'coi' && a.kind !== 'bundle', 'coi'],
+      ['bundle:vendor-coi', (a) => a.id === 'bundle:vendor-coi', 'coi'],
+    ];
+    const seen = {};
+    const bad = new Set();
+    for (const { a, ev } of items()) {
+      for (const [name, match, kind] of want) {
+        if (!match(a)) continue;
+        seen[name] = (seen[name] || 0) + 1;
+        if (a.askKind !== kind) bad.add(`${name}: ${ev.id} ${a.id} declares ${a.askKind}`);
+      }
+    }
+    expect(want.map(([n]) => n).filter((n) => !seen[n])).toEqual([]);
+    expect([...bad].slice(0, 25)).toEqual([]);
+  });
+});

@@ -210,3 +210,26 @@ describe('milestone routing is the step’s declaration outside the frozen CRA',
     expect(callers.map((f) => path.relative(root, f))).toEqual([]);
   });
 });
+
+// ─── THE HERO'S OWN RUNGS READ THE DECLARED KIND (cause 1, part 2) ──────────
+// rungOwnsHero, the ask ladder beside it, the conflict card, the COI card and
+// the "Then" bundle rows tested the queue item's TITLE for /conflict/,
+// /collect.*coi|vendor coi/ and /decision/. The producers declare `askKind`
+// (heroAskReadsTheDeclaration proves they do, over every playbook); the shell
+// reads it.
+describe('the shell decides its hero rungs by declared kind, never by a title', () => {
+  test('no conflict, COI or decisions rung tests a title', () => {
+    const shell = fs.readFileSync(path.join(__dirname, '../../../hostv2/src/HostShellV2.jsx'), 'utf8');
+    const hits = shell.split('\n')
+      .filter((l) => !/^\s*\/\//.test(l))
+      .filter((l) => /\/(?:conflict|decision|collect\.\*coi[^/]*)\/i?\.test\(String\((?:q0|a)\.title/.test(l));
+    expect(hits).toEqual([]);
+    const at = shell.indexOf('const rungOwnsHero = ');
+    const rung = shell.slice(at, shell.indexOf(';', at));
+    expect(rung).toMatch(/isConflictBundle\(q0\)/);
+    expect(rung).toMatch(/isCoiStep\(q0\)/);
+    expect(rung).not.toMatch(/\.title/);
+    expect(shell).toMatch(/const isConflictBundle = \(a\) => !!a && a\.kind === 'bundle' && a\.askKind === 'conflict';/);
+    expect(shell).toMatch(/const isCoiStep = \(a\) => !!a && \(a\.askKind === 'coi' \|\| a\.sourceCategory === 'coi'\);/);
+  });
+});
