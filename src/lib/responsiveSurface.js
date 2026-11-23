@@ -166,11 +166,48 @@ export function showsRail(state) {
   const { bp } = (state || {});
   // The forced phone stage is a phone in every respect, including its navigation.
   if (phoneStageForced()) return false;
-  // A TALL TABLET HAS NO RAIL (owner, 11/22/2026). A 13" iPad in portrait is
-  // exactly 1024 wide — the tablet-land band — so the band alone raised a rail
-  // on a portrait screen. Its navigation is the docked bottom bar instead.
-  if (isTallTablet(state)) return false;
+  // A TALL TABLET (owner, 11/22/2026) had no rail: its navigation was the
+  // docked bottom bar. Owner ruling 8, 11/23/2026: the 12.9"/13" held upright
+  // (1024 wide, the tablet-land band) gets the rail back, always visible, and
+  // loses the bar (isTallRail). The 768–1023 portrait tablets keep the bar.
+  if (isTallTablet(state)) return isTallRail(state);
   return isWideBp(bp);   // the ONE definition, from viewport.js
+}
+
+/**
+ * isTallRail({ bp, portrait }) -> boolean — the 12.9"/13" iPad held upright.
+ *
+ * Owner ruling 8, 11/23/2026: a portrait tablet whose layout width is at least
+ * 1024 (the tablet-land band) keeps the tall board and an always-visible left
+ * menu, the landscape rail, and has no bottom bar.
+ */
+export function isTallRail(state) {
+  const { bp } = (state || {});
+  return isTallTablet(state) && bp === 'tablet-land';
+}
+
+/**
+ * navLayout({ bp, portrait, elegant }) -> 'pill' | 'bar' | 'tall-rail' | 'rail' | 'menu'
+ *
+ * The navigation package (owner rulings, 11/23/2026), decided once:
+ *   pill      a phone in elegant mode: the tall header, progress on top, and a
+ *             bottom pill (the phases, then All sections and Search). No ☰.
+ *   bar       a portrait tablet 640–1023: the docked bottom bar.
+ *   tall-rail a portrait tablet from 1024: the tall board with the rail.
+ *   rail      landscape tablets and desktops (unchanged).
+ *   menu      the ☰ menu: the ?elegant=0 fallback below the rail band, and a
+ *             small tablet on its side.
+ * `elegant` defaults to true, the shell's default since 7/21.
+ */
+export function navLayout(state) {
+  const { bp, portrait, elegant = true } = (state || {});
+  // The shell reads portrait only in elegant mode (?elegant=0 keeps v2 chrome).
+  const st = { bp, portrait: !!elegant && portrait === true };
+  if (showsRail(st)) return isTallRail(st) ? 'tall-rail' : 'rail';
+  if (!elegant) return 'menu';
+  if (isTallTablet(st)) return 'bar';
+  if (bp === 'mobile' && !phoneStageForced()) return 'pill';
+  return 'menu';
 }
 
 /**

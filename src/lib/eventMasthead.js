@@ -26,8 +26,11 @@
 // The rule is the reader's: if the name already tells you what kind of event it
 // is, the type slot is spending a quarter of the line to tell you again.
 
-/** Words that carry no identity on their own, so they never justify the slot. */
-const FILLER = new Set(['the', 'a', 'an', 'of', 'for', 'and', 'party', 'celebration', 'event']);
+/** Words that carry no identity on their own, so they never justify the slot.
+ *  "hosting" and "gathering" name the act of having people over, not the kind
+ *  of event (owner ruling 2, 11/23/2026: "Thanksgiving Dinner" over
+ *  "Thanksgiving Hosting" says one thing twice). */
+const FILLER = new Set(['the', 'a', 'an', 'of', 'for', 'and', 'party', 'celebration', 'event', 'hosting', 'gathering']);
 
 const words = (s) => String(s == null ? '' : s)
   .toLowerCase()
@@ -49,4 +52,19 @@ export function typeIsRestatedByName(name, typeLabel) {
   const typeWords = words(typeLabel).filter((w) => !FILLER.has(w));
   if (!typeWords.length) return false;
   return typeWords.every((w) => nameWords.has(w));
+}
+
+/**
+ * typeLineFor('Thanksgiving Dinner', 'Thanksgiving Hosting') -> ''
+ * typeLineFor('Grandma’s 80th', 'Birthday Party')            -> 'Birthday Party'
+ *
+ * THE TYPE LINE ONLY WHEN IT ADDS (owner ruling 2, 11/23/2026). The line under
+ * the event title on the phone and the tall iPad, and the type cell of the
+ * eyebrow: the type, or '' when the name already says it. One rule, the one
+ * above; every layout reads it here.
+ */
+export function typeLineFor(name, typeLabel) {
+  const t = String(typeLabel == null ? '' : typeLabel).trim();
+  if (!t) return '';
+  return typeIsRestatedByName(name, t) ? '' : t;
 }
