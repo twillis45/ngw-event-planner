@@ -46,3 +46,15 @@ test('warn-note is the honey chip: umber on honey, the same tokens in both theme
   expect(rule).toMatch(/color:\s*var\(--on-honey\)/);
   expect(css).not.toMatch(/data-theme="(light|dark)"\][^{]*\.warn-note/); // one value, both themes
 });
+
+// "$220 over, expected" on the board's budget tile (owner screenshot of the
+// iPad landscape board, 11/22/2026) painted --warn orange text in dark. It is
+// the same attention signal, so it wears the same honey, and the " · " joiner
+// sits outside the chip.
+test('the budget tile’s over amount wears the honey chip, not orange text', () => {
+  const rule = (css.match(/\.over-seg\s*\{([^}]*)\}/) || css.match(/\.tile-c \.over-seg[^{]*\{([^}]*)\}/) || [])[1] || '';
+  expect(rule).toMatch(/background:\s*var\(--honey\)/);
+  expect(rule).toMatch(/color:\s*var\(--on-honey\)/);
+  const shell = files.find(([f]) => f === 'HostShellV2.jsx')[1];
+  expect(shell).not.toMatch(/className="over-seg">\{' · '/);
+});

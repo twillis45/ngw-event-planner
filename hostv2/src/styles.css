@@ -4456,7 +4456,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
 /* Only the OVER segment earns warn — the rest of the money line is calm muted. */
 .hero.elegant .bento .tile-c .t-sub.over{ color:var(--muted); }
 .hero.elegant .bento .tile-c .t-sub.over b{ color:var(--muted); }
-.hero.elegant .bento .tile-c .over-seg, .hero.elegant .bento .tile-c .t-sub.over .over-seg{ color:var(--warn); font-weight:650; }
+.hero.elegant .bento .tile-c .over-seg, .hero.elegant .bento .tile-c .t-sub.over .over-seg{ background:var(--honey); color:var(--on-honey); border-radius:var(--r-pill); padding:1px var(--sp-2); font-weight:650; white-space:nowrap; }
 /* Coming-up rows: long titles wrap cleanly; the date meta keeps one quiet line,
    dropping below the title when squeezed instead of colliding. */
 .hero.elegant .later-row{ display:flex; flex-wrap:wrap; align-items:baseline; column-gap:12px; }

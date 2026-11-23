@@ -14496,7 +14496,7 @@ export default function HostShellV2() {
                           vocabulary as `spent` right beside it: "(est.)" when the
                           whole figure is a guess, "· $N est." when only part is.
                           Never a second vocabulary (UX_08). */}
-                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{(expectedHeadroom(money) ?? 0) < 0 ? <span className="over-seg">{' · ' + fmt(-expectedHeadroom(money)) + ' over, expected'}</span> : ''}{spend.moneyDiscrepancies && spend.moneyDiscrepancies.length > 0 ? ' · payment records differ' : ''}</>
+                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{(expectedHeadroom(money) ?? 0) < 0 ? <>{' · '}<span className="over-seg">{fmt(-expectedHeadroom(money)) + ' over, expected'}</span></> : ''}{spend.moneyDiscrepancies && spend.moneyDiscrepancies.length > 0 ? ' · payment records differ' : ''}</>
                         : (suggestedTotal
                           /* NO POPULATION. This read "mid-range for an event
                              this size", and the comment here claimed it shared
