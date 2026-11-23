@@ -2695,7 +2695,11 @@ export default function HostShellV2() {
   // Blockers (the Reveal's own stage builder, ongoing view), decision board,
   // capacity, helpers, risks, and the wins — all production functions.
   const blockers = useMemo(() => { try { return unresolvedBlockerStages(ctx) || []; } catch { return []; } }, [ctx]);
-  const venueBlockerShown = blockers.some(b => /venue/i.test(String(b && b.title || '')));
+  // The venue gate, read by what it IS (blockerType), not its title: at home
+  // with no city its title is "Your city", and the title test missed it, so
+  // the board asked for the city three times (owner ruling 11/23/2026: the
+  // hero card asks once; the street ask waits until the city is in).
+  const venueBlockerShown = blockers.some(b => b && (b.blockerType === 'venue-selection' || /venue/i.test(String(b.title || ''))));
   // A foundational blocker that is a real PICK (fieldKey + options, e.g. Ceremony Timing) is a
   // decision — it belongs in the grounded loop as a hero DESTINATION, not stranded as a trailing
   // below-fold card that leaves the hero falsely claiming "nothing needs you". Surface each as a
