@@ -94,11 +94,12 @@ for (const [label, w, h] of SIZES) {
     expect(g.zone3Top).not.toBeNull();
   });
 
-  // THE 13" UPRIGHT IS ONE COLUMN WITH NO EMPTY BAND (owner ruling 9,
-  // 11/23/2026, render 17): the question sits under the ribbon, then Where you
-  // stand, then the handle, then the rest. The foot criterion and the 0px rule
-  // below are reversed there; what holds instead is measured here.
-  const oneColumn = w >= 1024 && h > w;
+  // EVERY TALL PORTRAIT TABLET IS ONE COLUMN WITH NO EMPTY BAND (owner ruling
+  // 9, 11/23/2026, render 17; extended to 768-1023 the same day after the live
+  // 1024x1366): the question sits under the ribbon, then Where you stand, then
+  // the handle, then the rest. The foot criterion and the 0px rule below are
+  // reversed there; what holds instead is measured here.
+  const oneColumn = h > w && w >= 640 && w < 1280;
   if (oneColumn) {
     test(`${label} ${w}x${h} — THE HANDLE FOLLOWS WHERE YOU STAND, AND THE REST FOLLOWS IT (ruling 9)`, async ({ page }) => {
       await page.setViewportSize({ width: w, height: h });

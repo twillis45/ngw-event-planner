@@ -105,7 +105,7 @@ for (const theme of ['dark', 'light']) {
         await ctx.close();
       });
 
-      if (bar) test('the first screen ends at the fold, above the bar, and nothing sits under the bar', async ({ browser }) => {
+      if (bar) test('the first screen ends at the fold, above the bar, and the rest follows it', async ({ browser }) => {
         const { ctx, page } = await boot(browser, vp, theme);
         const m = await page.evaluate(() => {
           const bar = document.querySelector('[data-tt-bar]').getBoundingClientRect();
@@ -128,8 +128,12 @@ for (const theme of ['dark', 'light']) {
         expect(m.bentoBottom).toBeLessThanOrEqual(m.barTop);
         expect(m.lastIsFold, 'the fold control is the last first-screen item').toBe(true);
         expect(m.efoldBottom).toBeLessThanOrEqual(m.barTop);
-        expect(m.efoldBottom).toBeGreaterThanOrEqual(m.barTop - 40);
-        expect(m.nextTop, 'the next section starts below the bar').toBeGreaterThanOrEqual(m.barTop - 1);
+        // NO EMPTY BAND (owner ruling 9, extended to every tall portrait tablet
+        // 11/23/2026): the handle no longer sits at the bar with the rest below
+        // it; the rest of the plan follows the handle directly.
+        // theTallBoardHasNoEmptyBand measures the hero-to-Where-you-stand gap.
+        expect(m.nextTop, 'the next section follows the handle').toBeGreaterThanOrEqual(m.efoldBottom - 1);
+        expect(m.nextTop - m.efoldBottom, 'no empty band after the handle').toBeLessThanOrEqual(64);
         expect(Math.round(m.barTop + m.barH)).toBe(m.ih);
         for (const h of m.buttons) expect(h).toBeGreaterThanOrEqual(44);
         await ctx.close();

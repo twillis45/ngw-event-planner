@@ -8674,11 +8674,22 @@ button.tt-row{ cursor:pointer; }
 .stagewrap[data-tall="1"][data-rail="1"]{ --tt-gut:48px; }
 .stagewrap[data-tall="1"][data-rail="1"] > .app{ height:100%; }
 .stagewrap[data-tall="1"][data-rail="1"] > .srail{ background:none; border-right:1px solid var(--line-soft); }
-.stagewrap[data-tall="1"][data-rail="1"] .hero.elegant .escreen.on{ min-height:0; }
-.stagewrap[data-tall="1"][data-rail="1"] .hero.elegant .escreen.on > .ecenter{ margin-top:0; padding-top:16px; flex:0 0 auto; justify-content:flex-start; }
-.stagewrap[data-tall="1"][data-rail="1"] .hero.elegant .escreen.on > .ecenter > .hzone{ margin-top:0; }
-.stagewrap[data-tall="1"][data-rail="1"] .hero.elegant .escreen.on > .tt-stand-slot{ margin-top:0; padding-top:32px; }
-.stagewrap[data-tall="1"][data-rail="1"] .hero.elegant .escreen.on > .tt-fold-slot{ margin-top:16px; }
+/* RULING 9 ON EVERY TALL PORTRAIT TABLET (owner, via the coordinator,
+   11/23/2026, after the live 1024x1366: "a large empty band between the town
+   card's input and Where you stand, plus the empty band above the question").
+   Not only the 13": 768-1023 too, bar kept. No centering and no spare-height
+   bands: the question under the ribbon, then Where you stand one section gap
+   below the hero card (--sp-7, 32px: the ladder's top step and the gap the
+   tall board already puts between its below-fold sections), then the handle,
+   then the rest. */
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on{ min-height:0; }
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on > .ecenter{ margin-top:0; padding-top:var(--sp-4); flex:0 0 auto; justify-content:flex-start; }
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on > .ecenter > .hzone{ margin-top:0; }
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on > .tt-stand-slot{ margin-top:0; padding-top:var(--sp-7); }
+/* The section gap is the gap: a last child's trailing margin (the hero card's
+   12px) only pads the hero's foot, and would add to it. */
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on > .ecenter :last-child{ margin-bottom:0; }
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on > .tt-fold-slot{ margin-top:var(--sp-4); }
 /* The current part's name is bold; no NOW tag (ruling 10). */
 .stagewrap[data-tall="1"][data-rail="1"] .tt-part.is-now{ font-weight:750; }
 .stagewrap[data-tall="1"][data-rail="1"] .tt-part.is-open{ font-weight:600; }
