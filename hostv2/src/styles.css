@@ -8539,7 +8539,6 @@ button.vc-pill::after{
 .tt-part.is-open, .tt-part.is-now{ color:var(--ink); font-weight:650; }
 .tt-part.is-open > i{ background:transparent; box-shadow:inset 0 0 0 1.5px var(--steel-soft); }
 .tt-part.is-now > i{ background:var(--steel-soft); }
-.tt-now{ display:inline-block; vertical-align:1px; margin-left:4px; padding:2px 8px; border-radius:999px; background:var(--steel-soft); color:var(--bg); font-style:normal; font-size:11px; font-weight:750; letter-spacing:.1em; text-transform:uppercase; }
 .tt-rib-foot{ display:flex; justify-content:space-between; align-items:center; gap:16px; margin-top:0; color:var(--muted); font-size:13px; }
 .tt-rib-count{ min-height:var(--tap-min,46px); margin:0 !important; padding:0; background:none; border:0; color:inherit; font:inherit; cursor:pointer; text-align:left; }
 .tt-rib-count:hover{ color:var(--ink); }
@@ -8592,3 +8591,146 @@ button.tt-row{ cursor:pointer; }
 .tt-index-pass{ display:flex; align-items:center; gap:12px; width:100%; min-height:52px; margin:4px 0 0 !important; padding:12px 0; border:0; border-top:1px solid var(--line-soft); background:none; color:var(--ink); font:inherit; font-size:15px; text-align:left; cursor:pointer; }
 .tt-ip-l{ flex:1; font-weight:550; }
 .tt-ip-r{ color:var(--muted); font-size:14px; display:inline-flex; gap:8px; align-items:center; }
+
+/* ══ THE NAVIGATION PACKAGE (owner rulings, 11/23/2026) ═════════════════════
+   lib/responsiveSurface navLayout decides it once; the shell writes
+   [data-pill="1"] (a phone) and [data-tall="1"][data-rail="1"] (a 13" iPad held
+   upright). The 768–1023 portrait bar above is unchanged. */
+
+/* ── THE PHONE ──────────────────────────────────────────────────────────────
+   The tall header and the progress on top; a bottom pill. The scroller ends
+   above a band in the page color that the pill sits in, so nothing scrolls
+   under it (ruling 4). The band stays when the pill tucks away (ruling 5). */
+.stagewrap[data-pill="1"]{ --pp-band:calc(76px + env(safe-area-inset-bottom,0px)); }
+.stagewrap[data-pill="1"] > .app{ height:calc(100% - var(--pp-band)); }
+.stagewrap[data-pill="1"] > .app::after{ height:24px; }
+.stagewrap[data-pill="1"] > .app > .content{ padding-bottom:32px; }
+/* THE FIRST SCREEN ENDS AT THE FOLD, JUST ABOVE THE PILL (ruling 7): the
+   screen is the scroller's height less what sits above it (the sign-in row,
+   the content's padding), which the shell measures into --pp-above. The
+   question follows the progress; the fold control is pinned to the foot. */
+.stagewrap[data-pill="1"] .hero.elegant .escreen.on{ min-height:calc(100cqh - var(--pp-above, 16px)); padding-bottom:0; box-sizing:border-box; }
+.stagewrap[data-pill="1"] .hero.elegant .escreen.on > .ecenter{ flex:0 0 auto; justify-content:flex-start; }
+.stagewrap[data-pill="1"] .hero.elegant .escreen.on > .ecenter > .hzone,
+.stagewrap[data-pill="1"] .hero.elegant .escreen.on > .hzone{ margin-top:0; }
+.stagewrap[data-pill="1"] .hero.elegant .escreen.on > .tt-fold-slot{ margin-top:auto; padding-top:16px; }
+.stagewrap[data-pill="1"] .tt-fold-slot > .efold{ margin:0; padding:8px 0 4px; min-height:var(--tap-min,46px); box-sizing:border-box; justify-content:center; }
+.stagewrap[data-pill="1"] .tt-head{ padding-top:4px; }
+.stagewrap[data-pill="1"] .tt-r1-solo{ margin:4px 0 8px; }
+/* No fill on the header (ruling 4): the sample chip is outlined here. */
+.stagewrap[data-pill="1"] .tt-chip{ background:none; box-shadow:inset 0 0 0 1px var(--line); }
+.stagewrap[data-pill="1"] .toast{ bottom:calc(var(--pp-band) + 12px); }
+/* The weather rides the date line, as on the tall iPad. */
+.stagewrap[data-pill="1"] .tt-r1 .wxpill{ position:static; left:auto; right:auto; bottom:auto; transform:none; animation:none; margin:0; padding:0;
+  background:none; border:0; border-radius:0; box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; overflow:visible;
+  text-transform:none; letter-spacing:normal; font-weight:550; font-size:13px; color:var(--muted); }
+.stagewrap[data-pill="1"] .tt-r1 .wxpill-head{ display:inline-flex; align-items:center; gap:8px; min-height:var(--tap-min,46px); margin:0 !important; padding:0; background:none; border:0; color:inherit; font:inherit; cursor:pointer; text-align:left; }
+.stagewrap[data-pill="1"] .tt-r1 .wxpill.open{ flex-basis:100%; }
+.stagewrap[data-pill="1"] .tt-r1 .wxpill .wx-body{ padding:8px 0 4px; color:var(--ink); }
+
+/* THE PROGRESS, ON TOP (ruling 3): six thin segments, the current part's lit
+   (the ink, a little thicker), one line. One button: the line or the bars. */
+.pp-prog{ margin:0 0 16px; }
+.pp-prog-b{ display:flex; flex-direction:column; align-items:stretch; gap:12px; width:100%; min-height:var(--tap-min,46px); margin:0 !important; padding:4px 0 8px; background:none; border:0; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+.pp-segs{ display:flex; align-items:center; gap:8px; height:6px; }
+.pp-seg{ flex:1 1 0; height:3px; border-radius:2px; background:var(--seg-open); }
+.pp-seg.is-done{ height:4px; background:var(--seg-done); }
+/* The lit segment is the ink, as the owner's render lit it (near-white in
+   dark, dark in light). A 6px mark, not a surface: painted as currentColor
+   because the parity gate's no-white-surfaces rule (written for toasts and
+   CTAs) reads any var(--ink) ground as a white plate. Flagged for review. */
+.pp-seg.is-now{ height:6px; border-radius:3px; color:var(--ink); background:currentColor; }
+.pp-line{ color:var(--muted); font-size:14px; font-weight:500; }
+.pp-dot{ color:var(--faint); }
+.pp-wc{ color:var(--steel-soft); font-weight:600; }
+.pp-prog-b:hover .pp-wc{ color:var(--ink); }
+
+/* THE PILL (rulings 4–5): the bar's own segmented phases, a hairline divider,
+   then All sections and Search as icons, in one outlined pill. No fill on the
+   pill or anything in it; the current phase is outlined. It tucks away while
+   she scrolls down and comes back when she scrolls up. */
+.tt-bar.tt-pill{ left:16px; right:16px; bottom:calc(12px + env(safe-area-inset-bottom,0px)); height:auto; padding:4px; background:none; border:1px solid var(--line); border-radius:999px; box-shadow:none;
+  transition:transform .24s var(--ease-out), opacity .2s var(--ease-out); }
+.tt-bar.tt-pill.is-hidden{ transform:translateY(calc(100% + 24px)); opacity:0; pointer-events:none; }
+.tt-pill .tt-bar-in{ display:flex; align-items:center; gap:0; }
+.tt-pill .tt-seg{ display:flex; flex:1 1 auto; min-width:0; gap:0; padding:0; background:none; border:0; border-radius:0; box-shadow:none; }
+.tt-pill .tt-seg .tt-seg-b{ flex:1 1 auto; min-width:44px; height:var(--tap-min,46px); padding:0 4px; font-size:15px; font-weight:550; color:var(--muted);
+  background:none; border:1px solid transparent; box-shadow:none; }
+.tt-pill .tt-seg .tt-seg-b.on{ background:none; color:var(--ink); font-weight:700; border-color:var(--steel-soft); box-shadow:none; }
+.tt-pill-div{ flex:0 0 0; align-self:stretch; width:0; margin:12px 4px; border-left:1px solid var(--line); }
+.tt-pill .tt-act{ flex:0 0 46px; width:46px; height:var(--tap-min,46px); padding:0; border:0; background:none; color:var(--ink-soft); }
+.tt-pill .tt-act .srail-i{ width:20px; height:20px; }
+@media (prefers-reduced-motion: reduce){ .tt-bar.tt-pill{ transition:none; } }
+
+/* The index on a phone: the tall iPad's tiles, two to a row. */
+.stagewrap[data-pill="1"] .tt-tiles{ grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.stagewrap[data-pill="1"] .tt-tile{ min-height:56px; padding:8px 12px; gap:8px; font-size:14px; }
+
+/* ── THE 13" iPAD, UPRIGHT (rulings 8–10) ──────────────────────────────────
+   The landscape rail, always up, on the page color with a hairline edge; no
+   bottom bar, so the scroller runs to the foot. The question sits under the
+   ribbon; one column; no centering, no empty band. */
+.stagewrap[data-tall="1"][data-rail="1"]{ --tt-gut:48px; }
+.stagewrap[data-tall="1"][data-rail="1"] > .app{ height:100%; }
+.stagewrap[data-tall="1"][data-rail="1"] > .srail{ background:none; border-right:1px solid var(--line-soft); }
+/* RULING 9 ON EVERY TALL PORTRAIT TABLET (owner, via the coordinator,
+   11/23/2026, after the live 1024x1366: "a large empty band between the town
+   card's input and Where you stand, plus the empty band above the question").
+   Not only the 13": 768-1023 too, bar kept. No centering and no spare-height
+   bands: the question under the ribbon, then Where you stand one section gap
+   below the hero card (--sp-7, 32px: the ladder's top step and the gap the
+   tall board already puts between its below-fold sections), then the handle,
+   then the rest. */
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on{ min-height:0; }
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on > .ecenter{ margin-top:0; padding-top:var(--sp-4); flex:0 0 auto; justify-content:flex-start; }
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on > .ecenter > .hzone{ margin-top:0; }
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on > .tt-stand-slot{ margin-top:0; padding-top:var(--sp-7); }
+/* The section gap is the gap: a last child's trailing margin (the hero card's
+   12px) only pads the hero's foot, and would add to it. */
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on > .ecenter :last-child{ margin-bottom:0; }
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on > .tt-fold-slot{ margin-top:var(--sp-4); }
+/* The current part's name is bold; no NOW tag (ruling 10, every tall iPad). */
+.stagewrap[data-tall="1"] .tt-part.is-now{ font-weight:750; }
+.stagewrap[data-tall="1"] .tt-part.is-open{ font-weight:600; }
+/* YOUR EVENT: the phases in the rail, the current one outlined, not filled. */
+.srail-stage{ border:0; }
+.srail-stage.is-stage{ color:var(--ink); font-weight:650; background:none; border:1px solid var(--line); }
+.srail-stage:hover{ background:none; color:var(--ink); }
+/* Collapsed, a phase keeps its short word: it has no icon to stand for it. */
+.stagewrap[data-railmin="1"] .srail-stage .srail-l{ display:inline; font-size:11.5px; }
+/* The landscape command composition (the stat column beside the question,
+   ruling 26) is a LANDSCAPE layout: at the 13" upright the escreen stays the
+   tall board's one column in source order (ruling 9). */
+.stagewrap[data-tall="1"][data-rail="1"] .hero.elegant .escreen.on{ display:flex; flex-direction:column; grid-template-columns:none; grid-template-areas:none; grid-template-rows:none; }
+.stagewrap[data-tall="1"][data-rail="1"] .hero.elegant .escreen.on > *{ grid-area:auto; grid-column:auto; grid-row:auto; }
+/* !important: the tablet-land subgrid (ruling 26) is keyed with :has() and
+   outranks a plain selector; it and its first-screen spacer are landscape's. */
+.stagewrap[data-tall="1"][data-rail="1"] .hero.elegant{ display:block !important; }
+.stagewrap[data-tall="1"][data-rail="1"] .hero.elegant::before{ content:none !important; display:none !important; }
+.stagewrap[data-tall="1"][data-rail="1"] .hero.elegant,
+.stagewrap[data-tall="1"][data-rail="1"] .hero.elegant > *{ max-width:none; margin-left:0; }
+/* Where you stand is the tall board's (Guests, Budget), not the landscape
+   command's tile with its own fraction and chips (render 17). */
+.stagewrap[data-tall="1"][data-rail="1"] .hero.elegant .bento .tile-a{ display:none !important; }
+.stagewrap[data-tall="1"][data-rail="1"] .hero.elegant .bento-head{ display:block; }
+/* The pass row's note, after its label (the ☰ menu's row, folded in). */
+.srail-note{ color:var(--faint); font-size:12px; font-weight:500; }
+/* The band under the pill is the stage's own ground: carbon on The Day. */
+.stagewrap[data-pill="1"]:has(> .app.dark-stage){ background-color:var(--carbon); }
+/* A long name wraps on a phone: the type line sits under its last line. */
+.stagewrap[data-pill="1"] .tt-sub{ margin-top:0; }
+.stagewrap[data-pill="1"] .tt-title{ align-items:flex-start; }
+.stagewrap[data-pill="1"] .tt-caret{ margin-top:4px; }
+/* One glyph per worry row at the 13" upright: the tall rows' own › (render
+   17), not the rail board's → beside it. */
+.stagewrap[data-tall="1"][data-rail="1"] .hero.elegant .ef-watch .ef-g{ display:none; }
+
+/* THE 768-1023 BAR, NO FILL (owner, every surface, 11/23/2026): the bar sits
+   on the page color with a hairline above it, as the phone's pill sits with
+   none; the phase is outlined, not filled; the actions are outlines. The
+   scroller already ends at its top edge, so nothing scrolls under it. */
+.stagewrap[data-tall="1"] .tt-bar{ background:none; }
+.stagewrap[data-tall="1"] .tt-bar .tt-seg{ background:none; box-shadow:inset 0 0 0 1px var(--line-soft); }
+.stagewrap[data-tall="1"] .tt-bar .tt-seg .tt-seg-b{ background:none; box-shadow:none; border:1px solid transparent; }
+.stagewrap[data-tall="1"] .tt-bar .tt-seg .tt-seg-b.on{ background:none; box-shadow:none; border-color:var(--steel-soft); color:var(--ink); font-weight:700; }
+.stagewrap[data-tall="1"]:has(> .app.dark-stage){ background-color:var(--carbon); }

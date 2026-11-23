@@ -50,8 +50,20 @@ test('a sheet rises from the row that opened it, not from a constant', async ({ 
   // assumption that had just broken nine other specs, reintroduced in the file
   // written to replace it.
   const rowsFor = async () => {
-    const rail = page.locator('.srail-row:not(.srail-min)');
-    if (await rail.count()) return rail;
+    // Section rows: not the collapse switch, and not the 13" upright's phase
+    // rows (owner ruling 8, 11/23/2026), which change the stage, not a sheet.
+    const rail = page.locator('.srail-row:not(.srail-min):not(.srail-stage)');
+    if (await rail.count()) {
+      // At the 13" upright the Your event group sits above the sections, so
+      // every section row starts below the origin's 320px range and all would
+      // read the same clamped origin. Scrolled to its end, the rail brings the
+      // first rows into range, which is where the claim can be told apart.
+      if (await page.locator('.srail [data-rail-stage]').count()) {
+        await page.evaluate(() => { const r = document.querySelector('.srail'); r.scrollTop = r.scrollHeight; });
+        await page.waitForTimeout(150);
+      }
+      return rail;
+    }
     // A tall iPad (11/22/2026): no rail, no eyebrow; its bar opens the index,
     // whose doors are tiles.
     const bar = page.locator('[data-tt-bar]');

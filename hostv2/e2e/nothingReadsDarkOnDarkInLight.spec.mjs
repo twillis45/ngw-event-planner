@@ -136,6 +136,14 @@ for (const theme of ['dark', 'light']) {
       premise(seg, '"After"', 'the bar');
       assertRows(seg, `the bar (${theme})`);
       await goToStage(page, 'The Day');
+    } else if (await page.locator('.srail [data-rail-stage]').count()) {
+      // A 13" iPad upright: the phase switch is the rail's Your event group
+      // (owner ruling 8, 11/23/2026). The same floor, on that control.
+      const seg = await page.evaluate(measure, ['.srail-g:has([data-rail-stage])', null]);
+      premise(seg, '"Plan"', 'the rail');
+      premise(seg, '"After"', 'the rail');
+      assertRows(seg, `the rail (${theme})`);
+      await goToStage(page, 'The Day');
     } else {
       await openJumpTo(page);
       const seg = await page.evaluate(measure, ['.navseg', '.sheet']);

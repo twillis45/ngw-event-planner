@@ -239,7 +239,9 @@ test.describe('the rename reached the door that says the name', () => {
 
     await openJumpTo(page);
     await settled(page);
-    const nav = (await page.locator('.sheet').last().innerText()).toLowerCase();
+    // The 13" upright has no menu sheet: the rail is its menu (owner ruling 8).
+    const menu = (await page.locator('.sheet').count()) ? page.locator('.sheet').last() : page.locator('.srail');
+    const nav = (await menu.innerText()).toLowerCase();
     expect(nav).not.toContain('the boss');
   });
 });

@@ -55,6 +55,9 @@ const SELF_PINNED = [
   '**/theWelcomeIsFullBleedOnATablet.spec.mjs',
   // Opens its own 11" and 13" portrait contexts and turns one (tall iPad, 11/22/2026).
   '**/aTallIPadGetsItsOwnBoard.spec.mjs',
+  // Drives the phone, the 768 and 13" portrait iPads and two landscapes itself
+  // (the navigation package, owner rulings 11/23/2026).
+  '**/theNavigationPackage.spec.mjs',
   '**/tapTargets.spec.mjs',
   // Drives its own three geometries (one lit button per sheet, batch 4, 11/21/2026).
   '**/oneLitButtonPerSheet.spec.mjs',

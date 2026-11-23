@@ -6,7 +6,10 @@
 //
 // Self-pinned (390px, runs once): the event switch below is the phone path —
 // the masthead opens "Jump to", and "This event" inside it opens the list.
-import { test, expect, openSectionByName } from './fixtures.mjs';
+import { test, expect, openSectionByName, openEventsSheet } from './fixtures.mjs';
+
+// The board's header (the tall header on a phone since owner ruling 1, 11/23/2026).
+const HEAD = '[data-tt-head] [data-tt-title], .ev-eyebrow';
 
 const MARK = 'ZQX words typed for the first event only';
 
@@ -62,12 +65,11 @@ test("a host's typed words stay with the event she typed them for", async ({ pag
   await closeAllSheets(page);
 
   // Switch to a different event, the phone way.
-  const before = (await page.locator('.ev-eyebrow').first().innerText()).trim();
-  await page.locator('.ev-eyebrow').first().click();
-  await page.locator('.navrow', { hasText: 'This event' }).first().click();
+  const before = (await page.locator(HEAD).first().innerText()).trim();
+  await openEventsSheet(page);
   await expect(page.getByRole('heading', { name: 'Your events' })).toBeVisible({ timeout: 15000 });
   await page.locator('.sheet .frow').filter({ hasNotText: 'current' }).first().click();
-  await expect.poll(async () => (await page.locator('.ev-eyebrow').first().innerText()).trim(),
+  await expect.poll(async () => (await page.locator(HEAD).first().innerText()).trim(),
     { timeout: 10_000, message: 'premise: the event really changed' }).not.toBe(before);
   await closeAllSheets(page);
 
