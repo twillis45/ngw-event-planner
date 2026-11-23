@@ -566,25 +566,30 @@ describe('a composite step is declared, never read off its words', () => {
 // band with it. Each such step now declares either `otherVendors` (the
 // non-catering vendors it names) with its no-caterer label, or `catererOnly`
 // (its only job is catering, so it may drop).
-describe('when she cooks, a step that names other vendors keeps them', () => {
+describe('when she cooks, only a step that is purely catering drops', () => {
   const { cookTasksFor } = require('../playbooks/cookLever');
-  // Owner call pending (named in HANDOFF), keeping today's behavior: steps
-  // that name no vendor but carry other work beside the caterer, and
-  // Birthday's last invoices (it names the bartender, but keeping it when she
-  // cooks breaks foodApproach.test's ruled "the cook list is never longer
-  // than the caterer list").
-  const PENDING = new Set(['Board Meeting:t_setup', 'Quinceañera:t_fitting', 'Birthday:t_after_invoices']);
+  // The host shell's playbooks: the shell's occasion picker lists
+  // smartParseEvent.HOST_TYPES (Board Meeting, Conference and Team Retreat are
+  // not in it; owner ruling 2, round 2). Only steps that are purely catering
+  // (`catererOnly`) may drop when she cooks; every other one keeps its work
+  // in its no-caterer words (ruling 1, round 2: Quinceañera t_fitting too).
+  const { HOST_TYPES } = require('../smartParseEvent');
+  const HOST = pbm.ALL_PLAYBOOKS.filter((pb) => HOST_TYPES.includes(pb.type));
+  // Owner call pending (named in HANDOFF): Birthday's last invoices.
+  const PENDING = new Set(['Birthday:t_after_invoices']);
   const stepsOf = (pb) => [...(pb.tasks || []), ...cookTasksFor(pb), ...pbm.DESTINATION_TASKS];
   const cooks = (out) => Array.isArray(out) && out.includes('host-cooks');
 
   test('every step whose caterer comes out when she cooks is classified', () => {
     const bad = [];
-    for (const pb of pbm.ALL_PLAYBOOKS) {
+    expect(HOST.length).toBe(44);
+    expect(HOST.some((pb) => pb.type === 'Board Meeting')).toBe(false);
+    for (const pb of HOST) {
       for (const s of stepsOf(pb)) {
         if (!cooks(s.catererOut) || PENDING.has(`${pb.type}:${s.id}`)) continue;
-        const named = Array.isArray(s.otherVendors) && s.otherVendors.length > 0;
-        if (named === (s.catererOnly === true)) bad.push(`${pb.type}:${s.id} declares ${named ? 'both' : 'neither'}`);
-        if (named && !s.labelWithoutCaterer) bad.push(`${pb.type}:${s.id} names other vendors with no no-caterer label`);
+        const keeps = !!s.labelWithoutCaterer;
+        if (keeps === (s.catererOnly === true)) bad.push(`${pb.type}:${s.id} declares ${keeps ? 'both' : 'neither'}`);
+        if ((s.otherVendors || []).length && !keeps) bad.push(`${pb.type}:${s.id} names other vendors with no no-caterer label`);
       }
     }
     expect(bad).toEqual([]);
@@ -594,11 +599,11 @@ describe('when she cooks, a step that names other vendors keeps them', () => {
     }
   });
 
-  test('in every host-cooks state of every playbook, such a step stays on the list in its no-caterer words', () => {
+  test('in every host-cooks state of every host-shell playbook, such a step stays on the list in its no-caterer words', () => {
     const wrong = [];
     let seen = 0;
-    for (const pb of pbm.ALL_PLAYBOOKS) {
-      const named = (pb.tasks || []).filter((s) => cooks(s.catererOut) && (s.otherVendors || []).length);
+    for (const pb of HOST) {
+      const named = (pb.tasks || []).filter((s) => cooks(s.catererOut) && s.labelWithoutCaterer);
       if (!named.length) continue;
       for (const ev0 of eventsFor(pb)) {
         if (pbm.foodApproach(ev0).usesCaterer !== false) continue;
