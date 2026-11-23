@@ -230,9 +230,10 @@ describe('what the live store actually sent back', () => {
     expect(storeSearchTerm(ICE)).toBe('ice');
     expect(storeSearchTerm(ICE)).not.toBe(ICE.item);
     expect(storeSearchTerm(RIBS)).toBe('pork ribs');
-    // A line that is not on the list gets null, and the caller sends the text
-    // unchanged — the behaviour before any of this existed.
-    expect(storeSearchTerm({ id: 'p_apps', item: 'Cheese & charcuterie spread' })).toBe(null);
+    // A line on no list gets null, and the caller sends the text unchanged —
+    // the behaviour before any of this existed. (p_apps itself now carries an
+    // id-wide term, 11/23/2026, so this uses an id no playbook has.)
+    expect(storeSearchTerm({ id: 'p_not_a_line', item: 'Cheese & charcuterie spread' })).toBe(null);
   });
 
   test('THE BBQ SAUCE. 12 bottles of it, billed as a rack of ribs.', () => {
@@ -401,12 +402,19 @@ describe('when the shelf and the plan disagree, the host is told', () => {
 
 describe('the turkey came off the list', () => {
   test('no term reached a whole bird, so the line carries no total', () => {
-    // FOUR terms probed live — "whole turkey", "turkey", "whole turkey fresh",
-    // "frozen whole turkey" — and every one returns sliced deli meat or a 3 lb
-    // breast roast. At 31.5 lbs that is eleven roasts at $5.00/lb against a
-    // whole bird's ~$1.50. Removed rather than priced as a different cut.
+    // FOUR terms probed live in SEPTEMBER — "whole turkey", "turkey", "whole
+    // turkey fresh", "frozen whole turkey" — and every one returns sliced deli
+    // meat or a 3 lb breast roast. At 31.5 lbs that is eleven roasts at
+    // $5.00/lb against a whole bird's ~$1.50. Removed from the MULTIPLY list
+    // rather than priced as a different cut, and that removal stands.
+    //
+    // THE SEARCH TERM CAME BACK (11/18 and 11/23/2026). In November "frozen
+    // whole turkey" returns Harris Teeter Frozen Turkey (16-20 lb) at three
+    // stores, and with no term the Thanksgiving turkey searched its sentence
+    // and found nothing (owner: "Not even the turkey"). A shelf reference is
+    // not a total: the line still never multiplies.
     const line = { id: 'p_turkey', item: 'Turkey (whole bird, or breast for a small table)', unit: 'lbs', units: 31.5 };
-    expect(storeSearchTerm(line)).toBe(null);
+    expect(storeSearchTerm(line)).toBe('frozen whole turkey');
     expect(lineIsMultipliable(line)).toBe(null);
     expect(storeLineTotal({
       line, price: 14.99, size: '3 lbs', soldBy: 'UNIT',
@@ -490,13 +498,25 @@ describe('a term buys a shelf reference, never a total', () => {
 
   test('the multiply allowlist is UNCHANGED by any of it', () => {
     // 41 entries, pinned separately above. The term map is strictly larger.
-    expect(SEARCH_TERM_LINES).toBe(UNIT_MAPPED_LINES + 32);   // +12 Friendsgiving (11/18/2026, friendsgivingFindsTheStore); +9 sides one line per dish (11/18/2026: −p_sides, +10 side entries; traditionalSides.test)
+    // 11/23/2026: the 21 Friendsgiving and sides entries moved to the id-keyed
+    // TERM_BY_ID (everyShoppingLineHasAStoreTerm), and 76 exact entries joined
+    // for lines whose id is shared by different products across playbooks.
+    expect(SEARCH_TERM_LINES).toBe(UNIT_MAPPED_LINES + 87);   // was + 32: +12 Friendsgiving (11/18/2026, friendsgivingFindsTheStore); +9 sides one line per dish (11/18/2026: −p_sides, +10 side entries; traditionalSides.test)
     // …and an allowlisted line still gets its own term from the same accessor.
     expect(storeSearchTerm({ id: 'p_ice', item: 'Ice' })).toBe('ice');
   });
 
   test('a line on NEITHER list gets no term, and the caller sends its text unchanged', () => {
-    expect(storeSearchTerm({ id: 'p_apps', item: 'Cheese & charcuterie spread (crudite, sliders, skewers, dips)' })).toBe(null);
-    expect(storeSearchTerm({ id: 'p_togo', item: 'To-go containers + foil + zip bags (everybody makes a plate)' })).toBe(null);
+    expect(storeSearchTerm({ id: 'p_not_a_line', item: 'Cheese & charcuterie spread (crudite, sliders, skewers, dips)' })).toBe(null);
+  });
+
+  test('a combined line now searches for its main buy (the "+" refusal is superseded, 11/23/2026)', () => {
+    // Both were refused a term on 2026-09-23 for joining product classes, and
+    // so searched their whole sentence and found nothing. Neither multiplies.
+    const SPREAD_LINE = { id: 'p_apps', item: 'Cheese & charcuterie spread (crudite, sliders, skewers, dips)' };
+    const TOGO = { id: 'p_togo', item: 'To-go containers + foil + zip bags (everybody makes a plate)' };
+    expect(storeSearchTerm(SPREAD_LINE)).toBe('cheese tray');
+    expect(storeSearchTerm(TOGO)).toBe('plastic containers');
+    expect(lineIsMultipliable({ ...SPREAD_LINE, unit: 'lbs', units: 8 })).toBe(null);
   });
 });

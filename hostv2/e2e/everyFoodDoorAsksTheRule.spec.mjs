@@ -96,8 +96,14 @@ for (const c of CASES) {
 // line) while there is buying left; only the "Shopping — all in hand" row
 // falls back to the keyword door, so this door is walked with everything
 // bought: Plan while a question is open, Shop once every brought dish is named.
-const BOUGHT = Object.fromEntries(['p_turkey', 'p_stuffing', 'p_gravy', 'p_rolls', 'p_appetizers', 'p_wine_cider',
-  'p_coffee', 'p_thermometer', 'p_roasting_kit', 'p_leftover_containers', 'p_cleanup'].map((k) => [k, true]));
+// The combined lines were split one line per product (owner ruling 11/23/2026),
+// so each part the host buys is bought here too. The parts of a brought dish
+// (the mash's butter) go with the dish and need no entry.
+const BOUGHT = Object.fromEntries(['p_turkey', 'p_stuffing', 'p_gravy', 'p_gravy_thickener', 'p_rolls', 'p_rolls_butter',
+  'p_appetizers', 'p_appetizers_crackers', 'p_appetizers_nuts', 'p_appetizers_crudite', 'p_wine_cider', 'p_cider',
+  'p_coffee', 'p_coffee_tea', 'p_coffee_whipped', 'p_coffee_icecream', 'p_thermometer', 'p_roasting_kit', 'p_roasting_foil',
+  'p_roasting_twine', 'p_leftover_containers', 'p_leftover_bags', 'p_leftover_labels', 'p_cleanup', 'p_cleanup_soap',
+  'p_cleanup_towels', 'p_cleanup_detergent'].map((k) => [k, true]));
 const NAMED = Object.fromEntries(['p_potatoes', 'p_cranberry', 'p_green_beans', 'p_sweet_potatoes', 'p_mac', 'p_corn',
   'p_roast_veg', 'p_pies'].map((k, i) => [k, 'Guest ' + (i + 1)]));
 const GEAR = ['extra chairs + a table leaf or folding table', 'a kids table + chairs',
