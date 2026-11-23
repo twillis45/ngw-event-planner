@@ -6,7 +6,7 @@
 // list presented as the type's own is the app claiming knowledge it does not
 // have. So this asserts the sentence reaches the screen, and just as
 // importantly that it stays off the 39 authored types.
-import { test, expect, settled, dateIn } from './fixtures.mjs';
+import { test, expect, settled, dateIn, openSectionByName } from './fixtures.mjs';
 
 const boot = async (page, type) => {
   await page.addInitScript(([t, SEED_DATE]) => {
@@ -27,10 +27,7 @@ const boot = async (page, type) => {
 const openChecklist = async (page) => {
   const rail = page.locator('.srail-row', { hasText: 'Your checklist' });
   if (await rail.count()) { await rail.first().click(); } else {
-    await page.locator('.ev-eyebrow').first().click();
-    await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click();
-    await settled(page);
-    await page.locator('.sheet').last().getByText('Your checklist', { exact: false }).first().click();
+    await openSectionByName(page, 'Your checklist');
   }
   await settled(page);
 };

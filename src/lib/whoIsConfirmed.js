@@ -28,7 +28,7 @@ const vendorLabel = (v) => vendorDisplayName(v) || 'A vendor';
  * @param {object} event
  * @param {Object<string, {state: string}>} confirmationByVendor latest confirm-back row per vendor id
  */
-export function summarizeWhoIsConfirmed(event, confirmationByVendor, helperAnswerByKey) {
+function classifyWhoIsConfirmed(event, confirmationByVendor, helperAnswerByKey) {
   const ev = event || {};
   const byVendor = (confirmationByVendor && typeof confirmationByVendor === 'object') ? confirmationByVendor : {};
 
@@ -39,21 +39,24 @@ export function summarizeWhoIsConfirmed(event, confirmationByVendor, helperAnswe
   let vendors = null;
   if (paid.length) {
     const confirmed = [], flagged = [], waiting = [];
+    // The same names with the vendor id beside them, so a row can open that
+    // vendor's own card (tall-iPad rows, 11/22/2026). Pushed in the same order.
+    const flaggedRows = [], waitingRows = [];
     for (const v of paid) {
       const row = byVendor[String(v.id)];
       const state = row && clean(row.state);
       // The vendor's own answer first: a flagged problem is newer than any mark.
       // Then the host's own "Locked in" (owner ruling 11/15/2026).
       if (state === 'confirmed') confirmed.push(vendorLabel(v));
-      else if (state) flagged.push(vendorLabel(v));
+      else if (state) { flagged.push(vendorLabel(v)); flaggedRows.push({ id: v.id, label: vendorLabel(v) }); }
       else if (isVendorConfirmed(v)) confirmed.push(vendorLabel(v));
-      else waiting.push(vendorLabel(v));
+      else { waiting.push(vendorLabel(v)); waitingRows.push({ id: v.id, label: vendorLabel(v) }); }
     }
     // Booked (contract or deposit) is a wider bar than confirmed. The hiring
     // screen leads with it ("Booked so far 3 of 6"), so home names it too —
     // the owner's demo read 1-of-6 here against 3-of-6 there as a contradiction.
     const booked = paid.filter((v) => isVendorBooked(v)).length;
-    vendors = { total: paid.length, confirmed: confirmed.length, booked, flagged, waiting };
+    vendors = { total: paid.length, confirmed: confirmed.length, booked, flagged, waiting, flaggedRows, waitingRows };
   }
 
   // Helpers — one row per responsibility ("stuffing (Jordan)"), the Helpers panel's own rows.
@@ -66,7 +69,9 @@ export function summarizeWhoIsConfirmed(event, confirmationByVendor, helperAnswe
     // means the job needs someone else. No answer → the engine's own status.
     const answers = (helperAnswerByKey && typeof helperAnswerByKey === 'object') ? helperAnswerByKey : {};
     const answerOf = (r) => (r.status === 'handled' ? null : answers[String(r.helperId)] || null);
-    const row = (r) => ({ label: clean(r.label), name: clean(r.helperName) });
+    // `route` is the job's own landing (helperResponsibility), carried so a row
+    // can open that job; the sentence below reads only label and name.
+    const row = (r) => ({ label: clean(r.label), name: clean(r.helperName), route: r.route || null });
     const waiting = []; const cantDo = []; let confirmed = 0;
     for (const r of resp) {
       const a = answerOf(r);
@@ -93,6 +98,20 @@ export function summarizeWhoIsConfirmed(event, confirmationByVendor, helperAnswe
   return { vendors, helpers, guests };
 }
 
+export function summarizeWhoIsConfirmed(event, confirmationByVendor, helperAnswerByKey) {
+  // The published shape is unchanged: the rows' ids and routes stay internal
+  // to the classification, which whoIsConfirmedGroups reads below.
+  const c = classifyWhoIsConfirmed(event, confirmationByVendor, helperAnswerByKey);
+  const plain = (w) => ({ label: w.label, name: w.name });
+  const vendors = c.vendors ? (({ flaggedRows, waitingRows, ...v }) => v)(c.vendors) : null;
+  const helpers = c.helpers ? {
+    ...c.helpers,
+    waiting: c.helpers.waiting.map(plain),
+    ...(c.helpers.cantDo ? { cantDo: c.helpers.cantDo.map(plain) } : {}),
+  } : null;
+  return { vendors, helpers, guests: c.guests };
+}
+
 /** The words, one part per source: "Vendors 2 of 3 confirmed", "Helpers 5 of 7", "Guests 12 yes, 2 maybe". */
 export function whoIsConfirmedLines(summary) {
   const s = summary || {};
@@ -113,4 +132,32 @@ export function whoIsConfirmedLines(summary) {
     waiting: waitingNames.length ? `Still waiting: ${waitingNames.join(', ')}` : '',
     flagged: flaggedNames.length ? `Flagged a problem: ${flaggedNames.join(', ')}` : '',
   };
+}
+
+/**
+ * The same "not confirmed yet" answer as ROWS, for the tall-tablet board
+ * (owner, 11/22/2026). Built from the same classification the summary and the
+ * sentence come from (never by parsing the sentence),
+ * and counted the way the chips count: everyone who is not confirmed.
+ *   vendors — waiting, then any who flagged a problem (note: 'flagged a problem')
+ *   helpers — waiting, then any who said they can't (note: "can't")
+ * Each vendor row carries its id; each helper row its job's route (or null).
+ */
+export function whoIsConfirmedGroups(event, confirmationByVendor, helperAnswerByKey) {
+  const s = classifyWhoIsConfirmed(event, confirmationByVendor, helperAnswerByKey);
+  const vendors = s.vendors ? (() => {
+    const rows = [
+      ...(s.vendors.waitingRows || []).map((r) => ({ id: r.id, label: r.label, note: '' })),
+      ...(s.vendors.flaggedRows || []).map((r) => ({ id: r.id, label: r.label, note: 'flagged a problem' })),
+    ];
+    return { count: s.vendors.total - s.vendors.confirmed, rows };
+  })() : null;
+  const helpers = s.helpers ? (() => {
+    const rows = [
+      ...(s.helpers.waiting || []).map((w) => ({ label: w.label, name: w.name, route: w.route || null, note: '' })),
+      ...(s.helpers.cantDo || []).map((w) => ({ label: w.label, name: w.name, route: w.route || null, note: 'can’t' })),
+    ];
+    return { count: s.helpers.total - s.helpers.confirmed, rows };
+  })() : null;
+  return { vendors, helpers };
 }

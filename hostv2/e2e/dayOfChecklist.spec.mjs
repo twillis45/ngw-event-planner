@@ -5,7 +5,7 @@
 // list that answers "what has to be true before the doors open" reached nobody
 // — and this repo has now found three engines in that exact state, which is
 // why the wiring gets a gate and not just a render.
-import { test, expect, settled, dateIn } from './fixtures.mjs';
+import { test, expect, settled, dateIn, goToStage } from './fixtures.mjs';
 
 const boot = async (page, type) => {
   await page.addInitScript(([t, SEED_DATE]) => {
@@ -40,8 +40,7 @@ const boot = async (page, type) => {
 // and the phase control lives in the eyebrow's nav sheet. Reaching for a
 // top-level "The Day" button timed out against a dock that is not there.
 const toTheDay = async (page) => {
-  await page.locator('.ev-eyebrow').first().click({ timeout: 8000 });
-  await page.locator('.navseg-b', { hasText: 'The Day' }).first().click({ timeout: 8000 });
+  await goToStage(page, 'The Day');
   await settled(page);
 };
 

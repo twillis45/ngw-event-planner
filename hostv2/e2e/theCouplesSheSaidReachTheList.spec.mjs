@@ -19,7 +19,7 @@
 // WHY AN E2E. The condition reads an event field, calls bedroomsNeeded, and
 // renders inside the guests sheet. jest cannot execute the shell, so a test
 // on either end passes whether or not a host ever sees this.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const EV = {
   id: 'E2E_couples', type: 'Reunion', name: 'Anaheim reunion',
@@ -58,14 +58,15 @@ const boot = async (page, ev) => {
   // The RAIL's row is not the sheet's `.sec-row` — same list, different
   // markup — so this matches the accessible name the page actually exposes
   // rather than a class guessed from the sheet renderer.
-  const row = page.getByRole('button', { name: /^Guests$/ }).first();
-  await row.waitFor({ state: 'visible', timeout: 20000 });
-  await row.click();
+  // The Guests door wherever this viewport has it: the rail, or on a tall
+  // iPad (no rail, 11/22/2026) the bar's All sections index.
+  await settled(page);
+  await openSectionByName(page, 'Guests', { settle: 0 });
   await page.getByLabel(/Add guest names/i).waitFor({ state: 'visible', timeout: 20000 });
 };
 
 test('a stated pairing reaches the place she types the names', async ({ page }, testInfo) => {
-  test.skip(!RAIL.test(testInfo.project.name), 'the section rail exists at tablet-land and above');
+  test.skip(!RAIL.test(testInfo.project.name), 'one tap to Guests: the rail from tablet-land, the bar’s index on a tall iPad');
   await boot(page, EV);
   const hint = page.getByText(/You said 8 couples/i);
   await expect(hint).toBeVisible();
@@ -78,7 +79,7 @@ test('a stated pairing reaches the place she types the names', async ({ page }, 
 // nothing left to say. Same precedence bedroomsNeeded uses: a real roster
 // outranks a number typed once at intake.
 test('and it goes quiet the moment the roster records a pairing', async ({ page }, testInfo) => {
-  test.skip(!RAIL.test(testInfo.project.name), 'the section rail exists at tablet-land and above');
+  test.skip(!RAIL.test(testInfo.project.name), 'one tap to Guests: the rail from tablet-land, the bar’s index on a tall iPad');
   await boot(page, {
     ...EV,
     guests: [{ id: 'g1', name: 'Denise', coupleId: 'cp-1' },
@@ -90,7 +91,7 @@ test('and it goes quiet the moment the roster records a pairing', async ({ page 
 // AND IT NEVER APPEARS UNINVITED. No stated pairing, no hint — the whole
 // claim is "you said this", so with nothing said there is nothing to say.
 test('no stated pairing, no hint', async ({ page }, testInfo) => {
-  test.skip(!RAIL.test(testInfo.project.name), 'the section rail exists at tablet-land and above');
+  test.skip(!RAIL.test(testInfo.project.name), 'one tap to Guests: the rail from tablet-land, the bar’s index on a tall iPad');
   const { guestPairs, ...noPairs } = EV;
   await boot(page, { ...noPairs, id: 'E2E_nopairs' });
   await expect(page.getByText(/You said \d+ couples?/i)).toHaveCount(0);

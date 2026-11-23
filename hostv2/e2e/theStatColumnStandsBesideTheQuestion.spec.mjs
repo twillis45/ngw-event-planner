@@ -31,7 +31,12 @@ const EV = {
   timeline: [{ id: 't1', task: 'Confirm final headcount with caterer', week: 'This week' }],
 };
 
-const SIZES = [[1024, 768], [1024, 1366], [1180, 820]];
+// 1024x1366 left this list on 11/22/2026: the owner's tall-iPad package
+// reverses ruling 26 for PORTRAIT tablets — a 13" iPad held upright now gets
+// the header, the parts ribbon and the docked bar, and its first screen is
+// held by aTallIPadGetsItsOwnBoard.spec.mjs at the same geometry. The
+// landscape sizes keep this ruling.
+const SIZES = [[1024, 768], [1180, 820]];
 
 const boot = async (page, w, h) => {
   await page.addInitScript((ev) => {

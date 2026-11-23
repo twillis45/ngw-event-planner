@@ -11,7 +11,7 @@
 //
 // On the passgate bundle (5266), the only one with billing live; every request
 // to its API host is answered below. Same harness as thePassIsOnTheBoard.spec.mjs.
-import { test, expect, settled, dateIn } from './fixtures.mjs';
+import { test, expect, settled, dateIn, openJumpTo, passRow } from './fixtures.mjs';
 import { previewUrl } from '../deployBase.mjs';
 
 const API = 'https://passgate-mock.invalid';
@@ -37,8 +37,8 @@ const boot = async (page, caps, { held = false } = {}) => {
   // A held pass shows no "needs the pass" pill (by design), so open the sheet
   // from Jump to, the door every event has.
   if (held) {
-    await page.locator('[aria-label="Menu"]').first().click();
-    await page.locator('.nav-pass').click();
+    await openJumpTo(page);
+    await passRow(page).click();
   } else {
     await page.locator('.pass-status-needed').click();
   }

@@ -12,7 +12,7 @@
 //     dims, measured here so they cannot come back).
 // Fixed with theme tokens (--seg-track, --seg-on, --card, --carbon-ink,
 // --carbon-muted), so every role is measured in BOTH themes, at every project.
-import { test, expect, openSectionByName, dateIn } from './fixtures.mjs';
+import { test, expect, openSectionByName, dateIn, goToStage } from './fixtures.mjs';
 
 const EVENT = {
   id: 'quietlight-ev', name: 'Maya’s 40th Birthday', type: 'Birthday', createdAt: '2026-11-01',
@@ -128,13 +128,23 @@ for (const theme of ['dark', 'light']) {
     premise(badge, 'our pick', 'the board');
     assertRows(badge, `board (${theme})`);
 
-    await openJumpTo(page);
-    const seg = await page.evaluate(measure, ['.navseg', '.sheet']);
-    premise(seg, 'navseg-b on', 'Jump to');
-    premise(seg, '"After"', 'Jump to');
-    assertRows(seg, `Jump to (${theme})`);
+    if (await page.locator('[data-tt-bar]').count()) {
+      // A tall iPad's phase switch is its docked bar (11/22/2026): the same
+      // floor, on the control that carries the job here.
+      const seg = await page.evaluate(measure, ['.tt-seg', null]);
+      premise(seg, 'tt-seg-b on', 'the bar');
+      premise(seg, '"After"', 'the bar');
+      assertRows(seg, `the bar (${theme})`);
+      await goToStage(page, 'The Day');
+    } else {
+      await openJumpTo(page);
+      const seg = await page.evaluate(measure, ['.navseg', '.sheet']);
+      premise(seg, 'navseg-b on', 'Jump to');
+      premise(seg, '"After"', 'Jump to');
+      assertRows(seg, `Jump to (${theme})`);
 
-    await page.locator('.sheet').last().getByRole('button', { name: 'The Day', exact: true }).first().click();
+      await page.locator('.sheet').last().getByRole('button', { name: 'The Day', exact: true }).first().click();
+    }
     await page.waitForTimeout(1600);   // the stage's entrance settles
     if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(400); }
     const day = await page.evaluate(measure, ['.app', null]);

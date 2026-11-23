@@ -48,8 +48,8 @@ const SURFACES = [
   { name: '__jump', on: '.navseg-b.on', off: '.navseg-b:not(.on)' },
 ];
 
-const read = ([on, off]) => {
-  const sh = [...document.querySelectorAll('.sheet')].pop();
+const read = ([on, off, scope]) => {
+  const sh = scope ? document.querySelector(scope) : [...document.querySelectorAll('.sheet')].pop();
   const vis = (e) => e && e.getClientRects().length;
   const a = [...sh.querySelectorAll(on)].find(vis);
   const b = [...sh.querySelectorAll(off)].find(vis);
@@ -68,16 +68,18 @@ for (const theme of ['dark', 'light']) {
     await boot(page, theme);
     const seen = [];
     for (const s of SURFACES) {
+      // A tall iPad's phase switch is the docked bar, not a sheet (11/22/2026).
+      const inBar = s.name === '__jump' && await page.locator('[data-tt-bar]').count() > 0;
       if (s.name === '__jump') {
         if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
-        await page.locator('.ev-eyebrow').first().click();
+        if (!inBar) await page.locator('.ev-eyebrow').first().click();
       } else {
         await openSectionByName(page, s.name, { settle: 600 });
       }
-      await sheetSettled(page);
+      if (!inBar) await sheetSettled(page);
       if (s.pick) { await page.locator('.sheet').last().locator(s.pick).first().click(); await page.waitForTimeout(400); }
-      const r = await page.evaluate(read, [s.on, s.off]);
-      const where = `${theme} · ${s.name === '__jump' ? 'Jump to' : s.name}`;
+      const r = await page.evaluate(read, [s.on, s.off, inBar ? '[data-tt-bar]' : null]);
+      const where = `${theme} · ${s.name === '__jump' ? (inBar ? 'the bar' : 'Jump to') : s.name}`;
       expect(r.on, `${where}: premise, a selected ${s.on} renders`).not.toBeNull();
       expect(r.off, `${where}: premise, an unselected neighbor renders`).not.toBeNull();
       expect.soft(r.on.img, `${where}: selected is not a gradient`).toBe('none');

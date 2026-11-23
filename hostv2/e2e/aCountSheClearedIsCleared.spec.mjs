@@ -5,7 +5,7 @@
 // typing appended: deleting 10 to type 15 saved 1015, typing "-5" saved 105.
 // Edited here the way a person edits: click, Backspace, type, Enter.
 // Rail viewports only, as theCouplesSheSaidReachTheList explains.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const RAIL = /tablet-land|tablet-tall|desktop|wide/;
 const EV = {
@@ -23,16 +23,17 @@ const open = async (page) => {
     localStorage.setItem('ngw-v2-welcomed', '1');
   }, EV);
   await page.goto('./');
-  const row = page.getByRole('button', { name: /^Guests$/ }).first();
-  await row.waitFor({ state: 'visible', timeout: 20000 });
-  await row.click();
+  // The Guests door wherever this viewport has it: the rail, or on a tall
+  // iPad (no rail, 11/22/2026) the bar's All sections index.
+  await settled(page);
+  await openSectionByName(page, 'Guests', { settle: 0 });
   const f = page.getByRole('spinbutton', { name: 'Exact guest count' }).last();
   await f.waitFor({ state: 'visible', timeout: 20000 });
   return f;
 };
 
 test('deleting 10 and typing 15 saves 15', async ({ page }, testInfo) => {
-  test.skip(!RAIL.test(testInfo.project.name), 'the section rail exists at tablet-land and above');
+  test.skip(!RAIL.test(testInfo.project.name), 'one tap to Guests: the rail from tablet-land, the bar’s index on a tall iPad');
   const f = await open(page);
   await f.click();
   await page.keyboard.press('End');
@@ -45,7 +46,7 @@ test('deleting 10 and typing 15 saves 15', async ({ page }, testInfo) => {
 });
 
 test('clearing the field and leaving it keeps the count she had', async ({ page }, testInfo) => {
-  test.skip(!RAIL.test(testInfo.project.name), 'the section rail exists at tablet-land and above');
+  test.skip(!RAIL.test(testInfo.project.name), 'one tap to Guests: the rail from tablet-land, the bar’s index on a tall iPad');
   const f = await open(page);
   await f.click();
   await page.keyboard.press('End');

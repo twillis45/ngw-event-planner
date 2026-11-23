@@ -7,7 +7,7 @@
 //
 // "Lit" is the measure the board and sheet specs use: a rendered control whose
 // computed background-image IS the resolved --cta-grad.
-import { test, expect, settled, dateIn } from './fixtures.mjs';
+import { test, expect, settled, dateIn, goToStage } from './fixtures.mjs';
 
 const UNTIMED = [
   { id: 'day-lit-trip', name: 'Lake weekend', type: 'Group Trip', createdAt: '2026-11-01', date: dateIn(10), endDate: dateIn(13),
@@ -43,8 +43,7 @@ for (const ev of UNTIMED) {
       }, [ev, theme]);
       await page.goto(`?elegant=1&theme=${theme}`);
       await settled(page);
-      await page.locator('.ev-eyebrow').first().click({ timeout: 8000 });
-      await page.locator('.navseg-b', { hasText: 'The Day' }).first().click({ timeout: 8000 });
+      await goToStage(page, 'The Day');
       await settled(page);
       await page.waitForTimeout(500);
       // Premise: the untimed day offers to pencil the times.

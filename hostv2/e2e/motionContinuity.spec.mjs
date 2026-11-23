@@ -18,7 +18,7 @@
 //  3. THE LANDING RING CLEARS UNDER REDUCED MOTION. The ring lived in the base
 //     rule and only the animation removed it, so `animation:none` left it
 //     stuck on permanently. Invisible to anyone not running the preference.
-import { test, expect, settled, RAIL_MIN_WIDTH } from './fixtures.mjs';
+import { test, expect, settled, RAIL_MIN_WIDTH, hasRail } from './fixtures.mjs';
 
 const boot = async (page, opts = {}) => {
   await page.addInitScript(() => {
@@ -52,6 +52,14 @@ test('a sheet rises from the row that opened it, not from a constant', async ({ 
   const rowsFor = async () => {
     const rail = page.locator('.srail-row:not(.srail-min)');
     if (await rail.count()) return rail;
+    // A tall iPad (11/22/2026): no rail, no eyebrow; its bar opens the index,
+    // whose doors are tiles.
+    const bar = page.locator('[data-tt-bar]');
+    if (await bar.count()) {
+      await bar.getByRole('button', { name: 'All sections' }).click({ timeout: 8000 });
+      await settled(page);
+      return page.locator('.sheet').last().locator('.tt-tile');
+    }
     await page.locator('.ev-eyebrow').first().click({ timeout: 8000 });
     await page.locator('.sheet').last()
       .getByText('Jump to a section', { exact: false }).first().click({ timeout: 8000 });
@@ -175,7 +183,9 @@ test('a scaled bar fill lands where the width-based one did', async ({ page }) =
 });
 
 test('a list entrance plays on arrival and not on every redraw', async ({ page }) => {
-  test.skip(!page.viewportSize() || page.viewportSize().width < RAIL_MIN_WIDTH,
+  // The rail is not up on a tall iPad (owner ruling 11/22/2026), so neither is
+  // its collapse toggle; hasRail says where it is.
+  test.skip(!hasRail(page.viewportSize()),
     'needs the rail, whose collapse toggle is the re-render trigger this uses');
   await boot(page);
 

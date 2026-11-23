@@ -19,7 +19,7 @@
 //
 // Same harness as passSalesPausedSaysPaused.spec.mjs; every request to the
 // bundle's API host is answered below. Port: 5266, or PW_PASSGATE_PORT.
-import { test, expect, settled, dateIn, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, dateIn, openSectionByName, openJumpTo, passRow, goToStage } from './fixtures.mjs';
 import { previewUrl } from '../deployBase.mjs';
 
 const API = 'https://passgate-mock.invalid';
@@ -58,17 +58,13 @@ const boot = async (page, events, last) => {
   return calls;
 };
 
-const openJumpTo = async (page) => {
-  await page.locator('[aria-label="Menu"]').first().click();
-  await expect(page.locator('#sheet-title')).toHaveText('Jump to');
-};
 
 test('a second event of her own is stamped free at creation, and the creation screen says so', async ({ page }) => {
   await boot(page, [FIRST], FIRST.id);
   // PREMISE: we are on her first event, so the next one is truly her second.
   await expect(page.getByText(/First Backyard Party/i).first()).toBeVisible();
   await openJumpTo(page);
-  await page.locator('.navseg-b', { hasText: /^Create$/ }).click();
+  await goToStage(page, 'Create');
   await page.getByPlaceholder(/crab feast/i).first().fill('Game night at my place for 10 people on Friday');
   // The blunt disclosure, before any work is invested.
   await expect(page.getByText(/^Planning this event is free, including sharing one vendor brief \(that takes a free account\)\./)).toBeVisible();
@@ -116,7 +112,7 @@ test('(control) a destination stamp still locks: the pill shows on the board', a
 test('the pass sheet leads with the before-paying line, and sells no "next events"', async ({ page }) => {
   await boot(page, [FIRST], FIRST.id);
   await openJumpTo(page);
-  await page.locator('.nav-pass').click();
+  await passRow(page).click();
   await expect(page.locator('#sheet-title')).toHaveText('The One-Event Pass');
   await expect(page.locator('[data-before-paying]')).toHaveText(BEFORE_PAYING);
   await expect(page.getByText('Your next events')).toHaveCount(0);
@@ -134,7 +130,7 @@ test('on a trip, the pass sheet still sells the destination toolkit', async ({ p
   const TRIP = ev('cust-trip-party', 'Lake House Weekend', { isDestination: true, passRequired: true, passReasons: ['destination'] });
   await boot(page, [FIRST, TRIP], TRIP.id);
   await openJumpTo(page);
-  await page.locator('.nav-pass').click();
+  await passRow(page).click();
   await expect(page.locator('#sheet-title')).toHaveText('The One-Event Pass');
   await expect(page.locator('[data-before-paying]')).toHaveText(BEFORE_PAYING_TRIP);
   await expect(page.getByText('The full destination toolkit', { exact: true })).toBeVisible();

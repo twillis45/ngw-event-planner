@@ -14,7 +14,7 @@
 // The board named the shape of this test, so it is written to that shape:
 // CORRUPT THE STORE, CLICK RESTORE, ASSERT THE PLAN RETURNS. Driven through the
 // UI, because the unit boundary is exactly where this already worked.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, openMenuDoor } from './fixtures.mjs';
 
 const KEY = 'ngw-hostv2-custom-events';
 
@@ -33,8 +33,7 @@ const openSettings = async (page) => {
   const rail = page.locator('.srail-row', { hasText: 'You & settings' });
   if (await rail.count()) { await rail.first().click(); } else {
     if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(250); }
-    await page.locator('.ev-eyebrow').first().click();
-    await page.locator('.sheet').last().getByText('You & settings', { exact: false }).first().click();
+    await openMenuDoor(page, 'You & settings');
   }
   await settled(page);
 };

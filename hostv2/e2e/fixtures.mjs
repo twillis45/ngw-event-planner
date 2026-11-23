@@ -122,8 +122,11 @@ export const dateIn = (days = 0) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-/** True where the section rail is rendered and can be used as the door. */
-export const hasRail = (viewport) => !!viewport && viewport.width >= RAIL_MIN_WIDTH;
+/** True where the section rail is rendered and can be used as the door.
+ *  Not on a tall iPad (owner ruling 11/22/2026): a tablet band held in portrait
+ *  has the docked bar instead, so 1024x1366 (tablet-tall) has no rail. */
+export const hasRail = (viewport) => !!viewport && viewport.width >= RAIL_MIN_WIDTH
+  && !(viewport.width < 1280 && viewport.height > viewport.width);
 
 
 // ─── THE BOOT BEAT WAS A SLEEP IN FRONT OF A BROKEN STATE-WAIT (2026-08-15) ──
@@ -206,6 +209,16 @@ export const openSectionByName = async (page, name, opts = {}) => {
   const rail = page.locator('.srail-row', { hasText: name });
   if (await page.locator('.srail-row').count()) {
     await rail.first().click({ timeout });
+  } else if (await page.locator('[data-tt-bar]').count()) {
+    // THE TALL IPAD'S DOOR (owner, 11/22/2026): a portrait tablet has no rail
+    // and no eyebrow; its bar's "All sections" opens the index. Same sheet
+    // walk-back as the phone path below: the bar sits under an open sheet.
+    if (await page.locator('.sheet').count()) {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(250);
+    }
+    await page.locator('[data-tt-bar]').getByRole('button', { name: 'All sections' }).click({ timeout });
+    await page.locator('.sheet').last().locator('[data-door]', { hasText: name }).first().click({ timeout });
   } else {
     // CLOSE ANY OPEN SHEET FIRST. Below the rail band the sheet covers the
     // whole stage, including the eyebrow this walk starts from, so calling
@@ -229,3 +242,75 @@ export const openSectionByName = async (page, name, opts = {}) => {
   }
   await page.waitForTimeout(opts.settle == null ? 400 : opts.settle);
 };
+
+// ─── THE BOARD'S IDENTITY AND ITS EVENT SWITCHER, WHEREVER THEY ARE ─────────
+// (tall iPad, owner 11/22/2026). On a portrait tablet the ☰ eyebrow is gone:
+// the same identity values print in the header's first row, and the title is
+// the event switcher. A spec that wants the identity line or the events sheet
+// asks for it here; which layout this viewport has is not a spec's business.
+// Read with { useInnerText: true }: both lines show their dates uppercased,
+// the eyebrow in its text and the header through text-transform.
+export const identityLine = (page) => page.locator('.ev-eyebrow .eb-text, [data-tt-head] .tt-r1').first();
+export const openEventsSheet = async (page, opts = {}) => {
+  const timeout = opts.timeout || 15_000;
+  // Wait for the board's header, whichever layout it is, before choosing.
+  await page.locator('[data-tt-title], .ev-eyebrow').first().waitFor({ timeout });
+  const title = page.locator('[data-tt-title]');
+  if (await title.count()) { await title.first().click({ timeout }); return; }
+  await page.locator('.ev-eyebrow').first().click({ timeout });
+  await page.locator('.navrow', { hasText: 'This event' }).first().click({ timeout });
+};
+
+// The phases (Create · Plan · The Day · After): the tall iPad's bar, or the
+// menu's segmented control everywhere else.
+export const goToStage = async (page, label, opts = {}) => {
+  const timeout = opts.timeout || 8000;
+  const closeSheets = async () => {
+    if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
+  };
+  const bar = page.locator('[data-tt-bar]');
+  if (await bar.count()) {
+    await closeSheets();
+    await bar.getByRole('button', { name: label, exact: true }).click({ timeout });
+    return;
+  }
+  // The menu may already be open (a spec that read Jump to first).
+  if (!(await page.locator('.sheet .navseg-b').count())) {
+    await closeSheets();
+    await page.locator('.ev-eyebrow').first().click({ timeout });
+  }
+  await page.locator('.navseg-b', { hasText: label }).first().click({ timeout });
+};
+
+// The menu's own rows that are doors in the section list too (You & settings,
+// Ask, The One-Event Pass): the rail where it is up, the tall iPad's index,
+// or the menu's row on a phone. "Feeling stuck?" is reached the same way.
+export const openMenuDoor = async (page, label, opts = {}) => {
+  const timeout = opts.timeout || 8000;
+  const rail = page.locator('.srail-row', { hasText: label });
+  if (await rail.count()) { await rail.first().click({ timeout }); return; }
+  const bar = page.locator('[data-tt-bar]');
+  if (await bar.count()) {
+    if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(250); }
+    await bar.getByRole('button', { name: 'All sections' }).click({ timeout });
+    await page.locator('.sheet').last().locator('[data-door]', { hasText: label }).first().click({ timeout });
+    return;
+  }
+  await page.locator('.ev-eyebrow').first().click({ timeout });
+  await page.locator('.navrow', { hasText: label }).first().click({ timeout });
+};
+
+// "Jump to", wherever it is: the ☰ menu sheet, or on a tall iPad the index the
+// bar's "All sections" opens (which carries the same pass row). `passRow`
+// finds that row in either.
+export const openJumpTo = async (page) => {
+  const bar = page.locator('[data-tt-bar]');
+  if (await bar.count()) {
+    await bar.getByRole('button', { name: 'All sections' }).click();
+    await expect(page.locator('#sheet-title')).toHaveText('Everything in your plan');
+    return;
+  }
+  await page.locator('[aria-label="Menu"]').first().click();
+  await expect(page.locator('#sheet-title')).toHaveText('Jump to');
+};
+export const passRow = (page) => page.locator('.nav-pass, .tt-index-pass');

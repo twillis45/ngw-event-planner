@@ -1,5 +1,17 @@
 # Where We Are -- live status board
 
+## November 23, 2026 — a tall iPad gets its own board
+
+**Owner ruling, 11/22/2026: the tall-iPad package is approved whole.** On a tablet held in portrait (640–1279 wide, taller than wide, read from matchMedia like the band since #236), the left rail and the ☰ eyebrow are gone. A header names the event and is its switcher. A ribbon shows the seven plan parts, with NOW on the part the question is about. The board runs full width on two shared edges (48px, or 64px from 960). The first screen ends with Where you stand and "The rest of your plan". A docked bar carries Create · Plan · The Day · After, All sections and Search.
+
+- This reverses the 7/22 648px hero cap and the 8/17 "question fills the screen" for **portrait tablets only**. Landscape iPads and desktops keep today's layout, rail included. Phones are unchanged.
+- A 13" iPad in portrait (1024 wide) no longer gets the rail (`showsRail` is false in tall-tablet mode).
+- "All sections" opens the existing Sections sheet, laid out as an index. It has the same doors, plus Feeling stuck? and the pass row. Calendar, Split the costs, Share with family and Co-hosts now have real icons.
+- On a tall iPad, Who's confirmed shows its "Still waiting" sentence as two row groups (vendors; helpers & tasks), built from the same classification. Their counts equal the chips.
+- The ribbon's count line names the next growth of the count: "4 of 7 handled · shopping starts Mar 13" (audit C P1-8; owner's word "starts"). It says a date once: when the next dated work falls on the same day, only the grow-note prints.
+- No floating NEXT bar on a tall iPad (owner ruling, 11/23). Tapping Plan on Plan returns to the question.
+- Short portrait iPads fit: 744x1133, 810x1080 and 820x1180, as well as the 11" and 13". The gaps hold a 24px floor, then the ask and Where you stand tighten. At 768x1024 the fold control still ends about 30px under the bar; this is reported, not hidden.
+
 ## November 23, 2026 (later) — every shopping line can find itself at the store
 
 **Every line the store lookup sends now has a curated search term or a written reason it cannot, and a census test fails on any line that has neither.** The owner's Thanksgiving found 9 of 12 at her Harris Teeter because terms were keyed by exact item text, and the Thanksgiving turkey differed from Friendsgiving's by one word. Terms are now keyed by line id wherever an id means one product, so a reworded line keeps its term. By the owner's ruling the same day, Thanksgiving Hosting's and Friendsgiving's combined lines are split one line per product, each priced from the owner's own store (Harris Teeter Old Town Alexandria, read live) and BLS/Target, with every portion labeled as our assumption; the parts of a guest's dish go with the dish. At her store both lists now match every line (39/39, 36/36, from 10/19 and 19/20). The other playbooks' combined lines still carry one main-buy term each until they are split.

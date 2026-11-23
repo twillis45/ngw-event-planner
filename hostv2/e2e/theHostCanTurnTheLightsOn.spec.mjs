@@ -15,7 +15,7 @@
 // first tap happens under a parameter that outranks it. Without the URL being
 // cleared the toggle appears to work and silently undoes itself on reload —
 // the kind of defect that reads as "the app forgot my setting".
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, openMenuDoor } from './fixtures.mjs';
 
 const lum = (c) => {
   const m = c.match(/[\d.]+/g).map(Number);
@@ -49,9 +49,7 @@ const openSettings = async (page) => {
   if (await header.count() && await header.isVisible()) {
     await header.click();
   } else {
-    await page.locator('[aria-label="Menu"]').first().click();
-    await page.waitForTimeout(600);
-    await page.locator('.navrow', { hasText: 'You & settings' }).first().click();
+    await openMenuDoor(page, 'You & settings');
   }
   await page.waitForTimeout(800);
 };

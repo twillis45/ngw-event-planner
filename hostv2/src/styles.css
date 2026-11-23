@@ -8457,3 +8457,138 @@ button.vc-pill::after{
 .stay-row{ margin:0 0 var(--sp-2); }
 .stay-row b{ color:var(--ink-soft); }
 .ceremony-separate{ margin:0 0 var(--sp-5); }
+
+/* ══ THE TALL IPAD (owner rulings, 11/22/2026 — the tall-iPad package) ══════════
+   A tablet band held in portrait (lib/responsiveSurface isTallTablet, read from
+   matchMedia) sets [data-tall="1"] on .stagewrap and .app. No rail, no ☰
+   eyebrow: a header that is the event switcher, the parts ribbon, a full-width
+   board on two shared edges, a first screen that ends at "The rest of your
+   plan", and a docked bar. Reverses the 7/22 648px cap and the 8/17 "question
+   fills the screen" for portrait tablets ONLY. Kept at file end so it outranks
+   the tablet block above by source order as well as by specificity. Landscape
+   tablets, desktops and phones never carry the attribute. */
+.stagewrap[data-tall="1"]{ --tt-gut:48px; --tt-bar-h:calc(78px + env(safe-area-inset-bottom,0px)); }
+@media (min-width:960px){ .stagewrap[data-tall="1"]{ --tt-gut:64px; } }
+/* The scroller ends at the bar's top edge: nothing can ever sit under it. */
+.stagewrap[data-tall="1"] > .app{ height:calc(100% - var(--tt-bar-h)); }
+.stagewrap[data-tall="1"] > .app::after{ height:24px; }
+/* FULL WIDTH: the board fills, on two edges; paragraphs keep the measure. */
+.stagewrap[data-tall="1"] > .app > .content{ max-width:none; margin-inline:0; padding-left:var(--tt-gut); padding-right:var(--tt-gut); padding-bottom:32px; }
+.stagewrap[data-tall="1"] .hero.elegant{ max-width:none; margin-inline:0; padding-inline:0; min-height:0; }
+.stagewrap[data-tall="1"] .hero.elegant .verdict,
+.stagewrap[data-tall="1"] .hero.elegant p{ max-width:36em; }
+.stagewrap[data-tall="1"] .hero.elegant .ask{ font-size:clamp(48px,8.4cqw,84px); line-height:1.02; }
+/* THE FOCUSED FIRST SCREEN: exactly the scroller's height (the space above the
+   bar), less the content's top padding. Spare height is split between above the
+   question and above Where you stand; the fold control ends it. */
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on{ min-height:calc(100cqh - var(--sp-4)); padding-bottom:4px; box-sizing:border-box; }
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on > .ecenter{ flex:0 0 auto; margin-top:auto; justify-content:flex-start; }
+/* The two spare gaps (above the question, above Where you stand) never close
+   below 24px; on a short iPad the ask and Where you stand give way instead. */
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on > .tt-rib{ margin-bottom:24px; }
+.stagewrap[data-tall="1"] .hero.elegant .escreen.on > .tt-stand-slot{ margin-top:auto; padding-top:24px; }
+/* No caret rides this head on a tall iPad, so it keeps no caret-sized floor. */
+.stagewrap[data-tall="1"] .hero.elegant .tt-stand-slot > .bento > .bento-head{ min-height:0; margin:0 0 4px; }
+/* SHORT PORTRAIT IPADS (parent review 11/23/2026: 744x1133, 810x1080, 768x1024).
+   In the owner's order, after the gaps reach their floor: the ask steps down
+   (floor 40px), then Where you stand's own padding tightens. Nothing hides. */
+@media (max-height:1149px){
+  .stagewrap[data-tall="1"] .hero.elegant .ask{ font-size:clamp(40px,7.5cqw,56px); }
+  .stagewrap[data-tall="1"] .hero.elegant .tt-stand-slot > .bento .tile{ padding-block:4px; }
+  .stagewrap[data-tall="1"] .hero.elegant .tt-stand-slot > .bento .t-num{ margin:2px 0; }
+  .stagewrap[data-tall="1"] .hero.elegant .tt-stand-slot > .bento{ padding-block:8px; }
+}
+@media (max-height:1099px){
+  .stagewrap[data-tall="1"] .hero.elegant .ask{ font-size:40px; }
+}
+.stagewrap[data-tall="1"] .tt-stand-slot > .bento{ flex:0 0 auto; height:auto; min-height:0; margin:0; }
+/* The fold control keeps the app's tap floor at every height (CI, 11/23/2026:
+   41px at 768x1024 on Linux font metrics). Its room comes from its own margin,
+   never from the tap box. */
+.stagewrap[data-tall="1"] .tt-fold-slot > .efold{ margin:0; padding:8px 0 4px; min-height:var(--tap-min,46px); box-sizing:border-box; justify-content:center; }
+
+/* THE HEADER — no fill, scrolls with the page. */
+.tt-head{ margin:0 0 8px; padding:16px 0 0; background:none; border:0; }
+.tt-r1{ display:flex; align-items:center; gap:12px; color:var(--muted); font-size:12px; font-weight:650; letter-spacing:.12em; text-transform:uppercase; }
+.tt-r1-solo{ margin:16px 0 8px; }
+/* THE WEATHER ON THE DATE LINE (owner ruling 11/23/2026): the pill, placed in
+   the header, is the line's last item, in the line's own quiet voice. It opens
+   in place below the line, the same body it opens today; it never floats. */
+.tt-r1{ flex-wrap:wrap; }
+.tt-wx-slot:empty{ display:none; }
+.tt-wx-slot{ display:contents; }
+.stagewrap[data-tall="1"] .tt-r1 .wxpill{ position:static; left:auto; right:auto; bottom:auto; transform:none; animation:none; margin:0; padding:0;
+  background:none; border:0; border-radius:0; box-shadow:none; -webkit-backdrop-filter:none; backdrop-filter:none; overflow:visible;
+  text-transform:none; letter-spacing:normal; font-weight:550; font-size:13px; color:var(--muted); }
+.stagewrap[data-tall="1"] .tt-r1 .wxpill-head{ display:inline-flex; align-items:center; gap:8px; min-height:var(--tap-min,46px); margin:0 !important; padding:0; background:none; border:0; color:inherit; font:inherit; cursor:pointer; text-align:left; }
+.stagewrap[data-tall="1"] .tt-r1 .wxpill.open{ flex-basis:100%; }
+.stagewrap[data-tall="1"] .tt-r1 .wxpill .wx-body{ padding:8px 0 4px; color:var(--ink); }
+.tt-chip{ padding:4px 12px; border-radius:999px; background:var(--steel-tint); color:var(--ink); letter-spacing:.1em; }
+.tt-title{ display:inline-flex; align-items:baseline; gap:8px; margin:12px 0 0 !important; padding:0; min-height:var(--tap-min,46px); background:none; border:0; text-align:left; cursor:pointer; color:var(--ink); font:inherit; }
+.tt-name{ font-size:24px; line-height:1.2; font-weight:700; letter-spacing:-.01em; }
+.tt-caret{ color:var(--muted); font-size:15px; }
+.tt-title:hover .tt-caret{ color:var(--steel-soft); }
+.tt-sub{ margin-top:-8px; color:var(--muted); font-size:15px; }
+
+/* THE RIBBON — done fills with the progress green, open is outlined, NOW is
+   the part the question is about. */
+.tt-rib{ margin:16px 0 0; }
+.tt-parts{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:8px; }
+.tt-part{ display:flex; flex-direction:column; gap:8px; min-height:var(--tap-min,46px); margin:0 !important; padding:0; background:none; border:0; text-align:left; cursor:pointer; color:var(--muted); font:inherit; font-size:13px; font-weight:550; }
+.tt-part > i{ display:block; height:5px; border-radius:3px; background:var(--seg-done); }
+.tt-part.is-open, .tt-part.is-now{ color:var(--ink); font-weight:650; }
+.tt-part.is-open > i{ background:transparent; box-shadow:inset 0 0 0 1.5px var(--steel-soft); }
+.tt-part.is-now > i{ background:var(--steel-soft); }
+.tt-now{ display:inline-block; vertical-align:1px; margin-left:4px; padding:2px 8px; border-radius:999px; background:var(--steel-soft); color:var(--bg); font-style:normal; font-size:11px; font-weight:750; letter-spacing:.1em; text-transform:uppercase; }
+.tt-rib-foot{ display:flex; justify-content:space-between; align-items:center; gap:16px; margin-top:0; color:var(--muted); font-size:13px; }
+.tt-rib-count{ min-height:var(--tap-min,46px); margin:0 !important; padding:0; background:none; border:0; color:inherit; font:inherit; cursor:pointer; text-align:left; }
+.tt-rib-count:hover{ color:var(--ink); }
+.tt-rib-l{ min-width:0; }
+.tt-pl{ display:block; }
+
+/* THE BAR — docked, full width, its inner row on the board's edges. */
+.tt-bar{ position:absolute; left:0; right:0; bottom:0; z-index:30; height:var(--tt-bar-h); box-sizing:border-box;
+  padding:12px var(--tt-gut) calc(12px + env(safe-area-inset-bottom,0px)); background:var(--card); border-top:1px solid var(--line-soft); }
+.tt-bar-in{ display:grid; grid-template-columns:1fr auto auto; gap:12px; align-items:center; }
+/* The track and the selected phase are .navseg's own; only the size is the bar's. */
+.tt-seg{ padding:4px; border-radius:999px; }
+.tt-bar button{ margin:0 !important; }
+.tt-seg .tt-seg-b{ height:var(--tap-min,46px); padding:0 16px; white-space:nowrap; border-radius:999px; font-size:15px; }
+.tt-act{ display:flex; align-items:center; justify-content:center; gap:8px; height:52px; padding:0 16px; white-space:nowrap; border:1px solid var(--line-soft); border-radius:999px; background:none; color:var(--ink); font:inherit; font-size:15px; font-weight:600; cursor:pointer; }
+.tt-act.q{ color:var(--muted); font-weight:550; }
+.tt-act .srail-i{ width:18px; height:18px; }
+/* What still floats at the foot stands above the bar, never under it: the
+   toast, measured from the bar's top edge. The NEXT bar is not shown on a tall
+   iPad and the weather rides the header (owner rulings, 11/23/2026). */
+.stagewrap[data-tall="1"] .toast{ bottom:calc(var(--tt-bar-h) + 60px); }
+
+/* BELOW THE FOLD: one treatment for Worth having a plan for and Who's confirmed. */
+.stagewrap[data-tall="1"] .hero.elegant .ef-watch{ margin-top:32px; background:none; border:0; box-shadow:none; padding:0; border-radius:0; }
+.stagewrap[data-tall="1"] .hero.elegant .ef-sect,
+.stagewrap[data-tall="1"] .who-confirmed > h2.shelf-label{ font-size:12px; font-weight:650; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:0 0 8px !important; }
+.stagewrap[data-tall="1"] .hero.elegant .ef-watch .watch-dot{ display:none; }
+.stagewrap[data-tall="1"] .hero.elegant .ef-watch .watch-row{ align-items:center; gap:12px; min-height:52px; padding:12px 0; margin:0; border-top:1px solid var(--line-soft); color:var(--ink); font-size:15px; }
+.stagewrap[data-tall="1"] .hero.elegant .ef-watch .watch-row .t{ flex:1; color:var(--ink); }
+.stagewrap[data-tall="1"] .hero.elegant .ef-watch .watch-row::after{ content:'›'; margin-left:auto; color:var(--muted); font-size:18px; }
+.stagewrap[data-tall="1"] .who-confirmed{ margin-top:48px; padding:0; border:0; border-radius:0; background:none; box-shadow:none; }
+.stagewrap[data-tall="1"] .who-confirmed .actions-row{ margin:2px 0 16px; }
+.tt-who-g{ margin-top:16px; }
+.tt-who-h{ display:flex; justify-content:space-between; gap:16px; margin:0 0 4px; color:var(--ink); font-size:14px; font-weight:650; }
+.tt-who-h > span:last-child{ color:var(--muted); font-weight:500; }
+.tt-row{ display:flex; align-items:center; gap:16px; width:100%; min-height:52px; margin:0 !important; padding:12px 0; border:0; border-top:1px solid var(--line-soft); background:none; text-align:left; color:var(--ink); font:inherit; font-size:15px; }
+button.tt-row{ cursor:pointer; }
+.tt-row-t{ flex:1; min-width:0; }
+.tt-row-w{ color:var(--muted); font-size:14px; text-align:right; }
+.tt-row .chev{ position:static; color:var(--muted); font-size:18px; }
+
+/* THE INDEX ("All sections"): search on top, the doors as a 3-column grid. */
+.tt-index-search{ display:flex; align-items:center; gap:12px; width:100%; min-height:52px; margin:0 0 20px !important; padding:0 16px; border:0; border-radius:999px; background:var(--bg); color:var(--muted); font:inherit; font-size:16px; text-align:left; cursor:pointer; }
+.tt-index-g{ margin:0 0 20px; }
+.tt-index-g > .shelf-label{ margin:0 0 8px; }
+.tt-tiles{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.tt-tile{ display:flex; align-items:center; gap:12px; min-height:64px; margin:0 !important; padding:12px 16px; border:1px solid var(--line-soft); border-radius:var(--r-md); background:none; color:var(--ink); font:inherit; font-size:15px; font-weight:550; text-align:left; cursor:pointer; }
+.tt-tile:hover{ border-color:var(--steel-soft); }
+.tt-tile .srail-i, .tt-index-pass .srail-i, .tt-index-search .srail-i{ flex:0 0 auto; color:var(--muted); }
+.tt-index-pass{ display:flex; align-items:center; gap:12px; width:100%; min-height:52px; margin:4px 0 0 !important; padding:12px 0; border:0; border-top:1px solid var(--line-soft); background:none; color:var(--ink); font:inherit; font-size:15px; text-align:left; cursor:pointer; }
+.tt-ip-l{ flex:1; font-weight:550; }
+.tt-ip-r{ color:var(--muted); font-size:14px; display:inline-flex; gap:8px; align-items:center; }
