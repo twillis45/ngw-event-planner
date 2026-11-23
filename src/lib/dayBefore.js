@@ -18,6 +18,7 @@ import { deriveHelperResponsibilities } from './helperResponsibility';
 import { isVendorConfirmed } from './workstreams';
 import { effectiveDone } from './taskEngine';
 import { daysUntil } from './dates';
+import { byGuestMode } from './guestMode';
 
 const daysTo = (dateStr, now = new Date()) => {
   if (!dateStr) return null;
@@ -126,7 +127,11 @@ export function buildDayBeforePlan(event, now = new Date()) {
       return [{
         key: 'count', label: 'Final guest count', open: pending ? gcnt.pending : 1,
         detail: pending
-          ? `${gcnt.pending} still ${gcnt.pending === 1 ? 'hasn’t' : 'haven’t'} said — chase the maybes, then buy to the confirmed count.`
+          // The wording follows her guest mode (owner ruling 4b): by headcount, no chasing.
+          ? byGuestMode(ev, {
+            list: `${gcnt.pending} still ${gcnt.pending === 1 ? 'hasn’t' : 'haven’t'} said — chase the maybes, then buy to the confirmed count.`,
+            count: 'Confirm your final count, then buy to it.',
+          })
           : 'No count yet — food, drinks, ice, and rentals all scale from headcount.',
         route: { tab: 'Guests', focusField: 'guests-entry' },
         cta: pending ? 'Settle the count' : 'Add who’s coming',

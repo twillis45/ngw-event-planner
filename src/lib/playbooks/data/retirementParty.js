@@ -95,7 +95,7 @@ const retirementParty = {
     { id: 'rp_vendors', name: 'Book bartender / caterer / photographer if using', offsetDays: 18, owner: 'host', dependsOn: ['rp_setdate'], category: 'logistics', risk: { ifDelayed: 'Good bartenders/photographers book out; weekend rates spike', severity: 'med' } },
     { id: 'rp_rentals', name: 'Confirm seating, tables, AV (mic + screen), and rental gap', offsetDays: 14, owner: 'host', dependsOn: ['rp_venue', 'rp_tribute_plan'], category: 'rental', risk: { ifDelayed: 'Not enough chairs for an older crowd, or no working mic for the speeches', severity: 'high' } },
     { id: 'rp_tribute_plan', name: 'Confirm speakers + order; build the slideshow; line up any surprise guest', offsetDays: 14, owner: 'host', dependsOn: ['rp_memory'], category: 'program', risk: { ifDelayed: 'Rambling, unscripted speeches; slideshow not finished; surprise guest travel not booked', severity: 'med' } },
-    { id: 'rp_rsvp_close', name: 'Confirm final headcount + dietary/accessibility list (chase the maybes)', offsetDays: 4, owner: 'host', dependsOn: ['rp_invite'], category: 'guest', risk: { ifDelayed: 'Over/under-buy food, drinks, and seating by 20-30%', severity: 'high' } },
+    { id: 'rp_rsvp_close', name: 'Confirm final headcount + dietary/accessibility list (chase the maybes)', nameByMode: { count: 'Confirm final headcount + dietary/accessibility list' }, offsetDays: 4, owner: 'host', dependsOn: ['rp_invite'], category: 'guest', risk: { ifDelayed: 'Over/under-buy food, drinks, and seating by 20-30%', severity: 'high' } },
     { id: 'rp_shop_pantry', name: 'Buy alcohol, non-perishables, decor, memory-display materials, card', offsetDays: 3, owner: 'host', dependsOn: ['rp_bar', 'rp_rsvp_close'], category: 'shopping', risk: null },
     { id: 'rp_prep', name: 'Print photos / finalize slideshow, prep make-ahead food, assemble displays', offsetDays: 1, owner: 'host', dependsOn: ['rp_menu', 'rp_tribute_plan'], category: 'program', risk: { ifDelayed: 'Host trapped finishing the slideshow instead of running the room', severity: 'med' } },
     { id: 'rp_shop_fresh', name: 'Buy fresh produce, deli/proteins, flowers, cake, ice', offsetDays: 1, owner: 'host', dependsOn: ['rp_menu', 'rp_rsvp_close'], category: 'shopping', risk: { ifDelayed: 'Wilted florals / warm bar / no cake', severity: 'med' } },
@@ -222,7 +222,7 @@ const retirementParty = {
   ],
 
   risks: [
-    { id: 'r_headcount', target: 'food', trigger: 'Final headcount still not confirmed 4 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-provision drinks ~10%, food ~10-15%, not 30%.' },
+    { id: 'r_headcount', target: 'food', trigger: 'Final headcount still not confirmed 4 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-provision drinks ~10%, food ~10-15%, not 30%.', mitigationByMode: { count: 'Confirm the final count; buy fresh AFTER headcount locks; over-provision drinks ~10%, food ~10-15%, not 30%.' } },
     // whenAnswered + "they’re here" (owner's demo, 11/15/2026): this printed "she's
     // here" while "Surprise or announced?" was unanswered — a surprise and a gender
     // the host never gave. It waits for a surprise answer and names no one.

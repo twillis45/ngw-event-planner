@@ -69,7 +69,7 @@ const dinnerParty = {
     { id: 'dp_invite', name: 'Send invites + ask dietary/allergy + RSVP', offsetDays: 18, owner: 'host', dependsOn: ['dp_setdate'], category: 'guest', risk: { ifDelayed: 'Low RSVP visibility → wrong food quantities', severity: 'med' } },
     { id: 'dp_menu', name: 'Lock the menu (with a veg main + allergy swaps)', offsetDays: 14, owner: 'host', dependsOn: ['dp_invite'], category: 'food', risk: { ifDelayed: 'No shopping list / cook plan possible', severity: 'high' } },
     { id: 'dp_rentals', name: 'Confirm serveware / glassware / seating capacity (rent or borrow gap)', offsetDays: 7, owner: 'host', dependsOn: ['dp_menu'], category: 'rental', risk: { ifDelayed: 'Not enough matching plates/chairs day-of', severity: 'med' } },
-    { id: 'dp_rsvp_close', name: 'Confirm final headcount (chase the maybes)', offsetDays: 3, owner: 'host', dependsOn: ['dp_invite'], category: 'guest', risk: { ifDelayed: 'Over/under-buy food by 20-30%', severity: 'high' } },
+    { id: 'dp_rsvp_close', name: 'Confirm final headcount (chase the maybes)', nameByMode: { count: 'Confirm final headcount' }, offsetDays: 3, owner: 'host', dependsOn: ['dp_invite'], category: 'guest', risk: { ifDelayed: 'Over/under-buy food by 20-30%', severity: 'high' } },
     { id: 'dp_shop_pantry', name: 'Buy pantry, alcohol, non-perishables', offsetDays: 3, owner: 'host', dependsOn: ['dp_menu'], category: 'shopping', risk: null },
     { id: 'dp_shop_fresh', name: 'Buy fresh produce, proteins, bread, flowers', offsetDays: 1, owner: 'host', dependsOn: ['dp_menu', 'dp_rsvp_close'], category: 'shopping', risk: { ifDelayed: 'Sold-out proteins / wilted produce', severity: 'med' } },
     { id: 'dp_prep_ahead', name: 'Make-ahead prep (sauces, braises, dessert, mise en place)', offsetDays: 1, owner: 'host', dependsOn: ['dp_shop_fresh'], category: 'food', risk: null },
@@ -167,7 +167,7 @@ const dinnerParty = {
   // Risks (canonical dinner-party.playbook.json — Sprint 55K parity backfill).
   risks: [
     { id: 'r_dietary', target: 'food', trigger: 'Menu locked before allergies collected', severity: 'critical', mitigation: 'Collect dietary/allergy with the invite; confirm again at RSVP close; always plate one safe vegetarian main.' },
-    { id: 'r_headcount', target: 'none', trigger: 'Final headcount still not confirmed 3 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-cater proteins by ~10%, not 30%.' },
+    { id: 'r_headcount', target: 'none', trigger: 'Final headcount still not confirmed 3 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-cater proteins by ~10%, not 30%.', mitigationByMode: { count: 'Confirm the final count; buy fresh AFTER headcount locks; over-cater proteins by ~10%, not 30%.' } },
     { id: 'r_overcook', target: 'food', trigger: 'Too many à-la-minute dishes', severity: 'high', mitigation: 'Design the menu so ≥2 of 3 courses are make-ahead; the host should plate, not cook, once guests arrive.' },
     { id: 'r_ice', target: 'none', trigger: 'No ice / warm drinks', severity: 'med', mitigation: 'Buy ~1.5 lb ice/guest day-of; pre-chill whites 3h ahead.' },
     { id: 'r_capacity', target: 'seating', trigger: 'More RSVPs than chairs/place settings', severity: 'med', mitigation: 'Confirm seating + serveware capacity at a week out; secure a borrow/rent source before invites over-fill.' },

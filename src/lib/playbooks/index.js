@@ -119,6 +119,7 @@ import { effectiveDietary, isGroundedDietary } from '../knowledge/dietaryContext
 import { effectiveBudget, isGroundedBudget } from '../knowledge/budgetContext';
 import { effectiveChildcare, isGroundedChildcare } from '../knowledge/childcareContext';
 import { authoredQuestion, questionFrom, normalizeAsk } from '../askVoice';
+import { byGuestMode } from '../guestMode';
 // Imported here rather than beside its re-export below: an `import` in the
 // module BODY is an eslint `import/first` ERROR, and CRA treats it as a compile
 // failure — `gate:cra` has been red since f43155cc (2026-08-16) and Pages has not
@@ -2459,7 +2460,11 @@ export function topPlaybookDecision(event, asOf) {
 
   if (blocksCount) {
     const pendingMsg = gc.reason === 'pending-rsvps'
-      ? `${gc.pending} guest${gc.pending === 1 ? '' : 's'} still pending — chase the maybes, then buy to the confirmed count.`
+      // The wording follows her guest mode (owner ruling 4b): by headcount, no chasing.
+      ? byGuestMode(event, {
+        list: `${gc.pending} guest${gc.pending === 1 ? '' : 's'} still pending — chase the maybes, then buy to the confirmed count.`,
+        count: 'Confirm your final count, then buy to it.',
+      })
       : 'Add a final guest count so every quantity is sized before you shop.';
     return {
       id: `pb-decision-${event.id}-guestCount`,
@@ -3541,7 +3546,7 @@ export function playbookRisks(event, domain) {
       return {
         id: r.id,
         trigger: resolveAnsweredCopy(String(kidWording || r.trigger).trim(), r.copyByAnswer && r.copyByAnswer.trigger, event),
-        mitigation: resolveAnsweredCopy(String(r.mitigation).trim(), r.copyByAnswer && r.copyByAnswer.mitigation, event),
+        mitigation: resolveAnsweredCopy(String(byGuestMode(event, { list: r.mitigation, count: r.mitigationByMode && r.mitigationByMode.count })).trim(), r.copyByAnswer && r.copyByAnswer.mitigation, event),
         severity: sev, rank: (sev in RISK_RANK) ? RISK_RANK[sev] : 2,
       };
     })
@@ -3747,7 +3752,8 @@ export function playbookMilestones(event, asOf) {
       // offset (days before the event), so the milestone's positive offsetDays flips.
       const dueDate = decisionDueDate(event.date, -m.offsetDays);
       return {
-        id: m.id, name: String(m.name || '').trim(), owner: m.owner || 'host',
+        // Its words follow her guest mode where it has count words (owner ruling 4b).
+        id: m.id, name: String(byGuestMode(event, { list: m.name, count: m.nameByMode && m.nameByMode.count }) || '').trim(), owner: m.owner || 'host',
         // The facts that prove it handled (lib/stepFacts), declared, never read off its name.
         facts: Array.isArray(m.facts) ? m.facts : [],
         category: m.category || 'planning', offsetDays: m.offsetDays,

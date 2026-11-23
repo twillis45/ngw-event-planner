@@ -75,7 +75,7 @@ const engagementParty = {
     { id: 'ep_rentals', name: 'Confirm glassware / bar / seating capacity (rent or borrow gap)', offsetDays: 14, owner: 'host', dependsOn: ['ep_bar', 'ep_venue'], category: 'rental', risk: { ifDelayed: 'Not enough matching glasses or a real bar surface day-of', severity: 'med' } },
     { id: 'ep_vendors', name: 'Book bartender / caterer / photographer if using', offsetDays: 14, owner: 'host', dependsOn: ['ep_setdate'], category: 'logistics', risk: { ifDelayed: 'Good bartenders/photographers book out; weekend rates spike', severity: 'med' } },
     { id: 'ep_toast', name: 'Confirm toast speakers + order; brief them (≤2 min each)', offsetDays: 10, owner: 'host', dependsOn: ['ep_invite'], category: 'program', risk: { ifDelayed: 'Rambling open-mic toast kills the energy', severity: 'med' } },
-    { id: 'ep_rsvp_close', name: 'Confirm final headcount (chase the maybes)', offsetDays: 4, owner: 'host', dependsOn: ['ep_invite'], category: 'guest', risk: { ifDelayed: 'Over/under-buy food and drinks by 20-30%', severity: 'high' } },
+    { id: 'ep_rsvp_close', name: 'Confirm final headcount (chase the maybes)', nameByMode: { count: 'Confirm final headcount' }, offsetDays: 4, owner: 'host', dependsOn: ['ep_invite'], category: 'guest', risk: { ifDelayed: 'Over/under-buy food and drinks by 20-30%', severity: 'high' } },
     { id: 'ep_shop_pantry', name: 'Buy alcohol, champagne, non-perishables, decor, guest book', offsetDays: 3, owner: 'host', dependsOn: ['ep_bar', 'ep_rsvp_close'], category: 'shopping', risk: null },
     { id: 'ep_prep', name: 'Make-ahead apps, batch the signature cocktail, prep garnishes', offsetDays: 1, owner: 'host', dependsOn: ['ep_menu'], category: 'food', risk: { ifDelayed: 'Host trapped in the kitchen instead of greeting guests', severity: 'med' } },
     { id: 'ep_shop_fresh', name: 'Buy fresh produce, cheese/charcuterie, flowers, citrus, ice', offsetDays: 1, owner: 'host', dependsOn: ['ep_menu', 'ep_rsvp_close'], category: 'shopping', risk: { ifDelayed: 'Wilted florals / warm bar', severity: 'med' } },
@@ -143,7 +143,7 @@ const engagementParty = {
   ],
 
   risks: [
-    { id: 'r_headcount', target: 'none', trigger: 'Final headcount still not confirmed 4 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-provision drinks ~10%, not 30%.' },
+    { id: 'r_headcount', target: 'none', trigger: 'Final headcount still not confirmed 4 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-provision drinks ~10%, not 30%.', mitigationByMode: { count: 'Confirm the final count; buy fresh AFTER headcount locks; over-provision drinks ~10%, not 30%.' } },
     { id: 'r_underfood', target: 'food', trigger: 'Under-counting bites — guests treat it like dinner', severity: 'high', mitigation: 'Plan ~10-12 bites/guest and a grazing station; alcohol increases food appetite — round up, never down.' },
     { id: 'r_toast_flop', target: 'none', trigger: 'Toast runs long / open-mic rambles / no one can hear', severity: 'med', mitigation: 'Pre-assign 1-2 speakers at ≤2 min, pre-pour champagne, lower the music, gather the room before starting.' },
     { id: 'r_bar_bottleneck', target: 'none', trigger: 'One bar/one host can\'t keep up → a line forms', severity: 'med', mitigation: 'Batch the signature cocktail, self-serve beer/wine on ice, and hire or assign a dedicated pourer.' },
