@@ -8720,7 +8720,7 @@ button.tt-row{ cursor:pointer; }
 /* A long name wraps on a phone: the type line sits under its last line. */
 .stagewrap[data-pill="1"] .tt-sub{ margin-top:0; }
 .stagewrap[data-pill="1"] .tt-title{ align-items:flex-start; }
-.stagewrap[data-pill="1"] .tt-caret{ margin-top:6px; }
+.stagewrap[data-pill="1"] .tt-caret{ margin-top:4px; }
 /* One glyph per worry row at the 13" upright: the tall rows' own › (render
    17), not the rail board's → beside it. */
 .stagewrap[data-tall="1"][data-rail="1"] .hero.elegant .ef-watch .ef-g{ display:none; }
