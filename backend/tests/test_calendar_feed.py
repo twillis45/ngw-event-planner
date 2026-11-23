@@ -62,7 +62,16 @@ def client(monkeypatch, rows):
     return TestClient(app), conn
 
 
+class _At10_40_06(datetime):
+    # 11/23/2026 deploy failed: the stamp 20261123T104006Z contains "400", the
+    # budget figure the secrets check looks for. Pinned to that instant so the
+    # check is proven against it on every run, not only at 10:40 UTC.
+    @classmethod
+    def now(cls, tz=None): return datetime(2026, 11, 23, 10, 40, 6, tzinfo=timezone.utc)
+
+
 def test_the_feed_is_the_saved_list_as_icalendar(monkeypatch):
+    monkeypatch.setattr(cf, "datetime", _At10_40_06)
     c, conn = client(monkeypatch, [EVENT])
     r = c.get(f"/api/public/calendar/{CODE}.ics")
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/calendar")
@@ -73,8 +82,10 @@ def test_the_feed_is_the_saved_list_as_icalendar(monkeypatch):
     assert "UID:e1-task-t2@ngw-plan" in body
     assert "REFRESH-INTERVAL;VALUE=DURATION:PT6H" in body
     assert all(len(l.encode()) <= 75 for l in body.split("\r\n"))
+    assert "DTSTAMP:20261123T104006Z" in body
+    planned = "\r\n".join(l for l in body.split("\r\n") if not l.startswith("DTSTAMP:"))
     for secret in ("Ana Ruiz", "ana@example.test", "400", "secret host note", CODE):
-        assert secret not in body, secret
+        assert secret not in planned, secret
     assert "data->>'calendarCode' = $1" in conn.queries[0]
 
 
