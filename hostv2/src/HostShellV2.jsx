@@ -5331,8 +5331,10 @@ export default function HostShellV2() {
   // conflict's title says "conflict"), and a COI step declares askKind 'coi'
   // (the classification also rides as sourceCategory). Read here and at every
   // other place the hero and its card ask the same question.
-  const isConflictBundle = (a) => !!a && a.kind === 'bundle' && a.askKind === 'conflict';
-  const isCoiStep = (a) => !!a && (a.askKind === 'coi' || a.sourceCategory === 'coi');
+  const heroRungKind = (a) => (!a ? null
+    : (a.kind === 'bundle' && a.askKind === 'conflict') ? 'conflict'
+    : (a.askKind === 'coi' || a.sourceCategory === 'coi') ? 'coi'
+    : null);
   const heroSelection = (() => {
     const q0 = queue[0];
     if (!q0) return null;
@@ -5347,8 +5349,8 @@ export default function HostShellV2() {
     // "When does the ceremony happen?" with no options, no button and the
     // "in the full app" chip, with the NEXT bar pointing at it.
     const rungOwnsHero = !elegantMode || !askMode || days === 0
-      || (isConflictBundle(q0) && !!conflictItems[0])
-      || isCoiStep(q0);
+      || (heroRungKind(q0) === 'conflict' && !!conflictItems[0])
+      || heroRungKind(q0) === 'coi';
     const open = decisionBoard.open || [];
     return resolveSelection(q0, {
       boardRow: rungOwnsHero ? null : (idn) => open.find(r => r && String(r.id) === String(idn.decisionId)) || null,
@@ -5427,9 +5429,9 @@ export default function HostShellV2() {
     // ask ("When does the retirement presentation happen?"), so it stays in the
     // ask flow after roll-to-next. Its picks render under it (heroSelection).
     if (elegantMode && /^blocker:/.test(String(q0.id || '')) && q0.ask) return q0.ask;
-    if (elegantMode && isConflictBundle(q0) && conflictItems[0]) return conflictItems[0].ask;
+    if (elegantMode && heroRungKind(q0) === 'conflict' && conflictItems[0]) return conflictItems[0].ask;
     // COI-collection task → the REAL first step (coiNextAction), not "Your next step."
-    if (elegantMode && isCoiStep(q0)) return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
+    if (elegantMode && heroRungKind(q0) === 'coi') return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
     // THE CANONICAL SELECTION SPEAKS (PR #70). resolveSelection already ran the
     // whole ask ladder for this item — the authored question for the decision it
     // actually carries, else the identity-free wording fallback (heroAskFor, the
@@ -13251,7 +13253,7 @@ export default function HostShellV2() {
                   // to only COUNT, now faced one at a time. Slice 1 hands the host to
                   // the affected vendor to apply the fix — an in-place one-tap resolve
                   // waits on conflicts.js emitting a structured proposedFix (phase 2).
-                  if (elegantMode && askMode && i === 0 && isConflictBundle(a) && conflictItems[0]) {
+                  if (elegantMode && askMode && i === 0 && heroRungKind(a) === 'conflict' && conflictItems[0]) {
                     const it = conflictItems[0];
                     const res = it.resolution || {};
                     // DECLUTTERED (host 2026-07-18): tight one-line situation (detailShort),
@@ -13593,7 +13595,7 @@ export default function HostShellV2() {
                 // every COI emitter. Title-prose sniffing broke on the fifth title
                 // shape. The narrow regex that stayed for checklist rows ("Collect
                 // COIs…") is gone too (cause 1, part 2): a row's words decide nothing.
-                const isCoiTask = elegantMode && isHero && !decHeroActions && isCoiStep(a);
+                const isCoiTask = elegantMode && isHero && !decHeroActions && heroRungKind(a) === 'coi';
                 const coiHero = (isCoiTask && coiFirst) ? coiFirst : null;
                 // Every vendor's COI is handled but the solver task still lingers open — don't
                 // fall back to the ugly generic "Overdue · Decide". Show the calm done state.
