@@ -200,3 +200,13 @@ describe('the coming-up rows route by kind and declared target, not by their lab
     expect(/stepTargetFor\(event/.test(body)).toBe(true);
   });
 });
+
+describe('milestone routing is the step’s declaration outside the frozen CRA', () => {
+  test('no caller but src/App.js routes a row through milestoneActionRoute', () => {
+    const root = path.join(__dirname, '../../..');
+    const files = [path.join(root, 'src/CommandCenter.jsx'), path.join(root, 'hostv2/src/HostShellV2.jsx'),
+      ...fs.readdirSync(path.join(root, 'src/lib')).filter((f) => f.endsWith('.js')).map((f) => path.join(root, 'src/lib', f))];
+    const callers = files.filter((f) => /milestoneActionRoute\(/.test(fs.readFileSync(f, 'utf8').replace(/export function milestoneActionRoute/, '')));
+    expect(callers.map((f) => path.relative(root, f))).toEqual([]);
+  });
+});

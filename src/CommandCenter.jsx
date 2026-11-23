@@ -96,7 +96,7 @@ import { daysUntil } from './lib/dates';
 // the same outbound/planner signal used elsewhere. Without this, a sent approval
 // is misread as an unsent draft and the next action wrongly says "send it" /
 // "Waiting on: You" when it's really "nudge the client" / "Waiting on: Client".
-import { milestoneActionRoute, checklistRouteFor } from './lib/taskRoute';
+import { milestoneActionRoute, checklistRouteFor, stepRoute } from './lib/taskRoute';
 import { confirmedCovers } from './lib/confirmedCovers';
 export { milestoneActionRoute };
 const approvalIsSent = (m) => !!m.requestSentAt || m.direction === 'outbound' || m.sender === 'planner' || /sent|delivered/i.test(m.deliveryStatus || '');
@@ -3778,7 +3778,7 @@ export function _selectEventNextActionInner(event, prices = null) {
       // to the timeline (anchored to the milestone) when it isn't a domain action.
       // EARLIEST-KEYWORD-WINS router, shared with every Next Up row (see
       // milestoneActionRoute) so the hero and the rows can never disagree.
-      primaryRoute: milestoneActionRoute(nextUp.label, event, nextUp.id),
+      primaryRoute: stepRoute(event, nextUp.id),
       // WAVE-5 RANKING (2026-07-15): built from a timeline task — its authored
       // lead rides along (null when the task carries none).
       leadDays: nextUp.leadDays ?? null,
@@ -4836,7 +4836,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
           <SectionHeader label="Next Up" action="Full timeline →" onAction={() => onTabChange?.('Timeline')} />
           {nextUpRows.length > 0 ? (
             <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
-              {nextUpRows.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} onOpen={() => { const r = milestoneActionRoute(t.label, event, t.id); onTabChange?.(r.tab, r.vendorId || r.timelineId, r.focusField ? { focusField: r.focusField } : undefined); }} />)}
+              {nextUpRows.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} onOpen={() => { const r = stepRoute(event, t.id); onTabChange?.(r.tab, r.vendorId || r.timelineId, r.focusField ? { focusField: r.focusField } : undefined); }} />)}
             </div>
           ) : <EmptyState>No upcoming milestones in window.</EmptyState>}
         </div>
@@ -5060,7 +5060,7 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
               <SectionHeader label="Next Up" action="Full timeline →" onAction={() => onTabChange?.('Timeline')} />
               {nextUpRows.length > 0 ? (
                 <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
-                  {nextUpRows.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} onOpen={() => { const r = milestoneActionRoute(t.label, event, t.id); onTabChange?.(r.tab, r.vendorId || r.timelineId, r.focusField ? { focusField: r.focusField } : undefined); }} />)}
+                  {nextUpRows.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} onOpen={() => { const r = stepRoute(event, t.id); onTabChange?.(r.tab, r.vendorId || r.timelineId, r.focusField ? { focusField: r.focusField } : undefined); }} />)}
                 </div>
               ) : <EmptyState>No upcoming milestones.</EmptyState>}
             </div>

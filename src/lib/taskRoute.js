@@ -68,3 +68,15 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   if (!t) return null;
   return t.href ? { label: t.label, href: t.href } : { label: t.label, route: t.route };
 }
+
+/**
+ * stepRoute(event, rowId) — where a checklist row's work is done, by its
+ * DECLARED target (six root causes, cause 1); its own row on the checklist
+ * when it declares none. Replaces milestoneActionRoute for every caller but
+ * the frozen CRA shell (src/App.js), which keeps the old function until its
+ * scheduled deletion.
+ */
+export function stepRoute(event, rowId) {
+  const t = targetFor(stepTargetKey(event, { id: rowId }), event);
+  return t && t.route ? t.route : { tab: 'Timeline', taskId: rowId, timelineId: rowId };
+}
