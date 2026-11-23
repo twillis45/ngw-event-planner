@@ -174,7 +174,7 @@ const ptaBoosterFundraiser = {
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
     { id: 't_goal', target: 'call:fundraising_goal', facts: ['calls-answered'], answeredBy: ['fundraising_goal'], milestoneId: 'pb_kickoff', phase: 'planning', label: 'Set the fundraising goal and what it funds', when: 'T-120d' },
-    { id: 't_goal_budget', target: 'money', facts: ['budget-set'], composite: true, bundles: ['budget'], milestoneId: 'pb_kickoff', phase: 'planning', label: 'Set the expense budget the night can spend against the goal, and write the one sentence that says what the money funds', when: 'T-120d' },
+    { id: 't_goal_budget', target: 'money', facts: ['budget-set'], milestoneId: 'pb_kickoff', phase: 'planning', label: 'Set the expense budget the night can spend against the goal, and write the one sentence that says what the money funds', when: 'T-120d' },
     { id: 't_committee', target: 'assign', facts: [], milestoneId: 'pb_kickoff', phase: 'planning', label: 'Recruit the committee and name who owns volunteers, sponsors, food, and the money', when: 'T-120d' },
     { id: 't_treasurer', target: 'money', facts: [], milestoneId: 'pb_kickoff', phase: 'planning', label: 'Name the one treasurer who touches every dollar in and out, and keeps the ledger visible to the whole committee', when: 'T-118d' },
     { id: 't_facility', target: 'place-rules', facts: [], milestoneId: 'pb_facility', phase: 'venue', label: 'Submit the facility-use request to the school or district — the school is the venue, and its calendar fills first', when: 'T-120d' },

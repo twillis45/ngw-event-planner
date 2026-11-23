@@ -628,19 +628,20 @@ describe('when she cooks, only a step that is purely catering drops', () => {
 // parts (date, guests, budget, menu) it sets, and only such a step is one.
 describe('a composite declares the foundation parts it bundles', () => {
   const PARTS = ['date', 'guests', 'budget', 'menu'];
-  test('composite exactly when the step declares foundation parts it bundles', () => {
+  test('composite exactly when the step declares two or more foundation parts it bundles', () => {
     const bad = [];
     for (const pb of pbm.ALL_PLAYBOOKS) {
       for (const s of everyDeclaredStep(pb)) {
         const parts = Array.isArray(s.bundles) ? s.bundles : [];
         if (parts.some((p) => !PARTS.includes(p))) bad.push(`${pb.type}:${s.id} bundles ${JSON.stringify(parts)}`);
-        if ((s.composite === true) !== (parts.length > 0)) bad.push(`${pb.type}:${s.id} composite ${s.composite} bundles ${JSON.stringify(parts)}`);
+        // Two or more parts make a bundle (owner ruling, round 2): one part is an atomic step.
+        if ((s.composite === true) !== (parts.length >= 2)) bad.push(`${pb.type}:${s.id} composite ${s.composite} bundles ${JSON.stringify(parts)}`);
       }
     }
     expect(bad).toEqual([]);
   });
-  test('the six ruled out are not composites', () => {
-    for (const [type, id] of [['Thanksgiving Hosting', 't_table'], ['Vow Renewal', 't_setreception'], ["New Year's Eve Party", 't_early_countdown'],
+  test('the ten ruled out are not composites', () => {
+    for (const [type, id] of [['Sweet 16', 't_budget'], ['Client Dinner', 't_budget'], ['PTA / Booster Fundraiser', 't_goal_budget'], ['Quinceañera', 't_budget_set'],['Thanksgiving Hosting', 't_table'], ['Vow Renewal', 't_setreception'], ["New Year's Eve Party", 't_early_countdown'],
       ['Repast', 't_memory'], ['Watch Party', 't_repeatable_list'], ['Surprise Proposal', 't_finance']]) {
       const s = (pbm.getPlaybook(type).tasks || []).find((t) => t.id === id);
       expect([type, id, s.composite === true]).toEqual([type, id, false]);
