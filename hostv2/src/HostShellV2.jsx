@@ -263,6 +263,7 @@ import { storeSearchTerm } from '@app/lib/knowledge/storeUnitMap';
 // threw after the "1 of N" notice and before the tab opened (owner, 11/18/2026).
 const icSearchTerm = (line) => storeSearchTerm(line);
 import { parseSmartEventText, HOST_TYPES } from '@app/lib/smartParseEvent';
+import { townFieldsToPersist } from '@app/lib/townFieldsToPersist';
 import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcomeGate';
 // The engine's tuned haptic bands. Free to import — feedback.js has zero
 // imports of its own — and it carries the two guards this shell was missing:
@@ -10448,12 +10449,12 @@ export default function HostShellV2() {
         // this (~:1228 toasts "Add the state or ZIP too — a city name alone could
         // be in any state"); creation was the one door that swallowed it.
         // `_cityDropped` is read just after the write to say the same sentence.
-        const p = effCityText.trim() ? parseVenueLocation(effCityText.trim()) : null;
         // The town the host typed is KEPT as heard (round 2, 11/16/2026), so the
         // lodging step proposes "Asheville" instead of asking from scratch. It is
-        // never treated as a confirmed location.
-        if (!p) return { venueCity: '', ...(effCityText.trim() ? { cityHeard: effCityText.trim() } : {}) };
-        return p.zip ? { venueCity: p.zip } : { venueCity: p.city, venueState: p.state };
+        // never treated as a confirmed location. The rule, and the state she said
+        // with no town ("Sandy Point State Park, MD", batch 11), live in
+        // lib/townFieldsToPersist.js where jest runs them.
+        return townFieldsToPersist(fCity, parsed);
       })()),
       guestMode: 'count',
       guestEstimate: effGuests || '',
