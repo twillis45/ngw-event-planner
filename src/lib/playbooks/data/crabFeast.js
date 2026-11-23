@@ -273,9 +273,14 @@ const crabFeast = {
     { id: 'c_weather', when: 'r_weather', plan: 'Move under the canopy, deck cover, or garage; push the steam pot to a sheltered spot; keep the feast going — a little rain never stopped a crab feast.' },
   ],
 
+  // THE DAY'S CUES FOLLOW THE STEAM-OR-ORDER CALL (batch 11, #233 Left). The
+  // authored default is pickup: the crab house steams them, she brings them home
+  // hot and keeps the rest in a cooler (the coolers note above). The steaming
+  // cues are her answer's copy when she steams them herself. copyByAnswer, not
+  // a second row, so the run of show keeps the same rows whichever she picks.
   schedules: {
     preparation: [
-      { when: 'T0 -1:30', what: 'Steam/boil the corn and shrimp; melt butter; pour vinegar into dipping bowls; if steaming your own crabs, get the pot and liquid ready' },
+      { when: 'T0 -1:30', what: 'Steam/boil the corn and shrimp; melt butter; pour vinegar into dipping bowls', copyByAnswer: { steam_vs_order: { 'Steam them myself': 'Steam/boil the corn and shrimp; melt butter; pour vinegar into dipping bowls; if steaming your own crabs, get the pot and liquid ready', 'Buy live, steam in batches': 'Steam/boil the corn and shrimp; melt butter; pour vinegar into dipping bowls; if steaming your own crabs, get the pot and liquid ready' } } },
     ],
     setup: [
       { when: 'T0 -5h', what: 'Confirm the pickup slot with the crab house and the count you’re collecting', whenChoice: { id: 'steam_vs_order', in: ['Order steamed for pickup'] } },
@@ -286,8 +291,8 @@ const crabFeast = {
     ],
     program: [
       { when: 'T0', what: 'Doors: paper down, mallets out, drinks on ice' },
-      { when: 'T0 +30m', what: 'First steam hits the table — Old Bay, vinegar, shell bucket' },
-      { when: 'T0 +1:15', what: 'Sides out and the second steam goes on' },
+      { when: 'T0 +30m', what: 'The crabs hit the table hot from the pickup — Old Bay, vinegar, shell bucket', copyByAnswer: { steam_vs_order: { 'Steam them myself': 'First steam hits the table — Old Bay, vinegar, shell bucket', 'Buy live, steam in batches': 'First steam hits the table — Old Bay, vinegar, shell bucket' } } },
+      { when: 'T0 +1:15', what: 'Sides out; the rest of the crabs stay hot in the cooler', copyByAnswer: { steam_vs_order: { 'Steam them myself': 'Sides out and the second steam goes on', 'Buy live, steam in batches': 'Sides out and the second steam goes on' } } },
       { when: 'T0 +2h', what: 'Second round to the table; refill the seasoning and the paper towels' },
       { when: 'T0 +3h', what: 'Dessert and the last of the picking' },
       { when: 'T0 +4:05', what: 'Wind down: shells bagged, table stripped, to-go containers out' },
