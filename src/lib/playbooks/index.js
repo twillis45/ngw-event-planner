@@ -1911,6 +1911,9 @@ export function playbookChecklist(event, asOf) {
     if (!modeShown(event, t.whenMode)) continue;
     // Kids gate — a task tagged whenKids appears only when kids are actually coming.
     if (t.whenKids && !kidsComing) continue;
+    // Rental gate — a task tagged whenRented (returning the rentals) appears only
+    // once something is rented (batch 11; audit 2 lane C P1-9).
+    if (t.whenRented && !somethingIsRented(event)) continue;
     // Caterer-action gate — drop booking/headcount-to-caterer tasks when the host cooks.
     // Keep decision-framing tasks ("…or confirm the host-cooks plan", "vs a caterer"),
     // and a step that also offers the do-it-yourself path ("…or plan the passed
@@ -3091,6 +3094,26 @@ const SUPPLY_INTEL = [
   { re: /trash|recycling|bin|bus tub|shell bucket/i,                        low: 8,  high: 20,  kind: 'buy',  label: 'cleanup' },
   { re: /heat lamp|patio heater|fan\b/i,                                    low: 30, high: 70,  kind: 'rent', label: 'climate' },
 ];
+// ── IS ANYTHING RENTED? (batch 11; audit 2 lane C P1-9) ─────────────────────
+// The day after a wedding with no rental anywhere, After's first thing owed was
+// "Return the rentals on the contract's clock…". A rental is on record when:
+//   · a vendor in the rentals category (tent, linens, tables & chairs…) is on
+//     the plan and not declined;
+//   · a budget line in that category carries an amount;
+//   · she got an item off the seating list that is a rental (supplyIntel 'rent')
+//     and does not own it.
+// Anything else is not known to be rented, so nothing waits to go back.
+export function somethingIsRented(event) {
+  const ev = event || {};
+  const isRentals = (c) => { try { return normalizeCategory(String(c || '')) === 'rentals'; } catch (_e) { return false; } };
+  const vendors = Array.isArray(ev.vendors) ? ev.vendors : [];
+  if (vendors.some((v) => v && !/declin|cancel/i.test(String(v.status || '')) && (isRentals(v.category) || isRentals(v.budgetCategory)))) return true;
+  const rows = Array.isArray(ev.budget) ? ev.budget : [];
+  if (rows.some((r) => r && isRentals(r.category) && ['actual', 'estimated', 'amount', 'planned', 'cost'].some((k) => Number(r[k]) > 0))) return true;
+  const got = (ev.capacityChecked && typeof ev.capacityChecked === 'object') ? ev.capacityChecked : {};
+  const owned = (ev.capacityOwned && typeof ev.capacityOwned === 'object') ? ev.capacityOwned : {};
+  return Object.keys(got).some((k) => got[k] && !owned[k] && (supplyIntel(k) || {}).kind === 'rent');
+}
 export function supplyIntel(name) {
   const s = String(name || '');
   if (!s) return null;

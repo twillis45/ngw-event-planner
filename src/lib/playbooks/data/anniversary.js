@@ -94,7 +94,7 @@ const anniversary = {
     { id: 't_cake', milestoneId: 'event', phase: 'food', label: 'Cut + serve the anniversary cake right after the toast', when: 'T0 +2:15' },
     { id: 't_clear', milestoneId: 'event', phase: 'cleanup', label: "Clear into the staged bus tub (don't wash mid-party); keep trash/recycling moving", when: 'ongoing' },
     { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Post-party reset: leftovers into containers, run dishwasher, return rentals box, bottles to recycling', when: 'T0 +4:00' },
-    { id: 't_after_rentals', milestoneId: 'an_after_return', phase: 'cleanup', label: 'Get the rentals back on their return date — chairs, linens, glassware, the coffee urn — counted against the rental sheet before they go', when: 'T0 +2d' },
+    { id: 't_after_rentals', whenRented: true, milestoneId: 'an_after_return', phase: 'cleanup', label: 'Get the rentals back on their return date — chairs, linens, glassware, the coffee urn — counted against the rental sheet before they go', when: 'T0 +2d' },
     { id: 't_after_borrowed', milestoneId: 'an_after_return', phase: 'cleanup', label: 'Return what family lent for the memory table: the framed photos, the wedding album, the cake stand — the irreplaceable things go back first', when: 'T0 +2d' },
     { id: 't_after_projector', milestoneId: 'an_after_return', phase: 'cleanup', label: 'Return the borrowed projector, screen, and speakers with every cable and adapter they arrived with', when: 'T0 +2d' },
     { id: 't_after_share_show', milestoneId: 'an_after_memory', phase: 'memory', label: 'Send the slideshow as a link to everyone who could not make the trip — the grandchildren overseas, the friends too frail to travel — with a line about how the night went', when: 'T0 +5d' },
