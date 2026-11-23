@@ -1,5 +1,12 @@
 # Where We Are -- live status board
 
+## November 23, 2026 (late night) — part 2: urgent calls reach the hero, and four more numbers have one reader
+
+- **Time-sensitive calls (owner ruling 11/23).** A call the Calls list marks time-sensitive now leads the hero when its window closes before the hero's own deadline. On Thanksgiving 9–12 days out, "Is anyone staying overnight?" surfaces once the menu is chosen. The budget, the menu panel, a closing shop and the event day keep their place. One reader (`lib/urgency`) serves both the tag and the hero.
+- **One reader each:** item counts (food & drink items vs items on the list, and one "left to buy"), a per-head figure, the shop's "all in" (now with the seating sheet's gear, as Your money counts it), and the venue address (the ledger and Space's Guest arrival agree).
+- **A vendor conflict says its own next step** instead of a guess from its title words.
+- **Still open:** who-cooks and guest-count wording from one source; the rest of the hero's copy ladder; step satisfaction still reads step text. See HANDOFF.
+
 ## November 23, 2026 (night) — six root causes, fixed where they start
 
 **The owner's Thanksgiving walkthrough found seven P0/P1 symptoms, which came from six mechanisms. Each mechanism is now gone everywhere, and a test over all 47 playbooks guards it.**
