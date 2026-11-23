@@ -62,3 +62,34 @@ export function perHeadOf(total, event) {
   if (!heads) return null;
   return { each: Math.round(n / heads), heads, hostIncluded, basis, stated };
 }
+
+// ─── ONE DIVISION, ONE WAY OF PRINTING IT (six root causes, cause 3) ────────
+// Thanksgiving walkthrough P1-6: the Shop sheet read "$9–$24 a head" and Your
+// money read "$6–$17 a head" for the same dinner. Both were right (all in vs
+// food and drink), but each surface divided its own total its own way (the
+// rounded total, the raw sum, and the Q&A context a third time, unrounded).
+// Every per-head figure over a planned headcount now comes from here. Each
+// surface keeps the words that say what its figure covers ("estimate, all
+// in", "Full food and drink plan", a budget tier) in front of it.
+
+/** A total over the guests, in whole dollars; null when there are no guests. */
+export function perHead(total, guests) {
+  const g = Number(guests);
+  const t = Number(total);
+  if (!(g > 0) || !Number.isFinite(t)) return null;
+  return Math.round(t / g);
+}
+
+/** The low–high pair over the guests; null when there are no guests. */
+export function perHeadRange(low, high, guests) {
+  const lo = perHead(low, guests);
+  const hi = perHead(high, guests);
+  return lo == null || hi == null ? null : { low: lo, high: hi };
+}
+
+/** "$9–$24 a head". `fmt` is the surface's own money formatter. */
+export function perHeadText(range, fmt = (n) => `$${n}`) {
+  if (!range) return '';
+  const fig = range.low === range.high ? fmt(range.low) : `${fmt(range.low)}–${fmt(range.high)}`;
+  return `${fig} a head`;
+}

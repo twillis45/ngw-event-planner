@@ -20,12 +20,14 @@
 // Thin composition over existing single sources (guestCountResolved, weather
 // readers, dayBefore-style vendor gaps, playbook plans) — not a new engine.
 
-import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, openFoodChoices, hostBuysLine, menuChoicesTally, getPlaybook } from './playbooks';
+import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, openFoodChoices, menuChoicesTally, getPlaybook } from './playbooks';
 import { rainPlanStatus } from './weather';
 import { placeIsOutdoors, OUTDOOR_TYPE } from './placeIntelligence';
 import { spanNights } from './dates';
 import { allergyAsk } from './knownFacts';
 import { eventLocationStatus } from './locationAssist';
+import { venueFor } from './venueFor';
+import { linesLeftToBuy } from './itemCounts';
 import { buildCrabPlan } from './crabPlan';
 import { isVendorSettled } from './workstreams';
 import { chosenCatererUnbooked } from './vendorPlan';
@@ -176,9 +178,16 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   // ten months out is noise a host learns to ignore before it is ever true.
   // Order carries this, not severity. (Severity escalates on the countdown; see
   // assembleRevealEngines.)
-  const _addressSigned = _locStatus === 'venue_only' || _locStatus === 'full_address';
+  // ONE FACT WITH THE PLACE SHEET (six root causes, cause 3; FINDINGS P2,
+  // D-09): "Venue address: handled" sat over Space's "Add your street address
+  // so guests know exactly where to go" because this row counted a home's
+  // name as its address. It reads venueFor's `findable` now, the verdict the
+  // Guest arrival row and the outward guard read: at home only a street
+  // counts; elsewhere a named place is its address, as before.
+  const _vf = venueFor(ev);
+  const _addressSigned = _vf.findable;
   add('venueaddress', !_locationMissing, _addressSigned,
-    'Name the venue',
+    _vf.isHome ? 'Add your street address' : 'Name the venue',
     { tab: 'Event Details', focusField: 'event-venue' }, 3);
   const gc = (() => { try { return guestCountResolved(ev); } catch { return { resolved: false }; } })();
   // A real named guest list — even with replies still pending — IS the host
@@ -293,8 +302,7 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   // Shopping only becomes an essential inside the final week — a full cart in
   // month two is not a readiness gap.
   if (shopWeek) {
-    const got = (ev.foodGot && typeof ev.foodGot === 'object') ? ev.foodGot : {};
-    const unboughtItems = plan.list.filter(i => hostBuysLine(i) && !i.skipped && !got[i.id]);
+    const unboughtItems = linesLeftToBuy(plan, ev);
     const unbought = unboughtItems.length;
     // THE SHOP IS A CLOSING WINDOW (issue #100, D-11). This row reached the
     // ranker with no clock and no consequence, so two days out "Set your

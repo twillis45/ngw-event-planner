@@ -20,6 +20,7 @@ import { effectiveDone } from './taskEngine';
 import { isVendorConfirmed } from './workstreams';
 import { rainPlanStatus } from './weather';
 import { playbookFoodPlan } from './playbooks';
+import { linesLeftToBuy } from './itemCounts';
 import { eventLocationStatus } from './locationAssist';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -44,8 +45,8 @@ export function buildReturnSnapshot(event, now = Date.now()) {
   let foodLeft = null;
   try {
     const plan = playbookFoodPlan(ev);
-    const got = (ev.foodGot && typeof ev.foodGot === 'object') ? ev.foodGot : {};
-    if (plan && Array.isArray(plan.list)) foodLeft = plan.list.filter(i => i && !i.skipped && !got[i.id]).length;
+    // The one "left to buy" (lib/itemCounts): a dish a friend brings is not hers.
+    if (plan && Array.isArray(plan.list)) foodLeft = linesLeftToBuy(plan, ev).length;
   } catch { /* null */ }
   const vendors = (Array.isArray(ev.vendors) ? ev.vendors : []).filter(v => v && has(v.name));
   // SSOT #1 ROOT FIX: this count licenses the claim "every vendor is squared away"

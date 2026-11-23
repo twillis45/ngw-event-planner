@@ -91,6 +91,7 @@ import { buildCrabPlan } from '../crabPlan';
 import { isVendorBooked, bookedVendorIn, hiredVendors } from '../workstreams';
 import { crabsPerPicker, crabsPerBushel } from '../crabServing';
 import { kidCount, vegCount, KID_PROTEIN_FACTOR } from '../appetite';
+import { perHead } from '../perHead';
 import { getCompressionLevel, getStandardLeadProvenance, isGroundedLead } from '../workflowCompression';
 import { effectiveTimingProvenance, isGroundedTiming, timingConflict } from '../knowledge/timingProvenance';
 // PHASE 5A-2 — the ONE runtime reader of governed knowledge. Purchase provenance
@@ -6558,8 +6559,9 @@ export function playbookFoodPlan(event, opts = {}) {
     // Cost PER HEAD — both totals are now priced at the same ceiling headcount (see
     // above), so both ends divide by `guests` too: per-guest × guests ties back
     // exactly to foodLow/foodHigh, and the range is pure price spread, matching them.
-    perGuestLow: guests > 0 ? Math.round(sum('low') / guests) : 0,
-    perGuestHigh: guests > 0 ? Math.round(sum('high') / guests) : 0,
+    // One division (lib/perHead), the same one every per-head figure reads.
+    perGuestLow: perHead(sum('low'), guests) || 0,
+    perGuestHigh: perHead(sum('high'), guests) || 0,
     // ── AND THE PAIR THAT MATCHES AN "ALL IN" TOTAL (2026-10-06) ───────────
     // `sum()` above is filtered by `isFood`, so perGuestLow/High are food
     // only. That is CORRECT where they are used: the money row prints
@@ -6573,12 +6575,8 @@ export function playbookFoodPlan(event, opts = {}) {
     // ADDITIVE, for the same reason as shoppingCount above: widening the
     // existing pair would break the surface that is right in order to fix the
     // one that is wrong.
-    perGuestAllInLow: guests > 0
-      ? Math.round((Math.max(0, Math.round(sum('low') / 5) * 5) + Math.max(0, Math.round(supSum('low') / 5) * 5)) / guests)
-      : 0,
-    perGuestAllInHigh: guests > 0
-      ? Math.round((Math.max(0, Math.round(sum('high') / 5) * 5) + Math.max(0, Math.round(supSum('high') / 5) * 5)) / guests)
-      : 0,
+    perGuestAllInLow: perHead(Math.max(0, Math.round(sum('low') / 5) * 5) + Math.max(0, Math.round(supSum('low') / 5) * 5), guests) || 0,
+    perGuestAllInHigh: perHead(Math.max(0, Math.round(sum('high') / 5) * 5) + Math.max(0, Math.round(supSum('high') / 5) * 5), guests) || 0,
     // bandLow/bandHigh still disclose the REAL attendance spread (60-86, say) as its
     // own honest fact — separate from the dollar figures above, never compounded in.
     bandLow: _guestsLow, bandHigh: guests,

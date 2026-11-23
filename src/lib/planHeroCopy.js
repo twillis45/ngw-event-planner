@@ -18,7 +18,8 @@
 // Language: host-friendly only. Never "locked/blocked/overdue by N days";
 // "past its easy window" is the strongest phrasing.
 
-import { playbookDecisionBoard, playbookFoodPlan, hostBuysLine } from './playbooks';
+import { playbookDecisionBoard, playbookFoodPlan } from './playbooks';
+import { linesLeftToBuy } from './itemCounts';
 import { isSolemnEvent } from './solemn';
 import { daysUntil } from './dates';
 
@@ -109,8 +110,7 @@ export function planHeroCopy(event, priceFactor) {
   }
 
   // Board quiet (nothing overdue or ready) — shopping is the live work.
-  const got = (ev.foodGot && typeof ev.foodGot === 'object') ? ev.foodGot : {};
-  const unbought = list.filter((i) => hostBuysLine(i) && !i.skipped && !got[i.id]);
+  const unbought = linesLeftToBuy({ list }, ev);
   if (unbought.length) {
     const low = unbought.reduce((s, i) => s + (Number(i.locked != null ? i.locked : i.low) || 0), 0);
     const high = unbought.reduce((s, i) => s + (Number(i.locked != null ? i.locked : i.high) || 0), 0);
