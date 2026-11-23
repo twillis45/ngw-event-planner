@@ -10885,6 +10885,11 @@ export default function HostShellV2() {
   const openDraftUnsaved = () => {
     const held = commitDraftToDevice('hostshell:open-draft-unsaved');
     if (!held) return;
+    // A NEW HOST IS COUNTED WHEN SHE OPENS HER PLAN (coordinator, 11/23/2026):
+    // opened unsaved, she may never sign in, and the funnel must not lose her.
+    // `unsaved: true` marks it; a later sign-in keeps the same plan without a
+    // second count (the draft is already held, so keepDraftOnSignIn returns).
+    try { trackEvent(ANALYTICS.EVENT_CREATED, { is_first: held.list.length === 0, event_type: held.ev.type, unsaved: true }); } catch (_e) { /* a counter never blocks a plan */ }
     keepIntentRef.current = null;
     setSheet(null);
     setStage(landingStage({ event: held.ev, ownPlan: true, now: new Date() }));

@@ -10,14 +10,14 @@ the host did not set is never stated.
 """
 from app.invite_email import compose_invite_email
 
-EV = {"name": "My Friendsgiving", "type": "Friendsgiving", "date": "2026-11-21", "startTime": "16:00",
+EV = {"name": "Reyes Friendsgiving", "type": "Friendsgiving", "date": "2026-11-21", "startTime": "16:00",
       "startTimeSource": "host", "venue": "Vida's", "venueAddress": "12 Pine St, Baltimore, MD", "rsvpCode": "Code123456789012"}
 NOTE = "We’d love to have you with us.\n\nLet us know you’re coming:\nhttps://x.test/hostv2/?rsvp=Code123456789012\n\nCan’t wait to see you!"
 
 
 def test_the_email_is_the_invitation():
     html, text = compose_invite_email(EV, NOTE, "Kesha", "Vida Reyes", None)
-    assert "You’re invited" in html and "Vida Reyes invites you to" in html and "My Friendsgiving" in html
+    assert "You’re invited" in html and "Vida Reyes invites you to" in html and "Reyes Friendsgiving" in html
     assert "Saturday<br>November 21" in html and "4:00 PM" in html
     assert "Vida&#x27;s" in html and "12 Pine St, Baltimore, MD" in html
     assert "https://twillis45.github.io/ngw-event-planner/hostv2/?rsvp=Code123456789012" in html
@@ -61,7 +61,7 @@ def test_a_solemn_gathering_gets_the_quiet_card():
 
 def test_the_plain_text_part_has_the_same_facts_and_the_stop_link():
     _, text = compose_invite_email(EV, NOTE, "Kesha", "Vida Reyes", "https://api.test/api/public/email/stop/tok")
-    for want in ("My Friendsgiving", "Saturday, November 21 · 4:00 PM", "Vida's", "https://twillis45.github.io/ngw-event-planner/hostv2/?rsvp=Code123456789012", "Stop emails about this event: https://api.test/api/public/email/stop/tok"):
+    for want in ("Reyes Friendsgiving", "Saturday, November 21 · 4:00 PM", "Vida's", "https://twillis45.github.io/ngw-event-planner/hostv2/?rsvp=Code123456789012", "Stop emails about this event: https://api.test/api/public/email/stop/tok"):
         assert want in text
 
 
@@ -95,8 +95,10 @@ def test_an_invite_without_the_day_the_hour_or_the_place_has_gaps():
     assert invite_gaps({**EV, "startTimeSource": "derived"}) == ["time"]
     assert invite_gaps({**EV, "startTime": ""}) == ["time"]
     assert invite_gaps({**EV, "venue": "", "venueAddress": ""}) == ["place"]
-    assert invite_gaps({**EV, "venue": "", "venueAddress": "", "venueCity": "Baltimore"}) == []
-    assert invite_gaps({}) == ["date", "time", "place"]
+    # A town alone is a place but not a door (six root causes, cause 6).
+    assert invite_gaps({**EV, "venue": "", "venueAddress": "", "venueCity": "Baltimore"}) == ["address"]
+    assert invite_gaps({**EV, "name": "My Friendsgiving"}) == ["name"]
+    assert invite_gaps({}) == ["date", "time", "place", "name"]
 
 
 def test_an_at_home_event_named_only_by_its_town_says_the_town():

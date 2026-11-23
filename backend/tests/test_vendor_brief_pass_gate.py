@@ -32,6 +32,9 @@ import app.routers.vendor_brief as vb_mod
 
 V1 = {"id": "v1", "name": "Capital Rotisserie Catering", "category": "Catering"}
 V2 = {"id": "v2", "name": "Fork & Flower", "category": "Florist"}
+# A real name and a findable place: since 11/23/2026 a brief does not go out
+# without them (app/outward.py outward_gaps, six root causes cause 6).
+PLACE = {"name": "Dana's Birthday", "venue": "Elks Lodge 2004"}
 
 
 class _Conn:
@@ -102,69 +105,69 @@ def _reason(r):
 
 
 def test_the_first_brief_on_a_free_event_is_minted(monkeypatch):
-    conn = _Conn({"vendors": [V1, V2]})
+    conn = _Conn({**PLACE, "vendors": [V1, V2]})
     r = _mint(_client(monkeypatch, conn), "v1")
     assert r.status_code == 200 and r.json()["code"] == conn.inserted
 
 
 def test_a_second_vendor_is_refused_after_a_server_link(monkeypatch):
-    conn = _Conn({"vendors": [V1, V2]}, links={"v1": "CODE_FOR_V1_123456789"})
+    conn = _Conn({**PLACE, "vendors": [V1, V2]}, links={"v1": "CODE_FOR_V1_123456789"})
     r = _mint(_client(monkeypatch, conn), "v2")
     assert r.status_code == 402 and _reason(r) == "second-vendor"
     assert conn.inserted is None
 
 
 def test_a_second_vendor_is_refused_after_a_shared_list_entry(monkeypatch):
-    conn = _Conn({"vendors": [V1, V2], "briefSharedVendorIds": ["v1"]})
+    conn = _Conn({**PLACE, "vendors": [V1, V2], "briefSharedVendorIds": ["v1"]})
     r = _mint(_client(monkeypatch, conn), "v2")
     assert r.status_code == 402 and _reason(r) == "second-vendor"
 
 
 def test_listing_the_vendor_itself_as_shared_does_not_count_against_it(monkeypatch):
-    conn = _Conn({"vendors": [V1, V2], "briefSharedVendorIds": ["v1"]})
+    conn = _Conn({**PLACE, "vendors": [V1, V2], "briefSharedVendorIds": ["v1"]})
     r = _mint(_client(monkeypatch, conn), "v1")
     assert r.status_code == 200
 
 
 def test_a_pass_required_event_is_refused(monkeypatch):
-    conn = _Conn({"vendors": [V1], "passRequired": True, "passReasons": ["destination"]})
+    conn = _Conn({**PLACE, "vendors": [V1], "passRequired": True, "passReasons": ["destination"]})
     r = _mint(_client(monkeypatch, conn), "v1")
     assert r.status_code == 402 and _reason(r) == "pass-required"
 
 
 def test_a_multi_day_stamp_is_refused_even_beside_a_door_3_reason(monkeypatch):
-    conn = _Conn({"vendors": [V1], "passRequired": True, "passReasons": ["multi-day", "additional-event"]})
+    conn = _Conn({**PLACE, "vendors": [V1], "passRequired": True, "passReasons": ["multi-day", "additional-event"]})
     r = _mint(_client(monkeypatch, conn), "v1")
     assert r.status_code == 402 and _reason(r) == "pass-required"
 
 
 def test_a_door_3_only_stamp_is_free_its_first_brief_is_minted(monkeypatch):
-    conn = _Conn({"vendors": [V1, V2], "passRequired": True, "passReasons": ["additional-event"]})
+    conn = _Conn({**PLACE, "vendors": [V1, V2], "passRequired": True, "passReasons": ["additional-event"]})
     r = _mint(_client(monkeypatch, conn), "v1")
     assert r.status_code == 200 and r.json()["code"] == conn.inserted
 
 
 def test_a_door_3_only_stamp_still_takes_the_pass_for_a_second_vendor(monkeypatch):
-    conn = _Conn({"vendors": [V1, V2], "passRequired": True, "passReasons": ["additional-event"]},
+    conn = _Conn({**PLACE, "vendors": [V1, V2], "passRequired": True, "passReasons": ["additional-event"]},
                  links={"v1": "CODE_FOR_V1_123456789"})
     r = _mint(_client(monkeypatch, conn), "v2")
     assert r.status_code == 402 and _reason(r) == "second-vendor"
 
 
 def test_a_held_pass_unlocks_every_vendor(monkeypatch):
-    conn = _Conn({"vendors": [V1, V2], "passRequired": True, "passReasons": ["destination"]}, links={"v1": "CODE_FOR_V1_123456789"}, pass_held=True)
+    conn = _Conn({**PLACE, "vendors": [V1, V2], "passRequired": True, "passReasons": ["destination"]}, links={"v1": "CODE_FOR_V1_123456789"}, pass_held=True)
     r = _mint(_client(monkeypatch, conn), "v2")
     assert r.status_code == 200
 
 
 def test_an_existing_link_is_never_taken_back(monkeypatch):
-    conn = _Conn({"vendors": [V1, V2], "passRequired": True, "passReasons": ["destination"]}, links={"v1": "CODE_FOR_V1_123456789", "v2": "CODE_FOR_V2_123456789"})
+    conn = _Conn({**PLACE, "vendors": [V1, V2], "passRequired": True, "passReasons": ["destination"]}, links={"v1": "CODE_FOR_V1_123456789", "v2": "CODE_FOR_V2_123456789"})
     r = _mint(_client(monkeypatch, conn), "v2")
     assert r.status_code == 200 and r.json()["code"] == "CODE_FOR_V2_123456789"
 
 
 def test_nothing_is_refused_while_billing_is_not_live(monkeypatch):
-    conn = _Conn({"vendors": [V1, V2], "passRequired": True, "passReasons": ["destination"]}, links={"v1": "CODE_FOR_V1_123456789"})
+    conn = _Conn({**PLACE, "vendors": [V1, V2], "passRequired": True, "passReasons": ["destination"]}, links={"v1": "CODE_FOR_V1_123456789"})
     r = _mint(_client(monkeypatch, conn, live=False), "v2")
     assert r.status_code == 200
 
@@ -175,3 +178,16 @@ def test_billing_live_reads_both_stripe_keys(monkeypatch):
     assert vb_mod._billing_live() is False
     monkeypatch.setattr(vb_mod.config, "STRIPE_WEBHOOK_SECRET", "whsec_x")
     assert vb_mod._billing_live() is True
+
+
+# SIX ROOT CAUSES, cause 6 (11/23/2026): the server refuses a brief for an
+# event with a placeholder name or no place a vendor can find, in plain words,
+# and mints nothing.
+def test_a_placeholder_event_gets_no_brief(monkeypatch):
+    for data in ({"name": "My Birthday", "venue": "Elks Lodge 2004", "vendors": [V1]},
+                 {"name": "Dana's Birthday", "venueKind": "home", "venueCity": "Bowie", "venueState": "MD", "vendors": [V1]}):
+        conn = _Conn(data)
+        r = _mint(_client(monkeypatch, conn), "v1")
+        assert r.status_code == 422
+        assert "Nothing was sent." in r.json()["detail"]
+        assert getattr(conn, "inserted", None) in (None, False)

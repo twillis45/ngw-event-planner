@@ -344,3 +344,9 @@ def outward_gaps(ev: dict, surface: str = "invite") -> list:
     if not findable:
         gaps.append({"key": "address", "ask": _ASKS["address"]})
     return gaps
+
+
+def outward_refusal(ev: dict, surface: str):
+    """The plain sentence a refused send answers with, or None when it may go."""
+    gaps = outward_gaps(ev, surface)
+    return " ".join(g["ask"] for g in gaps) + " Nothing was sent." if gaps else None

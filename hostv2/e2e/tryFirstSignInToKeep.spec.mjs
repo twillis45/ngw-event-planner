@@ -194,6 +194,9 @@ test.describe('try first, sign in to keep', () => {
     // On this device, not in any account.
     expect((await stored(page)).some((n) => /Game Night/.test(n || ''))).toBe(true);
     expect(calls.writes, 'opening it sent something').toHaveLength(0);
+    // Counted as a new plan, marked unsaved, once (the funnel never loses her).
+    const created = await page.evaluate(() => (window.__NGW_TRACK__ || []).filter((t) => t.event === 'event_created'));
+    expect(created).toEqual([{ event: 'event_created', is_first: true, event_type: 'Game Night', unsaved: true }]);
     // The existing row asks her to keep it, on the plan, not in her way.
     await expect(page.locator('[data-keep-ask]')).toContainText('Not saved yet. Sign in to keep it.', { timeout: 8000 });
     await page.reload();

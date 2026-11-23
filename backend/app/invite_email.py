@@ -22,7 +22,7 @@ import re
 
 from .email_frame import frame, hue_for, when_fact, where_fact
 from .guest_notices import invite_url
-from .outward import event_days, place_line, venue_for
+from .outward import event_days, place_line, venue_for, outward_gaps
 
 _URL_LINE = re.compile(r"^\s*https?://\S+\s*$")
 _INTRO_LINE = re.compile(r":\s*$")     # "Let us know you're coming:" — it only introduced the link
@@ -71,6 +71,11 @@ def invite_gaps(ev: dict) -> list:
         gaps.append("time")
     if not any(str(ev.get(k) or "").strip() for k in ("venue", "venueAddress", "venueCity")):
         gaps.append("place")
+    # The one outward guard (six root causes, cause 6): no placeholder name, and
+    # a door a guest can find. Same rules as src/lib/outwardReady.js.
+    for g in outward_gaps(ev, "invite"):
+        if not (g["key"] == "address" and "place" in gaps):
+            gaps.append(g["key"])
     return gaps
 
 

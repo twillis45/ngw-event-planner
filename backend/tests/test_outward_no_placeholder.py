@@ -16,3 +16,11 @@ def test_a_home_needs_a_street_and_real_data_passes():
     assert keys == ["name", "address"]
     assert outward_gaps({"type": "Thanksgiving Hosting", "name": "Thanksgiving Dinner", **STREET}) == []
     assert outward_gaps({"type": "Birthday", "name": "Aunt Bee's Birthday", "venue": "Elks Lodge 2004", "venueKind": "venue", "venueCity": "Bowie", "venueState": "MD"}) == []
+
+
+def test_the_invite_email_check_reads_the_one_guard():
+    from app.invite_email import invite_gaps
+    ev = {"type": "Thanksgiving Hosting", "name": "My Thanksgiving Hosting", "date": "2026-11-26",
+          "startTime": "15:00", "startTimeSource": "host", **HOME}
+    assert invite_gaps(ev) == ["name", "address"]
+    assert invite_gaps({**ev, "name": "Thanksgiving Dinner", **STREET}) == []

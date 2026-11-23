@@ -516,7 +516,7 @@ async def create_message(
         if payload.invite and standard_email:
             missing = invite_gaps(event_data)
             if missing:
-                words = {"date": "the date", "time": "the start time", "place": "the place"}
+                words = {"date": "the date", "time": "the start time", "place": "the place", "name": "a real name for the event", "address": "the street address"}
                 raise HTTPException(422, "This invite is missing " + " and ".join(words[m] for m in missing)
                                     + ". Add it in the app, then send again.")
         stop_token = await _email_stop_token(conn, event_id, payload.recipient_email) if standard_email else None

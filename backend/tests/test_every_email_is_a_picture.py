@@ -38,7 +38,7 @@ from app.invite_email import compose_invite_email
 from _pictures import no_picture, picture, pics  # noqa: F401  (pics is a fixture)
 
 STOP = "https://api.example.test/api/public/email/stop/tok-aaaaaaaaaaaaaaaaaaaa"
-EVENT = {"name": "My Friendsgiving", "type": "Friendsgiving", "date": "2026-11-21", "startTime": "4:00 PM",
+EVENT = {"name": "Reyes Friendsgiving", "type": "Friendsgiving", "date": "2026-11-21", "startTime": "4:00 PM",
          "venue": "Vida's", "venueAddress": "271 Whitaker Rd", "rsvpCode": "rsvp-code-aaaaaaaaaaaa",
          "hostName": "Casey Rivera",
          "guests": [{"id": "g1", "name": "Jordan Lee", "email": "jordan.helper@example.test", "allergens": ["Peanut"]}],
@@ -58,18 +58,18 @@ EMAILS = {
                ["Open your invitation", "Yes, I’m in", "Can’t make it", "Maybe", "Bring a folding chair!"], STOP),
     "message": (lambda: cm.compose_message_email(EVENT, "Can you bring ice?\nThanks", "Rosa", "Casey Rivera", STOP),
                 ["Can you bring ice?<br>Thanks", "Hi Rosa,"], STOP),
-    "reply_notice": (lambda: gn.compose_reply_notice("Casey", "My Friendsgiving", "Street parking is free.", "rsvp-1", "gtok-1")[2:5:2],
+    "reply_notice": (lambda: gn.compose_reply_notice("Casey", "Reyes Friendsgiving", "Street parking is free.", "rsvp-1", "gtok-1")[2:5:2],
                      ["Open your invite", "Street parking is free."], gn.unsubscribe_url("gtok-1")),
-    "announcement": (lambda: gn.compose_announcement("Casey", "My Friendsgiving", "Doors at 4.", "rsvp-1", "gtok-1")[2:5:2],
+    "announcement": (lambda: gn.compose_announcement("Casey", "Reyes Friendsgiving", "Doors at 4.", "rsvp-1", "gtok-1")[2:5:2],
                      ["Open your invite", "Doors at 4."], gn.unsubscribe_url("gtok-1")),
     "helper_ask": (lambda: _helper()[1:], ["I can do it", "I can’t", "Hi Jordan,"], STOP),
-    "approval": (lambda: em.compose_approval_email("My Friendsgiving", "Menu & budget", "https://app.example.test/?event=e1"),
+    "approval": (lambda: em.compose_approval_email("Reyes Friendsgiving", "Menu & budget", "https://app.example.test/?event=e1"),
                  ["Review &amp; respond", "Menu &amp; budget"], None),
-    "week_before": (lambda: hr.compose_week_before("My Friendsgiving", dt.date(2026, 11, 21), "tok-r")[1:],
+    "week_before": (lambda: hr.compose_week_before("Reyes Friendsgiving", dt.date(2026, 11, 21), "tok-r")[1:],
                     ["Open your plan"], "tok-r"),
-    "host_alert": (lambda: ha.compose("rsvp", "Jordan", "My Friendsgiving", "Yes")[1:],
-                   ["Open your plan", "Jordan replied Yes for My Friendsgiving."], None),
-    "cohost_invite": (lambda: co.compose_cohost_invite("My Friendsgiving", "sam.cohost@example.test", "Casey Rivera"),
+    "host_alert": (lambda: ha.compose("rsvp", "Jordan", "Reyes Friendsgiving", "Yes")[1:],
+                   ["Open your plan", "Jordan replied Yes for Reyes Friendsgiving."], None),
+    "cohost_invite": (lambda: co.compose_cohost_invite("Reyes Friendsgiving", "sam.cohost@example.test", "Casey Rivera"),
                       ["Open the app", "sam.cohost@example.test"], None),
 }
 
@@ -85,7 +85,7 @@ def jpeg_size(data):
 def test_each_email_kind_draws_a_jpeg_1040_wide(kind):
     html, _t = EMAILS[kind][0]()
     card = html.card
-    assert card and card["title"] == "My Friendsgiving" and card["theme"] == ef.THEME_FOR[kind]
+    assert card and card["title"] == "Reyes Friendsgiving" and card["theme"] == ef.THEME_FOR[kind]
     data = ec.draw_card(card)
     w, h = jpeg_size(data)
     assert w == 1040 and 200 < h < 2400
@@ -122,7 +122,7 @@ def test_every_string_is_drawn_once_with_no_shadow(monkeypatch):
     _s, html, _t = _helper()
     ec.draw_card(html.card)
     words = [w for w in drawn if len(w) > 1]           # a spaced label is drawn a letter at a time
-    for s in ("My Friendsgiving", "Saturday", "November 21", "4:00 PM", "Vida's", "271 Whitaker Rd", "• Set up chairs"):
+    for s in ("Reyes Friendsgiving", "Saturday", "November 21", "4:00 PM", "Vida's", "271 Whitaker Rd", "• Set up chairs"):
         assert words.count(s) == 1, (s, words.count(s))
     assert len(words) == len(set(words))
 
@@ -221,7 +221,7 @@ def test_without_storage_the_html_card_stands_in(kind):
     html, text = compose()
     out, out_text = asyncio.run(ep.with_picture(html, text))
     assert out == html and out_text == text and no_picture(out)
-    assert "My Friendsgiving" in out
+    assert "Reyes Friendsgiving" in out
     for piece in live:
         assert piece in out
     if stop:
@@ -250,7 +250,7 @@ def test_the_invite_keeps_its_own_uploaded_picture(pics):  # noqa: F811
 def test_one_picture_serves_a_batch(pics):  # noqa: F811
     memo = {}
     a = asyncio.run(ep.with_picture(*EMAILS["announcement"][0](), memo))[0]
-    b = gn.compose_announcement("Casey", "My Friendsgiving", "Doors at 4.", "rsvp-1", "gtok-2")
+    b = gn.compose_announcement("Casey", "Reyes Friendsgiving", "Doors at 4.", "rsvp-1", "gtok-2")
     b = asyncio.run(ep.with_picture(b[2], b[4], memo))[0]
     assert picture(a)[0] == picture(b)[0] and len(pics) == 1
 
@@ -298,17 +298,17 @@ def test_the_approval_email_is_sent_with_its_picture(pics, monkeypatch):  # noqa
     async def fake(**k): sent.append(k); return {"id": "r1"}
     monkeypatch.setattr(em, "_send_via_resend", fake)
     monkeypatch.setattr(em, "is_email_configured", lambda: True)
-    r = asyncio.run(em.send_approval_email("client@example.test", "My Friendsgiving", "Menu", "https://app.example.test/?event=e1"))
+    r = asyncio.run(em.send_approval_email("client@example.test", "Reyes Friendsgiving", "Menu", "https://app.example.test/?event=e1"))
     assert r["ok"] and picture(sent[0]["html"]) and "Review &amp; respond" in sent[0]["html"]
 
 
 def test_the_week_before_reminder_is_sent_with_its_picture_and_its_stop(pics):  # noqa: F811
     from test_week_before_reminder import Conn, Outbox, plan, run
     out = Outbox()
-    run(Conn({"e1": (plan("My Friendsgiving"), "casey.host@example.test")}), out)
+    run(Conn({"e1": (plan("Reyes Friendsgiving"), "casey.host@example.test")}), out)
     (m,) = out.mail
     token, alt = picture(m["html"])
-    assert _html.unescape(alt) == ("One week to go. My Friendsgiving. When: Thursday, November 26. "
+    assert _html.unescape(alt) == ("One week to go. Reyes Friendsgiving. When: Thursday, November 26. "
                                    "A good moment to look over your plan and settle anything still open.")
     assert ef.MATTE_MARK in m["html"] and "Stop plan reminders" in m["html"]
     assert m["headers"]["List-Unsubscribe-Post"] == "List-Unsubscribe=One-Click"
@@ -319,7 +319,7 @@ def test_the_week_before_reminder_goes_when_storage_refuses(pics, monkeypatch): 
     async def refused(path, data): return False
     monkeypatch.setattr(ep, "_put", refused)
     out = Outbox()
-    counts = run(Conn({"e1": (plan("My Friendsgiving"), "casey.host@example.test")}), out)
+    counts = run(Conn({"e1": (plan("Reyes Friendsgiving"), "casey.host@example.test")}), out)
     assert counts["sent"] == 1 and no_picture(out.mail[0]["html"]) and "Stop plan reminders" in out.mail[0]["html"]
 
 
