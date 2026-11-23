@@ -3432,6 +3432,18 @@ export function playbookRisks(event, domain) {
     // "Allergies not collected" is not a risk once she has noted them
     // (dietaryNoted, the one rule the checklist and the food sheet read).
     .filter((r) => !(/allergies (?:not )?collected|before allergies collected/i.test(String(r.trigger || '')) && dietaryNoted(event)))
+    // A HEADCOUNT RISK RETIRES ON A SETTLED COUNT (batch 11; audit 2 lane C
+    // P1-11), the same rule as the allergy row above: "Final headcount still
+    // not locked 3 days out" stayed up the day before and the day itself over
+    // her locked 30. "Not confirmed / locked" retires on a LOCKED count — the
+    // guestCount slot, which only the count editor and the lock write
+    // (guestCountFor), or the lock flag; an estimate is not a final count.
+    // "Wrong or late to the caterer" and a guarantee "on a stale number"
+    // retire once the caterer has been given a count (catererCount), or no
+    // caterer is hired.
+    .filter((r) => !(/final headcount still not (?:confirmed|locked)/i.test(String(r.trigger || '')) && (Number(event.guestCount) > 0 || event.guestCountLocked === true)))
+    .filter((r) => !(/wrong or late to the caterer|headcount guarantee is submitted on a stale/i.test(String(r.trigger || ''))
+      && (Number(event.catererCount) > 0 || !(() => { try { return catererHired(event); } catch (_e) { return true; } })())))
     .filter((r) => !dre || dre.test(`${r.id || ''} ${r.trigger}`)) // match the trigger/id, not the fix (mitigations mention "guest" generically)
     .map((r) => {
       const sev = String(r.severity || 'med').toLowerCase();
