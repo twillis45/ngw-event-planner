@@ -1474,7 +1474,16 @@ export function parseSmartEventText(text, opts = {}) {
     const names = Object.keys(US_STATE_NAME_TO_ABBR).sort((a, b) => b.length - a.length)
       .map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
     const m = t.match(new RegExp(`\\bin\\s+(${names})\\b(?!\\s*[/&-]|\\s+(?:area|region)\\b)`, 'i'));
-    return m ? US_STATE_NAME_TO_ABBR[m[1].toLowerCase()] || null : null;
+    if (m) return US_STATE_NAME_TO_ABBR[m[1].toLowerCase()] || null;
+    // A PARK'S STATE (batch 11, #233 Left): "Sandy Point State Park, MD" is a
+    // park, not a town (cityText), and its ", MD" was dropped with the town.
+    // The same park words parseVenueLocation refuses as a town; the state goes
+    // through the same state table (an abbreviation or a full name).
+    const pk = t.match(new RegExp(`\\b(?:state|national|county|regional|memorial)\\s+(?:park|forest|beach|seashore)\\s*,\\s*([A-Z]{2}|${names})\\b`, 'i'));
+    if (!pk) return null;
+    const said = pk[1].trim();
+    return /^[A-Z]{2}$/.test(said) ? (Object.values(US_STATE_NAME_TO_ABBR).includes(said) ? said : null)
+      : (US_STATE_NAME_TO_ABBR[said.toLowerCase()] || null);
   })();
 
   const normCity = (s) => String(s || '').toLowerCase().replace(/[^a-z]/g, '');

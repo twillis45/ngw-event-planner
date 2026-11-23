@@ -318,6 +318,17 @@ export function weatherLogistics(wx, opts = {}) {
 // effect finds the element by id / data-focus-field). No new routing system.
 export const RAIN_PLAN_TARGET = { tab: 'Event Details', focusField: 'rain-plan' };
 
+// THE RAIN OPTIONS FIT THE PLACE (batch 11; audit 2 lane C P1-1). A carport
+// or a garage is a home's cover; the 150-guest vineyard wedding was offered
+// one. At a place that is not her home it is not offered.
+const RAIN_OPTIONS = ['Tent on standby', 'Carport / garage', 'Move it indoors', 'Rain or shine'];
+export function rainPlanOptions(event) {
+  let vf = null;
+  try { vf = venueFor(event || {}); } catch (_e) { vf = null; }
+  const homeOrUnnamed = !vf || vf.isHome || !vf.isSet;
+  return homeOrUnnamed ? RAIN_OPTIONS.slice() : RAIN_OPTIONS.filter((o) => o !== 'Carport / garage');
+}
+
 export function rainPlanStatus(event) {
   const hasPlan = !!String((event && event.rainPlan) || '').trim();
   return {

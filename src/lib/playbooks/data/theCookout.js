@@ -201,7 +201,7 @@ const theCookout = {
   ],
 
   vendors: [
-    { category: 'Pitmaster / BBQ caterer', required: false, altToDIY: 'Designated family grill master cooks it', when: 'T-14d', costRange: [12, 25], costUnit: 'per guest' },
+    { category: 'Pitmaster / BBQ caterer', required: false, altToDIY: 'Designated family grill master cooks it', when: 'T-14d', costRange: [15, 25], costUnit: 'per guest', costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['foodtruck-roaminghunger-2024', 'paperlust-wedding-catering-2026'], lastVerified: '2026-11-23', claim: 'BBQ catered per person, food only: pizza, BBQ or burger food truck $15-25 (Roaming Hunger); gourmet or BBQ food truck $15-28 (Paperlust 2026). Both put BBQ at $15 a head and up, so the band was corrected from $12-25 to $15-25 a guest (11/23/2026). A truck minimum ($1,500 at Roaming Hunger) can set the price at a small party.', sufficientWhen: 'A local caterer quote for this menu at this headcount.' } },
     { category: 'DJ', required: false, altToDIY: 'Curated playlist + a good speaker, family on the aux', when: 'T-14d', costRange: [300, 800], costUnit: 'flat' },
     { category: 'Tent / canopy + table / chair rental', required: false, altToDIY: 'Own/borrow pop-up canopies and folding chairs', when: 'T-10d', costRange: [150, 500], costUnit: 'flat' },
     { category: 'Soul-food caterer (sides / desserts)', required: false, altToDIY: 'Potluck spread — family brings the dishes they are known for', when: 'T-14d', costRange: [8, 18], costUnit: 'per guest' },

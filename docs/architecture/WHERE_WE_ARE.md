@@ -9,6 +9,17 @@
 - "All sections" opens the existing Sections sheet, laid out as an index. It has the same doors, plus Feeling stuck? and the pass row. Calendar, Split the costs, Share with family and Co-hosts now have real icons.
 - On a tall iPad, Who's confirmed shows its "Still waiting" sentence as two row groups (vendors; helpers & tasks), built from the same classification. Their counts equal the chips.
 - The ribbon's count line names the next growth of the count: "4 of 7 handled · shopping starts Mar 13" (audit C P1-8; owner's word "starts").
+## November 23, 2026 — three price rulings: ordering in is two answers, the vegetarian main is cited, one catered course is named
+
+**Friendsgiving's "Ordered in" is now "Order a prepared dinner" ($10-25 a guest) or "Hire a caterer" ($15-35), each cited, and only the caterer brings caterer steps.** The engine prices a vendor by her pick (`vendorRateFor`). A saved "Ordered in" reads as the caterer. The vegetarian main moves from an uncited $6-12 to a cited $1-2.87 a serving. After "Drop-off catering for 1 course", Dinner Party asks which course and takes it off the shopping list; its price stays pending, now naming the course (#239).
+
+## November 23, 2026 — the price research pass: most estimates now name a store
+
+**58 of the 100 lines labeled "Estimate — no price source yet" now cite a fetched, named, current price, and 36 of those bands moved to what the price supports.** 42 stay labeled with their reasons: kits priced on assumed counts, the Watch Party pipeline lines, the vegetarian main (contradicted by the registered prices; needs an engine change), and Friendsgiving's caterer (one answer covers two prices). Owner rulings: Sunday Dinner sweet tea is cited at $0.20-0.35, and both signage packages are itemized sums that stay labeled.
+
+## November 23, 2026 — the leftovers: pay steps wait, the day follows her answers, Undo brings the ask back
+
+**A caterer pay step waits for a caterer she hired, Crab Feast's day reads as pickup unless she steams, a state park keeps its state, and nothing asks her to return rentals she never rented.** The rain backup waits for its window, "next dated work" names a checklist date, a locked count retires its headcount risk, a potluck asks who brings what, Anniversary's count + needs call settles on both facts, a lone hero item names itself, and the count rows' Undo now brings the ask back (#237; HANDOFF has the detail and the two owner calls).
 
 ## November 22, 2026 (night) — every release has a name, and the small words read right
 

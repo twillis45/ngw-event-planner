@@ -14,6 +14,7 @@ import { plusOneCount } from '../plusOneCount';
 import { isHostName } from '../hostNameFor';
 import { cookDecisionFor, cookTasksFor, cookRisksFor } from './cookLever';
 import { cashBarDecisionsFor, cashBarKeeps, aliasedChoices } from './cashBarCover';
+import { cateredCourseDecisionsFor, cateredCourseCovers, cateredCoursePendingWhy } from './cateredCourse';
 import { buildFacts, proposedPickFor, resolveCopy } from './recommendedPick';
 import { matchGuestIndexByName } from '../guestMerge';
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
@@ -103,7 +104,7 @@ import { normalizeCategory } from '../vendorAccountability/playbooks.js';
 import { vendorDisplayName } from '../vendorDisplayName';
 import { destinationContextFor, isGroundedDestination } from '../knowledge/destinationContext';
 import { venueFor, isHomeVenueName } from '../venueFor';
-import { settledFromFacts, knownPartOf, allergyAsk, confirmAskFor } from '../knownFacts';
+import { settledFromFacts, knownPartOf, allergyAsk, confirmAskFor, hostHeadcount } from '../knownFacts';
 import { placeIsOutdoors } from '../placeIntelligence';
 import { effectiveAccessibility, isGroundedAccessibility } from '../knowledge/accessibilityContext';
 import { isGroundedCost } from '../knowledge/costProvenance';
@@ -164,6 +165,8 @@ const DECISION_INJECTORS = [
   (event) => militaryDecisionsFor(event),
   // With a cash bar, what the host still covers (owner, 11/21/2026).
   (event, pb) => cashBarDecisionsFor(pb, (id) => aliasedChoices(event && event.foodChoices)[id]),
+  // With one catered course, which course it is (owner, 11/23/2026).
+  (event, pb) => cateredCourseDecisionsFor(pb),
 ];
 
 // ─── namedHelperCount — how many people the host has said are helping ────────
@@ -955,7 +958,29 @@ export function catererPriceOf(event) {
   const v = booked || vs.find((x) => /\bquot/i.test(String(x.status || '')));
   return v ? { vendor: v, cost: Math.round(Number(v.cost)), booked: !!booked } : null;
 }
+// ── A CALL MADE OF TWO FACTS (batch 11, #229 Left) ──────────────────────────
+// Anniversary's "Confirm guest count + collect dietary/accessibility needs" has
+// no options: it is two facts the event already keeps. It was asked after she
+// gave her count and tapped "That's everyone — noted". A decision authoring
+// `settledWhen` settles when every part it names is on record:
+//   headcount  her own count (hostHeadcount: typed, locked, picked or a list,
+//              never the playbook's typical);
+//   needs      the needs noted, or recorded on the guest rows (dietaryResolved).
+// No option is claimed; the settled row says the two facts.
+function settledByParts(event, decision) {
+  const parts = decision.settledWhen;
+  const n = (() => { try { return hostHeadcount(event); } catch (_e) { return null; } })();
+  const needs = (() => { try { return dietaryResolved(event); } catch (_e) { return { resolved: false }; } })();
+  const said = [];
+  for (const part of parts) {
+    if (part === 'headcount') { if (!n) return null; said.push(`${n} ${n === 1 ? 'guest' : 'guests'}`); }
+    else if (part === 'needs') { if (!needs.resolved || needs.reason === 'no-list') return null; said.push(needs.reason === 'noted' ? 'needs noted' : 'needs on the guest list'); }
+    else return null;
+  }
+  return { pick: null, because: said.join(' · ') };
+}
 export function decisionSettledByData(event, decision) {
+  if (event && decision && Array.isArray(decision.settledWhen) && decision.settledWhen.length) return settledByParts(event, decision);
   if (!event || !decision || !Array.isArray(decision.options) || !decision.options.length) return null;
   // A GENERIC FOOD ANSWER ON FILE IS THIS CALL'S ANSWER (Crab Feast, audit 2
   // lane A P1-5): "We'll cook it" is "Steam them myself". Data-declared
@@ -1488,7 +1513,10 @@ const HOST_COOKS_OPTION_RE = /\bbake it\b|cook\/grill yourself|cook it yourself|
 export function foodApproach(event) {
   const pb = getPlaybook(event && event.type);
   const decisions = pb && Array.isArray(pb.decisions) ? pb.decisions : [];
-  const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  // A retired answer wording reads as its current one (cashBarCover's
+  // ANSWER_ALIASES), the same as choicePickFor: Friendsgiving's old "Ordered in"
+  // answer is now "Hire a caterer" (11/23/2026).
+  const picks = aliasedChoices(event && event.foodChoices);
   const nulls = { decisionId: null, pick: null, usesCaterer: null, communityBrings: null, cooking: null };
   const result = (decisionId, pick) => {
     const dec = decisionId ? decisions.find((d) => d && d.id === decisionId) : null;
@@ -1550,7 +1578,14 @@ export function catererHired(event, fa) {
   const pb = getPlaybook(event && event.type);
   const dec = a.decisionId && pb && Array.isArray(pb.decisions) ? pb.decisions.find((d) => d && d.id === a.decisionId) : null;
   if (dec && dec.servedByCaterer === true) return true;
-  return /cater|\bchef\b|drop-?off|pitmaster/i.test(String(a.pick || ''));
+  // HER PICK, NOT OUR DEFAULT (batch 11, #233 Left). Holiday Party and
+  // Retirement Party default their food call to drop-off catering, so the
+  // default read as a hire and "Pay the caterer…" showed before she had made
+  // the call. A pick names a hire only when it is hers: on the call itself, or
+  // the generic food answer (no decision id, or a call that maps it).
+  const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  const hers = a.decisionId == null || picks[a.decisionId] != null || !!(dec && dec.fromSourcing && picks.sourcing != null);
+  return hers && /cater|\bchef\b|drop-?off|pitmaster/i.test(String(a.pick || ''));
 }
 
 // Day offset from a task's `when` token: 'T-10d' → -10, 'T0' → 0, 'T0 -0:30' → 0
@@ -1888,7 +1923,7 @@ export function playbookChecklist(event, asOf) {
   // (the Spread is sized for the dinner), so they carry the dinner's group.
   let celebration = false;
   try { celebration = celebrationAppliesWith(event, playbook); } catch (_e) { celebration = false; }
-  for (const t of taskList) {
+  for (let t of taskList) {
     if (!t || !t.id || !t.label) continue;
     // Choice gate — a task tagged whenChoice appears only for the matching pick.
     if (!choiceShown(event, t.whenChoice)) continue;
@@ -1904,13 +1939,27 @@ export function playbookChecklist(event, asOf) {
     if (!modeShown(event, t.whenMode)) continue;
     // Kids gate — a task tagged whenKids appears only when kids are actually coming.
     if (t.whenKids && !kidsComing) continue;
+    // Rental gate — a task tagged whenRented (returning the rentals) appears only
+    // once something is rented (batch 11; audit 2 lane C P1-9).
+    if (t.whenRented && !somethingIsRented(event)) continue;
     // Caterer-action gate — drop booking/headcount-to-caterer tasks when the host cooks.
     // Keep decision-framing tasks ("…or confirm the host-cooks plan", "vs a caterer"),
     // and a step that also offers the do-it-yourself path ("…or plan the passed
     // bites + grazing table yourself"): with no caterer, that half IS the work
     // (Day Party, #220 Open, 11/22/2026). Its caterer and truck picks rename it.
-    if (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label)) continue;
-    if (noCatererHired && /\bcaterer/i.test(t.label) && !BOOKS_A_CATERER.test(t.label)) continue;
+    // A STEP THAT NAMES THE CATERER BESIDE OTHER WORK keeps the other work
+    // (batch 11): "Chase non-responders; give caterer + bartender the final
+    // guaranteed count" still owes the chase, and "Pay the venue and caterer
+    // balances…" still owes the venue. Such a step authors `labelWithoutCaterer`,
+    // the same step with the caterer taken out, and reads it while no caterer
+    // is hired; a step without one drops whole, as before.
+    const _noCaterer = (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label))
+      || (noCatererHired && /\bcaterer/i.test(t.label) && !BOOKS_A_CATERER.test(t.label));
+    if (_noCaterer) {
+      if (!t.labelWithoutCaterer) continue;
+      // Its answered copy is written for the caterer version, so it stays off.
+      t = { ...t, label: t.labelWithoutCaterer, copyByAnswer: undefined };
+    }
     // ── THE AIR-TRAVEL FLOOR REACHES THE CHECKLIST (2026-09-23) ─────────────
     // The floor was built into `playbookMilestones` and stopped there. Measured:
     // `playbookMilestones` has exactly one consumer, `playbookAreaNextStep`,
@@ -1996,6 +2045,31 @@ export function playbookChecklist(event, asOf) {
       dueInDays: dte + off,
       provenance: { source: `${playbook.type} playbook`, taskId: 'fa-caterer', derived: 'food-approach', ...(celebration ? { group: DINNER_GROUP } : null) },
     });
+  }
+  // A POTLUCK ASKS WHO BRINGS WHAT (batch 11; audit 2 lane C P2-4). A pick
+  // that hands dishes to the guests (`friendsBringWhen`) moved them to "Your
+  // guests" at $0, and nothing asked her who is bringing which. One step, for
+  // every playbook, while any such dish has no name on it (foodOwner, the one
+  // place a bringer is named); a playbook that authors its own who-brings-what
+  // step keeps its own. Two weeks out is The Cookout's own lead for "Plan the
+  // spread + assign dishes (who brings what)", the corpus's one authored date
+  // for this job.
+  {
+    const owners = foodOwnerMap(event);
+    const unnamed = (playbook.purchases || []).filter((p) => p && p.category === 'food' && p.friendsBringWhen
+      && choiceShown(event, p.friendsBringWhen) && choiceShown(event, p.whenChoice) && !isNamedBringer(owners[p.id]));
+    const authored = rows.some((r) => /bringing what|brings? what|assign (the )?dishes/i.test(String(r.task || '')));
+    if (unnamed.length && !authored) {
+      const off = -14;
+      rows.push({
+        id: `pbt-${event.id}-fa-bringers`,
+        task: 'Ask who is bringing which dish, and put their names on the Bringing list',
+        category: 'planning', phase: 'food', week: taskPhaseLabel(off), owner: '',
+        leadDays: off,
+        dueInDays: dte + off,
+        provenance: { source: `${playbook.type} playbook`, taskId: 'fa-bringers', derived: 'food-approach' },
+      });
+    }
   }
   // THE MEALS OUT GET BOOKED (owner, 11/21/2026). On a destination trip, only
   // a meal the host marked "out together" adds a step: a table for the group
@@ -3073,6 +3147,26 @@ const SUPPLY_INTEL = [
   { re: /trash|recycling|bin|bus tub|shell bucket/i,                        low: 8,  high: 20,  kind: 'buy',  label: 'cleanup' },
   { re: /heat lamp|patio heater|fan\b/i,                                    low: 30, high: 70,  kind: 'rent', label: 'climate' },
 ];
+// ── IS ANYTHING RENTED? (batch 11; audit 2 lane C P1-9) ─────────────────────
+// The day after a wedding with no rental anywhere, After's first thing owed was
+// "Return the rentals on the contract's clock…". A rental is on record when:
+//   · a vendor in the rentals category (tent, linens, tables & chairs…) is on
+//     the plan and not declined;
+//   · a budget line in that category carries an amount;
+//   · she got an item off the seating list that is a rental (supplyIntel 'rent')
+//     and does not own it.
+// Anything else is not known to be rented, so nothing waits to go back.
+export function somethingIsRented(event) {
+  const ev = event || {};
+  const isRentals = (c) => { try { return normalizeCategory(String(c || '')) === 'rentals'; } catch (_e) { return false; } };
+  const vendors = Array.isArray(ev.vendors) ? ev.vendors : [];
+  if (vendors.some((v) => v && !/declin|cancel/i.test(String(v.status || '')) && (isRentals(v.category) || isRentals(v.budgetCategory)))) return true;
+  const rows = Array.isArray(ev.budget) ? ev.budget : [];
+  if (rows.some((r) => r && isRentals(r.category) && ['actual', 'estimated', 'amount', 'planned', 'cost'].some((k) => Number(r[k]) > 0))) return true;
+  const got = (ev.capacityChecked && typeof ev.capacityChecked === 'object') ? ev.capacityChecked : {};
+  const owned = (ev.capacityOwned && typeof ev.capacityOwned === 'object') ? ev.capacityOwned : {};
+  return Object.keys(got).some((k) => got[k] && !owned[k] && (supplyIntel(k) || {}).kind === 'rent');
+}
 export function supplyIntel(name) {
   const s = String(name || '');
   if (!s) return null;
@@ -3369,6 +3463,18 @@ export function playbookRisks(event, domain) {
     // "Allergies not collected" is not a risk once she has noted them
     // (dietaryNoted, the one rule the checklist and the food sheet read).
     .filter((r) => !(/allergies (?:not )?collected|before allergies collected/i.test(String(r.trigger || '')) && dietaryNoted(event)))
+    // A HEADCOUNT RISK RETIRES ON A SETTLED COUNT (batch 11; audit 2 lane C
+    // P1-11), the same rule as the allergy row above: "Final headcount still
+    // not locked 3 days out" stayed up the day before and the day itself over
+    // her locked 30. "Not confirmed / locked" retires on a LOCKED count — the
+    // guestCount slot, which only the count editor and the lock write
+    // (guestCountFor), or the lock flag; an estimate is not a final count.
+    // "Wrong or late to the caterer" and a guarantee "on a stale number"
+    // retire once the caterer has been given a count (catererCount), or no
+    // caterer is hired.
+    .filter((r) => !(/final headcount still not (?:confirmed|locked)/i.test(String(r.trigger || '')) && (Number(event.guestCount) > 0 || event.guestCountLocked === true)))
+    .filter((r) => !(/wrong or late to the caterer|headcount guarantee is submitted on a stale/i.test(String(r.trigger || ''))
+      && (Number(event.catererCount) > 0 || !(() => { try { return catererHired(event); } catch (_e) { return true; } })())))
     .filter((r) => !dre || dre.test(`${r.id || ''} ${r.trigger}`)) // match the trigger/id, not the fix (mitigations mention "guest" generically)
     .map((r) => {
       const sev = String(r.severity || 'med').toLowerCase();
@@ -5235,12 +5341,39 @@ export function beverageTierFor(pick) {
   return BEV_TIERS.find((x) => x.re.test(p) && !(x.unless && x.unless.test(p))) || null;
 }
 
+// THE VEGETARIAN MAIN, AT ITS SOURCES (owner ruling, 11/23/2026). It was the
+// engine's own $6-12 a serving, which every registered price undercut. The band
+// is the per-serving prices the sources state; Amy's organic tray is left out
+// because no source gives its serving count.
+const VEG_MAIN_PER_SERVING = [1, 2.87];
+const VEG_MAIN_PROVENANCE = Object.freeze({
+  tier: 'researched', confidence: 'medium', verificationStatus: 'cited',
+  sources: ['costco-prepared-2026', 'lasagna-retail-2026'], lastVerified: '2026-11-23',
+  claim: 'A vegetarian main bought or made at retail prices, per serving, 2026: Costco stuffed bell peppers at $4.99/lb, under $1 a serving; Stouffer\'s vegetable lasagna family tray at $10.79 (Lowes Foods) and $11.49 (Price Chopper) for the four servings its label states, $2.70-2.87 a serving. $1-2.87 a serving (was the engine\'s uncited $6-12).',
+  sufficientWhen: 'A serving count for an organic tray (Amy\'s family size is $16.49 at Kroger) would say whether a higher ceiling belongs here.',
+});
+
 // The drop-off catering tier, as the two registered catering guides publish it.
 const DROPOFF_CATERING_PROVENANCE = Object.freeze({
   tier: 'researched', confidence: 'medium', verificationStatus: 'cited',
   sources: ['catering-chefry-2026', 'catering-perperson-2026'], lastVerified: '2026-11-22',
   claim: '2026 US drop-off catering per person: $15-30 at Chefry (trays, no staff) and $15-35 at The Catering Finder. This $15-35 a guest band is that tier; buffet and staffed service price above it, and both exclude the service charge and gratuity.',
 });
+
+// ─── A VENDOR PRICED BY HER PICK (owner ruling, 11/23/2026) ──────────────────
+// A vendor row can price differently by the food answer she picked:
+// `costRangeByPick: { '<option>': { costRange, costProvenance } }`. Friendsgiving's
+// "Order a prepared dinner" and "Hire a caterer" share one vendor row and carry
+// two cited bands. ONE reader for the food plan's catering line and the vendor
+// plan's estimate, so the two cannot price the same pick differently. An
+// unlisted or missing pick reads the row's own `costRange`/`costProvenance`.
+export function vendorRateFor(vendor, pick) {
+  if (!vendor) return null;
+  const byPick = vendor.costRangeByPick && typeof vendor.costRangeByPick === 'object' ? vendor.costRangeByPick : null;
+  const hit = byPick && pick != null ? byPick[String(pick)] : null;
+  if (hit && Array.isArray(hit.costRange)) return { costRange: hit.costRange, costProvenance: hit.costProvenance || null };
+  return { costRange: Array.isArray(vendor.costRange) ? vendor.costRange : null, costProvenance: vendor.costProvenance || vendor.provenance || null };
+}
 
 export function playbookFoodPlan(event, opts = {}) {
   if (!event) return null;
@@ -5437,7 +5570,10 @@ export function playbookFoodPlan(event, opts = {}) {
   // somebody else's to carry and costed at zero (see `_attributeCommunity`).
   const _communityBrings = _fa.communityBrings === true;
   const _foodOffPlate = _usesCaterer;
-  const hostCooksIt = (p) => !(_foodOffPlate && p.category === 'food');
+  // ONE CATERED COURSE, NAMED (owner, 11/23/2026): the course she says the
+  // caterer brings leaves the list; the rest she still cooks (cateredCourse.js).
+  const _courseCovered = (() => { try { return cateredCourseCovers(playbook, pickFor); } catch (_e) { return null; } })();
+  const hostCooksIt = (p) => !(_foodOffPlate && p.category === 'food') && !(_courseCovered && _courseCovered.ids.has(p.id));
   // The bringer's name in the host's OWN words — read out of the option they
   // picked, never invented. Falls back to the neutral collective noun.
   const _bringerLabel = (() => {
@@ -5454,12 +5590,15 @@ export function playbookFoodPlan(event, opts = {}) {
   // below, never at its own (now cited) $10-25 (11/21/2026).
   const _catVendor = _usesCaterer ? ((playbook.vendors || []).find((v) => v && v.cateringRate === true && /guest/i.test(String(v.costUnit || '')))
     || (playbook.vendors || []).find((v) => v && /cater/i.test(String(v.category)) && /guest/i.test(String(v.costUnit || '')))) : null;
-  const _cateringRate = _catVendor && Array.isArray(_catVendor.costRange) ? _catVendor.costRange : (_usesCaterer ? [15, 35] : null);
+  // The band of the answer she picked, where the vendor prices by pick
+  // (vendorRateFor); otherwise the vendor's own band.
+  const _catRate = _catVendor ? vendorRateFor(_catVendor, _fa.pick) : null;
+  const _cateringRate = _catRate && Array.isArray(_catRate.costRange) ? _catRate.costRange : (_usesCaterer ? [15, 35] : null);
   // The [15, 35] fallback is the drop-off tier both registered catering guides
   // publish, so it carries their citation (audit G #1); a vendor's own band
   // carries the vendor's block, or none.
   const _cateringProv = _catVendor
-    ? (_catVendor.costProvenance || null)
+    ? (_catRate.costProvenance || null)
     : (_usesCaterer ? DROPOFF_CATERING_PROVENANCE : null);
 
   // GENERAL choice→cost mechanism (single source of truth): any playbook decision can declare, in the
@@ -5995,8 +6134,9 @@ export function playbookFoodPlan(event, opts = {}) {
       id: 'diet-veg', group: 'Food', item: `${vegDish} (for ${vegN} ${vegN === 1 ? 'guest' : 'guests'})`,
       short: `${vegDish} · ${vegN}`, owner: '', qty: vegN, unit: 'servings', essential: true, where: ['Grocery'],
       qtyOverridden: false, baseQty: vegN, perGuest: null,
-      low: Math.round(vegN * 6 * pf), high: Math.round(vegN * 12 * pf), units: vegN, unitBase: 'servings',
-      perUnitLow: Math.round(6 * pf), perUnitHigh: Math.round(12 * pf),
+      low: Math.round(vegN * VEG_MAIN_PER_SERVING[0] * pf), high: Math.round(vegN * VEG_MAIN_PER_SERVING[1] * pf), units: vegN, unitBase: 'servings',
+      perUnitLow: roundCurrency(VEG_MAIN_PER_SERVING[0] * pf), perUnitHigh: roundCurrency(VEG_MAIN_PER_SERVING[1] * pf),
+      costProvenance: VEG_MAIN_PROVENANCE,
       skipped: !!skip['diet-veg'], locked: ('diet-veg' in lockedMap) ? Math.max(0, roundCurrency(Number(lockedMap['diet-veg']) || 0)) : null,
       note: 'So your vegetarian/vegan guests have a real main, not just sides.', forgotten: false, dietDerived: true,
       // The regional factor moved this band, so the line says so (audit G #6).
@@ -6331,7 +6471,9 @@ export function playbookFoodPlan(event, opts = {}) {
     type: playbook.type,
     // The picks priced as something else until a source exists (`costPending`),
     // for the host to be told so (audit G #2). [] when none applies.
-    pricePending: pricePendingFor(playbook, pickFor, (d) => choiceShown(event, d.whenChoice)),
+    // A named catered course is still pending, and its reason names it.
+    pricePending: pricePendingFor(playbook, pickFor, (d) => choiceShown(event, d.whenChoice))
+      .map((p) => (_courseCovered && p.id === _courseCovered.decisionId ? { ...p, why: cateredCoursePendingWhy(_courseCovered.course) } : p)),
     guests,
     guestCountResolved: gc.resolved,
     hasRealCount,

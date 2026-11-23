@@ -140,7 +140,7 @@ const birthday = {
 
   vendors: [
     { category: 'Venue / party room', required: false, altToDIY: 'Host at home or a free park shelter instead of a rented room', when: 'T-21d', costRange: [100, 400], costUnit: 'flat' },
-    { category: 'Catering / food', required: false, altToDIY: 'Pizza or grocery trays instead of catering', when: 'T-10d', costRange: [10, 25], costUnit: 'per guest' },
+    { category: 'Catering / food', required: false, altToDIY: 'Pizza or grocery trays instead of catering', when: 'T-10d', costRange: [10, 25], costUnit: 'per guest', costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['paperlust-wedding-catering-2026', 'foodtruck-roaminghunger-2024', 'catering-chefry-2026'], lastVerified: '2026-11-23', claim: 'Per person, food only: taco truck $9-15 and gourmet or BBQ food truck $15-28 (Paperlust 2026); taco $12-15 and pizza, BBQ or burger $15-25 (Roaming Hunger); drop-off catering $15-30 (Chefry). This $10-25 a guest band runs from the taco-truck tier to the drop-off and food-truck tiers. A truck minimum ($1,200-1,500) can set the price at a small party.', sufficientWhen: 'A local caterer quote for this menu at this headcount.' } },
     { category: 'Entertainment (clown, magician, DJ, bounce house)', required: false, altToDIY: 'A playlist + simple games', when: 'T-14d', costRange: [150, 400], costUnit: 'flat' },
     { category: 'Cake / bakery', required: false, altToDIY: 'Bake or buy a grocery cake', when: 'T-7d', costRange: [25, 90], costUnit: 'flat' },
   ],

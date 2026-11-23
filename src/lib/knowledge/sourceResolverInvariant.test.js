@@ -205,8 +205,12 @@ describe('1 — the source universe is what we think it is', () => {
     // `crawfish-wrno-2026`, `thanksgiving-prepared-fox5-2026`,
     // `thanksgiving-prepared-grocerydive-2026`, `foodtruck-roaminghunger-2024`
     // and `bls-softdrinks-2026` in COST_SOURCES, each page read that day.)
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(440);
-    expect(unionIds().size).toBe(440);        // therefore every id is globally unique
+    // (466 since 11/23/2026, batch 10, the price research pass: 26 COST_SOURCES,
+    // 21 Target search or product pages, FRED's cheddar series, USDA's turkey
+    // feature report, two pumpkin pages and Paperlust's wedding-catering guide,
+    // each page read that day.)
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(466);
+    expect(unionIds().size).toBe(466);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {
