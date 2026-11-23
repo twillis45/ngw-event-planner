@@ -30,7 +30,10 @@ const CODE = 'abcdefghij1234567890xy';
 const BEFORE_PAYING = 'Planning stays free. Pay $39 once to send the details to all your vendors, not just the first.';
 const BEFORE_PAYING_TRIP = 'Planning stays free. Pay $39 once to send the details to all your vendors, not just the first, and get trip tools.';
 
+// A place a vendor can find: since 11/23/2026 (six root causes, cause 6) a
+// brief does not go out without one (lib/outwardReady).
 const ev = (id, name, over = {}) => ({ id, name, type: 'Birthday Party', date: dateIn(60),
+  venue: 'The Loft', venueKind: 'venue', venueCity: 'Bowie', venueState: 'MD',
   guestEstimate: 20, guestMode: 'count', guestCountSource: 'host',
   budget: [], guests: [], timeline: [], vendors: [], briefSharedVendorIds: [], ...over });
 

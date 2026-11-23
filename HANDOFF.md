@@ -17,6 +17,72 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 23, 2026 (night) — #242: six root causes, fixed everywhere (Thanksgiving walkthrough)
+
+- **Ask:** the owner rejected symptom fixes for the Thanksgiving walkthrough (FINDINGS on 995267fb). Each cause had to lose its mechanism everywhere and gain a test over all 47 playbooks. Built test-first on `systemic` (from a4b8693b), merged with #241 (tall iPad, 5a0445fd).
+- **Cause 1, an editor or route chosen by words in a title (P0-2, P1-2).**
+  - Every step now declares a `target`. That covers 850 authored steps plus the engine's destination, cook, derived and dinner steps.
+  - The targets were derived once from the retired router (1,583 step variants, both guest modes) and committed. Its self-contradictions were corrected by hand, for example `dest_t_info`'s drive wording sent the step to the parking note, and four `t_invite` steps opened the guest count.
+  - `lib/stepTarget` is the only reader. `checklistRouteFor` resolves by row id and reads no words. A row the host wrote gets no button.
+  - `lib/heroEditor.editorKindFor` replaced `wiredKind`. It uses the card's declared editor, else its step's target, else its domain and route.
+  - "Mark done" never records a send: `invitesSentAt` left `TICK_FACTS` (owner, 11/23). On a send step the receipt says "Nothing was sent from here."
+  - Test: `everyStepDeclaresItsTarget`.
+- **Cause 2, "settled" kept only for the session (P1-2).**
+  - One field (`event.settledAsks`) with one reader and one writer (`lib/settledAsks`).
+  - `setDown.carrySettled` saves a settle in the same write as the answer, so the answer's Undo brings the ask back.
+  - The queue reads `unsettledActions`.
+  - Tests: `aSettledAskSurvivesAReload` (jest) and `aSettleIsSavedWithTheEvent` (vitest).
+- **Cause 3, one number computed in several places (P1-3, P1-5, P1-6 part).**
+  - `lib/planProgress` feeds the strip, the hairline, what's counted, the help line and `planRibbon` (the tall ribbon).
+  - `lib/moneyFigures` gives each figure one name: "Room left in your budget" is $77; "$323 left to spend"; the bar reads "not yet spoken for".
+  - `confirmedCovers.coversWithWord`: "confirmed" means replies only.
+  - Test: `oneNumberOneReader`.
+  - **Not done:** one per-head reader, one item-count reader, seating-sheet costs in the shopping total, and the hero queue ordered by the calls list's urgency (P1-7).
+- **Cause 4, no single rule for the stage she lands on (P0-1, P1-1).**
+  - `lib/landingStage` decides the first stage, a switch, opening an unsaved plan and the keep-on-sign-in landing.
+  - Ruling (a): the reveal offers "Open my plan (not saved yet)". It holds the plan on this device, and the "Not saved yet" row asks later.
+  - Ruling (b): a day of the event opens on The Day.
+  - Create shows "Back to my plan", and a draft never takes over a reload.
+  - Tests: `oneRuleForWhereSheLands` and e2e `tryFirstSignInToKeep`.
+- **Cause 5, the typed time had no defined meaning (P1-4).**
+  - Every playbook declares `timeAnchor`. The five sit-down dinners are serve-anchored with their own lead.
+  - Creation stamps `startTimeMeans` / `arrivalLeadMin` on the event.
+  - `eventWhen.eventClock` drives the run of show, the invite ("2:00 PM, dinner at 3:00 PM"), the drafts, the serve-time call and the calendar.
+  - Test: `theTypedTimeHasOneMeaning`.
+- **Cause 6, placeholders in what guests see (P1-8).**
+  - `lib/eventName` names the event from her sentence ("Thanksgiving Dinner"), never "My <Type>".
+  - `lib/outwardReady` is the one guard, and `venueFor.findable` is the outward place verdict.
+  - It is asked by the invite (`inviteGaps`), the helper link, the vendor brief and the family link.
+  - Server copy: `outward.py outward_gaps`, not yet called by the email endpoints.
+  - Test: `nothingGoesOutWithAPlaceholder`.
+- **Shell (HostShellV2) edits are wiring only.**
+  - `wiredKind` calls `editorKindFor`. The "Mark as paid" card is recognized by its route.
+  - The checklist row passes its id.
+  - Settled asks are carried in `patchEvent` (`opts.keepsUndo`).
+  - Stages go through `landingStage`, which adds the "Open my plan (not saved yet)" button and "Back to my plan".
+  - The creation stamp adds `timeAnchorFields` and `eventNameFrom`.
+  - Time-field labels come from `startTimeFieldWords`.
+  - Progress, money and "confirmed" read their readers.
+  - The outward guard runs on the helper, vendor and family paths, and the invite check asks for a name and a street inline.
+- **Fixtures moved with the rulings, each with a comment:**
+  - A host-written row has no guessed link (`theChecklistButtonsLineUp`, 5 → 4).
+  - On the day, the app lands on The Day and the test steps to Plan (`theDayAndAfterSayWhatIsTrue`).
+  - At home, a street is asked for (`theInviteAsksForWhatIsMissing`).
+  - A brief needs a place (`aSecondPartyIsFreeToPlan`).
+  - A bare type name is a placeholder (`sharingTheInviteCreditsIt`).
+  - A tick records no send (`aTickRecordsWhatItStandsFor`, `theInviteIsOutOnce`, `aLateStepCanBeFinishedFromTheBoard`).
+  - 27 jest files that named a step by its words now find the step's id (`__fixtures__/stepByWords`).
+  - Synthetic phrasings point at the authored step they modeled. The risk "handoff" test now asserts that no button is guessed.
+- **Gates (measured):**
+  - Root jest: 913 suites, 13,855 passed, 1 skipped.
+  - hostv2 vitest: 164 passed.
+  - `e2e:build` (parity) exit 0.
+  - e2e, focused set of 46 specs on mobile and desktop (stages, creation, invite, money, checklist, The Day, boardMatrix): 444 passed; the 13 failures were the 7 specs above, fixed, and the rerun with 10 at-risk specs passed 81/81 (1 flaky).
+  - `aTallIPadGetsItsOwnBoard` + boardMatrix on all projects: 179 passed.
+- 🔴 **The full mobile+desktop projects (2,557 tests) did not finish.** They run about 5 hours in this container. The tall-iPad agent's e2e shared ports 5233/5244/5277 at the same time, and the partial runs failed under that load: every failure rerun alone passed except the 7 above.
+- 🔴 **Trap: two agents' e2e runs collide on fixed ports.** Use a throwaway config with moved ports; 8 specs hard-code 5277 or 5255.
+- 🔴 **Trap: a row's words no longer route it.** A new playbook step must declare `target`, or the census fails. A new derived row must add its id to `DERIVED_STEP_TARGETS`.
+
 ## November 23, 2026 — a tall iPad gets its own board (owner rulings 11/22: the tall-iPad package)
 
 - **Owner ruling, 11/22/2026:** the tall-iPad package is approved whole. It reverses the 7/22 648px hero cap and the 8/17 "question fills the screen", **for portrait tablets only**.

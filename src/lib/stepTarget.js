@@ -156,7 +156,17 @@ export function stepTargetKey(event, row) {
   if (!row) return null;
   if (typeof row.target === 'string' && row.target) return row.target;
   const pid = row.provenance && row.provenance.taskId;
-  return declaredStepTarget(event, pid || stepIdOf(event, row.id || row.taskId));
+  const found = declaredStepTarget(event, pid || stepIdOf(event, row.id || row.taskId));
+  if (found) return found;
+  // A row carried over from ANOTHER event id (a duplicated or re-keyed plan)
+  // still ends in its step id: `pbt-<old id>-<step id>`. Matched by id, the
+  // longest step id that ends it.
+  const id = String(row.id || row.taskId || '');
+  if (!id.startsWith('pbt-') || !event) return null;
+  const pb = (() => { try { return getPlaybook(event.type); } catch (_e) { return null; } })();
+  const ids = pb ? everyDeclaredStep(pb).map((s) => s.id).filter((sid) => id.endsWith('-' + sid)) : [];
+  if (!ids.length) return null;
+  return declaredStepTarget(event, ids.sort((a, b) => b.length - a.length)[0]);
 }
 
 /**

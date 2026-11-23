@@ -103,6 +103,12 @@ describe('every step declares where its work is done', () => {
     expect(editorKindFor({ taskId: row('t_dietary').id, title: 'Collect dietary needs' }, ev)).toBe('diet');
   });
 
+  test('a row carried over from another event id (a duplicated plan) still finds its step by id', () => {
+    const ev = { id: 'copy-2', type: 'Group Trip' };
+    expect(stepTargetKey(ev, { id: 'pbt-e2e-dates-t_dates' })).toBe(stepTargetKey({ id: 'e2e-dates', type: 'Group Trip' }, { id: 'pbt-e2e-dates-t_dates' }));
+    expect(stepTargetKey(ev, { id: 'pbt-e2e-dates-t_dates' })).toBeTruthy();
+  });
+
   test('a row with no declared target (one she wrote herself) is an honest check-off with no button', () => {
     const ev = { id: 'ev-own', type: 'Birthday', date: DATE };
     expect(checklistRouteFor('Send the invites and chase RSVPs', { taskId: 'ev-own-t1' }, ev)).toBeNull();
