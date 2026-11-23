@@ -463,7 +463,9 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // shell's first stage, a switch and opening a plan read lib/landingStage, and
 // that the reveal and Create carry the two ruled buttons (the behavior is the
 // e2e anUnsavedPlanSurvivesAReload).
-const MAX_HOSTV2_TEXT_GATES = 70;
+// 70 → 71 (same day, cause 3): oneNumberOneReader.test.js pins that the shell
+// prints parts handled, the money room and "confirmed" through the readers.
+const MAX_HOSTV2_TEXT_GATES = 71;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

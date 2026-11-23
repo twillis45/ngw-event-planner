@@ -225,7 +225,7 @@ import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_NUDGE } from '@app/lib/knowledge/geoCostIndex';
 import { firstStoreIn, storesIn } from '@app/lib/communitySource';
 import { typeIsRestatedByName } from '@app/lib/eventMasthead';
-import { confirmedCovers, confirmedRsvpCovers } from '@app/lib/confirmedCovers';
+import { confirmedCovers, confirmedRsvpCovers, coversWithWord } from '@app/lib/confirmedCovers';
 import { shoppingHint } from '@app/lib/shoppableUnit';
 import { markSignal, lastSignalNote } from './offline/lastSignal';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, rosSuggestions, hostRosRows, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, sizingRange, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum, dietaryNoted, playbookPacing } from '@app/lib/playbooks';
@@ -363,6 +363,8 @@ import { editorKindFor, isBalanceDueAction, stepRowIdOf } from '@app/lib/heroEdi
 import { stepIsASend } from '@app/lib/stepTarget';
 import { withSettled, withoutSettled, unsettledActions } from '@app/lib/settledAsks';
 import { landingStage } from '@app/lib/landingStage';
+import { planPartsProgress, planPartsLine } from '@app/lib/planProgress';
+import { moneyFigures, headroomLabel, MONEY_LABELS } from '@app/lib/moneyFigures';
 import { timeAnchorFields } from '@app/lib/eventAnchor';
 import { startTimeFieldWords } from '@app/lib/eventWhen';
 import { vendorObligations } from '@app/lib/vendorObligations';
@@ -5257,8 +5259,12 @@ export default function HostShellV2() {
   // The hairline computed `done >= total` inline; the calm pole computed its own
   // cpDone/cpTotal with a DIFFERENT fallback. Two readings of one ledger is exactly
   // how the two checklists in the R3 defect drifted apart. Derived here, once.
-  const planTotal = Number(phaseCues && phaseCues.totalCount) || 0;
-  const planDone = Number(phaseCues && phaseCues.completedCount) || 0;
+  // ONE PROGRESS READER (lib/planProgress, six root causes cause 3): the strip,
+  // the hairline, the calm pole, what's counted, the menu line and the tall
+  // ribbon all count the same parts (P1-3 printed 6 of 7, "4 handled" and six).
+  const planParts = planPartsProgress(phaseCues);
+  const planTotal = planParts ? planParts.total : 0;
+  const planDone = planParts ? planParts.done : 0;
   const planComplete = planTotal > 0 && planDone >= planTotal;
   // The date this ledger's denominator next moves (phaseProgress). A completion
   // claim made without it is a claim with a fuse — see the field's own comment.
@@ -5433,8 +5439,8 @@ export default function HostShellV2() {
   const partsPrevRef = useRef(null);
   useEffect(() => { partsPrevRef.current = null; setBeat(null); }, [event.id]);
   useEffect(() => {
-    const done = phaseCues && Number.isFinite(Number(phaseCues.completedCount)) ? Number(phaseCues.completedCount) : null;
-    const total = phaseCues && Number(phaseCues.totalCount);
+    const done = planParts ? planDone : null;
+    const total = planTotal;
     if (done == null) return;
     if (partsPrevRef.current != null && done > partsPrevRef.current && total) {
       // "The plan is quiet" only when it is (audit 2 P1-3): Reunion's beat said
@@ -5449,7 +5455,7 @@ export default function HostShellV2() {
     }
     partsPrevRef.current = done;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phaseCues && phaseCues.completedCount]);
+  }, [planDone]);
   // HERO RECEIPT (host ruling 2026-07-17): completion satisfaction lives IN the
   // panel, not a toast at the fold. Muted sentence; the STATE is the green
   // done-dot (Confirmations-Green, footprint shrunk per UX_02). The advancing
@@ -5585,10 +5591,10 @@ export default function HostShellV2() {
         // #3 activation: on a real return, carry the readiness fraction NOW and
         // the delta since last visit — the "you moved N forward" momentum reward
         // that no always-on tile shows. Pure exposure of the phaseCues ledger.
-        if (phaseCues && phaseCues.totalCount > 0) {
-          n.readyNow = { done: phaseCues.completedCount, total: phaseCues.totalCount };
+        if (planTotal > 0) {
+          n.readyNow = { done: planDone, total: planTotal };
           const prevDone = prev && prev.ready ? Number(prev.ready.done) : null;
-          n.readyDelta = (prevDone != null && Number.isFinite(prevDone)) ? (phaseCues.completedCount - prevDone) : null;
+          n.readyDelta = (prevDone != null && Number.isFinite(prevDone)) ? (planDone - prevDone) : null;
         }
         setReturnLine(n);
       } else setReturnLine(null);
@@ -9662,7 +9668,7 @@ export default function HostShellV2() {
             if (!drift) return null;
             return (
               <div style={{ marginTop: ASK_RHYTHM.whyToCta }}>
-                <span className="of">Your caterer is set for {event.catererCount} · {yes} confirmed</span>
+                <span className="of">Your caterer is set for {event.catererCount} · {yes} {coversWithWord(event).word}</span>
                 {countResolutionRows((write) => settleAndSetDown(a && a.id ? a.id : null, write))}
               </div>
             );
@@ -10022,7 +10028,7 @@ export default function HostShellV2() {
           <div className="chips hc-row">
             <div className="line" style={{ flex: '1 0 100%', alignItems: 'center' }}>
               <span className="of" style={{ color: matches ? 'var(--ok)' : 'var(--warn)', fontWeight: 600 }}>
-                {matches ? 'Matches confirmed — ' + held : 'Held at ' + held + ' · ' + yes + ' confirmed'}
+                {matches ? 'Matches ' + coversWithWord(event).word + ' — ' + held : 'Held at ' + held + ' · ' + yes + ' ' + coversWithWord(event).word}
               </span>
               <button className="mini" onClick={() => setChoiceOpen('catererCount')}>Change</button>
             </div>
@@ -11154,8 +11160,9 @@ export default function HostShellV2() {
   const dayWhispers = useMemo(() => {
     if (!liveDay) return [];
     const w = [];
-    const yes = confirmedHeads;   // COVERS, not rows — see confirmedHeads
-    if (yes > 0) w.push(yes + ' confirmed');
+    // "Confirmed" only for replies (lib/confirmedCovers.coversWithWord, cause 3, P1-5).
+    const cw = coversWithWord(event);
+    if (cw.n > 0 && cw.word === 'confirmed') w.push(cw.n + ' confirmed');
     else if (guests) w.push('planned for ' + guests);
     if (foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount >= foodPlan.itemCount) w.push('food shopped');
     { const r = expectedHeadroom(money); if (r != null && r >= 0) w.push('budget on plan'); }
@@ -13837,9 +13844,9 @@ export default function HostShellV2() {
               </div>{/* /ecenter — the centered ask+action region */}
               {/* Progress hairline — pinned to the FOOT of the first screen (F13), after the
                   one action, above the fold. Real engine numbers. */}
-              {elegantMode && askMode && !tallTablet && phaseCues && phaseCues.totalCount > 0 && (() => {
-                const done = Number(phaseCues.completedCount) || 0;
-                const total = Number(phaseCues.totalCount) || 0;
+              {elegantMode && askMode && !tallTablet && planTotal > 0 && (() => {
+                const done = planDone;
+                const total = planTotal;
                 return (
                   // PART 9 — the ONE progress visual, SEGMENTED.
                   //
@@ -14537,9 +14544,9 @@ export default function HostShellV2() {
                       // Engine-authored numbers: completedCount/totalCount and the
                       // ranked nextCue come straight from deriveEventPhaseProgress
                       // (the engine returns counts + nextCue + items — never re-derive).
-                      const hasCues = !!(phaseCues && phaseCues.totalCount);
-                      const essDone = hasCues ? phaseCues.completedCount : plan.progress.done;
-                      const essTotal = hasCues ? phaseCues.totalCount : plan.progress.total;
+                      const hasCues = planTotal > 0;
+                      const essDone = hasCues ? planDone : plan.progress.done;
+                      const essTotal = hasCues ? planTotal : plan.progress.total;
                       const openTasks = (event.timeline || []).filter(t => t && !t.done && !isTimelineStepResolved(t)).length;
                       const nextCue = hasCues ? phaseCues.nextCue : null;
                       // Numerals in the muted sub get a <b> (one CSS contrast
@@ -15014,8 +15021,11 @@ export default function HostShellV2() {
                     const lc = (plan.planningState && plan.planningState.recommendationLifecycle) || [];
                     if (!lc.length) return null;
                     const n = (s) => lc.filter(i => i.state === s).length;
+                    // "N handled" here counted RECOMMENDATIONS (a different unit) and
+                    // printed "4 handled" under a "6 of 7" strip (P1-3). Handled is the
+                    // plan's parts, from the one reader.
                     const bits = [
-                      n('Completed') ? n('Completed') + ' handled' : null,
+                      planParts ? planPartsLine(planParts) : null,
                       n('Working') ? n('Working') + ' in progress' : null,
                       n('Blocked') ? n('Blocked') + ' need' + (n('Blocked') === 1 ? 's' : '') + ' unblocking' : null,
                     ].filter(Boolean);
@@ -15048,7 +15058,7 @@ export default function HostShellV2() {
                   )}
                   {phaseCues && Array.isArray(phaseCues.items) && phaseCues.items.length > 0 && (
                     <>
-                      <div className="shelf-label" style={{ margin: '6px 0 var(--sp-1)' }}>{phaseCues.totalCount === 1 ? 'The 1 part of your plan this count reads' : `The ${phaseCues.totalCount} parts of your plan this count reads`}</div>
+                      <div className="shelf-label" style={{ margin: '6px 0 var(--sp-1)' }}>{planTotal === 1 ? 'The 1 part of your plan this count reads' : `The ${planTotal} parts of your plan this count reads`}</div>
                       {/* RECON MODEL grounding: why this number and the inventories
                           below it can never be compared one-to-one. */}
                       <p className="grounding" style={{ margin: '0 0 6px' }}>
@@ -21180,8 +21190,7 @@ export default function HostShellV2() {
               // nextCue the hero uses, deep-linked), how the app works, a way to
               // ask a specific question, and the foundations people get stuck on.
               const nc = phaseCues && phaseCues.nextCue;
-              const ready = (phaseCues && phaseCues.totalCount)
-                ? `${phaseCues.completedCount} of ${phaseCues.totalCount} parts of your plan handled` : null;
+              const ready = planPartsLine(planParts);
               // Foundations — only the ones NOT yet done, so the list shrinks as
               // the host makes progress (real state, never a static checklist).
               const foundations = [
@@ -21242,7 +21251,7 @@ export default function HostShellV2() {
                 guests: guests || null,
                 guestBand: expect ? `likely ${expect.low}–${expect.high} on the day${expect.note ? ` (${expect.note})` : ''}` : null,
                 wx,
-                readiness: (phaseCues && phaseCues.totalCount) ? { done: phaseCues.completedCount, total: phaseCues.totalCount, nextLabel: phaseCues.nextCue && phaseCues.nextCue.label } : null,
+                readiness: planTotal ? { done: planDone, total: planTotal, nextLabel: phaseCues.nextCue && phaseCues.nextCue.label } : null,
                 eventName: event.name,
               };
               const ask = (text) => {
@@ -27248,6 +27257,9 @@ export default function HostShellV2() {
               // ONE BASIS: EXPECTED (owner ruling 11/22/2026, audit 2 D-03): the
               // star reads what the hero copy, the ledger and After read.
               const left = expectedHeadroom(money);
+              // Each money number has one name (lib/moneyFigures, cause 3): the star
+              // is the ROOM in the budget, and what she still has to pay is said too.
+              const mf = moneyFigures(money);
               return (
                 <>
                   {/* PRINCIPLES REDESIGN (host directive): summary before detail —
@@ -27280,7 +27292,7 @@ export default function HostShellV2() {
                       : heroCopy.caveat || null;
                     return (
                     <SheetHero
-                      eyebrow={over ? 'Expected over by' : 'Expected left to spend'}
+                      eyebrow={headroomLabel(mf)}
                       star={fmt(Math.abs(left || 0))}
                       tone={over ? 'danger' : hcState === 'near' ? 'warn' : 'ok'}
                       sub={warmSub}
@@ -27303,7 +27315,7 @@ export default function HostShellV2() {
                           ? <> — all of it still an estimate</>
                           : <> (<b>{fmt(money.committedEstimated)}</b> of that still an estimate)</>) : null}{money.spent ? <> · <b>{fmt(money.spent)}</b> actually spent{money.spentEstimated > 0 ? (money.spentEstimated === money.spent
                           ? <> — all of it still estimated</>
-                          : <> (<b>{fmt(money.spentEstimated)}</b> of it still estimated)</>) : null}</> : null}{guestPhrase ? ' · sized for ' + guestPhrase : ''}.
+                          : <> (<b>{fmt(money.spentEstimated)}</b> of it still estimated)</>) : null}</> : null} · <b>{fmt(mf.leftToSpend)}</b> {MONEY_LABELS.leftToSpend.toLowerCase()}{guestPhrase ? ' · sized for ' + guestPhrase : ''}.
                       </>}
                     />
                     );
@@ -27369,7 +27381,7 @@ export default function HostShellV2() {
                               explains a chart the host is not looking at. */}
                           <span><i className="mbar-dot" style={{ background: over ? 'var(--danger)' : 'var(--steel-soft)' }} />{fmt(spent)} spent</span>
                           {pledged > 0 && <span><i className="mbar-dot" style={{ background: over ? 'var(--danger-solid)' : 'var(--steel)' }} />{fmt(pledged)} spoken for</span>}
-                          <span className="mbar-cap">{over ? fmt(committed - planned) + ' over ' + fmt(planned) : fmt(free) + ' of ' + fmt(planned) + ' left'}</span>
+                          <span className="mbar-cap">{over ? fmt(committed - planned) + ' over ' + fmt(planned) : fmt(free) + ' of ' + fmt(planned) + ' ' + MONEY_LABELS.unpledged}</span>
                         </div>
                       </div>
                     );
@@ -27540,7 +27552,7 @@ export default function HostShellV2() {
                                 )}
                                 {foodPlan.realCount > 0
                                   ? <>{foodPlan.realCount} of {foodPlan.itemCount} priced for real, the rest estimated.</>
-                                  : <>All {foodPlan.itemCount} item{foodPlan.itemCount === 1 ? '' : 's'} still estimated — add a real price anytime (bought or not).</>}
+                                  : <>All {foodPlan.itemCount} food item{foodPlan.itemCount === 1 ? '' : 's'} still estimated — add a real price anytime (bought or not).</>}
                                 {/* SILENCE READS AS "THESE ARE YOUR PRICES" (2026-09-18).
                                     priceContext is set only when the regional factor is
                                     NOT 1 (~:1460), and rendered only when truthy — so a

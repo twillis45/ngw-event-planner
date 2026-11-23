@@ -1,3 +1,4 @@
+import { planPartsProgress } from './planProgress';
 // ─── eventOrientation — "where are we?", derived (Phase 5G-C1 Parts 8-9) ─────
 //
 // The host surface already showed counts ("4 of 5 plan parts handled") and a ranked
@@ -257,13 +258,14 @@ export function heroPartId(action, items) {
  * cueLabel}], done, total, allHandled } or null when there is no ledger.
  */
 export function planRibbon(phaseCues, heroAction) {
-  const items = (phaseCues && Array.isArray(phaseCues.items)) ? phaseCues.items.filter(Boolean) : [];
-  if (!items.length) return null;
-  const nowId = heroPartId(heroAction, items);
-  const parts = items.map((it) => ({
-    id: it.id, handled: !!it.handled, now: !it.handled && it.id === nowId,
-    route: it.route || null, cueLabel: it.cueLabel || null,
+  // The one progress reader (lib/planProgress, cause 3): the ribbon, the strip
+  // and "what's counted" count the same parts the same way.
+  const pp = planPartsProgress(phaseCues);
+  if (!pp) return null;
+  const nowId = heroPartId(heroAction, phaseCues.items.filter(Boolean));
+  const parts = pp.parts.map((p) => ({
+    id: p.id, handled: p.handled, now: !p.handled && p.id === nowId,
+    route: p.route, cueLabel: p.cueLabel,
   }));
-  const done = parts.filter((p) => p.handled).length;
-  return { parts, done, total: parts.length, allHandled: done === parts.length };
+  return { parts, done: pp.done, total: pp.total, allHandled: pp.allHandled };
 }

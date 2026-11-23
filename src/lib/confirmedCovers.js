@@ -80,3 +80,18 @@ export function confirmedRsvpCovers(event) {
   const band = attendanceBand({ ...(event || {}), guestMode: 'roster' });
   return band && band.basis === 'rsvp' ? band.low : 0;
 }
+
+// ─── "CONFIRMED" MEANS SHE HEARD BACK (six root causes, cause 3) ─────────────
+// Thanksgiving walkthrough P1-5 (11/23/2026): The Day said "14 confirmed" when
+// nobody had replied — confirmedCovers falls back to her own planned count in
+// headcount mode, and every label printed that as "confirmed". A number is
+// called confirmed only when it is replies; otherwise it is what she planned.
+/** { n, word } — word is 'confirmed' only for real replies, else 'planned'. */
+export function coversWithWord(event) {
+  const n = confirmedCovers(event);
+  if (n == null) return { n: null, word: 'planned' };
+  let band = null;
+  try { band = attendanceBand(event || {}); } catch (_) { band = null; }
+  const replies = !!(band && band.applicable && band.basis === 'rsvp');
+  return { n, word: replies ? 'confirmed' : 'planned' };
+}
