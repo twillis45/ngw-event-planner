@@ -31,10 +31,13 @@ describe('the hero ask is about the item it sits above', () => {
     expect(ask('2 confirmed guests still need seats', { domain: 'guests' })).not.toBe('Add the location.');
   });
 
+  // INPUTS ONLY changed (six root causes, cause 1, part 2): a location item
+  // DECLARES that it is one (`askKind`) instead of being recognized by its
+  // words. The assertions are unchanged.
   it('still asks for the location when the item really is the location', () => {
-    expect(ask('Add the location')).toBe('Add the location.');
-    expect(ask('Set the venue')).toBe('Add the location.');
-    expect(ask('Where is it happening?')).toBe('Add the location.');
+    expect(ask('Add the location', { askKind: 'location' })).toBe('Add the location.');
+    expect(ask('Set the venue', { askKind: 'location' })).toBe('Add the location.');
+    expect(ask('Where is it happening?', { askKind: 'location' })).toBe('Add the location.');
   });
 
   it('an authored ask always wins, whatever the prose says', () => {

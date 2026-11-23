@@ -203,6 +203,9 @@ export const SURFACES = [
     domain: 'vendors',
     route: { tab: 'Vendors' },
     bundleTitle: (n) => `Untangle ${n} conflicts between your vendors`,
+    // The bundle's declared ask kind (six root causes, cause 1, part 2): the
+    // hero reads it, never the bundle title's words.
+    askKind: 'conflict',
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       const vendors = Array.isArray(event && event.vendors) ? event.vendors : [];
@@ -227,6 +230,8 @@ export const SURFACES = [
           // the hero read this title's words, so "… arrives before venue access"
           // asked "Add the location." Each conflict names its own next act.
           ask: normalizeAsk(c.recommendedAction) || 'Untangle your vendors.',
+          // …and its kind, which the shell's conflict rung reads (never /conflict/).
+          askKind: 'conflict',
           route: { tab: 'Vendors', vendorId: c.affectedVendorId },
           // IDENTITY-CLASS FIX (2026-07-15): the key must be a STABLE RECORD. The
           // old `c.id || c.affectedVendorId` used c.id — which is minted fresh every
@@ -283,6 +288,9 @@ export const SURFACES = [
     domain: 'vendors',
     route: { tab: 'Vendors' },
     bundleTitle: (n) => `Reconfirm ${n} vendors for the day`,
+    // The bundle's declared ask kind (six root causes, cause 1, part 2): the
+    // hero reads it, never the bundle title's words.
+    askKind: 'vendor-reconfirm',
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       let days = null;
@@ -300,6 +308,7 @@ export const SURFACES = [
         .map((v) => ({
           severity: 'attention',
           title: `Reconfirm ${v.name} for the day`,
+          askKind: 'vendor-reconfirm',
           why: `${when} — a quick reconfirm now beats a no-show`,
           route: { tab: 'Vendors', vendorId: v.id },
           key: v.id,                    // WAVE-6: the vendor record
@@ -353,6 +362,8 @@ export const SURFACES = [
         // vendorId — the tab-top landing the house rule forbids. On the day, the Day stage
         // IS where these alerts are actionable.
         route: { tab: 'Event Day Schedule' },
+        // The alert's declared ask kind, when it has one (cause 1, part 2).
+        ...(a.askKind ? { askKind: a.askKind } : null),
         key: a.id || null,              // WAVE-6: the alert's own id ('ov-v1', 'dietary'…)
         dueInDays: 0,                   // WAVE-6: isEventDay is the raiser's own gate — due today
       }));
@@ -955,6 +966,9 @@ export const SURFACES = [
     domain: 'plan',
     route: { tab: 'Decisions' },
     bundleTitle: (n) => `Resolve ${n} decisions — they're past their easy window`,
+    // The bundle's declared ask kind (six root causes, cause 1, part 2): the
+    // hero reads it, never the bundle title's words.
+    askKind: 'decisions',
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       let days = null;
@@ -981,6 +995,9 @@ export const SURFACES = [
     domain: 'vendors',
     route: { tab: 'Vendors' },
     bundleTitle: (n) => `Send payment to ${n} vendors`,
+    // The bundle's declared ask kind (six root causes, cause 1, part 2): the
+    // hero reads it, never the bundle title's words.
+    askKind: 'vendor-pay',
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       const vendors = Array.isArray(event && event.vendors) ? event.vendors : [];
@@ -1000,6 +1017,7 @@ export const SURFACES = [
         out.push({
           severity: 'critical',
           title: `Send payment to ${v.name || 'this vendor'}.`,
+          askKind: 'vendor-pay',
           why: od === 0 ? 'Balance is due today' : `Balance was due ${late} ${late === 1 ? 'day' : 'days'} ago`,
           // Same row the ladder routes to: the vendor's payment section.
           route: { tab: 'Vendors', vendorId: v.id, vendorSection: 'payment' },
@@ -1114,6 +1132,9 @@ export const SURFACES = [
     domain: 'vendors',
     route: { tab: 'Vendors' },
     bundleTitle: (n) => `Get proof of insurance from ${n} vendors`,
+    // The bundle's declared ask kind (six root causes, cause 1, part 2): the
+    // hero reads it, never the bundle title's words.
+    askKind: 'coi',
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       const vendors = Array.isArray(event && event.vendors) ? event.vendors : [];
@@ -1135,6 +1156,8 @@ export const SURFACES = [
           // re-sniff a category out of title prose — that regex broke on the
           // fifth title shape, 2026-07-22). coiNextAction declares it.
           sourceCategory: (cna && cna.sourceCategory) || 'coi',
+          askKind: 'coi',
+          ...(cna && cna.ask ? { ask: cna.ask } : null),
           // The ladder's exact title source: cna.title, with the ladder's own fallback.
           title: (cna && cna.title) || `Get an updated COI from ${v.name}.`,
           why: (cna && cna.consequence) || null,
@@ -1174,6 +1197,9 @@ export const SURFACES = [
     domain: 'vendors',
     route: { tab: 'Vendors' },
     bundleTitle: (n) => `Chase ${n} people who haven’t come back to you`,
+    // The bundle's declared ask kind (six root causes, cause 1, part 2): the
+    // hero reads it, never the bundle title's words.
+    askKind: 'vendor-chase',
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       let quiet = [];
@@ -1275,6 +1301,7 @@ export function surfaceMeta(surfaceId) {
   if (!s) return null;
   return {
     id: s.id, label: s.label, domain: s.domain, route: s.route,
+    askKind: s.askKind || null,
     bundleTitle: typeof s.bundleTitle === 'function'
       ? s.bundleTitle
       : (n) => `${n} things need a look — ${String(s.label || '').toLowerCase()}`,

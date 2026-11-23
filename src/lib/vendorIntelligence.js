@@ -245,7 +245,9 @@ export function coiNextAction(vendor, event, vname) {
   if (coi.need === 'recommended') {
     // COI-LOGIC-1: on-site work is a recommendation, not a venue mandate — ask,
     // don't assert.
-    return { title: `Ask ${vname} about insurance.`, consequence: 'They’ll be working on-site, and many venues want proof of insurance for that. Worth a quick ask.', ctaCopy: 'Mark asked', sourceCategory: 'coi' };
+    // `ask` is the hero's headline for this step, declared (six root causes,
+    // cause 1, part 2): it was read off this title by an "Ask … about …" regex.
+    return { title: `Ask ${vname} about insurance.`, ask: 'Ask about insurance.', consequence: 'They’ll be working on-site, and many venues want proof of insurance for that. Worth a quick ask.', ctaCopy: 'Mark asked', sourceCategory: 'coi' };
   }
   return { title: `Ask ${vname} for proof of insurance.`, consequence: coi.needReason && /venue notes/.test(coi.needReason) ? 'Your venue notes say insurance is required — the proof should name the venue and cover the event date.' : 'They’ll be working on-site, and most venues want proof of insurance naming the venue, usually ~30 days out.', ctaCopy: 'Mark asked', sourceCategory: 'coi' };
 }

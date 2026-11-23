@@ -1624,6 +1624,8 @@ export function _eventFoundationActions(event) {
       // The authored ask: the hero would otherwise read the domain and say
       // "Pick the day." over a range.
       ...(datesOwed ? { ask: 'Which dates? From – to.' } : null),
+      // The declared ask kind (cause 1, part 2): the day, else the hour.
+      askKind: !dateSet ? 'date' : 'start-time',
       consequence: datesOwed
         ? 'The stay, the meals for each day, and the budget all count from both ends of the trip.'
         : !dateSet
@@ -1659,7 +1661,7 @@ export function _eventFoundationActions(event) {
       rankLadder: (!!dateSet && !datesOwed) ? false : undefined,
     },
     {
-      id: 'guests', domain: 'guests', title: 'Add your guest list.',
+      id: 'guests', domain: 'guests', title: 'Add your guest list.', askKind: 'guests',
       consequence: 'Who’s coming is the first domino — it sizes the budget, the food, and the schedule.',
       cta: 'Add guests', route: { tab: 'Guests', focusField: 'guests-entry' },
       done: hasGuestSignal,
@@ -1671,7 +1673,7 @@ export function _eventFoundationActions(event) {
         : null,
     },
     {
-      id: 'budget', domain: 'budget', title: 'Set your budget.',
+      id: 'budget', domain: 'budget', title: 'Set your budget.', askKind: 'budget',
       consequence: 'With your headcount in, a budget frames every food and vendor choice.',
       cta: 'Set budget', route: { tab: 'Budget', focusField: 'hsp-budget' },
       done: budgetIsSet,
@@ -1711,6 +1713,9 @@ export function _eventFoundationActions(event) {
       // order" cannot ask two different things about one stay.
       id: 'lodging', domain: 'lodging',
       title: `${(!lodgingSettled && (() => { try { return lodgingAsk(event); } catch (_e) { return null; } })()) || 'Sort where everyone stays'}.`,
+      // Its ask is its own words (lodgingAsk owns them): the title ladder asked
+      // "Add who's coming." over "3 guests still need a room" (cause 1, part 2).
+      ask: `${(!lodgingSettled && (() => { try { return lodgingAsk(event); } catch (_e) { return null; } })()) || 'Sort where everyone stays'}.`,
       consequence: 'Rooms sell out and group rates expire — this one has a deadline the rest of the plan does not.',
       cta: 'Sort lodging', route: { tab: 'Travel', focusField: 'lodging' },
       done: lodgingSettled,
@@ -1719,7 +1724,7 @@ export function _eventFoundationActions(event) {
         : (lodgingSettled ? 'Stay is held' : null),
     }] : []),
     {
-      id: 'food', domain: 'food', title: 'Plan the food.',
+      id: 'food', domain: 'food', title: 'Plan the food.', askKind: 'menu',
       consequence: 'How you’re feeding everyone — cook, cater, or potluck — drives the shopping and the run of show.',
       // D-1B: deep-link to the open menu decision when one exists (its foodFocus
       // route scrolls + focuses the "Your choices" card), instead of dumping the
@@ -1787,7 +1792,9 @@ function decomposeSetComposite(cmd, event) {
   const atomic = _eventFoundationActions(event).find((a) => !a.done);
   if (atomic) {
     return { ...cmd, title: atomic.title, consequence: atomic.consequence,
-      primaryCta: atomic.cta, primaryRoute: atomic.route, category: atomic.domain };
+      primaryCta: atomic.cta, primaryRoute: atomic.route, category: atomic.domain,
+      // The rung's declared ask travels with its words (cause 1, part 2).
+      askKind: atomic.askKind || null, ask: atomic.ask || null };
   }
   // No atomic foundational gap remains, but a stale "Set date, …" composite still surfaced.
   // Don't return it verbatim — strip the already-satisfied date clause so the CTA can never
@@ -2241,6 +2248,10 @@ export function eventPlan(event, ctx = null) {
     // venue gate as "Add the location." on an event whose town was already set.
     // Driven live; invisible to every test that reads the selector directly.
     ask: top.ask || null,
+    // THE TENTH (cause 1, part 2): the declared ask kind, and the vendor a
+    // vendor kind is about. heroAskFor reads these, never the title.
+    askKind: top.askKind || null,
+    ...(top.vendorId != null ? { vendorId: top.vendorId } : null),
     // THE SIXTH (owner's phone, 9:09 PM 11/19/2026). A bunch of late steps
     // says it is led by a checklist step, so the headline asks it as a step
     // ("Catch up on this step."). Dropped here, the headline fell to the CTA
@@ -2487,6 +2498,7 @@ export function eventPlan(event, ctx = null) {
         // those (owner's iPad, 11/21/2026) — never one billed to another card.
         ...(claimed ? { records: claimed } : {}),
         ...(i.ask ? { ask: i.ask } : {}),
+        ...(i.askKind ? { askKind: i.askKind } : {}),
         // WAVE-5 RANKING (2026-07-15): the snooze lead cap (lib/snooze.js) reads
         // opts.leadDays off the action. A phase item maps to its underlying
         // timeline task's authored lead WHERE ONE EXISTS (a route naming a task);
@@ -2657,6 +2669,9 @@ export function eventPlan(event, ctx = null) {
         cta: 'Go', ctaLabel: 'Go',
         count: group.length,
         items: group,                    // the children, in their internal order
+        // The surface declares what its bundle asks (cause 1, part 2); the
+        // title ("Resolve 6 decisions — …") is never read for it.
+        ...(meta && meta.askKind ? { askKind: meta.askKind } : null),
         done: false, source: 'surfaceRegistry', surface: surfaceId,
         dueInDays: dues.length ? Math.min(...dues) : null,   // most urgent child
         // Tightest child window governs the bundle's snooze cap (most negative
@@ -3259,6 +3274,7 @@ export function _selectEventNextActionInner(event, prices = null) {
       level: 'attention',
       category: 'start',
       title: 'Add your guest list.',
+      askKind: 'guests',
       consequence: 'Who’s coming is the first domino — it sizes the budget, the food, and the schedule.',
       primaryCta: 'Add guests',
       // focusField 'guests-entry' lands the host ON the count entry in FOCUS MODE
@@ -3285,6 +3301,7 @@ export function _selectEventNextActionInner(event, prices = null) {
       level: 'attention',
       category: 'readiness',
       title: 'Set your budget.',
+      askKind: 'budget',
       consequence: 'With your headcount in, a budget frames every food and vendor choice — No Guesswork Events can size a starting point for you.',
       primaryCta: 'Set budget',
       // focusField deep-links to the budget $ input so the host lands on it, not the tab top.
@@ -3431,6 +3448,7 @@ export function _selectEventNextActionInner(event, prices = null) {
       level: 'attention',
       category: 'caterer',
       title: 'Confirm final catering count.',
+      askKind: 'catering-count',
       // The catering-count editor answers this card (declared, not read off the title).
       editor: 'count',
       consequence: `The caterer is set for ${event.catererCount}, but your count now comes to ${d.confirmedHeadcount}. Until those match, seating, meal counts, and the day's timing are all working from the wrong number.`,
@@ -3530,6 +3548,8 @@ export function _selectEventNextActionInner(event, prices = null) {
       level: 'critical',
       category: 'vendor',
       title: `Send payment to ${v.name || 'this vendor'}.`,
+      // Declared (cause 1, part 2): the noun comes from this vendor's category.
+      askKind: 'vendor-pay', vendorId: v.id,
       consequence: `Balance was due ${daysWord(od)} ago${v.cost ? ` (${fmtMoney0(v.cost)})` : ''}. Late payments can affect how the vendor prioritizes your event — better to settle now.`,
       // Sprint 60.B: issue-specific CTA. Lands inside the payment section.
       primaryCta: 'Pay now',
@@ -3552,6 +3572,8 @@ export function _selectEventNextActionInner(event, prices = null) {
       level: 'critical',
       category: 'vendor',
       sourceCategory: cna.sourceCategory || 'coi', // classification rides the action
+      askKind: 'coi',
+      ...(cna.ask ? { ask: cna.ask } : null),
       title: cna.title || `Get an updated COI from ${v.name}.`,
       consequence: cna.consequence || 'A current certificate of insurance naming the venue is required to clear load-in.',
       primaryCta: 'Get COI',
@@ -3570,6 +3592,7 @@ export function _selectEventNextActionInner(event, prices = null) {
       level: 'attention',
       category: 'vendor',
       title: `Confirm ${unconfirmed.name}.`,
+      askKind: 'vendor-confirm', vendorId: unconfirmed.id,
       consequence: `Currently ${(unconfirmed.status || 'open').toLowerCase()}. The closer to the event, the harder it gets to find another option if this one falls through.`,
       // Sprint 61: verb-first — the move is to confirm the booking.
       primaryCta: 'Confirm vendor',
@@ -3631,6 +3654,7 @@ export function _selectEventNextActionInner(event, prices = null) {
     // through to the next genuine tier so a satisfied bundle never reaches the hero/spine.
     let _skipCompression = false;
     let _decomposed = false;   // led by a foundational domino, not a checklist step
+    let _atomicAsk = null;     // that domino's declared ask (cause 1, part 2)
     // WAVE-5 RANKING (2026-07-15): the lead of the ACTUAL task this action names,
     // for the snooze cap. Nulled when the composite decomposes to a foundational
     // domino below — the domino has no authored lead, and borrowing the bundle's
@@ -3639,7 +3663,7 @@ export function _selectEventNextActionInner(event, prices = null) {
     if (_isSetCompositeTitle(firstText)) {
       const atomic = _eventFoundationActions(event).find((a) => !a.done);
       if (!atomic) _skipCompression = true;
-      else { firstText = atomic.title.replace(/[.\s]+$/, ''); firstRoute = atomic.route || firstRoute; firstLead = null; _decomposed = true; }
+      else { firstText = atomic.title.replace(/[.\s]+$/, ''); firstRoute = atomic.route || firstRoute; firstLead = null; _decomposed = true; _atomicAsk = { askKind: atomic.askKind || null, ask: atomic.ask || null }; }
     }
     // (A lead whose words said "menu" was re-routed to the open menu call here.
     // The step's declared target is its route now, words or not — six root
@@ -3676,6 +3700,7 @@ export function _selectEventNextActionInner(event, prices = null) {
         // headline reads this so it never mines the step's prose for a topic
         // (owner screenshot 11/18/2026: "Decide the menu." over the kitchen walk).
         leadIsStep: !!firstText && !_decomposed,
+        ...(_atomicAsk || null),
         // The checklist row this hero IS (by id), so the board's editor and its
         // "Mark done" read the step's declared target, never its title.
         ...(!_decomposed && _lead && _lead.row && _lead.row.id ? { stepRowId: _lead.row.id } : null),
@@ -3847,6 +3872,7 @@ export function _selectEventNextActionInner(event, prices = null) {
       level: 'attention',
       category: 'start',
       title: 'Start here — add who’s coming.',
+      askKind: 'guests',
       consequence: 'Your guest count is the first domino: it drives the budget, the food, and the timeline.',
       primaryCta: 'Add guests',
       // focusField 'guests-entry' lands the host ON the count entry in FOCUS MODE
@@ -3908,6 +3934,7 @@ export function _selectEventNextActionInner(event, prices = null) {
         // The records its "N open" counts (the food cue), as on the phase row.
         ...(Array.isArray(_pp.nextCue.records) ? { records: _pp.nextCue.records } : null),
         ...(_pp.nextCue.ask ? { ask: _pp.nextCue.ask } : null),
+        ...(_pp.nextCue.askKind ? { askKind: _pp.nextCue.askKind } : null),
         ...(_pp.nextCue.decision ? { decision: _pp.nextCue.decision } : null),
         contextLine: daysSub,
       };

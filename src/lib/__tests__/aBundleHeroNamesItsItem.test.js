@@ -37,8 +37,11 @@ test('a lone long title with no act names itself', () => {
 // 11/22/2026): with over/under judged on expected cost (owner ruling), Wanda's
 // board raised "Expected costs are $225 over your budget" under the headline
 // "Set your budget." — over a $5,000 budget already set.
+// INPUT ONLY changed (six root causes, cause 1, part 2): the over-budget item
+// declares its kind, as phaseProgress's budget row now does; the hero no longer
+// reads "over your budget" out of the title. The assertions are unchanged.
 test('an over-budget item asks to bring the plan inside the budget, not to set one', () => {
-  const a = { id: 'phase:budget', domain: 'budget', category: 'phase', title: 'Expected costs are $225 over your budget' };
+  const a = { id: 'phase:budget', domain: 'budget', category: 'phase', askKind: 'budget-over', title: 'Expected costs are $225 over your budget' };
   expect(heroAskFor(a, {})).toBe('Bring the plan inside your budget.');
   expect(heroAskFor({ id: 'phase:budget', domain: 'budget', title: 'Set your budget' }, {})).toBe('Set your budget.');
 });

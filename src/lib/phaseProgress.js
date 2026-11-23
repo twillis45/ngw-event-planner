@@ -128,7 +128,10 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
         ? (_multiDay ? 'Confirm the first day’s start time' : 'Confirm the start time')
         : (_multiDay ? 'Set the first day’s start time' : 'Set the start time'),
     (!_hasDate || _owed) ? { tab: 'Event Details', focusField: 'event-date' } : { tab: 'Event Details', focusField: 'event-start' },
-    !_hasDate ? 1 : _owed ? 2 : 9);
+    !_hasDate ? 1 : _owed ? 2 : 9,
+    // The declared ask kind (six root causes, cause 1, part 2): the hero reads
+    // this, never the cue's words. The day (or the days owed), else the hour.
+    { askKind: (!_hasDate || _owed) ? 'date' : 'start-time' });
   // Location essential uses the ONE shared reader (eventLocationStatus) — an
   // at-home host with their city on file has a location (weather and shopping
   // already run off it); only a truly missing location is a readiness gap.
@@ -163,7 +166,7 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   // The town. Unchanged in meaning — including the at-home carve-out and the
   // 2026-08-03 promotion to 3 when missing, both reasoned above.
   add('location', true, !_locationMissing, 'Add the location',
-    { tab: 'Event Details', focusField: 'event-venue' }, _locationMissing ? 3 : 5);
+    { tab: 'Event Details', focusField: 'event-venue' }, _locationMissing ? 3 : 5, { askKind: 'location' });
   // The address. APPLIES ONLY ONCE THERE IS A TOWN — otherwise it and the row
   // above would both fire on a blank event, which is two asks for one thing and
   // the duplicate surface this product forbids. `venue_only` counts as settled:
@@ -188,7 +191,10 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   const _addressSigned = _vf.findable;
   add('venueaddress', !_locationMissing, _addressSigned,
     _vf.isHome ? 'Add your street address' : 'Name the venue',
-    { tab: 'Event Details', focusField: 'event-venue' }, 3);
+    { tab: 'Event Details', focusField: 'event-venue' }, 3,
+    // Away from home the place is asked for as the location; at home the cue's
+    // own words ("Add your street address") are the ask.
+    _vf.isHome ? null : { askKind: 'location' });
   const gc = (() => { try { return guestCountResolved(ev); } catch { return { resolved: false }; } })();
   // A real named guest list — even with replies still pending — IS the host
   // having set a count: it's a real floor number, informative on its own.
@@ -199,7 +205,7 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   // one moment they'd already taken real, visible action.
   const hasCount = num(ev.guestCount) > 0 || num(ev.guestEstimate) > 0 || gc.resolved
     || (Array.isArray(ev.guests) && ev.guests.length > 0);
-  add('headcount', true, hasCount, 'Set the guest count', { tab: 'Guests', focusField: 'guests-entry' }, 8);
+  add('headcount', true, hasCount, 'Set the guest count', { tab: 'Guests', focusField: 'guests-entry' }, 8, { askKind: 'guests' });
 
   // Time-independent essentials below are skipped for no-date events only when
   // they are time-dependent (shopping urgency); decisions still count.
@@ -265,7 +271,7 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
         // ids playbookDecisionBoard rows carry, so record-level dedup can
         // subtract the ones the decisions surface raises individually instead
         // of double-counting. Only the ACTIVE ids, matching the number shown.
-        extra: { records: activeChoices.map((c) => c.id) },
+        extra: { records: activeChoices.map((c) => c.id), askKind: 'menu' },
       }
       : !dietaryDone
         ? {
@@ -314,7 +320,7 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
     // (The clock is read once, above the food row; see menuGatesShop.)
     add('shopping', true, unbought === 0, `Buy the remaining items · ${unbought} left`,
       unbought ? { tab: 'Planning', foodFocus: unboughtItems[0].id } : { tab: 'Planning', focusField: 'food-plan' }, 6,
-      unbought && shopTask && !menuGatesShop ? { leadDays: shopTask.lead, closingWindow: true } : null);
+      { ...(unbought ? { askKind: 'get-food' } : null), ...(unbought && shopTask && !menuGatesShop ? { leadDays: shopTask.lead, closingWindow: true } : null) });
   }
 
   // ── LODGING — destination events only ───────────────────────────────────────
@@ -363,7 +369,9 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   add('lodging', ev.isDestination === true, _lodgingPicked,
     lodgingAsk(ev) || 'Sort where everyone stays',
     { tab: 'Travel', focusField: 'lodging' }, 4,
-    { records: ['dest_lodging'] });
+    // Its ask is its own words (cause 1, part 2): the title ladder asked
+    // "Add who's coming." over "3 guests still need a room".
+    { records: ['dest_lodging'], ask: (lodgingAsk(ev) || 'Sort where everyone stays') + '.' });
 
   // Vendors — only when the host uses vendors; first-undone routing.
   const vendors = (Array.isArray(ev.vendors) ? ev.vendors : []).filter(v => v && String(v.name || '').trim());
@@ -468,7 +476,10 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
     add('budget', true, budgetSet && over <= 0,
       !budgetSet ? 'Set your budget'
         : over > 0 ? `Expected costs are $${over.toLocaleString()} over your budget` : null,
-      { tab: 'Budget' }, 9);
+      { tab: 'Budget' }, 9,
+      // Declared (cause 1, part 2): a set budget the plan runs past is asked
+      // to be brought inside, never to be set.
+      { askKind: budgetSet ? 'budget-over' : 'budget' });
   }
   if (String(ev.must_have_moment || '').trim()) add('moment', true, true, null, null, 9);
 
@@ -587,6 +598,7 @@ function pickCue(items) {
     // hero can be checked against the board it is supposed to agree with.
     ...(Array.isArray(best.records) && best.records.length ? { records: best.records } : null),
     ...(best.ask ? { ask: best.ask } : null),
+    ...(best.askKind ? { askKind: best.askKind } : null),
     ...(best.decision ? { decision: best.decision } : null),
   };
 }

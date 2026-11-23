@@ -147,7 +147,10 @@ describe('the last resort names the act', () => {
   });
 
   test('a short title still wins over the CTA — ladder order is unchanged', () => {
-    expect(heroAskFor({ title: 'Plan the food', primaryCta: 'Open the food plan' })).toBe('Decide the menu.');
+    // INPUT ONLY changed (six root causes, cause 1, part 2): the food item
+    // declares its kind, as the foundation's food rung now does; the hero no
+    // longer reads "food" out of the title. The assertion is unchanged.
+    expect(heroAskFor({ title: 'Plan the food', askKind: 'menu', primaryCta: 'Open the food plan' })).toBe('Decide the menu.');
   });
 
   test('and the placeholder survives as the TRUE last resort', () => {
