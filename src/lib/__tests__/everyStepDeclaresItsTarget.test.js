@@ -575,8 +575,8 @@ describe('when she cooks, only a step that is purely catering drops', () => {
   // in its no-caterer words (ruling 1, round 2: Quinceañera t_fitting too).
   const { HOST_TYPES } = require('../smartParseEvent');
   const HOST = pbm.ALL_PLAYBOOKS.filter((pb) => HOST_TYPES.includes(pb.type));
-  // Owner call pending (named in HANDOFF): Birthday's last invoices.
-  const PENDING = new Set(['Birthday:t_after_invoices']);
+  // Nothing pending: Birthday's last invoices keep the bartender (round 2, item 3).
+  const PENDING = new Set();
   const stepsOf = (pb) => [...(pb.tasks || []), ...cookTasksFor(pb), ...pbm.DESTINATION_TASKS];
   const cooks = (out) => Array.isArray(out) && out.includes('host-cooks');
 
