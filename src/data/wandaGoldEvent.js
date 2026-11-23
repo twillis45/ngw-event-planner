@@ -145,8 +145,8 @@ const WANDA_GOLD_EVENT = {
   ],
   timeline: [
     { id: 'ev-x-wanda-t1', week: 'Week of Feb 8', task: 'Book the pre-event photoshoot friend + confirm the 6-ft print turnaround (everything decorative hangs on this)', done: true, owner: 'Wanda' },
-    { id: 'ev-x-wanda-t2', week: 'Week of Feb 22', task: 'Lock catering — pick Semper vs. the Post kitchen to fit the $5,000, then book the open bar (or drop to beer/wine)', done: false, owner: 'Wanda' },
-    { id: 'ev-x-wanda-t3', week: 'Week of Mar 1', task: 'Book photobooth + night-of photographer, or trim to fit budget', done: false, owner: 'Vida Haynes' },
+    { id: 'ev-x-wanda-t2', week: 'Week of Feb 22', task: 'Lock catering — pick Semper vs. the Post kitchen to fit the $5,000, then book the open bar (or drop to beer/wine)', facts: ['or:catering-moot', 'caterer-booked'], done: false, owner: 'Wanda' },
+    { id: 'ev-x-wanda-t3', week: 'Week of Mar 1', task: 'Book photobooth + night-of photographer, or trim to fit budget', facts: ['roles:photobooth+photographer'], done: false, owner: 'Vida Haynes' },
     { id: 'ev-x-wanda-t4', week: 'Week of Mar 8', task: 'Do the photoshoot at 4604 and ORDER the 6-ft prints (~10 days out so they’re ready)', done: false, owner: 'Wanda' },
     { id: 'ev-x-wanda-t5', week: 'Week of Mar 8', task: 'Set up the rooms at 4604 for Marcus’s family + Mom (arriving 2 days early)', done: false, owner: 'Cory' },
     { id: 'ev-x-wanda-t6', week: 'Week of Mar 8', task: 'Coordinate the secret singer + gold-dress reveal cues with the DJ — keep it off Wanda’s radar', done: false, owner: 'Cory', surprise: true },

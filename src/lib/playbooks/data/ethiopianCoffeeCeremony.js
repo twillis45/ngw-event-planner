@@ -47,7 +47,7 @@ const ethiopianCoffeeCeremony = {
   ],
 
   milestones: [
-    { id: 'buna_setdate', name: 'Set date + headcount; check if it is an Orthodox fasting day', offsetDays: 10, owner: 'host', category: 'planning', risk: { ifDelayed: 'Fasting-day menu mismatch; wrong portions', severity: 'low' } },
+    { id: 'buna_setdate', name: 'Set date + headcount; check if it is an Orthodox fasting day', facts: ['date-set'], offsetDays: 10, owner: 'host', category: 'planning', risk: { ifDelayed: 'Fasting-day menu mismatch; wrong portions', severity: 'low' } },
     { id: 'buna_invite', name: 'Invite guests; explain it runs ~2–3h across three rounds', offsetDays: 8, owner: 'host', dependsOn: ['buna_setdate'], category: 'guest', risk: { ifDelayed: 'Guests leave before Baraka, the blessing round', severity: 'med' } },
     { id: 'buna_source_equipment', name: 'Source the jebena, cini cups, brazier, mortar/grinder', offsetDays: 7, owner: 'host', dependsOn: ['buna_setdate'], category: 'shopping', risk: { ifDelayed: 'No jebena = no ceremony', severity: 'high' } },
     { id: 'buna_source_pantry', name: 'Buy green coffee, frankincense, berbere, niter kibbeh, teff/injera order', offsetDays: 5, owner: 'host', dependsOn: ['buna_source_equipment'], category: 'shopping', risk: { ifDelayed: 'Specialty items only at Ethiopian markets — limited hours', severity: 'med' } },
@@ -58,15 +58,15 @@ const ethiopianCoffeeCeremony = {
   ],
 
   tasks: [
-    { id: 't_fasting_check', target: 'spread', milestoneId: 'buna_setdate', phase: 'planning', label: 'Check the church calendar — is the date a fasting (ye-tsom) day? It shapes the whole menu', when: 'T-10d' },
-    { id: 't_invite', target: 'invite', milestoneId: 'buna_invite', phase: 'guest', label: 'Invite guests; gently note the ceremony is unhurried and runs across three rounds — plan to stay for Baraka', when: 'T-8d' },
-    { id: 't_equipment', target: 'list', milestoneId: 'buna_source_equipment', phase: 'shopping', label: 'Source/borrow a jebena, small cini cups, a brazier or stovetop pan, mortar (mukecha) or grinder', when: 'T-7d' },
-    { id: 't_pantry', target: 'spread', milestoneId: 'buna_source_pantry', phase: 'shopping', label: 'Green coffee beans, frankincense, berbere, niter kibbeh, wat ingredients; order/reserve injera at an Ethiopian market', when: 'T-5d' },
-    { id: 't_cook', target: 'none', milestoneId: 'buna_cook', phase: 'food', label: 'Cook the wats a day ahead — doro wat (chicken + berbere + hard-boiled egg) and a vegan shiro/misir/gomen spread; they deepen overnight', when: 'T-1d' },
-    { id: 't_freshpickup', target: 'day', milestoneId: 'buna_freshpickup', phase: 'shopping', label: 'Pick up fresh injera; cut/gather fresh grass (ketema); pop popcorn (fandisha)', when: 'T0 morning' },
-    { id: 't_setup', target: 'day', milestoneId: 'buna_setup', phase: 'setup', label: 'Strew grass, set the low ceremony table/tray, lay out cini cups, ready charcoal + incense', when: 'T0 -1h' },
-    { id: 't_ceremony', target: 'day', milestoneId: 'event', phase: 'event', label: 'Wash + roast beans (pass the pan so guests smell the smoke), grind, brew in the jebena, pour from height; serve Abol, then Tona, then Baraka', when: 'T0' },
-    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Cool the brazier + jebena fully, hand-wash the clay pot + cups, sweep the grass, air out incense smoke, pack leftovers', when: 'T0 +3h' },
+    { id: 't_fasting_check', target: 'spread', facts: ['menu-decided'], milestoneId: 'buna_setdate', phase: 'planning', label: 'Check the church calendar — is the date a fasting (ye-tsom) day? It shapes the whole menu', when: 'T-10d' },
+    { id: 't_invite', target: 'invite', facts: ['invites-out'], milestoneId: 'buna_invite', phase: 'guest', label: 'Invite guests; gently note the ceremony is unhurried and runs across three rounds — plan to stay for Baraka', when: 'T-8d' },
+    { id: 't_equipment', target: 'list', facts: [], milestoneId: 'buna_source_equipment', phase: 'shopping', label: 'Source/borrow a jebena, small cini cups, a brazier or stovetop pan, mortar (mukecha) or grinder', when: 'T-7d' },
+    { id: 't_pantry', target: 'spread', facts: [], milestoneId: 'buna_source_pantry', phase: 'shopping', label: 'Green coffee beans, frankincense, berbere, niter kibbeh, wat ingredients; order/reserve injera at an Ethiopian market', when: 'T-5d' },
+    { id: 't_cook', target: 'none', facts: [], milestoneId: 'buna_cook', phase: 'food', label: 'Cook the wats a day ahead — doro wat (chicken + berbere + hard-boiled egg) and a vegan shiro/misir/gomen spread; they deepen overnight', when: 'T-1d' },
+    { id: 't_freshpickup', target: 'day', facts: [], milestoneId: 'buna_freshpickup', phase: 'shopping', label: 'Pick up fresh injera; cut/gather fresh grass (ketema); pop popcorn (fandisha)', when: 'T0 morning' },
+    { id: 't_setup', target: 'day', facts: [], milestoneId: 'buna_setup', phase: 'setup', label: 'Strew grass, set the low ceremony table/tray, lay out cini cups, ready charcoal + incense', when: 'T0 -1h' },
+    { id: 't_ceremony', target: 'day', facts: [], milestoneId: 'event', phase: 'event', label: 'Wash + roast beans (pass the pan so guests smell the smoke), grind, brew in the jebena, pour from height; serve Abol, then Tona, then Baraka', when: 'T0' },
+    { id: 't_reset', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Cool the brazier + jebena fully, hand-wash the clay pot + cups, sweep the grass, air out incense smoke, pack leftovers', when: 'T0 +3h' },
   ],
 
   purchases: [

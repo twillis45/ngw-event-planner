@@ -417,35 +417,35 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-engagement-party-t2",
         "week": "Week of 4/27",
-        "task": "Couple drafts and delivers the guest list to host (they own the list)",
+        "task": "Couple drafts and delivers the guest list to host (they own the list)", "facts": ["guest-count"],
         "done": true,
         "owner": "Couple"
       },
       {
         "id": "ev-x-engagement-party-t3",
         "week": "Week of 5/4",
-        "task": "Book venue and lock the 8/15 date",
+        "task": "Book venue and lock the 8/15 date", "facts": ["venue-set"],
         "done": true,
         "owner": "Host"
       },
       {
         "id": "ev-x-engagement-party-t4",
         "week": "Week of 5/11",
-        "task": "Send digital save-the-date / evite to couple's guest list",
+        "task": "Send digital save-the-date / evite to couple's guest list", "facts": ["guest-count"],
         "done": true,
         "owner": "Host"
       },
       {
         "id": "ev-x-engagement-party-t5",
         "week": "Week of 5/18",
-        "task": "Confirm caterer, bar, and signature cocktail; complete tasting",
+        "task": "Confirm caterer, bar, and signature cocktail; complete tasting", "facts": ["or:catering-moot", "and:caterer-booked"],
         "done": true,
         "owner": "Host"
       },
       {
         "id": "ev-x-engagement-party-t6",
         "week": "Week of 5/25",
-        "task": "Book photographer, cake, and DJ",
+        "task": "Book photographer, cake, and DJ", "facts": ["roles:photographer+dj+baker"],
         "done": true,
         "owner": "Host"
       },
@@ -480,7 +480,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-engagement-party-t11",
         "week": "Week of 8/10",
-        "task": "Lock final headcount, pay caterer balance, build seating/flow plan",
+        "task": "Lock final headcount, pay caterer balance, build seating/flow plan", "facts": ["nothing-owed"],
         "done": false,
         "owner": "Host"
       }
@@ -1067,14 +1067,14 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-vow-renewal-t1",
         "week": "2026-02 (8 mo out)",
-        "task": "Set anniversary date and confirm it falls on/near the original wedding date",
+        "task": "Set anniversary date and confirm it falls on/near the original wedding date", "facts": ["date-set"],
         "done": true,
         "owner": "Raymond & Gloria"
       },
       {
         "id": "ev-x-vow-renewal-t2",
         "week": "2026-03 (7 mo out)",
-        "task": "Book garden venue with indoor rain backup",
+        "task": "Book garden venue with indoor rain backup", "facts": ["venue-set"],
         "done": true,
         "owner": "Gloria"
       },
@@ -1088,7 +1088,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-vow-renewal-t4",
         "week": "2026-04 (6 mo out)",
-        "task": "Book photographer and gather original 1996 wedding photos for 'then & now' recreation",
+        "task": "Book photographer and gather original 1996 wedding photos for 'then & now' recreation", "facts": ["roles:photographer"],
         "done": true,
         "owner": "Gloria"
       },
@@ -1102,7 +1102,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-vow-renewal-t6",
         "week": "2026-05 (5 mo out)",
-        "task": "Send invitations to original wedding guests and family witnesses",
+        "task": "Send invitations to original wedding guests and family witnesses", "facts": ["invites-out"],
         "done": true,
         "owner": "Imelda Reyes"
       },
@@ -1130,7 +1130,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-vow-renewal-t10",
         "week": "2026-09 (1 mo out)",
-        "task": "Pay venue balance and confirm final headcount with caterer",
+        "task": "Pay venue balance and confirm final headcount with caterer", "facts": ["nothing-owed"],
         "done": false,
         "owner": "Raymond"
       },
@@ -1751,21 +1751,21 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-anniversary-t3",
         "week": "2026-04 (Wk 5)",
-        "task": "Book venue with discreet date hold; confirm AV for montage projection",
+        "task": "Book venue with discreet date hold; confirm AV for montage projection", "facts": ["venue-set"],
         "done": true,
         "owner": "Chidi Okonkwo"
       },
       {
         "id": "ev-x-anniversary-t4",
         "week": "2026-04 (Wk 6)",
-        "task": "Send coded surprise invitations with explicit SURPRISE warning; set up RSVP line that won't reach parents",
+        "task": "Send coded surprise invitations with explicit SURPRISE warning; set up RSVP line that won't reach parents", "facts": ["invites-out"],
         "done": true,
         "owner": "Ngozi Okonkwo-Bell"
       },
       {
         "id": "ev-x-anniversary-t5",
         "week": "2026-05 (Wk 7)",
-        "task": "Book caterer + arrange recreation of parents' 1976 wedding cake from photo",
+        "task": "Book caterer + arrange recreation of parents' 1976 wedding cake from photo", "facts": ["or:catering-moot", "caterer-booked"],
         "done": true,
         "owner": "Ngozi Okonkwo-Bell"
       },
@@ -1779,7 +1779,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-anniversary-t7",
         "week": "2026-05 (Wk 9)",
-        "task": "Book entertainment (1970s-era jazz trio + DJ); confirm parents' first-dance song",
+        "task": "Book entertainment (1970s-era jazz trio + DJ); confirm parents' first-dance song", "facts": ["roles:dj"],
         "done": true,
         "owner": "Adaeze Okonkwo"
       },
@@ -1800,7 +1800,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-anniversary-t10",
         "week": "2026-08 (Wk 19)",
-        "task": "Lock final headcount with caterer; finalize seating and dietary flags",
+        "task": "Lock final headcount with caterer; finalize seating and dietary flags", "facts": ["or:catering-moot", "and:caterer-booked", "guest-count"],
         "done": false,
         "owner": "Ngozi Okonkwo-Bell"
       },
@@ -2290,35 +2290,35 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-baby-shower-t1",
         "week": "-8 wk (mid-May)",
-        "task": "Confirm date with parents-to-be & lock guest list with the host",
+        "task": "Confirm date with parents-to-be & lock guest list with the host", "facts": ["guest-count"],
         "done": true,
         "owner": "Anjali Raman"
       },
       {
         "id": "ev-x-baby-shower-t2",
         "week": "-8 wk",
-        "task": "Book venue and brunch caterer; pay deposits",
+        "task": "Book venue and brunch caterer; pay deposits", "facts": ["deposits-paid"],
         "done": true,
         "owner": "Anjali Raman"
       },
       {
         "id": "ev-x-baby-shower-t3",
         "week": "-7 wk",
-        "task": "Confirm the registry with Priya & Dev and add registry link to invitations",
+        "task": "Confirm the registry with Priya & Dev and add registry link to invitations", "facts": ["invites-out"],
         "done": true,
         "owner": "Sofia Delgado-Ruiz"
       },
       {
         "id": "ev-x-baby-shower-t4",
         "week": "-6 wk",
-        "task": "Design & send invitations (with registry + 'advice for parents' card)",
+        "task": "Design & send invitations (with registry + 'advice for parents' card)", "facts": ["invites-out"],
         "done": true,
         "owner": "Sofia Delgado-Ruiz"
       },
       {
         "id": "ev-x-baby-shower-t5",
         "week": "-4 wk",
-        "task": "Plan shower games + buy prizes and favors (guess-the-baby-food, diaper raffle)",
+        "task": "Plan shower games + buy prizes and favors (guess-the-baby-food, diaper raffle)", "facts": ["then:food-bought"],
         "done": true,
         "owner": "Whitney Okafor"
       },
@@ -2339,14 +2339,14 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-baby-shower-t8",
         "week": "-1 wk (Jul 19-22)",
-        "task": "Chase RSVPs and lock FINAL headcount; confirm meal counts to caterer",
+        "task": "Chase RSVPs and lock FINAL headcount; confirm meal counts to caterer", "facts": ["replies-chased"],
         "done": false,
         "owner": "Anjali Raman"
       },
       {
         "id": "ev-x-baby-shower-t9",
         "week": "-1 wk",
-        "task": "Pay caterer balance once headcount is final",
+        "task": "Pay caterer balance once headcount is final", "facts": ["nothing-owed"],
         "done": false,
         "owner": "Anjali Raman"
       },
@@ -2919,35 +2919,35 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-birthday-t1",
         "week": "10 weeks out",
-        "task": "Lock guest list and confirm surprise vs. open invite with host",
+        "task": "Lock guest list and confirm surprise vs. open invite with host", "facts": ["invites-out"],
         "done": true,
         "owner": "Priya (host)"
       },
       {
         "id": "ev-x-birthday-t2",
         "week": "9 weeks out",
-        "task": "Book venue and secure 40th milestone date (7/18)",
+        "task": "Book venue and secure 40th milestone date (7/18)", "facts": ["venue-set"],
         "done": true,
         "owner": "Planner"
       },
       {
         "id": "ev-x-birthday-t3",
         "week": "8 weeks out",
-        "task": "Send digital save-the-dates / disco-theme invitations",
+        "task": "Send digital save-the-dates / disco-theme invitations", "facts": ["invites-out"],
         "done": true,
         "owner": "Priya (host)"
       },
       {
         "id": "ev-x-birthday-t4",
         "week": "7 weeks out",
-        "task": "Book caterer and schedule menu tasting",
+        "task": "Book caterer and schedule menu tasting", "facts": ["or:catering-moot", "caterer-booked"],
         "done": true,
         "owner": "Planner"
       },
       {
         "id": "ev-x-birthday-t5",
         "week": "6 weeks out",
-        "task": "Book DJ and build 70s/80s disco playlist + do-not-play list",
+        "task": "Book DJ and build 70s/80s disco playlist + do-not-play list", "facts": ["roles:dj"],
         "done": true,
         "owner": "Priya (host)"
       },
@@ -2968,7 +2968,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-birthday-t8",
         "week": "3 weeks out",
-        "task": "Collect RSVPs and dietary needs (halal/vegan/GF/kids meals)",
+        "task": "Collect RSVPs and dietary needs (halal/vegan/GF/kids meals)", "facts": ["or:dietary-noted"],
         "done": false,
         "owner": "Priya (host)"
       },
@@ -3561,14 +3561,14 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-graduation-t3",
         "week": "6 weeks out",
-        "task": "Send open-house invites with grad photo + flexible-arrival note",
+        "task": "Send open-house invites with grad photo + flexible-arrival note", "facts": ["invites-out"],
         "done": true,
         "owner": "Maya Restrepo"
       },
       {
         "id": "ev-x-graduation-t4",
         "week": "5 weeks out",
-        "task": "Book volume caterer for buffet-style service that holds warm for staggered guests",
+        "task": "Book volume caterer for buffet-style service that holds warm for staggered guests", "facts": ["or:catering-moot", "caterer-booked"],
         "done": true,
         "owner": "Carlos Restrepo"
       },
@@ -3589,7 +3589,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-graduation-t7",
         "week": "2 weeks out",
-        "task": "Book photographer for cap-toss + family portraits",
+        "task": "Book photographer for cap-toss + family portraits", "facts": ["roles:photographer"],
         "done": true,
         "owner": "Diana Restrepo"
       },
@@ -3610,7 +3610,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-graduation-t10",
         "week": "4 days out",
-        "task": "Pay caterer balance once final count confirmed",
+        "task": "Pay caterer balance once final count confirmed", "facts": ["nothing-owed"],
         "done": false,
         "owner": "Carlos Restrepo"
       },
@@ -4211,21 +4211,21 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-retirement-party-t2",
         "week": "Week of May 4",
-        "task": "Set guest list balancing colleagues, retired staff, and family (~60)",
+        "task": "Set guest list balancing colleagues, retired staff, and family (~60)", "facts": ["guest-count"],
         "done": true,
         "owner": "Marcus Bell"
       },
       {
         "id": "ev-x-retirement-party-t3",
         "week": "Week of May 11",
-        "task": "Book venue and reserve the 8/29 date",
+        "task": "Book venue and reserve the 8/29 date", "facts": ["venue-set"],
         "done": true,
         "owner": "Grace Adeyemi"
       },
       {
         "id": "ev-x-retirement-party-t4",
         "week": "Week of May 18",
-        "task": "Contract caterer and lock plated menu",
+        "task": "Contract caterer and lock plated menu", "facts": ["or:catering-moot", "and:caterer-booked", "menu-decided"],
         "done": true,
         "owner": "Grace Adeyemi"
       },
@@ -4239,7 +4239,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-retirement-party-t6",
         "week": "Week of June 1",
-        "task": "Send invitations to colleagues, family, and retired staff",
+        "task": "Send invitations to colleagues, family, and retired staff", "facts": ["invites-out"],
         "done": true,
         "owner": "Sofia Marchetti"
       },
@@ -4253,7 +4253,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-retirement-party-t8",
         "week": "Week of June 8",
-        "task": "Book photographer for the event",
+        "task": "Book photographer for the event", "facts": ["roles:photographer"],
         "done": false,
         "owner": "Grace Adeyemi"
       },
@@ -4267,7 +4267,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-retirement-party-t10",
         "week": "Week of August 3",
-        "task": "Close the group-gift fund, purchase engraved watch + travel voucher",
+        "task": "Close the group-gift fund, purchase engraved watch + travel voucher", "facts": ["replies-chased"],
         "done": false,
         "owner": "Marcus Bell"
       },
@@ -4808,7 +4808,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-reunion-t2",
         "week": "2026-04",
-        "task": "Secure venue and lock the date 13+ months out (summer Saturdays book fast)",
+        "task": "Secure venue and lock the date 13+ months out (summer Saturdays book fast)", "facts": ["venue-set"],
         "done": true,
         "owner": "Marcus DeLeon"
       },
@@ -4822,7 +4822,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-reunion-t4",
         "week": "2026-08",
-        "task": "Launch reunion website with registration, RSVP, and ticket payment",
+        "task": "Launch reunion website with registration, RSVP, and ticket payment", "facts": ["nothing-owed"],
         "done": false,
         "owner": "Priya Raghunathan"
       },
@@ -4850,7 +4850,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-reunion-t8",
         "week": "2027-03",
-        "task": "Confirm headcount band, finalize caterer + DJ, schedule tasting",
+        "task": "Confirm headcount band, finalize caterer + DJ, schedule tasting", "facts": ["or:catering-moot", "and:caterer-booked", "guest-count"],
         "done": false,
         "owner": "Priya Raghunathan"
       },
@@ -4864,7 +4864,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-reunion-t10",
         "week": "2027-05",
-        "task": "Pay venue balance; print name tags with yearbook photos; build memorial tribute list",
+        "task": "Pay venue balance; print name tags with yearbook photos; build memorial tribute list", "facts": ["nothing-owed"],
         "done": false,
         "owner": "Marcus DeLeon"
       },
@@ -5451,7 +5451,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-product-launch-t1",
         "week": "2026-05-04",
-        "task": "Lock launch date, venue contract, and announce-internally",
+        "task": "Lock launch date, venue contract, and announce-internally", "facts": ["venue-set"],
         "done": true,
         "owner": "Amara Boateng"
       },
@@ -5465,7 +5465,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-product-launch-t3",
         "week": "2026-05-18",
-        "task": "Build press/analyst invite list and open registration page",
+        "task": "Build press/analyst invite list and open registration page", "facts": ["invites-out"],
         "done": true,
         "owner": "Amara Boateng"
       },
@@ -5500,7 +5500,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-product-launch-t8",
         "week": "2026-07-06",
-        "task": "Contract caterer + staging; confirm headcount to vendors",
+        "task": "Contract caterer + staging; confirm headcount to vendors", "facts": ["or:catering-moot", "caterer-booked"],
         "done": false,
         "owner": "Amara Boateng"
       },
@@ -6153,7 +6153,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-team-retreat-t1",
         "week": "2026-03",
-        "task": "Set retreat dates, location region, and headcount target with leadership",
+        "task": "Set retreat dates, location region, and headcount target with leadership", "facts": ["guest-count"],
         "done": true,
         "owner": "Priya Raghunathan"
       },
@@ -6167,7 +6167,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-team-retreat-t3",
         "week": "2026-05",
-        "task": "Sign venue + catering contracts and pay deposits",
+        "task": "Sign venue + catering contracts and pay deposits", "facts": ["deposits-paid"],
         "done": true,
         "owner": "No Guesswork Events"
       },
@@ -6188,7 +6188,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-team-retreat-t6",
         "week": "2026-06",
-        "task": "Build dietary matrix and submit to caterer (vegan, GF/celiac, nut allergy)",
+        "task": "Build dietary matrix and submit to caterer (vegan, GF/celiac, nut allergy)", "facts": ["or:catering-moot", "and:caterer-booked"],
         "done": true,
         "owner": "No Guesswork Events"
       },
@@ -6202,7 +6202,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-team-retreat-t8",
         "week": "2026-07",
-        "task": "Close RSVPs and finalize swag/jacket sizing order",
+        "task": "Close RSVPs and finalize swag/jacket sizing order", "facts": ["invites-out"],
         "done": false,
         "owner": "No Guesswork Events"
       },
@@ -6216,7 +6216,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-team-retreat-t10",
         "week": "2026-10",
-        "task": "Confirm final headcount with caterer and pay balances",
+        "task": "Confirm final headcount with caterer and pay balances", "facts": ["nothing-owed"],
         "done": false,
         "owner": "No Guesswork Events"
       },
@@ -6711,7 +6711,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-town-hall-t1",
         "week": "Wk of May 18 (T-7wk)",
-        "task": "Lock Town Hall date, secure exec calendar holds, reserve atrium",
+        "task": "Lock Town Hall date, secure exec calendar holds, reserve atrium", "facts": ["venue-set"],
         "done": true,
         "owner": "Hannah Schmidt"
       },
@@ -6725,7 +6725,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-town-hall-t3",
         "week": "Wk of May 25 (T-6wk)",
-        "task": "Book AV/broadcast vendor + confirm livestream platform for remote/global staff",
+        "task": "Book AV/broadcast vendor + confirm livestream platform for remote/global staff", "facts": ["a-vendor-booked"],
         "done": true,
         "owner": "Hannah Schmidt"
       },
@@ -6739,7 +6739,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-town-hall-t5",
         "week": "Wk of Jun 8 (T-4wk)",
-        "task": "Send all-hands invite + calendar hold to full company; open Slido Q&A submissions",
+        "task": "Send all-hands invite + calendar hold to full company; open Slido Q&A submissions", "facts": ["invites-out"],
         "done": true,
         "owner": "People Ops Comms"
       },
@@ -6760,7 +6760,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-town-hall-t8",
         "week": "Wk of Jun 29 (T-1.5wk)",
-        "task": "Lock final in-person headcount; place catering order",
+        "task": "Lock final in-person headcount; place catering order", "facts": ["or:catering-moot", "and:caterer-booked", "guest-count"],
         "done": false,
         "owner": "Hannah Schmidt"
       },
@@ -7342,7 +7342,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-training-workshop-t3",
         "week": "May 18",
-        "task": "Book venue & confirm breakout space for small-group work",
+        "task": "Book venue & confirm breakout space for small-group work", "facts": ["venue-set"],
         "done": true,
         "owner": "Program Lead"
       },
@@ -7363,7 +7363,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-training-workshop-t6",
         "week": "Jun 08",
-        "task": "Confirm catering, collect dietary restrictions",
+        "task": "Confirm catering, collect dietary restrictions", "facts": ["or:dietary-noted"],
         "done": true,
         "owner": "Program Coordinator"
       },
@@ -7377,7 +7377,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-training-workshop-t8",
         "week": "Jun 22",
-        "task": "Close enrollment & lock headcount (chase Pending RSVPs)",
+        "task": "Close enrollment & lock headcount (chase Pending RSVPs)", "facts": ["replies-chased"],
         "done": false,
         "owner": "Program Coordinator"
       },
@@ -7942,7 +7942,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-award-ceremony-t2",
         "week": "2026-03 (Wk of Mar 23)",
-        "task": "Book venue + place hold; sign venue contract",
+        "task": "Book venue + place hold; sign venue contract", "facts": ["venue-set"],
         "done": true,
         "owner": "Events Lead"
       },
@@ -8005,7 +8005,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-award-ceremony-t11",
         "week": "2026-10 (Wk of Oct 26)",
-        "task": "Lock final headcount/meal counts to caterer; print programs & signage",
+        "task": "Lock final headcount/meal counts to caterer; print programs & signage", "facts": ["or:catering-moot", "and:caterer-booked", "guest-count"],
         "done": false,
         "owner": "Events Lead"
       }
@@ -8436,7 +8436,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-client-dinner-t1",
         "week": "2026-W22",
-        "task": "Confirm dinner objective & guest list with managing partner (who must be in the room, who's optional)",
+        "task": "Confirm dinner objective & guest list with managing partner (who must be in the room, who's optional)", "facts": ["guest-count"],
         "done": true,
         "owner": "Mei-Ling Chen"
       },
@@ -8450,21 +8450,21 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-client-dinner-t3",
         "week": "2026-W23",
-        "task": "Book private room, sign agreement, pay deposit against F&B minimum",
+        "task": "Book private room, sign agreement, pay deposit against F&B minimum", "facts": ["deposits-paid"],
         "done": true,
         "owner": "Søren Halvorsen"
       },
       {
         "id": "ev-x-client-dinner-t4",
         "week": "2026-W23",
-        "task": "Send personalized invitations to client principals & internal attendees",
+        "task": "Send personalized invitations to client principals & internal attendees", "facts": ["invites-out"],
         "done": true,
         "owner": "Mei-Ling Chen"
       },
       {
         "id": "ev-x-client-dinner-t5",
         "week": "2026-W24",
-        "task": "Collect RSVPs and dietary restrictions; flag pescatarian/vegetarian/GF to venue",
+        "task": "Collect RSVPs and dietary restrictions; flag pescatarian/vegetarian/GF to venue", "facts": ["or:dietary-noted"],
         "done": true,
         "owner": "Mei-Ling Chen"
       },
@@ -8478,21 +8478,21 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-client-dinner-t7",
         "week": "2026-W24",
-        "task": "Draft prix-fixe menu & wine pairing with the chef and sommelier",
+        "task": "Draft prix-fixe menu & wine pairing with the chef and sommelier", "facts": ["menu-decided"],
         "done": true,
         "owner": "Søren Halvorsen"
       },
       {
         "id": "ev-x-client-dinner-t8",
         "week": "2026-W25",
-        "task": "Chase outstanding RSVPs (Procurement head, traveling architect) to lock headcount",
+        "task": "Chase outstanding RSVPs (Procurement head, traveling architect) to lock headcount", "facts": ["replies-chased"],
         "done": false,
         "owner": "Mei-Ling Chen"
       },
       {
         "id": "ev-x-client-dinner-t9",
         "week": "2026-W26",
-        "task": "Finalize seating chart — place guest of honor & decision-maker; confirm 72h headcount with venue",
+        "task": "Finalize seating chart — place guest of honor & decision-maker; confirm 72h headcount with venue", "facts": ["guest-count"],
         "done": false,
         "owner": "Mei-Ling Chen"
       },
@@ -9064,14 +9064,14 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-networking-event-t2",
         "week": "2026-04-27",
-        "task": "Book venue and sign contract",
+        "task": "Book venue and sign contract", "facts": ["venue-set"],
         "done": true,
         "owner": "Todd Willis"
       },
       {
         "id": "ev-x-networking-event-t3",
         "week": "2026-05-04",
-        "task": "Confirm panel theme and invite panelists/moderator",
+        "task": "Confirm panel theme and invite panelists/moderator", "facts": ["invites-out"],
         "done": true,
         "owner": "Priya Nair"
       },
@@ -9085,7 +9085,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-networking-event-t5",
         "week": "2026-05-18",
-        "task": "Lock catering menu and pay deposit",
+        "task": "Lock catering menu and pay deposit", "facts": ["deposits-paid"],
         "done": true,
         "owner": "Todd Willis"
       },
@@ -9099,7 +9099,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-networking-event-t7",
         "week": "2026-06-08",
-        "task": "Confirm AV / livestream vendor and sign contract",
+        "task": "Confirm AV / livestream vendor and sign contract", "facts": ["a-vendor-booked"],
         "done": false,
         "owner": "Todd Willis"
       },
@@ -9120,7 +9120,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-networking-event-t10",
         "week": "2026-07-16",
-        "task": "Submit final catering headcount guarantee",
+        "task": "Submit final catering headcount guarantee", "facts": ["or:catering-moot", "and:caterer-booked", "guest-count"],
         "done": false,
         "owner": "Todd Willis"
       },
@@ -9504,21 +9504,21 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-home-gathering-t1",
         "week": "3 weeks out",
-        "task": "Set the date (summer solstice) and decide the guest list size (~10)",
+        "task": "Set the date (summer solstice) and decide the guest list size (~10)", "facts": ["date-set"],
         "done": true,
         "owner": "Host"
       },
       {
         "id": "ev-x-home-gathering-t2",
         "week": "3 weeks out",
-        "task": "Send the invites (text + email) and ask about dietary restrictions",
+        "task": "Send the invites (text + email) and ask about dietary restrictions", "facts": ["invites-out"],
         "done": true,
         "owner": "Host"
       },
       {
         "id": "ev-x-home-gathering-t3",
         "week": "2 weeks out",
-        "task": "Plan the menu — host cooks the mains, guests bring potluck sides",
+        "task": "Plan the menu — host cooks the mains, guests bring potluck sides", "facts": ["menu-decided"],
         "done": true,
         "owner": "Host"
       },
@@ -9532,7 +9532,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-home-gathering-t5",
         "week": "1 week out",
-        "task": "Chase down the Maybe/Pending RSVPs to lock a final headcount",
+        "task": "Chase down the Maybe/Pending RSVPs to lock a final headcount", "facts": ["replies-chased"],
         "done": false,
         "owner": "Host"
       },
@@ -9553,7 +9553,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-home-gathering-t8",
         "week": "4 days out",
-        "task": "Build the grocery list and split shelf-stable vs. day-of fresh items",
+        "task": "Build the grocery list and split shelf-stable vs. day-of fresh items", "facts": ["then:food-bought"],
         "done": true,
         "owner": "Host"
       },
@@ -9567,7 +9567,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-home-gathering-t10",
         "week": "1 day out",
-        "task": "Shop for fresh produce, chicken, flowers, and ice",
+        "task": "Shop for fresh produce, chicken, flowers, and ice", "facts": ["then:food-bought"],
         "done": false,
         "owner": "Host"
       },
@@ -10181,7 +10181,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-bachelorette-t3",
         "week": "2026-05 (Wk of May 4)",
-        "task": "Send the save-the-date + buy-in amount to the full guest list",
+        "task": "Send the save-the-date + buy-in amount to the full guest list", "facts": ["guest-count"],
         "done": true,
         "owner": "Maya Okafor (MOH)"
       },
@@ -10202,7 +10202,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-bachelorette-t6",
         "week": "2026-06 (Wk of Jun 8)",
-        "task": "Lock final RSVP headcount so cost-per-head and dietary list are firm",
+        "task": "Lock final RSVP headcount so cost-per-head and dietary list are firm", "facts": ["invites-out"],
         "done": false,
         "owner": "Maya Okafor (MOH)"
       },
@@ -10216,14 +10216,14 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-bachelorette-t8",
         "week": "2026-07 (Wk of Jul 13)",
-        "task": "Pay spa deposit + book Saturday-night ground transport",
+        "task": "Pay spa deposit + book Saturday-night ground transport", "facts": ["deposits-paid"],
         "done": false,
         "owner": "Sofia Delgado"
       },
       {
         "id": "ev-x-bachelorette-t9",
         "week": "2026-08 (Wk of Aug 24)",
-        "task": "Pay cabana balance + finalize the day-by-day itinerary",
+        "task": "Pay cabana balance + finalize the day-by-day itinerary", "facts": ["nothing-owed"],
         "done": false,
         "owner": "Maya Okafor (MOH)"
       },
@@ -10811,14 +10811,14 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-proposal-t1",
         "week": "Week of May 4",
-        "task": "Confirm ring size discreetly + purchase ring; add insurance rider",
+        "task": "Confirm ring size discreetly + purchase ring; add insurance rider", "facts": ["replies-chased"],
         "done": true,
         "owner": "Marcus"
       },
       {
         "id": "ev-x-proposal-t2",
         "week": "Week of May 11",
-        "task": "Secure & pay terrace hold for July 4 golden-hour window",
+        "task": "Secure & pay terrace hold for July 4 golden-hour window", "facts": ["nothing-owed"],
         "done": true,
         "owner": "Marcus"
       },
@@ -10832,7 +10832,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-proposal-t4",
         "week": "Week of May 25",
-        "task": "Build the cover story — fake 'work client dinner' invite on Daniela's calendar via Priya",
+        "task": "Build the cover story — fake 'work client dinner' invite on Daniela's calendar via Priya", "facts": ["invites-out"],
         "done": true,
         "owner": "Priya"
       },
@@ -10874,14 +10874,14 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-proposal-t10",
         "week": "Week of June 15",
-        "task": "Chase Pop & Pour COI + champagne contract; confirm backup runner",
+        "task": "Chase Pop & Pour COI + champagne contract; confirm backup runner", "facts": ["replies-chased"],
         "done": false,
         "owner": "Planner"
       },
       {
         "id": "ev-x-proposal-t11",
         "week": "Week of June 29",
-        "task": "Final timing dry-run + confirm Tomás's flight; lock RSVPs (Lena, Tomás)",
+        "task": "Final timing dry-run + confirm Tomás's flight; lock RSVPs (Lena, Tomás)", "facts": ["invites-out"],
         "done": false,
         "owner": "Marcus"
       }
@@ -11473,7 +11473,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-gender-reveal-t2",
         "week": "Week of May 18",
-        "task": "Set date, draft guest list, reserve Willow Bend Pavilion B and file park permit",
+        "task": "Set date, draft guest list, reserve Willow Bend Pavilion B and file park permit", "facts": ["date-set"],
         "done": true,
         "owner": "Carmen Reyes"
       },
@@ -11487,14 +11487,14 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-gender-reveal-t4",
         "week": "Week of June 1",
-        "task": "Book caterer, photographer, backup reveal cake; pay deposits",
+        "task": "Book caterer, photographer, backup reveal cake; pay deposits", "facts": ["deposits-paid"],
         "done": true,
         "owner": "Carmen Reyes"
       },
       {
         "id": "ev-x-gender-reveal-t5",
         "week": "Week of June 8",
-        "task": "Send invitations with a 'guess the gender' prompt; set up guess-pool board",
+        "task": "Send invitations with a 'guess the gender' prompt; set up guess-pool board", "facts": ["invites-out"],
         "done": true,
         "owner": "Kenji Tanaka"
       },
@@ -11508,7 +11508,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-gender-reveal-t7",
         "week": "Week of June 22",
-        "task": "Confirm RSVPs and final headcount; chase Maybe/Pending guests",
+        "task": "Confirm RSVPs and final headcount; chase Maybe/Pending guests", "facts": ["replies-chased"],
         "done": false,
         "owner": "Kenji Tanaka"
       },
@@ -12104,14 +12104,14 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-elopement-t1",
         "week": "2026-03 (Wk -22)",
-        "task": "Choose elopement location & confirm legal jurisdiction (Monterey County, CA)",
+        "task": "Choose elopement location & confirm legal jurisdiction (Monterey County, CA)", "facts": ["venue-set"],
         "done": true,
         "owner": "Maren & Haruki"
       },
       {
         "id": "ev-x-elopement-t2",
         "week": "2026-04 (Wk -16)",
-        "task": "Book ceremony venue + 2-night lodging at Glen Oaks Big Sur",
+        "task": "Book ceremony venue + 2-night lodging at Glen Oaks Big Sur", "facts": ["venue-set"],
         "done": true,
         "owner": "Maren"
       },
@@ -12125,14 +12125,14 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-elopement-t4",
         "week": "2026-05 (Wk -13)",
-        "task": "Book elopement photographer with local fog/terrain experience",
+        "task": "Book elopement photographer with local fog/terrain experience", "facts": ["roles:photographer"],
         "done": true,
         "owner": "Maren"
       },
       {
         "id": "ev-x-elopement-t5",
         "week": "2026-05 (Wk -12)",
-        "task": "Secure officiant who will file the signed license with the county",
+        "task": "Secure officiant who will file the signed license with the county", "facts": ["roles:officiant"],
         "done": true,
         "owner": "Haruki"
       },
@@ -12174,7 +12174,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-elopement-t11",
         "week": "2026-08 (Wk -1)",
-        "task": "Finalize dinner headcount, vendor arrival times, and rain/fog backup ceremony spot",
+        "task": "Finalize dinner headcount, vendor arrival times, and rain/fog backup ceremony spot", "facts": ["a-vendor-booked"],
         "done": false,
         "owner": "Maren & Haruki"
       }
@@ -12778,7 +12778,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-wellness-retreat-t4",
         "week": "12 weeks out",
-        "task": "Launch paid social + email re-engagement push to drive registrations",
+        "task": "Launch paid social + email re-engagement push to drive registrations", "facts": ["nothing-owed"],
         "done": true,
         "owner": "Todd (Host)"
       },
@@ -12799,7 +12799,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-wellness-retreat-t7",
         "week": "8 weeks out",
-        "task": "Lock final dietary counts and send to caterer to finalize menu",
+        "task": "Lock final dietary counts and send to caterer to finalize menu", "facts": ["or:catering-moot", "and:caterer-booked"],
         "done": false,
         "owner": "Todd (Host)"
       },
@@ -12820,7 +12820,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-wellness-retreat-t10",
         "week": "4 weeks out",
-        "task": "Pay venue balance and order welcome kits + amenities",
+        "task": "Pay venue balance and order welcome kits + amenities", "facts": ["nothing-owed"],
         "done": false,
         "owner": "Todd (Host)"
       },

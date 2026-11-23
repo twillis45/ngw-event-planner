@@ -5,6 +5,10 @@
 
 import { rsvpDeadlineFor } from '../dates';
 import { taskSatisfied } from '../taskEngine';
+// INPUTS ONLY changed (six root causes, cause 1, part 2): a row is proven by
+// the facts its step DECLARES, never by its words, so each row literal below
+// carries `facts`: the declaration a step with its words carries (derived once
+// from the retired text rules, as the playbooks' were). Assertions unchanged.
 
 const iso = (n) => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
@@ -40,7 +44,7 @@ describe('chasing is done when nobody is left to chase', () => {
   const ev = (guests, over = {}) => ({
     id: 'e', type: 'Crab Feast', date: iso(20), guests, guestMode: 'roster', ...over,
   });
-  const chase = { task: 'Chase non-responders; lock the count', done: false };
+  const chase = { task: 'Chase non-responders; lock the count', facts: ['replies-chased'], done: false };
 
   test('THE REGRESSION: one reply out of forty does NOT retire the chase', () => {
     const guests = [{ name: 'A', rsvp: 'Yes' }, ...Array.from({ length: 39 }, (_, i) => ({ name: 'g' + i, rsvp: 'Pending' }))];
@@ -57,7 +61,7 @@ describe('chasing is done when nobody is left to chase', () => {
   });
 
   test('SENDING, though, IS evidenced by a single reply — you cannot reply to an invite you never got', () => {
-    const send = { task: 'Send the invitations', done: false };
+    const send = { task: 'Send the invitations', facts: ['invites-out'], done: false };
     const guests = [{ name: 'A', rsvp: 'Yes' }, { name: 'B', rsvp: 'Pending' }];
     expect(taskSatisfied(ev(guests), send)).toBe(true);
   });

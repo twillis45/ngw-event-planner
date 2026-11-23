@@ -10,6 +10,9 @@ import { taskSatisfied } from '../taskEngine';
 import { playbookChecklist } from '../playbooks';
 import { giftCashTotal, thankYouGiftLine } from '../giftLog';
 import { duplicateEvent } from '../duplicateEvent';
+// INPUTS ONLY changed (six root causes, cause 1, part 2): the row is passed
+// with its id, the way the app identifies it; its step's declared facts, not
+// its words, prove it handled. Assertions unchanged.
 
 const ev = (extra = {}) => ({ id: 'gl', type: 'Birthday', date: '2026-11-19', guestMode: 'list', venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX', ...extra });
 const rows = playbookChecklist(ev(), '2026-10-01') || [];
@@ -30,7 +33,7 @@ test.each([['cash', () => CASH], ['mailed', () => ABSENT], ['go through', () => 
 });
 
 test('the cash row is done once a cash or card amount is on the log, not before', () => {
-  const t = { task: CASH.task };
+  const t = { id: CASH.id, task: CASH.task };
   expect(taskSatisfied(ev({ guests: [{ name: 'Jordan Hale', rsvp: 'Yes', giftReceived: true, giftWhat: 'Card' }] }), t)).toBe(false);
   expect(taskSatisfied(ev({ guests: [{ name: 'Jordan Hale', rsvp: 'Yes', giftReceived: true, giftCash: 100 }] }), t)).toBe(true);
   // An amount on a row the host un-marked as a gift is not on the log.
@@ -38,13 +41,13 @@ test('the cash row is done once a cash or card amount is on the log, not before'
 });
 
 test('the mailed-gifts row is done once someone who did not come is on the log', () => {
-  const t = { task: ABSENT.task };
+  const t = { id: ABSENT.id, task: ABSENT.task };
   expect(taskSatisfied(ev({ guests: [{ name: 'Lena', rsvp: 'Yes', giftReceived: true }] }), t)).toBe(false);
   expect(taskSatisfied(ev({ guests: [{ name: 'Uncle Ray', rsvp: 'No', giftReceived: true, giftWhat: 'Check in a card' }] }), t)).toBe(true);
 });
 
 test('"Go through the gifts" asks for every giver, which no record proves: the host ticks it', () => {
-  expect(taskSatisfied(ev({ guests: [{ name: 'Lena', rsvp: 'Yes', giftReceived: true, giftWhat: 'Spa day voucher', giftCash: 50 }] }), { task: GOTHRU.task })).toBe(false);
+  expect(taskSatisfied(ev({ guests: [{ name: 'Lena', rsvp: 'Yes', giftReceived: true, giftWhat: 'Spa day voucher', giftCash: 50 }] }), { id: GOTHRU.id, task: GOTHRU.task })).toBe(false);
 });
 
 test('the cash total counts received gifts only', () => {

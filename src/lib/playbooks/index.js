@@ -1768,6 +1768,9 @@ export const DESTINATION_VENDOR_CATEGORIES = [
 // builder below stamps them and lib/stepTarget resolves a stored row's id
 // through the same map (six root causes, cause 1 — never the row's words).
 export const DERIVED_STEP_TARGETS = Object.freeze({ 'fa-caterer': 'vendors', 'fa-bringers': 'bringing', 'tm-out': 'your-days' });
+// …and the facts that prove each one done (six root causes, cause 1, part 2;
+// lib/stepFacts). Derived once from the retired text rules, committed.
+export const DERIVED_STEP_FACTS = Object.freeze({ 'fa-caterer': ['or:catering-moot', 'and:caterer-booked', 'guest-count'], 'fa-bringers': [], 'tm-out': [] });
 
 export const DESTINATION_TASKS = [
   // DESTINATION-4: kidsLine rides the same hotel call as the room block — the
@@ -1782,16 +1785,16 @@ export const DESTINATION_TASKS = [
   // unverified cities; completion = the host's own "contacted", never an
   // app-asserted outcome. A courtesy block a CVB sources is the ZERO-risk
   // lodging model — this task deliberately precedes the room-block one.
-  { id: 'dest_t_cvb', target: 'cvb', label: 'Call the destination’s visitors bureau — it’s free (hotel tax pays for it). Ask for: room-block options at 2-3 price points, their group planning kit, welcome bags, and a welcome letter for the program', when: 'T-240d' },
-  { id: 'dest_t_lodging', target: 'stay', label: 'Confirm the room block or share group hotel options with guests', when: 'T-210d', kidsLine: 'traveling with little kids? Ask about cribs and connecting rooms in the same call (one ask, not two)' },
+  { id: 'dest_t_cvb', target: 'cvb', facts: [], label: 'Call the destination’s visitors bureau — it’s free (hotel tax pays for it). Ask for: room-block options at 2-3 price points, their group planning kit, welcome bags, and a welcome letter for the program', when: 'T-240d' },
+  { id: 'dest_t_lodging', target: 'stay', facts: [], label: 'Confirm the room block or share group hotel options with guests', when: 'T-210d', kidsLine: 'traveling with little kids? Ask about cribs and connecting rooms in the same call (one ask, not two)' },
   // DESTINATION-4: an accessibility WALK, not a checkbox — venues answer "are you
   // accessible?" about the room; the trip fails on everything between the car
   // and the chair. Grounded in accessibility-consultant guidance.
-  { id: 'dest_t_access', target: 'place-notes', label: 'Walk the whole guest path, not just the room — door widths, the ground between rooms and the event space, and the distance from parking', when: 'T-90d' },
+  { id: 'dest_t_access', target: 'place-notes', facts: [], label: 'Walk the whole guest path, not just the room — door widths, the ground between rooms and the event space, and the distance from parking', when: 'T-90d' },
   // The grid matters on ANY trip — the base label is arrival-neutral so a road
   // trip is not told to track flights it does not have. modeLabel restores the
   // specific wording once the host says how people are getting there.
-  { id: 'dest_t_grid', target: 'arrivals', label: 'Build the arrivals/departures grid — who gets in when', when: 'T-60d',
+  { id: 'dest_t_grid', target: 'arrivals', facts: ['then:arrivals-grid'], label: 'Build the arrivals/departures grid — who gets in when', when: 'T-60d',
     modeLabel: {
       fly: 'Build the arrivals/departures grid — who’s flying in when',
       drive: 'Build the arrivals/departures grid — who’s driving in when, and roughly how long they’re on the road',
@@ -1801,13 +1804,13 @@ export const DESTINATION_TASKS = [
   // ANSWERED yes (whenChoice; the 'Not sure' default keeps it hidden, so an
   // unanswered question never claims a health need). No medical advice beyond
   // "worth a call to their doctor."
-  { id: 'dest_t_health', target: 'guests', label: 'Pace the schedule for the guests who need it — build in real rest, and if the destination is high-altitude or strenuous, a quick call to their doctor is worth it', when: 'T-60d', whenChoice: { id: 'dest_health', in: ['Yes'] } },
+  { id: 'dest_t_health', target: 'guests', facts: [], label: 'Pace the schedule for the guests who need it — build in real rest, and if the destination is high-altitude or strenuous, a quick call to their doctor is worth it', when: 'T-60d', whenChoice: { id: 'dest_health', in: ['Yes'] } },
   // whenMode as well as whenChoice: the dest_transport DECISION is dropped for a
   // driving trip, and choiceShown treats an absent pick as "unanswered -> show".
   // Without this gate the board correctly hid the question while the checklist
   // still asked the host to confirm a shuttle plan for a group that is driving.
-  { id: 'dest_t_transport', target: 'rides', label: 'Confirm the ground-transport plan — shuttle, self-drive, or real rideshare coverage', when: 'T-45d', whenMode: { not: ['drive'] }, whenChoice: { id: 'dest_transport', in: ['Yes, a shuttle or van', 'Not sure yet'] } },
-  { id: 'dest_t_info', target: 'travel', label: 'Send guests the getting-here info — how to get there, hotel, transport, cutoff dates', when: 'T-30d',
+  { id: 'dest_t_transport', target: 'rides', facts: [], label: 'Confirm the ground-transport plan — shuttle, self-drive, or real rideshare coverage', when: 'T-45d', whenMode: { not: ['drive'] }, whenChoice: { id: 'dest_transport', in: ['Yes, a shuttle or van', 'Not sure yet'] } },
+  { id: 'dest_t_info', target: 'travel', facts: [], label: 'Send guests the getting-here info — how to get there, hotel, transport, cutoff dates', when: 'T-30d',
     modeLabel: {
       fly: 'Send guests the getting-here info — airport, hotel, transport, cutoff dates',
       drive: 'Send guests the getting-here info — directions and parking, hotel, cutoff dates',
@@ -1816,8 +1819,8 @@ export const DESTINATION_TASKS = [
   // DESTINATION-4: kids get a real role in the adult event — not the center of
   // it, not parked away from it (Priya Parker's framing). Gated on kids actually
   // coming (whenKids → eventHasKids), never on event type.
-  { id: 'dest_t_kidsjob', target: 'none', label: 'Give the kids a real job in the event — welcome-bag duty, the guestbook, a camera to roam with — so they’re part of it, not parked off to the side', when: 'T-14d', whenKids: true },
-  { id: 'dest_t_welcome', target: 'none', label: 'Drop welcome bags at the hotel for out-of-town guests', when: 'T-1d' },
+  { id: 'dest_t_kidsjob', target: 'none', facts: [], label: 'Give the kids a real job in the event — welcome-bag duty, the guestbook, a camera to roam with — so they’re part of it, not parked off to the side', when: 'T-14d', whenKids: true },
+  { id: 'dest_t_welcome', target: 'none', facts: [], label: 'Drop welcome bags at the hotel for out-of-town guests', when: 'T-1d' },
 ];
 
 // ── DESTINATION-5 — the multi-day pacing template ─────────────────────────────
@@ -1885,6 +1888,20 @@ export function playbookPacing(event) {
 // sourcing choice reshapes the TASKS, not just the menu. Pure + soonest-due first.
 // The row's done-state is intentionally left to effectiveDone() at the render seam
 // (single-source task doctrine — derive, don't store).
+// WHEN A STEP READS WITHOUT ITS CATERER: shared by the checklist builder (the
+// row's words) and lib/stepTarget (the row's declared facts, cause 1 part 2),
+// so a row's label variant and its facts variant are one decision.
+const BOOKS_A_CATERER = /\b(book|contract|choose|find|decide|tour|sign|hire|if catering|vs|or confirm|yourself)\b/i;
+function catererTakenOut(t, dropCaterer, noCatererHired) {
+  return (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label))
+    || (noCatererHired && /\bcaterer/i.test(t.label) && !BOOKS_A_CATERER.test(t.label));
+}
+/** Does this step read (and count) without its caterer for this event? */
+export function stepWithoutCaterer(event, t) {
+  if (!event || !t || !t.label) return false;
+  const fa = foodApproach(event);
+  return catererTakenOut(t, fa.usesCaterer === false, fa.usesCaterer === true && !catererHired(event, fa));
+}
 export function playbookChecklist(event, asOf) {
   if (!event) return [];
   const playbook = getPlaybook(event.type);
@@ -1901,7 +1918,6 @@ export function playbookChecklist(event, asOf) {
   // A meal that arrives made but with no one hired (an order of trays) keeps
   // the grocery list off and the caterer's paperwork off too (P1-12).
   const noCatererHired = fa.usesCaterer === true && !catererHired(event, fa);
-  const BOOKS_A_CATERER = /\b(book|contract|choose|find|decide|tour|sign|hire|if catering|vs|or confirm|yourself)\b/i;
 
   // The milestones the air-travel floor moved, keyed by id, so a task can
   // inherit its own milestone's date rather than a second copy of the rule.
@@ -1959,8 +1975,7 @@ export function playbookChecklist(event, asOf) {
     // balances…" still owes the venue. Such a step authors `labelWithoutCaterer`,
     // the same step with the caterer taken out, and reads it while no caterer
     // is hired; a step without one drops whole, as before.
-    const _noCaterer = (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label))
-      || (noCatererHired && /\bcaterer/i.test(t.label) && !BOOKS_A_CATERER.test(t.label));
+    const _noCaterer = catererTakenOut(t, dropCaterer, noCatererHired);
     if (_noCaterer) {
       if (!t.labelWithoutCaterer) continue;
       // Its answered copy is written for the caterer version, so it stays off.
@@ -3715,6 +3730,8 @@ export function playbookMilestones(event, asOf) {
       const dueDate = decisionDueDate(event.date, -m.offsetDays);
       return {
         id: m.id, name: String(m.name || '').trim(), owner: m.owner || 'host',
+        // The facts that prove it handled (lib/stepFacts), declared, never read off its name.
+        facts: Array.isArray(m.facts) ? m.facts : [],
         category: m.category || 'planning', offsetDays: m.offsetDays,
         daysOut: dte === null ? null : (dte - m.offsetDays),
         dueDate, critical: !!(m.risk && (m.risk.severity === 'high' || m.risk.severity === 'critical')),
@@ -3751,7 +3768,7 @@ export function playbookAreaNextStep(event, area, asOf) {
   // milestones still surface. Single source: the SAME predicate the next-step engine uses.
   const ms = playbookMilestones(event, asOf)
     .filter((m) => cats.includes(m.category))
-    .filter((m) => !(m.category === 'planning' && taskSatisfied(event, { text: m.name })));
+    .filter((m) => !(m.category === 'planning' && taskSatisfied(event, { text: m.name, facts: m.facts })));
   if (!ms.length) return null;
   const dated = ms.filter((m) => m.daysOut !== null);
   let pick;

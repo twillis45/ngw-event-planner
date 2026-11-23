@@ -13,9 +13,6 @@ import { eventDatesPatch } from './eventDates';
 
 export const MAX_DATE_OPTIONS = 3;
 
-// The two rows this destination serves, by their authored words.
-export const DATE_POLL_ROW = /^offer two or three date ranges\b|^poll the team\b/i;
-
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 /** The ranges the host offered, complete ones only, in order (≤3). */

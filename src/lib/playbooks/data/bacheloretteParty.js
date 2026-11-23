@@ -50,7 +50,7 @@ const bacheloretteParty = {
   ],
 
   milestones: [
-    { id: 'bp_setdate', name: 'Lock date, guest list, budget + cost-split with the bride', offsetDays: 30, owner: 'host', category: 'planning', risk: null },
+    { id: 'bp_setdate', name: 'Lock date, guest list, budget + cost-split with the bride', facts: ['guest-count'], offsetDays: 30, owner: 'host', category: 'planning', risk: null },
     { id: 'bp_book', name: 'Book lodging (if overnight) + dinner reservation + transport', offsetDays: 21, owner: 'host', dependsOn: ['bp_setdate'], category: 'logistics', risk: { ifDelayed: 'Large-group reservations and party-bus/rideshare windows sell out; suite gone', severity: 'high' } },
     { id: 'bp_invite', name: 'Send the itinerary + cost-split + RSVP / dietary + collect deposits', offsetDays: 18, owner: 'host', dependsOn: ['bp_setdate'], category: 'guest', risk: { ifDelayed: 'No money collected → host eats the cost; wrong headcount', severity: 'high' } },
     { id: 'bp_safety', name: 'Lock the safe-rides + buddy plan and name a sober point person', offsetDays: 7, owner: 'host', dependsOn: ['bp_book'], category: 'safety', risk: { ifDelayed: 'No plan to get the bride + group home safely after drinking', severity: 'high' } },
@@ -64,16 +64,16 @@ const bacheloretteParty = {
   tasks: [
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and writing it down is its own step, due the same day.
-    { id: 't_costsplit', target: 'money', answeredBy: ['costsplit'], milestoneId: 'bp_setdate', phase: 'planning', label: "Agree the per-person number and the 'we cover the bride' rule", when: 'T-30d' },
-    { id: 't_costsplit_write', target: 'money', milestoneId: 'bp_setdate', phase: 'planning', label: 'Put the money rule in writing for the group', when: 'T-30d' },
-    { id: 't_book', target: 'vendors', milestoneId: 'bp_book', phase: 'logistics', label: 'Book lodging, dinner reservation (deposit/card), party bus or pre-stage rideshare', when: 'T-21d' },
-    { id: 't_invite', target: 'invite', milestoneId: 'bp_invite', phase: 'guest', label: 'Send itinerary + cost-split + RSVP-by + dietary/no-alcohol ask; collect deposits via app', when: 'T-18d' },
-    { id: 't_safety', target: 'assign', milestoneId: 'bp_safety', phase: 'safety', label: 'Name a sober point person, set a buddy system + meetup spot, pre-load rideshare, share live location, save the Airbnb/hotel address in everyone\'s phone', when: 'T-7d' },
-    { id: 't_rsvp', target: 'chase', milestoneId: 'bp_rsvp_close', phase: 'guest', label: 'Chase non-responders; confirm reservation party size + transport seat count', when: 'T-4d' },
-    { id: 't_nonperish_shop', target: 'list', milestoneId: 'bp_shop_nonperish', phase: 'shopping', label: 'Sash/banner/decor, favors + matching items, games, liquor, mixers, paper goods', when: 'T-3d' },
-    { id: 't_fresh_shop', target: 'list', milestoneId: 'bp_shop_fresh', phase: 'shopping', label: 'Apps/grazing, garnishes, bubbly, juice, electrolytes, and LOTS of water', when: 'T-1d' },
-    { id: 't_setup', target: 'day', milestoneId: 'bp_setup', phase: 'setup', label: 'Build grazing board, batch the cocktail, hang sash/decor, set games + a visible water station', when: 'T0 -3h' },
-    { id: 't_close', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Account for every guest, ride the bride home first/safe, pack favors + gifts, water + trash sweep, settle the tab/split', when: 'T0 +6:00' },
+    { id: 't_costsplit', target: 'money', facts: ['calls-answered'], answeredBy: ['costsplit'], milestoneId: 'bp_setdate', phase: 'planning', label: "Agree the per-person number and the 'we cover the bride' rule", when: 'T-30d' },
+    { id: 't_costsplit_write', target: 'money', facts: [], milestoneId: 'bp_setdate', phase: 'planning', label: 'Put the money rule in writing for the group', when: 'T-30d' },
+    { id: 't_book', target: 'vendors', facts: ['deposits-paid'], milestoneId: 'bp_book', phase: 'logistics', label: 'Book lodging, dinner reservation (deposit/card), party bus or pre-stage rideshare', when: 'T-21d' },
+    { id: 't_invite', target: 'invite', facts: [], milestoneId: 'bp_invite', phase: 'guest', label: 'Send itinerary + cost-split + RSVP-by + dietary/no-alcohol ask; collect deposits via app', when: 'T-18d' },
+    { id: 't_safety', target: 'assign', facts: [], milestoneId: 'bp_safety', phase: 'safety', label: 'Name a sober point person, set a buddy system + meetup spot, pre-load rideshare, share live location, save the Airbnb/hotel address in everyone\'s phone', when: 'T-7d' },
+    { id: 't_rsvp', target: 'chase', facts: ['replies-chased'], milestoneId: 'bp_rsvp_close', phase: 'guest', label: 'Chase non-responders; confirm reservation party size + transport seat count', when: 'T-4d' },
+    { id: 't_nonperish_shop', target: 'list', facts: [], milestoneId: 'bp_shop_nonperish', phase: 'shopping', label: 'Sash/banner/decor, favors + matching items, games, liquor, mixers, paper goods', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'list', facts: [], milestoneId: 'bp_shop_fresh', phase: 'shopping', label: 'Apps/grazing, garnishes, bubbly, juice, electrolytes, and LOTS of water', when: 'T-1d' },
+    { id: 't_setup', target: 'day', facts: [], milestoneId: 'bp_setup', phase: 'setup', label: 'Build grazing board, batch the cocktail, hang sash/decor, set games + a visible water station', when: 'T0 -3h' },
+    { id: 't_close', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Account for every guest, ride the bride home first/safe, pack favors + gifts, water + trash sweep, settle the tab/split', when: 'T0 +6:00' },
   ],
 
   purchases: [

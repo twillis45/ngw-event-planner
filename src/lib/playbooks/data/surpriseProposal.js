@@ -49,7 +49,7 @@ const surpriseProposal = {
   milestones: [
     { id: 'pr_ring_size', name: 'Get ring size + style (ask partner\'s circle)', offsetDays: 45, owner: 'host', category: 'planning', risk: { ifDelayed: 'Ring ordered wrong size; resize delays pickup', severity: 'high' } },
     { id: 'pr_ring_order', name: 'Finance + order the ring', offsetDays: 42, owner: 'host', dependsOn: ['pr_ring_size'], category: 'planning', risk: { ifDelayed: 'Ring not ready by the date — the one thing that can move the proposal', severity: 'high' } },
-    { id: 'pr_location', name: 'Choose the meaningful location + time of day', offsetDays: 35, owner: 'host', category: 'planning', risk: { ifDelayed: 'Best light/low-crowd window missed; no time to scout', severity: 'med' } },
+    { id: 'pr_location', name: 'Choose the meaningful location + time of day', facts: ['venue-set'], offsetDays: 35, owner: 'host', category: 'planning', risk: { ifDelayed: 'Best light/low-crowd window missed; no time to scout', severity: 'med' } },
     { id: 'pr_photographer', name: 'Book the hidden photographer/videographer', offsetDays: 30, owner: 'host', dependsOn: ['pr_location'], category: 'vendor', risk: { ifDelayed: 'No one to capture the moment — it can never be re-shot', severity: 'high' } },
     { id: 'pr_permit', name: 'Check permits if public (photo + décor)', offsetDays: 25, owner: 'host', dependsOn: ['pr_location'], category: 'logistics', risk: { ifDelayed: 'Setup shut down by park/venue on the day', severity: 'med' } },
     { id: 'pr_coverstory', name: 'Build + lock the cover story (with partner\'s people)', offsetDays: 21, owner: 'host', dependsOn: ['pr_location'], category: 'planning', risk: { ifDelayed: 'Partner suspicious or won\'t be dressed/in the right place', severity: 'high' } },
@@ -62,23 +62,23 @@ const surpriseProposal = {
   ],
 
   tasks: [
-    { id: 't_ringsize', target: 'none', milestoneId: 'pr_ring_size', phase: 'planning', label: 'Discreetly get ring size — borrow a ring off the right finger, or ask a sibling/best friend; size up if unsure', when: 'T-45d' },
-    { id: 't_finance', target: 'vendor-docs', milestoneId: 'pr_ring_order', phase: 'planning', label: 'Set ring budget + financing; factor tax + insurance; order (custom 4-6 wk)', when: 'T-42d' },
-    { id: 't_location', target: 'none', milestoneId: 'pr_location', phase: 'planning', label: 'Pick a spot that means something to you both; choose golden hour (sunset/sunrise) on a low-crowd weekday', when: 'T-35d' },
-    { id: 't_book_photog', target: 'vendors', milestoneId: 'pr_photographer', phase: 'vendor', label: 'Book a proposal photographer (3-8 wk out); share the spot, the timing, and the cover story', when: 'T-30d' },
-    { id: 't_permit', target: 'place-rules', milestoneId: 'pr_permit', phase: 'logistics', label: 'Call the park/venue office — props/flowers/candles/signs and even photography often need a permit; ask about open flame (use LED)', when: 'T-25d' },
-    { id: 't_cover', target: 'none', milestoneId: 'pr_coverstory', phase: 'planning', label: 'Write a simple, believable reason to be there + dressed up ("free mini-shoot", reservation, friend\'s thing); rehearse it', when: 'T-21d' },
+    { id: 't_ringsize', target: 'none', facts: [], milestoneId: 'pr_ring_size', phase: 'planning', label: 'Discreetly get ring size — borrow a ring off the right finger, or ask a sibling/best friend; size up if unsure', when: 'T-45d' },
+    { id: 't_finance', target: 'vendor-docs', facts: ['budget-set'], milestoneId: 'pr_ring_order', phase: 'planning', label: 'Set ring budget + financing; factor tax + insurance; order (custom 4-6 wk)', when: 'T-42d' },
+    { id: 't_location', target: 'none', facts: [], milestoneId: 'pr_location', phase: 'planning', label: 'Pick a spot that means something to you both; choose golden hour (sunset/sunrise) on a low-crowd weekday', when: 'T-35d' },
+    { id: 't_book_photog', target: 'vendors', facts: [], milestoneId: 'pr_photographer', phase: 'vendor', label: 'Book a proposal photographer (3-8 wk out); share the spot, the timing, and the cover story', when: 'T-30d' },
+    { id: 't_permit', target: 'place-rules', facts: [], milestoneId: 'pr_permit', phase: 'logistics', label: 'Call the park/venue office — props/flowers/candles/signs and even photography often need a permit; ask about open flame (use LED)', when: 'T-25d' },
+    { id: 't_cover', target: 'none', facts: [], milestoneId: 'pr_coverstory', phase: 'planning', label: 'Write a simple, believable reason to be there + dressed up ("free mini-shoot", reservation, friend\'s thing); rehearse it', when: 'T-21d' },
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
-    { id: 't_celebration', target: 'call:celebration_style', answeredBy: ['celebration_style'], milestoneId: 'pr_celebration', phase: 'planning', label: 'Decide how you celebrate after the yes', when: 'T-14d' },
-    { id: 't_celebration_book', target: 'vendors', milestoneId: 'pr_celebration', phase: 'planning', label: 'Book the dinner reservation and/or stage family + friends at a nearby spot for the post-yes reveal', when: 'T-14d' },
-    { id: 't_scout', target: 'parking', milestoneId: 'pr_scout', phase: 'logistics', label: 'Walk the spot with the photographer; mark where partner stands/faces, where the photographer hides, gates/parking/closing times', when: 'T-7d' },
-    { id: 't_pickup', target: 'vendor-docs', milestoneId: 'pr_ringpickup', phase: 'planning', label: 'Pick up the ring; verify fit; add it to insurance/rider; have a secure pocket plan for the day', when: 'T-5d' },
-    { id: 't_decor', target: 'list', milestoneId: 'pr_decor', phase: 'setup', label: 'Buy flowers + LED candles + a "Marry Me" sign; brief the ring-bearer / helper on exact cue + handoff', when: 'T-2d' },
-    { id: 't_backup', target: 'weather', milestoneId: 'pr_backup', phase: 'logistics', label: 'Check the forecast; confirm a Plan B location/time you are equally happy with; brief everyone on the trigger to switch', when: 'T-1d' },
-    { id: 't_moment', target: 'day', milestoneId: 'event', phase: 'logistics', label: 'Ring in pocket; arrive early; photographer in position; deliver the cover story; pause, turn, ask', when: 'T0' },
-    { id: 't_reveal', target: 'day', milestoneId: 'event', phase: 'logistics', label: 'After the yes: champagne toast, photographer joins for portraits, then the dinner / family reveal', when: 'T0 +0:30' },
+    { id: 't_celebration', target: 'call:celebration_style', facts: ['calls-answered'], answeredBy: ['celebration_style'], milestoneId: 'pr_celebration', phase: 'planning', label: 'Decide how you celebrate after the yes', when: 'T-14d' },
+    { id: 't_celebration_book', target: 'vendors', facts: [], milestoneId: 'pr_celebration', phase: 'planning', label: 'Book the dinner reservation and/or stage family + friends at a nearby spot for the post-yes reveal', when: 'T-14d' },
+    { id: 't_scout', target: 'parking', facts: [], milestoneId: 'pr_scout', phase: 'logistics', label: 'Walk the spot with the photographer; mark where partner stands/faces, where the photographer hides, gates/parking/closing times', when: 'T-7d' },
+    { id: 't_pickup', target: 'vendor-docs', facts: [], milestoneId: 'pr_ringpickup', phase: 'planning', label: 'Pick up the ring; verify fit; add it to insurance/rider; have a secure pocket plan for the day', when: 'T-5d' },
+    { id: 't_decor', target: 'list', facts: [], milestoneId: 'pr_decor', phase: 'setup', label: 'Buy flowers + LED candles + a "Marry Me" sign; brief the ring-bearer / helper on exact cue + handoff', when: 'T-2d' },
+    { id: 't_backup', target: 'weather', facts: [], milestoneId: 'pr_backup', phase: 'logistics', label: 'Check the forecast; confirm a Plan B location/time you are equally happy with; brief everyone on the trigger to switch', when: 'T-1d' },
+    { id: 't_moment', target: 'day', facts: [], milestoneId: 'event', phase: 'logistics', label: 'Ring in pocket; arrive early; photographer in position; deliver the cover story; pause, turn, ask', when: 'T0' },
+    { id: 't_reveal', target: 'day', facts: [], milestoneId: 'event', phase: 'logistics', label: 'After the yes: champagne toast, photographer joins for portraits, then the dinner / family reveal', when: 'T0 +0:30' },
   ],
 
   purchases: [

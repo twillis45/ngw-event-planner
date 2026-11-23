@@ -5,16 +5,17 @@ import { budgetIsSet } from './budgetFor';
 import { rsvpHasResponded } from './rsvp';
 import { chaseAnsweredOrNudged } from './replyNudge';
 // Live binding, read only at call time: playbooks imports this module too.
-import { openFoodChoices, isDietaryChoice, playbookFoodPlan, hostBuysLine, dietaryNoted, stepCalls, stepCallsAnswered, stepBooks } from './playbooks';
+import { openFoodChoices, isDietaryChoice, playbookFoodPlan, hostBuysLine, dietaryNoted, stepCallsAnswered, stepBooks } from './playbooks';
 import { buildTravelPlan } from './travelPlan';
 import { sendStateFor } from './sendLedger';
-import { DATE_POLL_ROW, datePollSettled } from './datePoll';
+import { datePollSettled } from './datePoll';
 import { spanNights } from './dates';
-import { giftRowSatisfied } from './giftLog';
-import { BORROWED_ROW, borrowedAllBack } from './borrowedList';
-import { ROOMS_ROW, roomPlanSettled } from './roomPlan';
-import { SPONSOR_ASK_ROW, sponsorAskDone } from './sponsors';
-import { DINNER_OWN_STEPS } from './tripMeals';
+import { giftCashLogged, giftsByMailLogged } from './giftLog';
+import { borrowedAllBack } from './borrowedList';
+import { roomPlanSettled } from './roomPlan';
+import { sponsorAskDone } from './sponsors';
+// Live binding, read only at call time: stepTarget imports playbooks, which imports this module.
+import { stepFactsFor, declaredStepFor } from './stepTarget';
 // Live binding, read only at call time: tripFood imports playbooks, which imports this module.
 import { dinnerParts } from './tripFood';
 
@@ -48,11 +49,6 @@ export function cateringSelfProvided(event) {
 export function hasNamedVendor(event) {
   return Array.isArray(event && event.vendors) && event.vendors.some((v) => v && String(v.name || '').trim());
 }
-
-// taskSatisfied(event, task) → boolean. `task` may be a timeline task ({task}) or a
-// subtask ({text}). Keyword-matched against the same domains the next-step engine routes
-// on, so the surfaces can never disagree about whether a task is handled.
-const DIETARY_STEP = /\b(collect|ask|count|note|gather)\b[^;]*\b(dietary|allerg)/;
 
 // ─── THE INVITE IS OUT (single-source audit, 11/18/2026) ─────────────────────
 // Recorded as sent, or any guest has answered (an answer proves an invite
@@ -96,284 +92,174 @@ export function roleBooked(event, role) {
   return !!hit && vendorBookedAs(event, hit[1], hit[2]);
 }
 
-export function taskSatisfied(event, task) {
-  if (!event || !task) return false;
-  const s = String(task.task || task.text || '').toLowerCase();
-  if (!s) return false;
-  // A STEP THAT IS A CALL is done when the call is answered (owner's iPad,
-  // 11/21/2026): the pick is the fact. Before the "this or that?" guard below,
-  // which is about steps no stored fact can prove.
-  // The named calls are the WHOLE proof (11/21/2026): Wedding's "Agree total
-  // budget, who pays, and the guest-count target" names two, and a typed
-  // budget is one of them, not the step. So no keyword rule below may clear a
-  // step that names calls; it clears when every call it names is answered.
-  if (typeof task.id === 'string' && task.id.startsWith('pbt-') && stepCalls(event, task).length) return stepCallsAnswered(event, task);
-  // A STEP THAT LISTS ITS ROLES (Wedding's "Sign planner, photographer,
-  // caterer, band/DJ") is done when every role it lists is booked — and only
-  // then: its "book a year out" used to let the caterer branch below tick it.
-  const books = stepBooks(event, task);
-  if (books.length) return books.every((r) => roleBooked(event, r));
-  // THE DINNER'S OWN STEPS tick from the dinner's parts (queued from #222):
-  // the night step when the night is picked, the place step when a place is
-  // named in Venue — the same `set` the dinner sheet and the board card show.
-  const dinnerStep = DINNER_OWN_STEPS.find((d) => d.label.toLowerCase() === s.trim());
-  if (dinnerStep) {
-    try { const p = dinnerParts(event).find((x) => x.id === dinnerStep.part); return !!(p && p.set); } catch (_e) { return false; }
-  }
-  const guests     = Array.isArray(event.guests) ? event.guests : [];
-  const hasGuests  = (Number(event.guestCount) || Number(event.guestEstimate) || guests.length) > 0;
-  // ONE BUDGET READER (2026-09-18) — this rule was correct and was one of SIX
-  // private copies (lib/budgetFor.js carries the measured damage). Same
-  // semantics, now shared: a budget exists whether it lives in `totalBudget` or
-  // in the rows. One narrowing: a row budgeted at $0 no longer counts, which is
-  // what `some(budgeted > 0)` already meant here but the rows SUM now decides,
-  // so a row of 0 beside a row of 500 reads the same as it always did.
-  const hasBudget  = budgetIsSet(event);
-  // venueFor: an at-home event with a city IS venued — reading the bare venue
-  // name here told home hosts to go book a venue (audit divergence #2).
-  const hasVenue   = (() => { const v = venueFor(event); return v.isSet && !/^(tbd|tba)$/i.test(v.name); })();
-  // Menu proof needs MENU content — a lone sourcing key ("host cooks") proves a
-  // sourcing choice, not a locked menu (audit class S7).
-  const hasFood    = (event.foodChoices && Object.keys(event.foodChoices).some((k) => k !== 'sourcing')) || (Array.isArray(event.foodAdd) && event.foodAdd.length > 0);
-  const dateSet    = !!String(event.date || '').trim() && !/^(tbd|tba)$/i.test(String(event.date).trim());
-
-  // "Set the date…" composites (playbook setup milestones like "Set date, headcount, menu")
-  // anchor on the date — they are handled the moment the date is set. The atomic headcount /
-  // food dominoes then carry on their own (eventPlan decomposes the composite), so the stale
-  // bundled string never lingers in a "what's left" list once event.date exists. FIRST so it
-  // wins over the generic headcount match below.
-  if (/^set\b.*\bdate\b/.test(s) || /\bset (the |a )?date\b/.test(s))         return dateSet;
-
-  // DIETARY NEEDS COLLECTED (11/18/2026): "Collect dietary needs", "Ask every
-  // guest for allergies", "note any dietary needs" are the step the food
-  // sheet's "Dietary needs noted" answers. Additive: when the host has not
-  // noted them, the step falls through to whatever else it is about. An
-  // invite that only ASKS about diets is excluded — sending the ask is not
-  // having the answers.
-  if (dietaryNoted(event) && DIETARY_STEP.test(s) && !/\b(invit|send)|chase|nudge/.test(s)) return true;
-
-  // ── BRUTAL AUDIT 2026-07-28 GUARDS — these run before every domain rule ─────
-  // A this-or-that question is a DECISION — no stored fact proves a choice was
-  // made ("Ticketed (paid) or free registration?", "At home or a venue?").
-  if (/\bor\b/.test(s) && /\?\s*$/.test(s)) return false;
-  // A SEND-THE-INVITE STEP IS PROVEN BY THE INVITE GOING OUT, even when it
-  // goes on to "collect RSVPs" or "track replies" (single-source audit,
-  // 11/18/2026): "Send invites + collect RSVP, dietary, plus-ones" fell to the
-  // act guard below, so "I already sent it" said the plan moves on while the
-  // row stayed open. Leading send verbs only; the chase rows keep their own rule.
-  if (/^(text\/email |send( out)? )(the |your )?invit/.test(s)) return invitesOut(event);
-
-  // THE ALBUM LINK IS THE ALBUM SHARED (owner pick, 11/21/2026). "Share the …
-  // photos in one album link" is done by a saved link on the invite recap,
-  // which guests see when they reopen the invite: the same full-link test the
-  // invite applies before it shows one. Above the act guard, whose "share"
-  // would otherwise keep it open forever. Only rows that name the one album
-  // link: "start a shared album and send the link" is still an ask of people.
-  if (/^share\b[^.;]{0,80}\bin one album link\b/.test(s)) return /^https?:\/\//i.test(String(event.albumUrl || '').trim());
-
-  // THE TRIP DETAILS WENT OUT (11/21/2026). Group Trip's "Send everyone the
-  // trip details…" opens their draft; posting it on everyone's invite or
-  // handing it off records it on the send ledger, and that record is the
-  // step done. Copying is not a send (the invite's rule above), and a server
-  // email that failed or is still in flight is not one either.
-  if (/^send everyone the trip details\b/.test(s)) {
-    const e = sendStateFor(event.sendLedger, TRIP_DETAILS_DRAFT);
-    return !!e && e.channel !== 'copy' && (e.status === 'handed_off' || e.status === 'accepted');
-  }
-
-  // THE DATE POLL IS SETTLED WHEN THE HOST USES A RANGE (owner pick B,
-  // 11/21/2026). Offering ranges is half the step; the other half is the
-  // group's answer, and "Use these dates" is the host acting on it. Above the
-  // act guard, whose "check" / "poll" words would keep it open forever.
-  //
-  // AND A HOST WHO ALREADY GAVE HER DATES IS NOT ASKED TO POLL FOR THEM (owner,
-  // 11/21/2026: "Don't keep asking host for the same information"). A trip
-  // typed with its range ("girls trip Dec 3-6") opened with "Offer two or
-  // three date ranges" still open. When she set a real range and never started
-  // a poll, the dates are decided; once she offers ranges, the poll's own rule
-  // above holds again.
-  if (DATE_POLL_ROW.test(s)) {
-    if (datePollSettled(event)) return true;
-    const offered = Array.isArray(event.dateOptions) && event.dateOptions.length > 0;
-    return !offered && dateSet && spanNights(event) > 0 && !event.datesToConfirm;
-  }
-
-  // "PICK THE DATE (AND TIME)" IS THE DATE BEING SET (11/21/2026). Halloween's
-  // "Pick the date and time to fit the audience…" stayed open on an event with
-  // both, re-asking what Date & time already holds. The time half counts only
-  // when the hour is not ours (startTimeIsConfirmed: source not 'derived'), the same rule
-  // the invite uses; an hour we proposed is not her pick.
-  if (/^pick the date\b/.test(s)) {
-    if (!dateSet || event.datesToConfirm) return false;
-    return /\btime\b/.test(s) ? (!!String(event.startTime || '').trim() && event.startTimeSource !== 'derived') : true;
-  }
-
-  // THE GIFT LOG (owner pick A, 11/21/2026): the cash row is done by a cash
-  // amount on the log, the mailed-gifts row by a gift from someone who did not
-  // come; "go through the gifts" is the host's tick (giftLog.giftRowSatisfied).
-  const gift = giftRowSatisfied(event, s);
-  if (gift !== null) return gift;
-
-  // THE BORROWED LIST (owner pick B, 11/21/2026): a return row is done when
-  // something is on the list and all of it is marked returned. Above the act
-  // guard, whose "give" would keep "Give back what family lent you" open.
-  // A row that also asks to SEND something (Anniversary's originals: "…and
-  // send them the digital copies") is not proven by the list alone.
-  if (BORROWED_ROW.test(s)) return !/\band send\b/.test(s) && borrowedAllBack(event);
-
-  // WHO SLEEPS WHERE (owner pick "combine", 11/21/2026): done when everyone on
-  // the trip is in a room of the room plan.
-  if (ROOMS_ROW.test(s)) return roomPlanSettled(event);
-
-  // SPONSORS (owner pick, 11/21/2026): the ask is done once a sponsor is on
-  // the list. The thank / banner / recognition rows name volunteers, donors
-  // and proofs the list cannot witness, so they stay the host's tick (the act
-  // guard below keeps them open).
-  if (SPONSOR_ASK_ROW.test(s)) return sponsorAskDone(event);
-
-  // ACTS — calls, briefings, walk-throughs, physical work, ongoing collection —
-  // are never proven by presence facts. "Recruit 3-5 volunteers" was marked done
-  // by a typed headcount; "share live location" by a venue name; "track RSVPs"
-  // by a single reply. No stored field witnesses these happening, so they stay
-  // open until the host ticks them. (Chase-class rows keep their own stronger
-  // proof below — none of these words appear in the chase regex.)
-  if (/\b(re-?confirm|call (every|all)|brief|remind|greet|walk|tour|rehears|recruit|volunteers?|sound check|run.of.show|give\b|pick(ing)? up|drop(ping)? off|load|unload|pack|clean|decorat|escort|collect|track|share|point)\b/.test(s)) return false;
-
-  // ── C2 — A PRESENCE PREDICATE MAY NOT SATISFY AN ACT ────────────────────────
-  // This file's own header promises it "returns true ONLY when we can prove from
-  // event facts that the task is handled." Two families broke that promise, and
-  // they are the two where being wrong costs the host the most.
-  //
-  // MONEY. There was no money signal in this file at all, so tasks that tell the
-  // host to PAY fell through to the /cater/ and /vendor/ branches below and were
-  // satisfied by hasNamedVendor — i.e. marked done because a vendor had a NAME.
-  // These are real seeded tasks, not hypotheticals:
-  //     "Confirm all vendors — check balance due status"   (App.js:4689)
-  //     "Negotiate vendor payment plans where possible"    (App.js:4684)
-  //     "Pay the caterer balance once headcount is final"
-  // effectiveDone() is documented as "the value every what's-left surface should
-  // use", and the host checklist DROPS every effectiveDone row — so the task did
-  // not merely turn green, it disappeared. The app hid the bill.
-  //
-  // The honest signal now exists (lib/vendorMoney, extracted for exactly this), so
-  // a money task is proven by MONEY: nothing outstanding. Never by a name.
-  if (/\bpay\b|\bpaid\b|payment|deposit|balance|invoice|remit|settle up/.test(s)) {
-    const committed = (Array.isArray(event.vendors) ? event.vendors : [])
-      .filter(v => v && String(v.name || '').trim() && vendorIsCommitted(v));
-    if (!committed.length) return false;           // nothing to prove it against
-    if (/deposit/.test(s)) {
-      // Vacuous-proof fix (audit class S5): a committed vendor with NO deposit
-      // amount recorded proves nothing about deposits being paid. Require at
-      // least one recorded deposit, all of them paid.
-      const withDep = committed.filter(v => Number(v.depositAmt) > 0);
-      if (!withDep.length) return false;
-      return withDep.every(v => v.depositPaid === true);
-    }
-    // Same class: vendorOutstanding is 0 when no costs were ever recorded.
-    // "Nothing owed" is proof only when some money was actually on the books.
-    if (!committed.some(v => Number(v.cost) > 0 || Number(v.depositAmt) > 0)) return false;
-    return vendorOutstanding(event) === 0;         // pay / balance / settle: nothing owed
-  }
-
-  // INVITATIONS. "Send the invitations" and "Chase the RSVPs" were satisfied by
-  // hasGuests — a number the host typed at intake. Typing "40" marked the invites
-  // SENT and dropped them from the list. Nothing had been sent. Sending is an ACT;
-  // a headcount cannot prove it happened. The honest evidence that invitations went
-  // out is that somebody ANSWERED (a reply of any kind, including a maybe) — or
-  // that the host recorded sending them.
-  // NB: the ORIGINAL branch used /invite/, which does not match "invitations"
-  // (invit-A-tions) — so "Send the invitations" fell through to false by accident,
-  // while "Chase the RSVPs" DID match /rsvp/ and was wrongly satisfied by a typed
-  // headcount. /invit/ covers the whole family deliberately, and now every one of
-  // them is answered by real evidence instead of an accident of spelling.
-  // CHASE ≠ SEND (2026-07-14). These two tasks shared one predicate, and it was the
-  // SEND predicate — `guests.some(hasResponded)`. So "Chase the RSVPs; lock the count"
-  // was marked DONE the moment a single guest replied. One yes out of forty retired the
-  // chase, and the host was told the count was locked while thirty-nine people had said
-  // nothing. The task exists precisely BECAUSE people are slow to reply.
-  //
-  // Chasing is finished when nobody is left to chase — not when somebody answered.
-  if (/chase|follow.?up on (repl|rsvp)|lock the count|nudge/.test(s)) {
-    if (!guests.length) return false;               // nobody to chase yet — not "done"
-    if (guests.every(g => rsvpHasResponded(g))) return true;  // everyone has answered, yes or no
-    // THE CHASE STEP TELLS THE TRUTH (owner ruling, 11/20/2026): a chase step
-    // is also done when everyone INVITED has answered or been nudged — the act
-    // the step names, recorded on the guest by the nudge (lib/replyNudge).
-    // Opening the nudge sheet records nothing, so it credits nothing. A bare
-    // "lock the count" is not a chase and keeps the rule above.
-    return /chase|nudge|follow.?up on/.test(s) && chaseAnsweredOrNudged(event);
-  }
-
-  // Sending, on the other hand, IS evidenced by a single reply — someone could only have
-  // replied if the invitation reached them.
-  // NB: the ORIGINAL branch used /invite/, which does not match "invitations"
-  // (invit-A-tions) — so "Send the invitations" fell through to false by accident.
-  // /invit/ covers the whole family deliberately.
-  if (/invit|rsvp/.test(s)) return invitesOut(event);
-
-  // ── BRUTAL AUDIT 2026-07-28: a MENTION may not satisfy a TASK ───────────────
-  // The audit ran every playbook label against these rules and found the mention-
-  // match classes below marking unproven work "done by your plan" (which the host
-  // checklist then DROPS, and taskLead can never call overdue). The rules now
-  // require the task to BE about the fact — an action anchor — not merely to
-  // mention a related word. Prefer a false negative (the host ticks it) over a
-  // false positive (the app hides work that was never done).
-
-  // Catering moot-ness rides the sourcing choice regardless of verb: if the host
-  // self-provides, every caterer task is about a vendor this event doesn't have.
-  if (/cater/.test(s) && cateringSelfProvided(event)) return true;
-
-  // Booking-verb vendor proof — ROLE-AWARE and STATUS-AWARE. "Book the DJ" is
-  // proven by a DJ the host actually booked (isVendorBooked),
-  // never by a florist, and never by a name typed while still considering.
-  // HIRED vendors only (hiredVendors): a friend helping is not a booking.
-  const vendors = hiredVendors(event).filter((v) => isVendorBooked(v));
-  const vendorText = (v) => ((v.name || '') + ' ' + (v.category || '') + ' ' + (v.type || '')).toLowerCase();
-  const bookedMatch = (re) => vendors.some((v) => re.test(vendorText(v)));
-  if (/\b(book(ed)?|hire[ds]?|lock(ed)? in|secure[d]?)\b/.test(s) || /vendor/.test(s)) {
-    if (/cater/.test(s)) return bookedMatch(/cater|food/);
-    // The caterer is answered above. The planner role stays out of this rule:
-    // no step was proven by a booked planner before the table was shared.
-    // A COMPOUND STEP NEEDS A VENDOR PER ROLE (Wanda audit P0-11): "Book
-    // photobooth + night-of photographer" closed on one booked friend shooting
-    // a pre-event photoshoot. The roles, and what rules a vendor OUT of one,
-    // are the one table above (BOOKING_ROLES).
-    const roles = BOOKING_ROLES.filter(([taskRe]) => !taskRe.test('caterer') && !taskRe.test('planner'));
-    const named = roles.filter(([taskRe]) => taskRe.test(s));
-    if (named.length) {
-      const fits = (v, [, vendRe, notRe]) => vendRe.test(vendorText(v)) && !(notRe && notRe.test(vendorText(v)));
-      // Each named role gets its own vendor: a small matching, tried in order.
-      const fill = (i, used) => i === named.length || vendors.some((v) => !used.has(v)
-        && fits(v, named[i]) && fill(i + 1, new Set([...used, v])));
-      return fill(0, new Set());
-    }
-    if (/vendor|\bhire[ds]?\b|book a /.test(s)) return vendors.length > 0;
-  }
-  // A CATERER STEP NEEDS A BOOKED CATERER (audit 2 P0-3): "Confirm your caterer
-  // and send them the final headcount" closed on a typed guest count through
-  // the headcount rule below. Whatever else it names, the caterer is required.
-  if (/\bcater/.test(s) && !bookedMatch(/cater|food/)) return false;
-
-  // Headcount/guest-count tasks: a typed count DOES prove "set the guest count" —
-  // but only tasks about ESTABLISHING the count qualify. The old rule fired on any
-  // mention of guest/adult/kids ("Greet guests", "Keep kids back", "buy ice
-  // ~1.5 lb/guest") — audit class S4.
-  if (/\b(set|lock|confirm|final(ize)?|decide|land)\b.{0,24}\b(head\s?count|guest.?count|the count)\b|head\s?count target|guest list\b|who.?s coming/.test(s)) return hasGuests;
-  if (/\b(set|agree[d]?|decide|pick|land)\b.{0,30}budget|^budget\b|spending plan|set (a |the )?(cost|spend)/.test(s)) return hasBudget;
-  // Venue: booking/choosing verbs only. Bare /location/ used to close safety rows
-  // ("share live location", "Plan B location") off a typed venue name — class S3.
-  if (/\b(book(ed)?|find|pick|choose|secure[d]?|reserve[d]?|lock(ed)?|scout)\b.{0,40}\b(venue|location|space|hall|room)\b|^venue\b|venue rfp/.test(s)) return hasVenue;
-  // MENU STEPS CLOSE WHEN THE MENU DOES (single-source audit, 11/18/2026): one
-  // pick used to close every row containing "menu", while the hero still said
-  // "Decide what you're serving · 3 open". The open-questions rule is
-  // playbooks.openFoodChoices — the one phaseProgress uses. Shopping and
-  // counting rows that only mention the menu are not about deciding it.
-  if (/\b(set|lock|plan|decide|map)\b.{0,20}\b(menu|spread)\b|\bmenu\b|food plan|what to (cook|serve|make)|plan the food/.test(s)) {
-    if (/\b(buy|grocer|shop|count|serving dish|pick up)/.test(s)) return false;
+// ─── THE FACTS A STEP DECLARES (six root causes, cause 1, part 2) ────────────
+// taskSatisfied used to decide from the step's WORDS: ~40 keyword rules over its
+// text ("set … date", "chase", "pay", "book … DJ", "menu", an act word that kept
+// it open). The rules were sound about FACTS and wrong about WORDS: a variant
+// spelling changed the answer ("groceries" is not "grocery"), and any row's
+// prose could trip any rule. Each fact below is one of those rules' proofs, kept
+// exactly; every step now DECLARES which facts prove it (lib/stepTarget
+// stepFactsFor: on the row, else on its step by id), and nothing here reads a
+// step's text. The declarations were derived once from the retired rules and
+// committed; the history of each proof is in git (taskEngine.js before this).
+//
+// A declaration is an ordered list. A bare fact is the answer; `or:<fact>`
+// proves the step when it holds and otherwise passes on; `and:<fact>` refuses
+// the step when it does not hold and otherwise passes on; `then:<fact>` is read
+// only by timelineStepResolved, after the step is not otherwise done. An empty
+// list, or no declaration, means only the host's tick proves it: an act (a
+// call, a walk-through, a briefing) has no stored witness.
+const _named = (v) => v && String(v.name || '').trim();
+const _guests = (e) => (Array.isArray(e.guests) ? e.guests : []);
+const _dateSet = (e) => !!String(e.date || '').trim() && !/^(tbd|tba)$/i.test(String(e.date).trim());
+const _bookedHired = (e) => hiredVendors(e).filter((v) => isVendorBooked(v));
+const _vendorText = (v) => ((v.name || '') + ' ' + (v.category || '') + ' ' + (v.type || '')).toLowerCase();
+// The roles a fact can name, keyed (BOOKING_ROLES above, in its order).
+export const BOOKING_ROLE_KEYS = ['caterer', 'photobooth', 'photographer', 'dj', 'florist', 'baker', 'officiant', 'planner'];
+const _roleByKey = (k) => { const i = BOOKING_ROLE_KEYS.indexOf(k); return i >= 0 ? BOOKING_ROLES[i] : null; };
+// Money is proven by money (C2, brutal audit): committed vendors, with money on the books.
+const _committed = (e) => (Array.isArray(e.vendors) ? e.vendors : []).filter((v) => _named(v) && vendorIsCommitted(v));
+export const STEP_FACTS = Object.freeze({
+  // "Set the date…" composites anchor on the date (eventPlan decomposes the rest).
+  'date-set': (e) => _dateSet(e),
+  // The food sheet's "Dietary needs noted".
+  'dietary-noted': (e) => !!dietaryNoted(e),
+  // Recorded as sent, or any guest has answered.
+  'invites-out': (e) => invitesOut(e),
+  // A saved album link, the full-link test the invite applies.
+  'album-link': (e) => /^https?:\/\//i.test(String(e.albumUrl || '').trim()),
+  // The trip details went out (the send ledger; a copy or a failed email is not a send).
+  'trip-details-sent': (e) => {
+    const r = sendStateFor(e.sendLedger, TRIP_DETAILS_DRAFT);
+    return !!r && r.channel !== 'copy' && (r.status === 'handed_off' || r.status === 'accepted');
+  },
+  // The poll is settled, or she gave a real range and never started one.
+  'dates-polled': (e) => {
+    if (datePollSettled(e)) return true;
+    const offered = Array.isArray(e.dateOptions) && e.dateOptions.length > 0;
+    return !offered && _dateSet(e) && spanNights(e) > 0 && !e.datesToConfirm;
+  },
+  // "Pick the date (and time)": the time half counts only when the hour is hers.
+  'date-picked': (e) => _dateSet(e) && !e.datesToConfirm,
+  'date-and-time-picked': (e) => _dateSet(e) && !e.datesToConfirm
+    && !!String(e.startTime || '').trim() && e.startTimeSource !== 'derived',
+  // The gift log on the guest rows.
+  'gift-cash-logged': (e) => giftCashLogged(e),
+  'gifts-by-mail-logged': (e) => giftsByMailLogged(e),
+  'borrowed-back': (e) => borrowedAllBack(e),
+  'rooms-planned': (e) => roomPlanSettled(e),
+  'sponsor-asked': (e) => sponsorAskDone(e),
+  // A recorded deposit, all of them paid (never vacuous).
+  'deposits-paid': (e) => {
+    const withDep = _committed(e).filter((v) => Number(v.depositAmt) > 0);
+    return withDep.length > 0 && withDep.every((v) => v.depositPaid === true);
+  },
+  // Nothing owed, and some money was actually on the books.
+  'nothing-owed': (e) => {
+    const c = _committed(e);
+    if (!c.length || !c.some((v) => Number(v.cost) > 0 || Number(v.depositAmt) > 0)) return false;
+    return vendorOutstanding(e) === 0;
+  },
+  // CHASE ≠ SEND: nobody left to chase — everyone answered, or everyone invited
+  // answered or was nudged (owner ruling, 11/20/2026).
+  'replies-chased': (e) => {
+    const gs = _guests(e);
+    if (!gs.length) return false;
+    return gs.every((g) => rsvpHasResponded(g)) || chaseAnsweredOrNudged(e);
+  },
+  // "Lock the count": everyone has answered.
+  'everyone-replied': (e) => { const gs = _guests(e); return gs.length > 0 && gs.every((g) => rsvpHasResponded(g)); },
+  // No caterer is part of this event (she cooks, or a potluck).
+  'catering-moot': (e) => cateringSelfProvided(e),
+  // A caterer she actually booked (HIRED vendors only; a friend helping is not a booking).
+  'caterer-booked': (e) => _bookedHired(e).some((v) => /cater|food/.test(_vendorText(v))),
+  // Any vendor she actually booked.
+  'a-vendor-booked': (e) => _bookedHired(e).length > 0,
+  // A typed count, a guest list, or an estimate.
+  'guest-count': (e) => (Number(e.guestCount) || Number(e.guestEstimate) || _guests(e).length) > 0,
+  'budget-set': (e) => budgetIsSet(e),
+  // venueFor: an at-home event with a city IS venued.
+  'venue-set': (e) => { const v = venueFor(e); return v.isSet && !/^(tbd|tba)$/i.test(v.name); },
+  // The menu's open questions are closed (playbooks.openFoodChoices), with
+  // menu content behind it (a lone sourcing key is a sourcing choice).
+  'menu-decided': (e) => {
+    const hasFood = (e.foodChoices && Object.keys(e.foodChoices).some((k) => k !== 'sourcing'))
+      || (Array.isArray(e.foodAdd) && e.foodAdd.length > 0);
     if (!hasFood) return false;
     let open = null;
-    try { open = openFoodChoices(event); } catch (_e) { open = null; }
+    try { open = openFoodChoices(e); } catch (_e) { open = null; }
     return open == null ? true : open.filter((c) => !isDietaryChoice(c)).length === 0;
+  },
+  // The calls the step names (`answeredBy` on the step, found by the row's id)
+  // are answered: the pick is the fact (owner's iPad, 11/21/2026).
+  'calls-answered': (e, st, row) => stepCallsAnswered(e, row),
+  // Every role the step lists (`books` on the step, found by the row's id) is
+  // booked — and only then.
+  'roles-listed': (e, st, row) => { const books = stepBooks(e, row); return books.length > 0 && books.every((r) => roleBooked(e, r)); },
+  // The dinner's own part is set (the dinner sheet's `set`).
+  'dinner-part': (e, st) => {
+    try { const p = dinnerParts(e).find((x) => x.id === (st && st.part)); return !!(p && p.set); } catch (_e) { return false; }
+  },
+  // The arrivals/departures grid holds a real flight.
+  'arrivals-grid': (e) => {
+    try {
+      const travel = buildTravelPlan(e);
+      return !!(travel.relevant && travel.rosterMode
+        && ((travel.air && travel.air.roster) || []).some((r) => r.hasFlightInfo));
+    } catch (_e) { return false; }
+  },
+  // A food shop whose list is bought — only the lines the host buys (hostBuysLine).
+  'food-bought': (e) => {
+    try {
+      const fp = playbookFoodPlan(e);
+      const active = ((fp && fp.list) || []).filter((it) => it && !it.skipped && hostBuysLine(it));
+      if (!active.length) return false;
+      const got = e.foodGot || {};
+      return active.every((it) => got[it.id] === true);
+    } catch (_e) { return false; }
+  },
+});
+// `roles:<key>+<key>` — a booked vendor PER role (Wanda audit P0-11), each
+// fitted to its own role and none ruled out of it (BOOKING_ROLES).
+function rolesBooked(e, keys) {
+  const named = keys.map(_roleByKey);
+  if (!named.length || named.some((r) => !r)) return false;
+  const vendors = _bookedHired(e);
+  const fits = (v, [, vendRe, notRe]) => vendRe.test(_vendorText(v)) && !(notRe && notRe.test(_vendorText(v)));
+  const fill = (i, used) => i === named.length || vendors.some((v) => !used.has(v)
+    && fits(v, named[i]) && fill(i + 1, new Set([...used, v])));
+  return fill(0, new Set());
+}
+const _bare = (f) => String(f || '').replace(/^(?:or|and|then):/, '');
+/** True for a fact (with or without its or:/and:/then: mode) this vocabulary can prove. */
+export function isKnownStepFact(f) {
+  const b = _bare(f);
+  if (b.startsWith('roles:')) return b.slice(6).split('+').every((k) => BOOKING_ROLE_KEYS.includes(k));
+  return Object.prototype.hasOwnProperty.call(STEP_FACTS, b);
+}
+function factHolds(event, fact, step, row) {
+  const b = _bare(fact);
+  try {
+    if (b.startsWith('roles:')) return rolesBooked(event, b.slice(6).split('+'));
+    const fn = STEP_FACTS[b];
+    return fn ? !!fn(event, step, row) : false;
+  } catch (_e) { return false; }
+}
+
+// taskSatisfied(event, task) → boolean. `task` is a checklist row (or a
+// milestone carrying its facts). True ONLY when the facts its step declares
+// prove it handled; a row that declares none is proven by the host's tick.
+export function taskSatisfied(event, task) {
+  if (!event || !task) return false;
+  const facts = stepFactsFor(event, task);
+  if (!Array.isArray(facts) || !facts.length) return false;
+  const step = declaredStepFor(event, task);
+  for (const f of facts) {
+    const m = String(f);
+    if (m.startsWith('then:')) continue;
+    if (m.startsWith('or:')) { if (factHolds(event, m, step, task)) return true; continue; }
+    if (m.startsWith('and:')) { if (!factHolds(event, m, step, task)) return false; continue; }
+    return factHolds(event, m, step, task);
   }
   return false;
 }
@@ -395,36 +281,18 @@ export function effectiveDone(event, task) {
 // unchanged in meaning except one line (below), and read by both.
 //
 // A step is handled when it is ticked or proven by event state (effectiveDone);
-// RETIRED (its gate closed — no longer work this event needs); the arrivals /
-// departures grid holding a real flight; or a FOOD shop whose list is bought.
-// The shop rule now counts only the lines the host buys (hostBuysLine,
-// 11/20/2026) — a dish a friend brings no longer holds the host's shop open.
-const ARRIVALS_GRID_RE = /arrivals?\s*\/\s*departures/i;
-// Scoped to FOOD purchases (brutal audit 2026-07-28, class S9): "buy the linens"
-// must never ride a fully-ticked grocery list.
-const FOOD_SHOP_RE = /\b(buy|shop)\b.{0,50}\b(food|grocer|ingredient|ice|drink|produce|meat|snack)\b|grocery|shopping list|food shop/i;
+// RETIRED (its gate closed — no longer work this event needs); or proven by a
+// `then:` fact its step declares (the arrivals grid holding a real flight; a
+// food shop whose list is bought — only the lines the host buys).
 export function timelineStepResolved(event, task) {
   if (!task) return false;
   if (task.retired) return true;
   try { if (effectiveDone(event, task)) return true; } catch (_e) { /* fall through */ }
-  const label = String(task.task || '');
-  if (ARRIVALS_GRID_RE.test(label)) {
-    try {
-      const travel = buildTravelPlan(event);
-      return !!(travel.relevant && travel.rosterMode
-        && ((travel.air && travel.air.roster) || []).some((r) => r.hasFlightInfo));
-    } catch (_e) { return false; }
-  }
-  if (FOOD_SHOP_RE.test(label)) {
-    try {
-      const fp = playbookFoodPlan(event);
-      const active = ((fp && fp.list) || []).filter((it) => it && !it.skipped && hostBuysLine(it));
-      if (!active.length) return false;
-      const got = (event && event.foodGot) || {};
-      return active.every((it) => got[it.id] === true);
-    } catch (_e) { return false; }
-  }
-  return false;
+  let facts = null;
+  try { facts = stepFactsFor(event, task); } catch (_e) { facts = null; }
+  if (!Array.isArray(facts)) return false;
+  const step = (() => { try { return declaredStepFor(event, task); } catch (_e) { return null; } })();
+  return facts.some((f) => String(f).startsWith('then:') && factHolds(event, f, step, task));
 }
 
 // ─── A TICK RECORDS WHAT IT STANDS FOR (owner, 11/18/2026) ───────────────────

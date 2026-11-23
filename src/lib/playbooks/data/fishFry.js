@@ -46,7 +46,7 @@ const fishFry = {
   ],
 
   milestones: [
-    { id: 'ff_setdate', name: 'Set date, headcount, framing (gathering vs fundraiser)', offsetDays: 14, owner: 'host', category: 'planning', risk: { ifDelayed: 'Plate count / target unknown', severity: 'low' } },
+    { id: 'ff_setdate', name: 'Set date, headcount, framing (gathering vs fundraiser)', facts: ['date-set'], offsetDays: 14, owner: 'host', category: 'planning', risk: { ifDelayed: 'Plate count / target unknown', severity: 'low' } },
     { id: 'ff_spread_word', name: 'Spread the word / sell plates / take pre-orders', offsetDays: 10, owner: 'host', dependsOn: ['ff_setdate'], category: 'guest', risk: { ifDelayed: 'Under-sold plates or wrong fish quantity', severity: 'med' } },
     { id: 'ff_fryer_check', name: 'Check the fryer, propane, oil & safe fry spot', offsetDays: 7, owner: 'host', dependsOn: ['ff_setdate'], category: 'logistics', risk: { ifDelayed: 'Dead burner or empty tank on fry day', severity: 'high' } },
     { id: 'ff_headcount', name: 'Lock headcount / plate count', offsetDays: 3, owner: 'host', dependsOn: ['ff_spread_word'], category: 'guest', risk: { ifDelayed: 'Buy wrong amount of fish', severity: 'med' } },
@@ -58,15 +58,15 @@ const fishFry = {
   ],
 
   tasks: [
-    { id: 't_word', target: 'list', milestoneId: 'ff_spread_word', phase: 'guest', label: 'Put the word out; if selling plates, set price + take pre-orders and a target count', when: 'T-10d' },
-    { id: 't_fryer', target: 'none', milestoneId: 'ff_fryer_check', phase: 'logistics', label: 'Test-fire the burner, weigh/shake the propane tank, pick the level fry spot away from the house, locate the fire extinguisher', when: 'T-7d' },
-    { id: 't_count', target: 'guests', milestoneId: 'ff_headcount', phase: 'guest', label: 'Lock the plate/head count; plan ~0.5 lb fish per person', when: 'T-3d' },
-    { id: 't_nonperish', target: 'list', milestoneId: 'ff_shop_nonperish', phase: 'shopping', label: 'Oil (a lot), cornmeal, seasoning, hot sauce, lemons, white bread, drinks, to-go containers, foil, cleanup', when: 'T-3d' },
-    { id: 't_fish', target: 'list', milestoneId: 'ff_shop_fish', phase: 'shopping', label: 'Buy fresh whiting/catfish/porgies + slaw cabbage, potatoes, sides produce', when: 'T-1d' },
-    { id: 't_season', target: 'spread', milestoneId: 'ff_prep', phase: 'food', label: 'Season/soak the fish; set up the seasoned-cornmeal dredge station; make slaw, potato salad, spaghetti sauce ahead', when: 'T-1d evening' },
-    { id: 't_heatoil', target: 'day', milestoneId: 'ff_setup', phase: 'setup', label: 'Set fryer on level ground, fill oil to the line (never over), bring to ~350°F; NEVER leave it unattended', when: 'T0 -1:00' },
-    { id: 't_fry', target: 'day', milestoneId: 'event', phase: 'food', label: 'Fry in small batches hot and fresh; hold on a sheet-pan rack; keep the line moving', when: 'T0' },
-    { id: 't_cooloil', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Cut the propane, let the oil cool FULLY before moving it, strain/store or dispose of oil, wrap leftovers, bag trash', when: 'T0 +4:00' },
+    { id: 't_word', target: 'list', facts: [], milestoneId: 'ff_spread_word', phase: 'guest', label: 'Put the word out; if selling plates, set price + take pre-orders and a target count', when: 'T-10d' },
+    { id: 't_fryer', target: 'none', facts: [], milestoneId: 'ff_fryer_check', phase: 'logistics', label: 'Test-fire the burner, weigh/shake the propane tank, pick the level fry spot away from the house, locate the fire extinguisher', when: 'T-7d' },
+    { id: 't_count', target: 'guests', facts: ['guest-count'], milestoneId: 'ff_headcount', phase: 'guest', label: 'Lock the plate/head count; plan ~0.5 lb fish per person', when: 'T-3d' },
+    { id: 't_nonperish', target: 'list', facts: [], milestoneId: 'ff_shop_nonperish', phase: 'shopping', label: 'Oil (a lot), cornmeal, seasoning, hot sauce, lemons, white bread, drinks, to-go containers, foil, cleanup', when: 'T-3d' },
+    { id: 't_fish', target: 'list', facts: [], milestoneId: 'ff_shop_fish', phase: 'shopping', label: 'Buy fresh whiting/catfish/porgies + slaw cabbage, potatoes, sides produce', when: 'T-1d' },
+    { id: 't_season', target: 'spread', facts: [], milestoneId: 'ff_prep', phase: 'food', label: 'Season/soak the fish; set up the seasoned-cornmeal dredge station; make slaw, potato salad, spaghetti sauce ahead', when: 'T-1d evening' },
+    { id: 't_heatoil', target: 'day', facts: [], milestoneId: 'ff_setup', phase: 'setup', label: 'Set fryer on level ground, fill oil to the line (never over), bring to ~350°F; NEVER leave it unattended', when: 'T0 -1:00' },
+    { id: 't_fry', target: 'day', facts: [], milestoneId: 'event', phase: 'food', label: 'Fry in small batches hot and fresh; hold on a sheet-pan rack; keep the line moving', when: 'T0' },
+    { id: 't_cooloil', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Cut the propane, let the oil cool FULLY before moving it, strain/store or dispose of oil, wrap leftovers, bag trash', when: 'T0 +4:00' },
   ],
 
   purchases: [

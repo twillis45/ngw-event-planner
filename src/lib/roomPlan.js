@@ -15,7 +15,6 @@
 //
 // Shape: { rooms: [{ id, name, guestIds: [] }], habits: { [guestId]: 'early' | 'late' } }
 
-export const ROOMS_ROW = /^settle who sleeps where\b/i;
 export const HABIT_MARK = { early: '☀', late: '☾' };
 
 const str = (v) => String(v == null ? '' : v).trim();

@@ -21,7 +21,7 @@
 // playbooks, the two dietary-collection steps, fa-bringers, dest_t_access).
 // Guard: src/lib/__tests__/everyStepDeclaresItsTarget.test.js.
 
-import { getPlaybook, ALL_PLAYBOOKS, DESTINATION_TASKS, DERIVED_STEP_TARGETS } from './playbooks';
+import { getPlaybook, ALL_PLAYBOOKS, DESTINATION_TASKS, DERIVED_STEP_TARGETS, DERIVED_STEP_FACTS, resolveAnsweredCopy, stepWithoutCaterer } from './playbooks';
 import { cookTasksFor, cookRisksFor } from './playbooks/cookLever';
 import { DINNER_OWN_STEPS } from './tripMeals';
 import { isVendorBooked } from './workstreams';
@@ -219,6 +219,52 @@ export function targetFor(key, event) {
   if (t.href) return { key, label, href: t.href(event), editor: null };
   const route = typeof t.route === 'function' ? t.route(event) : { ...t.route };
   return { key, label, route, editor: t.editor || null };
+}
+
+// ── WHICH FACTS PROVE A STEP DONE (six root causes, cause 1, part 2) ─────────
+// taskSatisfied and timelineStepResolved decided a step was handled from WORDS
+// in its text (~40 keyword rules: "set … date", "chase", "pay", "book … DJ",
+// "menu"…). Every step now declares `facts`, and this is the only place a row
+// finds its declaration: on the row itself (a milestone, a hand-authored
+// sample row), else on its step by id, never by its words. A row with no
+// declaration (a step the host wrote herself) is proven only by her tick.
+// The facts were derived ONCE from the retired rules and committed; a step
+// whose words varied with a pick or with no caterer declares the variant the
+// same way (`factsByAnswer` beside `copyByAnswer`, `factsWithoutCaterer`
+// beside `labelWithoutCaterer`). The vocabulary is lib/taskEngine STEP_FACTS.
+function declaredStepOf(event, stepId) {
+  if (!stepId) return null;
+  const pb = event ? (() => { try { return getPlaybook(event.type); } catch (_e) { return null; } })() : null;
+  if (!pb) return null;
+  const own = [...(pb.tasks || []), ...cookTasksFor(pb), ...DESTINATION_TASKS].find((t) => t && t.id === stepId);
+  if (own) return own;
+  if (DERIVED_STEP_FACTS[stepId]) return { id: stepId, facts: DERIVED_STEP_FACTS[stepId], derived: true };
+  if (stepId.startsWith('tm-out-')) return { id: stepId, facts: DERIVED_STEP_FACTS['tm-out'], derived: true };
+  return DINNER_OWN_STEPS.find((d) => `cel-${d.key}` === stepId) || null;
+}
+/** The declared step a checklist row stands for (by id, never its words), or null. */
+export function declaredStepFor(event, row) {
+  if (!row) return null;
+  const pid = row.provenance && row.provenance.taskId;
+  const found = declaredStepOf(event, pid || stepIdOf(event, row.id || row.taskId));
+  if (found) return found;
+  const id = String(row.id || row.taskId || '');
+  if (!id.startsWith('pbt-') || !event) return null;
+  const pb = (() => { try { return getPlaybook(event.type); } catch (_e) { return null; } })();
+  const ids = pb ? everyDeclaredStep(pb).map((st) => st.id).filter((sid) => id.endsWith('-' + sid)) : [];
+  return ids.length ? declaredStepOf(event, ids.sort((a, b) => b.length - a.length)[0]) : null;
+}
+/** stepFactsFor(event, row) → the facts that prove this row done, or null when it declares none. */
+export function stepFactsFor(event, row) {
+  if (!row) return null;
+  if (Array.isArray(row.facts)) return row.facts;
+  const st = declaredStepFor(event, row);
+  if (!st || !Array.isArray(st.facts)) return null;
+  // The builder's own variant rule: without its caterer, a step reads its
+  // labelWithoutCaterer and drops its answered copy; its facts do the same.
+  if (st.labelWithoutCaterer && stepWithoutCaterer(event, st)) return st.factsWithoutCaterer || st.facts;
+  const f = st.factsByAnswer ? resolveAnsweredCopy(st.facts, st.factsByAnswer, event) : st.facts;
+  return Array.isArray(f) ? f : st.facts;
 }
 
 /** stepTargetFor(event, row) → targetFor(stepTargetKey(event, row), event). */

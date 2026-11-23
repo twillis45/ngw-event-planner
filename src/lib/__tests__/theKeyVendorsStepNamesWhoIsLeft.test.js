@@ -50,8 +50,9 @@ describe('it ticks when all four are booked', () => {
   test('planner, photographer, caterer and DJ booked', () => {
     const ev = W([v('Wedding Planner'), v('Photography'), v('Catering'), v('DJ', 'Confirmed')]);
     expect(taskSatisfied(ev, row(ev))).toBe(true);
-    // Read by its words too, as the checklist's older rows are.
-    expect(taskSatisfied(ev, { task: FULL })).toBe(true);
+    // INPUT ONLY changed (six root causes, cause 1, part 2): an older row is found
+    // by its id now, never by its words. Assertion unchanged.
+    expect(taskSatisfied(ev, { id: 'pbt-w-t_keyvendors', task: FULL })).toBe(true);
   });
 });
 

@@ -56,17 +56,17 @@ const boardMeeting = {
   ],
 
   tasks: [
-    { id: 't_agenda', target: 'build-day', milestoneId: 'bm_agenda', phase: 'planning', label: 'Build the agenda with the chair; request reports/decks from each presenter with a hard due date', when: 'T-21d' },
-    { id: 't_priorminutes', target: 'none', milestoneId: 'bm_packet', phase: 'documents', label: 'Pull prior-meeting minutes for approval; flag open action items from last time', when: 'T-10d' },
-    { id: 't_av_book', target: 'vendors', milestoneId: 'bm_logistics', phase: 'logistics', label: 'Book AV tech / video platform; confirm screen, dial-in, and a tech-support contact for the day', when: 'T-14d' },
-    { id: 't_access', target: 'parking', milestoneId: 'bm_logistics', phase: 'logistics', label: 'Arrange parking, visitor badges, and a building/reception access list for external directors', when: 'T-14d' },
-    { id: 't_nda', target: 'none', milestoneId: 'bm_logistics', phase: 'documents', label: 'Confirm NDAs/confidentiality on file; set portal permissions or number the printed packets', when: 'T-14d' },
-    { id: 't_packet', target: 'none', milestoneId: 'bm_packet', phase: 'documents', label: 'Assemble + distribute the full board packet via the secure portal ~1 week out', when: 'T-7d' },
-    { id: 't_quorum', target: 'chase', milestoneId: 'bm_quorum', phase: 'guest', label: 'Chase RSVPs, confirm quorum math, send roll-call + dial-in details and any pre-reads', when: 'T-3d' },
-    { id: 't_avtest', target: 'none', milestoneId: 'bm_avtest', phase: 'setup', label: 'Dry-run the hybrid setup: join remote, share a slide, test mic/camera/dial-in, check screen visibility for remote directors', when: 'T-1d' },
-    { id: 't_setup', target: 'day', milestoneId: 'bm_setup', phase: 'setup', label: 'Set seating + name cards, power/AV at each seat, screens on, catering staged, minute-taker positioned', when: 'T0 -1h' },
-    { id: 't_minutes', target: 'day', milestoneId: 'event', phase: 'documents', label: 'Take minutes: record quorum, motions, votes (roll call for remote), and every action item with an owner', when: 'T0' },
-    { id: 't_followup', target: 'none', milestoneId: 'bm_followup', phase: 'documents', label: 'Circulate draft minutes + action-item tracker within 48h; collect/shred printed packets or revoke portal access', when: 'T0 +1d' },
+    { id: 't_agenda', target: 'build-day', facts: [], milestoneId: 'bm_agenda', phase: 'planning', label: 'Build the agenda with the chair; request reports/decks from each presenter with a hard due date', when: 'T-21d' },
+    { id: 't_priorminutes', target: 'none', facts: [], milestoneId: 'bm_packet', phase: 'documents', label: 'Pull prior-meeting minutes for approval; flag open action items from last time', when: 'T-10d' },
+    { id: 't_av_book', target: 'vendors', facts: [], milestoneId: 'bm_logistics', phase: 'logistics', label: 'Book AV tech / video platform; confirm screen, dial-in, and a tech-support contact for the day', when: 'T-14d' },
+    { id: 't_access', target: 'parking', facts: [], milestoneId: 'bm_logistics', phase: 'logistics', label: 'Arrange parking, visitor badges, and a building/reception access list for external directors', when: 'T-14d' },
+    { id: 't_nda', target: 'none', facts: [], milestoneId: 'bm_logistics', phase: 'documents', label: 'Confirm NDAs/confidentiality on file; set portal permissions or number the printed packets', when: 'T-14d' },
+    { id: 't_packet', target: 'none', facts: [], milestoneId: 'bm_packet', phase: 'documents', label: 'Assemble + distribute the full board packet via the secure portal ~1 week out', when: 'T-7d' },
+    { id: 't_quorum', target: 'chase', facts: ['replies-chased'], milestoneId: 'bm_quorum', phase: 'guest', label: 'Chase RSVPs, confirm quorum math, send roll-call + dial-in details and any pre-reads', when: 'T-3d' },
+    { id: 't_avtest', target: 'none', facts: [], milestoneId: 'bm_avtest', phase: 'setup', label: 'Dry-run the hybrid setup: join remote, share a slide, test mic/camera/dial-in, check screen visibility for remote directors', when: 'T-1d' },
+    { id: 't_setup', target: 'day', facts: ['or:catering-moot', 'and:caterer-booked'], milestoneId: 'bm_setup', phase: 'setup', label: 'Set seating + name cards, power/AV at each seat, screens on, catering staged, minute-taker positioned', when: 'T0 -1h' },
+    { id: 't_minutes', target: 'day', facts: [], milestoneId: 'event', phase: 'documents', label: 'Take minutes: record quorum, motions, votes (roll call for remote), and every action item with an owner', when: 'T0' },
+    { id: 't_followup', target: 'none', facts: [], milestoneId: 'bm_followup', phase: 'documents', label: 'Circulate draft minutes + action-item tracker within 48h; collect/shred printed packets or revoke portal access', when: 'T0 +1d' },
   ],
 
   purchases: [

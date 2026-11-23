@@ -25,6 +25,10 @@
 // shouting, is the app arguing with its own data.
 import { taskIsOverdue } from '../taskLead';
 import { effectiveDone } from '../taskEngine';
+// INPUTS ONLY changed (six root causes, cause 1, part 2): a row is proven by
+// the facts its step DECLARES, never by its words, so each row literal below
+// carries `facts`: the declaration a step with its words carries (derived once
+// from the retired text rules, as the playbooks' were). Assertions unchanged.
 
 const inDays = (n) => {
   const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n);
@@ -70,7 +74,7 @@ describe('the overdue policy suppresses for the right reasons', () => {
     // trivial branch without saying so. Measured instead: effectiveDone really
     // does fire for this pair (true booked / false unbooked), so both halves are
     // asserted outright and a regression in the inference shows up here.
-    const task = { id: 't2', task: 'Book the venue', leadDays: -5, done: false };
+    const task = { id: 't2', task: 'Book the venue', facts: ['venue-set'], leadDays: -5, done: false };
     const handled = EV({ venue: 'The Ironwood Room', venueBooked: true });
     const unhandled = EV();
 

@@ -279,8 +279,8 @@ export const DINNER_GROUP = 'celebration';
 export const DINNER_NIGHT_STEP = 'Pick the night of the dinner';
 export const DINNER_PLACE_STEP = 'Book the place for the dinner';
 export const DINNER_OWN_STEPS = [
-  { key: 'night', part: 'night', label: DINNER_NIGHT_STEP, target: 'dinner' },
-  { key: 'place', part: 'place', label: DINNER_PLACE_STEP, target: 'venue' },
+  { key: 'night', part: 'night', label: DINNER_NIGHT_STEP, facts: ['dinner-part'], target: 'dinner' },
+  { key: 'place', part: 'place', label: DINNER_PLACE_STEP, facts: ['dinner-part'], target: 'venue' },
 ];
 
 /**

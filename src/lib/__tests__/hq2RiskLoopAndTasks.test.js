@@ -3,11 +3,15 @@
 // - P2: effectiveDoneDetail distinguishes explicit checkoff from inferred completion
 import { effectiveDone, effectiveDoneDetail, taskSatisfied } from '../taskEngine';
 import { playbookRisks } from '../playbooks';
+// INPUTS ONLY changed (six root causes, cause 1, part 2): a row is proven by
+// the facts its step DECLARES, never by its words, so each row literal below
+// carries `facts`: the declaration a step with its words carries (derived once
+// from the retired text rules, as the playbooks' were). Assertions unchanged.
 
 describe('HQ-2 P2: effectiveDoneDetail (Tasks "Inferred" label)', () => {
   const eventWithVenue = { type: 'Birthday', venue: 'The Grand Hall', guests: [], budget: [], vendors: [] };
   const eventNoVenue = { type: 'Birthday', venue: '', guests: [], budget: [], vendors: [] };
-  const venueTask = { id: 't1', text: 'Book the venue', done: false };
+  const venueTask = { id: 't1', text: 'Book the venue', facts: ['venue-set'], done: false };
 
   test('explicit checkoff: done=true, inferred=false', () => {
     const result = effectiveDoneDetail(eventWithVenue, { ...venueTask, done: true });

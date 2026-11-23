@@ -10,6 +10,9 @@ import { taskSatisfied } from '../taskEngine';
 import { playbookChecklist } from '../playbooks';
 import { borrowedList, markReturned, addBorrowed, BORROWED_ROW } from '../borrowedList';
 import { duplicateEvent } from '../duplicateEvent';
+// INPUTS ONLY changed (six root causes, cause 1, part 2): the row is passed
+// with its id, the way the app identifies it; its step's declared facts, not
+// its words, prove it handled. Assertions unchanged.
 
 const ev = (type, extra = {}) => ({ id: 'br', type, date: '2026-11-19', guestEstimate: 30, guestMode: 'count', guestCountSource: 'host',
   venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX', ...extra });
@@ -33,7 +36,7 @@ describe.each(ROWS)('%s: %s', (type, re) => {
     expect(resolveRoute(hit.route)).toEqual({ kind: 'space', focus: 'borrowed' });
   });
   test('it is done only when there is a list and everything on it is back', () => {
-    const t = { task: r.task };
+    const t = { id: r.id, task: r.task };
     expect(taskSatisfied(ev(type), t)).toBe(false);
     const one = ev(type, { borrowed: [{ id: 'b1', what: 'Coffee urn', from: 'Aunt Rose', returned: false }] });
     expect(taskSatisfied(one, t)).toBe(false);
@@ -44,7 +47,7 @@ describe.each(ROWS)('%s: %s', (type, re) => {
 test('Anniversary\u2019s lent photos open the list too, but sending the digital copies is the host\u2019s tick', () => {
   const r = (playbookChecklist(ev('Anniversary'), '2026-10-01') || []).find((x) => /^Give back every original photo/.test(x.task));
   expect(resolveRoute(routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, ev('Anniversary')).route)).toEqual({ kind: 'space', focus: 'borrowed' });
-  expect(taskSatisfied(ev('Anniversary', { borrowed: [{ id: 'b1', what: 'Photos', from: 'Mom', returned: true }] }), { task: r.task })).toBe(false);
+  expect(taskSatisfied(ev('Anniversary', { borrowed: [{ id: 'b1', what: 'Photos', from: 'Mom', returned: true }] }), { id: r.id, task: r.task })).toBe(false);
 });
 
 test('borrowing rows that are not returns keep their own routes', () => {

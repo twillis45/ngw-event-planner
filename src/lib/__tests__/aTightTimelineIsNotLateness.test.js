@@ -8,6 +8,10 @@
 // `invitesSentAt` as proof, but nothing in the shipping shell ever wrote it.
 import { taskDueLabel, taskIsOverdue, taskWindowClosed } from '../taskLead';
 import { effectiveDone } from '../taskEngine';
+// INPUTS ONLY changed (six root causes, cause 1, part 2): a row is proven by
+// the facts its step DECLARES, never by its words, so each row literal below
+// carries `facts`: the declaration a step with its words carries (derived once
+// from the retired text rules, as the playbooks' were). Assertions unchanged.
 
 const DAY = 86400000;
 const now = new Date('2026-11-05T12:00:00');
@@ -18,7 +22,7 @@ const eventIn = (days, createdDaysAgo) => ({
   date: iso(new Date(now.getTime() + days * DAY)),
   createdAt: new Date(now.getTime() - createdDaysAgo * DAY).toISOString(),
 });
-const invite = { task: 'Send the invite with date, time, and a one-line "what we are playing"', leadDays: -7 };
+const invite = { task: 'Send the invite with date, time, and a one-line "what we are playing"', facts: ['invites-out'], leadDays: -7 };
 
 describe('a window that closed before the plan existed is not "past its window"', () => {
   test('created 2 days out: the T-7 invite reads as due now, not 5 days late', () => {

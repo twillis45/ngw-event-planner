@@ -226,10 +226,102 @@ describe('the shell decides its hero rungs by declared kind, never by a title', 
     expect(hits).toEqual([]);
     const at = shell.indexOf('const rungOwnsHero = ');
     const rung = shell.slice(at, shell.indexOf(';', at));
-    expect(rung).toMatch(/isConflictBundle\(q0\)/);
-    expect(rung).toMatch(/isCoiStep\(q0\)/);
+    expect(rung).toMatch(/heroRungKind\(q0\) === 'conflict'/);
+    expect(rung).toMatch(/heroRungKind\(q0\) === 'coi'/);
     expect(rung).not.toMatch(/\.title/);
-    expect(shell).toMatch(/const isConflictBundle = \(a\) => !!a && a\.kind === 'bundle' && a\.askKind === 'conflict';/);
-    expect(shell).toMatch(/const isCoiStep = \(a\) => !!a && \(a\.askKind === 'coi' \|\| a\.sourceCategory === 'coi'\);/);
+    const at2 = shell.indexOf('const heroRungKind = ');
+    const kind = shell.slice(at2, shell.indexOf(';', at2));
+    expect(kind).toMatch(/a\.kind === 'bundle' && a\.askKind === 'conflict'/);
+    expect(kind).toMatch(/a\.askKind === 'coi' \|\| a\.sourceCategory === 'coi'/);
+    expect(kind).not.toMatch(/\.title/);
+  });
+});
+
+// ─── EVERY STEP DECLARES THE FACTS THAT PROVE IT DONE (cause 1, part 2) ─────
+// taskSatisfied and timelineStepResolved decided "handled" from ~40 keyword
+// rules over the step's text, so a spelling ("groceries" is not "grocery") or
+// any word in any row could change the answer. Each step now declares `facts`
+// (lib/taskEngine STEP_FACTS; lib/stepTarget stepFactsFor is the only reader of
+// a declaration), derived once from the retired rules and committed. Measured
+// when it landed: 12,964 checks (every row of every playbook in six states, the
+// area steps, every sample row) gave the same answer before and after.
+describe('every step declares the facts that prove it done', () => {
+  const { taskSatisfied, timelineStepResolved, isKnownStepFact } = require('../taskEngine');
+  const { stepFactsFor } = require('../stepTarget');
+  const known = (list) => Array.isArray(list) && list.every(isKnownStepFact);
+
+  test('every declared step in every playbook declares known facts, variants included', () => {
+    const bad = [];
+    let n = 0;
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const s of everyDeclaredStep(pb)) {
+        n += 1;
+        const st = s.derived ? { facts: stepFactsFor({ id: 'ev', type: pb.type }, { id: s.id }) } : s;
+        if (!known(st.facts)) { bad.push(`${pb.type}:${s.id} → ${JSON.stringify(st.facts)}`); continue; }
+        if (st.factsWithoutCaterer && !known(st.factsWithoutCaterer)) bad.push(`${pb.type}:${s.id} without caterer`);
+        if (st.factsWithoutCaterer && !st.labelWithoutCaterer) bad.push(`${pb.type}:${s.id} factsWithoutCaterer with no labelWithoutCaterer`);
+        for (const [d, byVal] of Object.entries(st.factsByAnswer || {})) {
+          for (const [v, list] of Object.entries(byVal || {})) {
+            if (!known(list)) bad.push(`${pb.type}:${s.id} ${d}=${v}`);
+            if (!(st.copyByAnswer && st.copyByAnswer[d] && st.copyByAnswer[d][v] != null)) bad.push(`${pb.type}:${s.id} ${d}=${v} has no copy variant`);
+          }
+        }
+      }
+      for (const m of (pb.milestones || [])) if (m.facts != null && !known(m.facts)) bad.push(`${pb.type}:milestone ${m.id}`);
+    }
+    expect(bad).toEqual([]);
+    expect(n).toBeGreaterThan(1500);
+  });
+
+  test('handled, and resolved, are the same whatever the row says', () => {
+    const wrong = [];
+    let rows = 0;
+    const BOOKED = ['Catering', 'Photography', 'DJ', 'Florist', 'Bakery', 'Officiant', 'Planner', 'Photo Booth']
+      .map((c, i) => ({ id: 'b' + i, name: c + ' Co', category: c, status: 'Booked', cost: 500, depositAmt: 100, depositPaid: true, balancePaid: true }));
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      for (const ev0 of eventsFor(pb)) {
+        for (const ev of [ev0, { ...ev0, vendors: BOOKED, totalBudget: 2000, venue: 'The Hall', venueCity: 'Austin, TX', invitesSentAt: '2026-11-01', dietaryNoted: true,
+          guestMode: 'roster', guests: [{ id: 'g1', name: 'Ada Lee', rsvp: 'Yes', giftReceived: true, giftCash: 20 }] }]) {
+          let list = [];
+          try { list = pbm.playbookChecklist(ev, asOf) || []; } catch (_e) { list = []; }
+          const e = { ...ev, timeline: list };
+          for (const r of list) {
+            rows += 1;
+            const own = [taskSatisfied(e, r), timelineStepResolved(e, r)];
+            const decoy = [taskSatisfied(e, { ...r, task: DECOY }), timelineStepResolved(e, { ...r, task: DECOY })];
+            if (own.join() !== decoy.join()) wrong.push(`${pb.type}:${r.id} ${own} with its words, ${decoy} with the decoy`);
+          }
+        }
+      }
+    }
+    expect(wrong.slice(0, 40)).toEqual([]);
+    expect(rows).toBeGreaterThan(10000);
+  });
+
+  test('a row she wrote herself declares nothing, so only her tick proves it', () => {
+    const ev = { id: 'ev-own', type: 'Birthday', date: DATE, guestCount: 30, totalBudget: 900 };
+    expect(taskSatisfied(ev, { id: 'ev-own-t1', task: 'Set the budget' })).toBe(false);
+    expect(taskSatisfied(ev, { id: 'ev-own-t1', task: 'Set the budget', done: false, facts: ['budget-set'] })).toBe(true);
+  });
+
+  test('the readers hold no rule over a step’s words', () => {
+    const code = fs.readFileSync(path.join(__dirname, '..', 'taskEngine.js'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+    const fn = (name) => {
+      const at = code.indexOf(`export function ${name}`);
+      expect(at).toBeGreaterThan(-1);
+      let i = code.indexOf('{', code.indexOf(')', at)), depth = 0;
+      for (let j = i; j < code.length; j++) { if (code[j] === '{') depth++; else if (code[j] === '}') { depth--; if (!depth) return code.slice(i, j + 1); } }
+      return '';
+    };
+    const facts = code.slice(code.indexOf('export const STEP_FACTS'), code.indexOf('export function taskSatisfied'));
+    // A step's words are `task`, `text` or `label` on the row; none is read, and
+    // no pattern is matched against them.
+    for (const body of [fn('taskSatisfied'), fn('timelineStepResolved'), facts]) {
+      expect(body).not.toMatch(/\.(?:task|text|label)\b/);
+      expect(body).not.toMatch(/\.test\(\s*(?:s|label|text|words)\s*\)/);
+    }
+    const target = fs.readFileSync(path.join(__dirname, '..', 'stepTarget.js'), 'utf8');
+    const reader = target.slice(target.indexOf('export function stepFactsFor'), target.indexOf('/** stepTargetFor'));
+    expect(reader).not.toMatch(/row\.(?:task|text|title|label)\b/);
   });
 });

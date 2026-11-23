@@ -156,7 +156,7 @@ const groupTrip = {
     // 4-6 months out: "Lock headcount, collect deposits, choose destination and
     // date range" (Golf the High Sierra); deposits within 48 hours of locking
     // dates (AvantStay). 120 = the 4-month edge.
-    { id: 'gt_commit', name: 'Get the dates, a firm yes, and a deposit from everyone', offsetDays: 120, owner: 'host', category: 'planning', risk: { ifDelayed: 'The best places are taken, and "probably" never turns into a headcount', severity: 'high' } },
+    { id: 'gt_commit', name: 'Get the dates, a firm yes, and a deposit from everyone', facts: ['deposits-paid'], offsetDays: 120, owner: 'host', category: 'planning', risk: { ifDelayed: 'The best places are taken, and "probably" never turns into a headcount', severity: 'high' } },
     // 3-4 months out: "Book lodging first" (Golf the High Sierra); "Wait until
     // three months out and you'll face slim pickings" (AvantStay). 105 days is
     // inside the 3-4 month window and ahead of three months.
@@ -178,22 +178,22 @@ const groupTrip = {
   ],
 
   tasks: [
-    { id: 't_dates', target: 'date-options', milestoneId: 'gt_commit', phase: 'planning', label: 'Offer two or three date ranges and give everyone three days to answer', when: 'T-120d' },
-    { id: 't_commit', target: 'guests', milestoneId: 'gt_commit', phase: 'guest', label: 'Ask each person for a firm yes. "Probably" and "I\'ll try" are not a yes until the deposit is paid', when: 'T-120d' },
-    { id: 't_money', target: 'money', milestoneId: 'gt_commit', phase: 'planning', label: 'Put the money plan in writing before anyone books: what is shared, what each person pays on their own, how the place is split, and when you settle up', when: 'T-120d' },
-    { id: 't_deposit', target: 'money', milestoneId: 'gt_commit', phase: 'planning', label: 'Collect each person\'s deposit within 48 hours of locking the dates, and tell everyone their share of the total in writing', when: 'T-120d', whenChoice: { id: 'money_plan', in: [DEPOSIT_FIRST, POOL] } },
-    { id: 't_book_stay', target: 'where-staying', milestoneId: 'gt_stay', phase: 'logistics', label: 'Book the place: check its cancellation policy before you pay, and pay by credit card through the booking site, never by wire transfer, gift card, or a payment app', when: 'T-105d' },
-    { id: 't_check_listing', target: 'where-staying', milestoneId: 'gt_stay', phase: 'logistics', label: 'Before you pay, search the listing\'s address with the owner\'s name. If other ads show the same address under a different name, it is probably a scam', when: 'T-105d' },
-    { id: 't_send_travel', target: 'airports', milestoneId: 'gt_stay', phase: 'guest', label: 'Send everyone the dates and the town so each person books their own flight or drive', when: 'T-105d', whenChoice: { id: 'travel_booking', in: [OWN_TRAVEL] } },
-    { id: 't_tee_times', target: 'vendors', milestoneId: 'gt_golf', phase: 'logistics', label: 'Book the tee times as a block for the whole group, near where you are staying. An even number of players is easiest to pair', when: 'T-90d', whenChoice: PLAYING },
-    { id: 't_first_round', target: 'none', milestoneId: 'gt_golf', phase: 'planning', label: 'Skip an early round on the first day unless everyone arrives the night before, and plan five to five and a half hours a round for 12 or more players', when: 'T-90d', whenChoice: PLAYING },
-    { id: 't_details', target: 'trip-details', milestoneId: 'gt_details', phase: 'guest', label: 'Send everyone the trip details: the dates, the address, the few things everyone does together, and what each person owes', when: 'T-35d' },
-    { id: 't_rooms', target: 'rooms', milestoneId: 'gt_details', phase: 'planning', label: 'Settle who sleeps where: draw lots for the best rooms, and keep the early risers apart from the night owls', when: 'T-35d' },
-    { id: 't_dinners', target: 'vendors', milestoneId: 'gt_details', phase: 'logistics', label: 'Reserve the group dinners. A table for the whole group needs a booking', when: 'T-35d' },
-    { id: 't_balance', target: 'cost-split', milestoneId: 'gt_balance', phase: 'planning', label: 'Collect the rest of each person\'s share', when: 'T-30d', whenChoice: { id: 'money_plan', in: [DEPOSIT_FIRST] } },
-    { id: 't_confirm', target: 'reconfirm', milestoneId: 'gt_confirm', phase: 'logistics', label: 'Confirm every reservation: the place to stay, the dinners, and anything else that is booked', when: 'T-10d' },
-    { id: 't_tee_sheet', target: 'none', milestoneId: 'gt_confirm', phase: 'guest', label: 'Share the tee sheet with the group and collect what is still owed for golf', when: 'T-10d', whenChoice: PLAYING },
-    { id: 't_norms', target: 'updates', milestoneId: 'gt_norms', phase: 'guest', label: 'Send a short list of house norms, including the booking site\'s rule against parties at a rental', when: 'T-7d' },
+    { id: 't_dates', target: 'date-options', facts: ['dates-polled'], milestoneId: 'gt_commit', phase: 'planning', label: 'Offer two or three date ranges and give everyone three days to answer', when: 'T-120d' },
+    { id: 't_commit', target: 'guests', facts: ['deposits-paid'], milestoneId: 'gt_commit', phase: 'guest', label: 'Ask each person for a firm yes. "Probably" and "I\'ll try" are not a yes until the deposit is paid', when: 'T-120d' },
+    { id: 't_money', target: 'money', facts: ['nothing-owed'], milestoneId: 'gt_commit', phase: 'planning', label: 'Put the money plan in writing before anyone books: what is shared, what each person pays on their own, how the place is split, and when you settle up', when: 'T-120d' },
+    { id: 't_deposit', target: 'money', facts: [], milestoneId: 'gt_commit', phase: 'planning', label: 'Collect each person\'s deposit within 48 hours of locking the dates, and tell everyone their share of the total in writing', when: 'T-120d', whenChoice: { id: 'money_plan', in: [DEPOSIT_FIRST, POOL] } },
+    { id: 't_book_stay', target: 'where-staying', facts: ['nothing-owed'], milestoneId: 'gt_stay', phase: 'logistics', label: 'Book the place: check its cancellation policy before you pay, and pay by credit card through the booking site, never by wire transfer, gift card, or a payment app', when: 'T-105d' },
+    { id: 't_check_listing', target: 'where-staying', facts: ['nothing-owed'], milestoneId: 'gt_stay', phase: 'logistics', label: 'Before you pay, search the listing\'s address with the owner\'s name. If other ads show the same address under a different name, it is probably a scam', when: 'T-105d' },
+    { id: 't_send_travel', target: 'airports', facts: [], milestoneId: 'gt_stay', phase: 'guest', label: 'Send everyone the dates and the town so each person books their own flight or drive', when: 'T-105d', whenChoice: { id: 'travel_booking', in: [OWN_TRAVEL] } },
+    { id: 't_tee_times', target: 'vendors', facts: [], milestoneId: 'gt_golf', phase: 'logistics', label: 'Book the tee times as a block for the whole group, near where you are staying. An even number of players is easiest to pair', when: 'T-90d', whenChoice: PLAYING },
+    { id: 't_first_round', target: 'none', facts: [], milestoneId: 'gt_golf', phase: 'planning', label: 'Skip an early round on the first day unless everyone arrives the night before, and plan five to five and a half hours a round for 12 or more players', when: 'T-90d', whenChoice: PLAYING },
+    { id: 't_details', target: 'trip-details', facts: ['trip-details-sent'], milestoneId: 'gt_details', phase: 'guest', label: 'Send everyone the trip details: the dates, the address, the few things everyone does together, and what each person owes', when: 'T-35d' },
+    { id: 't_rooms', target: 'rooms', facts: ['rooms-planned'], milestoneId: 'gt_details', phase: 'planning', label: 'Settle who sleeps where: draw lots for the best rooms, and keep the early risers apart from the night owls', when: 'T-35d' },
+    { id: 't_dinners', target: 'vendors', facts: [], milestoneId: 'gt_details', phase: 'logistics', label: 'Reserve the group dinners. A table for the whole group needs a booking', when: 'T-35d' },
+    { id: 't_balance', target: 'cost-split', facts: [], milestoneId: 'gt_balance', phase: 'planning', label: 'Collect the rest of each person\'s share', when: 'T-30d', whenChoice: { id: 'money_plan', in: [DEPOSIT_FIRST] } },
+    { id: 't_confirm', target: 'reconfirm', facts: [], milestoneId: 'gt_confirm', phase: 'logistics', label: 'Confirm every reservation: the place to stay, the dinners, and anything else that is booked', when: 'T-10d' },
+    { id: 't_tee_sheet', target: 'none', facts: [], milestoneId: 'gt_confirm', phase: 'guest', label: 'Share the tee sheet with the group and collect what is still owed for golf', when: 'T-10d', whenChoice: PLAYING },
+    { id: 't_norms', target: 'updates', facts: [], milestoneId: 'gt_norms', phase: 'guest', label: 'Send a short list of house norms, including the booking site\'s rule against parties at a rental', when: 'T-7d' },
   ],
 
   purchases: [],
