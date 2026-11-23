@@ -8,7 +8,9 @@
 - A 13" iPad in portrait (1024 wide) no longer gets the rail (`showsRail` is false in tall-tablet mode).
 - "All sections" opens the existing Sections sheet, laid out as an index. It has the same doors, plus Feeling stuck? and the pass row. Calendar, Split the costs, Share with family and Co-hosts now have real icons.
 - On a tall iPad, Who's confirmed shows its "Still waiting" sentence as two row groups (vendors; helpers & tasks), built from the same classification. Their counts equal the chips.
-- The ribbon's count line names the next growth of the count: "4 of 7 handled · shopping starts Mar 13" (audit C P1-8; owner's word "starts").
+- The ribbon's count line names the next growth of the count: "4 of 7 handled · shopping starts Mar 13" (audit C P1-8; owner's word "starts"). It says a date once: when the next dated work falls on the same day, only the grow-note prints.
+- No floating NEXT bar on a tall iPad (owner ruling, 11/23). Tapping Plan on Plan returns to the question.
+- Short portrait iPads fit: 744x1133, 810x1080 and 820x1180, as well as the 11" and 13". The gaps hold a 24px floor, then the ask and Where you stand tighten. At 768x1024 the fold control still ends about 30px under the bar; this is reported, not hidden.
 
 ## November 23, 2026 (later) — every shopping line can find itself at the store
 

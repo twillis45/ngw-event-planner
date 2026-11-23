@@ -23,32 +23,30 @@ Before that, 2026-11-02 (sixtieth entry:
 - **The mode:** `isTallTablet` / `readTallTablet` in `src/lib/responsiveSurface.js`, with `readPortrait` / `usePortrait` in `src/lib/viewport.js`. The rule: a tablet band (640–1279, read from matchMedia like the band since #236), held in portrait, not the forced phone stage. The hostv2 shell sets it only in elegant mode (`?elegant=0` keeps its v2 chrome). `showsRail` is false there, so a 13" iPad upright (1024 wide) no longer gets the rail. A turn switches it live through the orientation media list's own `change`. Landscape tablets, desktops and phones are unchanged.
 - **What a tall iPad shows** (`[data-tall="1"]` on `.stagewrap` and `.app`):
   - **Header, no fill, not sticky:** the SAMPLE chip, date · countdown, the event name as the switcher (▾; it opens the same `events` sheet), and theme · type. The values come from the eyebrow's own derivation, now `boardEyebrow()`, one function shared by both layouts. The theme is `event.theme`. When the name ends with " — <theme>", the title does not repeat it; that comparison is between fields, never a parse of the display string.
-  - **Ribbon:** the seven `phaseCues.items` with the chips' labels (`areaLabelFor`), each opening what its chip opens (`openPart`, now shared). Handled parts are green; open parts are outlined. NOW (`heroPartId`, `lib/eventOrientation`) marks the open part the hero item is about, read from its decision id, then its domain. The line under the ribbon reads "N of 7 handled · shopping starts Mar 13" (audit C P1-8, `nextLedgerChange`; "starts" is the owner's word), with `next dated work` on the right. The count opens the "what's counted" panel, so that panel keeps a door; the "▾ what's counted" caret and `.eprog` are not rendered. The ribbon is hidden on the day and after it.
-  - **Layout:** full width on two edges (48px, or 64px from 960). The first screen is the scroller's height above the bar. It runs header → ribbon → question → Where you stand → "The rest of your plan", with spare space split by auto margins. Where you stand and the fold control are portaled into slots inside `.escreen`, so they are the same elements, not copies.
-  - **Bar:** docked with Create · Plan · The Day · After (the menu's `.navseg` and the same `goPhase`), All sections (the existing `sections` sheet) and Search (the palette). `.app` ends at its top edge. The next bar, the weather pill ladder and the toast are measured from the bar.
+  - **Ribbon:** the seven `phaseCues.items` with the chips' labels (`areaLabelFor`), each opening what its chip opens (`openPart`, now shared). Handled parts are green; open parts are outlined. NOW (`heroPartId`, `lib/eventOrientation`) marks the open part the hero item is about, read from its decision id, then its domain. The line under the ribbon reads "N of 7 handled · shopping starts Mar 13" (audit C P1-8, `nextLedgerChange`; "starts" is the owner's word), with `next dated work` on the right, unless it is the same date, which is then said once (parent review 11/23). The count opens the "what's counted" panel, so that panel keeps a door; the "▾ what's counted" caret and `.eprog` are not rendered. The ribbon is hidden on the day and after it.
+  - **Layout:** full width on two edges (48px, or 64px from 960). The first screen is the scroller's height above the bar. It runs header → ribbon → question → Where you stand → "The rest of your plan", with spare space split by auto margins that keep a 24px floor. On a short iPad (≤1149px tall) the ask steps down (7.5cqw, 40–56px) and Where you stand's padding tightens; at ≤1099px the ask is 40px. Measured on Wanda, everything fits at 744x1133, 810x1080, 820x1180, 834x1194 and 1024x1366, in both themes. **At 768x1024 the fold control ends 29px (dark) / 31px (light) under the bar's top edge.** Where you stand itself fits, and nothing is hidden: the content scrolls. That is an owner call; the spec bounds it at 32px. Where you stand and the fold control are portaled into slots inside `.escreen`, so they are the same elements, not copies.
+  - **Bar:** docked with Create · Plan · The Day · After (the menu's `.navseg` and the same `goPhase`), All sections (the existing `sections` sheet) and Search (the palette). `.app` ends at its top edge. **No floating NEXT bar on a tall iPad (owner ruling 11/23):** its job moves to the bar. Plan, tapped on Plan with the question scrolled away, returns to the question through the NEXT bar's own path (`backToHero`), and The Day runs the day. Phones and landscape keep the NEXT bar as it was. The weather pill and the toast are measured from the bar.
   - **Index:** the `sections` sheet in tall mode. It has the search field (the palette), the same `sectionGroups` doors as 3-column tiles, Feeling stuck? beside Ask, and the pass row at the foot (`passNote()`, shared with the menu row). New 16px icons: calendar, split, family, cohosts, sections.
   - **Below the fold:** Worth having a plan for and Who's confirmed are hairline rows, with no box. "Still waiting" becomes two groups from `whoIsConfirmedGroups` (`lib/whoIsConfirmed`, the same classification as the sentence). Each group's count is the chip's total − confirmed (Wanda: 6 and 6). A vendor row opens that vendor's card. A helper row taps only when its job's route resolves. The worry rows print their full trigger.
 - **Tests:**
   - jest: `aTallTabletIsItsOwnMode`, `theRibbonNamesTheHerosPart`, `whoIsConfirmedHasRows`. All three were red before the code.
-  - e2e: `aTallIPadGetsItsOwnBoard` (11" and 13", both themes, plus a turn). It was red on the base. Edge and first-screen checks were red-proofed by removing the two CSS rules.
+  - e2e: `aTallIPadGetsItsOwnBoard` covers 11" and 13" in both themes, a turn, six portrait sizes, and one date once.
+    - Every case was red on the base.
+    - Red-proofed: the edge and first-screen checks (each CSS rule removed in turn), Plan's return (the branch removed) and one date once (the rule removed).
   - **Specs carried to the new layout:** fixtures gain `goToStage`, `openMenuDoor`, `openEventsSheet`, `identityLine`, `openJumpTo` and `passRow`, and `openSectionByName` knows the bar. 34 spec files were moved onto them; on a phone and at the rail widths they walk exactly as before.
-  - **Spec contracts the rulings change:** 1024x1366 left `theStatColumnStandsBesideTheQuestion` (ruling 26 is reversed for portrait). `theTouchFrameIsFullBleed` holds the tall frame at 1024x1366. `lightSectionsSitOnPanels` exempts the two row lists on a tall iPad, because the package says "no card/box" and ruling 25 said panels; flag this to the owner. `foldAtTheFoot` measures the first screen as the scroller. `heroVoid` measures from the ribbon. `anIPadTurnedMidSessionReLaysOut` adds the tall flag.
-- **Gates (on the final tree unless noted):**
-  - jest: 13,697 passed, 1 skipped (890 suites). vitest: 147/147. The parity check passes.
-  - e2e, Chromium, `e2e:build`:
-    - every SELF_PINNED spec at desktop: 233 passed, 45 skipped;
-    - the 39 touched specs plus the floor and boardMatrix at tablet: 139 passed;
-    - the touched specs at tablet, tablet-land and landscape: 401 passed;
-    - desktop and wide: 534 passed, with the 2 failures fixed and re-run green.
-  - **Measured one build earlier**, before the last spacing-ladder and tap-floor CSS:
-    - the full mobile project: 983 passed and 3 failed. Two were fixed; `coreJourneyTruth` passed alone, a flake under load.
-    - the full tablet project: 939 passed and 2 failed. The floor was fixed (46px `--tap-min`); `everyDraftHasItsOwnVoices` passed alone.
-  - WebKit could not launch in this container (`webkit-2311` is not installed), so the critical-journeys config did not run.
+  - **Spec contracts the rulings change:** 1024x1366 left `theStatColumnStandsBesideTheQuestion` (ruling 26 is reversed for portrait). `theTouchFrameIsFullBleed` holds the tall frame at 1024x1366. `lightSectionsSitOnPanels` exempts the two row lists on a tall iPad: the owner approved those renders unboxed (11/23); Where you stand keeps its light panel. `foldAtTheFoot` measures the first screen as the scroller. `heroVoid` measures from the ribbon. `anIPadTurnedMidSessionReLaysOut` adds the tall flag.
+- **Gates on the merged tree** (`5e965be9`, which carries #237–#240; `a4b8693b` changes one WebKit spec only, and that spec passed 13/13 at desktop after the merge):
+  - `npm run -s e2e:build` exits 0, and the parity check passes. jest: 13,817 passed, 1 skipped (907 suites). vitest: 158/158.
+  - e2e, Chromium:
+    - the tall spec plus every SELF_PINNED spec at desktop: 253 passed. `dietaryHoldsTwo` failed under load and passed 5/5 alone.
+    - full mobile project: 986 passed, 0 failed.
+    - full tablet project: 936 passed and 5 failed under load. All 5 pass alone; `aSecondPartyIsFreeToPlan` "door 3" needed a second run.
+    - boardMatrix at landscape, tablet-land and wide: 34 passed.
+  - WebKit cannot launch here (`webkit-2311` is not installed), so the critical-journeys config did not run.
 - 🔴 **Trap: `npx vite build` is not `npm run e2e:build`.** The plain build bakes no `REACT_APP_API_BASE_URL`, so the provider-failure spec "fails" for a reason the code never had. Always rebuild with `e2e:build` before e2e.
-- **Not done / owner calls:**
-  - At 768x1024 (and other short portrait tablets) the first screen is taller than the screen, so it is content-sized: the fold control follows the content, under the bar, until scrolled.
-  - On Wanda, "shopping starts Mar 13" and "next dated work: Mar 13" print the same date on one line.
-  - Ruling 25's light panels versus the package's "no box" for the two lists needs an explicit owner ruling.
+- **Owner calls left:**
+  - The 768x1024 overflow above.
+  - The NEXT bar's wording on phones (not ruled; unchanged).
 
 ## November 23, 2026 (later) — #240: every shopping line has a store search term; Thanksgiving's and Friendsgiving's combined lines split
 
