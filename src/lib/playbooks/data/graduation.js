@@ -97,7 +97,7 @@ const graduation = {
 
   vendors: [
     { category: 'Venue / hall', required: false, altToDIY: 'Host at home / backyard or a free community room', when: 'T-21d', costRange: [150, 600], costUnit: 'flat' },
-    { category: 'Catering / BBQ', required: false, altToDIY: 'DIY buffet or grocery trays', when: 'T-14d', costRange: [10, 25], costUnit: 'per guest' },
+    { category: 'Catering / BBQ', required: false, altToDIY: 'DIY buffet or grocery trays', when: 'T-14d', costRange: [15, 25], costUnit: 'per guest', costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['foodtruck-roaminghunger-2024', 'paperlust-wedding-catering-2026'], lastVerified: '2026-11-23', claim: 'BBQ catered per person, food only: pizza, BBQ or burger food truck $15-25 (Roaming Hunger); gourmet or BBQ food truck $15-28 (Paperlust 2026). Both put BBQ at $15 a head and up, so the band was corrected from $10-25 to $15-25 a guest (11/23/2026). A truck minimum ($1,500 at Roaming Hunger) can set the price at a small party.', sufficientWhen: 'A local caterer quote for this menu at this headcount.' } },
     { category: 'Bakery', required: false, altToDIY: 'Costco/grocery sheet cake', when: 'T-5d', costRange: [40, 100], costUnit: 'flat' },
     { category: 'Rental (tent/tables/chairs)', required: false, altToDIY: 'Borrow + a pop-up canopy', when: 'T-10d', costRange: [100, 350], costUnit: 'flat' },
   ],

@@ -208,7 +208,7 @@ const genderReveal = {
     { category: 'Bakery (secret-keeper for a cake reveal)', required: false, altToDIY: 'A trusted friend bakes/colors the cake', when: 'T-18d', costRange: [35, 90], costUnit: 'flat' },
     { category: 'Balloon / party shop (secret-keeper for a balloon-box reveal)', required: false, altToDIY: 'Friend fills an opaque box/balloon from the sealed envelope', when: 'T-18d', costRange: [25, 80], costUnit: 'flat' },
     { category: 'Photographer / videographer', required: false, altToDIY: 'Assign a guest to film the reveal on a charged phone + tripod', when: 'T-10d', costRange: [150, 500], costUnit: 'flat' },
-    { category: 'Catering / platter service', required: false, altToDIY: 'DIY snacks or grocery platters', when: 'T-7d', costRange: [10, 25], costUnit: 'per guest' },
+    { category: 'Catering / platter service', required: false, altToDIY: 'DIY snacks or grocery platters', when: 'T-7d', costRange: [10, 25], costUnit: 'per guest', costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['deli-trays-2026', 'catering-chefry-2026'], lastVerified: '2026-11-23', claim: 'Supermarket platters with a published serving count run $3.75-5.00 a head for a sandwich tray (Sprouts $59.99 for 12-16) and $1.67 a head for a fruit tray (deli-trays-2026); drop-off catering is $15-30 a person (Chefry). This $10-25 a guest band sits between a platter spread and drop-off catering.', sufficientWhen: 'A local caterer quote for this menu at this headcount.' } },
   ],
 
   risks: [

@@ -143,7 +143,7 @@ const wedding = {
 
   vendors: [
     { category: 'Venue', required: true, altToDIY: 'Private estate or family property (then you source everything a venue includes)', when: 'T-365d', costRange: [3000, 30000], costUnit: 'flat' },
-    { category: 'Caterer', required: true, altToDIY: 'Restaurant drop-off + rented staff (rarely works at scale)', when: 'T-300d', costRange: [70, 250], costUnit: 'per guest' },
+    { category: 'Caterer', required: true, altToDIY: 'Restaurant drop-off + rented staff (rarely works at scale)', when: 'T-300d', costRange: [70, 250], costUnit: 'per guest', costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['paperlust-wedding-catering-2026', 'catering-perperson-2026'], lastVerified: '2026-11-23', claim: 'Wedding catering per person, food only, 2026: plated dinner $70-120, all-inclusive venue package $100-200+, national average $80, San Francisco/Napa $150-275 (Paperlust); full-service $75-150 (The Catering Finder). This $70-250 a guest band runs from the plated floor to the top regional market.', sufficientWhen: 'A caterer\'s quote for this menu and headcount.' } },
     { category: 'Photographer', required: true, altToDIY: 'Talented friend (high regret risk — it\'s the lasting record)', when: 'T-300d', costRange: [2500, 8000], costUnit: 'flat' },
     { category: 'Videographer', required: false, altToDIY: 'Skip, or phone/guest footage', when: 'T-300d', costRange: [1500, 6000], costUnit: 'flat' },
     { category: 'Wedding planner / coordinator', required: false, altToDIY: 'Couple + family run it (high day-of load on the people meant to enjoy it)', when: 'T-300d', costRange: [1200, 12000], costUnit: 'flat' },

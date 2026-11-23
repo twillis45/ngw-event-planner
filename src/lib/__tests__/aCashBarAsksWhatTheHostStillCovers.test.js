@@ -196,6 +196,11 @@ test('the tickets line badge says the count is her pick, not "Needs confirmation
   const tix = playbookFoodPlan(ev('Fundraiser / Gala', { bar: 'Two drink tickets, then cash' })).list.find((l) => l.id === 'p_wine');
   const c = classifyClaim(tix.provenance, tix.costProvenance);
   expect(c.basisRecorded).toBe(true);
-  expect(c.hostLabel).toBe(HOST_LABELS.HOST_STATED);
-  expect(c.directCitationEligible).toBe(false);
+  // 11/23/2026 (batch 10, the price research pass): the Gala's wine-and-beer
+  // price is now cited (beer-retail-2026, wine-retail-2026), and a cited price
+  // outranks the host-stated count in classifyClaim. The badge still never
+  // reads "Needs confirmation"; it names the source the price rests on.
+  expect(c.hostLabel).not.toBe(HOST_LABELS.NEEDS_CONFIRMATION);
+  expect(c.hostLabel).toBe(HOST_LABELS.PRICE_SOURCED);
+  expect(c.directCitationEligible).toBe(true);
 });
