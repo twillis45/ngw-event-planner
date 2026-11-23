@@ -459,7 +459,11 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 //   aSettledAskSurvivesAReload.test.js: the shell holds no useState copy of
 //   "settled" and the queue reads lib/settledAsks (behavior: vitest
 //   aSettleIsSavedWithTheEvent + the jest census).
-const MAX_HOSTV2_TEXT_GATES = 69;
+// 69 → 70 (same day, cause 4): oneRuleForWhereSheLands.test.js pins that the
+// shell's first stage, a switch and opening a plan read lib/landingStage, and
+// that the reveal and Create carry the two ruled buttons (the behavior is the
+// e2e anUnsavedPlanSurvivesAReload).
+const MAX_HOSTV2_TEXT_GATES = 70;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

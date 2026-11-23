@@ -362,6 +362,7 @@ import { checklistRouteFor } from '@app/lib/taskRoute';
 import { editorKindFor, isBalanceDueAction, stepRowIdOf } from '@app/lib/heroEditor';
 import { stepIsASend } from '@app/lib/stepTarget';
 import { withSettled, withoutSettled, unsettledActions } from '@app/lib/settledAsks';
+import { landingStage } from '@app/lib/landingStage';
 import { vendorObligations } from '@app/lib/vendorObligations';
 import { heartPlaceholders, heartFieldsFor } from '@app/lib/heartPrompts';
 import { parseMin } from '@app/lib/dayAlerts';
@@ -1157,7 +1158,14 @@ const MOVE_NOTICE = moveNotice(domainMove());
 
 export default function HostShellV2() {
   const [bootDraft] = useState(readCreateDraft);
-  const [stage, setStage] = useState(() => (bootDraft ? 'create' : 'plan'));
+  // WHERE SHE LANDS is one rule (lib/landingStage, six root causes cause 4): a
+  // plan of hers outranks words left in Create, and its own day opens The Day.
+  const [stage, setStage] = useState(() => landingStage({
+    event: ALL_SAMPLES.find(e => e && e.id === BOOT_EVENT_ID) || null,
+    ownPlan: CUSTOM_EVENTS_AT_LOAD.some(c => c && c.id === BOOT_EVENT_ID) || REAL_EVENTS.some(e => e && e.id === BOOT_EVENT_ID),
+    draftText: bootDraft,
+    now: new Date(),
+  }));
   const [eventId, setEventId] = useState(BOOT_EVENT_ID);
   // EVERY event created here (array — creating a second never overwrites the
   // first). Each stores itself whole; edits land directly on the array entry.
@@ -3955,7 +3963,9 @@ export default function HostShellV2() {
 
   const switchEvent = (id) => {
     redoEventId.current = null; // moving to another event abandons any pending create correction
-    setEventId(id); setHandledOpen(false); setStage('plan'); setEditor(null); setSheet(null); setDayIdx(0);
+    const to = [...customs, ...hydratedEvents, ...ALL_SAMPLES].find(e => e && e.id === id) || null;
+    const own = isCustomEventId(id) || REAL_EVENTS.some(e => e && e.id === id) || hydratedEvents.some(e => e && e.id === id);
+    setEventId(id); setHandledOpen(false); setStage(landingStage({ event: to, ownPlan: own, now: new Date() })); setEditor(null); setSheet(null); setDayIdx(0);
     if (!isCustomEventId(id)) { try { setPatch(JSON.parse(localStorage.getItem(LS_PATCH(id))) || {}); } catch { setPatch({}); } }
     // Build-map #3: an explicit pick is the resume pointer. Sync it to the
     // account (signed-in only — local LS_LAST_EVENT already covers same-device)
@@ -10724,22 +10734,40 @@ export default function HostShellV2() {
   // On sign-in the draft joins the store (written straight through, so the
   // hydrate that follows in the same tick reads it and uploads it), and she
   // lands where she was going.
-  keepDraftOnSignIn.current = () => {
+  // The draft joins this device's store: on sign-in (kept) or when she opens
+  // it unsaved (owner ruling 11/23/2026 (a), "Open my plan (not saved yet)").
+  // Either way it survives a reload here; the sign-in upload sends a plan that
+  // never reached an account, and the "Not saved yet. Sign in to keep it" row
+  // asks for that later. Returns the event, or null when it could not be held.
+  const commitDraftToDevice = (reason) => {
     const ev = draftRef.current;
-    if (!ev) return;
+    if (!ev) return null;
     const list = readCustomEventsSafe();
     const next = list.some(c => c && c.id === ev.id) ? list : [...list, ev];
-    const res = saveCustomEvents(next, { reason: 'hostshell:keep-draft-on-sign-in', eventId: ev.id });
-    if (!res || res.ok === false) { toast('Couldn’t keep the plan on this browser — it’s still on screen.'); return; }
+    const res = saveCustomEvents(next, { reason, eventId: ev.id });
+    if (!res || res.ok === false) { toast('Couldn’t keep the plan on this browser — it’s still on screen.'); return null; }
     draftRef.current = null;
     setCustoms(cur => cur.some(c => c && c.id === ev.id) ? cur : [...cur, ev]);
     setDraftEvent(null);
     setEventId(ev.id);
     didResume.current = true;
-    try { trackEvent(ANALYTICS.EVENT_CREATED, { is_first: list.length === 0, event_type: ev.type }); } catch (_e) { /* a counter never blocks a creation */ }
     try { localStorage.setItem(LS_WELCOMED, '1'); } catch { /* private mode */ }
+    return { ev, list };
+  };
+  const openDraftUnsaved = () => {
+    const held = commitDraftToDevice('hostshell:open-draft-unsaved');
+    if (!held) return;
+    keepIntentRef.current = null;
+    setSheet(null);
+    setStage(landingStage({ event: held.ev, ownPlan: true, now: new Date() }));
+  };
+  keepDraftOnSignIn.current = () => {
+    const held = commitDraftToDevice('hostshell:keep-draft-on-sign-in');
+    if (!held) return;
+    const { ev, list } = held;
+    try { trackEvent(ANALYTICS.EVENT_CREATED, { is_first: list.length === 0, event_type: ev.type }); } catch (_e) { /* a counter never blocks a creation */ }
     const intent = keepIntentRef.current; keepIntentRef.current = null;
-    if (intent === 'plan') { setSheet(null); setStage('plan'); }
+    if (intent === 'plan') { setSheet(null); setStage(landingStage({ event: ev, ownPlan: true, now: new Date() })); }
     else if (intent === 'invite') setSheet(null);
   };
   // ── A PLAN MADE BEFORE ACCOUNTS WERE NEEDED (owner ruling, 11/12/2026) ───
@@ -11339,6 +11367,14 @@ export default function HostShellV2() {
                    blank; the instant the host types, the stage collapses to the
                    top and the recognition flow takes over. */
                 <div className={'create-stage' + (smartText.trim() === '' ? ' centered' : '')}>
+                  {/* A WAY BACK (P1-1): Create opened over a plan of hers keeps
+                      the plan one tap away; where it lands is the one rule. */}
+                  {eventIsTheHostsOwn && (
+                    <button onClick={() => setStage(landingStage({ event, ownPlan: true, now: new Date() }))}
+                      style={{ background: 'none', border: 'none', padding: '0 0 var(--sp-2)', alignSelf: 'flex-start', fontFamily: 'var(--sans)', fontSize: 14, color: 'var(--muted)', cursor: 'pointer', minHeight: 44 }}>
+                      ‹ Back to my plan
+                    </button>
+                  )}
                   <div className="eyebrow">New event</div>
                   <h1 className="mega create-prompt">What are we planning?</h1>
                   {/* ── IT NAMED A REGISTER, NOT A TASK (host, 2026-10-06) ───────
@@ -12159,6 +12195,8 @@ export default function HostShellV2() {
                           </details>}
                           <div className={'actions-row pre' + (resolved ? ' in' : '')} style={{ marginTop: 'var(--sp-2)' }}>
                             <button ref={revealCtaRef} className={'cta big' + (resolved ? ' glow-once' : '')} onClick={() => (draftEvent ? askToKeep('plan') : setStage('plan'))}>{draftEvent ? 'Keep this plan' : 'Open your plan'}</button>
+                            {/* Owner ruling 11/23/2026 (a): her plan, unsaved, one tap away. */}
+                            {draftEvent && <button className="cta ghost" onClick={openDraftUnsaved}>Open my plan (not saved yet)</button>}
                             <button className="cta ghost" onClick={() => (draftEvent ? askToKeep('invite') : shareInviteLink())}>Check and share invite</button>
                             <button className="cta ghost" onClick={() => { clearRevealTimers(); redoEventId.current = revealEv ? revealEv.id : null; setRevealed(false); }}>Change an answer</button>
                           </div>

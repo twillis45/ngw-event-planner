@@ -183,6 +183,29 @@ test.describe('try first, sign in to keep', () => {
     await expect(page.getByPlaceholder(/crab feast/i).first()).toHaveValue(SENTENCE);
   });
 
+  // OWNER RULING 11/23/2026 (a), six root causes cause 4 (Thanksgiving P0-1:
+  // "Keep this plan" was the only way forward and a reload discarded the plan).
+  test('"Open my plan (not saved yet)" opens her plan; a reload keeps it; the sign-in ask comes later', async ({ page }) => {
+    const calls = await install(page);
+    await createSignedOut(page);
+    await page.getByRole('button', { name: 'Open my plan (not saved yet)' }).click();
+    await expect(page.locator('.reveal-stage')).toHaveCount(0, { timeout: 8000 });
+    await expect(page.locator('#sheet-title')).toHaveCount(0);
+    // On this device, not in any account.
+    expect((await stored(page)).some((n) => /Game Night/.test(n || ''))).toBe(true);
+    expect(calls.writes, 'opening it sent something').toHaveLength(0);
+    // The existing row asks her to keep it, on the plan, not in her way.
+    await expect(page.locator('[data-keep-ask]')).toContainText('Not saved yet. Sign in to keep it.', { timeout: 8000 });
+    await page.reload();
+    await page.waitForFunction(() => (document.querySelector('.app') || {}).innerText?.length > 80, null, { timeout: 20000 });
+    await page.waitForTimeout(1500);
+    // Still hers, on the plan, not Create.
+    await expect(page.getByPlaceholder(/crab feast/i)).toHaveCount(0);
+    await expect(page.locator('body')).toContainText(/Game Night/);
+    expect((await stored(page)).some((n) => /Game Night/.test(n || ''))).toBe(true);
+    expect(calls.writes).toHaveLength(0);
+  });
+
   test('a plan made before accounts were needed is offered a keep once, and signing in uploads it', async ({ page }) => {
     const calls = await install(page, { locals: [older()] });
     await boot(page);
