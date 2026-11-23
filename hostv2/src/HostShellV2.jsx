@@ -71,7 +71,7 @@ import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — 
 import { boardDecisionND, foodDecisionND, blockerDecisionND, foodPanelQuestion, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
-import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, travelHazard, guestTravelMessage } from '@app/lib/weather';
+import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, rainPlanOptions, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, travelHazard, guestTravelMessage } from '@app/lib/weather';
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/inviteBatch';
@@ -9976,7 +9976,8 @@ export default function HostShellV2() {
               onOpen={() => setSettledOpen(m => ({ ...m, rain: true }))} />
           ) : (
             <div className="chips">
-              {['Tent on standby', 'Carport / garage', 'Move it indoors', 'Rain or shine'].map(p => (
+              {/* The options fit the place (lib/weather rainPlanOptions, batch 11): no carport at a venue. */}
+              {rainPlanOptions(event).map(p => (
                 <button key={p} className="chip" aria-pressed={event.rainPlan === p}
                   onClick={() => { patchEvent({ rainPlan: p }, 'Rain backup set: ' + p + ' — the day-of view knows.'); showGuestNote(p); setSettledOpen(m => ({ ...m, rain: false })); }}>{p}</button>
               ))}
