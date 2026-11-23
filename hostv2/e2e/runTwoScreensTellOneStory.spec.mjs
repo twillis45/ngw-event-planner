@@ -3,7 +3,7 @@
 // Run 2 break run (11/6/2026), the P2s that reach a screen. A Vida-shaped
 // event: an address and no venue name, created today, the event tomorrow, a
 // caterer considered. Rail viewports, as theCouplesSheSaidReachTheList explains.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const RAIL = /tablet-land|tablet-tall|desktop|wide/;
 const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
@@ -22,10 +22,9 @@ const open = async (page, section) => {
     localStorage.setItem('ngw-v2-welcomed', '1');
   }, EV());
   await page.goto('./');
-  const row = page.getByRole('button', { name: new RegExp('^' + section) }).first();
-  await row.waitFor({ state: 'visible', timeout: 20000 });
-  await row.click();
-  await page.waitForTimeout(800);
+  // The door wherever this viewport has it: the rail, or a tall iPad's index.
+  await settled(page);
+  await openSectionByName(page, section, { settle: 800 });
 };
 const sheetText = (page) => page.evaluate(() => (([...document.querySelectorAll('[role=dialog], .sheet')].pop() || document.body).innerText || '').replace(/\s+/g, ' '));
 

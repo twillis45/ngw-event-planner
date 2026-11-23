@@ -1,6 +1,6 @@
 // Run 3 (11/6/2026, R3-3): a last day set before the first day was refused
 // without a word. Rail viewports, as theCouplesSheSaidReachTheList explains.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const RAIL = /tablet-land|tablet-tall|desktop|wide/;
 
@@ -13,7 +13,8 @@ test('R3-3: a last day before the first day is refused, and says why', async ({ 
     localStorage.setItem('ngw-hostv2-last-event', 'E2E_span'); localStorage.setItem('ngw-v2-splash-seen', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
   });
   await page.goto('./');
-  await page.getByRole('button', { name: /^Space, seats/ }).first().click();
+  await settled(page);
+  await openSectionByName(page, 'Space, seats', { settle: 0 });
   // The range is set in Date & time now (owner, 11/21/2026); Space links to it.
   await page.getByRole('button', { name: 'Change the dates in Date & time' }).click();
   await page.locator('[data-date-range]').getByLabel('Last day').fill('2027-07-01');

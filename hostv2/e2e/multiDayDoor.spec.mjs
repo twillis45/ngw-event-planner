@@ -8,7 +8,7 @@
 //
 // This is the third instance of that pattern today (three engines with zero
 // hostv2 imports were the others), so the seed gets a gate rather than a note.
-import { test, expect, settled, RAIL_MIN_WIDTH } from './fixtures.mjs';
+import { test, expect, settled, RAIL_MIN_WIDTH, openSectionByName } from './fixtures.mjs';
 
 const boot = async (page, id) => {
   await page.addInitScript((eid) => {
@@ -21,11 +21,20 @@ const boot = async (page, id) => {
   await settled(page);
 };
 
-const doors = (page) => page.locator('.srail-row, .sec-row')
-  .evaluateAll((ns) => ns.map((n) => (n.getAttribute('aria-label') || n.innerText || '').trim()));
+// The rail's rows, or on a tall iPad (11/22/2026) the bar's index tiles.
+const doors = async (page) => {
+  if (await page.locator('[data-tt-bar]').count()) {
+    await page.locator('[data-tt-bar]').getByRole('button', { name: 'All sections' }).click();
+    await settled(page);
+    return page.locator('.sheet').last().locator('[data-door]')
+      .evaluateAll((ns) => ns.map((n) => (n.innerText || '').trim()));
+  }
+  return page.locator('.srail-row, .sec-row')
+    .evaluateAll((ns) => ns.map((n) => (n.getAttribute('aria-label') || n.innerText || '').trim()));
+};
 
 test('a spanning event opens the "Your days" door', async ({ page }) => {
-  test.skip(!page.viewportSize() || page.viewportSize().width < RAIL_MIN_WIDTH, 'reads the rail');
+  test.skip(!page.viewportSize() || page.viewportSize().width < RAIL_MIN_WIDTH, 'reads the section doors (rail, or the tall iPad index)');
   await boot(page, 'test-multi-day');
   const names = await doors(page);
   expect(names.some((n) => /Your days/i.test(n)), `no "Your days" door among: ${names.join(' | ')}`).toBe(true);
@@ -35,16 +44,16 @@ test('a single-day event still does NOT', async ({ page }) => {
   // Red-proofs the gate. If the door rendered unconditionally the test above
   // would pass and the span would be doing no work at all — which, given the
   // door was invisible for months, is exactly the failure worth pinning.
-  test.skip(!page.viewportSize() || page.viewportSize().width < RAIL_MIN_WIDTH, 'reads the rail');
+  test.skip(!page.viewportSize() || page.viewportSize().width < RAIL_MIN_WIDTH, 'reads the section doors (rail, or the tall iPad index)');
   await boot(page, 'my-crab-feast');
   const names = await doors(page);
   expect(names.some((n) => /Your days/i.test(n))).toBe(false);
 });
 
 test('the door lands on the per-day programme, not a dead tap', async ({ page }) => {
-  test.skip(!page.viewportSize() || page.viewportSize().width < RAIL_MIN_WIDTH, 'reads the rail');
+  test.skip(!page.viewportSize() || page.viewportSize().width < RAIL_MIN_WIDTH, 'reads the section doors (rail, or the tall iPad index)');
   await boot(page, 'test-multi-day');
-  await page.locator('.srail-row', { hasText: 'Your days' }).first().click();
+  await openSectionByName(page, 'Your days', { settle: 0 });
   await settled(page);
   const sheet = page.locator('.sheet').last();
   await expect(sheet).toBeVisible();

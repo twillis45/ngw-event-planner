@@ -3,7 +3,7 @@
 // Gold run (11/5/2026): a headcount host with five names saw "—" over "on the
 // list — counted, never chased": the number was the yes-count, the label said
 // the list. Rail viewports only, as theCouplesSheSaidReachTheList explains.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName } from './fixtures.mjs';
 
 const RAIL = /tablet-land|tablet-tall|desktop|wide/;
 const names = ['Ana Rivera', 'Bea Chen', 'Cara Odom', 'Dee Patel', 'Eve Brooks'];
@@ -20,9 +20,10 @@ const boot = async (page, guestMode) => {
     guests: names.map((name, i) => ({ id: 'g' + i, name, rsvp: '' })),
   });
   await page.goto('./');
-  const row = page.getByRole('button', { name: /^Guests$/ }).first();
-  await row.waitFor({ state: 'visible', timeout: 20000 });
-  await row.click();
+  // The Guests door wherever this viewport has it: the rail, or on a tall
+  // iPad (no rail, 11/22/2026) the bar's All sections index.
+  await settled(page);
+  await openSectionByName(page, 'Guests', { settle: 0 });
   await page.getByText('Your people').first().waitFor({ state: 'visible', timeout: 20000 });
   return page.evaluate(() => {
     const eb = [...document.querySelectorAll('*')].find((x) => x.children.length === 0 && (x.textContent || '').trim() === 'Your people');
@@ -31,13 +32,13 @@ const boot = async (page, guestMode) => {
 };
 
 test('a headcount host with five names and no replies reads 5 on the list', async ({ page }, testInfo) => {
-  test.skip(!RAIL.test(testInfo.project.name), 'the section rail exists at tablet-land and above');
+  test.skip(!RAIL.test(testInfo.project.name), 'one tap to Guests: the rail from tablet-land, the bar’s index on a tall iPad');
   const hero = await boot(page, 'count');
   expect(hero).toMatch(/Your people 5 on the list/);
 });
 
 test('CONTROL — a list host still sees the yes-count, not the list size', async ({ page }, testInfo) => {
-  test.skip(!RAIL.test(testInfo.project.name), 'the section rail exists at tablet-land and above');
+  test.skip(!RAIL.test(testInfo.project.name), 'one tap to Guests: the rail from tablet-land, the bar’s index on a tall iPad');
   const hero = await boot(page, 'list');
   expect(hero).toMatch(/Your people — no yes replies yet/);
 });

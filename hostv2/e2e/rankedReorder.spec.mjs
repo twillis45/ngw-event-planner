@@ -10,7 +10,7 @@
 // Asserting a transform exists at a moment of your choosing races the
 // animation. So this pins the mechanism at the only place it is unambiguous:
 // a row that moved carries a transform TRANSITION it did not have at rest.
-import { test, expect, settled, RAIL_MIN_WIDTH } from './fixtures.mjs';
+import { test, expect, settled, RAIL_MIN_WIDTH, openSectionByName } from './fixtures.mjs';
 
 test('a row that changes rank travels to its new place', async ({ page }) => {
   test.skip(!page.viewportSize() || page.viewportSize().width < RAIL_MIN_WIDTH, 'uses the rail to change state');
@@ -50,7 +50,7 @@ test('a row that changes rank travels to its new place', async ({ page }) => {
   });
 
   // Confirm a decision — this moves work out of one bucket and reorders.
-  await page.locator('.srail-row', { hasText: 'Calls to make' }).first().click();
+  await openSectionByName(page, 'Calls to make', { settle: 0 });
   await settled(page);
   const board = page.locator('.sheet').last();
   await board.locator('button', { hasText: 'Other ways' }).first().click();
@@ -96,7 +96,7 @@ test('the decisions queue travels too, and its rows are not nested', async ({ pa
   });
   await page.goto('?elegant=1');
   await settled(page);
-  await page.locator('.srail-row', { hasText: 'Calls to make' }).first().click();
+  await openSectionByName(page, 'Calls to make', { settle: 0 });
   await settled(page);
 
   const shape = await page.locator('.dec-list').evaluate((list) => {
