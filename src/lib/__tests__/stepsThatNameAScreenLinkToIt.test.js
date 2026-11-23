@@ -1,10 +1,11 @@
 // STEPS THAT NAME A SCREEN LINK TO IT (owner, 11/18/2026: "make sure check
 // boxes link to all places"). These rows named a place the app has and had no
 // link; kitchen work keeps none, honestly.
+import { routeByWords } from '../__fixtures__/stepByWords';
 import { checklistRouteFor } from '../taskRoute';
 import { resolveRoute } from '../routeResolver';
 
-const hit = (t) => checklistRouteFor(t, {}, { id: 'e', vendors: [] });
+const hit = (t) => routeByWords(t, {}, { id: 'e', vendors: [] });
 const CASES = [
   ['Decide how money works, so you can say it on the invitation instead of after dinner', 'budget'],
   ['Agree the money rule up front: one treasurer handles every dollar in and out', 'budget'],

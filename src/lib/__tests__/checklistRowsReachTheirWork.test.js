@@ -18,6 +18,7 @@
 //   • Three rows opened Calls to make on a `tribute` call their playbook does
 //     not have: Juneteenth's meaning moment (its call is `meaning`) and two
 //     Anniversary slideshow rows (its call is `slideshow`).
+import { routeByWords } from '../__fixtures__/stepByWords';
 import { checklistRouteFor } from '../taskRoute';
 import { resolveRoute } from '../routeResolver';
 import { playbookChecklist, getPlaybook } from '../playbooks';
@@ -28,7 +29,7 @@ const landing = (type, taskId, extra) => {
   const e = ev(type, extra);
   const row = (playbookChecklist(e, '2026-10-01') || []).find((r) => r.id === `pbt-${e.id}-${taskId}`);
   if (!row) throw new Error(`${type} has no ${taskId} row`);
-  const hit = checklistRouteFor(row.task, { week: row.week, category: row.category }, e);
+  const hit = routeByWords(row.task, { taskId: row.id, week: row.week, category: row.category }, e);
   return { row, hit, to: hit && hit.route ? resolveRoute(hit.route) : null };
 };
 

@@ -19,8 +19,9 @@ test('"Send invitations… track replies for the count" too', () => {
   expect(taskSatisfied(ev({ invitesSentAt: 'x' }), step('Send invitations with the date and dress code; track replies for the count'))).toBe(true);
 });
 
-test('ticking it records the invite', () => {
-  expect(Object.keys(factsATickRecords(ev(), step('Send invites + collect RSVP, dietary, plus-ones')))).toEqual(['invitesSentAt']);
+// Owner, 11/23/2026: a tick never records a send (aTickRecordsWhatItStandsFor).
+test('ticking it marks the step, and records no send', () => {
+  expect(factsATickRecords(ev(), step('Send invites + collect RSVP, dietary, plus-ones'))).toEqual({});
 });
 
 test('a bare "track RSVPs" act is still not proven by one reply', () => {

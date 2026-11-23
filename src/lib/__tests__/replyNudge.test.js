@@ -3,6 +3,7 @@
 // the chase step is done, and what a guest's row says afterwards. Every date is
 // built in LOCAL time (CI also runs this file under TZ=Pacific/Midway); an
 // instant is only ever compared as an instant.
+import { routeByWords } from '../__fixtures__/stepByWords';
 import {
   nudgeRecipients, nudgeCount, nudgeBoardItem, chaseAnsweredOrNudged, markNudged,
   nudgeRowLine, nudgeDeliveryFor, nudgeTextBody, wasInvited,
@@ -162,8 +163,8 @@ describe('the checklist step tells the truth', () => {
   });
 
   test('the chase step opens the nudge where replies are tracked, and the guest list where they are not', () => {
-    expect(checklistRouteFor(step.task, {}, EV()).route).toEqual({ tab: 'Guests', focusField: 'rsvp-nudge' });
-    expect(checklistRouteFor(step.task, {}, EV({ guestMode: 'count' })).route.focusField).not.toBe('rsvp-nudge');
+    expect(routeByWords(step.task, {}, EV()).route).toEqual({ tab: 'Guests', focusField: 'rsvp-nudge' });
+    expect(routeByWords(step.task, {}, EV({ guestMode: 'count' })).route.focusField).not.toBe('rsvp-nudge');
   });
 });
 

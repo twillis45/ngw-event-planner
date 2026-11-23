@@ -57,15 +57,15 @@ const lowCountryBoil = {
   ],
 
   tasks: [
-    { id: 't_invite', milestoneId: 'lcb_invite', phase: 'guest', label: 'Invite folks; get a rough head count so you can size shrimp and the pot', when: 'T-8d' },
-    { id: 't_gear', milestoneId: 'lcb_gear_check', phase: 'logistics', label: 'Test-fire the burner, weigh/shake the propane tank, pick a level spot away from the house, find the boil basket and a long paddle', when: 'T-7d' },
-    { id: 't_count', milestoneId: 'lcb_headcount', phase: 'guest', label: 'Lock the count; plan ~0.5 lb shrimp + ~0.5 lb sausage + 1-2 red potatoes + 1-1.5 ears corn per adult', when: 'T-3d' },
-    { id: 't_nonperish', milestoneId: 'lcb_shop_nonperish', phase: 'shopping', label: 'Old Bay/crab boil, smoked sausage, small red potatoes, corn, butter, lemons, cocktail sauce, hot sauce, drinks, ice, newspaper/kraft paper, cleanup', when: 'T-3d' },
-    { id: 't_shrimp', milestoneId: 'lcb_shop_shrimp', phase: 'shopping', label: 'Buy fresh head-on or shell-on shrimp (and crab/crawfish/clams if doing add-ins) the day before', when: 'T-1d' },
-    { id: 't_prep', milestoneId: 'lcb_prep', phase: 'food', label: 'Scrub potatoes, shuck and halve corn, slice sausage into rounds, mix cocktail sauce, melt butter, set out hot sauce + lemon; ice down the drinks', when: 'T0 -3:00' },
-    { id: 't_heat', milestoneId: 'lcb_setup', phase: 'setup', label: 'Set burner on LEVEL ground away from the house, fill the pot no more than ~2/3, add Old Bay/crab boil, bring to a rolling boil; cover the table with newspaper/kraft paper', when: 'T0 -1:00' },
-    { id: 't_boil', milestoneId: 'event', phase: 'food', label: 'Staged drop: potatoes ~15 min, add sausage ~5 min, add corn ~3 min, then SHRIMP LAST ~3 min until just pink; lift the basket to drain, dump down the middle of the table', when: 'T0' },
-    { id: 't_cool', milestoneId: 'event', phase: 'cleanup', label: 'Cut the propane, let the pot and water cool FULLY before moving, roll up the paper with the shells inside, wrap leftovers, bag trash', when: 'T0 +4:00' },
+    { id: 't_invite', target: 'invite', milestoneId: 'lcb_invite', phase: 'guest', label: 'Invite folks; get a rough head count so you can size shrimp and the pot', when: 'T-8d' },
+    { id: 't_gear', target: 'none', milestoneId: 'lcb_gear_check', phase: 'logistics', label: 'Test-fire the burner, weigh/shake the propane tank, pick a level spot away from the house, find the boil basket and a long paddle', when: 'T-7d' },
+    { id: 't_count', target: 'guests', milestoneId: 'lcb_headcount', phase: 'guest', label: 'Lock the count; plan ~0.5 lb shrimp + ~0.5 lb sausage + 1-2 red potatoes + 1-1.5 ears corn per adult', when: 'T-3d' },
+    { id: 't_nonperish', target: 'list', milestoneId: 'lcb_shop_nonperish', phase: 'shopping', label: 'Old Bay/crab boil, smoked sausage, small red potatoes, corn, butter, lemons, cocktail sauce, hot sauce, drinks, ice, newspaper/kraft paper, cleanup', when: 'T-3d' },
+    { id: 't_shrimp', target: 'list', milestoneId: 'lcb_shop_shrimp', phase: 'shopping', label: 'Buy fresh head-on or shell-on shrimp (and crab/crawfish/clams if doing add-ins) the day before', when: 'T-1d' },
+    { id: 't_prep', target: 'day', milestoneId: 'lcb_prep', phase: 'food', label: 'Scrub potatoes, shuck and halve corn, slice sausage into rounds, mix cocktail sauce, melt butter, set out hot sauce + lemon; ice down the drinks', when: 'T0 -3:00' },
+    { id: 't_heat', target: 'day', milestoneId: 'lcb_setup', phase: 'setup', label: 'Set burner on LEVEL ground away from the house, fill the pot no more than ~2/3, add Old Bay/crab boil, bring to a rolling boil; cover the table with newspaper/kraft paper', when: 'T0 -1:00' },
+    { id: 't_boil', target: 'day', milestoneId: 'event', phase: 'food', label: 'Staged drop: potatoes ~15 min, add sausage ~5 min, add corn ~3 min, then SHRIMP LAST ~3 min until just pink; lift the basket to drain, dump down the middle of the table', when: 'T0' },
+    { id: 't_cool', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Cut the propane, let the pot and water cool FULLY before moving, roll up the paper with the shells inside, wrap leftovers, bag trash', when: 'T0 +4:00' },
   ],
 
   purchases: [

@@ -3,6 +3,7 @@
 // Helper-supplied items appear on their own; Add it (What + From whom); Mark
 // returned; "Still to go back: …". A row is done when everything is back.
 // e2e twin: hostv2/e2e/theBorrowedListGoesBack.spec.mjs.
+import { routeByWords } from '../__fixtures__/stepByWords';
 import { checklistRouteFor } from '../taskRoute';
 import { resolveRoute } from '../routeResolver';
 import { taskSatisfied } from '../taskEngine';
@@ -27,7 +28,7 @@ describe.each(ROWS)('%s: %s', (type, re) => {
   const r = (playbookChecklist(ev(type), '2026-10-01') || []).find((x) => re.test(x.task));
   test('premise: the row is in the playbook', () => { expect(r).toBeTruthy(); });
   test('it opens the borrowed list on Space, seats & helpers', () => {
-    const hit = checklistRouteFor(r.task, { week: r.week, category: r.category }, ev(type));
+    const hit = routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, ev(type));
     expect(hit && hit.label).toBe('Open the borrowed list');
     expect(resolveRoute(hit.route)).toEqual({ kind: 'space', focus: 'borrowed' });
   });
@@ -42,7 +43,7 @@ describe.each(ROWS)('%s: %s', (type, re) => {
 
 test('Anniversary\u2019s lent photos open the list too, but sending the digital copies is the host\u2019s tick', () => {
   const r = (playbookChecklist(ev('Anniversary'), '2026-10-01') || []).find((x) => /^Give back every original photo/.test(x.task));
-  expect(resolveRoute(checklistRouteFor(r.task, { week: r.week, category: r.category }, ev('Anniversary')).route)).toEqual({ kind: 'space', focus: 'borrowed' });
+  expect(resolveRoute(routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, ev('Anniversary')).route)).toEqual({ kind: 'space', focus: 'borrowed' });
   expect(taskSatisfied(ev('Anniversary', { borrowed: [{ id: 'b1', what: 'Photos', from: 'Mom', returned: true }] }), { task: r.task })).toBe(false);
 });
 

@@ -38,15 +38,17 @@ test('a bunch that comes down to the budget still asks for the budget', () => {
 import { eventPlan } from '../../CommandCenter';
 
 const inDays = (n) => { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
-const ROW = (id, task, leadDays) => ({ id, week: '2 weeks out', leadDays, task, done: false, owner: '', category: 'planning', phase: 'planning' });
+// Row ids are the engine's (`pbt-<event>-<step>`): a row names its step by id,
+// and the step's declared target places it (six root causes, cause 1).
+const ROW = (id, task, leadDays) => ({ id: `pbt-late-fg-${id}`, week: '2 weeks out', leadDays, task, done: false, owner: '', category: 'planning', phase: 'planning' });
 const FG = {
   id: 'late-fg', name: 'My Friendsgiving', type: 'Friendsgiving', date: inDays(3), createdAt: new Date().toISOString(), startTime: '16:00', startTimeSource: 'host',
   venue: "Vida's", guestEstimate: 15, guestCountSource: 'host', guestMode: 'count', totalBudget: 200,
   guests: [], vendors: [], budget: [],
   timeline: [
-    ROW('t1', 'Decide who cooks what: you make the main and friends bring dishes, everything assigned, you cook most of it, or the group orders in', -21),
-    ROW('t2', 'Tell each cook what to keep out of their dish, for example: "no nuts in the stuffing, please — someone at the table is allergic"', -14),
-    ROW('t3', 'If it is not at your place, walk the kitchen with whoever lives there: oven size, refrigerator space, serving dishes, and parking', -14),
+    ROW('t_model', 'Decide who cooks what: you make the main and friends bring dishes, everything assigned, you cook most of it, or the group orders in', -21),
+    ROW('t_allergy_route', 'Tell each cook what to keep out of their dish, for example: "no nuts in the stuffing, please — someone at the table is allergic"', -14),
+    ROW('t_kitchen', 'If it is not at your place, walk the kitchen with whoever lives there: oven size, refrigerator space, serving dishes, and parking', -14),
   ],
 };
 

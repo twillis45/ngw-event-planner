@@ -66,10 +66,10 @@ const birthday = {
   ],
 
   tasks: [
-    { id: 't_invite', milestoneId: 'bd_invite', phase: 'guest', label: 'Send invites with date/time/place + RSVP-by + allergy ask', when: 'T-18d' },
-    { id: 't_rsvp', milestoneId: 'bd_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count', when: 'T-3d' },
-    { id: 't_decor_shop', milestoneId: 'bd_shop_nonperish', phase: 'shopping', label: 'Decor, balloons, drinks, paper goods, favors run', when: 'T-3d' },
-    { id: 't_food_shop', milestoneId: 'bd_shop_fresh', phase: 'shopping', label: 'Food + pick up the cake', when: 'T-1d' },
+    { id: 't_invite', target: 'invite', milestoneId: 'bd_invite', phase: 'guest', label: 'Send invites with date/time/place + RSVP-by + allergy ask', when: 'T-18d' },
+    { id: 't_rsvp', target: 'chase', milestoneId: 'bd_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count', when: 'T-3d' },
+    { id: 't_decor_shop', target: 'list', milestoneId: 'bd_shop_nonperish', phase: 'shopping', label: 'Decor, balloons, drinks, paper goods, favors run', when: 'T-3d' },
+    { id: 't_food_shop', target: 'spread', milestoneId: 'bd_shop_fresh', phase: 'shopping', label: 'Food + pick up the cake', when: 'T-1d' },
     // ── MOVED OFF A DEAD SURFACE, 2026-09-23 ─────────────────────────────────
     // This was a `schedules.preparation` row at T-1d. It carried the conditional
     // copy below — authored the same week — and reached NO HOST, because the day
@@ -91,7 +91,7 @@ const birthday = {
     // "Charge the speaker" is the reason this row was worth saving rather than
     // dropping. It is the only mention of the speaker anywhere in this playbook,
     // and a flat battery at the cake moment is the kind of thing nobody plans for.
-    { id: 't_prep_ahead',
+    { id: 't_prep_ahead', target: 'none',
       milestoneId: 'bd_shop_fresh',
       phase: 'food',
       label: 'Prep the make-ahead sides; assemble the favor bags; charge the speaker',
@@ -100,19 +100,19 @@ const birthday = {
         'Order pizza/trays': 'Assemble the favor bags and charge the speaker — no sides to prep, the food is being brought in',
         'Drop-off catering': 'Assemble the favor bags and charge the speaker — no sides to prep, the food is being brought in',
       } } },
-    { id: 't_decorate', milestoneId: 'bd_setup', phase: 'setup', label: 'Hang decor, blow up balloons, set the table + food station', when: 'T0 -3h' },
-    { id: 't_chill', milestoneId: 'bd_setup', phase: 'beverage', label: 'Chill drinks; set up the drinks station + ice', when: 'T0 -2h' },
-    { id: 't_cake', milestoneId: 'event', phase: 'food', label: 'Cake + candles moment; cut + serve', when: 'T0 +1:30' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Pack leftovers, hand out favors, bag trash + recycling, deflate/clear decor', when: 'T0 +3:00' },
-    { id: 't_after_giftlog', milestoneId: 'bd_after_gifts', phase: 'guest', label: 'Go through the gifts with the guest list beside you and write down the giver next to each one — the cards come off in the unwrapping and this is the last hour anyone remembers', when: 'T0 +1d' },
-    { id: 't_after_cashgifts', milestoneId: 'bd_after_gifts', phase: 'guest', label: 'Record the cash and gift cards separately, with the amount, then put them somewhere that is not the card box on the counter', when: 'T0 +1d' },
-    { id: 't_after_absent', milestoneId: 'bd_after_gifts', phase: 'guest', label: 'Add the gifts that arrived by mail or came from people who could not make it — those are the ones that get thanked last, if at all', when: 'T0 +1d' },
-    { id: 't_after_album', milestoneId: 'bd_after_photos', phase: 'photo', label: 'Start a shared album and send the link to everyone who was there, asking them to drop in what they shot — you will get more in the first two days than in the next two months', when: 'T0 +3d' },
-    { id: 't_after_bestshots', milestoneId: 'bd_after_photos', phase: 'photo', label: 'Pull out the handful of photos worth printing — the candles, the whole room together — and send those to the guest of honor on their own', when: 'T0 +3d' },
-    { id: 't_after_deposits', milestoneId: 'bd_after_money', phase: 'budget', label: 'Ask for the refundable deposits back: the venue or clubhouse hold, the rental damage deposit, the bounce-house or equipment security — none of them return on their own', when: 'T0 +5d' },
-    { id: 't_after_invoices', milestoneId: 'bd_after_money', phase: 'budget', label: 'Pay the last invoices while the numbers are fresh — the caterer\'s final headcount charge, the bartender\'s hours, anything that ran over', when: 'T0 +5d' },
-    { id: 't_after_thanks', milestoneId: 'bd_after_thanks', phase: 'guest', label: 'Write the thank-yous off the gift log, naming the actual gift so it does not read as a form note', when: 'T0 +7d' },
-    { id: 't_after_thanks_help', milestoneId: 'bd_after_thanks', phase: 'guest', label: 'Thank the people who did the work rather than brought a box — whoever picked up the cake, ran the grill, or stayed to clean up', when: 'T0 +7d' },
+    { id: 't_decorate', target: 'day', milestoneId: 'bd_setup', phase: 'setup', label: 'Hang decor, blow up balloons, set the table + food station', when: 'T0 -3h' },
+    { id: 't_chill', target: 'day', milestoneId: 'bd_setup', phase: 'beverage', label: 'Chill drinks; set up the drinks station + ice', when: 'T0 -2h' },
+    { id: 't_cake', target: 'day', milestoneId: 'event', phase: 'food', label: 'Cake + candles moment; cut + serve', when: 'T0 +1:30' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Pack leftovers, hand out favors, bag trash + recycling, deflate/clear decor', when: 'T0 +3:00' },
+    { id: 't_after_giftlog', target: 'gifts', milestoneId: 'bd_after_gifts', phase: 'guest', label: 'Go through the gifts with the guest list beside you and write down the giver next to each one — the cards come off in the unwrapping and this is the last hour anyone remembers', when: 'T0 +1d' },
+    { id: 't_after_cashgifts', target: 'gifts', milestoneId: 'bd_after_gifts', phase: 'guest', label: 'Record the cash and gift cards separately, with the amount, then put them somewhere that is not the card box on the counter', when: 'T0 +1d' },
+    { id: 't_after_absent', target: 'gifts', milestoneId: 'bd_after_gifts', phase: 'guest', label: 'Add the gifts that arrived by mail or came from people who could not make it — those are the ones that get thanked last, if at all', when: 'T0 +1d' },
+    { id: 't_after_album', target: 'guest-list', milestoneId: 'bd_after_photos', phase: 'photo', label: 'Start a shared album and send the link to everyone who was there, asking them to drop in what they shot — you will get more in the first two days than in the next two months', when: 'T0 +3d' },
+    { id: 't_after_bestshots', target: 'guests', milestoneId: 'bd_after_photos', phase: 'photo', label: 'Pull out the handful of photos worth printing — the candles, the whole room together — and send those to the guest of honor on their own', when: 'T0 +3d' },
+    { id: 't_after_deposits', target: 'vendors', milestoneId: 'bd_after_money', phase: 'budget', label: 'Ask for the refundable deposits back: the venue or clubhouse hold, the rental damage deposit, the bounce-house or equipment security — none of them return on their own', when: 'T0 +5d' },
+    { id: 't_after_invoices', target: 'vendors', milestoneId: 'bd_after_money', phase: 'budget', label: 'Pay the last invoices while the numbers are fresh — the caterer\'s final headcount charge, the bartender\'s hours, anything that ran over', when: 'T0 +5d' },
+    { id: 't_after_thanks', target: 'guest-list', milestoneId: 'bd_after_thanks', phase: 'guest', label: 'Write the thank-yous off the gift log, naming the actual gift so it does not read as a form note', when: 'T0 +7d' },
+    { id: 't_after_thanks_help', target: 'guest-list', milestoneId: 'bd_after_thanks', phase: 'guest', label: 'Thank the people who did the work rather than brought a box — whoever picked up the cake, ran the grill, or stayed to clean up', when: 'T0 +7d' },
   ],
 
   purchases: [

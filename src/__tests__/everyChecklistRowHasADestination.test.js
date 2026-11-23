@@ -9,6 +9,7 @@
 //   • the rows with no button are real-world work (cook, thaw, wash, text a
 //     friend), and their count may only fall. checklistDestinationTruth holds
 //     why a kitchen row honestly has none.
+const { routeByWords } = require('../lib/__fixtures__/stepByWords');
 const { checklistRouteFor } = require('../lib/taskRoute');
 const { resolveRoute } = require('../lib/routeResolver');
 const { ALL_PLAYBOOKS, playbookChecklist, stepCalls } = require('../lib/playbooks');
@@ -61,7 +62,7 @@ const rows = [];
 for (const pb of ALL_PLAYBOOKS) {
   const e = ev(pb.type);
   for (const r of (playbookChecklist(e, '2026-10-01') || [])) {
-    const hit = checklistRouteFor(r.task, { week: r.week, category: r.category }, e);
+    const hit = routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, e);
     const kind = !hit ? null : hit.href ? 'external' : ((resolveRoute(hit.route) || {}).kind || 'UNRESOLVED');
     rows.push({ type: pb.type, id: r.id, task: r.task, hit, kind, calls: stepCalls(e, { task: r.task }) });
   }

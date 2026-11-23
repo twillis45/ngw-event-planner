@@ -60,22 +60,22 @@ const teamRetreat = {
   ],
 
   tasks: [
-    { id: 't_purpose', milestoneId: 'tr_purpose_budget', phase: 'planning', label: 'Write a one-line purpose + 2-3 success outcomes; agree budget and headcount', when: 'T-90d' },
-    { id: 't_dates', milestoneId: 'tr_dates_conflicts', phase: 'planning', label: 'Poll the team / check calendars for holidays, PTO, deadlines, observances', when: 'T-85d' },
-    { id: 't_venue', milestoneId: 'tr_venue', phase: 'venue', label: 'Tour/shortlist retreat centers; sign contract + hold room block', when: 'T-75d' },
-    { id: 't_facilitator', milestoneId: 'tr_facilitator', phase: 'program', label: 'Brief facilitator on purpose; agree session goals and intensity', when: 'T-60d' },
-    { id: 't_transport', milestoneId: 'tr_transport', phase: 'logistics', label: 'Book flights/shuttles; build an arrivals/departures grid; plan airport transfers', when: 'T-45d' },
-    { id: 't_meals', milestoneId: 'tr_activity_meals', phase: 'program', label: 'Confirm caterer, group dinner reservation, and the team-building activity (+ opt-out alt)', when: 'T-45d' },
-    { id: 't_survey', milestoneId: 'tr_comms_dietary', phase: 'guest', label: 'Send agenda preview, packing list, expense/per-diem rules, dietary + accessibility survey', when: 'T-30d' },
+    { id: 't_purpose', target: 'guests', milestoneId: 'tr_purpose_budget', phase: 'planning', label: 'Write a one-line purpose + 2-3 success outcomes; agree budget and headcount', when: 'T-90d' },
+    { id: 't_dates', target: 'date-options', milestoneId: 'tr_dates_conflicts', phase: 'planning', label: 'Poll the team / check calendars for holidays, PTO, deadlines, observances', when: 'T-85d' },
+    { id: 't_venue', target: 'stay', milestoneId: 'tr_venue', phase: 'venue', label: 'Tour/shortlist retreat centers; sign contract + hold room block', when: 'T-75d' },
+    { id: 't_facilitator', target: 'none', milestoneId: 'tr_facilitator', phase: 'program', label: 'Brief facilitator on purpose; agree session goals and intensity', when: 'T-60d' },
+    { id: 't_transport', target: 'airports', milestoneId: 'tr_transport', phase: 'logistics', label: 'Book flights/shuttles; build an arrivals/departures grid; plan airport transfers', when: 'T-45d' },
+    { id: 't_meals', target: 'vendors', milestoneId: 'tr_activity_meals', phase: 'program', label: 'Confirm caterer, group dinner reservation, and the team-building activity (+ opt-out alt)', when: 'T-45d' },
+    { id: 't_survey', target: 'build-day', milestoneId: 'tr_comms_dietary', phase: 'guest', label: 'Send agenda preview, packing list, expense/per-diem rules, dietary + accessibility survey', when: 'T-30d' },
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
-    { id: 't_agenda', answeredBy: ['intensity'], milestoneId: 'tr_agenda_final', phase: 'program', label: 'Decide how full the days are: light, balanced, or packed', when: 'T-21d' },
-    { id: 't_agenda_lock', milestoneId: 'tr_agenda_final', phase: 'program', label: 'Lock the daily flow with real downtime; prep slides/worksheets; assign session owners', when: 'T-21d' },
-    { id: 't_reconfirm', milestoneId: 'tr_reconfirm', phase: 'logistics', label: 'Call every vendor to reconfirm dates, counts, dietary, timings, AV', when: 'T-14d' },
-    { id: 't_final_comms', milestoneId: 'tr_final_comms', phase: 'guest', label: 'Send arrival instructions, on-site contact numbers, and the day-1 schedule', when: 'T-7d' },
-    { id: 't_setup', milestoneId: 'tr_onsite_prep', phase: 'setup', label: 'Lay out name tags + welcome kits, test AV/Wi-Fi, set the room, name a day-of point person', when: 'T-1d' },
-    { id: 't_followup', milestoneId: 'event', phase: 'followup', label: 'Within a week: send recap + decisions + owners, run a feedback survey so the work sticks', when: 'T0 +5d' },
+    { id: 't_agenda', target: 'call:intensity', answeredBy: ['intensity'], milestoneId: 'tr_agenda_final', phase: 'program', label: 'Decide how full the days are: light, balanced, or packed', when: 'T-21d' },
+    { id: 't_agenda_lock', target: 'build-day', milestoneId: 'tr_agenda_final', phase: 'program', label: 'Lock the daily flow with real downtime; prep slides/worksheets; assign session owners', when: 'T-21d' },
+    { id: 't_reconfirm', target: 'vendors', milestoneId: 'tr_reconfirm', phase: 'logistics', label: 'Call every vendor to reconfirm dates, counts, dietary, timings, AV', when: 'T-14d' },
+    { id: 't_final_comms', target: 'updates', milestoneId: 'tr_final_comms', phase: 'guest', label: 'Send arrival instructions, on-site contact numbers, and the day-1 schedule', when: 'T-7d' },
+    { id: 't_setup', target: 'guests', milestoneId: 'tr_onsite_prep', phase: 'setup', label: 'Lay out name tags + welcome kits, test AV/Wi-Fi, set the room, name a day-of point person', when: 'T-1d' },
+    { id: 't_followup', target: 'none', milestoneId: 'event', phase: 'followup', label: 'Within a week: send recap + decisions + owners, run a feedback survey so the work sticks', when: 'T0 +5d' },
   ],
 
   purchases: [

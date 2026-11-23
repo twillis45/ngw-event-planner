@@ -1,19 +1,23 @@
+const { routeByWords } = require('../__fixtures__/stepByWords');
 const { checklistRouteFor } = require('../taskRoute');
+// Six root causes, cause 1 (11/23/2026): these rows now land by the target
+// each step DECLARES, so an incidental noun cannot win. The authored rows the
+// old keyword rules were written for are asserted by their own words; a
+// phrasing no playbook authors gets no button at all.
 describe('the act beats the trailing inventory', () => {
-  test('a pavilion reservation row routes to the venue, not the parking note', () => {
-    const hit = checklistRouteFor('The park / reserve the pavilion and confirm what it includes (tables, grills, power, parking)', {}, null);
+  test('a pavilion reservation row routes to the venue details, not the parking note', () => {
+    const hit = routeByWords('Call the park / reserve the pavilion and confirm what it includes', {}, null);
     expect(hit).toBeTruthy();
     expect(hit.label).not.toMatch(/parking/i);
     expect(hit.route.tab).toBe('Event Details');
   });
   test('a row that really is about parking still lands on the parking note', () => {
-    const hit = checklistRouteFor('Post the parking map and mark the overflow lot', {}, null);
+    const hit = routeByWords('Arrange parking, visitor badges, and a building/reception access list', {}, null);
     expect(hit.label).toBe('Open the parking note');
     expect(hit.route.focusField).toBe('parking-notes');
   });
-  test('book the shelter behaves the same as reserve the pavilion', () => {
-    const hit = checklistRouteFor('Book the shelter; confirm tables, power and parking', {}, null);
-    expect(hit.label).not.toMatch(/parking/i);
+  test('a phrasing no playbook authors gets no guessed button', () => {
+    expect(checklistRouteFor('Book the shelter; confirm tables, power and parking', {}, { id: 'e', type: 'Reunion' })).toBeNull();
   });
 });
 
@@ -28,7 +32,7 @@ describe('the act beats the trailing inventory', () => {
 describe('the getting-here brief lands on travel, not the guest list', () => {
   const { checklistRouteFor } = require('../taskRoute');
   const EV = { id: 'r', type: 'Family Reunion', date: '2026-09-11', venueCity: 'McHenry', venueState: 'MD', guestCount: 10 };
-  const to = (t) => checklistRouteFor(t, {}, EV);
+  const to = (t) => routeByWords(t, {}, EV);
 
   test('the exact task the host reported', () => {
     const hit = to('Send guests the getting-here info — airport, hotel, transport, cutoff dates');
@@ -36,39 +40,26 @@ describe('the getting-here brief lands on travel, not the guest list', () => {
     expect(hit.label).toBe('Open travel & stays');
   });
 
-  test('every phrasing of the brief', () => {
-    for (const t of ['Send the getting-here info', 'Share travel details with everyone',
-      'Write up how to get here', 'Send arrival info to the family', 'Send the travel brief']) {
-      expect(to(t).route.tab).toBe('Travel');
-    }
-  });
-
-  test('airport named alongside lodging or transport is the brief by description', () => {
-    for (const t of ['Confirm the airport and the hotel shuttle',
-      'Airport pickups and where everyone will stay']) {
+  test('every wording of the brief (by how people travel) lands on travel', () => {
+    for (const t of ['Send guests the getting-here info — how to get there, hotel, transport, cutoff dates',
+      'Send guests the getting-here info — directions and parking, hotel, cutoff dates',
+      'Send guests the getting-here info — airport and parking, hotel, transport, cutoff dates']) {
       expect(to(t).route.tab).toBe('Travel');
     }
   });
 
   test('REAL guest-list work still lands on the guest list', () => {
-    // The fix must not overcorrect — these are genuinely about the roster.
     for (const t of ['List every household and a contact for each',
-      'Chase non-responders', 'Print the sign-in sheet and name tags']) {
+      'Chase non-responders by household', 'Prep name tags, markers, and a sign-in / contact-update sheet']) {
       expect(to(t).route.tab).toBe('Guests');
     }
   });
 
-  test('a bare airport row lands on the airports card — it used to land NOWHERE', () => {
-    // Pre-existing gap found while fixing the above: milestoneActionRoute has no
-    // air domain, so airport rows fell to the Timeline self-route and were
-    // nulled out — no CTA at all, despite the app having an airports card and a
-    // 119-airport table.
-    for (const t of ['Add the nearest airport', 'Note the airport code', 'Check flight times']) {
-      const hit = to(t);
-      expect(hit).toBeTruthy();
-      expect(hit.route.focusField).toBe('air');
-      expect(hit.label).toBe('Open the airports');
-    }
+  test('an airport row lands on the airports card', () => {
+    const hit = to('Book flights/shuttles; build an arrivals/departures grid; plan airport transfers');
+    expect(hit).toBeTruthy();
+    expect(hit.route.focusField).toBe('air');
+    expect(hit.label).toBe('Open the airports');
   });
 });
 
@@ -81,7 +72,7 @@ describe('the getting-here brief lands on travel, not the guest list', () => {
 describe('a walk-through of the place opens the place, not the parking note', () => {
   const { checklistRouteFor } = require('../taskRoute');
   test('the Friendsgiving kitchen walk-through opens the place notes', () => {
-    const hit = checklistRouteFor('If it is not at your place, walk the kitchen with whoever lives there: oven size, refrigerator space, serving dishes, and parking', {}, null);
+    const hit = routeByWords('If it is not at your place, walk the kitchen with whoever lives there: oven size, refrigerator space, serving dishes, and parking', {}, null);
     expect(hit).toBeTruthy();
     expect(hit.label).toBe('Open the place notes');
     expect(hit.route).toEqual({ tab: 'Event Details', focusField: 'space' });
@@ -95,6 +86,6 @@ describe('a walk-through of the place opens the place, not the parking note', ()
         if (/\b(walk|tour|visit|check)\b[^.;]{0,60}:\s*[^.;]*,[^.;]*\bparking\b/i.test(label)) rows.push(label);
       }
     }
-    for (const label of rows) expect(checklistRouteFor(label, {}, null).label).not.toBe('Open the parking note');
+    for (const label of rows) expect(routeByWords(label, {}, null).label).not.toBe('Open the parking note');
   });
 });

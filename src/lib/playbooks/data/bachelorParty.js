@@ -55,24 +55,24 @@ const bachelorParty = {
   ],
 
   tasks: [
-    { id: 't_groomcheck', milestoneId: 'bp_setdate', phase: 'planning', label: 'Confirm with the GROOM: what he actually wants + any hard no\'s', when: 'T-30d' },
+    { id: 't_groomcheck', target: 'none', milestoneId: 'bp_setdate', phase: 'planning', label: 'Confirm with the GROOM: what he actually wants + any hard no\'s', when: 'T-30d' },
     // The step IS the call (owner, 11/21/2026): the cap, the split method and
     // the comped groom are all the costsplit answer, so it is linked, not split.
-    { id: 't_split', answeredBy: ['costsplit'], milestoneId: 'bp_setdate', phase: 'planning', label: 'Agree the budget cap + cost-split method; groom is comped', when: 'T-30d' },
-    { id: 't_book', milestoneId: 'bp_book', phase: 'logistics', label: 'Book tee time / table / suite / tickets; get confirmations in writing', when: 'T-21d' },
-    { id: 't_rides', milestoneId: 'bp_transport', phase: 'logistics', label: 'Lock the safe-rides plan: DD or pre-booked rideshare/van + the cash for it', when: 'T-14d' },
-    { id: 't_buddy', milestoneId: 'bp_transport', phase: 'planning', label: 'Name a buddy for the groom + a sober point-person; share the plan in the group chat', when: 'T-14d' },
-    { id: 't_collect', milestoneId: 'bp_rsvp', phase: 'guest', label: 'Lock headcount; collect each person\'s share (cover the groom)', when: 'T-5d' },
-    { id: 't_nonperish_shop', milestoneId: 'bp_shop_nonperish', phase: 'shopping', label: 'Beer, whiskey, mixers, WATER, disposables, snacks', when: 'T-3d' },
-    { id: 't_fresh_shop', milestoneId: 'bp_shop_fresh', phase: 'shopping', label: 'Proteins / wings / pizza order, fresh food', when: 'T-1d' },
+    { id: 't_split', target: 'call:costsplit', answeredBy: ['costsplit'], milestoneId: 'bp_setdate', phase: 'planning', label: 'Agree the budget cap + cost-split method; groom is comped', when: 'T-30d' },
+    { id: 't_book', target: 'vendors', milestoneId: 'bp_book', phase: 'logistics', label: 'Book tee time / table / suite / tickets; get confirmations in writing', when: 'T-21d' },
+    { id: 't_rides', target: 'rides', milestoneId: 'bp_transport', phase: 'logistics', label: 'Lock the safe-rides plan: DD or pre-booked rideshare/van + the cash for it', when: 'T-14d' },
+    { id: 't_buddy', target: 'assign', milestoneId: 'bp_transport', phase: 'planning', label: 'Name a buddy for the groom + a sober point-person; share the plan in the group chat', when: 'T-14d' },
+    { id: 't_collect', target: 'guests', milestoneId: 'bp_rsvp', phase: 'guest', label: 'Lock headcount; collect each person\'s share (cover the groom)', when: 'T-5d' },
+    { id: 't_nonperish_shop', target: 'list', milestoneId: 'bp_shop_nonperish', phase: 'shopping', label: 'Beer, whiskey, mixers, WATER, disposables, snacks', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'list', milestoneId: 'bp_shop_fresh', phase: 'shopping', label: 'Proteins / wings / pizza order, fresh food', when: 'T-1d' },
     // MOVED OFF A DEAD SURFACE, 2026-09-23. Was a `schedules.preparation` row at
     // T-1d. `t_fresh_shop` buys the proteins and `bp_shop_fresh` is the milestone
     // for buying them; nothing marinated them. Charging phones and confirming
     // rides, which shared that dead row, are NOT repeated here — both already
     // have live carriers (`T0 -3h` in the setup block, and `t_rides`).
-    { id: 't_prep_protein', milestoneId: 'bp_shop_fresh', phase: 'food', label: 'Prep or marinate the proteins the night before, or place the pizza order so it only needs a phone call on the day', when: 'T-1d' },
-    { id: 't_setup', milestoneId: 'bp_setup', phase: 'setup', label: 'Stock the base, build the bar + a visible water/food station, confirm rides', when: 'T0 -2h' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Get the groom home/to bed safe, headcount the crew, pack leftovers, bag bottles/cans, settle the split', when: 'T0 +8:00' },
+    { id: 't_prep_protein', target: 'none', milestoneId: 'bp_shop_fresh', phase: 'food', label: 'Prep or marinate the proteins the night before, or place the pizza order so it only needs a phone call on the day', when: 'T-1d' },
+    { id: 't_setup', target: 'day', milestoneId: 'bp_setup', phase: 'setup', label: 'Stock the base, build the bar + a visible water/food station, confirm rides', when: 'T0 -2h' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Get the groom home/to bed safe, headcount the crew, pack leftovers, bag bottles/cans, settle the split', when: 'T0 +8:00' },
   ],
 
   purchases: [

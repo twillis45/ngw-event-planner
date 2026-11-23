@@ -6,6 +6,7 @@
 // "Photo album link" field of the invite recap, and "Publish the recap" saves
 // event.albumUrl, which guests see when they reopen the invite. A saved link
 // is the step done; a typed half-link or nothing is not.
+import { routeByWords } from '../__fixtures__/stepByWords';
 import { checklistRouteFor } from '../taskRoute';
 import { resolveRoute } from '../routeResolver';
 import { taskSatisfied } from '../taskEngine';
@@ -25,7 +26,7 @@ describe.each(ROWS)('%s: the album row', (type, re) => {
   test('premise: the row is in the playbook', () => { expect(r).toBeTruthy(); });
 
   test('its button is "Add the album link" and it lands on After, on the album field', () => {
-    const hit = checklistRouteFor(r.task, { week: r.week, category: r.category }, ev(type));
+    const hit = routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, ev(type));
     expect(hit && hit.label).toBe('Add the album link');
     expect(resolveRoute(hit.route)).toEqual({ kind: 'stage:after', focus: 'album', anchor: 'Photo album link' });
   });
@@ -45,5 +46,5 @@ test('other album and photo rows keep their own rules (the link credits only the
   const b = row('Birthday', /^Start a shared album/);
   expect(b).toBeTruthy();
   expect(taskSatisfied(ev('Birthday', { albumUrl: 'https://photos.app.goo.gl/abc' }), { task: b.task })).toBe(false);
-  expect(resolveRoute(checklistRouteFor(b.task, { week: b.week, category: b.category }, ev('Birthday')).route).kind).toBe('guests');
+  expect(resolveRoute(routeByWords(b.task, { taskId: b.id, week: b.week, category: b.category }, ev('Birthday')).route).kind).toBe('guests');
 });

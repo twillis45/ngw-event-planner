@@ -359,6 +359,8 @@ import { celebrationApplies, tripFoodMoney, aroundSummary, dinnerParts, RESTAURA
 import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
 import { mayExhale, calmVetoFor } from '@app/lib/exhaleGate';
 import { checklistRouteFor } from '@app/lib/taskRoute';
+import { editorKindFor, isBalanceDueAction, stepRowIdOf } from '@app/lib/heroEditor';
+import { stepIsASend } from '@app/lib/stepTarget';
 import { vendorObligations } from '@app/lib/vendorObligations';
 import { heartPlaceholders, heartFieldsFor } from '@app/lib/heartPrompts';
 import { parseMin } from '@app/lib/dayAlerts';
@@ -6441,12 +6443,9 @@ export default function HostShellV2() {
   // locks..."), and `event.timeline` is a real store that eight engines read —
   // workflowCompression, dayAlerts, dayBefore, disclosure, helperResponsibility,
   // decisionMemory, duplicateEvent, vendorQuestions. Writing the mitigation
-  // there turns displayed advice into tracked work, and the checklist's OWN
-  // router (`checklistActionFor` → lib/taskRoute) then gives the new step a
-  // destination — an engine that already exists and reads these strings better
-  // than the risk regex does. Measured on the same 246: `checklistRouteFor`
-  // resolves 209 of them, including every dead birthday row and
-  // `r_saferides` → "Open rides".
+  // there turns displayed advice into tracked work. (It no longer gets a button
+  // guessed from its words: the checklist reads only a step's declared target,
+  // six root causes cause 1, so an added mitigation is an honest check-off.)
   //
   // Same row shape and same one-write-reaches-everything argument as addHelper
   // above. `week:''`/`leadDays:null` is an honest unscheduled step, not an
@@ -6466,7 +6465,7 @@ export default function HostShellV2() {
     }
     patchEvent(
       { timeline: [...existing, { id, task, owner: '', done: false, week: '', leadDays: null, category: 'planning' }] },
-      'On your checklist now — it carries its own next step.',
+      'On your checklist now.',
     );
   };
 
@@ -7156,8 +7155,10 @@ export default function HostShellV2() {
     // from the same rule that ticks the step when the section is done first.
     // Checking only; unchecking never un-sends (asymmetric, like the buys above).
     if (tl[i].done) extra = { ...extra, ...factsATickRecords(event, event.timeline[i]) };
+    // A tick on a send step sends nothing and records no send — say so (cause 1).
+    const sentNothing = tl[i].done && stepIsASend(event, tl[i]) ? ' Nothing was sent from here.' : '';
     patchEvent({ timeline: tl, ...extra },
-      (tl[i].done ? 'Done: ' : 'Reopened: ') + String(tl[i].task || '').slice(0, 50) + '… — ' + open + ' still open.' + boughtNote);
+      (tl[i].done ? 'Done: ' : 'Reopened: ') + String(tl[i].task || '').slice(0, 50) + '… — ' + open + ' still open.' + boughtNote + sentNothing);
   };
 
   // No timeline yet → draft one from the playbook's REAL task list, honoring
@@ -9164,40 +9165,10 @@ export default function HostShellV2() {
   };
 
   // Which engine actions have a real in-place edit here. Everything else stays an
-  // honest route toast — never a button that pretends.
-  const wiredKind = (a) => {
-    // The dietary note lives in the food domain but is answered at the allergy
-    // counts, not the food-approach panel (owner's iPad, 11/21/2026).
-    if (/^fp-diet/.test(String((a.route && a.route.focusField) || ''))) return 'diet';
-    if (['date', 'guests', 'budget', 'food'].includes(a.domain)) return a.domain;
-    if (a.domain === 'starttime' || a.domain === 'datetime') return 'date';   // day + hour share the date editor
-    // Engine top actions carry their CATEGORY as domain ('start', 'readiness'…);
-    // recognize them by their real deep-link target or category.
-    // SPECIFIC deep-link targets first — category fallbacks LAST. (The rain
-    // essential arrives under the 'readiness' category; mapping the whole
-    // category to budget put the budget editor on the rain card.)
-    const f = (a.route && a.route.focusField) || '';
-    if (f === 'rain-plan' || /rain backup/i.test(a.title || '')) return 'rain';
-    if (f === 'venue' || f === 'event-venue' || /\b(location|venue)\b/i.test(a.title || '')) return 'venue';
-    if (f === 'event-date' || f === 'event-start') return 'date';   // the date editor holds the time too
-    if (f === 'guests-entry') return 'guests';
-    if (/dietary|allerg/i.test(a.title || '') || /^fp-diet/.test(f)) return 'diet';
-    // ── A ROW POINTER IS NOT A DECISION (PR #70, driven 2026-07-31) ──────────
-    // `route.foodFocus` is the id of an unbought LINE in the spread — it says
-    // "scroll to this row and highlight it". Mapping it to the food editor
-    // handed the food SOURCING decision to every shopping action that carried
-    // one: on Game Night the host got "We'll cook it · A caterer handles it ·
-    // Potluck", with their own months-old answer already marked chosen, under
-    // an item about how many snack servings to buy. The board had no open
-    // decision at all. `food-plan` stays — that focusField genuinely names the
-    // food plan itself, not a row inside it.
-    if (f === 'food-plan') return 'food';
-    if (/catering count/i.test(a.title || '')) return 'count';
-    if (/final (guest|catering) count|confirm .*(guest|catering) count/i.test(a.title || '')) return 'lockcount';
-    if (f === 'hsp-budget' || (a.domain === 'readiness' && /budget/i.test(a.title || ''))) return 'budget';
-    if (a.domain === 'start') return 'guests';
-    return null;
-  };
+  // honest route toast — never a button that pretends. The kind comes from what
+  // the card declares (lib/heroEditor: its editor, its step's target, its
+  // domain and route) and never from its title (six root causes, cause 1).
+  const wiredKind = (a) => editorKindFor(a, event);
 
   // ── SETTLING IS OPT-IN (dead-row class, 2026-07-28) ─────────────────────────
   // The settle branch below writes setEditor(key), and the editor slot renders
@@ -9223,14 +9194,14 @@ export default function HostShellV2() {
     // The nudge's own route wins over the chase shortcut below: an overdue
     // "Chase non-responders" step and the reply-by row both open the nudge.
     if (a.route && a.route.focusField === 'rsvp-nudge') { openNudge(); return; }
-    if (/chase|rsvp/i.test(String(a.cta || '') + ' ' + String(a.title || ''))) { setSheet({ kind: 'guests' }); return; }
+    // (A chase card used to be recognized by "chase"/"rsvp" in its words and sent
+    // to the guest sheet; its route says where it goes, and routeSheet follows it.)
     // ELEGANT (host "no take-me-to on the hero"): an overdue-payment task RESOLVES IN PLACE —
     // "Mark as paid" writes vendor.balancePaid (the exact field surfaceRegistry reads to clear
-    // it) and fires the receipt, instead of routing away with "Take me to it".
-    if (elegantMode && /^send payment to/i.test(String(a.title || ''))) {
-      const vid = a.route && a.route.vendorId;
-      const nm = String(a.title).replace(/^send payment to\s*/i, '').replace(/\.$/, '').trim();
-      const v = (event.vendors || []).find(x => x && (vid ? x.id === vid : String(x.name || '').trim() === nm));
+    // it) and fires the receipt, instead of routing away with "Take me to it". Recognized by
+    // its route (the vendor's payment section) and the vendor's open balance, not its title.
+    if (elegantMode && isBalanceDueAction(a, event)) {
+      const v = (event.vendors || []).find(x => x && x.id === a.route.vendorId);
       if (v) { writeVendor(v.id, { balancePaid: true }, (v.name || 'This vendor') + ' — balance marked paid.'); return; }
     }
     // ELEGANT (host "pull action into confirm vendor"): a plain vendor-confirm resolves IN PLACE
@@ -13507,13 +13478,13 @@ export default function HostShellV2() {
                           // In-place settles wear `.stay` (glyph doctrine: no arrow on a
                           // non-navigating CTA) — which also makes them visible to the
                           // Layer-2 loop-advance probe (2026-07-22).
-                          const isSettle = isVendorConfirmAction(a) || /^send payment to/i.test(String(a.title || ''));
+                          const isSettle = isVendorConfirmAction(a) || isBalanceDueAction(a, event);
                           // canSettle: this button lives INSIDE the card loop, so
                           // `editor === key` at the slot above genuinely mounts an editor.
                           // Ruling 31: lit on the hero card only; every card under it is soft.
                           return <button className={isHero ? 'cta' : 'cta soft'} onClick={() => onCta(a, key, { canSettle: true })}>{
                           isVendorConfirmAction(a) ? 'Mark as locked in'
-                          : /^send payment to/i.test(String(a.title || '')) ? 'Mark as paid'
+                          : isBalanceDueAction(a, event) ? 'Mark as paid'
                           /* NO generic "Take me to it" on the hero (host standing rule): name the real
                              destination when a route is genuinely all we have. One shared helper
                              now, so the four render sites can't drift apart again. */
@@ -13531,7 +13502,7 @@ export default function HostShellV2() {
                           const norm = (x) => String(x || '').toLowerCase().replace(/\s+/g, ' ').trim();
                           // By id when the action names its step (tier 2's taskId, a route's
                           // taskId); else by the card's title, which may be cut short.
-                          const rid = a.taskId || (a.route && a.route.taskId);
+                          const rid = stepRowIdOf(a);
                           const head = norm(a.title).replace(/[.…]+$/, '');
                           const ti = (event.timeline || []).findIndex((t) => t && !t.done
                             && ((rid && t.id === rid) || (head.length >= 12 && norm(t.task).startsWith(head))));
@@ -22709,7 +22680,7 @@ export default function HostShellV2() {
                     // uses 'rowfocus' for exactly this; this was the one sheet that
                     // never got migrated to it.
                     const { lead, detail } = splitTask(t.task);
-                    const action = checklistActionFor(t.task, { week: t.week, category: t.category });
+                    const action = checklistActionFor(t.task, { taskId: t.id, week: t.week, category: t.category });
                     // The visitors-bureau row carries its own brief (host directive
                     // 2026-07-28): contact capture + the asks with direct links.
                     const isCvbRow = /visitors bureau|convention .{0,3}visitors|\bcvb\b/i.test(String(t.task || ''));

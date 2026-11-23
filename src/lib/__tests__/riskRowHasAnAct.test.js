@@ -106,22 +106,15 @@ describe('the checklist router earns the handoff', () => {
     return out;
   }
 
-  test('it resolves a large majority of authored mitigations', () => {
+  // SIX ROOT CAUSES, cause 1 (11/23/2026): the checklist no longer reads a
+  // row's words to choose its button, so a mitigation added to the checklist
+  // is an honest check-off unless a step declares its target. The risk row's
+  // own act ("Plan for this" or "Add to my checklist") is unchanged above; what
+  // changed is that no guessed button appears on the added row.
+  test('an added mitigation is a check-off, never a button guessed from its words', () => {
     const risks = allRisks();
     expect(risks.length).toBeGreaterThan(200);   // never assert over an empty set
-    const routed = risks.filter((r) => {
-      try { return !!checklistRouteFor(r.mitigation, {}, null); } catch { return false; }
-    });
-    // Measured 209/246 on 2026-08-08. Held with headroom so ordinary authoring
-    // does not trip it, but a real regression in the router does.
-    expect(routed.length / risks.length).toBeGreaterThan(0.75);
-  });
-
-  test('the safe-rides mitigation routes — the one the board led with', () => {
-    const hit = checklistRouteFor(
-      'Pre-stage a safe-rides plan: rideshare credit/codes, a designated-driver ask in the invite, '
-      + 'a couch/guest-room offer, and quietly hold/hand keys.', {}, null);
-    expect(hit).toBeTruthy();
-    expect(hit.route).toBeTruthy();
+    const guessed = risks.filter((r) => !!checklistRouteFor(r.mitigation, { taskId: 'risk-' + r.id }, { id: 'e', type: 'Birthday' }));
+    expect(guessed).toEqual([]);
   });
 });

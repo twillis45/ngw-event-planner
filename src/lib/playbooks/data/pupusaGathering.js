@@ -57,13 +57,13 @@ const pupusaGathering = {
   ],
 
   tasks: [
-    { id: 't_invite', milestoneId: 'pup_invite', phase: 'guest', label: 'Invite; ask 2–3 people to come early to shape (the tías-at-the-table part)', when: 'T-8d' },
-    { id: 't_source', milestoneId: 'pup_source', phase: 'shopping', label: 'Latin market run: masa harina (instant/fresh masa), quesillo, chicharrón, refried beans, loroco/ayote; reserve pupusería order if hybrid', when: 'T-5d' },
-    { id: 't_curtido', milestoneId: 'pup_curtido', phase: 'food', label: 'Make curtido (cabbage, carrot, onion, oregano, vinegar) — jar it and let it sour in the fridge', when: 'T-4d' },
-    { id: 't_salsa_beans', milestoneId: 'pup_prep', phase: 'food', label: 'Make salsa roja + refried beans; mix revueltas filling; grate/portion quesillo; check the comal and have oil ready', when: 'T-1d' },
-    { id: 't_setup', milestoneId: 'pup_setup', phase: 'setup', label: 'Heat the comal, set the shaping table (masa bowl, water dish, fillings), lay the toppings line (curtido + salsa)', when: 'T0 -0:45' },
-    { id: 't_griddle', milestoneId: 'event', phase: 'food', label: 'Shape + griddle in batches — keep a steady rotation; pass the first ones hot off the comal', when: 'T0' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Cool + scrape the comal, jar leftover masa/fillings, pack pupusas, wash the griddle, bag trash', when: 'T0 +4:00' },
+    { id: 't_invite', target: 'invite', milestoneId: 'pup_invite', phase: 'guest', label: 'Invite; ask 2–3 people to come early to shape (the tías-at-the-table part)', when: 'T-8d' },
+    { id: 't_source', target: 'spread', milestoneId: 'pup_source', phase: 'shopping', label: 'Latin market run: masa harina (instant/fresh masa), quesillo, chicharrón, refried beans, loroco/ayote; reserve pupusería order if hybrid', when: 'T-5d' },
+    { id: 't_curtido', target: 'none', milestoneId: 'pup_curtido', phase: 'food', label: 'Make curtido (cabbage, carrot, onion, oregano, vinegar) — jar it and let it sour in the fridge', when: 'T-4d' },
+    { id: 't_salsa_beans', target: 'spread', milestoneId: 'pup_prep', phase: 'food', label: 'Make salsa roja + refried beans; mix revueltas filling; grate/portion quesillo; check the comal and have oil ready', when: 'T-1d' },
+    { id: 't_setup', target: 'day', milestoneId: 'pup_setup', phase: 'setup', label: 'Heat the comal, set the shaping table (masa bowl, water dish, fillings), lay the toppings line (curtido + salsa)', when: 'T0 -0:45' },
+    { id: 't_griddle', target: 'day', milestoneId: 'event', phase: 'food', label: 'Shape + griddle in batches — keep a steady rotation; pass the first ones hot off the comal', when: 'T0' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Cool + scrape the comal, jar leftover masa/fillings, pack pupusas, wash the griddle, bag trash', when: 'T0 +4:00' },
   ],
 
   purchases: [

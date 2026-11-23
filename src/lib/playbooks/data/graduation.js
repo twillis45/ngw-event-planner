@@ -57,19 +57,19 @@ const graduation = {
   ],
 
   tasks: [
-    { id: 't_invite', milestoneId: 'gr_invite', phase: 'guest', label: 'Send invites with the open-house window + RSVP-by', when: 'T-18d' },
-    { id: 't_photos', milestoneId: 'gr_signs', phase: 'decor', label: 'Collect grad photos; order prints, banner, yard sign', when: 'T-10d' },
-    { id: 't_rsvp', milestoneId: 'gr_rsvp_close', phase: 'guest', label: 'Estimate total heads + buffer; lock food quantities', when: 'T-3d' },
-    { id: 't_nonperish_shop', milestoneId: 'gr_shop_nonperish', phase: 'shopping', label: 'Decor, drinks, disposables, paper goods', when: 'T-3d' },
-    { id: 't_food_shop', milestoneId: 'gr_shop_fresh', phase: 'shopping', label: 'Food + cake pickup', when: 'T-1d' },
+    { id: 't_invite', target: 'invite', milestoneId: 'gr_invite', phase: 'guest', label: 'Send invites with the open-house window + RSVP-by', when: 'T-18d' },
+    { id: 't_photos', target: 'list', milestoneId: 'gr_signs', phase: 'decor', label: 'Collect grad photos; order prints, banner, yard sign', when: 'T-10d' },
+    { id: 't_rsvp', target: 'spread', milestoneId: 'gr_rsvp_close', phase: 'guest', label: 'Estimate total heads + buffer; lock food quantities', when: 'T-3d' },
+    { id: 't_nonperish_shop', target: 'list', milestoneId: 'gr_shop_nonperish', phase: 'shopping', label: 'Decor, drinks, disposables, paper goods', when: 'T-3d' },
+    { id: 't_food_shop', target: 'spread', milestoneId: 'gr_shop_fresh', phase: 'shopping', label: 'Food + cake pickup', when: 'T-1d' },
     // MOVED OFF A DEAD SURFACE, 2026-09-23. Was a `schedules.preparation` row at
     // T-1d, a block the day board drops by rule and nothing else reads, so it
     // reached no host. Graduation had no food-PREP task at all — only shopping
     // (`t_food_shop`) and the purchases themselves. Buying a salad is not making
     // one, and the day-before is when it gets made.
-    { id: 't_prep_ahead', milestoneId: 'gr_shop_fresh', phase: 'food', label: 'Prep the cold sides and anything that keeps overnight', when: 'T-1d' },
-    { id: 't_setup', milestoneId: 'gr_setup', phase: 'setup', label: 'Set buffet flow, drinks station, photo display, seating + shade', when: 'T0 -3h' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Pack leftovers, collect cards/gifts, bag trash + recycling, take down display', when: 'T0 +4:00' },
+    { id: 't_prep_ahead', target: 'none', milestoneId: 'gr_shop_fresh', phase: 'food', label: 'Prep the cold sides and anything that keeps overnight', when: 'T-1d' },
+    { id: 't_setup', target: 'day', milestoneId: 'gr_setup', phase: 'setup', label: 'Set buffet flow, drinks station, photo display, seating + shade', when: 'T0 -3h' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Pack leftovers, collect cards/gifts, bag trash + recycling, take down display', when: 'T0 +4:00' },
   ],
 
   purchases: [

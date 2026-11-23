@@ -54,13 +54,13 @@ const babyShower = {
   ],
 
   tasks: [
-    { id: 't_invite', milestoneId: 'bs_invite', phase: 'guest', label: 'Send invites with registry, RSVP-by, dietary ask', when: 'T-21d' },
-    { id: 't_rsvp', milestoneId: 'bs_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count', when: 'T-4d' },
-    { id: 't_nonperish_shop', milestoneId: 'bs_shop_nonperish', phase: 'shopping', label: 'Decor, favors, mocktail mixers, games, paper goods', when: 'T-3d' },
-    { id: 't_fresh_shop', milestoneId: 'bs_shop_fresh', phase: 'shopping', label: 'Fresh food, cake/desserts, flowers', when: 'T-1d' },
-    { id: 't_prep', milestoneId: 'bs_setup', phase: 'food', label: 'Make-ahead bites + dessert; assemble favors; set games', when: 'T-1d evening' },
-    { id: 't_decorate', milestoneId: 'bs_setup', phase: 'setup', label: 'Decorate, set the table, food + mocktail station', when: 'T0 -3h' },
-    { id: 't_reset', milestoneId: 'event', phase: 'cleanup', label: 'Gift list for thank-yous, pack leftovers, favors out, bag trash + recycling', when: 'T0 +3:00' },
+    { id: 't_invite', target: 'invite', milestoneId: 'bs_invite', phase: 'guest', label: 'Send invites with registry, RSVP-by, dietary ask', when: 'T-21d' },
+    { id: 't_rsvp', target: 'chase', milestoneId: 'bs_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count', when: 'T-4d' },
+    { id: 't_nonperish_shop', target: 'list', milestoneId: 'bs_shop_nonperish', phase: 'shopping', label: 'Decor, favors, mocktail mixers, games, paper goods', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'spread', milestoneId: 'bs_shop_fresh', phase: 'shopping', label: 'Fresh food, cake/desserts, flowers', when: 'T-1d' },
+    { id: 't_prep', target: 'none', milestoneId: 'bs_setup', phase: 'food', label: 'Make-ahead bites + dessert; assemble favors; set games', when: 'T-1d evening' },
+    { id: 't_decorate', target: 'day', milestoneId: 'bs_setup', phase: 'setup', label: 'Decorate, set the table, food + mocktail station', when: 'T0 -3h' },
+    { id: 't_reset', target: 'day', milestoneId: 'event', phase: 'cleanup', label: 'Gift list for thank-yous, pack leftovers, favors out, bag trash + recycling', when: 'T0 +3:00' },
   ],
 
   purchases: [

@@ -5,6 +5,7 @@
 // there is no street address on file, so none is written), the BOOKED plans,
 // and each person's share from Split the costs. A missing piece is left out
 // and named to the host; nothing is a placeholder.
+import { routeByWords } from '../__fixtures__/stepByWords';
 import { draftTripDetails } from '../doItForMe';
 import { checklistRouteFor } from '../taskRoute';
 import { resolveRoute } from '../routeResolver';
@@ -72,7 +73,7 @@ test('the trip-details row\'s button is "Draft the trip details", landing on tha
   const e = { id: 'dest', type: 'Group Trip', date: '2026-12-31', guestEstimate: 8, guestMode: 'count', guestCountSource: 'host', venue: 'Home', venueKind: 'home', venueCity: 'Austin, TX' };
   const r = (playbookChecklist(e, '2026-10-01') || []).find((x) => /^Send everyone the trip details/.test(x.task));
   expect(r).toBeTruthy();
-  const hit = checklistRouteFor(r.task, { week: r.week, category: r.category }, e);
+  const hit = routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, e);
   expect(hit && hit.label).toBe('Draft the trip details');
   expect(resolveRoute(hit.route)).toEqual({ kind: 'draft', focus: 'trip-details' });
 });

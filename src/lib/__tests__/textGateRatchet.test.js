@@ -451,7 +451,12 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 //   against a fixture tree (maps stripped, upload no-ops without a token) and
 //   reads the job graph. It is counted because its fixture paths name
 //   build/hostv2; no browser run can see a deploy workflow.
-const MAX_HOSTV2_TEXT_GATES = 67;
+// 67 → 68 (11/23/2026, six root causes): a gate on file CONTENT, a structural
+// claim no browser run can see:
+//   everyStepDeclaresItsTarget.test.js: the shell's wiredKind is the lib's
+//   editorKindFor and reads no title (the behavior is the lib's, tested over
+//   every playbook; the gate pins that the shell keeps no second copy).
+const MAX_HOSTV2_TEXT_GATES = 68;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

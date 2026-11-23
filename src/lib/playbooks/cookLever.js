@@ -115,6 +115,13 @@ const GRILL_TASKS = [
   ['t_ft_both', 'A grill and a smoker together', 'T0 -6:00', 't0', 'Two fires, two clocks: the smoker starts hours ahead for the low-and-slow cuts, the grill lights ~30 minutes out for everything fast'],
 ];
 
+// Each method step's declared target (stepTarget.js): where its work is done.
+// Declared once, never read off the label (six root causes, cause 1).
+const COOK_TARGETS = {
+  t_cm_grillfuel: 'list', t_cm_oven: 'spread', t_cm_pickup: 'spread', t_cm_slowcooker: 'day', t_cm_airfryer: 'day',
+  t_ft_charcoal_buy: 'list', t_ft_gas: 'none', t_ft_charcoal: 'day', t_ft_smoker: 'day', t_ft_both: 'day',
+};
+
 /** The method tasks, already milestone-bound to this playbook's own late milestones. */
 export function cookTasksFor(pb) {
   const L = cookLeverOf(pb);
@@ -130,7 +137,7 @@ export function cookTasksFor(pb) {
   const rows = L.kind === 'grill' ? GRILL_TASKS : INDOOR_TASKS;
   const id = L.kind === 'grill' ? 'fire_type' : 'cook_method';
   return rows.map(([tid, answer, when, slot, label]) => ({
-    id: tid, milestoneId: slot === 't0' ? t0 : t1, phase, label, when,
+    id: tid, target: COOK_TARGETS[tid], milestoneId: slot === 't0' ? t0 : t1, phase, label, when,
     whenChoice: [{ id: L.decision, in: L.hostCooks }, { id, in: [answer] }],
   }));
 }

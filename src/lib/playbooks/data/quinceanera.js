@@ -256,29 +256,29 @@ const quinceanera = {
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
     // With no padrinos, the work is the budget alone.
-    { id: 't_budget', answeredBy: ['padrinos'], milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Decide whether padrinos cover pieces of the celebration', when: 'T-270d' },
-    { id: 't_budget_set', milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Set the budget with the family, and line up the padrinos who may cover the cake, gown, flowers, or music', when: 'T-270d',
+    { id: 't_budget', target: 'call:padrinos', answeredBy: ['padrinos'], milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Decide whether padrinos cover pieces of the celebration', when: 'T-270d' },
+    { id: 't_budget_set', target: 'money', milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Set the budget with the family, and line up the padrinos who may cover the cake, gown, flowers, or music', when: 'T-270d',
       copyByAnswer: { padrinos: { 'No, the family covers everything directly': 'Set the budget with the family' } } },
-    { id: 't_church', milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'If holding a Mass, book the parish and priest; confirm any preparation requirements and readings', when: 'T-268d' },
-    { id: 't_venue_walk', milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Tour venues: capacity, included tables/chairs/linens/floor, parking, curfew, in-house vs outside caterer', when: 'T-265d' },
-    { id: 't_gown_order', milestoneId: 'order_gown_court', phase: 'plan', label: 'Order the ballgown; choose and order damas\' dresses and chambelanes\' suits to the color story', when: 'T-240d' },
-    { id: 't_vendor_book', milestoneId: 'book_core_vendors', phase: 'plan', label: 'Book caterer, photographer + videographer, DJ/banda, and baker; sign contracts and pay deposits', when: 'T-180d' },
-    { id: 't_court', milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Confirm damas and chambelanes who will commit to rehearsals; book the choreographer; set a weekly rehearsal slot', when: 'T-120d' },
+    { id: 't_church', target: 'vendors', milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'If holding a Mass, book the parish and priest; confirm any preparation requirements and readings', when: 'T-268d' },
+    { id: 't_venue_walk', target: 'place-notes', milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Tour venues: capacity, included tables/chairs/linens/floor, parking, curfew, in-house vs outside caterer', when: 'T-265d' },
+    { id: 't_gown_order', target: 'vendors-tab', milestoneId: 'order_gown_court', phase: 'plan', label: 'Order the ballgown; choose and order damas\' dresses and chambelanes\' suits to the color story', when: 'T-240d' },
+    { id: 't_vendor_book', target: 'vendors', milestoneId: 'book_core_vendors', phase: 'plan', label: 'Book caterer, photographer + videographer, DJ/banda, and baker; sign contracts and pay deposits', when: 'T-180d' },
+    { id: 't_court', target: 'vendors', milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Confirm damas and chambelanes who will commit to rehearsals; book the choreographer; set a weekly rehearsal slot', when: 'T-120d' },
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
     // and due date, open until ticked.
-    { id: 't_vals_song', answeredBy: ['vals_song'], milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Choose the vals music plan', when: 'T-118d' },
-    { id: 't_vals_share', milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Finalize the vals song and any surprise-dance track, and share them with the choreographer', when: 'T-118d' },
-    { id: 't_florist', milestoneId: 'florist_decor_invites', phase: 'plan', label: 'Book florist and decor/centerpieces to the color story; reserve a backdrop and entrance arch', when: 'T-90d' },
-    { id: 't_invites', milestoneId: 'florist_decor_invites', phase: 'plan', label: 'Send invitations with RSVP date and Mass + reception times; track replies for the count', when: 'T-88d' },
-    { id: 't_rehearse', milestoneId: 'vals_rehearsals', phase: 'plan', label: 'Run weekly vals and surprise-dance rehearsals; confirm court attire fittings', when: 'T-60d' },
-    { id: 't_fitting', milestoneId: 'final_fitting_count', phase: 'plan', label: 'Final gown and court fittings; lock headcount and give the caterer the final count', when: 'T-30d' },
-    { id: 't_ceremony_items', milestoneId: 'runofshow_ceremony_prep', phase: 'plan', label: 'Gather the heels, the last doll, the crown/tiara, the toast glasses, and candles/roses; assign each moment to a person', when: 'T-14d' },
-    { id: 't_runofshow', milestoneId: 'runofshow_ceremony_prep', phase: 'plan', label: 'Write the reception run-of-show: entrance, vals, shoes, doll, crowning, toast, father-daughter dance, dinner, open floor', when: 'T-14d' },
-    { id: 't_final_rehearsal', milestoneId: 'final_rehearsal_pickups', phase: 'prep', label: 'Hold the final full rehearsal; brief the MC; confirm every vendor and court member by phone', when: 'T-7d' },
-    { id: 't_pickups', milestoneId: 'final_rehearsal_pickups', phase: 'prep', label: 'Pick up the gown, confirm cake and flower delivery windows, and stage all ceremonial items', when: 'T-2d' },
-    { id: 't_dayof', milestoneId: 'event_day', phase: 'event', label: 'Hair/makeup, Mass, photos, then reception; run the ceremonial moments to the timeline', when: 'T0' },
-    { id: 't_cleanup', milestoneId: 'event_day', phase: 'cleanup', label: 'Settle vendor balances and tips, recover rental deposits, gather gifts and the doll/crown, final venue walkthrough', when: 'T0 +6:00' },
+    { id: 't_vals_song', target: 'call:vals_song', answeredBy: ['vals_song'], milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Choose the vals music plan', when: 'T-118d' },
+    { id: 't_vals_share', target: 'none', milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Finalize the vals song and any surprise-dance track, and share them with the choreographer', when: 'T-118d' },
+    { id: 't_florist', target: 'vendors', milestoneId: 'florist_decor_invites', phase: 'plan', label: 'Book florist and decor/centerpieces to the color story; reserve a backdrop and entrance arch', when: 'T-90d' },
+    { id: 't_invites', target: 'invite', milestoneId: 'florist_decor_invites', phase: 'plan', label: 'Send invitations with RSVP date and Mass + reception times; track replies for the count', when: 'T-88d' },
+    { id: 't_rehearse', target: 'vendors-tab', milestoneId: 'vals_rehearsals', phase: 'plan', label: 'Run weekly vals and surprise-dance rehearsals; confirm court attire fittings', when: 'T-60d' },
+    { id: 't_fitting', target: 'vendors-tab', milestoneId: 'final_fitting_count', phase: 'plan', label: 'Final gown and court fittings; lock headcount and give the caterer the final count', when: 'T-30d' },
+    { id: 't_ceremony_items', target: 'none', milestoneId: 'runofshow_ceremony_prep', phase: 'plan', label: 'Gather the heels, the last doll, the crown/tiara, the toast glasses, and candles/roses; assign each moment to a person', when: 'T-14d' },
+    { id: 't_runofshow', target: 'build-day', milestoneId: 'runofshow_ceremony_prep', phase: 'plan', label: 'Write the reception run-of-show: entrance, vals, shoes, doll, crowning, toast, father-daughter dance, dinner, open floor', when: 'T-14d' },
+    { id: 't_final_rehearsal', target: 'vendors', milestoneId: 'final_rehearsal_pickups', phase: 'prep', label: 'Hold the final full rehearsal; brief the MC; confirm every vendor and court member by phone', when: 'T-7d' },
+    { id: 't_pickups', target: 'vendor-deliveries', milestoneId: 'final_rehearsal_pickups', phase: 'prep', label: 'Pick up the gown, confirm cake and flower delivery windows, and stage all ceremonial items', when: 'T-2d' },
+    { id: 't_dayof', target: 'day', milestoneId: 'event_day', phase: 'event', label: 'Hair/makeup, Mass, photos, then reception; run the ceremonial moments to the timeline', when: 'T0' },
+    { id: 't_cleanup', target: 'day', milestoneId: 'event_day', phase: 'cleanup', label: 'Settle vendor balances and tips, recover rental deposits, gather gifts and the doll/crown, final venue walkthrough', when: 'T0 +6:00' },
   ],
 
   purchases: [

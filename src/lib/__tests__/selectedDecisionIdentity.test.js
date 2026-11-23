@@ -210,7 +210,11 @@ describe('HostShellV2 keeps no independent decision lookup', () => {
     // `foodFocus` is a shopping-line id. wiredKind mapping it to the food
     // decision is what put a completed provider pick under a snack item.
     expect(has(/a\.route\.foodFocus\)\s*\|\|\s*f === 'food-plan'/)).toBe(false);
-    expect(has(/f === 'food-plan'\) return 'food'/)).toBe(true);
+    // The editor table moved to lib/heroEditor (six root causes, cause 1);
+    // `food-plan` still names the food plan itself, and no row pointer is read.
+    const ED = fs.readFileSync(path.join(__dirname, '../heroEditor.js'), 'utf8');
+    expect(/'food-plan': 'food'/.test(ED)).toBe(true);
+    expect(/foodFocus/.test(ED.replace(/\/\/.*$/gm, ''))).toBe(false);
   });
 
   test('the hero panel does not re-dispatch its own decision', () => {

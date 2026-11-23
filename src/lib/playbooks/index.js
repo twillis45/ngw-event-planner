@@ -1763,7 +1763,12 @@ export const DESTINATION_VENDOR_CATEGORIES = [
   { category: 'Transport', required: false, altToDIY: 'Guests self-manage — rental car or rideshare', when: 'T-60d', costRange: [40, 120], costUnit: 'per guest' },
   { category: 'Childcare / Kids’ Program', required: false, altToDIY: 'A family member watches the kids instead of hired childcare', when: 'T-90d', costRange: [75, 150], costUnit: 'flat' },
 ];
-const DESTINATION_TASKS = [
+// The engine's own derived steps declare their targets here, once: the row
+// builder below stamps them and lib/stepTarget resolves a stored row's id
+// through the same map (six root causes, cause 1 — never the row's words).
+export const DERIVED_STEP_TARGETS = Object.freeze({ 'fa-caterer': 'vendors', 'fa-bringers': 'bringing', 'tm-out': 'your-days' });
+
+export const DESTINATION_TASKS = [
   // DESTINATION-4: kidsLine rides the same hotel call as the room block — the
   // crib/connecting-room ask is one phone call, not a second task. Appended by
   // playbookChecklist only when kids are actually coming (eventHasKids).
@@ -1776,16 +1781,16 @@ const DESTINATION_TASKS = [
   // unverified cities; completion = the host's own "contacted", never an
   // app-asserted outcome. A courtesy block a CVB sources is the ZERO-risk
   // lodging model — this task deliberately precedes the room-block one.
-  { id: 'dest_t_cvb', label: 'Call the destination’s visitors bureau — it’s free (hotel tax pays for it). Ask for: room-block options at 2-3 price points, their group planning kit, welcome bags, and a welcome letter for the program', when: 'T-240d' },
-  { id: 'dest_t_lodging', label: 'Confirm the room block or share group hotel options with guests', when: 'T-210d', kidsLine: 'traveling with little kids? Ask about cribs and connecting rooms in the same call (one ask, not two)' },
+  { id: 'dest_t_cvb', target: 'cvb', label: 'Call the destination’s visitors bureau — it’s free (hotel tax pays for it). Ask for: room-block options at 2-3 price points, their group planning kit, welcome bags, and a welcome letter for the program', when: 'T-240d' },
+  { id: 'dest_t_lodging', target: 'stay', label: 'Confirm the room block or share group hotel options with guests', when: 'T-210d', kidsLine: 'traveling with little kids? Ask about cribs and connecting rooms in the same call (one ask, not two)' },
   // DESTINATION-4: an accessibility WALK, not a checkbox — venues answer "are you
   // accessible?" about the room; the trip fails on everything between the car
   // and the chair. Grounded in accessibility-consultant guidance.
-  { id: 'dest_t_access', label: 'Walk the whole guest path, not just the room — door widths, the ground between rooms and the event space, and the distance from parking', when: 'T-90d' },
+  { id: 'dest_t_access', target: 'place-notes', label: 'Walk the whole guest path, not just the room — door widths, the ground between rooms and the event space, and the distance from parking', when: 'T-90d' },
   // The grid matters on ANY trip — the base label is arrival-neutral so a road
   // trip is not told to track flights it does not have. modeLabel restores the
   // specific wording once the host says how people are getting there.
-  { id: 'dest_t_grid', label: 'Build the arrivals/departures grid — who gets in when', when: 'T-60d',
+  { id: 'dest_t_grid', target: 'arrivals', label: 'Build the arrivals/departures grid — who gets in when', when: 'T-60d',
     modeLabel: {
       fly: 'Build the arrivals/departures grid — who’s flying in when',
       drive: 'Build the arrivals/departures grid — who’s driving in when, and roughly how long they’re on the road',
@@ -1795,13 +1800,13 @@ const DESTINATION_TASKS = [
   // ANSWERED yes (whenChoice; the 'Not sure' default keeps it hidden, so an
   // unanswered question never claims a health need). No medical advice beyond
   // "worth a call to their doctor."
-  { id: 'dest_t_health', label: 'Pace the schedule for the guests who need it — build in real rest, and if the destination is high-altitude or strenuous, a quick call to their doctor is worth it', when: 'T-60d', whenChoice: { id: 'dest_health', in: ['Yes'] } },
+  { id: 'dest_t_health', target: 'guests', label: 'Pace the schedule for the guests who need it — build in real rest, and if the destination is high-altitude or strenuous, a quick call to their doctor is worth it', when: 'T-60d', whenChoice: { id: 'dest_health', in: ['Yes'] } },
   // whenMode as well as whenChoice: the dest_transport DECISION is dropped for a
   // driving trip, and choiceShown treats an absent pick as "unanswered -> show".
   // Without this gate the board correctly hid the question while the checklist
   // still asked the host to confirm a shuttle plan for a group that is driving.
-  { id: 'dest_t_transport', label: 'Confirm the ground-transport plan — shuttle, self-drive, or real rideshare coverage', when: 'T-45d', whenMode: { not: ['drive'] }, whenChoice: { id: 'dest_transport', in: ['Yes, a shuttle or van', 'Not sure yet'] } },
-  { id: 'dest_t_info', label: 'Send guests the getting-here info — how to get there, hotel, transport, cutoff dates', when: 'T-30d',
+  { id: 'dest_t_transport', target: 'rides', label: 'Confirm the ground-transport plan — shuttle, self-drive, or real rideshare coverage', when: 'T-45d', whenMode: { not: ['drive'] }, whenChoice: { id: 'dest_transport', in: ['Yes, a shuttle or van', 'Not sure yet'] } },
+  { id: 'dest_t_info', target: 'travel', label: 'Send guests the getting-here info — how to get there, hotel, transport, cutoff dates', when: 'T-30d',
     modeLabel: {
       fly: 'Send guests the getting-here info — airport, hotel, transport, cutoff dates',
       drive: 'Send guests the getting-here info — directions and parking, hotel, cutoff dates',
@@ -1810,8 +1815,8 @@ const DESTINATION_TASKS = [
   // DESTINATION-4: kids get a real role in the adult event — not the center of
   // it, not parked away from it (Priya Parker's framing). Gated on kids actually
   // coming (whenKids → eventHasKids), never on event type.
-  { id: 'dest_t_kidsjob', label: 'Give the kids a real job in the event — welcome-bag duty, the guestbook, a camera to roam with — so they’re part of it, not parked off to the side', when: 'T-14d', whenKids: true },
-  { id: 'dest_t_welcome', label: 'Drop welcome bags at the hotel for out-of-town guests', when: 'T-1d' },
+  { id: 'dest_t_kidsjob', target: 'none', label: 'Give the kids a real job in the event — welcome-bag duty, the guestbook, a camera to roam with — so they’re part of it, not parked off to the side', when: 'T-14d', whenKids: true },
+  { id: 'dest_t_welcome', target: 'none', label: 'Drop welcome bags at the hotel for out-of-town guests', when: 'T-1d' },
 ];
 
 // ── DESTINATION-5 — the multi-day pacing template ─────────────────────────────
@@ -1986,6 +1991,8 @@ export function playbookChecklist(event, asOf) {
     const eventDay = offset === 0;
     rows.push({
       id: `pbt-${event.id}-${t.id}`,
+      // The step's declared target (lib/stepTarget): where its work is done.
+      target: t.target || null,
       // kidsLine — a sub-line that only exists when kids are coming (the crib/
       // connecting-room ask on the lodging call). Tasks without one are untouched.
       // taskLabelFor picks the arrival-mode wording BEFORE the answered-copy
@@ -2036,6 +2043,7 @@ export function playbookChecklist(event, asOf) {
     const off = -7;
     rows.push({
       id: `pbt-${event.id}-fa-caterer`,
+        target: DERIVED_STEP_TARGETS['fa-caterer'],
       task: 'Confirm your caterer and send them the final headcount',
       category: 'planning', phase: 'food', week: taskPhaseLabel(off), owner: '',
       // 2026-07-15: persist the numeric lead like every other row above — this task
@@ -2063,6 +2071,7 @@ export function playbookChecklist(event, asOf) {
       const off = -14;
       rows.push({
         id: `pbt-${event.id}-fa-bringers`,
+        target: DERIVED_STEP_TARGETS['fa-bringers'],
         task: 'Ask who is bringing which dish, and put their names on the Bringing list',
         category: 'planning', phase: 'food', week: taskPhaseLabel(off), owner: '',
         leadDays: off,
@@ -2082,6 +2091,7 @@ export function playbookChecklist(event, asOf) {
       const off = -30;
       rows.push({
         id: `pbt-${event.id}-tm-out-${m.key}`,
+        target: DERIVED_STEP_TARGETS['tm-out'],
         task: `${m.dayLabel} · Reserve a table for the group ${m.meal}`,
         category: 'planning', phase: 'food', week: taskPhaseLabel(off), owner: '',
         leadDays: off,
@@ -2098,6 +2108,7 @@ export function playbookChecklist(event, asOf) {
     for (const s of DINNER_OWN_STEPS) {
       rows.push({
         id: `pbt-${event.id}-cel-${s.key}`,
+        target: s.target,
         task: s.label,
         category: 'planning', phase: 'food', week: '', owner: '',
         leadDays: null,

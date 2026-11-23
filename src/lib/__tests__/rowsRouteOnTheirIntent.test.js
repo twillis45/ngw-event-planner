@@ -14,6 +14,7 @@
 // Each row below is the real playbook row, through the real router and resolver.
 // Expected: `kind` (any focus), `kind:focus` (exact), or null (real-world work
 // with no screen keeps no button rather than a wrong one).
+import { routeByWords } from '../__fixtures__/stepByWords';
 import { checklistRouteFor } from '../taskRoute';
 import { resolveRoute } from '../routeResolver';
 import { ALL_PLAYBOOKS, playbookChecklist } from '../playbooks';
@@ -24,7 +25,7 @@ const landing = (type, taskId) => {
   const e = ev(type);
   const row = (playbookChecklist(e, '2026-10-01') || []).find((r) => r.id === `pbt-${e.id}-${taskId}`);
   if (!row) throw new Error(`${type} has no ${taskId} row`);
-  const hit = checklistRouteFor(row.task, { week: row.week, category: row.category }, e);
+  const hit = routeByWords(row.task, { taskId: row.id, week: row.week, category: row.category }, e);
   const to = hit && hit.route ? resolveRoute(hit.route) : null;
   return { row, hit, where: to ? (to.focus ? `${to.kind}:${to.focus}` : to.kind) : (hit && hit.href ? 'external' : null) };
 };
@@ -109,7 +110,7 @@ describe('P0-2: the crab order opens only for buying crabs at a Crab Feast', () 
       if (pb.type === 'Crab Feast') continue;
       const e = ev(pb.type);
       for (const r of (playbookChecklist(e, '2026-10-01') || [])) {
-        const hit = checklistRouteFor(r.task, { week: r.week, category: r.category }, e);
+        const hit = routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, e);
         const to = hit && hit.route ? resolveRoute(hit.route) : null;
         if (to && to.kind === 'crabs') bad.push(`${pb.type}: ${r.task.slice(0, 60)}`);
       }
@@ -118,6 +119,7 @@ describe('P0-2: the crab order opens only for buying crabs at a Crab Feast', () 
   });
 
   test('with no event, a crab row does not open the crab order', () => {
+    // No event, no playbook: the row has no declared target to read (cause 1).
     const hit = checklistRouteFor('Pre-order the crabs by size and count', {}, null);
     expect(hit && hit.route && hit.route.focusField).not.toBe('crab-plan');
   });

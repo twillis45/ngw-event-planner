@@ -15,6 +15,7 @@
 //     domain fallback read "pay". Checking a listing is stay work.
 // The rules are fixed, not the rows; the neighbors below pin that nothing
 // else moved with them.
+import { routeByWords } from '../__fixtures__/stepByWords';
 import { checklistRouteFor } from '../taskRoute';
 import { resolveRoute } from '../routeResolver';
 import { playbookChecklist } from '../playbooks';
@@ -25,7 +26,7 @@ const land = (type, re) => {
   const e = ev(type);
   const r = (playbookChecklist(e, '2026-10-01') || []).find((x) => re.test(x.task));
   if (!r) throw new Error(`no ${type} row matching ${re}`);
-  const hit = checklistRouteFor(r.task, { week: r.week, category: r.category }, e);
+  const hit = routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, e);
   return { label: hit && hit.label, to: hit && hit.route ? resolveRoute(hit.route) : null };
 };
 
