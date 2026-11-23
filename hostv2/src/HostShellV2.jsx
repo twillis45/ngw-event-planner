@@ -12401,8 +12401,8 @@ export default function HostShellV2() {
                    The line, a primary Sign in, and a ✕ that is exactly the old
                    "Not now" (closeKeepAsk, no analytics). Doctrine 02, ruling 25. */
                 <div className="keep-ask" data-keep-ask data-move-notice={MOVE_NOTICE ? '' : undefined}>
-                  <p className="keep-ask-t">{MOVE_NOTICE || <><b>Not saved yet.</b> Sign in to keep it.</>}</p>
-                  <button className="cta" onClick={() => { setKeepAskClosed(c => [...c, keepAskEvent.id]); keepIntentRef.current = 'device_plan'; setSheet({ kind: 'settings', keep: true }); trackKeepPrompt('device_plan'); }}>Sign in</button>
+                  <p className="keep-ask-t">{MOVE_NOTICE || <b>Not saved yet.</b>}</p>
+                  <button className="cta" onClick={() => { setKeepAskClosed(c => [...c, keepAskEvent.id]); keepIntentRef.current = 'device_plan'; setSheet({ kind: 'settings', keep: true }); trackKeepPrompt('device_plan'); }}>Sign in to save</button>
                   <button className="keep-ask-x" aria-label="Dismiss" onClick={() => closeKeepAsk(keepAskEvent.id)}>✕</button>
                 </div>
               )}

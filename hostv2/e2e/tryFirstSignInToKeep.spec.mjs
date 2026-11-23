@@ -198,7 +198,7 @@ test.describe('try first, sign in to keep', () => {
     const created = await page.evaluate(() => (window.__NGW_TRACK__ || []).filter((t) => t.event === 'event_created'));
     expect(created).toEqual([{ event: 'event_created', is_first: true, event_type: 'Game Night', unsaved: true }]);
     // The existing row asks her to keep it, on the plan, not in her way.
-    await expect(page.locator('[data-keep-ask]')).toContainText('Not saved yet. Sign in to keep it.', { timeout: 8000 });
+    await expect(page.locator('[data-keep-ask]')).toContainText('Not saved yet.', { timeout: 8000 });
     await page.reload();
     await page.waitForFunction(() => (document.querySelector('.app') || {}).innerText?.length > 80, null, { timeout: 20000 });
     await page.waitForTimeout(1500);
@@ -214,7 +214,7 @@ test.describe('try first, sign in to keep', () => {
     await boot(page);
     const ask = page.locator('[data-keep-ask]');
     // One row since owner ruling 25 (11/21/2026); theSignInIsOneRow holds its shape.
-    await expect(ask).toContainText('Not saved yet. Sign in to keep it.', { timeout: 8000 });
+    await expect(ask).toContainText('Not saved yet.', { timeout: 8000 });
     // Nothing deleted, nothing sent while signed out.
     expect(await stored(page)).toEqual(['Sunday Brunch']);
     expect(calls.writes).toHaveLength(0);
