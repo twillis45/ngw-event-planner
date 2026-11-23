@@ -3304,18 +3304,29 @@ export default function HostShellV2() {
   // CTAs on tall phones) — hides on scroll-down, returns on scroll-up/top.
   const [dockHidden, setDockHidden] = useState(false);
   const lastScrollY = useRef(0);
+  // THE PHONE'S PILL HIDES WHILE *SHE* SCROLLS DOWN (owner ruling 5,
+  // 11/23/2026). The board also scrolls itself (focus returning to the title
+  // after a sheet closes moved it 55px), and that tucked the pill away with
+  // nothing she did. On the phone a downward scroll hides it only right after
+  // her own input: a touch, the wheel, or a scrolling key.
+  const userScrollAt = useRef(0);
+  const pillRef = useRef(false);
+  pillRef.current = phonePill;
   useEffect(() => {
     const app = appRef.current;
     if (!app) return;
+    const intent = () => { userScrollAt.current = Date.now(); };
+    const keyIntent = (e) => { if (/^(ArrowDown|ArrowUp|PageDown|PageUp|End|Home| )$/.test(e.key)) intent(); };
     const onScroll = () => {
       const y = app.scrollTop;
       const delta = y - lastScrollY.current;
+      const hers = !pillRef.current || Date.now() - userScrollAt.current < 800;
       // Reimagined bottom (host request 2026-07-16): the nav dock is HIDDEN until
       // viewport movement, revealing on scroll-up (or at the top) and tucking away on
       // scroll-down — because the persistent primary action now lives in the always-on
       // NEXT bar pinned at the frame bottom, so navigation no longer has to stay parked.
       if (y < 40) setDockHidden(false);
-      else if (delta > 6) setDockHidden(true);
+      else if (delta > 6 && hers) setDockHidden(true);
       else if (delta < -6) setDockHidden(false);
       lastScrollY.current = y;
     };
@@ -3323,7 +3334,15 @@ export default function HostShellV2() {
     // so nothing else would bring back a pill tucked away on the last one.
     setDockHidden(false); lastScrollY.current = app.scrollTop;
     app.addEventListener('scroll', onScroll, { passive: true });
-    return () => app.removeEventListener('scroll', onScroll);
+    app.addEventListener('touchmove', intent, { passive: true });
+    app.addEventListener('wheel', intent, { passive: true });
+    window.addEventListener('keydown', keyIntent);
+    return () => {
+      app.removeEventListener('scroll', onScroll);
+      app.removeEventListener('touchmove', intent);
+      app.removeEventListener('wheel', intent);
+      window.removeEventListener('keydown', keyIntent);
+    };
   }, [stage]);
   // THE PHONE'S FIRST SCREEN ENDS AT THE FOLD, JUST ABOVE THE PILL (owner
   // ruling 7, 11/23/2026). The screen is the scroller's height less what sits

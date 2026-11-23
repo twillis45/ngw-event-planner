@@ -24,6 +24,11 @@ test('at 320×640 the progress labels are whole and the handle keeps a gap', asy
   // same two claims, on it: the line is whole, and the handle keeps clear of
   // the text above it. And the pill fits 320 (ruling 4).
   await page.locator('[data-pp-line]').first().waitFor({ state: 'visible', timeout: 20000 });
+  // Measure at rest: the hero's entrance moves its text for a moment (under
+  // load the first run read a handle 14px "into" text that was still sliding).
+  await page.waitForFunction(() => document.getAnimations()
+    .filter((a) => { const t = a.effect && a.effect.getTiming(); return t && t.iterations !== Infinity && t.duration !== 'auto'; })
+    .every((a) => a.playState !== 'running'));
   const m = await page.evaluate(() => {
     const line = document.querySelector('[data-pp-line]');
     const grab = document.querySelector('.efold-grab');

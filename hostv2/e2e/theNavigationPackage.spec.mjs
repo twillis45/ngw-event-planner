@@ -299,11 +299,30 @@ test.describe('phone 390x844', () => {
       return { onScreen: r.top < innerHeight - 1 && parseFloat(getComputedStyle(p).opacity) > 0.5, hit: !!hit && p.contains(hit) };
     });
     expect(await pillState()).toEqual({ onScreen: true, hit: true });
+    // She scrolls (the wheel here; a finger on a phone): the pill tucks away.
+    await page.mouse.move(195, 420);
+    for (let i = 0; i < 3; i++) { await page.mouse.wheel(0, 160); await page.waitForTimeout(150); }
+    await page.waitForTimeout(400);
+    expect(await page.evaluate(() => document.querySelector('.app').scrollTop), 'premise: the board scrolled').toBeGreaterThan(200);
+    expect(await pillState(), 'hidden while scrolling down').toEqual({ onScreen: false, hit: false });
+    await page.mouse.wheel(0, -120); await page.waitForTimeout(500);
+    expect(await pillState(), 'back on scroll up').toEqual({ onScreen: true, hit: true });
+    await ctx.close();
+  });
+
+  test('5: a scroll the board makes by itself (not hers) does not hide the pill', async ({ browser }) => {
+    // Closing a sheet returns focus to its opener and can move the board; that
+    // tucked the pill away with nothing she did (found by qaFixturesAreDemoOnly).
+    const { ctx, page } = await created(browser, PHONE);
     for (const y of [120, 260, 420]) { await scrollApp(page, y); await page.waitForTimeout(120); }
     await page.waitForTimeout(400);
-    expect(await pillState(), 'hidden while scrolling down').toEqual({ onScreen: false, hit: false });
-    await scrollApp(page, 300); await page.waitForTimeout(500);
-    expect(await pillState(), 'back on scroll up').toEqual({ onScreen: true, hit: true });
+    expect(await page.locator('[data-tt-bar].is-hidden').count(), 'a programmatic scroll leaves the pill up').toBe(0);
+    await page.locator('[data-tt-title]').click();
+    await sheetSettled(page);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(800);
+    expect(await page.locator('[data-tt-bar].is-hidden').count(), 'closing a sheet leaves the pill up').toBe(0);
+    await page.locator('[data-tt-bar]').getByRole('button', { name: 'Search', exact: true }).click({ timeout: 5000 });
     await ctx.close();
   });
 
