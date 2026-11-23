@@ -164,7 +164,7 @@ const genderReveal = {
   ],
 
   tasks: [
-    { id: 't_handoff', target: 'vendors', facts: [], milestoneId: 'gr_handoff', phase: 'reveal', label: 'Give baker/shop the sealed envelope; confirm neutral exterior so parents are surprised', when: 'T-18d' },
+    { id: 't_handoff', target: 'vendors', facts: [], shopClock: true, milestoneId: 'gr_handoff', phase: 'reveal', label: 'Give baker/shop the sealed envelope; confirm neutral exterior so parents are surprised', when: 'T-18d' },
     { id: 't_invite', target: 'invite', facts: ['invites-out'], milestoneId: 'gr_invite', phase: 'guest', label: 'Send invites with RSVP-by, dietary ask, and "wear pink or blue" note', when: 'T-14d' },
     { id: 't_capture', target: 'vendors', facts: [], milestoneId: 'gr_capture', phase: 'reveal', label: 'Assign a photographer/videographer; frame the parents + reveal in one shot; charge devices', when: 'T-10d' },
     { id: 't_rsvp', target: 'chase', facts: ['replies-chased'], milestoneId: 'gr_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count', when: 'T-4d' },

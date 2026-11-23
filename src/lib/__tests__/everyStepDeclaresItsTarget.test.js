@@ -683,3 +683,42 @@ describe('the checklist builder’s derived rows read declarations, never row te
     expect(body).not.toMatch(/\.test\(\s*(?:String\()?r\.task/);
   });
 });
+
+// ─── THE SHOP CLOCK IS A DECLARED STEP (owner ruling 3c, 11/23/2026) ────────
+// phaseProgress gave the final week's food and shopping rows their closing
+// window from the open timeline row whose TEXT said "shop". Each step that
+// carries the clock now declares `shopClock` (a hand-authored sample row
+// carries it itself), derived once from that rule and committed; which steps
+// SHOULD carry it is an owner call (HANDOFF lists today's answers).
+describe('the shop clock reads a declaration, never a row’s words', () => {
+  const { useFrozenClock, daysFromNow } = require('../../testUtils/frozenClock');
+  useFrozenClock();
+  const { deriveEventPhaseProgress } = require('../phaseProgress');
+  const clock = (ev) => JSON.stringify((deriveEventPhaseProgress(ev).items || []).filter((i) => i.id === 'food' || i.id === 'shopping')
+    .map((i) => [i.id, i.leadDays == null ? null : i.leadDays, !!i.closingWindow]));
+  test('the food and shopping rows keep their clock whatever the rows say', () => {
+    const wrong = [];
+    let clocked = 0;
+    for (const pb of pbm.ALL_PLAYBOOKS) {
+      const picks = {};
+      for (const d of pb.decisions || []) { const o = (d.options || [])[0]; const l = typeof o === 'string' ? o : (o && (o.label || o.value)); if (l) picks[d.id] = l; }
+      for (const d of [6, 3, 1]) {
+        for (const choices of [{}, picks]) {
+          const ev = { id: 'sc', type: pb.type, name: 'N', date: daysFromNow(d), guestMode: 'count', guestCount: 30, totalBudget: 9000, venue: 'The Hall', venueCity: 'Austin, TX', startTime: '18:00', guests: [], vendors: [], budget: [], foodChoices: choices, dietaryNoted: true };
+          const rows = pbm.playbookChecklist(ev) || [];
+          const own = clock({ ...ev, timeline: rows });
+          if (own.includes('true')) clocked += 1;
+          for (const w of ['Tidy up', 'Main shop: snacks and drinks']) {
+            if (clock({ ...ev, timeline: rows.map((r) => ({ ...r, task: w })) }) !== own) { wrong.push(`${pb.type} T-${d} "${w}"`); break; }
+          }
+        }
+      }
+    }
+    expect(wrong.slice(0, 40)).toEqual([]);
+    expect(clocked).toBeGreaterThan(0);
+  });
+  test('phaseProgress holds no rule over a row’s words for the clock', () => {
+    const code = fs.readFileSync(path.join(__dirname, '..', 'phaseProgress.js'), 'utf8').replace(/^\s*\/\/.*$/gm, '');
+    expect(code).not.toMatch(/shop\(ping\)\?/);
+  });
+});
