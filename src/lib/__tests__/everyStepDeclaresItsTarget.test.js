@@ -568,9 +568,12 @@ describe('a composite step is declared, never read off its words', () => {
 // (its only job is catering, so it may drop).
 describe('when she cooks, a step that names other vendors keeps them', () => {
   const { cookTasksFor } = require('../playbooks/cookLever');
-  // Owner call pending (named in HANDOFF): steps that name no vendor but
-  // carry other work beside the caterer. They keep today's behavior.
-  const PENDING = new Set(['Board Meeting:t_setup', 'Quinceañera:t_fitting']);
+  // Owner call pending (named in HANDOFF), keeping today's behavior: steps
+  // that name no vendor but carry other work beside the caterer, and
+  // Birthday's last invoices (it names the bartender, but keeping it when she
+  // cooks breaks foodApproach.test's ruled "the cook list is never longer
+  // than the caterer list").
+  const PENDING = new Set(['Board Meeting:t_setup', 'Quinceañera:t_fitting', 'Birthday:t_after_invoices']);
   const stepsOf = (pb) => [...(pb.tasks || []), ...cookTasksFor(pb), ...pbm.DESTINATION_TASKS];
   const cooks = (out) => Array.isArray(out) && out.includes('host-cooks');
 
