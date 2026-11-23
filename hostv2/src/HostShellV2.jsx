@@ -5228,7 +5228,8 @@ export default function HostShellV2() {
   // The date this ledger's denominator next moves (phaseProgress). A completion
   // claim made without it is a claim with a fuse — see the field's own comment.
   const ledgerExpiry = (phaseCues && phaseCues.nextLedgerChange) || null;
-  const planHorizon = nextPlanAttentionDate(plan, ledgerExpiry);
+  // The event too, so the checklist's own dates count (batch 11, C P1-2).
+  const planHorizon = nextPlanAttentionDate(plan, ledgerExpiry, undefined, event);
   const planHorizonShort = planHorizon ? new Date(planHorizon.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null;
   const ledgerExpiryShort = ledgerExpiry ? (() => {
     try { return new Date(ledgerExpiry.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return null; }

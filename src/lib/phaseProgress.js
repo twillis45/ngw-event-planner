@@ -33,7 +33,8 @@ import { vendorIsCommitted, vendorBalance } from './vendorMoney';
 import { hostSpending } from './hostSpending';
 import { expectedHeadroom } from './budgetCopy';
 import { daysUntil, spanEnd, getToday, localISO } from './dates';
-import { taskLeadDays } from './taskLead';
+import { taskLeadDays, taskDueInDays } from './taskLead';
+import { timelineStepResolved } from './taskEngine';
 import { budgetFor } from './budgetFor';
 import { startTimeIsConfirmed } from './startTime';
 import { lodgingIsHeld, lodgingAsk } from './lodgingIntel';
@@ -674,9 +675,26 @@ function postProgress(ev) {
 
 
 /** Earliest dated work already declared by eventPlan; never re-ranks its actions. */
-export function nextPlanAttentionDate(plan, ledgerChange, now) {
+// THE CHECKLIST'S OWN DATES COUNT (batch 11; audit 2 lane C P1-2). "next dated
+// work: Jun 5" (the day the shopping list opens) sat over a checklist with
+// "Send invites…" due May 25. Given the event, its open checklist steps
+// (`event.timeline`, the rows the checklist prints; a ticked, proven or retired
+// step is handled, timelineStepResolved) join the plan's rows and the ledger's
+// next change, each at its own due date (taskDueInDays, the one date rule).
+// Without the event the answer is the one it always was.
+export function nextPlanAttentionDate(plan, ledgerChange, now, event) {
   let earliest = ledgerChange && daysUntil(ledgerChange.date, now) != null
     ? { ...ledgerChange, days: daysUntil(ledgerChange.date, now) } : null;
+  const steps = event && Array.isArray(event.timeline) ? event.timeline : [];
+  for (const t of steps) {
+    if (!t || t.done) continue;
+    try { if (timelineStepResolved(event, t)) continue; } catch (_e) { continue; }
+    const due = (() => { try { return taskDueInDays(t, event, now); } catch (_e) { return null; } })();
+    if (due == null || (earliest && due >= earliest.days)) continue;
+    const date = getToday(now);
+    date.setDate(date.getDate() + due);
+    earliest = { date: localISO(date), days: due, id: t.id || null, what: t.task || null };
+  }
   const rows = [...((plan && plan.nextActions) || []), ...((plan && plan.worries) || []), ...((plan && plan.setAside) || [])];
   for (const action of rows) {
     if (!action || action.done) continue;
