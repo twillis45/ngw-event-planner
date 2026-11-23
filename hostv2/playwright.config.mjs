@@ -47,6 +47,8 @@ const SELF_PINNED = [
   '**/regimeBoundary.spec.mjs',
   '**/responsiveBaseline.spec.mjs',
   '**/tabletLandscapeSplit.spec.mjs',
+  // Rotates an iPad itself (owner, 11/22/2026).
+  '**/aTabletTurnsWithoutLosingItsPlace.spec.mjs',
   '**/tapTargets.spec.mjs',
   // Drives its own three geometries (one lit button per sheet, batch 4, 11/21/2026).
   '**/oneLitButtonPerSheet.spec.mjs',
