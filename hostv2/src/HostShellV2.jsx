@@ -264,6 +264,7 @@ import { storeSearchTerm } from '@app/lib/knowledge/storeUnitMap';
 const icSearchTerm = (line) => storeSearchTerm(line);
 import { parseSmartEventText, HOST_TYPES } from '@app/lib/smartParseEvent';
 import { townFieldsToPersist } from '@app/lib/townFieldsToPersist';
+import { createSetDown, undoThatBringsBack, settleCountRow } from './setDown.js';
 import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcomeGate';
 // The engine's tuned haptic bands. Free to import — feedback.js has zero
 // imports of its own — and it carries the two guards this shell was missing:
@@ -5424,16 +5425,12 @@ export default function HostShellV2() {
   // satisfied without telling the receipt. Every settle now records the ask on
   // the receipt its write raises (`pendingSatisfiedRef`, read by patchEvent)
   // and on the receipt already up, so that receipt's Undo brings it back.
-  const settleAndSetDown = (id, write) => {
-    if (id != null) pendingSatisfiedRef.current = [...pendingSatisfiedRef.current, id];
-    try { if (write) write(); } finally {
-      if (id != null) {
-        pendingSatisfiedRef.current = pendingSatisfiedRef.current.filter((x) => x !== id);
-        setSatisfiedIds(ids => ids.includes(id) ? ids : [...ids, id]);
-        setHeroReceipt(r => (r && !(r.satisfied || []).includes(id) ? { ...r, satisfied: [...(r.satisfied || []), id] } : r));
-      }
-    }
-  };
+  // The rules (and the order they run in) live in ./setDown.js, under vitest.
+  const settleAndSetDown = createSetDown({
+    pending: pendingSatisfiedRef,
+    markSatisfied: (id) => setSatisfiedIds(ids => ids.includes(id) ? ids : [...ids, id]),
+    addToReceipt: (id) => setHeroReceipt(r => (r && !(r.satisfied || []).includes(id) ? { ...r, satisfied: [...(r.satisfied || []), id] } : r)),
+  });
   // ONE Undo for every receipt the board shows (hero card or calm board). It
   // puts back the edit and the ask that edit set down (`satisfied`).
   const undoHeroReceipt = () => {
@@ -8761,7 +8758,7 @@ export default function HostShellV2() {
           if (receiptTimerRef.current) clearTimeout(receiptTimerRef.current);
           receiptTimerRef.current = setTimeout(() => setHeroReceipt(null), 7000);
         } else {
-          toast(msg, { label: 'Undo', fn: pend.length ? () => { setSatisfiedIds(ids => ids.filter(x => !pend.includes(x))); return undoFn(); } : undoFn }, 'ok');
+          toast(msg, { label: 'Undo', fn: undoThatBringsBack(pend, undoFn, (back) => setSatisfiedIds(ids => ids.filter(x => !back.includes(x)))) }, 'ok');
         }
       }
       // A non-undoable write may still carry one action (opts.action) — e.g.
@@ -9310,8 +9307,10 @@ export default function HostShellV2() {
   // both resolutions fired their receipt and left the same hero standing.
   const countResolutionRows = (onSettled) => {
     const yes = confirmedHeads;   // COVERS, not rows — see confirmedHeads
-    const matchYes = () => { patchEvent({ catererCount: yes }, 'Caterer set to the ' + yes + ' confirmed yeses — the mismatch is closed.'); setChoiceOpen(null); if (onSettled) onSettled(); };
-    const holdGuests = () => { patchEvent({ catererCount: guests }, 'Caterer told ' + guests + ' — noted as your call; it won’t re-ask today.'); setChoiceOpen(null); if (onSettled) onSettled(); };
+    // The write runs THROUGH onSettled, so the ask it sets down rides on its
+    // own Undo (batch 11; settleCountRow in ./setDown.js says why).
+    const matchYes = () => settleCountRow({ write: () => patchEvent({ catererCount: yes }, 'Caterer set to the ' + yes + ' confirmed yeses — the mismatch is closed.'), close: () => setChoiceOpen(null), onSettled });
+    const holdGuests = () => settleCountRow({ write: () => patchEvent({ catererCount: guests }, 'Caterer told ' + guests + ' — noted as your call; it won’t re-ask today.'), close: () => setChoiceOpen(null), onSettled });
     return (
       <div className="decopts">
         {[['Match confirmed yeses (' + yes + ')', matchYes], ['Hold ' + guests + ' plates anyway', holdGuests]].map(([label, fn], i) => (
@@ -9555,7 +9554,7 @@ export default function HostShellV2() {
             return (
               <div style={{ marginTop: ASK_RHYTHM.whyToCta }}>
                 <span className="of">Your caterer is set for {event.catererCount} · {yes} confirmed</span>
-                {countResolutionRows(() => settleAndSetDown(a && a.id ? a.id : null))}
+                {countResolutionRows((write) => settleAndSetDown(a && a.id ? a.id : null, write))}
               </div>
             );
           })()}
@@ -9924,7 +9923,7 @@ export default function HostShellV2() {
       // The two count resolutions render as tactile .decopt rows — ONE shared
       // definition (countResolutionRows) also composed by the guests editor's
       // drift bridge (W14), so a mismatched count is fixable wherever it shows.
-      return countResolutionRows(() => settleAndSetDown(a && a.id ? a.id : null));
+      return countResolutionRows((write) => settleAndSetDown(a && a.id ? a.id : null, write));
     }
     return null;
   };
