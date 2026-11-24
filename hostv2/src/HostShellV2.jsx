@@ -341,7 +341,7 @@ import { appEmailWords, messageEmailResult } from '@app/lib/appEmail';
 import { buildHelperAsk } from '@app/lib/helperAsk';
 import PolicyLinks from './PolicyLinks.jsx';
 import { VersionAndWhatsNew } from './WhatsNew.jsx';
-import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine } from '@app/lib/guestMerge';
+import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine, renamedGuestPatch } from '@app/lib/guestMerge';
 import { MAX_DATE_OPTIONS, dateOptionsOf, datePollTally, dateOptionPatch, nextDateOptionId } from '@app/lib/datePoll';
 import { giftCashTotal, isAbsentGiver, thankYouGiftLine } from '@app/lib/giftLog';
 import { borrowedList, markReturned, addBorrowed } from '@app/lib/borrowedList';
@@ -4742,7 +4742,6 @@ export default function HostShellV2() {
   // tap did, or jump straight to "Confirmed"). This opens an explicit picker of
   // the whole ladder; the pill toggles it, a chip sets the status directly.
   const [statusPickFor, setStatusPickFor] = useState(null); // vendor id whose picker is open
-  const [mealPickFor, setMealPickFor] = useState(null); // guest index whose meal picker is open (#6)
   // (rsvpPickFor retired 2026-08-07: the reply picker lives in the guest's own
   // disclosure now, so `guestOpen` is the only open/closed state for that row.)
   const setVendorStatus = (v, status) => {
@@ -8666,6 +8665,25 @@ export default function HostShellV2() {
     patchEvent({ guests: gs, kidsCount }, (g && g.name || 'Guest') + ' removed from the list.');
     setGuestOpen(null);
   };
+  // KEEP HER PLACE (owner, 11/24/2026): an opened guest's name scrolls to the
+  // top of the sheet, so the rows the editor pushes down do not leave the host
+  // looking at someone else. Instant under prefers-reduced-motion.
+  useEffect(() => {
+    if (guestOpen == null) return undefined;
+    const raf = requestAnimationFrame(() => {
+      try {
+        const ed = document.getElementById('v2-guest-detail-' + guestOpen);
+        if (!ed) return;
+        const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        let sc = ed.parentElement;
+        while (sc && sc !== document.body && !(sc.scrollHeight > sc.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+        if (!sc || sc === document.body) { ed.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' }); return; }
+        const top = sc.scrollTop + ed.getBoundingClientRect().top - Math.max(0, sc.getBoundingClientRect().top) - 8;
+        sc.scrollTo({ top: Math.max(0, top), behavior: reduce ? 'auto' : 'smooth' });
+      } catch { /* the editor is open either way */ }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [guestOpen]);
   // Couple lines ("Ryan and Nicole") become TWO real guests — each with their
   // own RSVP, plate, and seat — because one shared row undercounts every
   // engine (audit 2026-07-27). Suggest-and-confirm: the preview under the
@@ -28475,348 +28493,310 @@ export default function HostShellV2() {
                     {markInviteSent && <button className="mini" data-invite-sent onClick={markInviteSent.onClick}>{markInviteSent.label}</button>}
                   </div>
               </>);
-              // ── THE GUEST DETAIL, HOISTED (owner §26) ───────────────────
-              // Unchanged markup and unchanged handlers — every writer here is
-              // still index-based against `event.guests`, which is why `i` is
-              // passed rather than recomputed from the guest object.
-              // ── §5D · THE PANEL IS ABOUT A PERSON, NOT A FORM ───────────
-              // Owner: *"the selected guest rail currently reads like controls
-              // placed into a dark container… Recompose it around the
-              // PERSON/HOUSEHOLD first. Then expose editing naturally."*
-              // The controls are untouched — every one is wired and
-              // index-based — and a person header now leads them: who this is,
-              // where they stand, who they arrive with. Nothing here derives a
-              // new fact; it restates the row's own four concepts at panel
-              // scale so the editing below has a subject.
-              // ── §5D · A FIELD WITH NO LABEL IS A GUESS ──────────────────
-              // The detail panel's inputs carried their label as a placeholder,
-              // which vanishes the moment anyone types — so a filled panel read
-              // as five anonymous boxes, and the review called it a debug form.
-              // `fld` adds a visible caption under People and returns the input
-              // untouched on the legacy surface, so the baseline composition is
-              // byte-identical. The inputs keep their own `aria-label`; the
-              // caption is additional, not a replacement.
-              const fld = (label, input) => (peopleMode
-                ? <label className="people-fld">{label}{input}</label>
-                : input);
-              const guestHead = (g) => {
-                const partner = g.coupleId
-                  ? (event.guests || []).find((x) => x && x !== g && x.coupleId === g.coupleId)
-                  : null;
-                const party = [
-                  partner && partner.name ? 'with ' + String(partner.name).split(' ')[0] : null,
-                  plusOneLabel(g) || null,
-                  Number(g.kids) > 0 ? g.kids + ' kid' + (Number(g.kids) === 1 ? '' : 's') : null,
+              // ── THE GUEST EDITOR READS IN GROUPS (owner, 11/24/2026: "Combine
+              // 1A and 1B") ───────────────────────────────────────────────────
+              // One definition, two placements (§26): inline under its row on a
+              // phone or tablet, the 340px column at the desktop grid, the rail
+              // under ?people=1. Top to bottom: the name, editable where it
+              // stands; Reply; Who's coming; How to reach them; Actions; Remove.
+              // Every write is the roster's own writer, index-based against
+              // `event.guests`: writeGuest (fields, kids), setRsvpValue (the
+              // reply and its covers receipt), removeGuest (its toast's Undo
+              // puts the guest back). Same data model: one +1 text field, a
+              // children count, one meal, one dietary field.
+              const MEAL_CHOICES = ['—', 'Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
+              // The four replies in the order a host reads them; the labels and
+              // values stay RSVP_VALUES's.
+              const REPLY_ORDER = ['Yes', 'Maybe', 'No', ''].map((v) => RSVP_VALUES.find(([x]) => x === v));
+              const gIcon = (d) => (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>
+              );
+              const ICON_CALL = gIcon(<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z" />);
+              const ICON_TEXT = gIcon(<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />);
+              const ICON_MAIL = gIcon(<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></>);
+              const ICON_UP = gIcon(<path d="m6 15 6-6 6 6" />);
+              const ICON_BIN = gIcon(<><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /></>);
+              const guestDetail = (g, i) => {
+                const name = String(g.name || '').trim();
+                const first = name.split(/\s+/)[0] || 'them';
+                const digits = String(g.phone || '').replace(/[^+\d]/g, ''); // sms:/tel: want digits, not "(919) 555-…"
+                const email = String(g.email || '').trim();
+                const kids = Number(g.kids) || 0;
+                const plus = plusOneCount(g);
+                const party = 1 + plus + kids;
+                const meal = String(g.meal || '—');
+                const mealOpen = meal === '—';
+                const meals = MEAL_CHOICES.includes(meal) ? MEAL_CHOICES : [...MEAL_CHOICES, meal];
+                const initials = (() => {
+                  const parts = name.split(/\s+/).filter(Boolean);
+                  if (!parts.length) return '?';
+                  return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+                })();
+                const state = g.rsvp === 'No' ? 'Can’t make it' : (g.rsvp === 'Yes' ? 'Coming' : (g.rsvp || 'No reply'));
+                const partyLine = [
+                  party > 1 ? 'Party of ' + party : null,
+                  kids ? kids + (kids === 1 ? ' child' : ' children') : null,
                   String(g.group || '').trim() || null,
-                ].filter(Boolean);
-                const state = g.rsvp === 'No' ? 'Can\u2019t make it' : (g.rsvp === 'Yes' ? 'Coming' : (g.rsvp || 'No reply'));
+                ].filter(Boolean).join(' · ');
+                const roles = (() => { try { return guestHelperRoles(event, g.id); } catch { return []; } })();
+                // THE NAME, IN PLACE. Saved on Enter or when she leaves the field;
+                // a blank or unchanged name is not saved. The old name stays as
+                // her alias (lib/guestMerge renamedGuestPatch) so the replies the
+                // account sends back under it, and a CSV row that only has it,
+                // still land on this row.
+                const commitName = (el) => {
+                  const p = renamedGuestPatch(g, el.value);
+                  if (!p) { el.value = g.name || ''; return; }
+                  writeGuest(i, p, (name || 'This guest') + ' is now ' + p.name + '.');
+                };
+                const chasing = chase && !g.rsvp;
+                const reachable = !!(digits || email);
+                const told = isTold(guestToldMap(event), g.id);
+                // THE NUDGE (chase mode, no reply yet). Per-guest handoffs ask for
+                // a direct reply; no public link is embedded without checking its
+                // availability first. The OS's own composer opens with the draft
+                // in it (UX_07); nothing here claims to have sent.
+                const nudge = (() => {
+                  if (!chasing || !reachable) return null;
+                  const d = draftRsvpChase(event, profile);
+                  const body = [d.subject, d.body].filter(Boolean).join('\n\n');
+                  const handoffNudge = async (click, channel) => {
+                    click.preventDefault();
+                    const url = await verifiedRsvpUrl();
+                    const checked = draftRsvpChase(event, profile, { rsvpUrl: url });
+                    const text = [checked.subject, checked.body].filter(Boolean).join('\n\n');
+                    window.location.href = channel === 'sms'
+                      ? 'sms:' + digits + '?&body=' + encodeURIComponent(text)
+                      : 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent(checked.subject || 'Can you make it?') + '&body=' + encodeURIComponent(checked.body || text);
+                    // A text, as in the nudge's queue: the host's word that they
+                    // sent it, recorded on the guest (lib/replyNudge). The mail
+                    // app's link records nothing: the app cannot say an email it
+                    // never saw went out.
+                    if (channel === 'sms') patchEvent({ guests: markNudged(event.guests || [], [g], 'text', new Date().toISOString()) }, null, { noUndo: true });
+                  };
+                  // THE NUDGE BY EMAIL GOES FROM THE APP (owner, 11/20/2026): signed
+                  // in, through the message route (address saved on the event, the
+                  // daily cap, the stop link) in the invite's frame, and it shows in
+                  // Messages. Signed out, the route would refuse, so the mail app's
+                  // link stays.
+                  const appNudge = !!(email && session && isCommApiConfigured());
+                  const myNudge = nudgeEmail && nudgeEmail.guestId === g.id ? nudgeEmail : null;
+                  const words = appEmailWords(`Email ${first} the nudge`, first, myNudge);
+                  const emailNudge = async (click) => {
+                    click.stopPropagation();
+                    if (myNudge && myNudge.busy) return;
+                    setNudgeEmail({ guestId: g.id, busy: true });
+                    let r;
+                    try {
+                      const url = await verifiedRsvpUrl();
+                      const checked = draftRsvpChase(event, profile, { rsvpUrl: url });
+                      const res = await commApi.createMessage(event.id, 'CLIENT', {
+                        message_type: 'standard', author_role: 'planner',
+                        author_name: (profile && profile.name) || 'Your host',
+                        body: checked.body || [checked.subject, checked.body].filter(Boolean).join('\n\n'),
+                        deliver_email: true, recipient_email: email, recipient_name: g.name || undefined,
+                        subject: checked.subject || 'Can you make it?',
+                        ...(((session && session.user && session.user.email) || '').trim()
+                          ? { reply_to: String(session.user.email).trim() } : {}),
+                      });
+                      r = messageEmailResult(res, null);
+                    } catch (e) { r = messageEmailResult(null, e); }
+                    setNudgeEmail({ guestId: g.id, ...r });
+                    // The same record the batch writes (lib/replyNudge): only an
+                    // email the service took counts as a nudge.
+                    if (r.ok) patchEvent({ guests: markNudged(event.guests || [], [g], 'email', new Date().toISOString()) }, null, { noUndo: true });
+                  };
+                  const smsLink = (cls) => (
+                    <a className={cls} href={'sms:' + digits + '?&body=' + encodeURIComponent(body)} onClick={(click) => handoffNudge(click, 'sms')}>Text {first} the nudge</a>
+                  );
+                  // ONE LIT BUTTON: the email nudge when there is an address (from
+                  // the app signed in, else the mail app), else the text nudge.
+                  const lit = appNudge
+                    ? (
+                      <button className="cta nudge-email" data-nudge-email
+                        disabled={!!(myNudge && myNudge.busy)} aria-busy={myNudge && myNudge.busy ? 'true' : undefined}
+                        onClick={emailNudge}>{words.button}</button>
+                    )
+                    : email
+                      ? <a className="cta" href={'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent(d.subject || 'Can you make it?') + '&body=' + encodeURIComponent(d.body || body)} onClick={(click) => handoffNudge(click, 'email')}>Email {first} the nudge</a>
+                      : smsLink('cta');
+                  return (
+                    <>
+                      {lit}
+                      {email && digits ? smsLink('cta soft') : null}
+                      {myNudge && words.line && (
+                        <p className={'v-meta nudge-email-line' + (words.tone === 'danger' ? ' helper-send-error' : '')}
+                          role={words.tone === 'danger' ? 'alert' : 'status'}>{words.line}</p>
+                      )}
+                    </>
+                  );
+                })();
+                const others = plus + kids;
                 return (
-                  <div className="people-ghead">
-                    {/* INITIALS COMPUTED HERE, NOT BORROWED. `initialsOf` is
-                        declared inside the roster's own render closure 650 lines
-                        below; this function is hoisted above it, so calling it
-                        threw a ReferenceError and took the entire People subtree
-                        down — at desktop, selecting a guest blanked the sheet.
-                        It cost nothing to catch because the capture tried to
-                        scroll to a roster that was no longer in the DOM; it
-                        would have cost a lot to ship. */}
-                    <span className="gav" aria-hidden="true">{(() => {
-                      const parts = String(g.name || '').trim().split(/\s+/).filter(Boolean);
-                      if (!parts.length) return '?';
-                      return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
-                    })()}</span>
-                    <div style={{ minWidth: 0 }}>
-                      <div className="people-ghead-n">{g.name || 'This guest'}</div>
-                      <div className="people-ghead-m">
-                        <span className={'tag plan pr-state'}
-                          style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' }
-                            : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' }
-                              : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)' }
-                                : { color: 'var(--muted)', background: 'var(--bg-band)' }}>{state}</span>
-                        {party.length ? <span className="people-ghead-p">{party.join(' \u00b7 ')}</span> : null}
+                  <div className="brow gdetail ged" id={'v2-guest-detail-' + i} data-guest-editor={g.id || i}>
+                    <section className="ged-sec ged-top" data-ged-group="name">
+                      <span className="gav" aria-hidden="true">{initials}</span>
+                      <div className="ged-who">
+                        <span className="ged-cap" aria-hidden="true">Name</span>
+                        <input key={(g.id || i) + '|' + (g.name || '')} className="field ged-name" aria-label="Name"
+                          defaultValue={g.name || ''} autoComplete="off"
+                          onBlur={(e) => commitName(e.currentTarget)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }} />
+                        <div className="ged-meta">
+                          <span className="tag plan pr-state"
+                            style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' }
+                              : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' }
+                                : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)' }
+                                  : { color: 'var(--muted)', background: 'var(--bg-band)' }}>{state}</span>
+                          {partyLine ? <span>{partyLine}</span> : null}
+                        </div>
+                        {roles.length ? <div className="ged-note">Helping with: {roles.map(r => r.label).join(', ')}</div> : null}
                       </div>
-                    </div>
+                      <button className="ged-icon" aria-expanded="true" aria-controls={'v2-guest-detail-' + i}
+                        aria-label={'Close ' + (name || 'this guest') + '’s details'}
+                        onClick={() => setGuestOpen(null)}>{ICON_UP}</button>
+                    </section>
+
+                    <section className="ged-sec" data-ged-group="reply">
+                      <div className="ged-head">
+                        <span className="ged-title">Reply</span>
+                        {rsvpByIsSet ? <span className="ged-aside">Replies by {new Date(rsvpBy.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span> : null}
+                      </div>
+                      {/* A radiogroup with its keyboard contract (board 2026-08-07):
+                          one tab stop (roving tabindex), Arrow/Home/End select and
+                          move together, as native radios do. */}
+                      <div role="radiogroup" className="ged-seg" aria-label={'Reply for ' + (name || 'guest')}
+                        onKeyDown={(e) => {
+                          const keys = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
+                          if (!keys.includes(e.key)) return;
+                          e.preventDefault();
+                          const vals = REPLY_ORDER.map(([v]) => v);
+                          const at = Math.max(0, vals.indexOf(String(g.rsvp || '')));
+                          const next = e.key === 'Home' ? 0
+                            : e.key === 'End' ? vals.length - 1
+                            : (e.key === 'ArrowRight' || e.key === 'ArrowDown')
+                              ? (at + 1) % vals.length
+                              : (at - 1 + vals.length) % vals.length;
+                          setRsvpValue(i, vals[next]);
+                          const group = e.currentTarget;
+                          requestAnimationFrame(() => {
+                            const btns = group.querySelectorAll('[role="radio"]');
+                            if (btns[next]) btns[next].focus();
+                          });
+                        }}>
+                        {REPLY_ORDER.map(([v, lbl]) => {
+                          const cur = String(g.rsvp || '') === v;
+                          return (
+                            <button key={v || 'none'} className="ged-seg-b" role="radio" aria-checked={cur}
+                              tabIndex={cur ? 0 : -1} onClick={() => setRsvpValue(i, v)}>{lbl}</button>
+                          );
+                        })}
+                      </div>
+                    </section>
+
+                    <section className="ged-sec" data-ged-group="coming">
+                      <div className="ged-head">
+                        <span className="ged-title">Who’s coming</span>
+                        <span className="ged-aside">{party} {party === 1 ? 'person' : 'people'}{mealOpen ? ' · meal not answered' : ''}</span>
+                      </div>
+                      <div className="ged-card" data-ged-person="guest">
+                        <div className="ged-card-h">
+                          <span className="gav" aria-hidden="true">{initials}</span>
+                          <div><div className="ged-card-n">{first}</div><div className="ged-note">Invited guest</div></div>
+                        </div>
+                        {/* Writes the SAME guest.meal the RSVP page and CSV import write. */}
+                        <select className="field ged-field" aria-label={'Meal for ' + (name || 'guest')} value={meal}
+                          onChange={(e) => {
+                            const m = e.target.value;
+                            writeGuest(i, { meal: m }, m === '—'
+                              ? (name || 'Guest') + '’s meal cleared — counts as unanswered.'
+                              : (name || 'Guest') + ' → ' + m + ' — the meal tally keeps count.');
+                          }}>
+                          {meals.map((m) => <option key={m} value={m}>{m === '—' ? 'Meal not answered' : m}</option>)}
+                        </select>
+                        <input className="field ged-field" placeholder="Dietary needs, if any" aria-label="Dietary needs"
+                          value={g.needs || ''} onChange={e => writeGuest(i, { needs: e.target.value }, null)} />
+                      </div>
+                      {/* The +1 is one text field on the row: a name, or a count
+                          as written ("+3 (Nia + 2 boys)"). The row has one meal,
+                          the guest's, so this card says nothing about a meal. */}
+                      <div className="ged-card" data-ged-person="plusone">
+                        <input className="field ged-field" placeholder="Their +1’s name, if any" aria-label="Plus one name"
+                          value={g.plusOne || ''} onChange={e => writeGuest(i, { plusOne: e.target.value }, null)} />
+                        {plus ? <div className="ged-note">{plus > 1 ? plus + ' people, as written' : 'Adult · guest of ' + first}</div> : null}
+                      </div>
+                      <div className="ged-kids">
+                        <span className="ged-k">Children</span>
+                        <button className="ged-icon" aria-label={'Remove a child from ' + (name || 'this guest') + '’s party'}
+                          onClick={() => writeGuest(i, { kids: Math.max(0, kids - 1) }, null)}>−</button>
+                        <span className="ged-count" data-ged-kids>{kids}</span>
+                        <button className="ged-icon" aria-label={'Add a child to ' + (name || 'this guest') + '’s party'}
+                          onClick={() => writeGuest(i, { kids: kids + 1 }, (kids + 1) + ' kids with ' + (name || 'this guest') + ' — the food plan sizes them lighter.')}>+</button>
+                      </div>
+                      <p className="ged-note">Children count in the food plan at a lighter portion.</p>
+                    </section>
+
+                    {/* HOW TO REACH THEM: each value edits in place; each button
+                        only OPENS the phone's own call, text or mail app (tel:,
+                        sms:, mailto:, UX_07). Nothing here sends. */}
+                    <section className="ged-sec" data-ged-group="reach">
+                      <div className="ged-head"><span className="ged-title">How to reach them</span></div>
+                      <div className="ged-list">
+                        <div className="ged-li">
+                          <span className="ged-k" aria-hidden="true">Phone</span>
+                          <input className="field ged-v" placeholder="Add a number" type="tel" aria-label="Phone"
+                            value={g.phone || ''} onChange={e => writeGuest(i, { phone: formatPhoneUS(e.target.value) }, null)} />
+                          {digits ? <a className="ged-icon" href={'tel:' + digits} aria-label={'Call ' + first}>{ICON_CALL}</a> : null}
+                          {digits ? <a className="ged-icon" href={'sms:' + digits} aria-label={'Text ' + first}>{ICON_TEXT}</a> : null}
+                        </div>
+                        <div className="ged-li">
+                          <span className="ged-k" aria-hidden="true">Email</span>
+                          <input className="field ged-v" placeholder="Add an email" type="email" aria-label="Email"
+                            value={g.email || ''} onChange={e => writeGuest(i, { email: e.target.value }, null)} aria-invalid={isMalformedEmail(g.email)} />
+                          {email ? <a className="ged-icon" href={'mailto:' + encodeURIComponent(email)} aria-label={'Email ' + first}>{ICON_MAIL}</a> : null}
+                        </div>
+                        <div className="ged-li">
+                          <span className="ged-k" aria-hidden="true">Group</span>
+                          <input className="field ged-v" placeholder="Family, friends, work…" list="v2-groups" aria-label="Group"
+                            value={g.group || ''} onChange={e => writeGuest(i, { group: e.target.value }, null)} />
+                        </div>
+                      </div>
+                      <p className="ged-note">Tap a line to edit it. The buttons open your phone’s own call, text or mail app.</p>
+                    </section>
+
+                    {reachable ? (
+                      <section className="ged-sec" data-ged-group="actions">
+                        <div className="ged-head">
+                          <span className="ged-title">Actions</span>
+                          {chasing ? <span className="ged-aside">No reply yet</span> : null}
+                        </div>
+                        {nudge}
+                        {/* The record: the app cannot know whether the OS composer
+                            was sent from, so the host says. A separate tap on
+                            purpose; opening a composer is not telling someone. */}
+                        <button className={'ged-told guest-told' + (told ? ' is-on' : '')}
+                          aria-label={told
+                            ? `You marked ${g.name || 'this guest'} told. Undo that.`
+                            : `Mark that you told ${g.name || 'this guest'} yourself`}
+                          onClick={() => markTold(g.id, g.name, digits ? 'text' : 'email')}>
+                          <span className="ged-box" aria-hidden="true">{told ? '✓' : ''}</span>
+                          {told
+                            ? <span aria-hidden="true">✓ told</span>
+                            : <span aria-hidden="true">Mark it sent to {first} — I sent it myself</span>}
+                        </button>
+                        <p className="ged-note">Marking it only notes it on {first}’s row. Nothing is sent.</p>
+                      </section>
+                    ) : null}
+
+                    <section className="ged-sec ged-end" data-ged-group="remove">
+                      <button className="ged-remove" onClick={() => removeGuest(i)}>
+                        {ICON_BIN}<span>Remove {name || 'this guest'}{others ? ' and the ' + others + ' with them' : ''}</span>
+                      </button>
+                      <p className="ged-note">{party > 1 ? 'Takes all ' + party : 'Takes them'} off the list and the food count. You can undo it right after.</p>
+                    </section>
                   </div>
                 );
               };
-              const guestDetail = (g, i) => (
-                          <div className="brow gdetail" id={'v2-guest-detail-' + i} style={{ margin: '0 0 var(--sp-2)' }}>
-                            {peopleMode ? guestHead(g) : null}
-                            {(() => {
-                              // Single source of truth: reads the SAME aggregation the
-                              // Helpers panel (space sheet) uses — a food/task/setup/supply
-                              // owner that resolved to THIS guest, not a second copy.
-                              const roles = (() => { try { return guestHelperRoles(event, g.id); } catch { return []; } })();
-                              if (!roles.length) return null;
-                              return (
-                                <div className="v-meta" style={{ margin: '0 0 var(--sp-2)', color: 'var(--ink-soft)' }}>
-                                  Helping with: {roles.map(r => r.label).join(', ')}
-                                </div>
-                              );
-                            })()}
-                            {/* ── WHERE THE REPLY IS ACTUALLY SET ────────────────────────
-                                The picker that used to swap itself into the collapsed row
-                                lives here now, beside every other field of this guest —
-                                meal, kids, +1, needs, phone, email, group. It is always
-                                present while the row is open, so there is no second piece
-                                of open/closed state to keep honest (`rsvpPickFor` is gone,
-                                and `toggleRsvp` — the blind '' -> Yes -> No -> Maybe cycle
-                                this replaced on 2026-07-22 — went with it: defined, never
-                                called, repo-wide).
-                                A radiogroup rather than four `aria-pressed` buttons,
-                                because exactly one of these is true at a time and that is
-                                what a radiogroup means. Targets are 44px, not the 32px
-                                UX_05:72 asks of a chip: this is a phone-first roster and
-                                UX_03's mobile floor is the binding one, so the larger of
-                                the two wins. The row they sit in is the accordion
-                                UX_05:174 names as the one place a height may change.
-
-                                CORRECTION (board, 2026-08-07): an earlier version of
-                                this comment claimed the extra height "costs the
-                                collapsed list nothing". It was measured and that is
-                                false — opening a guest injects 283px on the phone
-                                (the "Add names" label moves y=558 -> y=841), because
-                                this accordion carries kids/+1/needs/remove/meal/
-                                phone/email/group along with the picker. What is true
-                                is narrower: the TAPPED row no longer moves under the
-                                finger, and rows keep their heights and gaps. Rows
-                                BELOW it move further than the old inline picker moved
-                                them (~40px). That is a real trade, not a free win,
-                                and the open fix is a replies-only pass — name + the
-                                four chips on every row, nothing expanding. */}
-                            <div className="actions-row" style={{ alignItems: 'center' }}>
-                              <span className={peopleMode ? 'people-cap' : 'of'}>REPLY</span>
-                              {/* ── A RADIOGROUP OWES A KEYBOARD CONTRACT ──────────────
-                                  Board 2026-08-07, Norman seat: this shipped as four
-                                  buttons wearing role="radio" with no roving tabindex
-                                  and no arrow handling. A screen reader announces
-                                  "radio button, 1 of 4", the user presses Right, and
-                                  nothing moves — while all four sit in the tab order.
-                                  HALF A RADIOGROUP IS WORSE THAN NONE, because the
-                                  role is a promise about how the thing behaves.
-                                  Two honest ways out: implement the contract, or drop
-                                  to aria-pressed toggles, which owe nothing. Kept the
-                                  role -- exactly one of these is true at a time, which
-                                  is what a radiogroup MEANS, and aria-pressed would
-                                  describe four independent toggles that happen to be
-                                  mutually exclusive by luck. So: roving tabindex (only
-                                  the checked chip is tabbable, so the group is ONE tab
-                                  stop, not four) plus Arrow/Home/End, which select and
-                                  move together the way native radios do. */}
-                              <span role="radiogroup" aria-label={'Reply for ' + (g.name || 'guest')}
-                                style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}
-                                onKeyDown={(e) => {
-                                  const keys = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
-                                  if (!keys.includes(e.key)) return;
-                                  e.preventDefault();
-                                  const vals = RSVP_VALUES.map(([v]) => v);
-                                  const at = Math.max(0, vals.indexOf(String(g.rsvp || '')));
-                                  const next = e.key === 'Home' ? 0
-                                    : e.key === 'End' ? vals.length - 1
-                                    : (e.key === 'ArrowRight' || e.key === 'ArrowDown')
-                                      ? (at + 1) % vals.length
-                                      : (at - 1 + vals.length) % vals.length;
-                                  setRsvpValue(i, vals[next]);
-                                  // Focus follows selection, or the contract is still
-                                  // half-kept. The re-render swaps tabIndex, so the
-                                  // focus call waits a frame for the new DOM.
-                                  const group = e.currentTarget;
-                                  requestAnimationFrame(() => {
-                                    const btns = group.querySelectorAll('[role="radio"]');
-                                    if (btns[next]) btns[next].focus();
-                                  });
-                                }}>
-                                {RSVP_VALUES.map(([v, lbl]) => {
-                                  const cur = String(g.rsvp || '') === v;
-                                  return (
-                                    <button key={v || 'none'} className="chip" role="radio" aria-checked={cur}
-                                      tabIndex={cur ? 0 : -1}
-                                      style={{ padding: '7px 12px', minHeight: 44, fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : {}) }}
-                                      onClick={() => setRsvpValue(i, v)}>{lbl}</button>
-                                  );
-                                })}
-                              </span>
-                            </div>
-                            <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
-                              <span className={peopleMode ? 'people-cap' : 'of'}>CHILDREN</span>
-                              <button className="mini" onClick={() => writeGuest(i, { kids: Math.max(0, (Number(g.kids) || 0) - 1) }, null)}>−</button>
-                              <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>{Number(g.kids) || 0}</span>
-                              <button className="mini" onClick={() => writeGuest(i, { kids: (Number(g.kids) || 0) + 1 }, (Number(g.kids) || 0) + 1 + ' kids with ' + (g.name || 'this guest') + ' — the food plan sizes them lighter.')}>+</button>
-                              {fld('Who they’re bringing', (
-                              <input className="field" style={{ maxWidth: 125, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="+1 name"
-                                value={g.plusOne || ''} onChange={e => writeGuest(i, { plusOne: e.target.value }, null)} aria-label="Plus one name" />
-                              ))}
-                              {fld('Dietary needs', (
-                              <input className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="Dietary needs"
-                                value={g.needs || ''} onChange={e => writeGuest(i, { needs: e.target.value }, null)} aria-label="Dietary needs" />
-                              ))}
-                              <button className={'mini' + (peopleMode ? ' people-destructive' : '')} onClick={() => removeGuest(i)}>Remove</button>
-                            </div>
-                            <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
-                              {/* Meal edit (guests parity gap #5): writes the SAME
-                                  guest.meal field the RSVP page and CSV import write.
-                                  Audit #6 — was tap-to-cycle (couldn't jump to a choice
-                                  or see the set); now the chip opens an inline PICKER of
-                                  the real meal choices, tap one to set it directly. */}
-                              <span className={peopleMode ? 'people-cap' : 'of'}>MEAL</span>
-                              {mealPickFor === i ? (
-                                <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }} role="group" aria-label={'Meal for ' + (g.name || 'guest')}>
-                                  {['—', 'Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'].map(m => {
-                                    const cur = String(g.meal || '—') === m;
-                                    return (
-                                      <button key={m} className="chip" aria-pressed={cur}
-                                        style={{ padding: '5px 11px', fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : {}) }}
-                                        onClick={() => {
-                                          writeGuest(i, { meal: m }, m === '—'
-                                            ? (g.name || 'Guest') + '’s meal cleared — counts as unanswered.'
-                                            : (g.name || 'Guest') + ' → ' + m + ' — the meal tally keeps count.');
-                                          setMealPickFor(null);
-                                        }}>{m === '—' ? 'not answered' : m}</button>
-                                    );
-                                  })}
-                                </span>
-                              ) : (
-                                <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }}
-                                  aria-haspopup="true" aria-expanded={false}
-                                  aria-label={'Meal for ' + (g.name || 'guest') + ': ' + (String(g.meal || '—') === '—' ? 'not answered' : g.meal) + ' — tap to change'}
-                                  onClick={() => setMealPickFor(i)}>{String(g.meal || '—') === '—' ? 'not answered' : g.meal}</button>
-                              )}
-                              {fld('Phone', (
-                              <input className="field" style={{ maxWidth: 140, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="phone" type="tel"
-                                value={g.phone || ''} onChange={e => writeGuest(i, { phone: formatPhoneUS(e.target.value) }, null)} aria-label="Phone" />
-                              ))}
-                              {fld('Email', (
-                              <input className="field" style={{ maxWidth: 185, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="email" type="email"
-                                value={g.email || ''} onChange={e => writeGuest(i, { email: e.target.value }, null)} aria-label="Email" aria-invalid={isMalformedEmail(g.email)} />
-                              ))}
-                              {fld('Group', (
-                              <input className="field" style={{ maxWidth: 120, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="group" list="v2-groups"
-                                value={g.group || ''} onChange={e => writeGuest(i, { group: e.target.value }, null)} aria-label="Group" />
-                              ))}
-                            </div>
-                            {chase && !g.rsvp && (String(g.phone || '').trim() || String(g.email || '').trim()) && (() => {
-                              // Per-guest handoffs ask for a direct reply. No public link is
-                              // embedded without checking its availability first.
-                              // Links only (UX_07): the OS's own composer opens with
-                              // the draft in it; nothing here claims to have sent.
-                              const d = draftRsvpChase(event, profile);
-                              const body = [d.subject, d.body].filter(Boolean).join('\n\n');
-                              const handoffNudge = async (click, channel) => {
-                                click.preventDefault();
-                                const url = await verifiedRsvpUrl();
-                                const checked = draftRsvpChase(event, profile, { rsvpUrl: url });
-                                const text = [checked.subject, checked.body].filter(Boolean).join('\n\n');
-                                window.location.href = channel === 'sms'
-                                  ? 'sms:' + digits + '?&body=' + encodeURIComponent(text)
-                                  : 'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(checked.subject || 'Can you make it?') + '&body=' + encodeURIComponent(checked.body || text);
-                                // A text, as in the nudge's queue: the host's word that
-                                // they sent it, recorded on the guest (lib/replyNudge).
-                                // The mail app's link records nothing: the app cannot
-                                // say an email it never saw went out.
-                                if (channel === 'sms') patchEvent({ guests: markNudged(event.guests || [], [g], 'text', new Date().toISOString()) }, null, { noUndo: true });
-                              };
-                              const first = String(g.name || 'them').split(/\s+/)[0];
-                              const digits = String(g.phone || '').replace(/[^+\d]/g, ''); // sms:/tel: want digits, not "(919) 555-…"
-                              // THE NUDGE BY EMAIL GOES FROM THE APP (owner, 11/20/2026: "And
-                              // other comms"): signed in, through the message route (address
-                              // saved on the event, the daily cap, the stop link) in the
-                              // invite's frame, and it shows in Messages. Signed out, the
-                              // route would refuse, so the mail app's link stays.
-                              const appNudge = !!(String(g.email || '').trim() && session && isCommApiConfigured());
-                              const myNudge = nudgeEmail && nudgeEmail.guestId === g.id ? nudgeEmail : null;
-                              const nudgeWords = appEmailWords(`Email ${first} the nudge`, first, myNudge);
-                              const emailNudge = async (click) => {
-                                click.stopPropagation();
-                                if (myNudge && myNudge.busy) return;
-                                setNudgeEmail({ guestId: g.id, busy: true });
-                                let r;
-                                try {
-                                  const url = await verifiedRsvpUrl();
-                                  const checked = draftRsvpChase(event, profile, { rsvpUrl: url });
-                                  const res = await commApi.createMessage(event.id, 'CLIENT', {
-                                    message_type: 'standard', author_role: 'planner',
-                                    author_name: (profile && profile.name) || 'Your host',
-                                    body: checked.body || [checked.subject, checked.body].filter(Boolean).join('\n\n'),
-                                    deliver_email: true, recipient_email: g.email.trim(), recipient_name: g.name || undefined,
-                                    subject: checked.subject || 'Can you make it?',
-                                    ...(((session && session.user && session.user.email) || '').trim()
-                                      ? { reply_to: String(session.user.email).trim() } : {}),
-                                  });
-                                  r = messageEmailResult(res, null);
-                                } catch (e) { r = messageEmailResult(null, e); }
-                                setNudgeEmail({ guestId: g.id, ...r });
-                                // The same record the batch writes (lib/replyNudge):
-                                // only an email the service took counts as a nudge.
-                                if (r.ok) patchEvent({ guests: markNudged(event.guests || [], [g], 'email', new Date().toISOString()) }, null, { noUndo: true });
-                              };
-                              return (
-                                <>
-                                <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                                  {digits && <a className="mini" style={{ textDecoration: 'none' }} onClick={click => handoffNudge(click, 'sms')} href={'sms:' + digits + '?&body=' + encodeURIComponent(body)}>Text {first} the nudge</a>}
-                                  {String(g.email || '').trim() && !appNudge && <a className="mini" style={{ textDecoration: 'none' }} onClick={click => handoffNudge(click, 'email')} href={'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(d.subject || 'Can you make it?') + '&body=' + encodeURIComponent(d.body || body)}>Email {first}</a>}
-                                  {appNudge && (
-                                    <button className="mini rowlink nudge-email" data-nudge-email
-                                      disabled={!!(myNudge && myNudge.busy)} aria-busy={myNudge && myNudge.busy ? 'true' : undefined}
-                                      onClick={emailNudge}>{nudgeWords.button}</button>
-                                  )}
-                                  {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + digits}>Call {first}</a>}
-                                  {/* The record, beside the composers rather than
-                                      after them: the app cannot know whether the
-                                      OS composer was actually sent from, so the
-                                      host says. Separate tap on purpose -- opening
-                                      a composer is not telling someone, and a
-                                      control that assumed it would be claiming
-                                      something it cannot see. */}
-                                  <button className="mini rowlink guest-told"
-                                    aria-label={isTold(guestToldMap(event), g.id)
-                                      ? `You marked ${g.name || 'this guest'} told. Undo that.`
-                                      : `Mark that you told ${g.name || 'this guest'} yourself`}
-                                    onClick={() => markTold(g.id, g.name, digits ? 'text' : 'email')}>
-                                    {isTold(guestToldMap(event), g.id)
-                                      ? <span aria-hidden="true">✓ told</span>
-                                      : <span aria-hidden="true">Mark it sent to {first} — I sent it myself</span>}
-                                  </button>
-                                </div>
-                                {myNudge && nudgeWords.line && (
-                                  <p className={'v-meta nudge-email-line' + (nudgeWords.tone === 'danger' ? ' helper-send-error' : '')}
-                                    role={nudgeWords.tone === 'danger' ? 'alert' : 'status'}>{nudgeWords.line}</p>
-                                )}
-                                </>
-                              );
-                            })()}
-                            {(String(g.phone || '').trim() || String(g.email || '').trim()) && !(chase && !g.rsvp) && (() => {
-                              // QUIET CONTACT LINE (host-approved 2026-07-15) — when a
-                              // guest left a number or email, reaching them is one tap
-                              // through the phone's own apps (tel:/sms:/mailto:, UX_07 —
-                              // the OS sends, we never claim to). Silent guests in chase
-                              // mode get the nudge row above instead, never both.
-                              const first = String(g.name || 'them').split(/\s+/)[0];
-                              const digits = String(g.phone || '').replace(/[^+\d]/g, '');
-                              return (
-                                <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                                  {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + digits}>Call {first}</a>}
-                                  {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + digits}>Text {first}</a>}
-                                  {String(g.email || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} href={'mailto:' + encodeURIComponent(g.email.trim())}>Email {first}</a>}
-                                  {/* The record lives on BOTH contact rows. They are
-                                      mutually exclusive by design -- a silent guest in
-                                      chase mode gets the nudge row, everyone else gets
-                                      this one -- so putting it on only one made the
-                                      rollup count people the host had no way to mark.
-                                      A number you cannot drive to zero is a nag. */}
-                                  <button className="mini rowlink guest-told"
-                                    aria-label={isTold(guestToldMap(event), g.id)
-                                      ? `You marked ${g.name || 'this guest'} told. Undo that.`
-                                      : `Mark that you told ${g.name || 'this guest'} yourself`}
-                                    onClick={() => markTold(g.id, g.name, digits ? 'text' : 'email')}>
-                                    {isTold(guestToldMap(event), g.id)
-                                      ? <span aria-hidden="true">✓ told</span>
-                                      : <span aria-hidden="true">Mark it sent to {first} — I sent it myself</span>}
-                                  </button>
-                                </div>
-                              );
-                            })()}
-                          </div>
-              );
               const peopleAdmin = (<>
                   {/* Invite look — the tone engine guesses from the event's mood
                       (paper by day, elegant by night, muted when somber); the
@@ -29278,7 +29258,7 @@ export default function HostShellV2() {
                     const avaFor = (nm) => { const s = String(nm || ''); let h = 0; for (let k = 0; k < s.length; k++) h = (h * 31 + s.charCodeAt(k)) >>> 0; return AVA_TINTS[h % AVA_TINTS.length]; };
                     const initialsOf = (nm) => { const p = String(nm || '').trim().split(/\s+/).filter(Boolean); if (!p.length) return '?'; return (p[0][0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); };
                     const row = ({ g, i }) => (
-                      <div className="rrow" key={i}>
+                      <div className={'rrow' + (guestOpen === i ? ' is-open' : '')} key={i}>
                         <div className="grow" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
                           <span className="gav" aria-hidden="true" style={{ background: avaFor(g.name) }}>{initialsOf(g.name)}</span>
                           <button className="tap-44" style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0, display: 'block' }}

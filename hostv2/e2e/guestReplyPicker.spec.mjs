@@ -50,8 +50,11 @@ test.describe('the guest reply picker', () => {
     // UX_05:174 forbids. Heights and the gaps between consecutive rows are
     // scroll-invariant, so they isolate the thing actually under test — and a
     // uniform shift passes while a real reflow still fails.
+    // The row this opens (the last) is left out (guest editor, owner
+    // 11/24/2026): its own line now gives way to the editor card, whose
+    // header carries the name. Every other row keeps its height and spacing.
     const shape = async () => page.locator('.grow').evaluateAll((els) => {
-      const r = els.map((e) => e.getBoundingClientRect());
+      const r = els.slice(0, -1).map((e) => e.getBoundingClientRect());
       return {
         heights: r.map((b) => Math.round(b.height)),
         gaps: r.slice(1).map((b, k) => Math.round(b.top - r[k].top)),

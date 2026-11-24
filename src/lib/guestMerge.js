@@ -129,6 +129,19 @@ export function confirmSameGuest(guests, rowId) {
   return list.filter((g) => g !== row).map((g) => (g === target ? next : g));
 }
 
+/** The host renamed a guest in place (guest editor, owner 11/24/2026). The old
+ *  name becomes her alias, so the replies that re-arrive under it (and a CSV
+ *  row that only has it) still land on her row. Null when there is nothing to
+ *  save: a blank name, or the same one. */
+export function renamedGuestPatch(g, nextName) {
+  const name = String(nextName || '').trim();
+  const old = String((g && g.name) || '').trim();
+  if (!name || name === old) return null;
+  const was = old.toLowerCase();
+  if (!was || was === name.toLowerCase()) return { name };
+  return { name, aka: [...new Set([...(Array.isArray(g.aka) ? g.aka : []), was])] };
+}
+
 /** The replies-came-in line for rows this batch flagged — so the host hears
  *  the question when the reply lands, not only inside the Guests sheet. */
 export function sameGuestAskLine(before, after) {
