@@ -100,6 +100,8 @@ import { daysUntil } from './lib/dates';
 import { milestoneActionRoute, checklistRouteFor, stepRoute } from './lib/taskRoute';
 import { stepIsSetComposite } from './lib/stepTarget';
 import { confirmedCovers } from './lib/confirmedCovers';
+// The host's word for the day's plan (owner: "Host doesn't use run of show language", 11/24/2026).
+import { THE_SCHEDULE, THE_SCHEDULE_CAP } from './lib/scheduleWords';
 export { milestoneActionRoute };
 const approvalIsSent = (m) => !!m.requestSentAt || m.direction === 'outbound' || m.sender === 'planner' || /sent|delivered/i.test(m.deliveryStatus || '');
 
@@ -1208,8 +1210,8 @@ export function selectStudioCommand(events = []) {
         eventId: todayEv.id,
         eventName: todayEv.name,
         title: `${count} thing${count !== 1 ? 's' : ''} need${count === 1 ? 's' : ''} attention right now.`,
-        consequence: top ? `Start with "${top.title || top.label || 'the highest-priority item'}".` : 'Open your run of show to work the day.',
-        primaryCta: 'Open your run of show',
+        consequence: top ? `Start with "${top.title || top.label || 'the highest-priority item'}".` : `Open ${THE_SCHEDULE} to work the day.`,
+        primaryCta: `Open ${THE_SCHEDULE}`,
         primaryRoute: { eventId: todayEv.id, tab: 'Event Day Schedule', focusField: 'ros-now' },
         secondaryCta: 'View messages',
         secondaryRoute: { eventId: todayEv.id, tab: 'Communication' },
@@ -1225,8 +1227,8 @@ export function selectStudioCommand(events = []) {
       // B5 — promise only what production delivers: the real run-of-show (Event Day
       // Schedule, derived from the playbook). The unified "Day-of Mode" with live vendor
       // arrivals + messages is a dev-only demo (App.js ~35410), so the CTA must not sell it.
-      consequence: 'Your run of show is ready — every cue for the day, top to bottom.',
-      primaryCta: 'Open your run of show',
+      consequence: `${THE_SCHEDULE_CAP} is ready — every moment of the day, top to bottom.`,
+      primaryCta: `Open ${THE_SCHEDULE}`,
       primaryRoute: { eventId: todayEv.id, tab: 'Event Day Schedule', focusField: 'ros-now' },
       secondaryCta: 'View full event details',
       secondaryRoute: { eventId: todayEv.id, tab: 'Planning' },
@@ -1726,7 +1728,7 @@ export function _eventFoundationActions(event) {
     }] : []),
     {
       id: 'food', domain: 'food', title: 'Plan the food.', askKind: 'menu',
-      consequence: 'How you’re feeding everyone — cook, cater, or potluck — drives the shopping and the run of show.',
+      consequence: `How you’re feeding everyone — cook, cater, or potluck — drives the shopping and ${THE_SCHEDULE}.`,
       // D-1B: deep-link to the open menu decision when one exists (its foodFocus
       // route scrolls + focuses the "Your choices" card), instead of dumping the
       // host at the Plan tab top. No pickable decision → the honest tab route.
@@ -3970,7 +3972,7 @@ export function _selectEventNextActionInner(event, prices = null) {
         level: 'neutral',
         category: 'heart',
         title: `Protect the heart: "${mhShort}".`,
-        consequence: "Nothing's urgent right now — so use the calm to make sure the one thing that matters actually happens. Give it an owner and a moment in the run of show.",
+        consequence: `Nothing's urgent right now — so use the calm to make sure the one thing that matters actually happens. Give it an owner and a moment in ${THE_SCHEDULE}.`,
         primaryCta: 'Plan the moment',
         // Deep-link to the must-have card on the run of show (data-deeplink="musthave"),
         // so "Plan the moment" lands ON the host's own moment with a one-tap add — not on

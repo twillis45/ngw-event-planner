@@ -16,6 +16,7 @@
 //  • The singer (vendor, run-of-show row, checklist step) is marked `surprise`,
 //    so the family link leaves it out (owner ruling 11/22/2026).
 //  • Open bar, catering, decorations, DJ, photobooth, event photographer, desserts.
+import { THE_SCHEDULE } from '../lib/scheduleWords';
 
 const WANDA_GOLD_EVENT = {
   id: 'ev-x-wanda',
@@ -97,7 +98,7 @@ const WANDA_GOLD_EVENT = {
       status: 'Deposit Paid', cost: 550, depositAmt: 200, depositPaid: true, balancePaid: false, payDueDate: '2027-03-17',
       coiStatus: 'received', coiVerified: false, arrivalTime: '5:00 PM', contact: 'Marcus Kane',
       phone: '555-0711', website: '', contractSigned: true, backup: '',
-      notes: 'DJ for the evening + rented dance floor. Needs the reveal + presentation cues in the run of show. Floor delivery to confirm.',
+      notes: `DJ for the evening + rented dance floor. Needs the reveal + presentation cues in ${THE_SCHEDULE}. Floor delivery to confirm.`,
       serviceArea: '', insuranceStatus: 'Insured', log: [],
     },
     {
@@ -131,7 +132,7 @@ const WANDA_GOLD_EVENT = {
       status: 'Confirmed', cost: 0, depositAmt: 0, depositPaid: false, balancePaid: false, payDueDate: '',
       coiStatus: 'n/a', coiVerified: false, arrivalTime: '7:30 PM', contact: 'Cory (keeping it secret)',
       phone: '', website: '', contractSigned: false, isInformal: true, deliversHeartMoment: true, surprise: true, backup: '',
-      notes: 'SURPRISE — a singer from Cory’s church performs a dedication. Wanda doesn’t know. Only the run-of-show and the DJ need the cue; keep it off any guest-facing note.',
+      notes: `SURPRISE — a singer from Cory’s church performs a dedication. Wanda doesn’t know. Only ${THE_SCHEDULE} and the DJ need the cue; keep it off any guest-facing note.`,
       serviceArea: '', insuranceStatus: 'n/a', log: [],
     },
     {
@@ -150,7 +151,7 @@ const WANDA_GOLD_EVENT = {
     { id: 'ev-x-wanda-t4', week: 'Week of Mar 8', task: 'Do the photoshoot at 4604 and ORDER the 6-ft prints (~10 days out so they’re ready)', done: false, owner: 'Wanda' },
     { id: 'ev-x-wanda-t5', week: 'Week of Mar 8', task: 'Set up the rooms at 4604 for Marcus’s family + Mom (arriving 2 days early)', done: false, owner: 'Cory' },
     { id: 'ev-x-wanda-t6', week: 'Week of Mar 8', task: 'Coordinate the secret singer + gold-dress reveal cues with the DJ — keep it off Wanda’s radar', done: false, owner: 'Cory', surprise: true },
-    { id: 'ev-x-wanda-t7', week: 'Week of Mar 15', task: 'Final headcount to the caterer (~75), confirm run of show, all-black dress reminder in the invite', done: false, owner: 'Vida Haynes' },
+    { id: 'ev-x-wanda-t7', week: 'Week of Mar 15', task: `Final headcount to the caterer (~75), confirm ${THE_SCHEDULE}, all-black dress reminder in the invite`, done: false, owner: 'Vida Haynes' },
   ],
   ros: [
     { id: 'ev-x-wanda-ros-1', time: '6:30 PM', label: 'Doors — guests in all black; 6-ft prints + memory table on display' },

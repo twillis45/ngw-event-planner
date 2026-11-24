@@ -44,6 +44,7 @@ import { daysUntil } from './dates';
 // is a module cycle — safe because neither side calls the other at module-eval
 // time, only inside functions. Do not move a call to top level.
 import { isVendorBooked, isVendorConfirmed } from './workstreams';
+import { SCHEDULE, SCHEDULE_WORD, THE_SCHEDULE } from './scheduleWords';
 
 // ── Tiny date utils (deliberately self-contained — no import from elsewhere) ──
 // daysFrom() used to compute this itself, subtracting a wall-clock instant from a
@@ -421,9 +422,9 @@ export function getVendorChallengeSummary(vendor, event) {
   // ── Timeline ── (based on run-of-show match)
   let timeline;
   const rosMatches = (event && event.ros) ? event.ros.filter(r => r.vendorName && vendor.name && r.vendorName.toLowerCase().includes(vendor.name.toLowerCase())).length : 0;
-  if (rosMatches > 0) timeline = { level: 'safe', note: `${rosMatches} run-of-show entr${rosMatches === 1 ? 'y' : 'ies'} linked.` };
-  else if (isCommitted && eventClose) timeline = { level: 'attention', note: 'No run-of-show entries reference this vendor.' };
-  else timeline = { level: 'not_tracked', note: 'No run-of-show entries yet.' };
+  if (rosMatches > 0) timeline = { level: 'safe', note: `${rosMatches} ${SCHEDULE_WORD} entr${rosMatches === 1 ? 'y' : 'ies'} linked.` };
+  else if (isCommitted && eventClose) timeline = { level: 'attention', note: `No ${SCHEDULE_WORD} entries reference this vendor.` };
+  else timeline = { level: 'not_tracked', note: `No ${SCHEDULE_WORD} entries yet.` };
 
   // ── Financial ──
   let financial;
@@ -769,8 +770,8 @@ export function getVendorNextAction(vendor, event) {
   const rosMatches = (event && event.ros) ? event.ros.filter(r => r.vendorName && r.vendorName.toLowerCase().includes((vendor.name || '').toLowerCase())).length : 0;
   if (isCommitted && rosMatches === 0 && eventVeryClose) {
     return {
-      title: `Add ${vname} to the run of show.`,
-      consequence: `This vendor isn't on the run of show yet — adding them makes sure their setup is included in the day-of timeline.`,
+      title: `Add ${vname} to ${THE_SCHEDULE}.`,
+      consequence: `This vendor isn't on ${THE_SCHEDULE} yet — adding them makes sure their setup is included in the day-of timeline.`,
       ctaCopy: 'Open timeline',
       sourceCategory: 'timeline',
       route: { tab: 'Timeline' },
@@ -995,7 +996,7 @@ export function getActionableNextStep(nextAction, vendor) {
     return {
       kind: 'edit',
       ctaLabel: 'Open vendor details',
-      editHint: 'Add this vendor to the Run of Show tab manually for now.',
+      editHint: `Add this vendor to ${THE_SCHEDULE} by hand for now.`,
     };
   }
 
@@ -1146,7 +1147,7 @@ export function getVendorDayOfState(vendor, event) {
       label: 'Arrival / setup time',
       status: arrivalTime ? 'done' : (eventClose ? 'missing' : 'pending'),
       value: arrivalTime || (eventToday ? 'Not set — needed today' : 'Not set'),
-      consequence: !arrivalTime && eventClose ? 'Run-of-show timing cannot be trusted without an arrival time.' : undefined,
+      consequence: !arrivalTime && eventClose ? `${SCHEDULE} timing cannot be trusted without an arrival time.` : undefined,
     },
     {
       key: 'loadInOrder',
@@ -1266,7 +1267,7 @@ export function getVendorLinkedWork(vendor, event) {
   // Timeline / RoS entries matching this vendor by name
   const timeline = (event.ros || [])
     .filter(r => r.vendorName && vname && r.vendorName.toLowerCase().includes(vname))
-    .map(r => ({ id: r.id, label: r.title || r.activity || 'Run-of-show entry', note: r.time ? `${r.time}` : undefined }));
+    .map(r => ({ id: r.id, label: r.title || r.activity || `${SCHEDULE} entry`, note: r.time ? `${r.time}` : undefined }));
 
   // Decisions linked by vendor name or category mention in title
   const decisions = (event.decisions || event.approvals || [])

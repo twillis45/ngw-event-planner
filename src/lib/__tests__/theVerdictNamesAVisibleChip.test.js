@@ -31,6 +31,7 @@ import {
   getHostHighestRiskVendor,
 } from '../vendorIntelligence';
 import { localISO } from '../dates';
+import { SCHEDULE_WORD } from '../scheduleWords';
 
 // LOCAL calendar date — toISOString() is UTC and slides a day wherever the two
 // calendars disagree (measured at TZ=Pacific/Kiritimati, 2026-09-26).
@@ -89,7 +90,7 @@ describe('(premise) the defect is real on the unfiltered engine', () => {
     }
     expect([...seen].sort()).toEqual([
       'scope: Vendor category not set — scope unclear.',
-      'timeline: No run-of-show entries reference this vendor.',
+      `timeline: No ${SCHEDULE_WORD} entries reference this vendor.`, // owner 11/24/2026: the host's word, not "run of show"
     ]);
   });
 });

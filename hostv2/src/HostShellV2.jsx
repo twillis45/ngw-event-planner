@@ -455,6 +455,8 @@ import EventHashtag from './EventHashtag.jsx';
 import { isGuestMessagesApiConfigured, fetchGuestThreads } from '@app/lib/api/guestMessages';
 import { isGuestPhotosApiConfigured, fetchEventGuestPhotos } from '@app/lib/api/guestPhotos';
 import { questionsWaiting, questionsWaitingLine, photosWaitingLine } from '@app/lib/guestInbox';
+// The host's word for the day's plan (owner: "Host doesn't use run of show language", 11/24/2026).
+import { SCHEDULE, THE_SCHEDULE, SCHEDULE_WORD } from '@app/lib/scheduleWords';
 
 
 const fmt = formatCurrency;
@@ -13186,8 +13188,8 @@ export default function HostShellV2() {
                       </article>
                     ) : (<>
                       <p className="truth">{dayHero.state === 'done'
-                        ? 'Every cue on the run of show is done — enjoy the rest.'
-                        : 'There’s no run of show for today yet.'}</p>
+                        ? `Every moment on ${THE_SCHEDULE} is done — enjoy the rest.`
+                        : `There’s no ${SCHEDULE_WORD} for today yet.`}</p>
                       <div className="actions-row" style={{ alignItems: 'center' }}>
                         <button className="cta" onClick={() => setStage('day')}>{dayHero.state === 'done' ? 'See the day' : 'Open the day'}</button>
                       </div>
@@ -16225,7 +16227,7 @@ export default function HostShellV2() {
               {rosOverlaps > 0 && (
                 <div className="later-row" style={{ background: 'var(--warn-tint)', borderRadius: 'var(--r-md)', padding: '10px 14px', marginBottom: 'var(--sp-2)' }}>
                   <span className="t" style={{ color: 'var(--warn)', fontWeight: 650 }}>
-                    {rosOverlaps} run-of-show {rosOverlaps === 1 ? 'moment overlaps' : 'moments overlap'} another — worth a look before things collide.
+                    {rosOverlaps} {rosOverlaps === 1 ? 'moment overlaps' : 'moments overlap'} another on {THE_SCHEDULE} — worth a look before things collide.
                   </span>
                 </div>
               )}
@@ -16593,7 +16595,7 @@ export default function HostShellV2() {
                       return (
                         <div className="ros-sugg" data-ros-suggestions>
                           <p className="grounding ros-sugg-lead">
-                            This is your run of show, so it stays as you wrote it. Add to your night? The {String(event.type || 'event').toLowerCase()} playbook suggests:
+                            This is your {SCHEDULE_WORD}, so it stays as you wrote it. Add to your night? The {String(event.type || 'event').toLowerCase()} playbook suggests:
                           </p>
                           {sugg.map((r) => (
                             <div key={r.id} className="then-row ros-sugg-row" data-ros-suggestion>
@@ -16610,7 +16612,7 @@ export default function HostShellV2() {
                     if (!w || !w.owned || !w.count) return null;
                     return (
                       <p className="grounding" style={{ margin: '0 0 var(--sp-3)', color: 'var(--muted)' }}>
-                        This is your run of show, so it stays as you wrote it.
+                        This is your {SCHEDULE_WORD}, so it stays as you wrote it.
                         {' '}The {String(event.type || 'event').toLowerCase()} playbook has {w.count} more {w.count === 1 ? 'moment' : 'moments'} it didn’t add
                         {w.program > 0 ? `, ${w.program} of them during the event itself` : ''}.
                       </p>
@@ -16782,7 +16784,7 @@ export default function HostShellV2() {
                 </>
               ) : ros.length === 0 ? (
                 <>
-                  <h1 className="mega" style={{ fontSize: 'var(--t-display-l)', lineHeight: 1.08 }}>No run of show yet</h1>
+                  <h1 className="mega" style={{ fontSize: 'var(--t-display-l)', lineHeight: 1.08 }}>No {SCHEDULE_WORD} yet</h1>
                   <p className="day-empty">Your day schedule fills in as vendors and their arrival times settle — then this screen becomes one thing at a time, in the order the day runs.</p>
                   {/* Per-screen audit: the old empty state told a real host to “Try the
                       Wedding” (a demo) with no real action. The run of show is built from
@@ -16792,7 +16794,7 @@ export default function HostShellV2() {
               ) : dayIdx >= ros.length ? (
                 <>
                   <div className="clock" style={solemn ? { fontSize: 'clamp(30px,10cqw,40px)', fontFamily: 'var(--serif-read)', fontWeight: 500, letterSpacing: '-.01em' } : { fontSize: 'clamp(34px,11cqw,44px)', fontWeight: 700, letterSpacing: '-.03em' }}>{solemn ? 'That’s all of it. Thank you for carrying today.' : 'That’s the whole day.'}</div>
-                  <p className="day-empty">All {ros.length} moments walked through, in order, from the real run of show.</p>
+                  <p className="day-empty">All {ros.length} moments walked through, in order, from {THE_SCHEDULE}.</p>
                   <button className="cta" style={{ marginTop: 18 }} onClick={() => setDayIdx(0)}>Walk it again</button>
                 </>
               ) : (
@@ -21272,7 +21274,7 @@ export default function HostShellV2() {
                 <SheetHero
                   eyebrow="The heart of it"
                   star="What are we really protecting?"
-                  sub="The day-before brief, the run of show, and the toast draw from your words. Nothing here is required."
+                  sub={`The day-before brief, ${THE_SCHEDULE}, and the toast draw from your words. Nothing here is required.`}
                 />
                 {/* MILITARY RETIREMENT intelligence (knowledge/militaryRetirement.js): when the
                     event is a military retirement, surface the real ceremony protocol — the
@@ -30010,7 +30012,7 @@ export default function HostShellV2() {
         const dRaw = [
           { label: ASK_LABEL, sub: 'a question, answered from your plan', go: () => { setAskQ(''); setAskResult(null); setAskLLM(null); setSheet({ kind: 'ask' }); } },
           { label: 'Plan', sub: 'the command board', go: () => setStage('plan') },
-          { label: 'The Day', sub: 'day-of run of show', go: () => setStage('day') },
+          { label: 'The Day', sub: THE_SCHEDULE, go: () => setStage('day') },
           { label: 'After', sub: 'wrap-up & thank-yous', go: () => setStage('after') },
           { label: 'New event', sub: 'start another', go: startNewEvent },
           { label: 'Your money', sub: 'budget', go: () => setSheet({ kind: 'budget' }) },
@@ -30111,7 +30113,7 @@ export default function HostShellV2() {
             {/* The host's hashtag, when on (owner ruling E). */}
             {String(event.hashtag || '').trim() ? ` · ${String(event.hashtag).trim()}` : ''}
           </p>
-          <div className="p-head">Run of show</div>
+          <div className="p-head">{SCHEDULE}</div>
           {ros.map((r, i) => (
             <div className="p-row" key={r.id || i}>
               {/* PRINT HONESTY (2026-07-30, found by driving print emulation live).

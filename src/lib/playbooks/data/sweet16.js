@@ -3,6 +3,7 @@
 // is the hero. NO alcohol for teens (mocktail/soda bar). Chaperone/supervision plan,
 // grand-entrance spotlight, themed decor, cake, photo booth, favors, social moment.
 // Figures grounded in US event-planning norms; quantities scale by guestCount.
+import { THE_SCHEDULE } from '../../scheduleWords';
 
 const sweet16 = {
   type: 'Sweet 16',
@@ -261,7 +262,7 @@ const sweet16 = {
     { id: 't_menu', target: 'call:food_menu', facts: ['calls-answered'], answeredBy: ['food_menu'], milestoneId: 'confirm_catering', phase: 'plan', label: 'Decide what food you’re serving', when: 'T-14d' },
     { id: 't_menu_order', target: 'spread', facts: ['or:dietary-noted', 'deposits-paid'], milestoneId: 'confirm_catering', phase: 'plan', label: 'Finalize menu, count dietary needs, place food order/deposit', when: 'T-14d' },
     { id: 't_chaperones', target: 'assign', facts: [], milestoneId: 'finalize_headcount', phase: 'plan', label: 'Confirm chaperones, assign door + bar + floor watchers, set house rules', when: 'T-7d' },
-    { id: 't_timeline', target: 'build-day', facts: [], milestoneId: 'finalize_headcount', phase: 'plan', label: 'Write the run-of-show: arrivals, entrance, dinner, dance, cake, send-off', when: 'T-7d' },
+    { id: 't_timeline', target: 'build-day', facts: [], milestoneId: 'finalize_headcount', phase: 'plan', label: `Write ${THE_SCHEDULE}: arrivals, entrance, dinner, dance, cake, send-off`, when: 'T-7d' },
     { id: 't_shop', target: 'list', facts: ['then:food-bought'], shopClock: true, milestoneId: 'shop_perishables', phase: 'prep', label: 'Buy mocktail mixers, soda, ice, cake, and fresh garnishes', when: 'T-1d' },
     { id: 't_prep_food', target: 'none', facts: [], milestoneId: 'shop_perishables', phase: 'prep', label: 'Prep make-ahead food and pre-batch mocktail syrups', when: 'T-1d' },
     { id: 't_decorate', target: 'day', facts: [], milestoneId: 'setup_dayof', phase: 'setup', label: 'Hang decor, set photo booth, build the mocktail/soda bar', when: 'T0' },
@@ -495,7 +496,7 @@ const sweet16 = {
     { id: 'c_dj_noshow', when: 'r_dj_noshow', plan: 'Switch to the backup playlist on the PA, assign an adult to run it and announce the grand entrance/cake, and pursue the deposit refund afterward.' },
     { id: 'c_food_short', when: 'r_food_short', plan: 'Place the standby pizza/side order, stretch the buffet with extra chips/fruit, and move cake earlier to fill the gap.' },
     { id: 'c_dead_floor', when: 'r_dead_floor', plan: 'Run the photo-booth and a group dance/line-dance to reset energy, then have the DJ rebuild with requests from the teen\'s must-play list.' },
-    { id: 'c_weather', when: 'r_weather', plan: 'Move indoors or under the tent, relocate the dance floor and bar, and add ice; keep the run-of-show the same.' },
+    { id: 'c_weather', when: 'r_weather', plan: `Move indoors or under the tent, relocate the dance floor and bar, and add ice; keep ${THE_SCHEDULE} the same.` },
   ],
 
   schedules: {
