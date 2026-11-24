@@ -374,6 +374,7 @@ import { COUNT_LABELS } from '@app/lib/itemCounts';
 import { perHead, perHeadRange, perHeadText } from '@app/lib/perHead';
 import { listTotal, allInTotal } from '@app/lib/planCosts';
 import { landingStage } from '@app/lib/landingStage';
+import { checklistPhases, upNextStep, stepWhen, stepDateText } from '@app/lib/checklistPhases';
 import { planPartsProgress, planPartsLine } from '@app/lib/planProgress';
 import { moneyFigures, headroomLabel, MONEY_LABELS } from '@app/lib/moneyFigures';
 import { outwardGaps, outwardPrompt, isPlaceholderName } from '@app/lib/outwardReady';
@@ -7738,38 +7739,124 @@ export default function HostShellV2() {
       </span>
     </button>
   );
-  const renderGroupedTasks = (renderRow) => {
+  // ── THE CHECKLIST: UP NEXT, THEN GROUPED BY WHEN (cohesion batch D) ───────
+  // Owner D1–D5 (11/24/2026), renders/cohesion-d. The open steps sit in
+  // phases by when (lib/checklistPhases: the one due-date reader against
+  // event.date). The first step the plan has not handled leaves its phase and
+  // becomes "Up next", the sheet's one lit action: its declared route, or
+  // "Check it off" when it declares none (D4). Only the current phase is open;
+  // the rest fold to one row each and open in place (D2). The dinner's steps
+  // stay one group inside their phase, and fold to one green row when all done.
+  const renderChecklistPhases = (renderRow) => {
     const order = groupDinnerSteps(event.timeline, dinnerStepIds);
+    const dinnerIds = new Set(order.filter((x) => x.inGroup && x.t).map((x) => x.t.id));
     const members = order.filter((x) => x.inGroup && x.t && !x.t.retired);
-    const group = order.filter((x) => x.inGroup).map((x) => ({ x, el: renderRow(x.t, x.i) })).filter((g) => g.el);
-    // THE DINNER'S STEPS, ALL DONE, ARE ONE GREEN ROW (owner, 11/24/2026),
-    // reopened for the session to show the checked-off steps.
-    const dinnerDone = !group.length && members.length > 0 && members.every((x) => x.t.done);
+    const dinnerDone = members.length > 0 && members.every((x) => x.t.done);
     reopened.isOpen('tasks:dinner', dinnerDone); // seen every render, so an undone step drops the reopen
+    const open = (event.timeline || []).map((t, i) => ({ t, i })).filter((x) => x.t && !x.t.done && !x.t.retired);
+    const now = new Date();
+    const phases = checklistPhases(event, open, now);
+    const next = upNextStep(phases, (t) => isTimelineStepResolved(t));
     const out = [];
-    let placed = false;
-    for (const x of order) {
-      if (!x.inGroup) { out.push(renderRow(x.t, x.i)); continue; }
-      if (placed || !(group.length || dinnerDone)) continue;
-      placed = true;
-      if (dinnerDone) {
-        out.push(reopened.isOpen('tasks:dinner', dinnerDone) ? (
-          <div className="dinner-steps" data-dinner-steps key="dinner-steps">
-            <div className="shelf-label">{celebrationTitle(event)}</div>
-            {members.map((m) => doneTaskRow(m.t, m.i))}
-          </div>
-        ) : (
-          <DoneFold key="dinner-steps" text={`${celebrationTitle(event)} · all ${members.length} done`}
-            onOpen={() => reopened.reopen('tasks:dinner')} />
-        ));
-        continue;
-      }
+    if (next) {
+      const t = next.t; const i = next.i;
+      const { lead, detail } = splitTask(t.task);
+      const action = checklistActionFor(t.task, { taskId: t.id, week: t.week, category: t.category });
+      const ownerName = String(t.owner || '').trim();
+      const who = ownerName ? (isHostName(ownerName) ? 'Who has it: you' : `Who has it: ${ownerName}`) : 'Nobody has this yet';
+      const w = stepWhen(t, event, now);
+      let late = '';
+      try { late = w.dueIn != null && w.dueIn <= 0 ? (taskDueLabel(t, event) || '') : ''; } catch (_e) { late = ''; }
+      const whenText = w.key === 'nodate' ? (t.week || '') : [stepDateText(w.due), late].filter(Boolean).join(' · ');
       out.push(
-        <div className="dinner-steps" data-dinner-steps key="dinner-steps">
-          <div className="shelf-label">{celebrationTitle(event)}</div>
-          {group.map((g) => <Fragment key={(g.x.t.id || g.x.i) + '-dn'}>{g.el}</Fragment>)}
+        <div className="ck-next" data-up-next key="up-next">
+          <div className="sect"><h2>Up next</h2><div className="rule" />{whenText ? <span className="when">{whenText}</span> : null}</div>
+          <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
+            <div className="f-name ck-next-name">{lead}</div>
+            {detail ? <p className="v-meta" style={{ whiteSpace: 'normal', margin: '6px 0 0' }}>{detail}</p> : null}
+            <p className="v-meta" style={{ margin: '6px 0 12px' }}>{who}</p>
+            <button type="button" className="cta" style={{ width: '100%' }} data-up-next-go
+              onClick={() => (action ? action.go() : toggleTask(i))}>{action ? action.label : 'Check it off'}</button>
+            <div className="actions-row ck-next-more">
+              {action && <button type="button" className="mini" onClick={() => toggleTask(i)}>Check it off</button>}
+              {assignablePeople.length > 0 && (
+                <button type="button" className="mini" onClick={() => setAssignFor(assignFor === t.id ? null : t.id)}>
+                  {ownerName && !isHostName(ownerName) ? 'Change who has it' : 'Give this to someone'}
+                </button>
+              )}
+            </div>
+            {assignFor === t.id && (
+              <div className="assign-pick" role="group" aria-label={`Who has ${lead}`}>
+                {assignablePeople.map((p) => (
+                  <button key={p.name} className={'assign-opt' + (p.name === ownerName ? ' on' : '')} onClick={() => assignTask(t.id, p.name)}>
+                    <span className="assign-who">{p.name}</span>
+                    <span className="assign-why">{p.why}</span>
+                  </button>
+                ))}
+                {ownerName && (
+                  <button className="assign-opt" onClick={() => assignTask(t.id, '')}><span className="assign-who">Nobody — I'll do it</span></button>
+                )}
+              </div>
+            )}
+          </div></div>
         </div>,
       );
+    }
+    const rest = phases.map((p) => ({ ...p, rows: p.rows.filter((r) => !next || r.t !== next.t) })).filter((p) => p.rows.length);
+    const focusPhase = sheet.focus ? (rest.find((p) => p.rows.some((r) => r.t.id === sheet.focus)) || {}).key : null;
+    rest.forEach((p, k) => {
+      const pk = `${event.id}|${p.key}`;
+      const current = k === 0;
+      const isOpen = current || !!ckOpenPhases[pk] || p.key === focusPhase;
+      const handedOff = p.rows.filter((r) => { const o = String(r.t.owner || '').trim(); return o && !isHostName(o); }).length;
+      const rows = [];
+      let dinnerPlaced = false;
+      for (const r of p.rows) {
+        if (dinnerIds.has(r.t.id)) {
+          if (dinnerPlaced) continue;
+          dinnerPlaced = true;
+          const inPhase = p.rows.filter((x) => dinnerIds.has(x.t.id));
+          rows.push(
+            <div className="dinner-steps" data-dinner-steps key={`dinner-${p.key}`}>
+              <div className="shelf-label">{celebrationTitle(event)}</div>
+              {inPhase.map((x) => <Fragment key={(x.t.id || x.i) + '-dn'}>{renderRow(x.t, x.i)}</Fragment>)}
+            </div>,
+          );
+          continue;
+        }
+        rows.push(renderRow(r.t, r.i));
+      }
+      out.push(
+        <section key={pk} className={'ck-phase' + (isOpen ? ' open' : '')} data-phase={p.key} data-phase-start={p.start} data-open={isOpen ? 'true' : 'false'}>
+          {current ? (
+            <div className="shelf-label ck-phase-h">
+              <span data-phase-label>{p.label}</span>
+              <span className="ck-phase-n">{p.rows.length} left</span>
+            </div>
+          ) : (
+            <button type="button" className="later-row ck-phase-fold" data-phase-toggle aria-expanded={isOpen ? 'true' : 'false'}
+              onClick={() => setCkOpenPhases((m) => ({ ...m, [pk]: !isOpen }))}>
+              <span className="ck-phase-t">
+                <span className="shelf-label ck-phase-l" data-phase-label>{p.label}</span>
+                <span className="v-meta">{p.rows.length} step{p.rows.length === 1 ? '' : 's'}{handedOff ? ` · ${handedOff} handed off` : ''}</span>
+              </span>
+              <span className="chev" aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
+            </button>
+          )}
+          {isOpen && <div>{rows}</div>}
+        </section>,
+      );
+    });
+    if (dinnerDone) {
+      out.push(reopened.isOpen('tasks:dinner', dinnerDone) ? (
+        <div className="dinner-steps" data-dinner-steps key="dinner-steps">
+          <div className="shelf-label">{celebrationTitle(event)}</div>
+          {members.map((m) => doneTaskRow(m.t, m.i))}
+        </div>
+      ) : (
+        <DoneFold key="dinner-steps" text={`${celebrationTitle(event)} · all ${members.length} done`}
+          onOpen={() => reopened.reopen('tasks:dinner')} />
+      ));
     }
     return out;
   };
@@ -9689,6 +9776,20 @@ export default function HostShellV2() {
   // which is why this is worth a comment rather than a re-discovery.
   const [settledVendorsOpen, setSettledVendorsOpen] = useState(false);
   const [assignFor, setAssignFor] = useState(null);   // the timeline row whose owner is being set
+  // The checklist (cohesion batch D): which step is open in place (null =
+  // follow the sheet's focus, '' = she closed it) and which folded phases she
+  // opened, keyed `${event.id}|${phase}`, for this session.
+  const [ckOpenStep, setCkOpenStep] = useState(null);
+  const [ckOpenPhases, setCkOpenPhases] = useState({});
+  useEffect(() => { setCkOpenStep(null); }, [sheet && sheet.kind, sheet && sheet.focus]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Is this name the host's own (hostNameFor: the plan's host line, else her
+  // profile)? Her full name or her first name. Her own steps read "Yours", and
+  // she is never asked to tell or confirm herself (audit #33).
+  const isHostName = (name) => {
+    const host = String(hostNameFor(event, profile) || '').trim().toLowerCase();
+    const n = String(name || '').trim().toLowerCase();
+    return !!host && !!n && (n === host || n === host.split(/\s+/)[0]);
+  };
   const [vendorQ, setVendorQ] = useState('');
   const [vendorLens, setVendorLens] = useState('all');
   // ONE definition of "settled", read by both the fold and the chip selector.
@@ -23618,7 +23719,7 @@ export default function HostShellV2() {
                       report line (tap to review) — same green-dot semantics as
                       the handled sections everywhere else. */}
                   <Panel on={panels}>
-                  {renderGroupedTasks((t, i) => {
+                  {renderChecklistPhases((t, i) => {
                     // A RETIRED row is off the open list. The reconcile marks a
                     // row retired when the gate that authored it closes — pick
                     // "steam them myself" and the two crab-house pickup rows
@@ -23641,78 +23742,74 @@ export default function HostShellV2() {
                     // The visitors-bureau row carries its own brief (host directive
                     // 2026-07-28): contact capture + the asks with direct links.
                     const isCvbRow = /visitors bureau|convention .{0,3}visitors|\bcvb\b/i.test(String(t.task || ''));
+                    // ── ONE STEP, OPENED IN PLACE (cohesion batch D, owner D3 11/24/2026) ──
+                    // The row was ONE button that checked the step off, with up to
+                    // five more buttons under it (~126 in Wanda's sheet). Now the
+                    // check is its own 44px box, and the rest of the row opens the
+                    // step under itself: its detail, who has it, its route, the
+                    // hand-off and "Check it off". A tap to read never checks off.
+                    const focusedRow = !!sheet.focus && t.id === sheet.focus;
+                    const isOpenStep = ckOpenStep != null ? ckOpenStep === t.id : focusedRow;
+                    const ownerName = String((t && t.owner) || '').trim();
+                    const hostHolds = !!ownerName && isHostName(ownerName);
+                    const when = stepWhen(t, event, new Date());
+                    const dueBits = (() => {
+                      if (inferred) return when.key === 'nodate' || when.key === 'day' ? '' : stepDateText(when.due);
+                      if (when.key === 'nodate') return t.week || '';
+                      let late = '';
+                      try { late = when.dueIn <= 0 ? (taskDueLabel(t, event) || '') : ''; } catch (_e) { late = ''; }
+                      if (when.key === 'day') return late;
+                      return [stepDateText(when.due), late].filter(Boolean).join(' · ');
+                    })();
+                    const rowMeta = [dueBits, ownerName ? (hostHolds ? 'Yours' : ownerName) : ''].filter(Boolean).join(' · ');
                     const rowBtn = (
-                    <button key={t.id || i} className={'frow' + (inferred ? ' got' : '') + (sheet.focus && t.id === sheet.focus ? ' rowfocus' : '')}
-                      ref={scrollIntoViewOnOpen(sheet.focus && t.id === sheet.focus)}
-                      style={{ animation: rowEnter(i) }}
-                      onClick={() => toggleTask(i)}>
-                      <span className="fcheck" aria-hidden="true" />
-                      <span className="f-main">
-                        <span className="f-name">{lead}
-                          {inferred ? <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>done by your plan — tap to confirm</span> : null}
-                          {(() => { // compressed-timeline urgency, the engine's word (never for standard)
-                            // A row the plan already handled is not urgent: "Do now" beside
-                            // "done by your plan" contradicts itself (owner, 11/16/2026).
-                            if (inferred) return null;
-                            try {
-                              // WAS: /T-(\d+)d/.exec(t.week) — and `week` is PROSE ('Week of'),
-                              // never 'T-5d'. It matched NOTHING, so `po` was always null, so
-                              // this chip NEVER RENDERED, on any task, on any event. The one
-                              // urgency signal in the whole checklist was dead code. The lead
-                              // now comes from the one reader (lib/taskLead.js) off the
-                              // persisted leadDays, and the map is built from the real number.
-                              const lead = taskLeadDays(t);
-                              const po = lead != null ? { [t.week || '_']: lead } : null;
-                              const u = days != null && po ? taskUrgencyChip({ ...t, week: t.week || '_' }, days, event.type, po) : null;
-                              return u && u.label ? <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>{u.label}</span> : null;
-                            } catch { return null; }
-                          })()}
+                    <div className={'frow step-line' + (inferred ? ' got' : '') + (focusedRow ? ' rowfocus' : '')}>
+                      <button type="button" className="step-ck" data-step-check
+                        aria-label={inferred ? `Confirm ${lead} is done` : `Check off ${lead}`}
+                        onClick={() => toggleTask(i)}>
+                        <span className="fcheck" aria-hidden="true" />
+                      </button>
+                      <button type="button" className="step-body" data-step-body aria-expanded={isOpenStep ? 'true' : 'false'}
+                        onClick={() => setCkOpenStep(isOpenStep ? '' : t.id)}>
+                        <span className="f-main">
+                          <span className="f-name">{lead}
+                            {inferred ? <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>your plan did this · confirm</span> : null}
+                            {(() => { // compressed-timeline urgency, the engine's word (never for standard)
+                              if (inferred) return null;
+                              try {
+                                const ld = taskLeadDays(t);
+                                const po = ld != null ? { [t.week || '_']: ld } : null;
+                                const u = days != null && po ? taskUrgencyChip({ ...t, week: t.week || '_' }, days, event.type, po) : null;
+                                return u && u.label ? <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>{u.label}</span> : null;
+                              } catch { return null; }
+                            })()}
+                          </span>
+                          {rowMeta ? <span className="v-meta">{rowMeta}</span> : null}
                         </span>
-                        {detail ? <span className="v-meta" style={{ fontWeight: 400, whiteSpace: 'normal' }}>{detail}</span> : null}
-                        {/* ── THE BOOKING WINDOW, SAID OUT LOUD ──────────────
-                            Two audiences, one row. The host needs to know why
-                            this date is not the one the playbook authored; the
-                            guest needs the dates to act on, which is the half
-                            the host has to pass along and could not. The
-                            window edges are cited (CheapAir 2024, corroborated
-                            by Google Flights and Expedia via Frommers); the
-                            two-week decision buffer inside `because` is
-                            reasoned, and travelLeadTime marks the whole thing
-                            `synthesized` rather than cited for exactly that
-                            reason. Named here as "what the studies measured",
-                            never as a quote or a promise. */}
+                        <span className="step-chev" aria-hidden="true">▸</span>
+                      </button>
+                    </div>
+                    );
+                    // The opened step's top: the detail and the booking window
+                    // (cited; see travelLeadTime), then who has it.
+                    const openTop = (
+                      <>
+                        {detail ? <p className="grounding step-detail">{detail}</p> : null}
                         {(() => {
                           const af = airFloorById.get(t.id);
                           if (!af) return null;
                           return (
-                            <span className="v-meta" style={{ fontWeight: 400, whiteSpace: 'normal', display: 'block', marginTop: 4 }}>
+                            <p className="v-meta step-detail" style={{ whiteSpace: 'normal' }}>
                               {af.because}
                               {' Tell guests to book '}
                               {`${af.primeOpensDays}–${af.primeClosesDays}`}
                               {' days out — about '}
                               {af.bestSingleDay}
                               {' days ahead is the average sweet spot. Measured by CheapAir (917M fares, 2024), with Google Flights and Expedia landing in the same window.'}
-                            </span>
+                            </p>
                           );
                         })()}
-                        <span className="v-meta" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                          {/* The DUE DATE, finally. taskDueLabel had zero call sites — the app
-                              computed every task's lead and then showed the host only a prose
-                              bucket ("Week of"), which is why nothing ever read as late.
-                              taskDueLabel also distinguishes "13 days past its window" from
-                              "today", so a closed window stops masquerading as a deadline. */}
-                          {(() => {
-                            let due = null;
-                            try { due = (t.done || inferred) ? null : (taskDueLabel(t, event) || null); } catch (_e) { due = null; }
-                            // Once there is a REAL due label, the prose bucket is noise —
-                            // "7 days past its window · Week of" says the same thing twice and
-                            // the second half is the vaguer one. `week` stays only as the
-                            // fallback for a task whose lead we genuinely cannot resolve.
-                            return [due, due ? null : t.week, t.owner].filter(Boolean).join(' · ');
-                          })()}
-                        </span>
-                      </span>
-                    </button>
+                      </>
                     );
                     // ── ASSIGN (ownership ruling clauses 1a, 3, 7) ───────────────
                     // A SIBLING of the row button, never a child: nested
@@ -23772,22 +23869,22 @@ export default function HostShellV2() {
                       <div className="row-assign" key={(t.id || i) + '-assign'}>
                         {actionEl}
                         <button className="mini rowlink assign-btn"
-                          aria-label={owner
+                          aria-label={owner && !hostHolds
                             ? `${owner} has ${lead2}, ${rStatus}. Change who has this.`
                             : `Assign ${lead2} to someone`}
                           onClick={(e) => { e.stopPropagation(); setAssignFor(assignFor === t.id ? null : t.id); }}>
-                          {owner
+                          {owner && !hostHolds
                             ? <span aria-hidden="true">{owner} — {rStatus}</span>
                             : <span aria-hidden="true">Give this to someone</span>}
                         </button>
-                        {owner && !t.done && !tAnswer && tHelper && isHelperLinkApiConfigured() && (
+                        {owner && !hostHolds && !t.done && !tAnswer && tHelper && isHelperLinkApiConfigured() && (
                           <button className="mini rowlink helper-send"
                             disabled={!!(tSend && tSend.busy)}
                             onClick={(e) => { e.stopPropagation(); sendHelperJob(t.id); }}>
                             {tSend && tSend.busy ? 'Making the link…' : `Send ${tFirst} their job`}
                           </button>
                         )}
-                        {owner && !t.done && !tAnswer && tHelper && tHelperEmail && isHelperLinkApiConfigured() && (() => {
+                        {owner && !hostHolds && !t.done && !tAnswer && tHelper && tHelperEmail && isHelperLinkApiConfigured() && (() => {
                           const w = helperEmailWords(tFirst, tMail);
                           return (
                             <>
@@ -23803,7 +23900,7 @@ export default function HostShellV2() {
                             </>
                           );
                         })()}
-                        {owner && tHelperDial && (
+                        {owner && !hostHolds && tHelperDial && (
                           <a className="mini rowlink" data-helper-call style={{ textDecoration: 'none' }}
                             href={'tel:' + tHelperDial} onClick={(e) => e.stopPropagation()}>{`Call ${tFirst}`}</a>
                         )}
@@ -23825,7 +23922,7 @@ export default function HostShellV2() {
                               : <>{tSend.hasEmail ? 'No number' : 'No number or email'} for {tSend.first} — share or paste it yourself. Nothing is sent from here.</>}
                           </span>
                         )}
-                        {owner && !t.done && !tAnswer && (
+                        {owner && !hostHolds && !t.done && !tAnswer && (
                           // RECORD-ONLY (UX_07 level 4): it stores the host's word
                           // that the helper agreed and contacts no one, so the
                           // label says "Mark", never "Confirm with" (11/16/2026).
@@ -23853,11 +23950,24 @@ export default function HostShellV2() {
                         )}
                       </div>
                     ) : (actionEl ? <div className="row-assign" key={(t.id || i) + '-act'}>{actionEl}</div> : null);
-                    if (!isCvbRow) {
-                      return assignEl
-                        ? <Fragment key={(t.id || i) + '-w'}>{rowBtn}{assignEl}</Fragment>
-                        : rowBtn;
-                    }
+                    const checkOff = (
+                      <div className="row-assign step-done-row">
+                        <button type="button" className="mini rowlink" data-step-checkoff onClick={() => toggleTask(i)}>{inferred ? 'Confirm it’s done' : 'Check it off'}</button>
+                      </div>
+                    );
+                    const whoLine = (
+                      <p className="v-meta step-who">
+                        {ownerName && !hostHolds ? `Who has it: ${ownerName} · ${rStatus}` : 'Who has it: you'}
+                      </p>
+                    );
+                    const stepWrap = (inner) => (
+                      <div key={(t.id || i) + '-step'} className="step-row" data-step-row={t.id || i}
+                        ref={scrollIntoViewOnOpen(focusedRow)} style={{ animation: rowEnter(i) }}>
+                        {rowBtn}
+                        {isOpenStep && <div className="step-open" data-step-open>{openTop}{whoLine}{inner}{checkOff}</div>}
+                      </div>
+                    );
+                    if (!isCvbRow) return stepWrap(assignEl);
                     // ── The bureau brief — sibling of the row (inputs can't live
                     // inside a <button>). Contact is host-entered; every ask link
                     // is an honestly-labeled find link scoped to the destination;
@@ -23870,10 +23980,9 @@ export default function HostShellV2() {
                       patchEvent({ cvb: { ...(event.cvb || {}), ...c } }, 'Bureau contact saved — it rides this row now.');
                       setCvbForm({ name: '', phone: '', url: '' });
                     };
-                    return (
-                      <Fragment key={(t.id || i) + '-cvb'}>
-                        {rowBtn}
-                        {actionEl && <div className="row-assign">{actionEl}</div>}
+                    return stepWrap(
+                      <>
+                        {assignEl || (actionEl && <div className="row-assign">{actionEl}</div>)}
                         <details className="cvb-brief" style={{ margin: '2px 0 10px', padding: '0 2px' }}>
                           <summary className="v-meta" style={{ cursor: 'pointer', listStyle: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span className="mini rowlink">{savedCvb ? 'Their contact + what to ask for' : 'What to ask for — and where their contact goes'} ▾</span>
@@ -23911,7 +24020,7 @@ export default function HostShellV2() {
                             <p className="grounding" style={{ margin: 0 }}>Grounded in verified bureau programs (Gwinnett, Atlanta, Myrtle Beach) and hotel group-sales practice — sources under You &amp; settings → Grounding.</p>
                           </div>
                         </details>
-                      </Fragment>
+                      </>
                     );
                   })}
                   </Panel>
