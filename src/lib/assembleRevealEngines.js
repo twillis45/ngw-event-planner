@@ -18,6 +18,7 @@ import { lodgingIntel, lodgingKitchen } from './lodgingIntel';
 import { foodSpanText } from './foodSpan';
 import { eventSpanLabel } from './eventDates';
 import { isMilitaryRetirement, militaryRetirementContext, officialCeremonyAnswer } from './knowledge/militaryRetirement';
+import { SCHEDULE_WORD } from './scheduleWords';
 
 // ─── ONE HEADCOUNT (host ruling "single points of truth", 2026-07-29) ───────
 // This file resolved the guest count in three places: once for the blockers
@@ -140,7 +141,7 @@ function deriveDecisionBlockers(event, eventIdentity) {
       type: 'official-ceremony',
       urgency: 'high',
       branchLabel: mil && mil.authored ? mil.label : null,
-      reasoning: 'Whether the official protocol is part of your run of show',
+      reasoning: `Whether the official protocol is part of your ${SCHEDULE_WORD}`,
     });
   }
 
@@ -331,8 +332,8 @@ function buildBlockerStage(blocker) {
       title: 'The official ceremony',
       // The headline (nextDecision) is the question; this line says what the
       // answer decides, so the card doesn't ask it twice (live #224, 11/22/2026).
-      what: 'Your answer decides whether the official protocol joins your run of show.',
-      why: 'If it’s part of this party, the official protocol joins your run of show. If it’s held separately, the night stays as you planned it.',
+      what: `Your answer decides whether the official protocol joins your ${SCHEDULE_WORD}.`,
+      why: `If it’s part of this party, the official protocol joins your ${SCHEDULE_WORD}. If it’s held separately, the night stays as you planned it.`,
       // The headline IS the question, as on the timing ask (a bare "Choose
       // one." headlined the board on the owner's phone, 11/22/2026).
       nextDecision: `Is the official ${branch ? branch + ' ' : ''}retirement ceremony part of this party?`,

@@ -17,6 +17,7 @@
 // common elements as options, never requirements. Figures are synthesized from
 // widely published US event-planning norms applied with planner judgment, and
 // are labeled synthesized until a foreground verification pass attaches sources.
+import { SCHEDULE_WORD, THE_SCHEDULE } from '../../scheduleWords';
 
 const quinceanera = {
   type: 'Quinceañera',
@@ -229,7 +230,7 @@ const quinceanera = {
     },
     {
       id: 'runofshow_ceremony_prep',
-      name: 'Lock the run-of-show and ceremonial items (shoes, doll, crown, candles)',
+      name: `Lock ${THE_SCHEDULE} and ceremonial items (shoes, doll, crown, candles)`,
       offsetDays: 14,
       owner: 'host',
       dependsOn: ['final_fitting_count', 'vals_rehearsals'],
@@ -279,7 +280,7 @@ const quinceanera = {
     { id: 't_rehearse', target: 'vendors-tab', facts: [], milestoneId: 'vals_rehearsals', phase: 'plan', label: 'Run weekly vals and surprise-dance rehearsals; confirm court attire fittings', when: 'T-60d' },
     { id: 't_fitting', target: 'vendors-tab', facts: [], catererOut: ['host-cooks', 'none-hired'], labelWithoutCaterer: 'Final gown and court fittings; lock the headcount', milestoneId: 'final_fitting_count', phase: 'plan', label: 'Final gown and court fittings; lock headcount and give the caterer the final count', when: 'T-30d' },
     { id: 't_ceremony_items', target: 'none', facts: [], milestoneId: 'runofshow_ceremony_prep', phase: 'plan', label: 'Gather the heels, the last doll, the crown/tiara, the toast glasses, and candles/roses; assign each moment to a person', when: 'T-14d' },
-    { id: 't_runofshow', target: 'build-day', facts: [], milestoneId: 'runofshow_ceremony_prep', phase: 'plan', label: 'Write the reception run-of-show: entrance, vals, shoes, doll, crowning, toast, father-daughter dance, dinner, open floor', when: 'T-14d' },
+    { id: 't_runofshow', target: 'build-day', facts: [], milestoneId: 'runofshow_ceremony_prep', phase: 'plan', label: `Write the reception ${SCHEDULE_WORD}: entrance, vals, shoes, doll, crowning, toast, father-daughter dance, dinner, open floor`, when: 'T-14d' },
     { id: 't_final_rehearsal', target: 'vendors', facts: [], milestoneId: 'final_rehearsal_pickups', phase: 'prep', label: 'Hold the final full rehearsal; brief the MC; confirm every vendor and court member by phone', when: 'T-7d' },
     { id: 't_pickups', target: 'vendor-deliveries', facts: [], milestoneId: 'final_rehearsal_pickups', phase: 'prep', label: 'Pick up the gown, confirm cake and flower delivery windows, and stage all ceremonial items', when: 'T-2d' },
     { id: 't_dayof', target: 'day', facts: [], milestoneId: 'event_day', phase: 'event', label: 'Hair/makeup, Mass, photos, then reception; run the ceremonial moments to the timeline', when: 'T0' },
@@ -486,7 +487,7 @@ const quinceanera = {
     { id: 'c_court_unready', when: 'r_court_unready', plan: 'Promote an alternate into the court, simplify the choreography to what the group can do confidently, and keep the father-daughter vals as the anchor if the group dance is shaky.' },
     { id: 'c_vendor_dropout', when: 'r_vendor_dropout', plan: 'Activate the backup vendor or, for music, switch to a charged-device playlist on the venue PA with the MC running announcements; pursue the deposit refund afterward.' },
     { id: 'c_headcount', when: 'r_headcount', plan: 'Give the caterer the confirmed count plus a small buffer, add or remove a table, and keep a few favors and place settings in reserve for last-minute guests.' },
-    { id: 'c_weather', when: 'r_weather', plan: 'Move the affected portion indoors or under the tent, relocate the dance floor and bar, add ice, and keep the run-of-show order intact.' },
+    { id: 'c_weather', when: 'r_weather', plan: `Move the affected portion indoors or under the tent, relocate the dance floor and bar, add ice, and keep the order of ${THE_SCHEDULE} intact.` },
   ],
 
   schedules: {
@@ -497,7 +498,7 @@ const quinceanera = {
       { when: 'T0 -4h', what: 'Decorator and florist dress the venue: backdrop, entrance arch, centerpieces, head table' },
       { when: 'T0 -3h', what: 'If a Mass: arrive at the church, line up the court, run the processional order' },
       { when: 'T0 -2h', what: 'DJ/banda sound check and uplighting; place ceremonial items (doll, crown, heels, toast glasses) at the head table' },
-      { when: 'T0 -1h', what: 'Caterer sets the buffet/plated stations; MC reviews the run-of-show; court takes entrance positions' },
+      { when: 'T0 -1h', what: `Caterer sets the buffet/plated stations; MC reviews ${THE_SCHEDULE}; court takes entrance positions` },
     ],
     program: [
       { when: 'T0 +5m', what: 'Mass or ceremony begins — court seated, padrinos in place' },

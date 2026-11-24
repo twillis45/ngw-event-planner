@@ -16,6 +16,7 @@ import { perUnitBand } from '../perUnitText';
 import { deriveEventPhaseProgress } from '../phaseProgress';
 import { planHeroCopy } from '../planHeroCopy';
 import { notIncludedFor, notIncludedSummary } from '../budgetEstimator';
+import { SCHEDULE_WORD, THE_SCHEDULE } from '../scheduleWords';
 
 const ev = (type, date, n, extra = {}) => ({
   id: 'x', type, date, guestMode: 'count', guestEstimate: n, guestCountSource: 'host',
@@ -138,7 +139,7 @@ test('5 · each checklist row opens the surface that does its job', () => {
     const e = ev(pb.type, '2026-12-31', 20);
     for (const r of playbookChecklist(e, '2026-10-01')) {
       const hit = routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, e);
-      if (r.category === 'planning' && hit && hit.route && hit.route.tab === 'Event Day Schedule' && !/run[- ]of[- ]show|order of events|oven map|agenda|daily flow|vows?|readings?/i.test(r.task)) {
+      if (r.category === 'planning' && hit && hit.route && hit.route.tab === 'Event Day Schedule' && !new RegExp(`${THE_SCHEDULE}|${SCHEDULE_WORD}|order of events|oven map|agenda|daily flow|vows?|readings?`, 'i').test(r.task)) {
         offenders.push(`${pb.type}: ${r.task.slice(0, 60)}`);
       }
     }

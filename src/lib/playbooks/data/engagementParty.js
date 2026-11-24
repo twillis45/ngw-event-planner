@@ -12,6 +12,7 @@
 // Per the authoring brief these are synthesized from trade consensus and NOT
 // individually cited: knowledge.sources stays [] and verificationStatus is
 // 'synthesized'.
+import { SCHEDULE_WORD } from '../../scheduleWords';
 
 const engagementParty = {
   type: 'Engagement Party',
@@ -216,7 +217,7 @@ const engagementParty = {
   knowledge: {
     governanceVersion: '1.0.0',
     verificationStatus: 'synthesized',
-    note: 'Quantities here are synthesized from standard US catering and party-planning heuristics rather than a single authoritative source: a cocktail-party (no seated meal) target of roughly 10-12 hors d\'oeuvre bites per guest over a 2-3 hour evening; about one drink per guest per hour split across beer, wine, and a signature cocktail; a champagne toast pour of a half-glass, where one 750ml bottle yields ~7-10 toast portions, so plan ~1 bottle per 6-8 guests; and roughly 1.5 lb of ice per guest for chilling plus drinks. These are planning midpoints, not guarantees — actual consumption varies with crowd, weather, duration, and how much the bar is pushed, so the playbook deliberately rounds up on drinks and food and treats headcount confirmation as the master variable. Coaching, ROI, and run-of-show framing are authored judgment. Per the authoring brief, no citations are claimed; verificationStatus is "synthesized" and sources is intentionally empty.',
+    note: `Quantities here are synthesized from standard US catering and party-planning heuristics rather than a single authoritative source: a cocktail-party (no seated meal) target of roughly 10-12 hors d'oeuvre bites per guest over a 2-3 hour evening; about one drink per guest per hour split across beer, wine, and a signature cocktail; a champagne toast pour of a half-glass, where one 750ml bottle yields ~7-10 toast portions, so plan ~1 bottle per 6-8 guests; and roughly 1.5 lb of ice per guest for chilling plus drinks. These are planning midpoints, not guarantees — actual consumption varies with crowd, weather, duration, and how much the bar is pushed, so the playbook deliberately rounds up on drinks and food and treats headcount confirmation as the master variable. Coaching, ROI, and ${SCHEDULE_WORD} framing are authored judgment. Per the authoring brief, no citations are claimed; verificationStatus is "synthesized" and sources is intentionally empty.`,
     sources: [],
   },
 };

@@ -132,7 +132,8 @@ test('ALL SIX AXES RENDER, AND NONE OF THE THREE CUT ONES DO', async ({ page }) 
   // The cut axes' own sentences. If a future pass re-adds them to the host
   // accessor, these are what a host would start seeing.
   expect(card).not.toMatch(/scope unclear/);
-  expect(card).not.toMatch(/run-of-show entries reference/);
+  // The timeline axis now says "schedule" (owner 11/24/2026), so both wordings stay cut.
+  expect(card).not.toMatch(/(run-of-show|schedule) entries reference/);
 });
 
 test('THE MONEY AXIS SAYS WHAT IS ACTUALLY UNTRACKED', async ({ page }) => {

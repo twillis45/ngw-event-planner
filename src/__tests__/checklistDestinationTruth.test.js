@@ -16,6 +16,7 @@ const { routeByWords } = require('../lib/__fixtures__/stepByWords');
 const { resolveRoute } = require('../lib/routeResolver');
 const { checklistRouteFor } = require('../lib/taskRoute');
 const { ALL_PLAYBOOKS, playbookChecklist } = require('../lib/playbooks');
+const { THE_SCHEDULE } = require('../lib/scheduleWords');
 
 const iso = (n) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(12); return d.toISOString().slice(0, 10); };
 const EV = { id: 'dest', type: 'Reunion', date: iso(45), guests: 24, venueCity: 'McHenry', venueState: 'MD' };
@@ -33,7 +34,8 @@ const kindOf = (task, meta = {}, ev = EV) => {
 describe('each routing family lands on its own surface', () => {
   test.each([
     // [row as authored in a playbook, expected resolver kind]
-    ['Write the run-of-show: arrivals, entrance, dinner, dance, cake, send-off', 'stage:day'],
+    // The Sweet 16 row, as now authored (owner 11/24/2026: the host's word, not "run of show").
+    [`Write ${THE_SCHEDULE}: arrivals, entrance, dinner, dance, cake, send-off`, 'stage:day'],
     ['List every household and a contact for each; flag out-of-town travelers', 'guests'],
     ['Prep name tags, markers, and a sign-in / contact-update sheet', 'guests'],
     ['Check whether a reservation permit, alcohol rule, or amplified-sound rule applies', 'space'],

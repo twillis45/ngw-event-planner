@@ -206,6 +206,103 @@ Before that, 2026-11-02 (sixtieth entry:
     - The one failure: `theCalendarShowsTheHourAndTheSky.spec.mjs:70` on desktop, a 30 s wait for `.cpane-cta` after tapping a Then row. This is the pane-or-editor race `coreJourneyTruth.spec.mjs` documents (#185 CI). Nothing in this batch touches the Then fold. Rerun alone: 9 of 9 passed.
     - The earlier mobile run on `662ce67` had one similar timing failure (`coreJourneyTruth.spec.mjs:38`, focus under load), which passed 4 of 4 alone and passed in this run. The new `checklistCount` write does not fire on that event (it has no timeline).
 
+## November 24, 2026 — cohesion batch A, part 3: the host never reads "run of show" (`81444dc`)
+
+- **Owner, 11/24/2026:** "Host doesn't use run of show language." The wording, owner-confirmed the same day: "the day's schedule" in sentences and "Schedule" as the short label, from one constant (`src/lib/scheduleWords.js`; a later change is one line).
+- **Test first:**
+  - `hostWords.json` bans "run of show" (spaced or hyphenated) and "RoS".
+  - `src/lib/__tests__/theHostNeverReadsRunOfShow.test.js` parses every module that can reach the host's screen (hostv2/src, src/lib, src/data, the `@app` modules hostv2 imports, `whatsNew.json`) with `@babel/parser`, reading only string and JSX text. Comments, ids and identifiers are not read.
+  - It was red with 96 strings in 27 files, plus 6 in `CommandCenter.jsx` once the `@app` imports were added.
+  - Red-proofed twice: at the source (`dayOfHero`'s "Next on the run of show" put back), and on screen (Wanda's "confirm run of show" step put back, caught by `hostWordsOnEveryStage`). Both were restored.
+- **Census (strings, not comments):** 122 matched in hostv2/src, src/lib and src/data.
+  - Changed (host-visible): HostShellV2 (10), whatsNew.json (2), CommandCenter (6), the copy modules (dayOfHero, dayOfCopy, eventOrientation, assembleRevealEngines, vendorIntelligence, vendorAccountability/playbooks), 16 playbook data files, and the Wanda, DMV and Extra samples.
+  - Left alone, vendor-facing (for the owner): vendorQuestions (3: "Run-of-show available", "Hard stop needs to be reflected in the run of show.", "Run-of-show received?"), vendorCopilot (3), vendorAccountability/followUpDrafts (1), vendorBrief and VendorBriefV2 (comments only).
+  - Left alone, not in the hostv2 bundle: presentationLabels, shellTabs, playbookRegistry (the frozen CRA planner), eventSolve.mjs, orchestratorTools (a tool description a model reads).
+  - Not words: "rosé" (geoItemMap, engagementParty) and class names such as `ros-sugg-row`.
+- **Tests whose pinned words changed (the rule each pins did not):**
+  - eventOrientation's hairline label;
+  - theVerdictNamesAVisibleChip's vendor timeline sentence;
+  - seasonalPlanAccuracy's schedule-writing allowlist;
+  - checklistDestinationTruth's Sweet 16 row, as now authored;
+  - whereThisVendorStands's cut sentence (now both wordings stay cut).
+  - textGateRatchet 72 → 73 for the new source census.
+- **Gates (measured on `81444dc`):**
+  - root jest: 937 suites, 14,084 passed, 1 skipped.
+  - hostv2 vitest: 18 files, 166 passed.
+  - `e2e:build`: exit 0.
+  - e2e, 291 reachable specs (playbook and sample text reaches nearly every spec), `PW_CHROMIUM` set, `--workers=4 --retries=0`, eight chunks, 0 failed:
+
+| Project | Passed | Skipped |
+|---|---|---|
+| mobile | 960 | 38 |
+| desktop | 1,406 | 77 |
+| tablet-tall | 938 | 60 |
+| landscape | 912 | 86 |
+
+  - A spec rewrites `hostv2/review-shots/baseline-*.png` during the run; they were restored, not committed.
+
+## November 24, 2026 — cohesion batch A, part 2: on the event day, today's list comes first (owner-approved renders)
+
+- **Owner ruling (relayed by the parent session, 11/24/2026), approving the renders on `renders/cohesion-a` as drawn:**
+  - On the event day, the list under the run-of-show hero holds only cards due today plus anything critical, headed "Still to do today · N left".
+  - Everything else folds behind "N more from planning, if there's time ▸", which opens in place.
+  - "Run the day" stays the one lit action.
+  - A past-window card that is not critical folds; a critical card never folds.
+- **Built (`HostShellV2.jsx`):**
+  - `onTheDayList` (level `critical` or `dueInDays === 0`) sets both the visible list (`dayHero` and not `queueOpen`) and the heading's count, so the two cannot differ.
+  - With nothing due today, every card folds, and the heading keeps part 1's label ("if there's time" / "not today's job").
+  - The fold row is the existing in-place expander (`setQueueOpen`), with `data-day-fold` and the new wording on the day. Its guard is unchanged: `heroComposition.test.js` pins it, and on the day `askMode` is false, so the row shows.
+  - Each queue card now carries `data-queue-card`, `data-due-in-days` and `data-level`, the engine's own values.
+  - The render-only prototype and `_renderCohesionA.spec.mjs` stay on `renders/cohesion-a`; neither is on this branch.
+- **Test first:** `hostv2/e2e/theDayShowsTodayFirst.spec.mjs`, self-pinned in `playwright.config.mjs` to 390, 834, 1024 and 1440, on the made-up own plan and the Wanda sample, with the clock fixed at 5 PM on the day. It checks:
+  - the list holds exactly the due-today and critical cards;
+  - the heading counts them;
+  - one lit action, "Run the day";
+  - the fold row's count equals the cards it opens;
+  - the folded cards open where the row was;
+  - no folded card is critical or due today (Wanda's premise: at least one critical card shows).
+  - Red before the build (no fold row, no card data); 8 of 8 green after.
+- **Gates (measured on `e56d6dd`):**
+  - root jest: 936 suites, 14,081 passed, 1 skipped.
+  - hostv2 vitest: 18 files, 166 passed.
+  - `e2e:build`: exit 0.
+  - e2e, 69 specs (part 1's 68 plus the new one; `PW_CHROMIUM` set, `--workers=4 --retries=0`):
+    - mobile and desktop: 899 passed, 33 skipped, 0 failed (18.9m);
+    - tablet-tall and landscape: 672 passed, 110 skipped, 0 failed (12.7m).
+- **Still open for batch A:** P3s #42 (`.idx` contrast) and #54 (concurrent `strataFocus`) were not in the approved renders and are not built.
+
+## November 24, 2026 — cohesion batch A: The Day stage speaks host words and fits the moment (`cohesion-a-2utz0n`)
+
+- **Ask (the parent session, for the owner):** batch A of the owner-approved cohesion audit (`origin/audit/cohesion-1124`, `AUDIT.md`), The Day stage. Fix rules 1, 4 and 13 systemically: each rule gets a test that sweeps every stage, watched red first. Layout changes stop at renders.
+- **Where the audit's "The Day" is:** it is the **Plan board on the event day** (the `dayHero` branch of `HostShellV2.jsx`): "Run the day", "Still open from planning · not today's job". The Day tab itself was swept too.
+- **Rule 4 (host words), fixed at the source.** The jargon list lives in `src/lib/hostWords.json`. `src/lib/__tests__/theEnginesSpeakHostWords.test.js` reads the engines; `hostv2/e2e/hostWordsOnEveryStage.spec.mjs` reads Plan, The Day and After for the host's own plan and the Wanda sample, at T-1, the day before the first cue, during a cue and T+2. Violations found and fixed:
+  - "(compound event, requires merging)": `eventIdentityEngine.js` canonicalDescription. `isCompound` and `requiresMerge` stay on the result.
+  - `Resolve "… for ".`: `CommandCenter.jsx` tier 2 cut the title at 80 characters inside its quotes. The title is now whole (the card wraps).
+  - "Open decisions block timeline, vendor, and approval progress downstream." / "…blocks downstream timeline + vendor work.": now "Overdue by N days. The steps after it wait on it." / "Still open. The steps after it wait on it."
+  - The Day: "Draft the helper brief" → "Draft everyone's part today" (the title of the draft it opens).
+  - After: "N foundation facts on record" → "N of the basics settled"; "“Thanked” feeds the wrap-up meter up top" → "Each “Thanked” is counted at the top" (and its toast).
+- **Rule 13 (fits the moment).** `hostv2/e2e/theDayFitsTheMoment.spec.mjs`. Violations found and fixed:
+  - The day-of board headed due-today and past-window cards "not today's job". Its label now reads the cards: "N due today", else "if there's time" (past window only), else "not today's job".
+  - The walkthrough's `.now-label` said "6:00 PM · NOW · you run this" the day before and two days after. NOW now shows only for the cue `dayOfHero` says the clock is on. An untimed later step reads "Then" (was "Now").
+- **Rule 1 (one lit), measured, no code change.**
+  - `oneLitButtonOnTheDay` gains the board on the day, The Day on the day and The Day the day before. In light each shows exactly one lit action ("Run the day"; "Done — what's next" / "Done — next"), and dark shows at most one. That holds on mobile, landscape, tablet-tall and desktop.
+  - `oneLitButtonPerSheet` gains two event-day runs (390 and 1440): no sheet shows two lit.
+  - The audit's lit=0 matches **dark**, where ruling 31 keeps the board's ask soft.
+  - **After lights three** ("Save it", "Publish the recap", "Draft the thank-you"; audit #11, batch E). It is not in the spec, so the spec is not red. It joins the spec in the change that fixes it, after renders.
+- **Stopped for renders (not built):** P1 #2's "about ten equal buttons" on the day-of board. The proposal is on `renders/cohesion-a` (`9df5de2`, never merges; `renders/cohesion-a/README.md` lists 16 PNGs at 390/834/1024/1440, dsf 2, clock fixed at 2027-03-20 5 PM):
+  - On the day, show only due-today or critical cards, under "Still to do today · N left".
+  - The rest folds behind "N more from planning, if there's time ▸".
+  - Owner decision: this folds past-window non-critical cards, against the wave-6 "cap yields to safety" guardrail.
+  - P3s #42 (`.idx` contrast) and #54 (concurrent `strataFocus`) are visual or motion changes and are left for the same approval.
+- **Gates (measured on `63e2caa`):**
+  - root jest: 936 suites, 14,081 passed, 1 skipped.
+  - hostv2 vitest: 18 files, 166 passed.
+  - `e2e:build`: exit 0.
+  - e2e, 68 specs the change can reach (`PW_CHROMIUM` set, `--workers=4 --retries=0`):
+    - mobile and desktop: 891 passed, 33 skipped, 0 failed (18.8m);
+    - tablet-tall and landscape: 671 passed, 110 skipped, 1 failed (12.6m).
+  - The failure was `everyTapIsFortyFourSquare.spec.mjs:94` on tablet-tall: a risks watch-row measured 121x36, a row this change does not touch. Alone with `--repeat-each=3` it passed 9 of 9. No code change.
+
 ## November 24, 2026 — `origin/main` (`78c1e8c1`, with #249 and #250) merged into `shopdata-2utz0n`
 
 - **Ask (the parent session, which the owner told to merge this work):** merge `origin/main` with a merge commit, keep both sides' intent in the 8 conflicting files, rerun the gates, then push. The parent opens the PR and merges; this session does not.

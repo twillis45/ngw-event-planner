@@ -465,6 +465,8 @@ import EventHashtag from './EventHashtag.jsx';
 import { isGuestMessagesApiConfigured, fetchGuestThreads } from '@app/lib/api/guestMessages';
 import { isGuestPhotosApiConfigured, fetchEventGuestPhotos } from '@app/lib/api/guestPhotos';
 import { questionsWaiting, questionsWaitingLine, photosWaitingLine } from '@app/lib/guestInbox';
+// The host's word for the day's plan (owner: "Host doesn't use run of show language", 11/24/2026).
+import { SCHEDULE, THE_SCHEDULE, SCHEDULE_WORD } from '@app/lib/scheduleWords';
 
 
 const fmt = formatCurrency;
@@ -5848,6 +5850,11 @@ export default function HostShellV2() {
   const [lens, setLens] = useState('all');
   const lensSet = [...new Set(queue.map(a => DOMAIN_LENS[a.domain] || 'Plan'))];
   const show = a => lens === 'all' || (DOMAIN_LENS[a.domain] || 'Plan') === lens;
+  // TODAY'S LIST ON THE DAY (cohesion batch A, owner-approved renders,
+  // 11/24/2026). On the event day the list under the run-of-show hero holds
+  // only what is due today and anything critical; the rest of the planning
+  // folds behind one row. A critical card never folds.
+  const onTheDayList = (a) => !!a && (a.level === 'critical' || (a.dueInDays != null && Number(a.dueInDays) === 0));
   // Queue presentation state (wave-6 hero): the "+N more" expander past the
   // 6-card cap, and per-bundle in-place expansion. Both reset per event.
   const [queueOpen, setQueueOpen] = useState(false);
@@ -13392,8 +13399,8 @@ export default function HostShellV2() {
                       </article>
                     ) : (<>
                       <p className="truth">{dayHero.state === 'done'
-                        ? 'Every cue on the run of show is done — enjoy the rest.'
-                        : 'There’s no run of show for today yet.'}</p>
+                        ? `Every moment on ${THE_SCHEDULE} is done — enjoy the rest.`
+                        : `There’s no ${SCHEDULE_WORD} for today yet.`}</p>
                       <div className="actions-row" style={{ alignItems: 'center' }}>
                         <button className="cta" onClick={() => setStage('day')}>{dayHero.state === 'done' ? 'See the day' : 'Open the day'}</button>
                       </div>
@@ -13654,7 +13661,21 @@ export default function HostShellV2() {
                   : dayHero
                     /* On the day the hero is the run of show; what is left here is
                        planning that did not get done, and is named as that. */
-                    ? <div className="sect" id="actionsAnchor"><h2>Still open from planning</h2><div className="rule" /><span className="when">not today’s job</span></div>
+                    /* FITS THE MOMENT (UX_11 rule 13, cohesion audit P1 #1,
+                       11/24/2026): "not today’s job" sat over cards tagged "due
+                       today" ("5 things need you today", "Reconfirm 3 vendors").
+                       The label now reads the cards under it: what is due today
+                       is counted as that; what is only past its window is
+                       optional; "not today’s job" only when neither is there. */
+                    ? (() => {
+                        // Today's list leads: "Still to do today · N left", N being
+                        // exactly the cards shown. With nothing for today, every card
+                        // is folded, and the label says how optional they are.
+                        const todayList = queue.filter(show).filter(onTheDayList).length;
+                        if (todayList) return <div className="sect" id="actionsAnchor"><h2>Still to do today</h2><div className="rule" /><span className="when">{todayList} left</span></div>;
+                        const late = queue.some((a) => a && a.dueInDays != null && Number(a.dueInDays) < 0);
+                        return <div className="sect" id="actionsAnchor"><h2>Still open from planning</h2><div className="rule" /><span className="when">{late ? 'if there’s time' : 'not today’s job'}</span></div>;
+                      })()
                     : <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>}
               {plan && plan.planningState && plan.planningState.reasoning && (() => {
                 // Re-audit 2026-07-17 (P0, "one hero instruction"): the milestone
@@ -13791,7 +13812,7 @@ export default function HostShellV2() {
                 })();
                 const queueCap = queueFocus != null ? queueFocus : QUEUE_CAP;
                 const queueFolded = queueFocus != null && !queueOpen;
-                const visible = queueOpen ? shown : shown.slice(0, queueCap);
+                const visible = queueOpen ? shown : (dayHero ? shown.filter(onTheDayList) : shown.slice(0, queueCap));
                 const hiddenCount = shown.length - visible.length;
                 // Time-to-window, worn quietly on the card (engine contract:
                 // actions MAY carry dueInDays; absent = say nothing).
@@ -13807,6 +13828,9 @@ export default function HostShellV2() {
                 // in N days still print, because those point forward and are true. The
                 // eyebrow already carries the runway ("4 DAYS · REPAST"), so nothing
                 // true is lost — only the blame.
+                // The engine's own timing and level, on each card (read by
+                // e2e/theDayShowsTodayFirst.spec.mjs).
+                const queueCardData = (a) => ({ 'data-queue-card': '', 'data-due-in-days': (a && a.dueInDays != null) ? String(a.dueInDays) : '', 'data-level': (a && a.level) || '' });
                 const dueChip = (a) => {
                   if (!a || a.dueInDays == null || !Number.isFinite(Number(a.dueInDays))) return null;
                   if (solemn && a.dueInDays < 0) return null;
@@ -13891,7 +13915,7 @@ export default function HostShellV2() {
                     const to12 = (s) => { const t = cParse(s); if (t == null) return s; let h = Math.floor(t / 60); const mm = t % 60; const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return h + ':' + String(mm).padStart(2, '0') + ' ' + ap; };
                     const applyCustomTime = (val) => { if (!val || !custom || !it.affectedVendorId) return; const disp = to12(val); writeVendor(it.affectedVendorId, { [custom.field]: disp }, `${vendName || 'They'} now arrive at ${disp}.`); setConflictTime(null); };
                     return (
-                      <article className={'card hero-card bundle-hero conflict-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key}
+                      <article className={'card hero-card bundle-hero conflict-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key} {...queueCardData(a)}
                         style={{ animation: 'askin 240ms var(--ease-out) 60ms both' }}>
                         <div className="card-head">
                           {(it.detailShort || it.detail) && <p className="because">{it.detailShort || it.detail}</p>}
@@ -13967,7 +13991,7 @@ export default function HostShellV2() {
                   if (elegantMode && askMode && i === 0 && heroDecisionRow && heroDecisionND) {
                     const dec = heroDecisionRow;
                     return (
-                      <article className={'card hero-card bundle-hero decision-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key}
+                      <article className={'card hero-card bundle-hero decision-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key} {...queueCardData(a)}
                         style={{ animation: 'askin 240ms var(--ease-out) 60ms both' }}>
                         <div className="card-head">
                           {/* THE HERO SAYS WHAT IS TRUE FORWARD (board re-sit 2026-07-30).
@@ -14037,7 +14061,7 @@ export default function HostShellV2() {
                     );
                   }
                   return (
-                    <article className={'card' + (spot === key ? ' spot' : '') + (askMode && i === 0 ? ' hero-card bundle-hero' : '')} id={'card-' + key} key={key}
+                    <article className={'card' + (spot === key ? ' spot' : '') + (askMode && i === 0 ? ' hero-card bundle-hero' : '')} id={'card-' + key} key={key} {...queueCardData(a)}
                       style={spot === key ? undefined : { animation: rowEnter(i, 45, 6) }}>
                       {!(askMode && i === 0) && <span className="idx">{i + 1}</span>}
                       <div className="card-head">
@@ -14231,7 +14255,7 @@ export default function HostShellV2() {
                 // second expression and breaks the build — the same trap documented
                 // on the conflict-hero disclosure ~:6100.)
                 return (
-                  <article className={'card' + (spot === key ? ' spot' : '') + (isHero ? ' hero-card' + (heroReceipt ? ' receipted' : '') : '')} id={'card-' + key} key={key}
+                  <article className={'card' + (spot === key ? ' spot' : '') + (isHero ? ' hero-card' + (heroReceipt ? ' receipted' : '') : '')} id={'card-' + key} key={key} {...queueCardData(a)}
                     data-decision-id={(isHero && heroSelection && heroSelection.decisionId) || undefined}
                     data-confidence={(isHero && heroEvidence && heroEvidence.confidence) || undefined}
                     data-why={(isHero && heroWhy.length) ? heroWhy.join(' · ') : undefined}
@@ -14461,8 +14485,9 @@ export default function HostShellV2() {
                   them — it was --muted/550 at body size against their --faint/450/12.5px. */}
               {hiddenCount > 0 && !(nearDayPlan && !queueOpen) && !(elegantMode && askMode) && (
                 <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: 'pointer', padding: '9px 0' }}
+                  data-day-fold={dayHero ? '' : undefined}
                   onClick={() => setQueueOpen(true)}>
-                  <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>+ {hiddenCount} more — show the rest</span>
+                  <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{dayHero ? `${hiddenCount} more from planning, if there’s time` : `+ ${hiddenCount} more — show the rest`}</span>
                   {/* setQueueOpen is an in-place expand, so this is a disclosure, not a
                       route (board re-sit 2026-07-30 — the third survivor of the glyph
                       rule ruling A enforced on decopt-disc only). */}
@@ -16420,7 +16445,7 @@ export default function HostShellV2() {
               {rosOverlaps > 0 && (
                 <div className="later-row" style={{ background: 'var(--warn-tint)', borderRadius: 'var(--r-md)', padding: '10px 14px', marginBottom: 'var(--sp-2)' }}>
                   <span className="t" style={{ color: 'var(--warn)', fontWeight: 650 }}>
-                    {rosOverlaps} run-of-show {rosOverlaps === 1 ? 'moment overlaps' : 'moments overlap'} another — worth a look before things collide.
+                    {rosOverlaps} {rosOverlaps === 1 ? 'moment overlaps' : 'moments overlap'} another on {THE_SCHEDULE} — worth a look before things collide.
                   </span>
                 </div>
               )}
@@ -16598,8 +16623,11 @@ export default function HostShellV2() {
                     </div>
                   ))}
                   <div style={{ marginTop: 10 }}>
+                    {/* One name for one thing (rules 4 and 8, 11/24/2026): the
+                        button said "helper brief", the draft it opens is titled
+                        "Everyone’s part today". It now says what it opens. */}
                     <button className="cta soft" style={{ width: '100%' }} onClick={() => { try { openDraft('Everyone’s part today', draftHelperBrief(event, profile, { ros })); } catch { toast('Couldn’t draft it.'); } }}>
-                      Draft the helper brief
+                      Draft everyone’s part today
                     </button>
                     <div className="pill-grid" style={{ marginTop: 'var(--gap-chip)' }}>
                       <button className="mini" onClick={() => window.print()}>Print the day sheet</button>
@@ -16788,7 +16816,7 @@ export default function HostShellV2() {
                       return (
                         <div className="ros-sugg" data-ros-suggestions>
                           <p className="grounding ros-sugg-lead">
-                            This is your run of show, so it stays as you wrote it. Add to your night? The {String(event.type || 'event').toLowerCase()} playbook suggests:
+                            This is your {SCHEDULE_WORD}, so it stays as you wrote it. Add to your night? The {String(event.type || 'event').toLowerCase()} playbook suggests:
                           </p>
                           {sugg.map((r) => (
                             <div key={r.id} className="then-row ros-sugg-row" data-ros-suggestion>
@@ -16805,7 +16833,7 @@ export default function HostShellV2() {
                     if (!w || !w.owned || !w.count) return null;
                     return (
                       <p className="grounding" style={{ margin: '0 0 var(--sp-3)', color: 'var(--muted)' }}>
-                        This is your run of show, so it stays as you wrote it.
+                        This is your {SCHEDULE_WORD}, so it stays as you wrote it.
                         {' '}The {String(event.type || 'event').toLowerCase()} playbook has {w.count} more {w.count === 1 ? 'moment' : 'moments'} it didn’t add
                         {w.program > 0 ? `, ${w.program} of them during the event itself` : ''}.
                       </p>
@@ -16977,7 +17005,7 @@ export default function HostShellV2() {
                 </>
               ) : ros.length === 0 ? (
                 <>
-                  <h1 className="mega" style={{ fontSize: 'var(--t-display-l)', lineHeight: 1.08 }}>No run of show yet</h1>
+                  <h1 className="mega" style={{ fontSize: 'var(--t-display-l)', lineHeight: 1.08 }}>No {SCHEDULE_WORD} yet</h1>
                   <p className="day-empty">Your day schedule fills in as vendors and their arrival times settle — then this screen becomes one thing at a time, in the order the day runs.</p>
                   {/* Per-screen audit: the old empty state told a real host to “Try the
                       Wedding” (a demo) with no real action. The run of show is built from
@@ -16987,7 +17015,7 @@ export default function HostShellV2() {
               ) : dayIdx >= ros.length ? (
                 <>
                   <div className="clock" style={solemn ? { fontSize: 'clamp(30px,10cqw,40px)', fontFamily: 'var(--serif-read)', fontWeight: 500, letterSpacing: '-.01em' } : { fontSize: 'clamp(34px,11cqw,44px)', fontWeight: 700, letterSpacing: '-.03em' }}>{solemn ? 'That’s all of it. Thank you for carrying today.' : 'That’s the whole day.'}</div>
-                  <p className="day-empty">All {ros.length} moments walked through, in order, from the real run of show.</p>
+                  <p className="day-empty">All {ros.length} moments walked through, in order, from {THE_SCHEDULE}.</p>
                   <button className="cta" style={{ marginTop: 18 }} onClick={() => setDayIdx(0)}>Walk it again</button>
                 </>
               ) : (
@@ -17048,7 +17076,14 @@ export default function HostShellV2() {
                       <div style={{ marginTop: 'var(--sp-2)' }}>
                         {/* Eyebrow: time-set promotes to a live "10:30 · NOW" (state 2); otherwise the calm sequence label (state 1). */}
                         <div className="now-label" style={timeSet ? { color: 'var(--warn)' } : undefined}>
-                          {timeSet ? fmt12h(cur.time) + ' · NOW · you run this' : (dayIdx === 0 ? (isPast ? 'How it started' : 'Today · you run it') : 'Now')}
+                          {/* "NOW" ONLY MEANS NOW (UX_11 rule 13, 11/24/2026). This
+                              walkthrough runs any day, and every timed step wore
+                              "· NOW ·" the day before and two days after. It says
+                              now only for the cue the clock is on (lib/dayOfHero,
+                              the reader the board's hero uses). */}
+                          {timeSet
+                            ? fmt12h(cur.time) + ((() => { try { const h = dayOfHero(event, new Date()); return !!(h && h.state === 'now' && h.cue && (h.cue === cur || (h.cue.id && h.cue.id === cur.id))); } catch (_e) { return false; } })() ? ' · NOW · you run this' : ' · you run this')
+                            : (dayIdx === 0 ? (isPast ? 'How it started' : 'Today · you run it') : 'Then')}
                         </div>
                         {dayIdx === 0 && !timeSet && !solemn && <div className="of" style={{ marginTop: 6, color: 'var(--muted)' }}>First thing</div>}
                         {/* The moment NAME is the hero (Figma). Solemn → the calm serif leads. */}
@@ -17359,7 +17394,7 @@ export default function HostShellV2() {
 
               <div className="sect"><h2>What carries forward</h2><div className="rule" /></div>
               <div className="empty" style={{ background: 'var(--steel-tint)' }}>
-                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} foundation fact{handled.length === 1 ? '' : 's'} on record · {(money.committed > 0 || money.planned > 0) ? 'every budget line above stays saved' : 'your vendors and notes stay saved'}. The thank-you is drafted right here from what actually happened; your “for next time” note below comes back the next time you plan one of these.
+                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} of the basics settled · {(money.committed > 0 || money.planned > 0) ? 'every budget line above stays saved' : 'your vendors and notes stay saved'}. The thank-you is drafted right here from what actually happened; your “for next time” note below comes back the next time you plan one of these.
               </div>
               {/* Thank-yous & gifts — per-guest flags on the SAME roster rows the
                   wrap-up meter reads (phaseProgress post_event counts
@@ -17385,7 +17420,7 @@ export default function HostShellV2() {
                           {g.giftReceived ? 'gift received' : 'gift?'}
                         </button>
                         <button className="mini" style={g.thankYouSent ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
-                          onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? null : ((g.name || 'Guest') + ' thanked — the wrap-up meter keeps count.'))}>
+                          onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? null : ((g.name || 'Guest') + ' thanked — it’s counted at the top.'))}>
                           {g.thankYouSent ? 'thanked' : 'thank them'}
                         </button>
                       </span>
@@ -17423,7 +17458,7 @@ export default function HostShellV2() {
                         <span>Cash and gift cards</span>
                         <span className="amt">{fmt(cash.total)}{cash.from ? <span className="of"> from {cash.from}</span> : null}</span>
                       </div>
-                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>Your record, not a bank. “Thanked” feeds the wrap-up meter up top, and the thank-you note names what each person gave.</p>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>Your record, not a bank. Each “Thanked” is counted at the top, and the thank-you note names what each person gave.</p>
                     </div></div>
                   </div>
                 );
@@ -21511,7 +21546,7 @@ export default function HostShellV2() {
                 <SheetHero
                   eyebrow="The heart of it"
                   star="What are we really protecting?"
-                  sub="The day-before brief, the run of show, and the toast draw from your words. Nothing here is required."
+                  sub={`The day-before brief, ${THE_SCHEDULE}, and the toast draw from your words. Nothing here is required.`}
                 />
                 {/* MILITARY RETIREMENT intelligence (knowledge/militaryRetirement.js): when the
                     event is a military retirement, surface the real ceremony protocol — the
@@ -30097,7 +30132,7 @@ export default function HostShellV2() {
         const dRaw = [
           { label: ASK_LABEL, sub: 'a question, answered from your plan', go: () => { setAskQ(''); setAskResult(null); setAskLLM(null); setSheet({ kind: 'ask' }); } },
           { label: 'Plan', sub: 'the command board', go: () => setStage('plan') },
-          { label: 'The Day', sub: 'day-of run of show', go: () => setStage('day') },
+          { label: 'The Day', sub: THE_SCHEDULE, go: () => setStage('day') },
           { label: 'After', sub: 'wrap-up & thank-yous', go: () => setStage('after') },
           { label: 'New event', sub: 'start another', go: startNewEvent },
           { label: 'Your money', sub: 'budget', go: () => setSheet({ kind: 'budget' }) },
@@ -30198,7 +30233,7 @@ export default function HostShellV2() {
             {/* The host's hashtag, when on (owner ruling E). */}
             {String(event.hashtag || '').trim() ? ` · ${String(event.hashtag).trim()}` : ''}
           </p>
-          <div className="p-head">Run of show</div>
+          <div className="p-head">{SCHEDULE}</div>
           {ros.map((r, i) => (
             <div className="p-row" key={r.id || i}>
               {/* PRINT HONESTY (2026-07-30, found by driving print emulation live).
