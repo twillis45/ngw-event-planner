@@ -167,4 +167,12 @@ async def public_host_photo(rsvp_code: str):
     if not data:
         raise HTTPException(404, "not found")
     # The URL carries ?v=<version>, so a changed photo is a new URL.
-    return _jpeg(data, "public, max-age=86400")
+    resp = _jpeg(data, "public, max-age=86400")
+    # THE EMAIL PICTURE DRAWS IT (owner, 11/24/2026): hostv2 inviteCardImage
+    # draws this photo on a canvas (crossOrigin="anonymous") and uploads the
+    # card; without these the canvas taints and the upload fails. The image is
+    # already public by its invite code, so allowing any origin to use it adds
+    # no reader.
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+    return resp
