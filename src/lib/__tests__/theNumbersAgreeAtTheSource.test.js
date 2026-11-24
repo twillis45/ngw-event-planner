@@ -58,11 +58,13 @@ test('premise: the sweep reaches the samples, Wanda among them, and every playbo
 test('#4: the day-before "still to get" is the shopping list’s remainder, and the rentals are counted apart', () => {
   const bad = [];
   let rentalsSeen = 0;
+  const checked = [];
   for (const ev of events()) {
     let day; try { day = buildDayBeforePlan(ev); } catch (e) { continue; }
     if (!day || !day.applicable) continue;
     const row = (day.sections || []).find((s) => s.key === 'shopping');
     if (!row) continue;
+    checked.push(ev);
     const plan = pbm.playbookFoodPlan(ev);
     const left = plan ? linesLeftToBuy(plan, ev).length : 0;
     if (row.listLeft !== left) bad.push(`${ev.id}: still to get ${row.listLeft}, list remainder ${left}`);
@@ -71,6 +73,13 @@ test('#4: the day-before "still to get" is the shopping list’s remainder, and 
     if (row.openGear) rentalsSeen += 1;
     if (row.openGear && /everything’s bought|all in hand/i.test(row.detail)) bad.push(`${ev.id}: "${row.detail}" with ${row.openGear} rentals open`);
   }
+  // The floor first (parent review, 11/24/2026): the skips above cannot turn
+  // this vacuous. Wanda, and at least one plan of every playbook, were checked.
+  expect(checked.length).toBeGreaterThanOrEqual(pbm.ALL_PLAYBOOKS.length);
+  expect(checked.some((e) => e.id === 'ev-x-wanda')).toBe(true);
+  const types = new Set(checked.map((e) => e.type));
+  const missing = pbm.ALL_PLAYBOOKS.map((pb) => pb.type).filter((t) => !types.has(t));
+  expect(missing).toEqual([]);
   expect(bad).toEqual([]);
   expect(rentalsSeen).toBeGreaterThan(0); // premise: some plans have rentals open
 });
@@ -84,8 +93,9 @@ test('#4: on Wanda’s day the row reads the 31 on the list, not 37', () => {
 });
 
 test('#6: "everyone has a seat" is one claim, never below the plan’s floor', () => {
-  const bad = [];
+  const bad = []; const seen = [];
   for (const ev of events()) {
+    seen.push(ev.id);
     const sp = buildSeatingPlan(ev);
     const claim = seatingClaim(ev, sp);
     const floor = pbm.eventSizing(ev).floor;
@@ -95,6 +105,8 @@ test('#6: "everyone has a seat" is one claim, never below the plan’s floor', (
     if (board !== claim.everyoneSeated) bad.push(`${ev.id}: the board ${board ? 'claims' : 'withholds'} the seat claim, the seating sheet ${claim.everyoneSeated ? 'claims' : 'withholds'} it`);
   }
   expect(bad).toEqual([]);
+  expect(seen.length).toBe(events().length); // floor: every event was checked
+  expect(seen).toContain('ev-x-wanda');
 });
 
 test('#6: Wanda’s 17 seated on a plan for 75 is not everyone; a full small roster is', () => {
@@ -106,12 +118,15 @@ test('#6: Wanda’s 17 seated on a plan for 75 is not everyone; a full small ros
 });
 
 test('#20: "still unpriced" counts hired vendors only', () => {
-  const bad = [];
+  const bad = []; const seen = [];
   for (const ev of events()) {
+    seen.push(ev.id);
     const hiredUnpriced = hiredVendors(ev).filter((v) => String(v.name || '').trim() && !(Number(v.cost) > 0) && !(v.cost === 0 && v.costAgreed === true)).length;
     if (unpricedVendorCount(ev) !== hiredUnpriced) bad.push(`${ev.id}: ${unpricedVendorCount(ev)} unpriced vs ${hiredUnpriced} hired unpriced`);
   }
   expect(bad).toEqual([]);
+  expect(seen.length).toBe(events().length); // floor: every event was checked
+  expect(seen).toContain('ev-x-wanda');
   const wanda = events().find((e) => e.id === 'ev-x-wanda');
   expect(unpricedVendorCount(wanda)).toBe(2);
   expect(budgetHeroCopy(wanda).caveat).toMatch(/^2 vendors are still unpriced/);
@@ -127,8 +142,9 @@ test('#5: no money figure is called "left to spend"', () => {
 // saves it on the event as `checklistCount`, and the family page prints that.
 test('#35: the checklist count is one reader, the host sheet’s own formula', () => {
   const { checklistProgress, timelineStepResolved } = require('../taskEngine');
-  const bad = [];
+  const bad = []; const seen = [];
   for (const ev of events()) {
+    seen.push(ev.id);
     const live = (ev.timeline || []).filter((t) => t && !t.retired);
     const open = live.filter((t) => !t.done && !timelineStepResolved(ev, t)).length;
     const want = { done: live.length - open, total: live.length };
@@ -136,6 +152,8 @@ test('#35: the checklist count is one reader, the host sheet’s own formula', (
     if (got.done !== want.done || got.total !== want.total) bad.push(`${ev.id}: ${got.done}/${got.total} vs ${want.done}/${want.total}`);
   }
   expect(bad).toEqual([]);
+  expect(seen.length).toBe(events().length); // floor: every event was checked
+  expect(seen).toContain('ev-x-wanda');
   const ev = { id: 'c', type: 'Birthday', timeline: [
     { id: 'a', task: 'Pick up the cake', done: true },
     { id: 'b', task: 'Hang the lights' },
