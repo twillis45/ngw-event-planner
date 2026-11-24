@@ -51,49 +51,40 @@ const boot = async (page, ev, route = '?elegant=1') => {
 };
 const saved = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0]);
 const sheet = (page) => page.locator('.sheet').last();
-const tab = (page, name) => page.getByRole('tab', { name });
-const selectedTab = (page) => page.locator('.fmodes [role="tab"][aria-selected="true"]').first().innerText();
-const openTab = async (page, name) => { await tab(page, name).first().click(); await settled(page); };
-const broughtGroup = (page) => sheet(page).locator('[data-brought-group]');
-const openBroughtGroup = async (page) => {
-  const g = broughtGroup(page);
-  await expect(g).toBeVisible();
-  if (!(await g.evaluate((el) => el.classList.contains('open')))) await g.locator('.fg-head').click();
-  await expect(g.locator('.fstat').first()).toBeVisible();
-};
-// The Shop list sits behind "The list" drill-in row.
-const openShopList = async (page) => {
-  const row = sheet(page).locator('.fstat', { hasText: 'The list' }).first();
-  if (await row.count()) { await row.click(); await settled(page); }
+// ONE FOOD PAGE (owner, 11/24/2026): no tabs. Bringing is the one section
+// that lists a brought dish (the list's "… are bringing" group and Plan's
+// "Who's bringing what" row are gone), and a door lands on a SECTION:
+// "where it landed" is the section head at the top of the scroller,
+// named as the tabs were (choices → Plan, bringing → Bringing, list → Shop).
+const bringing = (page) => sheet(page).locator('[data-food-section="bringing"]');
+const selectedTab = async (page) => {
+  await page.waitForTimeout(300);
+  return page.evaluate(() => {
+    const sh = [...document.querySelectorAll('.sheet')].pop();
+    const body = sh.querySelector('.sheet-body'); const b = body.getBoundingClientRect();
+    const NAME = { choices: 'Plan', bringing: 'Bringing', list: 'Shop' };
+    const seen = [...sh.querySelectorAll('[data-food-section]')]
+      .map((el) => [el.getAttribute('data-food-section'), el.getBoundingClientRect().top])
+      .filter(([, t]) => t >= b.top - 2 && t < b.bottom - 60).sort((x, y) => x[1] - y[1]);
+    return seen.length ? NAME[seen[0][0]] : '';
+  });
 };
 
 test('a name set on Bringing is on Shop and on Plan', async ({ page }) => {
   await boot(page, seed('e2e-bring-1', { foodChoices: ALL_SET }));
   await openSectionByName(page, /spread/i);
   await settled(page);
-  await openTab(page, /^Bringing · \d+$/);
-  const n = Number((await tab(page, /^Bringing · \d+$/).first().innerText()).match(/\d+/)[0]);
+  const n = await bringing(page).locator('[data-bringer-row]').count();
   await sheet(page).locator('.fstat', { hasText: 'Mac and cheese' }).first().click();
   // The picker offers the guest list.
   await sheet(page).getByLabel(/Who is bringing/).selectOption('Jordan Pike');
   await expect.poll(async () => (await saved(page)).foodOwner || {}).toEqual({ p_mac: 'Jordan Pike' });
   await expect(sheet(page).locator('[data-bringer-row="p_mac"]')).toContainText('Jordan Pike');
 
-  await openTab(page, 'Shop');
-  await openShopList(page);
-  await openBroughtGroup(page);
-  await expect(broughtGroup(page).locator('.fg-label')).toHaveText(`Your guests are bringing (${n})`);
-  await expect(broughtGroup(page).locator('[data-bringer-row="p_mac"]')).toContainText('Jordan Pike');
-  await expect(broughtGroup(page).locator('.fg-sub')).toContainText(`1 of ${n} named`);
-  // Close the list (the bar's Done) before the Plan tab: an open drill-in
-  // stays open across tabs.
-  await page.locator('.ftotal').getByRole('button', { name: 'Done' }).click();
-
-  await openTab(page, 'Plan');
-  await expect(sheet(page).locator('[data-plan-bringing]')).toContainText(`1 of ${n} named`);
-  await sheet(page).locator('[data-plan-bringing]').click();
-  await settled(page);
-  expect(await selectedTab(page)).toMatch(/^Bringing/);
+  // The section's own count reads the record, and the list carries no copy.
+  await expect(bringing(page).locator('.shelf-label').first()).toHaveText(new RegExp(`^Bringing · 1 of ${n} spoken for$`, 'i'));
+  await expect(sheet(page).locator('[data-brought-group]')).toHaveCount(0);
+  await expect(sheet(page).locator('[data-bringer-row="p_mac"]')).toHaveCount(1);
 });
 
 test('a name set on Shop is on Bringing, and on the guest\'s row', async ({ page }) => {
@@ -101,17 +92,12 @@ test('a name set on Shop is on Bringing, and on the guest\'s row', async ({ page
   await openSectionByName(page, /spread/i);
   await settled(page);
   expect(await selectedTab(page)).toBe('Shop');
-  await openShopList(page);
-  await openBroughtGroup(page);
-  const beans = broughtGroup(page).locator('[data-bringer-row="p_green_beans"]');
+  const beans = bringing(page).locator('[data-bringer-row="p_green_beans"]');
   await expect(beans).toContainText('Add a name');
   await beans.click();
-  await broughtGroup(page).getByLabel(/Who is bringing/).selectOption('Ana Reyes');
+  await bringing(page).getByLabel(/Who is bringing/).selectOption('Ana Reyes');
   await expect.poll(async () => ((await saved(page)).foodOwner || {}).p_green_beans).toBe('Ana Reyes');
-  await expect(broughtGroup(page).locator('[data-bringer-row="p_green_beans"]')).toContainText('Ana Reyes');
-
-  await openTab(page, /^Bringing · \d+$/);
-  await expect(sheet(page).locator('[data-bringer-row="p_green_beans"]')).toContainText('Ana Reyes');
+  await expect(bringing(page).locator('[data-bringer-row="p_green_beans"]')).toContainText('Ana Reyes');
 
   // The guest list reads the same record: her row names the dish.
   // The door reads "Guests & invite" since 11/24/2026 (owner); was /^Guests$/.
@@ -131,7 +117,6 @@ test('a brought dish is not bought, not skipped, and not in the counts; an old "
   await expect.poll(async () => (await saved(page)).foodSkip).toEqual({ p_rolls: true });
   await openSectionByName(page, /spread/i);
   await settled(page);
-  await openShopList(page);
   const food = sheet(page).locator('.fgroup', { has: page.locator('.fg-label', { hasText: /^Food/ }) }).first();
   if (!(await food.evaluate((el) => el.classList.contains('open')))) await food.locator('.fg-head').click();
   // None of the guests' dishes is on the host's shelf, struck through or not.
@@ -151,7 +136,6 @@ test('a brought dish is not bought, not skipped, and not in the counts; an old "
   const allOpen = await sheet(page).locator('.fgroup:not([data-brought-group]):not(.open)').count();
   if (allOpen === 0) await expect(page.locator('.ftotal').first()).toContainText(`0 of ${shelves} bought`);
   // And they are all on Bringing, unskipped.
-  await openTab(page, /^Bringing · \d+$/);
   for (const id of ['p_potatoes', 'p_sweet_potatoes']) await expect(sheet(page).locator(`[data-bringer-row="${id}"]`)).toBeVisible();
 });
 
@@ -159,7 +143,6 @@ test('"I\'ll make it myself" puts a guest\'s dish on the host\'s list; "Hand it 
   await boot(page, seed('e2e-bring-4', { foodChoices: ALL_SET }));
   await openSectionByName(page, /spread/i);
   await settled(page);
-  await openTab(page, /^Bringing · \d+$/);
   await sheet(page).locator('[data-bringer-row="p_corn"]').click();
   await sheet(page).getByRole('button', { name: 'I’ll make it myself' }).click();
   await expect.poll(async () => ((await saved(page)).foodOwner || {}).p_corn).toBe(false);
@@ -178,7 +161,7 @@ test('menu questions open: the hero\'s spread link opens Plan', async ({ page })
   await link.click();
   await settled(page);
   expect(await selectedTab(page)).toBe('Plan');
-  await expect(sheet(page).locator('.fstat', { hasText: 'Your choices' })).toContainText(/\d+ open/);
+  await expect(sheet(page).locator('[data-food-section="choices"] .fstat', { hasText: 'Menu' })).toContainText(/\d+ open/);
 });
 
 test('menu set, buying left: the board row says "bought" and opens Shop', async ({ page }) => {
@@ -205,7 +188,6 @@ test('menu set, everything bought, a guest\'s dish unnamed: the spread opens on 
   // Tick off everything she buys, from her own Shop list.
   await openSectionByName(page, /spread/i);
   await settled(page);
-  await openShopList(page);
   const closed = sheet(page).locator('.fgroup:not([data-brought-group]):not(.open) .fg-head');
   while (await closed.count()) await closed.first().click();
   const checkAll = sheet(page).getByRole('button', { name: /^Check off all \d+/ });

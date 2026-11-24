@@ -257,9 +257,8 @@ const DRIVE = {
     }
     if (!(await openPart(page, 'Food'))) return used;
     const sh = sheet(page);
-    await tryClick(sh.getByRole('tab', { name: 'Plan' }));
-    await page.waitForTimeout(400);
-    if (await tryClick(sh.locator('.fstat', { hasText: 'Your choices' }))) {
+    // One food page (11/24/2026): no Plan tab; the menu's row is "Menu".
+    if (await tryClick(sh.locator('[data-food-section="choices"] .fstat', { hasText: 'Menu' }))) {
       for (let k = 0; k < 12; k++) {
         const chips = sh.locator('.chips').first();
         if (!(await chips.count())) break;

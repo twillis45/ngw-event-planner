@@ -214,6 +214,8 @@ import { rosBasisNote } from '@app/lib/rosBasis';
 import { parseStartMinutes } from '@app/lib/eventWhen';
 import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
+import InviteRules from './InviteRules';
+import { rowStatus, sourcingSettled } from '@app/lib/rowStatus';
 import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
 import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt, menuChoicesTally, menuBoardRowSub } from '@app/lib/playbooks';
 import InviteToTheList from './InviteToTheList';
@@ -1086,44 +1088,57 @@ const DEMO_TOOLS_ARMED = (() => {
 // they still resolve by id either way (stage-4 P1, N2).
 const LISTED_ROSTER = listedSamples(ROSTER, DEMO_TOOLS_ARMED);
 
-// ─── SHOP / BRINGING — the spread sheet's two modes ──────────────────────────
-//
-// Renders NOTHING when no line is carried by somebody else, which is every
-// event type but the repast today. A mode control over one mode is chrome.
-//
-// Real <button>s with `role="tab"`: the review board's access seat found the
-// list rows were the only real controls on this sheet in its mockups, and while
-// that turned out to be false of the shipped rows, it is a good bar to hold a
-// new control to. 44px of hit area, keyboard reachable, and the current mode
-// carries aria-selected rather than only a colour.
-function FoodModes({ mode, count, setSheet }) {
-  // Shop and Plan always exist; Bringing only when somebody is carrying
-  // something. The old guard hid the WHOLE control when count was 0, which was
-  // right while the control was Shop|Bringing and wrong the moment Plan joined
-  // it — it would have hidden the only door to the planning rows on every event
-  // without a community line, i.e. almost all of them.
-  void 0;
-  const btn = (key, label, on) => (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={mode === key}
-      className={'fmode' + (mode === key ? ' on' : '')}
-      onClick={on}
-    >{label}</button>
-  );
-  // ── WORKFLOW ORDER, NOT BOARD ORDER (host, 2026-09-24) ────────────────
-  // Board D draws these Shop · Bringing · Plan. That is the order they were
-  // DESIGNED in, not the order a host moves through them: you settle what you
-  // are serving, you find out what other people are carrying, and only then do
-  // you know what is left to buy. Left to right should be first to last.
+// ─── A ROW'S STATUS VALUE, ONE READER (owner, 11/24/2026) ────────────────────
+// The right-hand value on a sheet row. Its color is lib/rowStatus's answer,
+// carried as data-status and colored in styles.css; no row sets its own.
+function RowValue({ status = 'open', note = false, chev = false, style, children }) {
   return (
-    <div className="fmodes" role="tablist" aria-label="Planning, what others bring, and what you buy">
-      {btn('plan', 'Plan', () => setSheet({ kind: 'foodplan' }))}
-      {count ? btn('bringing', `Bringing · ${count}`, () => setSheet({ kind: 'bringing' })) : null}
-      {btn('shop', 'Shop', () => setSheet({ kind: 'food' }))}
-    </div>
+    <span className={'fstat-v' + (note ? ' fstat-note' : '')} data-status={status} style={style}>
+      {children}
+      {chev ? <span className="fstat-chev" aria-hidden="true">›</span> : null}
+    </span>
   );
+}
+
+// ─── A FINISHED GROUP COLLAPSES, ONE RULE (owner, renders 8/8b, 11/24/2026) ──
+// One component for every list whose groups finish: the shopping groups, the
+// Bringing list, the checklist and the decided calls.
+//   a group with every item done   one compact green row, a chevron to reopen
+//                                  ("✓ Food · all 10 bought"), no progress bar
+//   every group done (`all`)       "✓ All 27 bought" and a quiet "Show the list"
+// Reopening is the caller's `onOpen`; it lasts for the browser session only
+// (useReopened below) and never writes to the plan.
+function DoneFold({ text, sub, onOpen, all = false, showLabel = 'Show the list' }) {
+  if (all) {
+    return (
+      <div className="done-all" data-done-all>
+        <span className="done-tx"><span className="done-ck" aria-hidden="true">✓</span>{text}</span>
+        <button type="button" className="done-show" onClick={onOpen}>{showLabel}</button>
+      </div>
+    );
+  }
+  return (
+    <button type="button" className="done-fold" data-done-fold aria-expanded="false" onClick={onOpen}>
+      <span className="done-ck" aria-hidden="true">✓</span>
+      <span className="done-tx">{text}{sub ? <span className="done-sub">{sub}</span> : null}</span>
+      <span className="fg-chev" aria-hidden="true">›</span>
+    </button>
+  );
+}
+// Which finished groups she reopened, per plan, for this browser session.
+const REOPENED_KEY = 'ngw-v2-reopened';
+function useReopened(eventId) {
+  const [map, setMap] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem(REOPENED_KEY) || '{}') || {}; } catch { return {}; }
+  });
+  const key = (scope) => String(eventId || '') + ':' + scope;
+  const isOpen = (scope) => !!map[key(scope)];
+  const reopen = (scope) => setMap((m) => {
+    const next = { ...m, [key(scope)]: true };
+    try { sessionStorage.setItem(REOPENED_KEY, JSON.stringify(next)); } catch { /* private mode: this visit only */ }
+    return next;
+  });
+  return { isOpen, reopen };
 }
 
 // ─── THE PASS FACT, MADE REACTIVE ────────────────────────────────────────────
@@ -6179,7 +6194,7 @@ export default function HostShellV2() {
   // are the same surface wearing two kinds, and that is the only case that
   // must not. Naming the pair is honest; guessing from "was it open" was not.
   const sheetSurfaceRef = useRef(null);
-  const surfaceOf = (k) => (k === 'foodplan' ? 'food' : k);
+  const surfaceOf = (k) => (k === 'foodplan' || k === 'bringing' ? 'food' : k);
   useLayoutEffect(() => {
     const el = sheetRef.current;
     if (!sheet) { sheetSurfaceRef.current = null; return; }
@@ -6390,6 +6405,15 @@ export default function HostShellV2() {
     const el = sheetBodyRef.current;
     if (el && typeof el.scrollTo === 'function') el.scrollTo({ top: 0, behavior: 'auto' });
     else if (el) el.scrollTop = 0;
+    // ONE FOOD PAGE (owner, 11/24/2026): 'foodplan', 'bringing' and 'food' are
+    // its sections now. Every door keeps its kind and lands on its section:
+    // Your choices sits under the estimate at the top; Bringing and the list
+    // scroll to their heads.
+    if (foodTab && sheet.focus == null && el) {
+      const sec = sheet.kind === 'bringing' ? 'bringing' : sheet.kind === 'food' ? 'list' : null;
+      const target = sec && el.querySelector('[data-food-section="' + sec + '"]');
+      if (target) el.scrollTop = Math.max(0, Math.round(target.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - 8));
+    }
   }, [sheet && sheet.kind]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // field's own Escape-to-cancel (food tune, vendor cost, diet, guest count)
@@ -7346,7 +7370,16 @@ export default function HostShellV2() {
     let result;
     try { result = await checkRsvpCapability(event); } finally { rsvpChecking.current = false; }
     endBusyToast();
-    if (!result.ready) { toast(rsvpUnavailable(result)); return ''; }
+    if (!result.ready) {
+      // AN UNSAVED PLAN IS ASKED TO BE SAVED (owner, 11/24/2026). Signed out,
+      // the plan never reached an account, so it has no public invite yet:
+      // saying "not available" read as a dead end. The way forward is the
+      // same sign-in the "Not saved yet" row opens.
+      if (result.reason === 'unpublished' && isSupabaseConfigured() && !session) {
+        toast('Sign in to save this plan, then guests can RSVP online.', { label: 'Sign in to save', fn: openKeepSignIn });
+      } else toast(rsvpUnavailable(result));
+      return '';
+    }
     try { return inviteLinkUrl(); }
     catch { toast('Can’t share: the public link address is missing. Nothing was shared.'); return ''; }
   };
@@ -7528,15 +7561,43 @@ export default function HostShellV2() {
     } catch (_e) { /* no checklist, no group */ }
     return ids;
   }, [event]);
+  // Finished groups she reopened this session (DoneFold, owner 11/24/2026).
+  const reopened = useReopened(event && event.id);
+  // A checked-off step, as the done shelf and a reopened finished group show it.
+  const doneTaskRow = (t, i) => (
+    <button key={t.id || i} className="frow got" onClick={() => toggleTask(i)}>
+      <span className="fcheck" aria-hidden="true" />
+      <span className="f-main">
+        <span className="f-name">{t.task}</span>
+        <span className="v-meta">{[t.week, t.owner].filter(Boolean).join(' · ')}</span>
+      </span>
+    </button>
+  );
   const renderGroupedTasks = (renderRow) => {
     const order = groupDinnerSteps(event.timeline, dinnerStepIds);
+    const members = order.filter((x) => x.inGroup && x.t && !x.t.retired);
     const group = order.filter((x) => x.inGroup).map((x) => ({ x, el: renderRow(x.t, x.i) })).filter((g) => g.el);
+    // THE DINNER'S STEPS, ALL DONE, ARE ONE GREEN ROW (owner, 11/24/2026),
+    // reopened for the session to show the checked-off steps.
+    const dinnerDone = !group.length && members.length > 0 && members.every((x) => x.t.done);
     const out = [];
     let placed = false;
     for (const x of order) {
       if (!x.inGroup) { out.push(renderRow(x.t, x.i)); continue; }
-      if (placed || !group.length) continue;
+      if (placed || !(group.length || dinnerDone)) continue;
       placed = true;
+      if (dinnerDone) {
+        out.push(reopened.isOpen('tasks:dinner') ? (
+          <div className="dinner-steps" data-dinner-steps key="dinner-steps">
+            <div className="shelf-label">{celebrationTitle(event)}</div>
+            {members.map((m) => doneTaskRow(m.t, m.i))}
+          </div>
+        ) : (
+          <DoneFold key="dinner-steps" text={`${celebrationTitle(event)} · all ${members.length} done`}
+            onOpen={() => reopened.reopen('tasks:dinner')} />
+        ));
+        continue;
+      }
       out.push(
         <div className="dinner-steps" data-dinner-steps key="dinner-steps">
           <div className="shelf-label">{celebrationTitle(event)}</div>
@@ -7629,9 +7690,9 @@ export default function HostShellV2() {
         <span className="fstat-l">{dish}</span>
         {/* NO WRAP. Beside a long dish the label broke to "Add a / name"; the
             label is the act and stays whole, the DISH takes the wrapping. */}
-        <span className="fstat-v" style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+        <RowValue status={rowStatus({ settled: !!saved })} style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>
           {saved || (r.broughtByCommunity ? 'Add a name' : 'Someone’s bringing it?')}
-        </span>
+        </RowValue>
       </button>
     );
   };
@@ -7706,12 +7767,12 @@ export default function HostShellV2() {
           {trip.cel && mo.celebration && (
             <button type="button" className="fstat" data-layer="celebration" onClick={() => setSheet({ kind: 'celebration' })}>
               <span className="fstat-l">The celebration<span className="trip-part-sub">{mo.celebration.title} · {mo.celebration.basis === 'restaurant' ? 'the restaurant’s rate, before drinks, tax and tip' : 'this spread’s estimate · all in'}</span></span>
-              <span className="fstat-v">{mo.celebration.low != null ? money(mo.celebration.low, mo.celebration.high) : 'needs a guest count'}<span className="fstat-chev" aria-hidden="true">›</span></span>
+              <RowValue status="open" chev>{mo.celebration.low != null ? money(mo.celebration.low, mo.celebration.high) : 'needs a guest count'}</RowValue>
             </button>
           )}
           <button type="button" className="fstat" data-layer="around" onClick={() => goToSection('days')}>
             <span className="fstat-l">{trip.cel ? 'Around it' : 'Meals on the trip'}<span className="trip-part-sub">{mo.around.planned ? `${mo.around.total} meals · ${summary}` : `${mo.around.total} meals · not planned yet`}</span></span>
-            <span className="fstat-v">{mo.around.planned ? (by.out && by.out.low ? `${money(by.out.low, by.out.high)} to you` : '$0 to you') : 'plan them'}<span className="fstat-chev" aria-hidden="true">›</span></span>
+            <RowValue status={rowStatus({ settled: !!mo.around.planned })} chev>{mo.around.planned ? (by.out && by.out.low ? `${money(by.out.low, by.out.high)} to you` : '$0 to you') : 'plan them'}</RowValue>
           </button>
         </div>
         {mo.around.planned > 0 && (
@@ -7823,8 +7884,10 @@ export default function HostShellV2() {
   // `sheet` is useState(null) and this runs on EVERY render, unlike the two
   // copies it replaced, which only ever ran inside a live sheet. The first
   // draft read `sheet.focus` and took the whole app to the error boundary.
+  // The list is always open on the one page (owner, 11/24/2026), so it is no
+  // longer a drill-in.
   const drillOpen = !!(foodSect.diet || (sheet && sheet.focus === 'diet') || foodSect.choices
-    || foodSect.sourced || foodSect.list);
+    || foodSect.sourced);
   // ── AND ONLY ONE `Done` IS ON SCREEN AT A TIME ───────────────────────────
   // Each drill-in also carries a `Done` in its own header. With the bar now
   // offering one too, a host at the top of a section saw two identical buttons
@@ -7899,27 +7962,14 @@ export default function HostShellV2() {
   // line. There is nothing left to put there that would not be the same fact
   // twice — the duplication the host called out on 2026-09-24 and again on
   // 2026-09-27.
+  // ONE PAGE, ONE BAR (owner, 11/24/2026): the spread is one scroll for all
+  // three kinds, and the bar counts what she buys. With nothing to buy (no
+  // kitchen, an empty list) it counts the menu's calls, as Plan's bar did.
   const barTally = (() => {
     if (!sheet || !foodPlan) return null;
-    if (sheet.kind === 'bringing') {
-      if (bringingTally.total === 0) return null;
-      // "Everyone is spoken for." is the Bringing screen's own completion
-      // line, which moved here with the count rather than being deleted
-      // alongside it. At completion the fraction and the sentence are the
-      // same fact, so the bar says the warmer one and says it once.
-      return bringingTally.named === bringingTally.total
-        ? 'Everyone is spoken for'
-        : `${bringingTally.named} of ${bringingTally.total} spoken for`;
-    }
-    if (sheet.kind === 'foodplan') {
-      return choicesTally.total > 0
-        ? `${choicesTally.settled} of ${choicesTally.total} decided` : null;
-    }
-    if (sheet.kind === 'food') {
-      return (!noKitchen && foodPlan.itemCount > 0)
-        ? `${shopTally.bought} of ${shopTally.total} bought` : null;
-    }
-    return null;
+    if (sheet.kind !== 'food' && sheet.kind !== 'foodplan' && sheet.kind !== 'bringing') return null;
+    if (!noKitchen && foodPlan.itemCount > 0) return `${shopTally.bought} of ${shopTally.total} bought`;
+    return choicesTally.total > 0 ? `${choicesTally.settled} of ${choicesTally.total} decided` : null;
   })();
   const barShows = !!barTally;
 
@@ -7938,10 +7988,10 @@ export default function HostShellV2() {
   // The four drill-ins all live in the food/foodplan branch, so those are the
   // two tabs where the bar can be an exit. Bringing gets the bar for its
   // count and nothing more.
-  const barIsExit = drillOpen && barShows && sheet.kind !== 'bringing';
+  const barIsExit = drillOpen && barShows;
 
   const closeDrill = useCallback(() => {
-    setFoodSect(m => ({ ...m, diet: false, choices: false, sourced: false, list: false }));
+    setFoodSect(m => ({ ...m, diet: false, choices: false, sourced: false }));
     setChoiceOpen(null);
     setSheet(s => (s && s.focus === 'diet' ? { ...s, focus: null } : s));
   }, []);
@@ -8384,10 +8434,6 @@ export default function HostShellV2() {
   const [rosterQ, setRosterQ] = useState('');
   const [rosterLens, setRosterLens] = useState('all'); // all | yes | no | maybe | none
   const [deadlineOpen, setDeadlineOpen] = useState(false);
-  // WAVE-B: invite-rules fold (guests sheet) — the policies the public RSVP
-  // page enforces (InviteV2 reads plusOnePolicy/kidsPolicy/collectAddresses;
-  // the invite + guest brief drafts read giftWish). Fold-closed by default.
-  const [inviteRulesOpen, setInviteRulesOpen] = useState(false);
   // CSV import — the app's own parsers/merge (lib/csvParsers): 7 platforms,
   // email-primary name-fallback matching, preview before anything writes.
   const [csvOpen, setCsvOpen] = useState(false);
@@ -11105,6 +11151,9 @@ export default function HostShellV2() {
     setKeepAskClosed(c => [...c, id]);
     if (MOVE_NOTICE) { try { const seen = JSON.parse(localStorage.getItem(LS_MOVE_ASKED) || '[]') || []; if (!seen.includes(id)) localStorage.setItem(LS_MOVE_ASKED, JSON.stringify([...seen, id])); } catch { /* private mode */ } }
   };
+  // The sign-in that keeps this plan: the "Not saved yet" row and the RSVP
+  // check's "Sign in to save" (11/24/2026) open it the same way.
+  const openKeepSignIn = () => { keepIntentRef.current = 'device_plan'; setSheet({ kind: 'settings', keep: true }); trackKeepPrompt('device_plan'); };
   const keepAskEvent = (isSupabaseConfigured() && authChecked && !session && stage === 'plan' && !welcome
     && activeCustom && isRealHostEvent(activeCustom) && !isDemoEvent(activeCustom) && !activeCustom.demoSeed
     && !(MOVE_NOTICE ? moveAskedBefore : keepAskedBefore).includes(activeCustom.id) && !keepAskClosed.includes(activeCustom.id)
@@ -12610,7 +12659,7 @@ export default function HostShellV2() {
                    "Not now" (closeKeepAsk, no analytics). Doctrine 02, ruling 25. */
                 <div className="keep-ask" data-keep-ask data-move-notice={MOVE_NOTICE ? '' : undefined}>
                   <p className="keep-ask-t">{MOVE_NOTICE || <b>Not saved yet.</b>}</p>
-                  <button className="cta" onClick={() => { setKeepAskClosed(c => [...c, keepAskEvent.id]); keepIntentRef.current = 'device_plan'; setSheet({ kind: 'settings', keep: true }); trackKeepPrompt('device_plan'); }}>Sign in to save</button>
+                  <button className="cta" onClick={() => { setKeepAskClosed(c => [...c, keepAskEvent.id]); openKeepSignIn(); }}>Sign in to save</button>
                   <button className="keep-ask-x" aria-label="Dismiss" onClick={() => closeKeepAsk(keepAskEvent.id)}>✕</button>
                 </div>
               )}
@@ -17274,6 +17323,9 @@ export default function HostShellV2() {
                       </li>
                     ))}
                   </ul>
+                  {/* THE INVITE RULES LIVE IN THE INVITE STEP (owner, render 10a,
+                      11/24/2026): the same component and record as the guest list. */}
+                  <InviteRules event={event} patchEvent={patchEvent} note="The RSVP page follows these. Also in your guest list." />
                   {(!has('date') || !has('time')) && renderEditor({ domain: 'date' })}
                   {!has('place') && (
                     <div style={{ marginTop: 'var(--sp-3)' }}>
@@ -17815,7 +17867,17 @@ export default function HostShellV2() {
                     </div>
                   );
                 })()}
-                {(decisionBoard.locked || []).length > 0 && (
+                {/* THE DECIDED CALLS ARE ONE GREEN ROW (owner, 11/24/2026, the
+                    DoneFold rule) until she reopens them for the session; a
+                    routed focus on one of them ("Change the call") opens them. */}
+                {(decisionBoard.locked || []).length > 0 && !reopened.isOpen('calls:settled')
+                  && !(sheet.focus && (decisionBoard.locked || []).some(r => r && r.id === sheet.focus)) && (
+                  <div style={{ marginTop: 'var(--sp-3)' }}>
+                    <DoneFold text={`Settled · all ${(decisionBoard.locked || []).length} decided`} onOpen={() => reopened.reopen('calls:settled')} />
+                  </div>
+                )}
+                {(decisionBoard.locked || []).length > 0 && (reopened.isOpen('calls:settled')
+                  || !!(sheet.focus && (decisionBoard.locked || []).some(r => r && r.id === sheet.focus))) && (
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)' }}>Settled</div>
                     {(decisionBoard.locked || []).map((r, i) => {
@@ -18034,7 +18096,7 @@ export default function HostShellV2() {
               <div className="fstat-list" style={{ marginTop: 'var(--sp-3)' }}>
                 <button type="button" className="fstat" data-space-days onClick={() => setSheet({ kind: 'days' })}>
                   <span className="fstat-l">Your days</span>
-                  <span className="fstat-v">{spanNights(event) + 1} days · open<span className="fstat-chev" aria-hidden="true">›</span></span>
+                  <RowValue status="open" chev>{spanNights(event) + 1} days · open</RowValue>
                 </button>
               </div>
             )}
@@ -18199,10 +18261,9 @@ export default function HostShellV2() {
                       <button className="fstat" onClick={() => setSettledOpen(m => ({ ...m, [capKey]: !open }))} aria-expanded={open}
                         aria-label={(it.short || it.item) + ' — ' + (remaining === 0 ? 'covered' : 'still need ' + remaining) + '. Tap to set what you have.'}>
                         <span className="fstat-l">{it.verb ? it.verb + ' ' : ''}{it.short || it.item} <span className="of">need {baseNeed}</span></span>
-                        <span className="fstat-v" style={remaining === 0 ? { color: 'var(--ok)' } : null}>
+                        <RowValue status={rowStatus({ settled: remaining === 0 })} chev>
                           {remaining === 0 ? (helperName ? helperName + ' brings ' + baseNeed : 'covered') : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : 'still need ' + remaining}
-                          <span className="fstat-chev" aria-hidden="true">›</span>
-                        </span>
+                        </RowValue>
                       </button>
                       {open && (
                         <div style={{ padding: '2px 2px 12px' }}>
@@ -18695,10 +18756,9 @@ export default function HostShellV2() {
                             {p.id === 'place' && p.sub && !p.set ? <span className="trip-part-sub">{p.sub}</span> : null}
                             {p.id === 'seats' && p.stepFree ? <span className="trip-part-sub" data-stepfree-check>You said “{p.stepFree}”: a step-free path {placeA ? `to ${/^an? /.test(placeA) ? placeA.replace(/^an? /, 'the ') : placeA}` : 'in'} and a seat she can reach.</span> : null}
                           </span>
-                          <span className="fstat-v" style={p.set ? { color: 'var(--ok)' } : null}>
+                          <RowValue status={rowStatus({ settled: !!p.set })} chev>
                             {p.set ? 'set' : p.goes === 'venue' ? 'name it' : p.goes === 'seating' ? 'who sits where' : 'open'}
-                            <span className="fstat-chev" aria-hidden="true">›</span>
-                          </span>
+                          </RowValue>
                         </button>
                       ))}
                     </div>
@@ -23656,23 +23716,29 @@ export default function HostShellV2() {
                   )}
                   <Panel on={panels}>
                   </Panel>
-                  {(event.timeline || []).some(t => t && t.done && !t.retired) && (
-                    <>
-                      <button className="fold-btn" style={{ color: 'var(--ok)' }} onClick={() => setDoneOpen(o => !o)}>
-                        {(event.timeline || []).filter(t => t && t.done && !t.retired).length} done — the plan has them
-                        <span className="chev" aria-hidden="true">{doneOpen ? '▾' : '›'}</span>
-                      </button>
-                      {doneOpen && (event.timeline || []).map((t, i) => (t && t.done && !t.retired) ? (
-                        <button key={t.id || i} className="frow got" onClick={() => toggleTask(i)}>
-                          <span className="fcheck" aria-hidden="true" />
-                          <span className="f-main">
-                            <span className="f-name">{t.task}</span>
-                            <span className="v-meta">{[t.week, t.owner].filter(Boolean).join(' · ')}</span>
-                          </span>
+                  {(event.timeline || []).some(t => t && t.done && !t.retired) && (() => {
+                    // FINISHED WORK COLLAPSES, ONE RULE (owner, 11/24/2026): the
+                    // done steps are one green row (DoneFold) until she opens
+                    // them; with every step done the whole list is "All N done".
+                    const live = (event.timeline || []).filter(t => t && !t.retired);
+                    const doneN = live.filter(t => t.done).length;
+                    const allDone = doneN === live.length;
+                    if (allDone && !reopened.isOpen('tasks:all')) {
+                      return <DoneFold all text={`All ${live.length} done`} onOpen={() => { reopened.reopen('tasks:all'); setDoneOpen(true); }} />;
+                    }
+                    if (!doneOpen) {
+                      return <DoneFold text={`${doneN} done — the plan has them`} onOpen={() => setDoneOpen(true)} />;
+                    }
+                    return (
+                      <>
+                        <button className="fold-btn" style={{ color: 'var(--ok)' }} onClick={() => setDoneOpen(false)}>
+                          {doneN} done — the plan has them
+                          <span className="chev" aria-hidden="true">▾</span>
                         </button>
-                      ) : null)}
-                    </>
-                  )}
+                        {(event.timeline || []).map((t, i) => (t && t.done && !t.retired) ? doneTaskRow(t, i) : null)}
+                      </>
+                    );
+                  })()}
                   </Panel>
                 </>
               ) : (
@@ -23745,127 +23811,15 @@ export default function HostShellV2() {
               })()}
               </Panel>
             </>)}
-            {/* ── THE THIRD MODE (host ruling 2026-09-24) ──────────────────────
-                When somebody else is carrying part of the meal, the host has TWO
-                jobs on this sheet and they are not the same job: what she buys,
-                and what she is waiting on. The review board's communal-host seat
-                put it plainly — every direction on the canvas assumed one host,
-                one cart, one store, and for a repast that is structurally wrong.
-
-                MODELLED AS A SHEET, not as tab state inside the food sheet. That
-                is this codebase's own idiom for a mode (`setSheet({kind})`), it
-                keeps the back/close behaviour every other sheet already has, and
-                it avoided wrapping a 1,700-line render in a conditional.
-
-                THE CONTROL ONLY APPEARS WHEN THERE IS SOMETHING TO BRING. A
-                cookout has no community lines, and a permanent "Bringing · 0" tab
-                would be chrome advertising an empty room — the exact speculative
-                UI the density work spent the morning removing. */}
-            {sheet.kind === 'bringing' && foodPlan ? (() => {
-              // The dishes someone else is carrying and that are being served:
-              // lib/foodBringing bringingRows, the list the Shop group, the Plan
-              // row and the bar's "N of M spoken for" all count.
-              const rows = bringingRows(foodPlan);
-              const who = (rows[0] && rows[0].broughtByLabel) || 'The community';
-              // Dishes the host took back ("I'll make it myself") and the host's
-              // own food lines she could hand to someone: the same editor, so a
-              // dish can be given to anyone from here, not only the default sides.
-              const taken = (foodPlan.list || []).filter((i) => i && i.hostTakes && !i.skipped);
-              const yours = (foodPlan.list || []).filter((i) => i && !i.broughtByCommunity && !i.skipped
-                && !i.hostTakes && i.group !== 'Supplies' && i.group !== 'Drinks');
-              const enteredCost = rows.reduce((t, r) => t + (Number(r.low) || 0), 0);
-              return (
-                <>
-                  <FoodModes mode="bringing" count={rows.length} setSheet={setSheet} />
-                  <div style={{ padding: '2px 0 14px' }}>
-                    <Eyebrow>Not yours to buy</Eyebrow>
-                    <BigValue>{rows.length === 0 ? 'No dishes yet' : rows.length === 1 ? 'One dish' : `${rows.length} dishes`}</BigValue>
-                    <GuideLine>
-                      {/* Some of the food or all of it: a Friendsgiving potluck's host still
-                          buys the turkey (owner, 11/18/2026). Plural names take "are". */}
-                      {(() => {
-                        if (!rows.length) return 'Nobody is bringing a dish yet. Name someone for one of yours below.';
-                        const are = /\b(friends|neighbors|families|guests)\b/i.test(who) ? 'are' : 'is';
-                        const allOfIt = !(foodPlan.list || []).some((i) => i && !i.broughtByCommunity && !i.skipped && i.group === 'Food');
-                        return allOfIt ? `${who} ${are} carrying the food. You are buying the table around it.`
-                          : `${who} ${are} bringing these dishes. You are buying the rest.`;
-                      })()}
-                    </GuideLine>
-                    {/* THE COUNT MOVED TO THE PINNED BAR (2026-09-27), so this
-                        line stops saying it. The bar keeps the count because the
-                        bar does not scroll away; this line keeps the fact the bar
-                        cannot carry: none of it is her bill. A dish she added with
-                        a cost she typed is the exception, and is said. */}
-                    {rows.length ? (
-                      <Grounding gap={ASK_RHYTHM.valueToWhy}>
-                        {enteredCost > 0 ? `nothing here costs you anything but the ${fmt(enteredCost)} you entered` : 'nothing here costs you anything'}
-                      </Grounding>
-                    ) : null}
-                  </div>
-                  {/* ONE RECORD (owner's iPad, 11/21/2026). Each row writes
-                      `foodOwner`, which Shop, Plan, the helpers panel, the guest
-                      rows and the day-before list all read through the engine's
-                      `broughtBy`. The picker offers the guest list and the
-                      helpers, or a typed name; "I'll make it myself" puts the
-                      dish back on her list; "Not serving it" is a skip.
-                      A RECORD, NOT A REQUEST: this writes down what she was
-                      told. Clearing the field removes the name rather than
-                      storing an empty one. */}
-                  {rows.length ? (
-                    <div className="fstat-list">
-                      {rows.map((r) => bringerRow(r))}
-                    </div>
-                  ) : null}
-                  {taken.length ? (
-                    <>
-                      <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 var(--sp-1)' }}>You’re making these yourself</div>
-                      <div className="fstat-list">
-                        {taken.map((r) => (
-                          <button key={r.id} className="fstat" onClick={() => {
-                            const next = { ...foodOwnerMap(event) }; delete next[r.id];
-                            patchEvent({ foodOwner: next }, `${r.short || r.item} is back with ${String(who).toLowerCase() === 'the community' ? 'the community' : 'your guests'} to bring.`);
-                          }}>
-                            <span className="fstat-l">{r.short || r.item}</span>
-                            <span className="fstat-v" style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>Hand it back</span>
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  ) : null}
-                  {yours.length ? (
-                    <>
-                      <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 var(--sp-1)' }}>Yours to make · someone could bring one</div>
-                      <div className="fstat-list">
-                        {yours.map((r) => bringerRow(r))}
-                      </div>
-                    </>
-                  ) : null}
-                  {/* A RECORD, NOT A REQUEST. The repast playbook carries a 2026-09-03
-                      three-seat ruling about not telling a family they are doing their
-                      funeral wrong; a screen that looked like it was chasing the church
-                      for dishes would be the same error in another register. Nothing
-                      here sends anything. */}
-                  <p className="grounding" style={{ margin: 'var(--sp-3) 0 0' }}>
-                    This is a note of what you were told. Nothing here is sent to anyone.
-                  </p>
-                </>
-              );
-            })() : null}
-            {/* SHOP AND PLAN ARE SEPARATE TABS (2026-09-24, boards D and E).
-                Host: "shop and plan should be separated in spread and shopping
-                like we have in prototypes." Board D's control is three wide —
-                Shop · Bringing · Plan — and this shipped with two, so the
-                planning rows (Your choices, Dietary needs, How it's sourced)
-                sat on top of the shopping list, which is what made the Shop tab
-                seven stacked blocks deep before the first grocery.
-
-                ONE BODY, TWO TABS rather than a second sheet: the hero, the
-                drill-in panels and the pinned footer are shared, and `planTab`
-                picks which rows and which hero belong to the tab in front. A
-                separate sheet kind would have duplicated all of it. */}
-            {(sheet.kind === 'food' || sheet.kind === 'foodplan') && (foodPlan ? (
+            {/* ── ONE FOOD PAGE, NO TABS (owner-approved renders 9a-9c, 11/24/2026) ──
+                The Plan / Bringing / Shop tabs (2026-09-24) are gone: one scroll,
+                the estimate card, Your choices, Bringing (when someone else
+                brings dishes), then the list by group. 'foodplan', 'bringing'
+                and 'food' stay as the kinds the doors open, and each lands on its
+                section (the scroll effect on `sheet.kind`). The header and the
+                pinned bar stay. */}
+            {(sheet.kind === 'food' || sheet.kind === 'foodplan' || sheet.kind === 'bringing') && (foodPlan ? (
               <>
-                <FoodModes mode={sheet.kind === 'foodplan' ? 'plan' : 'shop'} count={bringingRows(foodPlan).length} setSheet={setSheet} />
                 {/* PRINCIPLES REDESIGN: summary before detail — the bought count
                     leads (the host's real question: "how much is left to do?"),
                     one grounding line carries the rest of the engine's math. */}
@@ -24039,7 +23993,6 @@ export default function HostShellV2() {
                     if (m && m !== '—') counts[m] = (counts[m] || 0) + 1;
                   });
                   const answered = Object.values(counts).reduce((a, b) => a + b, 0);
-                  const un = answered ? Math.max(0, gs.length - answered) : 0;
                   // Stable order: the invite's own meal choices first, then any
                   // free-text meals a CSV brought in.
                   const order = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
@@ -24081,13 +24034,9 @@ export default function HostShellV2() {
                           zero restrictions and three silent guests. On Shop
                           there is no dietary row, so the chip is the only way
                           that gap is said at all, and it stays. */}
-                      {un > 0 && sheet.kind !== 'foodplan' && (
-                        <button className="mini"
-                          style={{ color: 'var(--warn)', background: 'var(--warn-tint)', borderColor: 'var(--warn)' }}
-                          onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
-                          {un} meal{un === 1 ? '' : 's'} unanswered
-                        </button>
-                      )}
+                      {/* ONE PAGE (owner, 11/24/2026): the "N meals unanswered"
+                          chip opened Dietary needs, and Your choices now carries
+                          that row on the same page, so the chip is gone. */}
                       <button type="button" className="tap-44" onClick={() => setEstOpen(o => !o)}
                         aria-expanded={estOpen}
                         style={{ font: 'inherit', fontSize: 'var(--t-caption-min)', fontWeight: 600,
@@ -24251,6 +24200,75 @@ export default function HostShellV2() {
                   </>
                 )}
                 </Panel>
+                {/* ── YOUR CHOICES, SECTION 2 OF THE ONE PAGE (owner, renders 9a/9b,
+                    11/24/2026) ──────────────────────────────────────────────
+                    The menu, the dietary needs and how it is sourced, each a row
+                    that opens its drill-in. The "Who's bringing what" row is gone:
+                    Bringing is its own section just below. Once all three are
+                    settled the section is the two-line green "Choices set"
+                    (DoneFold) until she reopens it for the session. */}
+                {(() => {
+                  const anyDiet = anyDietFlagged(event);  // lib/dietRows
+                  const openN = choicesTally.total - choicesTally.settled;
+                  const hasChoices = (foodPlan.choices || []).length > 0;
+                  const hasSourcing = (foodPlan.sourcingTiers || []).length > 0;
+                  const curTier = (foodPlan.sourcingTiers || []).find(t => t && (t.id || t.key) === foodPlan.sourcing);
+                  const sourcingLabel = (curTier && (curTier.label || curTier.id)) || 'choose one';
+                  if (drillOpen) return null; // a drill-in panel is open below
+                  const dietSet = anyDiet || dietaryNoted(event);
+                  const allSet = (!hasChoices || openN === 0) && dietSet && (!hasSourcing || sourcingSettled(event));
+                  const dietText = anyDiet ? dietRowsFor(event).flaggedCount + ' dietary noted' : 'dietary noted';
+                  // Settled, it is the bare two-line row of render 9b, not a card.
+                  if (allSet && !reopened.isOpen('choices')) {
+                    return (
+                      <div data-food-section="choices" className="choices-set">
+                        <DoneFold text="Choices set" sub={[hasSourcing ? sourcingLabel : null, dietText].filter(Boolean).join(' · ')}
+                          onOpen={() => reopened.reopen('choices')} />
+                      </div>
+                    );
+                  }
+                  return (
+                    <Panel on={panels}>
+                    <div data-food-section="choices">
+                        <>
+                          <div className="shelf-label" style={{ margin: '0 0 var(--sp-1)' }}>Your choices</div>
+                          <div className="fstat-list">
+                            {/* THE CHOICE THAT BUILDS THE LIST GOES FIRST (2026-09-17):
+                                the menu's answers produce the list and its totals. */}
+                            {hasChoices && (
+                              <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, choices: true }))}>
+                                <span className="fstat-l">Menu</span>
+                                <RowValue status={rowStatus({ settled: openN === 0 })} chev>
+                                  {/* Open now is the hero's count; the rest come up
+                                      closer to the date, as on Calls to make. */}
+                                  {openN > 0
+                                    ? (choicesTally.openNow.length > 0
+                                      ? choicesTally.openNow.length + ' open' + (choicesTally.later > 0 ? ' · ' + choicesTally.later + ' later' : '')
+                                      : choicesTally.later + ' later')
+                                    : 'all set'}
+                                </RowValue>
+                              </button>
+                            )}
+                            <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
+                              <span className="fstat-l">Dietary needs</span>
+                              <RowValue status={rowStatus({ settled: dietSet })} chev>
+                                {anyDiet ? 'noted · ' + dietRowsFor(event).flaggedCount + ' flagged' : dietaryNoted(event) ? 'noted' : 'none yet'}
+                              </RowValue>
+                            </button>
+                            {hasSourcing && (
+                              <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, sourced: true }))}>
+                                <span className="fstat-l">How it’s sourced</span>
+                                <RowValue status={rowStatus({ settled: sourcingSettled(event) })} chev>
+                                  {sourcingLabel}
+                                </RowValue>
+                              </button>
+                            )}
+                          </div>
+                        </>
+                    </div>
+                    </Panel>
+                  );
+                })()}
                 {/* Menu decisions — the playbook's real choices; picking one re-sizes
                     and re-prices the spread through the same engine. */}
                 <Panel on={panels}>
@@ -24390,8 +24408,6 @@ export default function HostShellV2() {
                     </div>
                   );
                 })()}
-                <Panel on={panels}>
-                </Panel>
                 {(foodPlan.choices || []).length > 0 && (() => {
                   const openN = choicesTally.total - choicesTally.settled;
                   const open = !!foodSect.choices;
@@ -24401,111 +24417,7 @@ export default function HostShellV2() {
                 {/* Food across the trip (owner, 11/21/2026: A's money view). The
                     Spread is the DINNER's food on a trip with a celebration; the
                     trip's other meals are the layer around it. */}
-                {sheet.kind === 'foodplan' && trip && !drillOpen && tripLayers('spread')}
-                {/* ONE compact status strip replaces two heavy fold-rows — the
-                    same information, without the wall-of-rows drift. */}
-                {(() => {
-                  const dc = event.dietCounts || {};
-                  const anyDiet = anyDietFlagged(event);  // lib/dietRows — was hand-rolled here twice, identically
-                  const openN = choicesTally.total - choicesTally.settled;
-                  const hasChoices = (foodPlan.choices || []).length > 0;
-                  const hasSourcing = (foodPlan.sourcingTiers || []).length > 0;
-                  const curTier = (foodPlan.sourcingTiers || []).find(t => t && (t.id || t.key) === foodPlan.sourcing);
-                  const sourcingLabel = (curTier && (curTier.label || curTier.id)) || 'choose one';
-                  const listDone = shopTally.done;
-                  const planTab = sheet.kind === 'foodplan';
-                  if (drillOpen) return null; // a drill-in panel is open below
-                  // Progressive disclosure (port of Figma 391:60) — the heavy sections
-                  // (sourcing, the shopping list) fold to summary rows; each drills in
-                  // on tap. Hairline rows, value neutral until resolved (378:72 treatment).
-                  return (
-                    <div className="fstat-list">
-                      {/* ── THE CHOICE THAT BUILDS THE LIST GOES FIRST (2026-09-17) ──
-                          "Your choices" sat third, under Dietary needs, while the
-                          decisions inside it are what PRODUCE the list and its
-                          totals — major_event is authored when:'T-10d' (the
-                          earliest), weight:'high', blocks:['food','program'], and
-                          its own priorityBasis says "answering it first means
-                          everything else builds on the right assumption instead of
-                          a generic default". The sheet was ordering it as though it
-                          were a detail. Host-reported this session. */}
-                      {planTab && hasChoices && (
-                        <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, choices: true }))}>
-                          <span className="fstat-l">Your choices</span>
-                          <span className="fstat-v" style={openN > 0 ? null : { color: 'var(--ok)' }}>
-                            {/* Open now is the hero's count; the rest come up
-                                closer to the date, as on Calls to make. */}
-                            {openN > 0
-                              ? (choicesTally.openNow.length > 0
-                                ? choicesTally.openNow.length + ' open' + (choicesTally.later > 0 ? ' · ' + choicesTally.later + ' later' : '')
-                                : choicesTally.later + ' later')
-                              : 'all set'}
-                            <span className="fstat-chev" aria-hidden="true">›</span>
-                          </span>
-                        </button>
-                      )}
-                      {/* WHO'S BRINGING WHAT, ON THE PLAN (owner's iPad, 11/21/2026:
-                          "linked to other places that reference the same").
-                          A count from the one record and a door to the
-                          assignment, not a second list of names. */}
-                      {planTab && bringingTally.total > 0 && (
-                        <button className="fstat" data-plan-bringing onClick={() => setSheet({ kind: 'bringing' })}>
-                          <span className="fstat-l">Who’s bringing what</span>
-                          <span className="fstat-v" style={bringingTally.named === bringingTally.total ? { color: 'var(--ok)' } : null}>
-                            {bringingTally.named === bringingTally.total
-                              ? 'everyone named'
-                              : `${bringingTally.named} of ${bringingTally.total} named`}
-                            <span className="fstat-chev" aria-hidden="true">›</span>
-                          </span>
-                        </button>
-                      )}
-                      {planTab && (
-                      <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
-                        <span className="fstat-l">Dietary needs</span>
-                        <span className="fstat-v" style={anyDiet || dietaryNoted(event) ? { color: 'var(--ok)' } : null}>
-                          {anyDiet ? 'noted · ' + dietRowsFor(event).flaggedCount + ' flagged' : dietaryNoted(event) ? 'noted' : 'none yet'}
-                          <span className="fstat-chev" aria-hidden="true">›</span>
-                        </span>
-                      </button>
-                      )}
-                      {planTab && hasSourcing && (
-                        <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, sourced: true }))}>
-                          <span className="fstat-l">How it’s sourced</span>
-                          <span className="fstat-v">
-                            {sourcingLabel}
-                            <span className="fstat-chev" aria-hidden="true">›</span>
-                          </span>
-                        </button>
-                      )}
-                      {/* ── THE COUNT IS ALREADY PINNED (2026-09-26) ────────
-                          "N of M bought" rendered HERE and again in the .ftotal
-                          bar at the foot of the same sheet — the same sentence
-                          twice on one screen, which is the duplication the host
-                          called out on 2026-09-24 ("check for duplication of
-                          info and choices between shop/bringing/plan sections")
-                          and which the bar's own comment below already answers
-                          for the hero.
-
-                          The bar keeps the fraction: it is PINNED, and
-                          totalSurvivesScroll exists to keep it on screen through
-                          the whole list. So this row says what the list IS,
-                          which is what a row you are about to open should say.
-                          Done still reads done — that is a state, not a repeat
-                          of the tally. */}
-                      {!planTab && (
-                      <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, list: true }))}>
-                        <span className="fstat-l">The list</span>
-                        <span className="fstat-v" style={listDone ? { color: 'var(--ok)' } : null}>
-                          {listDone ? 'all bought' : COUNT_LABELS.listItems(shopTally.total)}
-                          <span className="fstat-chev" aria-hidden="true">›</span>
-                        </span>
-                      </button>
-                      )}
-                    </div>
-                  );
-                })()}
-                <Panel on={panels}>
-                </Panel>
+                {trip && !drillOpen && tripLayers('spread')}
                 {(foodPlan.choices || []).length > 0 && !!foodSect.choices && (
                   <>
                     <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)' }}>
@@ -24636,157 +24548,6 @@ export default function HostShellV2() {
                     "Send the list to Instacart" are the aisle's two actions; on a
                     tab whose whole content is Your choices / Dietary needs / How
                     it's sourced they are answers to a question nobody asked. */}
-                <Panel on={panels}>
-                {sheet.kind !== 'foodplan' && !drillOpen && !noKitchen && (
-                  <div className="shop-acts chips">
-                    {/* NO INLINE WIDTH OR MARGIN ON THESE TWO (2026-09-26).
-                        The row became a flex container when the chips were
-                        justified, and both still carried `width:100%;
-                        margin-bottom` from when it was inline flow. The margin
-                        was not cosmetic: a flex line's cross size counts each
-                        item's MARGIN, so 8px here made the line 52 tall and
-                        stretched Print and Email to 52 while this button
-                        stayed 44 — three same-class buttons, one row, two
-                        heights. Width and spacing belong to .shop-acts.chips
-                        now; one owner. */}
-                    <button className="food-act" onClick={() => {
-                      // foodShopItems/eventGeoQuery are the same shared engines legacy's
-                      // "Copy the shopping list" reads (App.js:10614-10615), so both apps
-                      // build the identical list.
-                      let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
-                      let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
-                      openDraft('Your shopping list', draftShoppingList(event, profile, { items: shopItems, anchor }));
-                    }}>Copy the shopping list</button>
-                    {/* ── AND SEND IT TO THE STORE ─────────────────────────────
-                        Truthful by construction, and the label is the reason it
-                        reads this way. We ask the backend for a PRE-FILLED cart;
-                        the Instacart key lives server-side and may not be set.
-                        When a real cart comes back we open it. When it does not,
-                        we copy the list and open Instacart's search so the host
-                        pastes it — and we SAY that, rather than opening an empty
-                        store and letting them think the send failed.
-
-                        "Search Instacart" is what happens today (G9, carried with
-                        Model H, 11/13/2026): there is no Instacart key in
-                        production, so the tap opens Instacart's search for ONE
-                        item at a time and the host adds each one. "Send to
-                        Instacart" read as the list arriving in a filled cart,
-                        which is false exactly when the key is missing. Copy
-                        only; the behavior is unchanged. */}
-                    <button className="food-act" disabled={sendingCart}
-                      onClick={searchInstacart}>{sendingCart ? 'Opening…' : 'Search Instacart'}</button>
-                    {/* ── ONE TAP TO EVERY LIST APP THE HOST ALREADY HAS ──────
-                        Host asked for print, email, and "integration with anylist
-                        or other apps". Researched 2026-09-24, and the honest
-                        finding is that the per-app integrations mostly do not
-                        exist:
-
-                        · AnyList publishes NO API, no URL scheme, no email-in.
-                          The wrappers that exist are reverse-engineered and want
-                          the host's AnyList PASSWORD, so they are unshippable at
-                          any price.
-                        · Google Keep's API is Workspace-admin only.
-                        · Paprika, Out of Milk and Flipp have no public path.
-                        · Apple Reminders has no documented URL scheme either.
-
-                        What all of them DO have is a share extension. The Web
-                        Share API has been in iOS Safari since 12.2, and one
-                        button reaches Messages, Mail, Notes, Reminders and
-                        AnyList's own importer through the system sheet — no
-                        OAuth, no install prompt, no integration per app.
-
-                        FEATURE-DETECTED, not assumed: desktop Safari and most
-                        desktop browsers have no share sheet, so the button is
-                        absent there rather than present and broken. Copy already
-                        covers that case.
-
-                        BUILT BEFORE THE CALL, and the call is synchronous.
-                        `navigator.share` requires transient user activation, and
-                        awaiting anything first can spend it — the same defect
-                        that was live in the Instacart handler above.
-
-                        AbortError is the host closing the sheet, and also fires
-                        when there is nothing to share to. Neither is a failure,
-                        so neither gets an error toast. */}
-                    {canShareLists && (
-                      <button className="food-act" onClick={() => {
-                        let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
-                        let text = '';
-                        try {
-                          let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
-                          const d = draftShoppingList(event, profile, { items: shopItems, anchor });
-                          text = typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n');
-                        } catch (_e) { text = ''; }
-                        if (!text) { toast('Nothing to share yet.'); return; }
-                        // No `url`: some targets take only one of text/url, and a
-                        // grocery list is the text. Synchronous — see above.
-                        navigator.share({ title: `${event.name || 'Event'} shopping list`, text })
-                          .catch((e) => {
-                            if (e && e.name === 'AbortError') return;   // closed the sheet
-                            toast('Couldn\u2019t open the share sheet.');
-                          });
-                      }}>Share the list</button>
-                    )}
-                    {/* PRINT AND EMAIL — the two handoffs that need no service and
-                        no key. Both read the SAME engines as Copy and Instacart.
-
-                        Print renders a paper sheet from foodShopItems; email hands
-                        `draftShoppingList`'s own subject and body to the host's mail
-                        app through mailto, which is the only way to send mail from
-                        here without routing a host's list through a third party. */}
-                    <button className="food-act" onClick={() => {
-                      let items = []; try { items = foodShopItems(foodPlan, event) || []; } catch { items = []; }
-                      if (!items.length) { toast('Nothing to print yet.'); return; }
-                      printSheet('shop');
-                    }}>Print</button>
-                    <button className="food-act" onClick={() => {
-                      let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
-                      let subject = ''; let body = '';
-                      try {
-                        let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
-                        const d = draftShoppingList(event, profile, { items: shopItems, anchor });
-                        if (typeof d === 'string') { body = d; } else { subject = d.subject || ''; body = d.body || ''; }
-                      } catch (_e) { body = ''; }
-                      if (!body) { toast('Nothing to email yet.'); return; }
-                      // SYNCHRONOUS, like the Instacart and Share handlers: a
-                      // navigation assigned after an await has lost the transient
-                      // user activation and is refused silently. That cost a whole
-                      // session once — the button sat on "Sending..." forever.
-                      // ── CRLF BEFORE ENCODING ────────────────────────────────
-                      // RFC 6068 wants %0D%0A. A bare \n survives some mail apps
-                      // and collapses the list into one paragraph in others — and
-                      // one-item-per-line is the whole property every paste
-                      // target needs, including AnyList's documented bulk paste.
-                      const crlf = String(body).replace(/\r\n|\r|\n/g, '\r\n');
-                      const subj = subject || `${event.name || 'Event'} shopping list`;
-                      const href = 'mailto:?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(crlf);
-                      // ── NO GUESSED LENGTH LIMIT. A SAFETY NET INSTEAD ──────
-                      // No vendor documents a mailto body limit; every figure in
-                      // circulation is a bug thread (~1,620 pessimistic, ~2,000
-                      // consensus). MEASURED over all 45 playbooks at 20 and 60
-                      // guests, 90 lists: longest 2,830 encoded (The Cookout at
-                      // 60), 52 of 90 over 1,600, 22 over 2,000, NONE over 6,000.
-                      //
-                      // So a threshold is a choice between two bad outcomes: set
-                      // it low and 58% of real lists never email at all, set it
-                      // high and it never fires. Either way the number is
-                      // invented, which this project does not do.
-                      //
-                      // The failure being guarded is that a too-long body is
-                      // TRUNCATED SILENTLY — the host sends half a list and does
-                      // not know. Copying first removes the loss without guessing
-                      // a limit: whatever the mail app does with the body, the
-                      // whole list is on the clipboard and the toast says so.
-                      try { navigator.clipboard.writeText(`${subj}\n\n${body}`); } catch (_e) { /* no clipboard: the mail draft is still the path */ }
-                      try {
-                        window.location.href = href;
-                        toast('Opening your mail app \u00b7 the full list is on your clipboard too');
-                      } catch (_e) { toast('Couldn\u2019t open your mail app \u2014 the list is on your clipboard.'); }
-                    }}>Email</button>
-                    {nudgeFor('food')}
-                  </div>
-                )}
-                </Panel>
                 {/* Sourcing tier — the plan's real cook/order axis; switching
                     re-prices proteins and changes where each line says to buy.
                     Drill-in (port of 391:60): gated behind the "How it's sourced" row. */}
@@ -24841,16 +24602,99 @@ export default function HostShellV2() {
                   </>
                 )}
                 </Panel>
+                {/* ── BRINGING, A SECTION OF THE ONE PAGE (owner, render 9b, 11/24/2026) ──
+                    It was the sheet's third tab. Now it sits between Your choices
+                    and the list, only when someone else brings dishes (or she
+                    took one back and can hand it on), and it is the ONE place a
+                    brought dish is listed: the list no longer carries a
+                    "… are bringing" group. Each row writes `foodOwner`, the one
+                    record. A RECORD, NOT A REQUEST: nothing here is sent. */}
+                {(() => {
+                  const rows = bringingRows(foodPlan);
+                  const who = (rows[0] && rows[0].broughtByLabel) || 'The community';
+                  const taken = (foodPlan.list || []).filter((i) => i && i.hostTakes && !i.skipped);
+                  const yours = (foodPlan.list || []).filter((i) => i && !i.broughtByCommunity && !i.skipped
+                    && !i.hostTakes && i.group !== 'Supplies' && i.group !== 'Drinks');
+                  if (!rows.length && !taken.length) return null;
+                  const enteredCost = rows.reduce((t, r) => t + (Number(r.low) || 0), 0);
+                  const allNamed = bringingTally.total > 0 && bringingTally.named === bringingTally.total;
+                  const folded = allNamed && !reopened.isOpen('bring')
+                    && !rows.some((r) => r.id === bringFocus || (bringerEdit && bringerEdit.id === r.id));
+                  const yoursOpen = !!foodGroupsOpen.__yours || yours.some((r) => r.id === bringFocus || (bringerEdit && bringerEdit.id === r.id));
+                  return (
+                    <Panel on={panels}>
+                    <div data-food-section="bringing">
+                      {folded ? (
+                        <DoneFold text={`Bringing · all ${bringingTally.total} spoken for`} onOpen={() => reopened.reopen('bring')} />
+                      ) : (
+                        <>
+                          <div className="shelf-label" style={{ margin: '0 0 var(--sp-1)' }}>
+                            {rows.length ? `Bringing · ${bringingTally.named} of ${bringingTally.total} spoken for` : 'Bringing'}
+                          </div>
+                          {rows.length ? (
+                            <p className="grounding" style={{ margin: '0 0 var(--sp-1)' }}>
+                              {(() => {
+                                const are = /\b(friends|neighbors|families|guests)\b/i.test(who) ? 'are' : 'is';
+                                const allOfIt = !(foodPlan.list || []).some((i) => i && !i.broughtByCommunity && !i.skipped && i.group === 'Food');
+                                return allOfIt ? `${who} ${are} carrying the food. You are buying the table around it.`
+                                  : `${who} ${are} bringing these dishes. You are buying the rest.`;
+                              })()}
+                              {' '}{enteredCost > 0 ? `Nothing here costs you anything but the ${fmt(enteredCost)} you entered.` : 'Nothing here costs you anything.'}
+                            </p>
+                          ) : null}
+                          {rows.length ? (
+                            <div className="fstat-list">
+                              {rows.map((r) => bringerRow(r))}
+                            </div>
+                          ) : null}
+                        </>
+                      )}
+                      {taken.length ? (
+                        <>
+                          <div className="shelf-label" style={{ margin: 'var(--sp-3) 0 var(--sp-1)' }}>You’re making these yourself</div>
+                          <div className="fstat-list">
+                            {taken.map((r) => (
+                              <button key={r.id} className="fstat" onClick={() => {
+                                const next = { ...foodOwnerMap(event) }; delete next[r.id];
+                                patchEvent({ foodOwner: next }, `${r.short || r.item} is back with ${String(who).toLowerCase() === 'the community' ? 'the community' : 'your guests'} to bring.`);
+                              }}>
+                                <span className="fstat-l">{r.short || r.item}</span>
+                                <RowValue status="open" style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>Hand it back</RowValue>
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      ) : null}
+                      {/* Her own dishes, which she could hand to someone: one
+                          quiet door, so the section stays the dishes others bring. */}
+                      {yours.length ? (yoursOpen ? (
+                        <>
+                          <div className="shelf-label" style={{ margin: 'var(--sp-3) 0 var(--sp-1)' }}>Yours to make · someone could bring one</div>
+                          <div className="fstat-list">
+                            {yours.map((r) => bringerRow(r))}
+                          </div>
+                        </>
+                      ) : (
+                        <button className="fold-btn" data-yours-door onClick={() => setFoodGroupsOpen((m) => ({ ...m, __yours: true }))}>
+                          Hand one of yours to someone<span className="chev" aria-hidden="true">›</span>
+                        </button>
+                      )) : null}
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>
+                        This is a note of what you were told. Nothing here is sent to anyone.
+                      </p>
+                    </div>
+                    </Panel>
+                  );
+                })()}
                 {/* The list drill-in (port of Figma 391:60) — the shopping list, the
                     store filter, per-item pricing, and add-item all live here, gated
                     behind the "The list" summary row so the calm screen stays calm. */}
                 <Panel on={panels}>
-                {foodSect.list && (
-                  <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span>The list</span>
-                    {!barIsExit && <button className="mini" onClick={() => setFoodSect(m => ({ ...m, list: false }))}>Done</button>}
-                  </div>
-                )}
+                {/* THE LIST, SECTION 4 OF THE ONE PAGE (owner, 11/24/2026): always
+                    open now, so it has no Done of its own. */}
+                <div className="shelf-label" data-food-section="list" style={{ margin: '0 0 var(--sp-2)' }}>
+                  <span>The list</span>
+                </div>
                 {/* ── LAYER 2: PRICE THIS LIST AT A REAL STORE ───────────────
                     The plan's numbers are a national band moved by a regional
                     factor. A store price is the only number on this screen a
@@ -24915,14 +24759,14 @@ export default function HostShellV2() {
                     (foodShopItems + eventGeoQuery), so all three produce the
                     identical list — a second list that disagreed would be worse
                     than no second entry point. */}
-                {foodSect.list && !noKitchen && (
+                {!noKitchen && (
                   <button className="food-act" style={{ width: '100%', marginBottom: 'var(--sp-3)' }} onClick={() => {
                     let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
                     let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
                     openDraft('Your shopping list', draftShoppingList(event, profile, { items: shopItems, anchor }));
                   }}>Copy the shopping list</button>
                 )}
-                {foodSect.list && !noKitchen && (
+                {!noKitchen && (
                   <button className="food-act" data-list-instacart disabled={sendingCart} style={{ width: '100%', marginBottom: 'var(--sp-3)' }}
                     onClick={searchInstacart}>{sendingCart ? 'Opening…' : 'Search Instacart'}</button>
                 )}
@@ -24932,9 +24776,9 @@ export default function HostShellV2() {
                     a stray 14px gap under the action row where the ladder says
                     12 or 16. An empty layout box is invisible until you measure
                     the rhythm, which is the point of measuring it. */}
-                {foodSect.list && !noKitchen && (
+                {!noKitchen && (
                 <div className="list-acts">
-                {foodSect.list && !noKitchen && isStorePricesConfigured() && (() => {
+                {!noKitchen && isStorePricesConfigured() && (() => {
                   // Only what she buys is priced at her store: a dish someone
                   // else brings is not on her list (11/21/2026).
                   const lines = (foodPlan.list || []).filter(it => it && !it.skipped && it.item && !it.broughtByCommunity);
@@ -25121,7 +24965,7 @@ export default function HostShellV2() {
                     (added) items, skipped lines, and anything already locked or
                     unpriced (no low/high at all) — same gate as legacy, so both
                     apps agree on which lines qualify. */}
-                {foodSect.list && !noKitchen && (() => {
+                {!noKitchen && (() => {
                   const supplGroup = ((foodPlan && foodPlan.groups) || []).find(g => /suppl|paper|setup|gear/i.test(String(g)));
                   const unpriced = (foodPlan.list || []).filter(it => it && !it.skipped && it.group !== supplGroup && it.locked == null && !it.added && (Number(it.low) || Number(it.high)));
                   if (bulkPriced && bulkPriced.length > 0) {
@@ -25157,8 +25001,124 @@ export default function HostShellV2() {
                 })()}
                 </div>
                 )}
+                {!noKitchen && (
+                  <div className="list-acts" data-list-takeaway>
+                    {/* Copy and Search Instacart lead the list above (one copy
+                        of each, owner 11/24/2026); these are the other ways to
+                        take the list with you. */}
+                    {/* ── ONE TAP TO EVERY LIST APP THE HOST ALREADY HAS ──────
+                        Host asked for print, email, and "integration with anylist
+                        or other apps". Researched 2026-09-24, and the honest
+                        finding is that the per-app integrations mostly do not
+                        exist:
 
-                {foodSect.list && (() => {
+                        · AnyList publishes NO API, no URL scheme, no email-in.
+                          The wrappers that exist are reverse-engineered and want
+                          the host's AnyList PASSWORD, so they are unshippable at
+                          any price.
+                        · Google Keep's API is Workspace-admin only.
+                        · Paprika, Out of Milk and Flipp have no public path.
+                        · Apple Reminders has no documented URL scheme either.
+
+                        What all of them DO have is a share extension. The Web
+                        Share API has been in iOS Safari since 12.2, and one
+                        button reaches Messages, Mail, Notes, Reminders and
+                        AnyList's own importer through the system sheet — no
+                        OAuth, no install prompt, no integration per app.
+
+                        FEATURE-DETECTED, not assumed: desktop Safari and most
+                        desktop browsers have no share sheet, so the button is
+                        absent there rather than present and broken. Copy already
+                        covers that case.
+
+                        BUILT BEFORE THE CALL, and the call is synchronous.
+                        `navigator.share` requires transient user activation, and
+                        awaiting anything first can spend it — the same defect
+                        that was live in the Instacart handler above.
+
+                        AbortError is the host closing the sheet, and also fires
+                        when there is nothing to share to. Neither is a failure,
+                        so neither gets an error toast. */}
+                    {canShareLists && (
+                      <button className="food-act" onClick={() => {
+                        let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
+                        let text = '';
+                        try {
+                          let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
+                          const d = draftShoppingList(event, profile, { items: shopItems, anchor });
+                          text = typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n');
+                        } catch (_e) { text = ''; }
+                        if (!text) { toast('Nothing to share yet.'); return; }
+                        // No `url`: some targets take only one of text/url, and a
+                        // grocery list is the text. Synchronous — see above.
+                        navigator.share({ title: `${event.name || 'Event'} shopping list`, text })
+                          .catch((e) => {
+                            if (e && e.name === 'AbortError') return;   // closed the sheet
+                            toast('Couldn\u2019t open the share sheet.');
+                          });
+                      }}>Share the list</button>
+                    )}
+                    {/* PRINT AND EMAIL — the two handoffs that need no service and
+                        no key. Both read the SAME engines as Copy and Instacart.
+
+                        Print renders a paper sheet from foodShopItems; email hands
+                        `draftShoppingList`'s own subject and body to the host's mail
+                        app through mailto, which is the only way to send mail from
+                        here without routing a host's list through a third party. */}
+                    <button className="food-act" onClick={() => {
+                      let items = []; try { items = foodShopItems(foodPlan, event) || []; } catch { items = []; }
+                      if (!items.length) { toast('Nothing to print yet.'); return; }
+                      printSheet('shop');
+                    }}>Print</button>
+                    <button className="food-act" onClick={() => {
+                      let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
+                      let subject = ''; let body = '';
+                      try {
+                        let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
+                        const d = draftShoppingList(event, profile, { items: shopItems, anchor });
+                        if (typeof d === 'string') { body = d; } else { subject = d.subject || ''; body = d.body || ''; }
+                      } catch (_e) { body = ''; }
+                      if (!body) { toast('Nothing to email yet.'); return; }
+                      // SYNCHRONOUS, like the Instacart and Share handlers: a
+                      // navigation assigned after an await has lost the transient
+                      // user activation and is refused silently. That cost a whole
+                      // session once — the button sat on "Sending..." forever.
+                      // ── CRLF BEFORE ENCODING ────────────────────────────────
+                      // RFC 6068 wants %0D%0A. A bare \n survives some mail apps
+                      // and collapses the list into one paragraph in others — and
+                      // one-item-per-line is the whole property every paste
+                      // target needs, including AnyList's documented bulk paste.
+                      const crlf = String(body).replace(/\r\n|\r|\n/g, '\r\n');
+                      const subj = subject || `${event.name || 'Event'} shopping list`;
+                      const href = 'mailto:?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(crlf);
+                      // ── NO GUESSED LENGTH LIMIT. A SAFETY NET INSTEAD ──────
+                      // No vendor documents a mailto body limit; every figure in
+                      // circulation is a bug thread (~1,620 pessimistic, ~2,000
+                      // consensus). MEASURED over all 45 playbooks at 20 and 60
+                      // guests, 90 lists: longest 2,830 encoded (The Cookout at
+                      // 60), 52 of 90 over 1,600, 22 over 2,000, NONE over 6,000.
+                      //
+                      // So a threshold is a choice between two bad outcomes: set
+                      // it low and 58% of real lists never email at all, set it
+                      // high and it never fires. Either way the number is
+                      // invented, which this project does not do.
+                      //
+                      // The failure being guarded is that a too-long body is
+                      // TRUNCATED SILENTLY — the host sends half a list and does
+                      // not know. Copying first removes the loss without guessing
+                      // a limit: whatever the mail app does with the body, the
+                      // whole list is on the clipboard and the toast says so.
+                      try { navigator.clipboard.writeText(`${subj}\n\n${body}`); } catch (_e) { /* no clipboard: the mail draft is still the path */ }
+                      try {
+                        window.location.href = href;
+                        toast('Opening your mail app \u00b7 the full list is on your clipboard too');
+                      } catch (_e) { toast('Couldn\u2019t open your mail app \u2014 the list is on your clipboard.'); }
+                    }}>Email</button>
+                    {nudgeFor('food')}
+                  </div>
+                )}
+
+                {(() => {
                   // Skipped lines stay IN the list (parity with legacy's toggleSkip —
                   // App.js:11145 — which keeps a skipped line visible with strikethrough
                   // and a single toggle back). V2 used to filter them out entirely, so a
@@ -25205,7 +25165,6 @@ export default function HostShellV2() {
                   // its own quiet group below with the bringer's name from the
                   // one record. A skip (not served at all) stays a skip, on its shelf.
                   const allItems = (foodPlan.list || []).filter((it) => it && !(it.broughtByCommunity && !it.skipped));
-                  const broughtShown = bringingRows(foodPlan);
                   // ── Shopping-run mode: "I'm at X" — the list collapses to THIS
                   // store's unbought lines with a walk-in total. Store truth =
                   // the host's pick (foodWhere) first, else the plan's buyAt /
@@ -25289,6 +25248,15 @@ export default function HostShellV2() {
                     const focusHere = gItems.some(it => it.id === sheet.focus || it.id === foodTune);
                     const isOpen = !!foodGroupsOpen[g] || focusHere || !!shopStore; // run mode opens the shelves
                     const gDone = gBought === gActive.length;
+                    // A FINISHED GROUP COLLAPSES (owner, render 8b, 11/24/2026):
+                    // one green row until she reopens it. Not in a store run (it
+                    // opens the shelves on purpose) and not under a deep link.
+                    if (gDone && gActive.length > 0 && !shopStore && !focusHere && !reopened.isOpen('shop:' + g)) {
+                      return (
+                        <DoneFold key={g} text={`${g} · all ${gActive.length} bought`}
+                          onOpen={() => { reopened.reopen('shop:' + g); setFoodGroupsOpen(m => ({ ...m, [g]: true })); }} />
+                      );
+                    }
                     return (
                     <div key={g} className={'fgroup' + (isOpen ? ' open' : '')}>
                       <button className="fg-head" onClick={() => setFoodGroupsOpen(m => ({ ...m, [g]: !isOpen }))}>
@@ -26124,32 +26092,12 @@ export default function HostShellV2() {
                           })()}
                         </>
                       )}
-                      {groupRows}
-                      {!shopStore && broughtShown.length > 0 ? (() => {
-                        const lbl = broughtShown[0].broughtByLabel || 'Your friends';
-                        const are = /\b(friends|neighbors|families|guests)\b/i.test(lbl) ? 'are' : 'is';
-                        const named = broughtShown.filter((r) => r.broughtBy).length;
-                        const open = !!foodGroupsOpen.__bringing || broughtShown.some((r) => r.id === sheet.focus || (bringerEdit && bringerEdit.id === r.id));
-                        return (
-                          <div className={'fgroup' + (open ? ' open' : '')} data-brought-group>
-                            <button className="fg-head" onClick={() => setFoodGroupsOpen((m) => ({ ...m, __bringing: !open }))}>
-                              <div className="fg-badge" aria-hidden>{lbl.trim().charAt(0).toUpperCase()}</div>
-                              <div className="fg-id">
-                                <div className="fg-label">{lbl} {are} bringing ({broughtShown.length})</div>
-                                <div className="fg-sub" style={{ color: 'var(--muted)' }}>
-                                  {named === broughtShown.length ? 'everyone named · not yours to buy' : `${named} of ${broughtShown.length} named · not yours to buy`}
-                                </div>
-                              </div>
-                              <span className="fg-chev" aria-hidden="true">›</span>
-                            </button>
-                            {open ? (
-                              <div className="fstat-list" style={{ padding: '0 var(--sp-3) var(--sp-2)' }}>
-                                {broughtShown.map((r) => bringerRow(r))}
-                              </div>
-                            ) : null}
-                          </div>
-                        );
-                      })() : null}
+                      {/* EVERY GROUP BOUGHT: the whole list is one line (owner,
+                          render 8, 11/24/2026) until "Show the list". */}
+                      {(!shopStore && shopTally.done && !reopened.isOpen('shop:all')
+                        && !items.some(it => it.id === sheet.focus || it.id === foodTune))
+                        ? <DoneFold all text={`All ${shopTally.total} bought`} onOpen={() => reopened.reopen('shop:all')} />
+                        : groupRows}
                     </>
                   );
                 })()}
@@ -26220,13 +26168,9 @@ export default function HostShellV2() {
                       <p className="grounding" style={{ marginTop: 'var(--sp-2)' }}>Cost is optional — leave it blank if you don’t know it yet, or if someone else is bringing it.{foodAddNames().length > 1 ? ' With several items, add each cost on its own line in the list.' : ''}</p>
                     </div>
                   ) : (
-                    sheet.kind === 'foodplan' ? null : (
-                    /* Adding a line to the shopping list is a SHOP act; on the
-                       Plan tab it was a third copy of the same door. */
                     <button className="fold-btn" style={{ marginTop: 'var(--sp-3)' }} onClick={() => setFoodAddOpen(true)}>
                       + Add an item you’re bringing or buying<span className="chev" aria-hidden="true">›</span>
                     </button>
-                    )
                   )}
                 </div>
                 </Panel>
@@ -26351,11 +26295,10 @@ export default function HostShellV2() {
                     onClick={() => setSheet(s => ({ ...s, focus: top.vendor.id }))}
                     aria-label={'Open ' + (top.vendor.name || 'this vendor') + ' — ' + (top.readiness.summary || top.readiness.label)}>
                     <span className="fstat-l" style={{ flex: '0 0 auto' }}>{top.vendor.name || 'A vendor'}</span>
-                    <span className="fstat-v fstat-note" style={{ textAlign: 'right', display: 'block',
-                      color: crit ? 'var(--warn)' : 'var(--faint)' }}>
+                    <RowValue note status={rowStatus({ overdue: crit })} style={{ textAlign: 'right', display: 'block' }}>
                       {top.readiness.summary || top.readiness.label}
                       <span className="fstat-chev" aria-hidden="true"> ›</span>
-                    </span>
+                    </RowValue>
                   </button>
                 );
               })()}
@@ -26367,7 +26310,7 @@ export default function HostShellV2() {
                   <div className="fstat-list" style={{ margin: '0 0 var(--sp-3)' }}>
                     <button className="fstat" style={{ borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }} onClick={() => setSheet(s => ({ ...s, marketOpen: true }))}>
                       <span className="fstat-l">Which market</span>
-                      <span className="fstat-v">{metroMkt ? metroMkt.label : metroSuggest ? `Suggested: ${metroSuggest.market.label}` : 'National baseline'}<span className="fstat-chev" aria-hidden="true">›</span></span>
+                      <RowValue status={rowStatus({ settled: !!metroMkt })} chev>{metroMkt ? metroMkt.label : metroSuggest ? `Suggested: ${metroSuggest.market.label}` : 'National baseline'}</RowValue>
                     </button>
                   </div>
                 ) : (
@@ -26821,8 +26764,7 @@ export default function HostShellV2() {
                                 {axes.map(a => (
                                   <div className="fstat" key={a.key} style={{ alignItems: 'flex-start', gap: 10 }}>
                                     <span className="fstat-l" style={{ flex: '0 0 auto' }}>{LABEL[a.key] || a.key}</span>
-                                    <span className="fstat-v fstat-note" style={{ textAlign: 'right', display: 'block',
-                                      color: tone(a.level) ? 'var(--warn)' : 'var(--faint)' }}>{a.note}</span>
+                                    <RowValue note status={rowStatus({ overdue: !!tone(a.level) })} style={{ textAlign: 'right', display: 'block' }}>{a.note}</RowValue>
                                   </div>
                                 ))}
                               </div>
@@ -28321,90 +28263,15 @@ export default function HostShellV2() {
               // and the invite + guest brief drafts read (giftWish). V2 hosts could
               // never set them. Values match the reads exactly; tapping an active
               // chip clears back to unset, and unset means the invite stays quiet.
-              const inviteRules = (() => {
-                const chipSm = { padding: '5px 11px', fontSize: 'var(--t-pill)' };
-                if (!inviteRulesOpen) {
-                  return (
-                    <button className="fold-btn" onClick={() => setInviteRulesOpen(true)}>
-                      Invite rules — plus-ones, kids, addresses, gifts
-                      <span className="chev" aria-hidden="true">›</span>
-                    </button>
-                  );
-                }
-                const gw = (event.giftWish && typeof event.giftWish === 'object') ? event.giftWish : {};
-                const GIFTS = [
-                  ['no_gifts', 'No gifts'], ['registry', 'Registry'], ['charity', 'A donation'],
-                  ['potluck', 'Potluck'], ['contribution', 'Chip in'],
-                ];
-                const GIFT_TOAST = {
-                  no_gifts: '“Your presence is the gift” goes on the invite.',
-                  registry: 'Registry noted — paste the link below so guests can find it.',
-                  charity: 'Donation wish noted — name the cause below.',
-                  potluck: 'Potluck — the guest brief asks everyone to bring a dish.',
-                  contribution: 'Chip-in noted — put the per-person amount below.',
-                };
-                const GIFT_DETAIL = { registry: 'Paste the registry link', charity: 'Cause name or link', potluck: 'Dish assignments — optional', contribution: '$ per person' };
-                return (
-                  <div className="brow" style={{ marginTop: 14, borderRadius: 'var(--r-md)', padding: '10px var(--sp-2)' }}>
-                    <div className="shelf-label" style={{ marginBottom: 6 }}>
-                      Invite rules — the RSVP page follows these
-                      <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => setInviteRulesOpen(false)}>Close</button>
-                    </div>
-                    <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
-                      <span className="of">plus-ones:</span>
-                      <button className="chip" style={chipSm} aria-pressed={event.plusOnePolicy === 'plus_one_ok'}
-                        onClick={() => patchEvent({ plusOnePolicy: event.plusOnePolicy === 'plus_one_ok' ? null : 'plus_one_ok' },
-                          event.plusOnePolicy === 'plus_one_ok' ? 'Unset — the invite stays quiet on plus-ones.' : 'Plus-ones welcome — the invite says so, and the RSVP page asks who they’re bringing.')}>Welcome</button>
-                      <button className="chip" style={chipSm} aria-pressed={event.plusOnePolicy === 'no_plus_ones'}
-                        onClick={() => patchEvent({ plusOnePolicy: event.plusOnePolicy === 'no_plus_ones' ? null : 'no_plus_ones' },
-                          event.plusOnePolicy === 'no_plus_ones' ? 'Unset — the RSVP page offers a plus-one again.' : 'Named guests only — the RSVP page won’t offer a plus-one.')}>Named guests only</button>
-                    </div>
-                    <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
-                      <span className={peopleMode ? 'people-cap' : 'of'}>CHILDREN</span>
-                      <button className="chip" style={chipSm} aria-pressed={event.kidsPolicy === 'kids_welcome'}
-                        onClick={() => patchEvent({ kidsPolicy: event.kidsPolicy === 'kids_welcome' ? null : 'kids_welcome' },
-                          event.kidsPolicy === 'kids_welcome' ? 'Unset — the invite stays quiet on kids.' : 'Kids welcome — the invite says so.')}>Welcome</button>
-                      <button className="chip" style={chipSm} aria-pressed={event.kidsPolicy === 'adults_only'}
-                        onClick={() => patchEvent({ kidsPolicy: event.kidsPolicy === 'adults_only' ? null : 'adults_only' },
-                          event.kidsPolicy === 'adults_only' ? 'Unset — the RSVP page asks about kids again.' : 'Adults-only — the RSVP page won’t ask about kids.')}>Adults only</button>
-                    </div>
-                    <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
-                      <span className="of">addresses:</span>
-                      <button className="chip" style={chipSm} aria-pressed={!!event.collectAddresses}
-                        onClick={() => patchEvent({ collectAddresses: !event.collectAddresses },
-                          !event.collectAddresses ? 'Yeses now get an optional mailing-address question, for thank-yous.' : 'Address question removed from the RSVP page.')}>
-                        {event.collectAddresses ? 'Collecting for thank-you mail' : 'collect for thank-you mail?'}
-                      </button>
-                    </div>
-                    {/* Fold-behind-Change (parity/MANIFEST) — one settled gift wish;
-                        the 5-chip grid folds to a hairline row, opens on tap. */}
-                    {(() => {
-                      const curGift = GIFTS.find(([m]) => m === gw.mode);
-                      const giftLabel = gw.mode ? (curGift ? curGift[1] : gw.mode) : 'none';
-                      if (!settledOpen.gifts) {
-                        return <SettledRow label="Gifts" value={giftLabel} tone={gw.mode ? 'ok' : 'default'} style={{ margin: '0 0 var(--sp-1)' }}
-                          onOpen={() => setSettledOpen(m => ({ ...m, gifts: true }))} />;
-                      }
-                      return (
-                        <>
-                          <div className="of" style={{ display: 'block', margin: '0 0 6px' }}>gifts</div>
-                          <OptionList ariaLabel="Gifts" style={{ margin: '0 0 var(--sp-1)' }}
-                            options={GIFTS.map(([mode, label]) => ({ label, value: mode }))}
-                            value={gw.mode || ''}
-                            onPick={(mode) => { patchEvent({ giftWish: { mode, detail: gw.mode === mode ? (gw.detail || '') : '' } }, GIFT_TOAST[mode]); setSettledOpen(m => ({ ...m, gifts: false })); }} />
-                        </>
-                      );
-                    })()}
-                    {gw.mode && gw.mode !== 'no_gifts' && (
-                      <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)', margin: 'var(--sp-1) 0 6px' }}
-                        placeholder={GIFT_DETAIL[gw.mode] || ''} value={gw.detail || ''}
-                        onChange={e => patchEvent({ giftWish: { mode: gw.mode, detail: e.target.value } }, null)}
-                        aria-label="Gift note detail" />
-                    )}
-                    <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>Anything left unset stays off the invite.</p>
-                  </div>
-                );
-              })();
+              // ONE COMPONENT, BOTH PLACES (owner, render 10b, 11/24/2026): the
+              // same InviteRules as "Before your invite goes out", open here
+              // rather than folded behind "Invite rules — …".
+              const inviteRules = (
+                <div style={{ marginTop: 14 }}>
+                  <InviteRules event={event} patchEvent={patchEvent}
+                    note="Same settings as “Before your invite goes out” — change them here or there. The RSVP page follows these." />
+                </div>
+              );
               // ── THE REDESIGNED ATTENDANCE ZONE (?people=1) ─────────────────
               // SCAFFOLD STATE, and deliberately additive: the new zone renders
               // ABOVE the legacy body while the remaining zones are built, so no

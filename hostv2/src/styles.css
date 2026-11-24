@@ -3163,6 +3163,47 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    the sentence takes the room left and wraps, as the board's reasons do. */
 .fstat-v.fstat-note{white-space:normal; flex:1 1 auto; min-width:0}
 .fstat-chev{color:var(--faint)}
+/* A FINISHED GROUP COLLAPSES (owner, renders 8/8b, 11/24/2026). DoneFold:
+   one compact green row with a chevron to reopen, no progress bar; with every
+   group done, one "All N done" line and a quiet "Show the list". */
+.done-fold{display:flex; align-items:center; gap:var(--sp-2); width:100%; min-height:var(--tap-min);
+  background:none; border:0; padding:var(--sp-3) 2px; font:inherit; font-size:var(--t-row); font-weight:600;
+  color:var(--ok); text-align:left; cursor:pointer}
+.done-fold + .done-fold{border-top:1px solid var(--line-soft)}
+.done-fold .done-ck{font-weight:700; flex:0 0 auto}
+.done-fold .done-tx{flex:1 1 auto; min-width:0}
+.done-fold .fg-chev{color:var(--muted); flex:0 0 auto}
+/* The two-line form ("✓ Choices set" over its summary, render 9b). */
+.done-fold:has(.done-sub){align-items:flex-start}
+.done-fold:has(.done-sub) .fg-chev{align-self:center}
+.choices-set{margin:var(--sp-1) 0 var(--sp-3)}
+.done-fold .done-sub{display:block; margin-top:var(--sp-1); font-size:var(--t-row-sub); font-weight:550;
+  color:color-mix(in srgb, var(--ok) 72%, var(--muted))}
+.done-all{display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3);
+  padding:var(--sp-3) 2px; margin:0 0 var(--sp-3)}
+.done-all .done-tx{color:var(--ok); font-size:var(--t-row); font-weight:650}
+.done-all .done-ck{margin-right:var(--sp-2); font-weight:700}
+.done-show{background:none; border:0; padding:0 2px; min-height:var(--tap-min); font:inherit;
+  font-size:var(--t-row-sub); font-weight:600; color:var(--steel-soft); cursor:pointer; white-space:nowrap}
+/* THE INVITE RULES (owner, renders 10a/10b, 11/24/2026). One component in the
+   invite step and the guest list. Chips are outlined; the selected one wears a
+   green outline and a check, and no fill. */
+.invite-rules{margin:0 0 var(--sp-3)}
+.invite-rule{margin:0 0 var(--sp-2)}
+.invite-rules-note{margin:2px 0 0}
+.invite-rule-l{display:block; margin:0 0 var(--sp-1); font-size:var(--t-row-sub); color:var(--muted)}
+.invite-rule .chips{display:flex; flex-wrap:wrap; gap:var(--sp-2)}
+.invite-rules .chip{background:transparent; box-shadow:none}
+.invite-rules .chip[aria-pressed="false"]{border-color:var(--line)}
+.invite-rules .chip[aria-pressed="true"]{background:transparent; border-color:var(--ok); color:var(--ink)}
+.invite-rules .chip[aria-pressed="true"]::before{content:"✓\00a0"; color:var(--ok); font-weight:700}
+/* SETTLED = GREEN, ONE RULE (owner, 11/24/2026). A row's value is colored by
+   the one reader's answer (lib/rowStatus via RowValue): settled is --ok, open
+   stays neutral, overdue is --warn. A note sentence that is open keeps its
+   faint tone. No row sets its own color. */
+.fstat-v[data-status="settled"]{color:var(--ok)}
+.fstat-v[data-status="overdue"]{color:var(--warn)}
+.fstat-v.fstat-note[data-status="open"]{color:var(--faint)}
 /* Sourcing tiers as bordered cards (378:94): active one tinted + steel border. */
 .srctier-list{display:flex; flex-direction:column; gap:var(--sp-2); margin-bottom:var(--sp-2)}
 .srctier{display:flex; flex-direction:column; gap:3px; width:100%; text-align:left;
@@ -6869,21 +6910,6 @@ button.vc-pill::after{
 }
 @media (prefers-reduced-motion: reduce){ .vgo-lands{ animation:none } }
 
-/* ── SHOP / BRINGING mode control (2026-09-24) ──────────────────────────────
-   Tokens only — no new colour enters the system for this. The selected tab
-   uses --steel-soft on --bg rather than a second accent, per the standing
-   "one accent, used once" rule; the review board's type census had already
-   found two near-duplicate blues in this sheet and adding a third would be
-   the same defect with a new name. 44px of hit area on a control that sits at
-   the top of the sheet, where a one-handed thumb reaches worst. */
-.fmodes{ display:flex; gap:2px; padding:2px; margin:0 0 var(--sp-3);
-  background:var(--bg); border:1px solid var(--line); border-radius:10px; }
-.fmode{ flex:1 1 0; font:inherit; font-size:13px; font-weight:400; color:var(--muted);
-  background:none; border:none; border-radius:8px; padding:12px 8px; cursor:pointer;
-  min-height:44px; transition:background .16s var(--ease-out), color .16s var(--ease-out); }
-.fmode:hover{ color:var(--ink); }
-.fmode.on{ background:var(--sel-bg); color:var(--sel-ink); font-weight:600; box-shadow:inset 0 0 0 1px var(--sel-line); }
-.fmode:focus-visible{ outline:2px solid var(--steel-soft); outline-offset:-2px; }
 
 /* ── The running total, pinned (2026-09-24) ─────────────────────────────────
    SUPERSEDED 11/21/2026: docked below the scroller, see "DOCKED, NOT PINNED".
@@ -7006,7 +7032,6 @@ button.vc-pill::after{
    segmented TAB, and the segments have to read as a divided track, which a row
    of separate pills does not. It just uses the token now. */
 .mini{ border-radius:var(--r-md); }
-.fmode{ border-radius:var(--r-sm); }
 
 /* The list drill-in's own secondary row. Same grammar as .shop-acts.chips
    above — primary full width, the rest justified across one line — but this

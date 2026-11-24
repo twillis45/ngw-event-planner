@@ -41,7 +41,7 @@ const boot = async (page, ev) => {
   await page.locator('.sheet').first().waitFor({ state: 'visible', timeout: 8000 });
   // The section door opens on Plan while a menu question is open (foodSheetKind);
   // the list this walks is on Shop, so tap Shop.
-  await page.locator('.sheet').last().locator('.fmode', { hasText: /^Shop$/ }).first().click();
+  // One food page (owner, 11/24/2026): no Shop tab, and the list is always open.
   await settled(page);
   // Open the list and every fold, so the rows the denominator claims to count
   // are actually in the DOM to be counted.

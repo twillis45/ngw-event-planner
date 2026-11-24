@@ -46,11 +46,15 @@ test('THE REVEAL COUNTS THE WHOLE LIST, not just the food', async ({ page }) => 
   await page.waitForTimeout(1500);
   // The food door opens Plan while the menu is open (owner's iPad,
   // 11/21/2026, foodSheetKind); the list and its count are on Shop.
-  await page.getByRole('tab', { name: 'Shop' }).first().evaluate((el) => el.click()).catch(() => {});
+  // One food page (owner, 11/24/2026): no Shop tab, and the list is always open.
   await page.waitForTimeout(1200);
 
   const shop = await page.evaluate(() => document.body.innerText || '');
-  const listed = Number((shop.match(/(\d+)\s+items?,\s*ready to check off/i)
+  // One food page (11/24/2026): the list's "N items" row is gone with the
+  // tabs; the list's whole count is the pinned bar's "of M bought".
+  const bar = await page.evaluate(() => (document.querySelector('.ftotal') || {}).innerText || '');
+  const listed = Number((bar.match(/\d+\s+of\s+(\d+)\s+bought/i)
+    || shop.match(/(\d+)\s+items?,\s*ready to check off/i)
     || shop.match(/All\s+(\d+)\s+items?/i)
     || shop.match(/(\d+)\s+items?/i) || [])[1]);
   expect(Number.isFinite(listed) && listed > 0).toBe(true);

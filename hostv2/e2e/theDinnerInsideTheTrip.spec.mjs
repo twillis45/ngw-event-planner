@@ -40,7 +40,7 @@ const pickNight = async (page, re) => {
 };
 const openPlanTab = async (page) => {
   await openSectionByName(page, 'The spread');
-  await sheet(page).getByRole('tab', { name: /^Plan$/ }).first().click();
+  // One food page (owner, 11/24/2026): no Plan tab; Your choices is on the page.
   await page.waitForTimeout(400);
 };
 const planMeals = async (page) => {
@@ -168,8 +168,11 @@ test('the Spread shows "The celebration" and "Around it" with one calculation', 
 test('"decided" on the Spread counts food decisions only', async ({ page }) => {
   await create(page, SANTA_FE, { card: false });
   await openPlanTab(page);
-  await expect(sheet(page).locator('.sheet-foot')).toContainText(/0 of 2 decided/);
-  await sheet(page).getByRole('button', { name: /Your choices/ }).click();
+  // The one bar counts what she buys (11/24/2026); the two food calls are
+  // counted on Your choices' Menu row, still two and no more.
+  const menu = sheet(page).locator('[data-food-section="choices"] .fstat', { hasText: 'Menu' });
+  await expect(menu).toContainText(/2 open|1 open · 1 later|2 later/);
+  await menu.click();
   await expect(sheet(page).getByText('How are guests staying?')).toHaveCount(0);
 });
 

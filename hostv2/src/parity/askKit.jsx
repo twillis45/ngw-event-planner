@@ -1,4 +1,5 @@
 import React from 'react';
+import { rowStatus } from '@app/lib/rowStatus';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PARITY KIT — the locked Studio-Matte ask-surface atoms.
@@ -156,12 +157,13 @@ export function CtaRow({ children, gap = ASK_RHYTHM.whyToCta, style }) {
 // The chevron IS the change affordance (no redundant "Change" word), matching the
 // budget/vendors/food disclosure rows already live. `tone='ok'` greens a resolved
 // value. Composes the same .fstat hairline treatment those rows use.
+// Its color is the one row-status reader's (owner, 11/24/2026): tone 'ok' is
+// settled, anything else open; styles.css colors by data-status.
 export function SettledRow({ label, value, onOpen, tone = 'default', style }) {
-  const vc = tone === 'ok' ? 'var(--ok)' : 'var(--steel-soft)';
   return (
     <button className="fstat" onClick={onOpen} style={{ borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)', ...style }}>
       <span className="fstat-l">{label}</span>
-      <span className="fstat-v" style={{ color: vc }}>{value}<span className="fstat-chev" aria-hidden="true">›</span></span>
+      <span className="fstat-v" data-status={rowStatus({ settled: tone === 'ok' })}>{value}<span className="fstat-chev" aria-hidden="true">›</span></span>
     </button>
   );
 }
