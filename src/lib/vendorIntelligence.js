@@ -582,7 +582,6 @@ export function getVendorReadiness(vendor, event, axes = null) {
   const untrackedNames = Object.entries(c)
     .filter(([, v]) => v && v.level === 'not_tracked')
     .map(([k]) => k);
-  const nameList = untrackedNames.join(', ');
   // The host reads the rows by their card labels, not the engine's keys
   // (cohesion audit #23: "(closeout)").
   const hostNameList = untrackedNames.map((k) => AXIS_WORDS[k] || k).join(', ');
