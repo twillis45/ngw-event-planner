@@ -8773,7 +8773,7 @@ button.tt-row{ cursor:pointer; }
 .decided-line{ display:flex; align-items:center; margin:0 0 8px; color:var(--muted); font-size:var(--t-note,13px); font-weight:550; letter-spacing:.01em; min-height:24px; }
 .decided-ck{ color:var(--ok); font-weight:700; margin-right:4px; }
 .decided-sep{ margin:0 8px; opacity:.7; }
-.decided-undo{ min-width:var(--tap-min,46px); min-height:var(--tap-min,46px); margin:-11px 0; padding:0 4px; background:none; border:0; color:var(--muted); font:inherit; cursor:pointer;
+.decided-undo{ min-width:var(--tap-min,46px); min-height:var(--tap-min,46px); margin:-12px 0; padding:0 4px; background:none; border:0; color:var(--muted); font:inherit; cursor:pointer;
   text-decoration:underline; text-underline-offset:3px; text-decoration-color:color-mix(in srgb, var(--muted) 50%, transparent); }
 .decided-undo:hover{ color:var(--ink); }
 
@@ -8789,13 +8789,13 @@ button.tt-row{ cursor:pointer; }
 .tt-title-row.has-nameit .tt-name{ font-size:21px; }
 .tt-title{ -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
 .tt-tip{ display:flex; align-items:center; gap:8px; margin:0 0 8px; color:var(--muted); font-size:13px; font-weight:550; }
-.tt-tip-x{ min-width:var(--tap-min,46px); min-height:var(--tap-min,46px); margin:-13px 0 -13px -8px; padding:0; background:none; border:0; color:var(--muted); font:inherit; font-size:16px; line-height:1; cursor:pointer; }
+.tt-tip-x{ min-width:var(--tap-min,46px); min-height:var(--tap-min,46px); margin:-12px 0 -12px -8px; padding:0; background:none; border:0; color:var(--muted); font:inherit; font-size:16px; line-height:1; cursor:pointer; }
 .tt-tip-x:hover{ color:var(--ink); }
 .evname{ display:flex; align-items:center; gap:8px; margin:0; }
 .evname .evname-in{ flex:1 1 auto; min-width:0; max-width:none; }
 .tt-renaming{ margin-top:12px; width:100%; }
 .tt-renaming .evname{ width:100%; }
-.evname-title .evname-in.field{ min-height:var(--tap-min,46px); margin:0 0 0 -9px; padding:0 8px; background:transparent; color:var(--ink);
+.evname-title .evname-in.field{ min-height:var(--tap-min,46px); margin:0 0 0 -8px; padding:0 8px; background:transparent; color:var(--ink);
   border:1px solid color-mix(in srgb, var(--steel-soft) 45%, transparent); border-radius:8px; box-shadow:none; font-size:24px; font-weight:700; letter-spacing:-.01em; }
 .evname-title .evname-in.field::selection{ background:color-mix(in srgb, var(--steel-soft) 35%, transparent); color:var(--ink); }
 .evname-sheet{ flex-wrap:wrap; }
@@ -8834,5 +8834,5 @@ input[data-cue], textarea[data-cue]{ outline:revert-layer; border-color:color-mi
   animation:cue-breathe-ring 1.2s cubic-bezier(.2,0,0,1) 0s 2, cue-settle-ring .6s ease-out 2.4s forwards; }
 @media (prefers-reduced-motion: reduce){ [data-cue], input[data-cue], textarea[data-cue]{ animation:none; } }
 /* The hero card and its editor slot clip their contents (overflow hidden and
-   clip); while they hold the cue they clip 14px out, so the ring is not cut. */
-.hero-card:has([data-cue]), .editor-slot:has([data-cue]){ overflow:clip; overflow-clip-margin:14px; }
+   clip); while they hold the cue they clip 16px out, so the ring is not cut. */
+.hero-card:has([data-cue]), .editor-slot:has([data-cue]){ overflow:clip; overflow-clip-margin:16px; }
