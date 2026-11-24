@@ -134,3 +134,15 @@ def test_a_display_field_holding_an_object_is_not_passed_through():
     patch) is dropped, not shipped whole."""
     pub = _public({**wanda(), "dressCode": {"text": "black", "internal": "x"}})
     assert "dressCode" not in pub
+
+
+def test_the_saved_invite_message_and_what_went_out_stay_with_the_host():
+    """inviteMessageDraft and invitesSentMessage (owner, 11/24/2026) are the
+    host's own words and her send record, with each guest's reply link in them.
+    Neither reaches a guest's invite."""
+    ev = {**wanda(),
+          "inviteMessageDraft": {"body": "Private draft for Marcus", "voice": "warmer", "savedAt": "2026-11-24T19:14:00Z", "edited": True, "line": "x"},
+          "invitesSentMessage": {"subject": "S", "body": "Sent words for Marcus", "voice": "as-written", "at": "2026-11-24T19:31:00Z"}}
+    pub = _public(ev)
+    assert "inviteMessageDraft" not in pub and "invitesSentMessage" not in pub
+    assert "Private draft" not in json.dumps(pub) and "Sent words" not in json.dumps(pub)
