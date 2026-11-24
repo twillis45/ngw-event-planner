@@ -118,6 +118,26 @@ async function goToStage(page, label) {
   await closeSheets(page);
 }
 
+// Wide-rail bits: the stages, the pass note and the event title in the header.
+const wideBits = (page) => page.evaluate(() => {
+  const vis = (e) => e && e.getClientRects().length && !e.closest('[inert]');
+  const t = (e) => (e.innerText || '').replace(/\s+/g, ' ').trim();
+  const stages = [...document.querySelectorAll('.srail [data-rail-stage]')].filter(vis).map(t);
+  const pass = [...document.querySelectorAll('[data-pass-note]')].filter(vis).map((e) => t(e.closest('.srail-row, .srail-pass, button') || e));
+  const titles = [...document.querySelectorAll('[data-tt-title], .tt-title, h1')].filter(vis).map(t).filter((x) => /harvest/i.test(x));
+  return { railStages: stages, passRow: pass, titleShown: titles };
+});
+// A hero control is clipped sideways when its text overflows it or it sticks out of the hero card.
+const heroClip = (page) => page.evaluate(() => {
+  const card = document.querySelector('.hero .hero-card') || document.querySelector('.hero');
+  if (!card) return null;
+  const cr = card.getBoundingClientRect();
+  return [...card.querySelectorAll('button, a[href]')].filter((e) => e.getClientRects().length && !e.closest('[inert]')).filter((e) => {
+    const r = e.getBoundingClientRect();
+    return e.scrollWidth > e.clientWidth + 1 || r.left < cr.left - 1 || r.right > cr.right + 1;
+  }).map((e) => (e.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 40));
+});
+
 // The section list as this viewport's menu shows it.
 async function listSections(page) {
   await anyDoor(page);
@@ -376,7 +396,7 @@ async function runViewport(browser, vp, runDir, meta) {
         restRing: rest[0]?.ring ?? null, restAlpha: alphaOf(rest[0]?.ring),
       };
       if (cue.count !== 1) throw new Error(`expected exactly one [data-cue], found ${cue.count}`);
-      return { ...(await boardTexts(page)), lit: await litButtons(page), cue };
+      return { ...(await boardTexts(page)), lit: await litButtons(page), cue, wide: await wideBits(page), heroClip: await heroClip(page) };
     }, shotDir);
 
     await step(rec, vpRec, 'whats-counted', page, async () => {
@@ -440,7 +460,23 @@ async function runViewport(browser, vp, runDir, meta) {
             const flat = after.replace(/\s+/g, ' ');
             const at = flat.search(/YOUR CHOICES/i);
             out.afterHead = flat.slice(at < 0 ? 0 : at, (at < 0 ? 0 : at) + 160).trim();
+            const fr = page.locator('.sheet').last().locator('[data-food-row]').first();
+            if (await fr.count()) {
+              const tgt = (await fr.locator('button').count()) ? fr.locator('button').first() : fr;
+              const title0 = (await page.locator('#sheet-title').last().innerText().catch(() => '')).trim();
+              await tgt.scrollIntoViewIfNeeded(); await tgt.click({ timeout: 6000 }); await page.waitForTimeout(700);
+              out.foodRow = { opensInPlace: await page.locator('.sheet').last().locator('[data-food-open]').count() > 0,
+                sameSheet: (await page.locator('#sheet-title').last().innerText().catch(() => '')).trim() === title0 };
+            } else out.foodRow = 'no [data-food-row]';
           } else throw new Error('no item to open in the spread');
+        }
+        if (name === 'Guests & invite') {
+          const sh = page.locator('.sheet').last();
+          const row = sh.locator('.grow > button[aria-expanded], .grow > button').first();
+          if (await row.count()) {
+            await row.scrollIntoViewIfNeeded(); await row.click({ timeout: 6000 }); await page.waitForTimeout(700);
+            out.guestEditorGroups = await page.evaluate(() => [...document.querySelectorAll('[data-guest-editor] [data-ged-group]')].map((e) => e.getAttribute('data-ged-group')));
+          } else out.guestEditorGroups = 'no guest row';
         }
         if (name === 'People you’re hiring') {
           const sh = page.locator('.sheet').last();
@@ -583,7 +619,35 @@ async function runViewport(browser, vp, runDir, meta) {
         nameField: await name.isVisible().catch(() => false),
         replyButtons: await page.locator('[class*=inv2] button').evaluateAll((es) => es.map((e) => e.innerText.replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 8)),
         lit: await litButtons(page),
+        layout: await page.evaluate(() => { const e = document.querySelector('[data-invite-layout]'); return e ? e.getAttribute('data-invite-layout') : null; }),
+        palette: await page.evaluate(() => { const e = document.querySelector('[data-pal]'); return e ? e.getAttribute('data-pal') : null; }),
+        hostAvatar: await page.locator('[data-host-avatar]').count(),
       };
+    }, shotDir);
+    await ctx.close();
+  }
+  // 7. SHORT LANDSCAPE (1024x768, once, run with the 1024x1366 size): the
+  // question, its option card and its links fit the first screen.
+  if (vp.id === '1024x1366') {
+    const short = { ...vp, width: 1024, height: 768 };
+    const { ctx, page } = await newPage(browser, short, { rec });
+    await step(rec, vpRec, 'short-landscape-1024x768', page, async () => {
+      await page.goto(SITE + Q);
+      await settled(page);
+      await page.locator('h2.ask').first().waitFor({ timeout: 15_000 });
+      await page.waitForTimeout(800);
+      const fit = await page.evaluate(() => {
+        const H = innerHeight;
+        const hero = document.querySelector('.hero .escreen.on') || document.querySelector('.hero');
+        const ask = document.querySelector('h2.ask');
+        const ctrls = hero ? [...hero.querySelectorAll('button, a[href]')].filter((e) => e.getClientRects().length && !e.closest('[inert]')) : [];
+        const lab = (e) => (e.innerText || e.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+        return { askBottom: ask ? Math.round(ask.getBoundingClientRect().bottom) : null, height: H,
+          below: ctrls.filter((e) => e.getBoundingClientRect().bottom > H + 1).map((e) => `${lab(e)} @${Math.round(e.getBoundingClientRect().bottom)}`),
+          controls: ctrls.length };
+      });
+      if (fit.askBottom == null || fit.askBottom > fit.height || fit.below.length) throw new Error('below the first screen: ' + (fit.askBottom > fit.height ? 'the ask; ' : '') + fit.below.join(', '));
+      return { ask: (await boardTexts(page)).ask, fit };
     }, shotDir);
     await ctx.close();
   }
