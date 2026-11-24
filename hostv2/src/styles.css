@@ -9246,23 +9246,24 @@ input[data-cue], textarea[data-cue]{ outline:revert-layer; border-color:color-mi
    (UX_11 rule 9): the readiness pills were 28px. */
 .wc-slot{ width:100% }
 #whats-counted .wc-bar{ display:flex; width:100%; justify-content:space-between; align-items:center; min-height:44px;
-  background:none; border:0; border-bottom:1px solid var(--line); padding:0; margin:0 0 10px; color:inherit; font:inherit; cursor:pointer; text-align:left }
+  background:none; border:0; border-bottom:1px solid var(--line); padding:0; margin:0 0 12px; color:inherit; font:inherit; cursor:pointer; text-align:left }
 #whats-counted .wc-bar-t{ font-size:var(--t-eyebrow, 12px); font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft) }
 #whats-counted .wc-bar-c{ color:var(--ink-soft); font-weight:600 }
 #whats-counted .wc-close{ display:block; width:100%; text-align:center; min-height:44px; background:none; border:0;
-  border-top:1px solid var(--line); margin-top:10px; color:var(--ink-soft); font:inherit; cursor:pointer }
+  border-top:1px solid var(--line); margin-top:12px; color:var(--ink-soft); font:inherit; cursor:pointer }
 #whats-counted .pill{ min-height:44px; display:inline-flex; align-items:center }
 #whats-counted button, #whats-counted [role="button"], #whats-counted a{ min-height:44px }
 /* The board's one lit act under our pick (cohesion F1): full width, under its row. */
 /* 44px, the tap floor, not the hero ask's 54: the tall iPad's first screen must
    still end above its bar with Where you stand on it (aTallIPadGetsItsOwnBoard). */
-.decopt-acts{ display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; margin:6px 0 0; }
+.decopt-acts{ display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; margin:8px 0 0; }
 .decopts .decopt-go, .hero.elegant .decopts .cta.decopt-go{ flex:1 1 220px; margin:0; min-height:44px; padding-top:8px; padding-bottom:8px; }
-.app-elegant .decopt-acts > .decopt-disc, .decopt-acts > .decopt-disc{ flex:0 0 auto; width:auto; align-self:center; margin:0; }
+.app-elegant .decopt-acts > .decopt-disc, .decopt-acts > .decopt-disc{ flex:0 0 auto; width:auto; align-self:center; margin:0; border-top:0; }
 /* THE SHEET HEAD'S TWO TAPS ARE 44 PX BOXES, NOT 44 PX HALOS (cohesion #46,
    owner 11/24/2026). Measured 67×16 ("‹ Sections") and 64×28 ("Close"): the
    ::after hit areas reached 44 but the controls themselves did not. Each is a
    real 44 px box now; equal negative margins give the height back, so the
    title and the head do not move. */
-.sheet-head .sheet-back{ display:inline-flex; align-items:center; min-height:44px; min-width:44px; margin:-14px 0 -14px; }
+.sheet-head .sheet-back{ display:inline-flex; align-items:center; min-height:44px; min-width:44px; margin:-16px 0 -12px; }
 .sheet-head .sheet-x{ display:inline-flex; align-items:center; justify-content:center; min-height:44px; min-width:64px; margin:-8px 0; }
+.tt-who-g .tt-more .tt-row-t{ color:var(--steel-soft); font-weight:600; }

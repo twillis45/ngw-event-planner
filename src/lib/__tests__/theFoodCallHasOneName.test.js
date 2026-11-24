@@ -8,8 +8,6 @@
 // The owner's ruling (F2): the call's own question (`callQuestion`, ruling 4a)
 // is its one name below the headline. The ledger cue and the hero record both
 // read it from `foodCallQuestion`, so the two cannot drift again.
-import fs from 'fs';
-import path from 'path';
 import { WANDA_GOLD_EVENT } from '../../data/wandaGoldEvent';
 import { SAMPLE_EVENTS_EXTRA } from '../../data/sampleEventsExtra';
 import { SAMPLE_EVENTS_DMV } from '../../data/sampleEventsDMV';
@@ -42,9 +40,6 @@ describe('the food call is asked by its own question everywhere', () => {
     expect(checked).toBeGreaterThan(0);
   });
 
-  test('the hero record reads the same reader, not a raw `ask`', () => {
-    const SHELL = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'hostv2', 'src', 'HostShellV2.jsx'), 'utf8');
-    expect(SHELL).toMatch(/const menuAsk = foodPanelQuestion\(menuND\)/);
-    expect(SHELL).not.toMatch(/const menuAsk = \(menuND && menuND\.selected == null && menuND\.ask\)/);
-  });
+  // The hero, the part-by-part row and the NEXT pill showing this one name is
+  // asserted where it renders: hostv2/e2e/whatsCountedOpensInPlace.spec.mjs.
 });

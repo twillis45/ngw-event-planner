@@ -109,3 +109,20 @@ for (const vp of SIZES) {
     await ctx.close();
   });
 }
+
+// F2 (UX_11 rules 8 and 11): the food call has one name on every surface that
+// shows it — the hero's record, the part-by-part row in What's counted and the
+// NEXT pill — "How is the food handled? · 1 open", never "Decide what you're serving".
+test('1440x900: the hero, the part-by-part row and the NEXT pill call the food call by its own question', async ({ browser }) => {
+  test.setTimeout(60_000);
+  const { ctx, page } = await boot(browser, [1440, 900, false]);
+  const NAME = 'How is the food handled? · 1 open';
+  await expect(page.locator('.hero .hero-card h3').first()).toHaveText(NAME);
+  await page.locator('[aria-controls="whats-counted"]:visible').first().click();
+  await page.waitForTimeout(700);
+  await expect(page.locator('#whats-counted').getByText(NAME, { exact: true })).toHaveCount(1);
+  const bar = page.locator('.next-bar');
+  if (await bar.count()) await expect(bar).toContainText(NAME);
+  expect(await page.evaluate(() => document.body.innerText)).not.toMatch(/Decide what you.re serving/);
+  await ctx.close();
+});

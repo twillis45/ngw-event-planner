@@ -3180,6 +3180,14 @@ export default function HostShellV2() {
     };
     const alts = proposedOpt ? nd.options.filter(o => o !== proposedOpt) : nd.options;
     const open = decDiscloseId === nd.id;
+    // THE ONE DISCLOSURE CONTROL (ruling A, 2026-07-30). It toggles
+    // decDiscloseId IN PLACE — it settles nothing and routes nowhere — so it
+    // wears the disclosure triangle (▸ closed, ▾ open), never a navigation
+    // glyph, and no count (the rows it reveals carry their own). Defined once;
+    // with a lit pick (F1) it shares the "Go with …" row.
+    const disc = alts.length > 0 ? (open
+      ? <button className="decopt-disc" onClick={() => setDecDiscloseId(null)}>Other ways  ▾</button>
+      : <button className="decopt-disc" onClick={() => setDecDiscloseId(nd.id)}>Other ways  ▸</button>) : null;
     const optRow = (o, isPick) => (
       <button key={o.value} className={'decopt' + (isPick ? ' pick' : '')} onClick={() => decide(nd, o.value)}>
         <span className="decopt-main">
@@ -3278,36 +3286,18 @@ export default function HostShellV2() {
             {optRow(proposedOpt, true)}
             {/* The lit act and "Other ways" share one row (F1): the primary and
                 its secondary, so the tall iPad's first screen still ends above
-                its bar. They wrap to two lines where the row is too narrow. */}
+                its bar. They wrap to two lines where the row is too narrow.
+                RULING A (2026-07-30) holds for `disc` above: a disclosure
+                triangle, never a navigation glyph, and no count. */}
             {litPick ? (
-              <>
-                <div className="decopt-acts">
-                  <button type="button" className="cta decopt-go" data-pick-go onClick={() => decide(nd, proposedOpt.value)}>
-                    {goWith(proposedOpt.label)}
-                  </button>
-                  {alts.length > 0 && (open
-                    ? <button className="decopt-disc" onClick={() => setDecDiscloseId(null)}>Other ways  ▾</button>
-                    : <button className="decopt-disc" onClick={() => setDecDiscloseId(nd.id)}>Other ways  ▸</button>)}
-                </div>
-                {open && alts.map(o => optRow(o, false))}
-              </>
-            ) : alts.length > 0 && (open ? (
-              <>
-                <button className="decopt-disc" onClick={() => setDecDiscloseId(null)}>Other ways  ▾</button>
-                {alts.map(o => optRow(o, false))}
-              </>
-            ) : (
-              /* RULING A (2026-07-30). Two fixes, both about telling the truth:
-                 • NO GLYPH. This handler toggles decDiscloseId IN PLACE — it settles
-                   nothing and routes nowhere, so a `›` was false navigation under the
-                   standing rule (render →/› ONLY when the handler routes). `▸` is a
-                   disclosure triangle, the closed twin of the `▾` this same control
-                   wears when open, so the two states now read as one control.
-                 • NO COUNT. The rows it reveals carry their own number, and the count
-                   here collided with the sibling-bundle disclosure's identical "3" —
-                   two grey links a few px apart both offering "3" different things. */
-              <button className="decopt-disc" onClick={() => setDecDiscloseId(nd.id)}>Other ways  ▸</button>
-            ))}
+              <div className="decopt-acts">
+                <button type="button" className="cta decopt-go" data-pick-go onClick={() => decide(nd, proposedOpt.value)}>
+                  {goWith(proposedOpt.label)}
+                </button>
+                {disc}
+              </div>
+            ) : disc}
+            {open && alts.map(o => optRow(o, false))}
           </>
         ) : (
           // Ask-mode: a genuine either/or — every option an equal row, no faked pick.
@@ -15547,7 +15537,9 @@ export default function HostShellV2() {
                                    helpers' section, where every job is assigned. */
                                 <button key={i} type="button" className="tt-row" data-who-row onClick={() => (routable(r.route) ? routeSheet(r.route) : go.helpers())}>
                                   <span className="tt-row-t">{r.label}</span>
-                                  <span className="tt-row-w">{r.note ? `${r.name} ${r.note}` : r.name}</span>
+                                  {/* A helper who can't wears the warning's honey here: the row is
+                                      where that note lives now (#40). */}
+                                  <span className={'tt-row-w' + (r.note ? ' warn-note' : '')}>{r.note ? `${r.name} ${r.note}` : r.name}</span>
                                   <span className="chev" aria-hidden="true">›</span>
                                 </button>
                               ))}
