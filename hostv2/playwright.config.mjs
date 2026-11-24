@@ -9,6 +9,8 @@ import { previewUrl } from './deployBase.mjs';
 // Specs whose every test calls setViewportSize (or a boot() helper that does).
 // See the note above `projects` for why this is per-test, not per-file.
 const SELF_PINNED = [
+  // Pins 390x844 (a bare city is a town, not a place, cohesion G4, 11/24/2026).
+  '**/aBareCityIsATownNotAPlace.spec.mjs',
   // Its own viewports (the small sheets say it plainly, cohesion G, 11/24/2026).
   '**/theSmallSheetsSayItPlainly.spec.mjs',
   // Its own viewports (every input has a visible label, cohesion G, 11/24/2026).
