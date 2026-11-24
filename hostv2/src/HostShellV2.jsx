@@ -5990,12 +5990,22 @@ export default function HostShellV2() {
   };
   // The phase switch: the menu's segmented control and the tall iPad's bar.
   const goPhase = (s) => { if (s === 'create') startNewEvent(); else { setStage(s); setSheet(null); } };
-  // One door per part: the chips and the ribbon open exactly the same thing.
+  // One door per part: the chips, the ribbon and What's counted open exactly
+  // the same thing. An open part goes to its exact fix (its route); a handled
+  // part has no route, so it opens its section (owner, 11/24/2026: "These
+  // should allow click to section").
+  // Keyed by SECTION, listing the parts it holds: a section directory, not a
+  // second label map (AREA_LABELS is the one map from part ids to host copy).
+  const SECTION_PARTS = { venue: ['venueaddress'], guests: ['headcount', 'thankyous'], food: ['food', 'shopping'], budget: ['budget'],
+    vendors: ['vendors', 'payments'], lodging: ['lodging'], rain: ['rain'], crabs: ['crabs'], celebration: ['moment'] };
+  const sectionForPart = (id) => Object.keys(SECTION_PARTS).find((k) => SECTION_PARTS[k].includes(id)) || null;
+  const partCanOpen = (c) => !!c && (c.id === 'datetime' || c.id === 'date' || c.id === 'location' || !!c.route || !!sectionForPart(c.id));
   const openPart = (c) => {
     if (!c) return;
     if (c.id === 'datetime' || c.id === 'date') { setSheet({ kind: 'date' }); return; }
     if (c.id === 'location') { setSheet({ kind: 'venue' }); return; }
     if (c.route && routeSheet(c.route)) return;
+    if (sectionForPart(c.id)) { goToSection(sectionForPart(c.id)); return; }
     if (c.cueLabel) toast(c.cueLabel);
   };
   // THE BOARD'S IDENTITY LINE, AS FIELDS (tall iPad, 11/22/2026). The eyebrow
@@ -15425,13 +15435,8 @@ export default function HostShellV2() {
                       two engines, two answers. That is fixed — they now read the same list —
                       but agreeing is not the same as EXPLAINING.) */}
                   <p className="grounding" style={{ margin: '0 0 10px' }}>
-                    The <b>parts of your plan</b> are the date, the venue, the guest count, the food, the rest.
-                    This says how many are settled. <b>Next</b> is the shorter thing: what actually needs you today,
-                    in order, starting with the one at the top.
-                  </p>
-                  <p className="grounding" style={{ margin: '0 0 12px' }}>
-                    They read from the same list but won’t match, and shouldn’t: a part can be settled with one
-                    loose end, and one job can close two parts.
+                    Your plan has a few parts: the date, the place, your guests, the food, and the rest. Tap one to open it.
+                    What needs you today is at the top of the board.
                   </p>
                   {/* POP-1C consumer: the recommendation lifecycle is the one
                       source that classifies EVERY recommendation (foundation,
@@ -15479,19 +15484,19 @@ export default function HostShellV2() {
                   )}
                   {phaseCues && Array.isArray(phaseCues.items) && phaseCues.items.length > 0 && (
                     <>
-                      <div className="shelf-label" style={{ margin: '6px 0 var(--sp-1)' }}>{planTotal === 1 ? 'The 1 part of your plan this count reads' : `The ${planTotal} parts of your plan this count reads`}</div>
-                      {/* RECON MODEL grounding: why this number and the inventories
-                          below it can never be compared one-to-one. */}
-                      <p className="grounding" style={{ margin: '0 0 6px' }}>
-                        Each part counts once here. Items inside a part keep their own counts further down.
-                      </p>
+                      <div className="shelf-label" style={{ margin: '6px 0 var(--sp-1)' }}>Your plan, part by part</div>
+                      {/* Every part is a door to its section (owner, 11/24/2026),
+                          through openPart, the chips' and the ribbon's one opener. */}
                       {phaseCues.items.map((c, i) => c.handled ? (
-                        <div key={c.id || i} className="line" style={{ padding: '5px 0' }}>
-                          <span className="of">{areaLabelFor(c.id)}</span><span className="amt" style={{ color: 'var(--ok)', fontWeight: 600 }}>handled</span>
-                        </div>
+                        <button key={c.id || i} type="button" className="line" data-plan-part={c.id}
+                          style={{ padding: '5px 0', width: '100%', minHeight: 44, alignItems: 'center', background: 'none', border: 0, font: 'inherit', textAlign: 'left', cursor: partCanOpen(c) ? 'pointer' : 'default' }}
+                          onClick={() => openPart(c)} disabled={!partCanOpen(c)}>
+                          <span className="of">{areaLabelFor(c.id)}</span>
+                          <span className="amt" style={{ color: 'var(--ok)', fontWeight: 600 }}>handled{partCanOpen(c) ? <span aria-hidden="true" style={{ color: 'var(--faint)', marginLeft: 'var(--sp-2)' }}>›</span> : null}</span>
+                        </button>
                       ) : (
-                        <button key={c.id || i} className="frow" style={{ padding: 'var(--sp-2) 2px', minHeight: 44, alignItems: 'center' }}
-                          onClick={() => { if (c.route && routeSheet(c.route)) return; toast(c.cueLabel || areaLabelFor(c.id)); }}>
+                        <button key={c.id || i} className="frow" data-plan-part={c.id} style={{ padding: 'var(--sp-2) 2px', minHeight: 44, alignItems: 'center' }}
+                          onClick={() => { if (partCanOpen(c)) { openPart(c); return; } toast(c.cueLabel || areaLabelFor(c.id)); }}>
                           {/* `cueLabel` is legitimately null on some items in some
                               states, and this rendered it unconditionally — an
                               empty 44px button behind a navigation chevron, which
@@ -15502,7 +15507,7 @@ export default function HostShellV2() {
                               the house rule is a glyph only when the handler
                               routes, and this one is conditional on `c.route`. */}
                           <span className="f-main"><span className="f-name" style={{ fontSize: 'var(--t-body)' }}>{c.cueLabel || areaLabelFor(c.id)}</span></span>
-                          {c.route ? <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span> : null}
+                          {partCanOpen(c) ? <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span> : null}
                         </button>
                       ))}
                     </>
