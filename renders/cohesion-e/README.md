@@ -46,6 +46,15 @@ The other widths are in `measure.json`. Each holds 3 → 1 with no floor failure
 - The recap preview is a new local state (draft → preview → published). It needs no new field.
 - **One copy change in data-free code:** the toast "thanked — the wrap-up meter keeps count" becomes "Marked Cory Mundy thanked · Undo" (rule 18).
 
+### Build item added by the parent (live check, code-level, not rendered)
+
+- **After the event, she lands on After (rule 13).**
+  - **The report:** in the parent's live check on Dec 21, two days after a Dec 19 event, the app opened on Plan at all 5 sizes.
+  - **The cause, read from code:** `src/lib/landingStage.js` returns `'day'` during the event and `'plan'` in every other case, including after it. Its own comment says "Before it, the day before it, after it: the plan." `'after'` is in `STAGES` but is never returned.
+  - **Proposed:** for her own plan, once the event's last day is past (`isPastEvent`), return `'after'`. Samples keep landing on Plan, as they do on the day itself (audit caveat, `ownPlan` false). A tap on Plan is still her own choice and is not a landing.
+  - **Open question for the owner:** should After stay the landing indefinitely, or only for a window such as 30 days? I recommend indefinitely, until she starts a new plan, because the thank-yous and recap stay the work.
+  - **Tests:** the jest tests for `landingStage`, plus e2e specs that boot an own plan with a past date and expect Plan. Grep `landingStage` and `isPastEvent` in `e2e/` before building. Add a spec: own plan, clock two days after → After, at 390 and 1440.
+
 ## e2e specs it would touch
 
 - `theGiftLogLivesOnTheGuestRows`: reads the "gift?" and "thank them" buttons and the "Thank-yous & gifts" header.
