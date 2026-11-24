@@ -14,6 +14,9 @@
 //      line: "✓ Decided · Undo" (a green check; Undo restores her prior
 //      answer). It clears after about 6s or on her next action. No "Next:
 //      Resolve …" link.
+//   3  "THEN, IN ORDER" SHOWS TIMING AND BLOCKING TOGETHER (render 3): a row
+//      others wait on, with a deadline, reads "by Tue · others wait on it"; a
+//      row with a date always shows its date ("by Wed").
 import { test, expect } from '@playwright/test';
 import { settled } from './fixtures.mjs';
 
@@ -205,4 +208,26 @@ test('2: the decided line clears on her next action, and on its own after about 
   await expect(hero(s2.page).locator('[data-decided]'), 'still up at 4.5s').toBeVisible();
   await expect(hero(s2.page).locator('[data-decided]')).toHaveCount(0, { timeout: 3000 });
   await s2.ctx.close();
+});
+
+// ═══════════ 3. "THEN, IN ORDER" SHOWS TIMING AND BLOCKING TOGETHER ═══════════
+const thenRows = (page) => page.evaluate(() => [...document.querySelectorAll('.ef-row')].map((r) => ({
+  t: (r.querySelector('.t') || r).innerText.trim(), why: ((r.querySelector('.ef-why') || {}).innerText || '').trim() })));
+test('3: Then, in order: "Plan the food" reads its day and that others wait on it', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const { ctx, page } = await created(browser, PHONE);
+  await page.locator('.efold').first().click();
+  await page.waitForTimeout(900);
+  const rows = await thenRows(page);
+  const food = rows.find((r) => /^Plan the food/.test(r.t));
+  expect(food, `premise: the food row (${JSON.stringify(rows)})`).toBeTruthy();
+  // Monday 11/23. Measured on the real plan: the food step is due today (the
+  // render's "by Tue" was illustrative), and others wait on it. Before the
+  // ruling this row read "other steps wait on this" alone.
+  expect(food.why).toBe('due today · others wait on it');
+  // The shopping row has no clock while the menu is open (phaseProgress,
+  // "decide the menu before the shop", owner 11/18/2026), so it has no date to
+  // show; "a row with a date always shows its date" is pinned in
+  // theThenRowShowsTimingAndBlocking.test.js.
+  await ctx.close();
 });

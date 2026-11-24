@@ -5,6 +5,7 @@
 // two halves of the fix: a reason appears when a real authored/derived signal
 // exists, and NOTHING appears when it does not.
 import { getActionReason, reasonCoverage, MAX_REASON_CHARS, REASON_PRIORITY } from '../actionReason';
+import { dueByLabel } from '../timeStatusLabel';
 import { eventPlan } from '../../CommandCenter';
 import { buildExperienceContext } from '../experienceContext';
 import { playbookTypicalGuests } from '../playbooks';
@@ -33,7 +34,9 @@ describe('the ladder returns ONE reason, in priority order', () => {
       dueInDays: 0, consequence: 'Everything sizes off this number.',
     });
     expect(r.type).toBe('blocking');
-    expect(r.text).toBe('unblocks 3 more steps');
+    // Owner, 11/24/2026 (render 3): a blocking row with a date says both.
+    // Was 'unblocks 3 more steps'.
+    expect(r.text).toBe('due today · unblocks 3 more steps');
     expect(r.source).toBe('gateHolder');
     expect(r.confidence).toBe('derived');
   });
@@ -41,7 +44,8 @@ describe('the ladder returns ONE reason, in priority order', () => {
   test('time outranks consequence', () => {
     const r = getActionReason({ title: 'Send the invites', dueInDays: 2, consequence: 'Guests need runway to answer.' });
     expect(r.type).toBe('time');
-    expect(r.text).toBe('due in 2 days');
+    // Owner, 11/24/2026: the date reads "by <weekday>". Was 'due in 2 days'.
+    expect(r.text).toBe(dueByLabel(2));
   });
 
   test('consequence is used when nothing sharper exists', () => {
@@ -62,7 +66,8 @@ describe('the ladder returns ONE reason, in priority order', () => {
 
   test('singular and plural read correctly', () => {
     expect(getActionReason({ title: 'X', gateHolder: true, unlocks: 1 }).text).toBe('unblocks 1 more step');
-    expect(getActionReason({ title: 'Y', dueInDays: 1 }).text).toBe('due tomorrow');
+    // Owner, 11/24/2026: "by <weekday>". Was 'due tomorrow'.
+    expect(getActionReason({ title: 'Y', dueInDays: 1 }).text).toBe(dueByLabel(1));
     expect(getActionReason({ title: 'Z', dueInDays: -4 }).text).toBe('past its window');
   });
 
@@ -78,8 +83,11 @@ describe('missing data produces NOTHING, never filler', () => {
     expect(getActionReason(null)).toBeNull();
   });
 
-  test('a far-future due date is not urgency', () => {
-    expect(getActionReason({ title: 'Book the venue', dueInDays: 40 })).toBeNull();
+  // Owner, 11/24/2026: "a row with a date always shows its date". Was: a
+  // far-future due date returned null (the old <=7 day horizon).
+  test('a far-future due date shows its date, not urgency words', () => {
+    expect(getActionReason({ title: 'Book the venue', dueInDays: 40 }).text).toBe(dueByLabel(40));
+    expect(getActionReason({ title: 'Book the venue', dueInDays: 40 }).text).not.toMatch(/due|past/);
   });
 
   test('unlocks of zero is not a reason', () => {
