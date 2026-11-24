@@ -125,10 +125,7 @@ export function getActionReason(action, opts = {}) {
   // THE DATE, when the row has one: "by Tue", "by Jan 2", "due today" (the
   // time-status module's words). Not on a solemn event (standing ruling: no
   // time pressure there), where the row keeps its other reasons.
-  // A title that already says when ("…in 4 days", "…today") has shown its date;
-  // saying it again is the restating addsBeyondTitle exists to stop.
-  const titleSaysWhen = /\b(in \d+ days?|today|tomorrow)\b/i.test(title);
-  const when = !solemn && !titleSaysWhen && Number.isFinite(action.dueInDays) ? dueByLabel(action.dueInDays, now) : null;
+  const when = !solemn && Number.isFinite(action.dueInDays) ? dueByLabel(action.dueInDays, now) : null;
 
   // 1 — BLOCKING. The strongest thing NGW can say: finishing this frees other work.
   // With a date, both halves in one text: "by Tue · others wait on it".

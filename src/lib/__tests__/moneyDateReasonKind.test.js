@@ -29,6 +29,7 @@
 // that makes that correct — not the change, which no longer exists.
 import { raiseAll } from '../surfaceRegistry';
 import { getActionReason } from '../actionReason';
+import { dueByLabel } from '../timeStatusLabel';
 import { moneyDatesFor } from '../moneyDates';
 // LOCAL calendar dates, never toISOString() — that is UTC and slides a day
 // wherever the two calendars disagree. Measured at TZ=Pacific/Kiritimati
@@ -96,12 +97,16 @@ describe('a money deadline reasons honestly, or stays quiet', () => {
     }
   });
 
-  test('a bare row is the honest default, not a gap', () => {
-    // installment and headcount say everything in the title. Recorded as an
-    // assertion so a future "every row must have a reason" rule has to argue
-    // with a measurement rather than an impression.
-    expect(reasonFor(EV({ installmentDue: isoIn(4) }))).toBeNull();
-    expect(reasonFor(EV({ headcountDue: isoIn(4) }))).toBeNull();
+  // RULED (owner, 11/24/2026): "a row with a date always shows its date".
+  // Was: installment and headcount rows stayed bare, their titles carrying
+  // "in 4 days". They now carry the day itself ("by <weekday>"), which the
+  // title does not say; the reason is still never a payment it is not.
+  test('a dated row carries its day, not a bare row', () => {
+    for (const md of [{ installmentDue: isoIn(4) }, { headcountDue: isoIn(4) }]) {
+      const r = reasonFor(EV(md));
+      expect(r.type).toBe('time');
+      expect(r.text).toBe(dueByLabel(4));
+    }
   });
 
   test('and every kind carries dueInDays, so nearness reaches the ranker', () => {
