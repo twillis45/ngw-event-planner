@@ -1,4 +1,4 @@
-import { test, expect, settled, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName, checklistText } from './fixtures.mjs';
 
 // ─── A GROUP TRIP IS ITS OWN PLAN (G61, 11/19/2026) ─────────────────────────
 // The plan item's own sentence, typed the way a host types it. In the 40-host
@@ -38,7 +38,8 @@ test('typed in one sentence, a girls’ trip becomes a multi-day destination pla
 
   // Its steps, in the order the guides give: a firm yes before anything is booked.
   await openSectionByName(page, 'Your checklist');
-  await expect(page.locator('.sheet').last()).toContainText(/firm yes/i);
+  // Grouped by when, details inside each step (cohesion batch D): read it all.
+  expect(await checklistText(page)).toMatch(/firm yes/i);
 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });

@@ -6,7 +6,7 @@
 // roster's "rooming with" is derived from the plan, and once everyone is in a
 // room the row checks off.
 // Jest twin: src/lib/__tests__/oneRoomPlanSaysWhoSleepsWhere.test.js.
-import { test, expect, settled, sheetSettled, dateIn, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled, dateIn, openSectionByName, checklistStepAction, openAllPhases } from './fixtures.mjs';
 
 const STEP = 'Settle who sleeps where: draw lots for the best rooms, and keep the early risers apart from the night owls';
 const NAMES = ['Ana Ruiz', 'Bree Cole', 'Cam Ito', 'Dee Park'];
@@ -37,7 +37,7 @@ test('the row opens the room plan; draw lots, move one, and "rooming with" follo
   await settled(page);
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  await page.locator('.sheet').last().locator('button[data-row-action]').filter({ hasText: 'Plan who sleeps where' }).click();
+  await (await checklistStepAction(page, 'Plan who sleeps where')).click();
   await page.waitForURL(/demo=lodging/);
   const plan = page.locator('[data-room-plan]');
   await expect(plan).toBeVisible();
@@ -87,5 +87,6 @@ test('everyone in a room checks the row off', async ({ page }) => {
   await settled(page);
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  await expect(page.locator('.sheet').last().locator('button.frow').filter({ hasText: 'Settle who sleeps where' })).toHaveClass(/\bgot\b/);
+  await openAllPhases(page);   // a step the plan handled sits in its phase (cohesion batch D)
+  await expect(page.locator('.sheet').last().locator('.frow').filter({ hasText: 'Settle who sleeps where' })).toHaveClass(/\bgot\b/);
 });

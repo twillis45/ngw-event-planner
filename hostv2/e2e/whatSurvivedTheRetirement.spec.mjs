@@ -13,7 +13,7 @@
 // "Event Boss", and "Ask the Boss" survived the sweep in five host-visible
 // places because the guard proving the rename read the frozen CRA shell and
 // matched the two-word name only. This is the screen it was wrong about.
-import { test, expect, settled, dateIn, openSectionByName, openJumpTo } from './fixtures.mjs';
+import { test, expect, settled, dateIn, openSectionByName, openJumpTo, checklistText } from './fixtures.mjs';
 
 const boot = async (page, { id, type, choices }) => {
   await page.addInitScript(([evId, evType, evChoices, SEED_DATE]) => {
@@ -52,7 +52,10 @@ const openSection = async (page, label) => {
   await settled(page);
 };
 
-const sheetText = async (page) => (await page.locator('.sheet').last().innerText()).toLowerCase();
+// The checklist folds its later phases and keeps each step's detail inside the
+// step (cohesion batch D, 11/24/2026): read it with every phase and step opened.
+// On any other sheet this is the sheet's own text.
+const sheetText = async (page) => (await checklistText(page)).toLowerCase();
 
 // The checklist starts EMPTY and offers to draft itself — the same empty state
 // checklistFollowsDecisions.spec.mjs walks. Seeding a timeline by hand would
@@ -185,12 +188,21 @@ test.describe('the air-travel invite floor reaches the shipping shell', () => {
       await draftChecklist(page);
       const text = await sheetText(page);
       expect(text).toContain('send invites');
-      // The rendered relative date that follows the invite row.
-      const after = text.slice(text.indexOf('send invites'));
-      const m = /in (\d+) (day|week|month)/.exec(after);
-      expect(m).toBeTruthy();
-      const n = parseInt(m[1], 10);
-      const days = m[2] === 'month' ? n * 30 : m[2] === 'week' ? n * 7 : n;
+      // The date the invite step shows (cohesion batch D: a plain date, "Thu,
+      // Jul 9", on its row or on the Up next card), read as days from today.
+      const shown = await page.evaluate(() => {
+        const up = document.querySelector('.sheet [data-up-next]');
+        if (up && /send invites/i.test(up.querySelector('.ck-next-name').innerText)) return up.querySelector('.when').innerText;
+        const row = [...document.querySelectorAll('.sheet [data-step-row]')].find((r) => /send invites/i.test(r.querySelector('.f-name').innerText));
+        return row ? row.querySelector('.v-meta').innerText : '';
+      });
+      const m = /(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2})/.exec(shown);
+      expect(m, `the invite step shows a date: "${shown}"`).toBeTruthy();
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(m[1]);
+      let due = new Date(today.getFullYear(), month, Number(m[2]));
+      if (due < today) due = new Date(today.getFullYear() + 1, month, Number(m[2]));
+      const days = Math.round((due - today) / 86400000);
       await ctx.close();
       return days;
     };

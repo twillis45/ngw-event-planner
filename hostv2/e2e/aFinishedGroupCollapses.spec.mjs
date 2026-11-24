@@ -7,7 +7,7 @@
 // with a quiet "Show the list" link. One shared component does it for the
 // shopping groups, the Bringing list, the checklist and the decided calls.
 // Reopening holds for the browser session only, and writes nothing to the plan.
-import { test, expect, settled, dateIn, openSectionByName, sheetSettled } from './fixtures.mjs';
+import { test, expect, settled, dateIn, openSectionByName, sheetSettled, openAllPhases } from './fixtures.mjs';
 
 const ALL_SET = {
   hosting_model: 'Host cooks the turkey and core dishes, guests bring sides and desserts',
@@ -145,7 +145,11 @@ test('the checklist: done steps fold to one green row; all done, the list shrink
   for (let k = 0; k < 80 && !(await all.count()); k++) {
     const live = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].timeline.filter((t) => t && !t.retired && !t.done).length);
     if (!live) break;
-    await sheet(page).locator('button.frow:not(.got), button.frow.got:has-text("done by your plan")').first().click();
+    // Check off the step up next (cohesion batch D: the first open step sits
+    // on the Up next card), else a step the plan already handled (its own check).
+    const up = sheet(page).locator('[data-up-next] [data-step-checkoff], [data-up-next] [data-up-next-go]:text-is("Check it off")');
+    if (await up.count()) await up.first().click();
+    else { await openAllPhases(page); await sheet(page).locator('[data-step-check]').first().click(); }
     await page.waitForTimeout(150);
   }
   await expect(all).toBeVisible();

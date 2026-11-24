@@ -5,7 +5,7 @@
 // button, though the call (midnight_model) is on Calls to make. The step names
 // its call (`answeredBy`), and checklistRouteFor sends it there.
 // Jest twin: src/__tests__/everyChecklistRowHasADestination.test.js.
-import { test, expect, settled, sheetSettled, dateIn, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled, dateIn, openSectionByName, checklistStepAction } from './fixtures.mjs';
 
 const ID = 'e2e-nye-call';
 const STEP = 'Decide whose midnight it is: the late adult party, the family countdown at 9, or the early-then-late double';
@@ -30,7 +30,7 @@ test('the midnight step opens Calls to make on that call', async ({ page }) => {
   await settled(page);
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  const btn = page.locator('.sheet').last().locator('button[data-row-action]').filter({ hasText: 'Make the call' }).first();
+  const btn = (await checklistStepAction(page, 'Make the call'));
   await expect(btn).toBeVisible();
   await btn.click();
   await sheetSettled(page);
