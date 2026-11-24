@@ -8769,10 +8769,11 @@ button.tt-row{ cursor:pointer; }
 
 /* ── AFTER A DECISION THE HERO ADVANCES (owner, render 2, 11/24/2026) ───────
    One quiet line over the next ask: a green check, "Decided", and Undo as a
-   muted text link (44x44 to tap, the line itself stays one quiet row). */
+   muted text link (the tap floor, --tap-min, while the line stays one quiet
+   row). */
 .decided-line{ display:flex; align-items:center; margin:0 0 8px; color:var(--muted); font-size:var(--t-note,13px); font-weight:550; letter-spacing:.01em; min-height:24px; }
 .decided-ck{ color:var(--ok); font-weight:700; margin-right:4px; }
 .decided-sep{ margin:0 8px; opacity:.7; }
-.decided-undo{ min-width:44px; min-height:44px; margin:-10px 0; padding:0 4px; background:none; border:0; color:var(--muted); font:inherit; cursor:pointer;
+.decided-undo{ min-width:var(--tap-min,46px); min-height:var(--tap-min,46px); margin:-11px 0; padding:0 4px; background:none; border:0; color:var(--muted); font:inherit; cursor:pointer;
   text-decoration:underline; text-underline-offset:3px; text-decoration-color:color-mix(in srgb, var(--muted) 50%, transparent); }
 .decided-undo:hover{ color:var(--ink); }
