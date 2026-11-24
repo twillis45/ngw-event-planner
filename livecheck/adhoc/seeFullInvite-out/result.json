@@ -1,0 +1,133 @@
+[
+ {
+  "vp": "1194x834",
+  "console": [
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ],
+  "version": ".github.io/ngw-event-planner/hostv2/assets/index-acbf7da2.js",
+  "doors": [
+   "Your invite Classic · Today’s cream ›"
+  ],
+  "sheetTitle": "Your invite",
+  "preview": {
+   "frameH": 440,
+   "contentH": 576,
+   "clipped": true,
+   "overflow": "hidden",
+   "layout": "glance",
+   "text": "AN INVITATION IN 2 DAYS Rosa’s Harvest Dinner It wouldn’t be the same without you Thursday, November 26 6:00 PM Add to calendar Home · 42 Elm Ct Springfield, VA"
+  },
+  "button": {
+   "count": 1,
+   "box": {
+    "w": 124,
+    "h": 44
+   }
+  },
+  "afterTap": {
+   "newTab": true,
+   "samePageUrlChanged": false,
+   "url": "https://twillis45.github.io/ngw-event-planner/hostv2/?rsvp=lc-inv-code",
+   "page": {
+    "layout": "classic",
+    "text": "AN INVITATION NOV 2026 Rosa’s Harvest Dinner It wouldn’t be the same without you WHEN Thursday, November 26 · 6:00 PM Add to calendar WHERE Home · 42 Elm Ct, Springfield, VA 22150 2 DAYS TO GO The favor of a reply Yes, I’m in Can’t make it Maybe Just a preview — replies here stay on this phone. To a"
+   }
+  }
+ },
+ {
+  "vp": "1024x768",
+  "console": [
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ],
+  "version": ".github.io/ngw-event-planner/hostv2/assets/index-acbf7da2.js",
+  "doors": [
+   "Your invite Classic · Today’s cream ›"
+  ],
+  "sheetTitle": "Your invite",
+  "preview": {
+   "frameH": 440,
+   "contentH": 590,
+   "clipped": true,
+   "overflow": "hidden",
+   "layout": "glance",
+   "text": "AN INVITATION IN 2 DAYS Rosa’s Harvest Dinner It wouldn’t be the same without you Thursday, November 26 6:00 PM Add to calendar Home · 42 Elm Ct Springfield, VA"
+  },
+  "button": {
+   "count": 1,
+   "box": {
+    "w": 124,
+    "h": 44
+   }
+  },
+  "afterTap": {
+   "newTab": true,
+   "samePageUrlChanged": false,
+   "url": "https://twillis45.github.io/ngw-event-planner/hostv2/?rsvp=lc-inv-code",
+   "page": {
+    "layout": "classic",
+    "text": "AN INVITATION NOV 2026 Rosa’s Harvest Dinner It wouldn’t be the same without you WHEN Thursday, November 26 · 6:00 PM Add to calendar WHERE Home · 42 Elm Ct, Springfield, VA 22150 2 DAYS TO GO The favor of a reply Yes, I’m in Can’t make it Maybe Just a preview — replies here stay on this phone. To a"
+   }
+  }
+ },
+ {
+  "vp": "390x844",
+  "console": [
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+   "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ],
+  "version": ".github.io/ngw-event-planner/hostv2/assets/index-acbf7da2.js",
+  "doors": [
+   "Your invite Classic · Today’s cream ›"
+  ],
+  "sheetTitle": "Your invite",
+  "preview": {
+   "frameH": 440,
+   "contentH": 640,
+   "clipped": true,
+   "overflow": "hidden",
+   "layout": "glance",
+   "text": "AN INVITATION IN 2 DAYS Rosa’s Harvest Dinner It wouldn’t be the same without you Thursday, November 26 6:00 PM Add to calendar Home · 42 Elm Ct Springfield, VA"
+  },
+  "button": {
+   "count": 1,
+   "box": {
+    "w": 114,
+    "h": 44
+   }
+  },
+  "afterTap": {
+   "newTab": true,
+   "samePageUrlChanged": false,
+   "url": "https://twillis45.github.io/ngw-event-planner/hostv2/?rsvp=lc-inv-code",
+   "page": {
+    "layout": "classic",
+    "text": "AN INVITATION NOV 2026 Rosa’s Harvest Dinner It wouldn’t be the same without you WHEN Thursday, November 26 · 6:00 PM Add to calendar WHERE Home · 42 Elm Ct, Springfield, VA 22150 2 DAYS TO GO THE FAVOR OF A REPLY Yes, I’m in Can’t make it Maybe Just a preview — replies here stay on this phone. To a"
+   }
+  }
+ }
+]
