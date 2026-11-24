@@ -205,7 +205,8 @@ test('HAPPY PATH: a store is picked, the sheet says what it reached, the row sho
   });
   console.log('HERO NOTE:', heroSaysStore);
   // 18, not 22: the family's dishes are not hers to price (11/21/2026).
-  expect(heroSaysStore).toMatch(/2 of 18 lines priced at your store/);
+  // Batch 4 (owner, 11/24/2026): The Cookout's combined lines split into one line per product: 18 -> 43 lines.
+  expect(heroSaysStore).toMatch(/2 of 43 lines priced at your store/);
 });
 
 test('HONEST FAILURE: no keys on the backend says so, and does not invent a price', async ({ page }) => {

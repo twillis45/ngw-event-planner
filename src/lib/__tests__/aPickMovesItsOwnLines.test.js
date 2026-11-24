@@ -27,25 +27,28 @@ describe('A2: Wedding catering follows catering_style, not the venue', () => {
 
 describe('A3/A4: a potluck pick marks the lines the guests bring, at $0 to the host', () => {
   test.each([
-    ['Sunday Dinner', {}, ['p_cornbread', 'p_dessert', 'p_greens', 'p_mac', 'p_peas-rice', 'p_smoked-meat', 'p_yams']],
-    ['Sunday Dinner', { 'who-cooks-what': 'Full potluck split across the family' }, ['p_chicken', 'p_cornbread', 'p_dessert', 'p_greens', 'p_mac', 'p_peas-rice', 'p_smoked-meat', 'p_yams']],
-    ['Watch Party', { potluck: 'Potluck snacks' }, ['p_chips', 'p_dessert']],
-    ['Watch Party', {}, ['p_drinks']],
+    // Batch 4 (owner, 11/24/2026): each dish split into one line per product,
+    // and a part goes with its dish, so a list of what friends bring names the
+    // parts too (the same rule that added p_drinks_cider above).
+    ['Sunday Dinner', {}, ['p_cornbread', 'p_cornbread_buttermilk', 'p_dessert', 'p_dessert_cobbler', 'p_dessert_poundcake', 'p_greens', 'p_mac', 'p_mac_cheese', 'p_peas-rice', 'p_smoked-meat', 'p_yams']],
+    ['Sunday Dinner', { 'who-cooks-what': 'Full potluck split across the family' }, ['p_chicken', 'p_cornbread', 'p_cornbread_buttermilk', 'p_dessert', 'p_dessert_cobbler', 'p_dessert_poundcake', 'p_greens', 'p_mac', 'p_mac_cheese', 'p_peas-rice', 'p_smoked-meat', 'p_yams']],
+    ['Watch Party', { potluck: 'Potluck snacks' }, ['p_chips', 'p_chips_dips', 'p_dessert', 'p_dessert_cookies', 'p_dessert_mix']],
+    ['Watch Party', {}, ['p_drinks', 'p_drinks_soda', 'p_drinks_water']],
     ['Birthday', { food_style: 'Potluck' }, ['p_chips', 'p_mains', 'p_salad', 'p_veggietray']],
-    ['Retirement Party', { food_style: 'Potluck' }, ['p_apps', 'p_buffet_protein', 'p_sides']],
-    ['Reunion', {}, ['p_buns', 'p_protein']],
+    ['Retirement Party', { food_style: 'Potluck' }, ['p_apps', 'p_apps_charcuterie', 'p_buffet_protein', 'p_buffet_protein_carved', 'p_sides', 'p_sides_greensalad']],
+    ['Reunion', {}, ['p_buns', 'p_protein', 'p_protein_chicken', 'p_protein_hotdogs']],
     // Host grills set explicitly: at 30 guests the recommended pick is the pitmaster.
-    ['Get-Together', { potluck: 'Potluck sides', food_style: 'Host grills everything' }, ['p_sides']],
-    ['Get-Together', { potluck: 'Host provides all', food_style: 'Potluck — guests bring sides' }, ['p_sides']],
+    ['Get-Together', { potluck: 'Potluck sides', food_style: 'Host grills everything' }, ['p_sides', 'p_sides_beans', 'p_sides_chips', 'p_sides_corn']],
+    ['Get-Together', { potluck: 'Host provides all', food_style: 'Potluck — guests bring sides' }, ['p_sides', 'p_sides_beans', 'p_sides_chips', 'p_sides_corn']],
     // p_drinks_cider is part of p_drinks (split 11/23/2026) and goes with it.
     ['Friendsgiving', { hosting_model: 'Host cooks most of it — friends bring drinks and dessert' }, ['p_dessert', 'p_drinks', 'p_drinks_cider']],
     ['Friendsgiving', { drinks: 'One or two friends own the drinks' }, expect.arrayContaining(['p_drinks'])],
-    ['Card Party', {}, ['p_board', 'p_chips', 'p_dessert']],
-    ['Card Party', { food_model: 'Potluck (everybody brings a dish)' }, ['p_board', 'p_chips', 'p_dessert', 'p_deviled', 'p_wings']],
-    ['The Cookout', {}, ['p_beans', 'p_cornbread', 'p_dessert', 'p_potato_salad', 'p_slaw']],
-    ['Kwanzaa Gathering', {}, ['p_blackeyedpeas', 'p_dessert', 'p_greens', 'p_sides']],
-    ['Game Night', { food_model: 'Potluck (guests bring a dish)' }, ['p_board', 'p_dips', 'p_salsa']],
-    ['Vow Renewal', { food_style: 'Potluck reception' }, ['p_apps', 'p_bread', 'p_protein', 'p_sides']],
+    ['Card Party', {}, ['p_board', 'p_chips', 'p_chips_mix', 'p_chips_pretzels', 'p_chips_salsa', 'p_dessert']],
+    ['Card Party', { food_model: 'Potluck (everybody brings a dish)' }, ['p_board', 'p_chips', 'p_chips_mix', 'p_chips_pretzels', 'p_chips_salsa', 'p_dessert', 'p_deviled', 'p_wings', 'p_wings_meatballs']],
+    ['The Cookout', {}, ['p_beans', 'p_cornbread', 'p_dessert', 'p_dessert_cobbler', 'p_dessert_poundcake', 'p_potato_salad', 'p_slaw']],
+    ['Kwanzaa Gathering', {}, ['p_blackeyedpeas', 'p_dessert', 'p_greens', 'p_sides', 'p_sides_mac', 'p_sides_yams']],
+    ['Game Night', { food_model: 'Potluck (guests bring a dish)' }, ['p_board', 'p_dips', 'p_dips_guac', 'p_dips_queso', 'p_dips_ranch', 'p_salsa']],
+    ['Vow Renewal', { food_style: 'Potluck reception' }, ['p_apps', 'p_apps_charcuterie', 'p_bread', 'p_protein', 'p_sides', 'p_sides_veg']],
   ])('%s %j', (type, picks, ids) => {
     const fp = plan(type, picks);
     expect(brought(fp)).toEqual(ids);

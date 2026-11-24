@@ -28,7 +28,7 @@
 // price is never filled in — it is reported.
 import { applyGeo } from './knowledge/geoCostIndex';
 import { geoItemForPurchase } from './knowledge/geoItemMap';
-import { storeLineTotal, matchLooksLikeTheLine, storeSearchTerm } from './knowledge/storeUnitMap';
+import { storeLineTotal, matchLooksLikeTheLine, storeSearchTerm, isAlcoholLine } from './knowledge/storeUnitMap';
 
 /**
  * ── A MATCH WE DO NOT BELIEVE IS NOT A STORE PRICE ──────────────────────────
@@ -320,6 +320,49 @@ export function layerForLine({ purchase, geoBasis, storeIndex } = {}) {
     total: null, packs: null, math: null, band: null,
     because: 'National average — nothing local moved this line.',
   };
+}
+
+/**
+ * ── THE STORE PRICED THE GROCERIES AND NOT ONE BOTTLE ───────────────────────
+ *
+ * A store that sells no alcohol (most Maryland chain grocers) answers a wine
+ * search with cooking wine; `matchLooksLikeTheLine` now refuses that, so the
+ * bar falls back to its averages like any unmatched line. This says WHY once,
+ * above the drinks, instead of leaving a host to wonder about the wine.
+ *
+ * Null unless all of these hold:
+ *   • a store was picked (`storeIndex` is a Map)
+ *   • the list has a line asking the store for alcohol (not a caterer's quote)
+ *   • the store priced at least one OTHER line — when it priced nothing, that
+ *     is an outage or a bad pick, and claiming "no alcohol" would be a guess
+ *   • no alcohol line got a store price
+ *
+ * `fallback` names the layer the bar actually landed on, so the note never
+ * says "regional" over a line that is national.
+ */
+export function storeSellsNoAlcohol(lines, storeIndex) {
+  if (!(storeIndex instanceof Map)) return null;
+  const rows = (Array.isArray(lines) ? lines : [])
+    .filter((l) => l && l.item && !l.skipped && !l.quotedBy)
+    .map((l) => ({ l, alc: isAlcoholLine(l), r: layerForLine({ purchase: l, geoBasis: l.geoBasis, storeIndex }) }));
+  const alc = rows.filter((x) => x.alc);
+  if (!alc.length) return null;
+  if (!rows.some((x) => !x.alc && x.r.layer === 'store')) return null;
+  if (alc.some((x) => x.r.layer === 'store')) return null;
+  const layers = new Set(alc.map((x) => x.r.layer));
+  return {
+    ids: alc.map((x) => x.l.id),
+    fallback: layers.size === 1 ? [...layers][0] : 'mixed',
+  };
+}
+
+/** The sentence for `storeSellsNoAlcohol` (wording approved by the owner, 11/24/2026). */
+export function noAlcoholNote(r) {
+  if (!r) return null;
+  const where = r.fallback === 'regional' ? 'the regional average'
+    : r.fallback === 'national' ? 'the national average'
+      : 'the regional and national averages';
+  return `This store doesn't sell beer or wine. The bar is priced at ${where}. Buy it at a liquor store.`;
 }
 
 /**

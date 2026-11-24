@@ -293,7 +293,7 @@ const sweet16 = {
     },
     {
       id: 'p_sides',
-      item: 'Chips, fruit & veggie tray',
+      item: 'Chips',
       category: 'food',
       qtyPerGuest: 0.25,
       unit: 'lb',
@@ -304,6 +304,8 @@ const sweet16 = {
       note: 'Round out the mains; a fruit/veggie tray quietly covers lighter eaters and parents.',
       alternatives: ['Bag chips + store-bought dip — cheapest side option', 'Veggie tray from deli — easy and budget-friendly'],
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'researched', confidence: 'low', verificationStatus: 'partial', sources: ['chips-retail-2026', 'afbf-thanksgiving-2025', 'watermelon-market-2026'], lastVerified: '2026-11-23', claim: 'Per pound 2026: party-size chips $3.64-5.87; a 1lb veggie tray $1.36 (AFBF); watermelon $0.53. This $1-3 a pound band sits inside them for a produce-heavy mix; a chip-heavy table runs higher.', sufficientWhen: 'The host\'s own mix of chips and trays, priced.' } },
+    { id: 'p_sides_fruit', partOf: 'p_sides', pricedWith: 'p_sides', item: 'Fruit tray', category: 'food', qtyPerGuest: 0.25, unit: 'lb', where: ['Grocery', 'Warehouse club'], essential: true, buyAt: 'T-1d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the chips line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_sides_veggie', partOf: 'p_sides', pricedWith: 'p_sides', item: 'Veggie tray', category: 'food', qtyPerGuest: 0.25, unit: 'lb', where: ['Grocery', 'Warehouse club'], essential: true, buyAt: 'T-1d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the chips line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
     {
       id: 'p_cake',
       item: 'Sweet 16 cake (+ a few backup cupcakes)',
@@ -331,7 +333,7 @@ const sweet16 = {
       provenance: { tier: 'norm', confidence: 'high', verificationStatus: 'synthesized', note: 'US beverage norm: ~1 drink/guest/hr, ~2 in first hour.', claim: 'Beverage need runs ~1 drink/guest/hour, front-loaded to ~2 in the first hour', sufficientWhen: 'Standard US catering or bartending guide confirms the 1 drink/guest/hour rule with a first-hour front-load of 2' }, costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['soda-12pack-2026', 'bottledwater-case-2026'], lastVerified: '2026-08-16', claim: 'A 12-pack of soda runs $3.00-6.50 (about $0.25-0.60 a can) and a 24-pack of 16.9oz bottled water runs $4-7 on sale or $6-9 at everyday pricing, which is roughly $0.17-0.38 a bottle.', sufficientWhen: 'Current shelf prices for one 12-pack of soda and one 24-pack of water at a national grocer confirm the per-serving range.' } },
     {
       id: 'p_mocktail',
-      item: 'Mocktail mixers, juices, syrups, garnishes (3-4 signature drinks)',
+      item: 'Mocktail mixers (3-4 signature drinks)',
       category: 'beverage',
       qtyPerGuest: 1.5,
       unit: 'servings',
@@ -344,6 +346,9 @@ const sweet16 = {
       // The corpus's zero-proof drink citation (Dinner Party p_nonalc); this
       // $0.75-2.00 band sits inside its $0.75-3.00.
       costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['zeroproof-retail-2026', 'nabeer-retail-2026'], lastVerified: '2026-08-15', claim: 'A zero-proof drink runs $0.75-3.00 poured at home: a simple juice-and-soda mocktail sits at the floor, NA beer is $2.17-2.50 a can (Athletic $13 a six-pack, Budweiser AF $29.99 a twelve), and a drink built on an NA spirit costs about $1.60-2.20 in spirit alone since a $25-35 bottle pours roughly sixteen.', sufficientWhen: 'Re-checked against NA spirit, NA beer and canned-mocktail retail. BAR PRICING IS EXCLUDED AND MUST STAY EXCLUDED - zero-proof drinks run $13-17 at bars, which is hospitality pricing for a served drink and would inflate this band roughly tenfold. Premium canned mocktails at about $8 a serving also sit above it.' } },
+    { id: 'p_mocktail_juice', partOf: 'p_mocktail', pricedWith: 'p_mocktail', item: 'Juices', category: 'beverage', qtyPerGuest: 1.5, unit: 'servings', where: ['Grocery', 'Warehouse club'], essential: true, buyAt: 'T-1d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the mocktail mixers line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_mocktail_syrup', partOf: 'p_mocktail', pricedWith: 'p_mocktail', item: 'Syrups', category: 'beverage', qtyPerGuest: 1.5, unit: 'servings', where: ['Grocery', 'Warehouse club'], essential: true, buyAt: 'T-1d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the mocktail mixers line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_mocktail_garnish', partOf: 'p_mocktail', pricedWith: 'p_mocktail', item: 'Garnishes (maraschino cherries, citrus)', category: 'beverage', qtyPerGuest: 1.5, unit: 'servings', where: ['Grocery', 'Warehouse club'], essential: true, buyAt: 'T-1d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the mocktail mixers line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
     {
       id: 'p_water',
       item: 'Bottled / dispenser water',
@@ -370,7 +375,7 @@ const sweet16 = {
       provenance: { tier: 'norm', confidence: 'high', verificationStatus: 'synthesized', note: 'US norm: ~1 lb ice/guest, 1.5 in heat / 4+ hr.', claim: 'Ice need is ~1 lb/guest for a party, rising to 1.5 lb in heat or for a 4+ hour event', sufficientWhen: 'Standard US event-planning or catering guide confirms ~1 lb/guest baseline with a 1.5 lb adjustment for heat or long events' }, costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['ice-retail-2026', 'ice-warehouse-2026'], lastVerified: '2026-11-23', claim: 'Bagged ice per pound 2026: warehouse 10-12 cents; grocery and gas-station bags 23-31 cents; small and hardware-store bags up to 45 cents. Corrected from $0.25-0.50 to $0.25-0.45 a pound, the cited ceiling.', sufficientWhen: 'A shelf price at the host\'s own store.' } },
     {
       id: 'p_decor',
-      item: 'Themed decor: balloon arch, backdrop, table covers, "16" props',
+      item: 'Themed decor: a balloon arch',
       category: 'decor',
       qtyFlat: 1,
       unit: 'kit',
@@ -380,6 +385,9 @@ const sweet16 = {
       buyAt: 'T-3d',
       note: 'Carries the theme and doubles as the photo backdrop. Balloon arch + backdrop is the highest-impact spend per dollar.',
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
+    { id: 'p_decor_backdrop', partOf: 'p_decor', pricedWith: 'p_decor', item: 'A backdrop', category: 'decor', qtyFlat: 1, unit: 'kit', where: ['Party store', 'Online (Amazon/Etsy)'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the themed decor line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_decor_covers', partOf: 'p_decor', pricedWith: 'p_decor', item: 'Table covers', category: 'decor', qtyFlat: 1, unit: 'kit', where: ['Party store', 'Online (Amazon/Etsy)'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the themed decor line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_decor_props', partOf: 'p_decor', pricedWith: 'p_decor', item: '"16" props', category: 'decor', qtyFlat: 1, unit: 'kit', where: ['Party store', 'Online (Amazon/Etsy)'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the themed decor line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
     {
       id: 'p_lighting',
       item: 'Dance-floor lighting (LED party lights / disco / uplights)',
@@ -394,7 +402,7 @@ const sweet16 = {
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_tableware',
-      item: 'Plates, cups, napkins, cutlery, serving utensils',
+      item: 'Paper plates',
       category: 'logistics',
       qtyPerGuest: 2.5,
       unit: 'plates/cups',
@@ -406,6 +414,10 @@ const sweet16 = {
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' },
       costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['disposables-bulk-2026', 'disposables-partyqty-2026'], lastVerified: '2026-08-16', claim: 'Disposable tableware runs about 6 cents a plate in bulk packs (roughly $18 per 300) and $0.25-0.40 a plate at a grocery store, with bulk restaurant supply at $0.08-0.15; cups, cutlery and napkins bought in bulk alongside them save $100-200 across a party.', sufficientWhen: 'Current shelf prices for one bulk plate pack and the same item at a grocery store confirm the per-piece spread.' }
     },
+    { id: 'p_tableware_cups', partOf: 'p_tableware', pricedWith: 'p_tableware', item: 'Cups', category: 'logistics', qtyPerGuest: 2.5, unit: 'plates/cups', where: ['Party store', 'Warehouse club'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the paper plates line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_tableware_napkins', partOf: 'p_tableware', pricedWith: 'p_tableware', item: 'Napkins', category: 'logistics', qtyPerGuest: 2.5, unit: 'plates/cups', where: ['Party store', 'Warehouse club'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the paper plates line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_tableware_cutlery', partOf: 'p_tableware', pricedWith: 'p_tableware', item: 'Plastic cutlery', category: 'logistics', qtyPerGuest: 2.5, unit: 'plates/cups', where: ['Party store', 'Warehouse club'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the paper plates line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_tableware_utensils', partOf: 'p_tableware', pricedWith: 'p_tableware', item: 'Serving utensils', category: 'logistics', qtyPerGuest: 2.5, unit: 'plates/cups', where: ['Party store', 'Warehouse club'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the paper plates line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
     {
       id: 'p_favors',
       item: 'Party favors / goody bags',
@@ -432,7 +444,7 @@ const sweet16 = {
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_cleanup',
-      item: 'Trash bags, bins, paper towels, cleaning supplies',
+      item: 'Trash bags',
       category: 'cleanup',
       qtyFlat: 1,
       unit: 'kit',
@@ -442,6 +454,9 @@ const sweet16 = {
       buyAt: 'T-3d',
       note: 'A spilled-soda, confetti, pizza-box party makes a mess fast. Stage bins before guests arrive.',
      provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
+    { id: 'p_cleanup_bins', partOf: 'p_cleanup', pricedWith: 'p_cleanup', item: 'Trash bins', category: 'cleanup', qtyFlat: 1, unit: 'kit', where: ['Grocery', 'Warehouse club'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the trash bags line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_cleanup_towels', partOf: 'p_cleanup', pricedWith: 'p_cleanup', item: 'Paper towels', category: 'cleanup', qtyFlat: 1, unit: 'kit', where: ['Grocery', 'Warehouse club'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the trash bags line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
+    { id: 'p_cleanup_supplies', partOf: 'p_cleanup', pricedWith: 'p_cleanup', item: 'Cleaning spray', category: 'cleanup', qtyFlat: 1, unit: 'kit', where: ['Grocery', 'Warehouse club'], essential: true, buyAt: 'T-3d', unitCostRange: [0, 0], provenance: { tier: 'heuristic', confidence: 'low', verificationStatus: 'synthesized', sources: [], note: 'Split from a combined line (owner ruling 11/23/2026, batch 4). No price of its own: the trash bags line\'s band covered the whole set and still does, so the total is unchanged. The quantity is that line\'s own.' } },
   ],
 
   rentalsGap: [

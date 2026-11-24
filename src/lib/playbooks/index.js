@@ -505,6 +505,13 @@ function shortItem(item) {
   return String(item || '').split(/[(—–]| - /)[0].trim();
 }
 
+// "A grill lighter" → "grill lighter"; "Paper plates" → "paper plates"; "LED
+// tea lights" keeps its capitals. The noun a price note names a line by.
+function priceNoun(item) {
+  const s = shortItem(item).replace(/^(a|an|the)\s+/i, '').replace(/[:,]\s*$/, '').trim();
+  return /^[A-Z]{2}/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1);
+}
+
 // "lb" → "lbs"; "bottle (½ bottle/guest rule)" → "bottles"; "loaf per 4 guests" →
 // "loaves" (the per-N belongs to qtyPer, not the unit). Pluralized by qty.
 // A UNIT OF MEASURE LEADING A PHRASE IS THE WORD THAT PLURALIZES (11/20/2026):
@@ -512,12 +519,17 @@ function shortItem(item) {
 // the last word took the s. When the phrase opens with a measure ("cups",
 // "lb"), that word is the noun being counted and the rest describes it; any
 // other phrase ("snack serving") still pluralizes its last word.
-function shortUnit(unit, qty) {
+const INVARIANT_UNIT_RE = /^(oz|ct|qt|pt|gal|pk|doz)$/i;
+export function shortUnit(unit, qty) {
   // strip a parenthetical rule-of-thumb AND a compound "per N guests" tail.
   let u = String(unit || '').split('(')[0].split(/\s+per\s+/i)[0].trim();
   if (!u) return '';
   const plural = (w) => {
     if (/s$/i.test(w)) return w;
+    // AN ABBREVIATION IS NOT A WORD (#240 trap, fixed in batch 4, 11/23/2026):
+    // "oz" ends in z, so the x/z/ch/sh rule below made it "ozes". These read
+    // the same for one or many. "lb" is not here: its plural is "lbs".
+    if (INVARIANT_UNIT_RE.test(w.split(/\s+/).pop())) return w;  // "fl oz" too
     if (/(?:x|z|ch|sh)$/i.test(w)) return w + 'es';            // batch → batches, box → boxes
     if (/f$/i.test(w)) return w.replace(/f$/i, 'ves');          // loaf → loaves
     return w + 's';
@@ -6234,9 +6246,19 @@ export function playbookFoodPlan(event, opts = {}) {
   // hostCooksIt reads): no grocery main on top of the catering line.
   if (vegN > 0 && !_foodOffPlate) {
     const { name: vegDish, vegan: veganMain, check: veganCheck } = plannedVegMain(playbook, event);
+    // A PLATE OF TWO DISHES IS TWO LINES (owner, 11/24/2026): "Stuffed peppers +
+    // grilled veg platter" searched the store for one thing. The plate splits at
+    // its "+" / "plus" into the dish (diet-veg, which keeps the cited per-serving
+    // price) and its side (diet-veg_side, priced with the dish, the batch 4 rule).
+    // A single named dish ("Mushroom & lentil wellington") stays one line. The
+    // vegan main (plannedVegMain) splits the same way, and both halves carry its
+    // vegan mark.
+    const [vegMainDish, vegSideDish] = vegDish.split(/\s+(?:\+|plus)\s+/i).map((s) => s.trim()).filter(Boolean)
+      .reduce((acc, s, i) => (i === 0 ? [s] : [acc[0], acc[1] ? `${acc[1]} + ${s}` : s]), []);
+    const forN = `(for ${vegN} ${vegN === 1 ? 'guest' : 'guests'})`;
     list.push({
-      id: 'diet-veg', group: 'Food', item: `${vegDish} (for ${vegN} ${vegN === 1 ? 'guest' : 'guests'})`,
-      short: `${vegDish} · ${vegN}`, owner: '', qty: vegN, unit: 'servings', essential: true, where: ['Grocery'],
+      id: 'diet-veg', group: 'Food', item: `${vegMainDish} ${forN}`,
+      short: `${vegMainDish} · ${vegN}`, owner: '', qty: vegN, unit: 'servings', essential: true, where: ['Grocery'],
       qtyOverridden: false, baseQty: vegN, perGuest: null,
       low: Math.round(vegN * VEG_MAIN_PER_SERVING[0] * pf), high: Math.round(vegN * VEG_MAIN_PER_SERVING[1] * pf), units: vegN, unitBase: 'servings',
       perUnitLow: roundCurrency(VEG_MAIN_PER_SERVING[0] * pf), perUnitHigh: roundCurrency(VEG_MAIN_PER_SERVING[1] * pf),
@@ -6250,6 +6272,19 @@ export function playbookFoodPlan(event, opts = {}) {
       // The regional factor moved this band, so the line says so (audit G #6).
       geoBasis: basketBasis,
     });
+    if (vegSideDish) {
+      const side = vegSideDish.charAt(0).toUpperCase() + vegSideDish.slice(1);
+      list.push({
+        id: 'diet-veg_side', group: 'Food', item: `${side} ${forN}`,
+        short: `${side} · ${vegN}`, owner: '', qty: vegN, unit: 'servings', essential: true, where: ['Grocery'],
+        qtyOverridden: false, baseQty: vegN, perGuest: null,
+        low: 0, high: 0, units: vegN, unitBase: 'servings', perUnitLow: 0, perUnitHigh: 0,
+        skipped: !!skip['diet-veg'], locked: null, forgotten: false, dietDerived: true,
+        partOf: 'diet-veg', pricedWith: 'diet-veg',
+        note: 'The side for the vegetarian main; its price is in the main\'s line.',
+        ...(veganMain ? { vegan: true } : {}),
+      });
+    }
   }
   const specialDiets = Object.entries(dietCounts).filter(([, v]) => Number(v) > 0).map(([diet, count]) => ({ diet, count: Number(count) }));
 
@@ -6523,8 +6558,16 @@ export function playbookFoodPlan(event, opts = {}) {
   // (bringingRows leaves the parts out), not three times.
   {
     const _lineById = new Map(list.filter(Boolean).map((i) => [i.id, i]));
+    // A part whose dish is not on the list at all (a pick drops the line, as
+    // BYOB drops the drinks) leaves with it: soda is part of "the drinks".
+    for (let i = list.length - 1; i >= 0; i -= 1) {
+      const p = list[i] && _purchaseById.get(list[i].id);
+      if (p && p.partOf && !_lineById.has(p.partOf)) list.splice(i, 1);
+    }
     for (const it of list) {
-      const p = it && _purchaseById.get(it.id);
+      // An engine-built part (the vegetarian main's side) declares partOf on
+      // the line itself; an authored one, on its purchase.
+      const p = it && (_purchaseById.get(it.id) || (it.partOf ? it : null));
       const dish = p && p.partOf ? _lineById.get(p.partOf) : null;
       if (!dish) continue;
       it.partOf = p.partOf;
@@ -6539,6 +6582,27 @@ export function playbookFoodPlan(event, opts = {}) {
       } else if (dish.hostTakes) {
         it.hostTakes = true;
       }
+      // A PART PRICED WITH ITS DISH (owner ruling 11/23/2026, batch 4). The
+      // other 44 playbooks' combined lines were split without a fetched price
+      // for each part, and a price is never invented. So a part authored
+      // `pricedWith` its dish has no price of its own: the dish keeps the band
+      // (and citation) it always had, which covered the whole set, and the
+      // playbook's total is unchanged. Each says where the price is.
+      if (p.pricedWith && p.pricedWith === p.partOf) {
+        it.pricedWith = p.pricedWith;
+        it.low = 0;
+        it.high = 0;
+        // Its quantity is the dish's; it prices nothing per guest of its own.
+        it.perGuest = null;
+        it.priceNote = `Priced with the ${priceNoun(dish.item)}`;
+        (dish.priceCovers = dish.priceCovers || []).push(it.id);
+      }
+    }
+    for (const dish of list) {
+      if (!dish || !Array.isArray(dish.priceCovers) || !dish.priceCovers.length) continue;
+      const nouns = dish.priceCovers.map((id) => priceNoun((_lineById.get(id) || {}).item)).filter(Boolean);
+      const said = nouns.length > 1 ? `${nouns.slice(0, -1).join(', ')} and ${nouns[nouns.length - 1]}` : nouns[0];
+      dish.priceNote = `Price covers the ${said} too`;
     }
   }
 

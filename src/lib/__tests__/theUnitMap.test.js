@@ -501,7 +501,10 @@ describe('a term buys a shelf reference, never a total', () => {
     // 11/23/2026: the 21 Friendsgiving and sides entries moved to the id-keyed
     // TERM_BY_ID (everyShoppingLineHasAStoreTerm), and 76 exact entries joined
     // for lines whose id is shared by different products across playbooks.
-    expect(SEARCH_TERM_LINES).toBe(UNIT_MAPPED_LINES + 87);   // was + 32: +12 Friendsgiving (11/18/2026, friendsgivingFindsTheStore); +9 sides one line per dish (11/18/2026: −p_sides, +10 side entries; traditionalSides.test)
+    // Batch 4 (owner, 11/24/2026): 87 -> 84. Split mains now read the same in
+    // several playbooks ("Beer", "Sweet tea", "Coleslaw"), so 3 exact entries merged
+    // into the one their shared text keys; the multiply allowlist is untouched.
+    expect(SEARCH_TERM_LINES).toBe(UNIT_MAPPED_LINES + 84);   // was + 32: +12 Friendsgiving (11/18/2026, friendsgivingFindsTheStore); +9 sides one line per dish (11/18/2026: −p_sides, +10 side entries; traditionalSides.test)
     // …and an allowlisted line still gets its own term from the same accessor.
     expect(storeSearchTerm({ id: 'p_ice', item: 'Ice' })).toBe('ice');
   });

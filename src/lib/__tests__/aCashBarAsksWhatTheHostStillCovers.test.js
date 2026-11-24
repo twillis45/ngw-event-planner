@@ -170,7 +170,8 @@ describe('Fundraiser / Gala: the tickets count as the pick says', () => {
     expect(fu({ bar: TICKETS }).default).toBe(TICKET_SET);
     expect(fu({ bar: 'Cash bar' }).default).toBe('The non-alcoholic drinks');
     const ids = (picks) => playbookFoodPlan(ev('Fundraiser / Gala', picks)).list.filter((l) => l.cat === 'beverage' && !l.skipped).map((l) => l.id).sort();
-    expect(ids({ bar: TICKETS })).toEqual(['p_nonalc', 'p_wine']);
+    // Batch 4 (owner, 11/24/2026): "Wine and beer" split; the beer is its own line, priced with the wine.
+    expect(ids({ bar: TICKETS })).toEqual(['p_nonalc', 'p_wine', 'p_wine_beer']);
     expect(line({ bar: TICKETS }, 'p_wine').perGuest).toBe(2);
     expect(ids({ bar: 'Cash bar' })).toEqual(['p_nonalc']);
   });

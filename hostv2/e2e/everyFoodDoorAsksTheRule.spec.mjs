@@ -111,7 +111,7 @@ for (const c of CASES) {
 // so each part the host buys is bought here too. The parts of a brought dish
 // (the mash's butter) go with the dish and need no entry.
 const BOUGHT = Object.fromEntries(['p_turkey', 'p_stuffing', 'p_gravy', 'p_gravy_thickener', 'p_rolls', 'p_rolls_butter',
-  'p_appetizers', 'p_appetizers_crackers', 'p_appetizers_nuts', 'p_appetizers_crudite', 'p_wine_cider', 'p_cider',
+  'p_appetizers', 'p_appetizers_crackers', 'p_appetizers_nuts', 'p_appetizers_crudite', 'p_wine_cider', 'p_wine_cider_white', 'p_cider',
   'p_coffee', 'p_coffee_tea', 'p_coffee_whipped', 'p_coffee_icecream', 'p_thermometer', 'p_roasting_kit', 'p_roasting_foil',
   'p_roasting_twine', 'p_leftover_containers', 'p_leftover_bags', 'p_leftover_labels', 'p_cleanup', 'p_cleanup_soap',
   'p_cleanup_towels', 'p_cleanup_detergent'].map((k) => [k, true]));

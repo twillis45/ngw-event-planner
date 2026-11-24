@@ -81,8 +81,17 @@ describe('with a vegan guest, the planned main is the declared vegan one', () =>
           const line = vegLine(ev);
           if (!line) continue;
           reached.add(pb.type);
-          const ok = line.vegan === true && line.item.startsWith(pb.vegMainVegan.trim()) && line.qty === want && wordGuard(line.item).length === 0;
-          if (!ok) wrong.push(`${pb.type}: ${line.item} (qty ${line.qty}, vegan ${line.vegan})`);
+          // A plate of two dishes is two lines (batch 4, owner 11/24/2026): the
+          // dish keeps the price, the side is priced with it. Both halves must be
+          // the declared vegan main, vegan-marked and sized to both diets.
+          const [dish, ...rest] = pb.vegMainVegan.trim().split(/\s+(?:\+|plus)\s+/i);
+          const side = (playbookFoodPlan(ev).list || []).find((l) => l.id === 'diet-veg_side');
+          const ok = line.vegan === true && line.item.startsWith(dish) && line.qty === want && wordGuard(line.item).length === 0
+            && (rest.length
+              ? !!side && side.vegan === true && side.partOf === 'diet-veg' && side.qty === want
+                && side.item.toLowerCase().startsWith(rest.join(' + ').toLowerCase()) && wordGuard(side.item).length === 0
+              : !side);
+          if (!ok) wrong.push(`${pb.type}: ${line.item} / ${side ? side.item : '-'} (qty ${line.qty}, vegan ${line.vegan})`);
         }
       }
     }
