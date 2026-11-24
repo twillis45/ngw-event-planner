@@ -1449,7 +1449,6 @@ export default function HostShellV2() {
   // rail always up and no bottom bar; 768–1023 portrait keeps its bar.
   const navMode = navLayout({ bp, portrait, elegant: elegantMode });
   const phonePill = navMode === 'pill';
-  const tallRail = navMode === 'tall-rail';
   // The tall header and its company (the Day/After sample line, the fold slot).
   const ttHead = tallTablet || phonePill;
   // The docked bar: the 768–1023 portrait bar, or the phone's pill.
@@ -11866,7 +11865,10 @@ export default function HostShellV2() {
               goPhase the bar and the menu call; the current phase is
               underlined, as on the pill and the bar (owner, 11/24/2026). Plan, tapped on Plan with the question scrolled away,
               goes back to the question (the NEXT bar's job, as on the bar). */}
-          {tallRail && (
+          {/* Every rail, not only the 13" upright one (owner, 11/24/2026:
+              "Tablet and full desktop don't have the create plan the day
+              section of menu"): the four stages lead the rail wherever it shows. */}
+          {(
             <div className="srail-g" key="__stages">
               <div className="shelf-label srail-t">Your event</div>
               {[['create', 'Create'], ['plan', 'Plan'], ['day', 'The Day'], ['after', 'After']].map(([k, label]) => (
@@ -11891,15 +11893,16 @@ export default function HostShellV2() {
                        that span is display:none and leaves the a11y tree with it,
                        so a row named only by its text would go nameless exactly
                        when its icon is all the user has. */
-                    aria-label={tallRail && r.k === 'pass' ? r.label + ' · ' + passNote() : r.label} title={r.label}
+                    aria-label={r.k === 'pass' ? r.label + ' · ' + passNote() : r.label} title={r.label}
                     onClick={() => goToSection(r.k)}>
                     {sectionIcon(r.k)}
                     <span className="srail-l">{r.label}
                       {/* The ☰ menu's pass row said where this event stands
-                          (passNote). At the 13" upright the rail is the only
-                          menu, so its pass row says it (owner, 11/23/2026:
-                          every menu item stays reachable). */}
-                      {tallRail && r.k === 'pass' && <span className="srail-note" data-pass-note>{' · ' + passNote()}</span>}
+                          (passNote). The rail is the menu on every wide layout
+                          (owner, 11/23 and 11/24/2026: every menu item stays
+                          reachable, and every rail carries the stages), so
+                          its pass row says it on every rail. */}
+                      {r.k === 'pass' && <span className="srail-note" data-pass-note>{' · ' + passNote()}</span>}
                     </span>
                   </button>
                 );
@@ -13067,10 +13070,12 @@ export default function HostShellV2() {
                   </div>
                 )}
                 </>
-              ) : elegantMode && bp === 'desktop' && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
+              ) : elegantMode && bp !== 'mobile' ? (
                 /* THE DESKTOP'S TITLE (owner, 11/24/2026): the phone's title block,
-                   so rename in place has a title to act on at 1280+. The ☰ stays the
-                   menu (the stages and the menu's rows live there at this width). */
+                   so rename in place has a title to act on. Every board layout wears
+                   it, the iPad in landscape included (owner, 11/24/2026: at 1000-1279
+                   it still showed the one-line eyebrow). The tall iPad and the phone
+                   reach titleHead in the branch above. The ☰ stays the menu. */
                 titleHead(
                   <button className="ev-eyebrow tt-menu" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                     <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>

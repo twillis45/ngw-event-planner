@@ -306,7 +306,9 @@ test('turning an 11" iPad: rail and no bar in landscape, bar and no rail in port
     });
     expect(m.rail, `${where}: rail`).toBe(!tall);
     expect(m.bar, `${where}: bar`).toBe(tall);
-    expect(m.head, `${where}: header`).toBe(tall);
+    // The title block is on every board layout now (owner, 11/24/2026: the iPad
+    // in landscape showed only the one-line eyebrow); the bar is still tall-only.
+    expect(m.head, `${where}: the title block`).toBe(true);
     expect(m.side, `${where}: sideways scroll`).toBe(false);
     expect(m.past, `${where}: past the edge`).toBe(0);
   }

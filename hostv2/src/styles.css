@@ -621,7 +621,7 @@ button{font-family:inherit}
 /* MODERN MOTION (2026-07-17): the editor unfolds — height:auto is animatable
    now (interpolate-size); browsers without it simply show instantly. */
 :root{interpolate-size: allow-keywords}
-.editor-slot{height:auto; overflow:clip; transition:height var(--ms-enter) var(--ease-out), opacity var(--ms-enter) var(--ease-out)}
+.editor-slot{height:auto; overflow-x:visible; overflow-y:clip; transition:height var(--ms-enter) var(--ease-out), opacity var(--ms-enter) var(--ease-out)}
 /* ── A RING INSIDE THIS SLOT IS DRAWN INSIDE THE CONTROL ────────────────────
    Host, 2026-10-07: "border is clipped on top and sides". It was, and the
    slot's `overflow:clip` above is the clipper — which cannot simply be
@@ -3895,8 +3895,15 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
    to both rules — so this audit's own fix had never shipped at all. Do not write
    a comment terminator inside this comment; that is exactly how it broke. */
 .app.has-nextbar{
-  /* The reservation: guarantees the last row can be scrolled clear of the bar. */
-  padding-bottom:calc(84px + env(safe-area-inset-bottom,0px));
+  /* The reservation lives in the ::after spacer below, NOT in padding
+     (11/24/2026). .app.app-elegant is a size container and the first screen
+     is sized `100cqh`, which reads .app's CONTENT box — so an 84px
+     padding-bottom shrank the hero's first screen by 84px the moment the hero
+     scrolled away, and every row below it jumped 84px up under the host's
+     finger (measured: hero 1531 -> 1447, "Who's confirmed" Guests button
+     y 461 -> 377 between pointerdown and click). Same rule as above: this
+     must not alter .app's box. A spacer child scrolls the same distance and
+     leaves the container's size alone. */
   /* The fade: content dissolves before it reaches the bar rather than sliding
      under it. Opaque down to the reservation line, gone by the bar's mid-point.
      Masking .app's own box costs no layout and nothing resizes — and because
@@ -3905,6 +3912,10 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
   -webkit-mask-image:linear-gradient(to bottom, var(--mask-solid) calc(100% - 84px), transparent calc(100% - 34px));
           mask-image:linear-gradient(to bottom, var(--mask-solid) calc(100% - 84px), transparent calc(100% - 34px));
 }
+/* The next bar's reservation, added to the scroll-clearance spacer so the
+   total scroll extent is exactly what padding + spacer gave before. */
+.app.has-nextbar::after{height:calc(104px + 84px + 2 * env(safe-area-inset-bottom,0px))}
+.app.has-nextbar.has-wxpill::after{height:calc(160px + 84px + 2 * env(safe-area-inset-bottom,0px))}
 .next-bar:hover{filter:brightness(1.05)}
 .next-bar:active{transform:scale(.99)}
 .next-bar .nb-label{font-size:var(--t-overline); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--muted)}
@@ -8478,6 +8489,18 @@ button.vc-pill::after{
 .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) .ask{
   font-size:clamp(40px,7.5cqw,56px);
 }
+/* A SHORT LANDSCAPE STILL FITS ITS FIRST SCREEN. The title block (owner,
+   11/24/2026: every wide board names its event) is taller than the eyebrow it
+   replaced, and at 1024x768 it pushed the option card 66px under the fold
+   (theStatColumnStandsBesideTheQuestion). On a short screen the question sizes
+   by height and the header drops its top padding; tall boards are unchanged. */
+@media (max-height:860px){
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) .ask{
+    font-size:clamp(36px,6vh,56px);
+  }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head{ padding-top:0; }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head .tt-title{ margin-top:0 !important; }
+}
 
 /* ══ SHEETS FROM 1024: THE FULL COLUMN, NEVER TALLER THAN THE SCREEN ═════════
    Owner ruling 27, 11/21/2026, made from rendered sheet-size comparisons: "B".
@@ -9026,7 +9049,15 @@ input[data-cue], textarea[data-cue]{ outline:revert-layer; border-color:color-mi
 @media (prefers-reduced-motion: reduce){ [data-cue], input[data-cue], textarea[data-cue]{ animation:none; } }
 /* The hero card and its editor slot clip their contents (overflow hidden and
    clip); while they hold the cue they clip 16px out, so the ring is not cut. */
-.hero-card:has([data-cue]), .editor-slot:has([data-cue]){ overflow:clip; overflow-clip-margin:20px; }
+/* NOTHING TAPPABLE IS CLIPPED SIDEWAYS (owner, 11/24/2026, iPad landscape:
+   "Cta button is being clipped on left"). Hero buttons sit flush with the card's
+   edges, so a horizontal clip cut their keycap edge, focus ring and cue ring.
+   The board's hero card has no fill, border or radius to protect, so it does not
+   clip; the editor slot clips only vertically (its height animates). The old
+   overflow-clip-margin patch is not supported by iOS/iPadOS Safari, which is
+   why it never reached the owner's iPad. Pinned: nothingTappableIsClipped. */
+.hero.elegant .hero-card{ overflow:visible; }
+.hero-card:has([data-cue]), .editor-slot:has([data-cue]){ overflow-x:visible; overflow-y:clip; overflow-clip-margin:20px; }
 
 /* ── "Your invite" panel and the host's photo (owner, 11/24/2026: r3-3, r3-4) ── */
 .ivd-sub{ margin:0 0 var(--sp-4); }

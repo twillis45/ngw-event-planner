@@ -21,7 +21,9 @@ import { test, expect } from '@playwright/test';
 import { settled, sheetSettled, dateIn, openSectionByName } from './fixtures.mjs';
 
 const PHONE = { width: 390, height: 844 };
-const DESKS = [{ width: 1440, height: 900 }, { width: 1280, height: 800 }];
+// iPad landscape too (owner, 11/24/2026: the 1000-1279 widths still wore the
+// one-line eyebrow): every board layout wears the title block.
+const DESKS = [{ width: 1440, height: 900 }, { width: 1280, height: 800 }, { width: 1194, height: 834 }, { width: 1000, height: 690 }];
 
 const seeded = async (browser, vp, ev, { touch = false } = {}) => {
   const ctx = await browser.newContext({ viewport: vp, hasTouch: touch, isMobile: touch });

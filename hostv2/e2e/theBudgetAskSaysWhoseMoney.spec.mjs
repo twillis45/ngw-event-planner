@@ -68,7 +68,9 @@ const toBudget = async (page) => {
 
 test('THE PER-HEAD FIGURE: the ask shows what the total is per person', async ({ page }) => {
   await toBudget(page);
-  const txt = await page.evaluate(() => document.body.innerText || '');
+  // The ask's own words, not the page's: the first "$" on the page was the
+  // rail's pass row ("$39 · one event") once every rail carried it.
+  const txt = await page.evaluate(() => (document.querySelector('.hero') || document.body).innerText || '');
 
   // Read the total off the screen rather than pinning $13,200 — the bands
   // move, the arithmetic does not, and a test that pins the band fails for a
