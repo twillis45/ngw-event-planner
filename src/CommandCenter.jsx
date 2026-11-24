@@ -3483,10 +3483,16 @@ export function _selectEventNextActionInner(event, prices = null) {
       // returns null for a task already past its window: never hidden).
       level: 'attention',
       category: 'decision',
-      title: `Resolve "${(urgent.title || 'an open decision').slice(0, 80)}".`,
+      // HOST WORDS (UX_11 rule 4, cohesion audit P1 #3, 11/24/2026). The title
+      // was cut at 80 characters INSIDE its own quotes, so a long step reached
+      // the board as `Resolve "… ask coworkers + family for ".`; the card wraps,
+      // so the step is named whole. The consequence was engine copy ("Open
+      // decisions block timeline, vendor, and approval progress downstream.").
+      // It now says what is true of a late step, in her words.
+      title: `Resolve "${urgent.title || 'an open decision'}".`,
       consequence: od > 0
-        ? `Overdue by ${daysWord(od)}. Open decisions block timeline, vendor, and approval progress downstream.`
-        : `Pending decision. Holding it open blocks downstream timeline + vendor work.`,
+        ? `Overdue by ${daysWord(od)}. The steps after it wait on it.`
+        : `Still open. The steps after it wait on it.`,
       // AN OVERDUE STEP GOES WHERE IT CAN BE DONE (owner, live, 11/18/2026: "Can't
       // get past this screen"). Every overdue checklist step lands in this list
       // ("Open Decisions = overdue uncompleted tasks"), and this tier sent each one

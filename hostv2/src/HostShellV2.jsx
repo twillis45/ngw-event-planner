@@ -13443,7 +13443,19 @@ export default function HostShellV2() {
                   : dayHero
                     /* On the day the hero is the run of show; what is left here is
                        planning that did not get done, and is named as that. */
-                    ? <div className="sect" id="actionsAnchor"><h2>Still open from planning</h2><div className="rule" /><span className="when">not today’s job</span></div>
+                    /* FITS THE MOMENT (UX_11 rule 13, cohesion audit P1 #1,
+                       11/24/2026): "not today’s job" sat over cards tagged "due
+                       today" ("5 things need you today", "Reconfirm 3 vendors").
+                       The label now reads the cards under it: what is due today
+                       is counted as that; what is only past its window is
+                       optional; "not today’s job" only when neither is there. */
+                    ? (() => {
+                        const dueToday = queue.filter((a) => a && ((a.dueInDays != null && Number(a.dueInDays) === 0)
+                          || /\bneeds? you today\b|\bfor the day\b/i.test(String(a.title || '')))).length;
+                        const late = queue.some((a) => a && a.dueInDays != null && Number(a.dueInDays) < 0);
+                        const when = dueToday ? `${dueToday} due today` : late ? 'if there’s time' : 'not today’s job';
+                        return <div className="sect" id="actionsAnchor"><h2>Still open from planning</h2><div className="rule" /><span className="when">{when}</span></div>;
+                      })()
                     : <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>}
               {plan && plan.planningState && plan.planningState.reasoning && (() => {
                 // Re-audit 2026-07-17 (P0, "one hero instruction"): the milestone
@@ -16377,8 +16389,11 @@ export default function HostShellV2() {
                     </div>
                   ))}
                   <div style={{ marginTop: 10 }}>
+                    {/* One name for one thing (rules 4 and 8, 11/24/2026): the
+                        button said "helper brief", the draft it opens is titled
+                        "Everyone’s part today". It now says what it opens. */}
                     <button className="cta soft" style={{ width: '100%' }} onClick={() => { try { openDraft('Everyone’s part today', draftHelperBrief(event, profile, { ros })); } catch { toast('Couldn’t draft it.'); } }}>
-                      Draft the helper brief
+                      Draft everyone’s part today
                     </button>
                     <div className="pill-grid" style={{ marginTop: 'var(--gap-chip)' }}>
                       <button className="mini" onClick={() => window.print()}>Print the day sheet</button>
@@ -16827,7 +16842,14 @@ export default function HostShellV2() {
                       <div style={{ marginTop: 'var(--sp-2)' }}>
                         {/* Eyebrow: time-set promotes to a live "10:30 · NOW" (state 2); otherwise the calm sequence label (state 1). */}
                         <div className="now-label" style={timeSet ? { color: 'var(--warn)' } : undefined}>
-                          {timeSet ? fmt12h(cur.time) + ' · NOW · you run this' : (dayIdx === 0 ? (isPast ? 'How it started' : 'Today · you run it') : 'Now')}
+                          {/* "NOW" ONLY MEANS NOW (UX_11 rule 13, 11/24/2026). This
+                              walkthrough runs any day, and every timed step wore
+                              "· NOW ·" the day before and two days after. It says
+                              now only for the cue the clock is on (lib/dayOfHero,
+                              the reader the board's hero uses). */}
+                          {timeSet
+                            ? fmt12h(cur.time) + ((() => { try { const h = dayOfHero(event, new Date()); return !!(h && h.state === 'now' && h.cue && (h.cue === cur || (h.cue.id && h.cue.id === cur.id))); } catch (_e) { return false; } })() ? ' · NOW · you run this' : ' · you run this')
+                            : (dayIdx === 0 ? (isPast ? 'How it started' : 'Today · you run it') : 'Then')}
                         </div>
                         {dayIdx === 0 && !timeSet && !solemn && <div className="of" style={{ marginTop: 6, color: 'var(--muted)' }}>First thing</div>}
                         {/* The moment NAME is the hero (Figma). Solemn → the calm serif leads. */}
@@ -17138,7 +17160,7 @@ export default function HostShellV2() {
 
               <div className="sect"><h2>What carries forward</h2><div className="rule" /></div>
               <div className="empty" style={{ background: 'var(--steel-tint)' }}>
-                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} foundation fact{handled.length === 1 ? '' : 's'} on record · {(money.committed > 0 || money.planned > 0) ? 'every budget line above stays saved' : 'your vendors and notes stay saved'}. The thank-you is drafted right here from what actually happened; your “for next time” note below comes back the next time you plan one of these.
+                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} of the basics settled · {(money.committed > 0 || money.planned > 0) ? 'every budget line above stays saved' : 'your vendors and notes stay saved'}. The thank-you is drafted right here from what actually happened; your “for next time” note below comes back the next time you plan one of these.
               </div>
               {/* Thank-yous & gifts — per-guest flags on the SAME roster rows the
                   wrap-up meter reads (phaseProgress post_event counts
@@ -17164,7 +17186,7 @@ export default function HostShellV2() {
                           {g.giftReceived ? 'gift received' : 'gift?'}
                         </button>
                         <button className="mini" style={g.thankYouSent ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
-                          onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? null : ((g.name || 'Guest') + ' thanked — the wrap-up meter keeps count.'))}>
+                          onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? null : ((g.name || 'Guest') + ' thanked — it’s counted at the top.'))}>
                           {g.thankYouSent ? 'thanked' : 'thank them'}
                         </button>
                       </span>
@@ -17202,7 +17224,7 @@ export default function HostShellV2() {
                         <span>Cash and gift cards</span>
                         <span className="amt">{fmt(cash.total)}{cash.from ? <span className="of"> from {cash.from}</span> : null}</span>
                       </div>
-                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>Your record, not a bank. “Thanked” feeds the wrap-up meter up top, and the thank-you note names what each person gave.</p>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>Your record, not a bank. Each “Thanked” is counted at the top, and the thank-you note names what each person gave.</p>
                     </div></div>
                   </div>
                 );

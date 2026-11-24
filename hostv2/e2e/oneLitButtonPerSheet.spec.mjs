@@ -13,6 +13,7 @@
 // keeps it so. Red-proofed: "Change" beside "Use $2,200" in Your money turned
 // from .mini into .cta fails it with "Your money: Use $2,200 | Change".
 import { test, expect, settled, sheetSettled, openSectionByName, dateIn } from './fixtures.mjs';
+import { OWN, MOMENTS } from './theDayStageFixture.mjs';
 
 const EVENT = {
   id: 'one-lit', name: 'Maya’s 40th Birthday', type: 'Birthday', createdAt: '2026-11-01',
@@ -34,7 +35,8 @@ const EVENT = {
 const EMPTY = { id: 'one-lit-empty', name: 'Sam’s Graduation', type: 'Graduation', createdAt: '2026-11-01',
   date: dateIn(30), guests: [], vendors: [], budget: [], timeline: [] };
 
-const boot = async (page, event) => {
+const boot = async (page, event, at = null) => {
+  if (at) await page.clock.setFixedTime(new Date(at));
   await page.addInitScript((e) => {
     if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
     localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
@@ -89,12 +91,16 @@ const litButtons = () => {
 const RUNS = [
   ['a plan under way', EVENT, 390, 844], ['a plan under way', EVENT, 1024, 768], ['a plan under way', EVENT, 1440, 900],
   ['a plan with nothing entered', EMPTY, 390, 844], ['a plan with nothing entered', EMPTY, 1440, 900],
+  // THE SHEETS ON THE DAY (UX_11 rule 1, cohesion batch A, 11/24/2026): the
+  // same walk with the clock on the event day, the state the cohesion audit
+  // flagged, so a sheet opened from The Day stage is held to one lit too.
+  ['a plan on its day', OWN, 390, 844, MOMENTS.dayBeforeFirstCue], ['a plan on its day', OWN, 1440, 900, MOMENTS.dayBeforeFirstCue],
 ];
-for (const [label, event, w, h] of RUNS)
+for (const [label, event, w, h, at] of RUNS)
 test(`no sheet renders two lit primary buttons — ${label}, ${w}x${h}`, async ({ page }) => {
   test.setTimeout(180_000);
   await page.setViewportSize({ width: w, height: h });
-  await boot(page, event);
+  await boot(page, event, at);
   const names = await sectionNames(page);
   expect(names.length, 'premise: the sections were listed').toBeGreaterThan(8);
   const twoLit = [];

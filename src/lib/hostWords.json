@@ -1,0 +1,23 @@
+{
+  "_why": "UX_11 rule 4 (host words), cohesion audit 11/24/2026, section 'Jargon and developer strings seen'. App shorthand, engine ids and developer copy a host never says. Read by src/lib/__tests__/theEnginesSpeakHostWords.test.js and hostv2/e2e/hostWordsOnEveryStage.spec.mjs. Each entry is a case-insensitive regular expression unless flags says otherwise.",
+  "banned": [
+    { "word": "brief", "re": "\\bbriefs?\\b" },
+    { "word": "allocation", "re": "\\ballocations?\\b" },
+    { "word": "baseline", "re": "\\bbaselines?\\b" },
+    { "word": "downstream", "re": "\\bdownstream\\b" },
+    { "word": "cascade", "re": "\\bcascad(e|es|ed|ing)\\b" },
+    { "word": "merging", "re": "\\bmerging\\b" },
+    { "word": "compound event", "re": "\\bcompound event" },
+    { "word": "not tracked", "re": "\\bnot tracked\\b" },
+    { "word": "activates", "re": "\\bactivates\\b" },
+    { "word": "channels", "re": "\\bchannels\\b" },
+    { "word": "foundation fact", "re": "\\bfoundation facts?\\b" },
+    { "word": "meter", "re": "\\bmeter\\b" },
+    { "word": "ROI", "re": "\\bROI\\b", "flags": "" },
+    { "word": "CSV", "re": "\\bCSV\\b", "flags": "" },
+    { "word": "tune", "re": "\\btune\\b" },
+    { "word": "pesc.", "re": "\\bpesc\\." },
+    { "word": "this count reads", "re": "\\bthis count reads\\b" }
+  ],
+  "brokenTemplate": { "word": "a quote closed on nothing (for \".)", "re": "\\s[\"”]\\.", "flags": "" }
+}
