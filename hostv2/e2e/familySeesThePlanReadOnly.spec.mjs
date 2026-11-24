@@ -40,7 +40,7 @@ test('family sees the plan, and there is nothing to change', async ({ page }) =>
   await expect(page_.locator('[data-family="where"]')).toContainText('Pine Street Commons');
   // Replies, not people (audit 2 E P2-1, 11/22/2026): a reply that brings a
   // plus-one is still one reply, so the line says who said yes, not "12 coming".
-  await expect(page_.locator('[data-family="replies"]')).toHaveText('12 said yes · 1 maybe · 2 can’t make it · 3 haven’t answered');
+  await expect(page_.locator('[data-family="replies"]')).toHaveText('12 said yes · 1 maybe · 2 can’t make it · 3 haven’t replied');
   // The dress code the invite shows is on the family page too (E P2-7).
   await expect(page_.locator('[data-family="dress"]')).toHaveText('Dress: Fall colors, comfy shoes');
   await expect(page_.locator('[data-family="day"] li')).toHaveText(['4:00 PMDoors open', '5:30 PMDinner']);

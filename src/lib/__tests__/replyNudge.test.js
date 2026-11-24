@@ -79,9 +79,9 @@ describe('who the nudge goes to', () => {
 });
 
 describe('the timing rule: the host’s own date, never automatic', () => {
-  test('3 days before a set date: "N haven’t answered — replies due {weekday}" (count first, owner 11/20)', () => {
+  test('3 days before a set date: "N haven’t replied — replies due {weekday}" (count first, owner 11/20)', () => {
     const item = nudgeBoardItem(EV());
-    expect(item.title).toBe(`2 haven’t answered — replies due ${weekday(isoIn(3))}`);
+    expect(item.title).toBe(`2 haven’t replied — replies due ${weekday(isoIn(3))}`);
     expect(item.phase).toBe('before');
     expect(item.why).toBe('1 of 4 invited have answered · 1 was nudged in the last 3 days');
   });
@@ -91,13 +91,13 @@ describe('the timing rule: the host’s own date, never automatic', () => {
   });
 
   test('on the day itself it says today', () => {
-    expect(nudgeBoardItem(EV({ rsvpDeadline: isoIn(0) })).title).toBe('2 haven’t answered — replies due today');
+    expect(nudgeBoardItem(EV({ rsvpDeadline: isoIn(0) })).title).toBe('2 haven’t replied — replies due today');
   });
 
   test('the day after the date passes it appears again, while anyone invited is unanswered and un-nudged', () => {
     const item = nudgeBoardItem(EV({ rsvpDeadline: isoIn(-1) }));
     expect(item.phase).toBe('after');
-    expect(item.title).toBe(`2 haven’t answered — replies were due ${weekday(isoIn(-1))}`);
+    expect(item.title).toBe(`2 haven’t replied — replies were due ${weekday(isoIn(-1))}`);
     // Nudged yesterday: nobody is un-nudged, so the board stays quiet.
     const done = EV({ rsvpDeadline: isoIn(-1), guests: EV().guests.map((g) => ({ ...g, nudgedAt: atDaysAgo(1), nudgedVia: 'email' })) });
     expect(nudgeBoardItem(done)).toBeNull();
@@ -127,7 +127,7 @@ describe('the timing rule: the host’s own date, never automatic', () => {
   test('on the board: one row, keyed for snooze, that opens the nudge', () => {
     const rows = (raiseAll(EV()) || []).filter((r) => r && r.key === 'rsvp-chase');
     expect(rows).toHaveLength(1);
-    expect(rows[0].title).toBe(`2 haven’t answered — replies due ${weekday(isoIn(3))}`);
+    expect(rows[0].title).toBe(`2 haven’t replied — replies due ${weekday(isoIn(3))}`);
     expect(rows[0].route).toEqual({ tab: 'Guests', focusField: 'rsvp-nudge' });
     expect(resolveRoute(rows[0].route)).toEqual({ kind: 'guests', focus: 'nudge' });
   });

@@ -79,12 +79,13 @@ test('a missing place and an unconfirmed time are asked for before the invite is
   await expect(go).toBeEnabled();
 
   await go.click();
-  const box = page.getByLabel('Edit the draft');
-  await expect(box).toBeVisible({ timeout: 10_000 });
-  const t = await box.inputValue();
+  // The send confirm (owner, 11/24/2026: render s2-4): the message folded, the
+  // list under it. Unfolded, it carries the hour and the place just given.
+  await expect(page.locator('[data-invite-list]')).toBeVisible({ timeout: 10_000 });
+  await page.locator('[data-invite-message-fold]').getByRole('button', { name: /Show all/ }).click();
+  const t = await page.locator('[data-invite-message-full]').innerText();
   expect(t).toContain('4:00 PM');
   expect(t).toContain('Vida’s place');
-  await expect(page.locator('[data-invite-list]')).toBeVisible();
 });
 
 test('a complete invite skips the check', async ({ page }) => {
@@ -112,6 +113,6 @@ test('a complete invite skips the check', async ({ page }) => {
   await tap(/^Jump to a section$/); await page.waitForTimeout(400);
   await tap(/^Guests/); await page.waitForTimeout(900);
   expect(await tap(/^Invite your guest list \(\d+\)$/)).toBe(true);
-  await expect(page.getByLabel('Edit the draft')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[data-invite-list]')).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('[data-invite-check]')).toHaveCount(0);
 });

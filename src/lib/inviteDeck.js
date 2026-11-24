@@ -56,13 +56,13 @@ export function suggestedInviteLine(event) {
  *  name that signs it ('' when unsigned). */
 export function inviteMessage(event, { somber = false, past = false } = {}) {
   if (!event) return { text: '', signedBy: '' };
-  // Past events become a recap. A host-authored deckLine was written for the
-  // UPCOMING invite and may be future-tense ("Something wonderful is coming"),
-  // which would contradict "Thank you for coming" — so on a (non-memorial) past
-  // event the retrospective line wins even over the authored copy. Memorials
-  // keep their own handling below.
-  if (past && !somber) return { text: 'A day worth remembering', signedBy: '' };
+  // Past events become a recap. HER WORDS WIN (owner, 11/24/2026): when she
+  // wrote a message (deckLine differs from our suggestion), a past invite shows
+  // it; "A day worth remembering" fills in only when she wrote nothing.
+  // Memorials keep their own handling below.
   const explicit = String(event.deckLine || '').trim().slice(0, INVITE_MESSAGE_MAX);
+  const hers = !!explicit && explicit !== suggested(event);
+  if (past && !somber && !hers) return { text: 'A day worth remembering', signedBy: '' };
   if (explicit) {
     const first = String(hostNameFor(event) || '').trim().split(/\s+/)[0] || '';
     return { text: explicit, signedBy: explicit === suggested(event) ? '' : first };

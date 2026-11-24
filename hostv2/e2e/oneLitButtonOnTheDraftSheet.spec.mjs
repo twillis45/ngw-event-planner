@@ -4,7 +4,8 @@
 // walks the sections a host opens from the board; the draft sheet opens from
 // inside them, so it was never measured, and it lit up to three at once:
 //   • "Your invite": "Share…" beside "Text Riley Park" once the text queue ran,
-//     and, signed in, "Email the invite to N" as a third;
+//     and, signed in, "Email the invite to N" as a third (since 11/24/2026 the
+//     list send is its own confirm sheet, with no hand-offs: render s2-4);
 //   • the RSVP nudge: the same three;
 //   • a vendor's draft: "Share…" beside "Send it to …".
 // One primary per state now: the send the app makes itself (the vendor email,
@@ -100,40 +101,39 @@ const openFromGuests = async (page, name) => {
 };
 const lit = (page) => page.evaluate(litButtons);
 
-test('“Your invite”, signed out: Share… is the one, then the text queue takes it', async ({ page }) => {
+// THE SEND CONFIRM (owner, 11/24/2026: render s2-4). "Invite your guest list"
+// opens the confirm step: no hand-offs, the list's own send is the one.
+test('“Invite your guest list”, signed out: the texts are the one, then the queue takes it', async ({ page }) => {
   await boot(page, party('one-lit-invite-out', TO_INVITE), { signedIn: false });
   const sheet = await openFromGuests(page, 'Invite your guest list (2)');
   await expect(sheet.locator('[data-invite-list]')).toBeVisible();
-  await expect(sheet.getByRole('button', { name: 'Share…', exact: true })).toBeVisible();
-  await expect.poll(() => lit(page)).toEqual(['Share…']);
+  await expect(sheet.getByRole('button', { name: 'Share…', exact: true })).toHaveCount(0);
+  await expect.poll(() => lit(page)).toEqual(['Text 1 guest, one at a time']);
   await sheet.locator('[data-invite-texts]').click();
   await expect(sheet.locator('[data-invite-text-one]')).toHaveText('Text Riley Park');
   await expect.poll(() => lit(page)).toEqual(['Text Riley Park']);
-  // The queue done, Share… is the one again.
+  // The queue done, nothing is left to light.
   await sheet.locator('[data-invite-text-one]').click();
   await expect(sheet).toContainText('That’s everyone with only a phone number.');
-  await expect.poll(() => lit(page)).toEqual(['Share…']);
+  await expect.poll(() => lit(page)).toEqual([]);
 });
 
-test('“Your invite”, signed in: the email is the one; the text queue takes it, and the email goes quiet', async ({ page }) => {
+test('“Invite your guest list”, signed in: the email is the one; the text queue takes it, and the email goes quiet', async ({ page }) => {
   await boot(page, party('one-lit-invite-in', TO_INVITE), { signedIn: true });
   const sheet = await openFromGuests(page, 'Invite your guest list (2)');
-  await expect(sheet.locator('[data-invite-email]')).toHaveText('Email it to 1 guest');
-  await expect.poll(() => lit(page)).toEqual(['Email it to 1 guest']);
+  await expect(sheet.locator('[data-invite-email-go]')).toHaveText('Send to 1 by email');
+  await expect.poll(() => lit(page)).toEqual(['Send to 1 by email']);
   await sheet.locator('[data-invite-texts]').click();
   await expect(sheet.locator('[data-invite-text-one]')).toBeVisible();
   await expect.poll(() => lit(page)).toEqual(['Text Riley Park']);
-  await expect(sheet.locator('[data-invite-email]')).toBeVisible();   // quiet, not gone
+  await expect(sheet.locator('[data-invite-email-go]')).toBeVisible();   // quiet, not gone
   await sheet.locator('[data-invite-text-one]').click();
-  await expect.poll(() => lit(page)).toEqual(['Email it to 1 guest']);
-  // The confirm step is the same one primary.
-  await sheet.locator('[data-invite-email]').click();
-  await expect.poll(() => lit(page)).toEqual(['Send 1 email']);
+  await expect.poll(() => lit(page)).toEqual(['Send to 1 by email']);
 });
 
 test('the RSVP nudge, signed in: the email is the one, then the text queue', async ({ page }) => {
   await boot(page, party('one-lit-nudge-in', TO_NUDGE), { signedIn: true });
-  const sheet = await openFromGuests(page, 'Nudge the 2 who haven’t answered');
+  const sheet = await openFromGuests(page, 'Nudge the 2 who haven’t replied');
   await expect(sheet.locator('[data-nudge-email]')).toHaveText('Email the nudge to 1 guest');
   await expect.poll(() => lit(page)).toEqual(['Email the nudge to 1 guest']);
   await sheet.locator('[data-nudge-texts]').click();
@@ -143,7 +143,7 @@ test('the RSVP nudge, signed in: the email is the one, then the text queue', asy
 
 test('the RSVP nudge, signed out: Share… is the one, then the text queue', async ({ page }) => {
   await boot(page, party('one-lit-nudge-out', TO_NUDGE), { signedIn: false });
-  const sheet = await openFromGuests(page, 'Nudge the 2 who haven’t answered');
+  const sheet = await openFromGuests(page, 'Nudge the 2 who haven’t replied');
   await expect(sheet.locator('[data-nudge-list]')).toBeVisible();
   await expect.poll(() => lit(page)).toEqual(['Share…']);
   await sheet.locator('[data-nudge-texts]').click();

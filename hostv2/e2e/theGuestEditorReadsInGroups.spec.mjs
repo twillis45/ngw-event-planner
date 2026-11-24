@@ -132,9 +132,10 @@ for (const size of SIZES) {
       await expect(me.getByRole('textbox', { name: /Dietary needs/ })).toBeVisible();
       const plus = coming.locator('[data-ged-person="plusone"]');
       await expect(plus.getByRole('textbox', { name: 'Plus one name' })).toHaveValue('Sam Okafor');
-      // One meal on the row: the +1 card says nothing about a meal it can't store.
-      await expect(plus.getByRole('combobox')).toHaveCount(0);
-      await expect(plus).not.toContainText(/meal/i);
+      // The +1's own meal and dietary need (owner, 11/24/2026): replies store
+      // them apart (plusOneMeal, plusOneNeeds), and the card shows them.
+      await expect(plus.getByRole('combobox', { name: 'Meal for Sam Okafor' })).toBeVisible();
+      await expect(plus.getByRole('textbox', { name: 'Dietary needs for Sam Okafor' })).toBeVisible();
       await expect(coming).toContainText(/Children/);
       await expect(coming.locator('[data-ged-kids]')).toHaveText('1');
       await coming.getByRole('button', { name: /Add a child/ }).click();

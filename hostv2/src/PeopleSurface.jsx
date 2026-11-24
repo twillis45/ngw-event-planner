@@ -510,7 +510,7 @@ export function GetResponses({
     : n > 0
       ? (by
         ? `A final headcount by ${by} means ${n === 1 ? 'one more reply' : n + ' more replies'}.`
-        : `${n === 1 ? 'One person hasn’t' : n + ' people haven’t'} answered yet.`)
+        : `${n === 1 ? 'One person hasn’t' : n + ' people haven’t'} replied yet.`)
       : 'Everyone has answered.';
 
   const rest = (more || []).filter(Boolean);

@@ -71,11 +71,13 @@ import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — 
 import { boardDecisionND, foodDecisionND, blockerDecisionND, foodPanelQuestion, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
+import { rsvpHasResponded } from '@app/lib/rsvp';
 import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, rainPlanOptions, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, travelHazard, guestTravelMessage } from '@app/lib/weather';
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
-import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/inviteBatch';
-import { nudgeRecipients, nudgeCount, markNudged, nudgeRowLine, nudgeDeliveryFor, nudgeTextBody } from '@app/lib/replyNudge';
+import { inviteRecipients, inviteSubjectAndBody, markInvited, greetingName } from '@app/lib/inviteBatch';
+import { nudgeRecipients, nudgeCount, markNudged, nudgeRowLine, nudgeDeliveryFor, nudgeTextBody, wasInvited, NUDGE_GAP_DAYS } from '@app/lib/replyNudge';
+import { LINK_PLACEHOLDER, savedInviteDraft, inviteDraftRecord, withLink, lineChange, swapPageLine, textMessageBody, sentSnapshot, draftStatus, plainText, sentRecipients } from '@app/lib/inviteMessageDraft';
 import { inviteGaps } from '@app/lib/inviteGaps';
 import { inviteCardModel, inviteCardKey } from '@app/lib/inviteCard';
 import SignInCheck, { signInCheckOn } from '@app/components/SignInCheck';
@@ -220,6 +222,10 @@ import { rowStatus, sourcingSettled } from '@app/lib/rowStatus';
 import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
 import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt, menuChoicesTally, menuBoardRowSub } from '@app/lib/playbooks';
 import InviteToTheList from './InviteToTheList';
+import ShareInviteCard from './ShareInviteCard';
+import InviteSentRecord from './InviteSentRecord';
+import MessagePreview from './MessagePreview';
+import { publicHostPhotoUrl } from '@app/lib/api/hostPhoto';
 import InviteDesignSheet from './InviteDesignSheet.jsx';
 import { inviteStyleLabel } from '@app/lib/inviteTone';
 import HostPhotoRow from './HostPhotoRow.jsx';
@@ -1235,6 +1241,10 @@ export default function HostShellV2() {
       // The page's crest (InviteV2 markUrlFor): the event's artwork unless the host turned it off.
       const crestFile = ev.inviteCrest === 'off' ? null : eventArtworkFile(ev);
       if (crestFile) model.crest = import.meta.env.BASE_URL + crestFile;
+      // Her photo (owner, 11/24/2026), by the public route the invite page reads;
+      // its version is in the URL, so a changed photo is a new picture.
+      const photoUrl = publicHostPhotoUrl(ev.rsvpCode || ev.id, (profile && profile.hostPhoto) || null);
+      if (photoUrl) model.photo = photoUrl;
       const key = inviteCardKey(model);
       const m = inviteCardRef.current;
       if (m[ev.id] && m[ev.id].key === key) return m[ev.id].p;
@@ -7354,6 +7364,8 @@ export default function HostShellV2() {
   const [draftBody, setDraftBody] = useState(null); // non-null = host's own edit
   // The invite or nudge block holds the draft sheet's one lit button (11/21/2026).
   const [draftListLead, setDraftListLead] = useState(false);
+  // The send confirm's folded message: "Show all" (owner, 11/24/2026: render s2-4).
+  const [draftMsgOpen, setDraftMsgOpen] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false); // slice (b): one send at a time
   // One checkout at a time: a second tap on a slow network opened a second
   // Stripe session (Nielsen re-run N7, 2026-11-02).
@@ -7371,8 +7383,9 @@ export default function HostShellV2() {
   const openDraft = (title, d, queue, opts) => {
     const body = d ? (typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n')) : '';
     if (!body.trim()) { toast('Nothing to draft yet — add a few more details first.'); return; }
-    const kept = draftEditsRef.current[draftEditKey(title)];
+    const kept = draftEditsRef.current[draftEditKey((opts && opts.editTitle) || title)];
     setDraftBody(kept != null ? kept : null);
+    setDraftMsgOpen(false);
     // Optional queue: remaining {title, body, name} items for "message
     // everyone" flows (one separate draft per person, reviewed/sent one at a
     // time through the SAME real handoffs below — never a silent bulk send).
@@ -7399,6 +7412,18 @@ export default function HostShellV2() {
       // posted on every guest's invite (HostUpdates' one post path).
       postsToInvite: !!(opts && opts.postsToInvite),
       voices: (opts && opts.voices) || null,
+      // THE INVITE MESSAGE (owner, 11/24/2026: renders s2-3 to s2-6). `mode`:
+      // 'save' (Invite message: the words, a preview, Save draft, no hand-offs),
+      // 'confirm' (Invite your guest list: who gets what, then the send),
+      // 'copy' (Invite text: the hand-offs, Copy lit). `editTitle` keys her
+      // edits, so the invite's words are the same whichever door opened it.
+      mode: (opts && opts.mode) || null,
+      heading: (opts && opts.heading) || null,
+      editTitle: (opts && opts.editTitle) || null,
+      // No reply link (owner, 11/24/2026): nothing that carries the link can go
+      // out until "Try again" brings it. Editing and saving the words stay.
+      linkMissing: !!(opts && opts.linkMissing),
+      linkReason: (opts && opts.linkReason) || null,
       subject: (d && typeof d === 'object' && d.subject) || '',
       from: prev ? (prev.kind === 'draft' ? prev.from || null : prev) : null,
     }));
@@ -7473,7 +7498,10 @@ export default function HostShellV2() {
   // with nothing on screen, so a host tapped again and again. A second tap
   // while it runs does nothing (null), and the notice names the wait.
   const rsvpChecking = useRef(false);
-  const verifiedRsvpUrl = async () => {
+  // `withReason`: answers { url, reason } instead of the bare url, so a draft can
+  // say why its link is missing ('' url when not ready; null while a check runs).
+  const verifiedRsvpUrl = async (opt) => {
+    const why = !!(opt && opt.withReason);
     if (rsvpChecking.current) return null;
     rsvpChecking.current = true;
     toast('Checking your invite link…', null, null, { busy: true });
@@ -7488,10 +7516,10 @@ export default function HostShellV2() {
       if (result.reason === 'unpublished' && isSupabaseConfigured() && !session) {
         toast('Sign in to save this plan, then guests can RSVP online.', { label: 'Sign in to save', fn: openKeepSignIn });
       } else toast(rsvpUnavailable(result));
-      return '';
+      return why ? { url: '', reason: result.reason } : '';
     }
-    try { return inviteLinkUrl(); }
-    catch { toast('Can’t share: the public link address is missing. Nothing was shared.'); return ''; }
+    try { const u = inviteLinkUrl(); return why ? { url: u, reason: null } : u; }
+    catch { toast('Can’t share: the public link address is missing. Nothing was shared.'); return why ? { url: '', reason: 'unavailable' } : ''; }
   };
   // The reply-by editor, hoisted to the shell (11/24/2026) so the guest list
   // and the "Your invite" panel open the SAME one.
@@ -7548,26 +7576,69 @@ export default function HostShellV2() {
         );
   };
 
+  // The invite's words are one draft whichever door opens them (Invite message,
+  // Invite your guest list, Invite text): her edits are kept under one key.
+  const INVITE_EDIT_TITLE = 'Your invite';
   const openInviteDraft = async (title, build, opts) => {
+    const isInvite = build === draftInvite;
+    // ONE SEND SHEET (owner, 11/24/2026: render s2-4): an invite with a guest
+    // list to send to opens as the confirm step, whichever door it came from.
+    let o = { ...(opts || {}) };
+    const toInvite = inviteRecipients(event.guests, guestToldMap(event));
+    if (isInvite && o.sendsInvite && !o.mode && toInvite.email.length + toInvite.text.length > 0) o.mode = 'confirm';
+    if (isInvite) o.editTitle = INVITE_EDIT_TITLE;
+    if (o.mode === 'confirm') o.heading = 'Invite your guest list';
     // WHAT AN INVITE CANNOT GO OUT WITHOUT (owner, 11/19/2026: "Before sending
     // invites app should verify if the important info is included"). The day,
     // the hour the host set, and the place are asked for FIRST, so the invite is
     // written with them and no email, text, share or copy carries a hole.
-    if (build === draftInvite && inviteGaps(event).length) {
-      setSheet({ kind: 'invite-check', title, opts: opts || null });
+    // Saving the words sends nothing, so it is not stopped here.
+    if (isInvite && o.mode !== 'save' && inviteGaps(event).length) {
+      setSheet({ kind: 'invite-check', title, opts: o });
       return;
     }
-    const url = await verifiedRsvpUrl();
-    if (url === null) return;   // a check is already running
+    const checked = await verifiedRsvpUrl({ withReason: true });
+    if (checked === null) return;   // a check is already running
+    const url = checked.url;
+    // NO REPLY LINK, NOTHING GOES OUT (owner, 11/24/2026: render s2-6). The
+    // draft still opens, with the link's place held, so she can edit and save
+    // the words; every hand-off and the list sender wait for "Try again".
+    const link = url || LINK_PLACEHOLDER;
+    if (!url) { o.linkMissing = true; o.linkReason = checked.reason || 'unavailable'; }
     // The invite is written in each voice from the facts (doItForMe.inviteInVoice),
     // so picking a voice shows that version, not a word swap on one draft.
-    const voices = build === draftInvite
+    const voices = isInvite
       ? Object.fromEntries(inviteVoicesFor(event).map((v) => {
-          const d = draftInvite(event, profile, { rsvpUrl: url, voice: v });
+          const d = draftInvite(event, profile, { rsvpUrl: link, voice: v });
           return [v, [d.subject, d.body].filter(Boolean).join('\n\n')];
         }))
       : null;
-    openDraft(title, build(event, profile, { rsvpUrl: url }), null, voices ? { ...(opts || {}), voices } : opts);
+    if (isInvite) {
+      // HER SAVED WORDS COME FIRST (event.inviteMessageDraft): her edits, or the
+      // voice she saved. Words she typed this session and has not saved yet
+      // are newer, so they stay.
+      const key = draftEditKey(INVITE_EDIT_TITLE);
+      const saved = savedInviteDraft(event);
+      if (draftEditsRef.current[key] == null && saved && saved.edited) draftEditsRef.current[key] = saved.body;
+      if (draftEditsRef.current[key] != null && url) draftEditsRef.current[key] = withLink(draftEditsRef.current[key], url);
+      if (saved && !saved.edited && voices[saved.voice]) setDraftTone(saved.voice);
+      o.voices = voices;
+    }
+    openDraft(title, build(event, profile, { rsvpUrl: link }), null, o);
+  };
+  // "Try again" on a draft whose reply link wasn't ready: the link goes into its
+  // place in every version of the words, and the hand-offs come back.
+  const retryDraftLink = async () => {
+    const checked = await verifiedRsvpUrl({ withReason: true });
+    if (!checked || !checked.url) return;
+    const url = checked.url;
+    const key = draftEditKey((sheet && (sheet.editTitle || sheet.title)) || '');
+    if (draftEditsRef.current[key] != null) draftEditsRef.current[key] = withLink(draftEditsRef.current[key], url);
+    setDraftBody((b) => (b == null ? b : withLink(b, url)));
+    setSheet((sh) => (sh && sh.kind === 'draft' ? {
+      ...sh, body: withLink(sh.body, url), linkMissing: false, linkReason: null,
+      voices: sh.voices ? Object.fromEntries(Object.entries(sh.voices).map(([k, v]) => [k, withLink(v, url)])) : sh.voices,
+    } : sh));
   };
   // ── THE NUDGE (owner ruling, 11/20/2026) ─────────────────────────────────
   // One door for the board's reply-by row, the chase step, and the guest
@@ -7613,15 +7684,6 @@ export default function HostShellV2() {
         invitesOut(event) ? null : { label: 'I sent it', fn: () => patchEvent({ invitesSentAt: new Date().toISOString() }, 'Invite marked as sent.') });
       feedback('act');
     } catch { toast('Couldn’t copy on this browser — nothing was shared.'); }
-  };
-  // THE LINK ALONE (live smoke test, 11/8/2026). On Android, the share sheet's
-  // Copy takes the whole message ("You're invited… RSVP here: <link>"), and
-  // pasted into a browser that is a search, not the invite. The message stays
-  // right for texting; this copies only the verified link.
-  const copyInviteLink = async () => {
-    const url = await verifiedRsvpUrl();
-    if (!url) return;
-    await copyLinkOnly(url);
   };
 
   // Tasks: toggle done on the SAME timeline the readiness engine reads —
@@ -17482,7 +17544,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'invite-design' ? 'Your invite' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'invite-design' ? 'Invite page' : sheet.kind === 'invite-sent' ? 'What went out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.heading || sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -17516,6 +17578,11 @@ export default function HostShellV2() {
             {/* "YOUR INVITE" (owner-approved render r3-3, 11/24/2026): the layout,
                 her message, who it's from, the paper and reply-by, with a live
                 preview of the guest's own invite. */}
+            {/* WHAT WENT OUT (owner, 11/24/2026: render s2-5): read only. */}
+            {sheet.kind === 'invite-sent' && event.invitesSentMessage && (
+              <InviteSentRecord sent={event.invitesSentMessage} recipients={sentRecipients(event)}
+                onUpdate={() => { try { openDraft('Update to everyone', draftGuestUpdate(event, {}, profile)); } catch { toast('Couldn’t draft it.'); } }} />
+            )}
             {sheet.kind === 'invite-design' && (
               <InviteDesignSheet event={event} profile={profile} patchEvent={patchEvent} patchProfile={patchProfile}
                 signedIn={Boolean(session)} email={(session && session.user && session.user.email) || ''}
@@ -17543,7 +17610,7 @@ export default function HostShellV2() {
                   {/* THE INVITE RULES LIVE IN THE INVITE STEP (owner, render 10a,
                       11/24/2026): the same component and record as the guest list. */}
                   <InviteRules event={event} patchEvent={patchEvent} note="The RSVP page follows these. Also in your guest list." />
-                  <SettledRow label="Your invite" value={(event.inviteLayout === 'glance' ? 'At a glance' : 'Classic') + ' · how it looks and what it says'}
+                  <SettledRow label="Invite page" value={(event.inviteLayout === 'glance' ? 'At a glance' : 'Classic') + ' · how it looks and what it says'}
                     style={{ margin: 'var(--sp-3) 0 0' }} onOpen={() => setSheet({ kind: 'invite-design', from: sheet })} />
                   {(!has('date') || !has('time')) && renderEditor({ domain: 'date' })}
                   {!has('place') && (
@@ -21445,7 +21512,7 @@ export default function HostShellV2() {
                 ))}
                 {/* THE INVITE'S MESSAGE AND WHO IT'S FROM moved to "Your invite"
                     (owner, 11/24/2026): one editor for one field. */}
-                <SettledRow label="Your invite’s message" value={String(event.deckLine || '').trim() || 'Our line for this event'}
+                <SettledRow label="Invite page message" value={String(event.deckLine || '').trim() || 'Our line for this event'}
                   style={{ margin: '0 0 var(--sp-4)' }} onOpen={() => setSheet({ kind: 'invite-design', from: sheet })} />
                 <div className="actions-row">
                   {(() => {
@@ -23180,6 +23247,8 @@ export default function HostShellV2() {
                 // a send (the clipboard proves a draft, not delivery).
                 const invited = sheet.sendsInvite && channel !== 'copy' && !event.invitesSentAt
                   ? { invitesSentAt: new Date().toISOString() } : {};
+                // WHAT WENT OUT (owner, 11/24/2026): the words she sent, kept.
+                if (sheet.sendsInvite && channel !== 'copy') invited.invitesSentMessage = inviteSnapshotNow();
                 // A post already says "Posted" in its own line; the toast would repeat it.
                 patchEvent({ sendLedger: led, ...invited }, channel === 'invite' ? null : 'Noted — the plan remembers this went out.');
               };
@@ -23354,16 +23423,101 @@ export default function HostShellV2() {
               const reachNudge = (reached, via) => {
                 patchEvent({ guests: markNudged(event.guests || [], reached, via, new Date().toISOString()) }, null, { noUndo: true });
               };
+              // ── THE INVITE MESSAGE (owner, 11/24/2026: renders s2-3 to s2-6) ──
+              const mode = sheet.mode || null;
+              const isInviteWords = sheet.editTitle === INVITE_EDIT_TITLE;
+              const noLink = !!sheet.linkMissing;
+              const inviteSubject = isInviteWords
+                ? ((draftInvite(event, profile, { voice: (sheet.voices && sheet.voices[draftTone]) ? draftTone : 'as-written' }) || {}).subject || 'You’re invited')
+                : '';
+              const inviteSnapshotNow = (at) => {
+                const { subject, body } = inviteSubjectAndBody(shownDraft(), inviteSubject);
+                return sentSnapshot({ subject, body, voice: draftBody != null ? 'edited' : draftTone, at: at || new Date().toISOString() });
+              };
+              const savedDraft = isInviteWords ? savedInviteDraft(event) : null;
+              const savedChip = savedDraft ? (
+                <div className="of si-chip" data-draft-saved>
+                  Draft saved{(() => { const t = Date.parse(savedDraft.savedAt || ''); return Number.isFinite(t) ? ' ' + new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''; })()}{savedDraft.edited ? ' · edited' : ''}
+                </div>
+              ) : null;
+              const saveInviteDraft = () => {
+                const c = draftVoiceCtx();
+                const offered = sheet.voices ? !!sheet.voices[draftTone] : voicesFor(c.audience, c.sombre).includes(draftTone);
+                patchEvent({
+                  inviteMessageDraft: inviteDraftRecord({
+                    body: shownDraft(), voice: offered ? draftTone : 'as-written', edited: draftBody != null,
+                    line: String(event.deckLine || '').trim(), now: new Date().toISOString(),
+                  }),
+                }, 'Draft saved — nothing was sent.');
+              };
+              const linkBox = noLink ? (
+                <div className="si-warn" role="alert" data-link-not-ready>
+                  <p><b>Your reply link isn’t ready.</b>{' '}
+                    {sheet.linkReason === 'unpublished' && !session
+                      ? 'Sign in to save this plan, then try again.'
+                      : 'Check your connection and try again.'} Nothing can go out without it.</p>
+                  <button className="cta" onClick={retryDraftLink}>Try again</button>
+                </div>
+              ) : null;
+              const lc = isInviteWords && draftBody != null ? lineChange(event) : null;
+              const lineOffer = lc && lc.to && !shownDraft().includes(lc.to) ? (
+                <div className="si-newline" data-new-line>
+                  <p className="grounding">You changed the message on your invite page to “{lc.to}”. Use your new line?</p>
+                  <div className="actions-row">
+                    <button className="mini" onClick={() => {
+                      const nb = swapPageLine(shownDraft(), lc.from, lc.to);
+                      if (nb == null) { toast('Your old line isn’t in your words any more — edit them above.'); return; }
+                      setDraftBody(nb); draftEditsRef.current[draftEditKey(INVITE_EDIT_TITLE)] = nb;
+                    }}>Use your new line</button>
+                    <button className="mini" onClick={() => patchEvent({ inviteMessageDraft: { ...savedDraft, line: lc.to } }, 'Your words stay as they are.')}>Keep mine</button>
+                  </div>
+                </div>
+              ) : null;
+              const toInvite = isInviteWords ? inviteRecipients(event.guests, guestToldMap(event)) : null;
+              const goToSend = () => openInviteDraft('Your invite', draftInvite, { sendsInvite: true, mode: 'confirm' });
+              const previewTo = (() => {
+                if (!isInviteWords) return {};
+                const gs = (event.guests || []).filter(Boolean);
+                const em = (toInvite.email[0]) || gs.find((g) => String(g.email || '').trim()) || null;
+                const tx = (toInvite.text[0]) || gs.find((g) => String(g.phone || '').trim()) || null;
+                const card = (() => { try { const m = inviteCardModel(event); const w = m.facts.find((f) => f.label === 'When'); return { name: m.name, when: w ? [w.value, w.sub].filter(Boolean).join(' · ') : '' }; } catch { return null; } })();
+                return { toEmail: em ? em.name : '', toText: tx ? { name: tx.name, phone: formatPhoneUS(String(tx.phone || '')) } : null, card };
+              })();
               const reachInvite = (reached, via) => {
                 const at = new Date().toISOString();
                 try { trackEvent(ANALYTICS.INVITE_SENT, { via, count: (reached || []).length }); } catch (_e) { /* a counter never blocks an invite */ }
                 patchEvent({
                   guests: markInvited(event.guests || [], reached, via, at),
                   ...(event.invitesSentAt ? {} : { invitesSentAt: at }),
+                  ...(reached && reached.length ? { invitesSentMessage: inviteSnapshotNow(at) } : {}),
                 }, null, { noUndo: true });
               };
+              // THE SEND CONFIRM (owner, 11/24/2026: render s2-4): the message
+              // folded, who gets what, then the send. Nothing else on the sheet.
+              if (mode === 'confirm') return (
+              <>
+                {savedChip}
+                {linkBox}
+                <div data-invite-message-fold style={{ marginTop: noLink ? 'var(--sp-3)' : 0 }}>
+                  <button className="si-collapse" aria-expanded={draftMsgOpen} onClick={() => setDraftMsgOpen((o) => !o)}>
+                    <span className="si-cl-l">
+                      <span className="si-cl-t">Your message</span>
+                      <span className="si-cl-s">{inviteSubjectAndBody(shownDraft(), inviteSubject).body.split('\n').map((l) => l.trim()).filter(Boolean).join(' ')}</span>
+                    </span>
+                    <span className="si-cl-a">{draftMsgOpen ? 'Hide' : 'Show all'} {draftMsgOpen ? '⌃' : '⌄'}</span>
+                  </button>
+                  {draftMsgOpen && <div className="si-full" data-invite-message-full>{shownDraft()}</div>}
+                </div>
+                <button className="si-link" onClick={() => setSheet((sh) => ({ ...sh, mode: 'save', heading: null, title: 'Invite message' }))}>Edit the message</button>
+                <InviteToTheList guests={event.guests} told={guestToldMap(event)}
+                  textBody={textMessageBody(shownDraft(), inviteSubject)}
+                  canEmail={isCommApiConfigured() && !!session} disabled={noLink}
+                  sendOne={sendInviteTo} onReached={reachInvite} onLead={setDraftListLead} onNotYet={closeSheet} />
+              </>
+              );
               return (
               <>
+                {mode === 'save' ? savedChip : null}
                 {/* Host-attested state chip: RECORD-ONLY treatment (outline,
                     muted) — visually distinct from any system-verified pill,
                     per ruling clause 3. Renders only when an entry exists. */}
@@ -23420,7 +23574,7 @@ export default function HostShellV2() {
                       // Picking a voice still means "rewrite it" — but her typed words
                       // are no longer thrown away with no way back (Nielsen re-run N6,
                       // 2026-11-02; e2e yourWordsStayWithTheirEvent).
-                      const key = draftEditKey(sheet.title);
+                      const key = draftEditKey(sheet.editTitle || sheet.title);
                       const hers = draftBody; const prevTone = draftTone;
                       setDraftTone(k); setDraftBody(null); patchProfile({ draftTone: k });
                       try { delete draftEditsRef.current[key]; } catch { /* kept copy is best-effort */ }
@@ -23434,7 +23588,7 @@ export default function HostShellV2() {
                   {draftBody != null && <div className="of" style={{ marginTop: 6, color: 'var(--steel-soft)' }}>Your words — showing your edits</div>}
                 </div>
                 <textarea className="draft-body draft-edit" value={shownDraft()} aria-label="Edit the draft"
-                  onChange={e => { setDraftBody(e.target.value); draftEditsRef.current[draftEditKey(sheet.title)] = e.target.value; }}
+                  onChange={e => { setDraftBody(e.target.value); draftEditsRef.current[draftEditKey(sheet.editTitle || sheet.title)] = e.target.value; }}
                   rows={Math.min(14, shownDraft().split('\n').length + 2)} />
                 {/* ── UNFILLED BLANKS ARE NOT READY TO SEND (audit, 2026-09-18) ──
                     Several drafts deliberately bracket what the app does not know
@@ -23456,7 +23610,7 @@ export default function HostShellV2() {
                     their parking line vanished. Same defect class as the venue verdict
                     and the budget predicate; the accessor already existed. */}
                 {(() => {
-                  const blanks = unfilledBlanks(shownDraft());
+                  const blanks = unfilledBlanks(shownDraft()).filter((b) => b !== LINK_PLACEHOLDER);
                   if (!blanks.length) return null;
                   return (
                     <p className="grounding warn-note" style={{ margin: '10px 0 0' }}>
@@ -23477,6 +23631,23 @@ export default function HostShellV2() {
                 {sheet.notice ? (
                   <p className="grounding" style={{ margin: '10px 0 0' }}>{sheet.notice}</p>
                 ) : null}
+                {linkBox}
+                {lineOffer}
+                {/* SAVE ONLY (owner, 11/24/2026: render s2-3): the words, how they
+                    arrive, and one lit Save. No hand-offs: sending is step 2's. */}
+                {mode === 'save' && (<>
+                  <MessagePreview draft={shownDraft()} subject={inviteSubject}
+                    from={hostNameFor(event, profile) || (profile && profile.name) || ''}
+                    toEmail={previewTo.toEmail} toText={previewTo.toText} card={previewTo.card} />
+                  <div className="si-actions">
+                    <button className={(noLink ? 'mini' : 'cta') + ' si-wide'} onClick={saveInviteDraft}>Save draft</button>
+                  </div>
+                  <p className="grounding si-g">Saving sends nothing. Your message waits here until you send it from step 2.</p>
+                  {toInvite && toInvite.email.length + toInvite.text.length > 0 && (
+                    <button className="si-link" onClick={goToSend}>Ready? Go to Invite your guest list ›</button>
+                  )}
+                </>)}
+                {mode !== 'save' && (<>
                 {/* ── POST TO EVERYONE'S INVITE (owner pick, 11/21/2026) ─────
                     The trip details only. It posts through Updates to everyone
                     (every guest's invite, an email to those who asked, the
@@ -23496,20 +23667,26 @@ export default function HostShellV2() {
                     itself outranks a handoff. "Share…" is lit only when nothing
                     else is: not beside "Post to everyone's invite", "Send it to
                     …", or the invite/nudge block's email or text step. */}
-                <div className="actions-row" style={{ marginTop: 14 }}>
+                {/* NO REPLY LINK, NOTHING GOES OUT (owner, 11/24/2026): every
+                    hand-off waits for the link; the links become plain disabled
+                    buttons so no tap can open a composer. Invite text ('copy')
+                    makes Copy the lit one. */}
+                <div className={'actions-row' + (noLink ? ' si-dis' : '')} style={{ marginTop: 14 }}>
                   {canShareDraft && (
-                    <button className={shareLit ? 'cta' : 'mini'}
+                    <button className={shareLit && mode !== 'copy' && !noLink ? 'cta' : 'mini'} disabled={noLink}
                       onClick={() => { navigator.share({ title: sheet.title || 'From your plan', text: shownDraft() }).then(() => { recordSend('share'); }).catch(() => { /* declined — records NOTHING, by ruling */ }); }}>
                       Share…
                     </button>
                   )}
-                  <a className="mini" style={{ textDecoration: 'none' }} href={draftSmsHref(sheet.vendorId ? (event.vendors || []).find(v => v && v.id === sheet.vendorId) : null, shownDraft())} onClick={() => recordSend('sms')}>Text it</a>
-                  <a className="mini" style={{ textDecoration: 'none' }} href={'https://wa.me/?text=' + encodeURIComponent(shownDraft())} target="_blank" rel="noreferrer" onClick={() => recordSend('whatsapp')}>Open WhatsApp</a>
-                  <button className="mini" onClick={() => { copyDraft(shownDraft()); recordSend('copy'); }}>Copy it</button>
+                  {noLink ? <button className="mini" disabled>Text it</button>
+                    : <a className="mini" style={{ textDecoration: 'none' }} href={draftSmsHref(sheet.vendorId ? (event.vendors || []).find(v => v && v.id === sheet.vendorId) : null, isInviteWords ? textMessageBody(shownDraft(), inviteSubject) : shownDraft())} onClick={() => recordSend('sms')}>Text it</a>}
+                  {noLink ? <button className="mini" disabled>Open WhatsApp</button>
+                    : <a className="mini" style={{ textDecoration: 'none' }} href={'https://wa.me/?text=' + encodeURIComponent(shownDraft())} target="_blank" rel="noreferrer" onClick={() => recordSend('whatsapp')}>Open WhatsApp</a>}
+                  <button className={mode === 'copy' && !noLink ? 'cta' : 'mini'} disabled={noLink} onClick={() => { copyDraft(shownDraft()); recordSend('copy'); }}>Copy it</button>
                   {/* "I sent it earlier from my phone" — a RECORD, not an act
                       (UX_07:46): the label says Mark, the state says attested. */}
                   {!sendChip && (
-                    <button className="mini" onClick={() => recordSend('other')}>Mark it sent — I sent it myself</button>
+                    <button className="mini" disabled={noLink} onClick={() => recordSend('other')}>Mark it sent — I sent it myself</button>
                   )}
                 </div>
                 {/* The ONE thing we send ourselves. Names the recipient so the
@@ -23524,14 +23701,15 @@ export default function HostShellV2() {
                     </button>
                   </div>
                 )}
-                {sheet.sendsInvite && (
-                  <InviteToTheList guests={event.guests} draft={shownDraft()}
-                    canEmail={isCommApiConfigured() && !!session}
+                {sheet.sendsInvite && mode !== 'copy' && (
+                  <InviteToTheList guests={event.guests} told={guestToldMap(event)}
+                    textBody={textMessageBody(shownDraft(), inviteSubject)}
+                    canEmail={isCommApiConfigured() && !!session} disabled={noLink}
                     sendOne={sendInviteTo} onReached={reachInvite} onLead={setDraftListLead} />
                 )}
                 {sheet.sendsNudge && (
-                  <NudgeTheList event={event}
-                    textBody={nudgeTextBody(inviteSubjectAndBody(shownDraft(), (draftRsvpChase(event, profile) || {}).subject).body)}
+                  <NudgeTheList event={event} disabled={noLink}
+                    textBody={plainText(nudgeTextBody(inviteSubjectAndBody(shownDraft(), (draftRsvpChase(event, profile) || {}).subject).body))}
                     canEmail={isCommApiConfigured() && !!session}
                     sendOne={sendNudgeTo} onReached={reachNudge} onLead={setDraftListLead} />
                 )}
@@ -23547,6 +23725,7 @@ export default function HostShellV2() {
                   </div>
                 )}
                 <p className="grounding" style={{ marginTop: 10 }}>{typeof navigator !== 'undefined' && typeof navigator.share === 'function' ? '“Share…” opens your phone’s share sheet: Messages, WhatsApp, or anywhere else. ' : ''}Each voice changes how the note opens and closes, never its details. Edit any word above; your voice is remembered for every draft.</p>
+                </>)}
               </>
               );
             })()}
@@ -28243,10 +28422,10 @@ export default function HostShellV2() {
                     // when the count is 0.
                     : yes.length === 0
                       ? (gcr && gcr.pending > 0
-                        ? 'no yes replies yet · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t answered' : ' haven’t answered')
+                        ? 'no yes replies yet · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t replied' : ' haven’t replied')
                         : 'no yes replies yet — everyone’s answered')
                       : (gcr && gcr.pending > 0
-                        ? 'said yes so far · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t answered' : ' haven’t answered') + tail
+                        ? 'said yes so far · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t replied' : ' haven’t replied') + tail
                         : 'said yes — the list has settled' + (planLbl ? ' · planning for ' + planLbl : bandLbl ? ' · likely ' + bandLbl + ' on the day' : ''));
                 } else {
                   n = Number(guests) || 0;
@@ -28309,9 +28488,10 @@ export default function HostShellV2() {
               };
               const countInviteTools = (<>
                     {markInviteSent && <button className="mini" data-invite-sent onClick={markInviteSent.onClick}>{markInviteSent.label}</button>}
-                    <button className="mini" onClick={shareInviteLink}>Check and share link</button>
-                    <button className="mini" onClick={copyInviteLink}>Copy the link</button>
-                    <button className="mini" onClick={showQr}>Check and show QR</button>
+                    {/* One link action (owner, 11/24/2026): it shares, or copies
+                        where there is no share sheet. Both check the link first. */}
+                    <button className="mini" onClick={shareInviteLink}>Share the link</button>
+                    <button className="mini" onClick={showQr}>Show QR code</button>
                     {/* A local preview does not attest public availability. Sharing
                         and QR generation perform the separate public lookup above. */}
                     <button className="mini" onClick={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} }}>Preview on this device</button>
@@ -28327,12 +28507,11 @@ export default function HostShellV2() {
               // Anything else would make the loudest button on the screen the
               // wrong one for the state the host is actually in.
               const _inviteActs = {
-                share:   { label: 'Check and share link', onClick: shareInviteLink },
-                link:    { label: 'Copy the link', onClick: copyInviteLink },
-                qr:      { label: 'Check and show QR', onClick: showQr },
+                share:   { label: 'Share the link', onClick: shareInviteLink },
+                qr:      { label: 'Show QR code', onClick: showQr },
                 preview: { label: 'Preview on this device', onClick: () => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} } },
                 copy:    { label: 'Copy the invite', onClick: () => openInviteDraft('Your invite', draftInvite, { sendsInvite: true }) },
-                brief:   { label: 'Draft the guest brief', onClick: () => openInviteDraft('The guest brief', draftGuestBrief) },
+                brief:   { label: 'Send the details', onClick: () => openInviteDraft('The guest brief', draftGuestBrief) },
                 update:  { label: 'Update everyone', onClick: () => { try { openDraft('Update to everyone', draftGuestUpdate(event, {}, profile)); } catch { toast('Couldn\u2019t draft it.'); } } },
                 // WAS "Nudge the quiet ones", which promised the app would go
                 // and nudge them. It cannot: this bulk draft has no recipient
@@ -28344,43 +28523,97 @@ export default function HostShellV2() {
                 // draft it always was, and it still says so.
                 nudge:   showsReplyTracking(event) ? (() => {
                   const n = nudgeCount(nudgeRecipients(event));
-                  return { label: n > 0 ? `Nudge the ${n} who ${n === 1 ? 'hasn’t' : 'haven’t'} answered` : 'Write a nudge to send', onClick: openNudge };
+                  return { label: n > 0 ? `Nudge the ${n} who ${n === 1 ? 'hasn’t' : 'haven’t'} replied` : 'Write a nudge to send', onClick: openNudge };
                 })() : null,
               };
               // THE INVITE TO THE WHOLE LIST (owner, 11/19/2026). Same draft as
               // "Copy the invite", named for what it now does; shown while some
               // guest can still be reached and has not been invited.
-              const _reachable = (() => { const r = inviteRecipients(event.guests); return r.email.length + r.text.length; })();
+              const _reachable = (() => { const r = inviteRecipients(event.guests, guestToldMap(event)); return r.email.length + r.text.length; })();
               _inviteActs.list = _reachable > 0
                 ? { label: `Invite your guest list (${_reachable})`, onClick: () => openInviteDraft('Your invite', draftInvite, { sendsInvite: true }), data: 'invite-list' }
                 : null;
+              // ── SHARE & INVITE IN FOUR STEPS (owner, 11/24/2026: renders s2-1,
+              // s2-2, s2-2b). Every number from the readers the rest of the app
+              // uses: inviteRecipients (who can still be invited, told guests
+              // skipped), nudgeRecipients / nudgeCount, wasInvited, rsvpHasResponded.
+              const shareInviteCard = (() => {
+                const told = guestToldMap(event);
+                const r = inviteRecipients(event.guests, told);
+                const n = r.email.length + r.text.length;
+                // Out: the task's own record (invitesSentAt, or a reply), or any
+                // guest the invite reached (invitedAt, or marked told).
+                const out = !!invitesOut(event) || (event.guests || []).some((g) => g && wasInvited(event, g));
+                const canEmail = isCommApiConfigured() && !!session;
+                const callName = (nm) => greetingName(nm) || 'a guest';
+                const andList = (xs) => { const a = xs.map((x) => callName(x.name)); if (a.length > 3) return a.slice(0, 3).join(', ') + ' and ' + (a.length - 3) + ' more'; return a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : (a[0] || ''); };
+                const verb = (xs, one, many) => (xs.length === 1 ? one : many);
+                const whoGets = (em, tx) => [
+                  em.length ? andList(em) + verb(em, ' gets an email', ' get an email') + (canEmail ? ' from the app' : ' from the app once you sign in') : '',
+                  tx.length ? andList(tx) + verb(tx, ' is a text', ' are texts') + ' you send from your phone' : '',
+                ].filter(Boolean).join('; ') + '.';
+                const guestsN = (event.guests || []).filter(Boolean);
+                const invited = guestsN.filter((g) => wasInvited(event, g));
+                const replied = invited.filter((g) => rsvpHasResponded(g)).length;
+                const send = n > 0
+                  ? (out
+                    ? {
+                      kind: 'new', label: n === 1 ? 'Invite 1 new guest' : `Invite ${n} new guests`,
+                      line: (() => {
+                        const all = [...r.email, ...r.text];
+                        const names = all.map((x) => x.name || 'A guest');
+                        const who = names.length === 1 ? names[0] + ' was' : (names.length === 2 ? names.join(' and ') : names.slice(0, 2).join(', ') + ' and ' + (names.length - 2) + ' more') + ' were';
+                        const how = r.email.length && r.text.length ? 'by email or text' : r.email.length ? 'by email' : 'by text';
+                        return `${who} added after your invite went out. ${all.length === 1 ? callName(all[0].name) + ' gets' : 'They get'} the same message ${how}.`;
+                      })(),
+                    }
+                    : { kind: 'first', label: `Invite your guest list (${n})`, line: 'You check it before anything goes. ' + whoGets(r.email, r.text) })
+                  : (out && invited.length ? { kind: 'done', line: 'Add someone and this lights up to invite just them.' }
+                    : { kind: 'none', line: guestsN.length ? 'Add a phone or email to a guest and this lights up to invite them.' : 'Add your guests and this lights up to invite them.' });
+                if (!out) send.onMarkSent = () => patchEvent({ invitesSentAt: new Date().toISOString() }, 'Invite marked as sent — the plan moves on.');
+                if (send.kind === 'first' || send.kind === 'new') send.onSend = () => openInviteDraft('Your invite', draftInvite, { sendsInvite: true, mode: 'confirm' });
+                const nr = showsReplyTracking(event) ? nudgeRecipients(event) : null;
+                const nc = nr ? nudgeCount(nr) : 0;
+                const waiting = invited.length - replied;
+                const sentMsg = draftStatus(event);
+                return {
+                  page: { live: out, onOpen: () => setSheet({ kind: 'invite-design', from: sheet }) },
+                  message: {
+                    kind: sentMsg.kind, line: sentMsg.line,
+                    onOpen: sentMsg.kind === 'sent'
+                      ? () => setSheet({ kind: 'invite-sent', from: sheet })
+                      : () => openInviteDraft('Invite message', draftInvite, { mode: 'save' }),
+                  },
+                  send,
+                  share: {
+                    onShare: shareInviteLink, onQr: showQr,
+                    onText: out ? null : () => openInviteDraft('Your invite', draftInvite, { sendsInvite: true, mode: 'copy' }),
+                  },
+                  after: {
+                    out,
+                    tally: invited.length ? { invited: invited.length, replied, waiting } : null,
+                    nudge: nr && (nc > 0 || waiting > 0) ? {
+                      count: nc,
+                      label: nc > 0 ? `Nudge the ${nc} who ${nc === 1 ? 'hasn’t' : 'haven’t'} replied` : 'Write a nudge to send',
+                      line: nc > 0 ? 'You check it first. ' + whoGets(nr.email, nr.text).replace(' from the app once you sign in', ' once you sign in').replace(' from the app', '').replace(' you send from your phone', ' from your phone') + ` Nobody gets two nudges within ${NUDGE_GAP_DAYS} days.` : '',
+                      onClick: openNudge,
+                    } : null,
+                    onUpdate: _inviteActs.update.onClick,
+                    onDetails: _inviteActs.brief.onClick,
+                  },
+                };
+              })();
               const _outstanding = (event.guests || []).filter((g) => g && !String(g.rsvp || '').trim()).length;
               const _chasing = _outstanding > 0 || !(event.guests || []).length;
               const inviteTiers = _chasing ? {
                 primary: _inviteActs.share,
-                secondary: [_inviteActs.list, markInviteSent, _inviteActs.link, _inviteActs.qr, _inviteActs.nudge].filter(Boolean),
+                secondary: [_inviteActs.list, markInviteSent, _inviteActs.qr, _inviteActs.nudge].filter(Boolean),
                 more: [_inviteActs.preview, _inviteActs.copy, _inviteActs.brief, _inviteActs.update],
               } : {
                 primary: _inviteActs.update,
                 secondary: [_inviteActs.share, _inviteActs.qr],
-                more: [_inviteActs.link, _inviteActs.preview, _inviteActs.copy, _inviteActs.brief, _inviteActs.nudge].filter(Boolean),
+                more: [_inviteActs.preview, _inviteActs.copy, _inviteActs.brief, _inviteActs.nudge].filter(Boolean),
               };
-              // The BASELINE composition keeps its flat 2-up grid, unchanged, so
-              // the two are still comparable on one build.
-              const inviteTools = (<>
-                  <div className="pill-grid" style={{ margin: '0 0 var(--sp-3)' }}>
-                    <button className="mini" onClick={_inviteActs.share.onClick}>Check and share link</button>
-                    <button className="mini" onClick={_inviteActs.link.onClick}>Copy the link</button>
-                    <button className="mini" onClick={_inviteActs.qr.onClick}>Check and show QR</button>
-                    <button className="mini" onClick={_inviteActs.preview.onClick}>Preview on this device</button>
-                    {_inviteActs.list && <button className="mini" data-invite-list-open onClick={_inviteActs.list.onClick}>{_inviteActs.list.label}</button>}
-                    <button className="mini" onClick={_inviteActs.copy.onClick}>Copy the invite</button>
-                    <button className="mini" onClick={_inviteActs.brief.onClick}>Draft the guest brief</button>
-                    <button className="mini" onClick={_inviteActs.update.onClick}>Update everyone</button>
-                    {_inviteActs.nudge && <button className="mini" onClick={_inviteActs.nudge.onClick}>{_inviteActs.nudge.label}</button>}
-                    {markInviteSent && <button className="mini" data-invite-sent onClick={markInviteSent.onClick}>{markInviteSent.label}</button>}
-                  </div>
-              </>);
               // ── THE GUEST EDITOR READS IN GROUPS (owner, 11/24/2026: "Combine
               // 1A and 1B") ───────────────────────────────────────────────────
               // One definition, two placements (§26): inline under its row on a
@@ -28451,6 +28684,7 @@ export default function HostShellV2() {
                   const handoffNudge = async (click, channel) => {
                     click.preventDefault();
                     const url = await verifiedRsvpUrl();
+                    if (!url) return;   // no reply link, nothing goes out (owner, 11/24/2026); the toast says why
                     const checked = draftRsvpChase(event, profile, { rsvpUrl: url });
                     const text = [checked.subject, checked.body].filter(Boolean).join('\n\n');
                     window.location.href = channel === 'sms'
@@ -28477,6 +28711,7 @@ export default function HostShellV2() {
                     let r;
                     try {
                       const url = await verifiedRsvpUrl();
+                      if (!url) { setNudgeEmail(null); return; }   // no reply link, nothing goes out
                       const checked = draftRsvpChase(event, profile, { rsvpUrl: url });
                       const res = await commApi.createMessage(event.id, 'CLIENT', {
                         message_type: 'standard', author_role: 'planner',
@@ -28606,12 +28841,33 @@ export default function HostShellV2() {
                           value={g.needs || ''} onChange={e => writeGuest(i, { needs: e.target.value }, null)} />
                       </div>
                       {/* The +1 is one text field on the row: a name, or a count
-                          as written ("+3 (Nia + 2 boys)"). The row has one meal,
-                          the guest's, so this card says nothing about a meal. */}
+                          as written ("+3 (Nia + 2 boys)"). THE +1'S MEAL AND NEED
+                          (owner, 11/24/2026): replies already store them apart
+                          (plusOneMeal, plusOneNeeds; seating and the diet rows read
+                          them), so the card shows and edits them, through the same
+                          writer as the rest of the row (writeGuest). */}
                       <div className="ged-card" data-ged-person="plusone">
                         <input className="field ged-field" placeholder="Their +1’s name, if any" aria-label="Plus one name"
                           value={g.plusOne || ''} onChange={e => writeGuest(i, { plusOne: e.target.value }, null)} />
                         {plus ? <div className="ged-note">{plus > 1 ? plus + ' people, as written' : 'Adult · guest of ' + first}</div> : null}
+                        {plus ? (() => {
+                          const pName = String(g.plusOne || '').trim() || 'their +1';
+                          const pMeal = String(g.plusOneMeal || '—');
+                          const pMeals = MEAL_CHOICES.includes(pMeal) ? MEAL_CHOICES : [...MEAL_CHOICES, pMeal];
+                          return (<>
+                            <select className="field ged-field" aria-label={'Meal for ' + pName} value={pMeal}
+                              onChange={(e) => {
+                                const m = e.target.value;
+                                writeGuest(i, { plusOneMeal: m }, m === '—'
+                                  ? pName + '’s meal cleared — counts as unanswered.'
+                                  : pName + ' → ' + m + ' — the meal tally keeps count.');
+                              }}>
+                              {pMeals.map((m) => <option key={m} value={m}>{m === '—' ? 'Meal not answered' : m}</option>)}
+                            </select>
+                            <input className="field ged-field" placeholder="Dietary needs, if any" aria-label={'Dietary needs for ' + pName}
+                              value={g.plusOneNeeds || ''} onChange={e => writeGuest(i, { plusOneNeeds: e.target.value }, null)} />
+                          </>);
+                        })() : null}
                       </div>
                       <div className="ged-kids">
                         <span className="ged-k">Children</span>
@@ -28695,8 +28951,13 @@ export default function HostShellV2() {
                       to a hairline row, opens the 3-up segmented control on tap. */}
                   {/* "YOUR INVITE" (owner, 11/24/2026): the invite look (now "Paper"), the
                       artwork, the layout and her message live in one panel. */}
-                  <SettledRow label="Your invite" value={(event.inviteLayout === 'glance' ? 'At a glance' : 'Classic') + ' · ' + inviteStyleLabel(event.inviteStyle)}
-                    style={{ margin: '0 0 10px' }} onOpen={() => setSheet({ kind: 'invite-design', from: sheet })} />
+                  {/* ONE DOOR, ONE NAME (owner, 11/24/2026; UX_11 rule 8): the Share &
+                      invite card's "Invite page" is the door. Only the people view,
+                      which has no card, keeps one here. */}
+                  {peopleMode ? (
+                    <SettledRow label="Invite page" value={(event.inviteLayout === 'glance' ? 'At a glance' : 'Classic') + ' · ' + inviteStyleLabel(event.inviteStyle)}
+                      style={{ margin: '0 0 10px' }} onOpen={() => setSheet({ kind: 'invite-design', from: sheet })} />
+                  ) : null}
                   {inviteRules}
                   {countingChips}
                   {csvBlock}
@@ -29368,7 +29629,7 @@ export default function HostShellV2() {
                   ) : (
                     <>
                       <div id="guests-invites-anchor" className="shelf-label" style={{ margin: 'var(--sp-6) 0 var(--sp-2)', scrollMarginTop: 12 }}>Share &amp; invite</div>
-                      {inviteTools}
+                      <ShareInviteCard {...shareInviteCard} />
                     </>
                   )}
                   {/* G8 HOST ALERTS (11/16/2026): a signed-in host's synced event
@@ -29505,7 +29766,7 @@ export default function HostShellV2() {
                         onSetReplyBy={() => setDeadlineOpen((o) => !o)}
                         editor={deadlineOpen ? renderDeadlineEditor() : null}
                         primary={_inviteActs.share}
-                        secondary={[_inviteActs.link, _inviteActs.qr]}
+                        secondary={[_inviteActs.qr]}
                         more={[_inviteActs.preview]}
                       />
                     </div>

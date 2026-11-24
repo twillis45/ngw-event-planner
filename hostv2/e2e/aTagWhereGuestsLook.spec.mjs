@@ -23,7 +23,7 @@ const host = async (page, ev) => {
   await page.goto('?elegant=1');
   await settled(page);
   await openSectionByName(page, 'Guests');
-  await page.getByRole('button', { name: /Check and show QR/i }).first().click();
+  await page.getByRole('button', { name: 'Show QR code', exact: true }).first().click();
   await expect(page.getByAltText(/QR code for the/)).toBeVisible();
 };
 

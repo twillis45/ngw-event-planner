@@ -27,9 +27,13 @@ const SIG_FONT = `400 15px ${SERIF_READ}`;
 
 const grainUrl = (kind) => `${import.meta.env.BASE_URL || '/'}email/invite-grain-${kind}.jpg`;
 
-function loadImage(src) {
+function loadImage(src, cors) {
   return new Promise((resolve, reject) => {
     const img = new Image();
+    // The host's photo is served by the API (another origin): asked for with
+    // CORS so the canvas is not tainted and the card can still be uploaded
+    // (backend host_photos.public_host_photo allows it).
+    if (cors) img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error('grain failed to load'));
     img.src = src;
@@ -165,9 +169,17 @@ function struck(ctx, dark, display, draw) {
   draw();
 }
 
+// The host's photo on the picture (owner, 11/24/2026), as on the page:
+// Classic beside the signature, At a glance in the Hosted by row. A circle.
+const PHOTO_D = 26;
+const PHOTO_GAP = 8;
+
 /** The card's layout: what goes where, measured with `ctx` (a measuring
- *  pass; nothing is drawn). Exported so the layout is testable. */
-export function planInviteCard(ctx, model, crest) {
+ *  pass; nothing is drawn). Exported so the layout is testable. `photo` is the
+ *  host's loaded photo, or null. */
+export function planInviteCard(ctx, model, crest, photo) {
+  const hasPhoto = !!(photo && photo.naturalWidth);
+  const glance = model.layout === 'glance';
   const inner = W - PAD * 2;
   const ops = [];
   let y = 30;
@@ -185,7 +197,11 @@ export function planInviteCard(ctx, model, crest) {
     ctx.font = MSG_FONT;
     y += 4;
     wrap(ctx, model.deck, inner - 24).forEach((l) => { y += 24; ops.push({ k: 'deck', text: l, y: y - 5, font: MSG_FONT }); });
-    if (model.sig) { y += 26; ops.push({ k: 'sig', text: model.sig, y: y - 5, font: SIG_FONT }); }
+    if (model.sig) {
+      const withPhoto = hasPhoto && !glance;
+      y += withPhoto ? 34 : 26;
+      ops.push({ k: 'sig', text: model.sig, y: y - 5, font: SIG_FONT, ...(withPhoto ? { photo: true } : {}) });
+    }
   }
   y += 16; ops.push({ k: 'rule', y }); y += 2 + 4;
   for (const f of model.facts) {
@@ -194,7 +210,10 @@ export function planInviteCard(ctx, model, crest) {
     const full = f.sub ? `${f.value} · ${f.sub}` : f.value;
     const oneLine = ctx.measureText(full).width <= inner;
     const lines = oneLine ? [full] : [...wrap(ctx, f.value, inner), ...(f.sub ? [f.sub] : [])];
-    lines.forEach((l, i) => { y += 3 + 18; ops.push({ k: 'val', text: l, sub: f.sub, oneLine, last: i === lines.length - 1, y: y - 4 }); });
+    const rowPhoto = hasPhoto && glance && f.label === 'Hosted by';
+    if (rowPhoto) y += 6;
+    lines.forEach((l, i) => { y += 3 + 18; ops.push({ k: 'val', text: l, sub: f.sub, oneLine, last: i === lines.length - 1, y: y - 4, ...(rowPhoto && i === 0 ? { photo: true } : {}) }); });
+    if (rowPhoto) y += 4;
   }
   return { ops, h: Math.ceil(y + 34) };
 }
@@ -209,8 +228,20 @@ export async function drawInviteCard(model) {
   // one and the host left it on. It failing to load leaves it out, as the page would.
   const crest = model.crest ? await loadImage(model.crest).catch(() => null) : null;
 
+  // Her photo (11/24/2026); one that fails to load is left out, initials are not drawn.
+  const photo = model.photo ? await loadImage(model.photo, /^https?:/i.test(model.photo)).catch(() => null) : null;
+
   const measure = document.createElement('canvas').getContext('2d');
-  const { ops, h } = planInviteCard(measure, model, crest);
+  const { ops, h } = planInviteCard(measure, model, crest, photo);
+  // A round photo with a hairline, its left edge at x and its middle at cy.
+  const drawPhoto = (x, cy) => {
+    ctx.save();
+    ctx.beginPath(); ctx.arc(x + PHOTO_D / 2, cy, PHOTO_D / 2, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
+    ctx.drawImage(photo, x, cy - PHOTO_D / 2, PHOTO_D, PHOTO_D);
+    ctx.restore();
+    ctx.save(); ctx.strokeStyle = c.sub; ctx.globalAlpha = 0.3; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(x + PHOTO_D / 2, cy, PHOTO_D / 2, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  };
   const canvas = document.createElement('canvas');
   canvas.width = W * S; canvas.height = h * S;
   const ctx = canvas.getContext('2d');
@@ -263,8 +294,16 @@ export async function drawInviteCard(model) {
       ctx.font = op.font; ctx.fillStyle = c.body || c.ink; ctx.textAlign = 'center';
       ctx.fillText(op.text, W / 2, op.y);
     } else if (op.k === 'sig') {
-      ctx.font = op.font; ctx.fillStyle = c.sub; ctx.textAlign = 'center';
-      ctx.fillText(op.text, W / 2, op.y);
+      ctx.font = op.font; ctx.fillStyle = c.sub;
+      if (op.photo && photo) {
+        const tw = ctx.measureText(op.text).width;
+        const x0 = W / 2 - (PHOTO_D + PHOTO_GAP + tw) / 2;
+        drawPhoto(x0, op.y - 5);
+        ctx.textAlign = 'left'; ctx.fillText(op.text, x0 + PHOTO_D + PHOTO_GAP, op.y);
+      } else {
+        ctx.textAlign = 'center';
+        ctx.fillText(op.text, W / 2, op.y);
+      }
     } else if (op.k === 'rule') {
       ctx.fillStyle = c.hue; ctx.fillRect(W / 2 - 22, op.y, 44, 2);
     } else if (op.k === 'label') {
@@ -277,7 +316,9 @@ export async function drawInviteCard(model) {
         ? [[op.text.slice(0, op.text.length - op.sub.length - 3), `600 15px ${SANS}`, c.body || c.ink], [' · ' + op.sub, `500 15px ${SANS}`, c.sub]]
         : (!op.oneLine && op.sub && op.last) ? [[op.text, `500 15px ${SANS}`, c.sub]] : [[op.text, `600 15px ${SANS}`, c.body || c.ink]];
       let total = 0; for (const [t, f] of parts) { ctx.font = f; total += ctx.measureText(t).width; }
-      let x = W / 2 - total / 2;
+      const lead = op.photo && photo ? PHOTO_D + PHOTO_GAP : 0;
+      let x = W / 2 - (total + lead) / 2;
+      if (lead) { drawPhoto(x, op.y - 5); x += lead; }
       for (const [t, f, col] of parts) {
         ctx.font = f; ctx.fillStyle = col;
         const at = x; struck(ctx, dark, false, () => ctx.fillText(t, at, op.y));

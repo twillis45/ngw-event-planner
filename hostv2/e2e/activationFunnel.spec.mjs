@@ -65,7 +65,7 @@ test.describe('activation funnel — hostv2 emits it, not just the frozen CRA', 
     await openSectionByName(page, 'Guests');
     await settled(page);
 
-    const share = page.getByRole('button', { name: /Check and share link/i }).first();
+    const share = page.getByRole('button', { name: 'Share the link', exact: true }).first();
     // Asserted, not skipped, for the reason above: a missing control must fail
     // this spec rather than excuse it.
     await expect(share).toBeVisible();

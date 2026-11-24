@@ -44,7 +44,7 @@ test('signed out and unsaved: the RSVP check asks her to sign in and save, and i
   await boot(page);
   await openSectionByName(page, 'Guests');
   await sheetSettled(page);
-  await page.getByRole('button', { name: /Check and share link/i }).first().click();
+  await page.getByRole('button', { name: 'Share the link', exact: true }).first().click();
   const toast = page.locator('.toast');
   await expect(toast).toContainText('Sign in to save this plan, then guests can RSVP online.');
   await expect(toast).not.toContainText('Online RSVPs are not available');
