@@ -239,7 +239,7 @@ export async function drawInviteCard(model) {
     ctx.beginPath(); ctx.arc(x + PHOTO_D / 2, cy, PHOTO_D / 2, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
     ctx.drawImage(photo, x, cy - PHOTO_D / 2, PHOTO_D, PHOTO_D);
     ctx.restore();
-    ctx.save(); ctx.strokeStyle = dark ? 'rgba(255,244,224,.25)' : 'rgba(110,85,50,.25)'; ctx.lineWidth = 1;
+    ctx.save(); ctx.strokeStyle = c.sub; ctx.globalAlpha = 0.3; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(x + PHOTO_D / 2, cy, PHOTO_D / 2, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
   };
   const canvas = document.createElement('canvas');

@@ -9204,3 +9204,95 @@ input[data-cue], textarea[data-cue]{ outline:revert-layer; border-color:color-mi
 /* A run's bulk button names the store, and a priced store's name is long. */
 .run-all{max-width:100%; white-space:normal; text-align:left}
 .fstat-tag{display:inline-block; margin-top:4px}
+
+/* ── SHARE & INVITE IN FOUR STEPS, THE INVITE MESSAGE (owner, 11/24/2026:
+   renders s2-1 to s2-6). The card (ShareInviteCard.jsx), the message sheet's
+   preview, the send confirm, "What went out" and the link-not-ready notice. ── */
+:root{
+  --pv-mail-paper:#fbfaf7; --pv-mail-ink:#2f2b28; --pv-mail-dim:#6f6760; --pv-mail-rule:#e6e1d8;
+  --pv-mail-link:#1d5fbf; --pv-card-b:#f1ece4; --pv-card-line:#ddd6cc; --pv-card-accent:#9c4426;
+  --pv-av:#9c4426; --pv-av-ink:#ffffff;
+  --pv-phone:#000000; --pv-phone-dim:#a3a3aa; --pv-bubble:#1f6fe5; --pv-bubble-ink:#ffffff;
+  --si-warn-tint:rgba(236,161,63,.1);
+}
+.si-step{display:flex; align-items:center; gap:8px; margin:var(--sp-5) 0 var(--sp-2); font-size:var(--t-overline); font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+.si > .si-step:first-child{margin-top:var(--sp-2)}
+.si-n{display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; border:1px solid var(--line); font-size:var(--t-tag); letter-spacing:0; color:var(--ink-soft)}
+.si-wide{width:100%}
+.si-g{margin:var(--sp-2) 2px 0; font-size:var(--t-note)}
+.si-tight{margin:4px 2px var(--sp-2)}
+.si-link{display:inline-flex; align-items:center; margin:2px 0 0; min-height:44px; padding:0 2px; background:none; border:none; box-shadow:none; color:var(--steel-soft); font-size:var(--t-btn); font-weight:650; text-decoration:underline; text-underline-offset:3px; text-decoration-color:var(--line); cursor:pointer; text-align:left}
+.si-link:disabled{opacity:.45; cursor:default}
+.si-row{width:100%; margin-top:var(--sp-2); gap:12px; text-align:left}
+.si-row .settled-card-main{flex:1}
+.si-rowic{display:inline-flex; width:36px; height:36px; border-radius:10px; align-items:center; justify-content:center; background:var(--bg-band); flex:0 0 auto}
+.si-ok{color:var(--ok)}
+.si-row3{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--sp-2)}
+.si-row2b{display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-2)}
+.si-tile{flex-direction:column; gap:4px; white-space:normal; text-align:center; line-height:1.2; min-height:72px; padding:12px 4px}
+.si-ic{width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; flex:0 0 auto}
+.si-fold{width:100%; min-height:48px; background:none; border:none; padding:0 2px; cursor:pointer; text-align:left}
+.si-fold .fstat-l{font-size:var(--t-body-s); font-weight:600; color:var(--steel-soft)}
+.si-quiet[disabled]{opacity:1; color:var(--muted); background:transparent; border-color:var(--line); border-style:dashed}
+.si-tally{display:flex; flex-wrap:wrap; gap:var(--sp-4); margin:0 2px var(--sp-3); font-size:var(--t-row-sub); color:var(--muted); font-weight:550}
+.si-tally b{color:var(--ink); font-weight:750; font-variant-numeric:tabular-nums; margin-right:4px}
+.si-wait b{color:var(--warn)}
+.si-row2{display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-2); margin-top:var(--sp-3)}
+.si-two{flex-direction:column; align-items:flex-start; gap:2px; white-space:normal; text-align:left; min-height:60px; padding:8px 12px}
+.si-t{font-weight:700}
+.si-s{font-size:var(--t-tag); color:var(--muted); font-weight:550; line-height:1.3}
+.si-chip{display:inline-block; margin:0 0 var(--sp-3); padding:2px 12px; border-radius:var(--r-pill); border:1px solid var(--line); color:var(--steel-soft)}
+.si-actions{margin-top:var(--sp-4)}
+.si-newline{margin-top:var(--sp-3); padding:12px 12px; border:1px solid var(--line); border-radius:12px}
+.si-newline p{margin:0 0 var(--sp-2)}
+/* Preview as: Email | Text */
+.pv-head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:var(--sp-4) 0 var(--sp-2)}
+.pv-seg{display:grid; grid-template-columns:1fr 1fr; gap:4px; background:var(--bg-band); border:1px solid var(--line); border-radius:12px; padding:2px; min-width:180px}
+.pv-seg button{min-height:44px; border:none; background:none; border-radius:10px; color:var(--muted); font-size:var(--t-btn); font-weight:650; cursor:pointer}
+.pv-seg button[aria-checked="true"]{background:var(--steel-tint); color:var(--ink); box-shadow:inset 0 0 0 1px var(--steel-soft); font-weight:750}
+.pv-mail{background:var(--pv-mail-paper); color:var(--pv-mail-ink); border-radius:14px; overflow:hidden; border:1px solid var(--line)}
+.pv-mh{padding:12px 16px 8px; border-bottom:1px solid var(--pv-mail-rule)}
+.pv-from{display:flex; gap:8px; align-items:center; font-size:var(--t-row-sub); line-height:1.35}
+.pv-av{width:32px; height:32px; border-radius:50%; background:var(--pv-av); color:var(--pv-av-ink); display:inline-flex; align-items:center; justify-content:center; font-size:var(--t-tag); font-weight:700; flex:0 0 auto}
+.pv-dim{color:var(--pv-mail-dim); font-size:var(--t-tag)}
+.pv-subj{margin-top:8px; font-size:var(--t-row); font-weight:700; letter-spacing:-.01em}
+.pv-card{margin:12px 16px 0; border-radius:10px; background:var(--pv-card-b); border:1px solid var(--pv-card-line); padding:16px 12px; text-align:center}
+.pv-card-t{font-family:var(--serif-read, Georgia, serif); font-size:20px; color:var(--pv-mail-ink)}
+.pv-card-s{font-size:var(--t-tag); color:var(--pv-card-accent); font-weight:700; letter-spacing:.04em; margin-top:4px}
+.pv-card-n{font-size:var(--t-tag); color:var(--pv-mail-dim); margin-top:8px}
+.pv-body{padding:12px 16px 16px; font-size:15px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere}
+.pv-link{color:var(--pv-mail-link); text-decoration:underline; word-break:break-all}
+.pv-phone{background:var(--pv-phone); border:1px solid var(--line); border-radius:16px; padding:12px}
+.pv-to{font-size:var(--t-tag); color:var(--pv-phone-dim); text-align:center; margin-bottom:8px}
+.pv-bubble{margin-left:auto; max-width:86%; background:var(--pv-bubble); color:var(--pv-bubble-ink); border-radius:18px 18px 4px 18px; padding:8px 12px; font-size:15px; line-height:1.4; white-space:pre-wrap; overflow-wrap:anywhere}
+.pv-bubble .pv-link{color:var(--pv-bubble-ink)}
+.pv-count{margin-top:8px; text-align:right; font-size:var(--t-tag); color:var(--pv-phone-dim)}
+/* The send confirm: the message folded, who gets what. */
+.si-collapse{width:100%; display:flex; align-items:center; gap:12px; text-align:left; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 16px; min-height:64px; color:var(--ink); cursor:pointer}
+.si-cl-l{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px}
+.si-cl-t{font-weight:700; font-size:var(--t-row)}
+.si-cl-s{font-size:var(--t-row-sub); color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.si-cl-a{font-size:var(--t-btn); color:var(--steel-soft); font-weight:650; white-space:nowrap}
+.si-full{margin-top:var(--sp-2); background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 16px; font-size:15px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; color:var(--ink)}
+.si-who{display:flex; flex-direction:column; gap:2px; padding:8px 0; border-top:1px solid var(--line)}
+.si-who-h{display:flex; align-items:center; gap:8px; font-weight:700; font-size:var(--t-row-sub); color:var(--ink)}
+.si-who-h .si-ic{width:16px; height:16px}
+.si-who-n{font-size:var(--t-row); color:var(--ink-soft); padding-left:24px}
+/* "What went out": read only. */
+.si-meta{display:flex; flex-direction:column; gap:2px; font-size:var(--t-row-sub); color:var(--muted); margin-bottom:var(--sp-2)}
+.si-sent{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 16px; font-size:15px; line-height:1.5; color:var(--ink); white-space:pre-wrap; overflow-wrap:anywhere}
+.si-sent .pv-link{color:var(--steel-soft)}
+.si-sent-s{font-weight:700; margin-bottom:8px}
+.si-rcp{list-style:none; margin:0; padding:0}
+.si-rcp li{display:grid; grid-template-columns:1fr auto; grid-template-areas:'n p' 'c p'; align-items:center; column-gap:12px; padding:8px 0; border-top:1px solid var(--line)}
+.si-rn{grid-area:n; font-weight:650; font-size:var(--t-row)}
+.si-rc{grid-area:c; font-size:var(--t-row-sub); color:var(--muted)}
+.si-pill{grid-area:p; font-size:var(--t-tag); font-weight:750; padding:4px 12px; border-radius:var(--r-pill); background:var(--bg-band); color:var(--muted)}
+.si-pill.ok{color:var(--ok); background:var(--ok-tint)}
+.si-note{margin-top:var(--sp-5); padding:var(--sp-3); border:1px solid var(--line); border-radius:12px}
+/* No reply link, nothing goes out (UX_11 rule 7). */
+.si-warn{border:1px solid var(--warn); background:var(--si-warn-tint); border-radius:12px; padding:12px 16px; margin-top:var(--sp-3)}
+.si-warn p{margin:0 0 var(--sp-2); font-size:var(--t-body-s); line-height:1.45; color:var(--ink)}
+.si-dis button[disabled], .si-dis a[aria-disabled="true"]{opacity:.42; pointer-events:none}
+.si-whohead{margin:var(--sp-5) 0 var(--sp-1)}
+.si-first{margin-top:0; margin-bottom:var(--sp-2)}
