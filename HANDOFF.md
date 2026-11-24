@@ -48,6 +48,13 @@ Before that, 2026-11-02 (sixtieth entry:
   - `dayBefore.test`: the split has three parts.
   - `moneyHasOneOwner`: "your budget line" (same figures).
   - `theEstimateDoesNotCoverIt`, `theRoomsReachTheBudgetScreen`, `smallLinksAreTappable`, `theBudgetAskSaysWhoseMoney`: the old budget-card sentences, now the short ones; same facts, same 44px check on the Mid-range tier.
+- **The one e2e red, root-caused (parent review):** `theCalendarShowsTheHourAndTheSky:70` (and the earlier `coreJourneyTruth:38`) tapped a "Then, in order" row that was moving.
+  - `lib/flipReorder` measured rows on the screen. When content above the list grew after load (hero lines, the weather landing), every row "travelled" 260 ms back with nothing reordered. A probe saw four `.ef-row` transform transitions right after `settled()`, and the failing trace shows the row focused (mousedown) with no click (mouseup landed beside it).
+  - Fix: positions are read within the list, so a whole-list shift animates nothing and real reorders still travel.
+  - Tests: `flipReorder.test.js` (+2, red first) and `e2e/theThenRowsHoldStill.spec.mjs`, which needs no load.
+  - The same e2e test fails 3 of 3 on `origin/main` `45cfa9e`, so the bug predates this batch.
+  - Under load (4 CPU burners, 10 workers, 40 repeats): `theCalendarShowsTheHourAndTheSky:70` went from 3 of 40 failing to 40 of 40 passing.
+  - After the fix: the 15 FLIP-reading specs pass on mobile, desktop and tablet-tall (251 passed, 0 failed); jest 937 suites, 14,089 passed.
 - **Renders:** `renders/cohesion-c` (never merges), `docs/renders/cohesion-c/` (#18 and #62, before/after at 390 and 1440).
 - **Gates (measured on `8bfdd78`):**
   - root jest: 937 suites, 14,087 passed, 1 skipped.

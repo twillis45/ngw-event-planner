@@ -144,3 +144,43 @@ describe('the quiet failure', () => {
     expect(writes).toBe(4);
   });
 });
+
+// ─── A LIST THAT MOVES IS NOT A LIST THAT REORDERED (11/24/2026) ─────────────
+// The board's "Then, in order" rows were measured on the SCREEN, so when the
+// hero above them grew (a late line, the weather landing) the whole list moved
+// down and every row "travelled" back up for 260ms, with nothing reordered. A
+// tap on a row in that window landed on a moving target: mousedown on the row,
+// mouseup beside it, and no click (theCalendarShowsTheHourAndTheSky:70, red
+// under load). Positions are now read within the list, so a shift of the whole
+// list moves nothing and a real reorder still travels.
+describe('a list that moved as a whole', () => {
+  const at = (top) => ({ top });
+  const box = (top) => {
+    const c = makeContainer([]);
+    c._top = top;
+    c.getBoundingClientRect = () => at(c._top);
+    return c;
+  };
+
+  test('shifted 40px with the same order: nothing travels', () => {
+    const c = box(0);
+    const rows0 = [makeRow('a', 0), makeRow('b', 40), makeRow('c', 80)];
+    c.querySelectorAll = () => rows0;
+    const before = measureRows(c);
+    c._top = 40;                                             // the hero above grew
+    const rows1 = [makeRow('a', 40), makeRow('b', 80), makeRow('c', 120)];
+    c.querySelectorAll = () => rows1;
+    expect(playReorder(c, before, { force: true })).toBe(0);
+    for (const r of rows1) expect(r.style.transform).toBeUndefined();
+  });
+
+  test('shifted AND reordered: only the reorder travels', () => {
+    const c = box(0);
+    c.querySelectorAll = () => [makeRow('a', 0), makeRow('b', 40)];
+    const before = measureRows(c);
+    c._top = 40;
+    const rows1 = [makeRow('b', 40), makeRow('a', 80)];     // swapped, and the list moved
+    c.querySelectorAll = () => rows1;
+    expect(playReorder(c, before, { force: true })).toBe(2);
+  });
+});
