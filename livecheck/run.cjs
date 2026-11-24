@@ -35,7 +35,7 @@ const EV = {
   date: '2026-12-19', startTime: '18:00', startTimeSource: 'host',
   venue: 'Home', venueKind: 'home', venueAddress: '42 Elm Ct, Springfield, VA 22150', venueCity: 'Springfield', venueState: 'VA',
   guestMode: 'list', guestEstimate: 12, guestCountSource: 'host', totalBudget: 900,
-  guests: [{ id: 'lc-g1', name: 'Ada Pine', rsvp: 'Yes' }, { id: 'lc-g2', name: 'Ben Oak', rsvp: 'Maybe' }, { id: 'lc-g3', name: 'Cy Fern', rsvp: '' }],
+  guests: [{ id: 'lc-g1', name: 'Ada Pine', rsvp: 'Yes', plusOne: 'Sam Pine' }, { id: 'lc-g2', name: 'Ben Oak', rsvp: 'Maybe' }, { id: 'lc-g3', name: 'Cy Fern', rsvp: '' }],
   vendors: [{ id: 'lc-v1', name: 'Maple Table Catering', category: 'Catering', status: 'Considering', cost: 600, budgetCategory: 'Food' }],
   budget: [{ id: 'food', category: 'Food', budgeted: 600, actual: 0 }],
   timeline: [{ id: 'lc-t1', task: 'Confirm final headcount', week: 'This week' }],
@@ -460,23 +460,66 @@ async function runViewport(browser, vp, runDir, meta) {
             const flat = after.replace(/\s+/g, ' ');
             const at = flat.search(/YOUR CHOICES/i);
             out.afterHead = flat.slice(at < 0 ? 0 : at, (at < 0 ? 0 : at) + 160).trim();
-            const fr = page.locator('.sheet').last().locator('[data-food-row]').first();
-            if (await fr.count()) {
-              const tgt = (await fr.locator('button').count()) ? fr.locator('button').first() : fr;
+            // The shopping list: open a shelf, then one item's "Open" (never its "Mark bought" check).
+            const sh2 = page.locator('.sheet').last();
+            const shelf = sh2.locator('button', { hasText: /\d+ of \d+ bought/ }).first();
+            if (await shelf.count()) {
+              const shelfLabel = (await shelf.innerText()).replace(/\s+/g, ' ').trim().slice(0, 50);
+              await shelf.scrollIntoViewIfNeeded(); await shelf.click({ timeout: 6000 }); await page.waitForTimeout(900);
               const title0 = (await page.locator('#sheet-title').last().innerText().catch(() => '')).trim();
-              await tgt.scrollIntoViewIfNeeded(); await tgt.click({ timeout: 6000 }); await page.waitForTimeout(700);
-              out.foodRow = { opensInPlace: await page.locator('.sheet').last().locator('[data-food-open]').count() > 0,
-                sameSheet: (await page.locator('#sheet-title').last().innerText().catch(() => '')).trim() === title0 };
-            } else out.foodRow = 'no [data-food-row]';
+              const open = page.locator('.sheet').last().locator('[data-food-row] button.f-body, [data-food-row] button[aria-label^="Open"]').first();
+              if (await open.count()) {
+                const item = (await open.getAttribute('aria-label')) || '';
+                await open.scrollIntoViewIfNeeded(); await open.click({ timeout: 6000 }); await page.waitForTimeout(800);
+                out.foodRow = { shelf: shelfLabel, item, expanded: (await open.getAttribute('aria-expanded').catch(() => null)) === 'true',
+                  openPanel: await page.locator('.sheet').last().locator('[data-food-open]').count(),
+                  sameSheet: (await page.locator('#sheet-title').last().innerText().catch(() => '')).trim() === title0 };
+              } else out.foodRow = { shelf: shelfLabel, item: 'no [data-food-row] Open button' };
+            } else out.foodRow = 'no shelf row';
           } else throw new Error('no item to open in the spread');
         }
         if (name === 'Guests & invite') {
           const sh = page.locator('.sheet').last();
-          const row = sh.locator('.grow > button[aria-expanded], .grow > button').first();
+          const row = sh.locator('.grow > button', { hasText: 'Ada Pine' }).first();
           if (await row.count()) {
             await row.scrollIntoViewIfNeeded(); await row.click({ timeout: 6000 }); await page.waitForTimeout(700);
             out.guestEditorGroups = await page.evaluate(() => [...document.querySelectorAll('[data-guest-editor] [data-ged-group]')].map((e) => e.getAttribute('data-ged-group')));
+            out.plusOneCard = await page.evaluate(() => { const g = document.querySelector('[data-guest-editor]'); if (!g) return null;
+              const f = [...g.querySelectorAll('input, select, textarea')].map((e) => ({ l: e.getAttribute('aria-label') || '', v: e.value || '' }));
+              const plus = f.find((x) => /sam pine/i.test(x.v));
+              const forPlus = f.filter((x) => /sam pine|\+1/i.test(x.l)).map((x) => x.l);
+              return { plusField: plus ? plus.l : null, fieldsForPlusOne: forPlus, meal: forPlus.some((l) => /meal/i.test(l)), diet: forPlus.some((l) => /diet|allerg|need/i.test(l)) }; });
+            await closeSheets(page); await openSection(page, name);
           } else out.guestEditorGroups = 'no guest row';
+        }
+        if (name === 'Guests & invite') {
+          const sh = page.locator('.sheet').last();
+          const card = sh.locator('[data-share-invite]');
+          if (await card.count()) {
+            const t = (sel) => card.locator(sel).evaluateAll((es) => es.map((e) => (e.getAttribute('data-si-row') ? e.getAttribute('data-si-row') + ': ' : '') + e.innerText.replace(/\s+/g, ' ').trim().slice(0, 80)));
+            out.shareCard = { steps: await t('[data-si-step]'), rows: await t('[data-si-row]'),
+              buttons: await card.locator('button').evaluateAll((es) => es.filter((e) => e.getClientRects().length).map((e) => e.innerText.replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 14)) };
+            const fold = card.locator('[data-si-after-fold]');
+            if (await fold.count()) { await fold.first().scrollIntoViewIfNeeded(); await fold.first().click({ timeout: 6000 }); await page.waitForTimeout(500);
+              out.shareCard.afterOpen = (await fold.first().getAttribute('aria-expanded')) === 'true';
+              out.shareCard.tally = await card.locator('[data-si-tally]').evaluateAll((es) => es.map((e) => e.innerText.replace(/\s+/g, ' ').trim().slice(0, 120))); }
+          } else out.shareCard = 'no [data-share-invite]';
+          out.haventReplied = await page.evaluate(() => { const t = [...document.querySelectorAll('.sheet')].pop().innerText.replace(/\s+/g, ' ');
+            return [...t.matchAll(/[^.·›\n]{0,40}haven.t (replied|answered)[^.·›]{0,30}/gi)].map((m) => m[0].trim()).slice(0, 6); });
+          // The invite message sheet: read it, flip the preview (view only); never Save draft, never send.
+          const msgRow = sh.locator('[data-si-row]', { hasText: /Invite message/i }).first();
+          if (await msgRow.count()) {
+            await msgRow.scrollIntoViewIfNeeded(); await msgRow.click({ timeout: 6000 }); await page.waitForTimeout(1500);
+            const ms = page.locator('.sheet').last();
+            const im = { title: (await page.locator('#sheet-title').last().innerText().catch(() => '')).trim(),
+              saveDraft: await ms.getByRole('button', { name: 'Save draft' }).count(), preview: await ms.locator('[data-message-preview]').count() };
+            for (const v of ['Text', 'Email']) {
+              const r = ms.locator('[data-message-preview]').getByRole('radio', { name: v });
+              if (await r.count()) { await r.first().click({ timeout: 4000 }).catch(() => {}); await page.waitForTimeout(300);
+                im['as' + v] = v === 'Text' ? (await ms.locator('[data-preview-count]').innerText().catch(() => 'no count')).trim() : await ms.locator('[data-preview-email]').count(); }
+            }
+            out.inviteMessage = im;
+          } else out.inviteMessage = 'no "Invite message" row';
         }
         if (name === 'People you’re hiring') {
           const sh = page.locator('.sheet').last();
