@@ -1,0 +1,95 @@
+{
+  "before__checklist__Wanda-sample__390": {
+    "smallTaps": [
+      "‹ Sections 67×16",
+      "Close 64×28"
+    ],
+    "smallText": [],
+    "sideways": false,
+    "buttons": 126,
+    "lit": 0,
+    "fullHeight": 10119
+  },
+  "proposed__checklist__Wanda-sample__390": {
+    "smallTaps": [
+      "‹ Sections 67×16",
+      "Close 64×28"
+    ],
+    "smallText": [],
+    "sideways": false,
+    "buttons": 18,
+    "lit": 1,
+    "fullHeight": 1619
+  },
+  "proposed-all-groups-open__checklist__Wanda-sample__390": {
+    "smallTaps": [
+      "‹ Sections 67×16",
+      "Close 64×28"
+    ],
+    "smallText": [],
+    "sideways": false,
+    "buttons": 88,
+    "lit": 1,
+    "fullHeight": 5190
+  },
+  "before__checklist__Wanda-sample__834": {
+    "smallTaps": [
+      "‹ Sections 67×16",
+      "Close 64×28"
+    ],
+    "smallText": [],
+    "sideways": false,
+    "buttons": 126,
+    "lit": 0,
+    "fullHeight": 8326
+  },
+  "proposed__checklist__Wanda-sample__834": {
+    "smallTaps": [
+      "‹ Sections 67×16",
+      "Close 64×28"
+    ],
+    "smallText": [],
+    "sideways": false,
+    "buttons": 18,
+    "lit": 1,
+    "fullHeight": 1491
+  },
+  "before__checklist__Wanda-sample__1024": {
+    "smallTaps": [
+      "‹ Sections 67×16",
+      "Close 64×28"
+    ],
+    "smallText": [],
+    "sideways": false,
+    "buttons": 126,
+    "lit": 0,
+    "fullHeight": 8048
+  },
+  "proposed__checklist__Wanda-sample__1024": {
+    "smallTaps": [
+      "‹ Sections 67×16",
+      "Close 64×28"
+    ],
+    "smallText": [],
+    "sideways": false,
+    "buttons": 18,
+    "lit": 1,
+    "fullHeight": 1474
+  },
+  "before__checklist__Wanda-sample__1440": {
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false,
+    "buttons": 126,
+    "lit": 0,
+    "fullHeight": 6794
+  },
+  "proposed__checklist__Wanda-sample__1440": {
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false,
+    "buttons": 18,
+    "lit": 1,
+    "fullHeight": 1446
+  }
+}
