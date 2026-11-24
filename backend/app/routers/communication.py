@@ -23,6 +23,7 @@ from ..auth import require_planner
 from ..email_pictures import with_picture
 from ..emailer import send_approval_email, send_thread_email, is_email_configured
 from ..email_frame import frame, hue_for, paragraphs_html
+from ..outward import real_host_name
 from ..invite_email import compose_invite_email, invite_gaps
 from .invite_cards import card_url, stored_card_version
 from .rsvp import _assert_event_studio_read
@@ -161,11 +162,13 @@ def compose_message_email(ev: dict, body: str, recipient_name, sender: str, stop
     # A draft opens with its own greeting (lib/draftVoice); a second "Hi Rosa,"
     # above it would read twice.
     greets = bool(_GREETING.match(words))
+    host = real_host_name(sender)      # "Your host" is no name (outward.real_host_name)
     return frame(
         kind="message", hue=hue_for(ev.get("type"), name), greeting=f"Hi {who}," if who and not greets else None,
-        eyebrow=f"A message from {sender}", title=name or None,
+        eyebrow=f"A message from {host or 'your host'}", title=name or None,
         blocks=[(paragraphs_html(words), words)],
-        footer=f"Sent by {sender} with No Guesswork Events.", stop_url=stop_url)
+        footer=f"Sent by {host} with No Guesswork Events." if host else "Sent with No Guesswork Events.",
+        stop_url=stop_url)
 
 
 class PortalResponse(BaseModel):
@@ -564,7 +567,7 @@ async def create_message(
         # batch landed in Spam under the bare typed name, HTML only).
         body_text = payload.body or ""
         sender = _one_line(payload.author_name) or "Your host"
-        subj = _one_line(payload.subject) or f"Message from {sender}"
+        subj = _one_line(payload.subject) or f"Message from {real_host_name(sender) or 'your host'}"
         stop_headers = None
         if stop_token:
             stop = email_stop_url(stop_token)

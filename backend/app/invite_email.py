@@ -22,7 +22,7 @@ import re
 
 from .email_frame import frame, hue_for, when_fact, where_fact
 from .guest_notices import invite_url
-from .outward import event_days, place_line, venue_for, outward_gaps
+from .outward import event_days, place_line, real_host_name, venue_for, outward_gaps
 
 _URL_LINE = re.compile(r"^\s*https?://\S+\s*$")
 _INTRO_LINE = re.compile(r":\s*$")     # "Let us know you're coming:" — it only introduced the link
@@ -90,7 +90,8 @@ def compose_invite_email(ev: dict, note: str, recipient_name, sender: str, stop_
     # host's app and the invite page print it (outward.place_line).
     where = place_line(ev)
     place = venue_for(ev)["name"] or where
-    host = str(sender or "").strip()
+    # A placeholder sender ("Your host") is no name: never "Only Your sees your reply".
+    host = real_host_name(sender)
     first = host.split(" ")[0] if host else "your host"
     url = invite_url(str(ev.get("rsvpCode") or ev.get("id") or ""))
     hi = f"Hi {str(recipient_name).strip()}," if recipient_name and str(recipient_name).strip() else ""
@@ -120,4 +121,4 @@ def compose_invite_email(ev: dict, note: str, recipient_name, sender: str, stop_
         fine=f"No app, no account. Only {first} sees your reply.", fine_in_text=False,
         note_label="A note from " + first, note_html=note_html, note_text_lines=note_lines,
         pad="12px 12px 22px" if card_url else "28px 22px 24px",
-        footer=f"Sent by {host or 'your host'} with No Guesswork Events.", stop_url=stop_url)
+        footer=f"Sent by {host} with No Guesswork Events." if host else "Sent with No Guesswork Events.", stop_url=stop_url)

@@ -34,6 +34,19 @@ def host_name_for(ev: dict) -> str:
     return _clean(ev.get("hostName")) or _clean(ev.get("hostNames")) or _clean(ev.get("host"))
 
 
+# A host with no name (owner's invite, 11/24/2026). The app signs "Your host"
+# when her profile has no name (HostShellV2 author_name), and the invite email
+# took its first word as her first name: "Only Your sees your reply." This is
+# the one reader every outbound template asks; '' means "say your host".
+_NO_NAME = re.compile(r"^(?:(?:your|the|our|my|a)\s+)?host$|^your$", re.I)
+
+
+def real_host_name(v) -> str:
+    """The host's name as a guest should read it, or '' when none was given."""
+    s = " ".join(str(v or "").split())
+    return "" if _NO_NAME.match(s) else s
+
+
 # ── which days (fmtLongDate / spanEnd / fmtLongSpan) ─────────────────────────
 _WD = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 _MO = ("January", "February", "March", "April", "May", "June", "July", "August", "September",
