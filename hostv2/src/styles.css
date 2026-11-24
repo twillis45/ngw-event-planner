@@ -8821,6 +8821,17 @@ button.tt-row{ cursor:pointer; }
 /* THE DESKTOP'S TITLE (owner, 11/24/2026): the ☰ leads the date line, a
    full tap square with no words of its own (the rows below say them). */
 .tt-menu{ min-width:var(--tap-min,46px); min-height:var(--tap-min,46px); padding:0; justify-content:flex-start; }
+/* THE DESKTOP RENAME HINT (owner, 11/24/2026): with a mouse, hovering the
+   title shows a pencil and "Double-click to rename", floated under the title
+   like a tooltip; nothing is on screen until then, and nothing moves. Touch
+   keeps its one-time press-and-hold tip instead. */
+.tt-title{ position:relative; }
+.tt-pencil, .tt-hint{ display:none; }
+@media (hover:hover) and (pointer:fine){
+  .tt-title:hover .tt-pencil{ display:inline; color:var(--muted); font-size:15px; }
+  .tt-title:hover .tt-hint{ display:block; position:absolute; left:0; top:100%; z-index:5; padding:4px 8px; white-space:nowrap;
+    border-radius:var(--r-sm,6px); background:var(--card); box-shadow:0 0 0 1px var(--line); color:var(--muted); font-size:13px; font-weight:550; letter-spacing:0; }
+}
 .evname{ display:flex; align-items:center; gap:8px; margin:0; }
 .evname .evname-in{ flex:1 1 auto; min-width:0; max-width:none; }
 .tt-renaming{ margin-top:12px; width:100%; }

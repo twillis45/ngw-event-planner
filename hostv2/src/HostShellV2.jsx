@@ -4050,6 +4050,12 @@ export default function HostShellV2() {
     if (!renameTipShown) return;
     try { localStorage.setItem('ngw-rename-tip-seen', new Date().toISOString()); } catch { /* shown this visit only */ }
   }, [renameTipShown]);
+  // THE DESKTOP RENAME HINT (owner, 11/24/2026): with a mouse, hovering the
+  // title shows a pencil and "Double-click to rename" (styles.css, under
+  // `(hover:hover) and (pointer:fine)`); nothing shows until then. The title's
+  // own "Your events" tooltip would stack on it, so a mouse gets the hint alone.
+  const finePointer = (() => { try { return window.matchMedia('(hover: hover) and (pointer: fine)').matches; } catch { return false; } })();
+
   // ── THE TITLE BLOCK, ONE FOR EVERY BOARD THAT SHOWS IT ───────────────────
   // The tall iPad's and the phone's header (owner rulings 11/22–11/23/2026),
   // and since 11/24/2026 the desktop's too: at 1280+ the board had only the ☰
@@ -4078,9 +4084,11 @@ export default function HostShellV2() {
           </div>
         ) : (
           <div className={'tt-title-row' + (isPlaceholderName(event) ? ' has-nameit' : '')}>
-            <button type="button" className="tt-title" data-tt-title aria-haspopup="dialog" title="Your events" {...titleHandlers}>
+            <button type="button" className="tt-title" data-tt-title aria-haspopup="dialog" title={finePointer ? undefined : 'Your events'} {...titleHandlers}>
               <span className="tt-name">{title || e.type || 'This event'}</span>
               <span className="tt-caret" aria-hidden="true">▾</span>
+              <span className="tt-pencil" data-rename-pencil aria-hidden="true">✎</span>
+              <span className="tt-hint" data-rename-hint aria-hidden="true">Double-click to rename</span>
             </button>
             {/* While the name is one creation filled in, a quiet way to name it. */}
             {isPlaceholderName(event) && (
