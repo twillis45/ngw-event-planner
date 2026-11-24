@@ -8489,6 +8489,18 @@ button.vc-pill::after{
 .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) .ask{
   font-size:clamp(40px,7.5cqw,56px);
 }
+/* A SHORT LANDSCAPE STILL FITS ITS FIRST SCREEN. The title block (owner,
+   11/24/2026: every wide board names its event) is taller than the eyebrow it
+   replaced, and at 1024x768 it pushed the option card 66px under the fold
+   (theStatColumnStandsBesideTheQuestion). On a short screen the question sizes
+   by height and the header drops its top padding; tall boards are unchanged. */
+@media (max-height:860px){
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) .ask{
+    font-size:clamp(36px,6vh,56px);
+  }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head{ padding-top:0; }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head .tt-title{ margin-top:0 !important; }
+}
 
 /* ══ SHEETS FROM 1024: THE FULL COLUMN, NEVER TALLER THAN THE SCREEN ═════════
    Owner ruling 27, 11/21/2026, made from rendered sheet-size comparisons: "B".

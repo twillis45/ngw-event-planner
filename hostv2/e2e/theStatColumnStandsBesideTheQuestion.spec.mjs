@@ -85,7 +85,9 @@ const measure = (page) => page.evaluate(() => {
   const fitters = [...hero.querySelectorAll('button, a')].filter((b) => /^(Other ways|Calls to make)/.test((b.textContent || '').trim()));
   return {
     vh: innerHeight,
-    eyebrow: B(esc && esc.querySelector(':scope > .ev-eyebrow')),
+    // Every wide board names its event in the title block, which replaced the
+    // eyebrow here (owner, 11/24/2026); the bar sits under whichever heads it.
+    eyebrow: B(esc && esc.querySelector(':scope > .ev-eyebrow, :scope > .tt-head')),
     eprog: B(esc && esc.querySelector(':scope > .eprog')),
     ecenter: B(ecenter),
     ask: B(hero.querySelector('.ask')),
