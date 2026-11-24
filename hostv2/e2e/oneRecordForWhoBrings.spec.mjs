@@ -114,7 +114,8 @@ test('a name set on Shop is on Bringing, and on the guest\'s row', async ({ page
   await expect(sheet(page).locator('[data-bringer-row="p_green_beans"]')).toContainText('Ana Reyes');
 
   // The guest list reads the same record: her row names the dish.
-  await openSectionByName(page, /^Guests$|Guest list|People/);
+  // The door reads "Guests & invite" since 11/24/2026 (owner); was /^Guests$/.
+  await openSectionByName(page, /^Guests & invite$|Guest list|People/);
   await settled(page);
   await page.locator('.rrow', { hasText: 'Ana Reyes' }).locator('.grow button').first().click();
   await expect(page.locator('.gdetail').first()).toContainText('Helping with: Green beans');
