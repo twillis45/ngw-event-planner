@@ -17,6 +17,31 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 24, 2026 — cohesion batch B, part 2: the vendor detail built as approved; the sweep's clip rule
+
+- **Ask (the parent, relaying the owner, 11/24/2026):** build the vendor detail as rendered on `renders/cohesion-b`, with two fixes: (1) the header keeps the name on one line and the meta on one line, with price and status on the right; (2) Paperwork's outlined buttons go quiet, so only "Send … the details" is lit. Then a sweep rule from an owner report: nothing tappable may sit within 12px of an ancestor that clips sideways.
+- **Built (`HostShellV2.jsx` vendor card, `styles.css`):**
+  - Labeled groups: Who they are · Where it stands · Reach them · The day · Money · Paperwork · What they said. A friend helping out has no status, money or paperwork groups, and each label carries its axis's sentence.
+  - Name and "What they do" are labeled fields at the top, and every field has a visible label.
+  - Call, Text and Email are tel:/sms:/mailto: links, with "Nothing is sent from here".
+  - One lit `.cta`, "Send … the details", rendered on the open card only (a closed card's fold sits in the DOM at opacity 0).
+  - Paperwork's actions are `.vd-link`: quiet, with a 44px tap area.
+  - "Remove <name> from this event" sits alone at the bottom, with Undo.
+  - The header is two rows (`.vc-top`, `.vc-sub`). At 390 the status wraps to its own right-hand line.
+- **Tests:** `theVendorDetailOpensInGroups.spec.mjs` covers groups in order, the helper, the name field, the contact links, one lit action, Remove + Undo, and the header measured at 390/834/1024/1440. It was red first (16 failing).
+  - The specs that pinned the old layout follow the new names: `whereThisVendorStands` (the block is the "Where it stands" group; the six axes are checked per group; the next step is `[data-vnext]`), `vendorRemovalUndo`, `vendorEmailIntake`, `aVendorDraftTextsTheVendor`, `aWarmNoteFitsTheVendor` ("Draft a note instead").
+- **The clip rule** (`clippedSideways` in `floorProbes.mjs`) runs at mobile, tablet-tall, landscape and 1000×690. A chip partly scrolled out of a scroller is exempt; so is a scroller's far edge while it still has more to scroll.
+  - Fixed: the vendor fold clips only on y; `.rtool-lens` (vendors AND guests) and `.wstrip` keep 12px inside.
+  - Listed: the board's hero (3 lines), fixed upstream on `ux-integrate` cb91bc95. **Whoever merges that deletes those three lines in `cohesionSweepKnown.mjs`, or the sweep fails.**
+- **Built renders:** `renders/cohesion-b` (c9396861), `vendor-detail-built__*.png`.
+- **Gates (measured on 05ea11d9):**
+  - Root jest: 936 suites, 14,078 passed, 1 skipped.
+  - hostv2 vitest: 166 passed.
+  - `e2e:build`: exit 0.
+  - E2E: 49 specs (vendor, details, The Day, taps, lit buttons, demo, pass, the guest toolbar), at mobile + desktop + tablet-tall + landscape, `--workers=4 --retries=0`, two chunks: 1,057 passed, 198 skipped, 0 failed.
+  - Backend: not touched.
+- 🔴 **Trap:** `spacingLadder` counts off-ladder px in `styles.css`, so a new `10px` fails it. Use `--sp-*`.
+
 ## November 24, 2026 — cohesion batch B (vendors): the every-sheet sweep, the pills, the words; the vendor detail redesign waits on renders
 
 - **Ask (the parent session, for the owner):** batch B of the owner-approved cohesion audit (`docs/audits/2026-11-24_cohesion/AUDIT.md` on `audit/cohesion-1124`), systemic: a sweep over EVERY sheet first, then the vendor fixes. Layout changes stop at renders.
