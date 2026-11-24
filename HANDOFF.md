@@ -17,6 +17,41 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 24, 2026 — cohesion batch A, part 3: the host never reads "run of show" (`81444dc`)
+
+- **Owner, 11/24/2026:** "Host doesn't use run of show language." The wording, owner-confirmed the same day: "the day's schedule" in sentences and "Schedule" as the short label, from one constant (`src/lib/scheduleWords.js`; a later change is one line).
+- **Test first:**
+  - `hostWords.json` bans "run of show" (spaced or hyphenated) and "RoS".
+  - `src/lib/__tests__/theHostNeverReadsRunOfShow.test.js` parses every module that can reach the host's screen (hostv2/src, src/lib, src/data, the `@app` modules hostv2 imports, `whatsNew.json`) with `@babel/parser`, reading only string and JSX text. Comments, ids and identifiers are not read.
+  - It was red with 96 strings in 27 files, plus 6 in `CommandCenter.jsx` once the `@app` imports were added.
+  - Red-proofed twice: at the source (`dayOfHero`'s "Next on the run of show" put back), and on screen (Wanda's "confirm run of show" step put back, caught by `hostWordsOnEveryStage`). Both were restored.
+- **Census (strings, not comments):** 122 matched in hostv2/src, src/lib and src/data.
+  - Changed (host-visible): HostShellV2 (10), whatsNew.json (2), CommandCenter (6), the copy modules (dayOfHero, dayOfCopy, eventOrientation, assembleRevealEngines, vendorIntelligence, vendorAccountability/playbooks), 16 playbook data files, and the Wanda, DMV and Extra samples.
+  - Left alone, vendor-facing (for the owner): vendorQuestions (3: "Run-of-show available", "Hard stop needs to be reflected in the run of show.", "Run-of-show received?"), vendorCopilot (3), vendorAccountability/followUpDrafts (1), vendorBrief and VendorBriefV2 (comments only).
+  - Left alone, not in the hostv2 bundle: presentationLabels, shellTabs, playbookRegistry (the frozen CRA planner), eventSolve.mjs, orchestratorTools (a tool description a model reads).
+  - Not words: "rosé" (geoItemMap, engagementParty) and class names such as `ros-sugg-row`.
+- **Tests whose pinned words changed (the rule each pins did not):**
+  - eventOrientation's hairline label;
+  - theVerdictNamesAVisibleChip's vendor timeline sentence;
+  - seasonalPlanAccuracy's schedule-writing allowlist;
+  - checklistDestinationTruth's Sweet 16 row, as now authored;
+  - whereThisVendorStands's cut sentence (now both wordings stay cut).
+  - textGateRatchet 72 → 73 for the new source census.
+- **Gates (measured on `81444dc`):**
+  - root jest: 937 suites, 14,084 passed, 1 skipped.
+  - hostv2 vitest: 18 files, 166 passed.
+  - `e2e:build`: exit 0.
+  - e2e, 291 reachable specs (playbook and sample text reaches nearly every spec), `PW_CHROMIUM` set, `--workers=4 --retries=0`, eight chunks, 0 failed:
+
+| Project | Passed | Skipped |
+|---|---|---|
+| mobile | 960 | 38 |
+| desktop | 1,406 | 77 |
+| tablet-tall | 938 | 60 |
+| landscape | 912 | 86 |
+
+  - A spec rewrites `hostv2/review-shots/baseline-*.png` during the run; they were restored, not committed.
+
 ## November 24, 2026 — cohesion batch A, part 2: on the event day, today's list comes first (owner-approved renders)
 
 - **Owner ruling (relayed by the parent session, 11/24/2026), approving the renders on `renders/cohesion-a` as drawn:**
