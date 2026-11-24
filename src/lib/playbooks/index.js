@@ -5438,6 +5438,8 @@ const authored = (v) => ((typeof v === 'string' && v.trim()) ? v.trim() : '');
 // the line names only those. Read from the declaration, never the dish's words.
 const VEGAN_LABEL_CHECKS = Object.freeze({
   pastry: ['butter'], buns: ['eggs', 'milk'], tortillas: ['lard'], 'refried beans': ['lard'],
+  // Owner ruling 11/24/2026.
+  bread: ['milk', 'butter', 'honey'],
 });
 const listOf = (xs, joiner) => (xs.length < 3 ? xs.join(` ${joiner} `) : `${xs.slice(0, -1).join(', ')}, ${joiner} ${xs[xs.length - 1]}`);
 const labelCheckSentence = (keys) => (keys.length

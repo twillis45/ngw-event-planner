@@ -111,8 +111,10 @@ describe('a vegan main that leans on a bought item says to check its label', () 
     buns: /\b(buns?|burgers?|sliders?)\b/i,
     tortillas: /\b(tortillas?|wraps?|tacos?|enchiladas?|quesadillas?)\b/i,
     'refried beans': /\b(refried|frijoles)\b/i,
+    // Owner ruling 11/24/2026: bread joins the list.
+    bread: /\b(breads?|crostini|sandwich(es)?|toasts?|baguettes?|rolls?|biscuits?|croutons?|pitas?|naan|flatbreads?|injera)\b/i,
   };
-  const CONTAINS = { pastry: ['butter'], buns: ['eggs', 'milk'], tortillas: ['lard'], 'refried beans': ['lard'] };
+  const CONTAINS = { pastry: ['butter'], buns: ['eggs', 'milk'], tortillas: ['lard'], 'refried beans': ['lard'], bread: ['milk', 'butter', 'honey'] };
   const declared = (pb) => (Array.isArray(pb.vegMainVeganCheck) ? pb.vegMainVeganCheck : []);
   const list = (xs, joiner) => (xs.length < 3 ? xs.join(` ${joiner} `) : `${xs.slice(0, -1).join(', ')}, ${joiner} ${xs[xs.length - 1]}`);
   const sentence = (keys) => `Check labels: ${list(keys, 'and')} can contain ${list([...new Set(keys.flatMap((k) => CONTAINS[k]))], 'or')}.`;
@@ -126,8 +128,9 @@ describe('a vegan main that leans on a bought item says to check its label', () 
     const missing = HOST.map((pb) => [pb.type, Object.keys(NAMES).filter((k) => NAMES[k].test(pb.vegMainVegan || '') && !declared(pb).includes(k))])
       .filter(([, m]) => m.length);
     expect(missing).toEqual([]);
-    // Ten dishes lean on one: four puff pastries, three bunned burgers, three tortillas.
-    expect(HOST.filter((pb) => declared(pb).length).length).toBe(10);
+    // Thirteen dishes lean on one: four puff pastries, three bunned burgers,
+    // three tortillas, and three breads (crostini, tea sandwiches, injera).
+    expect(HOST.filter((pb) => declared(pb).length).length).toBe(13);
   });
 
   test('the reader carries the check, and every vegan line the plan reaches shows it', () => {
@@ -151,6 +154,12 @@ describe('a vegan main that leans on a bought item says to check its label', () 
     expect(sentence(['pastry', 'buns', 'tortillas'])).toBe('Check labels: pastry, buns, and tortillas can contain butter, eggs, milk, or lard.');
     const line = vegLine({ id: 'c', type: 'The Cookout', guestCount: 30, guests: [], dietCounts: { Vegan: 1 } });
     expect(line.note).toMatch(/Check labels: buns can contain eggs or milk\.$/);
+  });
+
+  test('bread: the owner\'s wording', () => {
+    expect(sentence(['bread'])).toBe('Check labels: bread can contain milk, butter, or honey.');
+    const line = vegLine({ id: 'h', type: 'Housewarming', guestCount: 20, guests: [], dietCounts: { Vegan: 1 } });
+    expect(line.note).toMatch(/Check labels: bread can contain milk, butter, or honey\.$/);
   });
 
   test('a vegetarian-only line carries no label check', () => {

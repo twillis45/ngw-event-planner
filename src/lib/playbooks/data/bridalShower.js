@@ -16,6 +16,8 @@ const bridalShower = {
   type: 'Bridal Shower',
   // The meatless main when any guest is vegan, declared free of every animal product.
   vegMainVegan: 'Hummus & cucumber tea sandwiches + roasted veg quinoa salad',
+  // Bought items its label must be checked for (bread: milk, butter or honey).
+  vegMainVeganCheck: ['bread'],
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',
