@@ -12,6 +12,8 @@
 //   Unbought quotes and estimates are NEVER "paid" or "spent".
 import { hostSpending } from './hostSpending';
 import { hiredVendors } from './workstreams';
+import { aOccasion } from './occasionWords';
+import { perHeadRange, perHeadText } from './perHead';
 import { formatCurrency, roundCurrency } from './currency';
 import { isOwnEvidence } from './knowledge/lodgingBasisLadder';
 
@@ -152,11 +154,13 @@ export function expectedHeadroom(money) {
  * Reads the estimate result — never re-derives the comparison, which
  * `totalEstimate` already made and reports as `belowRequiredVendors`.
  */
-export function estimateShortfallNote(est) {
+export function estimateShortfallNote(est, opts) {
   if (!est || est.belowRequiredVendors !== true) return null;
   const floor = Math.round(Number(est.requiredVendorFloor));
   const high = Math.round(Number(est.highTotal));
   if (!(floor > 0) || !(high > 0) || floor <= high) return null;
+  // The budget ask card's one sentence (owner, 11/24/2026: "Copy is too wordy").
+  if (opts && opts.short) return `Your plan’s vendors start around ${fmt(floor)}, above this band’s ${fmt(high)} top, so set your number from them.`;
   // 2026-10-06: was "what a TYPICAL event of this kind costs", which claims the
   // band was measured from real events. It was not — PER_HEAD_BY_FAMILY is
   // authored, tier 'estimate', confidence 'low'. Same correction as the budget
@@ -197,6 +201,52 @@ export function budgetProposalCta(expected, suggested) {
   const over = planCostsAboveNote(expected, suggested);
   const s = Math.round(Number(suggested));
   return over ? { lit: over.cover, alt: s } : { lit: s, alt: null };
+}
+
+// ─── THE BUDGET ASK, IN FEW WORDS (owner, 11/24/2026: "Copy is too wordy") ───
+// Approved for a Thanksgiving for 12 (the plan's lines $334, typical $300):
+//   $400  $33 a head · covers your plan · est.
+//   Your plan's lines come to about $334. Most Thanksgivings for 12 run about $300.
+// The headline is the figure the lit button offers (budgetProposalCta), and the
+// per-head is that headline over the guests, rounded as the tiers round
+// (perHead), so every number on the card agrees (UX_11 rule 12).
+
+/**
+ * The words and figures on the budget ask card.
+ * → { headline, covers, perHead, tag, grounding }
+ */
+export function budgetAskCopy({ expected, typical, guests, type, mustMark }) {
+  const t = Math.round(Number(typical)) || 0;
+  const g = Number(guests) || 0;
+  const cta = budgetProposalCta(expected, t);
+  const over = planCostsAboveNote(expected, t);
+  const headline = cta.lit;
+  const perHead = g > 0 ? perHeadText(perHeadRange(headline, headline, g), fmt) : '';
+  // "MID-RANGE", NOT "TYPICAL" (the host's own ruling, 2026-10-06, pinned by
+  // theBudgetAskSaysWhoseMoney "A MIDPOINT IS NOT A TYPICAL"): this figure is
+  // the midpoint of an authored band, not a measured typical, so the short
+  // copy keeps that word. The 11/24 wording asked for "Typical" / "Most
+  // Thanksgivings… run about"; that would undo the 10/06 ruling, so it waits
+  // on the owner.
+  const occasion = `${g > 0 ? `for ${g} ` : ''}at ${aOccasion(type)}`;
+  if (over) {
+    return {
+      headline, covers: true, perHead,
+      tag: mustMark ? 'covers your plan · est.' : 'covers your plan',
+      grounding: `Your plan’s lines come to about ${fmt(Math.round(Number(expected)))}. The mid-range ${occasion} is ${fmt(t)}.`,
+    };
+  }
+  return {
+    headline, covers: false, perHead,
+    tag: mustMark ? 'Mid‑range · est.' : 'Mid‑range',
+    grounding: `${g > 0 ? `For ${g} at` : 'At'} ${aOccasion(type)}.${mustMark ? ' An estimate, not a quote.' : ''}`,
+  };
+}
+
+/** The exclusions fold's summary: "5 things not included". */
+export function notIncludedLine(lines) {
+  const n = (Array.isArray(lines) ? lines : []).filter(Boolean).length;
+  return n ? `${n} ${n === 1 ? 'thing' : 'things'} not included` : null;
 }
 
 // ─── THE ROOMS ARE ON TOP OF THIS, AND THE HOST HAS THE NUMBER ──────────────
@@ -243,7 +293,7 @@ export function budgetProposalCta(expected, suggested) {
  *              `belowLodgingFloor`, never re-derived here.
  * @param stay  the lodging basis (ladder rung 1 or 2) for its name and rung.
  */
-export function stayOnTopOfTheRangeNote(est, stay) {
+export function stayOnTopOfTheRangeNote(est, stay, opts) {
   if (!est) return null;
   const floor = Math.round(Number(est.lodgingFloor));
   const high = Math.round(Number(est.highTotal));
@@ -266,6 +316,14 @@ export function stayOnTopOfTheRangeNote(est, stay) {
   if (!isOwnEvidence(stay)) return null;
   const rung = stay.rung;
   const name = stay.name ? String(stay.name).trim() : '';
+  // The budget ask card's one sentence (owner, 11/24/2026): same facts, her own
+  // place and its price, on top of the party range.
+  if (opts && opts.short) {
+    const which = rung === 'picked'
+      ? (name ? `${name}, the place you chose,` : 'the place you chose')
+      : (name ? `${name}, the least expensive place on your shortlist,` : 'the least expensive place on your shortlist');
+    return `The rooms are on top of this: ${which} showed ${fmt(floor)} for the stay${est.belowLodgingFloor === true ? `, more than the ${fmt(high)} top of this range` : ''}.`;
+  }
   const whose = rung === 'picked'
     ? (name ? `${name}, the place you chose,` : 'The place you chose')
     : (name ? `${name}, the least expensive place on your shortlist,` : 'The least expensive place on your shortlist');

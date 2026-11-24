@@ -206,7 +206,7 @@ import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
 import { expectedFromPlanned, likelyAttendancePhrase } from '@app/lib/attendanceModel';
-import { estimateTotalRange, notIncludedFor, notIncludedSummary } from '@app/lib/budgetEstimator';
+import { estimateTotalRange, notIncludedFor } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
 import { venueLeadsStay } from '@app/lib/venueLeadsStay'; // owner ruling 11/20/2026: the venue leads the stay
 import { dietRowsFor, anyDietFlagged, dietCountsFor, guestDietCounts, mealTally } from '@app/lib/dietRows';
@@ -295,7 +295,7 @@ import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow, cheaperBarOption } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence, placeIsOutdoors, outdoorsGuess } from '@app/lib/placeIntelligence';
-import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote, planHeadroomLine, expectedHeadroom, afterSpendVerdict, budgetProposalCta } from '@app/lib/budgetCopy';
+import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planHeadroomLine, expectedHeadroom, afterSpendVerdict, budgetProposalCta, budgetAskCopy, notIncludedLine } from '@app/lib/budgetCopy';
 import { CRAB_REFERENCE_MARKET } from '@app/lib/crabServing';
 import { priceSourceNote } from '@app/lib/priceBasis';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
@@ -10576,7 +10576,8 @@ export default function HostShellV2() {
     // "computed and shown to nobody" became "shown on one branch of three".
     // Hoisted here, above every return, so a branch cannot silently omit it.
     const roomsNote = (() => {
-      const t = (() => { try { return stayOnTopOfTheRangeNote(est, _stayBasis); } catch (_e) { return null; } })();
+      // One sentence on this card (owner, 11/24/2026: "Copy is too wordy").
+      const t = (() => { try { return stayOnTopOfTheRangeNote(est, _stayBasis, { short: true }); } catch (_e) { return null; } })();
       return t ? <Grounding>{t}</Grounding> : null;
     })();
 
@@ -10600,6 +10601,11 @@ export default function HostShellV2() {
     }
     // PROPOSED — no budget yet and we can ground one: lead with Typical + Use/Change.
     if (!budgetChanging && !forceChange && typical > 0) {
+      // ── FEW WORDS, AND THE NUMBERS AGREE (owner, 11/24/2026: "Copy is too
+      // wordy"). budgetAskCopy: the headline is the figure the lit button
+      // offers, the per-head is that headline over the guests (rounded as the
+      // tiers round), and one line says where it comes from.
+      const ask = budgetAskCopy({ expected: spend && spend.expected, typical, guests, type: event.type, mustMark: !!(estDisclosure && estDisclosure.mustMark) });
       // Composed from the parity kit (./parity/askKit) — the locked 6/14/20/16 rhythm + 44/750
       // type live in the atoms now, not inline here. Matches Figma 344:61 B1.
       return (
@@ -10637,7 +10643,7 @@ export default function HostShellV2() {
                 <span style={{
                   fontSize: 22, fontWeight: 700, letterSpacing: '-.02em',
                   color: 'var(--ink)', fontVariantNumeric: 'tabular-nums',
-                }}>{perHeadText(perHeadRange(typical, typical, guests), fmt)}</span>
+                }}>{ask.perHead}</span>
               )}
               {/* The separator binds FORWARD, not back: at 390px the suffix
                   wraps after the per-head figure, and a trailing "·" left
@@ -10645,15 +10651,10 @@ export default function HostShellV2() {
                   word. Glued to what follows, the whole marker moves down
                   together. */}
               {guests > 0 ? ' ' : ''}
-              {`${guests > 0 ? '· ' : ''}${estDisclosure && estDisclosure.mustMark ? 'Mid‑range\u00A0·\u00A0est.' : 'Mid‑range'}`}
+              {`${guests > 0 ? '· ' : ''}${ask.tag.replace(/ /g, '\u00A0')}`}
             </>
-          )}>{fmt(typical)}</BigValue>
-          <Grounding>
-            {`For ${guests} at ${aOccasion(event.type)}, the middle of the range is ${fmt(typical)}. `}
-            {estDisclosure && estDisclosure.mustMark
-              ? 'That is the midpoint of a planning band, not an average of real events and not a quote. '
-              : ''}The plan sizes food, vendors and shopping from here — change it anytime.
-          </Grounding>
+          )}>{fmt(ask.headline)}</BigValue>
+          <Grounding>{ask.grounding}</Grounding>
           {/* ── WHEN THIS PLAN'S OWN VENDORS COST MORE THAN THE RANGE ──────
               `belowRequiredVendors` has been on the estimate result since
               2026-09-19 with no reader. Surprise Proposal's own roster needs a
@@ -10664,7 +10665,7 @@ export default function HostShellV2() {
               ranges carrying zero provenance. They get both, and are told
               which is which. See lib/budgetCopy.js#estimateShortfallNote. */}
           {(() => {
-            const short = (() => { try { return estimateShortfallNote(est); } catch (_e) { return null; } })();
+            const short = (() => { try { return estimateShortfallNote(est, { short: true }); } catch (_e) { return null; } })();
             return short ? <Grounding>{short}</Grounding> : null;
           })()}
           {/* ── AND THE ROOMS, WHICH THIS RANGE DOES NOT COVER ─────────────
@@ -10681,19 +10682,9 @@ export default function HostShellV2() {
               why this does not cry "contradiction" and why it mints no new
               band. */}
           {roomsNote}
-          {/* The plan's own lines can already cost more than the band's middle
-              (issue #100: "Use $200" over "$293 expected"). Both numbers, said
-              plainly — see lib/budgetCopy.js#planCostsAboveNote. */}
-          {(() => {
-            // The lit button below carries the plan's figure (A P1-7), so the
-            // quiet link here is the band's middle — the sentence's other path.
-            const over = (() => { try { return planCostsAboveNote(spend && spend.expected, typical); } catch (_e) { return null; } })();
-            return over ? (
-              <Grounding gap={8}>
-                {over.text} <button className="tap-44" style={linkBtn} onClick={() => setB(typical)}>Use {fmt(typical)} and trim</button>
-              </Grounding>
-            ) : null;
-          })()}
+          {/* The plan's lines above the band's middle (issue #100) are said in
+              the one line above, and the band's middle is "Mid-range" in the tier
+              row (owner, 11/24/2026): the separate "Use $T and trim" link went. */}
           {/* ── AND WHOSE MONEY IT IS ──────────────────────────────────────
               The old line here said "travel-scale costs are part of the
               numbers", which a host reads as "the flights are in this". The
@@ -10746,7 +10737,7 @@ export default function HostShellV2() {
             return (
               <details className="excl-fold" style={{ marginTop: 8 }}>
                 <summary className="grounding" style={{ cursor: 'pointer' }}>
-                  {notIncludedSummary(excl)}
+                  {notIncludedLine(excl)}
                 </summary>
                 <p className="grounding" style={{ margin: '6px 0 0' }}>{excl.join(' · ')}</p>
               </details>
@@ -10775,7 +10766,17 @@ export default function HostShellV2() {
               a host choosing between tiers is now comparing per-person
               numbers rather than totals — which is the comparison they can
               actually reason about. */}
-          {(low || high) ? (
+          {ask.covers ? (
+            // The plan costs more than the mid-range: the mid-range is a tier,
+            // the path the old "Use $T and trim" link was (owner, 11/24/2026;
+            // "Mid-range", not "Typical", per the host's 10/06/2026 ruling).
+            <Grounding gap={16}>
+              or {[low ? <button key="l" className="tier-link" onClick={() => setB(low)}>Lean {fmt(low)}</button> : null,
+                <button key="t" className="tier-link" onClick={() => setB(typical)}>Mid‑range {fmt(typical)}</button>,
+                high ? <button key="h" className="tier-link" onClick={() => setB(high)}>All-out {fmt(high)}</button> : null,
+              ].filter(Boolean).reduce((acc, el, i) => (i ? [...acc, ' · ', el] : [el]), [])}
+            </Grounding>
+          ) : (low || high) ? (
             <Grounding gap={16}>
               or {low ? <button className="tier-link" onClick={() => setB(low)}>Lean {fmt(low)}</button> : null}
               {low && guests > 0 ? ` (${perHeadText(perHeadRange(low, low, guests), fmt)})` : ''}
