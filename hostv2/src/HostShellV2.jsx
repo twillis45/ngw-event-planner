@@ -209,7 +209,7 @@ import { expectedFromPlanned, likelyAttendancePhrase } from '@app/lib/attendance
 import { estimateTotalRange, notIncludedFor, notIncludedSummary } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
 import { venueLeadsStay } from '@app/lib/venueLeadsStay'; // owner ruling 11/20/2026: the venue leads the stay
-import { dietRowsFor, anyDietFlagged, dietCountsFor, guestDietCounts } from '@app/lib/dietRows';
+import { dietRowsFor, anyDietFlagged, dietCountsFor, guestDietCounts, mealTally } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
 import { parseStartMinutes } from '@app/lib/eventWhen';
 import { BRAND } from '@app/lib/brand';
@@ -24013,13 +24013,7 @@ export default function HostShellV2() {
                     ask). Content is byte-identical and still on the same screen;
                     only its type size changed. It is a tally, not a headline. */}
                 {(() => {
-                  const gs = event.guests || [];
-                  const counts = {};
-                  gs.forEach(g => {
-                    const m = String((g && g.meal) || '').trim();
-                    if (m && m !== '—') counts[m] = (counts[m] || 0) + 1;
-                  });
-                  const answered = Object.values(counts).reduce((a, b) => a + b, 0);
+                  const { counts, answered } = mealTally(event);  // lib/dietRows, the one tally
                   // Stable order: the invite's own meal choices first, then any
                   // free-text meals a CSV brought in.
                   const order = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
@@ -24063,7 +24057,8 @@ export default function HostShellV2() {
                           that gap is said at all, and it stays. */}
                       {/* ONE PAGE (owner, 11/24/2026): the "N meals unanswered"
                           chip opened Dietary needs, and Your choices now carries
-                          that row on the same page, so the chip is gone. */}
+                          that row on the same page, so the chip is gone. Its count
+                          lives in that row (owner, 11/24/2026), from mealTally. */}
                       <button type="button" className="tap-44" onClick={() => setEstOpen(o => !o)}
                         aria-expanded={estOpen}
                         style={{ font: 'inherit', fontSize: 'var(--t-caption-min)', fontWeight: 600,
@@ -24242,7 +24237,12 @@ export default function HostShellV2() {
                   const curTier = (foodPlan.sourcingTiers || []).find(t => t && (t.id || t.key) === foodPlan.sourcing);
                   const sourcingLabel = (curTier && (curTier.label || curTier.id)) || 'choose one';
                   if (drillOpen) return null; // a drill-in panel is open below
-                  const dietSet = anyDiet || dietaryNoted(event);
+                  // THE MEALS STILL UNANSWERED (owner, 11/24/2026): the count the
+                  // estimate card's chip carried, back inside this row, from the
+                  // same tally (lib/dietRows mealTally). While any are open the row
+                  // is not settled, so "Choices set" does not fold it away.
+                  const mealsOpen = mealTally(event).unanswered;
+                  const dietSet = (anyDiet || dietaryNoted(event)) && mealsOpen === 0;
                   const allSet = (!hasChoices || openN === 0) && dietSet && (!hasSourcing || sourcingSettled(event));
                   const dietText = anyDiet ? dietRowsFor(event).flaggedCount + ' dietary noted' : 'dietary noted';
                   // Settled, it is the bare two-line row of render 9b, not a card.
@@ -24280,6 +24280,7 @@ export default function HostShellV2() {
                               <span className="fstat-l">Dietary needs</span>
                               <RowValue status={rowStatus({ settled: dietSet })} chev>
                                 {anyDiet ? 'noted · ' + dietRowsFor(event).flaggedCount + ' flagged' : dietaryNoted(event) ? 'noted' : 'none yet'}
+                                {mealsOpen > 0 ? ' · ' + mealsOpen + ' meal' + (mealsOpen === 1 ? '' : 's') + ' unanswered' : ''}
                               </RowValue>
                             </button>
                             {hasSourcing && (
