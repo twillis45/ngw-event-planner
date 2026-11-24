@@ -23,8 +23,12 @@ const EV = {
   guestMode: 'count', guestCount: 15, guests: [], vendors: [], budget: [], timeline: [],
 };
 
-test('no Then row travels when nothing reordered', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
+// The phone too: there a tap on a Then row navigates straight to its door (no
+// side pane), and the same rows ride the same flipReorder (the nudge row in
+// theNudgeGoesToTheOnesWhoHaventAnswered is one of them).
+for (const [w, h] of [[390, 844], [1440, 900]])
+test(`no Then row travels when nothing reordered — ${w}x${h}`, async ({ page }) => {
+  await page.setViewportSize({ width: w, height: h });
   const noon = new Date(ISO + 'T12:00:00');
   await page.route('**/api/weather/geocode**', (r) => r.fulfill({ json: { result: { lat: 38.78, lon: -77.18 } } }));
   await page.route('**/api/weather/onecall**', async (r) => {
