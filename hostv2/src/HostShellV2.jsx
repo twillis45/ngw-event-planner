@@ -220,6 +220,7 @@ import { rowStatus, sourcingSettled } from '@app/lib/rowStatus';
 import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
 import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt, menuChoicesTally, menuBoardRowSub } from '@app/lib/playbooks';
 import InviteToTheList from './InviteToTheList';
+import { publicHostPhotoUrl } from '@app/lib/api/hostPhoto';
 import InviteDesignSheet from './InviteDesignSheet.jsx';
 import { inviteStyleLabel } from '@app/lib/inviteTone';
 import HostPhotoRow from './HostPhotoRow.jsx';
@@ -1235,6 +1236,10 @@ export default function HostShellV2() {
       // The page's crest (InviteV2 markUrlFor): the event's artwork unless the host turned it off.
       const crestFile = ev.inviteCrest === 'off' ? null : eventArtworkFile(ev);
       if (crestFile) model.crest = import.meta.env.BASE_URL + crestFile;
+      // Her photo (owner, 11/24/2026), by the public route the invite page reads;
+      // its version is in the URL, so a changed photo is a new picture.
+      const photoUrl = publicHostPhotoUrl(ev.rsvpCode || ev.id, (profile && profile.hostPhoto) || null);
+      if (photoUrl) model.photo = photoUrl;
       const key = inviteCardKey(model);
       const m = inviteCardRef.current;
       if (m[ev.id] && m[ev.id].key === key) return m[ev.id].p;

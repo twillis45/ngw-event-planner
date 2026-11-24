@@ -3,8 +3,8 @@
 // when she wrote it; jest theHostsMessageIsTheInvitesLine). This pins HOW the
 // picture lays it out: the message in the page's message style (the reading
 // serif, italic), the signature on its own line under it, upright, and no
-// signature line when the message is the suggested one. The photo stays off
-// the picture this round (owner call).
+// signature line when the message is the suggested one. Her photo's place is
+// pinned in theCardCarriesTheHostPhoto (owner, 11/24/2026).
 import { describe, it, expect } from 'vitest';
 import { planInviteCard } from '../src/inviteCardImage.js';
 

@@ -60,6 +60,9 @@ export function inviteCardModel(event) {
     mast: ['An invitation', ev.date ? dfmt(ev.date, { month: 'short', year: 'numeric' }) : ''],
     eyebrow: past ? 'Thank you for coming' : tone === 'muted' ? 'Please join us' : '',
     name: String(ev.name || '').trim() || 'Our gathering',
+    // The page's layout (InviteV2): where the host's photo sits on the picture
+    // (owner, 11/24/2026: Classic beside the signature, At a glance in Hosted by).
+    layout: ev.inviteLayout === 'glance' ? 'glance' : 'classic',
     // The host's message (owner, 11/24/2026): her words, signed with her first
     // name when she wrote them; else the suggested line, unsigned.
     ...(() => {
