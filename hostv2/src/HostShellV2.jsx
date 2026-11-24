@@ -7259,7 +7259,16 @@ export default function HostShellV2() {
     let result;
     try { result = await checkRsvpCapability(event); } finally { rsvpChecking.current = false; }
     endBusyToast();
-    if (!result.ready) { toast(rsvpUnavailable(result)); return ''; }
+    if (!result.ready) {
+      // AN UNSAVED PLAN IS ASKED TO BE SAVED (owner, 11/24/2026). Signed out,
+      // the plan never reached an account, so it has no public invite yet:
+      // saying "not available" read as a dead end. The way forward is the
+      // same sign-in the "Not saved yet" row opens.
+      if (result.reason === 'unpublished' && isSupabaseConfigured() && !session) {
+        toast('Sign in to save this plan, then guests can RSVP online.', { label: 'Sign in to save', fn: openKeepSignIn });
+      } else toast(rsvpUnavailable(result));
+      return '';
+    }
     try { return inviteLinkUrl(); }
     catch { toast('Can’t share: the public link address is missing. Nothing was shared.'); return ''; }
   };
@@ -11024,6 +11033,9 @@ export default function HostShellV2() {
     setKeepAskClosed(c => [...c, id]);
     if (MOVE_NOTICE) { try { const seen = JSON.parse(localStorage.getItem(LS_MOVE_ASKED) || '[]') || []; if (!seen.includes(id)) localStorage.setItem(LS_MOVE_ASKED, JSON.stringify([...seen, id])); } catch { /* private mode */ } }
   };
+  // The sign-in that keeps this plan: the "Not saved yet" row and the RSVP
+  // check's "Sign in to save" (11/24/2026) open it the same way.
+  const openKeepSignIn = () => { keepIntentRef.current = 'device_plan'; setSheet({ kind: 'settings', keep: true }); trackKeepPrompt('device_plan'); };
   const keepAskEvent = (isSupabaseConfigured() && authChecked && !session && stage === 'plan' && !welcome
     && activeCustom && isRealHostEvent(activeCustom) && !isDemoEvent(activeCustom) && !activeCustom.demoSeed
     && !(MOVE_NOTICE ? moveAskedBefore : keepAskedBefore).includes(activeCustom.id) && !keepAskClosed.includes(activeCustom.id)
@@ -12529,7 +12541,7 @@ export default function HostShellV2() {
                    "Not now" (closeKeepAsk, no analytics). Doctrine 02, ruling 25. */
                 <div className="keep-ask" data-keep-ask data-move-notice={MOVE_NOTICE ? '' : undefined}>
                   <p className="keep-ask-t">{MOVE_NOTICE || <b>Not saved yet.</b>}</p>
-                  <button className="cta" onClick={() => { setKeepAskClosed(c => [...c, keepAskEvent.id]); keepIntentRef.current = 'device_plan'; setSheet({ kind: 'settings', keep: true }); trackKeepPrompt('device_plan'); }}>Sign in to save</button>
+                  <button className="cta" onClick={() => { setKeepAskClosed(c => [...c, keepAskEvent.id]); openKeepSignIn(); }}>Sign in to save</button>
                   <button className="keep-ask-x" aria-label="Dismiss" onClick={() => closeKeepAsk(keepAskEvent.id)}>✕</button>
                 </div>
               )}

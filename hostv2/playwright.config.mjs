@@ -250,6 +250,9 @@ const VIEWPORT_INDEPENDENT = [
   // server was sent; no geometry. Sets its own user agent per test (the mobile
   // project's iPhone UA would hide the row by design) and addresses 5277.
   '**/theDeviceNotificationsRow.spec.mjs',
+  // Toast text and the sign-in sheet only, on its own 5277 bundle (an
+  // unsaved plan's RSVP check asks to sign in, owner 11/24/2026).
+  '**/anUnsavedPlanAsksToSignInForRsvps.spec.mjs',
 ];
 
 const NON_RESPONSIVE = [...SELF_PINNED, ...VIEWPORT_INDEPENDENT];
