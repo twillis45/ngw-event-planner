@@ -39,6 +39,7 @@ INTENTIONALLY_PUBLIC = {
     ("POST", "/api/public/photos/{rsvp_code}/privacy"): "rsvpCode + the guest's own device key; her photos only",
     ("GET", "/api/public/photos/{rsvp_code}"): "rsvpCode; host-approved photos only, no names",
     ("GET", "/api/public/invite-card/{rsvp_code}"): "rsvpCode; the invitation picture for the invite email, facts the invite page already shows",
+    ("GET", "/api/public/host-photo/{rsvp_code}"): "rsvpCode; the host's own opt-in photo on her invite, never by event or studio id",
     ("GET", "/api/public/email-card/{token}"): "a 32-hex random token minted per picture (128 bits), exact shape only; the picture of one email's card, never by event id",
     ("GET", "/api/public/calendar/{code}.ics"): "calendarCode (24+ chars, host-minted, host-revocable) is the credential; dates and step/vendor names the host's app saved, no guests, money or notes",
     ("GET", "/api/public/family/{code}"): "familyCode (24+ chars, host-minted, host-revocable) is the credential; read-only allow-listed plan, no guest names, money or codes",

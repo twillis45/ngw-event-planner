@@ -106,6 +106,7 @@ PUBLIC = {
     "POST /api/public/photos/{rsvp_code}/privacy": "guest's own photos' share switch; code + device key in body",
     "GET /api/public/photos/{rsvp_code}": "host-APPROVED photos only, for invite holders; no names",
     "GET /api/public/invite-card/{rsvp_code}": "the invitation picture for the invite email; by the long invite code only, the facts the invite page already shows",
+    "GET /api/public/host-photo/{rsvp_code}": "the host's own opt-in photo on her invite; by the long invite code only, never by event or studio id",
     "GET /api/public/email-card/{token}": "the picture at the top of an email; by its own 128-bit random token only (32 hex, strict shape), never by event id; what that email already says",
     "GET /api/public/calendar/{code}.ics": "calendar subscription feed; long host-minted code is the credential; dates and step names only",
     "GET /api/public/family/{code}": "read-only family link; long host-minted code is the credential; allow-listed plan (no guest names, money, contacts or codes)",
