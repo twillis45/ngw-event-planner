@@ -102,6 +102,14 @@ async def geocode(q: str = Query(..., min_length=1, max_length=120),
     if not _configured():
         raise HTTPException(status_code=503, detail="Weather not configured — set OPENWEATHER_KEY on the server")
     zip_code = q.strip() if re.fullmatch(r"\d{5}", q.strip()) else None
+    # "City, ST" GETS ITS COUNTRY (owner, 11/24/2026, probed live): OpenWeather
+    # reads a US state code only when the country follows it, so "Springfield,
+    # VA" and "Austin, TX" came back empty and a host who gave a city and no ZIP
+    # got no forecast. A US state code is normalized to "City,ST,US"; anything
+    # else (a city alone, "Paris, FR") is left as typed.
+    m = re.fullmatch(r"\s*(.+?)\s*,\s*([A-Za-z]{2})\s*(?:,\s*US)?\s*", q)
+    if not zip_code and m and m.group(2).upper() in _STATE_NAMES:
+        q = f"{m.group(1)},{m.group(2).upper()},US"
     try:
         async with httpx.AsyncClient(timeout=12) as client:
             if zip_code:
