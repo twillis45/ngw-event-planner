@@ -1,4 +1,4 @@
-// NudgeTheList — "Nudge the N who haven't answered" (owner ruling, 11/20/2026:
+// NudgeTheList — "Nudge the N who haven't replied" (owner ruling, 11/20/2026:
 // "Approve as written"). Lives in the RSVP nudge draft sheet, under the words
 // the host just reviewed, the way InviteToTheList lives under the invite.
 //
@@ -20,7 +20,9 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 // itself), or, while the text queue runs, "Text {name}"; then the email step
 // goes quiet. `onLead(true)` tells the sheet this block holds its one primary,
 // so the sheet's own "Share…" stands down to a quiet button.
-export default function NudgeTheList({ event, textBody, canEmail, sendOne, onReached, onLead }) {
+// `disabled` (owner, 11/24/2026): no reply link, nothing goes out; every
+// control waits until the sheet has the link.
+export default function NudgeTheList({ event, textBody, canEmail, sendOne, onReached, onLead, disabled }) {
   // Who it goes to is fixed when the sheet opens: the run and the queue work
   // through that list, and the counts above them do not shift as each guest's
   // nudge is recorded (a guest just emailed is not "skipped").
@@ -54,20 +56,20 @@ export default function NudgeTheList({ event, textBody, canEmail, sendOne, onRea
   const textedOne = () => { onReached([current], 'text'); trackNudgeText(); setQueueAt((i) => i + 1); };
 
   return (
-    <div data-nudge-list style={{ marginTop: 'var(--sp-4)', paddingTop: 'var(--sp-3)', borderTop: '1px solid var(--line)' }}>
+    <div data-nudge-list className={disabled ? 'si-dis' : undefined} style={{ marginTop: 'var(--sp-4)', paddingTop: 'var(--sp-3)', borderTop: '1px solid var(--line)' }}>
       <div className="f-name" style={{ marginBottom: 'var(--sp-2)' }}>
-        {n > 0 ? `Nudge the ${n} who ${n === 1 ? 'hasn’t' : 'haven’t'} answered` : 'Nobody is waiting on a nudge'}
+        {n > 0 ? `Nudge the ${n} who ${n === 1 ? 'hasn’t' : 'haven’t'} replied` : 'Nobody is waiting on a nudge'}
       </div>
       {n === 0 && step === 'idle' && queueAt == null && (
         <p className="grounding" style={{ margin: 0 }}>
-          Everyone whose invite went out has answered{r.recentlyNudged ? ` or was nudged in the last ${NUDGE_GAP_DAYS} days` : ''}.
+          Everyone whose invite went out has replied{r.recentlyNudged ? ` or was nudged in the last ${NUDGE_GAP_DAYS} days` : ''}.
         </p>
       )}
 
       {/* ── EMAIL ─────────────────────────────────────────────────────────── */}
       {canEmail && emailCount > 0 && step === 'idle' && (
         <div className="actions-row">
-          <button className={queueOn ? 'mini' : 'cta'} data-nudge-email onClick={() => setStep('confirm')}>
+          <button className={queueOn ? 'mini' : 'cta'} data-nudge-email disabled={disabled} onClick={() => setStep('confirm')}>
             Email the nudge to {plural(emailCount, 'guest', 'guests')}
           </button>
         </div>
@@ -78,7 +80,7 @@ export default function NudgeTheList({ event, textBody, canEmail, sendOne, onRea
             Each guest gets their own email with the words above, from the app. Nobody sees anyone else’s address, and replies come to you.
           </p>
           <div className="actions-row">
-            <button className={queueOn ? 'mini' : 'cta'} data-nudge-email-go onClick={run}>Send {plural(emailCount, 'email', 'emails')}</button>
+            <button className={queueOn ? 'mini' : 'cta'} data-nudge-email-go disabled={disabled} onClick={run}>Send {plural(emailCount, 'email', 'emails')}</button>
             <button className="mini" onClick={() => setStep('idle')}>Not yet</button>
           </div>
         </div>
@@ -102,7 +104,7 @@ export default function NudgeTheList({ event, textBody, canEmail, sendOne, onRea
       {/* ── TEXT, ONE AT A TIME ───────────────────────────────────────────── */}
       {r.text.length > 0 && queueAt == null && (
         <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-          <button className="mini" data-nudge-texts onClick={startTexts}>
+          <button className="mini" data-nudge-texts disabled={disabled} onClick={startTexts}>
             Text the nudge to {plural(r.text.length, 'guest', 'guests')}, one at a time
           </button>
         </div>

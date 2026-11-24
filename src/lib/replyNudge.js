@@ -122,7 +122,7 @@ export function nudgeBoardItem(event, now) {
   const r = nudgeRecipients(event, now);
   const n = nudgeCount(r);
   if (!n) return null;
-  const who = n === 1 ? '1 hasn’t answered' : `${n} haven’t answered`;
+  const who = n === 1 ? '1 hasn’t replied' : `${n} haven’t replied`;
   // COUNT FIRST (owner, 11/20/2026): a phone's "Then, in order" row keeps only
   // what comes before " — ", so the count leads and survives the trim.
   const title = days >= 0

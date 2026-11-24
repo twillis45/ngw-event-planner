@@ -51,7 +51,7 @@ export function lineChange(event) {
 }
 
 /** Her words with the old page line swapped for the new; null when the old line isn't in them. */
-export function useNewLine(body, from, to) {
+export function swapPageLine(body, from, to) {
   const b = str(body);
   if (!from || !b.includes(from)) return null;
   return b.split(from).join(to);

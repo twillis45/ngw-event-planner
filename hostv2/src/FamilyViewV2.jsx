@@ -66,7 +66,7 @@ function FamilyPage({ plan }) {
     // rows, and a reply can bring a plus-one, so "12 coming" read as heads
     // beside the host's own people count. It says who said yes.
     rep.yes ? `${rep.yes} said yes` : '', rep.maybe ? `${rep.maybe} maybe` : '',
-    rep.no ? `${rep.no} can’t make it` : '', rep.waiting ? `${rep.waiting} haven’t answered` : '',
+    rep.no ? `${rep.no} can’t make it` : '', rep.waiting ? `${rep.waiting} haven’t replied` : '',
   ].filter(Boolean).join(' · ') : '';
   const ros = (() => {
     // A marked surprise never shows here (owner, 11/22/2026). The server already

@@ -8,7 +8,7 @@
 //     split into fewer messages.
 //   * event.invitesSentMessage { subject, body, voice, at }: what went out.
 import {
-  LINK_PLACEHOLDER, savedInviteDraft, inviteDraftRecord, withLink, lineChange, useNewLine,
+  LINK_PLACEHOLDER, savedInviteDraft, inviteDraftRecord, withLink, lineChange, swapPageLine,
   plainText, textMessageBody, smsSegments, sentSnapshot, sentRecipients, draftStatus,
 } from '../inviteMessageDraft';
 import { draftInvite } from '../doItForMe';
@@ -43,8 +43,8 @@ test('a changed page line is offered after she edited, never written over her wo
   expect(lineChange({ ...EV, ...saved })).toBe(null);
   const next = { ...EV, ...saved, deckLine: 'Bring your appetite.' };
   expect(lineChange(next)).toEqual({ from: EV.deckLine, to: 'Bring your appetite.' });
-  expect(useNewLine(saved.inviteMessageDraft.body, EV.deckLine, 'Bring your appetite.')).toBe('Hi!\nBring your appetite.\nSee you');
-  expect(useNewLine('Nothing of it here', EV.deckLine, 'Bring your appetite.')).toBe(null);
+  expect(swapPageLine(saved.inviteMessageDraft.body, EV.deckLine, 'Bring your appetite.')).toBe('Hi!\nBring your appetite.\nSee you');
+  expect(swapPageLine('Nothing of it here', EV.deckLine, 'Bring your appetite.')).toBe(null);
   // Not edited: the draft is rebuilt from the page, so nothing is asked.
   expect(lineChange({ ...next, inviteMessageDraft: { ...saved.inviteMessageDraft, edited: false } })).toBe(null);
 });
