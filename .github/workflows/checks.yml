@@ -231,7 +231,24 @@ jobs:
         # twice — on the PR and again on main before Pages deploys. Eight
         # halves the wall per run; same mechanism as 2 → 3 → 4, `workers: 2`
         # per shard unchanged, so the flake posture is untouched.
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+        # ── SIXTEEN, MEASURED 2026-11-24 (ci-speed-2utz0n) ───────────────
+        # PR run 45467761411 (264c669, 7494 passed / 540 skipped): eight
+        # shards ran 25.4-35.2 min of test step each, and the whole PR run
+        # took 37 min because it waits on the SLOWEST shard. Setup is not
+        # the cost — checkout, both npm ci, playwright install and
+        # e2e:build are ~1.2 min, and the four harness bundles the
+        # webServers build add ~1 min — so caching buys seconds. The cost
+        # is 473 min of test work, split by test COUNT (Playwright's
+        # --shard is contiguous by count, not duration), which is why
+        # shard 7 carried 70 min of work and shard 3 only 50.
+        # Simulated on that run's real per-test timings (the simulation
+        # put 1800 of 1891 file×project groups in the shard CI did):
+        # 8 → worst 39 / mean 30 min, 12 → 25 / 20, 16 → 22 / 15.
+        # Sixteen is the same mechanism as 2 → 3 → 4 → 8, `workers: 2`
+        # per shard unchanged, every spec on every project still runs —
+        # only the cut points move. 21 jobs per run; 28 ran at once on
+        # 11/24 (a PR run and a main run together) with no queueing.
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -17,7 +17,22 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
-## November 24, 2026 (latest) — the budget ask names the figure its lit button offers
+## November 24, 2026 (latest) — CI: the e2e matrix runs on 16 shards, not 8 (`ci-speed-2utz0n`)
+
+- **Ask (the parent session):** cut PR CI wall time without losing coverage. Push to `ci-speed-2utz0n` only, no PR.
+- **Measured before (PR run 45467761411, `264c669`, all green):**
+  - The run took 37m55s. The e2e verdict job finished last; WebKit took 16m, jest 9m35s (three full suites back to back), cra-build 2m27s, hostv2-build 1m, backend 37s.
+  - The eight shards' test steps took 26.0 to 36.2 min. Setup in each shard is about 1.2 min (checkout, both `npm ci`, `test:unit`, `playwright install`, `e2e:build`). Before the first test, the webServers build the four harness bundles in about 1 min more.
+  - Caches: the npm and pip caches hit. Nothing caches `node_modules` or the Playwright browser, and doing so would save seconds per shard, not minutes.
+  - PRs run every project on every spec. The merged total was 7494 passed, 540 skipped, 0 failed, 0 flaky.
+- **Why the shards were uneven:** the eight blob reports hold 473 min of test work. Playwright's `--shard` splits contiguously by test COUNT, not by time. So shard 7 carried 70 min of work and shard 3 carried 50, and the run waits on the slowest.
+- **The change:** `checks.yml` matrix `shard:` goes from 1–8 to 1–16. Nothing else changes: the same specs, projects, `workers: 2`, timeout, job names and verdict job. The denominator is still `strategy.job-total`.
+- **The basis:** a simulation of Playwright's split, run on that run's real per-test timings. It put 1800 of 1891 file×project groups in the same shard CI did. Worst shard: 39 min at 8 shards, 25 at 12, 22 at 16.
+- **Concurrency:** a run is now 21 jobs. On 11/24, 28 jobs (a PR run and a main run together) started with no queueing.
+- **Measured after:** the dispatched Checks run on this branch. The numbers are in the parent's report.
+- **Not built, proposed:** duration-weighted shards would take the worst shard to about 16 min. Playwright 1.61 reads `PWTEST_SHARD_WEIGHTS`, an undocumented test hook, and the weights would need timings refreshed from main. Affected-tests-only on PRs is not proposed: the full suite would still have to run before merge, so it saves nothing on a one-at-a-time merge queue.
+
+## November 24, 2026 — the budget ask names the figure its lit button offers
 
 - **Owner report (live, Thanksgiving for 12):** the hero said "$300", the sentence said "about $334", and the lit button said "Use $400". $400 is the covering figure (`planCostsAboveNote().cover`, the plan rounded up like the tiers), named nowhere on screen. Rule 12 of UX_11 (screens agree).
 - **Fix:** the sentence now names it: "…add up to about $334 — more than this $300. $400 covers it, or trim the plan to fit." The round-up rule is unchanged. Test: `aSuggestedBudgetCoversThePlan` gained a case that failed first.
