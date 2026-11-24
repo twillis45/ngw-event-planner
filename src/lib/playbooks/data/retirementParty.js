@@ -131,7 +131,7 @@ const retirementParty = {
         'Full surprise': 'Send invite: date, time, address, dress, "no gifts / cards welcome", dietary + accessibility ask, RSVP-by; mark SURPRISE + a guests-arrive-by time',
         'Soft surprise (honoree knows, not the details)': 'Send invite: date, time, address, dress, "no gifts / cards welcome", dietary + accessibility ask, RSVP-by; note the arrival timing quietly',
       } } },
-    { id: 't_memory_collect', target: 'guest-list', facts: [], milestoneId: 'rp_memory', phase: 'program', label: 'Set up a shared photo/notes drop (link or email) and ask coworkers + family for photos, stories, and well-wishes', when: 'T-28d' },
+    { id: 't_memory_collect', target: 'album', facts: [], milestoneId: 'rp_memory', phase: 'program', label: 'Set up a shared photo/notes drop (link or email) and ask coworkers + family for photos, stories, and well-wishes', when: 'T-28d' },
     // Linked (owner, 11/21/2026): the step is the call, so the pick clears it.
     { id: 't_menu_lock', target: 'spread', facts: ['calls-answered'], answeredBy: ['format'], milestoneId: 'rp_menu', phase: 'food', label: 'Lock buffet (~0.5 lb protein/guest, 2-3 sides) or heavy apps (~10-12 bites/guest); always include a veg + GF option', when: 'T-21d' },
     { id: 't_fav_drink', target: 'spread', facts: [], milestoneId: 'rp_bar', phase: 'beverage', label: "Source the honoree's actual favorite drink; special-order if it's a specific scotch/wine/regional beer", when: 'T-18d' },
