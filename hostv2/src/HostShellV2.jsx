@@ -13005,10 +13005,12 @@ export default function HostShellV2() {
                   </div>
                 )}
                 </>
-              ) : elegantMode && bp === 'desktop' && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
+              ) : elegantMode && bp !== 'mobile' && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
                 /* THE DESKTOP'S TITLE (owner, 11/24/2026): the phone's title block,
-                   so rename in place has a title to act on at 1280+. The ☰ stays the
-                   menu (the stages and the menu's rows live there at this width). */
+                   so rename in place has a title to act on. Every board layout wears
+                   it, the iPad in landscape included (owner, 11/24/2026: at 1000-1279
+                   it still showed the one-line eyebrow). The tall iPad and the phone
+                   reach titleHead in the branch above. The ☰ stays the menu. */
                 titleHead(
                   <button className="ev-eyebrow tt-menu" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                     <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
