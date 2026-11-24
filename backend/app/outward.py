@@ -226,13 +226,16 @@ def venue_for(ev: dict) -> dict:
     zip_ = _zip_of(ev, address)
     town = _join_town(city, state, zip_)
     full = _with_missing_parts(address, city, state, zip_) if address else ""
+
+    def zip_tail(x):     # the ZIP wherever it is known (owner's invite, 11/24/2026)
+        return f"{x} {zip_}" if zip_ and not _carries(x, zip_) else x
     if name_is_street:
         line = full
     elif name:
         alone = not full and (dash or (_carries(name, city) and (not state or _carries(name, state))))
-        line = name if alone else " · ".join(x for x in (name, full or town) if x)
+        line = zip_tail(name) if alone else " · ".join(x for x in (name, full or town) if x)
     else:
-        line = f"At home in {_join_town(city, state, '')}" if is_home and city and not address else (full or town)
+        line = zip_tail(f"At home in {_join_town(city, state, '')}") if is_home and city and not address else (full or town)
     return {"name": name, "isHome": is_home, "address": address, "fullAddress": full, "townLine": town,
             "displayLine": line, "nameIsStreet": name_is_street}
 

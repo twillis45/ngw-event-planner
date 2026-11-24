@@ -195,15 +195,19 @@ export function venueFor(event) {
   const zipKnown = zipOf(ev, address);
   const townLine = joinTown(city, state, zipKnown);
   const fullAddress = address ? withMissingParts(address, city, state, zipKnown) : '';
+  // THE ZIP WHEREVER IT IS KNOWN (owner's invite, 11/24/2026: WHERE read
+  // street, City, ST with no ZIP). A name that says its town gets the ZIP after
+  // it, and so does "At home in City, ST".
+  const zipTail = (line) => (zipKnown && !carries(line, zipKnown) ? `${line} ${zipKnown}` : line);
   const displayLine = nameIsStreet
     ? fullAddress
     : name
       // A named place, then where it is: "VFW Post 3150 · Alexandria, VA",
       // "The Boathouse · 9 Dock Rd, Annapolis, MD 21401". A name that already
       // says its town and state ("VFW Post 3150 — Alexandria, VA") stands alone.
-      ? (!fullAddress && (dashTail || (carries(name, city) && (!state || carries(name, state)))) ? name
+      ? (!fullAddress && (dashTail || (carries(name, city) && (!state || carries(name, state)))) ? zipTail(name)
         : [name, fullAddress || townLine].filter(Boolean).join(' · '))
-      : (isHome && city && !address ? `At home in ${joinTown(city, state, '')}` : (fullAddress || townLine));
+      : (isHome && city && !address ? zipTail(`At home in ${joinTown(city, state, '')}`) : (fullAddress || townLine));
   const mapsQuery = fullAddress
     || (dashTail ? name : [name && !HOMEISH.test(name) ? name : '', city, state].filter(Boolean).join(', '));
   // ── THE ZIP, PUBLISHED (2026-09-23) ──────────────────────────────────────

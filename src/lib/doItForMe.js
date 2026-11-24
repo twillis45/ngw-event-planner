@@ -106,12 +106,15 @@ const GENERIC_HOME = /^(?:at\s+)?(?:home|back\s?yard|(?:my|our|(?:the\s+)?host['
 
 // The place line a guest reads: placePhrase, and at home the street when the
 // host gave one ("our place, 12 Elm St, Bowie, MD"), so "our place" never
-// costs a guest the way there.
+// costs a guest the way there. A home she named ("Mom's house") and a home
+// with no name at all keep the street too, ZIP included (owner's invite,
+// 11/24/2026: the invite text named the house and never the address).
 export function placeLine(event) {
   const p = placePhrase(event);
-  if (p !== 'our place') return p;
-  const a = venueFor(event).fullAddress;
-  return a ? `our place, ${a}` : p;
+  const vf = venueFor(event);
+  if (!vf.isHome && p) return p;
+  const a = vf.fullAddress;
+  return a ? [p, a].filter(Boolean).join(', ') : p;
 }
 
 // What to wear, as the host wrote it — only when it is fit for a guest.
