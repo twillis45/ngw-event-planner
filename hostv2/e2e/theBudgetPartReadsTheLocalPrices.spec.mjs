@@ -55,7 +55,6 @@ test('a host inside her number at local prices is not told she is over', async (
   await a.locator('.srail-row', { hasText: 'The spread & shopping' }).first().click();
   const sheet = a.locator('.sheet').last();
   // One food page (owner, 11/24/2026): no Shop tab, and the list is always open.
-  // One food page (owner, 11/24/2026): no Shop tab, and the list is always open.
   for (let k = 0; k < 8; k++) {
     const all = sheet.getByRole('button', { name: /^Check off all/ });
     if (await all.count()) { await all.first().click(); continue; }
