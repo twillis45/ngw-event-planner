@@ -33,3 +33,13 @@ test('no told map reads as nobody told', () => {
   expect(inviteRecipients(G).email.length + inviteRecipients(G).text.length).toBe(3);
   expect(inviteRecipients(G, null).alreadyInvited).toBe(0);
 });
+
+// A text greets a guest by what she calls them (owner, 11/24/2026): "Hi Aunt
+// Rosa," never "Hi Aunt,".
+import { greetingName, smsHref } from '../inviteBatch';
+test('a family title stays with the name it belongs to', () => {
+  expect(greetingName('Aunt Rosa')).toBe('Aunt Rosa');
+  expect(greetingName('Linda Reyes')).toBe('Linda');
+  expect(greetingName('Aunt')).toBe('Aunt');
+  expect(decodeURIComponent(smsHref({ name: 'Aunt Rosa', phone: '614-555-0142' }, 'Come.').split('body=')[1])).toBe('Hi Aunt Rosa, Come.');
+});
