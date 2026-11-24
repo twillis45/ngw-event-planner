@@ -195,17 +195,23 @@ export function venueFor(event) {
   const zipKnown = zipOf(ev, address);
   const townLine = joinTown(city, state, zipKnown);
   const fullAddress = address ? withMissingParts(address, city, state, zipKnown) : '';
+  // THE ZIP WHEREVER IT IS KNOWN (owner's invite, 11/24/2026: WHERE read
+  // street, City, ST with no ZIP). A name that says its town gets the ZIP after
+  // it, and so does "At home in City, ST".
+  const zipTail = (line) => (zipKnown && !carries(line, zipKnown) ? `${line} ${zipKnown}` : line);
   const displayLine = nameIsStreet
     ? fullAddress
     : name
       // A named place, then where it is: "VFW Post 3150 · Alexandria, VA",
       // "The Boathouse · 9 Dock Rd, Annapolis, MD 21401". A name that already
       // says its town and state ("VFW Post 3150 — Alexandria, VA") stands alone.
-      ? (!fullAddress && (dashTail || (carries(name, city) && (!state || carries(name, state)))) ? name
+      ? (!fullAddress && (dashTail || (carries(name, city) && (!state || carries(name, state)))) ? zipTail(name)
         : [name, fullAddress || townLine].filter(Boolean).join(' · '))
-      : (isHome && city && !address ? `At home in ${joinTown(city, state, '')}` : (fullAddress || townLine));
+      : (isHome && city && !address ? zipTail(`At home in ${joinTown(city, state, '')}`) : (fullAddress || townLine));
+  // The maps query names the ZIP too, and a ZIP alone is enough to ask with.
   const mapsQuery = fullAddress
-    || (dashTail ? name : [name && !HOMEISH.test(name) ? name : '', city, state].filter(Boolean).join(', '));
+    || (dashTail ? zipTail(name)
+      : [name && !HOMEISH.test(name) ? name : '', joinTown(city, state, zipKnown)].filter(Boolean).join(', '));
   // ── THE ZIP, PUBLISHED (2026-09-23) ──────────────────────────────────────
   // `setVenue` below stores a bare ZIP in **venueCity**, because the city gate
   // rejects digits by design. So the ZIP a host typed sits on the record under
@@ -229,6 +235,17 @@ export function venueFor(event) {
   const display = name || address;
   const confirmed = !!ev.venueConfirmed;
   return { name, kind, isHome, city, state, zip, address, fullAddress, townLine, isSet, addressSettled, findable, needsCityForWeather, displayLine, mapsQuery, display, confirmed };
+}
+
+// ─── venueGeoQuery — what the geocoder is asked for this place ───────────────
+// The weather, the airports and the guest's "tell me when I'm close" geocode a
+// town, not a street (lib/weather geocodeVenue). The ZIP when it is known is
+// the most precise thing that geocoder takes; else "City, ST, US" (a bare city
+// can resolve to a same-named one in another state); else the city; else ''.
+export function venueGeoQuery(event) {
+  const vf = venueFor(event);
+  if (vf.zip) return vf.zip;
+  return vf.city && vf.state ? `${vf.city}, ${vf.state}, US` : vf.city;
 }
 
 // ── The address helpers venueFor composes with ───────────────────────────────

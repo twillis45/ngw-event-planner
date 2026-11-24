@@ -12,6 +12,7 @@ weather feature / falls back to a local REACT_APP_OPENWEATHER_KEY in dev.
 
 import logging
 import os
+import re
 from collections import defaultdict
 from datetime import datetime, timezone
 
@@ -24,6 +25,9 @@ router = APIRouter(prefix="/api/weather", tags=["weather"])
 
 OPENWEATHER_KEY = os.environ.get("OPENWEATHER_KEY")
 GEO_URL      = "https://api.openweathermap.org/geo/1.0/direct"
+# A US ZIP has its own geocoder; the direct one reads a city name (11/24/2026:
+# the app asks with the event's ZIP whenever it has one, venueFor.venueGeoQuery).
+ZIP_URL      = "https://api.openweathermap.org/geo/1.0/zip"
 # Free 5-day / 3-hour forecast — works with any standard key (no One Call 3.0
 # subscription). We aggregate its 3-hour entries into the daily shape the frontend
 # risk logic expects (parity with One Call's `daily`). See _to_daily.
@@ -97,11 +101,19 @@ async def geocode(q: str = Query(..., min_length=1, max_length=120),
     want = _STATE_NAMES.get((state or "").upper()) if state else None
     if not _configured():
         raise HTTPException(status_code=503, detail="Weather not configured — set OPENWEATHER_KEY on the server")
+    zip_code = q.strip() if re.fullmatch(r"\d{5}", q.strip()) else None
     try:
         async with httpx.AsyncClient(timeout=12) as client:
-            r = await client.get(GEO_URL, params={"q": q, "limit": 5 if state else 1, "appid": OPENWEATHER_KEY})
+            if zip_code:
+                r = await client.get(ZIP_URL, params={"zip": f"{zip_code},US", "appid": OPENWEATHER_KEY})
+                if r.status_code == 404:     # a ZIP it does not know is no result, not an outage
+                    return {"ok": True, "result": None}
+            else:
+                r = await client.get(GEO_URL, params={"q": q, "limit": 5 if state else 1, "appid": OPENWEATHER_KEY})
             r.raise_for_status()
             data = r.json()
+            if zip_code:     # one place, not a list; no state to check it against
+                data, state = ([data] if isinstance(data, dict) and data.get("lat") is not None else []), None
     except httpx.HTTPStatusError as e:
         log.error("weather.geocode error %s", e.response.status_code)
         raise HTTPException(status_code=502, detail="Weather service error")

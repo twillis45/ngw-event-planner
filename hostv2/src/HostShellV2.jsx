@@ -352,7 +352,7 @@ import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
 import { itemsBoughtByTask } from '@app/lib/shopTaskItems';
 import { voiceDraft, voicesFor, draftAudience } from '@app/lib/draftVoice';
 import { worryLabel } from '@app/lib/worryLabel';
-import { venueFor, setVenue, confirmVenue, formatVenueAddress } from '@app/lib/venueFor';
+import { venueFor, setVenue, confirmVenue, formatVenueAddress, venueGeoQuery } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
 import { tripDays, celebrationNight, celebrationTitle, celebrationPlace, celebrationFieldsToPersist, aroundMeals, mealsOutPayer, placeWithArticle, MEAL_PLANS, MEAL_MODES, MEAL_PAYERS, MEAL_LABEL, tripIsMultiDay, DINNER_GROUP, groupDinnerSteps } from '@app/lib/tripMeals';
@@ -3684,7 +3684,8 @@ export default function HostShellV2() {
         // geocoder accepts a bare ZIP. This read the raw field under a
         // `venue-exempt:` note; venueFor publishes `zip` now, so the exemption
         // is gone and the store-price picker asks the same accessor.
-        const q = withState(vf.zip || vf.city, vf.state)
+        // The one geocode query (venueGeoQuery), the guest page's too.
+        const q = venueGeoQuery(event)
           || (!homeish ? vf.name : '')
           || withState(String((profile && profile.city) || '').trim(), String((profile && profile.state) || '').trim()); // your usual area backs up a bare backyard
         if (!q) return;
@@ -6883,7 +6884,8 @@ export default function HostShellV2() {
         const vf = venueFor(event);
         // Same query shape as the weather pipeline: "City, ST, US" — a bare
         // "City, ST" resolves to null on the geocoder (curl-proved 2026-07-28).
-        const q = vf.city ? [vf.city, vf.state, 'US'].filter(Boolean).join(', ') : '';
+        // A ZIP is the most precise thing the geocoder takes (11/24/2026).
+        const q = vf.zip || (vf.city ? [vf.city, vf.state, 'US'].filter(Boolean).join(', ') : '');
         if (!q) { if (!dead) setAirNear([]); return; }
         const coords = await geocodeVenue(q);
         if (dead) return;
