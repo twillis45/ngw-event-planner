@@ -9235,3 +9235,19 @@ input[data-cue], textarea[data-cue]{ outline:revert-layer; border-color:color-mi
 /* A run's bulk button names the store, and a priced store's name is long. */
 .run-all{max-width:100%; white-space:normal; text-align:left}
 .fstat-tag{display:inline-block; margin-top:4px}
+
+/* ── WHAT'S COUNTED OPENS IN PLACE (cohesion F3, #38, owner 11/24/2026) ─────────
+   The panel is portaled under its door's line; a slim bar heads it ("What's
+   counted · Close ▴") and a close row ends it. Every tap in it is 44px tall
+   (UX_11 rule 9): the readiness pills were 28px. */
+.wc-slot{ width:100% }
+#whats-counted .wc-bar{ display:flex; width:100%; justify-content:space-between; align-items:center; min-height:44px;
+  background:none; border:0; border-bottom:1px solid var(--line); padding:0; margin:0 0 10px; color:inherit; font:inherit; cursor:pointer; text-align:left }
+#whats-counted .wc-bar-t{ font-size:var(--t-eyebrow, 12px); font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft) }
+#whats-counted .wc-bar-c{ color:var(--ink-soft); font-weight:600 }
+#whats-counted .wc-close{ display:block; width:100%; text-align:center; min-height:44px; background:none; border:0;
+  border-top:1px solid var(--line); margin-top:10px; color:var(--ink-soft); font:inherit; cursor:pointer }
+#whats-counted .pill{ min-height:44px; display:inline-flex; align-items:center }
+#whats-counted button, #whats-counted [role="button"], #whats-counted a{ min-height:44px }
+/* The board's one lit act under our pick (cohesion F1): full width, under its row. */
+.decopts .decopt-go{ display:block; width:100%; margin:10px 0 2px; }

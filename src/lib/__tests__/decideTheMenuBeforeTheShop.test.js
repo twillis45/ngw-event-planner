@@ -22,7 +22,8 @@ const item = (ev, id) => items(ev).find((i) => i.id === id);
 
 test('(premise) three days out, the menu is open and the shop step is on the clock', () => {
   const ev = created();
-  expect(item(ev, 'food').cueLabel).toMatch(/Decide what you're serving/);
+  // Named by the call it counts since cohesion F2 (11/24/2026).
+  expect(item(ev, 'food').cueLabel).toMatch(/\? · \d+ open$/);
   expect(item(ev, 'shopping').cueLabel).toMatch(/Buy the remaining items/);
 });
 

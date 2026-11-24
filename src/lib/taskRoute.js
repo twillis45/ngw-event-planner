@@ -80,3 +80,20 @@ export function stepRoute(event, rowId) {
   const t = targetFor(stepTargetKey(event, { id: rowId }), event);
   return t && t.route ? t.route : { tab: 'Timeline', taskId: rowId, timelineId: rowId };
 }
+
+/**
+ * actionRoute(event, action) — where a board row's work is done (cohesion F,
+ * 11/24/2026). THE ONE STEP FALLBACK: its declared route when it has one;
+ * otherwise, when the row IS a checklist step (it carries the row's id), the
+ * step's declared target or its own row on the checklist (stepRoute). Never
+ * dropped, never a dead end. "Then, in order" reads this, and so does batch
+ * D's "Up next" lit button. An action that is no step and has no route stays
+ * null: there is nowhere honest to send it.
+ */
+export function actionRoute(event, action) {
+  if (!action) return null;
+  const declared = action.route || action.primaryRoute || null;
+  if (declared) return declared;
+  const rowId = action.stepRowId || action.taskId || null;
+  return rowId ? stepRoute(event, rowId) : null;
+}

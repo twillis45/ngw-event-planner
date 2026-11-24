@@ -64,7 +64,7 @@ import { parseVendorReply, isAiProxyConfigured, extractDocumentAI } from '@app/l
 import { buildReplyDiff, buildPatch, replyLogEntry } from '@app/lib/vendorReplyParse';
 import { positiveAttention } from '@app/lib/positiveAttention';
 import { isSolemnEvent } from '@app/lib/solemn';
-import { heroAskFor, heroRecord, foodCallsAsk } from '@app/lib/heroAsk'; // the ASK vocabulary — see src/lib/heroAsk.js
+import { heroAskFor, heroRecord, foodCallsAsk, asksForTheVenue } from '@app/lib/heroAsk'; // the ASK vocabulary — see src/lib/heroAsk.js
 // ONE selected decision across the hero, the panel and the CTA — see src/lib/selectedAction.js
 import { resolveSelection, decisionIdentityFor } from '@app/lib/selectedAction';
 import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — see src/lib/decisionEvidence.js
@@ -365,7 +365,7 @@ import { tripDays, celebrationNight, celebrationTitle, celebrationPlace, celebra
 import { celebrationApplies, tripFoodMoney, aroundSummary, dinnerParts, RESTAURANT_DINNER } from '@app/lib/tripFood';
 import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
 import { mayExhale, calmVetoFor } from '@app/lib/exhaleGate';
-import { checklistRouteFor } from '@app/lib/taskRoute';
+import { checklistRouteFor, actionRoute } from '@app/lib/taskRoute';
 import { editorKindFor, isBalanceDueAction, stepRowIdOf } from '@app/lib/heroEditor';
 import { stepIsASend, riskTargetFor, stepTargetFor } from '@app/lib/stepTarget';
 import { withSettled, withoutSettled, unsettledActions } from '@app/lib/settledAsks';
@@ -3165,9 +3165,17 @@ export default function HostShellV2() {
     decidingRef.current = true;
     try { nd.settle(v); } finally { decidingRef.current = false; }
   };
-  const renderDecision = (nd) => {
+  // `opts.lit` (the board's hero only): our pick is also said as the board's
+  // one lit button, "Go with <the pick>", directly under its row (cohesion F1,
+  // owner 11/24/2026; UX_11 rule 1). Sheets keep their own lit button.
+  const renderDecision = (nd, opts = {}) => {
     if (!nd || !Array.isArray(nd.options) || !nd.options.length) return null;
     const proposedOpt = nd.proposed ? nd.options.find(o => o.value === nd.proposed.value) : null;
+    const litPick = !!(opts.lit && proposedOpt);
+    const goWith = (label) => {
+      const t = String(label || '').trim();
+      return 'Go with ' + (/^[A-Z][a-z]/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t);
+    };
     const alts = proposedOpt ? nd.options.filter(o => o !== proposedOpt) : nd.options;
     const open = decDiscloseId === nd.id;
     const optRow = (o, isPick) => (
@@ -3258,12 +3266,19 @@ export default function HostShellV2() {
             answer is the drink lines the plan buys, so "nothing else changes"
             would be false there. Nor after "which course does the caterer
             bring?" (owner, 11/23/2026): its answer leaves the shopping list. */}
-        <p className="decopts-lead">Tap one to settle it — {String(nd.id || '').endsWith(BAR_COVER_ID)
+        {/* With a lit pick (F1) the lead says which row is ours and what the
+            others do; without one it names the act as before. */}
+        <p className="decopts-lead">{litPick ? 'Our pick is first. Tap another to choose it instead — ' : <>Tap one to settle it — </>}{String(nd.id || '').endsWith(BAR_COVER_ID)
           ? 'the drinks line in your budget moves to match.'
           : String(nd.id || '').endsWith(CATERED_COURSE_ID) ? 'that course comes off your shopping list.' : 'nothing else changes.'}</p>
         {proposedOpt ? (
           <>
             {optRow(proposedOpt, true)}
+            {litPick && (
+              <button type="button" className="cta decopt-go" data-pick-go onClick={() => decide(nd, proposedOpt.value)}>
+                {goWith(proposedOpt.label)}
+              </button>
+            )}
             {alts.length > 0 && (open ? (
               <>
                 <button className="decopt-disc" onClick={() => setDecDiscloseId(null)}>Other ways  ▾</button>
@@ -5977,6 +5992,8 @@ export default function HostShellV2() {
   const railUp = showsRail({ bp, portrait: elegantMode && portrait, stage, sheet: sheet && sheet.kind });
   // The tall iPad's first-screen slots (Where you stand, the fold control).
   const [ttStandSlot, setTtStandSlot] = useState(null);
+  // Where What's counted opens: the slot under its door's line (cohesion F3).
+  const [wcSlot, setWcSlot] = useState(null);
   const [ttFoldSlot, setTtFoldSlot] = useState(null);
   // The header's weather slot (owner ruling 11/23/2026): on a tall iPad the
   // weather pill rides the date line instead of floating over the board.
@@ -12959,10 +12976,7 @@ export default function HostShellV2() {
                           that panel must keep a door. */}
                       <span className="tt-rib-l">
                       <button type="button" className="tt-rib-count" aria-expanded={handledOpen} aria-controls="whats-counted"
-                        onClick={() => setHandledOpen((o) => {
-                          if (!o) setTimeout(() => { try { const el = document.getElementById('whats-counted'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* the panel is still open */ } }, 80);
-                          return !o;
-                        })}>
+                        onClick={() => setHandledOpen((o) => !o)}>
                         {tallRibbon.allHandled ? `All ${tallRibbon.total} handled` : `${tallRibbon.done} of ${tallRibbon.total} handled`}
                       </button>
                       {/* THE DENOMINATOR MOVES, SO SAY WHEN (audit C P1-8): the
@@ -12980,6 +12994,7 @@ export default function HostShellV2() {
                     </div>
                   </nav>
                 )}
+                {tallRibbon && tallTablet && !dayHero && !isPast && <div className="wc-slot" ref={setWcSlot} />}
                 {/* THE PHONE'S PROGRESS, ON TOP (owner ruling 3, 11/23/2026): the
                     ribbon's own parts (planRibbon, the one progress reader) as six
                     thin segments under the title, the current part's lit, and one
@@ -12990,10 +13005,7 @@ export default function HostShellV2() {
                   <div className="pp-prog" data-pp-prog>
                     <button type="button" className="pp-prog-b" aria-expanded={handledOpen} aria-controls="whats-counted"
                       aria-label={(tallRibbon.allHandled ? `All ${tallRibbon.total}` : `${tallRibbon.done} of ${tallRibbon.total}`) + ' parts of your plan handled. What’s counted.'}
-                      onClick={() => setHandledOpen((o) => {
-                        if (!o) setTimeout(() => { try { const el = document.getElementById('whats-counted'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* the panel is still open */ } }, 80);
-                        return !o;
-                      })}>
+                      onClick={() => setHandledOpen((o) => !o)}>
                       <span className="pp-segs" aria-hidden="true">
                         {tallRibbon.parts.map((p) => (
                           <i key={p.id} data-seg={p.id} data-state={p.now ? 'now' : p.handled ? 'done' : 'open'} className={'pp-seg is-' + (p.now ? 'now' : p.handled ? 'done' : 'open')} />
@@ -13002,11 +13014,12 @@ export default function HostShellV2() {
                       <span className="pp-line" data-pp-line>
                         {tallRibbon.allHandled ? `All ${tallRibbon.total} handled` : `${tallRibbon.done} of ${tallRibbon.total} handled`}
                         <span className="pp-dot" aria-hidden="true"> · </span>
-                        <span className="pp-wc">What’s counted ›</span>
+                        <span className="pp-wc">{handledOpen ? 'What’s counted ▴' : 'What’s counted ▾'}</span>
                       </span>
                     </button>
                   </div>
                 )}
+                {tallRibbon && phonePill && !dayHero && !isPast && <div className="wc-slot" ref={setWcSlot} />}
                 </>
               ) : elegantMode && bp !== 'mobile' ? (
                 /* THE DESKTOP'S TITLE (owner, 11/24/2026): the phone's title block,
@@ -13908,7 +13921,7 @@ export default function HostShellV2() {
                           {/* Same one object the hero ask was built from — no second
                               lookup, so the options here always belong to the decision
                               the line above is asking about. */}
-                          {renderDecision(heroDecisionND)}
+                          {renderDecision(heroDecisionND, { lit: true })}
                           {heroReceipt && !heroReceipt.decided && (
                             <div className="receipt">
                               <span className="rdot" aria-hidden="true" />
@@ -14078,7 +14091,7 @@ export default function HostShellV2() {
                 const menuND = (isHero && Array.isArray(a.records) && a.records.length)
                   ? (a.id === 'phase:food' ? (heroDecisionND || (!elegantMode ? foodND(a.records) : null)) : (wired === 'food' ? foodND(a.records) : null))
                   : null;
-                const menuAsk = (menuND && menuND.selected == null && menuND.ask) || null;
+                const menuAsk = foodPanelQuestion(menuND);
                 const rec = isHero
                   ? (menuAsk ? `${String(menuAsk).replace(/\.+$/, '')} · ${a.records.length} open` : heroRecord(a, heroAskText))
                   : null;
@@ -14107,7 +14120,7 @@ export default function HostShellV2() {
                   // The receipt remembers the ask this pick set down, so its Undo
                   // brings the ask back (undoHeroReceipt) — otherwise an undone
                   // pick left its question filtered out of the queue.
-                  const panel = renderDecision({ ...nd, settle: (v) => { settleAndSetDown(!(a.id === 'phase:food' && Array.isArray(a.records)) ? a.id : null, () => nd.settle(v)); trackCompletion(a, getActionReason(a, { event }), 'settled'); } });
+                  const panel = renderDecision({ ...nd, settle: (v) => { settleAndSetDown(!(a.id === 'phase:food' && Array.isArray(a.records)) ? a.id : null, () => nd.settle(v)); trackCompletion(a, getActionReason(a, { event }), 'settled'); } }, { lit: true });
                   // A menu question carries the spread link here as in the food editor (ruling 3).
                   return a.id === 'phase:food' ? <>{panel}{spreadLink()}</> : panel;
                 })() : null;
@@ -14437,14 +14450,16 @@ export default function HostShellV2() {
                   // The green completion belongs to the complete-state screen, which
                   // does not exist yet. Until it does, this surface says the true thing:
                   // the parts are handled AND something is still open.
-                  <div className="eprog"
-                    role="img" aria-label={segmentsText(orient)}>
+                  // The text form of the strips rides the strip row itself (role=img),
+                  // not the whole block: since cohesion F3 the block also holds the
+                  // What's counted panel, and an image's children are not controls.
+                  <div className="eprog">
                     {orient && orient.segments.length > 0 && (
                       // A 2px bar is not a hoverable target. Each strip gets a padded
                       // hit area, and the row takes an equal negative margin back, so
                       // the strips stay on exactly the pixel row they were drawn on —
                       // the target grew, the composition did not move.
-                      <div aria-hidden="true" style={{ display: 'flex', gap: 3, margin: '-7px 0 -5px' }}>
+                      <div role="img" aria-label={segmentsText(orient)} style={{ display: 'flex', gap: 3, margin: '-7px 0 -5px' }}>
                         {orient.segments.map(s => (
                           <span key={s.id} title={s.label + (s.handled ? ' — handled' : ' — open')}
                             onMouseEnter={() => setHoverSeg(s)}
@@ -14499,6 +14514,10 @@ export default function HostShellV2() {
                         : (done >= total ? 'this one’s still open' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first'
                           : (horizonPhrase || 'more in your plan')))}</span>
                     </div>
+                    {/* What's counted opens here at the rail widths (owner F3): the
+                        door is in the narrow Where you stand card, so the panel opens
+                        under the hero's own "N of 7 plan parts handled" line. */}
+                    {!phonePill && !tallTablet && <div className="wc-slot" ref={setWcSlot} />}
                   </div>
                 );
               })()}
@@ -14591,8 +14610,11 @@ export default function HostShellV2() {
                 // (the blocker card, or the parked card), so a "Name the venue"
                 // row here asked the same question twice on one screen.
                 const venueBoxOnBoard = !vf.isSet;
-                const thenItems = (queue || []).slice(1).filter(a => a && a.level !== 'critical' && !!resolveRoute(a.route)
-                  && !(venueBoxOnBoard && (a.blockerType === 'venue-selection' || /^(name the venue|add the location|pick the place)/i.test(String(a.title || '').trim()))));
+                // By declared kinds only (cohesion F): the venue by asksForTheVenue,
+                // and a step with no route of its own keeps its row, opening its own
+                // line on the checklist (actionRoute — never dropped).
+                const thenItems = (queue || []).slice(1).map(a => (a && !a.route && actionRoute(event, a) ? { ...a, route: actionRoute(event, a) } : a))
+                  .filter(a => a && a.level !== 'critical' && !!resolveRoute(actionRoute(event, a)) && !(venueBoxOnBoard && asksForTheVenue(a)));
                 if (!thenItems.length) return null;
                 // Dated money obligations, read ONCE for the whole list — the reason
                 // service matches a row to an action by key/vendorId. Never an estimate.
@@ -15550,8 +15572,20 @@ export default function HostShellV2() {
                   controls that were not on the screen (measured: .focus() on the
                   Checklist pill succeeded and scrolled the board to a blank spot).
                   The id is the caret's aria-controls target. */}
+              {/* OPENS IN PLACE (cohesion F3, owner 11/24/2026; UX_11 rule 2). It
+                  used to open here, a screen or more below its door, and scroll the
+                  board there. Now it is portaled into the slot directly under the
+                  line that holds its door (the phone's progress line, the tall
+                  iPad's ribbon, the hero's progress line at the rail widths) and
+                  nothing scrolls. Where no door line is on the board, it stays here.
+                  A slim bar heads it and a close row ends it. */}
+              {((el) => (wcSlot ? createPortal(el, wcSlot) : el))(
               <div id="whats-counted" className={'slidepanel' + (handledOpen ? ' open' : '')} inert={!handledOpen}>
                 <div className="slidepanel-inner">
+                  <button type="button" className="wc-bar" data-wc-bar onClick={() => setHandledOpen(false)}>
+                    <span className="wc-bar-t">What’s counted</span>
+                    <span className="wc-bar-c">Close ▴</span>
+                  </button>
                   {/* THE DATE THE PLAN NEXT NEEDS HER, BEHIND THE ONE DOOR (owner
                       ruling 3, 11/23/2026). The phone's progress is one line now,
                       "N of M handled · What's counted ›"; the hairline's horizon
@@ -15865,8 +15899,9 @@ export default function HostShellV2() {
                   {handled.length > 0 && handled.map((h, i) => (
                     <div className="later-row done" key={i} style={{ marginLeft: 0 }}><span className="t">{h}</span></div>
                   ))}
+                  <button type="button" className="wc-close" data-wc-close onClick={() => setHandledOpen(false)}>Close what’s counted ▴</button>
                 </div>
-              </div>
+              </div>)}
 
               {/* Re-audit 2026-07-17 (P2, "hide filters until there's volume"): a
                   domain filter over a near-empty plan is filter-heavy / content-light

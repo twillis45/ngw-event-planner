@@ -153,6 +153,9 @@ for (const state of STATES)
 test(`the board shows at most one lit primary, and only in the hero — ${state.label}, ${theme}${elegant === '0' ? ', ?elegant=0' : ''}`, async ({ page }) => {
   test.setTimeout(60_000);
   await boot(page, state, theme, elegant);
+  // A hero that proposes a pick (our pick, not yet settled) carries the
+  // board's one lit act (owner F1, 11/24/2026: "Go with drop-off catering").
+  const heroPick = await page.locator('.hero .decopts .decopt.pick:not([aria-pressed])').count();
   const { lit, together, barSeen } = await walkBoard(page);
   test.info().annotations.push({ type: 'lit', description: JSON.stringify(lit) });
   test.info().annotations.push({ type: 'next-bar seen', description: String(barSeen) });
@@ -164,4 +167,24 @@ test(`the board shows at most one lit primary, and only in the hero — ${state.
   // ask is the board's one lit button in both modes.
   if (theme === 'dark') expect(heroLit, 'the dark hero ask wears the soft tier (rulings 29, 31)').toEqual([]);
   expect(together, 'two lit controls on screen at once').toEqual([]);
+  // TIGHTENED TO ONE (cohesion F1, owner 11/24/2026; UX_11 rule 1). The choice
+  // card used to show 0 lit at every width ("Tap one to settle it"), so the
+  // board had no lit act at all. In light, our pick is said as the one button.
+  if (theme === 'light' && heroPick) expect(heroLit, 'the pick is the board’s one lit button').toEqual([expect.stringMatching(/^Go with /)]);
+});
+
+// F1: the lit button settles our pick, the same write as tapping its row.
+test('Wanda: "Go with …" under our pick settles it, and the lead says what the rows are', async ({ page }) => {
+  test.setTimeout(60_000);
+  await boot(page, { id: 'ev-x-wanda' }, 'light');
+  const hero = page.locator('.hero .hero-card');
+  await expect(hero.locator('.decopts-lead')).toHaveText('Our pick is first. Tap another to choose it instead — nothing else changes.');
+  const pickName = (await hero.locator('.decopt.pick .decopt-name').first().innerText()).trim();
+  const go = hero.locator('[data-pick-go]');
+  await expect(go).toHaveText(`Go with ${pickName.charAt(0).toLowerCase()}${pickName.slice(1)}`);
+  // Directly under the pick row.
+  expect(await go.evaluate((b) => b.previousElementSibling && b.previousElementSibling.classList.contains('pick'))).toBe(true);
+  await go.click();
+  await expect(page.locator('.toast, [role="status"]').filter({ hasText: /Decided|Undo|planned|set/i }).first()).toBeVisible();
+  await expect(page.locator('.hero').getByText('How is the food handled?', { exact: false })).toHaveCount(0);
 });
