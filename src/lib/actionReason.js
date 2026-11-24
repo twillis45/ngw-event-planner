@@ -19,10 +19,12 @@
 //
 // PURE: no React, no I/O, no event mutation.
 import { isSolemnEvent } from './solemn';
-import { timeStatusLabel } from './timeStatusLabel';
+import { dueByLabel } from './timeStatusLabel';
 
 // Ordered by what a host has most at stake. First match wins and the ladder stops —
-// one row never carries two reasons.
+// one row never carries two reasons. One exception, ruled by the owner on
+// 11/24/2026 (render 3): a blocking row with a date says both in its one text,
+// "by Tue · others wait on it", and a row with a date always shows its date.
 export const REASON_PRIORITY = ['blocking', 'money', 'time', 'risk', 'consequence', 'dependency'];
 
 export const MAX_REASON_CHARS = 40;
@@ -96,13 +98,14 @@ const plural = (n, one, many) => `${n} ${Math.abs(n) === 1 ? one : many}`;
  * opts:
  *   event        — for solemn suppression
  *   moneyRows    — moneyDatesFor(event).rows, matched by key/vendorId when present
+ *   now          — the day dueInDays counts from (default: the clock)
  *
  * Returns null when no authored or derived signal exists. Null is a valid,
  * expected answer and the caller must render nothing.
  */
 export function getActionReason(action, opts = {}) {
   if (!action) return null;
-  const { event = null, moneyRows = null } = opts;
+  const { event = null, moneyRows = null, now = new Date() } = opts;
   const title = String(action.title || '');
   const solemn = (() => { try { return event ? isSolemnEvent(event) : false; } catch { return false; } })();
 
@@ -119,13 +122,21 @@ export function getActionReason(action, opts = {}) {
     return { type, text, source, confidence };
   };
 
+  // THE DATE, when the row has one: "by Tue", "by Jan 2", "due today" (the
+  // time-status module's words). Not on a solemn event (standing ruling: no
+  // time pressure there), where the row keeps its other reasons.
+  const when = !solemn && Number.isFinite(action.dueInDays) ? dueByLabel(action.dueInDays, now) : null;
+
   // 1 — BLOCKING. The strongest thing NGW can say: finishing this frees other work.
+  // With a date, both halves in one text: "by Tue · others wait on it".
   if (action.gateHolder === true) {
     const n = Number.isFinite(action.unlocks) ? action.unlocks : 0;
-    const r = emit('blocking', n > 0 ? `unblocks ${plural(n, 'more step', 'more steps')}` : 'other steps wait on this', 'gateHolder', DERIVED);
+    const r = when
+      ? emit('blocking', `${when} · ${n > 0 ? `unblocks ${plural(n, 'more step', 'more steps')}` : 'others wait on it'}`, 'gateHolder', DERIVED)
+      : emit('blocking', n > 0 ? `unblocks ${plural(n, 'more step', 'more steps')}` : 'other steps wait on this', 'gateHolder', DERIVED);
     if (r) return r;
   } else if (Number.isFinite(action.unlocks) && action.unlocks > 0) {
-    const r = emit('blocking', `${plural(action.unlocks, 'step waits', 'steps wait')} on this`, 'unlocks', DERIVED);
+    const r = emit('blocking', `${when ? when + ' · ' : ''}${plural(action.unlocks, 'step waits', 'steps wait')} on this`, 'unlocks', DERIVED);
     if (r) return r;
   }
 
@@ -141,14 +152,9 @@ export function getActionReason(action, opts = {}) {
 
   // 3 — TIME. Suppressed on a solemn event: "past its window" is shame grammar
   // measured from a deadline the family never agreed to (standing board ruling).
-  if (!solemn && Number.isFinite(action.dueInDays)) {
-    const d = action.dueInDays;
-    // The label itself is shared with the card-top due chip (timeStatusLabel);
-    // the <=7 day HORIZON is this ladder's own policy and stays here — past a
-    // week out a date is not time PRESSURE, so the row stays bare.
-    const raw = d <= 7 ? timeStatusLabel(d) : null;
-    if (raw) { const r = emit('time', raw, 'dueInDays', DERIVED); if (r) return r; }
-  }
+  // A ROW WITH A DATE ALWAYS SHOWS ITS DATE (owner, 11/24/2026): the old <=7 day
+  // horizon is gone, so "by Jan 2" shows where the row used to stay bare.
+  if (when) { const r = emit('time', when, 'dueInDays', DERIVED); if (r) return r; }
 
   // 4 — RISK. `risk.ifDelayed` is authored on 278 playbook blocks and, as of
   // 2026-07-31, reaches NO action object — verified by exit-code-checked grep across

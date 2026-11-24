@@ -368,5 +368,97 @@
     "Grandma no-salt": 1
    }
   }
+ },
+ {
+  "id": "home-address-zip-straight-apostrophe",
+  "event": {
+   "name": "Aunt Rosa's Dinner",
+   "recordKind": "host_event",
+   "venueKind": "home",
+   "venueAddress": "42 Elm Ct",
+   "venueCity": "Springfield",
+   "venueState": "VA",
+   "venueZip": "22150",
+   "date": "2027-12-04"
+  },
+  "expect": {
+   "line": "42 Elm Ct, Springfield, VA 22150",
+   "town": "Springfield, VA 22150",
+   "isHome": true,
+   "days": "Saturday, December 4",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "home-street-line-zip-curly-apostrophe",
+  "event": {
+   "name": "Aunt Rosa’s Dinner",
+   "venue": "Home",
+   "venueKind": "home",
+   "venueAddress": "42 Elm Ct, Springfield, VA",
+   "venueZip": "22150",
+   "date": "2027-12-04"
+  },
+  "expect": {
+   "line": "Home · 42 Elm Ct, Springfield, VA 22150",
+   "town": "22150",
+   "isHome": true,
+   "days": "Saturday, December 4",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "home-town-zip-no-street",
+  "event": {
+   "recordKind": "host_event",
+   "venueCity": "Springfield",
+   "venueState": "VA",
+   "venueZip": "22150",
+   "date": "2027-12-04"
+  },
+  "expect": {
+   "line": "At home in Springfield, VA 22150",
+   "town": "Springfield, VA 22150",
+   "isHome": true,
+   "days": "Saturday, December 4",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "home-zip-only",
+  "event": {
+   "venue": "Home",
+   "venueKind": "home",
+   "venueCity": "22150",
+   "venueZip": "22150",
+   "date": "2027-12-04"
+  },
+  "expect": {
+   "line": "Home · 22150",
+   "town": "22150",
+   "isHome": true,
+   "days": "Saturday, December 4",
+   "host": "",
+   "diets": {}
+  }
+ },
+ {
+  "id": "dash-town-in-name-zip",
+  "event": {
+   "venue": "VFW Post 3150 — Alexandria, VA",
+   "venueZip": "22314",
+   "date": "2027-12-04"
+  },
+  "expect": {
+   "line": "VFW Post 3150 — Alexandria, VA 22314",
+   "town": "Alexandria, VA 22314",
+   "isHome": false,
+   "days": "Saturday, December 4",
+   "host": "",
+   "diets": {}
+  }
  }
 ]

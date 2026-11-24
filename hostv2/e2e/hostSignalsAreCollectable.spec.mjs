@@ -23,7 +23,7 @@
 //
 // Reached the way a phone reaches it — eyebrow, then the "You &" directory row —
 // copied from mobileTapFloor.spec.mjs, which already drives this panel every run.
-import { test, expect, settled } from './fixtures.mjs';
+import { test, expect, settled, openMenuDoor } from './fixtures.mjs';
 
 const EV = 'test-day-before-vendors';
 
@@ -42,9 +42,8 @@ const boot = async (page) => {
 };
 
 const openAccountPanel = async (page) => {
-  await page.locator('.ev-eyebrow').first().click();
-  await page.waitForTimeout(1200);
-  await page.locator('.navrow', { hasText: /^You &/ }).first().click();
+  // Through the shared door (the phone's All sections since owner ruling 4, 11/23/2026).
+  await openMenuDoor(page, 'You & settings');
   await expect(page.locator('#sheet-title')).toBeVisible();
 };
 

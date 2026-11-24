@@ -53,6 +53,8 @@ test('opened to change it, the call says it is chosen already', async ({ page })
   await boot(page);
   await openSectionByName(page, 'Calls to make');
   const sheet = page.locator('.sheet').last();
+  // The decided calls are one green row until reopened (DoneFold, owner 11/24/2026).
+  await sheet.locator('[data-done-fold]', { hasText: /Settled · all \d+ decided/ }).click();
   const card = sheet.locator('button.settled-card').filter({ hasText: PICK }).first();
   await expect(card).toBeVisible();
   await card.click();

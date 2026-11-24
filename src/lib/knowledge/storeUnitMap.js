@@ -323,81 +323,84 @@ const SEARCH_ONLY = Object.freeze([
   // store) on 11/23/2026 with no line ids, so nothing was recorded; the comment
   // is the first product it returned, regular price first.
   { id: 'p_appetizers', item: 'A cheese tray for grazing during the cooking hours', term: 'cheese tray' }, // Great Midwest Gourmet Cheese Tray $14.99 · 18 oz
-  { id: 'p_appetizers', item: 'Botanas — chips, salsa & guacamole, taquitos', term: 'tortilla chips' }, // Harris Teeter Restaurant Style Tortilla Chips $2.99 ($2.50 sale) · 10 oz
-  { id: 'p_apps_cold', item: 'Charcuterie, cheese & crudité (shrimp, dips)', term: 'charcuterie' }, // Boar's Head Charcuterie Trio Uncured Milano Sa… $12.99 ($9.99 sale) · 6 oz
-  { id: 'p_apps_cold', item: 'Crostini & deviled eggs (shrimp, caprese skewers)', term: 'deviled eggs' }, // Harris Teeter Deviled Eggs $4.99 · 6 ct
-  { id: 'p_batch', item: 'Batch cocktail: spirits + mixers + garnish', term: 'cocktail mixer' }, // Cocktail Crate Classic Old Fashioned Craft Coc… $8.99 · 12.7 fl oz
+  { id: 'p_appetizers', item: 'Botanas — tortilla chips', term: 'tortilla chips' }, // Harris Teeter Restaurant Style Tortilla Chips $2.99 ($2.50 sale) · 10 oz
+  { id: 'p_apps_cold', item: 'Charcuterie (shrimp, dips)', term: 'charcuterie' }, // Boar's Head Charcuterie Trio Uncured Milano Sa… $12.99 ($9.99 sale) · 6 oz
+  { id: 'p_apps_cold', item: 'Deviled eggs (shrimp, caprese skewers)', term: 'deviled eggs' }, // Harris Teeter Deviled Eggs $4.99 · 6 ct
+  { id: 'p_batch', item: 'Batch cocktail mixer', term: 'cocktail mixer' }, // Cocktail Crate Classic Old Fashioned Craft Coc… $8.99 · 12.7 fl oz
   { id: 'p_beans', item: 'Baked beans ingredients', term: 'baked beans' }, // Bush's Original Baked Beans 28 oz $3.39 · 28 oz
   { id: 'p_bread', item: 'Bread / rolls / crackers', term: 'bread' }, // Nature's Own Honey Wheat Bread, Non-GMO Sandwi… $4.59 ($2.29 sale) · 20 oz
   { id: 'p_bread', item: 'Dinner rolls', term: 'dinner rolls' }, // King’s Hawaiian Savory Butter Rolls $10.99 ($8.00 sale) · 24 oz
   { id: 'p_candles', item: 'Mishumaa saba — seven Kwanzaa candles (1 black, 3 red, 3 green)', term: 'taper candles' }, // Tuscany Candle Taper Candles - White $3.99 · 6 ct / 10 in
-  { id: 'p_condiments', item: 'Condiments, BBQ sauce, hot sauce, cheese, lettuce, onion, pickles', term: 'bbq sauce' }, // Sweet Baby Ray's BBQ Sauce $3.69 ($2.59 sale) · 18 oz
+  { id: 'p_condiments', item: 'BBQ sauce', term: 'bbq sauce' }, // Sweet Baby Ray's BBQ Sauce $3.69 ($2.59 sale) · 18 oz
   { id: 'p_corn', item: 'Corn (frozen or canned kernels, or corn pudding)', term: 'frozen corn' }, // Harris Teeter Steamable Yellow Corn $1.69 ($1.33 sale) · 12 oz
   { id: 'p_dessert', item: 'Bakery tart or cake (or ice cream & cookies)', term: 'cake' }, // Private Selection Cinnamon Roll Four Layer Cak… $23.00 · 59 oz (16 servings)
-  { id: 'p_dessert', item: 'Banana pudding, pound cake & peach cobbler (red velvet)', term: 'banana pudding' }, // Jell-O Banana Cream Artificially Flavored Inst… $1.79 ($1.50 sale) · 3.4 oz
-  { id: 'p_dessert', item: 'Brownies, cookies & snack mix', term: 'brownies' }, // Fresh Foods Market Ghirardelli Chocolate Brown… $9.99 · 6 ct
-  { id: 'p_dessert', item: 'Cookies & mini tarts (holiday bark)', term: 'cookies' }, // Chocolate Chip Cookies $3.00 · 12 count
-  { id: 'p_dessert', item: 'Cookies, brownies & bite-size sweets', term: 'cookies' }, // Chocolate Chip Cookies $3.00 · 12 count
+  { id: 'p_dessert', item: 'Banana pudding (red velvet)', term: 'banana pudding' }, // Jell-O Banana Cream Artificially Flavored Inst… $1.79 ($1.50 sale) · 3.4 oz
+  { id: 'p_dessert', item: 'Brownies', term: 'brownies' }, // Fresh Foods Market Ghirardelli Chocolate Brown… $9.99 · 6 ct
+  { id: 'p_dessert', item: 'Cookies (holiday bark)', term: 'cookies' }, // Chocolate Chip Cookies $3.00 · 12 count
+  { id: 'p_dessert', item: 'Cookies', term: 'cookies' }, // Chocolate Chip Cookies $3.00 · 12 count
   { id: 'p_dessert', item: 'Dessert (pies, or the dessert a friend is known for)', term: 'pumpkin pie' }, // Bakery Fresh 8 Inch Pumpkin Pie $4.00 · 21.5 oz (serves 6)
-  { id: 'p_dessert', item: 'Mini desserts & cake pops (fruit, sweet bites)', term: 'mini cupcakes' }, // Bakery Fresh Apple Caramel Mini Cupcakes $5.49 ($5.00 sale) · 12 ct
-  { id: 'p_dessert', item: 'Peach cobbler, sweet potato pie & pound cake (or banana pudding)', term: 'sweet potato pie' }, // Bakery Fresh Sweet Potato Pie - 8 Inch $4.00 · 21.5 oz
+  { id: 'p_dessert', item: 'Mini desserts (fruit, sweet bites)', term: 'mini cupcakes' }, // Bakery Fresh Apple Caramel Mini Cupcakes $5.49 ($5.00 sale) · 12 ct
+  { id: 'p_dessert', item: 'Sweet potato pie (or banana pudding)', term: 'sweet potato pie' }, // Bakery Fresh Sweet Potato Pie - 8 Inch $4.00 · 21.5 oz
   { id: 'p_dessert', item: 'Sheet cake', term: 'sheet cake' }, // Harris Teeter Fresh Foods Market 1/4 Sheet Dou… $31.99 · 1 ct
   { id: 'p_dessert', item: 'Sweet potato pie or benne cakes (Karamu dessert)', term: 'sweet potato pie' }, // Bakery Fresh Sweet Potato Pie - 8 Inch $4.00 · 21.5 oz
   { id: 'p_dessert', item: 'Sweets (pound cake, peach cobbler, cookies, banana pudding)', term: 'pound cake loaf' }, // Harris Teeter Old Fashioned Butter Pound Cake… $5.99 · 16 oz
-  { id: 'p_dessert', item: 'Watermelon, cookies & s\'mores', term: 'watermelon' }, // Mini Seedless Whole Watermelon $5.99 · 1 ct
-  { id: 'p_drinks', item: 'Beer + soda + water', term: 'beer' }, // Samuel Adams Winter Break Seasonal Variety Beer $17.99 · 12 cans / 12 fl oz
+  { id: 'p_dessert', item: 'Watermelon', term: 'watermelon' }, // Mini Seedless Whole Watermelon $5.99 · 1 ct
+  { id: 'p_drinks', item: 'Beer', term: 'beer' }, // Samuel Adams Winter Break Seasonal Variety Beer $17.99 · 12 cans / 12 fl oz
   { id: 'p_drinks', item: 'Beer, soda & water', term: 'beer' }, // Samuel Adams Winter Break Seasonal Variety Beer $17.99 · 12 cans / 12 fl oz
-  { id: 'p_drinks', item: 'Beer, sweet tea, soda, water', term: 'beer' }, // Samuel Adams Winter Break Seasonal Variety Beer $17.99 · 12 cans / 12 fl oz
-  { id: 'p_drinks', item: 'Bottled water, juice boxes, and soda for the stand', term: 'bottled water' }, // Harris Teeter Purified Drinking Bottled Water $3.99 ($3.33 sale) · 24 bottles/16.9 fl oz
-  { id: 'p_drinks', item: 'Cold beer, soda, water', term: 'beer' }, // Samuel Adams Winter Break Seasonal Variety Beer $17.99 · 12 cans / 12 fl oz
-  { id: 'p_drinks', item: 'Soft drinks, water, lemonade', term: 'soft drinks' }, // Pepsi cola Soda Bottle $3.99 · 2 liter
-  { id: 'p_drinks', item: 'Sorrel / hibiscus drink, juice & water', term: 'hibiscus tea' }, // HT Traders Caffeine Free Raspberry Hibiscus He… $3.19 ($2.50 sale) · 20 ct
+  { id: 'p_drinks', item: 'Beer', term: 'beer' }, // Samuel Adams Winter Break Seasonal Variety Beer $17.99 · 12 cans / 12 fl oz
+  { id: 'p_drinks', item: 'Bottled water for the stand', term: 'bottled water' }, // Harris Teeter Purified Drinking Bottled Water $3.99 ($3.33 sale) · 24 bottles/16.9 fl oz
+  { id: 'p_drinks', item: 'Cold beer', term: 'beer' }, // Samuel Adams Winter Break Seasonal Variety Beer $17.99 · 12 cans / 12 fl oz
+  { id: 'p_drinks', item: 'Soft drinks', term: 'soft drinks' }, // Pepsi cola Soda Bottle $3.99 · 2 liter
+  { id: 'p_drinks', item: 'Sorrel / hibiscus drink', term: 'hibiscus tea' }, // HT Traders Caffeine Free Raspberry Hibiscus He… $3.19 ($2.50 sale) · 20 ct
   { id: 'p_drinks', item: 'Sparkling water (the host\'s alcohol-free share)', term: 'sparkling water' }, // HT Traders Passionfruit Flavored Sparkling Wat… $6.49 ($3.99 sale) · 12 pk / 12 fl oz
-  { id: 'p_drinks', item: 'Sparkling water, soda & mocktail mixers', term: 'sparkling water' }, // HT Traders Passionfruit Flavored Sparkling Wat… $6.49 ($3.99 sale) · 12 pk / 12 fl oz
-  { id: 'p_drinks', item: 'Sweet tea, lemonade, water, coffee', term: 'sweet tea' }, // Milo's Famous Sweet Iced Tea $5.39 ($3.99 sale) · 1 gal
-  { id: 'p_drinks', item: 'Sweet tea, red drink, soda, water', term: 'sweet tea' }, // Milo's Famous Sweet Iced Tea $5.39 ($3.99 sale) · 1 gal
+  { id: 'p_drinks', item: 'Sparkling water', term: 'sparkling water' }, // HT Traders Passionfruit Flavored Sparkling Wat… $6.49 ($3.99 sale) · 12 pk / 12 fl oz
+  { id: 'p_drinks', item: 'Sweet tea', term: 'sweet tea' }, // Milo's Famous Sweet Iced Tea $5.39 ($3.99 sale) · 1 gal
+  { id: 'p_drinks', item: 'Sweet tea', term: 'sweet tea' }, // Milo's Famous Sweet Iced Tea $5.39 ($3.99 sale) · 1 gal
   { id: 'p_food', item: 'BBQ or taco bar (buffet trays)', term: 'taco shells' }, // Harris Teeter Crunchy Taco Shells $1.69 · 4.3 oz
-  { id: 'p_food', item: 'Grilled proteins & wings (or a pizza order)', term: 'chicken wings' }, // Whole Fresh Chicken Wings $10.00 · 3.25 lb
-  { id: 'p_food', item: 'Quiche, fruit & sandwiches (brunch spread)', term: 'quiche' }, // Harris Teeter Fresh Foods Market Quiche Lorraine $10.99 · 24 oz
-  { id: 'p_food', item: 'Quiche, fruit & tea sandwiches (brunch spread, salads)', term: 'quiche' }, // Harris Teeter Fresh Foods Market Quiche Lorraine $10.99 · 24 oz
-  { id: 'p_garnish', item: 'Fresh garnish + punch fruit (citrus, mint, berries)', term: 'fresh mint' }, // Mint $3.29 · 1 ct
-  { id: 'p_mains', item: 'Jollof rice, jerk chicken & oxtail (or fish, gumbo, jambalaya)', term: 'chicken thighs' }, // Harris Teeter Boneless Chicken Thighs $5.99 · 1 lb
+  { id: 'p_food', item: 'Grilled proteins (chicken, or a pizza order)', term: 'chicken thighs' }, // Whole Fresh Chicken Wings $10.00 · 3.25 lb
+  { id: 'p_food', item: 'Quiche (brunch spread)', term: 'quiche' }, // Harris Teeter Fresh Foods Market Quiche Lorraine $10.99 · 24 oz
+  { id: 'p_food', item: 'Quiche (brunch spread, salads)', term: 'quiche' }, // Harris Teeter Fresh Foods Market Quiche Lorraine $10.99 · 24 oz
+  { id: 'p_garnish', item: 'Fresh garnish (mint)', term: 'fresh mint' }, // Mint $3.29 · 1 ct
+  { id: 'p_mains', item: 'Jerk chicken (or fish, gumbo, jambalaya)', term: 'chicken thighs' }, // Harris Teeter Boneless Chicken Thighs $5.99 · 1 lb
   { id: 'p_mains', item: 'Pizza or grill proteins (party trays)', term: 'frozen pizza' }, // Red Baron Pepperoni Classic Crust Frozen Pizza $6.79 ($4.99 sale) · 20.61 oz
-  { id: 'p_mocktail', item: 'Mocktail mixers, juices, syrups, garnishes (3-4 signature drinks)', term: 'sparkling juice' }, // Welch's Red Grape Sparkling Juice Cocktail $4.99 ($3.99 sale) · 25.4 fl oz
-  { id: 'p_napkins', item: 'Paper towels, napkins, trash bags, gloves', term: 'paper towels' }, // Bounty Paper Towels Select-A-Size White 6 Doub… $17.49 ($12.99 sale) · 6 rolls
-  { id: 'p_nonalc', item: 'Kids\' and zero-proof drinks (a spooky punch, juice boxes, water)', term: 'juice boxes' }, // Honest Kids Super Fruit Punch Organic Juice Dr… $5.39 · 8 pk / 6 fl oz
+  { id: 'p_mocktail', item: 'Mocktail mixers (3-4 signature drinks)', term: 'mocktail mixer' }, // Welch's Red Grape Sparkling Juice Cocktail $4.99 ($3.99 sale) · 25.4 fl oz
+  { id: 'p_napkins', item: 'Paper towels', term: 'paper towels' }, // Bounty Paper Towels Select-A-Size White 6 Doub… $17.49 ($12.99 sale) · 6 rolls
+  { id: 'p_nonalc', item: 'Kids\' drinks: juice boxes (a spooky punch, water)', term: 'juice boxes' }, // Honest Kids Super Fruit Punch Organic Juice Dr… $5.39 · 8 pk / 6 fl oz
   { id: 'p_paper', item: 'Paper goods (plates/cups/cocktail napkins for an app party, leftover containers)', term: 'paper plates' }, // Dixie 8.5-Inch Disposable Paper Plates $4.39 ($3.29 sale) · 48 ct
   { id: 'p_paper', item: 'Paper goods (plates/cups/cocktail napkins for an app reception, leftover containers)', term: 'paper plates' }, // Dixie 8.5-Inch Disposable Paper Plates $4.39 ($3.29 sale) · 48 ct
-  { id: 'p_paper', item: 'Plates, cups, napkins, utensils', term: 'paper plates' }, // Dixie 8.5-Inch Disposable Paper Plates $4.39 ($3.29 sale) · 48 ct
+  { id: 'p_paper', item: 'Paper plates', term: 'paper plates' }, // Dixie 8.5-Inch Disposable Paper Plates $4.39 ($3.29 sale) · 48 ct
   { id: 'p_potatoes', item: 'Mashed potatoes (the potatoes)', term: 'russet potatoes' }, // Russet Potato $1.79 · 1 lb
   { id: 'p_protein', item: 'Beef short rib (or salmon / mushroom wellington for veg)', term: 'beef short ribs' }, // Beef Choice Bone-In Short Ribs $11.99 · 1 lb
   { id: 'p_protein', item: 'Beef, chicken or salmon (for a seated dinner — plus a veg main)', term: 'chicken breast' }, // Harris Teeter Boneless Chicken Breast Value Pack $3.99 ($2.59 sale) · 1 lb
   { id: 'p_protein', item: 'Beef, chicken or salmon (for a seated meal — plus a veg main)', term: 'chicken breast' }, // Harris Teeter Boneless Chicken Breast Value Pack $3.99 ($2.59 sale) · 1 lb
   { id: 'p_protein', item: 'Bone-in chicken', term: 'bone-in chicken' }, // Harris Teeter Bone In Skin On Split Chicken Br… $3.49 ($2.89 sale) · 1 lb
-  { id: 'p_protein', item: 'Burgers, hot dogs & chicken', term: 'burger patties' }, // Schweid & Sons The Butcher's Blend 75/25 Groun… $12.99 · 4 ct / 5.3 oz
+  { id: 'p_protein', item: 'Burger patties', term: 'burger patties' }, // Schweid & Sons The Butcher's Blend 75/25 Groun… $12.99 · 4 ct / 5.3 oz
   { id: 'p_salsa', item: 'Salsa roja ingredients (tomatoes, onion, garlic, peppers)', term: 'roma tomatoes' }, // Fresh Roma Tomato $3.79 · 1 lb
-  { id: 'p_season', item: 'Crawfish/crab boil seasoning (Zatarain\'s / Louisiana Fish Fry) + cayenne + salt', term: 'crab boil' }, // Zatarain's Crawfish, Shrimp & Crab Boil $2.19 · 3 oz
+  { id: 'p_season', item: 'Crawfish/crab boil seasoning (Zatarain\'s / Louisiana Fish Fry)', term: 'crab boil' }, // Zatarain's Crawfish, Shrimp & Crab Boil $2.19 · 3 oz
   { id: 'p_season', item: 'Seasoning (salt, pepper, garlic, paprika, Cajun/seasoned salt)', term: 'seasoned salt' }, // Lawry's Seasoned Salt $4.39 ($2.00 sale) · 8 oz
-  { id: 'p_seasoning', item: 'Dry rub / seasoning + marinade', term: 'bbq rub' }, // Rib Rack BBQ Rub $5.39 ($3.99 sale) · 5.5 oz
+  { id: 'p_seasoning', item: 'Dry rub / seasoning', term: 'bbq rub' }, // Rib Rack BBQ Rub $5.39 ($3.99 sale) · 5.5 oz
   { id: 'p_seasoning', item: 'Old Bay / crab boil seasoning (dry + liquid)', term: 'old bay seasoning' }, // OLD BAY Classic Seafood Seasoning $6.59 · 6 oz
-  { id: 'p_serveware', item: 'Buffet serveware: chafing dishes / warmers, serving spoons, tongs, platters', term: 'chafing dish' }, // Eco-Foil Half Size Steam Table $13.99 · 10 ct
-  { id: 'p_sides', item: 'Chips, fruit & veggie tray', term: 'veggie tray' }, // Fruit and Vegetable Tray Fresh Cut In Store Da… $16.00 · 64 oz
-  { id: 'p_sides', item: 'Chips, salads, fruit & dips', term: 'potato chips' }, // Harris Teeter Ripple Potato Chips $3.39 ($2.00 sale) · 8 oz
-  { id: 'p_sides', item: 'Coleslaw, potato salad, hush puppies', term: 'coleslaw' }, // Harris Teeter Fresh Foods Market Homestyle Shr… $5.99 ($4.99 sale) · 15 oz
-  { id: 'p_sides', item: 'Coleslaw, potato salad, hush puppy mix, fries', term: 'coleslaw' }, // Harris Teeter Fresh Foods Market Homestyle Shr… $5.99 ($4.99 sale) · 15 oz
+  { id: 'p_serveware', item: 'Buffet serveware: chafing dishes / warmers', term: 'chafing dish' }, // Eco-Foil Half Size Steam Table $13.99 · 10 ct
+  { id: 'p_sides', item: 'Chips', term: 'potato chips' }, // Fruit and Vegetable Tray Fresh Cut In Store Da… $16.00 · 64 oz
+  { id: 'p_sides', item: 'Potato chips', term: 'potato chips' }, // Harris Teeter Ripple Potato Chips $3.39 ($2.00 sale) · 8 oz
+  { id: 'p_sides', item: 'Coleslaw', term: 'coleslaw' }, // Harris Teeter Fresh Foods Market Homestyle Shr… $5.99 ($4.99 sale) · 15 oz
+  { id: 'p_sides', item: 'Coleslaw', term: 'coleslaw' }, // Harris Teeter Fresh Foods Market Homestyle Shr… $5.99 ($4.99 sale) · 15 oz
   { id: 'p_sides', item: 'Collard greens', term: 'collard greens' }, // Jumbo Collard Greens Bunch $2.99 ($2.00 sale) · 1 ct
-  { id: 'p_sides', item: 'Garden salad & roasted vegetables', term: 'salad kit' }, // Fresh Express Chopped Caesar Salad Kit $5.49 ($3.99 sale) · 10.4 oz
-  { id: 'p_sides', item: 'Rice & peas, candied yams & mac & cheese (cornbread, plantains)', term: 'long grain rice' }, // Harris Teeter Long Grain White Rice $1.79 · 32 oz
-  { id: 'p_sides', item: 'Salads & potatoes (rolls, a hot veg)', term: 'potato salad' }, // Harris Teeter Fresh Foods Market Original Pota… $5.99 ($4.99 sale) · 16 oz
-  { id: 'p_sides', item: 'Salads, beans, corn & chips', term: 'potato salad' }, // Harris Teeter Fresh Foods Market Original Pota… $5.99 ($4.99 sale) · 16 oz
-  { id: 'p_snacks', item: 'Fruit & veggie cups with dips (mini sandwiches, charcuterie)', term: 'veggie tray' }, // Fruit and Vegetable Tray Fresh Cut In Store Da… $16.00 · 64 oz
-  { id: 'p_snacks', item: 'Session snacks + coffee/tea + water (between catered meals)', term: 'snack variety pack' }, // DOT'S SNACK MIX ORIGINAL $6.99 · 14.0 oz
-  { id: 'p_softdrinks', item: 'Soda, water, iced tea', term: 'soda' }, // Sprite Lemon-Lime Caffeine Free Soda Cans $11.99 · 12 pk / 12 fl oz
+  { id: 'p_sides', item: 'Garden salad', term: 'salad kit' }, // Fresh Express Chopped Caesar Salad Kit $5.49 ($3.99 sale) · 10.4 oz
+  { id: 'p_sides', item: 'Rice and peas (cornbread, plantains)', term: 'long grain rice' }, // Harris Teeter Long Grain White Rice $1.79 · 32 oz
+  { id: 'p_sides', item: 'Potato salad (rolls, a hot veg)', term: 'potato salad' }, // Harris Teeter Fresh Foods Market Original Pota… $5.99 ($4.99 sale) · 16 oz
+  { id: 'p_sides', item: 'Potato salad', term: 'potato salad' }, // Harris Teeter Fresh Foods Market Original Pota… $5.99 ($4.99 sale) · 16 oz
+  { id: 'p_snacks', item: 'Fruit cups (mini sandwiches, charcuterie)', term: 'fruit cups' }, // Fruit and Vegetable Tray Fresh Cut In Store Da… $16.00 · 64 oz
+  { id: 'p_snacks', item: 'Session snacks (between catered meals)', term: 'snack variety pack' }, // DOT'S SNACK MIX ORIGINAL $6.99 · 14.0 oz
+  { id: 'p_softdrinks', item: 'Soda', term: 'soda' }, // Sprite Lemon-Lime Caffeine Free Soda Cans $11.99 · 12 pk / 12 fl oz
   { id: 'p_starch', item: 'Roast potatoes (or rice / risotto)', term: 'red potatoes' }, // Harris Teeter Farmers Market Baby Red Potatoes $5.49 · 3 lb
-  { id: 'p_starch', item: 'Spaghetti + red sauce OR grits', term: 'spaghetti' }, // Harris Teeter Spaghetti Pasta $1.99 ($1.18 sale) · 16 oz
-  { id: 'p_tableware', item: 'Paper towels, napkins, small bowls, shell buckets', term: 'paper towels' }, // Bounty Paper Towels Select-A-Size White 6 Doub… $17.49 ($12.99 sale) · 6 rolls
-  { id: 'p_veg', item: 'Crudité veg with hummus & ranch', term: 'veggie tray' }, // Fruit and Vegetable Tray Fresh Cut In Store Da… $16.00 · 64 oz
-  { id: 'p_veg', item: 'Roasted vegetables & salad greens', term: 'salad kit' }, // Fresh Express Chopped Caesar Salad Kit $5.49 ($3.99 sale) · 10.4 oz
+  { id: 'p_starch', item: 'Spaghetti OR grits', term: 'spaghetti' }, // Harris Teeter Spaghetti Pasta $1.99 ($1.18 sale) · 16 oz
+  { id: 'p_tableware', item: 'Paper towels', term: 'paper towels' }, // Bounty Paper Towels Select-A-Size White 6 Doub… $17.49 ($12.99 sale) · 6 rolls
+  { id: 'p_veg', item: 'Crudité veg', term: 'veggie tray' }, // Fruit and Vegetable Tray Fresh Cut In Store Da… $16.00 · 64 oz
+  { id: 'p_veg', item: 'Roasted vegetables', term: 'mixed vegetables' }, // Fresh Express Chopped Caesar Salad Kit $5.49 ($3.99 sale) · 10.4 oz
+  // ── SPLIT LINES, BATCH 4 (owner ruling 11/23/2026): the main lines whose id carries other products elsewhere, and parts whose id does. probed live at Harris
+  // Teeter Old Town Alexandria (09700398) on 11/24/2026, no line ids sent.
+
 ]);
 
 /**
@@ -447,7 +450,7 @@ export const TERM_BY_ID = Object.freeze([
   { id: 'p_beer_wine', term: 'beer' }, // Samuel Adams Winter Break Seasonal Variety Beer $17.99 · 12 cans / 12 fl oz
   { id: 'p_beerwine', term: 'beer' }, // Samuel Adams Winter Break Seasonal Variety Beer $17.99 · 12 cans / 12 fl oz
   { id: 'p_beverages', term: 'soda' }, // Sprite Lemon-Lime Caffeine Free Soda Cans $11.99 · 12 pk / 12 fl oz
-  { id: 'p_bites', term: 'charcuterie' }, // Boar's Head Charcuterie Trio Uncured Milano Sa… $12.99 ($9.99 sale) · 6 oz
+  { id: 'p_bites', term: 'chicken wings' }, // batch 4 (11/23/2026): the line's main is now this product (was 'charcuterie')
   { id: 'p_blackeyedpeas', term: 'black eyed peas' }, // Harris Teeter Black Eyed Peas $1.39 ($0.75 sale) · 16 fl oz
   { id: 'p_board', term: 'charcuterie' }, // Boar's Head Charcuterie Trio Uncured Milano Sa… $12.99 ($9.99 sale) · 6 oz
   { id: 'p_bread_cornbread', term: 'cornbread mix' }, // Krusteaz Honey Cornbread and Muffin Mix, Honey… $2.99 ($2.50 sale) · 15 oz
@@ -470,7 +473,7 @@ export const TERM_BY_ID = Object.freeze([
   { id: 'p_chili', term: 'chili beans' }, // Bush's Pinto Beans in a Mild Chili Sauce 16 oz $2.79 ($1.67 sale) · 16 oz
   { id: 'p_chips', term: 'potato chips' }, // Harris Teeter Ripple Potato Chips $3.39 ($2.00 sale) · 8 oz
   { id: 'p_cider', term: 'sparkling cider' }, // Martinelli's Sparkling Apple Cider $5.99 ($3.99 sale) · 1 ct / 25.4 fl oz
-  { id: 'p_clean', term: 'trash bags' }, // Harris Teeter Tall 13 Gallon Drawstring Kitche… $5.99 ($5.39 sale) · 22 ct
+  { id: 'p_clean', term: 'dish soap' }, // batch 4 (11/23/2026): the line's main is now this product (was 'trash bags')
   { id: 'p_cleanup', term: 'trash bags' }, // Harris Teeter Tall 13 Gallon Drawstring Kitche… $5.99 ($5.39 sale) · 22 ct
   { id: 'p_cleanup_detergent', term: 'dishwasher detergent' }, // Cascade Complete Fresh Scent Gel Dishwasher De… $9.99 ($6.99 sale) · 75 fl oz
   { id: 'p_cleanup_soap', term: 'dish soap' }, // Harris Teeter Ultra Concentrated Dishwashing L… $2.49 · 24 fl oz
@@ -508,7 +511,7 @@ export const TERM_BY_ID = Object.freeze([
   { id: 'p_foil_pans', term: 'foil pans' }, // Eco-foil Cook N Carry Utility Pan with Lid 4CT $11.39 · 4 ct
   { id: 'p_fruit', term: 'grapes' }, // Harris Teeter Fresh Seedless Red Grapes $4.49 ($2.99 sale) · 1 lb
   { id: 'p_fuel', term: 'charcoal' }, // Kingsford Original Charcoal Briquettes, BBQ Ch… $16.99 · 16 lb
-  { id: 'p_garnish', term: 'limes' }, // Fresh Large Limes - Each $0.33 · 1 each
+  { id: 'p_garnish', term: 'fresh mint' }, // batch 4 (11/23/2026): the line's main is now this product (was 'limes')
   { id: 'p_giftlog', term: 'notebook' }, // Top Flight 100-Sheet College Rule Memo Book -… $1.99 · 3 x 5 in
   { id: 'p_glassware', term: 'champagne flutes' }, // True Stemless Champagne Flute Set $9.99 · 1 ct
   { id: 'p_gravy', term: 'chicken stock' }, // Harris Teeter Chicken Stock $2.39 ($1.67 sale) · 32 oz
@@ -646,6 +649,237 @@ export const TERM_BY_ID = Object.freeze([
   { id: 'p_zero_sparkler', term: 'sparkling cider' }, // Martinelli's Sparkling Apple Cider $5.99 ($3.99 sale) · 1 ct / 25.4 fl oz
   { id: 'p_zero_sparkler_all', term: 'sparkling cider' }, // Martinelli's Sparkling Apple Cider $5.99 ($3.99 sale) · 1 ct / 25.4 fl oz
   { id: 'p_zeroproof', term: 'mocktail' }, // Mingle Mocktails Non-Alcoholic Cranberry Cosmo $11.99 ($9.99 sale) · 4 cans / 12 fl oz
+  // ── SPLIT LINES, BATCH 4 (owner ruling 11/23/2026): one term per part id. probed live at Harris
+  // Teeter Old Town Alexandria (09700398) on 11/24/2026, no line ids sent.
+  { id: 'p_veg_greens', term: 'salad greens spring mix' }, // BrightFarms Spring Mix Lettuce (all three stores, 11/24); 'salad greens' found Baby Spring Mix, which the form-word check refused
+  { id: 'p_appetizer_cheese', term: 'cheese tray' },
+  { id: 'p_cocktail_garnish', term: 'limes' },
+  { id: 'p_coffee_cream', term: 'coffee creamer' }, // Chobani® Coffee Creamer Limited Batch Cookie But $5.99 · 24 fl oz
+  { id: 'p_coffee_sugar', term: 'granulated sugar' },
+  { id: 'p_dish_sponges', term: 'sponges' }, // Scrub Daddy® Dual-Sided Sponge and Scrubber Mult $6.99 · 4 pk
+  { id: 'p_dish_bags', term: 'trash bags' },
+  { id: 'p_softdrinks_juice', term: 'apple juice' }, // Harris Teeter No Sugar Added 100% Apple Juice $3.69 · 64 fl oz
+  { id: 'p_softdrinks_water', term: 'bottled water' },
+  { id: 'p_candles_lighter', term: 'lighter' }, // BIC Flex Wand Multi Purpose Lighters $10.99 · 2 ct
+  { id: 'p_tableware_cups', term: 'disposable cups' },
+  { id: 'p_tableware_napkins', term: 'paper napkins' },
+  { id: 'p_tableware_cutlery', term: 'plastic cutlery' }, // Harris Teeter Occasions Full Size Clear Dinnerwa $7.19 · 96 ct
+  { id: 'p_cleanup_wipes', term: 'wet wipes' }, // Cottonelle® Fresh Care Flushable Wet Wipes $8.99 · 4 ct
+  { id: 'p_food_fruit', term: 'fruit tray' }, // Fresh Fruit Party Tray $21 · 73 oz
+  { id: 'p_protein_hotdogs', term: 'hot dogs' },
+  { id: 'p_protein_chicken', term: 'chicken thighs' },
+  { id: 'p_sides_beans', term: 'baked beans' },
+  { id: 'p_sides_corn', term: 'corn on the cob' },
+  { id: 'p_sides_chips', term: 'potato chips' },
+  { id: 'p_condiments_mustard', term: 'yellow mustard' }, // French's Classic Yellow Mustard $2.79 · 14 oz
+  { id: 'p_condiments_cheese', term: 'sliced cheese' }, // Harris Teeter™ Colby Jack Sliced Cheese $3.49 · 10 slices / 8 oz
+  { id: 'p_condiments_lettuce', term: 'iceberg lettuce' }, // Wrapped Iceberg Lettuce $2.49 · 1 ct
+  { id: 'p_condiments_onion', term: 'yellow onions' },
+  { id: 'p_dessert_cookies', term: 'cookies' },
+  { id: 'p_dessert_smores', term: 'marshmallows' }, // Jet-Puffed Mini Marshmallows, Bag $2.29 · 10 oz
+  { id: 'p_drinks_soda', term: 'soda' },
+  { id: 'p_drinks_water', term: 'bottled water' },
+  { id: 'p_fuel_lighter', term: 'lighter' }, // BIC Flex Wand Multi Purpose Lighters $10.99 · 2 ct
+  { id: 'p_cleanup_foil', term: 'aluminum foil' },
+  { id: 'p_sides_salads', term: 'potato salad' },
+  { id: 'p_sides_fruit', term: 'fruit tray' }, // Fresh Fruit Party Tray $21 · 73 oz
+  { id: 'p_sides_dips', term: 'french onion dip' }, // Dean's® French Onion Dip $3.39 · 16 oz
+  { id: 'p_drinks_lemonade', term: 'lemonade' }, // Simply® Lemonade Bottle $3.29 · 52 fl oz
+  { id: 'p_chips_dips', term: 'french onion dip' }, // Dean's® French Onion Dip $3.39 · 16 oz
+  { id: 'p_dessert_mix', term: 'snack mix' }, // Chex Mix™ Cheddar Family Size Snack Mix $5.79 · 13.5 oz
+  { id: 'p_daytonadecor_snacks', term: 'snack mix' }, // Chex Mix™ Cheddar Family Size Snack Mix $5.79 · 13.5 oz
+  { id: 'p_pimms_strawberries_cream', term: 'whipped cream' },
+  { id: 'p_snacks_crackers', term: 'crackers' },
+  { id: 'p_snacks_pretzels', term: 'pretzels' }, // Utz, Holiday Shaped Pretzels, Party Size Bag $5.39 · 14 oz
+  { id: 'p_snacks_popcorn', term: 'popcorn' },
+  { id: 'p_dips_guac', term: 'guacamole' }, // Fresh Made In Store Guacamole Chunky Mild $7 · 14 oz
+  { id: 'p_dips_queso', term: 'queso dip' }, // On The Border® Salsa Con Queso $5.69 · 15.5 oz
+  { id: 'p_dips_ranch', term: 'ranch dip' }, // Daisy Sour Cream Creamy Ranch Dip $3.59 · 16 oz
+  { id: 'p_dessert_brownies', term: 'brownies' },
+  { id: 'p_dessert_sweets', term: 'fun size candy' },
+  { id: 'p_beer_wine_wine', term: 'red wine' },
+  { id: 'p_napkins_wipes', term: 'wet wipes' }, // Cottonelle® Fresh Care Flushable Wet Wipes $8.99 · 4 ct
+  { id: 'p_cups_plates_plates', term: 'paper plates' },
+  { id: 'p_cups_plates_bowls', term: 'disposable bowls' }, // Solo® Bold Hold™ Paper Bowls $6.99 · 56 ct
+  { id: 'p_trash_towels', term: 'paper towels' },
+  { id: 'p_crackers_baguette', term: 'baguette' }, // Gran Reserva Baguette $3 · 1 ct
+  { id: 'p_fruit_olives', term: 'olives' }, // Harris Teeter™ Sliced Black Olives $2.59 · 2.25 oz
+  { id: 'p_veg_hummus', term: 'hummus' },
+  { id: 'p_veg_ranch', term: 'ranch dip' }, // Daisy Sour Cream Creamy Ranch Dip $3.59 · 16 oz
+  { id: 'p_passed_chips', term: 'tortilla chips' },
+  { id: 'p_passed_salsa', term: 'salsa' },
+  { id: 'p_cups_paperplates', term: 'paper plates' },
+  { id: 'p_cups_napkins', term: 'paper napkins' },
+  { id: 'p_cups_picks', term: 'cocktail picks' }, // True Ball Cocktail Picks $3.99 · 20 ct
+  { id: 'p_cleanup_sponges', term: 'sponges' }, // Scrub Daddy® Dual-Sided Sponge and Scrubber Mult $6.99 · 4 pk
+  { id: 'p_cleanup_stain', term: 'stain remover' }, // OxiClean Max Force Laundry Stain Remover Spray $4.49 · 12 fl oz
+  { id: 'p_punch_garnish', term: 'limes' },
+  { id: 'p_giftlog_pen', term: 'pens' }, // Pilot G2 Premium Gel Roller Black Ink Fine Point $9.49 · 4 pk
+  { id: 'p_tableware_flutes', term: 'champagne flutes' },
+  { id: 'p_snacks_veggie', term: 'veggie tray' },
+  { id: 'p_snacks_dips', term: 'veggie dip' }, // Marzetti Ranch Veggie Dip $5.19 · 12 oz
+  { id: 'p_cleanup_bags', term: 'lawn and leaf bags' }, // Harris Teeter™ Draw String Lawn & Leaf Bags $9.79 · 18 ct
+  { id: 'p_cleanup_broom', term: 'broom' }, // Libman® Precision Angle Broom with Dust Pan $14.99 · 1 ct
+  { id: 'p_grazing_cheese', term: 'cheese tray' },
+  { id: 'p_grazing_crackers', term: 'crackers' },
+  { id: 'p_beer_seltzer', term: 'hard seltzer' }, // Topo Chico Hard Seltzer Variety Pack $17.99 · 12 cans / 12 fl oz
+  { id: 'p_signature_garnish', term: 'limes' },
+  { id: 'p_garnish_citrus', term: 'limes' },
+  { id: 'p_garnish_bitters', term: 'bitters' }, // Angostura® Aromatic Bitters $11.99 · 4 fl oz
+  { id: 'p_guestbook_pens', term: 'pens' }, // Pilot G2 Premium Gel Roller Black Ink Fine Point $9.49 · 4 pk
+  { id: 'p_napkins_plates', term: 'paper plates' },
+  { id: 'p_napkins_picks', term: 'cocktail picks' }, // True Ball Cocktail Picks $3.99 · 20 ct
+  { id: 'p_napkins_cups', term: 'disposable cups' },
+  { id: 'p_apps_charcuterie', term: 'charcuterie' },
+  { id: 'p_sides_veg', term: 'mixed vegetables' }, // Harris Teeter® Steamable Mixed Vegetables $1.69 · 12 oz
+  { id: 'p_clean_sponges', term: 'sponges' }, // Scrub Daddy® Dual-Sided Sponge and Scrubber Mult $6.99 · 4 pk
+  { id: 'p_clean_bags', term: 'trash bags' },
+  { id: 'p_signature_mixers', term: 'tonic water' }, // Canada Dry Tonic Water, 1 L bottle $1.89 · 1 l
+  { id: 'p_mixers_citrus', term: 'limes' },
+  { id: 'p_mixers_bitters', term: 'bitters' }, // Angostura® Aromatic Bitters $11.99 · 4 fl oz
+  { id: 'p_apps_hot_sliders', term: 'slider buns' },
+  { id: 'p_apps_hot_mushrooms', term: 'stuffed mushrooms' }, // Giorgio® Spinach & Artichoke Stuffed Baby Bella  $5.69 · 8.5 oz
+  { id: 'p_apps_cold_cheese', term: 'cheese tray' },
+  { id: 'p_apps_cold_crudite', term: 'veggie tray' },
+  { id: 'p_dessert_tarts', term: 'mini tarts' }, // Bonne Maman® Raspberry Tartlets $5.99 · 9 ct / 0.53 oz
+  { id: 'p_mocktail_juice', term: 'apple juice' }, // Harris Teeter No Sugar Added 100% Apple Juice $3.69 · 64 fl oz
+  { id: 'p_mocktail_syrup', term: 'simple syrup' }, // Master of Mixes® Cocktail Essentials Simple Syru $3.99 · 12.7 fl oz
+  { id: 'p_mocktail_garnish', term: 'maraschino cherries' }, // Harris Teeter™ Stem Free Maraschino Cherries $2.99 · 10 oz
+  { id: 'p_cleanup_supplies', term: 'all purpose cleaner spray' }, // Lysol All Purpose Cleaner Spray Lemon Breeze (all three stores, 11/24); 'cleaning spray' found a Starter Kit at Old Town
+  { id: 'p_sides_veggie', term: 'veggie tray' },
+  { id: 'p_memory_display_frames', term: 'foam board' }, // UCreate Premium Poster Board, Large Size, for Si $1.89 · 22 x 28 in
+  { id: 'p_card_pens', term: 'pens' }, // Pilot G2 Premium Gel Roller Black Ink Fine Point $9.49 · 4 pk
+  { id: 'p_cleanup_containers', term: 'plastic containers' },
+  { id: 'p_buffet_protein_carved', term: 'spiral ham' },
+  { id: 'p_sides_greensalad', term: 'salad kit' },
+  { id: 'p_serveware_tongs', term: 'tongs' }, // Goodcook Straight Tongs $5.79 · 1 ct
+  { id: 'p_soda-water_water', term: 'bottled water' },
+  { id: 'p_paper_cups', term: 'disposable cups' },
+  { id: 'p_paper_napkins', term: 'paper napkins' },
+  { id: 'p_paper_utensils', term: 'plastic cutlery' }, // Harris Teeter Occasions Full Size Clear Dinnerwa $7.19 · 96 ct
+  { id: 'p_nametags_markers', term: 'markers' }, // Crayola Fineline Classic Markers $5.29 · 10 ct
+  { id: 'p_apps_meats', term: 'charcuterie' },
+  { id: 'p_mixers_garnish', term: 'limes' },
+  { id: 'p_zeroproof_nabubbly', term: 'non alcoholic sparkling wine' }, // La Marca Non Alcoholic Sparkling Wine $22.99 · 750 ml
+  { id: 'p_tableware_shots', term: 'shot glasses' }, // True Plastic 2 oz Shot Glasses Multipack $7.99 · 50 ct
+  { id: 'p_safetykit_recovery', term: 'electrolyte drink' }, // Recover 180™ Strawberry Banana Sports Hydration  $2.39 · 16.9 fl oz
+  { id: 'p_water_sports', term: 'sports drinks' }, // Gatorade Orange Sports Drink Multipack Bottles $10.99 · 12 pk / 12 fl oz
+  { id: 'p_disposables_napkins', term: 'paper napkins' },
+  { id: 'p_disposables_plates', term: 'paper plates' },
+  { id: 'p_food_wings', term: 'chicken wings' },
+  { id: 'p_guestbook_pen', term: 'pens' }, // Pilot G2 Premium Gel Roller Black Ink Fine Point $9.49 · 4 pk
+  { id: 'p_burgers_dogs_hotdogs', term: 'hot dogs' },
+  { id: 'p_burgers_dogs_links', term: 'smoked sausage' },
+  { id: 'p_mac_cheese', term: 'sharp cheddar cheese' },
+  { id: 'p_condiments_ketchup', term: 'ketchup' },
+  { id: 'p_condiments_hotsauce', term: 'hot sauce' },
+  { id: 'p_condiments_pickles', term: 'pickles' }, // Mt. Olive Kosher Baby Dills Pickles $3.99 · 24 fl oz
+  { id: 'p_seasoning_marinade', term: 'marinade' }, // Harris Teeter® Teriyaki Marinade $2.59 · 12.25 fl oz
+  { id: 'p_red_drink_sugar', term: 'granulated sugar' },
+  { id: 'p_soda_water_water', term: 'bottled water' },
+  { id: 'p_grown_folks_mixers', term: 'cola' }, // Coca-Cola® Soda Cans $11.99 · 12 pk / 12 fl oz
+  { id: 'p_fuel_fluid', term: 'lighter fluid' }, // Kingsford Charcoal Lighter Fluid, 32 Fl Oz $7.99 · 32 fl oz
+  { id: 'p_foil_pans_foil', term: 'aluminum foil' },
+  { id: 'p_togo_foil', term: 'aluminum foil' },
+  { id: 'p_togo_zip', term: 'zipper bags' }, // Lunchskins Compostable Sandwich Zipper Bags $5.99 · 50 ct
+  { id: 'p_cleanup_gloves', term: 'disposable gloves' }, // Harris Teeter™ Vinyl Disposable Medical Exam Glo $6.29 · 50 ct
+  { id: 'p_cleanup_sanitizing', term: 'disinfecting wipes' }, // Clorox Disinfecting Wipes Variety Pack Crisp Lem $17.99 · 225 ct
+  { id: 'p_cornmeal_flour', term: 'all purpose flour' },
+  { id: 'p_hotsauce_lemons', term: 'lemons' },
+  { id: 'p_starch_sauce', term: 'pasta sauce' }, // Harris Teeter® Homestyle Parmesan & Romano Pasta $2.39 · 24 oz
+  { id: 'p_sides_hushpuppy', term: 'hush puppies' }, // Savannah Classics® Original Fresh Onion Hushpupp $3.99 · 16 oz.
+  { id: 'p_sides_fries', term: 'frozen fries' }, // Ore-Ida Crispy Frozen Waffle Fries $6.99 · 22 oz
+  { id: 'p_drinks_red', term: 'fruit punch' },
+  { id: 'p_containers_foil', term: 'aluminum foil' },
+  { id: 'p_cleanup_heavyfoil', term: 'heavy duty aluminum foil' },
+  { id: 'p_grown_mixers', term: 'cola' }, // Coca-Cola® Soda Cans $11.99 · 12 pk / 12 fl oz
+  { id: 'p_wings_meatballs', term: 'frozen meatballs' },
+  { id: 'p_chips_pretzels', term: 'pretzels' }, // Utz, Holiday Shaped Pretzels, Party Size Bag $5.39 · 14 oz
+  { id: 'p_chips_mix', term: 'party mix' }, // 20 oz Utz Pub Mix Barrel $10.29 · 20 oz
+  { id: 'p_chips_salsa', term: 'salsa' },
+  { id: 'p_brown_mixers', term: 'cola' }, // Coca-Cola® Soda Cans $11.99 · 12 pk / 12 fl oz
+  { id: 'p_wine_beer_wine', term: 'red wine' },
+  { id: 'p_cards_pads', term: 'notepad' }, // Office Works 3 x 3 Inch Self-Stick Note Pads - Y $3.29 · 4 pk / 50 sheets
+  { id: 'p_cards_pens', term: 'pens' }, // Pilot G2 Premium Gel Roller Black Ink Fine Point $9.49 · 4 pk
+  { id: 'p_napkins_towels', term: 'paper towels' },
+  { id: 'p_cornbread_buttermilk', term: 'buttermilk' }, // Harris Teeter® Lowfat Cultured Buttermilk $1.99 · 16 fl oz
+  { id: 'p_sweet-tea_lemonade', term: 'lemonade' }, // Simply® Lemonade Bottle $3.29 · 52 fl oz
+  { id: 'p_foil-oil_foil', term: 'aluminum foil' },
+  { id: 'p_foil-oil_parchment', term: 'parchment paper' }, // Harris Teeter™ Parchment Paper $3.19 · 30 sq ft
+  { id: 'p_foil-oil_towels', term: 'paper towels' },
+  { id: 'p_togo_plates', term: 'foil pie pans' }, // Handi Foil® Heavy Duty Smooth Wall Pie Pan $6.99 · 3 ct
+  { id: 'p_beerwine_wine', term: 'red wine' },
+  { id: 'p_water_nonalc', term: 'lemonade' }, // Simply® Lemonade Bottle $3.29 · 52 fl oz
+  { id: 'p_bites_charcuterie', term: 'charcuterie' },
+  { id: 'p_bites_sliders', term: 'slider buns' },
+  { id: 'p_garnish_fruit', term: 'limes' },
+  { id: 'p_cups_cutlery', term: 'plastic cutlery' }, // Harris Teeter Occasions Full Size Clear Dinnerwa $7.19 · 96 ct
+  { id: 'p_water_tea_tea', term: 'iced tea' },
+  { id: 'p_heat_bugspray', term: 'insect repellent' }, // Cutter® Skinsations® Insect Repellent $6.69 · 1 (ea)
+  { id: 'p_butter_dishes', term: 'disposable bowls' }, // Solo® Bold Hold™ Paper Bowls $6.99 · 56 ct
+  { id: 'p_sides_hushpuppies', term: 'hush puppies' }, // Savannah Classics® Original Fresh Onion Hushpupp $3.99 · 16 oz.
+  { id: 'p_softdrinks_tea', term: 'iced tea' },
+  { id: 'p_towels_wipes', term: 'wet wipes' }, // Cottonelle® Fresh Care Flushable Wet Wipes $8.99 · 4 ct
+  { id: 'p_tableware_bowls', term: 'disposable bowls' }, // Solo® Bold Hold™ Paper Bowls $6.99 · 56 ct
+  { id: 'p_season_cayenne', term: 'cayenne pepper' }, // Badia® Ground Cayenne Pepper $2.29 · 1.75 oz
+  { id: 'p_season_salt', term: 'salt' }, // Harris Teeter™ Iodized Salt $0.69 · 26 oz
+  { id: 'p_aromatics_garlic', term: 'garlic' }, // Garlic $0.75 · 1 ct
+  { id: 'p_aromatics_mushrooms', term: 'mushrooms' }, // Harris Teeter Farmers Market Sliced White Mushro $2.49 · 8 oz
+  { id: 'p_napkins_napkins', term: 'paper napkins' },
+  { id: 'p_napkins_bags', term: 'trash bags' },
+  { id: 'p_napkins_gloves', term: 'disposable gloves' }, // Harris Teeter™ Vinyl Disposable Medical Exam Glo $6.29 · 50 ct
+  { id: 'p_butter_lemons', term: 'lemons' },
+  { id: 'p_butter_cocktail', term: 'cocktail sauce' }, // Heinz Original Cocktail Sauce $3.49 · 12 oz
+  { id: 'p_butter_hotsauce', term: 'hot sauce' },
+  { id: 'p_drinks_tea', term: 'sweet tea' },
+  { id: 'p_batch_garnish', term: 'limes' },
+  { id: 'p_tableware_forks', term: 'plastic cutlery' }, // Harris Teeter Occasions Full Size Clear Dinnerwa $7.19 · 96 ct
+  { id: 'p_meatwat_beef', term: 'beef stew meat' }, // Harris Teeter Beef Stew Meat $8.99 · 1 lb
+  { id: 'p_meatwat_eggs', term: 'eggs' },
+  { id: 'p_meatwat_onion', term: 'yellow onions' },
+  { id: 'p_veganwat_collards', term: 'collard greens' },
+  { id: 'p_fandisha_bread', term: 'bread' },
+  { id: 'p_packout_tote', term: 'reusable bag' }, // Harris Teeter Bag 1 ea $0.99 · 1 each
+  { id: 'p_appetizers_salsa', term: 'salsa' },
+  { id: 'p_appetizers_guac', term: 'guacamole' }, // Fresh Made In Store Guacamole Chunky Mild $7 · 14 oz
+  { id: 'p_appetizers_taquitos', term: 'frozen taquitos' }, // El Monterey® Chicken & Cheese Frozen Flour Taqui $10.19 · 20 ct / 20 oz
+  { id: 'p_beverages_juice', term: 'apple juice' }, // Harris Teeter No Sugar Added 100% Apple Juice $3.69 · 64 fl oz
+  { id: 'p_decor_balloons', term: 'balloons' }, // Birthday Marquee Helium Filled Balloon $11.99 · 31 in
+  { id: 'p_drinks_coffee', term: 'ground coffee' },
+  { id: 'p_serveware_cutlery', term: 'plastic cutlery' }, // Harris Teeter Occasions Full Size Clear Dinnerwa $7.19 · 96 ct
+  { id: 'p_serving_sterno', term: 'sterno' }, // Sterno® Ethanol Gel Canned Heat Pack $10.19 · 3 ct / 2.05 oz
+  { id: 'p_mazao_veg', term: 'mixed vegetables' }, // Harris Teeter® Steamable Mixed Vegetables $1.69 · 12 oz
+  { id: 'p_mazao_nuts', term: 'mixed nuts' },
+  { id: 'p_mains_jollof', term: 'long grain rice' },
+  { id: 'p_sides_yams', term: 'sweet potatoes' },
+  { id: 'p_drinks_juice', term: 'apple juice' }, // Harris Teeter No Sugar Added 100% Apple Juice $3.69 · 64 fl oz
+  { id: 'p_coffee_water', term: 'bottled water' },
+  { id: 'p_snacks_coffee', term: 'ground coffee' },
+  { id: 'p_snacks_water', term: 'bottled water' },
+  { id: 'p_firstaid_sunscreen', term: 'sunscreen' },
+  { id: 'p_pledgecards_pens', term: 'pens' }, // Pilot G2 Premium Gel Roller Black Ink Fine Point $9.49 · 4 pk
+  { id: 'p_wine_cider_white', term: 'white wine' }, // Whitehaven Sauvignon Blanc New Zealand White Win $17.99 · 750 ml
+  { id: 'p_nonalc_zeroproof', term: 'mocktail' },
+  { id: 'p_path_lights_step', term: 'light bulbs' }, // Everyday Living® 10.5-Watt (60-Watt) A19 LED Lig $7.99 · 4 pk
+  { id: 'p_water_coffee_coffee', term: 'ground coffee' },
+  { id: 'p_drinks_juiceboxes', term: 'juice boxes' },
+  { id: 'p_allergy_labels_tents', term: 'index cards' }, // Oxford® Ruled Index Cards - White $1.39 · 100 pk
+  { id: 'p_allergy_labels_markers', term: 'markers' }, // Crayola Fineline Classic Markers $5.29 · 10 ct
+  { id: 'p_nonalc_mocktail', term: 'mocktail' },
+  { id: 'p_nonalc_juice', term: 'apple juice' }, // Harris Teeter No Sugar Added 100% Apple Juice $3.69 · 64 fl oz
+  { id: 'p_soda_sparkling', term: 'sparkling water' },
+  { id: 'p_soda_nabeer', term: 'non alcoholic beer' },
+  { id: 'p_soda_juice', term: 'apple juice' }, // Harris Teeter No Sugar Added 100% Apple Juice $3.69 · 64 fl oz
+  { id: 'p_nonalc_soda', term: 'soda' },
+  { id: 'p_nonalc_applecider', term: 'apple cider' },
+  { id: 'p_water_sparkling', term: 'sparkling water' },
+  { id: 'p_nonalc_cider', term: 'sparkling cider' },
+  { id: 'p_nonalc_tea', term: 'iced tea' },
+  { id: 'p_nonalc_water', term: 'bottled water' },
+  { id: 'p_water_electrolyte', term: 'electrolyte drink' }, // Recover 180™ Strawberry Banana Sports Hydration  $2.39 · 16.9 fl oz
+  { id: 'p_water_soda', term: 'soda' },
+  { id: 'p_champagne_cups', term: 'disposable cups' },
+  { id: 'p_drinks_mocktail', term: 'mocktail mixer' }, // Mingle® Mocktails Non-Alcoholic Cranberry Cosmo $11.99 · 4 cans / 12 fl oz
 ]);
 
 /**
@@ -661,27 +895,27 @@ export const NO_STORE_TERM = Object.freeze({
   'fa-catering': 'a caterer, not a shelf item: the line is the catering band, priced by the caterer.',
   'p_arch': 'event decor (a ceremony arch or backdrop) from a rental or party supplier.',
   'p_avsupplies': 'electronics (HDMI and USB-C adapters, a clicker), not grocery stock.',
-  'p_badges': 'printed conference badges and lanyards, ordered from a printer.',
-  'p_ballot': 'printed at home; the prize is the host\'s pick.',
+  'p_badges': 'printed conference badges, ordered from a printer.',
+  'p_ballot': 'printed at home.',
   'p_bar_alcohol': 'names no product ("reception alcohol"); a self-supplied wedding bar is bought by the case from a liquor store.',
   'p_berbere': 'not carried by a US chain grocer (2026-09-23 probe; see the REFUSED list).',
   'p_breakfast': 'catering, not a shelf item.',
   'p_brisket': 'a whole packer brisket is a butcher order: "beef brisket" returned corned beef hash and "brisket" sliced cooked brisket (Old Town, 11/23/2026).',
   'p_brown': 'spirits: probed 11/23/2026 at Harris Teeter Old Town Alexandria VA and McHenry Row Baltimore MD, \'vodka\', \'bourbon\' and \'whiskey\' return a pasta sauce, baked beans and a seasoning; neither store sells spirits. The mixers are the minor part.',
   'p_card': 'a keepsake signing card or memory book from a stationer or party store.',
-  'p_cashboxes': 'cash boxes and a bank float.',
-  'p_checkout_kit': 'card readers and a receipt printer.',
+  'p_cashboxes': 'cash boxes from an office supply store.',
+  'p_checkout_kit': 'card readers from a payments provider or electronics store.',
   'p_cini': 'specialty coffee cups; "espresso cups" returned coffee pods (2026-09-23).',
   'p_crabs': 'live or steamed blue crabs come from a crab house: "blue crabs" returned sushi nori and "steamed crabs" nothing (Old Town, 11/23/2026).',
   'p_crawfish': 'live crawfish by the sack come from a seafood supplier; the store sells cooked tubs (2026-09-23).',
   'p_crawfish_boiled': 'boiled crawfish is a pickup order: "crawfish" returned a boil seasoning and "cooked crawfish" nothing (Old Town, 11/23/2026).',
-  'p_daytonadecor': 'theme decor; the snacks are the minor part.',
+  'p_daytonadecor': 'theme decor from a party store.',
   'p_decor': 'party decor packages (balloon arches, backdrops, props) from a party store or rental.',
   'p_dinner': 'a caterer\'s per-plate dinner.',
   'p_doll_crown': 'ceremonial items from a quinceañera specialty shop.',
   'p_draftboard': 'a whiteboard, not grocery stock.',
   'p_emergencykit': 'names no product ("day-of emergency kit").',
-  'p_entrykit': 'home goods (shoe tray, coat hooks, a sign).',
+  'p_entrykit': 'home goods (a shoe tray) from a home store.',
   'p_extinguisher': 'a fire extinguisher is a hardware-store item: no match (Old Town, 11/23/2026).',
   'p_fav_drink': 'names no product: the honoree\'s own drink.',
   'p_florals': 'a florist\'s work (centerpieces, bouquet).',
@@ -698,14 +932,14 @@ export const NO_STORE_TERM = Object.freeze({
   'p_liquor': 'spirits: probed 11/23/2026 at Harris Teeter Old Town Alexandria VA and McHenry Row Baltimore MD, \'vodka\', \'bourbon\' and \'whiskey\' return a pasta sauce, baked beans and a seasoning; neither store sells spirits.',
   'p_loroco': 'loroco is a Latin-grocer item: "loroco" returned a yogurt cup (Old Town, 11/23/2026).',
   'p_meal': 'a restaurant reservation or a picnic, not a shelf item.',
-  'p_memory_display': 'prints, frames and an easel from a print shop.',
+  'p_memory_display': 'prints from a print shop.',
   'p_mkeka': 'a woven Kwanzaa mat from a specialty shop.',
   'p_music': 'a Bluetooth speaker.',
-  'p_namecards': 'printed name cards and agendas.',
+  'p_namecards': 'printed name cards and table tents.',
   'p_nametags': 'name tags: "name tags" and "name badges" matched nothing (Old Town, 11/23/2026).',
   'p_niterkibbeh': 'not carried by a US chain grocer (2026-09-23).',
   'p_path_lights': 'string and stake lights: no match (Old Town, 11/23/2026).',
-  'p_placecards': 'printed place cards and table numbers.',
+  'p_placecards': 'printed place cards.',
   'p_pledgecards': 'printed pledge cards.',
   'p_programs': 'printed programs.',
   'p_pumpkins': 'carving pumpkins are seasonal: "pumpkins" returned canned pumpkin and "carving pumpkin" pumpkin seeds (Old Town, 11/23/2026).',
@@ -715,25 +949,143 @@ export const NO_STORE_TERM = Object.freeze({
   'p_rings': 'wedding rings.',
   'p_safety_extinguisher': 'a fire extinguisher is a hardware-store item: no match (Old Town, 11/23/2026).',
   'p_safety_gloves': 'heat-resistant grill gloves are a hardware or grill-shop item: no match (Old Town, 11/23/2026).',
-  'p_sash': 'a sash and banner from a party store.',
+  'p_sash': 'a sash from a party store.',
   'p_session_supplies': 'flip charts and office supplies.',
   'p_signage': 'a printed sign package.',
-  'p_signin': 'a clipboard: no match (Old Town, 11/23/2026).',
+  'p_signin': 'a printed sheet the host makes at home.',
   'p_spirits': 'spirits: probed 11/23/2026 at Harris Teeter Old Town Alexandria VA and McHenry Row Baltimore MD, \'vodka\', \'bourbon\' and \'whiskey\' return a pasta sauce, baked beans and a seasoning; neither store sells spirits.',
-  'p_teamcolors': 'team gear and tailgate decor.',
-  'p_tools': 'crab mallets and knives from a seafood supplier or rental.',
+  'p_teamcolors': 'team gear from a sporting-goods or party store.',
+  'p_tools': 'crab mallets from a seafood supplier or rental.',
   'p_treats_nonfood': 'party favors (stickers, glow bracelets, toys) from a party store.',
   'p_unitycup': 'a Kwanzaa unity cup from a specialty shop.',
   'p_volunteer_id': 'vests and badges.',
   'p_whiskey': 'spirits: probed 11/23/2026 at Harris Teeter Old Town Alexandria VA and McHenry Row Baltimore MD, \'vodka\', \'bourbon\' and \'whiskey\' return a pasta sauce, baked beans and a seasoning; neither store sells spirits.',
-  'p_worldcupcolors': 'flags, jerseys and face paint.',
+  'p_worldcupcolors': 'national flags from a party or sporting-goods store.',
   'p_wristbands': 'admission wristbands from a party or office supplier.',
   'p_zawadi': 'gifts: books, art and handmade things.',
-  [`p_cleanup\u0000Catering cleanup + secure shredding/disposal supplies`]: 'a catering cleanup and a document-shredding service, not a shelf item.',
+  [`p_cleanup\u0000Catering cleanup`]: 'a catering cleanup, not a shelf item.',
   [`p_paper\u0000Newspaper / brown kraft paper for the table`]: 'kraft or butcher paper: "kraft paper" returned construction paper and "butcher paper" nothing (Old Town, 11/23/2026).',
   [`p_paper\u0000Newspaper / brown kraft paper table cover`]: 'kraft or butcher paper: "kraft paper" returned construction paper and "butcher paper" nothing (Old Town, 11/23/2026).',
   [`p_paper\u0000Newspaper / kraft butcher paper (table cover)`]: 'kraft or butcher paper: "kraft paper" returned construction paper and "butcher paper" nothing (Old Town, 11/23/2026).',
+  // ── SPLIT LINES, BATCH 4 (owner ruling 11/23/2026): parts and mains no grocery term serves.
+  'p_cocktail_spirits': 'spirits: probed 11/23/2026 at Harris Teeter Old Town Alexandria VA and McHenry Row Baltimore MD, liquor terms return sauces and mixers; spirits come from a liquor store.',
+  'p_food_sandwiches': 'a sandwich platter: "sandwich platter" and "sandwich tray" returned pulled pork (Old Town, 11/24/2026); a deli order.',
+  'p_tableware_linens': 'table linens: "tablecloth" returned dishcloths and "table cover" nothing (Old Town, 11/24/2026); a party-store or rental item.',
+  'p_tableware_covers': 'table covers: "plastic table cover" and "table cover" matched nothing (Old Town, 11/24/2026); a party-store item.',
+  'p_teamcolors_decor': 'tailgate decor from a party store.',
+  'p_pimms_strawberries_pimms': 'a liqueur from a liquor store; grocery liquor terms return mixers (Old Town, 11/23/2026).',
+  'p_worldcupcolors_jerseys': 'team jerseys from a sporting-goods store.',
+  'p_worldcupcolors_facepaint': 'face paint from a party store.',
+  'p_ballot_prize': 'the prize is the host\'s pick.',
+  'p_entrykit_basket': 'home goods (a basket) from a home store.',
+  'p_entrykit_hooks': 'home goods (coat hooks) from a hardware store.',
+  'p_entrykit_sign': 'a printed or hand-lettered sign.',
+  'p_apps_cold_crostini': 'crostini: "crostini" returned a white wine and "crostini toasts" nothing (Old Town, 11/24/2026).',
+  'p_dessert_cakepops': 'cake pops: "cake pops" returned Pop-Tarts (Old Town, 11/24/2026); a bakery order.',
+  'p_signature_spirits': 'spirits: probed 11/23/2026 at Harris Teeter Old Town Alexandria VA and McHenry Row Baltimore MD, liquor terms return sauces and mixers; spirits come from a liquor store.',
+  'p_cleanup_bin': 'a bottle bin: "recycling bin" matched nothing (Old Town, 11/24/2026); a hardware-store item.',
+  'p_decor_backdrop': 'party decor (a backdrop) from a party store or rental.',
+  'p_decor_covers': 'table covers: "plastic table cover" and "table cover" matched nothing (Old Town, 11/24/2026); a party-store item.',
+  'p_decor_props': 'party props from a party store.',
+  'p_tableware_utensils': 'serving spoons: "serving spoons" returned a protein powder and "serving spoon" nothing (Old Town, 11/24/2026); a housewares item.',
+  'p_cleanup_bins': 'trash bins: "trash can" and "waste basket" matched nothing (Old Town, 11/24/2026); a hardware-store item.',
+  'p_memory_display_easel': 'an easel from a craft or office store.',
+  'p_serveware_platters': 'platters: "serving platter" and "serving tray" matched nothing (Old Town, 11/24/2026); a housewares item.',
+  'p_signin_clipboard': 'a clipboard: no match (Old Town, 11/23/2026).',
+  'p_sash_banner': 'a banner from a party store.',
+  'p_sash_decor': 'party decor from a party store.',
+  'p_dessert_cobbler': 'peach cobbler: "peach cobbler" and "cobbler" returned a yogurt cup (Old Town, 11/24/2026); a bakery order or home-made.',
+  'p_grown_folks_liquor': 'spirits: probed 11/23/2026 at Harris Teeter Old Town Alexandria VA and McHenry Row Baltimore MD, liquor terms return sauces and mixers; spirits come from a liquor store.',
+  'p_foil_pans_spoons': 'serving spoons: "serving spoons" returned a protein powder and "serving spoon" nothing (Old Town, 11/24/2026); a housewares item.',
+  'p_extinguisher_gloves': 'heat-resistant gloves are a hardware or grill-shop item: no match (Old Town, 11/23/2026).',
+  'p_cleanup_jug': 'a used-oil jug: an empty container the host keeps, or an auto-parts store item.',
+  'p_grown_liquor': 'spirits: probed 11/23/2026 at Harris Teeter Old Town Alexandria VA and McHenry Row Baltimore MD, liquor terms return sauces and mixers; spirits come from a liquor store.',
+  'p_heat_citronella': 'citronella candles: "citronella candle" and "citronella" matched nothing (Old Town, 11/24/2026); a hardware or garden-store item.',
+  'p_heat_fans': 'box fans from a hardware or home store.',
+  'p_tools_knives': 'crab knives from a seafood supplier or rental.',
+  'p_cleanup_bucket': 'a shell bucket: "bucket" returned a floor cleaner and "plastic bucket" nothing (Old Town, 11/24/2026); a hardware-store item.',
+  'p_tableware_buckets': 'a shell bucket: "bucket" returned a floor cleaner and "plastic bucket" nothing (Old Town, 11/24/2026); a hardware-store item.',
+  'p_batch_spirits': 'spirits: probed 11/23/2026 at Harris Teeter Old Town Alexandria VA and McHenry Row Baltimore MD, liquor terms return sauces and mixers; spirits come from a liquor store.',
+  'p_horchata_tamarindo': 'tamarindo drink mix is a Latin-grocer item, like the morro-seed horchata.',
+  'p_veganwat_shiro': 'shiro (chickpea flour): "chickpea flour" and "garbanzo bean flour" matched nothing (Old Town, 11/24/2026); an Ethiopian or Indian grocer item.',
+  'p_frankincense_charcoal': 'a charcoal disc or censer from a specialty shop.',
+  'p_beverages_aguas': 'aguas frescas: "agua fresca" returned a spiked malt beverage (Old Town, 11/24/2026); made from fruit, or bought at a Latin grocer.',
+  'p_florals_ceremony': 'a florist\'s work (ceremony flowers).',
+  'p_florals_bouquet': 'a florist\'s work (a bouquet).',
+  'p_florals_accents': 'a florist\'s work (court accents).',
+  'p_decor_arch': 'event decor (an arch) from a rental or party supplier.',
+  'p_decor_linens': 'event linens come from a rental company.',
+  'p_decor_signage': 'printed signage.',
+  'p_doll_crown_tiara': 'a quinceañera tiara from a specialty shop.',
+  'p_doll_crown_scepter': 'a quinceañera scepter from a specialty shop.',
+  'p_doll_crown_heels': 'the heels for the shoe ceremony, from a shoe store.',
+  'p_doll_crown_glasses': 'engraved toast glasses from a specialty shop.',
+  'p_doll_crown_candles': 'ceremony candles or roses from a specialty shop or florist.',
+  'p_cleanup_boxes': 'gift boxes: "storage boxes" returned food containers (Old Town, 11/24/2026); a craft or office store item.',
+  'p_serving_utensils': 'serving utensils: "serving spoons" returned a protein powder and "serving spoon" nothing (Old Town, 11/24/2026); a housewares item.',
+  'p_table_linens': 'table linens: "tablecloth" returned dishcloths and "table cover" nothing (Old Town, 11/24/2026); a party-store or rental item.',
+  'p_table_photo': 'a framed photo display the family makes.',
+  'p_mains_oxtail': 'oxtail: no match (Old Town, 11/24/2026); a butcher order.',
+  'p_namecards_agenda': 'agendas printed at home or a print shop.',
+  'p_cleanup_shredding': 'a document-shredding service, not a shelf item.',
+  'p_badges_lanyards': 'conference lanyards, ordered with the badges from a printer.',
+  'p_signage_wayfinding': 'a printed sign package.',
+  'p_placecards_tablenumbers': 'printed table numbers.',
+  'p_signage_auction': 'a printed sign package.',
+  'p_checkout_kit_printer': 'a receipt printer from an office or electronics store.',
+  'p_checkout_kit_cashbox': 'a cash box from an office supply store.',
+  'p_checkout_kit_power': 'power strips and cords from a hardware store.',
+  'p_treats_nonfood_teal': 'a teal pumpkin pail from a party store.',
+  'p_led_candles_flameless': 'LED candles: none matched, and "candles" returns wax candles, the thing this line replaces (Old Town, 11/23/2026).',
+  'p_cashboxes_float': 'a bank float: small bills and coin from the bank.',
+  'p_signage_banner': 'a printed banner.',
 });
+
+/**
+ * ── THE VEGETARIAN MAIN'S DISHES (owner, 11/24/2026) ─────────────────────────
+ *
+ * The engine builds `diet-veg` (and, for a two-dish plate, `diet-veg_side`)
+ * from each playbook's `vegMain`, with a guest count in the text ("Stuffed
+ * peppers (for 2 guests)"), so neither an exact-text key nor an id-wide term
+ * fits. Keyed by the dish, the text before " (for N guests)". Probed live at
+ * Harris Teeter Old Town Alexandria (locationId 09700398) on 11/24/2026, no
+ * line ids sent, nothing recorded; the comment is the first product returned.
+ */
+export const VEG_DISH_TERMS = Object.freeze({
+  'Stuffed peppers': 'stuffed peppers', // Stouffer's Stuffed Bell Peppers Frozen Meal $4.39 · 10 oz
+  'Grilled veg platter': 'vegetable tray', // Fresh Vegetable Party Tray $20 · 42 oz
+  'Grilled portobello caps': 'portobello mushrooms', // Sliced Portobello Mushrooms $3.49 · 6 oz
+  'Grilled portobello burgers': 'portobello mushrooms', // same
+  'Portobello burgers': 'portobello mushrooms', // same
+  'Veggie skewers (zucchini, squash)': 'zucchini', // Zucchini $2.49 · 1 lb ("veggie skewers" matched nothing)
+  'Grilled veggie skewers (zucchini, squash)': 'zucchini', // same
+  'Fried green tomatoes': 'green tomatoes', // Fresh Green Tomato $3.99 · 1 lb
+  'Hush puppies plate': 'hush puppies', // Savannah Classics Original Fresh Onion Hushpuppy $3.99 · 16 oz ("hush puppy mix" matched nothing)
+  'Smothered mushroom & bean main': 'mushrooms', // Harris Teeter Sliced White Mushrooms $2.49 · 8 oz
+  'Cornbread': 'cornbread mix', // Corn Muffin Mix $1.19 · 8.5 oz
+  'Grilled corn, veggie and Old Bay potato skewers': 'corn on the cob', // Harris Teeter Sweet Corn On The Cob $4.99 · 4 ct
+  'Baked mac & cheese': 'elbow macaroni', // Harris Teeter Elbow Macaroni $1.99 · 16 oz
+  'Greens & candied yam plate': 'collard greens', // Jumbo Collard Greens Bunch $2.99
+  'Jollof rice': 'long grain rice', // Harris Teeter Long Grain White Rice $1.79 · 32 oz
+  'Black-eyed pea & collard stew': 'black eyed peas', // Harris Teeter Black Eyed Peas $1.39 · 16 fl oz
+  'Cheese pizza slices': 'frozen cheese pizza', // DiGiorno Four Cheese Pizza $8.99 · 24.6 oz ("cheese pizza" returned shredded cheese)
+  'A fruit-and-veggie tray at the stand': 'fruit tray', // Fresh Fruit Party Tray $21 · 73 oz
+  'Mushroom & lentil wellington': 'mushrooms', // see above
+  'Wild mushroom and root vegetable wellington': 'mushrooms',
+  'Wild mushroom & spinach wellington': 'mushrooms',
+  'Butternut squash & sage stuffed shells': 'jumbo pasta shells', // Barilla Jumbo Pasta Shells $3.29 · 12 oz
+  'Roasted vegetable & goat cheese tart': 'goat cheese', // Private Selection Crumbled Goat Cheese $5.99 · 4 oz
+  'Stuffed mushroom & spinach phyllo bites': 'phyllo dough', // Athens Phyllo Dough $6.69 · 16 oz
+  'Stuffed acorn squash with wild rice': 'acorn squash', // Green Acorn Squash $1.99 · 1 lb
+  'A big roasted-vegetable and wild rice dish that stands on its own as a main': 'wild rice', // Lundberg Wild Blend Rice $7.49 · 16 oz
+  'Mushroom-and-gruyere puff pastry bites': 'puff pastry', // Jus-Rol Puff Pastry $4.99 · 13.2 oz
+  'Stuffed jack-o-lantern bell peppers': 'bell peppers', // Fresh Red Bell Pepper $1.79
+  'Wild mushroom risotto': 'risotto', // HT Traders Four Cheese Risotto $6.39 · 1 lb
+  'Loaded boiled potatoes, corn & mushroom platter': 'red potatoes', // Harris Teeter Baby Red Potatoes $5.49 · 3 lb
+  'Corn, potato & mushroom boil platter': 'red potatoes', // same
+});
+const VEG_IDS = new Set(['diet-veg', 'diet-veg_side']);
+const vegDishOf = (item) => String(item || '').replace(/\s*\(for \d+ guests?\)\s*$/, '').trim();
 
 const key = (id, item) => `${String(id || '').trim()}\u0000${String(item || '').trim()}`;
 const ALLOWED = new Map(ALLOW.map((a) => [key(a.id, a.item), a]));
@@ -745,6 +1097,7 @@ const TERMS_BY_ID = new Map(TERM_BY_ID.map((a) => [a.id, a.term]));
 /** Why this line has no store term, or null when it is meant to have one. */
 export function noStoreTermReason(line) {
   if (!line) return null;
+  if (VEG_IDS.has(String(line.id || '').trim()) && VEG_DISH_TERMS[vegDishOf(line.item)]) return null;
   return NO_STORE_TERM[key(line.id, line.item)] || NO_STORE_TERM[String(line.id || '').trim()] || null;
 }
 
@@ -770,6 +1123,7 @@ export function noStoreTermReason(line) {
  */
 export function storeSearchTerm(line) {
   if (!line) return null;
+  if (VEG_IDS.has(String(line.id || '').trim())) return VEG_DISH_TERMS[vegDishOf(line.item)] || null;
   const exact = TERMS.get(key(line.id, line.item));
   if (exact) return exact;
   // One line of an id can be excluded by its text (the Board Meeting's
@@ -810,14 +1164,51 @@ const NOT_THE_COMMODITY = Object.freeze([
   'mix', 'kit', 'candle', 'soap', 'spray', 'chips', 'crackers', 'cereal',
 ]);
 
+// ── A STORE THAT SELLS NO ALCOHOL STILL ANSWERS A SEARCH FOR WINE ──────────
+// Probed live 2026-11-24 at a Baltimore store, where Maryland keeps most chain
+// grocers from selling beer and wine: "white wine" came back as White Cooking
+// Wine, "beer" as Ginger Beer, "sparkling wine" as a Social Tonic. The same
+// terms at a DC store of the same chain find real wine and beer.
+//
+// So a line that SEARCHES for alcohol also refuses these words. Keyed on the
+// search term, not the line text: the mixers, N/A beer and N/A bubbly lines
+// search other terms and are untouched. A word check catches the ways seen so
+// far; a check on the store's own category is the later fix (owner, 11/24/2026).
+export const ALCOHOL_SEARCH_TERMS = Object.freeze(['beer', 'red wine', 'white wine', 'sparkling wine', 'hard seltzer']);
+const NOT_ALCOHOL = Object.freeze([
+  'cooking', 'non-alcoholic', 'non alcoholic', 'alcohol-free', 'alcohol free',
+  'dealcoholized', 'zero proof', 'zero-proof', 'mocktail', 'ginger beer', 'root beer', 'tonic',
+]);
+
+/** Does this line ask the store for alcohol? */
+export function isAlcoholLine(line) {
+  const t = storeSearchTerm(line);
+  return !!t && ALCOHOL_SEARCH_TERMS.includes(t);
+}
+
+const FORM_WORD_RE = new Map();
+const formWord = (w) => {
+  if (!FORM_WORD_RE.has(w)) FORM_WORD_RE.set(w, new RegExp(`(^|[^a-z])${w.replace(/[-]/g, '[- ]?')}s?($|[^a-z])`));
+  return FORM_WORD_RE.get(w);
+};
+
 export function matchLooksLikeTheLine({ line, term, description } = {}) {
   const d = String(description || '').toLowerCase();
   if (!d) return true;                       // nothing to judge; the units still gate
   const asked = `${String((line && line.item) || '')} ${String(term || '')}`.toLowerCase();
-  for (const w of NOT_THE_COMMODITY) {
+  const words = ALCOHOL_SEARCH_TERMS.includes(String(term || '').toLowerCase())
+    ? [...NOT_THE_COMMODITY, ...NOT_ALCOHOL]
+    : NOT_THE_COMMODITY;
+  for (const w of words) {
     // Only a word the PRODUCT has and the LINE does not. "Old Bay seasoning"
     // asks for a seasoning and must still match one.
-    if (d.includes(w) && !asked.includes(w)) return false;
+    //
+    // A WHOLE WORD, or its plural (owner-approved 11/24/2026). Read as a
+    // fragment, "Scrubber" was a rub and "Master of Mixes" a mix, and the right
+    // sponges and simple syrup lost their store price at all three probed
+    // stores. The line side stays a fragment on purpose: "cocktail mixer"
+    // asking still covers a "Margarita Mix".
+    if (formWord(w).test(d) && !asked.includes(w)) return false;
   }
   return true;
 }

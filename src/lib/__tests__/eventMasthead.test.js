@@ -63,3 +63,54 @@ describe('the masthead says each thing once', () => {
     }
   });
 });
+
+// ─── THE TYPE LINE ONLY WHEN IT ADDS (owner ruling 2, 11/23/2026) ─────────────
+// On the phone and the tall iPad the event type sits under the title only when
+// it is not redundant with the title. One rule, typeLineFor, read by both
+// layouts (and by the eyebrow that came before them). A word that names the
+// act of hosting ("Hosting", "Gathering") rather than the kind of event says
+// nothing the title has not: "Thanksgiving Dinner" over "Thanksgiving Hosting"
+// is the same fact twice. "Grandma's 80th" over "Birthday Party" is not.
+import { typeLineFor } from '../eventMasthead';
+
+describe('the type line only when it adds', () => {
+  test('the owner’s two examples', () => {
+    expect(typeLineFor('Thanksgiving Dinner', 'Thanksgiving Hosting')).toBe('');
+    expect(typeLineFor('Grandma’s 80th', 'Birthday Party')).toBe('Birthday Party');
+  });
+
+  test('sample names', () => {
+    expect(typeLineFor('Kwanzaa Night', 'Kwanzaa Gathering')).toBe('');
+    expect(typeLineFor('Pupusas at Tía’s', 'Pupusa Gathering')).toBe('Pupusa Gathering');   // "pupusas" is not "pupusa"
+    expect(typeLineFor('Wanda turns 50', 'Birthday')).toBe('Birthday');
+    expect(typeLineFor('A repast for Deacon Willie Hayes', 'Repast')).toBe('');
+    expect(typeLineFor('Friendsgiving', 'Friendsgiving')).toBe('');
+    expect(typeLineFor('Game Night', 'Game Night')).toBe('');
+    expect(typeLineFor('Sunday at Ma’s', 'Sunday Dinner')).toBe('Sunday Dinner');
+    expect(typeLineFor('Crab night', 'Crab Feast')).toBe('Crab Feast');
+    expect(typeLineFor('The Ryan Way', 'Graduation')).toBe('Graduation');
+    expect(typeLineFor('', 'Birthday')).toBe('Birthday');
+    expect(typeLineFor('Saturday', '')).toBe('');
+  });
+
+  test('all 47 playbook types: a name that does not say the type keeps the line', () => {
+    expect(ALL_PLAYBOOKS.length).toBe(47);
+    for (const pb of ALL_PLAYBOOKS) {
+      expect(typeLineFor('Saturday with everyone', pb.type)).toBe(pb.type);
+      expect(typeLineFor('Grandma’s 80th', pb.type)).toBe(pb.type);
+    }
+  });
+
+  test('all 47 playbook types: a name that already says the type drops the line', () => {
+    const HOSTING_WORDS = /\b(hosting|gathering|party|celebration|event)\b/gi;
+    for (const pb of ALL_PLAYBOOKS) {
+      // The type as its own name.
+      expect(typeLineFor(pb.type, pb.type)).toBe('');
+      // The type's kind with a different noun after it ("Thanksgiving Dinner",
+      // "Kwanzaa Night", "Bridal Shower Brunch").
+      const kind = pb.type.replace(HOSTING_WORDS, ' ').replace(/\s+/g, ' ').trim();
+      if (!kind || /^(the|a|an)$/i.test(kind)) continue;
+      expect(typeLineFor(`${kind} Brunch`, pb.type)).toBe('');
+    }
+  });
+});

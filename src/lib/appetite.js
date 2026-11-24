@@ -40,6 +40,12 @@ export function vegCount(event) {
   return Math.max(0, Math.round(num(dc.Vegetarian))) + Math.max(0, Math.round(num(dc.Vegan)));
 }
 
+/** Vegans among the people coming, through the same one count. Any vegan means
+ *  the meatless main must be the playbook's declared vegan one (11/23/2026). */
+export function veganCount(event) {
+  return Math.max(0, Math.round(num(dietCountsFor(event || {}).Vegan)));
+}
+
 /**
  * Children among the people actually coming.
  * A roster's own per-guest `kids` ("Children in Party") is the ground truth once a

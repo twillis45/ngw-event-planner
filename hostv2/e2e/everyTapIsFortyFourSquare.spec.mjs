@@ -15,7 +15,7 @@
 // axes, as nothingPressableIsUnderTheFloor does on one: an expander that a
 // parent clips computes as 44 and taps as nothing. Touch projects only, and
 // with touch on, so the (hover:none) rules apply as on a real iPad.
-import { test, expect, settled, sheetSettled, openSectionByName, dateIn } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled, openSectionByName, dateIn, goToStage, openEventsSheet } from './fixtures.mjs';
 import { previewUrl } from '../deployBase.mjs';
 
 const TOUCH = /mobile|landscape|tablet/;
@@ -152,10 +152,12 @@ const judge = async (page, root, only) => {
   expect(n, `premise: ${only} is on screen`).toBeGreaterThan(0);
   return page.evaluate(underFloor, [root, FLOOR, only]);
 };
+// Through the shared doors (the phone has no ☰ since owner ruling 1,
+// 11/23/2026): a phase through the pill or the menu, This event through the title.
 const viaMenu = async (page, label) => {
   if (await page.locator('.sheet').count()) { await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
-  await page.locator('.ev-eyebrow').first().click();
-  await page.locator('.sheet').last().getByRole('button', { name: label, exact: false }).first().click();
+  if (label === 'This event') await openEventsSheet(page);
+  else await goToStage(page, label);
   await page.waitForTimeout(1200);
 };
 
@@ -212,7 +214,9 @@ test.describe('the controls audit 2 measured under 44 (390, touch)', () => {
     await sheetSettled(page);
     found.push(...await judge(page, '.sheet', '.conflictbar'));
     await viaMenu(page, 'The Day');
-    found.push(...await judge(page, '.app', '.day-sec > .ev-eyebrow'));
+    // The Day's way off the screen: its ☰ "Menu" until owner ruling 4
+    // (11/23/2026), the pill's buttons now.
+    found.push(...await judge(page, '.stagewrap', '.day-sec > .ev-eyebrow, [data-tt-bar] button'));
     await viaMenu(page, 'After');
     found.push(...await judge(page, '.app', 'button.line'));
     expect(found).toEqual([]);

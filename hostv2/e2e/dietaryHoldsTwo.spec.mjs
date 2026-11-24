@@ -48,7 +48,8 @@ const boot = async (page) => {
   // is unchanged — only the route to the panel moved.
   const planTab = sheet.locator('.fmode', { hasText: /^Plan$/ }).first();
   if (await planTab.count()) { await planTab.click(); await settled(page); }
-  await sheet.getByText('Your choices', { exact: false }).first().click();
+  // One food page (11/24/2026): the menu's row in Your choices is "Menu".
+  await sheet.locator('[data-food-section="choices"] .fstat', { hasText: 'Menu' }).first().click();
   await settled(page);
   return sheet;
 };
@@ -149,7 +150,8 @@ test('tapping a restriction marks the lines it applies to', async ({ page }) => 
   // this file when the list row's copy changed hit both and broke this one; the
   // matrix caught it at desktop only, 30s timeout on a locator for text that
   // was never here.
-  await sheet.getByText('0 of 7 bought', { exact: false }).first().click();
+  // Batch 4 (owner, 11/24/2026): Crab Feast's butter and sides split into one line per product: 7 -> 10.
+  await sheet.getByText('0 of 10 bought', { exact: false }).first().click();
   await settled(page);
 
   // Blue crabs is the row that carries `decision open` AND `essential`, so it is

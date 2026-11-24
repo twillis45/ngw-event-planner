@@ -75,12 +75,14 @@ test('a cleared bundle is not "every open call is made" while anything is open',
   const pick = hero(page).locator('.decopt.pick');
   if (await pick.count()) { await pick.first().click(); await page.waitForTimeout(1400); }
   const t = await heroText(page);
-  // Premise (measured 11/22/2026): the pick clears a bundle and the payoff
-  // shows, with its own next link naming work still open.
-  expect(t).toMatch(/All decided|Those are decided|That’s decided/);
-  if (/Next: /.test(t) || await callsOpenNow(page)) {
-    expect(t, 'the payoff names an open next step, so not every call is made').not.toMatch(/Every open call is made|nothing pending/);
-  }
+  // Changed 11/24/2026 (owner, render 2: after a decision the hero advances).
+  // Was: the premise that the pick stops on the payoff ("That’s decided.")
+  // with a "Next: …" link. Now, with work still open, the hero goes straight
+  // to the next item under "✓ Decided · Undo", and claims nothing is done.
+  expect(t).not.toMatch(/All decided|Those are decided|That’s decided/);
+  await expect(hero(page).locator('[data-decided]')).toBeVisible();
+  expect(await page.locator('.ac-next').count(), 'no "Next: …" link').toBe(0);
+  expect(t, 'nothing claims every call is made while work is open').not.toMatch(/Every open call is made|nothing pending/);
 });
 
 // Walk the hero the way the audit did (our pick, else the lit button), and at

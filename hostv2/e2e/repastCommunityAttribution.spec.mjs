@@ -49,10 +49,7 @@ const boot = async (page) => {
   // against the hero — which is exactly how the first run read as "the dishes
   // are missing" when the sheet had simply not opened yet.
   await page.locator('.sheet').first().waitFor({ state: 'visible', timeout: 8000 });
-  // The section door opens on Plan while a menu question is open (foodSheetKind);
-  // the list this walks is on Shop, so tap Shop.
-  await page.locator('.sheet').last().locator('.fmode', { hasText: /^Shop$/ }).first().click();
-  await settled(page);
+  // One food page (owner, 11/24/2026): no Shop tab, and the list is always open.
   // The rows live behind the list drill-in; the sheet's own summary shows
   // "The list · N bought ›" and not the items.
   const listRow = page.locator('.fstat', { hasText: 'The list' }).first();
@@ -136,18 +133,18 @@ const bootCookout = async (page) => {
   await page.locator('.sheet').first().waitFor({ state: 'visible', timeout: 8000 });
 };
 
-test('the mode control offers Bringing, counted', async ({ page }) => {
+// ONE FOOD PAGE (owner, 11/24/2026): Bringing is a section of the page, not a
+// tab, and its head carries the count the tab did.
+const bringingSection = (page) => page.locator('.sheet').last().locator('[data-food-section="bringing"]');
+test('the page offers Bringing, counted', async ({ page }) => {
   await boot(page);
-  const tabs = await page.locator('.fmode').allInnerTexts();
-  expect(tabs.join(' ')).toMatch(/Shop/);
-  expect(tabs.join(' ')).toMatch(/Bringing\s*·\s*11/);
+  await expect(bringingSection(page).locator('.shelf-label').first()).toHaveText(/Bringing\s*·\s*0 of 11 spoken for/i);
+  await expect(page.locator('.sheet').last().locator('[data-food-section="list"]')).toBeVisible();
 });
 
 test('the Bringing panel lists the dishes and charges the host nothing', async ({ page }) => {
   await boot(page);
-  await page.locator('.fmode', { hasText: 'Bringing' }).click();
-  await settled(page);
-  const t = (await page.locator('.sheet').first().innerText()).replace(/\s+/g, ' ');
+  const t = (await bringingSection(page).innerText()).replace(/\s+/g, ' ');
   expect(t).toMatch(/chicken|ham/i);
   expect(t).toMatch(/cake|pudding/i);
   expect(t).toMatch(/nothing here costs you anything/i);
@@ -175,10 +172,11 @@ test('NO DEAD CHROME: an event with nothing to bring gets no BRINGING tab', asyn
   await bootCookout(page);
   const t = (await page.locator('.sheet').first().innerText()).replace(/\s+/g, ' ');
   expect(t).toMatch(/bought|spread|estimate/i);   // premise: the sheet really opened
-  const labels = await page.locator('.fmode').allInnerTexts();
-  expect(labels.length).toBeGreaterThan(0);       // the control is there…
-  expect(labels.join(' | ')).not.toMatch(/Bringing/i);  // … without the empty room
-  expect(labels.join(' | ')).toMatch(/Plan/);     // and the planning door is reachable
+  // ONE FOOD PAGE (11/24/2026): no tab control at all, no Bringing section for
+  // the empty room, and the planning rows are on the page.
+  expect(await page.locator('.fmode, [role="tab"]').count()).toBe(0);
+  expect(await page.locator('[data-food-section="bringing"]').count()).toBe(0);
+  await expect(page.locator('[data-food-section="choices"]')).toBeVisible();
 });
 
 // ─── THE CONTROL HAS TO DO WHAT IT SAYS (UX_07) ──────────────────────────────
@@ -188,11 +186,9 @@ test('NO DEAD CHROME: an event with nothing to bring gets no BRINGING tab', asyn
 // the exact shape `ctaNamesTheAct` exists to stop, and I shipped it.
 test('naming a bringer actually records one, and both surfaces agree', async ({ page }) => {
   await boot(page);
-  await page.locator('.fmode', { hasText: 'Bringing' }).click();
-  await settled(page);
 
   // Before: nobody named.
-  const first = page.locator('.fstat').first();
+  const first = bringingSection(page).locator('[data-bringer-row]').first();
   expect((await first.innerText()).replace(/\s+/g, ' ')).toMatch(/Add a name/);
 
   await first.click();
@@ -204,40 +200,16 @@ test('naming a bringer actually records one, and both surfaces agree', async ({ 
   // The row now carries the name, and the count moved.
   const panel = (await page.locator('.sheet').first().innerText()).replace(/\s+/g, ' ');
   expect(panel).toMatch(/Sister Vaughn/);
-  expect(panel).toMatch(/1 of 11 spoken for/);
+  expect(panel).toMatch(/1 of 11 spoken for/i);
 
-  // AND THE SHOP LIST AGREES. One fact, two surfaces — the chip must stop
-  // saying "The repast committee" for a dish that now has a person.
-  await page.locator('.fmode', { hasText: 'Shop' }).click();
-  await settled(page);
-  const listRow = page.locator('.fstat', { hasText: 'The list' }).first();
-  if (await listRow.count()) { await listRow.click(); await settled(page); }
-
-  // OPEN ONLY WHAT IS CLOSED. The first cut clicked every `.fgroup` in a loop,
-  // and a click on an OPEN fold shuts it — so whether the chicken row was on
-  // screen at the end depended on the order the folds happened to be in. The
-  // run that failed and the run that passed differed by exactly that, which is
-  // how a real defect got reported as flake.
-  const folds = page.locator('.fgroup');
-  const total = await folds.count();
-  for (let i = 0; i < total; i += 1) {
-    const f = folds.nth(i);
-    if (!(await f.isVisible())) continue;
-    const open = (await f.getAttribute('class') || '').split(/\s+/).includes('open');
-    if (!open) { await f.click(); await page.waitForTimeout(110); }
-  }
-  await settled(page);
-
-  // ASSERT ON THE ROW, NOT ON THE SHEET. A sheet-wide `toMatch` passes if the
-  // name survives anywhere at all — including in the Bringing panel behind it —
-  // so it could go green while the Shop chip still said "The repast committee".
-  // The claim is that THIS DISH, in the Shop list, names the person.
-  // A brought dish is off the shelves, in its own "… bringing" group, read
-  // from the one record of who brings what (11/21/2026).
-  const chickenRow = page.locator('[data-brought-group] .fstat', { hasText: /chicken/i }).first();
+  // ONE FACT, ONE PLACE (one food page, 11/24/2026). The Shop list's
+  // "… bringing" group is gone; the Bringing section is the one surface that
+  // lists a brought dish, and its chicken row names the person, not the
+  // collective noun. The list carries no second copy.
+  expect(await page.locator('[data-brought-group]').count()).toBe(0);
+  const chickenRow = bringingSection(page).locator('[data-bringer-row]', { hasText: /chicken/i }).first();
   await expect(chickenRow).toBeVisible();
   const rowText = (await chickenRow.innerText()).replace(/\s+/g, ' ');
   expect(rowText).toMatch(/Sister Vaughn/);
-  // And the collective noun is gone from it — one fact, one answer.
   expect(rowText).not.toMatch(/The repast committee/);
 });

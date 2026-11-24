@@ -107,6 +107,9 @@ export const PARSER_FIELDS = [
   'isDestination', 'destinationBasis', 'travelMode', 'overnight', 'overnightBasis',
   'timeOfDay', 'startTime', 'startTimeBasis', 'venueAddress', 'honoree', 'venueKind', 'venue',
   'venueCity', 'venueState', 'vacationArea', 'kidsPolicy',
+  // `venueZip` added 11/24/2026 (owner ruling): the ZIP of a full address, or a
+  // bare ZIP, is kept rather than dropped.
+  'venueZip',
 ];
 
 export const PARSE_CORPUS = [

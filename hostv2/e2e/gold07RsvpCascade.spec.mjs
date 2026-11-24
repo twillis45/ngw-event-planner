@@ -135,7 +135,8 @@ const openSection = async (page, name) => {
   });
   let t = await read();
   // The spread's section door opens on Plan while a menu question is open
-  // (foodSheetKind, #223); the list lives on Shop, so read both tabs.
+  // (foodSheetKind, #223). Since the one food page there is no Shop tab, so
+  // this finds none and the first read already holds the list.
   const shop = page.locator('.sheet').last().locator('.fmode', { hasText: /^Shop$/ }).first();
   if (await shop.count()) {
     await shop.click();
@@ -336,7 +337,9 @@ test.describe('GOLD-07 — a guest replies and the whole plan moves', () => {
 
     // BOUNDARY 6 — Shopping. Tonya's vegetarian answer is a line on the list
     // that was not there when nobody had replied.
-    const items = (t) => Number((t.match(/The list (\d+) items/) || [])[1] || 0);
+    // One food page (sheets track): the list's size is the largest "N of M
+    // bought" on it, the whole-list footer; a group's count is never larger.
+    const items = (t) => Math.max(0, ...[...t.matchAll(/\b\d+ of (\d+) bought\b/g)].map((m) => Number(m[1])));
     expect(items(before.food), 'premise: the silent roster already has a list').toBeGreaterThan(0);
     expect(items(after.food), 'a dietary answer adds a line to the run')
       .toBeGreaterThan(items(before.food));

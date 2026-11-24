@@ -126,3 +126,22 @@ export function anyDietFlagged(event) {
   const dc = dietCountsFor(event);
   return Object.keys(dc).some((k) => countOf(dc, k) > 0);
 }
+
+/**
+ * The guests' meal picks, tallied once (owner, 11/24/2026). Moved here from the
+ * food page's estimate card, which kept it inline, so the "Dietary needs" row
+ * reads the same count. `guest.meal` is the field RSVPs, CSV imports and the
+ * per-guest meal edit write; '' and '—' are no pick. `unanswered` counts only
+ * once someone has answered (no invented gap on a list nobody was asked).
+ * @returns {{ counts: Object<string, number>, answered: number, unanswered: number }}
+ */
+export function mealTally(event) {
+  const gs = (event && event.guests) || [];
+  const counts = {};
+  gs.forEach((g) => {
+    const m = String((g && g.meal) || '').trim();
+    if (m && m !== '—') counts[m] = (counts[m] || 0) + 1;
+  });
+  const answered = Object.values(counts).reduce((a, b) => a + b, 0);
+  return { counts, answered, unanswered: answered ? Math.max(0, gs.length - answered) : 0 };
+}

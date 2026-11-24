@@ -5,7 +5,7 @@
 // suggestions from the event's own data, or the host's own tag, and Remove.
 // Stored on the event as `hashtag`; the printed day sheet carries it. Never a
 // claim that a tag is unused or available (board 11/16).
-import { test, expect, settled, sheetSettled, dateIn } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled, dateIn, openSectionByName } from './fixtures.mjs';
 
 const EVENT = {
   id: 'ht-e2e', name: 'Vida’s Friendsgiving', type: 'friendsgiving', createdAt: '2026-11-01',
@@ -41,9 +41,7 @@ const openIdentity = async (page) => {
   const door = page.getByRole('button', { name: /Make it yours/ }).first();
   if (await door.count()) await door.click();
   else {
-    await page.locator('.ev-eyebrow').first().click();
-    await page.locator('.sheet').last().getByText('Jump to a section').first().click();
-    await page.locator('.sheet').last().getByText('Make it yours').first().click();
+    await openSectionByName(page, 'Make it yours');
   }
   await sheetSettled(page);
   await expect(page.locator('#sheet-title')).toHaveText('Make it yours');

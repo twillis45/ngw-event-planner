@@ -267,6 +267,20 @@ export function stepFactsFor(event, row) {
   return Array.isArray(f) ? f : st.facts;
 }
 
+// ── WHICH STEPS BUNDLE FOUNDATION PARTS (cause 1, remainder c) ──────────────
+// A "Set date, headcount, menu" step is never led half done: the hero
+// decomposes it to the first open foundation domino (CommandCenter). Which
+// steps are such composites was read off their words (/^set\b/, a separator,
+// a foundation word); each step now declares `composite`, and
+// `compositeByAnswer` where its words vary by a pick, derived once from that
+// rule and committed. A row she wrote declares nothing, so it is never one.
+/** stepIsSetComposite(event, row) → true when the row's step declares itself a composite. */
+export function stepIsSetComposite(event, row) {
+  const st = declaredStepFor(event, row);
+  if (!st || st.composite !== true) return false;
+  return resolveAnsweredCopy(true, st.compositeByAnswer, event) === true;
+}
+
 /** stepTargetFor(event, row) → targetFor(stepTargetKey(event, row), event). */
 export function stepTargetFor(event, row) {
   return targetFor(stepTargetKey(event, row), event);

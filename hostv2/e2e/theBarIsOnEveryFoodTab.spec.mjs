@@ -36,7 +36,10 @@ import { test, expect, settled } from './fixtures.mjs';
 
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
-  const el = [...document.querySelectorAll('button,[role="button"],a')]
+  // Inside the open sheet when there is one: the phone's pill has its own
+  // "Plan" (owner ruling 4, 11/23/2026), and these taps mean the sheet's.
+  const root = [...document.querySelectorAll('.sheet')].pop() || document;
+  const el = [...root.querySelectorAll('button,[role="button"],a')]
     .find((x) => rx.test((x.innerText || x.textContent || '').trim()));
   if (!el) return null;
   el.click();
@@ -83,66 +86,56 @@ const openSpread = async (page) => {
   await settled(page);
 };
 
-const toTab = async (page, label) => {
-  await tapText(page, label);
-  await page.waitForTimeout(1000);
-  await settled(page);
-};
+// ONE FOOD PAGE (owner, 11/24/2026): the Plan / Bringing / Shop tabs are gone.
+// There is one bar, and it counts what she buys ("N of M bought", which the
+// owner kept); the menu's calls are counted on Your choices' Menu row and who
+// is spoken for on the Bringing section's head. Each count is still said once.
+const section = (page, name) => page.locator('.sheet').last().locator(`[data-food-section="${name}"]`);
 
-test('(premise) a repast really does carry all three tabs', async ({ page }) => {
-  // Without this, a missing Bringing tab would make the assertions below pass
-  // by never running the case they exist for.
+test('(premise) a repast really does carry Your choices, Bringing and the list, with no tabs', async ({ page }) => {
+  // Without this, a missing Bringing section would make the assertions below
+  // pass by never running the case they exist for.
   await openSpread(page);
-  const txt = await sheetTextWithoutBar(page);
-  expect(txt).toMatch(/Bringing/);
-  expect(txt).toMatch(/Plan/);
-  expect(txt).toMatch(/Shop/);
+  await expect(section(page, 'choices')).toBeVisible();
+  await expect(section(page, 'bringing')).toBeVisible();
+  await expect(section(page, 'list')).toBeVisible();
+  expect(await page.locator('.sheet .fmodes, .sheet [role="tab"]').count()).toBe(0);
 });
 
-test('Shop counts what is bought', async ({ page }) => {
+test('the bar counts what is bought', async ({ page }) => {
   await openSpread(page);
-  await toTab(page, '^Shop$');
   expect(await barText(page)).toMatch(/\d+ of \d+ bought/);
 });
 
-test('Plan counts what is decided', async ({ page }) => {
+test('the menu’s calls are counted on Your choices', async ({ page }) => {
   await openSpread(page);
-  await toTab(page, '^Plan$');
-  expect(await barText(page)).toMatch(/\d+ of \d+ decided/);
+  await expect(section(page, 'choices').locator('.fstat', { hasText: 'Menu' })).toContainText(/\d+ open|\d+ later|all set/);
 });
 
-test('Bringing counts who is spoken for', async ({ page }) => {
+test('Bringing counts who is spoken for, on its own head', async ({ page }) => {
   await openSpread(page);
-  await toTab(page, '^Bringing');
-  expect(await barText(page)).toMatch(/\d+ of \d+ spoken for/);
+  await expect(section(page, 'bringing').locator('.shelf-label').first()).toHaveText(/\d+ of \d+ spoken for/i);
 });
 
-test('THE DUPLICATION: no tab states its own count twice', async ({ page }) => {
-  // The defect this caught on the way in, on Bringing. Checked on all three
-  // because the rule is not about one screen.
+test('THE DUPLICATION: the bar does not state its count twice', async ({ page }) => {
   await openSpread(page);
-  for (const tab of ['^Plan$', '^Shop$', '^Bringing']) {
-    await toTab(page, tab);
-    const bar = await barText(page);
-    expect(bar, `no bar on ${tab}`).toBeTruthy();
-    const count = (bar.match(/\d+ of \d+ \w+( \w+)?/) || [])[0];
-    expect(count, `bar on ${tab} has no count: ${bar}`).toBeTruthy();
-    expect(await sheetTextWithoutBar(page), `"${count}" is on ${tab} twice`)
-      .not.toContain(count);
-  }
+  const bar = await barText(page);
+  expect(bar, 'no bar').toBeTruthy();
+  const count = (bar.match(/\d+ of \d+ \w+( \w+)?/) || [])[0];
+  expect(count, `bar has no count: ${bar}`).toBeTruthy();
+  expect(await sheetTextWithoutBar(page), `"${count}" is said twice`).not.toContain(count);
 });
 
-test('at completion the bar carries the Bringing screen\u2019s own words', async ({ page }) => {
-  // "Everyone is spoken for." was the grounding line's completion state. It
-  // moved into the bar with the count rather than being deleted with it, so
-  // this drives every dish to a name and reads the bar — the branch is proven
-  // rather than assumed, which is the whole reason for naming all eleven.
+test('at completion Bringing is one green row, and says it once', async ({ page }) => {
+  // Every dish driven to a name: the section shrinks to "✓ Bringing · all N
+  // spoken for" (the finished-group rule, 11/24/2026). It was "Everyone is
+  // spoken for" in the Bringing tab's bar, which is gone with the tab.
   await openSpread(page);
-  await toTab(page, '^Bringing');
 
   for (let guard = 0; guard < 40; guard += 1) {
     const opened = await page.evaluate(() => {
-      const row = [...document.querySelectorAll('.fstat')]
+      const sec = document.querySelector('[data-food-section="bringing"]');
+      const row = sec && [...sec.querySelectorAll('.fstat')]
         .find((b) => b.tagName === 'BUTTON' && /add a name/i.test(b.innerText || ''));
       if (!row) return false;
       row.click();
@@ -163,36 +156,29 @@ test('at completion the bar carries the Bringing screen\u2019s own words', async
   }
   await settled(page);
 
-  expect(await barText(page)).toContain('Everyone is spoken for');
-  // …and it still is not said twice.
-  expect(await sheetTextWithoutBar(page)).not.toContain('Everyone is spoken for');
+  const fold = section(page, 'bringing').locator('[data-done-fold]');
+  await expect(fold).toHaveText(/✓\s*Bringing · all \d+ spoken for/);
+  // …and it is not said twice.
+  expect((await sheetTextWithoutBar(page)).match(/all \d+ spoken for/g) || []).toHaveLength(1);
 });
 
-test('THE PHANTOM EXIT: a section open on Shop is not an exit on Bringing', async ({ page }) => {
-  // `foodSect` does not reset when the tab changes, so `drillOpen` stayed
-  // true across the switch and the Bringing bar rendered a Done for a panel
-  // that was not on that screen. Caught on the device, not in the code.
+test('THE EXIT: a drill-in open makes the bar its one exit, and closing it takes the exit away', async ({ page }) => {
   await openSpread(page);
-  await toTab(page, '^Shop$');
-  await tapText(page, 'The list[\\s\\S]*item');      // open a drill-in HERE
-  await page.waitForTimeout(1200);
-  await settled(page);
-  const onShop = await page.evaluate(() => [...document.querySelectorAll('.ftotal button')]
+  const doneOnBar = () => page.evaluate(() => [...document.querySelectorAll('.ftotal button')]
     .some((x) => /^done$/i.test((x.innerText || '').trim())));
-  expect(onShop, 'premise: Shop really does offer the exit').toBe(true);
-
-  await toTab(page, '^Bringing');
-  const onBringing = await page.evaluate(() => [...document.querySelectorAll('.ftotal button')]
-    .some((x) => /^done$/i.test((x.innerText || '').trim())));
-  expect(onBringing).toBe(false);
+  expect(await doneOnBar()).toBe(false);
+  await section(page, 'choices').locator('.fstat', { hasText: 'Dietary needs' }).click();
+  await page.waitForTimeout(600);
+  expect(await doneOnBar(), 'premise: the open drill-in offers the exit').toBe(true);
+  await page.locator('.ftotal').getByRole('button', { name: 'Done' }).click();
+  await page.waitForTimeout(600);
+  expect(await doneOnBar()).toBe(false);
   // …and the bar is still there doing its other job.
-  expect(await barText(page)).toMatch(/spoken for/);
+  expect(await barText(page)).toMatch(/bought/);
 });
 
-test('and the Bringing screen keeps the fact the bar cannot carry', async ({ page }) => {
-  // Dropping the count from the grounding line must not drop the reassurance
-  // with it — that is the sentence a host reading other people's dishes needs.
+test('and the Bringing section keeps the fact the bar cannot carry', async ({ page }) => {
+  // The reassurance a host reading other people's dishes needs.
   await openSpread(page);
-  await toTab(page, '^Bringing');
-  expect(await sheetTextWithoutBar(page)).toContain('nothing here costs you anything');
+  expect(await section(page, 'bringing').innerText()).toMatch(/nothing here costs you anything/i);
 });

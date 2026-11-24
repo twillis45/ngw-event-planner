@@ -132,9 +132,19 @@ for (const theme of ['dark', 'light']) {
       // A tall iPad's phase switch is its docked bar (11/22/2026): the same
       // floor, on the control that carries the job here.
       const seg = await page.evaluate(measure, ['.tt-seg', null]);
-      premise(seg, 'tt-seg-b on', 'the bar');
+      // The label sits in its own span since the underline (owner, 11/24/2026),
+      // so the selected phase's text is measured there.
+      premise(seg, 'nav-l "Plan"', 'the bar');
       premise(seg, '"After"', 'the bar');
       assertRows(seg, `the bar (${theme})`);
+      await goToStage(page, 'The Day');
+    } else if (await page.locator('.srail [data-rail-stage]').count()) {
+      // A 13" iPad upright: the phase switch is the rail's Your event group
+      // (owner ruling 8, 11/23/2026). The same floor, on that control.
+      const seg = await page.evaluate(measure, ['.srail-g:has([data-rail-stage])', null]);
+      premise(seg, '"Plan"', 'the rail');
+      premise(seg, '"After"', 'the rail');
+      assertRows(seg, `the rail (${theme})`);
       await goToStage(page, 'The Day');
     } else {
       await openJumpTo(page);

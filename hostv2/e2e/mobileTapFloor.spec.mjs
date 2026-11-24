@@ -196,10 +196,12 @@ test('the account panel clears it — a surface this sweep had never measured', 
   // eyebrow, then a directory row, and that row is labeled "You & settings".
   // Same destination, two names; the naming is logged, not fixed here.
   await boot(page);
-  await page.locator('.ev-eyebrow').first().click();
+  // The phone's door since owner rulings 1 and 4 (11/23/2026): the pill's All
+  // sections, then the index's "You & settings" tile (the ☰ row's twin).
+  await page.locator('[data-tt-bar]').getByRole('button', { name: 'All sections', exact: true }).click();
   await page.waitForTimeout(1500);
-  const row = page.locator('.navrow', { hasText: /^You &/ }).first();
-  const rowName = (await row.locator('.nr-l').innerText()).trim();
+  const row = page.locator('.sheet [data-door="settings"]').first();
+  const rowName = (await row.locator('span').first().innerText()).trim();
   await row.click();
   await expect(page.locator('#sheet-title')).toBeVisible();
   // ONE NAME FOR ONE DESTINATION (host ruling, 2026-08-15). This row said
@@ -227,27 +229,32 @@ test('the account panel clears it — a surface this sweep had never measured', 
 
 test('the section directory clears it too — including the phase segments', async ({ page }) => {
   await boot(page);
-  // The dock is `dock-retired` (0x0 buttons); mobile navigates by the eyebrow.
-  await page.locator('.ev-eyebrow').first().click();
+  // The phase segments are the pill's, on the board (owner ruling 4,
+  // 11/23/2026); measured there, then the directory its All sections opens.
+  await expect(page.locator('[data-tt-bar] .tt-seg-b').first()).toBeVisible();
+  expect(surprising(await sweep(page))).toEqual([]);
+  await page.locator('[data-tt-bar]').getByRole('button', { name: 'All sections', exact: true }).click();
   await page.waitForTimeout(1500);
-  await expect(page.locator('.navseg-b').first()).toBeVisible();
+  await expect(page.locator('.sheet [data-door]').first()).toBeVisible();
   expect(surprising(await sweep(page))).toEqual([]);
 });
 
 test('the back control on a sheet is tappable, without moving the layout', async ({ page }) => {
   await boot(page);
-  await page.locator('.ev-eyebrow').first().click();
+  // The directory is the pill's All sections on a phone (owner ruling 4, 11/23/2026).
+  const openDirectory = () => page.locator('[data-tt-bar]').getByRole('button', { name: 'All sections', exact: true }).click().catch(() => {});
+  await openDirectory();
   await page.waitForTimeout(1500);
-  // Walk rows until one opens a sheet that renders the back control. Some rows
-  // (Search) close the directory instead of opening a sheet.
+  // Walk doors until one opens a sheet that renders the back control.
   let opened = false;
   for (const i of [5, 3, 4, 1, 0]) {
-    const row = page.locator('.navrow').nth(i);
+    const row = page.locator('.sheet [data-door]').nth(i);
     if (!(await row.count())) continue;
     await row.click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(1500);
     if (await page.locator('.sheet-back').count()) { opened = true; break; }
-    await page.locator('.ev-eyebrow').first().click().catch(() => {});
+    await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+    await openDirectory();
     await page.waitForTimeout(1000);
   }
   expect(opened, 'no sheet rendered the back control').toBe(true);

@@ -55,7 +55,7 @@ from ..db import get_pool
 from ..auth import require_planner
 from ..config import APP_BASE_URL
 from ..email_frame import clock12, frame, hue_for, paragraphs_html, when_fact, where_fact
-from ..outward import event_days, host_name_for, place_line, outward_refusal
+from ..outward import event_days, host_name_for, place_line, outward_refusal, real_host_name
 from ..email_pictures import with_picture
 from ..emailer import send_thread_email
 from .rsvp import _assert_event_studio_read, _client_ip
@@ -516,7 +516,7 @@ def helper_page_url(code: str) -> str:
 def compose_helper_email(data: dict, helper: dict, page_url: str, stop_url):
     """(subject, html, text). PURE. `helper` is build_helper_payload's whitelist."""
     e = _html.escape
-    host = " ".join(str(helper.get("hostName") or "").split())[:80]
+    host = real_host_name(helper.get("hostName"))[:80]     # "Your host" is no name
     host_first = host.split(" ")[0] if host else ""
     first = (str(helper.get("helperName") or "").strip().split() or ["there"])[0]
     name = " ".join(str(helper.get("eventName") or "").split()) or "the party"
@@ -541,7 +541,7 @@ def compose_helper_email(data: dict, helper: dict, page_url: str, stop_url):
         # so a mail scanner opening the link records nothing.
         primary=("I can do it", page_url), secondary=[("I can’t", e(page_url) + "&amp;answer=declined")],
         fine=f"Either one opens your page, where you tap your answer for {host_first or 'your host'}. No app, no account.",
-        footer=f"Sent by {host or 'your host'} with No Guesswork Events.", stop_url=stop_url)
+        footer=f"Sent by {host} with No Guesswork Events." if host else "Sent with No Guesswork Events.", stop_url=stop_url)
     return subject, html, text
 
 
@@ -595,7 +595,7 @@ async def email_helper_job(
                values ($1, $2, 'standard', 'planner', $3, $4, $5) returning id""",
             event_id, ch["id"], helper["hostName"] or None, body_text, json.dumps({"delivery": delivery}))
     body_html, body_text = await with_picture(body_html, body_text)
-    host = " ".join(str(helper["hostName"] or "").split())[:80] or "Your host"
+    host = real_host_name(helper["hostName"])[:80] or "Your host"
     stop_headers = None
     if stop_token:
         stop = email_stop_url(stop_token)

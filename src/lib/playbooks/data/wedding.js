@@ -21,6 +21,10 @@ const wedding = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Wild mushroom & spinach wellington',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Wild mushroom & spinach wellington (vegan puff pastry)',
+  // Bought items its label must be checked for (pastry: butter; buns: eggs or milk; tortillas: lard).
+  vegMainVeganCheck: ['pastry'],
   solveFamily: 'wedding',
   family: 'full_service',
   recordKind: 'client',
@@ -99,12 +103,12 @@ const wedding = {
     { id: 't_venue', target: 'vendors', facts: [], milestoneId: 'w_venue', phase: 'venue', label: 'Tour, compare, sign venue contract + deposit; lock the date', when: 'T-365d' },
     // `books` names the roles the label lists, in its words: the step says only
     // the ones not yet booked (event.vendors) and is done when all are.
-    { id: 't_keyvendors', target: 'vendors', facts: ['roles-listed'], milestoneId: 'w_keyvendors', phase: 'vendor', label: 'Sign planner, photographer, caterer, band/DJ (these book a year out)', books: ['planner', 'photographer', 'caterer', 'band/DJ'], when: 'T-300d' },
+    { id: 't_keyvendors', target: 'vendors', facts: ['roles-listed'], catererOut: ['host-cooks'], coversCaterer: true, otherVendors: ['planner', 'photographer', 'band/DJ'], labelWithoutCaterer: 'Sign planner, photographer, band/DJ (these book a year out)', booksWithoutCaterer: ['planner', 'photographer', 'band/DJ'], milestoneId: 'w_keyvendors', phase: 'vendor', label: 'Sign planner, photographer, caterer, band/DJ (these book a year out)', books: ['planner', 'photographer', 'caterer', 'band/DJ'], when: 'T-300d' },
     { id: 't_attire', target: 'vendors-tab', facts: [], milestoneId: 'w_attire', phase: 'planning', label: 'Order dress/attire; schedule alterations runway', when: 'T-240d' },
     { id: 't_design', target: 'vendors', facts: ['roles:florist+baker+officiant'], milestoneId: 'w_design', phase: 'vendor', label: 'Book florist, rentals, baker, officiant; order stationery; build registry + website', when: 'T-180d' },
     { id: 't_invites', target: 'invite', facts: [], milestoneId: 'w_invites', phase: 'guest', label: 'Mail invitations 6–8 wks out; track RSVPs + meal choices', when: 'T-90d' },
     { id: 't_details', target: 'build-day', facts: [], milestoneId: 'w_details', phase: 'planning', label: 'Menu tasting, hair/makeup trial, build run-of-show, draft seating chart', when: 'T-60d' },
-    { id: 't_finalcount', target: 'vendors', facts: [], milestoneId: 'w_finalcount', phase: 'vendor', label: 'Give caterer FINAL headcount; pay remaining vendor balances; prep tip envelopes', when: 'T-14d' },
+    { id: 't_finalcount', target: 'vendors', facts: [], catererOut: ['host-cooks', 'none-hired'], coversCaterer: true, otherVendors: ['other vendors'], labelWithoutCaterer: 'Pay remaining vendor balances; prep tip envelopes', milestoneId: 'w_finalcount', phase: 'vendor', label: 'Give caterer FINAL headcount; pay remaining vendor balances; prep tip envelopes', when: 'T-14d' },
     { id: 't_runofshow', target: 'build-day', facts: [], milestoneId: 'w_runofshow', phase: 'planning', label: 'Send run-of-show to every vendor; confirm arrival times; DECIDE the rain plan', when: 'T-7d' },
     { id: 't_rehearsal', target: 'list', facts: [], milestoneId: 'w_rehearsal', phase: 'setup', label: 'Rehearsal + dinner; pack emergency kit; stage welcome bags, favors, signage, seating cards', when: 'T-1d' },
     { id: 't_dayof', target: 'day', facts: [], milestoneId: 'event', phase: 'event', label: 'Hair/makeup → first look → ceremony → cocktail → reception → toasts → first dance → cake → send-off', when: 'T0' },

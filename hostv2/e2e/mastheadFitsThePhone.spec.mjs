@@ -40,13 +40,19 @@ const base = {
   budget: [], vendors: [], guests: [],
 };
 
+// THE MASTHEAD MOVED (owner ruling 1, 11/23/2026): the phone wears the tall
+// header (date line, the title, the type line when it adds), not the ☰
+// eyebrow. The same facts are read from it: `text` is the header's words,
+// uppercased as the eyebrow printed them, and `lines` is the TITLE's lines,
+// the one long string left on it.
 const masthead = (page) => page.evaluate(() => {
-  const el = document.querySelector('.eb-text');
+  const head = document.querySelector('[data-tt-head]');
+  const el = head && head.querySelector('.tt-name');
   if (!el) return null;
   const cs = getComputedStyle(el);
   const r = el.getBoundingClientRect();
   return {
-    text: el.innerText.replace(/\s+/g, ' ').trim(),
+    text: head.innerText.replace(/\s+/g, ' ').trim().toUpperCase(),
     lines: Math.round(r.height / parseFloat(cs.lineHeight || cs.fontSize)),
   };
 });

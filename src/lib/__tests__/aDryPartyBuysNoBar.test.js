@@ -80,7 +80,17 @@ describe.each(DRY)('%s, %s: "%s"', (type, decId, pick) => {
   test('the alcohol-free lines stay: everything a non-dry pick buys except the bar', () => {
     const other = getPlaybook(type).decisions.find((d) => d.id === decId).options
       .find((o) => o !== pick && !/byob|bring/i.test(o));
-    const kept = drinks(plan(type, { [decId]: other })).filter((l) => !ALCOHOL.test(names(l)) && !/\b(mixers?|bar)\b/i.test(l.item));
+    const otherRows = drinks(plan(type, { [decId]: other }));
+    // Batch 4 (owner, 11/24/2026): a combined bar line ("Beer, sweet tea, soda,
+    // water") split into one line per drink, and the soft drinks are parts of
+    // the bar line, so they leave with it. The dry pick must still buy each of
+    // those drinks on a line of its own (Low Country Boil's p_tea_dry, …).
+    const byId = new Map(otherRows.map((l) => [l.id, l]));
+    const partOfBar = (l) => l.pricedWith && byId.has(l.pricedWith) && ALCOHOL.test(names(byId.get(l.pricedWith)));
+    const kept = otherRows.filter((l) => !ALCOHOL.test(names(l)) && !/\b(mixers?|bar)\b/i.test(l.item) && !partOfBar(l));
     expect(rows.map((l) => l.id)).toEqual(expect.arrayContaining(kept.map((l) => l.id)));
+    const drink = (l) => String(l.item).split('(')[0].trim().toLowerCase().split(/\s+/).pop();
+    const softFromBar = otherRows.filter((l) => partOfBar(l) && !ALCOHOL.test(names(l)));
+    expect(softFromBar.filter((l) => !rows.some((r) => r.item.toLowerCase().includes(drink(l)))).map((l) => l.item)).toEqual([]);
   });
 });

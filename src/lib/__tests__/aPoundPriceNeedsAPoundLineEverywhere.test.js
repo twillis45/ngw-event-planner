@@ -89,7 +89,8 @@ describe('door 3 — the sourcing card', () => {
     // here does not sit beside the right one: it IS the answer.
     const p = plan({});
     expect(p.sourcingKey).toBeTruthy();
-    expect(p.sourcingKey.item).toBe('Meatballs & sliders');
+    // Batch 4 (owner, 11/24/2026): "Meatballs & sliders" split; the key protein is the meatballs line.
+    expect(p.sourcingKey.item).toBe('Meatballs');
     expect(p.sourcingKey.byTier).toEqual({ butcher: 158, costco: 134, grocery: 186 });
   });
 });

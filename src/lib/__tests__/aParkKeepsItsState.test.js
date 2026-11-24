@@ -45,6 +45,6 @@ describe('creation saves the state it heard', () => {
     expect(townFieldsToPersist('Annapolis', p)).toEqual({ venueCity: '', cityHeard: 'Annapolis' });
   });
   test('a ZIP is a ZIP', () => {
-    expect(townFieldsToPersist('21401', {})).toEqual({ venueCity: '21401' });
+    expect(townFieldsToPersist('21401', {})).toEqual({ venueCity: '21401', venueZip: '21401' });
   });
 });

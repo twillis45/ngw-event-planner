@@ -28,8 +28,7 @@ const boot = async (page) => {
 const openPlan = async (page) => {
   await openSectionByName(page, 'The spread & shopping');
   const sheet = page.locator('.sheet').last();
-  const plan = sheet.locator('.fmode', { hasText: /^Plan$/ });
-  if (await plan.count()) await plan.first().click();
+  // One food page (owner, 11/24/2026): no Plan tab; Your choices is on the page.
   await settled(page);
   return sheet;
 };
@@ -37,7 +36,8 @@ const openPlan = async (page) => {
 test('the Plan does not re-ask the booked hall, and counts like the hero', async ({ page }) => {
   await boot(page);
   const sheet = await openPlan(page);
-  const row = sheet.locator('.fstat', { hasText: 'Your choices' }).first();
+  // The menu's row in Your choices (it was the "Your choices" row on the Plan tab).
+  const row = sheet.locator('[data-food-section="choices"] .fstat', { hasText: 'Menu' }).first();
   await expect(row).toBeVisible();
   const value = ((await row.innerText()) || '').replace(/\s+/g, ' ');
   // Four authored menu calls, one settled by the booked hall: never "4 open".

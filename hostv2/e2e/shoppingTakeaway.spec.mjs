@@ -35,7 +35,7 @@ const boot = async (page) => {
 // The section door opens on Plan while a menu question is open (foodSheetKind);
 // the shopping list and its copy action are on Shop, so tap Shop.
 const tapShop = async (page) => {
-  await page.locator('.sheet').last().locator('.fmode', { hasText: /^Shop$/ }).first().click({ timeout: 8000 });
+  // One food page (owner, 11/24/2026): no Shop tab, and the list is always open.
 };
 
 /** Open the food sheet, then drill into the list itself. */

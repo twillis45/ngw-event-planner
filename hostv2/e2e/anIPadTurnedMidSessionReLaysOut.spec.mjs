@@ -80,13 +80,15 @@ const seed = async (page, which) => {
 const state = (page) => page.evaluate(() => {
   const mq = (w) => matchMedia(`(min-width:${w}px)`).matches;
   const sw = document.querySelector('.stagewrap');
-  // The tall iPad (owner, 11/22/2026): a tablet band held in portrait has no
-  // rail. Both halves are the engine's own answers, as the band is.
+  // The tall iPad (owner, 11/22/2026): a tablet band held in portrait. Both
+  // halves are the engine's own answers, as the band is.
   const cssTall = mq(640) && !mq(1280) && matchMedia('(orientation: portrait)').matches;
   return {
     cssBand: mq(1280) ? 'desktop' : mq(1024) ? 'tablet-land' : mq(640) ? 'tablet' : 'mobile',
     bp: sw.dataset.bp, rail: sw.dataset.rail, tall: sw.dataset.tall === '1', cssTall,
-    cssRail: mq(1024) && !cssTall, metaWrites: window.__metaWrites,
+    // The rail from 1024 in either orientation: a portrait tablet that wide
+    // keeps the tall board AND the rail (owner ruling 8, 11/23/2026).
+    cssRail: mq(1024), metaWrites: window.__metaWrites,
   };
 });
 

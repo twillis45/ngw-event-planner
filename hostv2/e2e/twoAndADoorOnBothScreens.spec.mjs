@@ -11,7 +11,10 @@ import { test, expect, settled, sheetSettled } from './fixtures.mjs';
 
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
-  const el = [...document.querySelectorAll('button,[role="button"],a')]
+  // Inside the open sheet when there is one: the phone's pill has its own
+  // "Plan" (owner ruling 4, 11/23/2026), and these taps mean the sheet's.
+  const root = [...document.querySelectorAll('.sheet')].pop() || document;
+  const el = [...root.querySelectorAll('button,[role="button"],a')]
     .find((x) => rx.test((x.innerText || x.textContent || '').trim()));
   if (!el) return null;
   el.click();

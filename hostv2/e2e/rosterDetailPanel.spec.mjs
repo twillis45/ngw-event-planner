@@ -43,7 +43,7 @@ test.describe('the roster detail panel at desktop', () => {
 
   test('an opened guest renders BESIDE the list, and the list stays a table', async ({ page }) => {
     await boot(page);
-    await page.getByRole('button', { name: /^Guests$/ }).first().click();
+    await page.getByRole('button', { name: /^Guests & invite$/ }) /* the door's name since 11/24/2026 (owner); was /^Guests$/ */.first().click();
     await settled(page);
 
     const roster = page.locator('.roster');

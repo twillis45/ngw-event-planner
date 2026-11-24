@@ -28,10 +28,9 @@ const boot = async (page) => {
 
 test('the potluck sides are friends\' dishes: under Bringing, each one asks who brings it', async ({ page }) => {
   await boot(page);
-  const bringing = page.getByRole('tab', { name: /^Bringing · \d+$/ });
+  // One food page (owner, 11/24/2026): Bringing is a section of it, not a tab.
+  const bringing = page.locator('.sheet').last().locator('[data-food-section="bringing"]');
   await expect(bringing).toBeVisible();
-  await bringing.click();
-  await settled(page);
   const sheet = page.locator('.sheet').last();
   await expect(sheet).toContainText('Your friends are bringing these dishes. You are buying the rest.');
   for (const dish of ['Green beans', 'Sweet potatoes', 'Mac and cheese', 'Cranberry sauce', 'Stuffing']) {

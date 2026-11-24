@@ -122,3 +122,135 @@ describe('rewording a line keeps its term (the drift that cost the turkey)', () 
     expect(storeSearchTerm({ id: 'p_drinks', item: 'Something new' })).toBe(null);
   });
 });
+
+// ─── NO SHOPPING LINE COMBINES ITEMS (owner ruling 11/23/2026, batch 4) ─────
+//
+// #240 split Thanksgiving's and Friendsgiving's combined lines ("Rolls &
+// butter") so each product has its own store term. The other playbooks kept
+// lines like "Plates, cups, napkins, cutlery" that search the store for the
+// plates alone. A line combines items when its NAME (the text outside any
+// parentheses, before a "for …" purpose) joins products with "&", "+", "and",
+// ";" or a comma list. "A, B or C" is a choice, one purchase, not a list; a
+// "/" is an alternative. Examples in parentheses are examples, not the line.
+const SINGLE_PRODUCT_PHRASES = [
+  /\bmac(?:aroni)? (?:&|and) cheese\b/gi,         // one dish
+  /\bhalf and half\b/gi,                           // one dairy product
+  /\btrash (?:\+|and) recycling bags\b/gi,         // one class of bag (storeUnitMap: "trash and recycling bags are one class")
+  /\bburger \+ hot dog buns\b/gi,                  // one class of bun (storeUnitMap: "burger AND hot dog buns are one class")
+  /\brice and peas\b/gi,                           // one Caribbean dish
+];
+const lineName = (item) => {
+  let s = String(item || '').replace(/\([^)]*\)/g, ' ');
+  for (const re of SINGLE_PRODUCT_PHRASES) s = s.replace(re, 'one');
+  return s.split(/\s+for\s+/i)[0].replace(/\s+/g, ' ').trim();
+};
+const combinesItems = (item) => {
+  const n = lineName(item);
+  if (/\s&\s|\+|\band\b|;/i.test(n)) return true;
+  if (n.includes(',')) return !/,?\s+or\s+[^,]+$/i.test(n);
+  return false;
+};
+
+// Lines that read as combined and are not split, each with its reason.
+const NOT_SPLIT = {
+  'p_greencoffee\u0000Green coffee beans — Ethiopian, unroasted (roasted live at the ceremony)': 'one product; the commas describe the beans',
+  'p_flutes\u0000Flutes (glass or good plastic), counted to the headcount plus spares': 'one product; the comma introduces how many',
+  'p_roast_veg\u0000Roasted vegetables in oil, no butter (Brussels sprouts or squash: the real vegan dish)': 'one dish; the comma says how it is cooked',
+  'p_libation\u0000Libation + unity-cup pour (juice, cider, or wine)': 'one drink poured twice: the libation and the unity cup are the same bottle',
+  'p_kids_drinks\u0000Juice and kids\' drinks (the non-alcoholic spread)': 'one product: the kids\' drinks are the juice boxes',
+};
+// THE VEGETARIAN MAIN (owner, 11/24/2026): a plate of two dishes joined by
+// "+" or "plus" ("Stuffed peppers + grilled veg platter") is two lines, the
+// dish and its side (diet-veg_side). A single named dish whose name carries
+// an "and" ("Mushroom & lentil wellington", "Roasted vegetable & goat cheese
+// tart") is one dish, one line.
+const VEG_DISH_JOINER = /\s\+\s|\splus\s/i;
+const notSplitReason = (l) => {
+  if (l.id === 'diet-veg' || l.id === 'diet-veg_side') {
+    return VEG_DISH_JOINER.test(l.item) ? null : 'one named vegetarian dish; its "and" is part of the dish\'s name';
+  }
+  return NOT_SPLIT[`${l.id}\u0000${l.item}`] || null;
+};
+// SPARKLING (owner ruling 11/23/2026, A): only Thanksgiving's sparkling line
+// stays whole; every other sparkling line splits like any combined line.
+// Thanksgiving's is one product already, so it needs no waiver; this pins it.
+const THANKSGIVING_SPARKLING = { id: 'p_cider', item: 'Sparkling cider (for kids and non-drinkers)', why: 'owner ruling 11/23/2026: Thanksgiving\'s sparkling line stays whole' };
+
+describe('no shopping line in any playbook combines items', () => {
+  test('(premise) the rule reads a list as combined and a choice, an alternative or one dish as one line', () => {
+    for (const s of ['Plates, cups, napkins, cutlery', 'Beer + wine', 'Rolls & butter', 'Wine and beer (only if the bar is self-supplied)', 'Trash + recycling bags, paper towels, wipes', 'Cleanup kit — trash/recycling bags, paper towels; broom']) {
+      expect([s, combinesItems(s)]).toEqual([s, true]);
+    }
+    for (const s of ['Mac and cheese (the elbow macaroni)', 'Beef, chicken or salmon (for a seated dinner — plus a veg main)', 'Charcoal / propane', 'Turkey (whole bird, or breast for a small table)', 'Ice for drinks and bar service', 'Trash and recycling bags', 'Half and half or cream for the mash']) {
+      expect([s, combinesItems(s)]).toEqual([s, false]);
+    }
+  });
+
+  test('EVERY line the store lookup sends names one product, or says why it is not split', () => {
+    const combined = LINES.filter((l) => combinesItems(l.item) && !notSplitReason(l))
+      .map((l) => `${[...l.types].join(', ')} · ${l.id} · ${l.item}`);
+    expect(combined).toEqual([]);
+  });
+
+  test('Thanksgiving\'s sparkling line stays whole (owner ruling 11/23/2026), and it is the only one left', () => {
+    const tg = LINES.find((l) => l.id === THANKSGIVING_SPARKLING.id && l.types.has('Thanksgiving Hosting') && /sparkling/i.test(l.item));
+    expect(tg && tg.item).toBe(THANKSGIVING_SPARKLING.item);
+    expect(LINES.filter((l) => /sparkling/i.test(l.item) && combinesItems(l.item)).map((l) => l.item)).toEqual([]);
+  });
+
+  test('no stale waiver: every line kept whole still exists and still reads as combined', () => {
+    const keys = new Set(LINES.map((l) => `${l.id}\u0000${l.item}`));
+    expect(Object.keys(NOT_SPLIT).filter((k) => !keys.has(k) || !combinesItems(k.split('\u0000')[1]))).toEqual([]);
+  });
+});
+
+// ── A SPLIT PART SHARES ITS DISH'S PRICE, AND SAYS SO ─────────────────────────
+// Splitting a line must not invent a price (owner rule, 11/22/2026). A part
+// split from a combined line in batch 4 has no price of its own: it declares
+// `pricedWith` its main line, whose authored band (and citation) still covers
+// the whole set, so every playbook's total is what it was. The main says what
+// its price covers; the part says where its price is. `partOf` rolls the part
+// up with its dish (#240): brought, skipped or taken back together.
+const plansOf = () => {
+  const out = [];
+  for (const pb of ALL_PLAYBOOKS) {
+    const base = { id: 'x', type: pb.type, date: '2026-11-26', guestMode: 'count', guestCount: 20, guests: [] };
+    out.push([pb.type, playbookFoodPlan(base)]);
+    for (const d of (pb.decisions || [])) for (const o of (d.options || [])) {
+      const pick = typeof o === 'string' ? o : (o && (o.label || o.value));
+      if (pick) out.push([pb.type, playbookFoodPlan({ ...base, foodChoices: { [d.id]: pick } })]);
+    }
+  }
+  return out;
+};
+describe('a part priced with its dish', () => {
+  const PLANS = plansOf();
+  const parts = PLANS.flatMap(([type, fp]) => ((fp && fp.list) || []).filter((l) => l && l.pricedWith).map((l) => [type, fp, l]));
+
+  test('(premise) the split parts are in the plans', () => {
+    expect(parts.length).toBeGreaterThan(300);
+  });
+
+  test('carries no price of its own, rolls up with its main line, and both say where the price is', () => {
+    const bad = [];
+    for (const [type, fp, l] of parts) {
+      const main = fp.list.find((m) => m && m.id === l.pricedWith);
+      const at = `${type} · ${l.id}`;
+      if (!main) { bad.push(`${at}: its main ${l.pricedWith} is not on the list`); continue; }
+      if (l.partOf !== l.pricedWith) bad.push(`${at}: partOf ${l.partOf} is not its main`);
+      if (Number(l.low) || Number(l.high)) bad.push(`${at}: priced ${l.low}-${l.high}`);
+      if (!/^Priced with the /.test(l.priceNote || '')) bad.push(`${at}: priceNote "${l.priceNote}"`);
+      if (!(main.priceCovers || []).includes(l.id)) bad.push(`${at}: its main does not list it`);
+      if (!/^Price covers the /.test(main.priceNote || '')) bad.push(`${at}: main priceNote "${main.priceNote}"`);
+    }
+    expect(bad).toEqual([]);
+  });
+
+  test('a skipped main takes its parts off the list with it', () => {
+    const [type, , l] = parts.find(([t]) => t === 'Birthday');
+    const pb = ALL_PLAYBOOKS.find((p) => p.type === type);
+    const fp = playbookFoodPlan({ id: 'x', type: pb.type, date: '2026-11-26', guestMode: 'count', guestCount: 20, guests: [], foodSkip: { [l.pricedWith]: true } });
+    const part = fp.list.find((x) => x.id === l.id);
+    expect(part && part.skipped).toBe(true);
+  });
+});

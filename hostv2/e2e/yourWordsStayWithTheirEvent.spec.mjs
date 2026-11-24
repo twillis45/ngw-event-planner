@@ -6,7 +6,10 @@
 //
 // Self-pinned (390px, runs once): the event switch below is the phone path —
 // the masthead opens "Jump to", and "This event" inside it opens the list.
-import { test, expect, openSectionByName } from './fixtures.mjs';
+import { test, expect, openSectionByName, openEventsSheet } from './fixtures.mjs';
+
+// The board's header (the tall header on a phone since owner ruling 1, 11/23/2026).
+const HEAD = '[data-tt-head] [data-tt-title], .ev-eyebrow';
 
 const MARK = 'ZQX words typed for the first event only';
 
@@ -31,9 +34,8 @@ const boot = async (page) => {
 
 const openShoppingDraft = async (page) => {
   await openSectionByName(page, 'spread');
-  // The section door opens on Plan while a menu question is open
-  // (foodSheetKind); the copy action is on Shop, so tap Shop.
-  await page.locator('.sheet').last().locator('.fmode', { hasText: /^Shop$/ }).first().click({ timeout: 10_000 });
+  // One food page, no tabs (owner, 11/24/2026, 0a5dc641): the copy action
+  // sits at the list's head on the same page. Was: tap the Shop tab first.
   const copy = page.locator('.sheet').last().getByText('Copy the shopping list').first();
   await copy.click({ timeout: 10_000 });
   await expect(page.locator('#sheet-title')).toHaveText(/shopping list/i, { timeout: 8000 });
@@ -62,12 +64,11 @@ test("a host's typed words stay with the event she typed them for", async ({ pag
   await closeAllSheets(page);
 
   // Switch to a different event, the phone way.
-  const before = (await page.locator('.ev-eyebrow').first().innerText()).trim();
-  await page.locator('.ev-eyebrow').first().click();
-  await page.locator('.navrow', { hasText: 'This event' }).first().click();
+  const before = (await page.locator(HEAD).first().innerText()).trim();
+  await openEventsSheet(page);
   await expect(page.getByRole('heading', { name: 'Your events' })).toBeVisible({ timeout: 15000 });
   await page.locator('.sheet .frow').filter({ hasNotText: 'current' }).first().click();
-  await expect.poll(async () => (await page.locator('.ev-eyebrow').first().innerText()).trim(),
+  await expect.poll(async () => (await page.locator(HEAD).first().innerText()).trim(),
     { timeout: 10_000, message: 'premise: the event really changed' }).not.toBe(before);
   await closeAllSheets(page);
 

@@ -92,6 +92,9 @@ test('a party at home is not asked "at home, a restaurant, or the workplace?"', 
   const sheet = page.locator('.sheet').last();
   const rest = sheet.getByText(/show the rest/i);
   if (await rest.count()) await rest.first().click();
+  // The decided calls are one green row until reopened (DoneFold, owner 11/24/2026).
+  const fold = page.locator('.sheet').last().locator('[data-done-fold]', { hasText: /Settled · all \d+ decided/ });
+  if (await fold.count()) { await fold.click(); await page.waitForTimeout(300); }
   // Not among the open calls; filed under Settled, answered by "Your place".
   const text = await sheet.innerText();
   const [openPart, settledPart = ''] = text.split(/\nSettled\n/i);

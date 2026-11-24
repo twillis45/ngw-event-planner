@@ -571,14 +571,17 @@ for (const state of STATES) {
         // bar. The same two claims, from inside: at the reserved height the
         // handle sits above the bar; content-sized, it is still the escreen's
         // last thing, with nothing after it but the escreen's own padding.
-        if (await page.locator('[data-tt-bar]').count()) {
+        // The tall board (both portrait iPads) and the phone's pill (owner
+        // ruling 7, 11/23/2026) put the handle inside the first screen; the 13"
+        // has no bar since ruling 8, so the screen's foot stands in for it.
+        if (await page.locator('.stagewrap[data-tall="1"], .stagewrap[data-pill="1"]').count()) {
           const t = await page.evaluate(() => {
             const esc = document.querySelector('.escreen.on');
             const fold = esc && esc.querySelector('.efold');
             const e = esc.getBoundingClientRect(); const f = fold ? fold.getBoundingClientRect() : null;
             return { escH: e.height, escBottom: e.bottom, minH: parseFloat(getComputedStyle(esc).minHeight),
               pad: parseFloat(getComputedStyle(esc).paddingBottom), foldBottom: f ? f.bottom : null,
-              barTop: document.querySelector('[data-tt-bar]').getBoundingClientRect().top };
+              barTop: document.querySelector('[data-tt-bar]') ? document.querySelector('[data-tt-bar]').getBoundingClientRect().top : innerHeight };
           });
           expect(t.foldBottom, 'the handle is inside the first screen').not.toBeNull();
           if (t.escH <= t.minH + 1) expect(t.foldBottom, `reserved height (${Math.round(t.escH)}px): the handle is above the bar`).toBeLessThanOrEqual(t.barTop);

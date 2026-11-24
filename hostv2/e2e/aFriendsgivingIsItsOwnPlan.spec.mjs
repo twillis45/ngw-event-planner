@@ -42,10 +42,7 @@ test('typed in one sentence, a Friendsgiving becomes a potluck plan, not a famil
   // assigned, so they are not the host's buys.
   await openSectionByName(page, 'The spread & shopping');
   const spread = page.locator('.sheet').last();
-  const shopTab = spread.locator('.fmode', { hasText: /^Shop$/ }).first();
-  if (await shopTab.count()) { await shopTab.click(); await settled(page); }
-  await spread.getByRole('button', { name: /^The list/ }).click();
-  await settled(page);
+  // One food page (owner, 11/24/2026): no Plan/Shop tabs, and the list is always open.
   // The list is grouped; open the Food and Supplies groups to reach the rows.
   for (const group of [/^Food.*bought/, /^Supplies.*bought/]) {
     await spread.getByRole('button', { name: group }).first().click();

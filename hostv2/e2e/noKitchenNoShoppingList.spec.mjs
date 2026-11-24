@@ -98,7 +98,8 @@ test('(premise) a whole-home rental really does render the shopping list', async
   await openList(page, 'A house we rent for everyone');
   const t = await bodyText(page);
   expect(t).not.toMatch(/no kitchen to cook in/i);
-  expect(t).toMatch(/Drinks 0 of 3 bought/i);
+  // Batch 4 (owner, 11/24/2026): Birthday's soft drinks split into soft drinks, juice and water: 3 -> 5.
+  expect(t).toMatch(/Drinks 0 of 5 bought/i);
   expect(t).toMatch(/SHOPPING AT/i);
 });
 
@@ -163,7 +164,8 @@ test('NEGATIVE CONTROL: an UNTOLD kitchen still ships the list', async ({ page }
   await openList(page, null);
   const t = await bodyText(page);
   expect(t).not.toMatch(/no kitchen to cook in/i);
-  expect(t).toMatch(/Drinks 0 of 3 bought/i);
+  // Batch 4 (owner, 11/24/2026): Birthday's soft drinks split into soft drinks, juice and water: 3 -> 5.
+  expect(t).toMatch(/Drinks 0 of 5 bought/i);
   expect(t).toMatch(/estimate, all in/i);
 });
 
