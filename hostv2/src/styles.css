@@ -2790,7 +2790,12 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    letterpressed copy; embossed crest cut from the artwork's own silhouette;
    one light source, upper-left. Two stocks: cream and deep charcoal. ── */
 .inv2-sheet{
-  --hue:#D9622B; --hue-deep:#B84E1E; --stock-ink:#241f18; --stock-sub:#62626d;
+  /* --hue-deep is the TEXT accent (labels, links, the Yes fill). #B84E1E
+     measured 4.27:1 on the sheet's foot (#f2ebdc), under 4.5:1 (11/24/2026);
+     #9c4426 is the same rust, deeper: 5.41:1 there, 4.75:1 where the foot is
+     shaded darkest. --hue (rule, ornaments) is unchanged.
+     Guarded by test/theInviteLabelsClearTheirPaper.test.mjs. */
+  --hue:#D9622B; --hue-deep:#9c4426; --stock-ink:#241f18; --stock-sub:#62626d;
   position:relative; border-radius:22px; padding:20px 20px 18px; overflow:hidden;
   display:flex; flex-direction:column; min-height:calc(852px - 132px);
   color:#1a1a1a;
@@ -3043,7 +3048,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    a friend") rendered in the app's steel on the cream card, the only steel on
    the stationery. Secondary buttons take the reply chips' engraved treatment;
    primaries take the same fill as the "Yes" button, so the card has one primary
-   color. Contrast measured: white on #B84E1E 5.06:1, #16181b on #d99a63
+   color. Contrast measured: white on #9c4426 6.43:1 (was #B84E1E, 5.06:1), #16181b on #d99a63
    7.41:1, white on the somber #6f6152 5.99:1. */
 .inv2 .inv2-sheet .mini{ background:rgba(255,255,255,.55); border:1.5px solid rgba(196,178,148,.6); color:var(--stock-ink);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.72), inset 0 -1px 1px rgba(120,96,60,.10); }

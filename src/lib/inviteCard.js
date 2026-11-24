@@ -24,7 +24,7 @@ import { hostNameFor } from './hostNameFor';
 // The page's stationery colors (hostv2 styles.css .inv2-sheet, .inv2-dark,
 // .inv2-muted), verbatim.
 export const CARD_COLORS = {
-  light: { hue: '#D9622B', hueDeep: '#B84E1E', ink: '#241f18', sub: '#62626d', paper: 'light' },
+  light: { hue: '#D9622B', hueDeep: '#9c4426', ink: '#241f18', sub: '#62626d', paper: 'light' },
   muted: { hue: '#8a7a66', hueDeep: '#6f6152', ink: '#241f18', sub: '#62626d', paper: 'light' },
   dark:  { hue: '#d99a63', hueDeep: '#c9854f', ink: '#e4dbc6', sub: '#a89f8e', paper: 'dark', body: '#ece5d8' },
 };
