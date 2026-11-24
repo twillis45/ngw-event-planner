@@ -128,7 +128,7 @@ import { afterOwed } from '@app/lib/afterOwed';
 import { eventDatesPatch, eventSpanLabel, eventStartTimePatch } from '@app/lib/eventDates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
-import { taskLeadDays, taskDueLabel, taskIsOverdue, taskWindowClosed } from '@app/lib/taskLead';
+import { taskLeadDays, taskDueLabel, taskIsOverdue, taskWindowClosed, planningStepAfterTheDay } from '@app/lib/taskLead';
 // playbookDayOfChecklist was a finished engine with ZERO hostv2 imports — the
 // frozen CRA rendered it and the shipping shell never did (audit 2026-08-21).
 import { playbookDayOfChecklist } from '@app/lib/playbooks';
@@ -7755,58 +7755,36 @@ export default function HostShellV2() {
     reopened.isOpen('tasks:dinner', dinnerDone); // seen every render, so an undone step drops the reopen
     const open = (event.timeline || []).map((t, i) => ({ t, i })).filter((x) => x.t && !x.t.done && !x.t.retired);
     const now = new Date();
-    const phases = checklistPhases(event, open, now);
-    const next = upNextStep(phases, (t) => isTimelineStepResolved(t));
+    // The dinner's steps stay ONE group: the whole open group sits in the phase
+    // of its earliest step (owner, 11/24/2026: "one group under the dinner").
+    const phases = (() => {
+      const ps = checklistPhases(event, open, now);
+      const home = ps.find((p) => p.rows.some((r) => dinnerIds.has(r.t.id)));
+      if (!home) return ps;
+      const moved = [];
+      for (const p of ps) {
+        if (p === home) continue;
+        moved.push(...p.rows.filter((r) => dinnerIds.has(r.t.id)));
+        p.rows = p.rows.filter((r) => !dinnerIds.has(r.t.id));
+      }
+      home.rows = [...home.rows, ...moved];
+      return ps.filter((p) => p.rows.length);
+    })();
+    // Up next is never a step the plan already handled, nor, once the day has
+    // passed, a step whose job was to get the day ready (rule 13: it fits the
+    // moment; taskLead.planningStepAfterTheDay, the label's own reader).
+    const next = upNextStep(phases, (t) => isTimelineStepResolved(t) || planningStepAfterTheDay(t, event, now));
     const out = [];
-    if (next) {
-      const t = next.t; const i = next.i;
-      const { lead, detail } = splitTask(t.task);
-      const action = checklistActionFor(t.task, { taskId: t.id, week: t.week, category: t.category });
-      const ownerName = String(t.owner || '').trim();
-      const who = ownerName ? (isHostName(ownerName) ? 'Who has it: you' : `Who has it: ${ownerName}`) : 'Nobody has this yet';
-      const w = stepWhen(t, event, now);
-      let late = '';
-      try { late = w.dueIn != null && w.dueIn <= 0 ? (taskDueLabel(t, event) || '') : ''; } catch (_e) { late = ''; }
-      const whenText = w.key === 'nodate' ? (t.week || '') : [stepDateText(w.due), late].filter(Boolean).join(' · ');
-      out.push(
-        <div className="ck-next" data-up-next key="up-next">
-          <div className="sect"><h2>Up next</h2><div className="rule" />{whenText ? <span className="when">{whenText}</span> : null}</div>
-          <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
-            <div className="f-name ck-next-name">{lead}</div>
-            {detail ? <p className="v-meta" style={{ whiteSpace: 'normal', margin: '6px 0 0' }}>{detail}</p> : null}
-            <p className="v-meta" style={{ margin: '6px 0 12px' }}>{who}</p>
-            <button type="button" className="cta" style={{ width: '100%' }} data-up-next-go
-              onClick={() => (action ? action.go() : toggleTask(i))}>{action ? action.label : 'Check it off'}</button>
-            <div className="actions-row ck-next-more">
-              {action && <button type="button" className="mini" onClick={() => toggleTask(i)}>Check it off</button>}
-              {assignablePeople.length > 0 && (
-                <button type="button" className="mini" onClick={() => setAssignFor(assignFor === t.id ? null : t.id)}>
-                  {ownerName && !isHostName(ownerName) ? 'Change who has it' : 'Give this to someone'}
-                </button>
-              )}
-            </div>
-            {assignFor === t.id && (
-              <div className="assign-pick" role="group" aria-label={`Who has ${lead}`}>
-                {assignablePeople.map((p) => (
-                  <button key={p.name} className={'assign-opt' + (p.name === ownerName ? ' on' : '')} onClick={() => assignTask(t.id, p.name)}>
-                    <span className="assign-who">{p.name}</span>
-                    <span className="assign-why">{p.why}</span>
-                  </button>
-                ))}
-                {ownerName && (
-                  <button className="assign-opt" onClick={() => assignTask(t.id, '')}><span className="assign-who">Nobody — I'll do it</span></button>
-                )}
-              </div>
-            )}
-          </div></div>
-        </div>,
-      );
-    }
+    if (next) out.push(renderRow(next.t, next.i, 'next'));
     const rest = phases.map((p) => ({ ...p, rows: p.rows.filter((r) => !next || r.t !== next.t) })).filter((p) => p.rows.length);
     const focusPhase = sheet.focus ? (rest.find((p) => p.rows.some((r) => r.t.id === sheet.focus)) || {}).key : null;
+    // The current phase is the first that holds a step that can still happen;
+    // after the day, that is "After the party", not a month of steps whose
+    // window passed with the day (rule 13).
+    const curIdx = Math.max(0, rest.findIndex((p) => p.rows.some((r) => !planningStepAfterTheDay(r.t, event, now))));
     rest.forEach((p, k) => {
       const pk = `${event.id}|${p.key}`;
-      const current = k === 0;
+      const current = k === curIdx;
       const isOpen = current || !!ckOpenPhases[pk] || p.key === focusPhase;
       const handedOff = p.rows.filter((r) => { const o = String(r.t.owner || '').trim(); return o && !isHostName(o); }).length;
       const rows = [];
@@ -23719,7 +23697,7 @@ export default function HostShellV2() {
                       report line (tap to review) — same green-dot semantics as
                       the handled sections everywhere else. */}
                   <Panel on={panels}>
-                  {renderChecklistPhases((t, i) => {
+                  {renderChecklistPhases((t, i, mode) => {
                     // A RETIRED row is off the open list. The reconcile marks a
                     // row retired when the gate that authored it closes — pick
                     // "steam them myself" and the two crab-house pickup rows
@@ -23763,7 +23741,7 @@ export default function HostShellV2() {
                     })();
                     const rowMeta = [dueBits, ownerName ? (hostHolds ? 'Yours' : ownerName) : ''].filter(Boolean).join(' · ');
                     const rowBtn = (
-                    <div className={'frow step-line' + (inferred ? ' got' : '') + (focusedRow ? ' rowfocus' : '')}>
+                    <div className={'frow step-line' + (inferred ? ' got' : '') + (focusedRow ? ' rowfocus' : '')} style={{ animation: rowEnter(i) }}>
                       <button type="button" className="step-ck" data-step-check
                         aria-label={inferred ? `Confirm ${lead} is done` : `Check off ${lead}`}
                         onClick={() => toggleTask(i)}>
@@ -23865,9 +23843,10 @@ export default function HostShellV2() {
                         )}
                       </>
                     ) : null;
+                    const asNext = mode === 'next';
                     const assignEl = assignablePeople.length && !(inferred && !owner) ? (
                       <div className="row-assign" key={(t.id || i) + '-assign'}>
-                        {actionEl}
+                        {asNext ? (photosLine ? <span className="row-act"><button type="button" className="mini rowlink row-quiet" data-row-photos onClick={() => setSheet({ kind: 'guests', focus: 'photos' })}>{photosLine} →</button></span> : null) : actionEl}
                         <button className="mini rowlink assign-btn"
                           aria-label={owner && !hostHolds
                             ? `${owner} has ${lead2}, ${rStatus}. Change who has this.`
@@ -23949,7 +23928,9 @@ export default function HostShellV2() {
                           </div>
                         )}
                       </div>
-                    ) : (actionEl ? <div className="row-assign" key={(t.id || i) + '-act'}>{actionEl}</div> : null);
+                    ) : (!asNext && actionEl ? <div className="row-assign" key={(t.id || i) + '-act'}>{actionEl}</div>
+                      : asNext && photosLine ? <div className="row-assign" key={(t.id || i) + '-act'}><span className="row-act"><button type="button" className="mini rowlink row-quiet" data-row-photos onClick={() => setSheet({ kind: 'guests', focus: 'photos' })}>{photosLine} →</button></span></div>
+                      : null);
                     const checkOff = (
                       <div className="row-assign step-done-row">
                         <button type="button" className="mini rowlink" data-step-checkoff onClick={() => toggleTask(i)}>{inferred ? 'Confirm it’s done' : 'Check it off'}</button>
@@ -23962,12 +23943,28 @@ export default function HostShellV2() {
                     );
                     const stepWrap = (inner) => (
                       <div key={(t.id || i) + '-step'} className="step-row" data-step-row={t.id || i}
-                        ref={scrollIntoViewOnOpen(focusedRow)} style={{ animation: rowEnter(i) }}>
+                        data-step-action={action ? action.label : undefined}
+                        ref={scrollIntoViewOnOpen(focusedRow)}>
                         {rowBtn}
                         {isOpenStep && <div className="step-open" data-step-open>{openTop}{whoLine}{inner}{checkOff}</div>}
                       </div>
                     );
-                    if (!isCvbRow) return stepWrap(assignEl);
+                    // UP NEXT is this same step, opened, with its route as the sheet's
+                    // one lit button (or "Check it off" when it declares none, D4).
+                    const nextCard = (inner) => (
+                      <div key="up-next" className="ck-next" data-up-next data-step-action={action ? action.label : undefined}>
+                        <div className="sect"><h2>Up next</h2><div className="rule" />{dueBits ? <span className="when">{dueBits}</span> : null}</div>
+                        <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
+                          <div className="f-name ck-next-name">{lead}</div>
+                          {openTop}{whoLine}
+                          <button type="button" className="cta" style={{ width: '100%' }} data-up-next-go data-row-action={action ? '' : undefined}
+                            onClick={() => (action ? action.go() : toggleTask(i))}>{action ? action.label : 'Check it off'}</button>
+                          <div className="ck-next-more">{inner}{action ? checkOff : null}</div>
+                        </div></div>
+                      </div>
+                    );
+                    const place = (inner) => (asNext ? nextCard(inner) : stepWrap(inner));
+                    if (!isCvbRow) return place(assignEl);
                     // ── The bureau brief — sibling of the row (inputs can't live
                     // inside a <button>). Contact is host-entered; every ask link
                     // is an honestly-labeled find link scoped to the destination;
@@ -23980,9 +23977,9 @@ export default function HostShellV2() {
                       patchEvent({ cvb: { ...(event.cvb || {}), ...c } }, 'Bureau contact saved — it rides this row now.');
                       setCvbForm({ name: '', phone: '', url: '' });
                     };
-                    return stepWrap(
+                    return place(
                       <>
-                        {assignEl || (actionEl && <div className="row-assign">{actionEl}</div>)}
+                        {assignEl}
                         <details className="cvb-brief" style={{ margin: '2px 0 10px', padding: '0 2px' }}>
                           <summary className="v-meta" style={{ cursor: 'pointer', listStyle: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span className="mini rowlink">{savedCvb ? 'Their contact + what to ask for' : 'What to ask for — and where their contact goes'} ▾</span>
