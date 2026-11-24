@@ -23,10 +23,14 @@ describe('landingStage: every case', () => {
     ['the day before', { event: TG, ownPlan: true, now: at('2026-11-25') }, 'plan'],
     ['the day itself opens on The Day (owner ruling b)', { event: TG, ownPlan: true, now: at('2026-11-26') }, 'day'],
     ['the day itself, with words left in Create', { event: TG, ownPlan: true, draftText: 'next year', now: at('2026-11-26') }, 'day'],
-    ['the day after', { event: TG, ownPlan: true, now: at('2026-11-27') }, 'plan'],
-    ['long after', { event: TG, ownPlan: true, now: at('2027-01-15') }, 'plan'],
+    // Owner ruling 11/24/2026 (cohesion batch E): after the day, her plan opens
+    // on After, and stays there, until she starts a new plan.
+    ['the day after', { event: TG, ownPlan: true, now: at('2026-11-27') }, 'after'],
+    ['long after', { event: TG, ownPlan: true, now: at('2027-01-15') }, 'after'],
+    ['a sample after its day stays on Plan', { event: TG, ownPlan: false, now: at('2026-11-27') }, 'plan'],
+    ['words in Create never hijack her plan after the day either', { event: TG, ownPlan: true, draftText: 'next year', now: at('2026-11-27') }, 'after'],
     ['day 3 of a trip', { event: TRIP, ownPlan: true, now: at('2026-11-28') }, 'day'],
-    ['the day after a trip ends', { event: TRIP, ownPlan: true, now: at('2026-11-30') }, 'plan'],
+    ['the day after a trip ends', { event: TRIP, ownPlan: true, now: at('2026-11-30') }, 'after'],
     ['no date yet', { event: { id: 'x', type: 'Birthday' }, ownPlan: true, now: at('2026-11-23') }, 'plan'],
   ])('%s', (_name, input, want) => {
     expect(landingStage(input)).toBe(want);

@@ -9277,3 +9277,12 @@ input[data-cue], textarea[data-cue]{ outline:revert-layer; border-color:color-mi
    .shelf-label carries a rule and top margin). */
 .sheet .ck-phase-fold .shelf-label.ck-phase-l{ margin:0 !important; padding:0 !important; border:0 !important; }
 .sheet .ck-phase-fold .shelf-label.ck-phase-l::after{ content:none; }
+
+/* ── AFTER: THE THANK-YOU ROWS AND THE RECAP PREVIEW (cohesion batch E) ──────
+   A guest's name keeps its line; the two record flags wrap under it on a
+   phone. The recap preview is drawn as what guests will see, dashed: it is
+   not published until she says so (owner E2, 11/24/2026). */
+.after-gift-line{ align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--sp-2); margin-top:0; }
+.after-gift-name{ flex:1 1 150px; min-width:0; }
+.after-gift-flags{ display:flex; gap:var(--sp-2); margin-left:auto; }
+.recap-preview{ padding:var(--sp-4); border:1px dashed var(--line); border-radius:var(--r-md); }

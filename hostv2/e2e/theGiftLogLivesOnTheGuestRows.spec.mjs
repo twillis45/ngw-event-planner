@@ -53,7 +53,7 @@ test('the gift rows open the log on the guest rows, and the log checks them off'
 
   // Jordan's gift: a card with cash.
   const jordan = log.locator('[data-gift-row="g2"]');
-  await jordan.getByRole('button', { name: 'gift?' }).click();
+  await jordan.getByRole('button', { name: 'Gift received' }).click();   // was "gift?" (cohesion batch E)
   await jordan.getByLabel('What Jordan Hale gave').fill('Card with cash');
   await jordan.getByLabel('Cash or card amount from Jordan Hale').fill('100');
   await jordan.getByLabel('Cash or card amount from Jordan Hale').blur();
@@ -97,7 +97,7 @@ test('the thank-you note names the gift', async ({ page }) => {
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
   await (await checklistStepAction(page, 'Log gifts and cash')).click();
-  await page.getByRole('button', { name: 'Start the thank-you run' }).click();
+  await page.getByRole('button', { name: 'Write the thank-yous' }).click();   // the one door (owner E1)
   await sheetSettled(page);
   await expect(page.locator('.sheet').last()).toContainText('thank you for the Spa day voucher');
 });

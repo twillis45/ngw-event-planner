@@ -2,7 +2,9 @@
 //
 // Halloween's and NYE's "Share the … photos in one album link" had no button.
 // Now "Add the album link" opens After on the invite recap's "Photo album
-// link" field; "Publish the recap" saves it, and the row checks off.
+// link" field; the recap is previewed, "Put it on the invite link" saves it
+// (cohesion batch E, owner E2 11/24/2026: was one-tap "Publish the recap"),
+// and the row checks off.
 // Under the button, ONLY when guests' uploads wait for approval, a quiet line
 // opens the Guest list on Guest photos. Its count is the server's list; signed
 // out (401) or unreadable, there is no line at all.
@@ -54,7 +56,8 @@ test('Halloween: "Add the album link" opens After on the album field, and a publ
   await expect(field).toBeFocused();
   await expect(page.locator('.sheet')).toHaveCount(0);
   await field.fill('https://photos.app.goo.gl/e2eAlbum');
-  await page.getByRole('button', { name: 'Publish the recap' }).click();
+  await page.getByRole('button', { name: 'Preview what guests see' }).click();
+  await page.getByRole('button', { name: 'Put it on the invite link' }).click();
   await expect.poll(async () => (await stored(page, e.id)).albumUrl).toBe('https://photos.app.goo.gl/e2eAlbum');
   // The step is handled now: back on the checklist it reads done by the plan.
   await openSectionByName(page, 'Your checklist');
@@ -70,7 +73,7 @@ test('NYE, before the day: the field is there to fill in early, and says when gu
   const sheet = await boot(page, e);
   await (await checklistStepAction(page, 'Add the album link')).click();
   await expect(page.getByRole('textbox', { name: 'Photo album link' })).toBeFocused();
-  await expect(page.getByText('On your invite link — guests see this once the party’s over')).toBeVisible();
+  await expect(page.getByText('On your invite link, guests see it once the party’s over.')).toBeVisible();
 });
 
 test('photos waiting: a quiet line under the button opens Guest photos', async ({ page }) => {

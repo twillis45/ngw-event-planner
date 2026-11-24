@@ -3636,13 +3636,15 @@ export default function HostShellV2() {
   // guests + a real photo-album URL. Both appear on the invite ONLY after the
   // event date (the recap state), and only when set — never fabricated.
   const [recapDraft, setRecapDraft] = useState('');
+  // The recap is previewed before it reaches the invite link (owner E2, 11/24/2026).
+  const [recapPreview, setRecapPreview] = useState(false);
   const [albumDraft, setAlbumDraft] = useState('');
   // The checklist's "Add the album link" (owner pick, 11/21/2026) shows the
   // recap block before the day too, so the link can be ready in advance.
   const [albumAsked, setAlbumAsked] = useState(false);
   // Birthday's gift rows (owner pick A, 11/21/2026) open the gift log before the day too.
   const [giftsAsked, setGiftsAsked] = useState(false);
-  useEffect(() => { setRecapDraft(String(event.recapNote || '')); setAlbumDraft(String(event.albumUrl || '')); setAlbumAsked(false); setGiftsAsked(false); }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setRecapDraft(String(event.recapNote || '')); setAlbumDraft(String(event.albumUrl || '')); setAlbumAsked(false); setGiftsAsked(false); setRecapPreview(false); }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Event memory: the one persisted field the original uses (event.lessons).
   // Recall reads across the loaded events — a past event of the same type.
   const lastLesson = useMemo(() => {
@@ -17343,10 +17345,42 @@ export default function HostShellV2() {
                 </>
               )}
 
-              <div className="sect"><h2>What carries forward</h2><div className="rule" /></div>
-              <div className="empty" style={{ background: 'var(--steel-tint)' }}>
-                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} foundation fact{handled.length === 1 ? '' : 's'} on record · {(money.committed > 0 || money.planned > 0) ? 'every budget line above stays saved' : 'your vendors and notes stay saved'}. The thank-you is drafted right here from what actually happened; your “for next time” note below comes back the next time you plan one of these.
-              </div>
+              {/* The final number — teaches attendance learning (INTEL R1).
+                  Production contract verbatim: applyReconciliation entry
+                  {eventId, date, attendance:{planned, actual}} onto
+                  profile.hostIntelligence. Once per event; past events only. */}
+              {isPast && (() => {
+                const done = (() => { try { return isReconciled(profile, event.id); } catch { return false; } })();
+                const planned = guests || 0;
+                if (!planned) return null;
+                if (done) return (
+                  <p className="grounding" style={{ marginTop: 'var(--sp-3)' }}>Turnout recorded — the next plan sizes smarter for it.</p>
+                );
+                return (
+                  <>
+                  <div className="sect"><h2>How many came?</h2><div className="rule" /><span className="when">{planned} planned</span></div>
+                  <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
+                    <label className="of" htmlFor="v2-actual-attendance" style={{ display: 'block', marginBottom: 'var(--sp-1)' }}>The final number</label>
+                    <div className="actions-row" style={{ alignItems: 'center', marginTop: 0 }}>
+                      <input className="field" type="number" min="0" style={{ maxWidth: 110, fontSize: 'var(--t-input)' }}
+                        placeholder={String(planned)} aria-label="Actual attendance" id="v2-actual-attendance" />
+                      <span className="of">of {planned} planned</span>
+                      <button className="mini" onClick={() => {
+                        const el = document.getElementById('v2-actual-attendance');
+                        const actual = Number(el && el.value);
+                        if (!Number.isFinite(actual) || actual < 0) { toast('The real headcount — a number.'); return; }
+                        try {
+                          const entry = { eventId: event.id, date: (event.date && String(event.date).slice(0, 10)) || undefined, attendance: { planned, actual } };
+                          patchProfile({ hostIntelligence: applyReconciliation(profile && profile.hostIntelligence, entry) },
+                            `Recorded — ${BRAND.short} learns from the real number.`);
+                        } catch { toast('Couldn’t record it.'); }
+                      }}>Record it</button>
+                    </div>
+                    <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>One number, once. Your next plan sizes the food and chairs from it.</p>
+                  </div></div>
+                  </>
+                );
+              })()}
               {/* Thank-yous & gifts — per-guest flags on the SAME roster rows the
                   wrap-up meter reads (phaseProgress post_event counts
                   thankYouSent), so thanking someone literally moves the meter. */}
@@ -17363,16 +17397,18 @@ export default function HostShellV2() {
                 const cash = giftCashTotal(event);
                 const row = ({ g, i }) => (
                   <div key={i} data-gift-row={g.id || i} style={{ borderTop: '1px solid var(--line-soft)', padding: 'var(--sp-2) 0' }}>
-                    <div className="actions-row" style={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'nowrap' }}>
-                      <span>{g.name}{plusOneCount(g) ? <span className="of"> +{plusOneCount(g)}</span> : null}</span>
-                      <span style={{ display: 'flex', gap: 6 }}>
-                        <button className="mini" style={g.giftReceived ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
+                    <div className="actions-row after-gift-line">
+                      <span className="after-gift-name">{g.name}{plusOneCount(g) ? <span className="of"> +{plusOneCount(g)}</span> : null}</span>
+                      <span className="after-gift-flags">
+                        <button className="mini" aria-pressed={g.giftReceived ? 'true' : 'false'} style={g.giftReceived ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
                           onClick={() => writeGuest(i, { giftReceived: !g.giftReceived }, null)}>
-                          {g.giftReceived ? 'gift received' : 'gift?'}
+                          {g.giftReceived ? '✓ Gift received' : 'Gift received'}
                         </button>
-                        <button className="mini" style={g.thankYouSent ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
-                          onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? null : ((g.name || 'Guest') + ' thanked — the wrap-up meter keeps count.'))}>
-                          {g.thankYouSent ? 'thanked' : 'thank them'}
+                        {/* A RECORD, NOT A SEND (audit #12, owner E3 11/24/2026): the
+                            thank-you run's own words. The toast offers Undo. */}
+                        <button className="mini" aria-pressed={g.thankYouSent ? 'true' : 'false'} style={g.thankYouSent ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
+                          onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? `${g.name || 'Guest'} is not marked thanked.` : `Marked ${g.name || 'Guest'} thanked.`)}>
+                          {g.thankYouSent ? '✓ Thanked' : 'Mark thanked'}
                         </button>
                       </span>
                     </div>
@@ -17390,8 +17426,13 @@ export default function HostShellV2() {
                 );
                 return (
                   <div id="after-gifts" data-gift-log>
-                    <div className="sect"><h2>Thank-yous &amp; gifts</h2><div className="rule" /><span className="when">{thanked} of {yesIdx.length} sent</span></div>
+                    <div className="sect"><h2>Thank-yous &amp; gifts</h2><div className="rule" /><span className="when">{thanked} of {yesIdx.length} thanked</span></div>
                     <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
+                      {/* THE ONE DOOR TO THE THANK-YOUS (audit #11, #29; owner E1): the
+                          run, one note at a time, each naming the gift. The stage's
+                          one lit action. */}
+                      <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'thanks' })}>Write the thank-yous</button>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 var(--sp-3)', textAlign: 'center' }}>One at a time. Each note names what they gave. You send it from your phone.</p>
                       {yesIdx.map(row)}
                       {absent.length > 0 && <div className="shelf-label" style={{ margin: 'var(--sp-3) 0 var(--sp-1)' }}>Couldn’t come, sent a gift</div>}
                       {absent.map(row)}
@@ -17409,107 +17450,116 @@ export default function HostShellV2() {
                         <span>Cash and gift cards</span>
                         <span className="amt">{fmt(cash.total)}{cash.from ? <span className="of"> from {cash.from}</span> : null}</span>
                       </div>
-                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>Your record, not a bank. “Thanked” feeds the wrap-up meter up top, and the thank-you note names what each person gave.</p>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>Your record, not a bank. “Mark thanked” only checks them off here; it sends nothing.</p>
                     </div></div>
                   </div>
                 );
               })()}
-              {/* The final number — teaches attendance learning (INTEL R1).
-                  Production contract verbatim: applyReconciliation entry
-                  {eventId, date, attendance:{planned, actual}} onto
-                  profile.hostIntelligence. Once per event; past events only. */}
-              {isPast && (() => {
-                const done = (() => { try { return isReconciled(profile, event.id); } catch { return false; } })();
-                const planned = guests || 0;
-                if (!planned) return null;
-                if (done) return (
-                  <p className="grounding" style={{ marginTop: 'var(--sp-3)' }}>Turnout recorded — the next plan sizes smarter for it.</p>
-                );
+              {/* No named guests (a headcount plan): the thank-yous keep their one
+                  door, the run, which writes one note for everyone (owner E1). */}
+              {isPast && !(event.guests || []).some(g => g && String(g.name || '').trim()) && (
+                <>
+                  <div className="sect"><h2>Thank-yous</h2><div className="rule" /></div>
+                  <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
+                    <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'thanks' })}>Write the thank-yous</button>
+                  </div></div>
+                </>
+              )}
+              {/* THE RECAP FOR GUESTS, PREVIEWED FIRST (audit #30, owner E2
+                  11/24/2026): it goes on every guest's invite link, so nothing
+                  reaches it in one tap. Draft → preview → "Put it on the invite
+                  link". The host's note and a real album link only; blank ones
+                  never show (the recap never fabricates content). */}
+              {(isPast || albumAsked) && (() => {
+                const clean = albumDraft.trim();
+                const albumOk = !clean || /^https?:\/\//i.test(clean);
+                const dirty = recapDraft.trim() !== String(event.recapNote || '').trim() || clean !== String(event.albumUrl || '').trim();
+                const live = !!(event.recapNote || event.albumUrl);
+                const state = recapPreview ? 'preview' : live && !dirty ? 'on the invite link' : dirty ? 'not published' : 'not started';
                 return (
-                  <div style={{ marginTop: 'var(--sp-3)' }}>
-                    <div className="shelf-label" style={{ marginBottom: 6 }}>The final number — how many actually came?</div>
-                    <div className="actions-row" style={{ alignItems: 'center' }}>
-                      <input className="field" type="number" min="0" style={{ maxWidth: 110, fontSize: 'var(--t-input)' }}
-                        placeholder={String(planned)} aria-label="Actual attendance" id="v2-actual-attendance" />
-                      <span className="of">of {planned} planned</span>
-                      <button className="mini" onClick={() => {
-                        const el = document.getElementById('v2-actual-attendance');
-                        const actual = Number(el && el.value);
-                        if (!Number.isFinite(actual) || actual < 0) { toast('The real headcount — a number.'); return; }
-                        try {
-                          const entry = { eventId: event.id, date: (event.date && String(event.date).slice(0, 10)) || undefined, attendance: { planned, actual } };
-                          patchProfile({ hostIntelligence: applyReconciliation(profile && profile.hostIntelligence, entry) },
-                            `Recorded — ${BRAND.short} learns from the real number.`);
-                        } catch { toast('Couldn’t record it.'); }
-                      }}>Record it</button>
-                    </div>
-                    <p className="grounding" style={{ margin: '6px 0 0' }}>One number, once. Future plans adjust to how your crowds actually show.</p>
-                  </div>
+                  <>
+                    <div className="sect"><h2>The recap for guests</h2><div className="rule" /><span className="when">{state}</span></div>
+                    <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
+                      {recapPreview ? (
+                        <div data-recap-preview>
+                          <div className="shelf-label" style={{ margin: '0 0 var(--sp-2)' }}>What guests will see on the invite link</div>
+                          <div className="recap-preview">
+                            <div className="of" style={{ marginBottom: 'var(--sp-2)' }}>Preview · nothing is published yet</div>
+                            {recapDraft.trim()
+                              ? <p style={{ margin: '0 0 var(--sp-2)', whiteSpace: 'pre-wrap' }}>{recapDraft.trim()}</p>
+                              : <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>No note.</p>}
+                            {clean ? <span className="mini" aria-hidden="true">See the photos</span> : null}
+                            {!recapDraft.trim() && !clean ? <p className="v-meta" style={{ margin: 0 }}>Guests see the invitation again.</p> : null}
+                          </div>
+                          <p className="grounding" style={{ margin: 'var(--sp-2) 0' }}>
+                            {isPast ? 'Anyone who opens your invite link sees this, in place of the invitation.' : 'Anyone who opens your invite link sees this once the party’s over.'} You can change it or take it down any time.
+                          </p>
+                          <div className="actions-row" style={{ marginTop: 0 }}>
+                            <button className="mini" data-recap-publish onClick={() => {
+                              patchEvent({ recapNote: recapDraft.trim(), albumUrl: clean },
+                                (recapDraft.trim() || clean) ? 'It’s on your invite link now.' : 'Recap taken down.');
+                              setRecapPreview(false);
+                            }}>{(recapDraft.trim() || clean) ? 'Put it on the invite link' : 'Take it down'}</button>
+                            <button className="mini" onClick={() => setRecapPreview(false)}>Keep editing</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {!isPast && <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>On your invite link, guests see it once the party’s over.</p>}
+                          <label className="of" htmlFor="v2-recap-note" style={{ display: 'block', marginBottom: 'var(--sp-1)' }}>A note to everyone</label>
+                          <textarea id="v2-recap-note" className="field" style={{ maxWidth: 'none', minHeight: 52, resize: 'vertical', fontSize: 'var(--t-input)' }}
+                            placeholder="For example: “What a day. Thank you all for coming.”"
+                            value={recapDraft} onChange={e => setRecapDraft(e.target.value)} />
+                          <label className="of" htmlFor="v2-recap-album" style={{ display: 'block', margin: 'var(--sp-3) 0 var(--sp-1)' }}>Photo album link</label>
+                          <input id="v2-recap-album" className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)' }}
+                            type="url" inputMode="url" placeholder="Google Photos, iCloud, a shared drive…"
+                            value={albumDraft} onChange={e => setAlbumDraft(e.target.value)} aria-label="Photo album link" />
+                          {clean && !albumOk && (
+                            <p className="grounding warn-note" style={{ margin: '4px 0 0' }}>Add the full link (starts with https://) so it opens for guests.</p>
+                          )}
+                          <div className="actions-row">
+                            <button className="mini" onClick={() => { try { setRecapDraft(String((draftRecap(event, profile) || {}).body || '')); } catch { toast('Couldn’t draft it.'); } }}>Write it for me</button>
+                            <button className="mini" data-recap-preview-open disabled={!dirty || !albumOk} onClick={() => setRecapPreview(true)}>Preview what guests see</button>
+                          </div>
+                          <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>
+                            {live && !dirty ? 'This is on your invite link now.' : 'Nothing goes on the invite link until you’ve seen the preview.'}
+                          </p>
+                        </>
+                      )}
+                    </div></div>
+                  </>
                 );
               })()}
               {/* Event memory capture — writes event.lessons via the canonical
                   setLesson (lib/eventMemory); recalled on Plan for the next
-                  same-type event. Past events only — a preview has no lessons. */}
+                  same-type event. Past events only. Quiet, never lit (one lit
+                  action on After, audit #11). The carry-forward line replaces
+                  "What carries forward" (audit #34: no "foundation facts", no
+                  "wrap-up meter"). */}
               {isPast && (
-                <div style={{ marginTop: 'var(--sp-3)' }}>
-                  <div className="shelf-label" style={{ marginBottom: 6 }}>For next time — the one thing you’d tell yourself</div>
-                  <textarea className="field" style={{ maxWidth: 'none', minHeight: 58, resize: 'vertical', fontSize: 'var(--t-input)' }}
-                    placeholder="Two bags of ice per cooler wasn’t enough — get three"
-                    value={lessonDraft} onChange={e => setLessonDraft(e.target.value)} aria-label="Lesson for next time" />
-                  <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                    <button className="cta" disabled={lessonDraft.trim() === getLesson(event)}
-                      style={lessonDraft.trim() === getLesson(event) ? { opacity: .45 } : undefined}
-                      onClick={() => patchEvent({ lessons: setLesson(event, lessonDraft).lessons },
-                        lessonDraft.trim() ? 'Saved — it’ll come back when you plan the next one.' : 'Note cleared.')}>
-                      {getLesson(event) ? 'Update it' : 'Save it'}
-                    </button>
-                    {getLesson(event) && lessonDraft.trim() === getLesson(event) && (
-                      <span className="of" style={{ color: 'var(--ok)' }}>on record</span>
-                    )}
-                  </div>
-                </div>
+                <>
+                  <div className="sect"><h2>For next time</h2><div className="rule" /></div>
+                  <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
+                    <label className="of" htmlFor="v2-lesson" style={{ display: 'block', marginBottom: 'var(--sp-1)' }}>The one thing you’d tell yourself</label>
+                    <textarea id="v2-lesson" className="field" style={{ maxWidth: 'none', minHeight: 58, resize: 'vertical', fontSize: 'var(--t-input)' }}
+                      placeholder="For example: two bags of ice per cooler wasn’t enough — get three"
+                      value={lessonDraft} onChange={e => setLessonDraft(e.target.value)} aria-label="Lesson for next time" />
+                    <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                      <button className="mini" disabled={lessonDraft.trim() === getLesson(event)}
+                        onClick={() => patchEvent({ lessons: setLesson(event, lessonDraft).lessons },
+                          lessonDraft.trim() ? 'Saved — it’ll come back when you plan the next one.' : 'Note cleared.')}>
+                        {getLesson(event) ? 'Update it' : 'Save it'}
+                      </button>
+                      {getLesson(event) && lessonDraft.trim() === getLesson(event) && (
+                        <span className="of" style={{ color: 'var(--ok)' }}>on record</span>
+                      )}
+                    </div>
+                    <p className="grounding" style={{ margin: 'var(--sp-3) 0 0' }}>
+                      It comes back the next time you plan {event.type ? `a ${String(event.type).toLowerCase()}` : 'one of these'}. Your guest list, vendors and every money line above stay saved with this plan.
+                    </p>
+                  </div></div>
+                </>
               )}
-              {/* Recap keepsake on the invite link — when a guest reopens the
-                  shared link after the event, it becomes a recap. The host's note
-                  and a real photo-album URL land there. Both optional; blank ones
-                  simply don't show (the recap never fabricates content). */}
-              {(isPast || albumAsked) && (
-                <div style={{ marginTop: 'var(--sp-4)' }}>
-                  <div className="shelf-label" style={{ marginBottom: 6 }}>{isPast ? 'On your invite link — guests see this when they reopen it' : 'On your invite link — guests see this once the party’s over'}</div>
-                  <textarea className="field" style={{ maxWidth: 'none', minHeight: 52, resize: 'vertical', fontSize: 'var(--t-input)' }}
-                    placeholder="A note to everyone — “What a day. Thank you all for coming.”"
-                    value={recapDraft} onChange={e => setRecapDraft(e.target.value)} aria-label="Recap note for guests" />
-                  <input className="field" style={{ maxWidth: 'none', marginTop: 'var(--sp-2)', fontSize: 'var(--t-input)' }}
-                    type="url" inputMode="url" placeholder="Photo album link — Google Photos, iCloud, a shared drive…"
-                    value={albumDraft} onChange={e => setAlbumDraft(e.target.value)} aria-label="Photo album link" />
-                  {albumDraft.trim() && !/^https?:\/\//i.test(albumDraft.trim()) && (
-                    <p className="grounding warn-note" style={{ margin: '4px 0 0' }}>Add the full link (starts with https://) so it opens for guests.</p>
-                  )}
-                  <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                    {(() => {
-                      const clean = albumDraft.trim();
-                      const albumOk = !clean || /^https?:\/\//i.test(clean);
-                      const dirty = recapDraft.trim() !== String(event.recapNote || '').trim() || clean !== String(event.albumUrl || '').trim();
-                      return (
-                        <button className="cta" disabled={!dirty || !albumOk} style={(!dirty || !albumOk) ? { opacity: .45 } : undefined}
-                          onClick={() => patchEvent({ recapNote: recapDraft.trim(), albumUrl: clean },
-                            (recapDraft.trim() || clean) ? 'Saved — it’s on your invite link’s recap now.' : 'Recap cleared.')}>
-                          {(event.recapNote || event.albumUrl) ? 'Update the recap' : 'Publish the recap'}
-                        </button>
-                      );
-                    })()}
-                  </div>
-                </div>
-              )}
-              {/* Primary full-width, the two secondaries in a balanced 2-col grid
-                  (was a ragged cta+mini+mini flex-wrap). */}
-              <div style={{ marginTop: 14 }}>
-                <button className="cta" style={{ width: '100%' }} onClick={() => openDraft('The thank-you', draftThankYou(event, profile))}>Draft the thank-you</button>
-                <div className="pill-grid" style={{ marginTop: 'var(--gap-chip)' }}>
-                  <button className="mini" onClick={() => { try { openDraft('The recap', draftRecap(event, profile)); } catch { toast('Couldn’t draft it.'); } }}>Write the recap</button>
-                  <button className="mini" onClick={() => setSheet({ kind: 'thanks' })}>Start the thank-you run</button>
-                </div>
-              </div>
             </section>
           )}
         </div>
@@ -23096,6 +23146,11 @@ export default function HostShellV2() {
                   )}
                   <div className="bar" aria-hidden style={{ marginBottom: 'var(--sp-3)' }}><i style={{ '--fill': pct / 100, background: 'var(--ok)' }} /></div>
                   {!yes.length && <p className="grounding">No confirmed guests on this one yet.</p>}
+                  {/* ONE NOTE FOR EVERYONE (owner E1, 11/24/2026): the group thank-you
+                      lives inside the run now, not as a second door on After. */}
+                  <div className="actions-row" style={{ marginTop: 0, marginBottom: 'var(--sp-3)' }}>
+                    <button className="mini" data-thanks-group onClick={() => openDraft('The thank-you', draftThankYou(event, profile))}>One note for everyone</button>
+                  </div>
                   {cur && (() => {
                     const { g, i } = cur;
                     const body = noteFor(g);
