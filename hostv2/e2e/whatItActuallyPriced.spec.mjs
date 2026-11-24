@@ -73,6 +73,11 @@ const openPriced = async (page, description) => {
   await settled(page);
   await tapText(page, "what you.?re serving");
   await sheetSettled(page);
+  // The list sits behind the Shop tab now (it used to be one tap from the
+  // food sheet); without this tap the store button is never found and every
+  // test here skipped as "unconfigured".
+  await tapText(page, '^Shop$');
+  await sheetSettled(page);
   await tapText(page, 'The list[\\s\\S]*item');
   await sheetSettled(page);
   if (!(await storeLayerOffered(page))) return null;      // unconfigured bundle

@@ -1164,11 +1164,36 @@ const NOT_THE_COMMODITY = Object.freeze([
   'mix', 'kit', 'candle', 'soap', 'spray', 'chips', 'crackers', 'cereal',
 ]);
 
+// ── A STORE THAT SELLS NO ALCOHOL STILL ANSWERS A SEARCH FOR WINE ──────────
+// Probed live 2026-11-24 at a Baltimore store, where Maryland keeps most chain
+// grocers from selling beer and wine: "white wine" came back as White Cooking
+// Wine, "beer" as Ginger Beer, "sparkling wine" as a Social Tonic. The same
+// terms at a DC store of the same chain find real wine and beer.
+//
+// So a line that SEARCHES for alcohol also refuses these words. Keyed on the
+// search term, not the line text: the mixers, N/A beer and N/A bubbly lines
+// search other terms and are untouched. A word check catches the ways seen so
+// far; a check on the store's own category is the later fix (owner, 11/24/2026).
+export const ALCOHOL_SEARCH_TERMS = Object.freeze(['beer', 'red wine', 'white wine', 'sparkling wine', 'hard seltzer']);
+const NOT_ALCOHOL = Object.freeze([
+  'cooking', 'non-alcoholic', 'non alcoholic', 'alcohol-free', 'alcohol free',
+  'dealcoholized', 'zero proof', 'zero-proof', 'mocktail', 'ginger beer', 'root beer', 'tonic',
+]);
+
+/** Does this line ask the store for alcohol? */
+export function isAlcoholLine(line) {
+  const t = storeSearchTerm(line);
+  return !!t && ALCOHOL_SEARCH_TERMS.includes(t);
+}
+
 export function matchLooksLikeTheLine({ line, term, description } = {}) {
   const d = String(description || '').toLowerCase();
   if (!d) return true;                       // nothing to judge; the units still gate
   const asked = `${String((line && line.item) || '')} ${String(term || '')}`.toLowerCase();
-  for (const w of NOT_THE_COMMODITY) {
+  const words = ALCOHOL_SEARCH_TERMS.includes(String(term || '').toLowerCase())
+    ? [...NOT_THE_COMMODITY, ...NOT_ALCOHOL]
+    : NOT_THE_COMMODITY;
+  for (const w of words) {
     // Only a word the PRODUCT has and the LINE does not. "Old Bay seasoning"
     // asks for a seasoning and must still match one.
     if (d.includes(w) && !asked.includes(w)) return false;

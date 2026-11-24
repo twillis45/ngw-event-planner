@@ -278,7 +278,7 @@ import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices'
 // layer again here would multiply it twice — a silent ~12% error in the
 // Northeast that never throws and never looks wrong. `layerForLine` reads the
 // decision the engine recorded (`geoBasis`) instead of re-deriving it.
-import { layerForLine, storePriceIndex, layerCoverage, coverageNote } from '@app/lib/priceLayers';
+import { layerForLine, storePriceIndex, layerCoverage, coverageNote, storeSellsNoAlcohol, noAlcoholNote } from '@app/lib/priceLayers';
 import { isStorePricesConfigured, nearbyStores, parsePlace, storePrices, STORE_FAMILY, STORE_FAMILY_SHORT, STORE_FAMILY_TEACH } from '@app/lib/storePrices';
 import { quickAccountabilityForVendor, inferPromisesFromVendor, promiseNeedsHost } from '@app/lib/vendorAccountability/derive';
 import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
@@ -7805,6 +7805,12 @@ export default function HostShellV2() {
       .map(it => layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx }));
   }, [foodPlan, priceIdx]);
   const priceCoverage = useMemo(() => layerCoverage(priceLayerRows), [priceLayerRows]);
+  // A STORE THAT SELLS NO ALCOHOL (owner, 11/24/2026). The picked store priced
+  // groceries and no alcohol line, so the bar fell back to its averages; the
+  // Shop list says why once, above the drinks. Same rows as the coverage count.
+  const noAlcoholHere = useMemo(() => (foodPlan
+    ? storeSellsNoAlcohol((foodPlan.list || []).filter(it => it && !it.broughtByCommunity), priceIdx)
+    : null), [foodPlan, priceIdx]);
 
   // ── THE PINNED BAR, WRITTEN ONCE FOR ALL THREE TABS ─────────────────────
   // It used to live inside the `food || foodplan` branch of the sheet, which
@@ -24939,6 +24945,11 @@ export default function HostShellV2() {
                   const runLo = runLeft.reduce((t, it) => t + (Number(it.locked != null ? it.locked : it.low) || 0), 0);
                   const runHi = runLeft.reduce((t, it) => t + (Number(it.locked != null ? it.locked : it.high) || 0), 0);
                   const groups = (foodPlan.groups && foodPlan.groups.length ? foodPlan.groups : [...new Set(items.map(it => it.group || 'Other'))]);
+                  // The one group that carries the no-alcohol note: the first
+                  // one holding an alcohol line, so it is said once.
+                  const noAlcoholGroup = noAlcoholHere
+                    ? (() => { const a = items.find(it => noAlcoholHere.ids.includes(it.id)); return a ? (a.group || 'Other') : null; })()
+                    : null;
                   // Decision flags: a menu decision the host hasn't explicitly
                   // made yet marks every line it re-prices (playbook `affects`).
                   const undecidedAffects = (() => { try { return playbookOpenDecisionAffects(event); } catch { return {}; } })();
@@ -25055,6 +25066,11 @@ export default function HostShellV2() {
                               ? `Uncheck all ${gActive.length}`
                               : `Check off all ${gActive.length}${shopStore ? ' here' : ''}`}
                           </button>
+                        </div>
+                      ) : null}
+                      {isOpen && noAlcoholGroup === g ? (
+                        <div data-no-alcohol-note style={{ padding: '0 var(--sp-3) var(--sp-2)' }}>
+                          <Grounding gap={0}>{noAlcoholNote(noAlcoholHere)}</Grounding>
                         </div>
                       ) : null}
                       <div className="fg-items">
