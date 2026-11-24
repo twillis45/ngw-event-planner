@@ -29,6 +29,12 @@
 //      faint steady outline. It plays when the hero settles and after each
 //      completed step, stops on interaction, and never marks two elements.
 //      With reduced motion: the steady outline only.
+//   6  ONE ADDRESS ASK (render 11). At home with no address the hero asks
+//      "Add your address." under "Guests, weather and shopping all use it — a
+//      city or ZIP works too.", with a "Street, city, state" field and Save. A
+//      full address, a city or a ZIP each saves through the one place reader
+//      (lib/readPlace) and clears the ask; with only a city or ZIP the street
+//      is asked once more when the invite goes out, not on the board.
 import { test, expect } from '@playwright/test';
 import { settled, sheetSettled, openSectionByName } from './fixtures.mjs';
 
@@ -449,5 +455,69 @@ test('5: with reduced motion the cue is the steady outline only, no animation', 
   expect(c.anim).toBe('none');
   expect(c.ow).toBeGreaterThan(0);
   expect(c.os).toBe('solid');
+  await ctx.close();
+});
+
+// ═══════════════════════════════ 6. ONE ADDRESS ASK ═══════════════════════════
+const savedEvent = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]').at(-1));
+const boardWords = (page) => page.evaluate(() => {
+  const out = [];
+  const walk = (n) => {
+    if (n.nodeType === 3) { const p = n.parentElement; const r = p.getBoundingClientRect(); if (r.width && r.height && getComputedStyle(p).visibility !== 'hidden') out.push(n.textContent); return; }
+    if (n.nodeType !== 1 || n.hasAttribute('inert') || getComputedStyle(n).display === 'none') return;
+    for (const c of n.childNodes) walk(c);
+  };
+  walk(document.querySelector('.app'));
+  return out.join(' ').replace(/\s+/g, ' ');
+});
+const ADDRESS_CASES = [
+  ['a full address', '123 Maple St, Springfield, VA 22150', { venueAddress: '123 Maple St', venueCity: 'Springfield', venueState: 'VA', venueZip: '22150' }],
+  ['a city', 'Springfield, VA', { venueCity: 'Springfield', venueState: 'VA' }],
+  ['a ZIP', '22150', { venueZip: '22150' }],
+];
+test('6: at home with no address the hero asks for the address once, in the approved words', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const { ctx, page } = await created(browser, PHONE);
+  await expect(page.locator('h2.ask').first()).toHaveText('Add your address.');
+  const card = page.locator('.escreen.on .ecenter');
+  await expect(card).toContainText('Guests, weather and shopping all use it — a city or ZIP works too.');
+  const input = card.locator('.hero-card input.field').first();
+  await expect(input).toHaveAttribute('placeholder', 'Street, city, state');
+  await expect(card.locator('.hero-card').getByRole('button', { name: 'Save', exact: true }).first()).toBeVisible();
+  const words = await boardWords(page);
+  expect(words).not.toMatch(/Add your city|Your home is set — weather and shopping need the city/);
+  await ctx.close();
+});
+for (const [what, typed, want] of ADDRESS_CASES) {
+  test(`6: ${what} answers the address ask, read by the one place reader; the board does not ask for the street again`, async ({ browser }) => {
+    test.setTimeout(90_000);
+    const { ctx, page } = await created(browser, PHONE);
+    const card = page.locator('.escreen.on .ecenter');
+    await card.locator('.hero-card input.field').first().fill(typed);
+    await card.locator('.hero-card').getByRole('button', { name: 'Save', exact: true }).first().click();
+    await expect(page.locator('h2.ask').first()).not.toHaveText('Add your address.', { timeout: 8000 });
+    const ev = await savedEvent(page);
+    expect(ev.venueKind, 'still her home').toBe('home');
+    for (const [k, v] of Object.entries(want)) expect(ev[k], k).toBe(v);
+    await page.locator('.efold').first().click(); await page.waitForTimeout(800);
+    const words = await boardWords(page);
+    expect(words, 'the ask is answered').not.toMatch(/Add your address|Add your city/);
+    expect(words, 'the board does not ask for the street again').not.toMatch(/Add your street address/);
+    await ctx.close();
+  });
+}
+test('6: with only a city on record the street is asked once more when the invite goes out', async ({ browser }) => {
+  test.setTimeout(90_000);
+  // Her home with its city and no street, and a guest list to invite.
+  const { venueAddress, ...cityOnly } = PLACEHOLDER;
+  const { ctx, page } = await seededPhone(browser, { ...cityOnly, id: 'ev-city-only', name: 'Rose’s Thanksgiving' });
+  expect(venueAddress, 'premise: the seed drops the street').toBeTruthy();
+  expect(await boardWords(page), 'the board does not ask for the street').not.toMatch(/Add your street address|Add your address/);
+  await openSectionByName(page, 'Guests');
+  await sheetSettled(page);
+  await page.locator('.sheet button').filter({ hasText: /^Copy the invite$/ }).first().click();
+  await expect(page.locator('[data-invite-check]')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('[data-invite-check-item="address"]')).toHaveAttribute('data-ok', '0');
+  await expect(page.locator('[data-outward-address]')).toBeVisible();
   await ctx.close();
 });

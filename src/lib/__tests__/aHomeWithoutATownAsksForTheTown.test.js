@@ -32,7 +32,8 @@ describe('the venue gate eventPlan promotes', () => {
   test('at home with no town, the hero item asks for the town', () => {
     const a = head({ ...base, venueKind: 'home', totalBudget: 400, budget: [], guests: [], vendors: [], timeline: [] });
     expect(a.blockerType).toBe('venue-selection');
-    expect(a.title).toBe('Your city');
+    // One address ask (owner, 11/24/2026). Was 'Your city'.
+    expect(a.title).toBe('Your address');
     expect(heroAskFor(a)).toBe(ASK_KINDS.town);
   });
 

@@ -1687,7 +1687,15 @@ export default function HostShellV2() {
     // A PICKED ADDRESS IS STORED WHOLE (owner report, iPad, 11/21/2026): its
     // street, town, state, ZIP and coordinates. A street saved as typed is
     // saved, and the host is told plainly the ZIP was not found; none is made up.
-    const patch = pendingPick ? setVenue(event, { resolved: pendingPick }) : setVenue(event, { name: v, locationText: pendingCity });
+    // AT HOME, THE ONE ADDRESS ASK READS WHAT SHE TYPED WITH THE SENTENCE'S
+    // READER (lib/readPlace through townFieldsToPersist, owner 11/24/2026): a
+    // full address, a city or a ZIP each lands where the sentence puts it. The
+    // place stays her home. Text it cannot read at all goes the old way.
+    const homeFields = (!pendingPick && venueFor(event).isHome && venueFor(event).needsCityForWeather) ? townFieldsToPersist(v) : null;
+    const homeRead = homeFields && (homeFields.venueAddress || homeFields.venueCity || homeFields.venueZip) ? homeFields : null;
+    const patch = pendingPick ? setVenue(event, { resolved: pendingPick })
+      : homeRead ? homeRead
+      : setVenue(event, { name: v, locationText: pendingCity });
     const after = venueFor({ ...event, ...patch });
     const msg = pendingPick
       ? (after.zip ? `Address on the plan: ${after.fullAddress}.` : `Address on the plan: ${after.fullAddress}. The lookup had no ZIP for it.`)
@@ -1730,7 +1738,7 @@ export default function HostShellV2() {
   const renderVenueCapture = ({ ctaClass = 'cta', wrapStyle = { display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }, wrapClass, autoFocus = false, placeOnly = false } = {}) => (
     <>
       <div className={wrapClass} style={wrapStyle}>
-        <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder={venueFor(event).needsCityForWeather ? 'City, state or ZIP' : 'Name or address'}
+        <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder={venueFor(event).needsCityForWeather ? 'Street, city, state' : 'Name or address'}
           value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); setPendingPick(null); fetchAddrSugs(e.target.value); }} aria-label="Venue" autoFocus={autoFocus} />
         {/* Not lit while there is nothing to save (Wanda audit P1-2). */}
         <button className={ctaClass} onClick={saveVenue} disabled={!String(venueDraft || '').trim()}>Save</button>

@@ -353,7 +353,8 @@ for (const [name, vp] of [['phone', PHONE], ['13" portrait', TALL13]]) {
   test(`${name}: at home with no city, the plan asks for the city once, in the hero card; the street waits its turn`, async ({ browser }) => {
     const { ctx, page } = await created(browser, vp);
     const txt = await boardText(page);
-    await expect(page.locator('h2.ask').first()).toHaveText('Add your city.');
+    // One address ask (owner, 11/24/2026). Was 'Add your city.'.
+    await expect(page.locator('h2.ask').first()).toHaveText('Add your address.');
     expect(txt).not.toMatch(/What city, state/i);
     expect(txt).not.toMatch(/Guests will ask where/i);
     // One city field on the board, in the hero.
@@ -363,12 +364,14 @@ for (const [name, vp] of [['phone', PHONE], ['13" portrait', TALL13]]) {
     const card = page.locator('.escreen.on .ecenter');
     await card.locator('input').first().fill('Annapolis, MD');
     await card.getByRole('button', { name: 'Save', exact: true }).first().click();
-    await expect(page.locator('h2.ask').first()).not.toHaveText('Add your city.', { timeout: 8000 });
+    await expect(page.locator('h2.ask').first()).not.toHaveText('Add your address.', { timeout: 8000 });
     await page.waitForTimeout(600);
     const after = await boardText(page);
-    expect(after).not.toMatch(/What city, state|Add your city/i);
-    // The street is asked once, where the plan's steps are (the "Then" row).
-    expect((after.match(/Add your street address|Guests will ask where/g) || []).length, after).toBe(1);
+    expect(after).not.toMatch(/What city, state|Add your city|Add your address/i);
+    // The street is not asked again on the board (owner, 11/24/2026: with a
+    // city or ZIP on record it is asked once more when the invite goes out).
+    // Was: asked once, in the "Then" row.
+    expect((after.match(/Add your street address|Guests will ask where/g) || []).length, after).toBe(0);
     await ctx.close();
   });
 }

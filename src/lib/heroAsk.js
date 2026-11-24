@@ -39,10 +39,12 @@ export const ASK_KINDS = Object.freeze({
   'start-time': 'Confirm the start time.',
   date: 'Pick the day.',
   location: 'Add the location.',
-  // At home the place is set (her home); what is missing is the town. The one
-  // sentence for it: the venue gate, the checklist row and the town card's own
-  // decision line all speak this (live 11/23/2026).
-  town: 'Add your city.',
+  // At home the place is set (her home); what is missing is where it is. The
+  // one sentence for it: the venue gate, the checklist row and the card's own
+  // decision line all speak this (live 11/23/2026). ONE ADDRESS ASK (owner,
+  // render 11, 11/24/2026): it asks for the address, and a city or a ZIP
+  // answers it too. Was "Add your city.".
+  town: 'Add your address.',
   conflict: 'Untangle your vendors.',
   decisions: 'Settle your decisions.',
   'catering-count': 'Fix the catering count.',

@@ -185,7 +185,8 @@ function deriveDecisionBlockers(event, eventIdentity) {
   // The HOME branch is deliberately untouched: needsCityForWeather asks a
   // DIFFERENT question (an at-home event can be set and still owe a city for
   // geocoding), and folding it into isSet would silently drop that ask.
-  const venueResolved = vf.isHome ? !vf.needsCityForWeather : vf.isSet;
+  // At home a street, a city or a ZIP answers the ask (owner, 11/24/2026).
+  const venueResolved = vf.isHome ? !(vf.needsCityForWeather && !vf.address) : vf.isSet;
   if (!venueResolved) {
     // ── SEVERITY IS A COUNTDOWN, NOT A CONSTANT (board ruling 2026-08-14) ────
     // docs/audits/2026-08-14_VENUE_READER_BOARD_RULING.md
@@ -222,7 +223,7 @@ function deriveDecisionBlockers(event, eventIdentity) {
       urgency: venueUrgency,
       // A home with no town: the PLACE is settled, the town is what is missing
       // (gold run GOLD-05, 11/5/2026). Carried so the stage asks that question.
-      homeNeedsTown: !!(vf.isHome && vf.needsCityForWeather),
+      homeNeedsTown: !!(vf.isHome && vf.needsCityForWeather && !vf.address),
       // Carried so a consumer can say WHY it escalated rather than re-deriving
       // the ladder and drifting from it.
       daysToEvent: _dte,
@@ -345,9 +346,11 @@ function buildBlockerStage(blocker) {
   if (blocker.type === 'venue-selection' && blocker.homeNeedsTown) {
     blockerCopy['venue-selection'] = {
       ...blockerCopy['venue-selection'],
-      title: 'Your city',
-      what: 'Which town is your place in?',
-      why: 'Your home is set — weather and shopping need the city.',
+      // ONE ADDRESS ASK (owner, render 11, 11/24/2026). Was "Your city" /
+      // "Your home is set — weather and shopping need the city.".
+      title: 'Your address',
+      what: 'Where is your place?',
+      why: 'Guests, weather and shopping all use it — a city or ZIP works too.',
       nextDecision: ASK_KINDS.town,
     };
   }
