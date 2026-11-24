@@ -121,9 +121,11 @@ test('no brought dishes, no Bringing section', async ({ page }) => {
 
 // Each door's rule (lib/foodBringing foodSheetKind) now names a section.
 // Everything she buys, bought (from everyFoodDoorAsksTheRule): with a brought
-// dish unnamed the rule says Bringing.
+// dish unnamed the rule says Bringing. Batch 4 split Thanksgiving's "Wine, red
+// and white" into two lines, so the white is bought too (the same input change
+// everyFoodDoorAsksTheRule took).
 const BOUGHT = Object.fromEntries(['p_turkey', 'p_stuffing', 'p_gravy', 'p_gravy_thickener', 'p_rolls', 'p_rolls_butter',
-  'p_appetizers', 'p_appetizers_crackers', 'p_appetizers_nuts', 'p_appetizers_crudite', 'p_wine_cider', 'p_cider',
+  'p_appetizers', 'p_appetizers_crackers', 'p_appetizers_nuts', 'p_appetizers_crudite', 'p_wine_cider', 'p_wine_cider_white', 'p_cider',
   'p_coffee', 'p_coffee_tea', 'p_coffee_whipped', 'p_coffee_icecream', 'p_thermometer', 'p_roasting_kit', 'p_roasting_foil',
   'p_roasting_twine', 'p_leftover_containers', 'p_leftover_bags', 'p_leftover_labels', 'p_cleanup', 'p_cleanup_soap',
   'p_cleanup_towels', 'p_cleanup_detergent'].map((k) => [k, true]));
