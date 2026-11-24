@@ -651,7 +651,7 @@ export const TERM_BY_ID = Object.freeze([
   { id: 'p_zeroproof', term: 'mocktail' }, // Mingle Mocktails Non-Alcoholic Cranberry Cosmo $11.99 ($9.99 sale) · 4 cans / 12 fl oz
   // ── SPLIT LINES, BATCH 4 (owner ruling 11/23/2026): one term per part id. probed live at Harris
   // Teeter Old Town Alexandria (09700398) on 11/24/2026, no line ids sent.
-  { id: 'p_veg_greens', term: 'salad greens' }, // Simple Truth Organic® Baby Spring Mix $4.99 · 5 oz
+  { id: 'p_veg_greens', term: 'salad greens spring mix' }, // BrightFarms Spring Mix Lettuce (all three stores, 11/24); 'salad greens' found Baby Spring Mix, which the form-word check refused
   { id: 'p_appetizer_cheese', term: 'cheese tray' },
   { id: 'p_cocktail_garnish', term: 'limes' },
   { id: 'p_coffee_cream', term: 'coffee creamer' }, // Chobani® Coffee Creamer Limited Batch Cookie But $5.99 · 24 fl oz
@@ -745,7 +745,7 @@ export const TERM_BY_ID = Object.freeze([
   { id: 'p_mocktail_juice', term: 'apple juice' }, // Harris Teeter No Sugar Added 100% Apple Juice $3.69 · 64 fl oz
   { id: 'p_mocktail_syrup', term: 'simple syrup' }, // Master of Mixes® Cocktail Essentials Simple Syru $3.99 · 12.7 fl oz
   { id: 'p_mocktail_garnish', term: 'maraschino cherries' }, // Harris Teeter™ Stem Free Maraschino Cherries $2.99 · 10 oz
-  { id: 'p_cleanup_supplies', term: 'cleaning spray' }, // Mr. Clean Lemon Zest Scent Deep Cleaning Mist Mu $6.99 · 1 ct/ 16 fl oz
+  { id: 'p_cleanup_supplies', term: 'all purpose cleaner spray' }, // Lysol All Purpose Cleaner Spray Lemon Breeze (all three stores, 11/24); 'cleaning spray' found a Starter Kit at Old Town
   { id: 'p_sides_veggie', term: 'veggie tray' },
   { id: 'p_memory_display_frames', term: 'foam board' }, // UCreate Premium Poster Board, Large Size, for Si $1.89 · 22 x 28 in
   { id: 'p_card_pens', term: 'pens' }, // Pilot G2 Premium Gel Roller Black Ink Fine Point $9.49 · 4 pk
@@ -1186,6 +1186,12 @@ export function isAlcoholLine(line) {
   return !!t && ALCOHOL_SEARCH_TERMS.includes(t);
 }
 
+const FORM_WORD_RE = new Map();
+const formWord = (w) => {
+  if (!FORM_WORD_RE.has(w)) FORM_WORD_RE.set(w, new RegExp(`(^|[^a-z])${w.replace(/[-]/g, '[- ]?')}s?($|[^a-z])`));
+  return FORM_WORD_RE.get(w);
+};
+
 export function matchLooksLikeTheLine({ line, term, description } = {}) {
   const d = String(description || '').toLowerCase();
   if (!d) return true;                       // nothing to judge; the units still gate
@@ -1196,7 +1202,13 @@ export function matchLooksLikeTheLine({ line, term, description } = {}) {
   for (const w of words) {
     // Only a word the PRODUCT has and the LINE does not. "Old Bay seasoning"
     // asks for a seasoning and must still match one.
-    if (d.includes(w) && !asked.includes(w)) return false;
+    //
+    // A WHOLE WORD, or its plural (owner-approved 11/24/2026). Read as a
+    // fragment, "Scrubber" was a rub and "Master of Mixes" a mix, and the right
+    // sponges and simple syrup lost their store price at all three probed
+    // stores. The line side stays a fragment on purpose: "cocktail mixer"
+    // asking still covers a "Margarita Mix".
+    if (formWord(w).test(d) && !asked.includes(w)) return false;
   }
   return true;
 }
