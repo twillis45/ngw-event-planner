@@ -520,7 +520,7 @@ export function getVendorChallengeSummary(vendor, event) {
 const AXIS_WORDS = {
   booking: 'booking', communication: 'staying in touch', logistics: 'arrival',
   financial: 'money', documents: 'paperwork', closeout: 'after the event',
-  scope: 'what they’re doing', timeline: 'the run of show', dayOf: 'the day itself',
+  scope: 'what they’re doing', timeline: THE_SCHEDULE, dayOf: 'the day itself',
 };
 
 export function getVendorReadiness(vendor, event, axes = null) {

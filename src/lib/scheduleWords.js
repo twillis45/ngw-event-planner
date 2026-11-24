@@ -2,8 +2,8 @@
 //
 // Owner: "Host doesn't use run of show language." Every host-facing string that
 // named the timed plan of the day reads these instead, so a change of wording
-// is this one line. The owner has not confirmed the word yet; "schedule" is the
-// parent session's proposal. Engine ids (`ros`, `runOfShow`), keys and comments
+// is this one line. The owner confirmed "the day's schedule" / "Schedule" on
+// 11/24/2026. Engine ids (`ros`, `runOfShow`), keys and comments
 // keep their names; only what the host reads changes.
 // Guarded by src/lib/__tests__/theHostNeverReadsRunOfShow.test.js.
 const NOUN = 'schedule';
