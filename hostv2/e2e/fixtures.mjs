@@ -276,6 +276,11 @@ export const openSectionByName = async (page, name, opts = {}) => {
 export const identityLine = (page) => page.locator('.ev-eyebrow .eb-text, [data-tt-head] .tt-r1').first();
 export const openEventsSheet = async (page, opts = {}) => {
   const timeout = opts.timeout || 15_000;
+  // Her own plan after its day lands on After (owner, 11/24/2026, cohesion
+  // batch E), and the event switcher lives in the board's header: on a stage
+  // without it, step to Plan first, as she would.
+  await anyDoor(page);
+  if (!(await page.locator('[data-tt-title], .ev-eyebrow').count())) await goToStage(page, 'Plan');
   // Wait for the board's header, whichever layout it is, before choosing.
   await page.locator('[data-tt-title], .ev-eyebrow').first().waitFor({ timeout });
   const title = page.locator('[data-tt-title]');
