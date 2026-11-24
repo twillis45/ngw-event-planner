@@ -8,13 +8,13 @@
 // This module is the card's CONTENT and look, read with the same helpers the
 // guest invite page (hostv2 InviteV2) uses, so the picture says what the page
 // says: the tone (inviteTone: cream, dark for evening/formal, muted for a
-// memorial), the masthead ("An invitation" · Nov 2026), the name, the deck line
-// (lib/inviteDeck), When (the day, a multi-day span, the host-set hour), Where
+// memorial), the masthead ("An invitation" · Nov 2026), the name, the host's
+// message and its signature (lib/inviteDeck inviteMessage), When (the day, a multi-day span, the host-set hour), Where
 // (venueFor) and Hosted by. Two things are left out on purpose: the countdown
 // (a picture cannot count down; it would go stale) and the reply (it is the
 // email's own buttons). hostv2/src/inviteCardImage.js draws it. PURE.
 import { inviteTone } from './inviteTone';
-import { deckLineFor } from './inviteDeck';
+import { inviteMessage } from './inviteDeck';
 import { eventStartLabel } from './eventWhen';
 import { formatVenueAddress } from './venueFor';
 import { daysUntilEnd } from './dates';
@@ -55,7 +55,14 @@ export function inviteCardModel(event) {
     mast: ['An invitation', ev.date ? dfmt(ev.date, { month: 'short', year: 'numeric' }) : ''],
     eyebrow: past ? 'Thank you for coming' : tone === 'muted' ? 'Please join us' : '',
     name: String(ev.name || '').trim() || 'Our gathering',
-    deck: (() => { try { return deckLineFor(ev, tone === 'muted', past) || ''; } catch { return ''; } })(),
+    // The host's message (owner, 11/24/2026): her words, signed with her first
+    // name when she wrote them; else the suggested line, unsigned.
+    ...(() => {
+      try {
+        const m = inviteMessage(ev, { somber: tone === 'muted', past });
+        return { deck: m.text || '', sig: m.signedBy ? `— ${m.signedBy}` : '' };
+      } catch { return { deck: '', sig: '' }; }
+    })(),
     facts,
   };
 }

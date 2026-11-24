@@ -17,6 +17,11 @@ const S = 3;
 const PAD = 26;
 const SANS = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 const SERIF = "'Playfair Display', Georgia, 'Times New Roman', serif";
+// The host's message is set in the page's message style (.inv2-msg): the
+// reading serif, italic, with the signature upright under it (11/24/2026).
+const SERIF_READ = "'Newsreader', Georgia, 'Times New Roman', serif";
+const MSG_FONT = `italic 400 17px ${SERIF_READ}`;
+const SIG_FONT = `400 15px ${SERIF_READ}`;
 
 const grainUrl = (kind) => `${import.meta.env.BASE_URL || '/'}email/invite-grain-${kind}.jpg`;
 
@@ -111,7 +116,8 @@ async function fontsReady() {
     if (!document.fonts) return;
     await Promise.all([
       document.fonts.load(`700 42px ${SERIF}`),
-      document.fonts.load(`italic 400 15.5px ${SERIF}`),
+      document.fonts.load(MSG_FONT),
+      document.fonts.load(SIG_FONT),
     ]);
   } catch { /* system serif stands in */ }
 }
@@ -154,6 +160,40 @@ function struck(ctx, dark, display, draw) {
   draw();
 }
 
+/** The card's layout: what goes where, measured with `ctx` (a measuring
+ *  pass; nothing is drawn). Exported so the layout is testable. */
+export function planInviteCard(ctx, model, crest) {
+  const inner = W - PAD * 2;
+  const ops = [];
+  let y = 30;
+  ops.push({ k: 'mast', y: y + 9 }); y += 14;
+  if (crest && crest.naturalWidth) {
+    const ch = 96 * (crest.naturalHeight / crest.naturalWidth);
+    y += 10; ops.push({ k: 'crest', y, h: ch }); y += ch;
+  }
+  if (model.eyebrow) { y += 18; ops.push({ k: 'eyebrow', y: y + 9 }); y += 12; }
+  ctx.font = `700 42px ${SERIF}`;
+  const nameLines = wrap(ctx, model.name, inner);
+  y += model.eyebrow ? 14 : 26;
+  nameLines.forEach((l) => { y += 42 * 1.08; ops.push({ k: 'name', text: l, y: y - 9 }); });
+  if (model.deck) {
+    ctx.font = MSG_FONT;
+    y += 4;
+    wrap(ctx, model.deck, inner - 24).forEach((l) => { y += 24; ops.push({ k: 'deck', text: l, y: y - 5, font: MSG_FONT }); });
+    if (model.sig) { y += 26; ops.push({ k: 'sig', text: model.sig, y: y - 5, font: SIG_FONT }); }
+  }
+  y += 16; ops.push({ k: 'rule', y }); y += 2 + 4;
+  for (const f of model.facts) {
+    y += 13 + 11; ops.push({ k: 'label', text: f.label.toUpperCase(), y: y - 1 });
+    ctx.font = `600 15px ${SANS}`;
+    const full = f.sub ? `${f.value} · ${f.sub}` : f.value;
+    const oneLine = ctx.measureText(full).width <= inner;
+    const lines = oneLine ? [full] : [...wrap(ctx, f.value, inner), ...(f.sub ? [f.sub] : [])];
+    lines.forEach((l, i) => { y += 3 + 18; ops.push({ k: 'val', text: l, sub: f.sub, oneLine, last: i === lines.length - 1, y: y - 4 }); });
+  }
+  return { ops, h: Math.ceil(y + 34) };
+}
+
 /** Lay the card out (a measuring pass), then draw it. Returns a JPEG Blob. */
 export async function drawInviteCard(model) {
   await fontsReady();
@@ -163,39 +203,9 @@ export async function drawInviteCard(model) {
   // G83 (11/19/2026): the page's crest (InviteV2 markUrlFor) when the event has
   // one and the host left it on. It failing to load leaves it out, as the page would.
   const crest = model.crest ? await loadImage(model.crest).catch(() => null) : null;
-  const inner = W - PAD * 2;
-
-  const plan = (ctx) => {
-    const ops = [];
-    let y = 30;
-    ops.push({ k: 'mast', y: y + 9 }); y += 14;
-    if (crest && crest.naturalWidth) {
-      const ch = 96 * (crest.naturalHeight / crest.naturalWidth);
-      y += 10; ops.push({ k: 'crest', y, h: ch }); y += ch;
-    }
-    if (model.eyebrow) { y += 18; ops.push({ k: 'eyebrow', y: y + 9 }); y += 12; }
-    ctx.font = `700 42px ${SERIF}`;
-    const nameLines = wrap(ctx, model.name, inner);
-    y += model.eyebrow ? 14 : 26;
-    nameLines.forEach((l) => { y += 42 * 1.08; ops.push({ k: 'name', text: l, y: y - 9 }); });
-    if (model.deck) {
-      ctx.font = `italic 400 15.5px ${SERIF}`;
-      wrap(ctx, model.deck, inner).forEach((l) => { y += 22; ops.push({ k: 'deck', text: l, y: y - 5 }); });
-    }
-    y += 16; ops.push({ k: 'rule', y }); y += 2 + 4;
-    for (const f of model.facts) {
-      y += 13 + 11; ops.push({ k: 'label', text: f.label.toUpperCase(), y: y - 1 });
-      ctx.font = `600 15px ${SANS}`;
-      const full = f.sub ? `${f.value} · ${f.sub}` : f.value;
-      const oneLine = ctx.measureText(full).width <= inner;
-      const lines = oneLine ? [full] : [...wrap(ctx, f.value, inner), ...(f.sub ? [f.sub] : [])];
-      lines.forEach((l, i) => { y += 3 + 18; ops.push({ k: 'val', text: l, sub: f.sub, oneLine, last: i === lines.length - 1, y: y - 4 }); });
-    }
-    return { ops, h: Math.ceil(y + 34) };
-  };
 
   const measure = document.createElement('canvas').getContext('2d');
-  const { ops, h } = plan(measure);
+  const { ops, h } = planInviteCard(measure, model, crest);
   const canvas = document.createElement('canvas');
   canvas.width = W * S; canvas.height = h * S;
   const ctx = canvas.getContext('2d');
@@ -245,7 +255,10 @@ export async function drawInviteCard(model) {
       ctx.font = `700 42px ${SERIF}`; ctx.fillStyle = c.ink; ctx.textAlign = 'center';
       struck(ctx, dark, true, () => ctx.fillText(op.text, W / 2, op.y));
     } else if (op.k === 'deck') {
-      ctx.font = `italic 400 15.5px ${SERIF}`; ctx.fillStyle = c.sub; ctx.textAlign = 'center';
+      ctx.font = op.font; ctx.fillStyle = dark ? (c.body || c.ink) : '#3a342c'; ctx.textAlign = 'center';
+      ctx.fillText(op.text, W / 2, op.y);
+    } else if (op.k === 'sig') {
+      ctx.font = op.font; ctx.fillStyle = c.sub; ctx.textAlign = 'center';
       ctx.fillText(op.text, W / 2, op.y);
     } else if (op.k === 'rule') {
       ctx.fillStyle = c.hue; ctx.fillRect(W / 2 - 22, op.y, 44, 2);
