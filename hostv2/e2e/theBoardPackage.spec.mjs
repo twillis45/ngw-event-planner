@@ -398,7 +398,7 @@ test('4: the invite step’s “What do you call it?” is the same rename field
   const { ctx, page } = await seededPhone(browser, { ...PLACEHOLDER, id: 'ev-invite-name' });
   await openSectionByName(page, 'Guests');
   await sheetSettled(page);
-  await page.locator('.sheet button').filter({ hasText: /^Copy the invite$/ }).first().click();
+  await page.locator('.sheet button').filter({ hasText: /^Invite text$/ }).first().click();
   const ask = page.locator('[data-outward-name]');
   await expect(ask).toBeVisible({ timeout: 10_000 });
   const f = ask.locator('[data-rename="invite"] input');
@@ -581,7 +581,7 @@ test('6: with only a city on record the street is asked once more when the invit
   expect(await boardWords(page), 'the board does not ask for the street').not.toMatch(/Add your street address|Add your address|Guests will ask where/);
   await openSectionByName(page, 'Guests');
   await sheetSettled(page);
-  await page.locator('.sheet button').filter({ hasText: /^Copy the invite$/ }).first().click();
+  await page.locator('.sheet button').filter({ hasText: /^Invite text$/ }).first().click();
   await expect(page.locator('[data-invite-check]')).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('[data-invite-check-item="address"]')).toHaveAttribute('data-ok', '0');
   await expect(page.locator('[data-outward-address]')).toBeVisible();

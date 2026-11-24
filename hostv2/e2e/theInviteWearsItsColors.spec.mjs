@@ -54,7 +54,7 @@ const settledInvite = async (page) => {
 test('a palette, then an arrangement, recolors the live preview, and the guest sees the same after save', async ({ page }) => {
   await seed(page, EVENT({ inviteStyle: '' }));
   await page.goto('?open=invite');
-  await expect(page.locator('#sheet-title')).toHaveText('Your invite', { timeout: 10_000 });
+  await expect(page.locator('#sheet-title')).toHaveText('Invite page', { timeout: 10_000 });
   await sheetSettled(page);
   const pv = '[data-invite-preview]';
   await expect(page.locator(`${pv} .inv2-sheet`)).toBeVisible();
@@ -80,7 +80,7 @@ test('a palette, then an arrangement, recolors the live preview, and the guest s
   expect(swapped.ink).toBe(rgb('#6e1f26'));      // the oxblood is now the words
   expect(swapped.accent).toBe(rgb('#1f3a2c'));   // and the forest the accent
 
-  await page.getByRole('button', { name: 'Save your invite' }).click();
+  await page.getByRole('button', { name: 'Save your invite page' }).click();
   await page.goto('?rsvp=' + CODE);
   await settledInvite(page);
   const guest = await colorsIn(page, null);
