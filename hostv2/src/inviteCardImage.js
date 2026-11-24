@@ -255,7 +255,7 @@ export async function drawInviteCard(model) {
       ctx.font = `700 42px ${SERIF}`; ctx.fillStyle = c.ink; ctx.textAlign = 'center';
       struck(ctx, dark, true, () => ctx.fillText(op.text, W / 2, op.y));
     } else if (op.k === 'deck') {
-      ctx.font = op.font; ctx.fillStyle = dark ? (c.body || c.ink) : '#3a342c'; ctx.textAlign = 'center';
+      ctx.font = op.font; ctx.fillStyle = c.body || c.ink; ctx.textAlign = 'center';
       ctx.fillText(op.text, W / 2, op.y);
     } else if (op.k === 'sig') {
       ctx.font = op.font; ctx.fillStyle = c.sub; ctx.textAlign = 'center';
