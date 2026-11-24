@@ -9,8 +9,15 @@
 //      stage has no circle, outline or box: a white semibold label with a short
 //      2px bar beneath it, 60% of the label's width, centered in the pill and
 //      the bar, left-aligned in the rail. The others are muted. One style.
+//   2  AFTER A DECISION THE HERO ADVANCES (render 2). Answering a call shows
+//      the NEXT item right away, never "That's decided." Above it, one quiet
+//      line: "✓ Decided · Undo" (a green check; Undo restores her prior
+//      answer). It clears after about 6s or on her next action. No "Next:
+//      Resolve …" link.
 import { test, expect } from '@playwright/test';
 import { settled } from './fixtures.mjs';
+
+const dateIn = (d) => { const t = new Date(); t.setDate(t.getDate() + d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
 
 const PHONE = { width: 390, height: 844 };
 const TABLET = { width: 768, height: 1024 };
@@ -102,4 +109,100 @@ test('1: the selected stage is underlined, one style on the pill, the 768 bar an
     await ctx.close();
   }
   expect(new Set(looks).size, `one shared style: ${looks.join(' | ')}`).toBe(1);
+});
+
+// ═══════════════════ 2. AFTER A DECISION THE HERO ADVANCES ═════════════════
+// A Get-Together, walked from the first ask as oneUndoAndAnHonestQuiet walks it:
+// its call is the last open call while other work waits, the board that used
+// to stop on "That's decided." with a "Next: …" link.
+const seededPhone = async (browser, ev) => {
+  const ctx = await browser.newContext({ viewport: PHONE, hasTouch: true, isMobile: true });
+  const page = await ctx.newPage();
+  await page.addInitScript((e) => {
+    if (sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded', '1');
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e])); localStorage.setItem('ngw-hostv2-last-event', e.id);
+    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString()); localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
+  }, ev);
+  await page.goto('./?elegant=1&noanalytics=1');
+  await settled(page);
+  await page.waitForTimeout(600);
+  return { ctx, page };
+};
+const GET_TOGETHER = { id: 'ev-decided-advances', name: 'Saturday Get-Together', type: 'Get-Together', date: dateIn(86), guestMode: 'count', guestCount: 16,
+  totalBudget: 0, budget: [], vendors: [], guests: [], timeline: [] };
+const hero = (page) => page.locator('.escreen.on');
+const askText = async (page) => ((await page.locator('.escreen.on h2.ask').count()) ? (await page.locator('.escreen.on h2.ask').first().innerText()).trim() : '');
+const storedChoices = (page) => page.evaluate(() => JSON.stringify((JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0] || {}).foodChoices || {}));
+const toTheCall = async (page) => {
+  await hero(page).locator('button.cta').first().click(); await page.waitForTimeout(1200);
+  const inp = hero(page).locator('input:visible');
+  if (await inp.count()) {
+    await inp.first().fill('Our place, Annapolis, MD');
+    await hero(page).locator('button').filter({ hasText: /^Save/ }).first().click(); await page.waitForTimeout(1200);
+  }
+  await expect(hero(page).locator('.decopt.pick').first(), 'premise: the hero asks a call').toBeVisible();
+};
+const visibleUndos = (page) => page.evaluate(() => [...document.querySelectorAll('button')]
+  .filter((b) => /^Undo$/.test((b.innerText || '').trim()) && b.getBoundingClientRect().width > 0 && !b.closest('[inert]')).length);
+
+test('2: answering a call advances the hero to the next item under one quiet "✓ Decided · Undo" line', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const { ctx, page } = await seededPhone(browser, GET_TOGETHER);
+  await toTheCall(page);
+  const asked = await askText(page);
+  const before = await storedChoices(page);
+  await hero(page).locator('.decopt.pick').first().click();
+  await page.waitForTimeout(900);
+  const t = await hero(page).innerText();
+  expect(t, 'never stops on a payoff while work is open').not.toMatch(/That’s decided|Those are decided|That’s settled|Those are settled/);
+  expect(await page.locator('.ac-next').count(), 'no "Next: …" link').toBe(0);
+  expect(t).not.toMatch(/Next: Resolve/);
+  const next = await askText(page);
+  expect(next, 'the hero shows the next item').not.toBe('');
+  expect(next, 'the next item, not the call just answered').not.toBe(asked);
+  const line = hero(page).locator('[data-decided]');
+  await expect(line).toBeVisible();
+  await expect(line).toHaveText('✓ Decided · Undo', { useInnerText: true });
+  const m = await page.evaluate(() => {
+    const l = document.querySelector('.escreen.on [data-decided]');
+    const res = (v) => { const p = document.createElement('div'); p.style.color = v; document.body.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; };
+    return { above: l.getBoundingClientRect().bottom <= document.querySelector('.escreen.on h2.ask').getBoundingClientRect().top + 1,
+      check: getComputedStyle(l.querySelector('[data-decided-check]')).color, ok: res('var(--ok)'), muted: res('var(--muted)'),
+      undo: getComputedStyle(l.querySelector('button')).color };
+  });
+  expect(m.above, 'the line sits above the ask').toBe(true);
+  expect(m.check, 'a green check').toBe(m.ok);
+  expect(m.undo, 'Undo is a muted text link').toBe(m.muted);
+  expect(await visibleUndos(page), 'one Undo on screen').toBe(1);
+  expect(await storedChoices(page), 'premise: the answer saved').not.toBe(before);
+  // UNDO RESTORES HER PRIOR ANSWER, and the call comes back to the hero.
+  await line.getByRole('button', { name: 'Undo' }).click();
+  await page.waitForTimeout(900);
+  expect(await storedChoices(page), 'the prior answer is restored').toBe(before);
+  expect(await askText(page), 'the call is asked again').toBe(asked);
+  await expect(hero(page).locator('[data-decided]')).toHaveCount(0);
+  await ctx.close();
+});
+
+test('2: the decided line clears on her next action, and on its own after about 6s', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const { ctx, page } = await seededPhone(browser, GET_TOGETHER);
+  await toTheCall(page);
+  await hero(page).locator('.decopt.pick').first().click();
+  await expect(hero(page).locator('[data-decided]')).toBeVisible();
+  const kept = await storedChoices(page);
+  // Her next action (a tap on the board that is not the Undo) clears it.
+  await page.locator('.escreen.on h2.ask').click();
+  await expect(hero(page).locator('[data-decided]')).toHaveCount(0);
+  expect(await storedChoices(page), 'the answer stays').toBe(kept);
+  await ctx.close();
+  // ...and left alone, it is gone after about six seconds (not before five).
+  const s2 = await seededPhone(browser, { ...GET_TOGETHER, id: 'ev-decided-timer' });
+  await toTheCall(s2.page);
+  await hero(s2.page).locator('.decopt.pick').first().click();
+  await expect(hero(s2.page).locator('[data-decided]')).toBeVisible();
+  await s2.page.waitForTimeout(4500);
+  await expect(hero(s2.page).locator('[data-decided]'), 'still up at 4.5s').toBeVisible();
+  await expect(hero(s2.page).locator('[data-decided]')).toHaveCount(0, { timeout: 3000 });
+  await s2.ctx.close();
 });

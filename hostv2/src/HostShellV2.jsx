@@ -3097,13 +3097,22 @@ export default function HostShellV2() {
   //                          why?:string, settle:(value)=>void }
   // Grounding: `proposed` (the "our pick") is emitted ONLY when defensible — otherwise
   // honest ask-mode (equal rows). Nothing invented at render; a missing note just doesn't show.
+  // A CALL ANSWERED ON THE BOARD IS SAID ONCE, ABOVE THE NEXT ASK (owner,
+  // render 2, 11/24/2026). The write a pick makes is marked `decided`, so its
+  // receipt is the one quiet "✓ Decided · Undo" line over the hero's next
+  // item instead of a sentence inside the card. Every settle runs inside the
+  // tap (settleDecision → patchEvent), so the flag is set only for its write.
+  const decide = (nd, v) => {
+    decidingRef.current = true;
+    try { nd.settle(v); } finally { decidingRef.current = false; }
+  };
   const renderDecision = (nd) => {
     if (!nd || !Array.isArray(nd.options) || !nd.options.length) return null;
     const proposedOpt = nd.proposed ? nd.options.find(o => o.value === nd.proposed.value) : null;
     const alts = proposedOpt ? nd.options.filter(o => o !== proposedOpt) : nd.options;
     const open = decDiscloseId === nd.id;
     const optRow = (o, isPick) => (
-      <button key={o.value} className={'decopt' + (isPick ? ' pick' : '')} onClick={() => nd.settle(o.value)}>
+      <button key={o.value} className={'decopt' + (isPick ? ' pick' : '')} onClick={() => decide(nd, o.value)}>
         <span className="decopt-main">
           <span className="decopt-name">{o.label}</span>
           {o.note && <span className="decopt-note">{o.note}</span>}
@@ -3136,7 +3145,7 @@ export default function HostShellV2() {
           {nd.options.map(o => {
             const isChosen = o.value === nd.selected;
             return (
-              <button key={o.value} className={'decopt' + (isChosen ? ' pick' : '')} aria-pressed={isChosen} onClick={() => nd.settle(o.value)}>
+              <button key={o.value} className={'decopt' + (isChosen ? ' pick' : '')} aria-pressed={isChosen} onClick={() => decide(nd, o.value)}>
                 <span className="decopt-main">
                   <span className="decopt-name">{o.label}</span>
                   {o.note && <span className="decopt-note">{o.note}</span>}
@@ -5527,6 +5536,7 @@ export default function HostShellV2() {
   // panel wears a brief ok-ring pulse — the beat, never blocking.
   const [heroReceipt, setHeroReceipt] = useState(null);
   const receiptTimerRef = useRef(null);
+  const decidingRef = useRef(false);
   const pendingSatisfiedRef = useRef([]);
   // ONE WAY TO SET AN ASK DOWN (audit 2 P1-1, 11/22/2026): the hero Undo on
   // Crab Feast's first food pick put the data back and left "Decide the menu."
@@ -5550,6 +5560,27 @@ export default function HostShellV2() {
     if (r && Array.isArray(r.satisfied) && r.satisfied.length) writeSettled(r.satisfied, false);
     try { if (r && r.fn) r.fn(); } catch { /* undo failed */ }
   };
+  // THE DECIDED LINE CLEARS ON HER NEXT ACTION (owner, render 2, 11/24/2026):
+  // any tap or key outside the line itself. Tab and Shift only move focus (to
+  // the Undo, say), so they are not an action. On the click, not the press:
+  // the line sits above the ask, and taking it away on pointerdown moved the
+  // next pick out from under her finger before the click landed.
+  // After the click has done its work (a task, not now: a state change made in
+  // a capture listener re-renders before React hands the click to its target,
+  // and the Undo it was aimed at would be gone). Only the receipt that was up
+  // goes: a pick made by that same click keeps its own line.
+  useEffect(() => {
+    const mine = heroReceipt;
+    if (!mine || !mine.decided) return undefined;
+    const clear = (e) => {
+      if (e.target && e.target.closest && e.target.closest('[data-decided], .receipt')) return;
+      if (e.type === 'keydown' && (e.key === 'Tab' || e.key === 'Shift')) return;
+      setTimeout(() => setHeroReceipt((r) => (r === mine ? null : r)), 0);
+    };
+    document.addEventListener('click', clear, true);
+    document.addEventListener('keydown', clear, true);
+    return () => { document.removeEventListener('click', clear, true); document.removeEventListener('keydown', clear, true); };
+  }, [heroReceipt]);
   const askModeRef = useRef(false);
   // ALL-CLEAR PAYOFF (host 2026-07-18): when a whole bundle goes N→0 on THIS event,
   // the hero shows the earned moment before advancing — {kind, count}. Conflicts get
@@ -8617,7 +8648,10 @@ export default function HostShellV2() {
       // Surface the earned moment (conflict > decision > coi if several cleared at once — rare).
       // count = the peak the bundle reached (fallback to prev), so "6 of 6", not "1 of 1".
       if (clearedConflicts) { setJustCleared({ kind: 'conflict', count: Math.max(pk.conflicts, prev.conflicts) }); pk.conflicts = 0; }
-      else if (clearedDecisions) { setJustCleared({ kind: 'decision', count: Math.max(pk.decisions, prev.decisions) }); pk.decisions = 0; }
+      // THE LAST CALL ANSWERED WITH WORK STILL OPEN IS NOT A STOP (owner, render
+      // 2, 11/24/2026): the hero goes straight to the next item under the
+      // "✓ Decided · Undo" line. Only a board with nothing left gets the payoff.
+      else if (clearedDecisions) { if (!(queue.length && !listIsCalm)) setJustCleared({ kind: 'decision', count: Math.max(pk.decisions, prev.decisions) }); pk.decisions = 0; }
       else { setJustCleared({ kind: 'coi', count: Math.max(pk.coi, coiCounts.total || prev.coi) }); pk.coi = 0; }
     }
   }, [elegantMode, eventId, conflictItems.length, callsOrdered.length, coiCounts.open]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -8963,17 +8997,21 @@ export default function HostShellV2() {
           retireUndoToast();
           // A folded write keeps the ask its pick set down (`satisfied`, below):
           // the Undo that puts the pick back puts the ask back.
+          // Read now: the updater below runs at render, after decide() has reset it.
+          const decidedNow = decidingRef.current;
           setHeroReceipt(r => {
             const kept = folds && r && Array.isArray(r.satisfied) ? r.satisfied : [];
             const sat = [...new Set([...kept, ...pend])];
-            return { msg, fn: undoFn, satisfied: sat.length ? sat : undefined };
+            const decided = folds && r ? !!r.decided : decidedNow;
+            return { msg, fn: undoFn, satisfied: sat.length ? sat : undefined, decided: decided || undefined };
           });
           // Route through the ONE haptic vocabulary (feedback) instead of a bespoke
           // vibrate(8) — a receipt lands with the same 10ms tick as every other state
           // change, and respects the silent-haptics layer (audit 2026-07-22).
           try { feedback('tick'); } catch { /* no haptics */ }
           if (receiptTimerRef.current) clearTimeout(receiptTimerRef.current);
-          receiptTimerRef.current = setTimeout(() => setHeroReceipt(null), 7000);
+          // A decided line clears after about 6s (owner, 11/24/2026); other receipts 7s.
+          receiptTimerRef.current = setTimeout(() => setHeroReceipt(null), decidedNow ? 6000 : 7000);
         } else {
           toast(msg, { label: 'Undo', fn: undoThatBringsBack(pend, undoFn, (back) => writeSettled(back, false)) }, 'ok');
         }
@@ -12924,6 +12962,11 @@ export default function HostShellV2() {
                   return (<>
                     {/* ONE ask string, computed once at heroAskText (~2357) so the card-title
                         dedup and the browser tab speak exactly what is rendered here. */}
+                    {heroReceipt && heroReceipt.decided && (
+                      <p className="decided-line" data-decided role="status">
+                        <span className="decided-ck" data-decided-check aria-hidden="true">✓</span>Decided<span className="decided-sep" aria-hidden="true">·</span><button type="button" className="decided-undo" onClick={undoHeroReceipt}>Undo</button>
+                      </p>
+                    )}
                     <h2 className="ask" key={'ask-' + String(queue[0].id || queue[0].title || '')} data-hero-part={tallNowPart}>{heroAskText}</h2>
                     {/* With no date this slot would read "null days". The frame puts
                         the honest sentence here instead — and when the host named a
@@ -13442,7 +13485,7 @@ export default function HostShellV2() {
                             <button className="cta" onClick={goFix}>{vendName ? ('Open ' + vendName) : 'Open the vendor'}</button>
                           </div>
                           )}
-                          {heroReceipt && (
+                          {heroReceipt && !heroReceipt.decided && (
                             <div className="receipt">
                               <span className="rdot" aria-hidden="true" />
                               <span className="rmsg">{heroReceipt.msg}</span>
@@ -13507,7 +13550,7 @@ export default function HostShellV2() {
                               lookup, so the options here always belong to the decision
                               the line above is asking about. */}
                           {renderDecision(heroDecisionND)}
-                          {heroReceipt && (
+                          {heroReceipt && !heroReceipt.decided && (
                             <div className="receipt">
                               <span className="rdot" aria-hidden="true" />
                               <span className="rmsg">{heroReceipt.msg}</span>
@@ -13940,7 +13983,7 @@ export default function HostShellV2() {
                           <button className="mini" onClick={() => setSnoozePick(null)}>Never mind</button>
                         </div>
                       )}
-                      {isHero && heroReceipt && (
+                      {isHero && heroReceipt && !heroReceipt.decided && (
                         <div className="receipt">
                           <span className="rdot" aria-hidden="true" />
                           <span className="rmsg">{heroReceipt.msg}</span>
