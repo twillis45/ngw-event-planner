@@ -520,6 +520,28 @@ async function runViewport(browser, vp, runDir, meta) {
             }
             out.inviteMessage = im;
           } else out.inviteMessage = 'no "Invite message" row';
+          // The Invite page's "See the full invite" (owner report 11/24): no new
+          // tab, the whole draft invite in place, the chosen layout kept.
+          await closeSheets(page); await openSection(page, name);
+          const pageRow = page.locator('.sheet').last().locator('[data-si-row]', { hasText: /Invite page/i }).first();
+          const pageDoor = (await pageRow.count()) ? pageRow : page.locator('.sheet').last().locator('button', { hasText: /Your invite|Invite page/ }).first();
+          if (await pageDoor.count()) {
+            await pageDoor.scrollIntoViewIfNeeded(); await pageDoor.click({ timeout: 6000 }); await page.waitForTimeout(1500);
+            const g = page.locator('[data-invite-panel] [role=radio]', { hasText: 'At a glance' });
+            if (await g.count()) { await g.click(); await page.waitForTimeout(800); }
+            const fr = () => page.evaluate(() => { const f = document.querySelector('[data-invite-preview]'); if (!f) return null;
+              const l = f.querySelector('[data-invite-layout]'); return { h: f.clientHeight, clipped: f.scrollHeight > f.clientHeight + 2, layout: l && l.getAttribute('data-invite-layout') }; });
+            const full = { before: await fr() };
+            const b = page.getByRole('button', { name: 'See the full invite' });
+            if (await b.count()) {
+              const opens0 = await page.evaluate(() => window.__lcOpen || 0);
+              await b.first().click({ timeout: 6000 }); await page.waitForTimeout(1000);
+              full.newTab = (await page.evaluate(() => window.__lcOpen || 0)) > opens0;
+              full.after = await fr();
+              full.label = (await page.locator('[data-invite-panel] .ivd-full').first().innerText().catch(() => '')).trim();
+            } else full.button = 'missing';
+            out.seeFullInvite = full;
+          } else out.seeFullInvite = 'no Invite page door';
         }
         if (name === 'People you’re hiring') {
           const sh = page.locator('.sheet').last();
