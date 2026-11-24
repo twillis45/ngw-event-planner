@@ -17555,7 +17555,7 @@ export default function HostShellV2() {
                       )}
                     </div>
                     <p className="grounding" style={{ margin: 'var(--sp-3) 0 0' }}>
-                      It comes back the next time you plan {event.type ? `a ${String(event.type).toLowerCase()}` : 'one of these'}. Your guest list, vendors and every money line above stay saved with this plan.
+                      It comes back the next time you plan {event.type ? `${/^[aeiou]/i.test(String(event.type)) ? 'an' : 'a'} ${String(event.type).toLowerCase()}` : 'one of these'}. Your guest list, vendors and every money line above stay saved with this plan.
                     </p>
                   </div></div>
                 </>
