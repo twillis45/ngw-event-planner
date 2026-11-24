@@ -21,7 +21,9 @@ const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) +
 const at = css.search(/^\.inv2-sheet\{/m);
 const sheet = css.slice(at, css.indexOf('}', at));
 const label = (/--hue-deep:\s*(#[0-9a-fA-F]{6})/.exec(sheet) || [])[1];
-const bottom = (/(#[0-9a-fA-F]{6})\s+100%\)/.exec(sheet) || [])[1];
+// The paper's shaded foot: the last stop of its gradient, a variable since the
+// palettes (11/24/2026) — --paper-foot on the cream sheet.
+const bottom = (/--paper-foot:\s*(#[0-9a-fA-F]{6})/.exec(sheet) || [])[1];
 
 describe('the cream invite’s label color against its paper', () => {
   it('reads both colors from the stylesheet (premise)', () => {

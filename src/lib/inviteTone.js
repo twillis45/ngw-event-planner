@@ -215,6 +215,9 @@ export function invitePaletteFor(event, opts = {}) {
 
 /** The seven variables .inv2-sheet reads. */
 export const inviteSheetVars = (c) => ({
+  // The paper's lit top and shaded foot, in the stock's own shape (styles.css
+  // .inv2-sheet reads them): a light paper lit 45%, a dark one 6%.
+  '--paper-top': tintHex(c.paper, c.dark ? 0.06 : 0.45), '--paper-foot': tintHex(c.paper, c.dark ? -0.1 : -0.035),
   '--stock-paper': c.paper, '--stock-ink': c.ink, '--stock-sub': c.sub,
   '--hue': c.hue, '--hue-deep': c.accent, '--stock-line': c.line, '--on-hue': c.onAccent,
 });
