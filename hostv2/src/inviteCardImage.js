@@ -12,6 +12,8 @@
 // same on every browser (the page-capture libraries are unreliable on iPhone
 // Safari), and needs no new dependency. The card is 380 CSS px wide, the page's
 // phone width, at 3x.
+import { tintHex } from '@app/lib/inviteTone';
+
 const W = 380;
 const S = 3;
 const PAD = 26;
@@ -79,12 +81,14 @@ function insetEdge(ctx, w, h, side, size, blur, color) {
 // falls exactly where it falls on the page, and the bottom shading, which on
 // the page sits far below the facts, is not pulled up under them.
 export const SHEET_H = 720;
-export function drawPaper(ctx, w, h, dark, grain) {
+export function drawPaper(ctx, w, h, dark, grain, paperHex) {
   const card = h;
   h = Math.max(h, SHEET_H);
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, w, card); ctx.clip();
   if (!dark) {
-    cssLinear(ctx, w, h, 168, [[0, '#fdfaf4'], [0.48, '#f9f4ea'], [1, '#f2ebdc']]);
+    // A palette's paper (11/24/2026) in the stock's own light-to-shade shape.
+    cssLinear(ctx, w, h, 168, paperHex ? [[0, tintHex(paperHex, 0.45)], [0.48, paperHex], [1, tintHex(paperHex, -0.035)]]
+      : [[0, '#fdfaf4'], [0.48, '#f9f4ea'], [1, '#f2ebdc']]);
     cssRadial(ctx, w, h, 1.6, 1.2, 0.5, 1.18, [[0, 'rgba(226,213,192,.5)'], [0.46, 'rgba(240,232,218,0)'], [1, 'rgba(240,232,218,0)']]);
     cssRadial(ctx, w, h, 1.3, 0.9, 0.32, -0.1, [[0, 'rgba(255,253,248,.98)'], [0.58, 'rgba(253,250,245,0)'], [1, 'rgba(253,250,245,0)']]);
     insetEdge(ctx, w, card, 'bottom', 2, 3, 'rgba(140,110,70,.14)');
@@ -98,7 +102,8 @@ export function drawPaper(ctx, w, h, dark, grain) {
     cssRadial(ctx, w, h, 1.4, 1.05, 0.5, 0.45, [[0, 'rgba(0,0,0,0)'], [0.62, 'rgba(0,0,0,0)'], [1, 'rgba(110,85,50,.10)']]);
     cssLinear(ctx, w, h, 118, [[0, 'rgba(255,255,255,.62)'], [0.26, 'rgba(255,255,255,.16)'], [0.42, 'rgba(255,255,255,0)'], [1, 'rgba(255,255,255,0)']]);
   } else {
-    cssLinear(ctx, w, h, 168, [[0, '#191b1f'], [0.48, '#131518'], [1, '#0d0f11']]);
+    cssLinear(ctx, w, h, 168, paperHex ? [[0, tintHex(paperHex, 0.06)], [0.48, paperHex], [1, tintHex(paperHex, -0.1)]]
+      : [[0, '#191b1f'], [0.48, '#131518'], [1, '#0d0f11']]);
     cssRadial(ctx, w, h, 1.6, 1.2, 0.5, 1.18, [[0, 'rgba(0,0,0,.55)'], [0.46, 'rgba(20,22,25,0)'], [1, 'rgba(20,22,25,0)']]);
     cssRadial(ctx, w, h, 1.3, 0.9, 0.32, -0.1, [[0, 'rgba(44,47,52,.85)'], [0.58, 'rgba(22,24,27,0)'], [1, 'rgba(22,24,27,0)']]);
     insetEdge(ctx, w, card, 'bottom', 2, 3, 'rgba(0,0,0,.5)');
@@ -213,7 +218,7 @@ export async function drawInviteCard(model) {
 
   // The paper, square: the email rounds its corners (border-radius on the
   // image), so no corner color can show against a mail app's dark background.
-  drawPaper(ctx, W, h, dark, grain);
+  drawPaper(ctx, W, h, dark, grain, c.paperHex);
 
   ctx.textBaseline = 'alphabetic';
   for (const op of ops) {

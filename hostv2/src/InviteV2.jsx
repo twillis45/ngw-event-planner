@@ -22,7 +22,7 @@ import { track as trackInvite, EVENTS as INVITE_EVENTS } from '@app/lib/analytic
 import { isRsvpApiConfigured, checkRsvpCapability, submitRsvp, rsvpIdempotencyKey, existingRsvpKey, fetchMyRsvp, withdrawRsvp, flushRsvpOutbox, fetchPublicInvite, INVITE_FETCH_FAILED } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil, daysUntilEnd, spanEnd } from '@app/lib/dates';
 import { eventStartLabel } from '@app/lib/eventWhen';
-import { inviteTone, invitePalette } from '@app/lib/inviteTone';
+import { inviteTone, invitePalette, invitePaletteFor, inviteSheetVars } from '@app/lib/inviteTone';
 // Optional contact at RSVP (host-approved 2026-07-14): ONE formatter/validator
 // with the host shell (lib/contactFormat — zero imports, so the guest bundle
 // pays nothing), so a number typed here reads identically in the roster and
@@ -430,6 +430,10 @@ export default function InviteV2({ code, preview = null, previewPhotoUrl = null 
   const tone = inviteTone(event || {});
   const pal = invitePalette(tone);
   const toneVars = useMemo(() => toneVarsFor(pal), [tone]); // eslint-disable-line react-hooks/exhaustive-deps
+  // THE HOST'S COLORS (owner-approved palettes, 11/24/2026): a palette or a
+  // rearrangement of one, from event.inviteStyle (lib/inviteTone). null keeps
+  // today's stock (cream, dark, muted) exactly as it was.
+  const colors = useMemo(() => { try { return invitePaletteFor(event || {}); } catch { return null; } }, [event]);
   // Classified ONCE per event — the canonical reader is pure but not free;
   // it must not re-run on every keystroke of the reply form. Declared before
   // the loading/not-found returns (hooks can't sit after a conditional).
@@ -964,7 +968,8 @@ export default function InviteV2({ code, preview = null, previewPhotoUrl = null 
               embossed crest, staged reveal, ONE ask, disclosure earned by the
               answer, countdown that condenses but never vanishes. ── */}
           <div className={'inv2-sheet lay-' + (glance ? 'glance' : 'classic')} data-invite-layout={glance ? 'glance' : 'classic'} ref={sheetRef}
-            style={holdTop != null && rsvp && !submitted && !twoColumn ? { paddingTop: holdTop, justifyContent: 'flex-start' } : undefined}>
+            data-pal={colors ? colors.key + (colors.index ? ':' + colors.index : '') : undefined}
+            style={{ ...(colors ? inviteSheetVars(colors) : {}), ...(holdTop != null && rsvp && !submitted && !twoColumn ? { paddingTop: holdTop, justifyContent: 'flex-start' } : {}) }}>
             {/* The invitation itself. On a phone this wrapper has no box
                 (display:contents) and the column reads exactly as before; at 1024
                 and up it is the left column, beside the reply. */}

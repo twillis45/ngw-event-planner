@@ -220,6 +220,7 @@ import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringing
 import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt, menuChoicesTally, menuBoardRowSub } from '@app/lib/playbooks';
 import InviteToTheList from './InviteToTheList';
 import InviteDesignSheet from './InviteDesignSheet.jsx';
+import { inviteStyleLabel } from '@app/lib/inviteTone';
 import HostPhotoRow from './HostPhotoRow.jsx';
 import NudgeTheList from './NudgeTheList';
 import { takeEventLink, isOwnEvent } from '@app/lib/eventLink';
@@ -10908,6 +10909,10 @@ export default function HostShellV2() {
     const arrivedFrom = !redoId ? arrival : null;
     const ev = {
       id: newId, rsvpCode: priorCode || mintRsvpToken(),
+      // "Match my event" for NEW events only (owner, 11/24/2026): the invite's
+      // colors follow the occasion and month (lib/inviteTone autoInvitePalette).
+      // Events made before this keep a blank inviteStyle and today's stock.
+      inviteStyle: 'auto',
       ...(arrivedFrom ? { acquisitionSource: { from: arrivedFrom.from, ...(arrivedFrom.kind ? { kind: arrivedFrom.kind } : {}), at: arrivedFrom.at } } : {}),
       createdAt: new Date().toISOString(), // overdue-on-creation fix: the board needs to know the runway existed
       // A HOST WHO NAMED HERSELF GETS HER NAME ON IT (owner acceptance run,
@@ -28880,7 +28885,7 @@ export default function HostShellV2() {
                       to a hairline row, opens the 3-up segmented control on tap. */}
                   {/* "YOUR INVITE" (owner, 11/24/2026): the invite look (now "Paper"), the
                       artwork, the layout and her message live in one panel. */}
-                  <SettledRow label="Your invite" value={(event.inviteLayout === 'glance' ? 'At a glance' : 'Classic') + ' · ' + ((([['', 'Match the event'], ['bright', 'Bright paper'], ['elegant', 'Elegant dark']].find(([v]) => v === (event.inviteStyle || '')) || [0, 'Match the event'])[1]).toLowerCase())}
+                  <SettledRow label="Your invite" value={(event.inviteLayout === 'glance' ? 'At a glance' : 'Classic') + ' · ' + inviteStyleLabel(event.inviteStyle)}
                     style={{ margin: '0 0 10px' }} onOpen={() => setSheet({ kind: 'invite-design', from: sheet })} />
                   {inviteRules}
                   {countingChips}

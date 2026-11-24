@@ -13,7 +13,7 @@
 // (venueFor) and Hosted by. Two things are left out on purpose: the countdown
 // (a picture cannot count down; it would go stale) and the reply (it is the
 // email's own buttons). hostv2/src/inviteCardImage.js draws it. PURE.
-import { inviteTone } from './inviteTone';
+import { inviteTone, invitePaletteFor } from './inviteTone';
 import { inviteMessage } from './inviteDeck';
 import { eventStartLabel } from './eventWhen';
 import { formatVenueAddress } from './venueFor';
@@ -51,7 +51,12 @@ export function inviteCardModel(event) {
   if (host && !past) facts.push({ label: 'Hosted by', value: host });
   return {
     tone,
-    colors: CARD_COLORS[tone] || CARD_COLORS.light,
+    // The host's palette (11/24/2026): the card wears its paper, ink and accent.
+    colors: (() => {
+      const pal = (() => { try { return invitePaletteFor(ev); } catch { return null; } })();
+      if (!pal) return CARD_COLORS[tone] || CARD_COLORS.light;
+      return { hue: pal.hue, hueDeep: pal.accent, ink: pal.ink, sub: pal.sub, body: pal.ink, paper: pal.dark ? 'dark' : 'light', paperHex: pal.paper, palette: pal.key };
+    })(),
     mast: ['An invitation', ev.date ? dfmt(ev.date, { month: 'short', year: 'numeric' }) : ''],
     eyebrow: past ? 'Thank you for coming' : tone === 'muted' ? 'Please join us' : '',
     name: String(ev.name || '').trim() || 'Our gathering',

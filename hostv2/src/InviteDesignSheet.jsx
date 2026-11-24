@@ -15,10 +15,21 @@ import HostPhotoRow, { useMyHostPhoto } from './HostPhotoRow.jsx';
 import { suggestedInviteLine, INVITE_MESSAGE_MAX } from '@app/lib/inviteDeck';
 import { hostNameFor } from '@app/lib/hostNameFor';
 import { isValidPhone, isValidEmail } from '@app/lib/contactFormat';
+import { INVITE_PALETTES, parseInviteStyle, formatInviteStyle, arrangementsFor, autoInvitePalette, monthPalette, paletteByKey } from '@app/lib/inviteTone';
 
 const InviteV2 = lazy(() => import('./InviteV2.jsx'));
 
-const PAPERS = [['', 'Match the event'], ['bright', 'Bright paper'], ['elegant', 'Elegant dark']];
+// A palette as three dots, the paper biggest (SVG fills: the colors are data).
+function Swatch({ paper, ink, accent, line }) {
+  return (
+    <svg className="ivd-sw" viewBox="0 0 44 32" aria-hidden="true">
+      <circle cx="15" cy="16" r="13" fill={paper} stroke={line || ink} strokeWidth="1" />
+      <circle cx="33" cy="10" r="7" fill={ink} />
+      <circle cx="33" cy="23" r="7" fill={accent} />
+    </svg>
+  );
+}
+const LEGACY_LABEL = { '': 'Today’s cream', bright: 'Today’s cream', elegant: 'Elegant dark' };
 const LAYOUTS = [['classic', 'Classic'], ['glance', 'At a glance']];
 
 export default function InviteDesignSheet({
@@ -53,7 +64,17 @@ export default function InviteDesignSheet({
     onDone();
   };
 
-  const paperLabel = (PAPERS.find(([v]) => v === paper) || PAPERS[0])[1];
+  // COLORS (owner-approved palettes, 11/24/2026): "Match my event", the eight
+  // palettes with the best fits for this event first, then the selected
+  // palette's arrangements (only those that pass the contrast gate).
+  const style = parseInviteStyle(paper);
+  const fits = (() => {
+    const a = autoInvitePalette(event);
+    return [a, monthPalette(event.date)].filter((k) => paletteByKey(k));
+  })();
+  const ordered = [...fits.map(paletteByKey), ...INVITE_PALETTES.filter((p) => !fits.includes(p.key))]
+    .filter((p, i, all) => all.indexOf(p) === i);
+  const arrangements = style.kind === 'palette' ? arrangementsFor(style.key) : [];
   const replyBy = String(event.rsvpDeadline || '').trim();
   const replyLabel = replyBy ? new Date(replyBy + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'Not set';
 
@@ -114,10 +135,39 @@ export default function InviteDesignSheet({
       <p className="grounding ivd-note">{contactErr || `Shows as a “Message ${first || 'the host'}” link. Your number is never printed on the invite.`}</p>
 
       <div className="ivd-cap ivd-gap">Other invite options</div>
-      <SettledRow label="Paper" value={paperLabel} onOpen={() => setOpen(open === 'paper' ? '' : 'paper')} />
-      {open === 'paper' && (
-        <OptionList ariaLabel="Paper" options={PAPERS.map(([value, label]) => ({ value, label }))} value={paper}
-          onPick={(v) => { setPaper(v); setOpen(''); }} />
+      <div className="ivd-lab ivd-colors-h">Colors</div>
+      <div className="ivd-colors" role="radiogroup" aria-label="Colors" data-invite-colors>
+        <button type="button" role="radio" aria-checked={style.kind === 'auto'} className={'ivd-col' + (style.kind === 'auto' ? ' on' : '')}
+          onClick={() => setPaper('auto')}>
+          <span className="ivd-auto" aria-hidden="true">✦</span><span className="ivd-col-name">Match my event</span>
+        </button>
+        {ordered.map((p) => (
+          <button key={p.key} type="button" role="radio" aria-checked={style.kind === 'palette' && style.key === p.key}
+            className={'ivd-col' + (style.kind === 'palette' && style.key === p.key ? ' on' : '')} data-palette={p.key}
+            onClick={() => setPaper(formatInviteStyle(p.key, 0))}>
+            <Swatch {...p} /><span className="ivd-col-name">{p.name}</span>
+          </button>
+        ))}
+      </div>
+      <p className="grounding ivd-note">
+        {style.kind === 'legacy' ? `Now: ${LEGACY_LABEL[style.value] || 'Today’s cream'}, the invite’s original paper.`
+          : style.kind === 'auto' ? 'Picked for your occasion and its month. Change the date or the type and it follows.'
+          : `${paletteByKey(style.key).name}. Swap which color is the paper, the words and the accent below.`}
+      </p>
+      {arrangements.length > 1 && (
+        <>
+          <div className="ivd-lab ivd-gap">Arrange</div>
+          <div className="ivd-arr" role="radiogroup" aria-label="Arrange" data-invite-arrange>
+            {arrangements.map((a, i) => (
+              <button key={a.index} type="button" role="radio" aria-checked={style.arrangement === a.index}
+                aria-label={`Arrangement ${i + 1}${a.index === 0 ? ', as designed' : ''}`} data-arrangement={a.index}
+                className={'ivd-arr-b' + (style.arrangement === a.index ? ' on' : '')}
+                onClick={() => setPaper(formatInviteStyle(style.key, a.index))}>
+                <Swatch {...a} />
+              </button>
+            ))}
+          </div>
+        </>
       )}
       <SettledRow label="Replies by" value={replyLabel} onOpen={() => setOpen(open === 'reply' ? '' : 'reply')} />
       {open === 'reply' && <div className="ivd-reply">{renderDeadlineEditor()}</div>}
