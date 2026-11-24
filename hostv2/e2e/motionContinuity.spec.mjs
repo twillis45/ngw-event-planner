@@ -79,9 +79,15 @@ test('a sheet rises from the row that opened it, not from a constant', async ({ 
     return page.locator('.sheet').last().locator('.sec-row');
   };
 
-  const openFrom = async (nth) => {
+  const openFrom = async (nth, block) => {
     const rows = await rowsFor();
     const row = rows.nth(nth);
+    // On a rail, place the row deliberately. Centred, every rail row at
+    // 1024x768 sat past the origin's 320px cap once the rail carried the four
+    // stages (owner, 11/24/2026), so both opens read 320 and "not a constant"
+    // could not be told apart. Row 0 at the rail's top and row 8 at its foot
+    // give two taps on either side of the cap on any rail height.
+    await row.evaluate((n, b) => { if (n.closest('.srail')) n.scrollIntoView({ block: b }); }, block);
     await row.scrollIntoViewIfNeeded();
     const box = await row.boundingBox();
     await row.click();
@@ -129,8 +135,8 @@ test('a sheet rises from the row that opened it, not from a constant', async ({ 
     return { fromY, tapY: box.y + box.height / 2, top };
   };
 
-  const a = await openFrom(0);
-  const b = await openFrom(8);
+  const a = await openFrom(0, 'start');
+  const b = await openFrom(8, 'end');
 
   // THE CLAIM, asserted per-open: the sheet starts from the tap, measured
   // against THAT sheet's own top.
