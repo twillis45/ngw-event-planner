@@ -536,8 +536,9 @@ test('SELECTING A GUEST DOES NOT BLANK THE SURFACE', async ({ page }) => {
     rows: document.querySelectorAll('.people-roster .rrow').length,
     grid: !!document.querySelector('.people-grid'),
     detail: !!document.querySelector('.people-aside .gdetail'),
-    // The panel leads with the person, not with a field (owner §5D).
-    head: ((document.querySelector('.people-aside .people-ghead-n') || {}).innerText || '').trim(),
+    // The panel leads with the person (owner §5D): since the guest editor
+    // (owner, 11/24/2026) that is her name, editable in place, at the top.
+    head: ((document.querySelector('.people-aside [data-ged-group="name"] .ged-name') || {}).value || '').trim(),
   }));
   expect(after.rows, 'the list is still there behind the selection').toBe(10);
   expect(after.grid).toBe(true);
