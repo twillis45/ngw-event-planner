@@ -22,6 +22,7 @@ import { vendorGreetingName } from './vendorDetailsMessage';
 import { vendorDisplayName } from './vendorDisplayName';
 import { hashtagLine } from './eventHashtag';
 import { hostNameFor } from './hostNameFor';
+import { inviteMessage } from './inviteDeck';
 import { spanEnd } from './dates';
 
 // A gathering that must carry a somber, respectful tone — never the festive template.
@@ -308,6 +309,16 @@ export function draftInvite(event, profile, opts = {}) {
   return { subject, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
 }
 
+// The host's message, the line under the name on her invite (owner,
+// 11/24/2026): her words, or the suggested line for the event. Ends as a
+// sentence. This voice used to hard-code "It wouldn’t be the same without you."
+function messageSentence(event) {
+  let t = '';
+  try { t = inviteMessage(event).text; } catch { t = ''; }
+  t = String(t || '').trim();
+  return t ? (/[.!?…”"’)]$/.test(t) ? t : t + '.') : null;
+}
+
 function inviteInVoice(event, profile, opts, voice) {
   const v = inviteVoice(event);
   const date = fmtLongSpan(event);
@@ -333,7 +344,7 @@ function inviteInVoice(event, profile, opts, voice) {
   if (voice === 'tighter') return { subject: `You’re invited — ${thing}`,
     body: join([facts.length ? `${thing}: ${facts.join(', ')}.` : `${thing}.`, url ? `Can you make it? ${url}` : 'Can you make it?', host ? `— ${host}` : '']) };
   if (voice === 'warmer') return { subject: `We’d love to see you — ${thing}`,
-    body: join([`We’d love to have you with us for ${thing}.`, 'It wouldn’t be the same without you.', '', ...facts, '', url ? 'Let us know you’re coming, so we can save you a seat:' : 'Let us know you’re coming, so we can save you a seat.', url, '', host ? `Can’t wait to see you,\n${host}` : 'Can’t wait to see you!']) };
+    body: join([`We’d love to have you with us for ${thing}.`, messageSentence(event), '', ...facts, '', url ? 'Let us know you’re coming, so we can save you a seat:' : 'Let us know you’re coming, so we can save you a seat.', url, '', host ? `Can’t wait to see you,\n${host}` : 'Can’t wait to see you!']) };
   if (voice === 'playful') return { subject: `Clear your calendar — ${thing}`,
     body: join([`Clear your calendar! ${thing} is happening, and you’re on the list.`, '', ...facts, '', url ? 'Tap here so we know to count you in:' : 'Tell us you’re in!', url, '', host ? `See you there!\n${host}` : 'See you there!']) };
   if (voice === 'formal') return { subject: `Invitation — ${thing}`,

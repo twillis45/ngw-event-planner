@@ -1,5 +1,21 @@
 # Where We Are -- live status board
 
+## November 24, 2026 — the Thanksgiving audit, rechecked on the live build
+
+**On live build `15b34e15`, the owner's Thanksgiving audit rechecks as 20 fixed, 9 still open, 2 changed by ruling, 3 not checked (34 rows).** Phone and iPad, not signed in, nothing sent. The two ruling changes match their rulings (the day-of landing; the typed time is when dinner is served). Not checked: the sign-in path, a step that no longer exists, and a wording note that names no wording.
+
+Still open:
+
+1. **P1-7** (P1): adding guest names by headcount adds a "Lock your guest count" call (Calls 5 → 6) and a "Final guest count — 3 open" board row. The time-sensitive half is fixed.
+2. **P2-6**: The Day's preview, two days out, labels the first moment "8:00 AM · NOW · YOU RUN THIS".
+3. **P2-5**: "Coming up — dated, not urgent" lists items due "today", the day before and the day after.
+4. **P2-3**: the board's "31 items to get" (15 supplies & gear) disagrees with the spread's "27 items" (11 supplies).
+5. **P2-7**: "Every dietary fix is cooked and labeled" stays on The Day's pre-day list after zero dietary needs.
+6. **P2-4**: "Catch up on this step." is the hero headline one tap into a brand-new plan.
+7. **P2-10**: "family this year" is reported as not used.
+8. **P2-11**: a sample event is still named "My Crab Feast".
+9. **P2-12**: the picked store is forgotten on reload (deliberate in code: session-only, so prices don't go stale).
+
 ## November 23, 2026 (late night) — part 2: urgent calls reach the hero, and four more numbers have one reader
 
 - **Time-sensitive calls (owner ruling 11/23).** A call the Calls list marks time-sensitive now leads the hero when its window closes before the hero's own deadline. On Thanksgiving 9–12 days out, "Is anyone staying overnight?" surfaces once the menu is chosen. The budget, the menu panel, a closing shop and the event day keep their place. One reader (`lib/urgency`) serves both the tag and the hero.

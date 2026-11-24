@@ -214,11 +214,15 @@ import { rosBasisNote } from '@app/lib/rosBasis';
 import { parseStartMinutes } from '@app/lib/eventWhen';
 import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
+import { dietTagText } from './dietTags';
 import InviteRules from './InviteRules';
 import { rowStatus, sourcingSettled } from '@app/lib/rowStatus';
 import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
 import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt, menuChoicesTally, menuBoardRowSub } from '@app/lib/playbooks';
 import InviteToTheList from './InviteToTheList';
+import InviteDesignSheet from './InviteDesignSheet.jsx';
+import { inviteStyleLabel } from '@app/lib/inviteTone';
+import HostPhotoRow from './HostPhotoRow.jsx';
 import NudgeTheList from './NudgeTheList';
 import { takeEventLink, isOwnEvent } from '@app/lib/eventLink';
 import { trackHelperEmail, takeReminderTag, trackPlanDrafted, trackKeepPrompt, trackSignInCodeRequested } from '@app/lib/flowAnalytics';
@@ -341,7 +345,7 @@ import { appEmailWords, messageEmailResult } from '@app/lib/appEmail';
 import { buildHelperAsk } from '@app/lib/helperAsk';
 import PolicyLinks from './PolicyLinks.jsx';
 import { VersionAndWhatsNew } from './WhatsNew.jsx';
-import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine } from '@app/lib/guestMerge';
+import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine, renamedGuestPatch } from '@app/lib/guestMerge';
 import { MAX_DATE_OPTIONS, dateOptionsOf, datePollTally, dateOptionPatch, nextDateOptionId } from '@app/lib/datePoll';
 import { giftCashTotal, isAbsentGiver, thankYouGiftLine } from '@app/lib/giftLog';
 import { borrowedList, markReturned, addBorrowed } from '@app/lib/borrowedList';
@@ -1047,10 +1051,11 @@ const OPEN_ON_LOAD = (() => {
   try {
     const u = new URL(window.location.href);
     const kind = u.searchParams.get('open');
-    if (kind !== 'pass' && kind !== 'settings') return null;
+    // `?open=invite` lands on "Your invite" (11/24/2026).
+    if (kind !== 'pass' && kind !== 'settings' && kind !== 'invite') return null;
     u.searchParams.delete('open');
     window.history.replaceState(null, '', u.toString());
-    return kind;
+    return kind === 'invite' ? 'invite-design' : kind;
   } catch { return null; }
 })();
 
@@ -1110,6 +1115,10 @@ function RowValue({ status = 'open', note = false, chev = false, style, children
 // (useReopened below) and never writes to the plan. A reopen holds only while
 // the group stays finished (owner, 11/24/2026, a live report): once a line is
 // undone the reopen is forgotten, so finishing the group folds it again.
+// The shopping-run key for "I'm at <the store you priced>" (render f-3). The
+// store-type runs key on the type's own name; this one on the price picker's.
+const PRICED_RUN = '@price';
+
 function DoneFold({ text, sub, onOpen, all = false, showLabel = 'Show the list' }) {
   if (all) {
     return (
@@ -1430,7 +1439,6 @@ export default function HostShellV2() {
   // rail always up and no bottom bar; 768–1023 portrait keeps its bar.
   const navMode = navLayout({ bp, portrait, elegant: elegantMode });
   const phonePill = navMode === 'pill';
-  const tallRail = navMode === 'tall-rail';
   // The tall header and its company (the Day/After sample line, the fold slot).
   const ttHead = tallTablet || phonePill;
   // The docked bar: the 768–1023 portrait bar, or the phone's pill.
@@ -3049,7 +3057,16 @@ export default function HostShellV2() {
       .slice(0, 3);
   }, [decisionBoard, event, travel]);
   const [crabAdd, setCrabAdd] = useState({ size: 'large', unit: 'dozen', qty: 1, price: '' });
-  const [foodTune, setFoodTune] = useState(null); // per-item cost-structure panel
+  const [foodTune, setFoodTune] = useState(null); // the shopping item opened in place (one at a time)
+  // An opened item scrolls to the top of the sheet, under its own name bar
+  // (owner, render f-2b, 11/24/2026). Instant under reduced motion.
+  useEffect(() => {
+    if (!foodTune) return;
+    const el = document.querySelector('[data-food-open="' + String(foodTune).replace(/"/g, '\\"') + '"]');
+    if (!el || !el.scrollIntoView) return;
+    const still = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    el.scrollIntoView({ block: 'start', behavior: still ? 'auto' : 'smooth' });
+  }, [foodTune]);
   const [choiceOpen, setChoiceOpen] = useState(null); // re-opened settled choice (auto-collapse)
   // ── T-72h reconfirm sweep ── staged drafting state: {} | {vendorId: 'drafting'|'ready'}
   const [sweepState, setSweepState] = useState({});
@@ -3410,11 +3427,10 @@ export default function HostShellV2() {
     const v = Math.max(0, Math.round(esc.getBoundingClientRect().top - app.getBoundingClientRect().top + app.scrollTop)) + 'px';
     if (app.style.getPropertyValue('--pp-above') !== v) app.style.setProperty('--pp-above', v);
   });
-  const [tuneCost, setTuneCost] = useState(''); // lock-the-cost input in the tune panel
-  // Did the host actually TYPE in the cost field, vs accept the store-based
-  // prefill? Only a typed value is a real receipt (event.foodReal); accepting
-  // the prefill is an honest estimate, not a "real price" — the truth fix.
-  const [tuneEdited, setTuneEdited] = useState(false);
+  // "What you paid" in an opened shopping item. It starts empty (no prefill),
+  // so anything in it was typed, and a typed number is a real receipt
+  // (event.foodReal); the low/high-end buttons write an estimate instead.
+  const [tuneCost, setTuneCost] = useState('');
   // Bulk price-lock — parity with legacy's "Use typical prices for the other
   // N items →" (App.js ~11040-11060). ids just locked by the bulk action, kept
   // local (never persisted to the event) so a one-tap undo can unwind exactly
@@ -3607,9 +3623,7 @@ export default function HostShellV2() {
     // "Hosted by Erin L"). The event model had no name field at all — `hostContact`
     // is an email/phone, so rendering that as "Hosted by" would print an address on
     // the invitation.
-    deckLine: event.deckLine || '',
-    // Prefilled from her profile name when the event has none (hostNameFor).
-    hostName: hostNameFor(event, profile),
+    // deckLine and hostName are edited in "Your invite" now (11/24/2026).
   });
   const openMeaning = () => { setMeaningDraft(buildMeaningDraft()); setSheet({ kind: 'meaning' }); };
   const hasMeaning = (() => { const h = heartFieldsFor(event); return !!(h.must_have_moment || h.meaning_why || h.honoree_story); })();
@@ -4742,7 +4756,6 @@ export default function HostShellV2() {
   // tap did, or jump straight to "Confirmed"). This opens an explicit picker of
   // the whole ladder; the pill toggles it, a chip sets the status directly.
   const [statusPickFor, setStatusPickFor] = useState(null); // vendor id whose picker is open
-  const [mealPickFor, setMealPickFor] = useState(null); // guest index whose meal picker is open (#6)
   // (rsvpPickFor retired 2026-08-07: the reply picker lives in the guest's own
   // disclosure now, so `guestOpen` is the only open/closed state for that row.)
   const setVendorStatus = (v, status) => {
@@ -7480,6 +7493,61 @@ export default function HostShellV2() {
     try { return inviteLinkUrl(); }
     catch { toast('Can’t share: the public link address is missing. Nothing was shared.'); return ''; }
   };
+  // The reply-by editor, hoisted to the shell (11/24/2026) so the guest list
+  // and the "Your invite" panel open the SAME one.
+  const renderDeadlineEditor = () => {
+        // DO-IT-FOR-ME, GROUNDED (2026-07-14). The reply-by date used to be an
+        // invented `event.date − 7d` that the INVITE printed as if the host had
+        // chosen it. Deleting it from the invite was only half an answer: an RSVP
+        // deadline genuinely helps, because the whole point of a reply is to LOCK
+        // THE COUNT, and the count has real downstream walls.
+        //
+        // So the app proposes, SHOWS ITS WORK, and the host owns the result. The
+        // proposal is derived from the things that actually cannot proceed without
+        // a headcount — each real vendor's own count promise (catering wants it 7
+        // days out, staffing 14, a florist 21) and the playbook's own
+        // count-dependent tasks (a crab pre-order is T-5d) — plus the days needed
+        // to chase whoever hasn't answered.
+        //
+        // Nothing is written until the host taps. Until then `rsvpDeadline` is
+        // unset, `rsvpDeadlineFor` reports source:'derived', and the invite stays
+        // silent — it will only ever speak a date the host actually committed to.
+        const prop = (() => { try { return proposeReplyBy(event); } catch (_e) { return null; } })();
+        const already = String(event.rsvpDeadline || '').trim();
+        return (
+          <div style={{ margin: '0 0 10px' }}>
+            <div className="actions-row" style={{ alignItems: 'center' }}>
+              <span className="of">replies by:</span>
+              <input className="field" style={{ maxWidth: 175, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="date"
+                value={already || ''}
+                onChange={e => patchEvent({ rsvpDeadline: e.target.value }, 'Reply-by date set — your invite and the nudges read it.')}
+                aria-label="RSVP deadline" />
+              {prop && prop.iso && already !== prop.iso && (
+                <button className="mini" onClick={() => patchEvent({ rsvpDeadline: prop.iso },
+                  'Reply-by date set — your invite says it now.')}>
+                  {already ? 'use ours' : 'pick one for me'}
+                </button>
+              )}
+            </div>
+            {prop && (
+              <p className="grounding" style={{ margin: '6px 2px 0' }}>
+                {prop.tooClose
+                  ? prop.why
+                  : <>
+                      {!already && <><b>{new Date(prop.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</b>{' — '}</>}
+                      {prop.why}
+                    </>}
+              </p>
+            )}
+            {!already && (
+              <p className="grounding" style={{ margin: '4px 2px 0' }}>
+                No reply-by date shows on your invite until you set one.
+              </p>
+            )}
+          </div>
+        );
+  };
+
   const openInviteDraft = async (title, build, opts) => {
     // WHAT AN INVITE CANNOT GO OUT WITHOUT (owner, 11/19/2026: "Before sending
     // invites app should verify if the important info is included"). The day,
@@ -7751,32 +7819,60 @@ export default function HostShellV2() {
         v ? `${v} is bringing ${dish}.`
           : stillBrought ? `Cleared — nobody is named for ${dish} yet.` : `${dish} is back on your list.`);
     };
+    const dietText = dietTagText(r.dietFlags);
     if (editing) {
+      // OPENED IN PLACE (owner, render f-4, 11/24/2026): the dish's own bar,
+      // "Who is bringing it?", a lit Save for a typed name, and "Not serving
+      // it" alone at the bottom. A guest or helper picked from the list still
+      // saves in one tap (BringerPicker commits on change).
+      const pending = String(bringerEdit.value || '').trim();
       return (
-        <div key={r.id} className="fstat" style={{ display: 'block' }} data-bringer-row={r.id}>
-          <label className="shelf-label" htmlFor={'bringer-' + r.id}
-            style={{ display: 'block', marginBottom: 'var(--sp-1)' }}>
-            Who is bringing {dish}?
-          </label>
-          {/* From the guest list and the helpers (owner, 11/18 and 11/21/2026),
-              or "Someone not on the list…" for the church kitchen or a neighbor. */}
-          <BringerPicker guests={event.guests} extra={bringerNamesExtra} id={'bringer-' + r.id} autoFocus
-            value={bringerEdit.value}
-            onChange={(v) => setBringerEdit({ id: r.id, value: v })}
-            onCommit={(v) => commit(v)} onCancel={() => setBringerEdit(null)} />
+        <div key={r.id} className="fstat fopen fopen-bring" style={{ display: 'block' }} data-bringer-row={r.id}>
+          <div className="fo-bar">
+            <span className="fo-name">
+              {dish}
+              {dietText ? <span className="tag plan">{dietText}</span> : null}
+            </span>
+            <button type="button" className="fo-close" aria-expanded="true" aria-label={'Close ' + dish}
+              onMouseDown={(e) => e.preventDefault()} onClick={() => setBringerEdit(null)}>
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+          </div>
+          <div className="fo-sec">
+            <label className="fo-cap" htmlFor={'bringer-' + r.id}>Who is bringing it?</label>
+            {/* From the guest list and the helpers (owner, 11/18 and 11/21/2026),
+                or "Someone not on the list…" for the church kitchen or a neighbor. */}
+            <BringerPicker guests={event.guests} extra={bringerNamesExtra} id={'bringer-' + r.id} autoFocus
+              value={bringerEdit.value}
+              onChange={(v) => setBringerEdit({ id: r.id, value: v })}
+              onCommit={(v) => commit(v)} onCancel={() => setBringerEdit(null)} />
+          </div>
+          {(pending && pending !== saved) || r.broughtByCommunity ? (
+            <div className="fo-foot">
+              {pending && pending !== saved ? (
+                <button type="button" className="cta" onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => commit(pending)}>Save — {pending} brings it</button>
+              ) : null}
+              {r.broughtByCommunity ? (
+                <button type="button" className="mini" onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    setBringerEdit(null);
+                    patchEvent({ foodOwner: { ...owners(), [r.id]: false } }, `You’re making ${dish} — it’s on your list.`);
+                  }}>I’ll make it myself</button>
+              ) : null}
+            </div>
+          ) : null}
           {r.broughtByCommunity ? (
-            <div className="actions-row" style={{ margin: 'var(--sp-2) 0 0' }}>
-              <button type="button" className="mini" onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setBringerEdit(null);
-                  patchEvent({ foodOwner: { ...owners(), [r.id]: false } }, `You’re making ${dish} — it’s on your list.`);
-                }}>I’ll make it myself</button>
-              <button type="button" className="mini" onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setBringerEdit(null);
-                  patchEvent({ foodOwner: { ...owners(), [r.id]: false }, foodSkip: { ...(event.foodSkip || {}), [r.id]: true } },
-                    `${dish} is off the menu.`);
-                }}>Not serving it</button>
+            <div className="fo-skip">
+              <div className="fo-skip-row">
+                <button type="button" className="mini" onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    setBringerEdit(null);
+                    patchEvent({ foodOwner: { ...owners(), [r.id]: false }, foodSkip: { ...(event.foodSkip || {}), [r.id]: true } },
+                      `${dish} is off the menu.`);
+                  }}>Not serving it</button>
+              </div>
+              <p className="fo-note">Takes {dish} off the menu.</p>
             </div>
           ) : null}
         </div>
@@ -7785,7 +7881,10 @@ export default function HostShellV2() {
     return (
       <button key={r.id} className="fstat" data-bringer-row={r.id}
         onClick={() => setBringerEdit({ id: r.id, value: saved })}>
-        <span className="fstat-l">{dish}</span>
+        <span className="fstat-l">
+          <span className="fstat-dish">{dish}</span>
+          {dietText ? <span className="tag plan fstat-tag">{dietText}</span> : null}
+        </span>
         {/* NO WRAP. Beside a long dish the label broke to "Add a / name"; the
             label is the act and stays whole, the DISH takes the wrapping. */}
         <RowValue status={rowStatus({ settled: !!saved })} style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>
@@ -8666,6 +8765,25 @@ export default function HostShellV2() {
     patchEvent({ guests: gs, kidsCount }, (g && g.name || 'Guest') + ' removed from the list.');
     setGuestOpen(null);
   };
+  // KEEP HER PLACE (owner, 11/24/2026): an opened guest's name scrolls to the
+  // top of the sheet, so the rows the editor pushes down do not leave the host
+  // looking at someone else. Instant under prefers-reduced-motion.
+  useEffect(() => {
+    if (guestOpen == null) return undefined;
+    const raf = requestAnimationFrame(() => {
+      try {
+        const ed = document.getElementById('v2-guest-detail-' + guestOpen);
+        if (!ed) return;
+        const reduce = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+        let sc = ed.parentElement;
+        while (sc && sc !== document.body && !(sc.scrollHeight > sc.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+        if (!sc || sc === document.body) { ed.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' }); return; }
+        const top = sc.scrollTop + ed.getBoundingClientRect().top - Math.max(0, sc.getBoundingClientRect().top) - 8;
+        sc.scrollTo({ top: Math.max(0, top), behavior: reduce ? 'auto' : 'smooth' });
+      } catch { /* the editor is open either way */ }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [guestOpen]);
   // Couple lines ("Ryan and Nicole") become TWO real guests — each with their
   // own RSVP, plate, and seat — because one shared row undercounts every
   // engine (audit 2026-07-27). Suggest-and-confirm: the preview under the
@@ -10858,6 +10976,10 @@ export default function HostShellV2() {
     const arrivedFrom = !redoId ? arrival : null;
     const ev = {
       id: newId, rsvpCode: priorCode || mintRsvpToken(),
+      // "Match my event" for NEW events only (owner, 11/24/2026): the invite's
+      // colors follow the occasion and month (lib/inviteTone autoInvitePalette).
+      // Events made before this keep a blank inviteStyle and today's stock.
+      inviteStyle: 'auto',
       ...(arrivedFrom ? { acquisitionSource: { from: arrivedFrom.from, ...(arrivedFrom.kind ? { kind: arrivedFrom.kind } : {}), at: arrivedFrom.at } } : {}),
       createdAt: new Date().toISOString(), // overdue-on-creation fix: the board needs to know the runway existed
       // A HOST WHO NAMED HERSELF GETS HER NAME ON IT (owner acceptance run,
@@ -11681,7 +11803,10 @@ export default function HostShellV2() {
               goPhase the bar and the menu call; the current phase is
               underlined, as on the pill and the bar (owner, 11/24/2026). Plan, tapped on Plan with the question scrolled away,
               goes back to the question (the NEXT bar's job, as on the bar). */}
-          {tallRail && (
+          {/* Every rail, not only the 13" upright one (owner, 11/24/2026:
+              "Tablet and full desktop don't have the create plan the day
+              section of menu"): the four stages lead the rail wherever it shows. */}
+          {(
             <div className="srail-g" key="__stages">
               <div className="shelf-label srail-t">Your event</div>
               {[['create', 'Create'], ['plan', 'Plan'], ['day', 'The Day'], ['after', 'After']].map(([k, label]) => (
@@ -11706,15 +11831,16 @@ export default function HostShellV2() {
                        that span is display:none and leaves the a11y tree with it,
                        so a row named only by its text would go nameless exactly
                        when its icon is all the user has. */
-                    aria-label={tallRail && r.k === 'pass' ? r.label + ' · ' + passNote() : r.label} title={r.label}
+                    aria-label={r.k === 'pass' ? r.label + ' · ' + passNote() : r.label} title={r.label}
                     onClick={() => goToSection(r.k)}>
                     {sectionIcon(r.k)}
                     <span className="srail-l">{r.label}
                       {/* The ☰ menu's pass row said where this event stands
-                          (passNote). At the 13" upright the rail is the only
-                          menu, so its pass row says it (owner, 11/23/2026:
-                          every menu item stays reachable). */}
-                      {tallRail && r.k === 'pass' && <span className="srail-note" data-pass-note>{' · ' + passNote()}</span>}
+                          (passNote). The rail is the menu on every wide layout
+                          (owner, 11/23 and 11/24/2026: every menu item stays
+                          reachable, and every rail carries the stages), so
+                          its pass row says it on every rail. */}
+                      {r.k === 'pass' && <span className="srail-note" data-pass-note>{' · ' + passNote()}</span>}
                     </span>
                   </button>
                 );
@@ -12882,10 +13008,12 @@ export default function HostShellV2() {
                   </div>
                 )}
                 </>
-              ) : elegantMode && bp === 'desktop' && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
+              ) : elegantMode && bp !== 'mobile' ? (
                 /* THE DESKTOP'S TITLE (owner, 11/24/2026): the phone's title block,
-                   so rename in place has a title to act on at 1280+. The ☰ stays the
-                   menu (the stages and the menu's rows live there at this width). */
+                   so rename in place has a title to act on. Every board layout wears
+                   it, the iPad in landscape included (owner, 11/24/2026: at 1000-1279
+                   it still showed the one-line eyebrow). The tall iPad and the phone
+                   reach titleHead in the branch above. The ☰ stays the menu. */
                 titleHead(
                   <button className="ev-eyebrow tt-menu" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                     <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
@@ -17354,7 +17482,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'invite-design' ? 'Your invite' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -17385,6 +17513,15 @@ export default function HostShellV2() {
             {/* Date & time area is a real door now (host report 2026-07-16: it was tappable
                 copy with no editor behind it). Reuses the same date+arrival-time editor the
                 action cards use — change the day or the time here. */}
+            {/* "YOUR INVITE" (owner-approved render r3-3, 11/24/2026): the layout,
+                her message, who it's from, the paper and reply-by, with a live
+                preview of the guest's own invite. */}
+            {sheet.kind === 'invite-design' && (
+              <InviteDesignSheet event={event} profile={profile} patchEvent={patchEvent} patchProfile={patchProfile}
+                signedIn={Boolean(session)} email={(session && session.user && session.user.email) || ''}
+                onDone={closeSheet} renderDeadlineEditor={renderDeadlineEditor} hasArtwork={!!eventArtworkFile(event)}
+                onSeeFull={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch { /* blocked */ } }} />
+            )}
             {sheet.kind === 'invite-check' && (() => {
               const gaps = inviteGaps(event);
               const has = (k) => !gaps.includes(k);
@@ -17406,6 +17543,8 @@ export default function HostShellV2() {
                   {/* THE INVITE RULES LIVE IN THE INVITE STEP (owner, render 10a,
                       11/24/2026): the same component and record as the guest list. */}
                   <InviteRules event={event} patchEvent={patchEvent} note="The RSVP page follows these. Also in your guest list." />
+                  <SettledRow label="Your invite" value={(event.inviteLayout === 'glance' ? 'At a glance' : 'Classic') + ' · how it looks and what it says'}
+                    style={{ margin: 'var(--sp-3) 0 0' }} onOpen={() => setSheet({ kind: 'invite-design', from: sheet })} />
                   {(!has('date') || !has('time')) && renderEditor({ domain: 'date' })}
                   {!has('place') && (
                     <div style={{ marginTop: 'var(--sp-3)' }}>
@@ -21290,8 +21429,6 @@ export default function HostShellV2() {
                   ['meaning_why', 'Why this matters', heartPh.meaning_why, false],
                   ['feeling_words', 'How the day should feel', heartPh.feeling_words, false],
                   ['must_have_moment', 'The one moment that must happen', heartPh.must_have_moment, false],
-                  ['hostName', 'Who is the invitation from?', 'Todd — or “Todd & Sarah”', false],
-                  ['deckLine', 'The line under your event’s name on the invite', 'Good food, good people', false],
                 ].map(([key, label, ph, multi]) => (
                   <div key={key} style={{ marginBottom: 'var(--sp-4)' }}>
                     {/* Warm sentence-case prompt (was a tiny uppercase faint form
@@ -21306,11 +21443,15 @@ export default function HostShellV2() {
                     )}
                   </div>
                 ))}
+                {/* THE INVITE'S MESSAGE AND WHO IT'S FROM moved to "Your invite"
+                    (owner, 11/24/2026): one editor for one field. */}
+                <SettledRow label="Your invite’s message" value={String(event.deckLine || '').trim() || 'Our line for this event'}
+                  style={{ margin: '0 0 var(--sp-4)' }} onOpen={() => setSheet({ kind: 'invite-design', from: sheet })} />
                 <div className="actions-row">
                   {(() => {
                     // Dirty-gate (per-screen audit: "Save it" fired a success toast even
                     // with zero changes) — only enabled when a field actually changed.
-                    const _mk = ['honoree', 'honoree_story', 'meaning_why', 'feeling_words', 'must_have_moment', 'hostName', 'deckLine'];
+                    const _mk = ['honoree', 'honoree_story', 'meaning_why', 'feeling_words', 'must_have_moment'];
                     // Compared with what the sheet opened on — the creation story it
                     // shows is not an edit, so Save stays dim until she changes something.
                     const base = buildMeaningDraft();
@@ -22419,6 +22560,10 @@ export default function HostShellV2() {
                       — how much of you the app remembers — read from the same
                       summarizeHostIntel the panel below renders, never a
                       decorative count. */}
+                  {/* THE HOST'S PHOTO (owner, render r3-4, 11/24/2026): one per account,
+                      the same row as in "Your invite". */}
+                  <HostPhotoRow profile={profile} patchProfile={patchProfile} signedIn={Boolean(session)} variant="settings"
+                    hostName={(profile && profile.name) || ''} />
                   <SheetHero
                     eyebrow="You & settings"
                     star={mem && mem.present ? `${(mem.groups || []).length} remembered` : 'Nothing remembered yet'}
@@ -24876,6 +25021,7 @@ export default function HostShellV2() {
                           <span className="of" style={{ fontWeight: 700 }}>{priceStore.name}</span>
                           <button className="mini" onClick={() => {
                             setPriceStore(null); setPriceIdx(null); setStorePicker(null);
+                            setShopStore((cur) => (cur === PRICED_RUN ? null : cur));
                           }}>Change</button>
                         </div>
                         {/* The sentence that stops the best layer speaking for the
@@ -25261,7 +25407,21 @@ export default function HostShellV2() {
                   const storeOf = (it) => (event.foodWhere || {})[it.id] || firstStoreIn(it.where) || null;
                   const activeAll = allItems.filter(it => !it.skipped);
                   const stores = [...new Set(activeAll.map(storeOf).filter(Boolean))];
-                  const inStore = (it) => !shopStore || storeOf(it) === shopStore || (Array.isArray(it.where) && it.where.includes(shopStore));
+                  // ── "I'M AT <THE STORE YOU PRICED>" (owner, render f-3, 11/24/2026) ──
+                  // The store from the price picker joins the store-type chips as a
+                  // run of its own. New wiring between existing data: it reads the
+                  // session-only `priceStore` and its shelf matches, and writes
+                  // nothing. The priced store is a supermarket (the Kroger family),
+                  // so its run holds the lines with a shelf price there plus the
+                  // lines bought at a grocery; a line with no shelf price falls back
+                  // to its estimate.
+                  const atPriced = shopStore === PRICED_RUN && !!priceStore;
+                  const runName = atPriced ? priceStore.name : shopStore;
+                  const grocerish = (w) => /grocery|supermarket/i.test(String(w || ''));
+                  const inStore = (it) => !shopStore || (shopStore === PRICED_RUN
+                    ? (layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx }).layer === 'store'
+                      || grocerish(storeOf(it)) || (Array.isArray(it.where) && it.where.some(grocerish)))
+                    : storeOf(it) === shopStore || (Array.isArray(it.where) && it.where.includes(shopStore)));
                   const items = shopStore ? activeAll.filter(inStore) : allItems;
                   const runLeft = shopStore ? items.filter(it => !(event.foodGot || {})[it.id]) : [];
                   const runLo = runLeft.reduce((t, it) => t + (Number(it.locked != null ? it.locked : it.low) || 0), 0);
@@ -25275,15 +25435,6 @@ export default function HostShellV2() {
                   // Decision flags: a menu decision the host hasn't explicitly
                   // made yet marks every line it re-prices (playbook `affects`).
                   const undecidedAffects = (() => { try { return playbookOpenDecisionAffects(event); } catch { return {}; } })();
-                  // Head-start pricing (host request, 2026-07-12): the midpoint of
-                  // THIS item's current low/high — already reshaped by its own
-                  // per-item sourcing pick (event.foodWhere), not just the plan-wide
-                  // tier — pre-fills the tune field instead of a blank input.
-                  const midpointStr = (it) => {
-                    const lo = Number(it.low) || 0, hi = Number(it.high) || 0;
-                    if (!lo && !hi) return '';
-                    return String(Math.round((lo + hi) / 2));
-                  };
                   // ── TWO GROUPS, ONE LETTER ─────────────────────────────
                   // The badge was `g.charAt(0)`, so Drinks and Dessert both
                   // rendered "D" and the monogram stopped identifying
@@ -25354,11 +25505,11 @@ export default function HostShellV2() {
                       <button className="fg-head" onClick={() => setFoodGroupsOpen(m => ({ ...m, [g]: !isOpen }))}>
                         <div className={'fg-badge' + (gDone ? ' done' : '')} aria-hidden>{groupGlyph[g] || g.trim().charAt(0).toUpperCase()}</div>
                         <div className="fg-id">
-                          <div className="fg-label">{g}
+                          <div className="fg-label">{g}{atPriced ? ' at ' + priceStore.name : ''}
                             {gDecisions > 0 ? <span className="tag essential" style={{ marginLeft: 'var(--sp-2)' }}>{gDecisions} decision{gDecisions === 1 ? '' : 's'} open</span> : null}
                           </div>
                           <div className="fg-sub" style={{ color: gDone ? 'var(--ok)' : 'var(--muted)' }}>
-                            {!gActive.length ? 'all skipped' : gDone ? 'all ' + gActive.length + ' bought' : gBought + ' of ' + gActive.length + ' bought' + (foodPlan.hasRealCount ? ' · ' + (gLow === gHigh ? fmt(gLow) : fmt(gLow) + '–' + fmt(gHigh)) : '')}
+                            {!gActive.length ? 'all skipped' : gDone ? 'all ' + gActive.length + ' bought' : gBought + ' of ' + gActive.length + ' bought' + (foodPlan.hasRealCount ? ' · ' + (gLow === gHigh ? fmt(gLow) : fmt(gLow) + '–' + fmt(gHigh)) + ' est.' : '')}
                           </div>
                           <div className={'fg-track' + (gDone ? ' done' : '')}><i style={{ '--fill': gActive.length ? gBought / gActive.length : 1 }} /></div>
                         </div>
@@ -25395,7 +25546,7 @@ export default function HostShellV2() {
                                 { foodGot: next },
                                 gDone
                                   ? `${g} cleared — ${gActive.length} back on the list.`
-                                  : `${g} checked off — all ${gActive.length}${shopStore ? ' at ' + shopStore : ''}.`,
+                                  : `${g} checked off — all ${gActive.length}${shopStore ? ' at ' + runName : ''}.`,
                               );
                             }}
                           >
@@ -25414,7 +25565,19 @@ export default function HostShellV2() {
                       {isOpen && gItems.map((it, i) => {
                         const got = !!(event.foodGot || {})[it.id];
                         const cost = it.locked != null ? Number(it.locked) : ((Number(it.low) || 0) + (Number(it.high) || 0)) / 2;
-                        const tuning = foodTune === it.id;
+                        // ── ONE ROW, TWO TAPS (owner, renders f-1/f-2, 11/24/2026) ──
+                        // The check only checks (the same `toggleGot` writer as
+                        // before); the rest of the row opens the item in place.
+                        // `foodTune` is now the opened item; there is no "tune".
+                        const opened = foodTune === it.id;
+                        const name = it.short || it.item;
+                        // "you paid" only when the host TYPED the number
+                        // (event.foodReal) — a low/high-end pick is still an estimate.
+                        const real = it.locked != null && (event.foodReal || {})[it.id] === true;
+                        const L = layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx });
+                        const shelf = L.layer === 'store' ? L : null;
+                        const storeName = (priceStore && priceStore.name) || 'Your store';
+                        const dietText = dietTagText(it.dietFlags);
                         // Keep the FULL normalized alt (name + unitCostRange) — not just its
                         // name — so the chip below can show what picking it would cost, not
                         // just its label. Same parser the engine's own swap re-pricing uses
@@ -25422,698 +25585,436 @@ export default function HostShellV2() {
                         // alt (no unitCostRange) and a priced object alt both land in one shape.
                         const alts = (it.alternatives || []).map(normalizeAlternative).filter(a => a.name).slice(0, 4);
                         const activeSwapName = (event.foodSwap || {})[it.id] || null;
+                        // Skipped rows stay visible; tapping one (either half) is the
+                        // undo — the same single-toggle symmetry legacy's toggleSkip
+                        // uses (App.js:11145).
+                        const restore = () => {
+                          const m = { ...(event.foodSkip || {}) }; delete m[it.id];
+                          patchEvent({ foodSkip: m }, name + ' is back in the total.');
+                        };
+                        const toggle = () => { if (it.skipped) { restore(); return; } toggleGot(it, cost); };
+                        // Host-added lines carry a single committed cost (event.foodAdd's
+                        // cost — never a range), so no invented spread. Blank/$0 at add
+                        // time is an honest state, not a fake number: "bringing it" when
+                        // someone's named, "no cost yet" otherwise. Never "$0–$0" — the
+                        // honesty rule legacy's money() helper applies (App.js ~11246).
+                        const priceMain = it.locked != null
+                          ? fmt(it.locked)
+                          : it.added
+                            ? (it.low > 0 ? fmt(it.low) : (it.owner ? 'bringing it' : 'no cost yet'))
+                            : (foodPlan.hasRealCount ? fmt(it.low) + '–' + fmt(it.high) : '—');
+                        const priceSub = real ? 'you paid'
+                          : (it.added && it.locked == null) || priceMain === '—' ? null : 'est.';
+                        // In a run at the store she priced, a line with a shelf price
+                        // leads with that store's product and price (render f-3).
+                        const runLead = shopStore === PRICED_RUN && shelf;
+                        const checkBtn = (
+                          <button type="button" className="fcheck-hit" aria-pressed={got}
+                            aria-label={it.skipped ? 'Bring back ' + name : got ? 'Unmark ' + name : 'Mark ' + name + ' bought'}
+                            onClick={toggle}>
+                            <span className="fcheck" aria-hidden="true" />
+                          </button>
+                        );
+                        // The paid box commits on Enter or on leaving it. Only a
+                        // typed number is written, and a typed number is a receipt.
+                        const commitPaid = () => {
+                          if (tuneCost === '' || !(parseFloat(tuneCost) >= 0)) return;
+                          const n = Math.max(0, roundCurrency(parseFloat(tuneCost) || 0));   // cents kept: $42.50, not $43
+                          patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: true } },
+                            name + ' set at ' + fmt(n) + ' — a real price now, not a range.');
+                          setTuneCost('');
+                        };
+                        const setEnd = (n, which) => {
+                          patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: false } },
+                            name + ' set at ' + fmt(n) + ' — the ' + which + ' of the estimate for where you buy it.');
+                        };
+                        if (!opened) {
+                          // ── THE CLOSED ROW: what, how much, where; the price on the right ──
+                          const tags = [];
+                          if (!it.skipped) {
+                            // The allergen marker goes FIRST (2026-09-18): only two tags
+                            // render and this is the one whose absence can hurt somebody.
+                            // Plain English from the shell's one display map (dietTags.js).
+                            if (dietText) tags.push(<span key="diet" className="tag plan">{dietText}</span>);
+                            // Who is carrying it outranks what is left to do (2026-09-24):
+                            // the host's own answer outranks the engine's collective noun.
+                            if (it.broughtByCommunity) tags.push(<span key="bring" className="tag plan">{it.broughtBy || it.broughtByLabel || 'The community'}</span>);
+                            else if (it.owner) tags.push(<span key="own" className="tag plan">{it.owner}</span>);
+                            else if (it.added) tags.push(<span key="yours" className="tag plan">yours</span>);
+                            if (undecidedAffects[it.id]) tags.push(<span key="dec" className="tag essential" title={undecidedAffects[it.id]}>decision open</span>);
+                            if (it.essential && !got) tags.push(<span key="ess" className="tag essential">essential</span>);
+                            // WAVE-5 (UX_02 amber budget): "day-of" is an IDENTIFICATION
+                            // label, so it takes the neutral .tag.plan treatment.
+                            if (it.buyAt === 'day-of') tags.push(<span key="dof" className="tag plan">day-of</span>);
+                            if (it.swappedFrom) tags.push(<span key="swap" className="tag plan">swapped</span>);
+                            if (it.badge) tags.push(<span key="badge" className="tag plan">{String(it.badge).toLowerCase()}</span>);
+                          }
+                          const shownTags = tags.slice(0, 2);
+                          if (tags.length > 2) shownTags.push(<span key="more" className="tag plan">+{tags.length - 2}</span>);
+                          // The amount in bold, then the per-unit rate. The rate STAYS
+                          // (restored 2026-09-24; aRateIsNotFree.spec.mjs): a rate is
+                          // what makes a quantity checkable at the counter. The ice
+                          // bag hint (shoppingHint) says what to carry to the till.
+                          const qtyText = it.qty && it.unit ? `${it.qty} ${it.unit}` : null;
+                          const amtRest = (shopStore === PRICED_RUN && !shelf)
+                            ? ['no shelf price here']
+                            : [shoppingHint(it, it.qty),
+                              foodPlan.hasRealCount ? perUnitBand(it.perUnitLow, it.perUnitHigh, it.unitBase) : null,
+                              // A split part priced with its dish says where its price
+                              // is, and the dish says what its price covers (batch 4,
+                              // owner ruling 11/23/2026). From playbookFoodPlan.
+                              it.priceNote || null,
+                              it.forgotten ? 'often forgotten' : null].filter(Boolean);
+                          // The store line, smaller, underneath. WHICH REGIONAL ANSWER
+                          // the line got (board ruling 2026-09-27, option A) is printed
+                          // verbatim from priceLayers, store or no store.
+                          let storeLine = null;
+                          if (shopStore !== PRICED_RUN) {
+                            if (shelf) {
+                              storeLine = (
+                                <>
+                                  <b>{storeName}:</b> ${shelf.exact.toFixed(2)}
+                                  {shelf.size ? ' · ' + shelf.size : ''}
+                                  {shelf.onSale ? <> · <span className="f-sale">sale</span></> : null}
+                                </>
+                              );
+                            } else if (priceIdx && L.layer !== 'quote') {
+                              storeLine = 'No shelf price' + (L.layer === 'regional' ? ' · ' + L.scopeLabel : '');
+                            } else if (L.layer === 'regional') {
+                              storeLine = L.scopeLabel;
+                            }
+                          }
+                          return (
+                            <div key={it.id} className={'frow food-row' + (got ? ' got' : '') + (it.skipped ? ' skipped' : '') + (shopStore ? ' run' : '')}
+                              data-food-row={it.id} style={{ animation: rowEnter(i) }}>
+                              {checkBtn}
+                              <button type="button" className="f-body" aria-expanded="false"
+                                aria-label={it.skipped ? 'Bring back ' + name : 'Open ' + name}
+                                onClick={() => {
+                                  if (it.skipped) { restore(); return; }
+                                  setTuneCost(''); setFoodTune(it.id);
+                                }}>
+                                <span className="f-main">
+                                  {runLead ? (
+                                    <>
+                                      <span className="r-prod">{shelf.product || name}</span>
+                                      <span className="v-meta r-sub"><b>{name}</b>{qtyText ? ' · ' + qtyText : ''}</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="f-name" style={it.skipped ? { textDecoration: 'line-through', color: 'var(--muted)' } : undefined}>
+                                        {name}
+                                        {it.skipped ? <span className="tag plan">skipped — tap to restore</span> : shownTags}
+                                      </span>
+                                      {(qtyText || amtRest.length) ? (
+                                        <span className="v-meta f-amt">
+                                          {qtyText ? <b>{qtyText}</b> : null}
+                                          {amtRest.length ? (qtyText ? ' · ' : '') + amtRest.join(' · ') : ''}
+                                        </span>
+                                      ) : null}
+                                      {storeLine ? <span className="v-meta f-store">{storeLine}</span> : null}
+                                    </>
+                                  )}
+                                </span>
+                                <span className="f-price">
+                                  <span className="amt">{runLead && !real ? '$' + shelf.exact.toFixed(2) : priceMain}</span>
+                                  {(runLead && !real)
+                                    ? <span className="f-price-s">{[shelf.size, shelf.onSale ? 'on sale' : null].filter(Boolean).join(' · ')}</span>
+                                    : priceSub ? <span className="f-price-s">{priceSub}</span> : null}
+                                </span>
+                                <span className="f-chev" aria-hidden="true">›</span>
+                              </button>
+                            </div>
+                          );
+                        }
+                        // ── THE OPENED ITEM (render f-2): a slim name bar, then
+                        // Amount, Price and Where to buy, one lit "Mark … bought",
+                        // and Skip alone at the bottom. Everything the tune panel
+                        // held is here: the stepper and its reset, the basis, the
+                        // ice card, the price entry, back-to-estimate, store and
+                        // swap chips.
+                        const amountHead = [
+                          it.basis ? String(it.basis).replace(/\/guest\b/, ' a guest') : null,
+                          foodPlan.guests ? foodPlan.guests + (foodPlan.guests === 1 ? ' guest' : ' guests') : null,
+                        ].filter(Boolean).join(' · ');
+                        // The claim behind the amount — reachable, not in the aisle
+                        // (host, 2026-09-24). The detail is whatever the author wrote;
+                        // never synthesised.
+                        const claim = classifyClaim(it.provenance, it.costProvenance, it.costFactorApplied);
+                        const claimDetail = (it.provenance && typeof it.provenance === 'object' && it.provenance.note)
+                          ? it.provenance.note : claim.rationale;
+                        const estLayer = shelf ? layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: null }) : L;
+                        const rate = foodPlan.hasRealCount ? perUnitBand(it.perUnitLow, it.perUnitHigh, it.unitBase) : null;
+                        const where = Array.isArray(it.where) ? it.where.slice(0, 4) : [];
+                        const buyingAt = storeOf(it);
+                        const priceHead = it.locked == null ? 'Your list uses the estimate'
+                          : real ? 'Your list uses what you paid' : 'Your list uses ' + fmt(it.locked);
+                        const hasWhere = (shelf && shelf.product) || where.length > 1 || alts.length > 0 || !!it.swappedFrom;
                         return (
-                          <div key={it.id}>
-                            <button className={'frow' + (got ? ' got' : '') + (it.skipped ? ' skipped' : '')}
-                              style={{ animation: rowEnter(i) }}
-                              onClick={() => {
-                                // Skipped rows stay visible (see the audit note above);
-                                // tapping one is the undo — the same single-toggle
-                                // symmetry legacy's toggleSkip uses (App.js:11145).
-                                if (it.skipped) {
-                                  const m = { ...(event.foodSkip || {}) }; delete m[it.id];
-                                  patchEvent({ foodSkip: m }, (it.short || it.item) + ' is back in the total.');
-                                  return;
-                                }
-                                toggleGot(it, cost);
-                              }}>
-                              <span className="fcheck" aria-hidden="true" />
-                              <span className="f-main">
-                                <span className="f-name" style={it.skipped ? { textDecoration: 'line-through', color: 'var(--muted)' } : undefined}>
-                                  {it.short || it.item}
-                                  {it.skipped ? <span className="tag plan">skipped — tap to restore</span> : (() => {
-                                    // Cap at 2 tags by priority (was up to 7 → wrapped and
-                                    // shoved the price/tune controls onto a 3rd line). The
-                                    // rest fold into a "+N" that the tune panel expands.
-                                    const tags = [];
-                                    // ── THE ALLERGEN MARKER GOES FIRST (2026-09-18) ──────────
-                                    // Only the first TWO tags render; the rest fold into "+N".
-                                    // This sat FOURTH, behind `decision open`, `essential` and
-                                    // `day-of` — so on Blue crabs, a row carrying the first two,
-                                    // the shellfish marker was ALWAYS the one collapsed. DRIVEN
-                                    // at 390px: the row read "decision open · essential · +1"
-                                    // with the allergen inside the +1.
-                                    //
-                                    // Every other tag here says something about shopping. This
-                                    // one is the only label whose absence can hurt somebody, so
-                                    // it outranks them. It keeps the neutral `.tag.plan`
-                                    // treatment WAVE-5 gave it — an identification label, not a
-                                    // gap warning — this is about ORDER, not about shouting.
-                                    if (Array.isArray(it.dietFlags) && it.dietFlags.length) tags.push(<span key="diet" className="tag plan">{it.dietFlags.join(' · ').toLowerCase()}</span>);
-                                    // ── WHO IS CARRYING IT OUTRANKS WHAT IS LEFT TO DO ─────────
-                                    //
-                                    // This sat FIFTH, behind diet, decision, essential and
-                                    // day-of, under a two-tag cap — so on the repast rows it
-                                    // was always the one folded into "+1". Measured on the
-                                    // shipped repast: after writing "Sister Vaughn" against
-                                    // the chicken, the Shop list rendered
-                                    //
-                                    //   Fried or baked chicken & baked ham  decision open essential +1
-                                    //
-                                    // and her name was inside the +1. Naming a bringer looked
-                                    // like it had done nothing.
-                                    //
-                                    // ORDER, not shouting — it keeps the neutral `.tag.plan`
-                                    // WAVE-5 gave it. A line somebody else is carrying is a
-                                    // line the host has nothing to do about, which makes the
-                                    // carrier the fact that settles the row; "decision open"
-                                    // and "essential" describe work, and there is none here.
-                                    if (it.broughtByCommunity) tags.push(<span key="bring" className="tag plan">{it.broughtBy || it.broughtByLabel || 'The community'}</span>);
-                                    else if (it.owner) tags.push(<span key="own" className="tag plan">{it.owner}</span>);
-                                    else if (it.added) tags.push(<span key="yours" className="tag plan">yours</span>);
-                                    if (undecidedAffects[it.id]) tags.push(<span key="dec" className="tag essential" title={undecidedAffects[it.id]}>decision open</span>);
-                                    if (it.essential && !got) tags.push(<span key="ess" className="tag essential">essential</span>);
-                                    // WAVE-5 (UX_02 amber budget): "day-of" and diet flags are
-                                    // IDENTIFICATION labels — when to buy, who it serves — not
-                                    // gap warnings, so they take the neutral .tag.plan treatment
-                                    // their sibling tags (owner/yours/swapped) already use.
-                                    // Only `essential && !got` above stays amber: that one IS a gap.
-                                    if (it.buyAt === 'day-of') tags.push(<span key="dof" className="tag plan">day-of</span>);
-                                    // WHO IS CARRYING IT (2026-09-24). `owner` is on EVERY
-                                    // row, but this was gated on `it.added`, so only a
-                                    // dish the host typed herself could ever name a
-                                    // bringer — the playbook's own community lines never
-                                    // could. The community attribution comes first
-                                    // because it is the stronger fact: the engine
-                                    // established it from the host's food_source pick.
-                                    // The host's own answer outranks the engine's
-                                    // collective noun: once she has written down
-                                    // "Sister Vaughn", the Shop list must not keep
-                                    // saying "The repast committee" beside the same
-                                    // dish. One fact, two surfaces, one answer.
-                                    if (it.swappedFrom) tags.push(<span key="swap" className="tag plan">swapped</span>);
-                                    if (it.badge) tags.push(<span key="badge" className="tag plan">{String(it.badge).toLowerCase()}</span>);
-                                    const shown = tags.slice(0, 2);
-                                    if (tags.length > 2) shown.push(<span key="more" className="tag plan">+{tags.length - 2}</span>);
-                                    return shown;
-                                  })()}
-                                </span>
-                                <span className="v-meta">
-                                  {/* ── BOARD D'S ROW IS THREE LINES; THIS WAS SEVEN ─────
-                                      Host: "the current items has trivia leaking and
-                                      should be more like D." Measured on the shipped
-                                      repast, one row:
-
-                                        Fried or baked chicken & baked ham
-                                        [Sister Vaughn] [decision open] [+1]
-                                        23 lbs · $3–$7/lb · Grocery, Caterer, Restaurant
-                                        ½ lb/guest × 46 guests · typical
-                                        Directly sourced — Grounded to webstaurant-protein-
-                                        2026: ~0.5 lb protein/guest is the source-stated
-                                        one-main portion for a multi-protein spread.
-                                        $0–$0
-
-                                      Board D, same job: `5 lb · 0.5 lb a guest`.
-
-                                      THREE THINGS LEFT THIS LINE, none of them deleted
-                                      from the product:
-
-                                      · the per-unit band ($3–$7/lb) — the row already
-                                        prints the line total the band produces, so this
-                                        is the same fact at a finer grain.
-                                      · the shop-KIND list (Grocery, Caterer, Restaurant)
-                                        — not a store, just a category. A real pick still
-                                        shows, as "your pick: …", because that one names
-                                        somewhere a host is actually going.
-                                      · the "× 46 guests · typical" tail — 23 lbs IS
-                                        ½ × 46, printed one line above it.
-
-                                      The grounding claim moved behind `tune` (host,
-                                      2026-09-24: "provenance can be reachable but hide
-                                      it"). */}
-                                  {[
-                                    it.qty && it.unit ? `${it.qty} ${it.unit}` : null,
-                                    // …AND WHAT THAT IS TO BUY. The regional seat at the
-                                    // 2026-09-27 ice board: nobody buys 46 pounds of ice,
-                                    // it comes in bags, and a host in a Royal Farms cannot
-                                    // do the division. The line stays priced per pound —
-                                    // that is what its cost evidence measured — and this
-                                    // only says what to carry to the till. Ice only, and
-                                    // only in pounds; `shoppingHint` refuses everything
-                                    // else, because ribs by the pound are bought by the
-                                    // pound and a "bag" of them is nonsense.
-                                    shoppingHint(it, it.qty),
-                                    // RESTORED 2026-09-24, same day I removed it. I cut
-                                    // this as trivia while collapsing the row to board
-                                    // D's three lines, reasoning that the line total
-                                    // states the same fact at a coarser grain. It does
-                                    // not, and `aRateIsNotFree.spec.mjs` exists to say
-                                    // so: rows once rendered "$0–$0/lb" and told a host
-                                    // the ice was free. Three of its tests went red,
-                                    // including "ICE IS TWENTY CENTS A POUND, and the
-                                    // sheet now says so."
-                                    //
-                                    // A per-unit rate is what makes a quantity
-                                    // checkable in the aisle — 23 lbs is a number, $3/lb
-                                    // is a number you can argue with at the counter. The
-                                    // density fix was the shop-kind list, the doubled
-                                    // multiplication and the citation essay; this was
-                                    // never part of it.
-                                    foodPlan.hasRealCount ? perUnitBand(it.perUnitLow, it.perUnitHigh, it.unitBase) : null,
-                                    it.basis || null,
-                                    // A split part priced with its dish says where its price
-                                    // is, and the dish says what its price covers (batch 4,
-                                    // owner ruling 11/23/2026). From playbookFoodPlan.
-                                    it.priceNote || null,
-                                    it.forgotten ? 'often forgotten' : null,
-                                    // A PERSON IS NOT A SHOP, second site. This printed
-                                    // `it.where` raw, so a repast line read
-                                    // "Brought by the community,Grocery,Caterer" — the
-                                    // same defect `firstStoreIn` fixed in the store picker,
-                                    // one element over. `storesIn` drops the people and
-                                    // keeps the shops in authored order; when there are no
-                                    // shops it returns [] and the segment falls away
-                                    // entirely, which is the honest meta for a line nobody
-                                    // is buying — the tag beside it already names who is.
-                                    // Comma-space, not comma: it is a list a host reads.
-                                    (event.foodWhere || {})[it.id]
-                                      ? 'your pick: ' + (event.foodWhere || {})[it.id]
-                                      : null,
-                                  ].filter(Boolean).join(' · ')}
-                                </span>
-                                {/* ── THE SHELF PRICE, BESIDE THE ESTIMATE ─────
-                                    Its own line, not folded into the meta above,
-                                    because it is a different KIND of number: the
-                                    band is what this line should cost, this is
-                                    what one package costs at one store today.
-
-                                    NOT ROUNDED. `fmt` rounds to whole dollars,
-                                    which is right for an estimate and wrong here
-                                    — $18.49 shown as $18 throws away the precision
-                                    that is the entire reason a shelf price beats
-                                    the band.
-
-                                    The size travels with it, always. "$18.49"
-                                    alone invites a host to read it as the cost of
-                                    this LINE; "$18.49 · 12 pk" cannot be. */}
-                                {/* ── WHICH REGIONAL ANSWER THIS LINE GOT ─────
-                                    Board ruling 2026-09-27, option A. Two lines
-                                    on this sheet can both be "adjusted for the
-                                    South" and not be the same quality of claim:
-                                    one has its own published BLS series, the
-                                    other took the region's basket mean because
-                                    BLS prices nothing like it. Ice is the
-                                    second kind — no series at all — and it was
-                                    rendering $0.20–$0.39 under a header that
-                                    said "Adjusted for the South" and nothing
-                                    else.
-
-                                    The sentence is NOT written here. It has
-                                    existed in priceLayers since the layers
-                                    landed, and threeLayersOfPrice.test.js has
-                                    been asserting it the whole time — against a
-                                    string no surface rendered. That is the
-                                    finding the board called the important one:
-                                    the composition was tested and the DELIVERY
-                                    never was. Printed verbatim so the test and
-                                    the screen cannot drift apart again.
-
-                                    Deliberately NOT gated on priceIdx, unlike
-                                    the shelf price below it: a host who has not
-                                    picked a store still got a regional number
-                                    and is still owed its basis. */}
-                                {(() => {
-                                  const L = layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx });
-                                  if (L.layer !== 'regional') return null;
-                                  return (
-                                    <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
-                                      {L.scopeLabel}
-                                    </span>
-                                  );
-                                })()}
-                                {priceIdx && (() => {
-                                  const L = layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx });
-                                  if (L.layer !== 'store') return null;
-                                  return (
-                                    <>
-                                      <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
-                                        {(priceStore && priceStore.name) || 'Your store'}: ${L.exact.toFixed(2)}
-                                        {L.size ? ' · ' + L.size : ''}
-                                        {L.onSale && L.was ? ` · on sale, was $${L.was.toFixed(2)}` : ''}
-                                      </span>
-                                      {/* ── AND WHAT IT PRICED ───────────────
-                                          The product's own name, because a
-                                          price with no product is unauditable.
-                                          Probed live 2026-09-23: "injera"
-                                          returns Airplus® Gel Orthotic Shoe
-                                          Inserts at $8.99 · 1 ct. The match
-                                          guard now refuses that one at the
-                                          source (priceLayers.js), but a
-                                          heuristic catches a familiar way of
-                                          being wrong, never every way — and a
-                                          host reading "Airplus® Gel Orthotic
-                                          Shoe Inserts" catches all of them.
-                                          Muted and secondary: it is evidence
-                                          for the number above, not a claim of
-                                          its own. */}
-                                      {L.product && (
-                                        <span className="v-meta" style={{ display: 'block' }}>
-                                          {L.product}
-                                        </span>
-                                      )}
-                                      {/* ── AND WHAT THE WHOLE LINE COSTS THERE ──
-                                          Only when the unit map could reconcile
-                                          the plan's quantity with the store's
-                                          package — 63 of the corpus's 491 lines.
-                                          For every other line this is absent and
-                                          the row reads exactly as it did before
-                                          the map existed: a shelf reference beside
-                                          an estimate.
-
-                                          THE ARITHMETIC IS PRINTED, not just the
-                                          answer. "5 × 7 lb at $2.99 = $14.95 —
-                                          covers 30, you take home 35 lbs" is
-                                          checkable standing in the aisle; "$14.95"
-                                          is something a host has to trust. And the
-                                          rounding is the part they most need to
-                                          see, because you cannot buy 4.29 bags. */}
-                                      {L.total != null && (
-                                        <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
-                                          {L.math}
-                                          {/* ── WHEN THE TWO SOURCES DISAGREE ──
-                                              The plan's authored band and the
-                                              shelf are independent measurements
-                                              of the same commodity, and 26 of 35
-                                              live matches agreed. When they do
-                                              not, the host is told — and NOT told
-                                              why, because a small format, a dear
-                                              store and a stale band cannot be
-                                              told apart from here, and picking
-                                              one would be invention. */}
-                                          {L.band ? ' ' + L.band.note : ''}
-                                        </span>
-                                      )}
-                                    </>
-                                  );
-                                })()}
-                                {/* The basis line that used to sit here — "½ lb/guest × 46
-                                    guests · typical" — is folded into the meta above as
-                                    "23 lbs · ½ lb/guest". The multiplication was printing
-                                    the arithmetic behind a number already on the row. */}
-                                {/* GOVERNED KNOWLEDGE, VISIBLE (Phase 5C.10; rewritten 5G-B).
-                                    5C.10 rendered "Sourced — …" on the 52 lines that pass
-                                    isGroundedItemQty and NOTHING on the other 485. The Phase A
-                                    audit found that silence was the largest honesty defect in
-                                    the product: it reads as "we have no view", when most of
-                                    those lines rest on board judgment, trade practice or
-                                    cultural knowledge that authors had already recorded and
-                                    the grounding predicate could not see.
-
-                                    classifyClaim() is presentation only — the same contract
-                                    confidenceGrammar works under. It computes no quantity and
-                                    moves no threshold; it reads the GOVERNED provenance the
-                                    row already carries and names what it rests on, in one of
-                                    six truthful labels. `Directly sourced` still means exactly
-                                    what `Sourced —` meant, on exactly the same 52 lines.
-                                    Muted, one line, no accent (UX_02 restraint). */}
-                                {(() => {
-                                  // ── REACHABLE, NOT IN THE AISLE (host, 2026-09-24) ──────
-                                  // "provenance can be reachable but hide it."
-                                  //
-                                  // This rendered on EVERY row, and on a grounded line it
-                                  // is the longest thing on the screen:
-                                  //
-                                  //   Directly sourced — Grounded to webstaurant-protein-
-                                  //   2026: ~0.5 lb protein/guest is the source-stated
-                                  //   one-main portion for a multi-protein spread.
-                                  //
-                                  // Three lines of citation above a chicken the host is
-                                  // trying to buy. Board D shows no provenance on a row.
-                                  //
-                                  // NOT DELETED, AND THIS MATTERS. The 5G-B rationale
-                                  // above still holds — silence about what a number rests
-                                  // on was itself judged the largest honesty defect in the
-                                  // product. So the claim renders in full, with its author-
-                                  // written detail, the moment the host opens `tune` on the
-                                  // line: the panel where they interrogate the number is
-                                  // exactly where its basis belongs. Hidden by default,
-                                  // one tap away, never gone.
-                                  if (!tuning) return null;
-                                  // Third argument added 2026-09-19: the cost factor that
-                                  // actually moved this line. Without it the badge went on
-                                  // vouching for a base rate after a synthesized multiplier
-                                  // had changed the number printed beside it.
-                                  const claim = classifyClaim(it.provenance, it.costProvenance, it.costFactorApplied);
-                                  if (!claim.hostLabel) return null;
-                                  // The detail is whatever the author actually wrote. Never
-                                  // synthesised — a label with no recorded reasoning stands
-                                  // alone rather than inventing one.
-                                  const detail = (it.provenance && typeof it.provenance === 'object' && it.provenance.note)
-                                    ? it.provenance.note
-                                    : claim.rationale;
-                                  // The price's own basis, in words, when it is not a cited
-                                  // source (lib/priceBasis): "Estimate — no price source yet".
-                                  const pb = it.priceBasis && it.priceBasis.label ? it.priceBasis.label : null;
-                                  return (
-                                    <>
-                                      {pb ? <span className="v-meta" data-testid="price-basis" style={{ display: 'block' }}>{pb}</span> : null}
-                                      <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
-                                        {claim.hostLabel}{detail ? ` — ${detail}` : ''}
-                                      </span>
-                                    </>
-                                  );
-                                })()}
+                          <div key={it.id} className={'fopen' + (got ? ' got' : '')} data-food-row={it.id} data-food-open={it.id}>
+                            <div className="fo-bar">
+                              {checkBtn}
+                              <span className="fo-name">
+                                {name}
+                                {dietText ? <span className="tag plan">{dietText}</span> : null}
                               </span>
-                              {/* Frictionless price entry: the amount itself is the
-                                  input, not a link to a panel two taps away. Tap the
-                                  estimate range, type what you actually paid, Enter or
-                                  tap away commits it — same foodLocked write the old
-                                  "tune → set it" flow used, just without the detour.
-                                  Locked (already-real) prices still route through tune
-                                  to reach "back to estimate" — editing a committed
-                                  number is the rarer path and can afford one more tap. */}
-                              {tuning && it.locked == null ? (
-                                <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-1)', flexWrap: 'wrap' }}>
-                                  {/* Head-start pricing (host request, 2026-07-12 — "like we
-                                      did in legacy"): legacy's CostLockSegments gave a one-tap
-                                      Value/Premium lock off the current estimate, but that
-                                      estimate was only ever plan-wide-sourcing-aware. Here the
-                                      low/high THIS item shows already reflects its own
-                                      per-item store pick (event.foodWhere — perItemStoreRange,
-                                      lib/playbooks/index.js), which legacy's plan-wide tier
-                                      picker can't do — so these two buttons are a genuine
-                                      one-tap "lock to what this specific sourcing choice
-                                      actually costs," not just a generic range. The input still
-                                      pre-fills with the midpoint as the head-start number for a
-                                      host who wants to type their own real receipt total. */}
-                                  {foodPlan.hasRealCount && (Number(it.low) || Number(it.high)) ? (
+                              <button type="button" className="fo-close" aria-expanded="true" aria-label={'Close ' + name}
+                                onClick={() => { commitPaid(); setFoodTune(null); }}>
+                                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                              </button>
+                            </div>
+                            <section className="fo-sec" data-fo-sec="amount">
+                              <h3>Amount{amountHead ? <span className="of">{amountHead}</span> : null}</h3>
+                              {/* The engine's own knob: foodQty re-prices the line. */}
+                              <div className="fo-stepper" role="group" aria-label={'How much ' + name}>
+                                <button type="button" aria-label={'Less ' + name} onClick={() => {
+                                  const q = Math.max(0, (Number(it.qty) || 0) - 1);
+                                  patchEvent({ foodQty: { ...(event.foodQty || {}), [it.id]: q } }, 'Sized to ' + q + ' ' + (it.unit || '') + ' — cost updated.');
+                                }}>−</button>
+                                <span className="fo-qty">{it.qty} {it.unit}</span>
+                                <button type="button" aria-label={'More ' + name} onClick={() => {
+                                  const q = (Number(it.qty) || 0) + 1;
+                                  patchEvent({ foodQty: { ...(event.foodQty || {}), [it.id]: q } }, 'Sized to ' + q + ' ' + (it.unit || '') + ' — cost updated.');
+                                }}>+</button>
+                              </div>
+                              {/* Drift cue + reset (host request 2026-07-12): stepped off
+                                  the recommended baseline, show it and a one-tap way back. */}
+                              {it.qtyOverridden && it.baseQty != null && Number(it.baseQty) !== Number(it.qty) && (
+                                <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
+                                  <span className="of" style={{ color: 'var(--muted)' }}>aim ~{it.baseQty} {it.unit}</span>
+                                  <button className="mini" onClick={() => {
+                                    const m = { ...(event.foodQty || {}) }; delete m[it.id];
+                                    patchEvent({ foodQty: m }, name + ' back to the recommended ' + it.baseQty + ' ' + (it.unit || '') + '.');
+                                  }}>reset</button>
+                                </div>
+                              )}
+                              {claim.hostLabel ? (
+                                <p className="fo-why">{claim.hostLabel}{claimDetail ? ` — ${claimDetail}` : ''}</p>
+                              ) : null}
+                              {/* WHERE THIS NUMBER CAME FROM (Phase 5G-C1): the canonical-
+                                  family card — ice only, by design (familyFor). It never
+                                  shows an adjusted quantity. */}
+                              {(() => {
+                                const rec = iceRecommendation(event.type, it.id, {
+                                  guestCount: foodPlan.guests || 0,
+                                  claim,
+                                  facts: claimFacts,
+                                });
+                                if (!rec) return null;
+                                const settledRec = rec.recommendationState === 'recommended';
+                                return (
+                                  <div style={{ marginTop: 'var(--sp-2)' }}>
+                                    <div className="of" style={{ letterSpacing: 'var(--tracking-2)' }}>WHERE THIS NUMBER CAME FROM</div>
+                                    <p className="v-meta" style={{ margin: '2px 0 0' }}>
+                                      {rec.perGuest} {it.unitBase || 'lb'} per guest
+                                      {rec.total != null ? ` × ${foodPlan.guests} ${foodPlan.guests === 1 ? 'guest' : 'guests'} = ${rec.total} ${it.unitBase || 'lb'}` : ''}
+                                      {rec.basisLabel ? ` · ${rec.basisLabel}` : ''}
+                                    </p>
+                                    {rec.why && <p className="v-meta" style={{ margin: '2px 0 0' }}>{rec.why}</p>}
+                                    {rec.assumption && (
+                                      <p className="v-meta" style={{ margin: '2px 0 0' }}>{rec.recommendationStateLabel} — {rec.assumption}</p>
+                                    )}
+                                    {!settledRec && (
+                                      <p className="v-meta" style={{ margin: '2px 0 0' }}>
+                                        What could change it: {ICE_CHANGE_FACTORS.slice(0, 3).join(' · ').toLowerCase()}.
+                                      </p>
+                                    )}
+                                    {/* A BUTTON only when there is somewhere real to go. */}
+                                    {rec.nextAction && rec.nextAction.route && (
+                                      <button className="mini" style={{ marginTop: 'var(--sp-1)' }} title={rec.nextAction.why}
+                                        onClick={() => { if (!routeSheet(rec.nextAction.route)) toast('Not wired here yet.'); }}>
+                                        {rec.nextAction.label}
+                                      </button>
+                                    )}
+                                    {rec.nextAction && !rec.nextAction.route && (
+                                      <p className="v-meta" style={{ margin: '2px 0 0' }}>{rec.nextAction.why}</p>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </section>
+                            <section className="fo-sec" data-fo-sec="price">
+                              <h3>Price<span className="of">{priceHead}</span></h3>
+                              <div className="plist">
+                                <div className={'prow' + (it.locked == null ? ' mine' : '')}>
+                                  <div className="k">
+                                    <div className="t">{it.added ? 'Your number' : 'Estimate'}</div>
+                                    <div className="m">
+                                      {rate && it.qty ? <span className="fo-line">{rate.replace('/', ' a ')} × {it.qty} {it.unit}</span> : null}
+                                      {/* The estimate's own layer: with a shelf price on the
+                                          line, the band below it is still the area's or the
+                                          nation's, and says which. */}
+                                      {estLayer.layer === 'regional' ? <span className="fo-line">{estLayer.label} · {estLayer.scopeLabel}</span>
+                                        : estLayer.layer === 'national' ? <span className="fo-line">{estLayer.label}</span> : null}
+                                      {/* The price's own basis, in words, when it is not a
+                                          cited source (lib/priceBasis). */}
+                                      {it.priceBasis && it.priceBasis.label ? <span className="fo-line" data-testid="price-basis">{it.priceBasis.label}</span> : null}
+                                    </div>
+                                  </div>
+                                  <div className="v">
+                                    {it.added ? (it.low > 0 ? fmt(it.low) : (it.owner ? 'bringing it' : 'no cost yet'))
+                                      : (foodPlan.hasRealCount ? fmt(it.low) + '–' + fmt(it.high) : '—')}
+                                    {!it.added && foodPlan.hasRealCount ? <small>est.</small> : null}
+                                  </div>
+                                </div>
+                                {it.locked != null && (
+                                  <div className="prow mine">
+                                    <div className="k">
+                                      <div className="t">{real ? 'What you paid' : 'Set at'}</div>
+                                      <div className="m">The number your list counts.</div>
+                                    </div>
+                                    <div className="v">{fmt(it.locked)}<small>{real ? 'you paid' : 'est.'}</small></div>
+                                  </div>
+                                )}
+                                {/* THE SHELF PRICE, BESIDE THE ESTIMATE: a different KIND
+                                    of number — one package at one store today. NOT ROUNDED,
+                                    and the size travels with it. The arithmetic is printed
+                                    when the unit map reconciles the line, and a band that
+                                    disagrees is said, never explained. */}
+                                {shelf && (
+                                  <div className="prow">
+                                    <div className="k">
+                                      <div className="t">{storeName} shelf price</div>
+                                      <div className="m">
+                                        {shelf.onSale && shelf.was ? <span className="fo-line">On sale, was ${shelf.was.toFixed(2)}</span> : null}
+                                        {shelf.total != null ? <span className="fo-line">{shelf.math}{shelf.band ? ' ' + shelf.band.note : ''}</span> : null}
+                                        <span className="fo-line">Your store · a reference, not in your total</span>
+                                      </div>
+                                    </div>
+                                    <div className="v">${shelf.exact.toFixed(2)}{shelf.size ? <small>{shelf.size}</small> : null}</div>
+                                  </div>
+                                )}
+                              </div>
+                              <label className="fo-cap" htmlFor={'paid-' + it.id}>What you paid · optional</label>
+                              <input id={'paid-' + it.id} className="field fo-paid" type="number" min="0" inputMode="decimal" placeholder="$ paid"
+                                aria-label={'What you paid for ' + name}
+                                value={tuneCost} onChange={e => setTuneCost(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') commitPaid();
+                                  else if (e.key === 'Escape') setTuneCost('');
+                                }}
+                                onBlur={commitPaid} />
+                              {(!it.added && foodPlan.hasRealCount && (Number(it.low) || Number(it.high))) || it.locked != null ? (
+                                <div className="chips" style={{ marginTop: 'var(--sp-2)' }}>
+                                  {/* One-tap ends of THIS item's estimate, already reshaped
+                                      by its own store pick (perItemStoreRange) — legacy's
+                                      CostLockSegments, per item (host, 2026-07-12). */}
+                                  {!it.added && foodPlan.hasRealCount && (Number(it.low) || Number(it.high)) ? (
                                     <>
-                                      {/* onMouseDown preventDefault: without it, clicking this button
-                                          blurs the focused input FIRST, whose own onBlur commits the
-                                          pre-filled midpoint via patchEvent — which sets it.locked,
-                                          flipping this whole branch to the locked display and
-                                          unmounting this button before its click ever fires. Found
-                                          live-testing: tapping "Value" was silently locking the
-                                          midpoint instead. preventDefault on mousedown keeps focus
-                                          put, so blur never fires and this onClick is the one write. */}
-                                      <button type="button" className="mini" onMouseDown={e => e.preventDefault()} onClick={() => {
-                                        const n = Math.max(0, Math.round(Number(it.low) || 0));
-                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: false } },
-                                          (it.short || it.item) + ' set at ' + fmt(n) + ' — the value estimate for the store you picked.');
-                                        setTuneCost(''); setTuneEdited(false); setFoodTune(null);
-                                      }}>Value {fmt(Math.round(Number(it.low) || 0))}</button>
-                                      <button type="button" className="mini" onMouseDown={e => e.preventDefault()} onClick={() => {
-                                        const n = Math.max(0, Math.round(Number(it.high) || 0));
-                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: false } },
-                                          (it.short || it.item) + ' set at ' + fmt(n) + ' — the premium estimate for the store you picked.');
-                                        setTuneCost(''); setTuneEdited(false); setFoodTune(null);
-                                      }}>Premium {fmt(Math.round(Number(it.high) || 0))}</button>
+                                      <button type="button" className="mini" onClick={() => setEnd(Math.max(0, Math.round(Number(it.low) || 0)), 'low end')}>
+                                        Low end · {fmt(Math.round(Number(it.low) || 0))}
+                                      </button>
+                                      <button type="button" className="mini" onClick={() => setEnd(Math.max(0, Math.round(Number(it.high) || 0)), 'high end')}>
+                                        High end · {fmt(Math.round(Number(it.high) || 0))}
+                                      </button>
                                     </>
                                   ) : null}
-                                  <input className="field" style={{ width: 72, fontSize: 'var(--t-input)', padding: 'var(--sp-1) var(--sp-2)' }} type="number" min="0"
-                                    inputMode="decimal" placeholder="$ paid" autoFocus
-                                    aria-label={'Real cost for ' + (it.short || it.item)}
-                                    value={tuneCost} onChange={e => { setTuneCost(e.target.value); setTuneEdited(true); }}
-                                    onKeyDown={e => {
-                                      if (e.key === 'Enter' && parseFloat(tuneCost) >= 0 && tuneCost !== '') {
-                                        const n = Math.max(0, roundCurrency(parseFloat(tuneCost) || 0));   // cents kept: $42.50, not $43
-                                        // Real receipt ONLY if the host typed a value; accepting the
-                                        // store-based prefill unchanged stays an honest estimate.
-                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: tuneEdited } },
-                                          (it.short || it.item) + (tuneEdited ? ' set at ' + fmt(n) + ' — a real price now, not a range.' : ' set at ~' + fmt(n) + ' — the estimate; add the receipt total anytime.'));
-                                        setTuneCost(''); setTuneEdited(false); setFoodTune(null);
-                                      } else if (e.key === 'Escape') { setTuneCost(''); setTuneEdited(false); setFoodTune(null); }
-                                    }}
-                                    onBlur={() => {
-                                      if (parseFloat(tuneCost) >= 0 && tuneCost !== '') {
-                                        const n = Math.max(0, roundCurrency(parseFloat(tuneCost) || 0));   // cents kept: $42.50, not $43
-                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: tuneEdited } },
-                                          (it.short || it.item) + (tuneEdited ? ' set at ' + fmt(n) + ' — a real price now, not a range.' : ' set at ~' + fmt(n) + ' — the estimate; add the receipt total anytime.'));
-                                        setTuneCost(''); setTuneEdited(false);
-                                      }
-                                    }} />
-                                </span>
-                              ) : (
-                                <span className="amt" role="button" tabIndex={0}
-                                  onClick={e => { e.stopPropagation(); setTuneCost(midpointStr(it)); setTuneEdited(false); setFoodTune(it.id); }}
-                                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setTuneCost(midpointStr(it)); setTuneEdited(false); setFoodTune(it.id); } }}
-                                  title="Tap to enter the real price">
-                                  {/* Host-added lines carry a single committed cost (event.foodAdd's
-                                      cost — never a range), so no invented spread. Blank/$0 at add
-                                      time is an honest state, not a fake number: "bringing it" when
-                                      someone's named (their name already shows as its own tag chip
-                                      next to the item name — repeating it here made this span too
-                                      wide and collided with a long wrapped item name, found live
-                                      testing this feature), "no cost yet" otherwise. Never displayed
-                                      as "$0–$0". Same honesty rule legacy's money() helper applies
-                                      (App.js ~11246-11250). */}
-                                  {it.locked != null
-                                    ? fmt(it.locked)
-                                    : it.added
-                                      ? (it.low > 0 ? fmt(it.low) : (it.owner ? 'bringing it' : 'no cost yet'))
-                                      : (foodPlan.hasRealCount ? fmt(it.low) + '–' + fmt(it.high) : '—')}
-                                </span>
-                              )}
-                              <span className="mini" role="button" tabIndex={0} style={{ marginLeft: 6 }}
-                                onClick={e => { e.stopPropagation(); if (!tuning) { setTuneCost(midpointStr(it)); setTuneEdited(false); } setFoodTune(tuning ? null : it.id); }}
-                                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (!tuning) { setTuneCost(midpointStr(it)); setTuneEdited(false); } setFoodTune(tuning ? null : it.id); } }}>
-                                {tuning ? 'more' : 'tune'}
-                              </span>
-                              {/* Host-added lines are fully deletable (not just skippable) —
-                                  parity with legacy's removeAdded (App.js ~11122). */}
-                              {it.added && (
-                                <span className="mini" role="button" tabIndex={0} style={{ marginLeft: 6 }}
-                                  title={'Remove ' + (it.short || it.item)}
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    patchEvent({ foodAdd: (event.foodAdd || []).filter(a => a.id !== it.id) },
-                                      (it.short || it.item) + ' removed.');
-                                  }}
-                                  onKeyDown={e => {
-                                    if (e.key !== 'Enter') return;
-                                    e.stopPropagation();
-                                    patchEvent({ foodAdd: (event.foodAdd || []).filter(a => a.id !== it.id) },
-                                      (it.short || it.item) + ' removed.');
-                                  }}>
-                                  remove
-                                </span>
-                              )}
-                            </button>
-                            {/* ── SKIP, ONE LEVEL UP (host, 2026-09-22) ──────────
-                                "Skip it" lived inside the tune panel, so dropping
-                                a line you are not buying meant opening the row
-                                first, finding it past the quantity stepper and
-                                the price controls, and tapping again. Three taps
-                                to say no to one thing.
-
-                                It sits beside the row now. It cannot sit INSIDE
-                                it — `.frow` is itself a <button>, and a nested
-                                button is invalid and would swallow the row's own
-                                tap — so it is a sibling, and deliberately quiet:
-                                the row is the star, this is the small out.
-
-                                Only on a row not yet bought. Once something is
-                                checked off, "skip it" is a contradiction, and
-                                the undo for a skip is already the row itself
-                                (tapping a skipped row restores it). The copy in
-                                the tune panel stays where it is — a host who has
-                                the row open should not have to close it to find
-                                the same control. */}
-                            {!it.skipped && !got ? (
-                              <div style={{ padding: '0 var(--sp-3) var(--sp-2)', marginTop: 'calc(var(--sp-1) * -1)' }}>
-                                <button
-                                  className="mini"
-                                  onClick={() => patchEvent(
-                                    { foodSkip: { ...(event.foodSkip || {}), [it.id]: true } },
-                                    (it.short || it.item) + ' skipped and out of the total.',
-                                  )}
-                                >skip it</button>
-                              </div>
-                            ) : null}
-                            {tuning && (
-                              // onMouseDown preventDefault (bubbles from every button/chip
-                              // inside): while the cost input is focused (autoFocus in tune
-                              // mode), tapping ANY control in here — size stepper, skip-it,
-                              // a store chip, a swap chip — would otherwise blur the input
-                              // first, and its onBlur commits the pre-filled midpoint, locking
-                              // a fabricated price and unmounting the very control you tapped
-                              // before its click lands. Found live-testing: tapping "Costco"
-                              // to re-source silently locked the midpoint instead. Killing the
-                              // default focus shift on mousedown keeps focus put so no blur
-                              // fires, and click still runs on mouseup — so the store re-price
-                              // (which reshapes it.low/high, hence Value/Premium too) actually
-                              // happens instead of a stray commit.
-                              <div className="brow" style={{ margin: '2px 0 var(--sp-2)', paddingLeft: 30 }} onMouseDown={e => e.preventDefault()}>
-                                {/* ── WHERE THIS NUMBER CAME FROM (Phase 5G-C1) ────────────
-                                    The canonical-family recommendation card. The ROW above
-                                    already carries the amount and the basis label; repeating
-                                    them here would be the duplicate-summary defect, so this
-                                    explains instead: the per-guest derivation, the condition
-                                    the playbook was actually written for, the assumption we
-                                    are carrying, what would change it, and one CTA to the
-                                    exact control that resolves it.
-
-                                    Currently ice only — familyFor() returns null for every
-                                    other line, by design. A family is joined by a human
-                                    ruling on shared meaning and unit, never by field name.
-
-                                    It NEVER shows an adjusted quantity. `perGuest` is the
-                                    authored figure; knowing the setting confirms the
-                                    recommendation, it does not recompute it. */}
-                                {(() => {
-                                  const rec = iceRecommendation(event.type, it.id, {
-                                    guestCount: foodPlan.guests || 0,
-                                    claim: classifyClaim(it.provenance, it.costProvenance, it.costFactorApplied),
-                                    facts: claimFacts,
-                                  });
-                                  if (!rec) return null;
-                                  const settled = rec.recommendationState === 'recommended';
-                                  return (
-                                    <div style={{ marginBottom: 'var(--sp-2)' }}>
-                                      <div className="of" style={{ letterSpacing: 'var(--tracking-2)' }}>WHERE THIS NUMBER CAME FROM</div>
-                                      <p className="v-meta" style={{ margin: '2px 0 0' }}>
-                                        {rec.perGuest} {it.unitBase || 'lb'} per guest
-                                        {rec.total != null ? ` × ${foodPlan.guests} ${foodPlan.guests === 1 ? 'guest' : 'guests'} = ${rec.total} ${it.unitBase || 'lb'}` : ''}
-                                        {rec.basisLabel ? ` · ${rec.basisLabel}` : ''}
-                                      </p>
-                                      {rec.why && (
-                                        <p className="v-meta" style={{ margin: '2px 0 0' }}>{rec.why}</p>
-                                      )}
-                                      {rec.assumption && (
-                                        <p className="v-meta" style={{ margin: '2px 0 0' }}>
-                                          {rec.recommendationStateLabel} — {rec.assumption}
-                                        </p>
-                                      )}
-                                      {!settled && (
-                                        <p className="v-meta" style={{ margin: '2px 0 0' }}>
-                                          What could change it: {ICE_CHANGE_FACTORS.slice(0, 3).join(' · ').toLowerCase()}.
-                                        </p>
-                                      )}
-                                      {/* A BUTTON only when there is somewhere real to go.
-                                          When the missing fact is answered on this very
-                                          surface, the ask is a sentence — rendering a CTA
-                                          that reopens the screen you are already on is the
-                                          dead-navigation defect, found by clicking it live. */}
-                                      {rec.nextAction && rec.nextAction.route && (
-                                        <button className="mini" style={{ marginTop: 'var(--sp-1)' }}
-                                          title={rec.nextAction.why}
-                                          onClick={e => {
-                                            e.stopPropagation();
-                                            // Real landing or an honest toast — never a dead CTA.
-                                            if (!routeSheet(rec.nextAction.route)) {
-                                              toast('Not wired here yet.');
-                                            }
-                                          }}>
-                                          {rec.nextAction.label}
-                                        </button>
-                                      )}
-                                      {rec.nextAction && !rec.nextAction.route && (
-                                        <p className="v-meta" style={{ margin: '2px 0 0' }}>{rec.nextAction.why}</p>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                                {/* COST STRUCTURE, per item — the engine's own knobs:
-                                    size it (foodQty re-prices), swap it (alternatives
-                                    carry their own real ranges), or skip it. */}
-                                <div className="actions-row" style={{ alignItems: 'center' }}>
-                                  <span className="of">size:</span>
-                                  <button className="mini" onClick={() => {
-                                    const q = Math.max(0, (Number(it.qty) || 0) - 1);
-                                    patchEvent({ foodQty: { ...(event.foodQty || {}), [it.id]: q } }, 'Sized to ' + q + ' ' + (it.unit || '') + ' — cost updated.');
-                                  }}>−</button>
-                                  <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>{it.qty} {it.unit}</span>
-                                  <button className="mini" onClick={() => {
-                                    const q = (Number(it.qty) || 0) + 1;
-                                    patchEvent({ foodQty: { ...(event.foodQty || {}), [it.id]: q } }, 'Sized to ' + q + ' ' + (it.unit || '') + ' — cost updated.');
-                                  }}>+</button>
-                                  {/* Drift cue + reset (host request 2026-07-12): once a host
-                                      steps the size off the recommended baseline (it.baseQty,
-                                      the engine's rate×guests result — qtyOverridden flags it),
-                                      show what the recommendation was and a one-tap way back,
-                                      so the stepper can't silently strand them above/below the
-                                      portion goal. Both fields already ride on the item from
-                                      playbooks/index.js:2273; V2 just never read them. */}
-                                  {it.qtyOverridden && it.baseQty != null && Number(it.baseQty) !== Number(it.qty) && (
-                                    <>
-                                      <span className="of" style={{ color: 'var(--muted)' }}>aim ~{it.baseQty} {it.unit}</span>
-                                      <button className="mini" onClick={() => {
-                                        const m = { ...(event.foodQty || {}) }; delete m[it.id];
-                                        patchEvent({ foodQty: m }, (it.short || it.item) + ' back to the recommended ' + it.baseQty + ' ' + (it.unit || '') + '.');
-                                      }}>reset</button>
-                                    </>
-                                  )}
-                                  <button className="mini" onClick={() => {
-                                    if (it.skipped) {
-                                      const m = { ...(event.foodSkip || {}) }; delete m[it.id];
-                                      patchEvent({ foodSkip: m }, (it.short || it.item) + ' is back in the total.');
-                                    } else {
-                                      patchEvent({ foodSkip: { ...(event.foodSkip || {}), [it.id]: true } }, (it.short || it.item) + ' skipped and out of the total.');
-                                    }
-                                  }}>{it.skipped ? 'restore it' : 'skip it'}</button>
-                                </div>
-                                {/* Real-cost entry now lives inline on the row itself
-                                    (tap the amount) — the frictionless path. This stays
-                                    only for the already-locked reset case; "back to
-                                    estimate" has no other home. */}
-                                {it.locked != null && (
-                                  <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
-                                    <span className="of">cost:</span>
-                                    <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>set at {fmt(it.locked)}</span>
-                                    <button className="mini" onClick={() => {
+                                  {it.locked != null && (
+                                    <button type="button" className="mini" onClick={() => {
                                       const m = { ...(event.foodLocked || {}) }; delete m[it.id];
                                       const rm = { ...(event.foodReal || {}) }; delete rm[it.id];
-                                      patchEvent({ foodLocked: m, foodReal: rm }, (it.short || it.item) + ' back to the estimate range.');
-                                    }}>back to estimate</button>
+                                      patchEvent({ foodLocked: m, foodReal: rm }, name + ' back to the estimate range.');
+                                    }}>Back to the estimate</button>
+                                  )}
+                                </div>
+                              ) : null}
+                            </section>
+                            {hasWhere ? (
+                              <section className="fo-sec" data-fo-sec="where">
+                                <h3>Where to buy</h3>
+                                {/* AND WHAT IT PRICED: a price with no product is
+                                    unauditable (the shoe-insert case, 2026-09-23). */}
+                                {shelf && shelf.product ? (
+                                  <div className="plist">
+                                    <div className="prow">
+                                      <div className="k">
+                                        <div className="t">{shelf.product}</div>
+                                        <div className="m">{storeName} · the product that shelf price is for</div>
+                                      </div>
+                                    </div>
                                   </div>
-                                )}
-                                {Array.isArray(it.where) && it.where.length > 1 && (
-                                  <div className="chips" style={{ marginTop: 'var(--sp-2)' }}>
-                                    {it.where.slice(0, 4).map(w => (
-                                      <button key={w} className="chip" aria-pressed={(event.foodWhere || {})[it.id] === w}
-                                        onClick={() => {
-                                          // Store pick still isn't a "paid" price (cost-truth
-                                          // gate — that's foodLocked, only set on an actual
-                                          // purchase). But for a protein with a real per-channel
-                                          // price (sourcingPrices / canonicalProteinPrice, the
-                                          // same cited data the plan-wide sourcing tier uses),
-                                          // the engine now repriced THIS line's estimate to that
-                                          // channel the moment it's picked — was display-only
-                                          // before (2026-07-11 food-plan audit). Never invents a
-                                          // number for stores without sourced data.
-                                          patchEvent({ foodWhere: { ...(event.foodWhere || {}), [it.id]: w } },
-                                            'Buying at ' + w + ' — estimate re-priced to that channel when we have real numbers for it.');
-                                        }}>
-                                        {w}
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                                {(alts.length > 0 || it.swappedFrom) && (
-                                  <div className="chips" style={{ marginTop: 'var(--sp-2)' }}>
-                                    {it.swappedFrom && (
-                                      <button className="chip" onClick={() => {
-                                        const m = { ...(event.foodSwap || {}) }; delete m[it.id];
-                                        patchEvent({ foodSwap: m }, 'Back to ' + it.swappedFrom + ' — original pricing restored.');
-                                      }}>back to {it.swappedFrom}</button>
-                                    )}
-                                    {alts.map(na => {
-                                      const name = na.name;
-                                      const isActive = activeSwapName === name;
-                                      // A plain-string alt (no unitCostRange) keeps the line's
-                                      // current cost when swapped — no delta to show, honestly.
-                                      // A priced alt re-prices to units × ITS OWN range, the same
-                                      // math the engine applies on swap (playbookFoodPlan). Only
-                                      // shown when there's a real quantity + current cost to
-                                      // compare against (same honest-empty rule as the sourcing-
-                                      // tier delta above) and it isn't the alt already active.
-                                      const altCost = (!isActive && foodPlan.hasRealCount && Array.isArray(na.unitCostRange) && it.units)
-                                        ? (Number(it.units) || 0) * ((Number(na.unitCostRange[0]) || 0) + (Number(na.unitCostRange[1]) || 0)) / 2
-                                        : null;
-                                      const delta = (altCost != null && cost) ? Math.round(altCost - cost) : null;
-                                      const deltaLabel = (delta != null && delta !== 0)
-                                        ? (delta < 0 ? ' · saves ~' + fmt(Math.abs(delta)) : ' · ~' + fmt(Math.abs(delta)) + ' more')
-                                        : '';
-                                      return (
-                                        <button key={name} className="chip" onClick={() => patchEvent({ foodSwap: { ...(event.foodSwap || {}), [it.id]: name } }, 'Swapped to ' + name + ' — priced with its own real range.')}>
-                                          {name}{deltaLabel}
+                                ) : null}
+                                {where.length > 1 ? (
+                                  <>
+                                    <div className="fo-cap">Buy it at</div>
+                                    <div className="chips">
+                                      {where.map(w => (
+                                        <button key={w} type="button" className="chip" aria-pressed={buyingAt === w}
+                                          onClick={() => {
+                                            // A store pick re-prices this line's estimate to that
+                                            // channel when there is cited data for it; never a
+                                            // "paid" price (that is foodLocked).
+                                            patchEvent({ foodWhere: { ...(event.foodWhere || {}), [it.id]: w } },
+                                              'Buying at ' + w + ' — estimate re-priced to that channel when we have real numbers for it.');
+                                          }}>
+                                          {w}
                                         </button>
-                                      );
-                                    })}
-                                  </div>
+                                      ))}
+                                    </div>
+                                  </>
+                                ) : null}
+                                {(alts.length > 0 || it.swappedFrom) ? (
+                                  <>
+                                    <div className="fo-cap">Or buy instead</div>
+                                    <div className="chips">
+                                      {it.swappedFrom && (
+                                        <button type="button" className="chip" onClick={() => {
+                                          const m = { ...(event.foodSwap || {}) }; delete m[it.id];
+                                          patchEvent({ foodSwap: m }, 'Back to ' + it.swappedFrom + ' — original pricing restored.');
+                                        }}>back to {it.swappedFrom}</button>
+                                      )}
+                                      {alts.map(na => {
+                                        const altName = na.name;
+                                        const isActive = activeSwapName === altName;
+                                        // A priced alt re-prices to units × ITS OWN range (the
+                                        // engine's swap math); a plain-string alt keeps the cost.
+                                        const altCost = (!isActive && foodPlan.hasRealCount && Array.isArray(na.unitCostRange) && it.units)
+                                          ? (Number(it.units) || 0) * ((Number(na.unitCostRange[0]) || 0) + (Number(na.unitCostRange[1]) || 0)) / 2
+                                          : null;
+                                        const delta = (altCost != null && cost) ? Math.round(altCost - cost) : null;
+                                        const deltaLabel = (delta != null && delta !== 0)
+                                          ? (delta < 0 ? ' · saves ~' + fmt(Math.abs(delta)) : ' · ~' + fmt(Math.abs(delta)) + ' more')
+                                          : '';
+                                        return (
+                                          <button key={altName} type="button" className="chip" aria-pressed={isActive}
+                                            onClick={() => patchEvent({ foodSwap: { ...(event.foodSwap || {}), [it.id]: altName } }, 'Swapped to ' + altName + ' — priced with its own real range.')}>
+                                            {altName}{deltaLabel}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </>
+                                ) : null}
+                              </section>
+                            ) : null}
+                            <div className="fo-foot">
+                              {got ? (
+                                <button type="button" className="mini" onClick={toggle}>Uncheck {name}</button>
+                              ) : (
+                                <button type="button" className="cta" onClick={toggle}>Mark {name} bought</button>
+                              )}
+                              <p className="fo-note">{got ? 'It is in the cart total.' : 'Same as tapping its box. It moves into the cart total.'}</p>
+                            </div>
+                            {/* SKIP, ALONE AT THE BOTTOM (owner, 11/24/2026). This
+                                reverses the 9/22/2026 move onto the row: skipping is the
+                                rare act, and the row's second tap now opens the item.
+                                Undo is still the row itself. Remove sits beside it only
+                                on a line she added (parity with legacy's removeAdded). */}
+                            <div className="fo-skip">
+                              <div className="fo-skip-row">
+                                {it.added && (
+                                  <button type="button" className="mini" onClick={() => {
+                                    setFoodTune(null);
+                                    patchEvent({ foodAdd: (event.foodAdd || []).filter(a => a.id !== it.id) }, name + ' removed.');
+                                  }}>Remove {name}</button>
                                 )}
+                                <button type="button" className="mini" onClick={() => {
+                                  setFoodTune(null);
+                                  patchEvent({ foodSkip: { ...(event.foodSkip || {}), [it.id]: true } }, name + ' skipped and out of the total.');
+                                }}>Skip {name}</button>
                               </div>
-                            )}
+                              <p className="fo-note">Takes it out of the total. Tap its row to bring it back.</p>
+                            </div>
                           </div>
                         );
                       })}
@@ -26123,7 +26024,7 @@ export default function HostShellV2() {
                   });
                   return (
                     <>
-                      {stores.length > 1 && (
+                      {(stores.length > 1 || priceStore) && (
                         <>
                         <div className="shelf-label" style={{ margin: '10px 0 6px' }}>Shopping at</div>
                         {/* ── THESE ARE ORDINARY CHIPS (2026-09-26) ─────────────
@@ -26156,9 +26057,14 @@ export default function HostShellV2() {
                             vertical scroll alive, which is the gesture a
                             sideways rail otherwise competes with. */}
                         <div className="chiprail">
-                          {stores.slice(0, 5).map(s => (
+                          {/* Pressed, a chip says where she is: "I'm at …". */}
+                          {priceStore && (
+                            <button className="chip" aria-pressed={atPriced}
+                              onClick={() => setShopStore(atPriced ? null : PRICED_RUN)}>{atPriced ? 'I’m at ' + priceStore.name : priceStore.name}</button>
+                          )}
+                          {(stores.length > 1 ? stores.slice(0, 5) : []).map(s => (
                             <button key={s} className="chip" aria-pressed={shopStore === s}
-                              onClick={() => setShopStore(shopStore === s ? null : s)}>{shopStore === s ? 'At ' + s : s}</button>
+                              onClick={() => setShopStore(shopStore === s ? null : s)}>{shopStore === s ? 'I’m at ' + s : s}</button>
                           ))}
                           {shopStore && <button className="chip" onClick={() => setShopStore(null)}>Everything</button>}
                         </div>
@@ -26168,8 +26074,8 @@ export default function HostShellV2() {
                         <>
                           <p className="grounding" style={{ margin: '0 0 10px' }}>
                             {runLeft.length === 0
-                              ? 'Everything for ' + shopStore + ' is bought — nothing left on this run.'
-                              : runLeft.length + ' line' + (runLeft.length === 1 ? '' : 's') + ' left at ' + shopStore + ' — walk in expecting about ' + fmt(runLo) + (runHi > runLo ? '–' + fmt(runHi) : '') + '. Check them off as you buy — the real price is optional.'}
+                              ? 'Everything for ' + runName + ' is bought — nothing left on this run.'
+                              : runLeft.length + ' line' + (runLeft.length === 1 ? '' : 's') + ' left at ' + runName + ' — walk in expecting about ' + fmt(runLo) + (runHi > runLo ? '–' + fmt(runHi) : '') + '. Check them off as you buy — the real price is optional.'}
                           </p>
                           {/* #8 BULK CHECK-OFF (AnyList/Instacart parity): a real store
                               run is one cart, not 18 taps. One button marks every line
@@ -26183,11 +26089,11 @@ export default function HostShellV2() {
                               runLeft.forEach(it => { next[it.id] = true; });
                               let ns = null;
                               try { ns = hostSpending({ ...event, foodGot: next }, foodPP.priceFactor).spent; } catch { ns = null; }
-                              patchEvent({ foodGot: next }, `Marked all ${runLeft.length} lines at ${shopStore} bought` + (ns != null ? ` — spent is now ${fmt(ns)}.` : '.'));
+                              patchEvent({ foodGot: next }, `Marked all ${runLeft.length} lines at ${runName} bought` + (ns != null ? ` — spent is now ${fmt(ns)}.` : '.'));
                             };
                             return (
-                              <button className="mini" style={{ marginBottom: 10 }} onClick={markAllInStore}>
-                                Got everything at {shopStore} — mark all {runLeft.length} bought
+                              <button className="mini run-all" style={{ marginBottom: 10 }} onClick={markAllInStore}>
+                                Got everything at {runName} — mark all {runLeft.length} bought
                               </button>
                             );
                           })()}
@@ -28475,348 +28381,310 @@ export default function HostShellV2() {
                     {markInviteSent && <button className="mini" data-invite-sent onClick={markInviteSent.onClick}>{markInviteSent.label}</button>}
                   </div>
               </>);
-              // ── THE GUEST DETAIL, HOISTED (owner §26) ───────────────────
-              // Unchanged markup and unchanged handlers — every writer here is
-              // still index-based against `event.guests`, which is why `i` is
-              // passed rather than recomputed from the guest object.
-              // ── §5D · THE PANEL IS ABOUT A PERSON, NOT A FORM ───────────
-              // Owner: *"the selected guest rail currently reads like controls
-              // placed into a dark container… Recompose it around the
-              // PERSON/HOUSEHOLD first. Then expose editing naturally."*
-              // The controls are untouched — every one is wired and
-              // index-based — and a person header now leads them: who this is,
-              // where they stand, who they arrive with. Nothing here derives a
-              // new fact; it restates the row's own four concepts at panel
-              // scale so the editing below has a subject.
-              // ── §5D · A FIELD WITH NO LABEL IS A GUESS ──────────────────
-              // The detail panel's inputs carried their label as a placeholder,
-              // which vanishes the moment anyone types — so a filled panel read
-              // as five anonymous boxes, and the review called it a debug form.
-              // `fld` adds a visible caption under People and returns the input
-              // untouched on the legacy surface, so the baseline composition is
-              // byte-identical. The inputs keep their own `aria-label`; the
-              // caption is additional, not a replacement.
-              const fld = (label, input) => (peopleMode
-                ? <label className="people-fld">{label}{input}</label>
-                : input);
-              const guestHead = (g) => {
-                const partner = g.coupleId
-                  ? (event.guests || []).find((x) => x && x !== g && x.coupleId === g.coupleId)
-                  : null;
-                const party = [
-                  partner && partner.name ? 'with ' + String(partner.name).split(' ')[0] : null,
-                  plusOneLabel(g) || null,
-                  Number(g.kids) > 0 ? g.kids + ' kid' + (Number(g.kids) === 1 ? '' : 's') : null,
+              // ── THE GUEST EDITOR READS IN GROUPS (owner, 11/24/2026: "Combine
+              // 1A and 1B") ───────────────────────────────────────────────────
+              // One definition, two placements (§26): inline under its row on a
+              // phone or tablet, the 340px column at the desktop grid, the rail
+              // under ?people=1. Top to bottom: the name, editable where it
+              // stands; Reply; Who's coming; How to reach them; Actions; Remove.
+              // Every write is the roster's own writer, index-based against
+              // `event.guests`: writeGuest (fields, kids), setRsvpValue (the
+              // reply and its covers receipt), removeGuest (its toast's Undo
+              // puts the guest back). Same data model: one +1 text field, a
+              // children count, one meal, one dietary field.
+              const MEAL_CHOICES = ['—', 'Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
+              // The four replies in the order a host reads them; the labels and
+              // values stay RSVP_VALUES's.
+              const REPLY_ORDER = ['Yes', 'Maybe', 'No', ''].map((v) => RSVP_VALUES.find(([x]) => x === v));
+              const gIcon = (d) => (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>
+              );
+              const ICON_CALL = gIcon(<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z" />);
+              const ICON_TEXT = gIcon(<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />);
+              const ICON_MAIL = gIcon(<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></>);
+              const ICON_UP = gIcon(<path d="m6 15 6-6 6 6" />);
+              const ICON_BIN = gIcon(<><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /></>);
+              const guestDetail = (g, i) => {
+                const name = String(g.name || '').trim();
+                const first = name.split(/\s+/)[0] || 'them';
+                const digits = String(g.phone || '').replace(/[^+\d]/g, ''); // sms:/tel: want digits, not "(919) 555-…"
+                const email = String(g.email || '').trim();
+                const kids = Number(g.kids) || 0;
+                const plus = plusOneCount(g);
+                const party = 1 + plus + kids;
+                const meal = String(g.meal || '—');
+                const mealOpen = meal === '—';
+                const meals = MEAL_CHOICES.includes(meal) ? MEAL_CHOICES : [...MEAL_CHOICES, meal];
+                const initials = (() => {
+                  const parts = name.split(/\s+/).filter(Boolean);
+                  if (!parts.length) return '?';
+                  return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+                })();
+                const state = g.rsvp === 'No' ? 'Can’t make it' : (g.rsvp === 'Yes' ? 'Coming' : (g.rsvp || 'No reply'));
+                const partyLine = [
+                  party > 1 ? 'Party of ' + party : null,
+                  kids ? kids + (kids === 1 ? ' child' : ' children') : null,
                   String(g.group || '').trim() || null,
-                ].filter(Boolean);
-                const state = g.rsvp === 'No' ? 'Can\u2019t make it' : (g.rsvp === 'Yes' ? 'Coming' : (g.rsvp || 'No reply'));
+                ].filter(Boolean).join(' · ');
+                const roles = (() => { try { return guestHelperRoles(event, g.id); } catch { return []; } })();
+                // THE NAME, IN PLACE. Saved on Enter or when she leaves the field;
+                // a blank or unchanged name is not saved. The old name stays as
+                // her alias (lib/guestMerge renamedGuestPatch) so the replies the
+                // account sends back under it, and a CSV row that only has it,
+                // still land on this row.
+                const commitName = (el) => {
+                  const p = renamedGuestPatch(g, el.value);
+                  if (!p) { el.value = g.name || ''; return; }
+                  writeGuest(i, p, (name || 'This guest') + ' is now ' + p.name + '.');
+                };
+                const chasing = chase && !g.rsvp;
+                const reachable = !!(digits || email);
+                const told = isTold(guestToldMap(event), g.id);
+                // THE NUDGE (chase mode, no reply yet). Per-guest handoffs ask for
+                // a direct reply; no public link is embedded without checking its
+                // availability first. The OS's own composer opens with the draft
+                // in it (UX_07); nothing here claims to have sent.
+                const nudge = (() => {
+                  if (!chasing || !reachable) return null;
+                  const d = draftRsvpChase(event, profile);
+                  const body = [d.subject, d.body].filter(Boolean).join('\n\n');
+                  const handoffNudge = async (click, channel) => {
+                    click.preventDefault();
+                    const url = await verifiedRsvpUrl();
+                    const checked = draftRsvpChase(event, profile, { rsvpUrl: url });
+                    const text = [checked.subject, checked.body].filter(Boolean).join('\n\n');
+                    window.location.href = channel === 'sms'
+                      ? 'sms:' + digits + '?&body=' + encodeURIComponent(text)
+                      : 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent(checked.subject || 'Can you make it?') + '&body=' + encodeURIComponent(checked.body || text);
+                    // A text, as in the nudge's queue: the host's word that they
+                    // sent it, recorded on the guest (lib/replyNudge). The mail
+                    // app's link records nothing: the app cannot say an email it
+                    // never saw went out.
+                    if (channel === 'sms') patchEvent({ guests: markNudged(event.guests || [], [g], 'text', new Date().toISOString()) }, null, { noUndo: true });
+                  };
+                  // THE NUDGE BY EMAIL GOES FROM THE APP (owner, 11/20/2026): signed
+                  // in, through the message route (address saved on the event, the
+                  // daily cap, the stop link) in the invite's frame, and it shows in
+                  // Messages. Signed out, the route would refuse, so the mail app's
+                  // link stays.
+                  const appNudge = !!(email && session && isCommApiConfigured());
+                  const myNudge = nudgeEmail && nudgeEmail.guestId === g.id ? nudgeEmail : null;
+                  const words = appEmailWords(`Email ${first} the nudge`, first, myNudge);
+                  const emailNudge = async (click) => {
+                    click.stopPropagation();
+                    if (myNudge && myNudge.busy) return;
+                    setNudgeEmail({ guestId: g.id, busy: true });
+                    let r;
+                    try {
+                      const url = await verifiedRsvpUrl();
+                      const checked = draftRsvpChase(event, profile, { rsvpUrl: url });
+                      const res = await commApi.createMessage(event.id, 'CLIENT', {
+                        message_type: 'standard', author_role: 'planner',
+                        author_name: (profile && profile.name) || 'Your host',
+                        body: checked.body || [checked.subject, checked.body].filter(Boolean).join('\n\n'),
+                        deliver_email: true, recipient_email: email, recipient_name: g.name || undefined,
+                        subject: checked.subject || 'Can you make it?',
+                        ...(((session && session.user && session.user.email) || '').trim()
+                          ? { reply_to: String(session.user.email).trim() } : {}),
+                      });
+                      r = messageEmailResult(res, null);
+                    } catch (e) { r = messageEmailResult(null, e); }
+                    setNudgeEmail({ guestId: g.id, ...r });
+                    // The same record the batch writes (lib/replyNudge): only an
+                    // email the service took counts as a nudge.
+                    if (r.ok) patchEvent({ guests: markNudged(event.guests || [], [g], 'email', new Date().toISOString()) }, null, { noUndo: true });
+                  };
+                  const smsLink = (cls) => (
+                    <a className={cls} href={'sms:' + digits + '?&body=' + encodeURIComponent(body)} onClick={(click) => handoffNudge(click, 'sms')}>Text {first} the nudge</a>
+                  );
+                  // ONE LIT BUTTON: the email nudge when there is an address (from
+                  // the app signed in, else the mail app), else the text nudge.
+                  const lit = appNudge
+                    ? (
+                      <button className="cta nudge-email" data-nudge-email
+                        disabled={!!(myNudge && myNudge.busy)} aria-busy={myNudge && myNudge.busy ? 'true' : undefined}
+                        onClick={emailNudge}>{words.button}</button>
+                    )
+                    : email
+                      ? <a className="cta" href={'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent(d.subject || 'Can you make it?') + '&body=' + encodeURIComponent(d.body || body)} onClick={(click) => handoffNudge(click, 'email')}>Email {first} the nudge</a>
+                      : smsLink('cta');
+                  return (
+                    <>
+                      {lit}
+                      {email && digits ? smsLink('cta soft') : null}
+                      {myNudge && words.line && (
+                        <p className={'v-meta nudge-email-line' + (words.tone === 'danger' ? ' helper-send-error' : '')}
+                          role={words.tone === 'danger' ? 'alert' : 'status'}>{words.line}</p>
+                      )}
+                    </>
+                  );
+                })();
+                const others = plus + kids;
                 return (
-                  <div className="people-ghead">
-                    {/* INITIALS COMPUTED HERE, NOT BORROWED. `initialsOf` is
-                        declared inside the roster's own render closure 650 lines
-                        below; this function is hoisted above it, so calling it
-                        threw a ReferenceError and took the entire People subtree
-                        down — at desktop, selecting a guest blanked the sheet.
-                        It cost nothing to catch because the capture tried to
-                        scroll to a roster that was no longer in the DOM; it
-                        would have cost a lot to ship. */}
-                    <span className="gav" aria-hidden="true">{(() => {
-                      const parts = String(g.name || '').trim().split(/\s+/).filter(Boolean);
-                      if (!parts.length) return '?';
-                      return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
-                    })()}</span>
-                    <div style={{ minWidth: 0 }}>
-                      <div className="people-ghead-n">{g.name || 'This guest'}</div>
-                      <div className="people-ghead-m">
-                        <span className={'tag plan pr-state'}
-                          style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' }
-                            : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' }
-                              : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)' }
-                                : { color: 'var(--muted)', background: 'var(--bg-band)' }}>{state}</span>
-                        {party.length ? <span className="people-ghead-p">{party.join(' \u00b7 ')}</span> : null}
+                  <div className="brow gdetail ged" id={'v2-guest-detail-' + i} data-guest-editor={g.id || i}>
+                    <section className="ged-sec ged-top" data-ged-group="name">
+                      <span className="gav" aria-hidden="true">{initials}</span>
+                      <div className="ged-who">
+                        <span className="ged-cap" aria-hidden="true">Name</span>
+                        <input key={(g.id || i) + '|' + (g.name || '')} className="field ged-name" aria-label="Name"
+                          defaultValue={g.name || ''} autoComplete="off"
+                          onBlur={(e) => commitName(e.currentTarget)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }} />
+                        <div className="ged-meta">
+                          <span className="tag plan pr-state"
+                            style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' }
+                              : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' }
+                                : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)' }
+                                  : { color: 'var(--muted)', background: 'var(--bg-band)' }}>{state}</span>
+                          {partyLine ? <span>{partyLine}</span> : null}
+                        </div>
+                        {roles.length ? <div className="ged-note">Helping with: {roles.map(r => r.label).join(', ')}</div> : null}
                       </div>
-                    </div>
+                      <button className="ged-icon" aria-expanded="true" aria-controls={'v2-guest-detail-' + i}
+                        aria-label={'Close ' + (name || 'this guest') + '’s details'}
+                        onClick={() => setGuestOpen(null)}>{ICON_UP}</button>
+                    </section>
+
+                    <section className="ged-sec" data-ged-group="reply">
+                      <div className="ged-head">
+                        <span className="ged-title">Reply</span>
+                        {rsvpByIsSet ? <span className="ged-aside">Replies by {new Date(rsvpBy.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span> : null}
+                      </div>
+                      {/* A radiogroup with its keyboard contract (board 2026-08-07):
+                          one tab stop (roving tabindex), Arrow/Home/End select and
+                          move together, as native radios do. */}
+                      <div role="radiogroup" className="ged-seg" aria-label={'Reply for ' + (name || 'guest')}
+                        onKeyDown={(e) => {
+                          const keys = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
+                          if (!keys.includes(e.key)) return;
+                          e.preventDefault();
+                          const vals = REPLY_ORDER.map(([v]) => v);
+                          const at = Math.max(0, vals.indexOf(String(g.rsvp || '')));
+                          const next = e.key === 'Home' ? 0
+                            : e.key === 'End' ? vals.length - 1
+                            : (e.key === 'ArrowRight' || e.key === 'ArrowDown')
+                              ? (at + 1) % vals.length
+                              : (at - 1 + vals.length) % vals.length;
+                          setRsvpValue(i, vals[next]);
+                          const group = e.currentTarget;
+                          requestAnimationFrame(() => {
+                            const btns = group.querySelectorAll('[role="radio"]');
+                            if (btns[next]) btns[next].focus();
+                          });
+                        }}>
+                        {REPLY_ORDER.map(([v, lbl]) => {
+                          const cur = String(g.rsvp || '') === v;
+                          return (
+                            <button key={v || 'none'} className="ged-seg-b" role="radio" aria-checked={cur}
+                              tabIndex={cur ? 0 : -1} onClick={() => setRsvpValue(i, v)}>{lbl}</button>
+                          );
+                        })}
+                      </div>
+                    </section>
+
+                    <section className="ged-sec" data-ged-group="coming">
+                      <div className="ged-head">
+                        <span className="ged-title">Who’s coming</span>
+                        <span className="ged-aside">{party} {party === 1 ? 'person' : 'people'}{mealOpen ? ' · meal not answered' : ''}</span>
+                      </div>
+                      <div className="ged-card" data-ged-person="guest">
+                        <div className="ged-card-h">
+                          <span className="gav" aria-hidden="true">{initials}</span>
+                          <div><div className="ged-card-n">{first}</div><div className="ged-note">Invited guest</div></div>
+                        </div>
+                        {/* Writes the SAME guest.meal the RSVP page and CSV import write. */}
+                        <select className="field ged-field" aria-label={'Meal for ' + (name || 'guest')} value={meal}
+                          onChange={(e) => {
+                            const m = e.target.value;
+                            writeGuest(i, { meal: m }, m === '—'
+                              ? (name || 'Guest') + '’s meal cleared — counts as unanswered.'
+                              : (name || 'Guest') + ' → ' + m + ' — the meal tally keeps count.');
+                          }}>
+                          {meals.map((m) => <option key={m} value={m}>{m === '—' ? 'Meal not answered' : m}</option>)}
+                        </select>
+                        <input className="field ged-field" placeholder="Dietary needs, if any" aria-label="Dietary needs"
+                          value={g.needs || ''} onChange={e => writeGuest(i, { needs: e.target.value }, null)} />
+                      </div>
+                      {/* The +1 is one text field on the row: a name, or a count
+                          as written ("+3 (Nia + 2 boys)"). The row has one meal,
+                          the guest's, so this card says nothing about a meal. */}
+                      <div className="ged-card" data-ged-person="plusone">
+                        <input className="field ged-field" placeholder="Their +1’s name, if any" aria-label="Plus one name"
+                          value={g.plusOne || ''} onChange={e => writeGuest(i, { plusOne: e.target.value }, null)} />
+                        {plus ? <div className="ged-note">{plus > 1 ? plus + ' people, as written' : 'Adult · guest of ' + first}</div> : null}
+                      </div>
+                      <div className="ged-kids">
+                        <span className="ged-k">Children</span>
+                        <button className="ged-icon" aria-label={'Remove a child from ' + (name || 'this guest') + '’s party'}
+                          onClick={() => writeGuest(i, { kids: Math.max(0, kids - 1) }, null)}>−</button>
+                        <span className="ged-count" data-ged-kids>{kids}</span>
+                        <button className="ged-icon" aria-label={'Add a child to ' + (name || 'this guest') + '’s party'}
+                          onClick={() => writeGuest(i, { kids: kids + 1 }, (kids + 1) + ' kids with ' + (name || 'this guest') + ' — the food plan sizes them lighter.')}>+</button>
+                      </div>
+                      <p className="ged-note">Children count in the food plan at a lighter portion.</p>
+                    </section>
+
+                    {/* HOW TO REACH THEM: each value edits in place; each button
+                        only OPENS the phone's own call, text or mail app (tel:,
+                        sms:, mailto:, UX_07). Nothing here sends. */}
+                    <section className="ged-sec" data-ged-group="reach">
+                      <div className="ged-head"><span className="ged-title">How to reach them</span></div>
+                      <div className="ged-list">
+                        <div className="ged-li">
+                          <span className="ged-k" aria-hidden="true">Phone</span>
+                          <input className="field ged-v" placeholder="Add a number" type="tel" aria-label="Phone"
+                            value={g.phone || ''} onChange={e => writeGuest(i, { phone: formatPhoneUS(e.target.value) }, null)} />
+                          {digits ? <a className="ged-icon" href={'tel:' + digits} aria-label={'Call ' + first}>{ICON_CALL}</a> : null}
+                          {digits ? <a className="ged-icon" href={'sms:' + digits} aria-label={'Text ' + first}>{ICON_TEXT}</a> : null}
+                        </div>
+                        <div className="ged-li">
+                          <span className="ged-k" aria-hidden="true">Email</span>
+                          <input className="field ged-v" placeholder="Add an email" type="email" aria-label="Email"
+                            value={g.email || ''} onChange={e => writeGuest(i, { email: e.target.value }, null)} aria-invalid={isMalformedEmail(g.email)} />
+                          {email ? <a className="ged-icon" href={'mailto:' + encodeURIComponent(email)} aria-label={'Email ' + first}>{ICON_MAIL}</a> : null}
+                        </div>
+                        <div className="ged-li">
+                          <span className="ged-k" aria-hidden="true">Group</span>
+                          <input className="field ged-v" placeholder="Family, friends, work…" list="v2-groups" aria-label="Group"
+                            value={g.group || ''} onChange={e => writeGuest(i, { group: e.target.value }, null)} />
+                        </div>
+                      </div>
+                      <p className="ged-note">Tap a line to edit it. The buttons open your phone’s own call, text or mail app.</p>
+                    </section>
+
+                    {reachable ? (
+                      <section className="ged-sec" data-ged-group="actions">
+                        <div className="ged-head">
+                          <span className="ged-title">Actions</span>
+                          {chasing ? <span className="ged-aside">No reply yet</span> : null}
+                        </div>
+                        {nudge}
+                        {/* The record: the app cannot know whether the OS composer
+                            was sent from, so the host says. A separate tap on
+                            purpose; opening a composer is not telling someone. */}
+                        <button className={'ged-told guest-told' + (told ? ' is-on' : '')}
+                          aria-label={told
+                            ? `You marked ${g.name || 'this guest'} told. Undo that.`
+                            : `Mark that you told ${g.name || 'this guest'} yourself`}
+                          onClick={() => markTold(g.id, g.name, digits ? 'text' : 'email')}>
+                          <span className="ged-box" aria-hidden="true">{told ? '✓' : ''}</span>
+                          {told
+                            ? <span aria-hidden="true">✓ told</span>
+                            : <span aria-hidden="true">Mark it sent to {first} — I sent it myself</span>}
+                        </button>
+                        <p className="ged-note">Marking it only notes it on {first}’s row. Nothing is sent.</p>
+                      </section>
+                    ) : null}
+
+                    <section className="ged-sec ged-end" data-ged-group="remove">
+                      <button className="ged-remove" onClick={() => removeGuest(i)}>
+                        {ICON_BIN}<span>Remove {name || 'this guest'}{others ? ' and the ' + others + ' with them' : ''}</span>
+                      </button>
+                      <p className="ged-note">{party > 1 ? 'Takes all ' + party : 'Takes them'} off the list and the food count. You can undo it right after.</p>
+                    </section>
                   </div>
                 );
               };
-              const guestDetail = (g, i) => (
-                          <div className="brow gdetail" id={'v2-guest-detail-' + i} style={{ margin: '0 0 var(--sp-2)' }}>
-                            {peopleMode ? guestHead(g) : null}
-                            {(() => {
-                              // Single source of truth: reads the SAME aggregation the
-                              // Helpers panel (space sheet) uses — a food/task/setup/supply
-                              // owner that resolved to THIS guest, not a second copy.
-                              const roles = (() => { try { return guestHelperRoles(event, g.id); } catch { return []; } })();
-                              if (!roles.length) return null;
-                              return (
-                                <div className="v-meta" style={{ margin: '0 0 var(--sp-2)', color: 'var(--ink-soft)' }}>
-                                  Helping with: {roles.map(r => r.label).join(', ')}
-                                </div>
-                              );
-                            })()}
-                            {/* ── WHERE THE REPLY IS ACTUALLY SET ────────────────────────
-                                The picker that used to swap itself into the collapsed row
-                                lives here now, beside every other field of this guest —
-                                meal, kids, +1, needs, phone, email, group. It is always
-                                present while the row is open, so there is no second piece
-                                of open/closed state to keep honest (`rsvpPickFor` is gone,
-                                and `toggleRsvp` — the blind '' -> Yes -> No -> Maybe cycle
-                                this replaced on 2026-07-22 — went with it: defined, never
-                                called, repo-wide).
-                                A radiogroup rather than four `aria-pressed` buttons,
-                                because exactly one of these is true at a time and that is
-                                what a radiogroup means. Targets are 44px, not the 32px
-                                UX_05:72 asks of a chip: this is a phone-first roster and
-                                UX_03's mobile floor is the binding one, so the larger of
-                                the two wins. The row they sit in is the accordion
-                                UX_05:174 names as the one place a height may change.
-
-                                CORRECTION (board, 2026-08-07): an earlier version of
-                                this comment claimed the extra height "costs the
-                                collapsed list nothing". It was measured and that is
-                                false — opening a guest injects 283px on the phone
-                                (the "Add names" label moves y=558 -> y=841), because
-                                this accordion carries kids/+1/needs/remove/meal/
-                                phone/email/group along with the picker. What is true
-                                is narrower: the TAPPED row no longer moves under the
-                                finger, and rows keep their heights and gaps. Rows
-                                BELOW it move further than the old inline picker moved
-                                them (~40px). That is a real trade, not a free win,
-                                and the open fix is a replies-only pass — name + the
-                                four chips on every row, nothing expanding. */}
-                            <div className="actions-row" style={{ alignItems: 'center' }}>
-                              <span className={peopleMode ? 'people-cap' : 'of'}>REPLY</span>
-                              {/* ── A RADIOGROUP OWES A KEYBOARD CONTRACT ──────────────
-                                  Board 2026-08-07, Norman seat: this shipped as four
-                                  buttons wearing role="radio" with no roving tabindex
-                                  and no arrow handling. A screen reader announces
-                                  "radio button, 1 of 4", the user presses Right, and
-                                  nothing moves — while all four sit in the tab order.
-                                  HALF A RADIOGROUP IS WORSE THAN NONE, because the
-                                  role is a promise about how the thing behaves.
-                                  Two honest ways out: implement the contract, or drop
-                                  to aria-pressed toggles, which owe nothing. Kept the
-                                  role -- exactly one of these is true at a time, which
-                                  is what a radiogroup MEANS, and aria-pressed would
-                                  describe four independent toggles that happen to be
-                                  mutually exclusive by luck. So: roving tabindex (only
-                                  the checked chip is tabbable, so the group is ONE tab
-                                  stop, not four) plus Arrow/Home/End, which select and
-                                  move together the way native radios do. */}
-                              <span role="radiogroup" aria-label={'Reply for ' + (g.name || 'guest')}
-                                style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}
-                                onKeyDown={(e) => {
-                                  const keys = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
-                                  if (!keys.includes(e.key)) return;
-                                  e.preventDefault();
-                                  const vals = RSVP_VALUES.map(([v]) => v);
-                                  const at = Math.max(0, vals.indexOf(String(g.rsvp || '')));
-                                  const next = e.key === 'Home' ? 0
-                                    : e.key === 'End' ? vals.length - 1
-                                    : (e.key === 'ArrowRight' || e.key === 'ArrowDown')
-                                      ? (at + 1) % vals.length
-                                      : (at - 1 + vals.length) % vals.length;
-                                  setRsvpValue(i, vals[next]);
-                                  // Focus follows selection, or the contract is still
-                                  // half-kept. The re-render swaps tabIndex, so the
-                                  // focus call waits a frame for the new DOM.
-                                  const group = e.currentTarget;
-                                  requestAnimationFrame(() => {
-                                    const btns = group.querySelectorAll('[role="radio"]');
-                                    if (btns[next]) btns[next].focus();
-                                  });
-                                }}>
-                                {RSVP_VALUES.map(([v, lbl]) => {
-                                  const cur = String(g.rsvp || '') === v;
-                                  return (
-                                    <button key={v || 'none'} className="chip" role="radio" aria-checked={cur}
-                                      tabIndex={cur ? 0 : -1}
-                                      style={{ padding: '7px 12px', minHeight: 44, fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : {}) }}
-                                      onClick={() => setRsvpValue(i, v)}>{lbl}</button>
-                                  );
-                                })}
-                              </span>
-                            </div>
-                            <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
-                              <span className={peopleMode ? 'people-cap' : 'of'}>CHILDREN</span>
-                              <button className="mini" onClick={() => writeGuest(i, { kids: Math.max(0, (Number(g.kids) || 0) - 1) }, null)}>−</button>
-                              <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>{Number(g.kids) || 0}</span>
-                              <button className="mini" onClick={() => writeGuest(i, { kids: (Number(g.kids) || 0) + 1 }, (Number(g.kids) || 0) + 1 + ' kids with ' + (g.name || 'this guest') + ' — the food plan sizes them lighter.')}>+</button>
-                              {fld('Who they’re bringing', (
-                              <input className="field" style={{ maxWidth: 125, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="+1 name"
-                                value={g.plusOne || ''} onChange={e => writeGuest(i, { plusOne: e.target.value }, null)} aria-label="Plus one name" />
-                              ))}
-                              {fld('Dietary needs', (
-                              <input className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="Dietary needs"
-                                value={g.needs || ''} onChange={e => writeGuest(i, { needs: e.target.value }, null)} aria-label="Dietary needs" />
-                              ))}
-                              <button className={'mini' + (peopleMode ? ' people-destructive' : '')} onClick={() => removeGuest(i)}>Remove</button>
-                            </div>
-                            <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
-                              {/* Meal edit (guests parity gap #5): writes the SAME
-                                  guest.meal field the RSVP page and CSV import write.
-                                  Audit #6 — was tap-to-cycle (couldn't jump to a choice
-                                  or see the set); now the chip opens an inline PICKER of
-                                  the real meal choices, tap one to set it directly. */}
-                              <span className={peopleMode ? 'people-cap' : 'of'}>MEAL</span>
-                              {mealPickFor === i ? (
-                                <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }} role="group" aria-label={'Meal for ' + (g.name || 'guest')}>
-                                  {['—', 'Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'].map(m => {
-                                    const cur = String(g.meal || '—') === m;
-                                    return (
-                                      <button key={m} className="chip" aria-pressed={cur}
-                                        style={{ padding: '5px 11px', fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : {}) }}
-                                        onClick={() => {
-                                          writeGuest(i, { meal: m }, m === '—'
-                                            ? (g.name || 'Guest') + '’s meal cleared — counts as unanswered.'
-                                            : (g.name || 'Guest') + ' → ' + m + ' — the meal tally keeps count.');
-                                          setMealPickFor(null);
-                                        }}>{m === '—' ? 'not answered' : m}</button>
-                                    );
-                                  })}
-                                </span>
-                              ) : (
-                                <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }}
-                                  aria-haspopup="true" aria-expanded={false}
-                                  aria-label={'Meal for ' + (g.name || 'guest') + ': ' + (String(g.meal || '—') === '—' ? 'not answered' : g.meal) + ' — tap to change'}
-                                  onClick={() => setMealPickFor(i)}>{String(g.meal || '—') === '—' ? 'not answered' : g.meal}</button>
-                              )}
-                              {fld('Phone', (
-                              <input className="field" style={{ maxWidth: 140, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="phone" type="tel"
-                                value={g.phone || ''} onChange={e => writeGuest(i, { phone: formatPhoneUS(e.target.value) }, null)} aria-label="Phone" />
-                              ))}
-                              {fld('Email', (
-                              <input className="field" style={{ maxWidth: 185, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="email" type="email"
-                                value={g.email || ''} onChange={e => writeGuest(i, { email: e.target.value }, null)} aria-label="Email" aria-invalid={isMalformedEmail(g.email)} />
-                              ))}
-                              {fld('Group', (
-                              <input className="field" style={{ maxWidth: 120, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="group" list="v2-groups"
-                                value={g.group || ''} onChange={e => writeGuest(i, { group: e.target.value }, null)} aria-label="Group" />
-                              ))}
-                            </div>
-                            {chase && !g.rsvp && (String(g.phone || '').trim() || String(g.email || '').trim()) && (() => {
-                              // Per-guest handoffs ask for a direct reply. No public link is
-                              // embedded without checking its availability first.
-                              // Links only (UX_07): the OS's own composer opens with
-                              // the draft in it; nothing here claims to have sent.
-                              const d = draftRsvpChase(event, profile);
-                              const body = [d.subject, d.body].filter(Boolean).join('\n\n');
-                              const handoffNudge = async (click, channel) => {
-                                click.preventDefault();
-                                const url = await verifiedRsvpUrl();
-                                const checked = draftRsvpChase(event, profile, { rsvpUrl: url });
-                                const text = [checked.subject, checked.body].filter(Boolean).join('\n\n');
-                                window.location.href = channel === 'sms'
-                                  ? 'sms:' + digits + '?&body=' + encodeURIComponent(text)
-                                  : 'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(checked.subject || 'Can you make it?') + '&body=' + encodeURIComponent(checked.body || text);
-                                // A text, as in the nudge's queue: the host's word that
-                                // they sent it, recorded on the guest (lib/replyNudge).
-                                // The mail app's link records nothing: the app cannot
-                                // say an email it never saw went out.
-                                if (channel === 'sms') patchEvent({ guests: markNudged(event.guests || [], [g], 'text', new Date().toISOString()) }, null, { noUndo: true });
-                              };
-                              const first = String(g.name || 'them').split(/\s+/)[0];
-                              const digits = String(g.phone || '').replace(/[^+\d]/g, ''); // sms:/tel: want digits, not "(919) 555-…"
-                              // THE NUDGE BY EMAIL GOES FROM THE APP (owner, 11/20/2026: "And
-                              // other comms"): signed in, through the message route (address
-                              // saved on the event, the daily cap, the stop link) in the
-                              // invite's frame, and it shows in Messages. Signed out, the
-                              // route would refuse, so the mail app's link stays.
-                              const appNudge = !!(String(g.email || '').trim() && session && isCommApiConfigured());
-                              const myNudge = nudgeEmail && nudgeEmail.guestId === g.id ? nudgeEmail : null;
-                              const nudgeWords = appEmailWords(`Email ${first} the nudge`, first, myNudge);
-                              const emailNudge = async (click) => {
-                                click.stopPropagation();
-                                if (myNudge && myNudge.busy) return;
-                                setNudgeEmail({ guestId: g.id, busy: true });
-                                let r;
-                                try {
-                                  const url = await verifiedRsvpUrl();
-                                  const checked = draftRsvpChase(event, profile, { rsvpUrl: url });
-                                  const res = await commApi.createMessage(event.id, 'CLIENT', {
-                                    message_type: 'standard', author_role: 'planner',
-                                    author_name: (profile && profile.name) || 'Your host',
-                                    body: checked.body || [checked.subject, checked.body].filter(Boolean).join('\n\n'),
-                                    deliver_email: true, recipient_email: g.email.trim(), recipient_name: g.name || undefined,
-                                    subject: checked.subject || 'Can you make it?',
-                                    ...(((session && session.user && session.user.email) || '').trim()
-                                      ? { reply_to: String(session.user.email).trim() } : {}),
-                                  });
-                                  r = messageEmailResult(res, null);
-                                } catch (e) { r = messageEmailResult(null, e); }
-                                setNudgeEmail({ guestId: g.id, ...r });
-                                // The same record the batch writes (lib/replyNudge):
-                                // only an email the service took counts as a nudge.
-                                if (r.ok) patchEvent({ guests: markNudged(event.guests || [], [g], 'email', new Date().toISOString()) }, null, { noUndo: true });
-                              };
-                              return (
-                                <>
-                                <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                                  {digits && <a className="mini" style={{ textDecoration: 'none' }} onClick={click => handoffNudge(click, 'sms')} href={'sms:' + digits + '?&body=' + encodeURIComponent(body)}>Text {first} the nudge</a>}
-                                  {String(g.email || '').trim() && !appNudge && <a className="mini" style={{ textDecoration: 'none' }} onClick={click => handoffNudge(click, 'email')} href={'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(d.subject || 'Can you make it?') + '&body=' + encodeURIComponent(d.body || body)}>Email {first}</a>}
-                                  {appNudge && (
-                                    <button className="mini rowlink nudge-email" data-nudge-email
-                                      disabled={!!(myNudge && myNudge.busy)} aria-busy={myNudge && myNudge.busy ? 'true' : undefined}
-                                      onClick={emailNudge}>{nudgeWords.button}</button>
-                                  )}
-                                  {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + digits}>Call {first}</a>}
-                                  {/* The record, beside the composers rather than
-                                      after them: the app cannot know whether the
-                                      OS composer was actually sent from, so the
-                                      host says. Separate tap on purpose -- opening
-                                      a composer is not telling someone, and a
-                                      control that assumed it would be claiming
-                                      something it cannot see. */}
-                                  <button className="mini rowlink guest-told"
-                                    aria-label={isTold(guestToldMap(event), g.id)
-                                      ? `You marked ${g.name || 'this guest'} told. Undo that.`
-                                      : `Mark that you told ${g.name || 'this guest'} yourself`}
-                                    onClick={() => markTold(g.id, g.name, digits ? 'text' : 'email')}>
-                                    {isTold(guestToldMap(event), g.id)
-                                      ? <span aria-hidden="true">✓ told</span>
-                                      : <span aria-hidden="true">Mark it sent to {first} — I sent it myself</span>}
-                                  </button>
-                                </div>
-                                {myNudge && nudgeWords.line && (
-                                  <p className={'v-meta nudge-email-line' + (nudgeWords.tone === 'danger' ? ' helper-send-error' : '')}
-                                    role={nudgeWords.tone === 'danger' ? 'alert' : 'status'}>{nudgeWords.line}</p>
-                                )}
-                                </>
-                              );
-                            })()}
-                            {(String(g.phone || '').trim() || String(g.email || '').trim()) && !(chase && !g.rsvp) && (() => {
-                              // QUIET CONTACT LINE (host-approved 2026-07-15) — when a
-                              // guest left a number or email, reaching them is one tap
-                              // through the phone's own apps (tel:/sms:/mailto:, UX_07 —
-                              // the OS sends, we never claim to). Silent guests in chase
-                              // mode get the nudge row above instead, never both.
-                              const first = String(g.name || 'them').split(/\s+/)[0];
-                              const digits = String(g.phone || '').replace(/[^+\d]/g, '');
-                              return (
-                                <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                                  {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + digits}>Call {first}</a>}
-                                  {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + digits}>Text {first}</a>}
-                                  {String(g.email || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} href={'mailto:' + encodeURIComponent(g.email.trim())}>Email {first}</a>}
-                                  {/* The record lives on BOTH contact rows. They are
-                                      mutually exclusive by design -- a silent guest in
-                                      chase mode gets the nudge row, everyone else gets
-                                      this one -- so putting it on only one made the
-                                      rollup count people the host had no way to mark.
-                                      A number you cannot drive to zero is a nag. */}
-                                  <button className="mini rowlink guest-told"
-                                    aria-label={isTold(guestToldMap(event), g.id)
-                                      ? `You marked ${g.name || 'this guest'} told. Undo that.`
-                                      : `Mark that you told ${g.name || 'this guest'} yourself`}
-                                    onClick={() => markTold(g.id, g.name, digits ? 'text' : 'email')}>
-                                    {isTold(guestToldMap(event), g.id)
-                                      ? <span aria-hidden="true">✓ told</span>
-                                      : <span aria-hidden="true">Mark it sent to {first} — I sent it myself</span>}
-                                  </button>
-                                </div>
-                              );
-                            })()}
-                          </div>
-              );
               const peopleAdmin = (<>
                   {/* Invite look — the tone engine guesses from the event's mood
                       (paper by day, elegant by night, muted when somber); the
@@ -28825,94 +28693,16 @@ export default function HostShellV2() {
                       an even segmented control instead of a 2+1 ragged wrap. */}
                   {/* Fold-behind-Change (parity/MANIFEST) — one settled look; folds
                       to a hairline row, opens the 3-up segmented control on tap. */}
-                  {(() => {
-                    const styles = [['', 'Match the event'], ['bright', 'Bright paper'], ['elegant', 'Elegant dark']];
-                    const cur = event.inviteStyle || '';
-                    const curLabel = (styles.find(([v]) => v === cur) || styles[0])[1];
-                    if (!settledOpen.inviteStyle) {
-                      return <SettledRow label="Invite look" value={curLabel} style={{ margin: '0 0 10px' }}
-                        onOpen={() => setSettledOpen(m => ({ ...m, inviteStyle: true }))} />;
-                    }
-                    return (
-                      <>
-                        <div className="of" style={{ display: 'block', margin: '0 0 6px' }}>invite look</div>
-                        <OptionList ariaLabel="Invite look" style={{ margin: '0 0 10px' }}
-                          options={styles.map(([val, label]) => ({ label, value: val }))}
-                          value={cur}
-                          onPick={(val) => { const label = (styles.find(([v]) => v === val) || styles[0])[1]; patchEvent({ inviteStyle: val }, val ? 'Invite set to ' + label.toLowerCase() + ' — the link updates instantly.' : 'The invite matches the event’s mood again.'); setSettledOpen(m => ({ ...m, inviteStyle: false })); }} />
-                      </>
-                    );
-                  })()}
-                  {/* Crest choice — only offered when this event HAS registered
-                      artwork (never a toggle that does nothing). The host's
-                      call: artwork on the invite, or purely typographic. */}
-                  {eventArtworkFile(event) && (
-                    <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
-                      <span className="of">artwork:</span>
-                      <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={event.inviteCrest !== 'off'}
-                        onClick={() => patchEvent({ inviteCrest: '' }, 'The artwork is on the invite.')}>On the invite</button>
-                      <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={event.inviteCrest === 'off'}
-                        onClick={() => patchEvent({ inviteCrest: 'off' }, 'Words only — the invite stays purely typographic.')}>Words only</button>
-                    </div>
-                  )}
+                  {/* "YOUR INVITE" (owner, 11/24/2026): the invite look (now "Paper"), the
+                      artwork, the layout and her message live in one panel. */}
+                  <SettledRow label="Your invite" value={(event.inviteLayout === 'glance' ? 'At a glance' : 'Classic') + ' · ' + inviteStyleLabel(event.inviteStyle)}
+                    style={{ margin: '0 0 10px' }} onOpen={() => setSheet({ kind: 'invite-design', from: sheet })} />
                   {inviteRules}
                   {countingChips}
                   {csvBlock}
                   {pastImports}
                   {exportRow}
               </>);
-              const renderDeadlineEditor = () => {
-                    // DO-IT-FOR-ME, GROUNDED (2026-07-14). The reply-by date used to be an
-                    // invented `event.date − 7d` that the INVITE printed as if the host had
-                    // chosen it. Deleting it from the invite was only half an answer: an RSVP
-                    // deadline genuinely helps, because the whole point of a reply is to LOCK
-                    // THE COUNT, and the count has real downstream walls.
-                    //
-                    // So the app proposes, SHOWS ITS WORK, and the host owns the result. The
-                    // proposal is derived from the things that actually cannot proceed without
-                    // a headcount — each real vendor's own count promise (catering wants it 7
-                    // days out, staffing 14, a florist 21) and the playbook's own
-                    // count-dependent tasks (a crab pre-order is T-5d) — plus the days needed
-                    // to chase whoever hasn't answered.
-                    //
-                    // Nothing is written until the host taps. Until then `rsvpDeadline` is
-                    // unset, `rsvpDeadlineFor` reports source:'derived', and the invite stays
-                    // silent — it will only ever speak a date the host actually committed to.
-                    const prop = (() => { try { return proposeReplyBy(event); } catch (_e) { return null; } })();
-                    const already = String(event.rsvpDeadline || '').trim();
-                    return (
-                      <div style={{ margin: '0 0 10px' }}>
-                        <div className="actions-row" style={{ alignItems: 'center' }}>
-                          <span className="of">replies by:</span>
-                          <input className="field" style={{ maxWidth: 175, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="date"
-                            value={already || ''}
-                            onChange={e => patchEvent({ rsvpDeadline: e.target.value }, 'Reply-by date set — your invite and the nudges read it.')}
-                            aria-label="RSVP deadline" />
-                          {prop && prop.iso && already !== prop.iso && (
-                            <button className="mini" onClick={() => patchEvent({ rsvpDeadline: prop.iso },
-                              'Reply-by date set — your invite says it now.')}>
-                              {already ? 'use ours' : 'pick one for me'}
-                            </button>
-                          )}
-                        </div>
-                        {prop && (
-                          <p className="grounding" style={{ margin: '6px 2px 0' }}>
-                            {prop.tooClose
-                              ? prop.why
-                              : <>
-                                  {!already && <><b>{new Date(prop.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</b>{' — '}</>}
-                                  {prop.why}
-                                </>}
-                          </p>
-                        )}
-                        {!already && (
-                          <p className="grounding" style={{ margin: '4px 2px 0' }}>
-                            No reply-by date shows on your invite until you set one.
-                          </p>
-                        )}
-                      </div>
-                    );
-              };
               // ── THE COVER, RESOLVED ONCE ────────────────────────────────
               // Read-only and forward-compatible: the host-supplied media
               // pipeline is NOT authorized, so this reads an `coverImageUrl`
@@ -29278,7 +29068,7 @@ export default function HostShellV2() {
                     const avaFor = (nm) => { const s = String(nm || ''); let h = 0; for (let k = 0; k < s.length; k++) h = (h * 31 + s.charCodeAt(k)) >>> 0; return AVA_TINTS[h % AVA_TINTS.length]; };
                     const initialsOf = (nm) => { const p = String(nm || '').trim().split(/\s+/).filter(Boolean); if (!p.length) return '?'; return (p[0][0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); };
                     const row = ({ g, i }) => (
-                      <div className="rrow" key={i}>
+                      <div className={'rrow' + (guestOpen === i ? ' is-open' : '')} key={i}>
                         <div className="grow" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
                           <span className="gav" aria-hidden="true" style={{ background: avaFor(g.name) }}>{initialsOf(g.name)}</span>
                           <button className="tap-44" style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0, display: 'block' }}

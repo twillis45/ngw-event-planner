@@ -480,7 +480,9 @@ for (const vp of [{ width: 1024, height: 768 }, { width: 1440, height: 900 }]) {
     const { ctx, page } = await created(browser, vp);
     expect(await shown(page, '.srail')).toBe(1);
     expect(await shown(page, '[data-tt-bar]')).toBe(0);
-    expect(await page.locator('[data-rail-stage]').count(), 'the Your event group is the 13" portrait’s').toBe(0);
+    // Owner, 11/24/2026: every rail carries Create · Plan · The Day · After,
+    // not only the 13" portrait's (was 0 here; see everyWideBoardKnowsItsEventAndStages).
+    expect(await page.locator('[data-rail-stage]').count(), 'every rail carries the four stages').toBe(4);
     await ctx.close();
   });
 }

@@ -22,7 +22,7 @@ import { track as trackInvite, EVENTS as INVITE_EVENTS } from '@app/lib/analytic
 import { isRsvpApiConfigured, checkRsvpCapability, submitRsvp, rsvpIdempotencyKey, existingRsvpKey, fetchMyRsvp, withdrawRsvp, flushRsvpOutbox, fetchPublicInvite, INVITE_FETCH_FAILED } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil, daysUntilEnd, spanEnd } from '@app/lib/dates';
 import { eventStartLabel } from '@app/lib/eventWhen';
-import { inviteTone, invitePalette } from '@app/lib/inviteTone';
+import { inviteTone, invitePalette, invitePaletteFor, inviteSheetVars } from '@app/lib/inviteTone';
 // Optional contact at RSVP (host-approved 2026-07-14): ONE formatter/validator
 // with the host shell (lib/contactFormat — zero imports, so the guest bundle
 // pays nothing), so a number typed here reads identically in the roster and
@@ -30,7 +30,7 @@ import { inviteTone, invitePalette } from '@app/lib/inviteTone';
 import { formatPhoneUS, isIncompletePhone, isValidPhone, isMalformedEmail, normalizePhone } from '@app/lib/contactFormat';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { hashtagLine } from '@app/lib/eventHashtag';
-import { venueFor, formatVenueAddress, venueGeoQuery } from '@app/lib/venueFor';
+import { venueFor, formatVenueAddress, venueGeoQuery, venueLineParts } from '@app/lib/venueFor';
 import { useBreakpoint } from '@app/lib/viewport';
 import { guestFacingDays, dayLabelFor } from '@app/lib/itinerary';
 // GUEST PAYLOAD: this page used buildExperienceContext for exactly ONE thing —
@@ -39,7 +39,8 @@ import { guestFacingDays, dayLabelFor } from '@app/lib/itinerary';
 // playbooks) into the invite chunk. resolveEventIdentity is the OWNER of that
 // field (experienceContext.js:48 just calls it) and has ZERO imports of its own.
 // Same function, same result, none of the freight.
-import { deckLineFor } from '@app/lib/inviteDeck';
+import { inviteMessage } from '@app/lib/inviteDeck';
+import { publicHostPhotoUrl } from '@app/lib/api/hostPhoto';
 import { geocodeVenue } from '@app/lib/weather';
 // Pulls ONLY the event pool + artwork resolver — not the 8,500-line host shell.
 // This is the code-split: a guest opening ?rsvp=CODE no longer downloads
@@ -146,7 +147,31 @@ function adaptRemoteInvite(remote, code) {
 
 const dfmt = (iso, opts) => new Date(iso + 'T12:00:00').toLocaleDateString('en-US', opts);
 
-export default function InviteV2({ code }) {
+// The host's contact as a tap-to-message link (backend contract, rsvp.py):
+// email → mailto:, anything phone-shaped → sms:. Never printed raw.
+const hostContactHref = (event) => {
+  const c = String((event && event.hostContact) || '').trim();
+  if (!c) return '';
+  return c.includes('@') ? 'mailto:' + c : 'sms:' + c.replace(/[^\d+]/g, '');
+};
+const initialsOf = (name) => String(name || '').split(/\s*(?:&|\+|\/|,|\band\b)\s*/)[0]
+  .split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
+
+// THE HOST'S PHOTO (owner, 11/24/2026): her own opt-in photo, by invite code
+// (backend host_photos.py), else her initials. A photo that fails to load
+// falls back to the initials, never a broken image.
+function HostAvatar({ src, name, size }) {
+  const [broken, setBroken] = useState(false);
+  const cls = 'inv2-hp inv2-hp-' + size;
+  if (src && !broken) return <img className={cls} data-host-avatar src={src} alt={name ? 'Photo of ' + name : 'Your host'} onError={() => setBroken(true)} />;
+  const ini = initialsOf(name);
+  return ini ? <span className={cls + ' ini'} data-host-avatar role="img" aria-label={name}>{ini}</span> : null;
+}
+
+// `preview` (the host's "Your invite" panel, 11/24/2026): render THIS event,
+// as typed, with the same component the guest opens: nothing is fetched,
+// sent, counted or stored, and the page chrome is left to the panel.
+export default function InviteV2({ code, preview = null, previewPhotoUrl = null }) {
   // Resolution order: local pool + patch layers FIRST (fast path — same-device
   // demos keep working offline, exactly as before), then the backend public
   // resolver for a guest opening the link on their own phone (the original's
@@ -160,13 +185,14 @@ export default function InviteV2({ code }) {
   const [localEvent, setLocalEvent] = useState(undefined);
   useEffect(() => {
     let cancelled = false;
+    if (preview) { setLocalEvent(preview); return undefined; }
     setLocalEvent(undefined);
     (async () => {
       const ev = await findInviteEvent(code);
       if (!cancelled) setLocalEvent(ev || null);
     })();
     return () => { cancelled = true; };
-  }, [code]);
+  }, [code, preview]);
 
   // ── DID THE SHARE LAND? (2026-08-29) ──────────────────────────────────────
   // INVITE_SHARED without INVITE_VIEWED is a host talking to nobody, and until
@@ -321,7 +347,7 @@ export default function InviteV2({ code }) {
   };
   useEffect(() => {
     const ev = resolved && resolved.event;
-    if (!ev || !code || !isRsvpApiConfigured()) return undefined;
+    if (!ev || !code || preview || !isRsvpApiConfigured()) return undefined;
     const tag = ev.id + ':' + code;
     if (restoredRef.current === tag) return undefined;
     restoredRef.current = tag;
@@ -338,7 +364,7 @@ export default function InviteV2({ code }) {
   }, [resolved, code]);
   useEffect(() => {
     const ev = resolved && resolved.event;
-    if (!ev || viewedRef.current === code) return;
+    if (!ev || preview || viewedRef.current === code) return;
     viewedRef.current = code;
     // No is_past here on purpose: `isPast` is declared far below this effect,
     // so reading it in the dependency array is a temporal dead zone error on
@@ -404,6 +430,10 @@ export default function InviteV2({ code }) {
   const tone = inviteTone(event || {});
   const pal = invitePalette(tone);
   const toneVars = useMemo(() => toneVarsFor(pal), [tone]); // eslint-disable-line react-hooks/exhaustive-deps
+  // THE HOST'S COLORS (owner-approved palettes, 11/24/2026): a palette or a
+  // rearrangement of one, from event.inviteStyle (lib/inviteTone). null keeps
+  // today's stock (cream, dark, muted) exactly as it was.
+  const colors = useMemo(() => { try { return invitePaletteFor(event || {}); } catch { return null; } }, [event]);
   // Classified ONCE per event — the canonical reader is pure but not free;
   // it must not re-run on every keystroke of the reply form. Declared before
   // the loading/not-found returns (hooks can't sit after a conditional).
@@ -414,13 +444,15 @@ export default function InviteV2({ code }) {
     // Span-aware (R1): past means past the LAST day — day 2 of a June 12–14
     // event must not read as a memory while guests are still living it.
     try { const d = daysUntilEnd(event); past = d != null && d < 0; } catch { /* undated → not past */ }
-    return deckLineFor(event, tone === 'muted', past);
+    return inviteMessage(event, { somber: tone === 'muted', past });
   }, [event, tone]);
+  // Opened from the reply's calendar door before a reply (11/24/2026).
+  const [calOpen, setCalOpen] = useState(false);
 
   // Flush anything queued offline for this event once we're back (parity with
   // the original's PublicRsvpRoute; a no-op while no backend is configured).
   useEffect(() => {
-    if (!event || !isRsvpApiConfigured()) return undefined;
+    if (!event || preview || !isRsvpApiConfigured()) return undefined;
     // An emptied outbox means the held reply reached the host: stop saying
     // "not delivered" (it stayed on screen after a successful flush).
     const flush = () => { flushRsvpOutbox(event.id, code).then((r) => { if (r && r.flushed && !r.remaining) setQueued(false); }).catch(() => {}); };
@@ -442,7 +474,7 @@ export default function InviteV2({ code }) {
   // keeps its full size there: it sits beside the reply, not above it, so there
   // is nothing to make room for, and condensing it would shift the left column.
   const bp = useBreakpoint();
-  const twoColumn = bp === 'tablet-land' || bp === 'desktop';
+  const twoColumn = !preview && (bp === 'tablet-land' || bp === 'desktop');
   // A guest scrolls down the form to reach "Send my reply"; sending collapses the
   // form, and the page stayed scrolled to where the button was — the
   // confirmation opened with the top of the card cut off. Show the whole card
@@ -860,7 +892,36 @@ export default function InviteV2({ code }) {
   );
   const first = guestName.trim().split(/\s+/)[0] || '';
 
-  const mastRight = event.date ? dfmt(event.date, { month: 'short', year: 'numeric' }) : '';
+  // TWO LAYOUTS, THE HOST PICKS (owner, 11/24/2026). "Classic" is today's
+  // invite (the full countdown stays: the July 14 decision); "At a glance"
+  // lists the facts as tappable rows, says "In N days" in the masthead and
+  // brings the reply up. Stored as event.inviteLayout; the paper is inviteStyle.
+  const glance = event.inviteLayout === 'glance';
+  const mastRight = glance && days != null && days > 0
+    ? (days === 1 ? 'Tomorrow' : `In ${days} days`)
+    : (event.date ? dfmt(event.date, { month: 'short', year: 'numeric' }) : '');
+  // The facts, each read once, for both layouts.
+  const hostLine = String(event.hostName || event.hostNames || '').trim();
+  const hostFirst = hostLine.split(/\s*(?:&|\+|\/|,|\band\b)\s*/)[0].split(/\s+/)[0] || '';
+  const contactHref = hostContactHref(event);
+  const photoSrc = preview ? previewPhotoUrl : publicHostPhotoUrl(code, event.hostPhoto);
+  const place = formatVenueAddress(event) ? venueLineParts(event) : null;
+  const mapsHref = place && place.mapsQuery ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(place.mapsQuery) : '';
+  const dayText = event.date ? (dfmt(event.date, { weekday: 'long', month: 'long', day: 'numeric' })
+    + (spanEnd(event) !== String(event.date).slice(0, 10) ? ' – ' + dfmt(spanEnd(event), { weekday: 'long', month: 'long', day: 'numeric' }) : '')) : '';
+  const timeText = whenLabel ? whenLabel.label + (whenLabel.serveLabel ? `, dinner at ${whenLabel.serveLabel}` : '') : '';
+  const replyByLive = !isPast && rsvpByIsReal && rsvpBy.days != null && rsvpBy.days >= 0;
+  // "Add to calendar" before a reply: the SAME Google and Apple links the
+  // confirmation offers (gcalUrl / icsHref above), shown on a tap.
+  const calChoices = calOpen && (gcalUrl || icsHref) ? (
+    <div className="actions-row inv2-calchoices" data-invite-calchoices>
+      {gcalUrl && <a className="mini" href={gcalUrl} target="_blank" rel="noreferrer">Google Calendar</a>}
+      {icsHref && <a className="mini" href={icsHref} download={(event.name || 'event') + '.ics'}>Apple Calendar</a>}
+    </div>
+  ) : null;
+  const calIcon = <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M9 3v4M15 3v4" /></svg>;
+  const pinIcon = <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0119 9.5C19 14.8 12 21 12 21z" /><circle cx="12" cy="9.5" r="2.5" /></svg>;
+  const chev = <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>;
   const mark = markUrlFor(event);
 
   let rvIdx = 0;
@@ -883,7 +944,13 @@ export default function InviteV2({ code }) {
   // own "Share the memory" and no reply, so neither renders there.
   const replyFoot = isPast ? null : (
     <div className="inv2-replyfoot">
-      <p className="grounding inv2-delivery">{localEvent ? 'Preview on this device. Online reply delivery has not been verified.' : 'Your reply goes straight to your host’s plan — nothing to install, no account. Only your host sees it; the guest list stays private.'}</p>
+      <p className="grounding inv2-delivery">{localEvent ? (
+        // THE PREVIEW NOTICE (owner, 11/24/2026): where a reply made here goes,
+        // and the two ways that do reach the host. Same condition as before.
+        <>Just a preview — replies here stay on this phone. To answer, use the invite link you were sent, or {contactHref
+          ? <a className="slink" href={contactHref}>{'message ' + (hostFirst || 'your host')}</a>
+          : 'message ' + (hostFirst || 'your host')}.</>
+      ) : 'Your reply goes straight to your host’s plan — nothing to install, no account. Only your host sees it; the guest list stays private.'}</p>
       {shareError && <p className="grounding" role="alert">{shareError}</p>}
       {!somber && !(submitted && rsvp === 'Yes' && !queued) && (
         <div className="actions-row inv2-forward">
@@ -895,15 +962,14 @@ export default function InviteV2({ code }) {
     </div>
   );
 
-  return (
-    <div className="stagewrap inv2-stage">
-      <div className="app" style={toneVars}><div className="content">
+  const page = (
         <section className={'inv2 ' + toneClass + (condensed ? ' answered' : '')} style={twoColumn ? undefined : { paddingTop: 14 }}>
           {/* ── The stationery — the approved remake: linen stock, letterpress,
               embossed crest, staged reveal, ONE ask, disclosure earned by the
               answer, countdown that condenses but never vanishes. ── */}
-          <div className="inv2-sheet" ref={sheetRef}
-            style={holdTop != null && rsvp && !submitted && !twoColumn ? { paddingTop: holdTop, justifyContent: 'flex-start' } : undefined}>
+          <div className={'inv2-sheet lay-' + (glance ? 'glance' : 'classic')} data-invite-layout={glance ? 'glance' : 'classic'} ref={sheetRef}
+            data-pal={colors ? colors.key + (colors.index ? ':' + colors.index : '') : undefined}
+            style={{ ...(colors ? inviteSheetVars(colors) : {}), ...(holdTop != null && rsvp && !submitted && !twoColumn ? { paddingTop: holdTop, justifyContent: 'flex-start' } : {}) }}>
             {/* The invitation itself. On a phone this wrapper has no box
                 (display:contents) and the column reads exactly as before; at 1024
                 and up it is the left column, beside the reply. */}
@@ -932,37 +998,90 @@ export default function InviteV2({ code }) {
             {/* The dropped eyebrow was carrying the air above the name — without it the
                 crest would sit on the title. The space stays; only the duplicate words go. */}
             <h1 {...rv('inv2-name lp-display')} style={(isPast || somber) ? undefined : { marginTop: mark ? 18 : 26 }}>{event.name}</h1>
-            <p {...rv('inv2-deck lp')}>{deck}</p>
+            {/* THE HOST'S MESSAGE (owner, 11/24/2026) in the deck line's place:
+                her words signed "— <first name>" (beside her photo on Classic),
+                or the suggested line, unsigned (lib/inviteDeck inviteMessage). */}
+            <p {...rv('inv2-msg lp')} data-invite-message>
+              {deck.text}
+              {deck.signedBy && (
+                <span className={'sig' + (!glance ? ' sigp' : '')} data-invite-sig>
+                  {!glance && <HostAvatar src={photoSrc} name={hostLine} size="sig" />}
+                  <span>— {deck.signedBy}</span>
+                </span>
+              )}
+            </p>
             {/* THE HOST'S HASHTAG (owner ruling E, 11/16/2026): shown quietly,
                 only when the host turned one on. No call to post (board 8–2). */}
             {String(event.hashtag || '').trim() && (
               <p className="inv2-fine" data-invite-hashtag style={{ margin: '2px 0 0' }}>{String(event.hashtag).trim()}</p>
             )}
             <div {...rv()}>
+              {glance ? (
+                <div className="inv2-facts">
+                  {event.date && (
+                    <div className="inv2-fact" data-fact="when">
+                      <span className="ico" aria-hidden="true">{calIcon}</span>
+                      <span className="tx">
+                        <b className="l1" data-invite-date>{dayText}</b>
+                        {timeText && <span className="l2" data-invite-time>{timeText}</span>}
+                        {!isPast && (gcalUrl || icsHref) && (
+                          <button type="button" className="act" data-invite-calendar aria-expanded={calOpen} onClick={() => setCalOpen((o) => !o)}>Add to calendar</button>
+                        )}
+                        {calChoices}
+                      </span>
+                    </div>
+                  )}
+                  {place && (
+                    <a className="inv2-fact" data-fact="where" data-invite-maps href={mapsHref} target="_blank" rel="noreferrer"
+                      aria-label={place.line + '. Open in Maps'}>
+                      <span className="ico" aria-hidden="true">{pinIcon}</span>
+                      <span className="tx" data-invite-where>
+                        <b className="l1" data-invite-street>{place.head}</b>
+                        {place.tail && <span className="l2" data-invite-town>{place.tail}</span>}
+                        <span className="act">Open in Maps</span>
+                      </span>
+                      <span className="go" aria-hidden="true">{chev}</span>
+                    </a>
+                  )}
+                  {!isPast && hostLine && (() => {
+                    const inner = (<>
+                      <span className="ico ph"><HostAvatar src={photoSrc} name={hostLine} size="row" /></span>
+                      <span className="tx">
+                        <span className="l0">Hosted by</span>
+                        <b className="l1">{hostLine}</b>
+                        {contactHref && <span className="act">{'Message ' + (hostFirst || 'your host')}</span>}
+                      </span>
+                      {contactHref && <span className="go" aria-hidden="true">{chev}</span>}
+                    </>);
+                    return contactHref
+                      ? <a className="inv2-fact" data-fact="host" data-invite-host-message href={contactHref} aria-label={`Hosted by ${hostLine}. Message ${hostFirst || 'your host'}`}>{inner}</a>
+                      : <div className="inv2-fact" data-fact="host">{inner}</div>;
+                  })()}
+                </div>
+              ) : (<>
               <hr className="inv2-rule" />
-              {/* WHEN — F1 of the invite audit (CRITICAL). This formatted
-                  { weekday, month, day } and had NO hour component, for any event —
-                  so the invite could not tell a guest what time to arrive. The app
-                  KNEW: event.startTime / event.timeOfDay anchor the entire run of
-                  show, and the HOST's own cover screen renders "· Afternoon". We
-                  showed the time to the host and withheld it from the guest.
-                  lib/eventWhen is the one reader (zero imports, so the invite pays
-                  nothing for it). An exact time renders as "7:30 PM"; a coarse
-                  bucket renders as "Afternoon" — never a clock time invented from a
-                  bucket; and when the host has told us nothing, we say nothing
-                  rather than guess. */}
+              {/* WHEN — F1 of the invite audit: the hour the host set, never one
+                  invented from a bucket (lib/eventWhen). The BOLD RULE (owner,
+                  11/24/2026): the date bold, the time regular. */}
               {event.date && (<><div className="inv2-label lp">When</div>
                 <div className="inv2-val lp">
-                  {dfmt(event.date, { weekday: 'long', month: 'long', day: 'numeric' })}
-                  {/* Multi-day span (R1): the range the host actually set — never
-                      just day 1 of a three-day weekend. */}
-                  {spanEnd(event) !== String(event.date).slice(0, 10)
-                    ? <> – {dfmt(spanEnd(event), { weekday: 'long', month: 'long', day: 'numeric' })}</>
-                    : null}
-                  {whenLabel ? <span className="inv2-when-time"> · {whenLabel.label}{whenLabel.serveLabel ? `, dinner at ${whenLabel.serveLabel}` : ''}</span> : null}
+                  <b data-invite-date>{dayText}</b>
+                  {timeText ? <span className="inv2-when-time" data-invite-time> · {timeText}</span> : null}
+                </div>
+                {!isPast && (gcalUrl || icsHref) && (
+                  <div className="inv2-linkrow">
+                    <button type="button" className="slink blk" data-invite-calendar aria-expanded={calOpen} onClick={() => setCalOpen((o) => !o)}>{calIcon}Add to calendar</button>
+                  </div>
+                )}
+                {calChoices}</>)}
+              {/* WHERE opens Maps (owner, 11/24/2026): the street bold, the town regular. */}
+              {place && (<><div className="inv2-label lp">Where</div>
+                <div className="inv2-val lp" data-invite-where>
+                  <a className="addr" data-invite-maps href={mapsHref} target="_blank" rel="noreferrer" aria-label={place.line + '. Opens in Maps'}>
+                    <b data-invite-street>{place.head}</b>{place.sep}{place.tail && <span data-invite-town>{place.tail}</span>}
+                  </a>
                 </div></>)}
-              {formatVenueAddress(event) && (<><div className="inv2-label lp">Where</div>
-                <div className="inv2-val lp" data-invite-where>{formatVenueAddress(event)}</div></>)}
+              </>)}
               {/* ── Trip Brief v0 (destination events) — host-authored stay +
                   airports, read-only. Renders on DATA presence, never on an
                   inferred flag; nothing here is guest data or money. */}
@@ -1026,16 +1145,14 @@ export default function InviteV2({ code }) {
               {/* Field-name truth: the local pool carries hostName (singular); the
                   backend whitelist ships hostNames (plural, rsvp.py) — reading only
                   one meant remote invites NEVER showed who's hosting. */}
-              {!isPast && String(event.hostName || event.hostNames || '').trim() && (<><div className="inv2-label lp">Hosted by</div>
-                <div className="inv2-val lp">{event.hostName || event.hostNames}</div></>)}
-              {!isPast && String(event.hostContact || '').trim() && (<><div className="inv2-label lp">Host</div>
-                <div className="inv2-val lp">{(() => {
-                  // Backend contract (rsvp.py): hostContact renders as a tap-to-message
-                  // link, never printed raw. Email → mailto:, anything phone-shaped → sms:.
-                  const c = String(event.hostContact).trim();
-                  const href = c.includes('@') ? 'mailto:' + c : 'sms:' + c.replace(/[^\d+]/g, '');
-                  return <a href={href} style={{ color: 'inherit' }}>Message the host</a>;
-                })()}</div></>)}
+              {/* HOSTED BY, with a "Message" link by the host contact (owner,
+                  11/24/2026). Field-name truth: the local pool carries hostName,
+                  the backend whitelist ships hostNames too (rsvp.py). On "At a
+                  glance" it is the fact row above. */}
+              {!glance && !isPast && hostLine && (<><div className="inv2-label lp">Hosted by</div>
+                <div className="inv2-val lp">{hostLine}{contactHref && <> · <a className="slink" data-invite-host-message href={contactHref}>Message</a></>}</div></>)}
+              {!isPast && !hostLine && contactHref && (<><div className="inv2-label lp">Host</div>
+                <div className="inv2-val lp"><a className="slink" data-invite-host-message href={contactHref}>Message the host</a></div></>)}
               {/* A REPLY-BY DATE THE HOST NEVER SET (2026-07-14).
                   rsvpDeadlineFor() returns `source: 'derived'` with `hard: true` when the
                   host set nothing — an invented `event.date − 7d` flagged as FIRM — and this
@@ -1051,7 +1168,7 @@ export default function InviteV2({ code }) {
                   `rsvpBy.days`, days to the DEADLINE. `rsvpBy.days` was computed and never
                   used, so a reply-by date that had already PASSED kept rendering as live
                   urgency. Now it stops when it lapses. */}
-              {!isPast && ((rsvpByIsReal && rsvpBy.days != null && rsvpBy.days >= 0) || social) ? (
+              {!isPast && social ? (
                 <div style={{ margin: '8px 0 0', textAlign: 'center' }}>
                   {/* Live momentum (Goal 2): real first-name initials on the same
                       deterministic tints as the Guests tab, overlapped into a
@@ -1066,13 +1183,12 @@ export default function InviteV2({ code }) {
                     </div>
                   )}
                   <p className="grounding" style={{ margin: socialFaces.length ? '5px 0 0' : 0 }}>
-                    {rsvpByIsReal && rsvpBy.days != null && rsvpBy.days >= 0 ? 'replies by ' + dfmt(rsvpBy.iso, { month: 'long', day: 'numeric' }) : ''}
-                    {rsvpByIsReal && rsvpBy.days != null && rsvpBy.days >= 0 && social ? ' · ' : ''}{social || ''}
+                    {social}
                   </p>
                 </div>
               ) : null}
             </div>
-            {days != null && days > 0 && (
+            {!glance && days != null && days > 0 && (
               <div {...rv('inv2-countflex')}>
                 {/* condensed state is INLINE-driven — a deployed-build cascade
                     quirk left the .answered descendant rules matching-but-inert,
@@ -1147,7 +1263,14 @@ export default function InviteV2({ code }) {
                   </div>
                 )}
                 {/* THE ONE ASK — attendance alone; everything else is earned */}
-                <div className="inv2-label lp" style={{ textAlign: 'left', margin: '0 0 8px' }}>The favor of a reply</div>
+                <div className="inv2-label lp" style={{ textAlign: glance ? 'center' : 'left', margin: replyByLive ? '0 0 4px' : '0 0 8px' }}>The favor of a reply</div>
+                {/* The reply-by date the HOST set, bold (owner, 11/24/2026). A date she
+                    never set is never printed (2026-07-14), and a lapsed one stops. */}
+                {replyByLive && (
+                  <p className={'inv2-fine inv2-replyby' + (glance ? ' c' : '')} data-invite-replyby>
+                    {glance ? 'by ' : 'Kindly reply by '}<b>{dfmt(rsvpBy.iso, { weekday: 'long', month: 'long', day: 'numeric' })}</b>
+                  </p>
+                )}
                 {/* REPLY IS THE PRIMARY ACTION (owner, 11/11/2026): all three on one
                     row, and "Yes" filled until the guest picks — then the picked
                     one carries the fill, so two buttons never shout at once. */}
@@ -1505,7 +1628,7 @@ export default function InviteV2({ code }) {
             <GuestPhotosV2 code={code} event={event} eventKey={event.id + ':' + code} guestName={guestName.trim()}
               anchorId="invite-photos" onOpenChange={setPhotosOpen} />
           )}
-          {code && <GuestUpdatesV2 code={code} hostName={event.hostName || event.hostNames} />}
+          {code && !preview && <GuestUpdatesV2 code={code} hostName={event.hostName || event.hostNames} />}
           {asksOffered && (
             <GuestAskV2 code={code} eventKey={event.id + ':' + code} hostName={event.hostName || event.hostNames} guestName={guestName.trim()} />
           )}
@@ -1582,6 +1705,13 @@ export default function InviteV2({ code }) {
           <div {...rv('inv2-wordmark')}>{BRAND.full}<span className="inv2-wm-dot" aria-hidden="true" /></div>
           </div>
         </section>
+  );
+  // The host's panel shows the invitation alone, in its own frame.
+  if (preview) return <div className="inv2-preview" style={toneVars}>{page}</div>;
+  return (
+    <div className="stagewrap inv2-stage">
+      <div className="app" style={toneVars}><div className="content">
+        {page}
       </div></div>
     </div>
   );

@@ -39,6 +39,26 @@
 // Measured 2026-09-23, all 7 viewport projects green on the configured build.
 import { test, expect, settled, sheetSettled } from './fixtures.mjs';
 
+// ─── THE SHELF PRICE'S DETAIL IS IN THE OPENED ITEM (owner, 11/24/2026) ─────
+// The row keeps the store, the shelf price, its size and "sale"; the "was"
+// price, the arithmetic and the product's name moved into the item, which a
+// row tap opens in place. So the detail is read the way a host reaches it:
+// open each line the store priced, read it, close it.
+const openedPricedText = async (page, store) => {
+  const ids = await page.evaluate((s) => [...document.querySelectorAll('.frow[data-food-row]')]
+    .filter((r) => (r.innerText || '').includes(s)).map((r) => r.getAttribute('data-food-row')), store);
+  const out = [];
+  for (const id of ids) {
+    await page.locator(`.frow[data-food-row="${id}"] .f-body`).first().click();
+    const open = page.locator(`[data-food-open="${id}"]`).first();
+    await open.waitFor();
+    out.push((await open.innerText()).replace(/\s+/g, ' '));
+    await open.locator('.fo-close').click();
+    await page.locator(`.frow[data-food-row="${id}"]`).first().waitFor();
+  }
+  return out.join(' || ');
+};
+
 // Is layer 2 reachable in the bundle under test? Read from the running app, not
 // from the environment of the process running the test — those are different
 // machines' worth of state, and only one of them is what a host loads.
@@ -192,8 +212,9 @@ test('HAPPY PATH: a store is picked, the sheet says what it reached, the row sho
   expect(t).toMatch(/Harris Teeter — Bel Air/);
   expect(t).toMatch(/2 of \d+ lines priced at your store; the rest are averages\./);
   expect(t).toMatch(/\$14\.99/);
-  expect(t).toMatch(/on sale, was \$18\.49/);
   expect(t).toMatch(/12 pk/);
+  // The sale and what it was, in the opened item ("On sale, was $18.49").
+  expect(await openedPricedText(page, 'Harris Teeter — Bel Air:')).toMatch(/on sale, was \$18\.49/i);
   // THE TWO SENTENCES ABOUT ONE SET OF NUMBERS. The hero and the list must not
   // disagree: before priceNote() composed them, the hero read "these are
   // national average prices" two inches above "2 of 22 lines priced at your
@@ -297,7 +318,9 @@ test('A LINE TOTAL, WITH ITS ARITHMETIC — and a reference where the units do n
   });
   console.log('SHELVES OPENED:', JSON.stringify(shelves));
   await page.waitForTimeout(900);
-  const t = await bodyText(page);
+  // The arithmetic is in each priced line's opened item; the reference price
+  // ($9.99 · 8 oz) is on the closed row.
+  const t = (await bodyText(page)) + ' || ' + (await openedPricedText(page, 'Harris Teeter — Bel Air:'));
 
   // THE ROUNDING, DISCLOSED. You cannot buy 4.29 bags of ice.
   const ice = /(\d+) × 7 lb at \$2\.99 = \$[\d.]+ — covers ([\d.]+), you take home ([\d.]+) lbs/.exec(t);

@@ -85,12 +85,63 @@ const openPriced = async (page, barProduct) => {
 
 const NOTE = /This store doesn't sell beer or wine\. The bar is priced at the (regional average|national average|regional and national averages)\. Buy it at a liquor store\./;
 
+// ─── THE PRODUCT IS IN THE OPENED ITEM (ux-food, owner 11/24/2026) ───────────
+// The closed row keeps the store and its shelf price; the store's product name
+// moved into the item a row tap opens. So the bar lines are read the way a host
+// reaches them: open each one, read it, close it.
+const openedBarText = async (page) => {
+  const ids = await page.evaluate((src) => {
+    const rx = new RegExp(src, 'i');
+    return [...document.querySelectorAll('.frow[data-food-row]')]
+      .filter((r) => rx.test(r.querySelector('.f-name')?.innerText || ''))
+      .map((r) => r.getAttribute('data-food-row'));
+  }, BOOZE.source);
+  const out = [];
+  for (const id of ids) {
+    await page.locator(`.frow[data-food-row="${id}"] .f-body`).first().click();
+    const open = page.locator(`[data-food-open="${id}"]`).first();
+    await open.waitFor();
+    out.push((await open.innerText()).replace(/\s+/g, ' '));
+    await open.locator('.fo-close').click();
+    await page.locator(`.frow[data-food-row="${id}"]`).first().waitFor();
+  }
+  return { ids, text: out.join(' || ') };
+};
+
+// Where the note sits: inside the Drinks group, under its head and above its
+// first row (the shopping row redesign wrapped the rows in .fg-items).
+const notePlace = (page) => page.evaluate(() => {
+  const notes = [...document.querySelectorAll('[data-no-alcohol-note]')];
+  const n = notes[0];
+  const group = n && n.closest('.fgroup');
+  const head = group && group.querySelector('.fg-head');
+  const firstRow = group && group.querySelector('.frow[data-food-row]');
+  const before = (a, b) => !!(a && b && (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING));
+  return {
+    count: notes.length,
+    group: head ? (head.innerText || '').replace(/\s+/g, ' ').trim() : null,
+    underHead: before(head, n),
+    aboveFirstRow: before(n, firstRow),
+  };
+});
+
 test('a store with no bar: the note shows once, and the ginger beer is not priced', async ({ page }) => {
   const t = await openPriced(page, 'Main Root Ginger Beer');
   test.skip(t === null, 'unconfigured bundle — no store layer to drive');
   expect(t).toMatch(NOTE);
   expect(t.match(/This store doesn't sell beer or wine/g)).toHaveLength(1);
+  // The note renders above the drinks: in the Drinks group, under its head,
+  // above its first row.
+  const place = await notePlace(page);
+  expect(place.count).toBe(1);
+  expect(place.group).toMatch(/^Dr\s*Drinks/);
+  expect(place.underHead).toBe(true);
+  expect(place.aboveFirstRow).toBe(true);
   expect(t).not.toMatch(/Main Root Ginger Beer/);
+  // Nor in the opened bar lines, where a matched product would be named.
+  const bar = await openedBarText(page);
+  expect(bar.ids.length).toBeGreaterThan(0);
+  expect(bar.text).not.toMatch(/Main Root Ginger Beer/);
   // The store did answer: the groceries are priced.
   expect(t).toMatch(/lines priced at your store/);
 });
@@ -99,5 +150,6 @@ test('a store with a bar: no note, and the beer is priced (control)', async ({ p
   const t = await openPriced(page, 'Samuel Adams Winter Break Seasonal Variety Beer');
   test.skip(t === null, 'unconfigured bundle');
   expect(t).not.toMatch(/This store doesn't sell beer or wine/);
-  expect(t).toMatch(/Samuel Adams Winter Break/);
+  expect((await notePlace(page)).count).toBe(0);
+  expect((await openedBarText(page)).text).toMatch(/Samuel Adams Winter Break/);
 });
