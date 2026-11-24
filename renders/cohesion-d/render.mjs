@@ -180,5 +180,5 @@ for (const w of WIDTHS) {
   }
 }
 await browser.close();
-fs.writeFileSync(path.join(OUT, 'measure.json'), JSON.stringify(report, null, 2));
+{ const f = path.join(OUT, 'measure.json'); let prev = {}; try { prev = JSON.parse(fs.readFileSync(f, 'utf8')); } catch {} fs.writeFileSync(f, JSON.stringify({ ...prev, ...report }, null, 2)); }
 console.log(JSON.stringify(report, null, 1));

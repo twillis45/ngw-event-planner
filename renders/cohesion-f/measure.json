@@ -1,0 +1,395 @@
+{
+  "before__board__Wanda-sample__834": {
+    "notes": [],
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false,
+    "lit": 0
+  },
+  "before__board-worth__Wanda-sample__834": {
+    "x": 48,
+    "width": 738,
+    "height": 179
+  },
+  "before__board-whos-confirmed__Wanda-sample__834": {
+    "x": 48,
+    "width": 738,
+    "height": 789
+  },
+  "proposed__board__Wanda-sample__834": {
+    "notes": [
+      "#14 lit pick",
+      "#15 one name (1)",
+      "#48 status words"
+    ],
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false,
+    "lit": 1
+  },
+  "proposed__board-worth__Wanda-sample__834": {
+    "x": 48,
+    "width": 738,
+    "height": 179
+  },
+  "proposed__board-whos-confirmed__Wanda-sample__834": {
+    "x": 48,
+    "width": 738,
+    "height": 789
+  },
+  "before__whats-counted-open__Wanda-sample__834": {
+    "caretYBeforeTap": 194,
+    "caretYAfter": -1281,
+    "panelY": 628,
+    "pillHeights": [
+      28,
+      28,
+      28,
+      28,
+      28
+    ],
+    "smallTaps": [
+      "Calls to make\nWorth a look — 6 open 266×28",
+      "People\nNeeds you — 4 unconfirmed 260×28",
+      "Checklist\nWorth a look — 2 of 41 done 278×28"
+    ],
+    "smallText": [],
+    "sideways": false
+  },
+  "proposed__whats-counted-open__Wanda-sample__834": {
+    "caretYBeforeTap": 194,
+    "caretYAfter": 194,
+    "panelY": 240,
+    "pillHeights": [
+      44,
+      44,
+      44,
+      44,
+      44
+    ],
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false
+  },
+  "before__sheet-header__Wanda-sample__834": {
+    "rail": false,
+    "headerControls": [
+      "‹ Sections 67×16",
+      "Close 64×28"
+    ]
+  },
+  "proposed__sheet-header__Wanda-sample__834": {
+    "rail": false,
+    "headerControls": [
+      "‹ Sections 67×44",
+      "Close 64×44"
+    ]
+  },
+  "before__board__Wanda-sample__1024": {
+    "notes": [],
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false,
+    "lit": 0
+  },
+  "proposed__board__Wanda-sample__1024": {
+    "notes": [
+      "#14 lit pick",
+      "#15 one name (1)",
+      "#47 Icons only",
+      "#48 status words"
+    ],
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false,
+    "lit": 1
+  },
+  "before__whats-counted-open__Wanda-sample__1024": {
+    "caretYBeforeTap": 195,
+    "caretYAfter": -1049,
+    "panelY": 868,
+    "pillHeights": [
+      28,
+      28,
+      28,
+      28,
+      28
+    ],
+    "smallTaps": [
+      "Calls to make\nWorth a look — 6 open 266×28",
+      "People\nNeeds you — 4 unconfirmed 260×28",
+      "Checklist\nWorth a look — 2 of 41 done 278×28"
+    ],
+    "smallText": [],
+    "sideways": false
+  },
+  "proposed__whats-counted-open__Wanda-sample__1024": {
+    "caretYBeforeTap": 195,
+    "caretYAfter": 195,
+    "panelY": 241,
+    "pillHeights": [
+      44,
+      44,
+      44,
+      44,
+      44
+    ],
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false
+  },
+  "before__sheet-header__Wanda-sample__1024": {
+    "rail": true,
+    "headerControls": [
+      "‹ Sections 67×16",
+      "Close 64×28"
+    ]
+  },
+  "proposed__sheet-header__Wanda-sample__1024": {
+    "rail": true,
+    "headerControls": [
+      "Close 64×44"
+    ]
+  },
+  "before__board__Wanda-sample__1194": {
+    "notes": [],
+    "smallTaps": [],
+    "smallText": [
+      "▾ 9px"
+    ],
+    "sideways": false,
+    "lit": 0
+  },
+  "proposed__board__Wanda-sample__1194": {
+    "notes": [
+      "#17 title restored",
+      "#14 lit pick",
+      "#15 one name (1)",
+      "#40 list",
+      "#47 Icons only",
+      "#48 status words"
+    ],
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false,
+    "lit": 1
+  },
+  "before__whats-counted-open__Wanda-sample__1194": {
+    "caretYBeforeTap": 154,
+    "caretYAfter": 0,
+    "panelY": 1286,
+    "pillHeights": [
+      28,
+      28,
+      28,
+      28,
+      28
+    ],
+    "smallTaps": [
+      "Calls to make\nWorth a look — 6 open 266×28",
+      "People\nNeeds you — 4 unconfirmed 260×28",
+      "Checklist\nWorth a look — 2 of 41 done 278×28"
+    ],
+    "smallText": [],
+    "sideways": false
+  },
+  "proposed__whats-counted-open__Wanda-sample__1194": {
+    "caretYBeforeTap": 154,
+    "caretYAfter": 0,
+    "panelY": 216,
+    "pillHeights": [
+      44,
+      44,
+      44,
+      44,
+      44
+    ],
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false
+  },
+  "before__sheet-header__Wanda-sample__1194": {
+    "rail": true,
+    "headerControls": [
+      "‹ Sections 67×16",
+      "Close 64×28"
+    ]
+  },
+  "proposed__sheet-header__Wanda-sample__1194": {
+    "rail": true,
+    "headerControls": [
+      "Close 64×44"
+    ]
+  },
+  "before__board__Wanda-sample__1440": {
+    "notes": [],
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false,
+    "lit": 0
+  },
+  "before__board-worth__Wanda-sample__1440": {
+    "x": 676,
+    "width": 363,
+    "height": 257
+  },
+  "before__board-whos-confirmed__Wanda-sample__1440": {
+    "x": 273,
+    "width": 1114,
+    "height": 176
+  },
+  "proposed__board__Wanda-sample__1440": {
+    "notes": [
+      "#14 lit pick",
+      "#15 one name (1)",
+      "#16 worth aligned",
+      "#40 list",
+      "#47 Icons only",
+      "#48 status words"
+    ],
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false,
+    "lit": 1
+  },
+  "proposed__board-worth__Wanda-sample__1440": {
+    "x": 273,
+    "width": 765,
+    "height": 183
+  },
+  "proposed__board-whos-confirmed__Wanda-sample__1440": {
+    "x": 273,
+    "width": 1114,
+    "height": 782
+  },
+  "before__whats-counted-open__Wanda-sample__1440": {
+    "caretYBeforeTap": 61,
+    "caretYAfter": 0,
+    "panelY": 1186,
+    "pillHeights": [
+      28,
+      28,
+      28,
+      28,
+      28
+    ],
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false
+  },
+  "proposed__whats-counted-open__Wanda-sample__1440": {
+    "caretYBeforeTap": 61,
+    "caretYAfter": 0,
+    "panelY": 232,
+    "pillHeights": [
+      44,
+      44,
+      44,
+      44,
+      44
+    ],
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false
+  },
+  "before__sheet-header__Wanda-sample__1440": {
+    "rail": true,
+    "headerControls": [
+      "‹ Sections 67×16",
+      "Close 64×28"
+    ]
+  },
+  "proposed__sheet-header__Wanda-sample__1440": {
+    "rail": true,
+    "headerControls": [
+      "Close 64×44"
+    ]
+  },
+  "before__board__Wanda-sample__390": {
+    "notes": [],
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false,
+    "lit": 0
+  },
+  "before__board-worth__Wanda-sample__390": {
+    "x": 20,
+    "width": 350,
+    "height": 183
+  },
+  "before__board-whos-confirmed__Wanda-sample__390": {
+    "x": 20,
+    "width": 350,
+    "height": 476
+  },
+  "proposed__board__Wanda-sample__390": {
+    "notes": [
+      "#14 lit pick",
+      "#15 one name (1)",
+      "#40 list",
+      "#48 status words"
+    ],
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false,
+    "lit": 1
+  },
+  "proposed__board-worth__Wanda-sample__390": {
+    "x": 20,
+    "width": 350,
+    "height": 183
+  },
+  "proposed__board-whos-confirmed__Wanda-sample__390": {
+    "x": 20,
+    "width": 350,
+    "height": 1009
+  },
+  "before__whats-counted-open__Wanda-sample__390": {
+    "caretYBeforeTap": 140,
+    "caretYAfter": -1571,
+    "panelY": 90,
+    "pillHeights": [
+      28,
+      28,
+      28,
+      28,
+      28
+    ],
+    "smallTaps": [
+      "Calls to make\nWorth a look — 6 open 266×28",
+      "People\nNeeds you — 4 unconfirmed 260×28",
+      "Checklist\nWorth a look — 2 of 41 done 278×28"
+    ],
+    "smallText": [],
+    "sideways": false
+  },
+  "proposed__whats-counted-open__Wanda-sample__390": {
+    "caretYBeforeTap": 140,
+    "caretYAfter": 140,
+    "panelY": 203,
+    "pillHeights": [
+      44,
+      44,
+      44,
+      44,
+      44
+    ],
+    "smallTaps": [],
+    "smallText": [],
+    "sideways": false
+  },
+  "before__sheet-header__Wanda-sample__390": {
+    "rail": false,
+    "headerControls": [
+      "‹ Sections 67×16",
+      "Close 64×28"
+    ]
+  },
+  "proposed__sheet-header__Wanda-sample__390": {
+    "rail": false,
+    "headerControls": [
+      "‹ Sections 67×44",
+      "Close 64×44"
+    ]
+  }
+}
