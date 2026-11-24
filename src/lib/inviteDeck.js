@@ -3,6 +3,7 @@
 // the invitation PICTURE in the invite email (lib/inviteCard) prints the SAME
 // line as the page: one owner, no copy to drift. Unchanged otherwise.
 import { resolveEventIdentity } from './eventIdentityEngine';
+import { hostNameFor } from './hostNameFor';
 
 // Deck line — the celebration copy under the event name (the original's
 // DECK_BY_VOICE concept, scoped to what V2 can honestly claim). Ordered
@@ -35,15 +36,42 @@ const DECK_DEFAULT = 'It wouldn’t be the same without you';
 // only in the event NAME).
 export function deckLineFor(event, somber, isPast) {
   if (!event) return '';
+  return inviteMessage(event, { somber, past: isPast }).text;
+}
+
+// ─── THE HOST'S MESSAGE (owner, 11/24/2026) ──────────────────────────────────
+// The line under the name is now the host's message: ONE field (deckLine),
+// at most 200 characters, signed "— <first name>" only when she wrote or
+// changed it. Empty, it is the suggested line for the event, unsigned. Every
+// reader takes it from here: the invite page, the email picture
+// (lib/inviteCard) and the written invite (lib/doItForMe).
+export const INVITE_MESSAGE_MAX = 200;
+
+/** The line we suggest for this event, whatever the host wrote. */
+export function suggestedInviteLine(event) {
+  return suggested(event || {});
+}
+
+/** { text, signedBy }: what the invite says under the name, and the first
+ *  name that signs it ('' when unsigned). */
+export function inviteMessage(event, { somber = false, past = false } = {}) {
+  if (!event) return { text: '', signedBy: '' };
   // Past events become a recap. A host-authored deckLine was written for the
   // UPCOMING invite and may be future-tense ("Something wonderful is coming"),
   // which would contradict "Thank you for coming" — so on a (non-memorial) past
   // event the retrospective line wins even over the authored copy. Memorials
   // keep their own handling below.
-  if (isPast && !somber) return 'A day worth remembering';
-  const explicit = String(event.deckLine || '').trim();
-  if (explicit) return explicit;
-  if (somber) return 'In loving memory';
+  if (past && !somber) return { text: 'A day worth remembering', signedBy: '' };
+  const explicit = String(event.deckLine || '').trim().slice(0, INVITE_MESSAGE_MAX);
+  if (explicit) {
+    const first = String(hostNameFor(event) || '').trim().split(/\s+/)[0] || '';
+    return { text: explicit, signedBy: explicit === suggested(event) ? '' : first };
+  }
+  if (somber) return { text: 'In loving memory', signedBy: '' };
+  return { text: suggested(event), signedBy: '' };
+}
+
+function suggested(event) {
   try {
     // Same derivation experienceContext.js:40-48 performs before handing the result
     // to eventIdentity — reproduced here so the invite reads the identity WITHOUT

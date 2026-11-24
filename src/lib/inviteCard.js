@@ -8,13 +8,13 @@
 // This module is the card's CONTENT and look, read with the same helpers the
 // guest invite page (hostv2 InviteV2) uses, so the picture says what the page
 // says: the tone (inviteTone: cream, dark for evening/formal, muted for a
-// memorial), the masthead ("An invitation" · Nov 2026), the name, the deck line
-// (lib/inviteDeck), When (the day, a multi-day span, the host-set hour), Where
+// memorial), the masthead ("An invitation" · Nov 2026), the name, the host's
+// message and its signature (lib/inviteDeck inviteMessage), When (the day, a multi-day span, the host-set hour), Where
 // (venueFor) and Hosted by. Two things are left out on purpose: the countdown
 // (a picture cannot count down; it would go stale) and the reply (it is the
 // email's own buttons). hostv2/src/inviteCardImage.js draws it. PURE.
-import { inviteTone } from './inviteTone';
-import { deckLineFor } from './inviteDeck';
+import { inviteTone, invitePaletteFor } from './inviteTone';
+import { inviteMessage } from './inviteDeck';
 import { eventStartLabel } from './eventWhen';
 import { formatVenueAddress } from './venueFor';
 import { daysUntilEnd } from './dates';
@@ -24,7 +24,7 @@ import { hostNameFor } from './hostNameFor';
 // The page's stationery colors (hostv2 styles.css .inv2-sheet, .inv2-dark,
 // .inv2-muted), verbatim.
 export const CARD_COLORS = {
-  light: { hue: '#D9622B', hueDeep: '#B84E1E', ink: '#241f18', sub: '#62626d', paper: 'light' },
+  light: { hue: '#D9622B', hueDeep: '#9c4426', ink: '#241f18', sub: '#62626d', paper: 'light' },
   muted: { hue: '#8a7a66', hueDeep: '#6f6152', ink: '#241f18', sub: '#62626d', paper: 'light' },
   dark:  { hue: '#d99a63', hueDeep: '#c9854f', ink: '#e4dbc6', sub: '#a89f8e', paper: 'dark', body: '#ece5d8' },
 };
@@ -51,11 +51,23 @@ export function inviteCardModel(event) {
   if (host && !past) facts.push({ label: 'Hosted by', value: host });
   return {
     tone,
-    colors: CARD_COLORS[tone] || CARD_COLORS.light,
+    // The host's palette (11/24/2026): the card wears its paper, ink and accent.
+    colors: (() => {
+      const pal = (() => { try { return invitePaletteFor(ev); } catch { return null; } })();
+      if (!pal) return CARD_COLORS[tone] || CARD_COLORS.light;
+      return { hue: pal.hue, hueDeep: pal.accent, ink: pal.ink, sub: pal.sub, body: pal.ink, paper: pal.dark ? 'dark' : 'light', paperHex: pal.paper, palette: pal.key };
+    })(),
     mast: ['An invitation', ev.date ? dfmt(ev.date, { month: 'short', year: 'numeric' }) : ''],
     eyebrow: past ? 'Thank you for coming' : tone === 'muted' ? 'Please join us' : '',
     name: String(ev.name || '').trim() || 'Our gathering',
-    deck: (() => { try { return deckLineFor(ev, tone === 'muted', past) || ''; } catch { return ''; } })(),
+    // The host's message (owner, 11/24/2026): her words, signed with her first
+    // name when she wrote them; else the suggested line, unsigned.
+    ...(() => {
+      try {
+        const m = inviteMessage(ev, { somber: tone === 'muted', past });
+        return { deck: m.text || '', sig: m.signedBy ? `— ${m.signedBy}` : '' };
+      } catch { return { deck: '', sig: '' }; }
+    })(),
     facts,
   };
 }

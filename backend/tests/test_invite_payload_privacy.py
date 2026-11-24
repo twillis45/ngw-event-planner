@@ -42,6 +42,12 @@ ALLOWED_TOP = {
     "hostName", "deckLine", "secondaryType",
     "venueStreet", "venueZip", "venueKind", "venueConfirmed", "recordKind",
     "kidsPolicy", "plusOnePolicy", "collectAddresses",
+    # THE HOST'S PHOTO (owner, 11/24/2026): only its VERSION, read from her
+    # account (studio_settings), never the image and never a URL. The page
+    # builds the address from the invite code (GET /api/public/host-photo/{code}).
+    "hostPhoto",
+    # The layout she picked for the invite ('classic' | 'glance'), only those.
+    "inviteLayout",
     # The event id. Not display data, and the audit (P2-9) asks for it to go;
     # it stays for now because the host app's "is this invite live?" check and
     # every guest's saved reply key are built on it (see rsvp.py). It is a
@@ -59,10 +65,10 @@ ALLOWED_NESTED = {
 }
 
 
-def _public(data):
+def _public(data, host_photo=None):
     class Conn:
         async def fetchrow(self, sql, *a):
-            return {"id": data.get("id", "ev-1"), "data": data}
+            return {"id": data.get("id", "ev-1"), "data": data, "host_photo": host_photo}
     return asyncio.run(R._resolve_event(Conn(), INVITE_CODE))[1]
 
 
@@ -90,7 +96,8 @@ def test_the_wanda_invite_carries_none_of_her_private_data():
 
 
 def test_every_key_on_the_invite_is_on_the_allowlist():
-    pub = _public(_trip(wanda()))
+    pub = _public(_trip(wanda()), host_photo="abc123def456")
+    assert pub["hostPhoto"] == "abc123def456"     # PREMISE: the photo field is in the census
     assert set(pub) <= ALLOWED_TOP, set(pub) - ALLOWED_TOP
     for key, allowed in ALLOWED_NESTED.items():
         val = pub.get(key)
@@ -112,6 +119,14 @@ def test_the_trip_brief_still_reaches_the_guest():
                                       "url": "https://example.test/listing/1",
                                       "photos": ["https://example.test/photo/1.jpg"]}]
     assert "Marcus" not in json.dumps(pub)
+
+
+def test_the_layout_ships_only_as_one_of_the_two_layouts():
+    """inviteLayout (owner, 11/24/2026) is a choice the host made for guests;
+    any other value is not her choice and does not leave."""
+    assert _public({**wanda(), "inviteLayout": "glance"})["inviteLayout"] == "glance"
+    for bad in ("centered", "<script>", {"x": 1}):
+        assert "inviteLayout" not in _public({**wanda(), "inviteLayout": bad})
 
 
 def test_a_display_field_holding_an_object_is_not_passed_through():

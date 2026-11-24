@@ -296,6 +296,22 @@ export function formatVenueAddress(event, { style = 'line' } = {}) {
   return vf.displayLine;
 }
 
+// ─── venueLineParts — the one place line, split for the invite's bold rule ──
+// (owner, 11/24/2026: the street line bold, "City, ST ZIP" regular). The SAME
+// line formatVenueAddress returns, cut where its town begins, so
+// head + sep + tail is exactly that line. No town at its end: all head.
+export function venueLineParts(event) {
+  const vf = venueFor(event);
+  const line = vf.displayLine || '';
+  const town = vf.townLine || '';
+  if (town && line.length > town.length && line.endsWith(town)) {
+    const rest = line.slice(0, line.length - town.length);
+    const m = /[\s,·]+$/.exec(rest);
+    if (m && m.index > 0) return { line, head: rest.slice(0, m.index), sep: m[0], tail: town, mapsQuery: vf.mapsQuery };
+  }
+  return { line, head: line, sep: '', tail: '', mapsQuery: vf.mapsQuery };
+}
+
 // ─── setVenue — THE one venue WRITE path ─────────────────────────────────────
 // Counterpart to venueFor: a surface that stores a venue builds its patch HERE,
 // so home-kind inference and the strict city gate can never fork per call site

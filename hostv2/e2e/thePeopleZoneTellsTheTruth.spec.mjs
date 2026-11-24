@@ -401,7 +401,7 @@ test('THE ADMIN TAIL IS SUBORDINATED, NOT REMOVED', async ({ page }) => {
   expect(await open(page, 'How the invite looks, and your list')).toBe(true);
   await page.waitForTimeout(250);
   const after = await sheetText(page);
-  for (const m of ['Invite look', 'By headcount', 'Import a guest list', 'Download the guest list']) {
+  for (const m of ['Your invite', 'By headcount', 'Import a guest list', 'Download the guest list']) {
     expect(after, `${m} survives inside the fold`).toContain(m);
   }
 });
