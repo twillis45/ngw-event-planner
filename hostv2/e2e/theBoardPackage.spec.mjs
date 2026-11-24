@@ -421,7 +421,7 @@ const cues = (page) => page.evaluate(() => [...document.querySelectorAll('[data-
     ring: /^(INPUT|TEXTAREA)$/.test(e.tagName) ? (cs.boxShadow === 'none' ? '' : cs.boxShadow) : (cs.outlineStyle === 'none' ? '' : cs.outlineColor) };
 }));
 
-test('5: one soft ring on the one field the hero asks for: two breaths, then steady; it stops on interaction and returns after a completed step', async ({ browser }) => {
+test('5: one strong ring on the one field the hero asks for: two breaths, then steady; it stops on interaction and returns after a completed step', async ({ browser }) => {
   test.setTimeout(90_000);
   const { ctx, page } = await created(browser, PHONE);
   await expect.poll(() => cues(page).then((c) => c.length)).toBe(1);
@@ -432,14 +432,15 @@ test('5: one soft ring on the one field the hero asks for: two breaths, then ste
   expect(c.anim).toMatch(/cue-settle/);
   expect(c.dur.split(',')[0].trim(), 'a breath is about 1.2s').toBe('1.2s');
   expect(c.iter.split(',')[0].trim(), 'two breaths').toBe('2');
-  // Settled: a faint steady outline in steel, low opacity.
+  // Settled: a steady outline in steel, clearly visible but not solid
+  // (owner, 11/24/2026, "make pulse strong": it was at most 30%; now 40–60%).
   await page.waitForTimeout(3300);
   c = (await cues(page))[0];
   expect(c.ring, 'a steady ring').not.toBe('');
   // The alpha, however the browser serializes the color (rgba(…, a) or oklab(… / a)).
   const alpha = Number((/(?:\/\s*|,\s*)([\d.]+)\)/.exec(c.ring) || [])[1]);
-  expect(alpha, `low opacity (${c.ring})`).toBeGreaterThan(0);
-  expect(alpha, `low opacity (${c.ring})`).toBeLessThanOrEqual(0.3);
+  expect(alpha, `visible at rest (${c.ring})`).toBeGreaterThanOrEqual(0.4);
+  expect(alpha, `not a solid border (${c.ring})`).toBeLessThanOrEqual(0.6);
   // Her interaction stops it.
   await page.locator('h2.ask').first().click();
   await expect.poll(() => cues(page).then((x) => x.length)).toBe(0);
@@ -460,6 +461,35 @@ test('5: with reduced motion the cue is the steady outline only, no animation', 
   const c = (await cues(page))[0];
   expect(c.anim).toBe('none');
   expect(c.ring, 'the steady ring only').not.toBe('');
+  await ctx.close();
+});
+
+// A STRONG PULSE (owner, 11/24/2026: "make pulse strong"). The ring was steel at
+// 30% at its peak and 16% at rest, too faint to catch the eye. Read from the
+// stylesheet's own keyframes, so a later softening fails here.
+test('5: the cue pulses strong (peak at least 65%) and settles visible (at least 40%)', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const { ctx, page } = await created(browser, PHONE);
+  const pct = await page.evaluate(() => {
+    const out = {};
+    const read = (txt) => { const m = /steel-soft\)\s*(\d+)%/.exec(String(txt)); return m ? Number(m[1]) : null; };
+    for (const sh of [...document.styleSheets]) {
+      let rules; try { rules = [...sh.cssRules]; } catch { continue; }
+      for (const r of rules) {
+        if (r.type === CSSRule.KEYFRAMES_RULE && /^cue-(breathe|settle)(-ring)?$/.test(r.name)) {
+          for (const k of [...r.cssRules]) {
+            const v = read(k.style.outlineColor || k.style.boxShadow);
+            if (v != null) out[r.name] = Math.max(out[r.name] || 0, v);
+          }
+        }
+      }
+    }
+    return out;
+  });
+  expect(pct['cue-breathe'], 'button pulse peak').toBeGreaterThanOrEqual(65);
+  expect(pct['cue-breathe-ring'], 'field pulse peak').toBeGreaterThanOrEqual(65);
+  expect(pct['cue-settle'], 'button ring at rest').toBeGreaterThanOrEqual(40);
+  expect(pct['cue-settle-ring'], 'field ring at rest').toBeGreaterThanOrEqual(40);
   await ctx.close();
 });
 

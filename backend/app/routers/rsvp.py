@@ -134,7 +134,14 @@ PUBLIC_EVENT_FIELDS = (
     #                  the values the host app writes (_RULES); public_rsvp
     #                  enforces the first two on every submit.
     "deckLine", "secondaryType", "venueStreet", "venueZip", "venueKind", "venueConfirmed",
+    # hostPhoto (owner, 11/24/2026): the VERSION of the host's photo. Listed so
+    # the guest-visible set is written down in one place; _resolve_event drops
+    # whatever the event's JSON holds and sets it only from her account.
+    "inviteLayout", "hostPhoto",
 )
+
+# A photo version is the first 12 hex of the stored file's sha256 (host_photos.py).
+_PHOTO_VERSION = re.compile(r"[0-9a-f]{12}")
 
 # The reply rules as the host app writes them (HostShellV2 invite rules). Any
 # other value is not a rule and is not shipped.
@@ -358,8 +365,12 @@ async def _resolve_event(conn, rsvp_code: str):
     """
     if not rsvp_code or len(rsvp_code) < MIN_CODE_LEN:
         return None
+    # host_photo: the VERSION of the host's photo, read from her account in the
+    # same query (owner, 11/24/2026; app/routers/host_photos.py). Never the image.
     row = await conn.fetchrow(
-        "select id, data from public.events where data->>'rsvpCode' = $1 limit 1",
+        "select e.id, e.data, (select ss.data->>'hostPhoto' from public.studio_settings ss "
+        "where ss.studio_id = e.studio_id) as host_photo "
+        "from public.events e where e.data->>'rsvpCode' = $1 limit 1",
         rsvp_code,
     )
     if not row:
@@ -387,6 +398,20 @@ async def _resolve_event(conn, rsvp_code: str):
         # `is True`, not `in`: 1 == True in Python, and a 1 is not her answer.
         if (v is True and True in allowed) or (isinstance(v, str) and v in allowed):
             public[k] = v
+    # THE HOST'S PHOTO (owner, 11/24/2026): its version from her account, and
+    # only a version (12 hex). The event's own JSON cannot set it, and nothing
+    # else (a URL, an image) ever reaches a guest. The page asks for the photo
+    # by invite code: GET /api/public/host-photo/{code}?v=<version>.
+    public.pop("hostPhoto", None)
+    # The invite's layout (owner, 11/24/2026): only the two the host app writes.
+    if public.get("inviteLayout") not in ("classic", "glance"):
+        public.pop("inviteLayout", None)
+    try:
+        hp = row.get("host_photo") if hasattr(row, "get") else None
+    except Exception:
+        hp = None
+    if isinstance(hp, str) and _PHOTO_VERSION.fullmatch(hp):
+        public["hostPhoto"] = hp
     if data.get("recordKind") == "host_event":
         # Only this value: an unnamed host event is at home (venueFor's kind rule).
         public["recordKind"] = "host_event"

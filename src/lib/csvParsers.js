@@ -273,12 +273,17 @@ export function validateRows(rows) {
 
 // ─── guest merge ─────────────────────────────────────────────────────────────
 
+// A guest the host renamed keeps her old name as an alias (`aka`,
+// lib/guestMerge renamedGuestPatch), so a file that still has it finds her.
+const byAlias = (g, n) => Array.isArray(g.aka) && g.aka.some(a => normName(a) === n);
+const namedAs = (g, name) => normName(name) === normName(g.name) || byAlias(g, normName(name));
+
 export function computeMergeSummary(existing, incoming, mode) {
   const existingByEmail = new Map(
     existing.filter(g => g.email).map(g => [normEmail(g.email), g])
   );
   const existingByName = new Map(
-    existing.map(g => [normName(g.name), g])
+    existing.flatMap(g => [normName(g.name), ...(Array.isArray(g.aka) ? g.aka.map(normName) : [])].map(n => [n, g]))
   );
   const validIncoming = incoming.filter(r => r._valid);
 
@@ -324,7 +329,7 @@ export function applyMerge(existing, incoming, mode, batchId) {
     existing.filter(g => g.email).map(g => [normEmail(g.email), g])
   );
   const existingByName = new Map(
-    existing.map(g => [normName(g.name), g])
+    existing.flatMap(g => [normName(g.name), ...(Array.isArray(g.aka) ? g.aka.map(normName) : [])].map(n => [n, g]))
   );
 
   if (mode === 'add_new') {
@@ -351,12 +356,13 @@ export function applyMerge(existing, incoming, mode, batchId) {
     // Fallback: name match (only when guest has no email or email didn't match)
     const nameMatch = valid.find(r =>
       !r.email &&
-      r.name && normName(r.name) === normName(g.name) &&
+      r.name && namedAs(g, r.name) &&
       !matchedExistingIds.has(g.id)
     );
     if (nameMatch) {
       matchedExistingIds.add(g.id);
-      return { ...g, ...nameMatch, id: g.id };
+      // Matched by her old name: the name she has now stays.
+      return { ...g, ...nameMatch, id: g.id, ...(normName(nameMatch.name) === normName(g.name) ? {} : { name: g.name }) };
     }
     return g;
   });
@@ -366,7 +372,7 @@ export function applyMerge(existing, incoming, mode, batchId) {
   updatedExisting.forEach(g => {
     const r = valid.find(r =>
       (r.email && g.email && normEmail(r.email) === normEmail(g.email)) ||
-      (!r.email && r.name && normName(r.name) === normName(g.name))
+      (!r.email && r.name && namedAs(g, r.name))
     );
     if (r) usedIncoming.add(r.id);
   });

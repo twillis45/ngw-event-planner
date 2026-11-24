@@ -116,8 +116,9 @@ test('with a store chosen, the tap covers that store only', async ({ page }) => 
   await sheetSettled(page);
 
   const before = await labels(page);
-  // The chip is now the active run: "At Liquor store".
-  expect(before.some((x) => /^At Liquor store$/i.test(x))).toBe(true);
+  // The chip is now the active run: "I'm at Liquor store" (owner, 11/24/2026;
+  // it read "At Liquor store").
+  expect(before.some((x) => /^I’m at Liquor store$/i.test(x))).toBe(true);
   // One line, not three — and the label carries "here", which is how the host
   // knows the tap is scoped. Its absence would be the bug even with a right count.
   expect(before.some((x) => /^Check off all 1 here$/i.test(x))).toBe(true);
@@ -132,23 +133,29 @@ test('with a store chosen, the tap covers that store only', async ({ page }) => 
   expect(after.some((x) => /^Uncheck all 1$/i.test(x))).toBe(true);
 });
 
-test('skip sits on the row, not behind it', async ({ page }) => {
-  // It used to live inside the tune panel: open the row, scroll past the
-  // quantity stepper and the price controls, tap again. Three taps to say no to
-  // one thing. This proves it is reachable with the row merely expanded.
+// SKIP MOVED BACK INTO THE ITEM, ON PURPOSE (owner, 11/24/2026). The
+// 9/22/2026 ruling put "skip it" on the row; the row's second tap now opens
+// the item, and Skip sits alone at its bottom. Still two taps from the list
+// (open, skip), still the same `foodSkip` write, still undone by tapping the row.
+test('skip is the last control in the opened item, and the row restores it', async ({ page }) => {
   await openList(page);
   await tapText(page, 'Drinks[\\s\\S]*bought');
   await page.waitForTimeout(900);
   await settled(page);
 
   const before = await labels(page);
-  expect(before.some((x) => /^skip it$/i.test(x))).toBe(true);
+  expect(before.some((x) => /^skip it$/i.test(x)), 'no skip on the closed row').toBe(false);
 
-  await tapText(page, '^skip it$');
+  const row = page.locator('.fgroup', { has: page.locator('.fg-label', { hasText: /^Drinks/ }) }).locator('.frow').first();
+  await row.locator('.f-body').click();
+  const open = page.locator('[data-food-open]');
+  await expect(open).toHaveCount(1);
+  const skip = open.locator('.fo-skip button').last();
+  await expect(skip).toHaveText(/^Skip /);
+  await skip.click();
   await sheetSettled(page);
   const after = await labels(page);
-  // The row says what happened, and the section count drops — the same
-  // `foodSkip` storage the tune-panel control writes.
+  // The row says what happened, and the section count drops.
   expect(after.some((x) => /skipped — tap to restore/i.test(x))).toBe(true);
   expect(after.some((x) => /Drinks 0 of 2 bought/i.test(x))).toBe(true);
 });

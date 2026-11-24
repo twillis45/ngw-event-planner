@@ -26,11 +26,16 @@ test('typing $42.50 for the turkey saves and shows $42.50', async ({ page }) => 
     await sheet.getByRole('button', { name: /^Food \d+ of \d+ bought/ }).first().click();
     await settled(page);
   }
-  await row.getByRole('button', { name: 'tune', exact: true }).click();
-  const box = sheet.getByLabel(/^Real cost for Turkey/);
+  // The row opens the item in place (owner, 11/24/2026); "tune" is gone and
+  // the price box is the item's "What you paid".
+  await row.getByRole('button', { name: /^Open Turkey/ }).click();
+  const box = sheet.getByLabel(/^What you paid for Turkey/);
   await box.fill('42.50'); await box.press('Enter');
   await settled(page);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].foodLocked);
   expect(saved.p_turkey).toBe(42.5);
+  // Shown with its cents in the opened item, and on the closed row.
+  await expect(sheet.locator('[data-food-open="p_turkey"]')).toContainText('$42.50');
+  await sheet.getByRole('button', { name: 'Close Turkey' }).click();
   await expect(row).toContainText('$42.50');
 });

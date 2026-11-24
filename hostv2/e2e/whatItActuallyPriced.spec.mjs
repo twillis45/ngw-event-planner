@@ -21,6 +21,26 @@
 // proves the gate; only a browser proves the sheet obeys it.
 import { test, expect, settled, sheetSettled } from './fixtures.mjs';
 
+// ─── THE SHELF PRICE'S DETAIL IS IN THE OPENED ITEM (owner, 11/24/2026) ─────
+// The row keeps the store, the shelf price, its size and "sale"; the "was"
+// price, the arithmetic and the product's name moved into the item, which a
+// row tap opens in place. So the detail is read the way a host reaches it:
+// open each line the store priced, read it, close it.
+const openedPricedText = async (page, store) => {
+  const ids = await page.evaluate((s) => [...document.querySelectorAll('.frow[data-food-row]')]
+    .filter((r) => (r.innerText || '').includes(s)).map((r) => r.getAttribute('data-food-row')), store);
+  const out = [];
+  for (const id of ids) {
+    await page.locator(`.frow[data-food-row="${id}"] .f-body`).first().click();
+    const open = page.locator(`[data-food-open="${id}"]`).first();
+    await open.waitFor();
+    out.push((await open.innerText()).replace(/\s+/g, ' '));
+    await open.locator('.fo-close').click();
+    await page.locator(`.frow[data-food-row="${id}"]`).first().waitFor();
+  }
+  return out.join(' || ');
+};
+
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
   const el = [...document.querySelectorAll('button,[role="button"],a')]
@@ -90,7 +110,8 @@ const openPriced = async (page, description) => {
   await page.evaluate(() => [...document.querySelectorAll('.fg-head')].forEach((h) => h.click()));
   await page.waitForTimeout(700);
   await settled(page);
-  return bodyText(page);
+  // The product's name is in the opened item, under its shelf price.
+  return (await bodyText(page)) + ' || ' + (await openedPricedText(page, 'Harris Teeter — Bel Air:'));
 };
 
 test('(premise) a BELIEVABLE match really does price the sheet', async ({ page }) => {

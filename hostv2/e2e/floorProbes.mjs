@@ -157,9 +157,18 @@ export const unlabeledFields = ([rootSel]) => {
 // keycap edge, focus ring and attention ring reach 12px out; an ancestor that
 // clips horizontally (overflow-x not visible) within 12px of its left or right
 // edge cuts them. iPadOS Safari has no overflow-clip-margin, so it cannot save it.
-export const clippedSideways = ([rootSel, reach = 12]) => {
-  const root = [...document.querySelectorAll(rootSel)].pop() || document.body;
-  const PRESS = 'button, a[href], [role=button], [role=radio], summary, input:not([type=hidden]), select, textarea';
+//
+// THE ONE CLIP PROBE. nothingTappableIsClipped (the hero, six viewports) and
+// everySheetKeepsTheCohesionRules (the board, every sheet, an opened vendor)
+// both call this, so the rule, its exemptions and its tolerance live once.
+// Options: `press` narrows what counts as tappable (the hero spec judges its
+// buttons); `stopAt` ends the ancestor walk after that element (the hero spec
+// stops at its screen, `.escreen`); `firstRoot` takes the first match of the
+// root selector instead of the last.
+export const clippedSideways = ([rootSel, reach = 12, opts = {}]) => {
+  const roots = [...document.querySelectorAll(rootSel)];
+  const root = (opts.firstRoot ? roots[0] : roots.pop()) || document.body;
+  const PRESS = opts.press || 'button, a[href], [role=button], [role=radio], summary, input:not([type=hidden]), select, textarea';
   const out = [];
   for (const el of root.querySelectorAll(PRESS)) {
     if (el.closest('[inert], [aria-hidden="true"]')) continue;
@@ -176,7 +185,8 @@ export const clippedSideways = ([rootSel, reach = 12]) => {
     if (hidden) continue;
     for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) {
       const ox = getComputedStyle(a).overflowX;
-      if (ox === 'visible') continue;
+      const last = !!(opts.stopAt && a.matches(opts.stopAt));
+      if (ox === 'visible') { if (last) break; continue; }
       const q = a.getBoundingClientRect();
       // A chip partly scrolled out of a sideways scroller is reached by
       // scrolling, not cut: judged only where the scroller shows it whole.
@@ -192,6 +202,7 @@ export const clippedSideways = ([rootSel, reach = 12]) => {
         out.push(`${String(el.className || el.tagName).split(' ')[0]} "${(el.innerText || el.getAttribute('aria-label') || el.value || '').replace(/\s+/g, ' ').trim().slice(0, 26)}" in ${who}`);
         break;
       }
+      if (last) break;
     }
   }
   return out;
