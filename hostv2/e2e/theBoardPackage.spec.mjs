@@ -416,7 +416,9 @@ test('4: the invite step’s “What do you call it?” is the same rename field
 const cues = (page) => page.evaluate(() => [...document.querySelectorAll('[data-cue]')].map((e) => {
   const cs = getComputedStyle(e);
   return { tag: e.tagName.toLowerCase(), cls: String(e.className), inHero: !!e.closest('.escreen.on .hero-card'),
-    anim: cs.animationName, dur: cs.animationDuration, iter: cs.animationIterationCount, ow: parseFloat(cs.outlineWidth), os: cs.outlineStyle, oc: cs.outlineColor };
+    anim: cs.animationName, dur: cs.animationDuration, iter: cs.animationIterationCount, ow: parseFloat(cs.outlineWidth), os: cs.outlineStyle, oc: cs.outlineColor,
+    // The ring: a box-shadow on a field (its outline is its focus ring), an outline on a button.
+    ring: /^(INPUT|TEXTAREA)$/.test(e.tagName) ? (cs.boxShadow === 'none' ? '' : cs.boxShadow) : (cs.outlineStyle === 'none' ? '' : cs.outlineColor) };
 }));
 
 test('5: one soft ring on the one field the hero asks for: two breaths, then steady; it stops on interaction and returns after a completed step', async ({ browser }) => {
@@ -433,10 +435,11 @@ test('5: one soft ring on the one field the hero asks for: two breaths, then ste
   // Settled: a faint steady outline in steel, low opacity.
   await page.waitForTimeout(3300);
   c = (await cues(page))[0];
-  expect(c.ow).toBeGreaterThan(0);
+  expect(c.ring, 'a steady ring').not.toBe('');
   // The alpha, however the browser serializes the color (rgba(…, a) or oklab(… / a)).
-  const alpha = Number((/(?:\/\s*|,\s*)([\d.]+)\)\s*$/.exec(c.oc) || [])[1]);
-  expect(alpha, `low opacity (${c.oc})`).toBeLessThanOrEqual(0.3);
+  const alpha = Number((/(?:\/\s*|,\s*)([\d.]+)\)/.exec(c.ring) || [])[1]);
+  expect(alpha, `low opacity (${c.ring})`).toBeGreaterThan(0);
+  expect(alpha, `low opacity (${c.ring})`).toBeLessThanOrEqual(0.3);
   // Her interaction stops it.
   await page.locator('h2.ask').first().click();
   await expect.poll(() => cues(page).then((x) => x.length)).toBe(0);
@@ -456,8 +459,7 @@ test('5: with reduced motion the cue is the steady outline only, no animation', 
   await expect.poll(() => cues(page).then((c) => c.length)).toBe(1);
   const c = (await cues(page))[0];
   expect(c.anim).toBe('none');
-  expect(c.ow).toBeGreaterThan(0);
-  expect(c.os).toBe('solid');
+  expect(c.ring, 'the steady ring only').not.toBe('');
   await ctx.close();
 });
 
