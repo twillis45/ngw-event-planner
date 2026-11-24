@@ -1439,7 +1439,6 @@ export default function HostShellV2() {
   // rail always up and no bottom bar; 768–1023 portrait keeps its bar.
   const navMode = navLayout({ bp, portrait, elegant: elegantMode });
   const phonePill = navMode === 'pill';
-  const tallRail = navMode === 'tall-rail';
   // The tall header and its company (the Day/After sample line, the fold slot).
   const ttHead = tallTablet || phonePill;
   // The docked bar: the 768–1023 portrait bar, or the phone's pill.
@@ -11832,15 +11831,16 @@ export default function HostShellV2() {
                        that span is display:none and leaves the a11y tree with it,
                        so a row named only by its text would go nameless exactly
                        when its icon is all the user has. */
-                    aria-label={tallRail && r.k === 'pass' ? r.label + ' · ' + passNote() : r.label} title={r.label}
+                    aria-label={r.k === 'pass' ? r.label + ' · ' + passNote() : r.label} title={r.label}
                     onClick={() => goToSection(r.k)}>
                     {sectionIcon(r.k)}
                     <span className="srail-l">{r.label}
                       {/* The ☰ menu's pass row said where this event stands
-                          (passNote). At the 13" upright the rail is the only
-                          menu, so its pass row says it (owner, 11/23/2026:
-                          every menu item stays reachable). */}
-                      {tallRail && r.k === 'pass' && <span className="srail-note" data-pass-note>{' · ' + passNote()}</span>}
+                          (passNote). The rail is the menu on every wide layout
+                          (owner, 11/23 and 11/24/2026: every menu item stays
+                          reachable, and every rail carries the stages), so
+                          its pass row says it on every rail. */}
+                      {r.k === 'pass' && <span className="srail-note" data-pass-note>{' · ' + passNote()}</span>}
                     </span>
                   </button>
                 );

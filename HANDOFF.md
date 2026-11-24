@@ -24,6 +24,7 @@ Before that, 2026-11-02 (sixtieth entry:
 - **Fix (`75ce27ef`):** the rail's stages render on every rail, and the header title shows on every non-phone layout.
 - **Test:** the new spec `everyWideBoardKnowsItsEventAndStages` covers 1133, 1180, 1194, 1366, 1440 and 1920. It was red 6/6 before the fix and is green 7/7 after.
 - **Spec changed:** `theNavigationPackage`'s landscape test pinned 0 rail stages; it now expects 4, per the ruling.
+- **Follow-on:** the rail's pass row now carries its status line ("$39 · this event needs it") on every rail, not only the 13" upright. On desktop the rail replaces the ☰ menu, which showed that line. Caught by `thePassIsOnTheBoard` (4 red on desktop, then green). `tallRail` was orphaned and is removed.
 - **Not done:** split-screen landscape (640–1023) still uses the ☰ menu. That is batch F.
 - **Merged into `ux-integrate`:** main `2f5ae756`, which carries #253 (weather "City, ST", confirmed live for Virginia and Texas) and #254 (test reliability).
 
