@@ -316,7 +316,9 @@ test('"See the full invite" shows the whole invite being edited, in place, in th
   await expect(preview(page).locator('[data-invite-layout="glance"]')).toBeVisible();
   let popups = 0;
   context.on('page', () => { popups += 1; });
-  await page.getByRole('button', { name: 'See the full invite' }).click();
+  const seeFull = page.getByRole('button', { name: 'See the full invite' });
+  expect((await seeFull.boundingBox()).height, 'the button is a 44px target').toBeGreaterThanOrEqual(44);
+  await seeFull.click();
   // Nothing opens elsewhere; the preview itself is the full invite now.
   await page.waitForTimeout(400);
   expect(popups, 'no new tab').toBe(0);
@@ -327,7 +329,11 @@ test('"See the full invite" shows the whole invite being edited, in place, in th
   const fb = await preview(page).boundingBox();
   const yes = await preview(page).getByRole('radio', { name: /Yes, I.m in/i }).first().boundingBox();
   expect(yes.y + yes.height, 'the reply buttons sit inside the frame').toBeLessThanOrEqual(fb.y + fb.height + 1);
-  // And it folds back.
+  // The guest-facing notice, at the invite's very foot, is inside it too.
+  const note = await preview(page).getByText(/Just a preview/).first().boundingBox();
+  expect(note.y + note.height, 'the preview notice sits inside the frame').toBeLessThanOrEqual(fb.y + fb.height + 1);
+  // And it folds back to the window it was.
   await page.getByRole('button', { name: 'Show less' }).click();
   await expect(page.getByRole('button', { name: 'See the full invite' })).toBeVisible();
+  expect((await preview(page).boundingBox()).height, 'back to the 440px window').toBeLessThanOrEqual(441);
 });
