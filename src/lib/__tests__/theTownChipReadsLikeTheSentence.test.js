@@ -19,17 +19,17 @@ const said = (place) => parseSmartEventText(
 describe('readPlace reads the three shapes', () => {
   test('a full street address', () => {
     expect(readPlace('123 Maple St, Springfield, VA 22150')).toEqual({
-      venueAddress: '123 Maple St', venueCity: 'Springfield', venueState: 'VA', located: true, missing: null,
+      venueAddress: '123 Maple St', venueCity: 'Springfield', venueState: 'VA', venueZip: '22150', located: true, missing: null,
     });
   });
   test('City, ST', () => {
     expect(readPlace('Springfield, VA')).toEqual({
-      venueAddress: '', venueCity: 'Springfield', venueState: 'VA', located: true, missing: null,
+      venueAddress: '', venueCity: 'Springfield', venueState: 'VA', venueZip: '', located: true, missing: null,
     });
   });
   test('a ZIP', () => {
     expect(readPlace('22150')).toEqual({
-      venueAddress: '', venueCity: '22150', venueState: '', located: true, missing: null,
+      venueAddress: '', venueCity: '22150', venueState: '', venueZip: '22150', located: true, missing: null,
     });
   });
   test('a town with no state asks for the state', () => {
@@ -61,14 +61,16 @@ describe('the chip saves what the sentence saves', () => {
   }
   test('the address, exactly', () => {
     expect(townFieldsToPersist('123 Maple St, Springfield, VA 22150', p)).toEqual({
-      venueAddress: '123 Maple St', venueCity: 'Springfield', venueState: 'VA',
+      venueAddress: '123 Maple St', venueCity: 'Springfield', venueState: 'VA', venueZip: '22150',
     });
   });
   test('City, ST saves no street', () => {
     expect(townFieldsToPersist('Springfield, VA', p)).toEqual({ venueCity: 'Springfield', venueState: 'VA' });
   });
+  // A bare ZIP stays in venueCity too: InviteV2's geocode passthrough and
+  // saveCity's shape read it there.
   test('a ZIP saves the ZIP', () => {
-    expect(townFieldsToPersist('22150', p)).toEqual({ venueCity: '22150' });
+    expect(townFieldsToPersist('22150', p)).toEqual({ venueCity: '22150', venueZip: '22150' });
   });
 });
 
@@ -84,5 +86,25 @@ describe('what it cannot read is kept, never dropped', () => {
   });
   test('a street alone keeps the street and asks for the town', () => {
     expect(townFieldsToPersist('123 Maple St', p)).toEqual({ venueAddress: '123 Maple St', venueCity: '' });
+  });
+});
+
+describe('the ZIP of a full address is kept, in both paths (owner ruling 11/24/2026)', () => {
+  test('the sentence keeps it', () => {
+    const s = said('123 Maple St, Springfield, VA 22150');
+    expect(s.venueZip).toBe('22150');
+    expect(townFieldsToPersist('', s)).toEqual({ venueCity: 'Springfield', venueState: 'VA', venueZip: '22150' });
+  });
+  test('a bare ZIP in the sentence lands in venueZip too', () => {
+    expect(townFieldsToPersist('', said('in 22150'))).toEqual({ venueCity: '22150', venueZip: '22150' });
+  });
+  test('a spelled-out state followed by a ZIP', () => {
+    expect(readPlace('123 Maple St, Springfield, Virginia 22150-1234')).toMatchObject({ venueState: 'VA', venueZip: '22150' });
+  });
+  test('a house number is never a ZIP', () => {
+    expect(readPlace('20770 Main St, Greenbelt, MD')).toMatchObject({ venueAddress: '20770 Main St', venueZip: '' });
+  });
+  test('no ZIP, no venueZip', () => {
+    expect(townFieldsToPersist('', said('Springfield, VA'))).toEqual({ venueCity: 'Springfield', venueState: 'VA' });
   });
 });

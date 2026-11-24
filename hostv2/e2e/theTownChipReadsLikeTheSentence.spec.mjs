@@ -61,6 +61,7 @@ test('a full street address in the town chip saves the street, the city and the 
   expect(ev.venueAddress).toBe('123 Maple St');
   expect(ev.venueCity).toBe('Springfield');
   expect(ev.venueState).toBe('VA');
+  expect(ev.venueZip).toBe('22150');
   expect(ev.date).toBe('2026-11-26');
   await heroDoesNotAskWhere(page);
 });
@@ -72,6 +73,7 @@ test('"City, ST" in the town chip saves the city and no street', async ({ page }
   expect(ev.venueAddress || '').toBe('');
   expect(ev.venueCity).toBe('Springfield');
   expect(ev.venueState).toBe('VA');
+  expect(ev.venueZip || '').toBe('');
   await heroDoesNotAskWhere(page);
 });
 
@@ -81,5 +83,6 @@ test('a ZIP in the town chip saves the ZIP', async ({ page }) => {
   expect(ev.venueKind).toBe('home');
   expect(ev.venueAddress || '').toBe('');
   expect(ev.venueCity).toBe('22150');
+  expect(ev.venueZip).toBe('22150');
   await heroDoesNotAskWhere(page);
 });

@@ -26,8 +26,9 @@ import { readPlace } from './readPlace';
 function typedFields(typed) {
   const place = readPlace(typed);
   const street = place.venueAddress ? { venueAddress: place.venueAddress } : {};
+  const zip = place.venueZip ? { venueZip: place.venueZip } : {};
   if (place.located) {
-    return { ...street, ...(place.venueState ? { venueCity: place.venueCity, venueState: place.venueState } : { venueCity: place.venueCity }) };
+    return { ...street, ...(place.venueState ? { venueCity: place.venueCity, venueState: place.venueState } : { venueCity: place.venueCity }), ...zip };
   }
   const rest = place.venueAddress
     ? typed.split(place.venueAddress).join(' ').replace(/^[\s,]+|[\s,]+$/g, '').replace(/\s+/g, ' ')
@@ -47,7 +48,10 @@ export function townFieldsToPersist(typedCity, parsed) {
   const p = parsed || {};
   const text = typed || (p.venueCity ? (p.venueState ? p.venueCity + ', ' + p.venueState : p.venueCity) : '');
   const loc = text ? parseVenueLocation(text) : null;
-  if (loc) return loc.zip ? { venueCity: loc.zip } : { venueCity: loc.city, venueState: loc.state };
+  // The ZIP she gave is kept in venueZip (owner ruling 11/24/2026). A bare ZIP
+  // also stays in venueCity, where InviteV2's geocode passthrough reads it.
+  const zipSaid = String(p.venueZip || '').trim();
+  if (loc) return loc.zip ? { venueCity: loc.zip, venueZip: loc.zip } : { venueCity: loc.city, venueState: loc.state, ...(zipSaid ? { venueZip: zipSaid } : {}) };
   const stateOnly = !typed && !p.venueCity && p.venueState ? { venueState: p.venueState } : {};
   return { venueCity: '', ...stateOnly, ...(text ? { cityHeard: text } : {}) };
 }

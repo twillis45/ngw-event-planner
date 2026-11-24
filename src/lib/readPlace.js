@@ -26,7 +26,8 @@ export function readPlace(text) {
   const venueAddress = String(p.venueAddress || '').trim();
   const venueCity = String(p.venueCity || '').trim();
   const venueState = String(p.venueState || '').trim();
+  const venueZip = String(p.venueZip || '').trim();
   const located = !!venueCity && !!parseVenueLocation(venueState ? venueCity + ', ' + venueState : venueCity);
   const missing = located ? null : (venueCity && !venueState ? 'state' : 'town');
-  return { venueAddress, venueCity, venueState, located, missing };
+  return { venueAddress, venueCity, venueState, venueZip, located, missing };
 }
