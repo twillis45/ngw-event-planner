@@ -8678,7 +8678,6 @@ button.tt-row{ cursor:pointer; }
 .tt-pill .tt-seg{ display:flex; flex:1 1 auto; min-width:0; gap:0; padding:0; background:none; border:0; border-radius:0; box-shadow:none; }
 .tt-pill .tt-seg .tt-seg-b{ flex:1 1 auto; min-width:44px; height:var(--tap-min,46px); padding:0 4px; font-size:15px; font-weight:550; color:var(--muted);
   background:none; border:1px solid transparent; box-shadow:none; }
-.tt-pill .tt-seg .tt-seg-b.on{ background:none; color:var(--ink); font-weight:700; border-color:var(--steel-soft); box-shadow:none; }
 .tt-pill-div{ flex:0 0 0; align-self:stretch; width:0; margin:12px 4px; border-left:1px solid var(--line); }
 .tt-pill .tt-act{ flex:0 0 46px; width:46px; height:var(--tap-min,46px); padding:0; border:0; background:none; color:var(--ink-soft); }
 .tt-pill .tt-act .srail-i{ width:20px; height:20px; }
@@ -8714,9 +8713,8 @@ button.tt-row{ cursor:pointer; }
 /* The current part's name is bold; no NOW tag (ruling 10, every tall iPad). */
 .stagewrap[data-tall="1"] .tt-part.is-now{ font-weight:750; }
 .stagewrap[data-tall="1"] .tt-part.is-open{ font-weight:600; }
-/* YOUR EVENT: the phases in the rail, the current one outlined, not filled. */
+/* YOUR EVENT: the phases in the rail; the current one is underlined (below). */
 .srail-stage{ border:0; }
-.srail-stage.is-stage{ color:var(--ink); font-weight:650; background:none; border:1px solid var(--line); }
 .srail-stage:hover{ background:none; color:var(--ink); }
 /* Collapsed, a phase keeps its short word: it has no icon to stand for it. */
 .stagewrap[data-railmin="1"] .srail-stage .srail-l{ display:inline; font-size:11.5px; }
@@ -8754,5 +8752,17 @@ button.tt-row{ cursor:pointer; }
 .stagewrap[data-tall="1"] .tt-bar{ background:none; }
 .stagewrap[data-tall="1"] .tt-bar .tt-seg{ background:none; box-shadow:inset 0 0 0 1px var(--line-soft); }
 .stagewrap[data-tall="1"] .tt-bar .tt-seg .tt-seg-b{ background:none; box-shadow:none; border:1px solid transparent; }
-.stagewrap[data-tall="1"] .tt-bar .tt-seg .tt-seg-b.on{ background:none; box-shadow:none; border-color:var(--steel-soft); color:var(--ink); font-weight:700; }
 .stagewrap[data-tall="1"]:has(> .app.dark-stage){ background-color:var(--carbon); }
+
+/* ── THE SELECTED STAGE IS UNDERLINED (owner, renders 1a and 7, 11/24/2026) ──
+   One style for the phone's pill, the 768–1023 tall bar and the 13" rail's
+   Your event group: no circle, outline or box. The selected stage is the ink
+   (white in dark), semibold, with a short 2px bar under its label, 60% of the
+   label's width: centered in the pill and the bar, left-aligned in the rail.
+   The others are muted. The bar is painted currentColor, not var(--ink): the
+   parity gate reads any var(--ink) ground as a white plate (see .pp-seg). */
+.tt-seg .tt-seg-b, .srail-stage{ color:var(--muted); }
+.tt-seg .tt-seg-b.on, .srail-stage.is-stage{ background:none; border-color:transparent; box-shadow:none; color:var(--ink); font-weight:600; }
+.tt-seg .tt-seg-b > .nav-l, .srail-stage > .srail-l{ position:relative; display:inline-block; }
+.tt-seg .tt-seg-b.on > .nav-l::after, .srail-stage.is-stage > .srail-l::after{ content:''; position:absolute; left:20%; width:60%; bottom:-6px; height:2px; border-radius:2px; background:currentColor; }
+.srail-stage.is-stage > .srail-l::after{ left:0; }

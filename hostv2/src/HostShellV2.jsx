@@ -11393,8 +11393,8 @@ export default function HostShellV2() {
           </button>
           {/* YOUR EVENT (owner ruling 8, 11/23/2026): on a 13" iPad held upright
               the rail is the one menu, so the phases join it, first. The same
-              goPhase the bar and the menu call; the current phase is outlined,
-              not filled. Plan, tapped on Plan with the question scrolled away,
+              goPhase the bar and the menu call; the current phase is
+              underlined, as on the pill and the bar (owner, 11/24/2026). Plan, tapped on Plan with the question scrolled away,
               goes back to the question (the NEXT bar's job, as on the bar). */}
           {tallRail && (
             <div className="srail-g" key="__stages">
@@ -11483,7 +11483,7 @@ export default function HostShellV2() {
                   /* The NEXT bar's job on a tall iPad (owner ruling, 11/23/2026):
                      Plan, tapped on Plan with the question scrolled away, goes
                      back to the question. */
-                  onClick={() => { if (k === 'plan' && stage === 'plan' && !heroInView) { backToHero(); return; } goPhase(k); }}>{label}</button>
+                  onClick={() => { if (k === 'plan' && stage === 'plan' && !heroInView) { backToHero(); return; } goPhase(k); }}><span className="nav-l">{label}</span></button>
               ))}
             </div>
             {phonePill && <span className="tt-pill-div" data-pill-divider aria-hidden="true" />}
