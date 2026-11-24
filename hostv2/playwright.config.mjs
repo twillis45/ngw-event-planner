@@ -64,6 +64,8 @@ const SELF_PINNED = [
   // Drives 1440x900, 1280x800 and the phone itself (the board package's
   // follow-ups, owner rulings 11/24/2026).
   '**/theBoardPackageFollowUps.spec.mjs',
+  // Drives a 390 phone and a 1440 desktop itself (guest editor, 11/24/2026).
+  '**/theGuestEditorReadsInGroups.spec.mjs',
   '**/tapTargets.spec.mjs',
   // Drives its own three geometries (one lit button per sheet, batch 4, 11/21/2026).
   '**/oneLitButtonPerSheet.spec.mjs',
