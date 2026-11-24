@@ -22490,7 +22490,7 @@ export default function HostShellV2() {
                   {/* THE HOST'S PHOTO (owner, render r3-4, 11/24/2026): one per account,
                       the same row as in "Your invite". */}
                   <HostPhotoRow profile={profile} patchProfile={patchProfile} signedIn={Boolean(session)} variant="settings"
-                    hostName={(profile && profile.name) || ''} email={(session && session.user && session.user.email) || ''} />
+                    hostName={(profile && profile.name) || ''} />
                   <SheetHero
                     eyebrow="You & settings"
                     star={mem && mem.present ? `${(mem.groups || []).length} remembered` : 'Nothing remembered yet'}

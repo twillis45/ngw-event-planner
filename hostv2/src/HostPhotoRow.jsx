@@ -34,7 +34,7 @@ function cropSquare(img, zoom) {
   return c;
 }
 
-export default function HostPhotoRow({ profile, patchProfile, signedIn, hostName, variant = 'panel', email }) {
+export default function HostPhotoRow({ profile, patchProfile, signedIn, hostName, variant = 'panel' }) {
   const version = (profile && profile.hostPhoto) || null;
   const url = useMyHostPhoto(version);
   const fileRef = useRef(null);
@@ -97,11 +97,10 @@ export default function HostPhotoRow({ profile, patchProfile, signedIn, hostName
     <div className={'hpr hpr-' + variant} data-host-photo-row>
       <div className="hpr-main">
         {disc}
-        {variant === 'settings' && (name || email) && (
-          <div className="hpr-who">
-            {name && <div className="hpr-name">{name}</div>}
-            {email && <div className="hpr-email">Signed in as {email}</div>}
-          </div>
+        {/* Her name under the photo; the account line ("Signed in as …") stays
+            once, in Your account below. */}
+        {variant === 'settings' && name && (
+          <div className="hpr-who"><div className="hpr-name">{name}</div></div>
         )}
         {canEdit && (
           <div className="hpr-acts">

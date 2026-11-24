@@ -128,7 +128,7 @@ export default function InviteDesignSheet({
       <input id="ivd-host" className="field" aria-label="Hosted by" value={host} maxLength={120} placeholder="Dana — or “Dana & Sam”"
         onChange={(e) => setHost(e.target.value)} />
       <div className="ivd-lab ivd-gap">Your photo</div>
-      <HostPhotoRow profile={profile} patchProfile={patchProfile} signedIn={signedIn} hostName={host} email={email} variant="panel" />
+      <HostPhotoRow profile={profile} patchProfile={patchProfile} signedIn={signedIn} hostName={host} variant="panel" />
       <label className="ivd-lab ivd-gap" htmlFor="ivd-contact">How guests reach you</label>
       <input id="ivd-contact" className="field" aria-label="How guests reach you" value={contact} maxLength={120} inputMode="email"
         placeholder="A cell phone number or an email" onChange={(e) => { setContact(e.target.value); setContactErr(''); }} />
