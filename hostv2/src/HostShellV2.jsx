@@ -1107,7 +1107,9 @@ function RowValue({ status = 'open', note = false, chev = false, style, children
 //                                  ("✓ Food · all 10 bought"), no progress bar
 //   every group done (`all`)       "✓ All 27 bought" and a quiet "Show the list"
 // Reopening is the caller's `onOpen`; it lasts for the browser session only
-// (useReopened below) and never writes to the plan.
+// (useReopened below) and never writes to the plan. A reopen holds only while
+// the group stays finished (owner, 11/24/2026, a live report): once a line is
+// undone the reopen is forgotten, so finishing the group folds it again.
 function DoneFold({ text, sub, onOpen, all = false, showLabel = 'Show the list' }) {
   if (all) {
     return (
@@ -1126,17 +1128,33 @@ function DoneFold({ text, sub, onOpen, all = false, showLabel = 'Show the list' 
   );
 }
 // Which finished groups she reopened, per plan, for this browser session.
+// `isOpen(scope, done, onFinish)` is asked on every render with the group's
+// done state: a scope seen not done drops its reopen (so the next finish folds
+// it), and `onFinish` runs once when a scope turns done, for the caller to close
+// whatever it held open inside the group (a tune panel, a deep-linked line).
 const REOPENED_KEY = 'ngw-v2-reopened';
 function useReopened(eventId) {
   const [map, setMap] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem(REOPENED_KEY) || '{}') || {}; } catch { return {}; }
   });
+  const seen = useRef(new Map());
+  const wasDone = useRef({});
   const key = (scope) => String(eventId || '') + ':' + scope;
-  const isOpen = (scope) => !!map[key(scope)];
-  const reopen = (scope) => setMap((m) => {
-    const next = { ...m, [key(scope)]: true };
-    try { sessionStorage.setItem(REOPENED_KEY, JSON.stringify(next)); } catch { /* private mode: this visit only */ }
-    return next;
+  const save = (next) => { try { sessionStorage.setItem(REOPENED_KEY, JSON.stringify(next)); } catch { /* private mode: this visit only */ } return next; };
+  const isOpen = (scope, done = true, onFinish) => {
+    seen.current.set(key(scope), { done: !!done, onFinish });
+    return !!done && !!map[key(scope)];
+  };
+  const reopen = (scope) => setMap((m) => save({ ...m, [key(scope)]: true }));
+  useEffect(() => {
+    const drop = [];
+    for (const [k, { done, onFinish }] of seen.current) {
+      if (!done && map[k]) drop.push(k);
+      if (done && wasDone.current[k] === false && onFinish) onFinish();
+      wasDone.current[k] = done;
+    }
+    seen.current.clear();
+    if (drop.length) setMap((m) => { const next = { ...m }; for (const k of drop) delete next[k]; return save(next); });
   });
   return { isOpen, reopen };
 }
@@ -7649,6 +7667,7 @@ export default function HostShellV2() {
     // THE DINNER'S STEPS, ALL DONE, ARE ONE GREEN ROW (owner, 11/24/2026),
     // reopened for the session to show the checked-off steps.
     const dinnerDone = !group.length && members.length > 0 && members.every((x) => x.t.done);
+    reopened.isOpen('tasks:dinner', dinnerDone); // seen every render, so an undone step drops the reopen
     const out = [];
     let placed = false;
     for (const x of order) {
@@ -7656,7 +7675,7 @@ export default function HostShellV2() {
       if (placed || !(group.length || dinnerDone)) continue;
       placed = true;
       if (dinnerDone) {
-        out.push(reopened.isOpen('tasks:dinner') ? (
+        out.push(reopened.isOpen('tasks:dinner', dinnerDone) ? (
           <div className="dinner-steps" data-dinner-steps key="dinner-steps">
             <div className="shelf-label">{celebrationTitle(event)}</div>
             {members.map((m) => doneTaskRow(m.t, m.i))}
@@ -17920,7 +17939,7 @@ export default function HostShellV2() {
                 {/* THE DECIDED CALLS ARE ONE GREEN ROW (owner, 11/24/2026, the
                     DoneFold rule) until she reopens them for the session; a
                     routed focus on one of them ("Change the call") opens them. */}
-                {(decisionBoard.locked || []).length > 0 && !reopened.isOpen('calls:settled')
+                {(decisionBoard.locked || []).length > 0 && !reopened.isOpen('calls:settled', (decisionBoard.locked || []).length > 0)
                   && !(sheet.focus && (decisionBoard.locked || []).some(r => r && r.id === sheet.focus)) && (
                   <div style={{ marginTop: 'var(--sp-3)' }}>
                     <DoneFold text={`Settled · all ${(decisionBoard.locked || []).length} decided`} onOpen={() => reopened.reopen('calls:settled')} />
@@ -23773,7 +23792,7 @@ export default function HostShellV2() {
                     const live = (event.timeline || []).filter(t => t && !t.retired);
                     const doneN = live.filter(t => t.done).length;
                     const allDone = doneN === live.length;
-                    if (allDone && !reopened.isOpen('tasks:all')) {
+                    if (!reopened.isOpen('tasks:all', allDone) && allDone) {
                       return <DoneFold all text={`All ${live.length} done`} onOpen={() => { reopened.reopen('tasks:all'); setDoneOpen(true); }} />;
                     }
                     if (!doneOpen) {
@@ -24269,7 +24288,7 @@ export default function HostShellV2() {
                   const allSet = (!hasChoices || openN === 0) && dietSet && (!hasSourcing || sourcingSettled(event));
                   const dietText = anyDiet ? dietRowsFor(event).flaggedCount + ' dietary noted' : 'dietary noted';
                   // Settled, it is the bare two-line row of render 9b, not a card.
-                  if (allSet && !reopened.isOpen('choices')) {
+                  if (!reopened.isOpen('choices', allSet) && allSet) {
                     return (
                       <div data-food-section="choices" className="choices-set">
                         <DoneFold text="Choices set" sub={[hasSourcing ? sourcingLabel : null, dietText].filter(Boolean).join(' · ')}
@@ -24669,7 +24688,7 @@ export default function HostShellV2() {
                   if (!rows.length && !taken.length) return null;
                   const enteredCost = rows.reduce((t, r) => t + (Number(r.low) || 0), 0);
                   const allNamed = bringingTally.total > 0 && bringingTally.named === bringingTally.total;
-                  const folded = allNamed && !reopened.isOpen('bring')
+                  const folded = !reopened.isOpen('bring', allNamed) && allNamed
                     && !rows.some((r) => r.id === bringFocus || (bringerEdit && bringerEdit.id === r.id));
                   const yoursOpen = !!foodGroupsOpen.__yours || yours.some((r) => r.id === bringFocus || (bringerEdit && bringerEdit.id === r.id));
                   return (
@@ -25302,7 +25321,13 @@ export default function HostShellV2() {
                     // A FINISHED GROUP COLLAPSES (owner, render 8b, 11/24/2026):
                     // one green row until she reopens it. Not in a store run (it
                     // opens the shelves on purpose) and not under a deep link.
-                    if (gDone && gActive.length > 0 && !shopStore && !focusHere && !reopened.isOpen('shop:' + g)) {
+                    // Finishing it closes a tune panel or deep link inside it, so
+                    // the last check-off always folds it (owner, 11/24/2026).
+                    const gReopened = reopened.isOpen('shop:' + g, gDone && gActive.length > 0, () => {
+                      if (gItems.some(it => it.id === foodTune)) setFoodTune(null);
+                      if (gItems.some(it => it.id === sheet.focus)) setSheet(sh => (sh ? { ...sh, focus: null } : sh));
+                    });
+                    if (gDone && gActive.length > 0 && !shopStore && !focusHere && !gReopened) {
                       return (
                         <DoneFold key={g} text={`${g} · all ${gActive.length} bought`}
                           onOpen={() => { reopened.reopen('shop:' + g); setFoodGroupsOpen(m => ({ ...m, [g]: true })); }} />
@@ -26145,7 +26170,7 @@ export default function HostShellV2() {
                       )}
                       {/* EVERY GROUP BOUGHT: the whole list is one line (owner,
                           render 8, 11/24/2026) until "Show the list". */}
-                      {(!shopStore && shopTally.done && !reopened.isOpen('shop:all')
+                      {(!shopStore && !reopened.isOpen('shop:all', shopTally.done) && shopTally.done
                         && !items.some(it => it.id === sheet.focus || it.id === foodTune))
                         ? <DoneFold all text={`All ${shopTally.total} bought`} onOpen={() => reopened.reopen('shop:all')} />
                         : groupRows}

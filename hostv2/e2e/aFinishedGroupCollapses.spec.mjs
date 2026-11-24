@@ -165,3 +165,38 @@ test('Calls to make: the decided calls fold to one green row, and reopen to chan
   await fold.click();
   await expect(sheet(page).locator('button.settled-card').first()).toBeVisible();
 });
+
+// ─── IT FOLDS EVERY TIME IT FINISHES (owner, 11/24/2026, a live report) ─────
+// Reopening a finished group held for the whole session, so once she had
+// looked inside, unchecking a line and checking it again left "Uncheck all 21"
+// and the lines on screen. And a line's tune panel kept its group open after
+// the last line was checked off. A reopen now lasts only while the group stays
+// finished, and finishing a group folds it, whatever was open inside it.
+const foodGroup = (page) => sheet(page).locator('.fgroup', { has: page.locator('.fg-label', { hasText: /^Food/ }) });
+const foodFold = (page) => sheet(page).locator('[data-done-fold]', { hasText: /Food · all \d+ bought/ });
+
+test('reopened, then unchecked and checked again: the group folds again', async ({ page }) => {
+  await boot(page, seed('e2e-fold-again', {}));
+  await openShopList(page);
+  await checkOffGroup(page, 'Food');
+  await foodFold(page).click();
+  await expect(foodGroup(page)).toBeVisible();
+  const first = foodGroup(page).locator('.fg-items .frow .fcheck').first();
+  await first.click(); await page.waitForTimeout(200);
+  await expect(foodGroup(page), 'unchecked: the group is open, not done').toBeVisible();
+  await first.click(); await page.waitForTimeout(300);
+  await expect(foodFold(page), 'finished again: it folds again').toBeVisible();
+  expect(await groupCount(page, 'Food')).toBe(0);
+});
+
+test('a line\'s tune panel open: finishing the group still folds it', async ({ page }) => {
+  await boot(page, seed('e2e-fold-tune', {}));
+  await openShopList(page);
+  const g = foodGroup(page);
+  if (!(await g.locator('.fg-items .frow').count())) await g.locator('.fg-head').click();
+  await g.getByRole('button', { name: /^tune$/ }).first().click();
+  await page.waitForTimeout(300);
+  await checkOffGroup(page, 'Food');
+  await expect(foodFold(page)).toBeVisible();
+  expect(await groupCount(page, 'Food')).toBe(0);
+});
