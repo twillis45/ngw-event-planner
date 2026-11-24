@@ -3840,8 +3840,15 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
    to both rules — so this audit's own fix had never shipped at all. Do not write
    a comment terminator inside this comment; that is exactly how it broke. */
 .app.has-nextbar{
-  /* The reservation: guarantees the last row can be scrolled clear of the bar. */
-  padding-bottom:calc(84px + env(safe-area-inset-bottom,0px));
+  /* The reservation lives in the ::after spacer below, NOT in padding
+     (11/24/2026). .app.app-elegant is a size container and the first screen
+     is sized `100cqh`, which reads .app's CONTENT box — so an 84px
+     padding-bottom shrank the hero's first screen by 84px the moment the hero
+     scrolled away, and every row below it jumped 84px up under the host's
+     finger (measured: hero 1531 -> 1447, "Who's confirmed" Guests button
+     y 461 -> 377 between pointerdown and click). Same rule as above: this
+     must not alter .app's box. A spacer child scrolls the same distance and
+     leaves the container's size alone. */
   /* The fade: content dissolves before it reaches the bar rather than sliding
      under it. Opaque down to the reservation line, gone by the bar's mid-point.
      Masking .app's own box costs no layout and nothing resizes — and because
@@ -3850,6 +3857,10 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
   -webkit-mask-image:linear-gradient(to bottom, var(--mask-solid) calc(100% - 84px), transparent calc(100% - 34px));
           mask-image:linear-gradient(to bottom, var(--mask-solid) calc(100% - 84px), transparent calc(100% - 34px));
 }
+/* The next bar's reservation, added to the scroll-clearance spacer so the
+   total scroll extent is exactly what padding + spacer gave before. */
+.app.has-nextbar::after{height:calc(104px + 84px + 2 * env(safe-area-inset-bottom,0px))}
+.app.has-nextbar.has-wxpill::after{height:calc(160px + 84px + 2 * env(safe-area-inset-bottom,0px))}
 .next-bar:hover{filter:brightness(1.05)}
 .next-bar:active{transform:scale(.99)}
 .next-bar .nb-label{font-size:var(--t-overline); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--muted)}
