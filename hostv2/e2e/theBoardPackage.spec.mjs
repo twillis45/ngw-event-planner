@@ -17,8 +17,15 @@
 //   3  "THEN, IN ORDER" SHOWS TIMING AND BLOCKING TOGETHER (render 3): a row
 //      others wait on, with a deadline, reads "by Tue · others wait on it"; a
 //      row with a date always shows its date ("by Wed").
+//   4  RENAME (renders 4a, 4b, 12a, 12b). A long press (about 500ms) on the
+//      title on touch, or a double-click on a desktop, turns the title into a
+//      field in place, its text selected; Done saves; Escape, or leaving it
+//      unchanged, cancels. A single tap still opens the events sheet, whose
+//      current row has "Rename" (the same field). A placeholder name carries a
+//      quiet "Name it". A one-time tip: "Tip: press and hold the name to
+//      rename it ×". The invite step's name ask is the same field.
 import { test, expect } from '@playwright/test';
-import { settled } from './fixtures.mjs';
+import { settled, sheetSettled, openSectionByName } from './fixtures.mjs';
 
 const dateIn = (d) => { const t = new Date(); t.setDate(t.getDate() + d); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
 
@@ -229,5 +236,164 @@ test('3: Then, in order: "Plan the food" reads its day and that others wait on i
   // "decide the menu before the shop", owner 11/18/2026), so it has no date to
   // show; "a row with a date always shows its date" is pinned in
   // theThenRowShowsTimingAndBlocking.test.js.
+  await ctx.close();
+});
+
+// ═══════════════════════════════ 4. RENAME ═══════════════════════════════
+// A held finger, as a touch screen sends it: pointerdown, ~600ms, pointerup.
+const longPress = async (page, sel, ms = 650) => {
+  const el = await page.locator(sel).first().elementHandle();
+  const box = await el.boundingBox();
+  const at = { clientX: box.x + 20, clientY: box.y + box.height / 2, pointerType: 'touch', isPrimary: true, bubbles: true, pointerId: 7 };
+  await el.dispatchEvent('pointerdown', at);
+  await page.waitForTimeout(ms);
+  // The finger lifts on the button it pressed, which the field has replaced.
+  await el.evaluate((e, init) => e.dispatchEvent(new PointerEvent('pointerup', init)), at);
+};
+const titleName = (page) => page.locator('[data-tt-head] .tt-name').first().innerText();
+const field = (page, mode) => page.locator(`[data-rename="${mode}"] input`);
+
+test('4: a long press turns the title into a field in place, its text selected; Done saves; a tap still opens the events sheet', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const { ctx, page } = await created(browser, PHONE);
+  const before = await page.locator('[data-tt-title]').boundingBox();
+  await longPress(page, '[data-tt-title]');
+  const f = field(page, 'title');
+  await expect(f).toBeVisible();
+  await expect(f).toHaveValue('Thanksgiving Dinner');
+  expect(await page.locator('.sheet').count(), 'the long press does not open the events sheet').toBe(0);
+  const sel = await f.evaluate((i) => [document.activeElement === i, i.selectionStart, i.selectionEnd, i.value.length]);
+  expect(sel, 'focused, the whole name selected').toEqual([true, 0, sel[3], sel[3]]);
+  const r = await f.boundingBox();
+  expect(Math.abs(r.y + r.height / 2 - (before.y + before.height / 2)), 'in place: where the title was').toBeLessThan(12);
+  await f.fill('Grandma’s Thanksgiving');
+  await page.locator('[data-rename="title"]').getByRole('button', { name: 'Done' }).click();
+  await expect(field(page, 'title')).toHaveCount(0);
+  expect(await titleName(page)).toBe('Grandma’s Thanksgiving');
+  // A single tap is still the events sheet (the 11/23 ruling).
+  await page.locator('[data-tt-title]').click();
+  await sheetSettled(page);
+  await expect(page.locator('#sheet-title')).toHaveText('Your events');
+  await ctx.close();
+});
+
+test('4: on a desktop (a mouse, no touch), a double-click renames; one click still opens the events sheet', async ({ browser }) => {
+  test.setTimeout(90_000);
+  // A desktop window that shows the board's title (the tall header). At
+  // 1440x900 the board has no title, only the ☰ eyebrow (see HANDOFF).
+  const { ctx, page } = await created(browser, TABLET, { touch: false });
+  await page.locator('[data-tt-title]').dblclick();
+  const f = field(page, 'title');
+  await expect(f).toBeVisible();
+  await expect(f).toHaveValue('Thanksgiving Dinner');
+  expect(await page.locator('.sheet').count(), 'a double-click is not the events sheet').toBe(0);
+  await f.fill('Thanksgiving at Ours');
+  await f.press('Enter');
+  expect(await titleName(page)).toBe('Thanksgiving at Ours');
+  expect(await page.locator('[data-rename-tip]').count(), 'the press-and-hold tip is a touch screen’s').toBe(0);
+  await page.locator('[data-tt-title]').click();
+  await sheetSettled(page);
+  await expect(page.locator('#sheet-title')).toHaveText('Your events');
+  await ctx.close();
+});
+
+test('4: Escape, or leaving the field unchanged, cancels', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const { ctx, page } = await created(browser, PHONE);
+  await longPress(page, '[data-tt-title]');
+  await field(page, 'title').fill('Something else');
+  await field(page, 'title').press('Escape');
+  await expect(field(page, 'title')).toHaveCount(0);
+  expect(await titleName(page)).toBe('Thanksgiving Dinner');
+  await longPress(page, '[data-tt-title]');
+  await expect(field(page, 'title')).toBeVisible();
+  await page.locator('h2.ask').first().click();
+  await expect(field(page, 'title'), 'blur without a change cancels').toHaveCount(0);
+  expect(await titleName(page)).toBe('Thanksgiving Dinner');
+  await ctx.close();
+});
+
+test('4: the events sheet’s current row has Rename, the same field', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const { ctx, page } = await created(browser, PHONE);
+  await page.locator('[data-tt-title]').click();
+  await sheetSettled(page);
+  await page.locator('.sheet [data-rename-open]').click();
+  const f = field(page, 'sheet');
+  await expect(f).toBeVisible();
+  await expect(f).toHaveValue('Thanksgiving Dinner');
+  await expect(page.locator('[data-rename="sheet"]').getByRole('button', { name: 'Cancel' })).toBeVisible();
+  await f.fill('Thanksgiving at Ours');
+  await page.locator('[data-rename="sheet"]').getByRole('button', { name: 'Save' }).click();
+  await expect(field(page, 'sheet')).toHaveCount(0);
+  await expect(page.locator('.sheet .frow.rowfocus .f-name')).toContainText('Thanksgiving at Ours');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => titleName(page)).toBe('Thanksgiving at Ours');
+  await ctx.close();
+});
+
+const PLACEHOLDER = { id: 'ev-name-it', name: 'My Thanksgiving Hosting', type: 'Thanksgiving', date: dateIn(30), startTime: '15:00', startTimeSource: 'host',
+  venue: 'Home', venueKind: 'home', venueCity: 'Springfield', venueState: 'VA', venueAddress: '123 Maple St, Springfield, VA 22150',
+  guestMode: 'list', guestCount: 3, guestEstimate: 3, guestCountSource: 'host', totalBudget: 400, budget: [], vendors: [], timeline: [],
+  guests: [{ id: 'g1', name: 'Aunt Rose', rsvp: '' }, { id: 'g2', name: 'Cousin Lee', rsvp: '' }, { id: 'g3', name: 'Pat Moore', rsvp: '' }] };
+
+test('4: a placeholder name carries a quiet “Name it” that opens the same field; a real name does not', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const { ctx, page } = await seededPhone(browser, PLACEHOLDER);
+  const link = page.locator('[data-name-it]');
+  await expect(link).toHaveText('Name it');
+  const [t, l] = [await page.locator('[data-tt-title]').boundingBox(), await link.boundingBox()];
+  expect(l.x, 'it follows the title').toBeGreaterThanOrEqual(t.x + t.width - 1);
+  expect(Math.abs(l.y + l.height / 2 - (t.y + t.height / 2)), 'on the title’s line').toBeLessThan(12);
+  expect(l.height).toBeGreaterThanOrEqual(44);
+  await link.click();
+  await field(page, 'title').fill('Rose’s Thanksgiving');
+  await field(page, 'title').press('Enter');
+  expect(await titleName(page)).toBe('Rose’s Thanksgiving');
+  await expect(page.locator('[data-name-it]'), 'a name she gave needs no “Name it”').toHaveCount(0);
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].name);
+  expect(stored).toBe('Rose’s Thanksgiving');
+  await ctx.close();
+});
+
+test('4: the tip shows once per device, under the title, and × dismisses it', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const { ctx, page } = await seededPhone(browser, { ...PLACEHOLDER, id: 'ev-tip', name: 'Rose’s Thanksgiving' });
+  const tip = page.locator('[data-rename-tip]');
+  await expect(tip).toBeVisible();
+  await expect(tip).toHaveText('Tip: press and hold the name to rename it×', { useInnerText: false });
+  const [t, b] = [await page.locator('[data-tt-title]').boundingBox(), await tip.boundingBox()];
+  expect(b.y, 'under the title').toBeGreaterThanOrEqual(t.y + t.height - 1);
+  await tip.getByRole('button', { name: 'Dismiss the tip' }).click();
+  await expect(tip).toHaveCount(0);
+  // Never again on this device, dismissed or not.
+  await page.reload(); await settled(page); await page.waitForTimeout(500);
+  await expect(page.locator('[data-tt-title]')).toBeVisible();
+  await expect(page.locator('[data-rename-tip]')).toHaveCount(0);
+  await ctx.close();
+  const s2 = await seededPhone(browser, { ...PLACEHOLDER, id: 'ev-tip2', name: 'Rose’s Thanksgiving' });
+  await expect(s2.page.locator('[data-rename-tip]')).toBeVisible();
+  await s2.page.reload(); await settled(s2.page); await s2.page.waitForTimeout(500);
+  await expect(s2.page.locator('[data-tt-title]')).toBeVisible();
+  await expect(s2.page.locator('[data-rename-tip]'), 'shown once, not dismissed: still not again').toHaveCount(0);
+  await s2.ctx.close();
+});
+
+test('4: the invite step’s “What do you call it?” is the same rename field', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const { ctx, page } = await seededPhone(browser, { ...PLACEHOLDER, id: 'ev-invite-name' });
+  await openSectionByName(page, 'Guests');
+  await sheetSettled(page);
+  await page.locator('.sheet button').filter({ hasText: /^Copy the invite$/ }).first().click();
+  const ask = page.locator('[data-outward-name]');
+  await expect(ask).toBeVisible({ timeout: 10_000 });
+  const f = ask.locator('[data-rename="invite"] input');
+  await expect(f).toHaveAttribute('aria-label', 'The event’s name');
+  await expect(f).toHaveAttribute('placeholder', 'My Thanksgiving Hosting');
+  await f.fill('Rose’s Thanksgiving');
+  await ask.getByRole('button', { name: 'Save the name' }).click();
+  await expect(page.locator('[data-outward-name]')).toHaveCount(0);
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].name);
+  expect(stored).toBe('Rose’s Thanksgiving');
   await ctx.close();
 });

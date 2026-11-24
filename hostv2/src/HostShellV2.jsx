@@ -370,7 +370,8 @@ import { listTotal, allInTotal } from '@app/lib/planCosts';
 import { landingStage } from '@app/lib/landingStage';
 import { planPartsProgress, planPartsLine } from '@app/lib/planProgress';
 import { moneyFigures, headroomLabel, MONEY_LABELS } from '@app/lib/moneyFigures';
-import { outwardGaps, outwardPrompt } from '@app/lib/outwardReady';
+import { outwardGaps, outwardPrompt, isPlaceholderName } from '@app/lib/outwardReady';
+import EventNameField from './EventNameField.jsx';
 import { eventNameFrom } from '@app/lib/eventName';
 import { timeAnchorFields } from '@app/lib/eventAnchor';
 import { startTimeFieldWords } from '@app/lib/eventWhen';
@@ -3983,6 +3984,48 @@ export default function HostShellV2() {
     if (eventId) { try { localStorage.setItem(LS_LAST_EVENT, eventId); } catch {} }
   }, [eventId, welcome, stage, eventIsTheHostsOwn]);
   useEffect(() => { appRef.current?.scrollTo({ top: 0 }); }, [stage, eventId]);
+  // ── RENAME IN PLACE (owner, 11/24/2026, renders 4a, 4b, 12a, 12b) ────────
+  // 'title' (the board's title becomes the field) or 'sheet' (the events
+  // sheet's current row does). One field, EventNameField, for both and for
+  // the invite step. A long press (about 500ms) on touch or a double-click on a
+  // desktop opens it on the title; a single tap still opens the events sheet.
+  const [renaming, setRenaming] = useState(null);
+  useEffect(() => { setRenaming(null); }, [eventId]);
+  const renameTo = (v) => { setRenaming(null); setRenameTip(false); patchEvent({ name: v }, 'Named “' + v + '”.'); };
+  const titlePress = useRef({ timer: null, clickTimer: null, fired: false, x: 0, y: 0, type: '' });
+  const titleHandlers = {
+    onPointerDown: (e) => {
+      const p = titlePress.current;
+      p.fired = false; p.type = e.pointerType; p.x = e.clientX; p.y = e.clientY;
+      clearTimeout(p.timer); p.timer = null;
+      if (e.pointerType === 'mouse') return;
+      p.timer = setTimeout(() => { p.timer = null; p.fired = true; setSheet(null); setRenaming('title'); }, 500);
+    },
+    onPointerMove: (e) => { const p = titlePress.current; if (p.timer && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 10) { clearTimeout(p.timer); p.timer = null; } },
+    onPointerUp: () => { const p = titlePress.current; clearTimeout(p.timer); p.timer = null; },
+    onPointerCancel: () => { const p = titlePress.current; clearTimeout(p.timer); p.timer = null; },
+    // A held finger would otherwise raise the system's copy menu over the field.
+    onContextMenu: (e) => { if (titlePress.current.type !== 'mouse') e.preventDefault(); },
+    onClick: (e) => {
+      const p = titlePress.current;
+      if (p.fired) { p.fired = false; return; }
+      clearTimeout(p.clickTimer); p.clickTimer = null;
+      if (e.detail >= 2) { setSheet(null); setRenaming('title'); return; }
+      // A mouse's first click waits out a double-click; a tap and a key do not.
+      if (p.type === 'mouse' && e.detail === 1) { p.clickTimer = setTimeout(() => { p.clickTimer = null; setSheet({ kind: 'events' }); }, 260); return; }
+      setSheet({ kind: 'events' });
+    },
+  };
+  // THE ONE-TIME TIP (render 12b): "Tip: press and hold the name to rename it",
+  // once per device, on a touch screen (the words are a touch gesture), on her
+  // own event; dismissible, then never again. Stored the first time it shows.
+  const [renameTip, setRenameTip] = useState(() => { try { return !localStorage.getItem('ngw-rename-tip-seen'); } catch { return false; } });
+  const touchScreen = (() => { try { return window.matchMedia('(pointer: coarse)').matches; } catch { return false; } })();
+  const renameTipShown = renameTip && touchScreen && eventIsTheHostsOwn && !renaming;
+  useEffect(() => {
+    if (!renameTipShown) return;
+    try { localStorage.setItem('ngw-rename-tip-seen', new Date().toISOString()); } catch { /* shown this visit only */ }
+  }, [renameTipShown]);
 
   // ── ASK THE SERVER WHETHER THIS EVENT HOLDS A PASS ─────────────────────────
   // Before this, the only answer was `ev.passPurchased` — written by the paid
@@ -12575,11 +12618,28 @@ export default function HostShellV2() {
                           {/* The weather pill lands here when it would show (near the date). */}
                           <span className="tt-wx-slot" ref={setTtWxSlot} />
                         </div>
-                        <button type="button" className="tt-title" data-tt-title aria-haspopup="dialog" title="Your events"
-                          onClick={() => setSheet({ kind: 'events' })}>
-                          <span className="tt-name">{title || e.type || 'This event'}</span>
-                          <span className="tt-caret" aria-hidden="true">▾</span>
-                        </button>
+                        {renaming === 'title' ? (
+                          <div className="tt-title-row tt-renaming">
+                            <EventNameField mode="title" name={event.name} onSave={renameTo} onCancel={() => setRenaming(null)} />
+                          </div>
+                        ) : (
+                          <div className={'tt-title-row' + (isPlaceholderName(event) ? ' has-nameit' : '')}>
+                            <button type="button" className="tt-title" data-tt-title aria-haspopup="dialog" title="Your events" {...titleHandlers}>
+                              <span className="tt-name">{title || e.type || 'This event'}</span>
+                              <span className="tt-caret" aria-hidden="true">▾</span>
+                            </button>
+                            {/* While the name is one creation filled in, a quiet way to name it. */}
+                            {isPlaceholderName(event) && (
+                              <button type="button" className="tt-nameit" data-name-it onClick={() => { setSheet(null); setRenaming('title'); }}>Name it</button>
+                            )}
+                          </div>
+                        )}
+                        {renameTipShown && (
+                          <div className="tt-tip" data-rename-tip>
+                            <span>Tip: press and hold the name to rename it</span>
+                            <button type="button" className="tt-tip-x" aria-label="Dismiss the tip" onClick={() => setRenameTip(false)}>×</button>
+                          </div>
+                        )}
                         {sub && <div className="tt-sub">{sub}</div>}
                       </>
                     );
@@ -17185,10 +17245,8 @@ export default function HostShellV2() {
                     <div style={{ marginTop: 'var(--sp-3)' }} data-outward-name>
                       <div className="f-name">What do you call it?</div>
                       <p className="grounding" style={{ margin: '2px 0 var(--sp-2)' }}>Everyone you send it to sees this name.</p>
-                      <form className="actions-row" style={{ alignItems: 'center' }} onSubmit={(e) => { e.preventDefault(); const v = String(new FormData(e.currentTarget).get('evname') || '').trim(); if (v) patchEvent({ name: v }, 'Named “' + v + '”.'); }}>
-                        <input className="field" name="evname" aria-label="The event’s name" placeholder={event.name || ''} />
-                        <button className="mini" type="submit">Save the name</button>
-                      </form>
+                      {/* The one rename field (EventNameField), as on the board. */}
+                      <EventNameField mode="invite" name={event.name} label="The event’s name" saveLabel="Save the name" onSave={renameTo} />
                     </div>
                   )}
                   {has('place') && !has('address') && (
@@ -21747,6 +21805,16 @@ export default function HostShellV2() {
                       // invalid and reads unpredictably to a screen reader — the same
                       // defect the "our pick" badge had.
                       const isPast = d !== null && d < 0;
+                      // RENAME, ON THE CURRENT EVENT (owner, render 4b, 11/24/2026):
+                      // the same field as the board's title, in place of the row.
+                      if (isActive && renaming === 'sheet') return (
+                        <Fragment key={e.id}>
+                          <div className="frow evname-row">
+                            <EventNameField mode="sheet" name={e.name} saveLabel="Save" onSave={renameTo} onCancel={() => setRenaming(null)} />
+                            <span className="v-meta">{[eventTypeLabel(e), venueFor(e).name].filter(Boolean).join(' · ')}</span>
+                          </div>
+                        </Fragment>
+                      );
                       return (
                         <Fragment key={e.id}>
                         <button className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: rowEnter(i, 30) }}
@@ -21757,6 +21825,10 @@ export default function HostShellV2() {
                           </span>
                           <span className="of" style={{ whiteSpace: 'nowrap' }}>{d === null ? 'no date' : d === 0 ? 'today' : d < 0 ? `${-d}d ago` : 'in ' + d + 'd'}</span>
                         </button>
+                        {isActive && (
+                          <button className="mini evrename" data-rename-open onClick={() => setRenaming('sheet')}
+                            aria-label={'Rename ' + (e.name || 'this event')}>Rename</button>
+                        )}
                         {isPast && (
                           <button className="mini runagain" onClick={() => runItAgain(e)}
                             aria-label={'Start a new event from ' + (e.name || 'this one')}>
