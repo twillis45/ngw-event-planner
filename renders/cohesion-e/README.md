@@ -53,7 +53,7 @@ The other widths are in `measure.json`. Each holds 3 → 1 with no floor failure
   - **The cause, read from code:** `src/lib/landingStage.js` returns `'day'` during the event and `'plan'` in every other case, including after it. Its own comment says "Before it, the day before it, after it: the plan." `'after'` is in `STAGES` but is never returned.
   - **Proposed:** for her own plan, once the event's last day is past (`isPastEvent`), return `'after'`. Samples keep landing on Plan, as they do on the day itself (audit caveat, `ownPlan` false). A tap on Plan is still her own choice and is not a landing.
   - **Open question for the owner:** should After stay the landing indefinitely, or only for a window such as 30 days? I recommend indefinitely, until she starts a new plan, because the thank-yous and recap stay the work.
-  - **Tests:** the jest tests for `landingStage`, plus e2e specs that boot an own plan with a past date and expect Plan. Grep `landingStage` and `isPastEvent` in `e2e/` before building. Add a spec: own plan, clock two days after → After, at 390 and 1440.
+  - **Tests:** jest `oneRuleForWhereSheLands.test.js` (it may pin "after it: the plan") and `textGateRatchet.test.js`. Also any e2e spec that boots an own plan with a past date and expects Plan; grep `isPastEvent` and past dates in `e2e/` before building. Add a spec: own plan, clock two days after → After, at 390 and 1440.
 
 ## e2e specs it would touch
 
