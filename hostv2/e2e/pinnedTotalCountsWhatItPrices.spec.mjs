@@ -144,7 +144,8 @@ test('ticking a SUPPLY moves the pinned count — it used to be invisible to it'
   expect(await supplies.count()).toBeGreaterThan(0);
   const row = supplies.locator('.frow:not(.skipped)').first();
   await row.scrollIntoViewIfNeeded();
-  await row.click();
+  // The check is its own target since 11/24/2026; the rest of the row opens it.
+  await row.locator('.fcheck-hit').click();
   await settled(page);
 
   const after = readTally(await page.locator('.ftotal .ftotal-l').first().innerText());
