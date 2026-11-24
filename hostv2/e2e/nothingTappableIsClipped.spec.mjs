@@ -9,6 +9,8 @@
 // the hero, no ancestor that clips horizontally sits within 12px of its edge.
 import { test, expect } from '@playwright/test';
 import { settled, dateIn } from './fixtures.mjs';
+// The one clip probe (cohesion batch B): the sweep over every sheet uses it too.
+import { clippedSideways } from './floorProbes.mjs';
 
 const EV = { id: 'ev-noclip', name: 'Rosa’s Harvest Dinner', type: 'Dinner Party', date: dateIn(24), startTime: '18:00', startTimeSource: 'host',
   venue: 'Home', venueKind: 'home', venueAddress: '42 Elm Ct, Springfield, VA 22150', venueCity: 'Springfield', venueState: 'VA',
@@ -37,26 +39,15 @@ for (const v of VIEWS) {
     await settled(page);
     await expect(page.locator('h2.ask').first()).toBeVisible({ timeout: 15_000 });
     await page.waitForTimeout(800);
-    const bad = await page.evaluate((ring) => {
-      const out = [];
-      const hero = document.querySelector('.escreen.on .hero-card') || document.querySelector('.hero .hero-card');
-      if (!hero) return ['no hero card'];
-      const btns = [...hero.querySelectorAll('button')].filter((b) => b.getClientRects().length && getComputedStyle(b).visibility !== 'hidden');
-      if (!btns.length) return ['no hero buttons'];
-      for (const b of btns) {
-        const r = b.getBoundingClientRect();
-        for (let a = b.parentElement; a && a !== document.body; a = a.parentElement) {
-          const s = getComputedStyle(a);
-          if (s.overflowX === 'visible') continue;
-          const ar = a.getBoundingClientRect();
-          if (r.left - ar.left < ring || ar.right - r.right < ring) {
-            out.push(`"${(b.innerText || b.getAttribute('aria-label') || '').trim().slice(0, 24)}" clipped by .${String(a.className).split(' ')[0]} (overflow-x ${s.overflowX}; ${Math.round(r.left - ar.left)}px left, ${Math.round(ar.right - r.right)}px right)`);
-          }
-          if (a.classList.contains('escreen')) break;
-        }
-      }
-      return out;
-    }, RING);
+    // Premises: the hero card is there, and it has buttons to judge.
+    const HERO = '.escreen.on .hero-card, .hero .hero-card';
+    const n = await page.evaluate((sel) => {
+      const h = document.querySelector(sel);
+      return h ? [...h.querySelectorAll('button')].filter((b) => b.getClientRects().length && getComputedStyle(b).visibility !== 'hidden').length : -1;
+    }, HERO);
+    expect(n, 'premise: a hero card').toBeGreaterThanOrEqual(0);
+    expect(n, 'premise: hero buttons to judge').toBeGreaterThan(0);
+    const bad = await page.evaluate(clippedSideways, [HERO, RING, { press: 'button', stopAt: '.escreen', firstRoot: true }]);
     expect(bad, 'buttons whose ring a clipping ancestor would cut').toEqual([]);
     await ctx.close();
   });

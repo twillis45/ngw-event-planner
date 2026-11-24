@@ -29,6 +29,48 @@ Before that, 2026-11-02 (sixtieth entry:
 - **Owner calls:** "Hi Aunt Rosa," not "Hi Rosa,"; Android's share-sheet Copy takes the whole message, which is why "Copy the link" existed (the merged button copies only the link where there is no share sheet); a told-only guest makes the list read "Invite 1 new guest"; the as-written voice alone opens with her page line (the other voices keep their own openings; warmer already used it).
 - 🔴 **Trap:** e2e servers here ran on 72xx from prebuilt bundles (`send-tools/build.sh`, `mkcfg.sh`); rebuild every bundle after a source change or the run tests stale code.
 
+## November 24, 2026 — cohesion batch B, part 2: the vendor detail built as approved; the sweep's clip rule
+
+- **Ask (the parent, relaying the owner, 11/24/2026):** build the vendor detail as rendered on `renders/cohesion-b`, with two fixes: (1) the header keeps the name on one line and the meta on one line, with price and status on the right; (2) Paperwork's outlined buttons go quiet, so only "Send … the details" is lit. Then a sweep rule from an owner report: nothing tappable may sit within 12px of an ancestor that clips sideways.
+- **Built (`HostShellV2.jsx` vendor card, `styles.css`):**
+  - Labeled groups: Who they are · Where it stands · Reach them · The day · Money · Paperwork · What they said. A friend helping out has no status, money or paperwork groups, and each label carries its axis's sentence.
+  - Name and "What they do" are labeled fields at the top, and every field has a visible label.
+  - Call, Text and Email are tel:/sms:/mailto: links, with "Nothing is sent from here".
+  - One lit `.cta`, "Send … the details", rendered on the open card only (a closed card's fold sits in the DOM at opacity 0).
+  - Paperwork's actions are `.vd-link`: quiet, with a 44px tap area.
+  - "Remove <name> from this event" sits alone at the bottom, with Undo.
+  - The header is two rows (`.vc-top`, `.vc-sub`). At 390 the status wraps to its own right-hand line.
+- **Tests:** `theVendorDetailOpensInGroups.spec.mjs` covers groups in order, the helper, the name field, the contact links, one lit action, Remove + Undo, and the header measured at 390/834/1024/1440. It was red first (16 failing).
+  - The specs that pinned the old layout follow the new names: `whereThisVendorStands` (the block is the "Where it stands" group; the six axes are checked per group; the next step is `[data-vnext]`), `vendorRemovalUndo`, `vendorEmailIntake`, `aVendorDraftTextsTheVendor`, `aWarmNoteFitsTheVendor` ("Draft a note instead").
+- **The clip rule** (`clippedSideways` in `floorProbes.mjs`) runs at mobile, tablet-tall, landscape and 1000×690. A chip partly scrolled out of a scroller is exempt; so is a scroller's far edge while it still has more to scroll.
+  - Fixed: the vendor fold clips only on y; `.rtool-lens` (vendors AND guests) and `.wstrip` keep 12px inside.
+  - Listed: the board's hero (3 lines), fixed upstream on `ux-integrate` cb91bc95. **Whoever merges that deletes those three lines in `cohesionSweepKnown.mjs`, or the sweep fails.**
+- **Built renders:** `renders/cohesion-b` (c9396861), `vendor-detail-built__*.png`.
+- **Gates (measured on 05ea11d9):**
+  - Root jest: 936 suites, 14,078 passed, 1 skipped.
+  - hostv2 vitest: 166 passed.
+  - `e2e:build`: exit 0.
+  - E2E: 49 specs (vendor, details, The Day, taps, lit buttons, demo, pass, the guest toolbar), at mobile + desktop + tablet-tall + landscape, `--workers=4 --retries=0`, two chunks: 1,057 passed, 198 skipped, 0 failed.
+  - Backend: not touched.
+- 🔴 **Trap:** `spacingLadder` counts off-ladder px in `styles.css`, so a new `10px` fails it. Use `--sp-*`.
+
+## November 24, 2026 — cohesion batch B (vendors): the every-sheet sweep, the pills, the words; the vendor detail redesign waits on renders
+
+- **Ask (the parent session, for the owner):** batch B of the owner-approved cohesion audit (`docs/audits/2026-11-24_cohesion/AUDIT.md` on `audit/cohesion-1124`), systemic: a sweep over EVERY sheet first, then the vendor fixes. Layout changes stop at renders.
+- **The sweep (`hostv2/e2e/everySheetKeepsTheCohesionRules.spec.mjs`, probes in `floorProbes.mjs`).** Opens the board, all 20 section doors and an opened vendor with its status picker on Wanda's 50th, at mobile, desktop, tablet-tall and landscape, clock fixed. Rule 9 (44x44, touch only), rule 3 (remove/delete/skip last, alone, named), rule 2 (no field labeled only by a placeholder). What it still finds is in `cohesionSweepKnown.mjs`, by batch, asserted EXACTLY per sheet and project: a new violation fails, and so does a fixed one still listed. `everyTapIsFortyFourSquare` now imports the same tap probe.
+- **First run, red:** 20 failing (sheet x project). Rule 9: the status picker pills (audit #9). Rule 3: vendor "Remove from this event" not last and not named (#7). Rule 2: the vendor fields (#8), Venue's field, Make it yours' 8 fields, Ask's field.
+- **Fixed here:**
+  - #9: `.vc-statuspick button.vc-pill` is 44 tall for real. Rule 9 is now clean on every sheet at every touch geometry.
+  - #23: vendorIntelligence speaks host words ("You have a way to reach them", "Nothing to settle until the event is over", "5 of 6 look good · 1 can't be checked yet (after the event)"); "National prices · no area set"; "Download the vendor list as a spreadsheet"; no "high-ROI" in two playbooks. Test: `src/lib/__tests__/theVendorAxesSpeakHostWords.test.js`.
+  - #61: the next step names the open row instead of repeating its sentence; the verdict's sentence shows once.
+  - #24: the vendor page, its Copy/Print, the toasts, the QR sheet, the aria labels and the Create pricing line (`passGate.js`) all say "the details", as the host's button does.
+  - #21: The Day's people-you're-counting-on row (`dayBefore.js`) counts hired vendors (`hiredVendors`), the population the board and the sheet read.
+  - E2E: `theVendorsSpeakHostWords.spec.mjs` (no engine words on the sheet or any opened card; each sentence once; the vendor page's name).
+- **Waiting on the owner (renders on `renders/cohesion-b`, never merges):** the vendor detail redesign (#7, #8, #22, and #36's list truncation for reference). The sweep's batch B lines delete when it is built.
+- **Not changed, owner's call:** #55, the vendor page's "Hosting something of your own? Plan it free" line, is a Marketing & Pricing Board decision (11/18/2026) pinned by `planYoursSaysWhereItCameFrom`. The audit calls it P3 under rule 15; removing it needs the owner to overrule the board.
+- **Gates (measured):** root jest 936 suites, 14,078 passed, 1 skipped. hostv2 vitest 18 files, 166 passed. `e2e:build` exit 0. E2E, 45 specs (vendor, details, The Day, taps, lit buttons, demo, pass), mobile + desktop + tablet-tall + landscape, `--workers=4 --retries=0`, two chunks: 963 passed, 84 skipped, 4 failed in the first chunk (the sweep's two renamed aria labels; list updated, rerun 88 of 88 passed). Backend not touched.
+- 🔴 **Trap: a style rule for a phantom class must shrink `classNameHasRule`'s baseline** in the same commit (`.vc-statuspick`).
+
 ## November 24, 2026 (latest) — every wide board carries its event name and the four stages
 
 - **Owner report:** iPad landscape and desktop had no Create · Plan · The Day · After in the side menu, and iPad landscape had no event name in the header.

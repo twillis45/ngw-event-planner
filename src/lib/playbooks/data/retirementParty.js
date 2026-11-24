@@ -247,7 +247,7 @@ const retirementParty = {
     { category: 'AV / Slideshow Tech', required: false, altToDIY: 'Some venues rent a mic + screen (~$75-200); a borrowed Bluetooth speaker + a wheeled-in TV is the DIY alt', when: 'T-14d', costRange: [75, 250], costUnit: 'flat' },
     // "at home" only when the host answered home (owner's demo, 11/15/2026: a VFW
     // event was told "after a bar + buffet at home").
-    { category: 'Cleaning', required: false, altToDIY: 'A post-party cleaner (~$120-180) is high-ROI host sanity after a bar + buffet', copyByAnswer: { venue: { 'Host home': 'A post-party cleaner (~$120-180) is high-ROI host sanity after a bar + buffet at home', 'Backyard / outdoor': 'A post-party cleaner (~$120-180) is high-ROI host sanity after a bar + buffet at home' } }, when: 'T-7d', costRange: [120, 180], costUnit: 'flat' },
+    { category: 'Cleaning', required: false, altToDIY: 'A post-party cleaner (~$120-180) saves you the cleanup after a bar + buffet', copyByAnswer: { venue: { 'Host home': 'A post-party cleaner (~$120-180) saves you the cleanup after a bar + buffet at home', 'Backyard / outdoor': 'A post-party cleaner (~$120-180) saves you the cleanup after a bar + buffet at home' } }, when: 'T-7d', costRange: [120, 180], costUnit: 'flat' },
     { category: 'DJ / Music', required: false, altToDIY: 'A DJ (~$300-600) reads the room, MCs, and cues the tribute\'s music beats; a curated playlist through a real Bluetooth speaker is the free DIY alt', when: 'T-14d', costRange: [300, 600], costUnit: 'flat' },
   ],
 

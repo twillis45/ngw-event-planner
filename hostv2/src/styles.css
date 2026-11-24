@@ -3372,6 +3372,11 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    Monogram cards, semantic status pills, alert CHIPS not paragraphs,
    workstream strip, tap-to-expand with a real motion curve. */
 .wstrip{display:flex; gap:var(--sp-2); overflow-x:auto; padding:2px 0 var(--sp-3); scrollbar-width:none}
+/* NOTHING TAPPABLE IS CLIPPED (owner report, 11/24/2026). A sideways scroller
+   clips, and its first and last chips sat flush with its edges, so their
+   focus and attention rings (12px out) were cut. The scroller gives itself
+   12px inside and takes it back outside, so the chips stay where they were. */
+.wstrip, .rtool-lens{ padding-inline:var(--sp-3); margin-inline:calc(-1 * var(--sp-3)); scroll-padding-inline:var(--sp-3); }
 .wstrip::-webkit-scrollbar{display:none}
 .wchip{flex-shrink:0; display:flex; flex-direction:column; gap:2px; align-items:flex-start;
   border:1px solid var(--line-soft); background:var(--bg-band); border-radius:var(--r-row);
@@ -3423,6 +3428,36 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .vc-amt .amt{font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; color:var(--ink)}
 .vc-paid{font-size:var(--t-tag); font-weight:650; color:var(--ok)}
 .vc-id{min-width:0; flex:1}
+/* THE HEADER'S TWO ROWS (owner's fix 1 to the approved vendor renders,
+   11/24/2026). Row one: the name, then the price on the right. Row two: the
+   meta on ONE line, then the status pushed right. A flex line breaks on the
+   items' natural widths, so where both don't fit (390: 240px of meta plus a
+   107px pill in 282) the pill wraps to its own right-hand line instead of the
+   meta wrapping, and the name never shares its line with the status. */
+.vc-top{display:flex; align-items:baseline; gap:var(--sp-2); min-width:0}
+.vc-top .vc-name{flex:1 1 auto; min-width:0}
+.vc-sub{display:flex; flex-wrap:wrap; align-items:center; column-gap:var(--sp-2); row-gap:var(--sp-1); margin-top:1px}
+.vc-sub .vc-cat{flex:0 1 auto; min-width:0; margin-top:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.vc-sub .vc-pill{margin-left:auto}
+/* THE OPENED VENDOR'S GROUPS (cohesion batch B, approved renders). */
+.vd-group{margin:0 0 var(--sp-4)}
+.vd-group-label{display:flex; justify-content:space-between; align-items:baseline; gap:var(--sp-2)}
+.vd-group-state{text-transform:none; letter-spacing:0; font-weight:600; color:var(--muted); text-align:right}
+.vd-group-state.warn{color:var(--warn)}
+.vd-field{display:block; margin:0 0 var(--sp-3)}
+.vd-label{display:block; margin:0 0 var(--sp-1)}
+.vd-input{width:100%; max-width:none; box-sizing:border-box; font-size:var(--t-input)}
+/* Paperwork's actions are QUIET row-trailing links (owner's fix 2): the one
+   lit "Send … the details" is the only thing on the card that asks to be
+   pressed. Quiet, not small: the tap area keeps the 44px floor. */
+.vd-link{background:none; border:none; color:var(--steel-soft); font:inherit; font-size:var(--t-meta); font-weight:650;
+  min-height:var(--tap-min); min-width:var(--tap-min); padding:0 var(--sp-2); display:inline-flex; align-items:center;
+  justify-content:center; cursor:pointer; text-decoration:none}
+.vd-link:disabled{opacity:.6; cursor:wait}
+.vd-send{margin:var(--sp-1) 0 var(--sp-4)}
+.vd-send-cta{width:100%}
+.vd-remove{border-top:1px solid var(--line); padding-top:var(--sp-3); margin-top:var(--sp-2)}
+.vd-remove-btn{width:100%; min-height:var(--tap-min); color:var(--danger-text, var(--danger))}
 /* A VENDOR'S NAME IS ITS IDENTITY (click-through audit 2026-07-28). This was
    white-space:nowrap + ellipsis, so on a phone — where the status pill and the
    money take the right of the card — real names clipped mid-word: "Oxon Hill
@@ -3455,7 +3490,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
 .vc-chip.warn{color:var(--warn); background:var(--warn-tint)}
 .vc-chip.ok{color:var(--ok); background:var(--ok-tint)}
 .vc-chip.quiet{color:var(--progress); background:var(--progress-tint)}/* audit S1 */
-.vc-more{max-height:0; opacity:0; overflow:hidden; overflow:clip;
+.vc-more{max-height:0; opacity:0; overflow:hidden; overflow-x:visible; overflow-y:clip;
   transition:max-height var(--ms-slow) var(--ease-standard), opacity var(--ms-slow) var(--ease-standard)}
 /* CLIP, NOT HIDDEN (11/23/2026). `overflow:hidden` makes the fold a scroll
    container. While the card is still opening, anything that brings a control
@@ -3466,7 +3501,11 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
    so the content slid under the finger and the tap landed on the card, not
    on "Send … the details". `clip` cuts the same way but cannot be scrolled,
    so a control stays where it was drawn until the reveal reaches it.
-   `hidden` stays first as the fallback for a browser without `clip`. */
+   `hidden` stays first as the fallback for a browser without `clip`.
+   SIDEWAYS IT DOES NOT CLIP AT ALL (owner report, 11/24/2026): the fold's
+   fields and buttons sit flush with its edges, and a horizontal clip cut
+   their focus and attention rings. The reveal only ever travels down, so
+   only the y axis clips. */
 /* WAVE-B: headroom for the new arrival/money row + COI expiry field —
    340px clipped the expanded card once the write affordances landed.
    VENDOR-BRIEF-AUTHORING: 640px clipped it again once the on-site-contact/
@@ -5627,6 +5666,14 @@ button.vc-pill::after{
   top:50%; transform:translateY(-50%); height:44px;
 }
 @media (hover:hover) and (pointer:fine){ button.vc-pill::after{ content:none; } }
+/* THE STATUS PICKER'S PILLS ARE 44 TALL FOR REAL (cohesion audit #9, rule 9,
+   11/24/2026). The invisible 44px expander above works for one pill alone; in
+   the picker five sit side by side and wrap, each row's expander laps over the
+   next, and the later pill wins the tap. Measured: 16px of "Deciding" was its
+   own on the phone, 35 on an iPad, so a wrong status was likely. In the picker
+   the pills ARE the choice, so they take the full height, and the rows clear
+   each other. The pill on the card's face keeps its quiet size. */
+.vc-statuspick button.vc-pill{ min-height:var(--tap-min); display:inline-flex; align-items:center; }
 
 /* ── THE RAIL EARNS ITS WIDTH, IT DOES NOT TAKE IT ──────────────────────────
    VIEWPORT_PORT_RULING step 4 asks for the 1280 stage cap to be raised. Doing

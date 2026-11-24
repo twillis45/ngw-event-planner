@@ -18,7 +18,7 @@ test('a vendor can be removed from this event and restored with the existing Und
   await boot(page, base({ vendors: [{ id: 'v-c5', category: 'DJ', name: 'DJ Sample', status: 'Considering' }] }));
   await openSectionByName(page, 'People you’re hiring');
   await page.locator('.vcard[data-vid="v-c5"] .vc-head').click();
-  const remove = page.getByRole('button', { name: 'Remove vendor DJ Sample', exact: true });
+  const remove = page.getByRole('button', { name: 'Remove DJ Sample from this event', exact: true });
   await expect(remove).toBeVisible();
   if (page.viewportSize().width <= 480) expect((await remove.boundingBox()).height).toBeGreaterThanOrEqual(44);
   await page.locator('.vcard[data-vid="v-c5"]').evaluate(el => Promise.allSettled(el.getAnimations({ subtree: true }).map(a => a.finished)));

@@ -183,3 +183,31 @@ describe('the copy tells the truth about WHICH day it is', () => {
     expect(l).not.toMatch(/tomorrow/i);
   });
 });
+
+// ── ONE VENDOR COUNT (cohesion audit #21, rule 12, 11/24/2026) ───────────────
+// The board read "Vendors 1 of 7 confirmed · 3 booked" and the sheet "Booked
+// so far 3 of 7", both from vendorCounts (hired vendors only, Wanda audit
+// P0-9), while The Day read "6 of 9 still need a confirm": its denominator
+// still counted the two friends helping out, who have no booking to confirm.
+test('the people-you’re-counting-on row counts the hired vendors the board and the sheet count', () => {
+  const { vendorCounts } = require('../workstreams');
+  const vendors = [
+    { id: 'v1', name: 'Elm Court Catering', category: 'Catering', status: 'Confirmed', arrivalTime: '15:00' },
+    { id: 'v2', name: 'Springfield Sound', category: 'DJ', status: 'Deposit Paid', arrivalTime: '16:00' },
+    { id: 'v3', name: 'Maple Rentals', category: 'Rentals', status: 'Quoted' },
+    { id: 'h1', name: 'Cousin Dana — folding tables', category: 'Rentals', isInformal: true },
+    { id: 'h2', name: 'Pastor Lee — the blessing', category: 'Other', isInformal: true },
+  ];
+  const row = buildDayBeforePlan(ev({ vendors })).sections.find((s) => s.key === 'vendors');
+  expect(vendorCounts({ vendors }).total).toBe(3);
+  expect(row.detail).toBe('2 of 3 still need a confirm, arrival time, or paperwork.');
+  expect(row.open).toBe(2);
+  expect(row.route).toEqual({ tab: 'Vendors', vendorId: 'v2' });
+});
+
+test('a plan with only friends helping has no hired-vendor row', () => {
+  const plan = buildDayBeforePlan(ev({ vendors: [
+    { id: 'h1', name: 'Cousin Dana — folding tables', category: 'Rentals', isInformal: true },
+  ] }));
+  expect(plan.sections.find((s) => s.key === 'vendors')).toBeUndefined();
+});

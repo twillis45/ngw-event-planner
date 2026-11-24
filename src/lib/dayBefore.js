@@ -15,7 +15,7 @@ import { playbookFoodPlan, playbookCapacity, effectiveRos, guestCountResolved } 
 import { linesLeftToBuy } from './itemCounts';
 import { rainPlanStatus, RAIN_PLAN_TARGET } from './weather';
 import { deriveHelperResponsibilities } from './helperResponsibility';
-import { isVendorConfirmed } from './workstreams';
+import { isVendorConfirmed, hiredVendors } from './workstreams';
 import { effectiveDone } from './taskEngine';
 import { daysUntil } from './dates';
 import { byGuestMode } from './guestMode';
@@ -87,7 +87,11 @@ export function buildDayBeforePlan(event, now = new Date()) {
   // RECON-I5: the "of N" denominator is the rollup's (workstreams.js counts every
   // vendor entry) — the old unnamed-vendor filter made this row's denominator
   // disagree with the vendor readiness rollup on the same screen.
-  const vendors = (Array.isArray(ev.vendors) ? ev.vendors : []).filter(Boolean);
+  // ONE VENDOR COUNT (cohesion audit #21, 11/24/2026): the HIRED vendors,
+  // the same population as vendorCounts, which the board and the hiring sheet
+  // read. A friend helping out has no booking to confirm (Wanda audit P0-9),
+  // and counting them here made The Day say "of 9" beside the board's "of 7".
+  const vendors = hiredVendors(ev).filter(Boolean);
   // SSOT #1: this row's own copy is "N to lock in" / "Everyone you hired is locked
   // in", so its status bar is isVendorConfirmed (fully locked in), NOT isVendorBooked
   // — a Deposit-Paid vendor with its deposit paid, COI clear and arrival time set

@@ -527,10 +527,10 @@ function VendorReplyParserV2({ vendor, event, writeVendor, signedIn, onSignIn })
           {onSignIn && <button className="mini" onClick={onSignIn}>Sign in</button>}
         </div>
       ) : (<>
-      <div style={{ fontSize: 12, color: 'var(--carbon-muted)', marginBottom: 8, lineHeight: 1.5 }}>
+      <label htmlFor={'vreply-' + (vendor && vendor.id)} style={{ display: 'block', fontSize: 12, color: 'var(--carbon-muted)', marginBottom: 8, lineHeight: 1.5 }}>
         Paste their email or text. We’ll pull out times, contacts, counts, and payment status to review; nothing saves until you apply it.
-      </div>
-      <textarea className="field" rows={3}
+      </label>
+      <textarea id={'vreply-' + (vendor && vendor.id)} className="field" rows={3}
         style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 10px' }}
         placeholder="e.g. We'll arrive at 2pm, deposit received, final count 85. Day-of contact Dana, 301-555-0134."
         value={replyText} onChange={e => setReplyText(e.target.value)} aria-label="Paste the vendor's message" />
@@ -4768,6 +4768,7 @@ export default function HostShellV2() {
   // tap did, or jump straight to "Confirmed"). This opens an explicit picker of
   // the whole ladder; the pill toggles it, a chip sets the status directly.
   const [statusPickFor, setStatusPickFor] = useState(null); // vendor id whose picker is open
+  const [vendorReplyOpen, setVendorReplyOpen] = useState(null); // vendor id whose paste-their-reply box is open
   // (rsvpPickFor retired 2026-08-07: the reply picker lives in the guest's own
   // disclosure now, so `guestOpen` is the only open/closed state for that row.)
   const setVendorStatus = (v, status) => {
@@ -4897,8 +4898,8 @@ export default function HostShellV2() {
       const gate = briefAllowed(event, v.id);
       if (!gate.allowed) {
         toast(gate.reason === 'second-vendor'
-          ? 'Your free brief went to your first vendor — the pass unlocks sharing with every vendor on this event.'
-          : 'Sharing vendor briefs on this event takes the One-Event Pass.');
+          ? 'Sending the details is free for your first vendor — the pass unlocks it for every vendor on this event.'
+          : 'Sending vendors the details on this event takes the One-Event Pass.');
         setSheet({ kind: 'pass' });
         return;
       }
@@ -10506,7 +10507,7 @@ export default function HostShellV2() {
                     right where the time lives, not a separate row below. */}
                 {!startTimeIsConfirmed(event) && String(event.startTime || '').trim() && (
                   <button className="mini" onClick={() => writeStartTime({ confirm: true },
-                    'Start time confirmed — your invite and vendor briefs can name it now.')}>
+                    'Start time confirmed — your invite and the details you send vendors can name it now.')}>
                     that’s right
                   </button>
                 )}
@@ -10518,7 +10519,7 @@ export default function HostShellV2() {
               {!startTimeIsConfirmed(event) && String(event.startTime || '').trim() && (
                 <>
                   <p className="grounding" style={{ width: '100%', margin: '6px 0 0' }}>
-                    <b>We set this one, not you.</b> {event.startTimeWhy || ''} Your invite and your vendor briefs won’t name an hour until you say it’s right (tap “that’s right” by the time above).
+                    <b>We set this one, not you.</b> {event.startTimeWhy || ''} Your invite and the details you send vendors won’t name an hour until you say it’s right (tap “that’s right” by the time above).
                   </p>
                 </>
               )}
@@ -17610,7 +17611,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'invite-design' ? 'Invite page' : sheet.kind === 'invite-sent' ? 'What went out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.heading || sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'invite-design' ? 'Invite page' : sheet.kind === 'invite-sent' ? 'What went out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.heading || sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the details' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -23223,7 +23224,7 @@ export default function HostShellV2() {
                 {sheet.vendorQr ? (
                   <>
                     <p className="grounding" style={{ margin: '2px 0 var(--sp-3)' }}>
-                      {(sheet.vendorQr.name || 'They')} scan{sheet.vendorQr.name ? 's' : ''} it to see their brief — arrival time, your address, their part of the day. Nothing about budget, payments, or other vendors.
+                      {(sheet.vendorQr.name || 'They')} scan{sheet.vendorQr.name ? 's' : ''} it to see the details — arrival time, your address, their part of the day. Nothing about budget, payments, or other vendors.
                     </p>
                     {sheet.vendorQr.dataUrl && (
                       <div style={{ background: '#ffffff', borderRadius: 'var(--r-lg)', padding: 18, display: 'flex', justifyContent: 'center' }}>
@@ -26597,7 +26598,7 @@ export default function HostShellV2() {
                   <div className="fstat-list" style={{ margin: '0 0 var(--sp-3)' }}>
                     <button className="fstat" style={{ borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }} onClick={() => setSheet(s => ({ ...s, marketOpen: true }))}>
                       <span className="fstat-l">Which market</span>
-                      <RowValue status={rowStatus({ settled: !!metroMkt })} chev>{metroMkt ? metroMkt.label : metroSuggest ? `Suggested: ${metroSuggest.market.label}` : 'National baseline'}</RowValue>
+                      <RowValue status={rowStatus({ settled: !!metroMkt })} chev>{metroMkt ? metroMkt.label : metroSuggest ? `Suggested: ${metroSuggest.market.label}` : 'National prices · no area set'}</RowValue>
                     </button>
                   </div>
                 ) : (
@@ -26623,7 +26624,7 @@ export default function HostShellV2() {
                         patchEvent({ market: id || null, metroMarket: null },
                           m ? `Estimates now use ${m.label} typical rates.` : 'Back to a national baseline — no market set.');
                       }}>
-                      <option value="">National baseline — no market set</option>
+                      <option value="">National prices — no area set</option>
                       {[1, 2, 3, 4].map(tier => (
                         <optgroup key={tier} label={`Tier ${tier} — ${METRO_TIER_LABEL[tier].label}`}>
                           {METRO_MARKETS.filter(m => m.tier === tier).map(m => (
@@ -26815,36 +26816,44 @@ export default function HostShellV2() {
                     // Build-map #10: this vendor's own confirm-back, if they answered
                     // the brief link (backend + vendor-side form already shipped).
                     const vConfirm = confirmationByVendor[String(v.id)] || null;
+                    // The six host axes, read once for the groups' labels (cohesion batch B).
+                    let rd = null; const axesBy = {}; let na = null;
+                    if (!v.isInformal) {
+                      try {
+                        rd = getHostVendorReadiness(v, event);
+                        for (const a of getHostVendorChallenges(v, event)) axesBy[a.key] = a;
+                        na = getVendorNextAction(v, event);
+                      } catch { rd = null; }
+                    }
+                    const axisWarn = (k) => !!axesBy[k] && (axesBy[k].level === 'critical' || axesBy[k].level === 'attention');
+
                     return (
                       <div key={v.id} data-vid={v.id} className={'vcard' + (isOpen ? ' open' : '')}
                         ref={scrollIntoViewOnOpen(isOpen)}
                         onClick={() => setSheet(s => ({ ...s, focus: isOpen ? null : v.id }))}>
                         <div className="vc-head">
                           <div className="vc-avatar" aria-hidden>{String(v.name || '?').trim().charAt(0).toUpperCase()}</div>
+                          {/* THE NAME GETS ITS OWN LINE (owner's fix 1 to the approved
+                              renders, 11/24/2026). At 390 the meta wrapped into four lines
+                              beside the name. Now: the name with the price on its right;
+                              under it the meta on one line, and the status on the right
+                              where it fits, wrapping to its own right-hand line where it
+                              does not (the phone), never squeezing the name or the meta. */}
                           <div className="vc-id">
-                            <div className="vc-name">{v.name || 'Unnamed'}</div>
-                            {/* Audit #8: the agreed cost + paid state were hidden in
-                                the expanded editor, so a host couldn't compare vendor
-                                costs at a glance. Surface them on the collapsed card
-                                face (with status + arrival) so the list scans side-by-side. */}
-                            {/* MONEY LEFT THIS LINE (ruling clause 2). It used to be
-                                joined into the sub as "· $1,200 · paid", so the one
-                                figure a host compares across vendors was mid-sentence
-                                in a grey run-on, at a different x on every card and in
-                                a proportional face where 1 is narrower than 8. The
-                                sub keeps what describes the vendor; the number goes
-                                right, in `.amt`, where a column of them lines up. */}
-                            <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + fmt12h(v.arrivalTime) : null,
-                              // How this vendor prices (host report): a per-head figure for a caterer/bar
-                              // ("$20/head"), "flat rate" / "per item" for the rest — from the one pricing-basis source.
-                              Number(v.cost) > 0 ? vendorPricingHint(v, guestCountFor(event).count || 0) : null].filter(Boolean).join(' · ')}</div>
-                          </div>
+                            <div className="vc-top">
+                              <div className="vc-name">{v.name || 'Unnamed'}</div>
                           {Number(v.cost) > 0 && (
                             <div className="vc-amt">
                               <span className="amt">${Number(v.cost).toLocaleString()}</span>
                               {v.balancePaid ? <span className="vc-paid">paid</span> : null}
                             </div>
                           )}
+                            </div>
+                            <div className="vc-sub">
+                            <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + fmt12h(v.arrivalTime) : null,
+                              // How this vendor prices (host report): a per-head figure for a caterer/bar
+                              // ("$20/head"), "flat rate" / "per item" for the rest — from the one pricing-basis source.
+                              Number(v.cost) > 0 ? vendorPricingHint(v, guestCountFor(event).count || 0) : null].filter(Boolean).join(' · ')}</div>
                           {/* HOST-APPROPRIATE-VENDOR-UI: an informal helper isn't
                               missing paperwork — there's none to have. "no status"
                               reads like an incomplete paid booking; this reads like
@@ -26856,7 +26865,7 @@ export default function HostShellV2() {
                                (below) instead of silently cycling — the host sees
                                every state and taps the real one. */
                             <button data-vaction="booking" className={'vc-pill' + (good ? ' good' : v.status ? ' mid' : '')}
-                              onClick={ev => { ev.stopPropagation(); setStatusPickFor(statusPickFor === v.id ? null : v.id); }}
+                              onClick={ev => { ev.stopPropagation(); setStatusPickFor(v.id); setSheet(s => ({ ...s, focus: v.id })); }}
                               aria-expanded={statusPickFor === v.id} aria-haspopup="true"
                               title={v.status ? (VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] || vendorStatusLabel(v.status)) : 'Tap to set where this vendor stands'}
                               aria-label={'Booking status: ' + (v.status ? vendorStatusLabel(v.status) : 'not set') + (v.status && VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] ? ' — ' + VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] : '') + '. Tap to change.'}>
@@ -26867,6 +26876,8 @@ export default function HostShellV2() {
                               <span aria-hidden="true" style={{ marginLeft: 5, fontSize: '.85em' }}>▾</span>
                             </button>
                           )}
+                            </div>
+                          </div>
                         </div>
                         {/* ── ONE CHIP, RANKED BY TIME-TO-CONSEQUENCE ──────────────
                             Board ruling 2026-08-21 clause 3. Four chips could stack
@@ -26911,15 +26922,35 @@ export default function HostShellV2() {
                           );
                         })()}
                         <div className="vc-more" onClick={ev => ev.stopPropagation()}>
-                          {/* ── BELOW THE FOLD (board ruling 2026-08-21, clause 2) ──
-                              The status picker and the whole contact band used to
-                              live on the COLLAPSED face, which is why this sheet read
-                              as four stacked bands per vendor while every other
-                              restyled sheet shows one line. They are controls, and a
-                              resting row states rather than offers. The PROMPT stays
-                              visible up top as the ranked "Silent N days" chip, so
-                              moving the control never hides the need (ruling risk 2). */}
-                        {!v.isInformal && statusPickFor === v.id && (
+                          {/* ── THE OPENED VENDOR, IN LABELED GROUPS (cohesion batch B) ──────
+                              Owner-approved renders, 11/24/2026 (renders/cohesion-b). The
+                              audit (#8) measured ~30 unlabeled controls here. Each group's
+                              label carries its axis's sentence on the right (the six host
+                              axes, never a seventh); a friend helping out gets no status,
+                              money or paperwork groups (standing rule 2026-08-07). */}
+                          <div className="vd-group" data-vgroup="who">
+                            <div className="shelf-label vd-group-label"><span>Who they are</span></div>
+                            <label className="vd-field" htmlFor={'v-name-' + v.id}><span className="of vd-label">Name</span>
+                              <input id={'v-name-' + v.id} className="field vd-input" value={v.name || ''} onChange={e => writeVendor(v.id, { name: e.target.value }, null)} /></label>
+                            <label className="vd-field" htmlFor={'v-cat-' + v.id}><span className="of vd-label">What they do</span>
+                              <input id={'v-cat-' + v.id} className="field vd-input" value={v.category || ''} onChange={e => writeVendor(v.id, { category: e.target.value }, null)} /></label>
+                          {/* HOST-APPROPRIATE-VENDOR-UI: friends/family helping out
+                              shouldn't get chased for a certificate of insurance. This
+                              flag is read by the shared vendorAccountability engine
+                              (deriveVendorExpectedPromises etc.) and vendorCoiRequirement
+                              — setting it clears every COI/contract/promise nudge below,
+                              not just the label. */}
+                          <button className="chip" style={{ marginBottom: 10 }}
+                            aria-pressed={!!v.isInformal}
+                            onClick={() => writeVendor(v.id, { isInformal: !v.isInformal },
+                              !v.isInformal ? (v.name || 'This') + ' is a friend or family member helping out — no paperwork tracked.' : (v.name || 'This') + ' switched back to a paid vendor.')}>
+                            {v.isInformal ? 'Friend or family helping (not a paid vendor)' : 'not a paid vendor — friend or family helping?'}
+                          </button>
+                          </div>
+                          {!v.isInformal && (<>
+                          <div className="vd-group" data-vgroup="stands">
+                            <div className="shelf-label vd-group-label"><span>Where it stands</span>{rd ? <span className={'vd-group-state' + (rd.level === 'critical' || rd.level === 'attention' ? ' warn' : '')}>{rd.label}</span> : null}</div>
+                        {!v.isInformal && (
                           <div className="vc-statuspick" role="group" aria-label="Set booking status"
                             style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', margin: '2px 0 8px' }}>
                             {VENDOR_STATUS_LADDER.map(s => {
@@ -26938,84 +26969,9 @@ export default function HostShellV2() {
                                 </button>
                               );
                             })}
-                            <span className="grounding" style={{ flexBasis: '100%', margin: '2px 0 0', color: 'var(--faint)' }}>
-                              {v.status ? VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] || 'Tap where this vendor stands.' : 'Tap where this vendor stands. You can change it anytime.'}
-                            </span>
                           </div>
                         )}
-                        {/* ── WHERE THIS VENDOR STANDS ────────────────────────────────────
-                            Vendor cockpit port, slice 1. The engine has scored every vendor
-                            on these axes since Sprint 53 and NOTHING in this shell read it —
-                            hostv2 imported 2 of the 13 functions the CRA cockpit uses. The
-                            facts were already here (payDueDate, balancePaid, arrivalTime,
-                            contractSigned); the VERDICT on them was not.
-
-                            SIX AXES, NOT NINE (owner ruling: host-important only). scope
-                            ("we don't have a scope field" — the engine's own comment) and
-                            timeline (run-of-show cross-reference) are planner machinery;
-                            dayOf duplicates logistics, both keyed on the same arrival field.
-                            `closeout` was cut in the first scoping pass and put back by
-                            measurement — it is the only axis that can turn a past event
-                            critical, and its sentence is money the host still owes.
-
-                            BELOW THE FOLD, NOT ON THE CARD FACE. The 2026-08-21 ruling's
-                            clause 3 caps the resting card at ONE chip because four stacked
-                            amber marks spent the whole colour budget. Six would be worse.
-                            This renders inside .vc-more, which a host opens deliberately.
-
-                            NOT FOR HELPERS. Standing rule (2026-08-07): helpers get contact,
-                            never the paid-vendor ladder. An informal helper has no contract,
-                            no deposit and no COI to be judged against.
-
-                            NO CTA HERE YET. getActionableNextStep returns payment, contract
-                            and arrival flows that need real wiring; a button that cannot do
-                            what it says is the CTA-truthfulness defect (UX_07). The next
-                            action ships as a STATEMENT until its actions are wired. */}
-                        {!v.isInformal && (() => {
-                          let rd = null; let axes = []; let na = null;
-                          try {
-                            rd = getHostVendorReadiness(v, event);
-                            axes = getHostVendorChallenges(v, event);
-                            na = getVendorNextAction(v, event);
-                          } catch { return null; }
-                          if (!rd || !axes.length) return null;
-                          // Host words, not the engine's keys. "Logistics" and
-                          // "documents" are trade vocabulary; a host thinks arrival
-                          // and paperwork.
-                          const LABEL = {
-                            booking: 'Booking', communication: 'Staying in touch',
-                            logistics: 'Arrival', financial: 'Money',
-                            documents: 'Paperwork', closeout: 'After the event',
-                          };
-                          // UX_02 colour budget: amber and red are EXCEPTIONS. A safe or
-                          // untracked axis carries no tone at all, so six calm rows stay
-                          // six calm rows and the one that needs a host reads instantly.
-                          const tone = (lvl) => (lvl === 'critical' ? 'warn' : lvl === 'attention' ? 'warn' : null);
-                          return (
-                            <div style={{ margin: '2px 0 10px' }}>
-                              <div className="shelf-label">Where this stands</div>
-                              {/* The verdict, then its one sentence. Both come from the
-                                  same six axes listed underneath — never a seventh. */}
-                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
-                                <strong style={{ fontSize: 'var(--t-row)' }}>{rd.label}</strong>
-                                {rd.summary && <span className="grounding" style={{ margin: 0 }}>{rd.summary}</span>}
-                              </div>
-                              {/* ── THE NEXT ACTION POINTS AT THE CONTROL, IT DOES NOT COPY IT ──
-                                  Slice 2. `getActionableNextStep` returns seven CTA kinds
-                                  (patch / payment / contract / arrival / log / edit), and the
-                                  obvious build is seven buttons. Checked first: hostv2 ALREADY
-                                  has a working control for every one of them — the status
-                                  ladder, the COI ladder, the paid toggle, the arrival field,
-                                  "I reached out", the contract row. Building the CTAs would
-                                  have put a second write path beside each, which is the
-                                  duplicate-surface rule AND the defect this codebase keeps
-                                  finding: one fact, two owners, drifting apart.
-
-                                  So the action takes the host TO the control. One tap, the
-                                  real affordance, no second source of truth. A category with
-                                  no control to reach (the 'review' fallback, scope, timeline)
-                                  renders as prose with NO button — never a control that cannot
-                                  act, which is the UX_07 line. */}
+                            {axesBy.booking && <p className="grounding" style={{ margin: 0, color: 'var(--ink)' }}>{axesBy.booking.note}</p>}
                               {na && na.title && (() => {
                                 const anchor = {
                                   booking: 'booking', coi: 'coi', documents: 'contract',
@@ -27029,10 +26985,10 @@ export default function HostShellV2() {
                                   </>
                                 );
                                 if (!anchor) {
-                                  return <p className="grounding" style={{ margin: '6px 0 8px', color: 'var(--ink)' }}>{line}</p>;
+                                  return <p className="grounding" data-vnext style={{ margin: '6px 0 0', color: 'var(--ink)' }}>{line}</p>;
                                 }
                                 return (
-                                  <p className="grounding" style={{ margin: '6px 0 8px', color: 'var(--ink)' }}>
+                                  <p className="grounding" data-vnext style={{ margin: '6px 0 0', color: 'var(--ink)' }}>
                                     {line}{' '}
                                     <span role="button" tabIndex={0} className="mini rowlink"
                                       data-vgo={anchor}
@@ -27047,17 +27003,36 @@ export default function HostShellV2() {
                                   </p>
                                 );
                               })()}
-                              <div className="fstat-list" style={{ margin: 0 }}>
-                                {axes.map(a => (
-                                  <div className="fstat" key={a.key} style={{ alignItems: 'flex-start', gap: 10 }}>
-                                    <span className="fstat-l" style={{ flex: '0 0 auto' }}>{LABEL[a.key] || a.key}</span>
-                                    <RowValue note status={rowStatus({ overdue: !!tone(a.level) })} style={{ textAlign: 'right', display: 'block' }}>{a.note}</RowValue>
+
+                          </div>
+                          </>)}
+                          <div className="vd-group" data-vgroup="reach">
+                            <div className="shelf-label vd-group-label"><span>Reach them</span>{axesBy.communication ? <span className={'vd-group-state' + (axisWarn('communication') ? ' warn' : '')}>{axesBy.communication.note}</span> : null}</div>
+                            <label className="vd-field" htmlFor={'v-phone-' + v.id}><span className="of vd-label">Phone</span>
+                              <input id={'v-phone-' + v.id} className="field vd-input" type="tel" value={v.phone || ''} onChange={e => writeVendor(v.id, { phone: formatPhoneUS(e.target.value) }, null)} /></label>
+                            <label className="vd-field" htmlFor={'v-email-' + v.id}><span className="of vd-label">Email</span>
+                              <input id={'v-email-' + v.id} className="field vd-input" type="email" value={v.email || ''} onChange={e => writeVendor(v.id, { email: e.target.value }, null)} aria-invalid={isMalformedEmail(v.email)} /></label>
+                            {isMalformedEmail(v.email) && <p className="grounding warn-note" role="alert" style={{ margin: '-4px 0 var(--sp-2)' }}>That doesn’t look like an email address.</p>}
+                            {/* contactName rides the details' whitelist: the page opens "Hi <name>," (VB2). */}
+                            <label className="vd-field" htmlFor={'v-contact-' + v.id}><span className="of vd-label">Your contact there</span>
+                              <input id={'v-contact-' + v.id} className="field vd-input" value={v.contactName || ''} onChange={e => writeVendor(v.id, { contactName: e.target.value }, null)} /></label>
+                            {/* CONTACT OPENS THE PHONE'S OWN APPS (approved renders, 11/24/2026):
+                                tel:, sms: and mailto: links. Nothing is sent from here. */}
+                            {(() => {
+                              const dig = String(v.dayOfPhone || v.phone || '').replace(/[^+\d]/g, '');
+                              const mail = String(v.email || '').trim();
+                              if (!dig && !(mail && !isMalformedEmail(mail))) return null;
+                              return (
+                                <>
+                                  <div className="actions-row" style={{ flexWrap: 'wrap', margin: '2px 0 4px' }}>
+                                    {dig && <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + dig}>Call</a>}
+                                    {dig && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + dig}>Text</a>}
+                                    {mail && !isMalformedEmail(mail) && <a className="mini" style={{ textDecoration: 'none' }} href={'mailto:' + mail}>Email</a>}
                                   </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })()}
+                                  <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Call, Text and Email open your phone’s own apps. Nothing is sent from here.</p>
+                                </>
+                              );
+                            })()}
                         {/* ── CONTACT, ON THE ROW — FOR EVERYONE ─────────────────────────
                             Board ruling 2026-08-07: no comms hub. The act belongs where the
                             host is standing when they notice, not in a destination they must
@@ -27140,59 +27115,19 @@ export default function HostShellV2() {
                           {vConfirm && (
                             <div className="brow" style={{ marginBottom: 'var(--sp-3)' }}>
                               <div className="f-name" style={{ marginBottom: 3 }}>
-                                {vConfirm.state === 'confirmed' ? 'They confirmed the brief' : 'They flagged something'}
+                                {vConfirm.state === 'confirmed' ? 'They confirmed the details' : 'They flagged something'}
                                 <span className="tag plan" style={vConfirm.state === 'confirmed' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{vConfirm.state === 'confirmed' ? 'confirmed' : 'issue'}</span>
                               </div>
                               {(vConfirm.on_site_name || vConfirm.on_site_phone) && (
                                 <p className="grounding" style={{ margin: '0 0 2px' }}>On-site: {[vConfirm.on_site_name, vConfirm.on_site_phone].filter(Boolean).join(' · ')}</p>
                               )}
                               {vConfirm.note && <p className="grounding" style={{ margin: '0 0 2px' }}>“{vConfirm.note}”</p>}
-                              <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>Answered {(() => { try { return new Date(vConfirm.updated_at || vConfirm.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return 'recently'; } })()} — from the brief link you shared.</p>
+                              <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>Answered {(() => { try { return new Date(vConfirm.updated_at || vConfirm.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return 'recently'; } })()} — from the details link you sent.</p>
                             </div>
                           )}
-                          {/* Contact info — a vendor added from a suggested category
-                              starts life as { category, name:'' } with no way to name it
-                              or reach it; nothing in this cockpit ever wrote name/phone/
-                              email, so a vendor could stay "Unnamed" forever and the Call
-                              button (below) could never appear. Legacy already has this
-                              as a plain form field; V2 never got it. */}
-                          <div className="actions-row" style={{ marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                            <input className="field" style={{ maxWidth: 170, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="vendor name"
-                              value={v.name || ''} onChange={e => writeVendor(v.id, { name: e.target.value }, null)} aria-label="Vendor name" />
-                            <input className="field" style={{ maxWidth: 140, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="phone" type="tel"
-                              value={v.phone || ''} onChange={e => writeVendor(v.id, { phone: formatPhoneUS(e.target.value) }, null)} aria-label="Vendor phone" />
-                            <input className="field" style={{ maxWidth: 185, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="email" type="email"
-                              value={v.email || ''} onChange={e => writeVendor(v.id, { email: e.target.value }, null)} aria-label="Vendor email" aria-invalid={isMalformedEmail(v.email)} />
                           </div>
-                          <button className="mini" aria-label={'Remove vendor ' + (v.name || v.category || 'Unnamed')}
-                            onClick={e => {
-                              e.stopPropagation();
-                              patchEvent({ vendors: (event.vendors || []).filter(x => x?.id !== v.id) }, (v.name || v.category || 'Vendor') + ' removed from this event.');
-                              setSheet(s => ({ ...s, focus: null }));
-                            }}>Remove from this event</button>
-                          {isMalformedEmail(v.email) && <p className="grounding warn-note" role="alert" style={{ margin: '-4px 0 var(--sp-2)' }}>That doesn’t look like an email address.</p>}
-                          {/* Vendor Brief authoring (VB2, ported): contactName and
-                              briefNote are both in buildVendorBriefPayload's audited
-                              whitelist (lib/vendorBrief.js) — legacy has always had a
-                              plain field for each; V2 never got either, so a brief
-                              minted here would leave them blank. contactName is the
-                              VENDOR'S person — the brief opens "Hi {contactName}," and
-                              prefills their confirm form (board 2026-11-12: it was
-                              labelled "on-site contact (if not you)", which read as the
-                              host's day-of contact; that is now its own per-event field,
-                              in the share panel below). briefNote is a plain note that
-                              goes to the VENDOR (never v.notes, which is host-private
-                              bookkeeping and never leaves this cockpit). */}
-                          <div className="actions-row" style={{ marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                            <input className="field" style={{ maxWidth: 220, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="your contact there"
-                              value={v.contactName || ''} onChange={e => writeVendor(v.id, { contactName: e.target.value }, null)} aria-label="Your contact at this vendor, greeted in their brief" />
-                          </div>
-                          <textarea className="field" style={{ maxWidth: 'none', width: '100%', boxSizing: 'border-box', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 10px', marginBottom: 'var(--sp-2)', resize: 'vertical' }}
-                            placeholder="A note for them — parking, load-in door, anything they should know before they arrive" rows={2}
-                            value={v.briefNote || ''} onChange={e => writeVendor(v.id, { briefNote: e.target.value }, null)} aria-label="Note shared with this vendor in their brief" />
-                          {/* Agent Opportunity Audit P0 — paste the vendor's reply, review
-                              the extracted fields, apply through writeVendor. */}
-                          <VendorReplyParserV2 vendor={v} event={event} writeVendor={writeVendor} signedIn={!!session} onSignIn={() => setSheet({ kind: 'settings' })} />
+                          <div className="vd-group" data-vgroup="day">
+                            <div className="shelf-label vd-group-label"><span>The day</span>{axesBy.logistics ? <span className={'vd-group-state' + (axisWarn('logistics') ? ' warn' : '')}>{axesBy.logistics.note}</span> : null}</div>
                           {/* WAVE-B write paths (b) + (c): arrival time (the day-of
                               roster, NOW card, and print sheet all read v.arrivalTime;
                               nothing wrote it) and money — the payment-note button
@@ -27201,7 +27136,7 @@ export default function HostShellV2() {
                               Money stays off informal helpers — they're not a paid
                               vendor by the host's own word. */}
                           <div className="actions-row" style={{ margin: '0 0 10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                            <label className="of" htmlFor={'v-arrive-' + v.id}>arrives</label>
+                            <label className="of vd-label" htmlFor={'v-arrive-' + v.id}>Arrives</label>
                             <input data-vaction="arrival" id={'v-arrive-' + v.id} className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                               value={v.arrivalTime || ''} onChange={e => writeVendor(v.id, { arrivalTime: e.target.value }, null)}
                               aria-label="Arrival time on the day" />
@@ -27232,8 +27167,44 @@ export default function HostShellV2() {
                                 </span>
                               );
                             })()}
-                            {!v.isInformal && (<>
-                              <label className="of" htmlFor={'v-cost-' + v.id}>agreed to pay $</label>
+                          </div>
+                              {/* The arrival ask: the deadline is the vendor's own playbook rule,
+                                  the hour is theirs to give, and the message is already written. */}
+                              {(() => {
+                                const ask = (() => { try { return arrivalAsk(v, event); } catch (_e) { return null; } })();
+                                if (!ask) return null;
+                                return (
+                                  <p className="grounding" style={{ width: '100%', margin: 'var(--sp-1) 0 0' }}>
+                                    {ask.why}{' '}
+                                    <span role="button" tabIndex={0} className="mini rowlink"
+                                      onClick={(e) => { e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile), null, { vendorId: v.id }); }}
+                                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile), null, { vendorId: v.id }); } }}>
+                                      Write the ask →
+                                    </span>
+                                  </p>
+                                );
+                              })()}
+                            <label className="vd-field" htmlFor={'v-note-' + v.id}><span className="of vd-label">A note for them, sent with the details</span>
+                              <textarea id={'v-note-' + v.id} className="field vd-input" rows={2} style={{ resize: 'vertical' }}
+                                placeholder="Parking, the load-in door, anything they should know before they arrive"
+                                value={v.briefNote || ''} onChange={e => writeVendor(v.id, { briefNote: e.target.value }, null)} /></label>
+                          {/* HIDE MARKED SURPRISES (owner, 11/22/2026): a vendor marked as
+                              a surprise (Cory's church singer) is left out of the family
+                              link. Her crew still sees it: the helper and vendor links are
+                              how the cue reaches them. */}
+                          <button className="chip vendor-surprise" data-vendor-surprise
+                            aria-pressed={!!v.surprise}
+                            onClick={() => writeVendor(v.id, { surprise: !v.surprise },
+                              !v.surprise ? (v.name || 'This') + ' is a surprise — the family link leaves it out.' : (v.name || 'This') + ' is no longer a surprise — the family link shows it.')}>
+                            {v.surprise ? 'Surprise · hidden from the family link' : 'Is this a surprise?'}
+                          </button>
+                          </div>
+                          {!v.isInformal && (<>
+                          <div className="vd-group" data-vgroup="money">
+                            <div className="shelf-label vd-group-label"><span>Money</span>{axesBy.financial ? <span className={'vd-group-state' + (axisWarn('financial') ? ' warn' : '')}>{axesBy.financial.note}</span> : null}</div>
+                          <div className="actions-row" style={{ margin: '0 0 10px', flexDirection: 'column', alignItems: 'flex-start' }}>
+
+                              <label className="of vd-label" htmlFor={'v-cost-' + v.id}>Agreed to pay ($)</label>
                               <input id={'v-cost-' + v.id} className="field" type="text" inputMode="decimal" placeholder="0"
                                 style={{ maxWidth: 104, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                                 value={vendorCostDraft !== null && ownsVendorCostDraft(v) && isOpen ? vendorCostDraft : (v.cost ?? '')}
@@ -27280,22 +27251,6 @@ export default function HostShellV2() {
                                   </p>
                                 );
                               })()}
-                              {/* The arrival ask: the deadline is the vendor's own playbook rule,
-                                  the hour is theirs to give, and the message is already written. */}
-                              {(() => {
-                                const ask = (() => { try { return arrivalAsk(v, event); } catch (_e) { return null; } })();
-                                if (!ask) return null;
-                                return (
-                                  <p className="grounding" style={{ width: '100%', margin: 'var(--sp-1) 0 0' }}>
-                                    {ask.why}{' '}
-                                    <span role="button" tabIndex={0} className="mini rowlink"
-                                      onClick={(e) => { e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile), null, { vendorId: v.id }); }}
-                                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile), null, { vendorId: v.id }); } }}>
-                                      Write the ask →
-                                    </span>
-                                  </p>
-                                );
-                              })()}
                               {/* THE DEPOSIT CAN BE SAID PAID (hero-clears sweep, 11/20/2026). A
                                   recorded deposit held the Vendors part open and nothing in
                                   this app wrote `depositPaid`, so the part could never close. */}
@@ -27319,7 +27274,7 @@ export default function HostShellV2() {
 
                                   Not shown once it's paid: a due date on a settled balance is noise. */}
                               {!v.balancePaid && (<>
-                                <label className="of" htmlFor={'v-paydue-' + v.id}>balance due</label>
+                                <label className="of vd-label" htmlFor={'v-paydue-' + v.id}>Balance due</label>
                                 <input id={'v-paydue-' + v.id} className="field" type="date"
                                   style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                                   value={v.payDueDate || ''}
@@ -27327,66 +27282,26 @@ export default function HostShellV2() {
                                     e.target.value ? 'Noted — you’ll get a heads-up before it’s due.' : null)}
                                   aria-label="When the final balance is due" />
                               </>)}
-                            </>)}
                           </div>
-                          {/* HIDE MARKED SURPRISES (owner, 11/22/2026): a vendor marked as
-                              a surprise (Cory's church singer) is left out of the family
-                              link. Her crew still sees it: the helper and vendor links are
-                              how the cue reaches them. */}
-                          <button className="chip vendor-surprise" data-vendor-surprise
-                            aria-pressed={!!v.surprise}
-                            onClick={() => writeVendor(v.id, { surprise: !v.surprise },
-                              !v.surprise ? (v.name || 'This') + ' is a surprise — the family link leaves it out.' : (v.name || 'This') + ' is no longer a surprise — the family link shows it.')}>
-                            {v.surprise ? 'Surprise · hidden from the family link' : 'Is this a surprise?'}
-                          </button>
-                          {/* HOST-APPROPRIATE-VENDOR-UI: friends/family helping out
-                              shouldn't get chased for a certificate of insurance. This
-                              flag is read by the shared vendorAccountability engine
-                              (deriveVendorExpectedPromises etc.) and vendorCoiRequirement
-                              — setting it clears every COI/contract/promise nudge below,
-                              not just the label. */}
-                          <button className="chip" style={{ marginBottom: 10 }}
-                            aria-pressed={!!v.isInformal}
-                            onClick={() => writeVendor(v.id, { isInformal: !v.isInformal },
-                              !v.isInformal ? (v.name || 'This') + ' is a friend or family member helping out — no paperwork tracked.' : (v.name || 'This') + ' switched back to a paid vendor.')}>
-                            {v.isInformal ? 'Friend or family helping (not a paid vendor)' : 'not a paid vendor — friend or family helping?'}
-                          </button>
-                          {/* Every open promise is CLEARABLE — the same promiseEvidence
-                              override production's vendor detail uses ("Mark proof on
-                              file"), so the worry chip can actually resolve, not just
-                              describe. Honest: it's the host asserting they have it,
-                              not a fake upload. */}
-                          {(() => {
-                            let openPromises = [];
-                            try {
-                              openPromises = (inferPromisesFromVendor(v, event) || []).filter(promiseNeedsHost);
-                            } catch { openPromises = []; }
-                            if (!openPromises.length) return null;
-                            // cap the visible list — a fresh vendor can carry a whole
-                            // playbook's worth of unconfirmed promises; show what's
-                            // actionable now, not an audit of everything at once.
-                            const shown = openPromises.slice(0, 3);
-                            const more = openPromises.length - shown.length;
-                            // Anchor for section:'promises' deep links (Up-Next #5) —
-                            // rides the first rendered promise row.
-                            return [...shown.map((p, pi) => (
-                              <div key={p.promiseKey} id={pi === 0 ? 'v-promises-' + v.id : undefined} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', scrollMarginTop: 12 }}>
-                                <span className="vc-detail" style={{ margin: 0 }}>{p.promiseText}{p.dueDate ? ' · due ' + usShortDate(p.dueDate) : ''}</span>
-                                {/* Item-scoped label (was a generic "Mark confirmed"
-                                    that read as confirming the VENDOR — a host tapped
-                                    it and got a "parking … marked confirmed" toast for
-                                    a single promise). "Mark done" is clearly about the
-                                    promise on this row, distinct from the vendor status
-                                    pills above. */}
-                                <button className="mini" onClick={() => writeVendor(v.id, { promiseEvidence: { ...(v.promiseEvidence || {}), [p.promiseKey]: 'attached' } },
-                                  p.promiseText + ' — marked done.')}>
-                                  {p.evidenceRequired ? 'Mark proof on file' : 'Mark done'}
-                                </button>
-                              </div>
-                            )), more > 0 ? (
-                              <p key="more" className="vc-detail">+{more} more open — the vendor's own brief covers the rest.</p>
-                            ) : null];
-                          })()}
+                            <div className="actions-row" style={{ flexWrap: 'wrap' }}>
+                            {Number(v.cost) > 0 && !v.balancePaid && (
+                              <button className="mini" onClick={() => { try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v, profile), null, { vendorId: v.id }); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
+                            )}
+                            {(() => { try {
+                              const m = getSuggestedPayMethod(v); if (!m) return null;
+                              const link = buildPayLink(m, v, null); if (!link) return null;
+                              return <a className="mini" style={{ textDecoration: 'none' }} href={link} target="_blank" rel="noreferrer">Pay via {m}</a>;
+                            } catch { return null; } })()}
+                            {(() => { try {
+                              const m = getSuggestedPayMethod(v); if (!m) return null;
+                              const link = buildPayLink(m, v, null); if (!link) return null;
+                              return <a className="mini" style={{ textDecoration: 'none' }} href={link} target="_blank" rel="noreferrer">Pay via {m}</a>;
+                            } catch { return null; } })()}
+                            </div>
+                            {axesBy.closeout && axesBy.closeout.level !== 'not_tracked' && <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>{axesBy.closeout.note}</p>}
+                          </div>
+                          <div className="vd-group" data-vgroup="papers">
+                            <div className="shelf-label vd-group-label"><span>Paperwork</span>{axesBy.documents ? <span className={'vd-group-state' + (axisWarn('documents') ? ' warn' : '')}>{axesBy.documents.note}</span> : null}</div>
                           {/* ── THE COI ROW (host: "create the COI piece", 2026-07-29) ──────
                               Found by clicking: "Collect all vendor COIs for M-NCPPC" landed
                               here (once its route named the documents section) and there was
@@ -27430,7 +27345,7 @@ export default function HostShellV2() {
                                   </label>
                                 )}
                                 {next && (
-                                  <button data-vaction="coi" className="mini" onClick={() => {
+                                  <button data-vaction="coi" className="vd-link" onClick={() => {
                                     // The engine names the step; the write matches it exactly:
                                     // requested → received → verified, and an expired one is asked for again.
                                     if (coi.status === 'requested') writeVendor(v.id, { coiStatus: 'received' }, next.ctaCopy + ' — noted.');
@@ -27447,7 +27362,7 @@ export default function HostShellV2() {
                                     have decided not to pursue, never for one you hold. */}
                                 {coi.required && !v.coiWaived && !coi.verified
                                   && coi.status !== 'received' && (
-                                  <button className="mini" onClick={() => writeVendor(v.id, { coiWaived: true }, 'Insurance waived for ' + (v.name || 'this vendor') + '.')}>Not needed</button>
+                                  <button className="vd-link" onClick={() => writeVendor(v.id, { coiWaived: true }, 'Insurance waived for ' + (v.name || 'this vendor') + '.')}>Not needed</button>
                                 )}
                               </div>
                             );
@@ -27481,7 +27396,7 @@ export default function HostShellV2() {
                                       it arrives — a popup opened after an await is refused by Safari
                                       (the Instacart button's lesson, 2026-09-24). */}
                                   {v.contractStoragePath ? (
-                                    <button className="mini" disabled={!!contractOpening[v.id]} onClick={async () => {
+                                    <button className="vd-link" disabled={!!contractOpening[v.id]} onClick={async () => {
                                       if (contractOpening[v.id]) return;
                                       let win = null;
                                       try { win = window.open('', '_blank'); } catch (_e) { win = null; }
@@ -27509,10 +27424,10 @@ export default function HostShellV2() {
                                       else toast('Your browser blocked the new tab.', { label: 'Open the contract', fn: () => { try { window.open(r.url, '_blank', 'noopener'); } catch (_e) { /* blocked again */ } } }, null, { sticky: true });
                                     }}>{contractOpening[v.id] ? 'Getting the contract…' : 'Open the contract'}</button>
                                   ) : v.contractUrl ? (
-                                    <a className="mini" style={{ textDecoration: 'none' }} href={v.contractUrl} target="_blank" rel="noreferrer">Open the contract</a>
+                                    <a className="vd-link" style={{ textDecoration: 'none' }} href={v.contractUrl} target="_blank" rel="noreferrer">Open the contract</a>
                                   ) : null}
                                   {isAiProxyConfigured() && (v.contractStoragePath || v.contractUrl) && (
-                                    <button className="mini" disabled={!!contractExtracting[v.id]}
+                                    <button className="vd-link" disabled={!!contractExtracting[v.id]}
                                       onClick={async () => {
                                         setContractExtracting(m => ({ ...m, [v.id]: true }));
                                         setContractExtractErr(m => ({ ...m, [v.id]: null }));
@@ -27529,12 +27444,12 @@ export default function HostShellV2() {
                                         }
                                       }}>{contractExtracting[v.id] ? 'Analyzing…' : 'Analyze with AI'}</button>
                                   )}
-                                  <button className="mini" onClick={() => writeVendor(v.id, { contractStoragePath: null, contractFileName: null, contractUrl: null }, 'Contract file removed.')}>Remove</button>
+                                  <button className="vd-link" onClick={() => writeVendor(v.id, { contractStoragePath: null, contractFileName: null, contractUrl: null }, 'Contract file removed.')}>Remove</button>
                                 </>
                               ) : isStorageConfigured() ? (
                                 // Real upload — same storage.js the app uses (Supabase). Stores the
                                 // file + records contractStoragePath/FileName, which clears the clash.
-                                <label className="mini" style={{ cursor: contractUploading[v.id] ? 'wait' : 'pointer', marginLeft: 'auto' }}>
+                                <label className="vd-link" style={{ cursor: contractUploading[v.id] ? 'wait' : 'pointer', marginLeft: 'auto' }}>
                                   {contractUploading[v.id] ? 'Uploading…' : 'Attach file'}
                                   <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" style={{ display: 'none' }} disabled={!!contractUploading[v.id]}
                                     onChange={async (e) => {
@@ -27577,7 +27492,7 @@ export default function HostShellV2() {
                               <div style={{ border: '1px solid var(--line-soft)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3)', margin: 'var(--sp-1) 0' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--sp-2)' }}>
                                   <span className="v-meta" style={{ textTransform: 'uppercase', letterSpacing: '.06em' }}>AI-extracted — verify against the original</span>
-                                  <button className="mini" onClick={() => setContractExtracted(m => ({ ...m, [v.id]: null }))}>Dismiss</button>
+                                  <button className="vd-link" onClick={() => setContractExtracted(m => ({ ...m, [v.id]: null }))}>Dismiss</button>
                                 </div>
                                 {Array.isArray(ex.action_items) && ex.action_items.length > 0 && (
                                   <div style={{ marginBottom: 'var(--sp-2)' }}>
@@ -27608,29 +27523,64 @@ export default function HostShellV2() {
                           })()}
                           {/* The second insurance row that sat here is gone (owner's demo,
                               11/16/2026): the insurance row above is the one place for it. */}
-                          {memLine && <p className="vc-detail">{memLine}</p>}
-                          <div className="pill-grid" style={{ marginTop: 'var(--sp-3)' }}>
-                            <button className="mini" onClick={() => openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile), null, { vendorId: v.id })}>Draft note</button>
-                            {Number(v.cost) > 0 && !v.balancePaid && (
-                              <button className="mini" onClick={() => { try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v, profile), null, { vendorId: v.id }); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
-                            )}
-                            {(() => { try {
-                              const m = getSuggestedPayMethod(v); if (!m) return null;
-                              const link = buildPayLink(m, v, null); if (!link) return null;
-                              return <a className="mini" style={{ textDecoration: 'none' }} href={link} target="_blank" rel="noreferrer">Pay via {m}</a>;
-                            } catch { return null; } })()}
-                            {String(v.dayOfPhone || v.phone || '').trim() && (
-                              <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + String(v.dayOfPhone || v.phone).replace(/[^+\d]/g, '')}>Call</a>
-                            )}
-                            {/* SEND THE DETAILS (owner + host board, 11/15/2026): the same
-                                gated mint as before (shareVendorBrief — first vendor free,
-                                the pass after), now handed back as a pre-written text the
-                                host sends from their OWN phone. Only this button's words
-                                changed; "vendor brief" stays everywhere else for now. */}
-                            <button className="mini" data-vaction="send-details" onClick={() => shareVendorBrief(v)}>
+                          {/* Every open promise is CLEARABLE — the same promiseEvidence
+                              override production's vendor detail uses ("Mark proof on
+                              file"), so the worry chip can actually resolve, not just
+                              describe. Honest: it's the host asserting they have it,
+                              not a fake upload. */}
+                          {(() => {
+                            let openPromises = [];
+                            try {
+                              openPromises = (inferPromisesFromVendor(v, event) || []).filter(promiseNeedsHost);
+                            } catch { openPromises = []; }
+                            if (!openPromises.length) return null;
+                            // cap the visible list — a fresh vendor can carry a whole
+                            // playbook's worth of unconfirmed promises; show what's
+                            // actionable now, not an audit of everything at once.
+                            const shown = openPromises.slice(0, 3);
+                            const more = openPromises.length - shown.length;
+                            // Anchor for section:'promises' deep links (Up-Next #5) —
+                            // rides the first rendered promise row.
+                            return [...shown.map((p, pi) => (
+                              <div key={p.promiseKey} id={pi === 0 ? 'v-promises-' + v.id : undefined} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', scrollMarginTop: 12 }}>
+                                <span className="vc-detail" style={{ margin: 0 }}>{p.promiseText}{p.dueDate ? ' · due ' + usShortDate(p.dueDate) : ''}</span>
+                                {/* Item-scoped label (was a generic "Mark confirmed"
+                                    that read as confirming the VENDOR — a host tapped
+                                    it and got a "parking … marked confirmed" toast for
+                                    a single promise). "Mark done" is clearly about the
+                                    promise on this row, distinct from the vendor status
+                                    pills above. */}
+                                <button className="vd-link" onClick={() => writeVendor(v.id, { promiseEvidence: { ...(v.promiseEvidence || {}), [p.promiseKey]: 'attached' } },
+                                  p.promiseText + ' — marked done.')}>
+                                  {p.evidenceRequired ? 'Mark proof on file' : 'Mark done'}
+                                </button>
+                              </div>
+                            )), more > 0 ? (
+                              <p key="more" className="vc-detail">+{more} more open — the details you send them list the rest.</p>
+                            ) : null];
+                          })()}
+                          </div>
+                          </>)}
+                          <div className="vd-group" data-vgroup="said">
+                            <div className="shelf-label vd-group-label"><span>What they said</span></div>
+                            {vendorReplyOpen === v.id
+                              ? <VendorReplyParserV2 vendor={v} event={event} writeVendor={writeVendor} signedIn={!!session} onSignIn={() => setSheet({ kind: 'settings' })} />
+                              : <button className="mini" onClick={() => setVendorReplyOpen(v.id)}>Paste their email or text</button>}
+                            {memLine && <p className="vc-detail">{memLine}</p>}
+                          </div>
+                          {/* ONE LIT ACTION (rule 1; approved renders 11/24/2026): sending the
+                              details. Drafting a note is the quiet alternative beside it. */}
+                          {/* Only on the OPEN card: a closed card's fold is still in the DOM at
+                              opacity 0, and its lit button would count as a second one. */}
+                          {isOpen && <div className="vd-send">
+                            <button className="cta vd-send-cta" data-vaction="send-details" onClick={() => shareVendorBrief(v)}>
                               {vendorGreetingName(v) ? `Send ${vendorGreetingName(v)} the details` : 'Send the details'}
                             </button>
-                          </div>
+                            <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', textAlign: 'center' }}>
+                              You read it first, then send it from your phone.{' '}
+                              <button className="mini" onClick={() => openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile), null, { vendorId: v.id })}>Draft a note instead</button>
+                            </p>
+                          </div>}
                           {briefSignIn === v.id && (
                             <div data-send-signin={v.id} ref={scrollIntoViewOnOpen(true)} role="group" aria-label={`Sign in to send ${vendorGreetingName(v) || 'them'} the details`}
                               style={{ marginTop: 'var(--sp-2)', padding: 'var(--field-pad)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
@@ -27647,17 +27597,17 @@ export default function HostShellV2() {
                           {vendorBrief && vendorBrief.vendorId === v.id && (
                             <div data-vbrief-panel={v.id} style={{ marginTop: 'var(--sp-2)', padding: 'var(--field-pad)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', scrollMarginBottom: 96 }}>
                               {vendorBrief.minting ? (
-                                <p className="vc-detail" style={{ margin: 0 }}>Putting the brief together…</p>
+                                <p className="vc-detail" style={{ margin: 0 }}>Putting the details together…</p>
                               ) : vendorBrief.error ? (
                                 // A failed mint: no link was made, and nothing
                                 // here pretends one was. One honest next step.
                                 <div role="alert" data-brief-error={vendorBrief.error}>
                                   <p className="vc-detail" style={{ margin: '0 0 var(--sp-2)' }}>
                                     {vendorBrief.error === 'pass-required'
-                                      ? 'Sharing this brief takes the One-Event Pass. No link was made.'
+                                      ? 'Sending these details takes the One-Event Pass. No link was made.'
                                       : vendorBrief.error === 'signed-out'
-                                        ? 'You’re not signed in on this browser — sign in to share the brief. No link was made.'
-                                        : 'Couldn’t create the brief link. Try again.'}
+                                        ? 'You’re not signed in on this browser — sign in to send the details. No link was made.'
+                                        : 'Couldn’t create the link to the details. Try again.'}
                                   </p>
                                   <div className="actions-row">
                                     {vendorBrief.error === 'pass-required' ? (
@@ -27726,17 +27676,28 @@ export default function HostShellV2() {
                                       builders (lib/vendorBrief.js, routers/vendor_brief.py);
                                       a live link reads it from the event on every open. */}
                                   <p className="vc-detail" style={{ margin: 'var(--sp-3) 0 var(--sp-1)' }}>Who should vendors call on the day? Leave blank and it’s you.</p>
-                                  <div className="actions-row" style={{ marginTop: 0, flexWrap: 'wrap' }}>
-                                    <input className="field" style={{ maxWidth: 190, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="day-of contact name"
-                                      value={event.briefContactName || ''} onChange={e => patchEvent({ briefContactName: e.target.value })} aria-label="Day-of contact name for vendor briefs" />
-                                    <input className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="their phone" type="tel"
-                                      value={event.briefContactPhone || ''} onChange={e => patchEvent({ briefContactPhone: formatPhoneUS(e.target.value) })} aria-label="Day-of contact phone for vendor briefs" />
-                                  </div>
+                                  <label className="vd-field" htmlFor={'v-dayof-name-' + v.id}><span className="of vd-label">Day-of contact</span>
+                                    <input id={'v-dayof-name-' + v.id} className="field vd-input" placeholder="day-of contact name"
+                                      value={event.briefContactName || ''} onChange={e => patchEvent({ briefContactName: e.target.value })} aria-label="Day-of contact name vendors see" /></label>
+                                  <label className="vd-field" htmlFor={'v-dayof-phone-' + v.id}><span className="of vd-label">Their phone</span>
+                                    <input id={'v-dayof-phone-' + v.id} className="field vd-input" placeholder="their phone" type="tel"
+                                      value={event.briefContactPhone || ''} onChange={e => patchEvent({ briefContactPhone: formatPhoneUS(e.target.value) })} aria-label="Day-of contact phone vendors see" /></label>
                                   <p className="vc-detail" style={{ margin: 'var(--sp-2) 0 0' }}>{(v.name || 'They')} will see only their arrival time, your address, their part of the day, who to call, and — if they bring food, drink or rentals — your guest count. Nothing about budget, payments, guests’ names, or other vendors.</p>
                                 </>
                               )}
                             </div>
                           )}
+                          {/* DESTRUCTIVE ALONE, AT THE BOTTOM (rule 3; audit #7). It names who
+                              goes, and patchEvent's toast carries Undo (rule 18). */}
+                          <div className="vd-remove">
+                            <button className="mini vd-remove-btn"
+                              onClick={e => {
+                                e.stopPropagation();
+                                patchEvent({ vendors: (event.vendors || []).filter(x => x?.id !== v.id) }, (v.name || v.category || 'Vendor') + ' removed from this event.');
+                                setSheet(s => ({ ...s, focus: null }));
+                              }}>Remove {v.name || v.category || 'this vendor'} from this event</button>
+                            <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', textAlign: 'center' }}>Their status, money and notes go with them. Undo for a few seconds after.</p>
+                          </div>
                         </div>
                       </div>
                     );
@@ -27749,7 +27710,7 @@ export default function HostShellV2() {
                       list (toCSV + COLUMNS.vendors already define the format);
                       missing fields export empty, exactly what's tracked. */}
                   <button className="fold-btn" onClick={exportVendorsCsv}>
-                    Download the vendor list (CSV)
+                    Download the vendor list as a spreadsheet
                   </button>
                   </Panel>
                 </>
