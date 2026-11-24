@@ -35,6 +35,9 @@
 //      full address, a city or a ZIP each saves through the one place reader
 //      (lib/readPlace) and clears the ask; with only a city or ZIP the street
 //      is asked once more when the invite goes out, not on the board.
+//   7  "GUESTS & INVITE". The Guests door in All sections, the 13" rail and
+//      search reads "Guests & invite" (same destination); search for "invite"
+//      lands there.
 import { test, expect } from '@playwright/test';
 import { settled, sheetSettled, openSectionByName } from './fixtures.mjs';
 
@@ -455,6 +458,37 @@ test('5: with reduced motion the cue is the steady outline only, no animation', 
   expect(c.anim).toBe('none');
   expect(c.ow).toBeGreaterThan(0);
   expect(c.os).toBe('solid');
+  await ctx.close();
+});
+
+// ═══════════════════════════════ 7. GUESTS & INVITE ═══════════════════════════
+test('7: the Guests door reads “Guests & invite” in All sections, the 13" rail and search; “invite” finds it', async ({ browser }) => {
+  test.setTimeout(120_000);
+  // All sections, on a phone.
+  let { ctx, page } = await created(browser, PHONE);
+  await page.locator('[data-tt-bar]').getByRole('button', { name: 'All sections' }).click();
+  await sheetSettled(page);
+  const tiles = await page.locator('.sheet').last().locator('[data-door]').allInnerTexts();
+  expect(tiles.map((t) => t.trim())).toContain('Guests & invite');
+  expect(tiles.map((t) => t.trim()), 'one door, renamed').not.toContain('Guests');
+  await page.locator('.sheet').last().locator('[data-door]', { hasText: 'Guests & invite' }).first().click();
+  await sheetSettled(page);
+  await expect(page.locator('#sheet-title')).toHaveText(/Guest list|People/);
+  await page.keyboard.press('Escape'); await page.waitForTimeout(400);
+  // Search: "invite" lands on it.
+  await page.locator('[data-tt-bar]').getByRole('button', { name: 'Search' }).click();
+  await page.getByRole('textbox', { name: 'Search events and destinations' }).fill('invite');
+  const first = page.locator('.palette-row').first();
+  await expect(first).toContainText('Guests & invite');
+  await first.click();
+  await sheetSettled(page);
+  await expect(page.locator('#sheet-title')).toHaveText(/Guest list|People/);
+  await ctx.close();
+  // The 13" rail.
+  ({ ctx, page } = await created(browser, TALL13));
+  const rail = await page.locator('.srail .srail-row .srail-l').allInnerTexts();
+  expect(rail.map((t) => t.trim())).toContain('Guests & invite');
+  expect(rail.map((t) => t.trim())).not.toContain('Guests');
   await ctx.close();
 });
 

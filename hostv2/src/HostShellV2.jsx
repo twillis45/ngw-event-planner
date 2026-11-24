@@ -30015,7 +30015,8 @@ export default function HostShellV2() {
           { label: 'The spread & shopping', sub: 'food', go: openSpread },
           { label: 'People you’re hiring', sub: 'vendors', go: () => setSheet({ kind: 'vendors' }) },
           { label: 'Who sits where', sub: 'seating', go: () => setSheet({ kind: 'seating' }) },
-          { label: 'Guest list', sub: 'guests & replies', go: () => setSheet({ kind: 'guests' }) },
+          // The menu's own words for this door (sectionDirectory, owner 11/24/2026), so "invite" finds it.
+          { label: 'Guests & invite', sub: 'guests & replies', go: () => setSheet({ kind: 'guests' }) },
           { label: 'Your checklist', sub: 'tasks', go: () => setSheet({ kind: 'tasks' }) },
           { label: 'Calendar', sub: 'the plan by week or month', go: () => setSheet({ kind: 'calendar' }) },
           { label: 'Messages', sub: 'what you’ve sent, and what came of it', go: () => setSheet({ kind: 'messages', entry: 'jump' }) },

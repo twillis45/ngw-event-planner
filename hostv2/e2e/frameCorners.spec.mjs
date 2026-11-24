@@ -48,7 +48,7 @@ test.describe('frame corners at desktop', () => {
     });
     await page.goto('?elegant=1');
     await settled(page);
-    await page.getByRole('button', { name: /^Guests$/ }).first().click();
+    await page.getByRole('button', { name: /^Guests & invite$/ }) /* the door's name since 11/24/2026 (owner); was /^Guests$/ */.first().click();
     await settled(page);
 
     const frame = await radius(page, '.stagewrap');
@@ -79,7 +79,7 @@ test.describe('frame corners on touch', () => {
       expect(await radius(page, '.stagewrap'), 'frame').toBe('0px');
       expect(await radius(page, '.splash'), 'splash').toBe('0px');
       await settled(page);
-      await page.getByRole('button', { name: /^Guests$/ }).first().click();
+      await page.getByRole('button', { name: /^Guests & invite$/ }) /* the door's name since 11/24/2026 (owner); was /^Guests$/ */.first().click();
       await settled(page);
       expect(await radius(page, '.sheet'), 'sheet').toBe('0px');
     });
