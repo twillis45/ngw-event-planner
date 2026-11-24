@@ -11804,7 +11804,10 @@ export default function HostShellV2() {
               goPhase the bar and the menu call; the current phase is
               underlined, as on the pill and the bar (owner, 11/24/2026). Plan, tapped on Plan with the question scrolled away,
               goes back to the question (the NEXT bar's job, as on the bar). */}
-          {tallRail && (
+          {/* Every rail, not only the 13" upright one (owner, 11/24/2026:
+              "Tablet and full desktop don't have the create plan the day
+              section of menu"): the four stages lead the rail wherever it shows. */}
+          {(
             <div className="srail-g" key="__stages">
               <div className="shelf-label srail-t">Your event</div>
               {[['create', 'Create'], ['plan', 'Plan'], ['day', 'The Day'], ['after', 'After']].map(([k, label]) => (
@@ -13005,7 +13008,7 @@ export default function HostShellV2() {
                   </div>
                 )}
                 </>
-              ) : elegantMode && bp !== 'mobile' && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
+              ) : elegantMode && bp !== 'mobile' ? (
                 /* THE DESKTOP'S TITLE (owner, 11/24/2026): the phone's title block,
                    so rename in place has a title to act on. Every board layout wears
                    it, the iPad in landscape included (owner, 11/24/2026: at 1000-1279
