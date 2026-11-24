@@ -40,7 +40,10 @@ const boot = async (page, theme) => {
 
 // Where each treatment lives, and the selector for its selected and unselected forms.
 const SURFACES = [
-  { name: 'Guests', on: '.chip[aria-pressed="true"]', off: '.chip[aria-pressed="false"]' },
+  // The invite rules' chips wear their own owner-approved look (render 10,
+  // 11/24/2026: a green outline and a check, no fill), so the guest list's
+  // one-look check reads its other chips.
+  { name: 'Guests', on: '.chip[aria-pressed="true"]:not(.invite-rules .chip)', off: '.chip[aria-pressed="false"]:not(.invite-rules .chip)' },
   { name: 'Who sits where', on: '.chip[aria-pressed="true"]', off: '.chip[aria-pressed="false"]' },
   // One food page (owner, 11/24/2026): the Plan / Shop tabs are gone; the
   // spread's selected control is now the menu's chips, behind its Menu row.

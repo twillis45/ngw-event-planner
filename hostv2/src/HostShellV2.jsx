@@ -214,6 +214,7 @@ import { rosBasisNote } from '@app/lib/rosBasis';
 import { parseStartMinutes } from '@app/lib/eventWhen';
 import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
+import InviteRules from './InviteRules';
 import { rowStatus, sourcingSettled } from '@app/lib/rowStatus';
 import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
 import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt, menuChoicesTally, menuBoardRowSub } from '@app/lib/playbooks';
@@ -8313,10 +8314,6 @@ export default function HostShellV2() {
   const [rosterQ, setRosterQ] = useState('');
   const [rosterLens, setRosterLens] = useState('all'); // all | yes | no | maybe | none
   const [deadlineOpen, setDeadlineOpen] = useState(false);
-  // WAVE-B: invite-rules fold (guests sheet) — the policies the public RSVP
-  // page enforces (InviteV2 reads plusOnePolicy/kidsPolicy/collectAddresses;
-  // the invite + guest brief drafts read giftWish). Fold-closed by default.
-  const [inviteRulesOpen, setInviteRulesOpen] = useState(false);
   // CSV import — the app's own parsers/merge (lib/csvParsers): 7 platforms,
   // email-primary name-fallback matching, preview before anything writes.
   const [csvOpen, setCsvOpen] = useState(false);
@@ -17170,6 +17167,9 @@ export default function HostShellV2() {
                       </li>
                     ))}
                   </ul>
+                  {/* THE INVITE RULES LIVE IN THE INVITE STEP (owner, render 10a,
+                      11/24/2026): the same component and record as the guest list. */}
+                  <InviteRules event={event} patchEvent={patchEvent} note="The RSVP page follows these. Also in your guest list." />
                   {(!has('date') || !has('time')) && renderEditor({ domain: 'date' })}
                   {!has('place') && (
                     <div style={{ marginTop: 'var(--sp-3)' }}>
@@ -28095,90 +28095,15 @@ export default function HostShellV2() {
               // and the invite + guest brief drafts read (giftWish). V2 hosts could
               // never set them. Values match the reads exactly; tapping an active
               // chip clears back to unset, and unset means the invite stays quiet.
-              const inviteRules = (() => {
-                const chipSm = { padding: '5px 11px', fontSize: 'var(--t-pill)' };
-                if (!inviteRulesOpen) {
-                  return (
-                    <button className="fold-btn" onClick={() => setInviteRulesOpen(true)}>
-                      Invite rules — plus-ones, kids, addresses, gifts
-                      <span className="chev" aria-hidden="true">›</span>
-                    </button>
-                  );
-                }
-                const gw = (event.giftWish && typeof event.giftWish === 'object') ? event.giftWish : {};
-                const GIFTS = [
-                  ['no_gifts', 'No gifts'], ['registry', 'Registry'], ['charity', 'A donation'],
-                  ['potluck', 'Potluck'], ['contribution', 'Chip in'],
-                ];
-                const GIFT_TOAST = {
-                  no_gifts: '“Your presence is the gift” goes on the invite.',
-                  registry: 'Registry noted — paste the link below so guests can find it.',
-                  charity: 'Donation wish noted — name the cause below.',
-                  potluck: 'Potluck — the guest brief asks everyone to bring a dish.',
-                  contribution: 'Chip-in noted — put the per-person amount below.',
-                };
-                const GIFT_DETAIL = { registry: 'Paste the registry link', charity: 'Cause name or link', potluck: 'Dish assignments — optional', contribution: '$ per person' };
-                return (
-                  <div className="brow" style={{ marginTop: 14, borderRadius: 'var(--r-md)', padding: '10px var(--sp-2)' }}>
-                    <div className="shelf-label" style={{ marginBottom: 6 }}>
-                      Invite rules — the RSVP page follows these
-                      <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => setInviteRulesOpen(false)}>Close</button>
-                    </div>
-                    <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
-                      <span className="of">plus-ones:</span>
-                      <button className="chip" style={chipSm} aria-pressed={event.plusOnePolicy === 'plus_one_ok'}
-                        onClick={() => patchEvent({ plusOnePolicy: event.plusOnePolicy === 'plus_one_ok' ? null : 'plus_one_ok' },
-                          event.plusOnePolicy === 'plus_one_ok' ? 'Unset — the invite stays quiet on plus-ones.' : 'Plus-ones welcome — the invite says so, and the RSVP page asks who they’re bringing.')}>Welcome</button>
-                      <button className="chip" style={chipSm} aria-pressed={event.plusOnePolicy === 'no_plus_ones'}
-                        onClick={() => patchEvent({ plusOnePolicy: event.plusOnePolicy === 'no_plus_ones' ? null : 'no_plus_ones' },
-                          event.plusOnePolicy === 'no_plus_ones' ? 'Unset — the RSVP page offers a plus-one again.' : 'Named guests only — the RSVP page won’t offer a plus-one.')}>Named guests only</button>
-                    </div>
-                    <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
-                      <span className={peopleMode ? 'people-cap' : 'of'}>CHILDREN</span>
-                      <button className="chip" style={chipSm} aria-pressed={event.kidsPolicy === 'kids_welcome'}
-                        onClick={() => patchEvent({ kidsPolicy: event.kidsPolicy === 'kids_welcome' ? null : 'kids_welcome' },
-                          event.kidsPolicy === 'kids_welcome' ? 'Unset — the invite stays quiet on kids.' : 'Kids welcome — the invite says so.')}>Welcome</button>
-                      <button className="chip" style={chipSm} aria-pressed={event.kidsPolicy === 'adults_only'}
-                        onClick={() => patchEvent({ kidsPolicy: event.kidsPolicy === 'adults_only' ? null : 'adults_only' },
-                          event.kidsPolicy === 'adults_only' ? 'Unset — the RSVP page asks about kids again.' : 'Adults-only — the RSVP page won’t ask about kids.')}>Adults only</button>
-                    </div>
-                    <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
-                      <span className="of">addresses:</span>
-                      <button className="chip" style={chipSm} aria-pressed={!!event.collectAddresses}
-                        onClick={() => patchEvent({ collectAddresses: !event.collectAddresses },
-                          !event.collectAddresses ? 'Yeses now get an optional mailing-address question, for thank-yous.' : 'Address question removed from the RSVP page.')}>
-                        {event.collectAddresses ? 'Collecting for thank-you mail' : 'collect for thank-you mail?'}
-                      </button>
-                    </div>
-                    {/* Fold-behind-Change (parity/MANIFEST) — one settled gift wish;
-                        the 5-chip grid folds to a hairline row, opens on tap. */}
-                    {(() => {
-                      const curGift = GIFTS.find(([m]) => m === gw.mode);
-                      const giftLabel = gw.mode ? (curGift ? curGift[1] : gw.mode) : 'none';
-                      if (!settledOpen.gifts) {
-                        return <SettledRow label="Gifts" value={giftLabel} tone={gw.mode ? 'ok' : 'default'} style={{ margin: '0 0 var(--sp-1)' }}
-                          onOpen={() => setSettledOpen(m => ({ ...m, gifts: true }))} />;
-                      }
-                      return (
-                        <>
-                          <div className="of" style={{ display: 'block', margin: '0 0 6px' }}>gifts</div>
-                          <OptionList ariaLabel="Gifts" style={{ margin: '0 0 var(--sp-1)' }}
-                            options={GIFTS.map(([mode, label]) => ({ label, value: mode }))}
-                            value={gw.mode || ''}
-                            onPick={(mode) => { patchEvent({ giftWish: { mode, detail: gw.mode === mode ? (gw.detail || '') : '' } }, GIFT_TOAST[mode]); setSettledOpen(m => ({ ...m, gifts: false })); }} />
-                        </>
-                      );
-                    })()}
-                    {gw.mode && gw.mode !== 'no_gifts' && (
-                      <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)', margin: 'var(--sp-1) 0 6px' }}
-                        placeholder={GIFT_DETAIL[gw.mode] || ''} value={gw.detail || ''}
-                        onChange={e => patchEvent({ giftWish: { mode: gw.mode, detail: e.target.value } }, null)}
-                        aria-label="Gift note detail" />
-                    )}
-                    <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>Anything left unset stays off the invite.</p>
-                  </div>
-                );
-              })();
+              // ONE COMPONENT, BOTH PLACES (owner, render 10b, 11/24/2026): the
+              // same InviteRules as "Before your invite goes out", open here
+              // rather than folded behind "Invite rules — …".
+              const inviteRules = (
+                <div style={{ marginTop: 14 }}>
+                  <InviteRules event={event} patchEvent={patchEvent}
+                    note="Same settings as “Before your invite goes out” — change them here or there. The RSVP page follows these." />
+                </div>
+              );
               // ── THE REDESIGNED ATTENDANCE ZONE (?people=1) ─────────────────
               // SCAFFOLD STATE, and deliberately additive: the new zone renders
               // ABOVE the legacy body while the remaining zones are built, so no

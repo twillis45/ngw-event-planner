@@ -3185,6 +3185,18 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .done-all .done-ck{margin-right:var(--sp-2); font-weight:700}
 .done-show{background:none; border:0; padding:0 2px; min-height:var(--tap-min); font:inherit;
   font-size:var(--t-row-sub); font-weight:600; color:var(--steel-soft); cursor:pointer; white-space:nowrap}
+/* THE INVITE RULES (owner, renders 10a/10b, 11/24/2026). One component in the
+   invite step and the guest list. Chips are outlined; the selected one wears a
+   green outline and a check, and no fill. */
+.invite-rules{margin:0 0 var(--sp-3)}
+.invite-rule{margin:0 0 var(--sp-2)}
+.invite-rules-note{margin:2px 0 0}
+.invite-rule-l{display:block; margin:0 0 var(--sp-1); font-size:var(--t-row-sub); color:var(--muted)}
+.invite-rule .chips{display:flex; flex-wrap:wrap; gap:var(--sp-2)}
+.invite-rules .chip{background:transparent; box-shadow:none}
+.invite-rules .chip[aria-pressed="false"]{border-color:var(--line)}
+.invite-rules .chip[aria-pressed="true"]{background:transparent; border-color:var(--ok); color:var(--ink)}
+.invite-rules .chip[aria-pressed="true"]::before{content:"✓\00a0"; color:var(--ok); font-weight:700}
 /* SETTLED = GREEN, ONE RULE (owner, 11/24/2026). A row's value is colored by
    the one reader's answer (lib/rowStatus via RowValue): settled is --ok, open
    stays neutral, overdue is --warn. A note sentence that is open keeps its
