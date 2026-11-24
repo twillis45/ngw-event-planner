@@ -5554,6 +5554,14 @@ button.vc-pill::after{
   top:50%; transform:translateY(-50%); height:44px;
 }
 @media (hover:hover) and (pointer:fine){ button.vc-pill::after{ content:none; } }
+/* THE STATUS PICKER'S PILLS ARE 44 TALL FOR REAL (cohesion audit #9, rule 9,
+   11/24/2026). The invisible 44px expander above works for one pill alone; in
+   the picker five sit side by side and wrap, each row's expander laps over the
+   next, and the later pill wins the tap. Measured: 16px of "Deciding" was its
+   own on the phone, 35 on an iPad, so a wrong status was likely. In the picker
+   the pills ARE the choice, so they take the full height, and the rows clear
+   each other. The pill on the card's face keeps its quiet size. */
+.vc-statuspick button.vc-pill{ min-height:var(--tap-min); display:inline-flex; align-items:center; }
 
 /* ── THE RAIL EARNS ITS WIDTH, IT DOES NOT TAKE IT ──────────────────────────
    VIEWPORT_PORT_RULING step 4 asks for the 1280 stage cap to be raised. Doing

@@ -17,6 +17,7 @@
 // with touch on, so the (hover:none) rules apply as on a real iPad.
 import { test, expect, settled, sheetSettled, openSectionByName, dateIn, goToStage, openEventsSheet } from './fixtures.mjs';
 import { previewUrl } from '../deployBase.mjs';
+import { underFloor } from './floorProbes.mjs';
 
 const TOUCH = /mobile|landscape|tablet/;
 test.use({ hasTouch: true });
@@ -50,44 +51,9 @@ const boot = async (page, url = '?elegant=1', event = EVENT) => {
   await page.goto(url);
 };
 
-// Runs in the page: every pressable control inside `root` whose probed hit
-// area is under the floor on either axis, minus the one exemption.
-const underFloor = ([rootSel, floor, only]) => {
-  const root = [...document.querySelectorAll(rootSel)].pop() || document.body;
-  const PRESS = 'button, a[href], [role=button], [role=radio], summary, input:not([type=hidden]), select';
-  const all = [...root.querySelectorAll(PRESS)];
-  const judged = only ? all.filter((el) => el.matches(only)) : all;
-  const inlineInSentence = (el) => {
-    if (getComputedStyle(el).display !== 'inline') return false;
-    const p = el.parentElement;
-    const text = [...p.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim();
-    if (text.length < 12) return false;                 // a sentence around it, not a label beside it
-    const r = el.getBoundingClientRect();
-    return !all.some((o) => {
-      if (o === el || o.contains(el) || el.contains(o) || !o.getClientRects().length) return false;
-      const q = o.getBoundingClientRect();
-      const dx = Math.max(0, q.left - r.right, r.left - q.right), dy = Math.max(0, q.top - r.bottom, r.top - q.bottom);
-      return Math.hypot(dx, dy) < 24;
-    });
-  };
-  const out = [];
-  for (const el of judged) {
-    const r = el.getBoundingClientRect();
-    if (r.height < 4 || r.width < 4 || el.closest('[inert], [aria-hidden="true"]')) continue;
-    if (getComputedStyle(el).visibility === 'hidden') continue;
-    el.scrollIntoView({ block: 'center', inline: 'center' });
-    const b = el.getBoundingClientRect();
-    const cx = Math.round(b.left + b.width / 2), cy = Math.round(b.top + b.height / 2);
-    const owns = (x, y) => { const t = document.elementFromPoint(x, y); return !!t && (t === el || el.contains(t)); };
-    if (!owns(cx, cy)) continue;                        // covered or clipped: judged where it is reachable
-    const walk = (dx, dy) => { let n = 0; while (n < 60 && owns(cx + dx * (n + 1), cy + dy * (n + 1))) n++; return n; };
-    const w = walk(-1, 0) + walk(1, 0) + 1, h = walk(0, -1) + walk(0, 1) + 1;
-    if (w >= floor && h >= floor) continue;
-    if (inlineInSentence(el)) continue;
-    out.push(`${String(el.className || el.tagName).split(' ')[0]} "${(el.innerText || el.getAttribute('aria-label') || el.value || '').replace(/\s+/g, ' ').trim().slice(0, 26)}" ${w}x${h}`);
-  }
-  return out;
-};
+// The probe (every pressable control inside `root` whose probed hit area is
+// under the floor on either axis, minus the one exemption) lives in
+// floorProbes.mjs now, shared with the every-sheet sweep (cohesion batch B).
 
 const SECTIONS = ['Calls to make', 'Space, seats & helpers', 'Who sits where'];
 
