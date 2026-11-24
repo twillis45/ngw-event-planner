@@ -13,6 +13,8 @@ const holidayParty = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Butternut squash & sage stuffed shells',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Butternut squash & sage white bean stuffed shells (dairy-free)',
   solveFamily: 'holiday_party',
   // home_hosted, matching eventTaxonomy.mjs (11/20/2026, seasonal leftovers):
   // the taxonomy derives recordKind 'event' from that family, so this says the

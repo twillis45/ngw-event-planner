@@ -18,6 +18,8 @@ const engagementParty = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Stuffed mushroom & spinach phyllo bites',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Herb & garlic stuffed mushrooms + marinated veggie skewers',
   solveFamily: 'engagement_party',
   family: 'host_driven',
   recordKind: 'client',

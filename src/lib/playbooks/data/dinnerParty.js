@@ -13,6 +13,10 @@ const dinnerParty = {
   // when dinner hits the table. Arrivals come first, by this playbook's own serve cue.
   timeAnchor: { means: 'serve', serveAt: 'T0 +1h' },
   vegMain: 'Mushroom & lentil wellington',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Mushroom & lentil wellington (vegan puff pastry)',
+  // Bought items its label must be checked for (pastry: butter; buns: eggs or milk; tortillas: lard).
+  vegMainVeganCheck: ['pastry'],
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

@@ -264,6 +264,7 @@ import { storeSearchTerm } from '@app/lib/knowledge/storeUnitMap';
 const icSearchTerm = (line) => storeSearchTerm(line);
 import { parseSmartEventText, HOST_TYPES } from '@app/lib/smartParseEvent';
 import { townFieldsToPersist } from '@app/lib/townFieldsToPersist';
+import { readPlace } from '@app/lib/readPlace';
 import { createSetDown, undoThatBringsBack, settleCountRow, carrySettled } from './setDown.js';
 import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcomeGate';
 // The engine's tuned haptic bands. Free to import — feedback.js has zero
@@ -10851,8 +10852,11 @@ export default function HostShellV2() {
     // said this out loud. Same sentence, same door.
     try {
       const _typed = effCityText.trim();
-      if (_typed && !parseVenueLocation(_typed)) {
-        toast('Add the state or ZIP for ' + _typed + ' — a city name alone could be in any state.');
+      const _place = _typed ? readPlace(_typed) : null;
+      if (_place && !_place.located) {
+        toast(_place.missing === 'state'
+          ? 'Add the state or ZIP for ' + _typed + ' — a city name alone could be in any state.'
+          : 'Add the town and state, or a ZIP, for ' + _typed + '.');
       }
     } catch { /* never let a notice block a creation */ }
     // Build-map #3: a freshly created event is the host's new resume pointer.
@@ -11957,10 +11961,14 @@ export default function HostShellV2() {
                             "Where is the event?". The chip now asks for the state
                             before she commits, and is not shown as settled. */}
                         {(() => {
-                          const savable = !effCityText.trim() || !!parseVenueLocation(effCityText.trim());
+                          // Read by the sentence's own reader (lib/readPlace, 11/24/2026): a
+                          // street address, "City, ST" or a ZIP settles it; otherwise the
+                          // chip asks only for what is missing (the state, or the town).
+                          const place = effCityText.trim() ? readPlace(effCityText) : null;
+                          const savable = !place || place.located;
                           return (
                             <button className="chip" aria-pressed={!!effCityText && savable} onClick={() => setCreateEdit(createEdit === 'city' ? null : 'city')}>
-                              {!effCityText ? 'Which town?' : savable ? effCityText : effCityText + ' — which state?'}
+                              {!effCityText ? 'Which town?' : savable ? effCityText : effCityText + (place.missing === 'state' ? ' — which state?' : ' — which town?')}
                             </button>
                           );
                         })()}
@@ -12187,7 +12195,7 @@ export default function HostShellV2() {
                               autocompleting"): the create flow was the one city entry WITHOUT the
                               shared 29.7k-city suggestion dropdown. Same "City, ST" emit shape. */}
                           <CityField value={fCity || effCityText} onChange={v => setFCity(v)} onPick={v => setFCity(v)}
-                            placeholder="Annapolis · Silver Spring, MD · 21401" ariaLabel="Town or ZIP" />
+                            placeholder="Street, city, state — or a city or ZIP" ariaLabel="Town or ZIP" />
                           <p className="grounding" style={{ margin: 0 }}>The town is how weather and maps find a backyard — it rides into the plan from day one.</p>
                         </div>
                       )}

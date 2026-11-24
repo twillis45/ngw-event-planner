@@ -51,6 +51,8 @@ const thanksgivingHosting = {
   // when dinner hits the table. Arrivals come first, by this playbook's own serve cue.
   timeAnchor: { means: 'serve', serveAt: 'T0 +1h' },
   vegMain: 'Stuffed acorn squash with wild rice',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Stuffed acorn squash with wild rice & cranberries, roasted in olive oil',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

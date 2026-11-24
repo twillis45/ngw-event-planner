@@ -19,6 +19,8 @@ const repast = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Baked mac & cheese + greens & candied yam plate',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Collard greens cooked in vegetable stock + maple-glazed yams & black-eyed pea plate',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

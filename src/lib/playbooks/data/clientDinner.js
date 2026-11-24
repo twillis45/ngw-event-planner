@@ -36,6 +36,8 @@
 
 const clientDinner = {
   type: 'Client Dinner',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Roasted cauliflower steak with salsa verde & lentils',
   // What the time she types means (lib/eventAnchor, cause 5; owner ruling 11/23/2026):
   // when dinner hits the table. Arrivals come first, by this playbook's own serve cue.
   timeAnchor: { means: 'serve', serveAt: 'T0 +30m' },

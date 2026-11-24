@@ -71,6 +71,8 @@ const friendsgiving = {
   // when dinner hits the table. Arrivals come first, by this playbook's own serve cue.
   timeAnchor: { means: 'serve', serveAt: 'T0 +1h' },
   vegMain: 'A big roasted-vegetable and wild rice dish that stands on its own as a main',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'A big roasted-vegetable and wild rice dish that stands on its own as a main',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

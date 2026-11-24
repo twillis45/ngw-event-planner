@@ -20,6 +20,8 @@
 
 const genderReveal = {
   type: 'Gender Reveal',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Hummus & veggie cups + quinoa salad',
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',

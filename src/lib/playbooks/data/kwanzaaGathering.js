@@ -22,6 +22,8 @@ const kwanzaaGathering = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Jollof rice + black-eyed pea & collard stew',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Jollof rice (vegetable stock) + black-eyed pea & collard stew',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
