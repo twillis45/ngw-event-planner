@@ -63,7 +63,13 @@ const sweepSpread = async (page) => {
   const seen = [];
   const tabs = page.locator('.sheet .fmodes [role="tab"]');
   const n = await tabs.count();
-  if (!n) return readValues(page);
+  if (!n) {
+    // One page (11/24/2026): finished sections are one green row; open them
+    // so their rows are read too.
+    const folds = page.locator('.sheet').last().locator('[data-done-fold]');
+    for (let k = 0; k < 10 && await folds.count(); k++) { await folds.first().click(); await page.waitForTimeout(200); }
+    return readValues(page);
+  }
   for (let i = 0; i < n; i++) {
     await tabs.nth(i).click();
     await page.waitForTimeout(300);
@@ -79,10 +85,19 @@ test('a plan with every food row settled: every row value is green, and says set
   const vals = await sweepSpread(page);
   const labels = vals.map((v) => v.label);
   // The rows the render names are all here.
-  for (const want of ['Your choices', 'Dietary needs', 'How it’s sourced']) expect(labels, `rows: ${labels.join(' | ')}`).toContain(want);
+  // Every choice settled, Your choices is the one green "Choices set" row
+  // (one food page, 11/24/2026); its rows are read once it is reopened.
+  const set = page.locator('.sheet').last().locator('[data-food-section="choices"] [data-done-fold]');
+  if (await set.count()) {
+    await set.click();
+    await page.waitForTimeout(300);
+    vals.push(...(await readValues(page)).filter((v) => !vals.some((w) => w.label === v.label && w.text === v.text)));
+    labels.push(...vals.map((v) => v.label));
+  }
+  for (const want of ['Menu', 'Dietary needs', 'How it’s sourced']) expect(labels, `rows: ${labels.join(' | ')}`).toContain(want);
   // Settled here: the three choices rows, and each brought dish with its
   // bringer's name on it.
-  const SETTLED = new Set(['Your choices', 'Dietary needs', 'How it’s sourced', 'Who’s bringing what']);
+  const SETTLED = new Set(['Menu', 'Dietary needs', 'How it’s sourced']);
   const settledRows = vals.filter((v) => SETTLED.has(v.label) || /^Guest \d+$/.test(v.text));
   expect(settledRows.length, vals.map((v) => `${v.label}=${v.text}`).join(' | ')).toBeGreaterThan(8);
   for (const v of settledRows) {
@@ -109,7 +124,7 @@ test('a plan with nothing settled: no row value is green', async ({ page }) => {
     if (v.status === 'overdue') expect(v.color).toBe(v.warn);
   }
   const by = Object.fromEntries(vals.map((v) => [v.label, v.status]));
-  expect(by['Your choices']).toBe('open');
+  expect(by['Menu']).toBe('open');
   expect(by['Dietary needs']).toBe('open');
   expect(by['How it’s sourced']).toBe('open');
 });

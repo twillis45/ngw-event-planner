@@ -66,7 +66,7 @@ const readSpread = async (page) => {
   const sheet = page.locator('.sheet').last();
   // The section door opens on Plan while a menu question is open (foodSheetKind);
   // the list this reads is on Shop, so tap Shop.
-  await sheet.locator('.fmode', { hasText: /^Shop$/ }).first().click();
+  // One food page (owner, 11/24/2026): no Shop tab, and the list is always open.
   await settled(page);
   const listRow = sheet.locator('text=The list').first();
   if (await listRow.count()) {

@@ -113,7 +113,7 @@ test('every group bought: the whole list shrinks to "All N bought" with a quiet 
   await all.getByRole('button', { name: 'Show the list' }).click();
   await expect(sheet(page).locator('[data-done-all]')).toHaveCount(0);
   // The list is back, each finished group as its compact row.
-  await expect(sheet(page).locator('[data-done-fold]')).toHaveCount(labels.length);
+  await expect(sheet(page).locator('[data-done-fold]', { hasText: / · all \d+ bought/ })).toHaveCount(labels.length);
 });
 
 test('the Bringing list: everyone named shrinks it to one green row', async ({ page }) => {

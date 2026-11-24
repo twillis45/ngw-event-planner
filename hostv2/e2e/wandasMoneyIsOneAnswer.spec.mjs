@@ -47,9 +47,9 @@ test('the Spread prices the catering at the quote', async ({ page }) => {
   await boot(page);
   await openSectionByName(page, 'The spread & shopping');
   const sheet = page.locator('.sheet').last();
-  await sheet.locator('.fmode', { hasText: /^Shop$/ }).first().click();
+  // One food page (owner, 11/24/2026): no Shop tab, and the list is always open.
   await settled(page);
-  await sheet.getByRole('button', { name: /^The list/ }).click();
+  // One food page (owner, 11/24/2026): no Shop tab, and the list is always open.
   // A quote is one figure, not a band from itself to itself.
   const food = sheet.getByRole('button', { name: /^F?Food.*bought/ }).first();
   await expect(food).toContainText('$1,500');
