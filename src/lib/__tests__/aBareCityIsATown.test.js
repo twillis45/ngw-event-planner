@@ -9,8 +9,6 @@
 // Now a typed venue that is only a town (or only a ZIP) is read by the same
 // reader as the town chip and saved as the town; the place's name stays empty
 // and is asked for later. Anything with a place name or a street is still a place.
-import fs from 'fs';
-import path from 'path';
 import { bareTownFields, bareTownNote } from '../townFieldsToPersist';
 
 describe('bareTownFields — a typed venue that is only a town or a ZIP', () => {
@@ -30,12 +28,6 @@ describe('bareTownFields — a typed venue that is only a town or a ZIP', () => 
     expect(bareTownNote({ venueCity: 'Springfield', venueState: 'VA' })).toBe('Springfield, VA noted. Add the place’s name when you have it.');
     expect(bareTownNote({ venueCity: '22150', venueZip: '22150' })).toBe('22150 noted. Add the place’s name when you have it.');
   });
-  test('saveVenue reads it before treating the text as a name', () => {
-    const shell = fs.readFileSync(path.join(__dirname, '../../../hostv2/src/HostShellV2.jsx'), 'utf8');
-    const at = shell.indexOf('const saveVenue = () => {');
-    const body = shell.slice(at, shell.indexOf('\n  };', at));
-    expect(body).toMatch(/bareTownFields\(v\)/);
-    expect(body.indexOf('bareTownFields(v)')).toBeLessThan(body.indexOf('setVenue(event, { name: v'));
-    expect(body).toMatch(/bareTownNote\(/);
-  });
+  // saveVenue reading this before treating the text as a name is asserted where
+  // it renders: hostv2/e2e/aBareCityIsATownNotAPlace.spec.mjs.
 });

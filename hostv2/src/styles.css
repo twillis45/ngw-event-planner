@@ -9243,9 +9243,9 @@ input[data-cue], textarea[data-cue]{ outline:revert-layer; border-color:color-mi
    words above a field are its <label>; a wrapping label (.field-wrap) carries
    them where the field sits in a row with its button. Example placeholders
    ("For example: …") are faint and italic so they never read as a saved answer. */
-.field-label{ display:block; font-size:var(--t-body-s, 14px); font-weight:650; color:var(--ink); margin:0 0 6px; }
+.field-label{ display:block; font-size:var(--t-body-s, 14px); font-weight:650; color:var(--ink); margin:0 0 8px; }
 .field-wrap{ display:flex; flex-direction:column; min-width:0; }
-.field-wrap > .field-label{ margin-bottom:6px; }
+.field-wrap > .field-label{ margin-bottom:8px; }
 .ex-ph::placeholder{ font-style:italic; color:var(--faint); font-weight:400; opacity:1; }
 /* The finder's label wrapper takes the search field's place in the toolbar. */
 .rtoolbar > .rtool-qwrap{ flex:1 1 220px; min-width:0; }
@@ -9280,3 +9280,10 @@ html:root .cta.cta:disabled, html:root[data-theme] .hero.elegant .cta.cta:disabl
 /* What creation heard but cannot be tapped (cohesion G #49): plain words in the
    chip row, unbordered, so it never reads as a button. */
 .chips.heard .heard-found{ display:inline-flex; align-items:center; min-height:32px; padding:0 4px; color:var(--ink-soft); font-size:var(--t-pill); font-weight:600; }
+
+/* Messages (cohesion G #27): the empty state, and the load failure as its own row. */
+.msg-empty{ padding:2px 0 16px; }
+.msg-empty-go{ margin-top:var(--sp-2); }
+.later-row.msg-note{ display:block; border-top:1px solid var(--line-soft); padding:var(--sp-3) 0; margin:0 0 var(--sp-3); }
+.msg-note-t{ display:block; color:var(--ink); }
+.msg-note-b{ display:block; margin:2px 0 0; }

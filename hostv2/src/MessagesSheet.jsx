@@ -54,17 +54,17 @@ export default function MessagesSheet({ event, helpers, helperAnswers, onOpenGue
       {/* Signed out, email the app sent may exist on the account, so "Nothing
           yet" is not said; the note row says where it will show. */}
       {server.status !== 'loading' && server.status !== 'signed-out' && entries.length === 0 && (
-        <div data-messages-empty style={{ padding: '2px 0 14px' }}>
+        <div data-messages-empty className="msg-empty">
           <Eyebrow>{EMPTY_EYEBROW}</Eyebrow>
           <BigValue>{EMPTY_STAR}</BigValue>
           <GuideLine>{EMPTY_LINE}</GuideLine>
-          {empty && onOpenGuests && <button className="mini" style={{ marginTop: 'var(--sp-2)' }} onClick={onOpenGuests}>Open your guest list</button>}
+          {empty && onOpenGuests && <button className="mini msg-empty-go" onClick={onOpenGuests}>Open your guest list</button>}
         </div>
       )}
       {note && (
-        <div className="later-row" data-messages-note style={{ display: 'block', borderTop: '1px solid var(--line-soft)', padding: 'var(--sp-3) 0', margin: '0 0 var(--sp-3)' }}>
-          <strong className="t" style={{ display: 'block', color: 'var(--ink)' }}>{NOTE_TITLE}</strong>
-          <span className="grounding" style={{ display: 'block', margin: '2px 0 0' }}>{note}</span>
+        <div className="later-row msg-note" data-messages-note>
+          <strong className="t msg-note-t">{NOTE_TITLE}</strong>
+          <span className="grounding msg-note-b">{note}</span>
         </div>
       )}
       {groups.length > 2 && (

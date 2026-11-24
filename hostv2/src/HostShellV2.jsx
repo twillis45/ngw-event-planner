@@ -19163,10 +19163,10 @@ export default function HostShellV2() {
                     <label className="field-label" htmlFor="stay-who">Who’s staying</label>
                     <input id="stay-who" className="field ex-ph" style={{ maxWidth: 'none' }} value={ed.who} placeholder="For example: Rosa + Sam"
                       onChange={(e) => setStayEdit({ ...ed, who: e.target.value })} />
-                    <label className="field-label" htmlFor="stay-where" style={{ marginTop: 10 }}>Where</label>
+                    <label className="field-label" htmlFor="stay-where" style={{ marginTop: 12 }}>Where</label>
                     <input id="stay-where" className="field ex-ph" style={{ maxWidth: 'none' }} value={ed.address} placeholder="For example: 42 Elm Ct, Springfield, VA"
                       onChange={(e) => setStayEdit({ ...ed, address: e.target.value })} />
-                    <label className="field-label" htmlFor="stay-note" style={{ marginTop: 10 }}>A note</label>
+                    <label className="field-label" htmlFor="stay-note" style={{ marginTop: 12 }}>A note</label>
                     <input id="stay-note" className="field ex-ph" style={{ maxWidth: 'none' }} value={ed.notes} placeholder="For example: arriving the day before"
                       onChange={(e) => setStayEdit({ ...ed, notes: e.target.value })} />
                     <div className="actions-row" style={{ marginTop: 'var(--sp-3)' }}>
