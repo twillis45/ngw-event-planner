@@ -115,7 +115,7 @@ function rankReasonForV2(row) {
 // low|simple|light as easy, where this copy called all five moderate — a divergence waiting
 // for the first playbook to use one of those words. The surface now reads the engine.
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL, rideStatusOf, nextRideStatus, rideFieldsFor, RIDE_STATUS_LABEL, arrivalClusters } from '@app/lib/travelPlan';
-import { buildSeatingPlan, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, tableCountBasis, MEAL_SHORT } from '@app/lib/seatingPlan';
+import { buildSeatingPlan, seatingClaim, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, tableCountBasis, MEAL_SHORT } from '@app/lib/seatingPlan';
 import { costSharingSummary } from '@app/lib/costSharing';
 import { answerPlanQuestion } from '@app/lib/askPlan';
 import { askExchange, appendAskExchange, attachBroaderLook } from '@app/lib/askHistory';
@@ -177,7 +177,7 @@ import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, readEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
 import { deleteAccount, isAccountDeletionAvailable } from '@app/lib/api/account';
-import { effectiveDone, factsATickRecords, invitesOut, timelineStepResolved, TRIP_DETAILS_DRAFT } from '@app/lib/taskEngine';
+import { effectiveDone, factsATickRecords, invitesOut, timelineStepResolved, checklistProgress, TRIP_DETAILS_DRAFT } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
@@ -208,7 +208,7 @@ import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
 import { expectedFromPlanned, likelyAttendancePhrase } from '@app/lib/attendanceModel';
-import { estimateTotalRange, notIncludedFor, notIncludedSummary } from '@app/lib/budgetEstimator';
+import { estimateTotalRange, notIncludedFor } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
 import { venueLeadsStay } from '@app/lib/venueLeadsStay'; // owner ruling 11/20/2026: the venue leads the stay
 import { dietRowsFor, anyDietFlagged, dietCountsFor, guestDietCounts, mealTally } from '@app/lib/dietRows';
@@ -305,7 +305,7 @@ import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow, cheaperBarOption } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence, placeIsOutdoors, outdoorsGuess } from '@app/lib/placeIntelligence';
-import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote, planHeadroomLine, expectedHeadroom, afterSpendVerdict, budgetProposalCta } from '@app/lib/budgetCopy';
+import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planHeadroomLine, expectedHeadroom, afterSpendVerdict, budgetProposalCta, budgetAskCopy, notIncludedLine } from '@app/lib/budgetCopy';
 import { CRAB_REFERENCE_MARKET } from '@app/lib/crabServing';
 import { priceSourceNote } from '@app/lib/priceBasis';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
@@ -9282,6 +9282,26 @@ export default function HostShellV2() {
       event && event.travelMode, event && event.isDestination, event && event.foodFocus,
       event && event.caterer, event && event.date]);
 
+  // ── HER CHECKLIST'S "N OF M" TRAVELS WITH THE EVENT (rule 12, audit #35) ──
+  // Owner ruling 11/24/2026, option a: the family page printed "1 of 41" while
+  // her checklist said "2 of 41" — it can see the ticks but not the steps her
+  // plan proves handled. Her app saves its own count (checklistProgress, the
+  // sheet's reader) through the ordinary event write, so the family link's
+  // projection carries her number. Written only when it changes; silent, and
+  // it leaves her last Undo alone.
+  const savedChecklistCount = event && event.checklistCount;
+  const liveChecklistCount = useMemo(() => { try { return checklistProgress(event); } catch { return null; } }, [event]);
+  useEffect(() => {
+    if (!event || !event.id || !liveChecklistCount) return;
+    const { done, total } = liveChecklistCount;
+    const prev = savedChecklistCount;
+    if (prev && prev.done === done && prev.total === total) return;
+    if (!prev && total === 0) return;   // nothing to count, nothing to say
+    patchEvent({ checklistCount: { done, total } }, '', { noUndo: true, keepsUndo: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event && event.id, liveChecklistCount && liveChecklistCount.done, liveChecklistCount && liveChecklistCount.total,
+      savedChecklistCount && savedChecklistCount.done, savedChecklistCount && savedChecklistCount.total]);
+
   // THE START TIME'S ONE WRITE PATH (owner 11/22/2026, "Both can edit"):
   // Date & time and the run of show's "guests arrive" both write `startTime`
   // through lib/eventDates, so the two editors cannot store it two ways.
@@ -10736,7 +10756,8 @@ export default function HostShellV2() {
     // "computed and shown to nobody" became "shown on one branch of three".
     // Hoisted here, above every return, so a branch cannot silently omit it.
     const roomsNote = (() => {
-      const t = (() => { try { return stayOnTopOfTheRangeNote(est, _stayBasis); } catch (_e) { return null; } })();
+      // One sentence on this card (owner, 11/24/2026: "Copy is too wordy").
+      const t = (() => { try { return stayOnTopOfTheRangeNote(est, _stayBasis, { short: true }); } catch (_e) { return null; } })();
       return t ? <Grounding>{t}</Grounding> : null;
     })();
 
@@ -10760,6 +10781,11 @@ export default function HostShellV2() {
     }
     // PROPOSED — no budget yet and we can ground one: lead with Typical + Use/Change.
     if (!budgetChanging && !forceChange && typical > 0) {
+      // ── FEW WORDS, AND THE NUMBERS AGREE (owner, 11/24/2026: "Copy is too
+      // wordy"). budgetAskCopy: the headline is the figure the lit button
+      // offers, the per-head is that headline over the guests (rounded as the
+      // tiers round), and one line says where it comes from.
+      const ask = budgetAskCopy({ expected: spend && spend.expected, typical, guests, type: event.type, mustMark: !!(estDisclosure && estDisclosure.mustMark) });
       // Composed from the parity kit (./parity/askKit) — the locked 6/14/20/16 rhythm + 44/750
       // type live in the atoms now, not inline here. Matches Figma 344:61 B1.
       return (
@@ -10797,7 +10823,7 @@ export default function HostShellV2() {
                 <span style={{
                   fontSize: 22, fontWeight: 700, letterSpacing: '-.02em',
                   color: 'var(--ink)', fontVariantNumeric: 'tabular-nums',
-                }}>{perHeadText(perHeadRange(typical, typical, guests), fmt)}</span>
+                }}>{ask.perHead}</span>
               )}
               {/* The separator binds FORWARD, not back: at 390px the suffix
                   wraps after the per-head figure, and a trailing "·" left
@@ -10805,15 +10831,10 @@ export default function HostShellV2() {
                   word. Glued to what follows, the whole marker moves down
                   together. */}
               {guests > 0 ? ' ' : ''}
-              {`${guests > 0 ? '· ' : ''}${estDisclosure && estDisclosure.mustMark ? 'Mid‑range\u00A0·\u00A0est.' : 'Mid‑range'}`}
+              {`${guests > 0 ? '· ' : ''}${ask.tag.replace(/ /g, '\u00A0')}`}
             </>
-          )}>{fmt(typical)}</BigValue>
-          <Grounding>
-            {`For ${guests} at ${aOccasion(event.type)}, the middle of the range is ${fmt(typical)}. `}
-            {estDisclosure && estDisclosure.mustMark
-              ? 'That is the midpoint of a planning band, not an average of real events and not a quote. '
-              : ''}The plan sizes food, vendors and shopping from here — change it anytime.
-          </Grounding>
+          )}>{fmt(ask.headline)}</BigValue>
+          <Grounding>{ask.grounding}</Grounding>
           {/* ── WHEN THIS PLAN'S OWN VENDORS COST MORE THAN THE RANGE ──────
               `belowRequiredVendors` has been on the estimate result since
               2026-09-19 with no reader. Surprise Proposal's own roster needs a
@@ -10824,7 +10845,7 @@ export default function HostShellV2() {
               ranges carrying zero provenance. They get both, and are told
               which is which. See lib/budgetCopy.js#estimateShortfallNote. */}
           {(() => {
-            const short = (() => { try { return estimateShortfallNote(est); } catch (_e) { return null; } })();
+            const short = (() => { try { return estimateShortfallNote(est, { short: true }); } catch (_e) { return null; } })();
             return short ? <Grounding>{short}</Grounding> : null;
           })()}
           {/* ── AND THE ROOMS, WHICH THIS RANGE DOES NOT COVER ─────────────
@@ -10841,19 +10862,9 @@ export default function HostShellV2() {
               why this does not cry "contradiction" and why it mints no new
               band. */}
           {roomsNote}
-          {/* The plan's own lines can already cost more than the band's middle
-              (issue #100: "Use $200" over "$293 expected"). Both numbers, said
-              plainly — see lib/budgetCopy.js#planCostsAboveNote. */}
-          {(() => {
-            // The lit button below carries the plan's figure (A P1-7), so the
-            // quiet link here is the band's middle — the sentence's other path.
-            const over = (() => { try { return planCostsAboveNote(spend && spend.expected, typical); } catch (_e) { return null; } })();
-            return over ? (
-              <Grounding gap={8}>
-                {over.text} <button className="tap-44" style={linkBtn} onClick={() => setB(typical)}>Use {fmt(typical)} and trim</button>
-              </Grounding>
-            ) : null;
-          })()}
+          {/* The plan's lines above the band's middle (issue #100) are said in
+              the one line above, and the band's middle is "Mid-range" in the tier
+              row (owner, 11/24/2026): the separate "Use $T and trim" link went. */}
           {/* ── AND WHOSE MONEY IT IS ──────────────────────────────────────
               The old line here said "travel-scale costs are part of the
               numbers", which a host reads as "the flights are in this". The
@@ -10906,7 +10917,7 @@ export default function HostShellV2() {
             return (
               <details className="excl-fold" style={{ marginTop: 8 }}>
                 <summary className="grounding" style={{ cursor: 'pointer' }}>
-                  {notIncludedSummary(excl)}
+                  {notIncludedLine(excl)}
                 </summary>
                 <p className="grounding" style={{ margin: '6px 0 0' }}>{excl.join(' · ')}</p>
               </details>
@@ -10935,7 +10946,17 @@ export default function HostShellV2() {
               a host choosing between tiers is now comparing per-person
               numbers rather than totals — which is the comparison they can
               actually reason about. */}
-          {(low || high) ? (
+          {ask.covers ? (
+            // The plan costs more than the mid-range: the mid-range is a tier,
+            // the path the old "Use $T and trim" link was (owner, 11/24/2026;
+            // "Mid-range", not "Typical", per the host's 10/06/2026 ruling).
+            <Grounding gap={16}>
+              or {[low ? <button key="l" className="tier-link" onClick={() => setB(low)}>Lean {fmt(low)}</button> : null,
+                <button key="t" className="tier-link" onClick={() => setB(typical)}>Mid‑range {fmt(typical)}</button>,
+                high ? <button key="h" className="tier-link" onClick={() => setB(high)}>All-out {fmt(high)}</button> : null,
+              ].filter(Boolean).reduce((acc, el, i) => (i ? [...acc, ' · ', el] : [el]), [])}
+            </Grounding>
+          ) : (low || high) ? (
             <Grounding gap={16}>
               or {low ? <button className="tier-link" onClick={() => setB(low)}>Lean {fmt(low)}</button> : null}
               {low && guests > 0 ? ` (${perHeadText(perHeadRange(low, low, guests), fmt)})` : ''}
@@ -14774,7 +14795,9 @@ export default function HostShellV2() {
                     const sx = dayBefore.sections || [];
                     const openOf = (k) => { const s = sx.find(x => x.key === k); return s ? (Number(s.open) || 0) : 0; };
                     const steps = openOf('tasks');
-                    const items = openOf('shopping');
+                    // Rule 12 (audit #4): "items to get" is the list's remainder; the
+                    // section's open also holds the rentals, which are not items to buy.
+                    const items = (() => { const sh = sx.find(x => x.key === 'shopping'); return sh ? (sh.listLeft != null ? Number(sh.listLeft) || 0 : Number(sh.open) || 0) : 0; })();
                     const people = openOf('vendors') + openOf('helpers');
                     const parts = [
                       steps ? `${steps} plan step${steps === 1 ? '' : 's'}` : null,
@@ -14799,7 +14822,9 @@ export default function HostShellV2() {
                     const lead = (() => {
                       switch (sec.key) {
                         case 'tasks': return n ? `${n} plan step${n === 1 ? '' : 's'} still open` : 'Plan steps — nothing open';
-                        case 'shopping': return n ? `${n} item${n === 1 ? '' : 's'} still to get` : 'Shopping — all in hand';
+                        // Rule 12: n is the list's remainder; rentals are their own fact,
+                        // so "all in hand" only when none of them is open either.
+                        case 'shopping': { const g = Number(sec.openGear) || 0; const l = sec.listLeft != null ? Number(sec.listLeft) || 0 : n; return l ? `${l} item${l === 1 ? '' : 's'} still to get` : g ? `${g} rental${g === 1 ? '' : 's'} still to sort` : 'Shopping — all in hand'; }
                         case 'vendors': return n ? `${n} ${n === 1 ? 'person' : 'people'} to lock in` : 'Everyone you hired is locked in';
                         case 'rain': return n ? 'No rain backup yet' : 'Rain backup saved';
                         case 'helpers': return n ? `${n} ${n === 1 ? 'helper' : 'helpers'} to confirm` : 'Helpers all confirmed';
@@ -14825,11 +14850,14 @@ export default function HostShellV2() {
                       if (sec.key === 'shopping' && n > 0 && (sec.openFood != null || sec.openSupplies != null)) {
                         const f = Number(sec.openFood) || 0;
                         const s = Number(sec.openSupplies) || 0;
+                        const g = Number(sec.openGear) || 0;
                         const bits = [
                           f ? `${f} on the food list` : null,
-                          s ? `${s} supplies & gear` : null,
+                          s ? `${s} supplies` : null,
                         ].filter(Boolean);
-                        if (bits.length) return `${bits.join(' · ')} — one store run covers it.`;
+                        // The rentals are not a store run (rule 12, audit #4): named apart.
+                        const gearBit = g ? ` ${g} rental${g === 1 ? '' : 's'} still to sort.` : '';
+                        if (bits.length) return `${bits.join(' · ')} — one store run covers it.${gearBit}`;
                       }
                       if (sec.key !== 'cues') return sec.detail;
                       const cueList = ros.filter(r => r && r.segment);
@@ -16549,7 +16577,10 @@ export default function HostShellV2() {
               )}
               {dayHelpers.length > 0 && (
                 <div style={{ marginTop: 28 }}>
-                  <div className="eyebrow" style={{ marginBottom: 10 }}>Who’s helping · {dayHelpers.length}</div>
+                  {/* UX_11 rule 12: this list is the day crew (the venue, the DJ
+                      and the helpers, with their times), not the helper count
+                      Space and the board print under "Who's helping". */}
+                  <div className="eyebrow" style={{ marginBottom: 10 }}>Your day crew · {dayHelpers.length}</div>
                   {dayHelpers.map((h, i) => (
                     <div className="then-row" key={i} style={{ alignItems: 'center' }}>
                       <span aria-hidden style={{
@@ -18496,16 +18527,35 @@ export default function HostShellV2() {
                     : basis === 'playbook' ? `${tables} for ${gc} guests — what ${aOccasion(event.type || 'event')} this size usually needs.`
                       : basis === 'headcount' ? `About ${tables} of 8 for ${gc} guests — a standard round or banquet table seats 8.`
                         : `${tables} — a starting point, not a read of your room.`;
+                  // ONE DOOR TO THE TABLES (cohesion audit #18; owner approved the
+                  // render 11/24/2026). Once Who sits where is open (a guest has
+                  // said yes) it owns the table count with its own ±, so this
+                  // sheet says the count and routes there. Before that, Who sits
+                  // where has nothing to show and this ± is the only place to set
+                  // the tables (owner, 11/18/2026), so it stays.
+                  const seatingOpen = !!(seating.hasRoster && seating.totals.confirmed > 0);
                   return (
                     <div data-seat-check style={{ margin: '0 0 var(--sp-3)' }}>
                       <div className="shelf-label" style={{ margin: '2px 0 var(--sp-1)' }}>Seating</div>
-                      <div className="actions-row" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span style={{ flex: 1, minWidth: 0 }}>{why}</span>
-                        <button className="mini" aria-label="One fewer table" disabled={n <= 1}
-                          onClick={() => patchEvent({ tables: clampTableCount(n - 1) })}>−</button>
-                        <button className="mini" aria-label="One more table"
-                          onClick={() => patchEvent({ tables: clampTableCount(n + 1) })}>+</button>
-                      </div>
+                      {seatingOpen ? (
+                        <>
+                          <span>{why}</span>
+                          <div className="fstat-list" style={{ marginTop: 'var(--sp-2)' }}>
+                            <button type="button" className="fstat" data-seat-door onClick={() => setSheet({ kind: 'seating' })}>
+                              <span className="fstat-l">Change the tables</span>
+                              <RowValue status="open" chev>Who sits where</RowValue>
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="actions-row" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ flex: 1, minWidth: 0 }}>{why}</span>
+                          <button className="mini" aria-label="One fewer table" disabled={n <= 1}
+                            onClick={() => patchEvent({ tables: clampTableCount(n - 1) })}>−</button>
+                          <button className="mini" aria-label="One more table"
+                            onClick={() => patchEvent({ tables: clampTableCount(n + 1) })}>+</button>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
@@ -18548,7 +18598,8 @@ export default function HostShellV2() {
                         aria-label={(it.short || it.item) + ' — ' + (remaining === 0 ? 'covered' : 'still need ' + remaining) + '. Tap to set what you have.'}>
                         <span className="fstat-l">{it.verb ? it.verb + ' ' : ''}{it.short || it.item} <span className="of">need {baseNeed}</span></span>
                         <RowValue status={rowStatus({ settled: remaining === 0 })} chev>
-                          {remaining === 0 ? (helperName ? helperName + ' brings ' + baseNeed : 'covered') : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : 'still need ' + remaining}
+                          {/* Audit #37 (rules 4, 16): a rental range is the playbook's estimate, and says so. */}
+                          {remaining === 0 ? (helperName ? helperName + ' brings ' + baseNeed : 'covered') : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) + ' est.' : 'still need ' + remaining}
                         </RowValue>
                       </button>
                       {open && (
@@ -18682,7 +18733,11 @@ export default function HostShellV2() {
                 {(
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>Who’s helping{helperPeople.length ? ` · ${helperPeople.length}` : ''}</span>
+                      {/* UX_11 rule 12 (audit #19): the count is the rows it heads,
+                          the helper jobs the board's "Helpers x of N" counts
+                          (whoIsConfirmed reads the same responsibilities). It
+                          counted the de-duplicated people: 3 over six rows. */}
+                      <span>Who’s helping{helpers.length ? ` · ${helpers.length}` : ''}</span>
                       {(helperData.helpers || []).length > 0 && (
                         <button className="mini" onClick={startHelperMessages}>Draft helper messages</button>
                       )}
@@ -21050,12 +21105,23 @@ export default function HostShellV2() {
                     <div className="seat-ghost" style={{ left: guestDrag.x, top: guestDrag.y }} aria-hidden="true">{guestDrag.name}</div>,
                     document.body
                   )}
-                  <SheetHero
-                    eyebrow="Seated so far"
-                    star={`${sp.totals.seated} of ${sp.totals.confirmed}`}
-                    tone={sp.totals.allSeated ? 'ok' : undefined}
-                    sub={(sp.totals.allSeated ? 'Everyone’s in a seat — ' : '') + tableBits + '.'}
-                  />
+                  {(() => {
+                    // UX_11 rule 12 (audit #6): green and "Everyone's in a seat"
+                    // only when the plan's people are seated, not just the rows
+                    // on the list (seatingClaim, the board's reader too). A short
+                    // roster says what is true of it, and the plan's size.
+                    const claim = seatingClaim(event, sp);
+                    const lead = claim.everyoneSeated ? 'Everyone’s in a seat — '
+                      : claim.rosterSeated && claim.plannedFor ? `Everyone on your list is seated · the plan is for ${claim.plannedFor} — ` : '';
+                    return (
+                      <SheetHero
+                        eyebrow="Seated so far"
+                        star={`${sp.totals.seated} of ${sp.totals.confirmed}`}
+                        tone={claim.everyoneSeated ? 'ok' : undefined}
+                        sub={lead + tableBits + '.'}
+                      />
+                    );
+                  })()}
                   {sp.dietChips.length > 0 && (
                     <div className="chips" style={{ margin: '0 0 var(--sp-2)' }}>
                       {sp.dietChips.map(c => <span key={c} className="chip" style={{ cursor: 'default' }}>{c}</span>)}
@@ -23771,12 +23837,12 @@ export default function HostShellV2() {
                     // every time a decision closed a gate — the host would watch
                     // their progress jump for work they never did, which is the
                     // opposite of what this number is for.
+                    // One reader for "N of M" (lib/taskEngine checklistProgress, rule 12):
+                    // the family page prints the count her app saves from it.
                     const live = (event.timeline || []).filter(t => t && !t.retired);
-                    const total = live.length;
                     const openRows = live.filter(t => !t.done);
                     const inferredN = openRows.filter(t => isTimelineStepResolved(t)).length;
-                    const openN = openRows.length - inferredN;
-                    const doneN = total - openN;
+                    const { done: doneN, total, open: openN } = checklistProgress(event);
                     return (
                       <SheetHero
                         eyebrow="Checked off"
@@ -27819,7 +27885,7 @@ export default function HostShellV2() {
                     return (
                       <div style={{ margin: '2px 0 var(--sp-4)' }}>
                         <div className="mbar" role="img"
-                          aria-label={`${fmt(spent)} spent, ${fmt(pledged)} spoken for, of a ${fmt(planned)} budget`}>
+                          aria-label={`${fmt(spent)} spent, ${fmt(pledged)} booked and not yet paid, of a ${fmt(planned)} budget`}>
                           {/* TWO SOLID VALUES, NOT A COLOUR AND ITS TINT (fixed 2026-07-30 after
                               looking at it at 2.4x). The pledged segment was --steel-tint: a 16%
                               alpha fill, which is a CHIP BACKGROUND token — it exists to sit behind
@@ -27851,7 +27917,10 @@ export default function HostShellV2() {
                           {/* The key swatches must be the SAME values the bar paints, or the legend
                               explains a chart the host is not looking at. */}
                           <span><i className="mbar-dot" style={{ background: over ? 'var(--danger)' : 'var(--steel-soft)' }} />{fmt(spent)} spent</span>
-                          {pledged > 0 && <span><i className="mbar-dot" style={{ background: over ? 'var(--danger-solid)' : 'var(--steel)' }} />{fmt(pledged)} spoken for</span>}
+                          {/* UX_11 rule 12: "spoken for" is one figure on this card (the
+                              committed total in the line above). This segment is the
+                              part of it not paid yet, so it says that. */}
+                          {pledged > 0 && <span><i className="mbar-dot" style={{ background: over ? 'var(--danger-solid)' : 'var(--steel)' }} />{fmt(pledged)} booked, not yet paid</span>}
                           <span className="mbar-cap">{over ? fmt(committed - planned) + ' over ' + fmt(planned) : fmt(free) + ' of ' + fmt(planned) + ' ' + MONEY_LABELS.unpledged}</span>
                         </div>
                       </div>
@@ -27862,7 +27931,7 @@ export default function HostShellV2() {
                   {(spend.moneyDiscrepancies || []).length > 0 && (
                     <div className="card" role="note">
                       <p className="grounding">Payment records overlap or differ. Each category is counted once; review the records before relying on spent.</p>
-                      {spend.moneyDiscrepancies.map(c => <p className="grounding" key={c.label}>{c.label}: budget entry {fmt(c.discrepancy.budgetActual)}; vendor payments {fmt(c.discrepancy.vendorPaid)}{c.discrepancy.shoppingPaid > 0 ? '; shopping record ' + fmt(c.discrepancy.shoppingPaid) : ''}.</p>)}
+                      {spend.moneyDiscrepancies.map(c => <p className="grounding" key={c.label}>{c.label}: your budget line {fmt(c.discrepancy.budgetActual)}; vendor payments {fmt(c.discrepancy.vendorPaid)}{c.discrepancy.shoppingPaid > 0 ? '; shopping record ' + fmt(c.discrepancy.shoppingPaid) : ''}.</p>)}
                       <button className="mini" style={{ minHeight: 'var(--tap-min)' }} onClick={() => setSheet({ kind: 'vendors' })}>Review vendor payments</button>
                     </div>
                   )}
@@ -27973,7 +28042,7 @@ export default function HostShellV2() {
                           budget" ask right above when no ceiling exists yet. This
                           row total is real (the plan's own cost estimate), just not
                           a budget, so the label says so instead of implying one. */}
-                      <div className="shelf-label" style={{ margin: '10px 0 6px' }}>{'Expected costs — includes allocations and estimates'}</div>
+                      <div className="shelf-label" style={{ margin: '10px 0 6px' }}>{'Expected costs — what’s booked, plus estimates for the rest'}</div>
                       {hostRows.map((r, i) => {
                         const alloc = money.planned ? Math.min(100, Math.round((r.est / money.planned) * 100)) : 0;
                         const got = r.est ? Math.min(100, Math.round((r.got / r.est) * 100)) : 0;
@@ -27984,7 +28053,7 @@ export default function HostShellV2() {
                               onClick={r.go} aria-label={'Open ' + r.label}>
                               <div className="line" style={{ padding: '0 0 5px' }}>
                                 <span>{r.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
-                                <span className="amt">{r.source === 'estimate' && !['crabs', 'lodging'].includes(r.kind) ? '~' : ''}{fmt(r.est)} <span className="of">{r.source === 'vendor' ? 'Vendor record' : r.source === 'budget' ? 'Budget entry' : ['crabs', 'lodging'].includes(r.kind) ? 'Your price' : 'Estimated'}</span></span>
+                                <span className="amt">{r.source === 'estimate' && !['crabs', 'lodging'].includes(r.kind) ? '~' : ''}{fmt(r.est)} <span className="of">{r.source === 'vendor' ? 'Vendor record' : r.source === 'budget' ? 'Your budget line' : ['crabs', 'lodging'].includes(r.kind) ? 'Your price' : 'Estimated'}</span></span>
                               </div>
                               {/* The 4% floor keeps a small-but-real category findable. It must
                                   not apply to a category costing nothing: while the fill was

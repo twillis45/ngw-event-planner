@@ -136,6 +136,19 @@ def _ros_row(r: dict, private=None) -> dict:
     return row
 
 
+def _checklist_count(v):
+    """The host app's saved checklist count: two whole numbers, 0 <= done <= total
+    <= 1000, and nothing else. Anything else is dropped, never repaired."""
+    if not isinstance(v, dict):
+        return None
+    d, t = v.get("done"), v.get("total")
+    if type(d) is not int or type(t) is not int:   # bool is an int subclass; refuse it
+        return None
+    if not (0 <= d <= t <= 1000):
+        return None
+    return {"done": d, "total": t}
+
+
 def family_projection(data: dict) -> dict:
     """The family view of a saved plan. PURE; every field is allow-listed."""
     place = without_home_street(data)
@@ -161,6 +174,11 @@ def family_projection(data: dict) -> dict:
                  # A retired step leaves the host's list and its "N of M"; it leaves this one too.
                  for t in tl if _shown(t) and not t.get("retired") and (t.get("task") or t.get("title"))]
         out["checklist"] = [t for t in items if t["task"]][:200]
+    cc = _checklist_count(data.get("checklistCount"))
+    if cc:
+        # The host's own "N of M" (UX_11 rule 12, audit #35, owner 11/24/2026):
+        # her app counts the steps her plan has handled, which only it can see.
+        out["checklistCount"] = cc
     vendors = data.get("vendors")
     if isinstance(vendors, list):
         # Hired vendors only (workstreams.isHiredVendor): an informal helper is

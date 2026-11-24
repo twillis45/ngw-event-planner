@@ -5308,6 +5308,13 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
      holding dense rows takes the width its rows would have. */
   .stagewrap--responsive-data > .sheet > .sheet-body > .panel:has(.roster, .grow, .brow, .later-row, .frow, .vcard),
   .stagewrap--responsive-food > .sheet > .sheet-body > .panel:has(.fstat-list, .food-act, .shelf, .later-row, .brow, .frow){ max-width:none; }
+  /* ── YOUR MONEY'S SUMMARY TAKES THE LIST'S WIDTH (audit #62; owner approved
+     the render 11/24/2026). The card holding the money bar is a chart and its
+     key, not a paragraph: at 1440 it sat at 820px beside the 1,130px Expected
+     costs list, leaving an empty band. Matched by what it holds (.mbar), like
+     the dense rows above, not by depth. */
+  .stagewrap--responsive-data > .sheet > .sheet-body > .panel:has(.mbar),
+  .stagewrap--responsive-food > .sheet > .sheet-body > .panel:has(.mbar){ max-width:none; }
   /* The head names the surface and carries its close — it belongs to both. */
   .stagewrap--responsive-data > .sheet > .sheet-body > .sheet-head{ grid-column:1 / -1; }
   /* Column 1 is the DEFAULT, and only the row list is moved out of it.

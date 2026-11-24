@@ -54,7 +54,7 @@ const FG = { id: 'cust-taps-fg', name: 'My Friendsgiving', type: 'Friendsgiving'
   // over the band's middle without setting a budget.
   budget: [], vendors: [{ id: 'v-rent', name: 'Table rental', category: 'Rentals', status: 'Booked', cost: 300 }], guests: [], timeline: [] };
 
-test('the "Use $…" link and the Space rows are big enough to tap', async ({ page }) => {
+test('the "Mid-range $…" tier and the Space rows are big enough to tap', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript((e) => {
     localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
@@ -66,11 +66,13 @@ test('the "Use $…" link and the Space rows are big enough to tap', async ({ pa
   await settled(page);
   await openSectionByName(page, 'Your money');
   await settled(page);
-  // The INLINE link (not the big "Use $300" button, which is a .cta).
-  const use = page.locator('.sheet').last().locator('button:not(.cta)', { hasText: /^Use \$/ }).first();
+  // The INLINE path to the band's middle. It was a "Use $300 and trim" link;
+  // since the owner's 11/24/2026 copy ruling it is the "Mid-range $300" tier in
+  // the tier row, and it is held to the same 44px.
+  const use = page.locator('.sheet').last().locator('.tier-link', { hasText: /^Mid.range \$/ }).first();
   await expect(use).toHaveCount(1);
   await use.evaluate((el) => el.scrollIntoView({ block: 'center' }));
-  expect(await hitHeight(use), 'Use $… link').toBeGreaterThanOrEqual(44);
+  expect(await hitHeight(use), 'Mid-range $… tier').toBeGreaterThanOrEqual(44);
 
   await openSectionByName(page, 'Space, seats');
   await settled(page);

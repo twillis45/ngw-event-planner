@@ -55,7 +55,10 @@ describe('one number, one reader, on every playbook', () => {
       if (/left to spend/i.test(headroomLabel(f))) bad.push(`${ev.id}: the room is labeled "${headroomLabel(f)}"`);
     }
     expect(bad).toEqual([]);
-    expect(MONEY_LABELS.leftToSpend).toBe('Left to spend');
+    // Cohesion audit #5 (owner-approved 11/24/2026): no figure is called "left
+    // to spend" — it read as the budget's room beside "not yet spoken for".
+    expect(MONEY_LABELS.leftToSpend).toBe('Still to pay');
+    expect(Object.values(MONEY_LABELS).some((w) => /left to spend/i.test(w))).toBe(false);
     // The walkthrough's numbers: $400 budget, $323 expected, $0 spent.
     const f = moneyFigures({ planned: 400, expected: 323, committed: 0, spent: 0 });
     expect([f.leftToSpend, f.headroom, headroomLabel(f)]).toEqual([323, 77, 'Room left in your budget']);
@@ -141,7 +144,12 @@ describe('one number, one reader, on every playbook', () => {
     const SRC = fs.readFileSync(path.join(__dirname, '../../../hostv2/src/HostShellV2.jsx'), 'utf8');
     // The shell divides nothing by the guests itself.
     expect(SRC.match(/Math\.round\(\w+ \/ guests\)\)?\} a head|\/ foodPlan\.guests/g)).toBe(null);
-    expect((SRC.match(/perHeadText\(/g) || []).length).toBe(5);
+    // 4 since 11/24/2026: the budget ask's headline per-head moved into
+    // lib/budgetCopy budgetAskCopy (owner: "Copy is too wordy"), which reads
+    // perHeadText itself, so it is still one division, read through one reader.
+    expect((SRC.match(/perHeadText\(/g) || []).length).toBe(4);
+    const COPY = fs.readFileSync(path.join(__dirname, '../budgetCopy.js'), 'utf8');
+    expect(COPY).toMatch(/perHeadText\(perHeadRange\(headline, headline, g\), fmt\)/);
   });
 
   test('the shop\'s "all in" counts the seating sheet\'s gear, the plan costs Your money counts', () => {

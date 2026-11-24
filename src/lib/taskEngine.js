@@ -295,6 +295,19 @@ export function timelineStepResolved(event, task) {
   return facts.some((f) => String(f).startsWith('then:') && factHolds(event, f, step, task));
 }
 
+// ─── THE CHECKLIST'S "N OF M": ONE READER (UX_11 rule 12; audit #35) ────────
+// What the host's checklist prints ("Checked off 2 of 41"): a step counts as
+// done when it is ticked or proven handled (timelineStepResolved); retired steps
+// leave the count entirely, the denominator too. Her app saves this on the
+// event as `checklistCount`, and the family page prints the same number (owner
+// ruling 11/24/2026, option a) — only her app can see what the plan handled.
+// → { done, total, open }
+export function checklistProgress(event) {
+  const live = ((event && Array.isArray(event.timeline)) ? event.timeline : []).filter((t) => t && !t.retired);
+  const open = live.filter((t) => !t.done && !timelineStepResolved(event, t)).length;
+  return { done: live.length - open, total: live.length, open };
+}
+
 // ─── A TICK RECORDS WHAT IT STANDS FOR (owner, 11/18/2026) ───────────────────
 // The checklist reads section facts through taskSatisfied; this is the reverse,
 // and it is derived from the SAME rule rather than a second list of patterns:

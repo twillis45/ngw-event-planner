@@ -157,6 +157,55 @@ Before that, 2026-11-02 (sixtieth entry:
 - **Fix:** the sentence now names it: "…add up to about $334 — more than this $300. $400 covers it, or trim the plan to fit." The round-up rule is unchanged. Test: `aSuggestedBudgetCoversThePlan` gained a case that failed first.
 - **Gates:** root jest 935 suites, 14,074 passed. hostv2 vitest 166/166. e2e (the six budget-ask specs, mobile + desktop + tablet-tall, run on a shifted port 6233 because the integration agent held 5233): 144 passed.
 
+## November 24, 2026 (latest) — cohesion batch C: the numbers agree (UX_11 rule 12)
+
+- **Ask (the parent session, coordinating for the owner):** batch C of the owner-approved cohesion audit (`audit/cohesion-1124`, `AUDIT.md`), rule 12 "one source per number; screens agree", fixed systemically: the rule as a test first, every violation fixed at its source. Later the same day the owner approved the #18 and #62 renders, option (a) for #35, and the shorter budget-ask copy, all relayed by the parent. Branch `cohesion-c-2utz0n`; no PR (the parent merges).
+- **The rule as tests (each watched red first):**
+  - `hostv2/e2e/theNumbersAgree.spec.mjs` reads every screen on Wanda's sample at four months out, two weeks out and the day, plus a host's own plan. Screens: board, What's counted, the spread, Your money, Who sits where, Space, the checklist, the hiring screen, The Day. It checks items, money ("spoken for", "expected", the budget, no "left to spend"), seats, helpers and unpriced vendors.
+  - It also sweeps every section on three plans (one a new Thanksgiving for 12): a lit button's $ figure or count must appear in the text it sits under. This sweep catches PR #252's "Use $400" on the board and in Your money.
+  - A family-page agreement test: the family page's "N of M" equals the host's checklist.
+  - `src/lib/__tests__/theNumbersAgreeAtTheSource.test.js` pins each reader over every sample and playbook. Every sweep has a floor (at least one plan per playbook, and Wanda), red-proved with the reader made to throw: "Expected >= 47, Received 0".
+- **Violations found and fixed at the source:**
+  - #4: The Day "37 items still to get" vs the spread's 31. dayBefore's shopping row now splits into `listLeft` (`linesLeftToBuy`, what "still to get" prints) and `openGear` (rentals, named separately). `open` still sums both, so the headline stays the sections' sum (`dayBeforeCoverageProof`).
+  - #5: "left to spend" became "still to pay" (`MONEY_LABELS`). New: the money bar's key printed a second "spoken for" ($750 against the line's $1,590); it now reads "booked, not yet paid".
+  - #6: `seatingClaim` (seatingPlan). "Everyone has a seat", and the green, require the seated count to reach the plan's floor (`eventSizing`). Wanda: "Everyone on your list is seated · the plan is for 75". The board's What's counted reads the same claim.
+  - #19: Space's "Who's helping · N" counts its rows (the board's helper jobs, 6, not 3). The Day's arrivals list is "Your day crew · N".
+  - #20: `unpricedVendorCount` reads `hiredVendors` (Wanda 4 → 2).
+  - #37 and #51 (wording): rental ranges say "est."; "allocations" and "Budget entry" became host words.
+  - PR #252's covering-figure sentence was carried byte-for-byte, then superseded by the short copy below.
+- **Owner-approved builds:**
+  - #18: Space's table ± becomes "Change the tables · Who sits where" once Who sits where is open (a guest said yes). Headcount-only plans keep Space's ±, because Who sits where has nothing to seat until someone says yes and the ± is their only door (owner, 11/18/2026; `tablesSeatPeople`).
+  - #62: Your money's summary (the panel holding `.mbar`) takes the list's width at desktop.
+  - #35, option (a): one reader, `taskEngine.checklistProgress` (the host sheet's formula). Her app saves it as `checklistCount`, silently and only on change, keeping her Undo. `family_projection` passes it through as two checked integers. The family page prints "N of M handled", and falls back to its old "ticked off" count when no count is saved. A new allow-list test pins every key the family page can receive. Confirmed first on the real sample: the family page's reply counts match the host's (the mismatch was the trimmed fixture); the checklist really differed (it counted the stored timeline's ticks only, not the steps the plan proves handled).
+  - Budget ask copy ("Copy is too wordy"), via `budgetAskCopy`:
+    - The headline is the lit button's figure, and the per-head is headline ÷ guests (`perHead`).
+    - One line explains the figure.
+    - The mid-range joins the tier row, and "Use $T and trim" is gone.
+    - The fold reads "N things not included", and the shortfall and rooms notes are one sentence each.
+- **🔴 Held for the owner:** the approved copy said "Typical $300" and "Most Thanksgivings for 12 run about $300". That reverses the host's own 10/06/2026 ruling, pinned in `theBudgetAskSaysWhoseMoney` ("A MIDPOINT IS NOT A TYPICAL": the figure is the midpoint of an authored band, not a measured typical). That guard is unchanged; the copy says "mid-range" until the owner rules. It is a one-line swap if the owner overrides.
+- **Tests changed, each with why:**
+  - `oneNumberOneReader`: the label "Left to spend" (retired by the audit), and the shell's `perHeadText` census 5 → 4 (moved into the lib, which is now pinned).
+  - `dayBefore.test`: the split has three parts.
+  - `moneyHasOneOwner`: "your budget line" (same figures).
+  - `theEstimateDoesNotCoverIt`, `theRoomsReachTheBudgetScreen`, `smallLinksAreTappable`, `theBudgetAskSaysWhoseMoney`: the old budget-card sentences, now the short ones; same facts, same 44px check on the Mid-range tier.
+- **The one e2e red, root-caused (parent review):** `theCalendarShowsTheHourAndTheSky:70` (and the earlier `coreJourneyTruth:38`) tapped a "Then, in order" row that was moving.
+  - `lib/flipReorder` measured rows on the screen. When content above the list grew after load (hero lines, the weather landing), every row "travelled" 260 ms back with nothing reordered. A probe saw four `.ef-row` transform transitions right after `settled()`, and the failing trace shows the row focused (mousedown) with no click (mouseup landed beside it).
+  - Fix: positions are read within the list, so a whole-list shift animates nothing and real reorders still travel.
+  - Tests: `flipReorder.test.js` (+2, red first) and `e2e/theThenRowsHoldStill.spec.mjs`, which needs no load.
+  - The same e2e test fails 3 of 3 on `origin/main` `45cfa9e`, so the bug predates this batch.
+  - Under load (4 CPU burners, 10 workers, 40 repeats): `theCalendarShowsTheHourAndTheSky:70` went from 3 of 40 failing to 40 of 40 passing.
+  - After the fix: the 15 FLIP-reading specs pass on mobile, desktop and tablet-tall (251 passed, 0 failed); jest 937 suites, 14,089 passed.
+- **Renders:** `renders/cohesion-c` (never merges), `docs/renders/cohesion-c/` (#18 and #62, before/after at 390 and 1440).
+- **Gates (measured on `8bfdd78`):**
+  - root jest: 937 suites, 14,087 passed, 1 skipped.
+  - hostv2 vitest: 18 files, 166 passed.
+  - backend pytest: 1,194 passed, 14 skipped (asyncpg 0.32.0 in a scratch venv; the pinned 0.29.0 does not build on Python 3.13; `requirements.txt` unchanged).
+  - `e2e:build`: exit 0, parity passed.
+  - e2e (306 specs that read a changed string or surface; `--workers=4 --retries=0`; `PW_CHROMIUM` set): 3,406 passed, 186 skipped, 1 failed, in six chunks, none over 17 min.
+    - Per chunk: mobile 497 and 495; desktop 717 and 720; tablet-tall 487 and 490.
+    - The one failure: `theCalendarShowsTheHourAndTheSky.spec.mjs:70` on desktop, a 30 s wait for `.cpane-cta` after tapping a Then row. This is the pane-or-editor race `coreJourneyTruth.spec.mjs` documents (#185 CI). Nothing in this batch touches the Then fold. Rerun alone: 9 of 9 passed.
+    - The earlier mobile run on `662ce67` had one similar timing failure (`coreJourneyTruth.spec.mjs:38`, focus under load), which passed 4 of 4 alone and passed in this run. The new `checklistCount` write does not fire on that event (it has no timeline).
+
 ## November 24, 2026 — `origin/main` (`78c1e8c1`, with #249 and #250) merged into `shopdata-2utz0n`
 
 - **Ask (the parent session, which the owner told to merge this work):** merge `origin/main` with a merge commit, keep both sides' intent in the 8 conflicting files, rerun the gates, then push. The parent opens the PR and merges; this session does not.
