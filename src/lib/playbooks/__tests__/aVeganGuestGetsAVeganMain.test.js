@@ -124,13 +124,29 @@ describe('a vegan main that leans on a bought item says to check its label', () 
     expect(bad).toEqual([]);
   });
 
-  test('census: every vegan dish that names one of the items declares its check', () => {
-    const missing = HOST.map((pb) => [pb.type, Object.keys(NAMES).filter((k) => NAMES[k].test(pb.vegMainVegan || '') && !declared(pb).includes(k))])
+  // A dish can name an item and still declare no check, with its reason
+  // (`vegMainVeganNoCheck: { <item>: '<why>' }`). Owner, 11/24/2026: injera is
+  // teff and water, and a warning that is almost never true teaches hosts to
+  // ignore warnings.
+  const declaredNone = (pb) => ((pb.vegMainVeganNoCheck && typeof pb.vegMainVeganNoCheck === 'object') ? pb.vegMainVeganNoCheck : {});
+
+  test('census: every vegan dish that names one of the items declares its check, or declares none with a reason', () => {
+    const missing = HOST.map((pb) => [pb.type, Object.keys(NAMES).filter((k) => NAMES[k].test(pb.vegMainVegan || '')
+      && !declared(pb).includes(k) && !(typeof declaredNone(pb)[k] === 'string' && declaredNone(pb)[k].trim()))])
       .filter(([, m]) => m.length);
     expect(missing).toEqual([]);
-    // Thirteen dishes lean on one: four puff pastries, three bunned burgers,
-    // three tortillas, and three breads (crostini, tea sandwiches, injera).
-    expect(HOST.filter((pb) => declared(pb).length).length).toBe(13);
+    // Twelve dishes lean on one: four puff pastries, three bunned burgers,
+    // three tortillas, and two breads (crostini, tea sandwiches).
+    expect(HOST.filter((pb) => declared(pb).length).length).toBe(12);
+  });
+
+  test('declared none: Ethiopian Coffee Ceremony\'s injera carries no bread check, and says why', () => {
+    const withNone = HOST.filter((pb) => Object.keys(declaredNone(pb)).length).map((pb) => [pb.type, declaredNone(pb)]);
+    expect(withNone).toEqual([['Ethiopian Coffee Ceremony', { bread: 'Injera is teff and water.' }]]);
+    // Never both: a check and a reason for not having it.
+    expect(HOST.filter((pb) => declared(pb).some((k) => k in declaredNone(pb))).map((pb) => pb.type)).toEqual([]);
+    const pb = HOST.find((p) => p.type === 'Ethiopian Coffee Ceremony');
+    expect(plannedVegMain(pb, { dietCounts: { Vegan: 1 } }).check).toEqual([]);
   });
 
   test('the reader carries the check, and every vegan line the plan reaches shows it', () => {

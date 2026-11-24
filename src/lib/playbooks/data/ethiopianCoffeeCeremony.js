@@ -17,8 +17,9 @@ const ethiopianCoffeeCeremony = {
   type: 'Ethiopian Coffee Ceremony',
   // The meatless main when any guest is vegan, declared free of every animal product.
   vegMainVegan: 'Shiro & misir wat with gomen on injera (ye-tsom fasting plate)',
-  // Bought items its label must be checked for (bread: milk, butter or honey).
-  vegMainVeganCheck: ['bread'],
+  // Declared none (owner, 11/24/2026): a bread check here would almost never
+  // be true, and a warning that is usually wrong teaches hosts to ignore warnings.
+  vegMainVeganNoCheck: { bread: 'Injera is teff and water.' },
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',
