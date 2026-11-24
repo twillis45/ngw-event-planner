@@ -9151,6 +9151,8 @@ input[data-cue], textarea[data-cue]{ outline:revert-layer; border-color:color-mi
 .ivd-live i{ width:7px; height:7px; border-radius:50%; background:var(--ok); }
 .ivd-full{ min-height:44px; }
 .ivd-pv-frame{ max-height:440px; overflow:hidden; border-radius:var(--r-lg) var(--r-lg) 0 0; }
+/* "See the full invite" opens the same draft whole, in place (owner report, 11/24/2026). */
+.ivd-pv-frame.full{ max-height:none; }
 .ivd-h{ margin:var(--sp-5) 0 4px; font-size:var(--t-card-title, 19px); font-weight:750; letter-spacing:-.01em; }
 .ivd-why{ margin:0 0 var(--sp-3); font-family:var(--serif-read); font-style:italic; color:var(--muted); line-height:1.4; }
 .ivd-lab{ display:flex; justify-content:space-between; align-items:baseline; margin:0 0 8px; font-weight:650; }
