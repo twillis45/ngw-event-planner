@@ -172,9 +172,13 @@ export function planCostsAboveNote(expected, suggested) {
   const e = Math.round(Number(expected));
   const s = Math.round(Number(suggested));
   if (!(e > 0) || !(s > 0) || e <= s) return null;
+  // The lit button offers `cover` (budgetProposalCta), so the sentence names it:
+  // a tappable number said nowhere on the screen read as a bug (owner, 11/24/2026:
+  // "$300" headline, "about $334" here, "Use $400" lit).
+  const cover = Math.ceil(e / 100) * 100;
   return {
-    text: `Your plan’s own lines already add up to about ${fmt(e)} — more than this ${fmt(s)}. Set the number from the plan, or trim the plan to fit.`,
-    cover: Math.ceil(e / 100) * 100,
+    text: `Your plan’s own lines already add up to about ${fmt(e)} — more than this ${fmt(s)}. ${fmt(cover)} covers it, or trim the plan to fit.`,
+    cover,
   };
 }
 
