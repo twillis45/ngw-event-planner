@@ -219,6 +219,8 @@ import { rowStatus, sourcingSettled } from '@app/lib/rowStatus';
 import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
 import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt, menuChoicesTally, menuBoardRowSub } from '@app/lib/playbooks';
 import InviteToTheList from './InviteToTheList';
+import InviteDesignSheet from './InviteDesignSheet.jsx';
+import HostPhotoRow from './HostPhotoRow.jsx';
 import NudgeTheList from './NudgeTheList';
 import { takeEventLink, isOwnEvent } from '@app/lib/eventLink';
 import { trackHelperEmail, takeReminderTag, trackPlanDrafted, trackKeepPrompt, trackSignInCodeRequested } from '@app/lib/flowAnalytics';
@@ -1047,10 +1049,11 @@ const OPEN_ON_LOAD = (() => {
   try {
     const u = new URL(window.location.href);
     const kind = u.searchParams.get('open');
-    if (kind !== 'pass' && kind !== 'settings') return null;
+    // `?open=invite` lands on "Your invite" (11/24/2026).
+    if (kind !== 'pass' && kind !== 'settings' && kind !== 'invite') return null;
     u.searchParams.delete('open');
     window.history.replaceState(null, '', u.toString());
-    return kind;
+    return kind === 'invite' ? 'invite-design' : kind;
   } catch { return null; }
 })();
 
@@ -3607,9 +3610,7 @@ export default function HostShellV2() {
     // "Hosted by Erin L"). The event model had no name field at all — `hostContact`
     // is an email/phone, so rendering that as "Hosted by" would print an address on
     // the invitation.
-    deckLine: event.deckLine || '',
-    // Prefilled from her profile name when the event has none (hostNameFor).
-    hostName: hostNameFor(event, profile),
+    // deckLine and hostName are edited in "Your invite" now (11/24/2026).
   });
   const openMeaning = () => { setMeaningDraft(buildMeaningDraft()); setSheet({ kind: 'meaning' }); };
   const hasMeaning = (() => { const h = heartFieldsFor(event); return !!(h.must_have_moment || h.meaning_why || h.honoree_story); })();
@@ -7480,6 +7481,61 @@ export default function HostShellV2() {
     try { return inviteLinkUrl(); }
     catch { toast('Can’t share: the public link address is missing. Nothing was shared.'); return ''; }
   };
+  // The reply-by editor, hoisted to the shell (11/24/2026) so the guest list
+  // and the "Your invite" panel open the SAME one.
+  const renderDeadlineEditor = () => {
+        // DO-IT-FOR-ME, GROUNDED (2026-07-14). The reply-by date used to be an
+        // invented `event.date − 7d` that the INVITE printed as if the host had
+        // chosen it. Deleting it from the invite was only half an answer: an RSVP
+        // deadline genuinely helps, because the whole point of a reply is to LOCK
+        // THE COUNT, and the count has real downstream walls.
+        //
+        // So the app proposes, SHOWS ITS WORK, and the host owns the result. The
+        // proposal is derived from the things that actually cannot proceed without
+        // a headcount — each real vendor's own count promise (catering wants it 7
+        // days out, staffing 14, a florist 21) and the playbook's own
+        // count-dependent tasks (a crab pre-order is T-5d) — plus the days needed
+        // to chase whoever hasn't answered.
+        //
+        // Nothing is written until the host taps. Until then `rsvpDeadline` is
+        // unset, `rsvpDeadlineFor` reports source:'derived', and the invite stays
+        // silent — it will only ever speak a date the host actually committed to.
+        const prop = (() => { try { return proposeReplyBy(event); } catch (_e) { return null; } })();
+        const already = String(event.rsvpDeadline || '').trim();
+        return (
+          <div style={{ margin: '0 0 10px' }}>
+            <div className="actions-row" style={{ alignItems: 'center' }}>
+              <span className="of">replies by:</span>
+              <input className="field" style={{ maxWidth: 175, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="date"
+                value={already || ''}
+                onChange={e => patchEvent({ rsvpDeadline: e.target.value }, 'Reply-by date set — your invite and the nudges read it.')}
+                aria-label="RSVP deadline" />
+              {prop && prop.iso && already !== prop.iso && (
+                <button className="mini" onClick={() => patchEvent({ rsvpDeadline: prop.iso },
+                  'Reply-by date set — your invite says it now.')}>
+                  {already ? 'use ours' : 'pick one for me'}
+                </button>
+              )}
+            </div>
+            {prop && (
+              <p className="grounding" style={{ margin: '6px 2px 0' }}>
+                {prop.tooClose
+                  ? prop.why
+                  : <>
+                      {!already && <><b>{new Date(prop.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</b>{' — '}</>}
+                      {prop.why}
+                    </>}
+              </p>
+            )}
+            {!already && (
+              <p className="grounding" style={{ margin: '4px 2px 0' }}>
+                No reply-by date shows on your invite until you set one.
+              </p>
+            )}
+          </div>
+        );
+  };
+
   const openInviteDraft = async (title, build, opts) => {
     // WHAT AN INVITE CANNOT GO OUT WITHOUT (owner, 11/19/2026: "Before sending
     // invites app should verify if the important info is included"). The day,
@@ -17348,7 +17404,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'invite-design' ? 'Your invite' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -17379,6 +17435,15 @@ export default function HostShellV2() {
             {/* Date & time area is a real door now (host report 2026-07-16: it was tappable
                 copy with no editor behind it). Reuses the same date+arrival-time editor the
                 action cards use — change the day or the time here. */}
+            {/* "YOUR INVITE" (owner-approved render r3-3, 11/24/2026): the layout,
+                her message, who it's from, the paper and reply-by, with a live
+                preview of the guest's own invite. */}
+            {sheet.kind === 'invite-design' && (
+              <InviteDesignSheet event={event} profile={profile} patchEvent={patchEvent} patchProfile={patchProfile}
+                signedIn={Boolean(session)} email={(session && session.user && session.user.email) || ''}
+                onDone={closeSheet} renderDeadlineEditor={renderDeadlineEditor} hasArtwork={!!eventArtworkFile(event)}
+                onSeeFull={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch { /* blocked */ } }} />
+            )}
             {sheet.kind === 'invite-check' && (() => {
               const gaps = inviteGaps(event);
               const has = (k) => !gaps.includes(k);
@@ -17400,6 +17465,8 @@ export default function HostShellV2() {
                   {/* THE INVITE RULES LIVE IN THE INVITE STEP (owner, render 10a,
                       11/24/2026): the same component and record as the guest list. */}
                   <InviteRules event={event} patchEvent={patchEvent} note="The RSVP page follows these. Also in your guest list." />
+                  <SettledRow label="Your invite" value={(event.inviteLayout === 'glance' ? 'At a glance' : 'Classic') + ' · how it looks and what it says'}
+                    style={{ margin: 'var(--sp-3) 0 0' }} onOpen={() => setSheet({ kind: 'invite-design', from: sheet })} />
                   {(!has('date') || !has('time')) && renderEditor({ domain: 'date' })}
                   {!has('place') && (
                     <div style={{ marginTop: 'var(--sp-3)' }}>
@@ -21284,8 +21351,6 @@ export default function HostShellV2() {
                   ['meaning_why', 'Why this matters', heartPh.meaning_why, false],
                   ['feeling_words', 'How the day should feel', heartPh.feeling_words, false],
                   ['must_have_moment', 'The one moment that must happen', heartPh.must_have_moment, false],
-                  ['hostName', 'Who is the invitation from?', 'Todd — or “Todd & Sarah”', false],
-                  ['deckLine', 'The line under your event’s name on the invite', 'Good food, good people', false],
                 ].map(([key, label, ph, multi]) => (
                   <div key={key} style={{ marginBottom: 'var(--sp-4)' }}>
                     {/* Warm sentence-case prompt (was a tiny uppercase faint form
@@ -21300,11 +21365,15 @@ export default function HostShellV2() {
                     )}
                   </div>
                 ))}
+                {/* THE INVITE'S MESSAGE AND WHO IT'S FROM moved to "Your invite"
+                    (owner, 11/24/2026): one editor for one field. */}
+                <SettledRow label="Your invite’s message" value={String(event.deckLine || '').trim() || 'Our line for this event'}
+                  style={{ margin: '0 0 var(--sp-4)' }} onOpen={() => setSheet({ kind: 'invite-design', from: sheet })} />
                 <div className="actions-row">
                   {(() => {
                     // Dirty-gate (per-screen audit: "Save it" fired a success toast even
                     // with zero changes) — only enabled when a field actually changed.
-                    const _mk = ['honoree', 'honoree_story', 'meaning_why', 'feeling_words', 'must_have_moment', 'hostName', 'deckLine'];
+                    const _mk = ['honoree', 'honoree_story', 'meaning_why', 'feeling_words', 'must_have_moment'];
                     // Compared with what the sheet opened on — the creation story it
                     // shows is not an edit, so Save stays dim until she changes something.
                     const base = buildMeaningDraft();
@@ -22413,6 +22482,10 @@ export default function HostShellV2() {
                       — how much of you the app remembers — read from the same
                       summarizeHostIntel the panel below renders, never a
                       decorative count. */}
+                  {/* THE HOST'S PHOTO (owner, render r3-4, 11/24/2026): one per account,
+                      the same row as in "Your invite". */}
+                  <HostPhotoRow profile={profile} patchProfile={patchProfile} signedIn={Boolean(session)} variant="settings"
+                    hostName={(profile && profile.name) || ''} email={(session && session.user && session.user.email) || ''} />
                   <SheetHero
                     eyebrow="You & settings"
                     star={mem && mem.present ? `${(mem.groups || []).length} remembered` : 'Nothing remembered yet'}
@@ -28805,94 +28878,16 @@ export default function HostShellV2() {
                       an even segmented control instead of a 2+1 ragged wrap. */}
                   {/* Fold-behind-Change (parity/MANIFEST) — one settled look; folds
                       to a hairline row, opens the 3-up segmented control on tap. */}
-                  {(() => {
-                    const styles = [['', 'Match the event'], ['bright', 'Bright paper'], ['elegant', 'Elegant dark']];
-                    const cur = event.inviteStyle || '';
-                    const curLabel = (styles.find(([v]) => v === cur) || styles[0])[1];
-                    if (!settledOpen.inviteStyle) {
-                      return <SettledRow label="Invite look" value={curLabel} style={{ margin: '0 0 10px' }}
-                        onOpen={() => setSettledOpen(m => ({ ...m, inviteStyle: true }))} />;
-                    }
-                    return (
-                      <>
-                        <div className="of" style={{ display: 'block', margin: '0 0 6px' }}>invite look</div>
-                        <OptionList ariaLabel="Invite look" style={{ margin: '0 0 10px' }}
-                          options={styles.map(([val, label]) => ({ label, value: val }))}
-                          value={cur}
-                          onPick={(val) => { const label = (styles.find(([v]) => v === val) || styles[0])[1]; patchEvent({ inviteStyle: val }, val ? 'Invite set to ' + label.toLowerCase() + ' — the link updates instantly.' : 'The invite matches the event’s mood again.'); setSettledOpen(m => ({ ...m, inviteStyle: false })); }} />
-                      </>
-                    );
-                  })()}
-                  {/* Crest choice — only offered when this event HAS registered
-                      artwork (never a toggle that does nothing). The host's
-                      call: artwork on the invite, or purely typographic. */}
-                  {eventArtworkFile(event) && (
-                    <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
-                      <span className="of">artwork:</span>
-                      <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={event.inviteCrest !== 'off'}
-                        onClick={() => patchEvent({ inviteCrest: '' }, 'The artwork is on the invite.')}>On the invite</button>
-                      <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={event.inviteCrest === 'off'}
-                        onClick={() => patchEvent({ inviteCrest: 'off' }, 'Words only — the invite stays purely typographic.')}>Words only</button>
-                    </div>
-                  )}
+                  {/* "YOUR INVITE" (owner, 11/24/2026): the invite look (now "Paper"), the
+                      artwork, the layout and her message live in one panel. */}
+                  <SettledRow label="Your invite" value={(event.inviteLayout === 'glance' ? 'At a glance' : 'Classic') + ' · ' + ((([['', 'Match the event'], ['bright', 'Bright paper'], ['elegant', 'Elegant dark']].find(([v]) => v === (event.inviteStyle || '')) || [0, 'Match the event'])[1]).toLowerCase())}
+                    style={{ margin: '0 0 10px' }} onOpen={() => setSheet({ kind: 'invite-design', from: sheet })} />
                   {inviteRules}
                   {countingChips}
                   {csvBlock}
                   {pastImports}
                   {exportRow}
               </>);
-              const renderDeadlineEditor = () => {
-                    // DO-IT-FOR-ME, GROUNDED (2026-07-14). The reply-by date used to be an
-                    // invented `event.date − 7d` that the INVITE printed as if the host had
-                    // chosen it. Deleting it from the invite was only half an answer: an RSVP
-                    // deadline genuinely helps, because the whole point of a reply is to LOCK
-                    // THE COUNT, and the count has real downstream walls.
-                    //
-                    // So the app proposes, SHOWS ITS WORK, and the host owns the result. The
-                    // proposal is derived from the things that actually cannot proceed without
-                    // a headcount — each real vendor's own count promise (catering wants it 7
-                    // days out, staffing 14, a florist 21) and the playbook's own
-                    // count-dependent tasks (a crab pre-order is T-5d) — plus the days needed
-                    // to chase whoever hasn't answered.
-                    //
-                    // Nothing is written until the host taps. Until then `rsvpDeadline` is
-                    // unset, `rsvpDeadlineFor` reports source:'derived', and the invite stays
-                    // silent — it will only ever speak a date the host actually committed to.
-                    const prop = (() => { try { return proposeReplyBy(event); } catch (_e) { return null; } })();
-                    const already = String(event.rsvpDeadline || '').trim();
-                    return (
-                      <div style={{ margin: '0 0 10px' }}>
-                        <div className="actions-row" style={{ alignItems: 'center' }}>
-                          <span className="of">replies by:</span>
-                          <input className="field" style={{ maxWidth: 175, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="date"
-                            value={already || ''}
-                            onChange={e => patchEvent({ rsvpDeadline: e.target.value }, 'Reply-by date set — your invite and the nudges read it.')}
-                            aria-label="RSVP deadline" />
-                          {prop && prop.iso && already !== prop.iso && (
-                            <button className="mini" onClick={() => patchEvent({ rsvpDeadline: prop.iso },
-                              'Reply-by date set — your invite says it now.')}>
-                              {already ? 'use ours' : 'pick one for me'}
-                            </button>
-                          )}
-                        </div>
-                        {prop && (
-                          <p className="grounding" style={{ margin: '6px 2px 0' }}>
-                            {prop.tooClose
-                              ? prop.why
-                              : <>
-                                  {!already && <><b>{new Date(prop.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</b>{' — '}</>}
-                                  {prop.why}
-                                </>}
-                          </p>
-                        )}
-                        {!already && (
-                          <p className="grounding" style={{ margin: '4px 2px 0' }}>
-                            No reply-by date shows on your invite until you set one.
-                          </p>
-                        )}
-                      </div>
-                    );
-              };
               // ── THE COVER, RESOLVED ONCE ────────────────────────────────
               // Read-only and forward-compatible: the host-supplied media
               // pipeline is NOT authorized, so this reads an `coverImageUrl`
