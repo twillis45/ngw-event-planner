@@ -55,7 +55,10 @@ const LADDER = new Set([0, 1, 2, 4, 8, 12, 16, 20, 24, 32, 40, 48, 56, 64, 80]);
 // 264 -> 263 on 11/22/2026 (the Linen theme, owner: "B with the C touches"):
 // "OUR PICK" went to 12px tracked caps, and its .decopt-badge padding
 // `3px 9px` became `4px 10px` with it; 4 is on the ladder, 3 was not.
-const BASELINE = 263;
+// 263 -> 262 on 11/24/2026: .app.has-nextbar's `padding-bottom:calc(84px …)`
+// moved into the .app::after spacer's height (it shrank the hero's 100cqh
+// first screen). A height, not a spacing value; nothing was respaced.
+const BASELINE = 262;
 
 const PROP = /\b(margin|padding|gap|row-gap|column-gap)(-top|-right|-bottom|-left|-block|-inline)?\s*:\s*([^;{}]+)/g;
 
