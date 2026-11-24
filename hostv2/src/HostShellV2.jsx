@@ -23932,7 +23932,7 @@ export default function HostShellV2() {
                       : asNext && photosLine ? <div className="row-assign" key={(t.id || i) + '-act'}><span className="row-act"><button type="button" className="mini rowlink row-quiet" data-row-photos onClick={() => setSheet({ kind: 'guests', focus: 'photos' })}>{photosLine} →</button></span></div>
                       : null);
                     const checkOff = (
-                      <div className="row-assign step-done-row">
+                      <div className="row-assign">
                         <button type="button" className="mini rowlink" data-step-checkoff onClick={() => toggleTask(i)}>{inferred ? 'Confirm it’s done' : 'Check it off'}</button>
                       </div>
                     );
