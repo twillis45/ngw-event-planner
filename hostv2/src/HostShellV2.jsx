@@ -3173,7 +3173,9 @@ export default function HostShellV2() {
     const proposedOpt = nd.proposed ? nd.options.find(o => o.value === nd.proposed.value) : null;
     const litPick = !!(opts.lit && proposedOpt);
     const goWith = (label) => {
-      const t = String(label || '').trim();
+      // The option's head ("Drop-off catering / buffet" says "drop-off catering"),
+      // as the owner-approved render reads.
+      const t = String(label || '').replace(/\s*\/.*$/, '').trim();
       return 'Go with ' + (/^[A-Z][a-z]/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t);
     };
     const alts = proposedOpt ? nd.options.filter(o => o !== proposedOpt) : nd.options;
@@ -3274,12 +3276,22 @@ export default function HostShellV2() {
         {proposedOpt ? (
           <>
             {optRow(proposedOpt, true)}
-            {litPick && (
-              <button type="button" className="cta decopt-go" data-pick-go onClick={() => decide(nd, proposedOpt.value)}>
-                {goWith(proposedOpt.label)}
-              </button>
-            )}
-            {alts.length > 0 && (open ? (
+            {/* The lit act and "Other ways" share one row (F1): the primary and
+                its secondary, so the tall iPad's first screen still ends above
+                its bar. They wrap to two lines where the row is too narrow. */}
+            {litPick ? (
+              <>
+                <div className="decopt-acts">
+                  <button type="button" className="cta decopt-go" data-pick-go onClick={() => decide(nd, proposedOpt.value)}>
+                    {goWith(proposedOpt.label)}
+                  </button>
+                  {alts.length > 0 && (open
+                    ? <button className="decopt-disc" onClick={() => setDecDiscloseId(null)}>Other ways  ▾</button>
+                    : <button className="decopt-disc" onClick={() => setDecDiscloseId(nd.id)}>Other ways  ▸</button>)}
+                </div>
+                {open && alts.map(o => optRow(o, false))}
+              </>
+            ) : alts.length > 0 && (open ? (
               <>
                 <button className="decopt-disc" onClick={() => setDecDiscloseId(null)}>Other ways  ▾</button>
                 {alts.map(o => optRow(o, false))}
@@ -5994,6 +6006,8 @@ export default function HostShellV2() {
   const [ttStandSlot, setTtStandSlot] = useState(null);
   // Where What's counted opens: the slot under its door's line (cohesion F3).
   const [wcSlot, setWcSlot] = useState(null);
+  // Who's confirmed: the groups opened past their first three rows on the phone (F6).
+  const [whoMore, setWhoMore] = useState({});
   const [ttFoldSlot, setTtFoldSlot] = useState(null);
   // The header's weather slot (owner ruling 11/23/2026): on a tall iPad the
   // weather pill rides the date line instead of floating over the board.
@@ -11806,14 +11820,15 @@ export default function HostShellV2() {
               collapsed only as an aria-label, since the whole point is that
               nothing in the narrow rail carries text. */}
           <button className="srail-row srail-min" onClick={toggleRailMin}
-            aria-expanded={!railMin} aria-label={railMin ? 'Widen the menu' : 'Narrow the menu'}
-            title={railMin ? 'Widen the menu' : 'Narrow the menu'}>
+            aria-expanded={!railMin} aria-label={railMin ? 'Widen the menu' : 'Icons only'}
+            title={railMin ? 'Widen the menu' : 'Icons only'}>
             <svg className="srail-i" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"
               fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <rect x="1.8" y="2.6" width="12.4" height="10.8" rx="1.4" />
               <path d="M6.2 2.6v10.8" />
             </svg>
-            <span className="srail-l">{railMin ? 'Widen' : 'Narrow'}</span>
+            {/* Says what she will see (cohesion F5, owner 11/24/2026). Was "Narrow". */}
+            <span className="srail-l">{railMin ? 'Widen' : 'Icons only'}</span>
           </button>
           {/* YOUR EVENT (owner ruling 8, 11/23/2026): on a 13" iPad held upright
               the rail is the one menu, so the phases join it, first. The same
@@ -12994,7 +13009,7 @@ export default function HostShellV2() {
                     </div>
                   </nav>
                 )}
-                {tallRibbon && tallTablet && !dayHero && !isPast && <div className="wc-slot" ref={setWcSlot} />}
+                {handledOpen && tallRibbon && tallTablet && !dayHero && !isPast && <div className="wc-slot" ref={setWcSlot} />}
                 {/* THE PHONE'S PROGRESS, ON TOP (owner ruling 3, 11/23/2026): the
                     ribbon's own parts (planRibbon, the one progress reader) as six
                     thin segments under the title, the current part's lit, and one
@@ -13019,7 +13034,7 @@ export default function HostShellV2() {
                     </button>
                   </div>
                 )}
-                {tallRibbon && phonePill && !dayHero && !isPast && <div className="wc-slot" ref={setWcSlot} />}
+                {handledOpen && tallRibbon && phonePill && !dayHero && !isPast && <div className="wc-slot" ref={setWcSlot} />}
                 </>
               ) : elegantMode && bp !== 'mobile' ? (
                 /* THE DESKTOP'S TITLE (owner, 11/24/2026): the phone's title block,
@@ -14517,7 +14532,7 @@ export default function HostShellV2() {
                     {/* What's counted opens here at the rail widths (owner F3): the
                         door is in the narrow Where you stand card, so the panel opens
                         under the hero's own "N of 7 plan parts handled" line. */}
-                    {!phonePill && !tallTablet && <div className="wc-slot" ref={setWcSlot} />}
+                    {handledOpen && !phonePill && !tallTablet && <div className="wc-slot" ref={setWcSlot} />}
                   </div>
                 );
               })()}
@@ -15108,7 +15123,8 @@ export default function HostShellV2() {
                       payment past its date does not get to read as nearly done. */}
                   {orient && (
                     <p className="v-meta" style={{ margin: '0 0 4px' }}>
-                      {orient.lifecycleLabel}{orient.countText ? ` · ${orient.countText}` : ''} — {orient.summary}
+                      {/* The count, then what still needs her (cohesion #48). */}
+                      {orient.statusLine}
                     </p>
                   )}
                   <div className="t-label">Where you stand{' '}{countedCaret()}</div>
@@ -15486,10 +15502,12 @@ export default function HostShellV2() {
                     {l.flagged && (
                       <button className="mini rowlink" data-who-flagged style={{ display: 'block', marginTop: 'var(--sp-2)', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }} onClick={go.vendors}>{l.flagged}</button>
                     )}
-                    {l.cantDo && !tallTablet && (
-                      <p className="vc-detail warn-note" data-who-cant style={{ margin: 'var(--sp-2) 0 0', overflowWrap: 'anywhere' }}>{l.cantDo}</p>
-                    )}
-                    {tallTablet ? (() => {
+                    {/* THE LIST AT EVERY WIDTH (cohesion #40, owner 11/24/2026): the
+                        tall iPad's grouped rows replace the run-on "Still waiting: …"
+                        sentence on the phone and the desktop. A helper who can't is
+                        a row ("can’t"), so the separate note is not said twice.
+                        On the phone each group shows 3 rows, then "+N more" (F6). */}
+                    {(() => {
                       /* ── THE SENTENCE AS ROWS (tall iPad, owner 11/22/2026) ──────
                          The same classification the sentence is built from
                          (lib/whoIsConfirmed), counted as the chips count. A row
@@ -15499,45 +15517,46 @@ export default function HostShellV2() {
                       try { g = whoIsConfirmedGroups(event, confirmationByVendor, helperAnswerByKey); } catch { g = null; }
                       if (!g) return null;
                       const routable = (r) => { try { return !!(r && resolveRoute(r)); } catch { return false; } };
+                      // F6: three rows a group on the phone, the rest behind "+N more".
+                      const cap = (k, rows) => (phonePill && !whoMore[k] ? rows.slice(0, 3) : rows);
+                      const moreRow = (k, rows) => (phonePill && !whoMore[k] && rows.length > 3 ? (
+                        <button type="button" className="tt-row tt-more" data-who-more onClick={() => setWhoMore((m) => ({ ...m, [k]: true }))}>
+                          <span className="tt-row-t">{`+${rows.length - 3} more`}</span>
+                        </button>
+                      ) : null);
                       return (
                         <>
                           {g.vendors && g.vendors.count > 0 && (
                             <div className="tt-who-g" data-who-group="vendors">
                               <h3 className="tt-who-h"><span>Vendors</span><span data-who-count>{g.vendors.count} not confirmed</span></h3>
-                              {g.vendors.rows.map((r) => (
+                              {cap('vendors', g.vendors.rows).map((r) => (
                                 <button key={r.id} type="button" className="tt-row" data-who-row onClick={() => setSheet({ kind: 'vendors', focus: r.id })}>
                                   <span className="tt-row-t">{r.label}</span>
                                   {r.note && <span className="tt-row-w">{r.note}</span>}
                                   <span className="chev" aria-hidden="true">›</span>
                                 </button>
                               ))}
+                              {moreRow('vendors', g.vendors.rows)}
                             </div>
                           )}
                           {g.helpers && g.helpers.count > 0 && (
                             <div className="tt-who-g" data-who-group="helpers">
                               <h3 className="tt-who-h"><span>Helpers &amp; tasks</span><span data-who-count>{g.helpers.count} not confirmed</span></h3>
-                              {g.helpers.rows.map((r, i) => {
-                                const inner = (
-                                  <>
-                                    <span className="tt-row-t">{r.label}</span>
-                                    <span className="tt-row-w">{r.note ? `${r.name} ${r.note}` : r.name}</span>
-                                  </>
-                                );
-                                return routable(r.route) ? (
-                                  <button key={i} type="button" className="tt-row" data-who-row onClick={() => routeSheet(r.route)}>
-                                    {inner}<span className="chev" aria-hidden="true">›</span>
-                                  </button>
-                                ) : (
-                                  <div key={i} className="tt-row" data-who-row>{inner}</div>
-                                );
-                              })}
+                              {cap('helpers', g.helpers.rows).map((r, i) => (
+                                /* Every row routes (#40): its job's own route, else the
+                                   helpers' section, where every job is assigned. */
+                                <button key={i} type="button" className="tt-row" data-who-row onClick={() => (routable(r.route) ? routeSheet(r.route) : go.helpers())}>
+                                  <span className="tt-row-t">{r.label}</span>
+                                  <span className="tt-row-w">{r.note ? `${r.name} ${r.note}` : r.name}</span>
+                                  <span className="chev" aria-hidden="true">›</span>
+                                </button>
+                              ))}
+                              {moreRow('helpers', g.helpers.rows)}
                             </div>
                           )}
                         </>
                       );
-                    })() : l.waiting && (
-                      <p className="vc-detail" data-who-waiting style={{ margin: 'var(--sp-2) 0 0', overflowWrap: 'anywhere' }}>{l.waiting}</p>
-                    )}
+                    })()}
                     {qLine && (
                       <button className="mini rowlink" data-who-questions style={{ display: 'block', marginTop: 'var(--sp-2)', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }}
                         onClick={() => setSheet({ kind: 'guests', focus: 'questions' })}>{qLine}</button>
@@ -15578,6 +15597,8 @@ export default function HostShellV2() {
                   line that holds its door (the phone's progress line, the tall
                   iPad's ribbon, the hero's progress line at the rail widths) and
                   nothing scrolls. Where no door line is on the board, it stays here.
+                  The slot exists only while it is open, so a closed panel adds no
+                  gap to the first screen (the tall iPad's fold is measured).
                   A slim bar heads it and a close row ends it. */}
               {((el) => (wcSlot ? createPortal(el, wcSlot) : el))(
               <div id="whats-counted" className={'slidepanel' + (handledOpen ? ' open' : '')} inert={!handledOpen}>
@@ -17503,7 +17524,10 @@ export default function HostShellV2() {
                     parent. And "‹ Sections" only shows on a sheet that IS a section
                     — a door in sectionGroups() — not on Jump to, Feeling stuck?,
                     Your events or a draft, which the directory does not list. */}
-                {!sheet.from && sectionGroups({ event, travel, crab, outdoor, passCents: devicePassPriceCents() })
+                {/* WHERE THE RAIL IS UP, THE RAIL IS THE LIST (cohesion F4, owner
+                    11/24/2026): "‹ Sections" beside it was a third door to the same
+                    list (with ☰). It stays below the rail, 44 px tall (#46). */}
+                {!sheet.from && !railUp && sectionGroups({ event, travel, crab, outdoor, passCents: devicePassPriceCents() })
                   .some(g => g.rows.some(r => r.k === (sheet.kind === 'bringing' || sheet.kind === 'foodplan' ? 'food' : sheet.kind))) && (
                   /* sheet-back: the 44px hit area comes from a ::after in the
                      stylesheet, NOT from padding or min-height here. Measured at

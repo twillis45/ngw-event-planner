@@ -179,11 +179,13 @@ test('Wanda: "Go with …" under our pick settles it, and the lead says what the
   await boot(page, { id: 'ev-x-wanda' }, 'light');
   const hero = page.locator('.hero .hero-card');
   await expect(hero.locator('.decopts-lead')).toHaveText('Our pick is first. Tap another to choose it instead — nothing else changes.');
-  const pickName = (await hero.locator('.decopt.pick .decopt-name').first().innerText()).trim();
+  const pickName = (await hero.locator('.decopt.pick .decopt-name').first().innerText()).replace(/\s*\/.*$/, '').trim();
+  expect(pickName).toBe('Drop-off catering');
   const go = hero.locator('[data-pick-go]');
   await expect(go).toHaveText(`Go with ${pickName.charAt(0).toLowerCase()}${pickName.slice(1)}`);
-  // Directly under the pick row.
-  expect(await go.evaluate((b) => b.previousElementSibling && b.previousElementSibling.classList.contains('pick'))).toBe(true);
+  // Directly under the pick row, on one row with its secondary ("Other ways").
+  expect(await go.evaluate((b) => { const row = b.closest('.decopt-acts'); return !!row && !!row.previousElementSibling && row.previousElementSibling.classList.contains('pick'); })).toBe(true);
+  expect((await go.boundingBox()).height).toBeGreaterThanOrEqual(44);
   await go.click();
   await expect(page.locator('.toast, [role="status"]').filter({ hasText: /Decided|Undo|planned|set/i }).first()).toBeVisible();
   await expect(page.locator('.hero').getByText('How is the food handled?', { exact: false })).toHaveCount(0);

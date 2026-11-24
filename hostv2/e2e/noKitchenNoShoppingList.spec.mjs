@@ -78,7 +78,7 @@ const openList = async (page, pick) => {
   await page.goto('?elegant=1');
   await settled(page);
   // Whichever label the food row is wearing for THIS fixture — see the header.
-  await tapText(page, "what you.?re serving|dietary needs on the food plan");
+  await tapText(page, "what you.?re serving|\\? · \\d+ open|dietary needs on the food plan");
   await sheetSettled(page);
   // Back out of the dietary drill-in. A no-op on the untold fixture, whose menu
   // carries no "Done" at all — which is exactly why it is safe to always send.
@@ -192,7 +192,7 @@ test('NEGATIVE CONTROL: a LOCAL event is untouched by any of it', async ({ page 
   });
   await page.goto('?elegant=1');
   await settled(page);
-  await tapText(page, "what you.?re serving|dietary needs on the food plan");
+  await tapText(page, "what you.?re serving|\\? · \\d+ open|dietary needs on the food plan");
   await sheetSettled(page);
   await tapText(page, '^Done$');
   await sheetSettled(page);
