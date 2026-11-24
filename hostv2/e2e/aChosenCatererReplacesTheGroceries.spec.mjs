@@ -23,11 +23,7 @@ test('a chosen caterer replaces the homemade food and remains an unbooked vendor
   await expect(page.getByRole('button', { name: /No catering booked yet/ })).toBeVisible();
   await openSectionByName(page, 'The spread & shopping');
   const sheet = page.locator('.sheet').last();
-  // The section door opens on Plan while a menu question is open (foodSheetKind);
-  // the list this walks is on Shop, so tap Shop.
-  await page.locator('.sheet').last().locator('.fmode', { hasText: /^Shop$/ }).first().click();
-  await settled(page);
-  await sheet.getByRole('button', { name: /^The list/ }).click();
+  // One food page (owner, 11/24/2026): no Plan/Shop tabs, and the list is always open.
   await sheet.getByRole('button', { name: /Food.*0 of 1 bought/ }).click();
   const catering = sheet.getByRole('button', { name: /Catering \(the food\)/ });
   await catering.scrollIntoViewIfNeeded();

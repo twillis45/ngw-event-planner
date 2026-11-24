@@ -62,9 +62,15 @@ describe('isTallTablet — the pure rule', () => {
   });
 });
 
-describe('showsRail is false on a tall tablet', () => {
-  test('a 13" iPad in portrait (tablet-land width) gets no rail', () => {
-    expect(showsRail({ bp: 'tablet-land', portrait: true, stage: 'plan' })).toBe(false);
+describe('showsRail on a tall tablet: only the 13" (owner ruling 8, 11/23/2026)', () => {
+  // Reversed from 11/22: a portrait tablet at least 1024 wide (the 12.9"/13")
+  // keeps an always-visible left menu, the landscape rail. The 768–1023
+  // portrait tablets keep the docked bar and no rail.
+  test('a 13" iPad in portrait (tablet-land width) gets the rail', () => {
+    expect(showsRail({ bp: 'tablet-land', portrait: true, stage: 'plan' })).toBe(true);
+  });
+  test('an 11" iPad in portrait (tablet width) gets no rail', () => {
+    expect(showsRail({ bp: 'tablet', portrait: true, stage: 'plan' })).toBe(false);
   });
   test('the same width in landscape keeps it', () => {
     expect(showsRail({ bp: 'tablet-land', portrait: false, stage: 'plan' })).toBe(true);

@@ -41,6 +41,10 @@ const newYearsEveParty = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Mushroom-and-gruyere puff pastry bites',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Mushroom & thyme bites in vegan puff pastry',
+  // Bought items its label must be checked for (pastry: butter; buns: eggs or milk; tortillas: lard).
+  vegMainVeganCheck: ['pastry'],
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
@@ -150,7 +154,7 @@ const newYearsEveParty = {
     { id: 't_clock_owner', target: 'assign', facts: [], milestoneId: 'ny_countdown', phase: 'planning', label: 'Name the person who owns the clock and the count — synced to a real time source, committed to calling it', when: 'T-7d', whenChoice: { id: 'countdown_source', in: ['Your own clock and a confident voice'] } },
     { id: 't_early_countdown', target: 'none', facts: [], milestoneId: 'ny_countdown', phase: 'planning', label: 'Set up the early countdown for the kids — a replay or your own count at 9, with the sparkling cider and the noisemakers ready', when: 'T-7d', whenChoice: { id: 'midnight_model', in: ['Family party — countdown at 9, kids in pajamas', 'Both — early family countdown, then the adult night continues'] } },
     { id: 't_headcount', target: 'guests', facts: ['guest-count'], milestoneId: 'ny_headcount', phase: 'guest', label: 'Confirm the headcount, who is driving, who is ridesharing, and who takes the couch — the toast math and the bedding count both hang on it', when: 'T-4d' },
-    { id: 't_shop', target: 'list', facts: [], milestoneId: 'ny_shop', phase: 'shopping', label: 'Buy the sparkling wine and zero-proof sparkler to the bottle-per-five math, both food waves, and the flutes, poppers, and noisemakers', when: 'T-3d' },
+    { id: 't_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'ny_shop', phase: 'shopping', label: 'Buy the sparkling wine and zero-proof sparkler to the bottle-per-five math, both food waves, and the flutes, poppers, and noisemakers', when: 'T-3d' },
     { id: 't_bedding', target: 'none', facts: [], milestoneId: 'ny_prep', phase: 'setup', label: 'Stage the overnight setup: bedding stacked, couches assigned, and a plan for morning coffee that survives the night before', when: 'T-1d', whenChoice: { id: 'staying_late', in: ['The overnight option — couches and floors offered up front'] } },
     { id: 't_wave_prep', target: 'none', facts: [], milestoneId: 'ny_prep', phase: 'food', label: 'Prep both waves: the evening spread ready to serve, and the midnight wave — sliders, a breakfast bite, something salty — staged to fire in fifteen minutes', when: 'T-1d' },
     { id: 't_midnight_station', target: 'none', facts: [], milestoneId: 'ny_prep', phase: 'setup', label: 'Stage the midnight station: flutes counted to the headcount, bottles chilling, poppers and noisemakers in a bowl, the toast spot chosen', when: 'T-1d' },

@@ -20,6 +20,8 @@
 
 const quinceanera = {
   type: 'Quinceañera',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Vegetable mole (vegetable stock) with arroz rojo & black beans',
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'quinceanera',
@@ -265,7 +267,7 @@ const quinceanera = {
     { id: 't_church', target: 'vendors', facts: [], milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'If holding a Mass, book the parish and priest; confirm any preparation requirements and readings', when: 'T-268d' },
     { id: 't_venue_walk', target: 'place-notes', facts: [], milestoneId: 'lock_date_church_venue', phase: 'plan', label: 'Tour venues: capacity, included tables/chairs/linens/floor, parking, curfew, in-house vs outside caterer', when: 'T-265d' },
     { id: 't_gown_order', target: 'vendors-tab', facts: [], milestoneId: 'order_gown_court', phase: 'plan', label: 'Order the ballgown; choose and order damas\' dresses and chambelanes\' suits to the color story', when: 'T-240d' },
-    { id: 't_vendor_book', target: 'vendors', facts: ['deposits-paid'], milestoneId: 'book_core_vendors', phase: 'plan', label: 'Book caterer, photographer + videographer, DJ/banda, and baker; sign contracts and pay deposits', when: 'T-180d' },
+    { id: 't_vendor_book', target: 'vendors', facts: ['deposits-paid'], catererOut: ['host-cooks'], otherVendors: ['photographer', 'videographer', 'DJ/banda', 'baker'], labelWithoutCaterer: 'Book photographer + videographer, DJ/banda, and baker; sign contracts and pay deposits', milestoneId: 'book_core_vendors', phase: 'plan', label: 'Book caterer, photographer + videographer, DJ/banda, and baker; sign contracts and pay deposits', when: 'T-180d' },
     { id: 't_court', target: 'vendors', facts: [], milestoneId: 'set_court_choreographer', phase: 'plan', label: 'Confirm damas and chambelanes who will commit to rehearsals; book the choreographer; set a weekly rehearsal slot', when: 'T-120d' },
     // Split in two (owner, 11/21/2026), like Reunion's food step: the call
     // clears on the pick, and the work is its own step on the same milestone
@@ -275,7 +277,7 @@ const quinceanera = {
     { id: 't_florist', target: 'vendors', facts: ['roles:florist'], milestoneId: 'florist_decor_invites', phase: 'plan', label: 'Book florist and decor/centerpieces to the color story; reserve a backdrop and entrance arch', when: 'T-90d' },
     { id: 't_invites', target: 'invite', facts: ['invites-out'], milestoneId: 'florist_decor_invites', phase: 'plan', label: 'Send invitations with RSVP date and Mass + reception times; track replies for the count', when: 'T-88d' },
     { id: 't_rehearse', target: 'vendors-tab', facts: [], milestoneId: 'vals_rehearsals', phase: 'plan', label: 'Run weekly vals and surprise-dance rehearsals; confirm court attire fittings', when: 'T-60d' },
-    { id: 't_fitting', target: 'vendors-tab', facts: [], milestoneId: 'final_fitting_count', phase: 'plan', label: 'Final gown and court fittings; lock headcount and give the caterer the final count', when: 'T-30d' },
+    { id: 't_fitting', target: 'vendors-tab', facts: [], catererOut: ['host-cooks', 'none-hired'], labelWithoutCaterer: 'Final gown and court fittings; lock the headcount', milestoneId: 'final_fitting_count', phase: 'plan', label: 'Final gown and court fittings; lock headcount and give the caterer the final count', when: 'T-30d' },
     { id: 't_ceremony_items', target: 'none', facts: [], milestoneId: 'runofshow_ceremony_prep', phase: 'plan', label: 'Gather the heels, the last doll, the crown/tiara, the toast glasses, and candles/roses; assign each moment to a person', when: 'T-14d' },
     { id: 't_runofshow', target: 'build-day', facts: [], milestoneId: 'runofshow_ceremony_prep', phase: 'plan', label: 'Write the reception run-of-show: entrance, vals, shoes, doll, crowning, toast, father-daughter dance, dinner, open floor', when: 'T-14d' },
     { id: 't_final_rehearsal', target: 'vendors', facts: [], milestoneId: 'final_rehearsal_pickups', phase: 'prep', label: 'Hold the final full rehearsal; brief the MC; confirm every vendor and court member by phone', when: 'T-7d' },

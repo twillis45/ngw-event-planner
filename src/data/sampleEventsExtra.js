@@ -9567,7 +9567,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-home-gathering-t10",
         "week": "1 day out",
-        "task": "Shop for fresh produce, chicken, flowers, and ice", "facts": ["then:food-bought"],
+        "task": "Shop for fresh produce, chicken, flowers, and ice", "facts": ["then:food-bought"], "shopClock": true,
         "done": false,
         "owner": "Host"
       },

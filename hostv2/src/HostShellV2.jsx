@@ -209,11 +209,13 @@ import { expectedFromPlanned, likelyAttendancePhrase } from '@app/lib/attendance
 import { estimateTotalRange, notIncludedFor, notIncludedSummary } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
 import { venueLeadsStay } from '@app/lib/venueLeadsStay'; // owner ruling 11/20/2026: the venue leads the stay
-import { dietRowsFor, anyDietFlagged, dietCountsFor, guestDietCounts } from '@app/lib/dietRows';
+import { dietRowsFor, anyDietFlagged, dietCountsFor, guestDietCounts, mealTally } from '@app/lib/dietRows';
 import { rosBasisNote } from '@app/lib/rosBasis';
 import { parseStartMinutes } from '@app/lib/eventWhen';
 import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
+import InviteRules from './InviteRules';
+import { rowStatus, sourcingSettled } from '@app/lib/rowStatus';
 import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
 import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt, menuChoicesTally, menuBoardRowSub } from '@app/lib/playbooks';
 import InviteToTheList from './InviteToTheList';
@@ -224,7 +226,7 @@ import { readArrival, rememberArrival, arrivalFor, spendArrival, exampleSentence
 import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_NUDGE } from '@app/lib/knowledge/geoCostIndex';
 import { firstStoreIn, storesIn } from '@app/lib/communitySource';
-import { typeIsRestatedByName } from '@app/lib/eventMasthead';
+import { typeLineFor } from '@app/lib/eventMasthead';
 import { confirmedCovers, confirmedRsvpCovers, coversWithWord } from '@app/lib/confirmedCovers';
 import { shoppingHint } from '@app/lib/shoppableUnit';
 import { markSignal, lastSignalNote } from './offline/lastSignal';
@@ -264,6 +266,7 @@ import { storeSearchTerm } from '@app/lib/knowledge/storeUnitMap';
 const icSearchTerm = (line) => storeSearchTerm(line);
 import { parseSmartEventText, HOST_TYPES } from '@app/lib/smartParseEvent';
 import { townFieldsToPersist } from '@app/lib/townFieldsToPersist';
+import { readPlace } from '@app/lib/readPlace';
 import { createSetDown, undoThatBringsBack, settleCountRow, carrySettled } from './setDown.js';
 import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcomeGate';
 // The engine's tuned haptic bands. Free to import — feedback.js has zero
@@ -323,7 +326,7 @@ import { classifyClaim } from '@app/lib/knowledge/claimBasis';
 import { timingDisagreementNote } from '@app/lib/knowledge/timingProvenance';
 import { iceRecommendation, ICE_CHANGE_FACTORS } from '@app/lib/knowledge/claimFamilies';
 import { orientation as deriveOrientation, segmentsText, hairlineLabel, planRibbon } from '@app/lib/eventOrientation';
-import { stagewrapClass, showsRail, isTallTablet } from '@app/lib/responsiveSurface';
+import { stagewrapClass, showsRail, isTallTablet, navLayout } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { syncProfile as cloudSyncProfile, saveProfile as cloudSaveProfile, installProfileOnlineFlush } from '@app/lib/api/profile';
 import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent as cloudDeleteEvent, getPendingEventIds, resolveConflict, undoKeepMine, undoUseTheirs, cloudCopyIsStale, sameEventContent, forgetAccountCache } from '@app/lib/api/events';
@@ -351,7 +354,7 @@ import { occasionShortName, aOccasion } from '@app/lib/occasionWords';
 import { itemsBoughtByTask } from '@app/lib/shopTaskItems';
 import { voiceDraft, voicesFor, draftAudience } from '@app/lib/draftVoice';
 import { worryLabel } from '@app/lib/worryLabel';
-import { venueFor, setVenue, confirmVenue, formatVenueAddress } from '@app/lib/venueFor';
+import { venueFor, setVenue, confirmVenue, formatVenueAddress, venueGeoQuery } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
 import { tripDays, celebrationNight, celebrationTitle, celebrationPlace, celebrationFieldsToPersist, aroundMeals, mealsOutPayer, placeWithArticle, MEAL_PLANS, MEAL_MODES, MEAL_PAYERS, MEAL_LABEL, tripIsMultiDay, DINNER_GROUP, groupDinnerSteps } from '@app/lib/tripMeals';
@@ -369,7 +372,8 @@ import { listTotal, allInTotal } from '@app/lib/planCosts';
 import { landingStage } from '@app/lib/landingStage';
 import { planPartsProgress, planPartsLine } from '@app/lib/planProgress';
 import { moneyFigures, headroomLabel, MONEY_LABELS } from '@app/lib/moneyFigures';
-import { outwardGaps, outwardPrompt } from '@app/lib/outwardReady';
+import { outwardGaps, outwardPrompt, isPlaceholderName } from '@app/lib/outwardReady';
+import EventNameField from './EventNameField.jsx';
 import { eventNameFrom } from '@app/lib/eventName';
 import { timeAnchorFields } from '@app/lib/eventAnchor';
 import { startTimeFieldWords } from '@app/lib/eventWhen';
@@ -1084,44 +1088,75 @@ const DEMO_TOOLS_ARMED = (() => {
 // they still resolve by id either way (stage-4 P1, N2).
 const LISTED_ROSTER = listedSamples(ROSTER, DEMO_TOOLS_ARMED);
 
-// ─── SHOP / BRINGING — the spread sheet's two modes ──────────────────────────
-//
-// Renders NOTHING when no line is carried by somebody else, which is every
-// event type but the repast today. A mode control over one mode is chrome.
-//
-// Real <button>s with `role="tab"`: the review board's access seat found the
-// list rows were the only real controls on this sheet in its mockups, and while
-// that turned out to be false of the shipped rows, it is a good bar to hold a
-// new control to. 44px of hit area, keyboard reachable, and the current mode
-// carries aria-selected rather than only a colour.
-function FoodModes({ mode, count, setSheet }) {
-  // Shop and Plan always exist; Bringing only when somebody is carrying
-  // something. The old guard hid the WHOLE control when count was 0, which was
-  // right while the control was Shop|Bringing and wrong the moment Plan joined
-  // it — it would have hidden the only door to the planning rows on every event
-  // without a community line, i.e. almost all of them.
-  void 0;
-  const btn = (key, label, on) => (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={mode === key}
-      className={'fmode' + (mode === key ? ' on' : '')}
-      onClick={on}
-    >{label}</button>
-  );
-  // ── WORKFLOW ORDER, NOT BOARD ORDER (host, 2026-09-24) ────────────────
-  // Board D draws these Shop · Bringing · Plan. That is the order they were
-  // DESIGNED in, not the order a host moves through them: you settle what you
-  // are serving, you find out what other people are carrying, and only then do
-  // you know what is left to buy. Left to right should be first to last.
+// ─── A ROW'S STATUS VALUE, ONE READER (owner, 11/24/2026) ────────────────────
+// The right-hand value on a sheet row. Its color is lib/rowStatus's answer,
+// carried as data-status and colored in styles.css; no row sets its own.
+function RowValue({ status = 'open', note = false, chev = false, style, children }) {
   return (
-    <div className="fmodes" role="tablist" aria-label="Planning, what others bring, and what you buy">
-      {btn('plan', 'Plan', () => setSheet({ kind: 'foodplan' }))}
-      {count ? btn('bringing', `Bringing · ${count}`, () => setSheet({ kind: 'bringing' })) : null}
-      {btn('shop', 'Shop', () => setSheet({ kind: 'food' }))}
-    </div>
+    <span className={'fstat-v' + (note ? ' fstat-note' : '')} data-status={status} style={style}>
+      {children}
+      {chev ? <span className="fstat-chev" aria-hidden="true">›</span> : null}
+    </span>
   );
+}
+
+// ─── A FINISHED GROUP COLLAPSES, ONE RULE (owner, renders 8/8b, 11/24/2026) ──
+// One component for every list whose groups finish: the shopping groups, the
+// Bringing list, the checklist and the decided calls.
+//   a group with every item done   one compact green row, a chevron to reopen
+//                                  ("✓ Food · all 10 bought"), no progress bar
+//   every group done (`all`)       "✓ All 27 bought" and a quiet "Show the list"
+// Reopening is the caller's `onOpen`; it lasts for the browser session only
+// (useReopened below) and never writes to the plan. A reopen holds only while
+// the group stays finished (owner, 11/24/2026, a live report): once a line is
+// undone the reopen is forgotten, so finishing the group folds it again.
+function DoneFold({ text, sub, onOpen, all = false, showLabel = 'Show the list' }) {
+  if (all) {
+    return (
+      <div className="done-all" data-done-all>
+        <span className="done-tx"><span className="done-ck" aria-hidden="true">✓</span>{text}</span>
+        <button type="button" className="done-show" onClick={onOpen}>{showLabel}</button>
+      </div>
+    );
+  }
+  return (
+    <button type="button" className="done-fold" data-done-fold aria-expanded="false" onClick={onOpen}>
+      <span className="done-ck" aria-hidden="true">✓</span>
+      <span className="done-tx">{text}{sub ? <span className="done-sub">{sub}</span> : null}</span>
+      <span className="fg-chev" aria-hidden="true">›</span>
+    </button>
+  );
+}
+// Which finished groups she reopened, per plan, for this browser session.
+// `isOpen(scope, done, onFinish)` is asked on every render with the group's
+// done state: a scope seen not done drops its reopen (so the next finish folds
+// it), and `onFinish` runs once when a scope turns done, for the caller to close
+// whatever it held open inside the group (a tune panel, a deep-linked line).
+const REOPENED_KEY = 'ngw-v2-reopened';
+function useReopened(eventId) {
+  const [map, setMap] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem(REOPENED_KEY) || '{}') || {}; } catch { return {}; }
+  });
+  const seen = useRef(new Map());
+  const wasDone = useRef({});
+  const key = (scope) => String(eventId || '') + ':' + scope;
+  const save = (next) => { try { sessionStorage.setItem(REOPENED_KEY, JSON.stringify(next)); } catch { /* private mode: this visit only */ } return next; };
+  const isOpen = (scope, done = true, onFinish) => {
+    seen.current.set(key(scope), { done: !!done, onFinish });
+    return !!done && !!map[key(scope)];
+  };
+  const reopen = (scope) => setMap((m) => save({ ...m, [key(scope)]: true }));
+  useEffect(() => {
+    const drop = [];
+    for (const [k, { done, onFinish }] of seen.current) {
+      if (!done && map[k]) drop.push(k);
+      if (done && wasDone.current[k] === false && onFinish) onFinish();
+      wasDone.current[k] = done;
+    }
+    seen.current.clear();
+    if (drop.length) setMap((m) => { const next = { ...m }; for (const k of drop) delete next[k]; return save(next); });
+  });
+  return { isOpen, reopen };
 }
 
 // ─── THE PASS FACT, MADE REACTIVE ────────────────────────────────────────────
@@ -1389,6 +1424,17 @@ export default function HostShellV2() {
   // The tall iPad is a layout of the elegant board (the default since 7/21);
   // the ?elegant=0 fallback keeps its own v2 chrome at every size.
   const tallTablet = elegantMode && isTallTablet({ bp, portrait });
+  // THE NAVIGATION PACKAGE (owner rulings, 11/23/2026), one reader (navLayout):
+  // a phone wears the tall header, the progress on top and a bottom pill (no
+  // ☰, no NEXT bar); a 13" iPad held upright keeps the tall board with the
+  // rail always up and no bottom bar; 768–1023 portrait keeps its bar.
+  const navMode = navLayout({ bp, portrait, elegant: elegantMode });
+  const phonePill = navMode === 'pill';
+  const tallRail = navMode === 'tall-rail';
+  // The tall header and its company (the Day/After sample line, the fold slot).
+  const ttHead = tallTablet || phonePill;
+  // The docked bar: the 768–1023 portrait bar, or the phone's pill.
+  const barShown = navMode === 'bar' || phonePill;
   const splashSeenRecently = (() => {
     const now = Date.now();
     const withinWindow = (iso) => {
@@ -1567,7 +1613,8 @@ export default function HostShellV2() {
   // component, so it cannot remount the caret on every parent render.
   // On a tall iPad the ribbon IS what's counted (owner, 11/22/2026): one copy,
   // so the caret is not rendered there.
-  const countedCaret = (extra) => tallTablet ? null : (
+  // The phone's progress line is its door too (owner ruling 3, 11/23/2026).
+  const countedCaret = (extra) => (tallTablet || phonePill) ? null : (
     <span role="button" tabIndex={0} aria-expanded={handledOpen} aria-controls="whats-counted"
       className="counted-caret"
       /* display lives in CSS, not here: the ≤480px tap floor switches it to
@@ -1673,7 +1720,15 @@ export default function HostShellV2() {
     // A PICKED ADDRESS IS STORED WHOLE (owner report, iPad, 11/21/2026): its
     // street, town, state, ZIP and coordinates. A street saved as typed is
     // saved, and the host is told plainly the ZIP was not found; none is made up.
-    const patch = pendingPick ? setVenue(event, { resolved: pendingPick }) : setVenue(event, { name: v, locationText: pendingCity });
+    // AT HOME, THE ONE ADDRESS ASK READS WHAT SHE TYPED WITH THE SENTENCE'S
+    // READER (lib/readPlace through townFieldsToPersist, owner 11/24/2026): a
+    // full address, a city or a ZIP each lands where the sentence puts it. The
+    // place stays her home. Text it cannot read at all goes the old way.
+    const homeFields = (!pendingPick && venueFor(event).isHome && venueFor(event).needsCityForWeather) ? townFieldsToPersist(v) : null;
+    const homeRead = homeFields && (homeFields.venueAddress || homeFields.venueCity || homeFields.venueZip) ? homeFields : null;
+    const patch = pendingPick ? setVenue(event, { resolved: pendingPick })
+      : homeRead ? homeRead
+      : setVenue(event, { name: v, locationText: pendingCity });
     const after = venueFor({ ...event, ...patch });
     const msg = pendingPick
       ? (after.zip ? `Address on the plan: ${after.fullAddress}.` : `Address on the plan: ${after.fullAddress}. The lookup had no ZIP for it.`)
@@ -1716,7 +1771,7 @@ export default function HostShellV2() {
   const renderVenueCapture = ({ ctaClass = 'cta', wrapStyle = { display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }, wrapClass, autoFocus = false, placeOnly = false } = {}) => (
     <>
       <div className={wrapClass} style={wrapStyle}>
-        <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder={venueFor(event).needsCityForWeather ? 'City, state or ZIP' : 'Name or address'}
+        <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder={venueFor(event).needsCityForWeather ? 'Street, city, state' : 'Name or address'}
           value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); setPendingPick(null); fetchAddrSugs(e.target.value); }} aria-label="Venue" autoFocus={autoFocus} />
         {/* Not lit while there is nothing to save (Wanda audit P1-2). */}
         <button className={ctaClass} onClick={saveVenue} disabled={!String(venueDraft || '').trim()}>Save</button>
@@ -2695,7 +2750,11 @@ export default function HostShellV2() {
   // Blockers (the Reveal's own stage builder, ongoing view), decision board,
   // capacity, helpers, risks, and the wins — all production functions.
   const blockers = useMemo(() => { try { return unresolvedBlockerStages(ctx) || []; } catch { return []; } }, [ctx]);
-  const venueBlockerShown = blockers.some(b => /venue/i.test(String(b && b.title || '')));
+  // The venue gate, read by what it IS (blockerType), not its title: at home
+  // with no city its title is "Your city", and the title test missed it, so
+  // the board asked for the city three times (owner ruling 11/23/2026: the
+  // hero card asks once; the street ask waits until the city is in).
+  const venueBlockerShown = blockers.some(b => b && (b.blockerType === 'venue-selection' || /venue/i.test(String(b.title || ''))));
   // A foundational blocker that is a real PICK (fieldKey + options, e.g. Ceremony Timing) is a
   // decision — it belongs in the grounded loop as a hero DESTINATION, not stranded as a trailing
   // below-fold card that leaves the hero falsely claiming "nothing needs you". Surface each as a
@@ -3080,13 +3139,22 @@ export default function HostShellV2() {
   //                          why?:string, settle:(value)=>void }
   // Grounding: `proposed` (the "our pick") is emitted ONLY when defensible — otherwise
   // honest ask-mode (equal rows). Nothing invented at render; a missing note just doesn't show.
+  // A CALL ANSWERED ON THE BOARD IS SAID ONCE, ABOVE THE NEXT ASK (owner,
+  // render 2, 11/24/2026). The write a pick makes is marked `decided`, so its
+  // receipt is the one quiet "✓ Decided · Undo" line over the hero's next
+  // item instead of a sentence inside the card. Every settle runs inside the
+  // tap (settleDecision → patchEvent), so the flag is set only for its write.
+  const decide = (nd, v) => {
+    decidingRef.current = true;
+    try { nd.settle(v); } finally { decidingRef.current = false; }
+  };
   const renderDecision = (nd) => {
     if (!nd || !Array.isArray(nd.options) || !nd.options.length) return null;
     const proposedOpt = nd.proposed ? nd.options.find(o => o.value === nd.proposed.value) : null;
     const alts = proposedOpt ? nd.options.filter(o => o !== proposedOpt) : nd.options;
     const open = decDiscloseId === nd.id;
     const optRow = (o, isPick) => (
-      <button key={o.value} className={'decopt' + (isPick ? ' pick' : '')} onClick={() => nd.settle(o.value)}>
+      <button key={o.value} className={'decopt' + (isPick ? ' pick' : '')} onClick={() => decide(nd, o.value)}>
         <span className="decopt-main">
           <span className="decopt-name">{o.label}</span>
           {o.note && <span className="decopt-note">{o.note}</span>}
@@ -3119,7 +3187,7 @@ export default function HostShellV2() {
           {nd.options.map(o => {
             const isChosen = o.value === nd.selected;
             return (
-              <button key={o.value} className={'decopt' + (isChosen ? ' pick' : '')} aria-pressed={isChosen} onClick={() => nd.settle(o.value)}>
+              <button key={o.value} className={'decopt' + (isChosen ? ' pick' : '')} aria-pressed={isChosen} onClick={() => decide(nd, o.value)}>
                 <span className="decopt-main">
                   <span className="decopt-name">{o.label}</span>
                   {o.note && <span className="decopt-note">{o.note}</span>}
@@ -3288,24 +3356,60 @@ export default function HostShellV2() {
   // CTAs on tall phones) — hides on scroll-down, returns on scroll-up/top.
   const [dockHidden, setDockHidden] = useState(false);
   const lastScrollY = useRef(0);
+  // THE PHONE'S PILL HIDES WHILE *SHE* SCROLLS DOWN (owner ruling 5,
+  // 11/23/2026). The board also scrolls itself (focus returning to the title
+  // after a sheet closes moved it 55px), and that tucked the pill away with
+  // nothing she did. On the phone a downward scroll hides it only right after
+  // her own input: a touch, the wheel, or a scrolling key.
+  const userScrollAt = useRef(0);
+  const pillRef = useRef(false);
+  pillRef.current = phonePill;
   useEffect(() => {
     const app = appRef.current;
     if (!app) return;
+    const intent = () => { userScrollAt.current = Date.now(); };
+    const keyIntent = (e) => { if (/^(ArrowDown|ArrowUp|PageDown|PageUp|End|Home| )$/.test(e.key)) intent(); };
     const onScroll = () => {
       const y = app.scrollTop;
       const delta = y - lastScrollY.current;
+      const hers = !pillRef.current || Date.now() - userScrollAt.current < 800;
       // Reimagined bottom (host request 2026-07-16): the nav dock is HIDDEN until
       // viewport movement, revealing on scroll-up (or at the top) and tucking away on
       // scroll-down — because the persistent primary action now lives in the always-on
       // NEXT bar pinned at the frame bottom, so navigation no longer has to stay parked.
       if (y < 40) setDockHidden(false);
-      else if (delta > 6) setDockHidden(true);
+      else if (delta > 6 && hers) setDockHidden(true);
       else if (delta < -6) setDockHidden(false);
       lastScrollY.current = y;
     };
+    // A new stage starts with the nav showing: a short stage never scrolls,
+    // so nothing else would bring back a pill tucked away on the last one.
+    setDockHidden(false); lastScrollY.current = app.scrollTop;
     app.addEventListener('scroll', onScroll, { passive: true });
-    return () => app.removeEventListener('scroll', onScroll);
+    app.addEventListener('touchmove', intent, { passive: true });
+    app.addEventListener('wheel', intent, { passive: true });
+    window.addEventListener('keydown', keyIntent);
+    return () => {
+      app.removeEventListener('scroll', onScroll);
+      app.removeEventListener('touchmove', intent);
+      app.removeEventListener('wheel', intent);
+      window.removeEventListener('keydown', keyIntent);
+    };
   }, [stage]);
+  // THE PHONE'S FIRST SCREEN ENDS AT THE FOLD, JUST ABOVE THE PILL (owner
+  // ruling 7, 11/23/2026). The screen is the scroller's height less what sits
+  // above it on the board (the sign-in row, the content's padding), which
+  // comes and goes; measured after each render into --pp-above, which the
+  // first-screen rule reads. Nothing below the screen feeds it back.
+  useEffect(() => {
+    const app = appRef.current;
+    if (!app) return;
+    if (!phonePill) { if (app.style.getPropertyValue('--pp-above')) app.style.removeProperty('--pp-above'); return; }
+    const esc = app.querySelector('.escreen.on');
+    if (!esc) return;
+    const v = Math.max(0, Math.round(esc.getBoundingClientRect().top - app.getBoundingClientRect().top + app.scrollTop)) + 'px';
+    if (app.style.getPropertyValue('--pp-above') !== v) app.style.setProperty('--pp-above', v);
+  });
   const [tuneCost, setTuneCost] = useState(''); // lock-the-cost input in the tune panel
   // Did the host actually TYPE in the cost field, vs accept the store-based
   // prefill? Only a typed value is a real receipt (event.foodReal); accepting
@@ -3631,7 +3735,8 @@ export default function HostShellV2() {
         // geocoder accepts a bare ZIP. This read the raw field under a
         // `venue-exempt:` note; venueFor publishes `zip` now, so the exemption
         // is gone and the store-price picker asks the same accessor.
-        const q = withState(vf.zip || vf.city, vf.state)
+        // The one geocode query (venueGeoQuery), the guest page's too.
+        const q = venueGeoQuery(event)
           || (!homeish ? vf.name : '')
           || withState(String((profile && profile.city) || '').trim(), String((profile && profile.state) || '').trim()); // your usual area backs up a bare backyard
         if (!q) return;
@@ -3921,6 +4026,104 @@ export default function HostShellV2() {
     if (eventId) { try { localStorage.setItem(LS_LAST_EVENT, eventId); } catch {} }
   }, [eventId, welcome, stage, eventIsTheHostsOwn]);
   useEffect(() => { appRef.current?.scrollTo({ top: 0 }); }, [stage, eventId]);
+  // ── RENAME IN PLACE (owner, 11/24/2026, renders 4a, 4b, 12a, 12b) ────────
+  // 'title' (the board's title becomes the field) or 'sheet' (the events
+  // sheet's current row does). One field, EventNameField, for both and for
+  // the invite step. A long press (about 500ms) on touch or a double-click on a
+  // desktop opens it on the title; a single tap still opens the events sheet.
+  const [renaming, setRenaming] = useState(null);
+  useEffect(() => { setRenaming(null); }, [eventId]);
+  const renameTo = (v) => { setRenaming(null); setRenameTip(false); patchEvent({ name: v }, 'Named “' + v + '”.'); };
+  const titlePress = useRef({ timer: null, clickTimer: null, fired: false, x: 0, y: 0, type: '' });
+  const titleHandlers = {
+    onPointerDown: (e) => {
+      const p = titlePress.current;
+      p.fired = false; p.type = e.pointerType; p.x = e.clientX; p.y = e.clientY;
+      clearTimeout(p.timer); p.timer = null;
+      if (e.pointerType === 'mouse') return;
+      p.timer = setTimeout(() => { p.timer = null; p.fired = true; setSheet(null); setRenaming('title'); }, 500);
+    },
+    onPointerMove: (e) => { const p = titlePress.current; if (p.timer && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 10) { clearTimeout(p.timer); p.timer = null; } },
+    onPointerUp: () => { const p = titlePress.current; clearTimeout(p.timer); p.timer = null; },
+    onPointerCancel: () => { const p = titlePress.current; clearTimeout(p.timer); p.timer = null; },
+    // A held finger would otherwise raise the system's copy menu over the field.
+    onContextMenu: (e) => { if (titlePress.current.type !== 'mouse') e.preventDefault(); },
+    onClick: (e) => {
+      const p = titlePress.current;
+      if (p.fired) { p.fired = false; return; }
+      clearTimeout(p.clickTimer); p.clickTimer = null;
+      if (e.detail >= 2) { setSheet(null); setRenaming('title'); return; }
+      // A mouse's first click waits out a double-click; a tap and a key do not.
+      if (p.type === 'mouse' && e.detail === 1) { p.clickTimer = setTimeout(() => { p.clickTimer = null; setSheet({ kind: 'events' }); }, 260); return; }
+      setSheet({ kind: 'events' });
+    },
+  };
+  // THE ONE-TIME TIP (render 12b): "Tip: press and hold the name to rename it",
+  // once per device, on a touch screen (the words are a touch gesture), on her
+  // own event; dismissible, then never again. Stored the first time it shows.
+  const [renameTip, setRenameTip] = useState(() => { try { return !localStorage.getItem('ngw-rename-tip-seen'); } catch { return false; } });
+  const touchScreen = (() => { try { return window.matchMedia('(pointer: coarse)').matches; } catch { return false; } })();
+  const renameTipShown = renameTip && touchScreen && eventIsTheHostsOwn && !renaming;
+  useEffect(() => {
+    if (!renameTipShown) return;
+    try { localStorage.setItem('ngw-rename-tip-seen', new Date().toISOString()); } catch { /* shown this visit only */ }
+  }, [renameTipShown]);
+  // THE DESKTOP RENAME HINT (owner, 11/24/2026): with a mouse, hovering the
+  // title shows a pencil and "Double-click to rename" (styles.css, under
+  // `(hover:hover) and (pointer:fine)`); nothing shows until then. The title's
+  // own "Your events" tooltip would stack on it, so a mouse gets the hint alone.
+  const finePointer = (() => { try { return window.matchMedia('(hover: hover) and (pointer: fine)').matches; } catch { return false; } })();
+
+  // ── THE TITLE BLOCK, ONE FOR EVERY BOARD THAT SHOWS IT ───────────────────
+  // The tall iPad's and the phone's header (owner rulings 11/22–11/23/2026),
+  // and since 11/24/2026 the desktop's too: at 1280+ the board had only the ☰
+  // eyebrow, so rename in place had nothing to act on. `menu` is the desktop's
+  // ☰, kept as its menu at the head of the date line; the eyebrow's other
+  // words (date, name, type) are these rows, so nothing is printed twice.
+  const titleHead = (menu) => {
+    const e = boardEyebrow();
+    const theme = String(event.theme || '').trim();
+    const nm = String(event.name || '').trim();
+    const tail = theme ? ' — ' + theme : '';
+    const title = (tail && nm.endsWith(tail) && nm.length > tail.length) ? nm.slice(0, -tail.length) : nm;
+    const sub = [theme, e.type].filter(Boolean).join(' · ');
+    return (
+      <header className="tt-head" data-tt-head>
+        <div className="tt-r1">
+          {menu}
+          {!eventIsTheHostsOwn && <span className="tt-chip" data-sample-event>Sample</span>}
+          <span>{e.when}{e.when && e.urgency.length ? ' · ' : ''}<span data-tt-urgency>{e.urgency.join(' · ')}</span></span>
+          {/* The weather pill lands here when it would show (near the date). */}
+          {ttHead && <span className="tt-wx-slot" ref={setTtWxSlot} />}
+        </div>
+        {renaming === 'title' ? (
+          <div className="tt-title-row tt-renaming">
+            <EventNameField mode="title" name={event.name} onSave={renameTo} onCancel={() => setRenaming(null)} />
+          </div>
+        ) : (
+          <div className={'tt-title-row' + (isPlaceholderName(event) ? ' has-nameit' : '')}>
+            <button type="button" className="tt-title" data-tt-title aria-haspopup="dialog" title={finePointer ? undefined : 'Your events'} {...titleHandlers}>
+              <span className="tt-name">{title || e.type || 'This event'}</span>
+              <span className="tt-caret" aria-hidden="true">▾</span>
+              <span className="tt-pencil" data-rename-pencil aria-hidden="true">✎</span>
+              <span className="tt-hint" data-rename-hint aria-hidden="true">Double-click to rename</span>
+            </button>
+            {/* While the name is one creation filled in, a quiet way to name it. */}
+            {isPlaceholderName(event) && (
+              <button type="button" className="tt-nameit" data-name-it onClick={() => { setSheet(null); setRenaming('title'); }}>Name it</button>
+            )}
+          </div>
+        )}
+        {renameTipShown && (
+          <div className="tt-tip" data-rename-tip>
+            <span>Tip: press and hold the name to rename it</span>
+            <button type="button" className="tt-tip-x" aria-label="Dismiss the tip" onClick={() => setRenameTip(false)}>×</button>
+          </div>
+        )}
+        {sub && <div className="tt-sub">{sub}</div>}
+      </header>
+    );
+  };
 
   // ── ASK THE SERVER WHETHER THIS EVENT HOLDS A PASS ─────────────────────────
   // Before this, the only answer was `ev.passPurchased` — written by the paid
@@ -5474,6 +5677,7 @@ export default function HostShellV2() {
   // panel wears a brief ok-ring pulse — the beat, never blocking.
   const [heroReceipt, setHeroReceipt] = useState(null);
   const receiptTimerRef = useRef(null);
+  const decidingRef = useRef(false);
   const pendingSatisfiedRef = useRef([]);
   // ONE WAY TO SET AN ASK DOWN (audit 2 P1-1, 11/22/2026): the hero Undo on
   // Crab Feast's first food pick put the data back and left "Decide the menu."
@@ -5504,6 +5708,11 @@ export default function HostShellV2() {
   // bundle gets the clean type reward. Set by the prevBundleClear transition, dismissed
   // by the host's handoff tap (calm — no auto-timer to yank it away). Elegant loop only.
   const [justCleared, setJustCleared] = useState(null);
+  // A cleared bundle's words, once: the payoff card's head and the hero's
+  // one-line receipt ("✓ All covered") read them from here.
+  const clearedHead = (kind, solemnEv) => (kind === 'conflict'
+    ? (solemnEv ? 'The day’s in order' : 'All untangled')
+    : (solemnEv ? 'Everyone’s cleared to help' : 'All covered'));
   // Decluttered conflict hero (host 2026-07-18): the impact ("why") is tucked behind a
   // tap, and a "Set a different time" row opens an inline picker (custom arrival time).
   const [conflictWhyOpen, setConflictWhyOpen] = useState(false);
@@ -5636,6 +5845,62 @@ export default function HostShellV2() {
   // typing appended: 10 → "105", "1015").
   const [guestDraft, setGuestDraft] = useState(null);
   const [sheet, setSheet] = useState(() => (OPEN_ON_LOAD ? { kind: OPEN_ON_LOAD } : null));   // deep-link landing: {kind, focus}
+  // (Here, after `sheet`: an effect reading state declared later crashes the shell at boot.)
+  // THE DECIDED LINE CLEARS ON HER NEXT ACTION (owner, render 2, 11/24/2026):
+  // any tap or key outside the line itself. Tab and Shift only move focus (to
+  // the Undo, say), so they are not an action. On the click, not the press:
+  // the line sits above the ask, and taking it away on pointerdown moved the
+  // next pick out from under her finger before the click landed.
+  // After the click has done its work (a task, not now: a state change made in
+  // a capture listener re-renders before React hands the click to its target,
+  // and the Undo it was aimed at would be gone). Only the receipt that was up
+  // goes: a pick made by that same click keeps its own line.
+  // THE LINE'S CLOCK IS ITS OWN (11/24/2026): about 6s once it is on screen.
+  // A payoff line ("✓ All covered") can be raised by a write made in a sheet;
+  // it waits under the sheet, and neither the clock nor her next action
+  // (closing that sheet) counts until the sheet is gone.
+  useEffect(() => {
+    const mine = heroReceipt;
+    if (!mine || !mine.decided || sheet) return undefined;
+    const clear = (e) => {
+      if (e.target && e.target.closest && e.target.closest('[data-decided], .receipt')) return;
+      if (e.type === 'keydown' && (e.key === 'Tab' || e.key === 'Shift')) return;
+      setTimeout(() => setHeroReceipt((r) => (r === mine ? null : r)), 0);
+    };
+    const timer = setTimeout(() => setHeroReceipt((r) => (r === mine ? null : r)), 6000);
+    document.addEventListener('click', clear, true);
+    document.addEventListener('keydown', clear, true);
+    return () => { clearTimeout(timer); document.removeEventListener('click', clear, true); document.removeEventListener('keydown', clear, true); };
+  }, [heroReceipt, sheet]);
+  // ── THE ATTENTION CUE (owner, renders 6a, 6b, 6c, 11/24/2026) ──────────────
+  // The ONE input or button the hero asks for wears a soft steel ring: two
+  // breaths, then a faint steady outline (styles.css [data-cue]). It plays when
+  // the hero settles and again after each completed step (a new ask), stops on
+  // her first tap or key, and is only ever on one element. With reduced motion
+  // the CSS leaves the steady outline alone. An attribute, not a class, so a
+  // re-render that rewrites the element's className cannot drop or double it.
+  const cueKey = elegantMode && askMode && stage === 'plan' && !sheet && queue[0]
+    ? String(heroAskText || '') + '|' + String(queue[0].id || queue[0].title || '') : null;
+  useEffect(() => {
+    const clear = () => { try { document.querySelectorAll('[data-cue]').forEach((e) => e.removeAttribute('data-cue')); } catch { /* no DOM */ } };
+    clear();
+    if (!cueKey) return undefined;
+    let timer = null;
+    const stop = () => { clearTimeout(timer); clear(); off(); };
+    const off = () => { document.removeEventListener('pointerdown', stop, true); document.removeEventListener('keydown', stop, true); };
+    timer = setTimeout(() => {
+      const card = document.querySelector('.escreen.on .hero-card') || document.querySelector('.hero .hero-card');
+      if (!card) return;
+      const first = (sel) => [...card.querySelectorAll(sel)].find((e) => e.getClientRects().length && !e.disabled);
+      const el = first('input.field:not([type=checkbox]):not([type=radio]), textarea')
+        || first('.decopt.pick') || first('button.cta:not(.soft)') || first('.decopt');
+      clear();
+      if (el) el.setAttribute('data-cue', '');
+    }, 450);
+    document.addEventListener('pointerdown', stop, true);
+    document.addEventListener('keydown', stop, true);
+    return () => { clearTimeout(timer); off(); clear(); };
+  }, [cueKey]);
   // Which section a host opens (11/16/2026, "add analytics"): the kind only.
   const sheetKind = sheet && sheet.kind;
   useEffect(() => {
@@ -5703,10 +5968,10 @@ export default function HostShellV2() {
   // The header's weather slot (owner ruling 11/23/2026): on a tall iPad the
   // weather pill rides the date line instead of floating over the board.
   const [ttWxSlot, setTtWxSlot] = useState(null);
-  const placeWx = (el) => (tallTablet ? (ttWxSlot ? createPortal(el, ttWxSlot) : null) : el);
+  const placeWx = (el) => (ttHead ? (ttWxSlot ? createPortal(el, ttWxSlot) : null) : el);
   // THE RIBBON (owner, 11/22/2026): the plan-parts ledger the chips and the
   // .eprog strips read, plus which open part the hero question is about.
-  const tallRibbon = tallTablet ? planRibbon(phaseCues, askMode ? queue[0] : null) : null;
+  const tallRibbon = ttHead ? planRibbon(phaseCues, askMode ? queue[0] : null) : null;
   // The part the hero question is about, as the ribbon marks it (NOW).
   const tallNowPart = (tallRibbon && (tallRibbon.parts.find((p) => p.now) || {}).id) || undefined;
   // The pass row's right side, for THIS event (passStatus): the menu's row
@@ -5725,12 +5990,22 @@ export default function HostShellV2() {
   };
   // The phase switch: the menu's segmented control and the tall iPad's bar.
   const goPhase = (s) => { if (s === 'create') startNewEvent(); else { setStage(s); setSheet(null); } };
-  // One door per part: the chips and the ribbon open exactly the same thing.
+  // One door per part: the chips, the ribbon and What's counted open exactly
+  // the same thing. An open part goes to its exact fix (its route); a handled
+  // part has no route, so it opens its section (owner, 11/24/2026: "These
+  // should allow click to section").
+  // Keyed by SECTION, listing the parts it holds: a section directory, not a
+  // second label map (AREA_LABELS is the one map from part ids to host copy).
+  const SECTION_PARTS = { venue: ['venueaddress'], guests: ['headcount', 'thankyous'], food: ['food', 'shopping'], budget: ['budget'],
+    vendors: ['vendors', 'payments'], lodging: ['lodging'], rain: ['rain'], crabs: ['crabs'], celebration: ['moment'] };
+  const sectionForPart = (id) => Object.keys(SECTION_PARTS).find((k) => SECTION_PARTS[k].includes(id)) || null;
+  const partCanOpen = (c) => !!c && (c.id === 'datetime' || c.id === 'date' || c.id === 'location' || !!c.route || !!sectionForPart(c.id));
   const openPart = (c) => {
     if (!c) return;
     if (c.id === 'datetime' || c.id === 'date') { setSheet({ kind: 'date' }); return; }
     if (c.id === 'location') { setSheet({ kind: 'venue' }); return; }
     if (c.route && routeSheet(c.route)) return;
+    if (sectionForPart(c.id)) { goToSection(sectionForPart(c.id)); return; }
     if (c.cueLabel) toast(c.cueLabel);
   };
   // THE BOARD'S IDENTITY LINE, AS FIELDS (tall iPad, 11/22/2026). The eyebrow
@@ -5781,7 +6056,8 @@ export default function HostShellV2() {
     //    turns 50 · BIRTHDAY", does not and keeps it. The old
     //    check was exact equality, which caught only the case
     //    where the name IS the type.
-    if (typeLabel && !typeIsRestatedByName(name, typeLabel)) out.type = typeLabel;
+    // The type line only when it adds (owner ruling 2, 11/23/2026): one rule.
+    out.type = typeLineFor(name, typeLabel);
     // 4. when — the span for multi-day (host report 2026-07-27, "I
     //    don't see the multi day"), otherwise the absolute date,
     //    which the single-day case never carried at all.
@@ -6014,7 +6290,7 @@ export default function HostShellV2() {
   // are the same surface wearing two kinds, and that is the only case that
   // must not. Naming the pair is honest; guessing from "was it open" was not.
   const sheetSurfaceRef = useRef(null);
-  const surfaceOf = (k) => (k === 'foodplan' ? 'food' : k);
+  const surfaceOf = (k) => (k === 'foodplan' || k === 'bringing' ? 'food' : k);
   useLayoutEffect(() => {
     const el = sheetRef.current;
     if (!sheet) { sheetSurfaceRef.current = null; return; }
@@ -6225,6 +6501,15 @@ export default function HostShellV2() {
     const el = sheetBodyRef.current;
     if (el && typeof el.scrollTo === 'function') el.scrollTo({ top: 0, behavior: 'auto' });
     else if (el) el.scrollTop = 0;
+    // ONE FOOD PAGE (owner, 11/24/2026): 'foodplan', 'bringing' and 'food' are
+    // its sections now. Every door keeps its kind and lands on its section:
+    // Your choices sits under the estimate at the top; Bringing and the list
+    // scroll to their heads.
+    if (foodTab && sheet.focus == null && el) {
+      const sec = sheet.kind === 'bringing' ? 'bringing' : sheet.kind === 'food' ? 'list' : null;
+      const target = sec && el.querySelector('[data-food-section="' + sec + '"]');
+      if (target) el.scrollTop = Math.max(0, Math.round(target.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - 8));
+    }
   }, [sheet && sheet.kind]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // field's own Escape-to-cancel (food tune, vendor cost, diet, guest count)
@@ -6829,7 +7114,8 @@ export default function HostShellV2() {
         const vf = venueFor(event);
         // Same query shape as the weather pipeline: "City, ST, US" — a bare
         // "City, ST" resolves to null on the geocoder (curl-proved 2026-07-28).
-        const q = vf.city ? [vf.city, vf.state, 'US'].filter(Boolean).join(', ') : '';
+        // A ZIP is the most precise thing the geocoder takes (11/24/2026).
+        const q = vf.zip || (vf.city ? [vf.city, vf.state, 'US'].filter(Boolean).join(', ') : '');
         if (!q) { if (!dead) setAirNear([]); return; }
         const coords = await geocodeVenue(q);
         if (dead) return;
@@ -7181,7 +7467,16 @@ export default function HostShellV2() {
     let result;
     try { result = await checkRsvpCapability(event); } finally { rsvpChecking.current = false; }
     endBusyToast();
-    if (!result.ready) { toast(rsvpUnavailable(result)); return ''; }
+    if (!result.ready) {
+      // AN UNSAVED PLAN IS ASKED TO BE SAVED (owner, 11/24/2026). Signed out,
+      // the plan never reached an account, so it has no public invite yet:
+      // saying "not available" read as a dead end. The way forward is the
+      // same sign-in the "Not saved yet" row opens.
+      if (result.reason === 'unpublished' && isSupabaseConfigured() && !session) {
+        toast('Sign in to save this plan, then guests can RSVP online.', { label: 'Sign in to save', fn: openKeepSignIn });
+      } else toast(rsvpUnavailable(result));
+      return '';
+    }
     try { return inviteLinkUrl(); }
     catch { toast('Can’t share: the public link address is missing. Nothing was shared.'); return ''; }
   };
@@ -7363,15 +7658,44 @@ export default function HostShellV2() {
     } catch (_e) { /* no checklist, no group */ }
     return ids;
   }, [event]);
+  // Finished groups she reopened this session (DoneFold, owner 11/24/2026).
+  const reopened = useReopened(event && event.id);
+  // A checked-off step, as the done shelf and a reopened finished group show it.
+  const doneTaskRow = (t, i) => (
+    <button key={t.id || i} className="frow got" onClick={() => toggleTask(i)}>
+      <span className="fcheck" aria-hidden="true" />
+      <span className="f-main">
+        <span className="f-name">{t.task}</span>
+        <span className="v-meta">{[t.week, t.owner].filter(Boolean).join(' · ')}</span>
+      </span>
+    </button>
+  );
   const renderGroupedTasks = (renderRow) => {
     const order = groupDinnerSteps(event.timeline, dinnerStepIds);
+    const members = order.filter((x) => x.inGroup && x.t && !x.t.retired);
     const group = order.filter((x) => x.inGroup).map((x) => ({ x, el: renderRow(x.t, x.i) })).filter((g) => g.el);
+    // THE DINNER'S STEPS, ALL DONE, ARE ONE GREEN ROW (owner, 11/24/2026),
+    // reopened for the session to show the checked-off steps.
+    const dinnerDone = !group.length && members.length > 0 && members.every((x) => x.t.done);
+    reopened.isOpen('tasks:dinner', dinnerDone); // seen every render, so an undone step drops the reopen
     const out = [];
     let placed = false;
     for (const x of order) {
       if (!x.inGroup) { out.push(renderRow(x.t, x.i)); continue; }
-      if (placed || !group.length) continue;
+      if (placed || !(group.length || dinnerDone)) continue;
       placed = true;
+      if (dinnerDone) {
+        out.push(reopened.isOpen('tasks:dinner', dinnerDone) ? (
+          <div className="dinner-steps" data-dinner-steps key="dinner-steps">
+            <div className="shelf-label">{celebrationTitle(event)}</div>
+            {members.map((m) => doneTaskRow(m.t, m.i))}
+          </div>
+        ) : (
+          <DoneFold key="dinner-steps" text={`${celebrationTitle(event)} · all ${members.length} done`}
+            onOpen={() => reopened.reopen('tasks:dinner')} />
+        ));
+        continue;
+      }
       out.push(
         <div className="dinner-steps" data-dinner-steps key="dinner-steps">
           <div className="shelf-label">{celebrationTitle(event)}</div>
@@ -7464,9 +7788,9 @@ export default function HostShellV2() {
         <span className="fstat-l">{dish}</span>
         {/* NO WRAP. Beside a long dish the label broke to "Add a / name"; the
             label is the act and stays whole, the DISH takes the wrapping. */}
-        <span className="fstat-v" style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+        <RowValue status={rowStatus({ settled: !!saved })} style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>
           {saved || (r.broughtByCommunity ? 'Add a name' : 'Someone’s bringing it?')}
-        </span>
+        </RowValue>
       </button>
     );
   };
@@ -7541,12 +7865,12 @@ export default function HostShellV2() {
           {trip.cel && mo.celebration && (
             <button type="button" className="fstat" data-layer="celebration" onClick={() => setSheet({ kind: 'celebration' })}>
               <span className="fstat-l">The celebration<span className="trip-part-sub">{mo.celebration.title} · {mo.celebration.basis === 'restaurant' ? 'the restaurant’s rate, before drinks, tax and tip' : 'this spread’s estimate · all in'}</span></span>
-              <span className="fstat-v">{mo.celebration.low != null ? money(mo.celebration.low, mo.celebration.high) : 'needs a guest count'}<span className="fstat-chev" aria-hidden="true">›</span></span>
+              <RowValue status="open" chev>{mo.celebration.low != null ? money(mo.celebration.low, mo.celebration.high) : 'needs a guest count'}</RowValue>
             </button>
           )}
           <button type="button" className="fstat" data-layer="around" onClick={() => goToSection('days')}>
             <span className="fstat-l">{trip.cel ? 'Around it' : 'Meals on the trip'}<span className="trip-part-sub">{mo.around.planned ? `${mo.around.total} meals · ${summary}` : `${mo.around.total} meals · not planned yet`}</span></span>
-            <span className="fstat-v">{mo.around.planned ? (by.out && by.out.low ? `${money(by.out.low, by.out.high)} to you` : '$0 to you') : 'plan them'}<span className="fstat-chev" aria-hidden="true">›</span></span>
+            <RowValue status={rowStatus({ settled: !!mo.around.planned })} chev>{mo.around.planned ? (by.out && by.out.low ? `${money(by.out.low, by.out.high)} to you` : '$0 to you') : 'plan them'}</RowValue>
           </button>
         </div>
         {mo.around.planned > 0 && (
@@ -7658,8 +7982,10 @@ export default function HostShellV2() {
   // `sheet` is useState(null) and this runs on EVERY render, unlike the two
   // copies it replaced, which only ever ran inside a live sheet. The first
   // draft read `sheet.focus` and took the whole app to the error boundary.
+  // The list is always open on the one page (owner, 11/24/2026), so it is no
+  // longer a drill-in.
   const drillOpen = !!(foodSect.diet || (sheet && sheet.focus === 'diet') || foodSect.choices
-    || foodSect.sourced || foodSect.list);
+    || foodSect.sourced);
   // ── AND ONLY ONE `Done` IS ON SCREEN AT A TIME ───────────────────────────
   // Each drill-in also carries a `Done` in its own header. With the bar now
   // offering one too, a host at the top of a section saw two identical buttons
@@ -7734,27 +8060,14 @@ export default function HostShellV2() {
   // line. There is nothing left to put there that would not be the same fact
   // twice — the duplication the host called out on 2026-09-24 and again on
   // 2026-09-27.
+  // ONE PAGE, ONE BAR (owner, 11/24/2026): the spread is one scroll for all
+  // three kinds, and the bar counts what she buys. With nothing to buy (no
+  // kitchen, an empty list) it counts the menu's calls, as Plan's bar did.
   const barTally = (() => {
     if (!sheet || !foodPlan) return null;
-    if (sheet.kind === 'bringing') {
-      if (bringingTally.total === 0) return null;
-      // "Everyone is spoken for." is the Bringing screen's own completion
-      // line, which moved here with the count rather than being deleted
-      // alongside it. At completion the fraction and the sentence are the
-      // same fact, so the bar says the warmer one and says it once.
-      return bringingTally.named === bringingTally.total
-        ? 'Everyone is spoken for'
-        : `${bringingTally.named} of ${bringingTally.total} spoken for`;
-    }
-    if (sheet.kind === 'foodplan') {
-      return choicesTally.total > 0
-        ? `${choicesTally.settled} of ${choicesTally.total} decided` : null;
-    }
-    if (sheet.kind === 'food') {
-      return (!noKitchen && foodPlan.itemCount > 0)
-        ? `${shopTally.bought} of ${shopTally.total} bought` : null;
-    }
-    return null;
+    if (sheet.kind !== 'food' && sheet.kind !== 'foodplan' && sheet.kind !== 'bringing') return null;
+    if (!noKitchen && foodPlan.itemCount > 0) return `${shopTally.bought} of ${shopTally.total} bought`;
+    return choicesTally.total > 0 ? `${choicesTally.settled} of ${choicesTally.total} decided` : null;
   })();
   const barShows = !!barTally;
 
@@ -7773,10 +8086,10 @@ export default function HostShellV2() {
   // The four drill-ins all live in the food/foodplan branch, so those are the
   // two tabs where the bar can be an exit. Bringing gets the bar for its
   // count and nothing more.
-  const barIsExit = drillOpen && barShows && sheet.kind !== 'bringing';
+  const barIsExit = drillOpen && barShows;
 
   const closeDrill = useCallback(() => {
-    setFoodSect(m => ({ ...m, diet: false, choices: false, sourced: false, list: false }));
+    setFoodSect(m => ({ ...m, diet: false, choices: false, sourced: false }));
     setChoiceOpen(null);
     setSheet(s => (s && s.focus === 'diet' ? { ...s, focus: null } : s));
   }, []);
@@ -8225,10 +8538,6 @@ export default function HostShellV2() {
   const [rosterQ, setRosterQ] = useState('');
   const [rosterLens, setRosterLens] = useState('all'); // all | yes | no | maybe | none
   const [deadlineOpen, setDeadlineOpen] = useState(false);
-  // WAVE-B: invite-rules fold (guests sheet) — the policies the public RSVP
-  // page enforces (InviteV2 reads plusOnePolicy/kidsPolicy/collectAddresses;
-  // the invite + guest brief drafts read giftWish). Fold-closed by default.
-  const [inviteRulesOpen, setInviteRulesOpen] = useState(false);
   // CSV import — the app's own parsers/merge (lib/csvParsers): 7 platforms,
   // email-primary name-fallback matching, preview before anything writes.
   const [csvOpen, setCsvOpen] = useState(false);
@@ -8568,9 +8877,25 @@ export default function HostShellV2() {
       try { if (!isSolemnEvent(event)) feedback('magic'); } catch { /* no fx */ }
       // Surface the earned moment (conflict > decision > coi if several cleared at once — rare).
       // count = the peak the bundle reached (fallback to prev), so "6 of 6", not "1 of 1".
-      if (clearedConflicts) { setJustCleared({ kind: 'conflict', count: Math.max(pk.conflicts, prev.conflicts) }); pk.conflicts = 0; }
-      else if (clearedDecisions) { setJustCleared({ kind: 'decision', count: Math.max(pk.decisions, prev.decisions) }); pk.decisions = 0; }
-      else { setJustCleared({ kind: 'coi', count: Math.max(pk.coi, coiCounts.total || prev.coi) }); pk.coi = 0; }
+      const kind = clearedConflicts ? 'conflict' : clearedDecisions ? 'decision' : 'coi';
+      const count = kind === 'conflict' ? Math.max(pk.conflicts, prev.conflicts)
+        : kind === 'decision' ? Math.max(pk.decisions, prev.decisions)
+        : Math.max(pk.coi, coiCounts.total || prev.coi);
+      pk[kind === 'conflict' ? 'conflicts' : kind === 'decision' ? 'decisions' : 'coi'] = 0;
+      // A CLEARED BUNDLE WITH WORK STILL OPEN IS NOT A STOP (owner, render 2,
+      // 11/24/2026, decisions; the same day for the conflict and insurance
+      // payoffs): the hero goes straight to the next item under the one quiet
+      // line, and only a board with nothing left gets the payoff card. A
+      // decision's line is raised by its pick ("✓ Decided", patchEvent); a
+      // payoff's here, in its own words ("✓ All covered"). Its Undo is the
+      // receipt's, only when the write that cleared it was answered on the
+      // hero; a write made in a sheet keeps its Undo on its toast.
+      if (!(queue.length && !listIsCalm)) setJustCleared({ kind, count });
+      else if (kind !== 'decision') {
+        const last = lastUndoRef.current;
+        const undoHere = !!(last && last.toHero && last.eventId === eventId);
+        setHeroReceipt((r) => ({ ...(undoHere && r ? r : null), decided: true, done: clearedHead(kind, isSolemnEvent(event)) }));
+      }
     }
   }, [elegantMode, eventId, conflictItems.length, callsOrdered.length, coiCounts.open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -8915,17 +9240,22 @@ export default function HostShellV2() {
           retireUndoToast();
           // A folded write keeps the ask its pick set down (`satisfied`, below):
           // the Undo that puts the pick back puts the ask back.
+          // Read now: the updater below runs at render, after decide() has reset it.
+          const decidedNow = decidingRef.current;
           setHeroReceipt(r => {
             const kept = folds && r && Array.isArray(r.satisfied) ? r.satisfied : [];
             const sat = [...new Set([...kept, ...pend])];
-            return { msg, fn: undoFn, satisfied: sat.length ? sat : undefined };
+            const decided = folds && r ? !!r.decided : decidedNow;
+            return { msg, fn: undoFn, satisfied: sat.length ? sat : undefined, decided: decided || undefined };
           });
           // Route through the ONE haptic vocabulary (feedback) instead of a bespoke
           // vibrate(8) — a receipt lands with the same 10ms tick as every other state
           // change, and respects the silent-haptics layer (audit 2026-07-22).
           try { feedback('tick'); } catch { /* no haptics */ }
           if (receiptTimerRef.current) clearTimeout(receiptTimerRef.current);
-          receiptTimerRef.current = setTimeout(() => setHeroReceipt(null), 7000);
+          // A decided line clears after about 6s on its own clock (owner,
+          // 11/24/2026; the effect that clears it); other receipts after 7s.
+          receiptTimerRef.current = decidedNow ? null : setTimeout(() => setHeroReceipt(null), 7000);
         } else {
           toast(msg, { label: 'Undo', fn: undoThatBringsBack(pend, undoFn, (back) => writeSettled(back, false)) }, 'ok');
         }
@@ -10804,8 +11134,11 @@ export default function HostShellV2() {
     // said this out loud. Same sentence, same door.
     try {
       const _typed = effCityText.trim();
-      if (_typed && !parseVenueLocation(_typed)) {
-        toast('Add the state or ZIP for ' + _typed + ' — a city name alone could be in any state.');
+      const _place = _typed ? readPlace(_typed) : null;
+      if (_place && !_place.located) {
+        toast(_place.missing === 'state'
+          ? 'Add the state or ZIP for ' + _typed + ' — a city name alone could be in any state.'
+          : 'Add the town and state, or a ZIP, for ' + _typed + '.');
       }
     } catch { /* never let a notice block a creation */ }
     // Build-map #3: a freshly created event is the host's new resume pointer.
@@ -10936,6 +11269,9 @@ export default function HostShellV2() {
     setKeepAskClosed(c => [...c, id]);
     if (MOVE_NOTICE) { try { const seen = JSON.parse(localStorage.getItem(LS_MOVE_ASKED) || '[]') || []; if (!seen.includes(id)) localStorage.setItem(LS_MOVE_ASKED, JSON.stringify([...seen, id])); } catch { /* private mode */ } }
   };
+  // The sign-in that keeps this plan: the "Not saved yet" row and the RSVP
+  // check's "Sign in to save" (11/24/2026) open it the same way.
+  const openKeepSignIn = () => { keepIntentRef.current = 'device_plan'; setSheet({ kind: 'settings', keep: true }); trackKeepPrompt('device_plan'); };
   const keepAskEvent = (isSupabaseConfigured() && authChecked && !session && stage === 'plan' && !welcome
     && activeCustom && isRealHostEvent(activeCustom) && !isDemoEvent(activeCustom) && !activeCustom.demoSeed
     && !(MOVE_NOTICE ? moveAskedBefore : keepAskedBefore).includes(activeCustom.id) && !keepAskClosed.includes(activeCustom.id)
@@ -11307,7 +11643,7 @@ export default function HostShellV2() {
   return (
     <div className={['stagewrap', stageMode].filter(Boolean).join(' ')}
       data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'}
-      data-railmin={railUp && railMin ? '1' : '0'} data-tall={tallTablet ? '1' : '0'}>
+      data-railmin={railUp && railMin ? '1' : '0'} data-tall={tallTablet ? '1' : '0'} data-pill={phonePill ? '1' : '0'}>
       {/* ── THE PERSISTENT SECTION RAIL (VIEWPORT_PORT_RULING step 3) ─────────
           Six of six leaders (Motion, Height, Wrike, Bonsai, Asana, Plane) put
           global nav in a persistent left rail and never behind a hamburger at
@@ -11340,6 +11676,23 @@ export default function HostShellV2() {
             </svg>
             <span className="srail-l">{railMin ? 'Widen' : 'Narrow'}</span>
           </button>
+          {/* YOUR EVENT (owner ruling 8, 11/23/2026): on a 13" iPad held upright
+              the rail is the one menu, so the phases join it, first. The same
+              goPhase the bar and the menu call; the current phase is
+              underlined, as on the pill and the bar (owner, 11/24/2026). Plan, tapped on Plan with the question scrolled away,
+              goes back to the question (the NEXT bar's job, as on the bar). */}
+          {tallRail && (
+            <div className="srail-g" key="__stages">
+              <div className="shelf-label srail-t">Your event</div>
+              {[['create', 'Create'], ['plan', 'Plan'], ['day', 'The Day'], ['after', 'After']].map(([k, label]) => (
+                <button key={k} type="button" className={'srail-row srail-stage' + (stage === k ? ' is-stage' : '')} data-rail-stage={k}
+                  aria-current={stage === k ? 'page' : undefined} aria-label={label} title={label}
+                  onClick={() => { if (k === 'plan' && stage === 'plan' && !heroInView) { backToHero(); return; } goPhase(k); }}>
+                  <span className="srail-l">{label}</span>
+                </button>
+              ))}
+            </div>
+          )}
           {sectionGroups({ event, travel, crab, outdoor, passCents: devicePassPriceCents() }).map((g) => (
             <div className="srail-g" key={g.title}>
               <div className="shelf-label srail-t">{g.title}</div>
@@ -11347,16 +11700,22 @@ export default function HostShellV2() {
                 // The spread is one door whichever tab it opened on.
                 const here = sheet && (sheet.kind === 'bringing' || sheet.kind === 'foodplan' ? 'food' : sheet.kind) === r.k;
                 return (
-                  <button key={r.k} className={'srail-row' + (here ? ' on' : '')}
+                  <button key={r.k} className={'srail-row' + (here ? ' on' : '') + (r.k === 'pass' ? ' srail-pass' : '')}
                     aria-current={here ? 'page' : undefined}
                     /* Named on the BUTTON, not only by the label span: collapsed,
                        that span is display:none and leaves the a11y tree with it,
                        so a row named only by its text would go nameless exactly
                        when its icon is all the user has. */
-                    aria-label={r.label} title={r.label}
+                    aria-label={tallRail && r.k === 'pass' ? r.label + ' · ' + passNote() : r.label} title={r.label}
                     onClick={() => goToSection(r.k)}>
                     {sectionIcon(r.k)}
-                    <span className="srail-l">{r.label}</span>
+                    <span className="srail-l">{r.label}
+                      {/* The ☰ menu's pass row said where this event stands
+                          (passNote). At the 13" upright the rail is the only
+                          menu, so its pass row says it (owner, 11/23/2026:
+                          every menu item stays reachable). */}
+                      {tallRail && r.k === 'pass' && <span className="srail-note" data-pass-note>{' · ' + passNote()}</span>}
+                    </span>
                   </button>
                 );
               })}
@@ -11393,8 +11752,13 @@ export default function HostShellV2() {
           search (the same palette). Docked, full width, its inner row on the
           board's two edges. .app ends at its top edge, so nothing scrolls
           under it; a sheet covers it like any other chrome. */}
-      {tallTablet && (
-        <nav className="tt-bar" data-tt-bar aria-label="Your plan">
+      {/* THE PHONE'S PILL (owner rulings 4–6, 11/23/2026) is this same bar:
+          the phases, a thin divider, then All sections and Search as icons,
+          in one outlined pill with no fill. It hides while she scrolls down
+          and comes back when she scrolls up (the dock's own reading,
+          dockHidden). Not at the 13" portrait iPad: the rail is its menu. */}
+      {barShown && (
+        <nav className={'tt-bar' + (phonePill ? ' tt-pill' + (dockHidden ? ' is-hidden' : '') : '')} data-tt-bar data-pill={phonePill ? '' : undefined} aria-label="Your plan" inert={phonePill && dockHidden ? true : undefined}>
           <div className="tt-bar-in">
             {/* The menu's own segmented control (.navseg), so the selected
                 phase wears the one selected look by construction. */}
@@ -11404,14 +11768,15 @@ export default function HostShellV2() {
                   /* The NEXT bar's job on a tall iPad (owner ruling, 11/23/2026):
                      Plan, tapped on Plan with the question scrolled away, goes
                      back to the question. */
-                  onClick={() => { if (k === 'plan' && stage === 'plan' && !heroInView) { backToHero(); return; } goPhase(k); }}>{label}</button>
+                  onClick={() => { if (k === 'plan' && stage === 'plan' && !heroInView) { backToHero(); return; } goPhase(k); }}><span className="nav-l">{label}</span></button>
               ))}
             </div>
-            <button type="button" className="tt-act" onClick={() => setSheet({ kind: 'sections' })}>
-              {sectionIcon('sections')}<span>All sections</span>
+            {phonePill && <span className="tt-pill-div" data-pill-divider aria-hidden="true" />}
+            <button type="button" className="tt-act" aria-label={phonePill ? 'All sections' : undefined} onClick={() => setSheet({ kind: 'sections' })}>
+              {sectionIcon('sections')}{!phonePill && <span>All sections</span>}
             </button>
-            <button type="button" className="tt-act q" onClick={() => { setSheet(null); setPaletteOpen(true); }}>
-              {sectionIcon('search')}<span>Search</span>
+            <button type="button" className="tt-act q" aria-label={phonePill ? 'Search' : undefined} onClick={() => { setSheet(null); setPaletteOpen(true); }}>
+              {sectionIcon('search')}{!phonePill && <span>Search</span>}
             </button>
           </div>
         </nav>
@@ -11422,8 +11787,8 @@ export default function HostShellV2() {
       {/* has-nextbar: the .next-bar is absolutely positioned over the scroll area,
           so the container reserves room for it exactly while it shows — same
           condition as its render below. See the note at .next-bar in styles.css. */}
-      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + ((wxImpact || travelWx) && stage === 'plan' ? ' has-wxpill' : '') + (stage === 'plan' && !heroInView && !tallTablet ? ' has-nextbar' : '')} id="app" ref={appRef} inert={splash !== 'gone'}
-        data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'} data-tall={tallTablet ? '1' : '0'}>
+      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + ((wxImpact || travelWx) && stage === 'plan' ? ' has-wxpill' : '') + (stage === 'plan' && !heroInView && !ttHead ? ' has-nextbar' : '')} id="app" ref={appRef} inert={splash !== 'gone'}
+        data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'} data-tall={tallTablet ? '1' : '0'} data-pill={phonePill ? '1' : '0'}>
         {/* dash-hold: same mechanism as .welcome.splash-hold — any one-shot
             entrance animation in here (sweepcard's cardin, etc.) pauses at
             frame one while the splash is up and releases the instant it
@@ -11881,10 +12246,14 @@ export default function HostShellV2() {
                             "Where is the event?". The chip now asks for the state
                             before she commits, and is not shown as settled. */}
                         {(() => {
-                          const savable = !effCityText.trim() || !!parseVenueLocation(effCityText.trim());
+                          // Read by the sentence's own reader (lib/readPlace, 11/24/2026): a
+                          // street address, "City, ST" or a ZIP settles it; otherwise the
+                          // chip asks only for what is missing (the state, or the town).
+                          const place = effCityText.trim() ? readPlace(effCityText) : null;
+                          const savable = !place || place.located;
                           return (
                             <button className="chip" aria-pressed={!!effCityText && savable} onClick={() => setCreateEdit(createEdit === 'city' ? null : 'city')}>
-                              {!effCityText ? 'Which town?' : savable ? effCityText : effCityText + ' — which state?'}
+                              {!effCityText ? 'Which town?' : savable ? effCityText : effCityText + (place.missing === 'state' ? ' — which state?' : ' — which town?')}
                             </button>
                           );
                         })()}
@@ -12111,7 +12480,7 @@ export default function HostShellV2() {
                               autocompleting"): the create flow was the one city entry WITHOUT the
                               shared 29.7k-city suggestion dropdown. Same "City, ST" emit shape. */}
                           <CityField value={fCity || effCityText} onChange={v => setFCity(v)} onPick={v => setFCity(v)}
-                            placeholder="Annapolis · Silver Spring, MD · 21401" ariaLabel="Town or ZIP" />
+                            placeholder="Street, city, state — or a city or ZIP" ariaLabel="Town or ZIP" />
                           <p className="grounding" style={{ margin: 0 }}>The town is how weather and maps find a backyard — it rides into the plan from day one.</p>
                         </div>
                       )}
@@ -12408,7 +12777,7 @@ export default function HostShellV2() {
                    "Not now" (closeKeepAsk, no analytics). Doctrine 02, ruling 25. */
                 <div className="keep-ask" data-keep-ask data-move-notice={MOVE_NOTICE ? '' : undefined}>
                   <p className="keep-ask-t">{MOVE_NOTICE || <b>Not saved yet.</b>}</p>
-                  <button className="cta" onClick={() => { setKeepAskClosed(c => [...c, keepAskEvent.id]); keepIntentRef.current = 'device_plan'; setSheet({ kind: 'settings', keep: true }); trackKeepPrompt('device_plan'); }}>Sign in to save</button>
+                  <button className="cta" onClick={() => { setKeepAskClosed(c => [...c, keepAskEvent.id]); openKeepSignIn(); }}>Sign in to save</button>
                   <button className="keep-ask-x" aria-label="Dismiss" onClick={() => closeKeepAsk(keepAskEvent.id)}>✕</button>
                 </div>
               )}
@@ -12428,7 +12797,7 @@ export default function HostShellV2() {
                   (countdown · event name, uppercase) — the big serif name + venue + kicker
                   move OFF the ask screen (the serif name belongs on the pull-down Overview).
                   Everything below composes with generous negative space. */}
-              {elegantMode && tallTablet && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
+              {elegantMode && ttHead && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
                 /* ── THE TALL IPAD'S HEADER (owner rulings, 11/22/2026) ──────────
                     Replaces the ☰ eyebrow on a portrait tablet. The same values
                     the eyebrow prints (boardEyebrow), laid out in rows; the title
@@ -12437,35 +12806,10 @@ export default function HostShellV2() {
                     with it (" — Black & Gold") the title does not say it twice.
                     No fill, not sticky: it scrolls with the board. */
                 <>
-                <header className="tt-head" data-tt-head>
-                  {(() => {
-                    const e = boardEyebrow();
-                    const theme = String(event.theme || '').trim();
-                    const nm = String(event.name || '').trim();
-                    const tail = theme ? ' — ' + theme : '';
-                    const title = (tail && nm.endsWith(tail) && nm.length > tail.length) ? nm.slice(0, -tail.length) : nm;
-                    const sub = [theme, e.type].filter(Boolean).join(' · ');
-                    return (
-                      <>
-                        <div className="tt-r1">
-                          {!eventIsTheHostsOwn && <span className="tt-chip" data-sample-event>Sample</span>}
-                          <span>{e.when}{e.when && e.urgency.length ? ' · ' : ''}<span data-tt-urgency>{e.urgency.join(' · ')}</span></span>
-                          {/* The weather pill lands here when it would show (near the date). */}
-                          <span className="tt-wx-slot" ref={setTtWxSlot} />
-                        </div>
-                        <button type="button" className="tt-title" data-tt-title aria-haspopup="dialog" title="Your events"
-                          onClick={() => setSheet({ kind: 'events' })}>
-                          <span className="tt-name">{title || e.type || 'This event'}</span>
-                          <span className="tt-caret" aria-hidden="true">▾</span>
-                        </button>
-                        {sub && <div className="tt-sub">{sub}</div>}
-                      </>
-                    );
-                  })()}
-                </header>
+                {titleHead(null)}
                 {/* THE RIBBON: the plan's parts, one tap each to what its chip opens.
                     Not on the day (the run of show leads) and not after. */}
-                {tallRibbon && !dayHero && !isPast && (
+                {tallRibbon && tallTablet && !dayHero && !isPast && (
                   <nav className="tt-rib" data-tt-ribbon aria-label="Parts of your plan">
                     <div className="tt-parts">
                       {tallRibbon.parts.map((p) => {
@@ -12475,7 +12819,9 @@ export default function HostShellV2() {
                             aria-label={areaLabelFor(p.id) + (p.handled ? ' — handled' : p.now ? ' — still open, and the question above is about it' : ' — still open') + '. Open it.'}
                             onClick={() => openPart(p)}>
                             <i aria-hidden="true" />
-                            <span className="tt-pl">{p.handled ? '✓ ' : ''}{areaLabelFor(p.id)}{p.now ? <em className="tt-now">Now</em> : null}</span>
+                            {/* No NOW tag on any tall iPad (owner ruling 10, 11/23/2026,
+                                every surface): the current part's name is bold instead. */}
+                            <span className="tt-pl">{p.handled ? '✓ ' : ''}{areaLabelFor(p.id)}</span>
                           </button>
                         );
                       })}
@@ -12503,11 +12849,48 @@ export default function HostShellV2() {
                       </span>
                       {/* One date once: when the next dated work IS the day the
                           count grows, the grow-note already names it. */}
-                      {horizonPhrase && !(ledgerExpiry && ledgerExpiryShort && planHorizonShort === ledgerExpiryShort) && <span>{horizonPhrase}</span>}
+                      {/* Never "dated work needs you now" (owner ruling 10, every surface). */}
+                      {horizonPhrase && planHorizon.days > 0 && !(ledgerExpiry && ledgerExpiryShort && planHorizonShort === ledgerExpiryShort) && <span>{horizonPhrase}</span>}
                     </div>
                   </nav>
                 )}
+                {/* THE PHONE'S PROGRESS, ON TOP (owner ruling 3, 11/23/2026): the
+                    ribbon's own parts (planRibbon, the one progress reader) as six
+                    thin segments under the title, the current part's lit, and one
+                    line. The line and the bars are one door to the existing
+                    What's counted panel, as the ribbon's count is on a tall iPad.
+                    No NOW, no "this one first". */}
+                {tallRibbon && phonePill && !dayHero && !isPast && (
+                  <div className="pp-prog" data-pp-prog>
+                    <button type="button" className="pp-prog-b" aria-expanded={handledOpen} aria-controls="whats-counted"
+                      aria-label={(tallRibbon.allHandled ? `All ${tallRibbon.total}` : `${tallRibbon.done} of ${tallRibbon.total}`) + ' parts of your plan handled. What’s counted.'}
+                      onClick={() => setHandledOpen((o) => {
+                        if (!o) setTimeout(() => { try { const el = document.getElementById('whats-counted'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* the panel is still open */ } }, 80);
+                        return !o;
+                      })}>
+                      <span className="pp-segs" aria-hidden="true">
+                        {tallRibbon.parts.map((p) => (
+                          <i key={p.id} data-seg={p.id} data-state={p.now ? 'now' : p.handled ? 'done' : 'open'} className={'pp-seg is-' + (p.now ? 'now' : p.handled ? 'done' : 'open')} />
+                        ))}
+                      </span>
+                      <span className="pp-line" data-pp-line>
+                        {tallRibbon.allHandled ? `All ${tallRibbon.total} handled` : `${tallRibbon.done} of ${tallRibbon.total} handled`}
+                        <span className="pp-dot" aria-hidden="true"> · </span>
+                        <span className="pp-wc">What’s counted ›</span>
+                      </span>
+                    </button>
+                  </div>
+                )}
                 </>
+              ) : elegantMode && bp === 'desktop' && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
+                /* THE DESKTOP'S TITLE (owner, 11/24/2026): the phone's title block,
+                   so rename in place has a title to act on at 1280+. The ☰ stays the
+                   menu (the stages and the menu's rows live there at this width). */
+                titleHead(
+                  <button className="ev-eyebrow tt-menu" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
+                    <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
+                  </button>
+                )
               ) : elegantMode && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
@@ -12596,8 +12979,8 @@ export default function HostShellV2() {
                   return (
                     <div className={'allclear' + (solemn ? ' solemn' : '')} role="status">
                       <h2 className="ac-head">{solemn
-                        ? (isConf ? 'The day’s in order.' : isCoi ? 'Everyone’s cleared to help.' : anythingOpen ? (jc.count === 1 ? 'That’s settled.' : 'Those are settled.') : 'It’s all settled.')
-                        : (isConf ? 'All untangled.' : isCoi ? 'All covered.' : anythingOpen ? (jc.count === 1 ? 'That’s decided.' : 'Those are decided.') : 'All decided.')}</h2>
+                        ? (isConf || isCoi ? clearedHead(jc.kind, true) + '.' : anythingOpen ? (jc.count === 1 ? 'That’s settled.' : 'Those are settled.') : 'It’s all settled.')
+                        : (isConf || isCoi ? clearedHead(jc.kind, false) + '.' : anythingOpen ? (jc.count === 1 ? 'That’s decided.' : 'Those are decided.') : 'All decided.')}</h2>
                       <p className="ac-voice">{isConf
                         ? (cues.length ? 'Every vendor has its own hour now — here’s the day, in order.'
                                        : 'Every vendor has its own hour now — nothing’s fighting for setup.')
@@ -12810,6 +13193,11 @@ export default function HostShellV2() {
                   return (<>
                     {/* ONE ask string, computed once at heroAskText (~2357) so the card-title
                         dedup and the browser tab speak exactly what is rendered here. */}
+                    {heroReceipt && heroReceipt.decided && (
+                      <p className="decided-line" data-decided role="status">
+                        <span className="decided-ck" data-decided-check aria-hidden="true">✓</span>{heroReceipt.done || 'Decided'}{heroReceipt.fn && (<><span className="decided-sep" aria-hidden="true">·</span><button type="button" className="decided-undo" onClick={undoHeroReceipt}>Undo</button></>)}
+                      </p>
+                    )}
                     <h2 className="ask" key={'ask-' + String(queue[0].id || queue[0].title || '')} data-hero-part={tallNowPart}>{heroAskText}</h2>
                     {/* With no date this slot would read "null days". The frame puts
                         the honest sentence here instead — and when the host named a
@@ -12883,11 +13271,14 @@ export default function HostShellV2() {
                         {/* "on track" is a PACE word. The engine knows handled-or-open per
                             essential and nothing about rate — the same false precision the
                             host killed the continuous fill for. Use the engine's own noun. */}
-                        <p className="cp-prog">{hairlineLabel(orient, { calm: true }) || `${cpDone} of ${cpTotal} plan parts handled`}</p>
-                        {partNames && <p className="cp-parts">{partNames}</p>}
+                        {/* ONE PLACE (owner, 11/23/2026): where the progress sits on
+                            top (the tall ribbon, the phone's line), the count is said there. */}
+                        {!(ttHead && tallRibbon) && <p className="cp-prog">{hairlineLabel(orient, { calm: true }) || `${cpDone} of ${cpTotal} plan parts handled`}</p>}
+                        {partNames && !(ttHead && tallRibbon) && <p className="cp-parts">{partNames}</p>}
                         {/* The denominator moves, so say when. This is the whole reason
-                            phaseProgress now emits nextLedgerChange. */}
-                        {ledgerExpiry && ledgerExpiryShort && (
+                            phaseProgress now emits nextLedgerChange. The tall ribbon's
+                            foot already says it there. */}
+                        {ledgerExpiry && ledgerExpiryShort && !(tallTablet && tallRibbon) && (
                           <p className="cp-prog">{ledgerExpiryShort} is when {ledgerExpiry.what}.</p>
                         )}
                       </>
@@ -13325,7 +13716,7 @@ export default function HostShellV2() {
                             <button className="cta" onClick={goFix}>{vendName ? ('Open ' + vendName) : 'Open the vendor'}</button>
                           </div>
                           )}
-                          {heroReceipt && (
+                          {heroReceipt && !heroReceipt.decided && (
                             <div className="receipt">
                               <span className="rdot" aria-hidden="true" />
                               <span className="rmsg">{heroReceipt.msg}</span>
@@ -13390,7 +13781,7 @@ export default function HostShellV2() {
                               lookup, so the options here always belong to the decision
                               the line above is asking about. */}
                           {renderDecision(heroDecisionND)}
-                          {heroReceipt && (
+                          {heroReceipt && !heroReceipt.decided && (
                             <div className="receipt">
                               <span className="rdot" aria-hidden="true" />
                               <span className="rmsg">{heroReceipt.msg}</span>
@@ -13823,7 +14214,7 @@ export default function HostShellV2() {
                           <button className="mini" onClick={() => setSnoozePick(null)}>Never mind</button>
                         </div>
                       )}
-                      {isHero && heroReceipt && (
+                      {isHero && heroReceipt && !heroReceipt.decided && (
                         <div className="receipt">
                           <span className="rdot" aria-hidden="true" />
                           <span className="rmsg">{heroReceipt.msg}</span>
@@ -13881,7 +14272,7 @@ export default function HostShellV2() {
               </div>{/* /ecenter — the centered ask+action region */}
               {/* Progress hairline — pinned to the FOOT of the first screen (F13), after the
                   one action, above the fold. Real engine numbers. */}
-              {elegantMode && askMode && !tallTablet && planTotal > 0 && (() => {
+              {elegantMode && askMode && !ttHead && planTotal > 0 && (() => {
                 const done = planDone;
                 const total = planTotal;
                 return (
@@ -13986,10 +14377,10 @@ export default function HostShellV2() {
               {/* The tall iPad's first screen ends with Where you stand and the fold
                   control (owner, 11/22/2026); both are portaled into these slots. */}
               {tallTablet && <div className="tt-stand-slot" ref={setTtStandSlot} />}
-              {tallTablet && <div className="tt-fold-slot" ref={setTtFoldSlot} />}
+              {ttHead && <div className="tt-fold-slot" ref={setTtFoldSlot} />}
               </div>{/* /escreen — first-screen bound ends; the see-all follows below the fold */}
               {/* Fold boundary below the first screen (grabbable — taps scroll to the see-all). */}
-              {elegantMode && (askMode || (listIsCalm && !isPast && days !== null && days > 0)) && ((el) => (tallTablet && ttFoldSlot ? createPortal(el, ttFoldSlot) : el))(
+              {elegantMode && (askMode || (listIsCalm && !isPast && days !== null && days > 0)) && ((el) => (ttHead && ttFoldSlot ? createPortal(el, ttFoldSlot) : el))(
                 /* CALM JOINED (host "where's the handle" 2026-07-23): the calm board
                    PROMISES "the heads-ups below" — it needs the same fold handle as the
                    ask board (F13/F14: one skeleton holds both poles). Past keeps its
@@ -15033,6 +15424,14 @@ export default function HostShellV2() {
                   The id is the caret's aria-controls target. */}
               <div id="whats-counted" className={'slidepanel' + (handledOpen ? ' open' : '')} inert={!handledOpen}>
                 <div className="slidepanel-inner">
+                  {/* THE DATE THE PLAN NEXT NEEDS HER, BEHIND THE ONE DOOR (owner
+                      ruling 3, 11/23/2026). The phone's progress is one line now,
+                      "N of M handled · What's counted ›"; the hairline's horizon
+                      ("next dated work: Dec 3", audit 2026-08-04) moves here
+                      rather than leaving the phone. Not "needs you now". */}
+                  {phonePill && horizonPhrase && planHorizon && planHorizon.days > 0 && (
+                    <p className="grounding" data-horizon style={{ margin: '0 0 var(--sp-3)' }}>{horizonPhrase.charAt(0).toUpperCase() + horizonPhrase.slice(1)}.</p>
+                  )}
                   {/* WHAT THESE TWO NUMBERS ARE (host, 2026-07-14).
                       The hero shows "3 of 5" in one tile and "3 things need you" in the other,
                       and never once says what an AREA is, what a THING is, or why the two
@@ -15042,13 +15441,8 @@ export default function HostShellV2() {
                       two engines, two answers. That is fixed — they now read the same list —
                       but agreeing is not the same as EXPLAINING.) */}
                   <p className="grounding" style={{ margin: '0 0 10px' }}>
-                    The <b>parts of your plan</b> are the date, the venue, the guest count, the food, the rest.
-                    This says how many are settled. <b>Next</b> is the shorter thing: what actually needs you today,
-                    in order, starting with the one at the top.
-                  </p>
-                  <p className="grounding" style={{ margin: '0 0 12px' }}>
-                    They read from the same list but won’t match, and shouldn’t: a part can be settled with one
-                    loose end, and one job can close two parts.
+                    Your plan has a few parts: the date, the place, your guests, the food, and the rest. Tap one to open it.
+                    What needs you today is at the top of the board.
                   </p>
                   {/* POP-1C consumer: the recommendation lifecycle is the one
                       source that classifies EVERY recommendation (foundation,
@@ -15096,19 +15490,19 @@ export default function HostShellV2() {
                   )}
                   {phaseCues && Array.isArray(phaseCues.items) && phaseCues.items.length > 0 && (
                     <>
-                      <div className="shelf-label" style={{ margin: '6px 0 var(--sp-1)' }}>{planTotal === 1 ? 'The 1 part of your plan this count reads' : `The ${planTotal} parts of your plan this count reads`}</div>
-                      {/* RECON MODEL grounding: why this number and the inventories
-                          below it can never be compared one-to-one. */}
-                      <p className="grounding" style={{ margin: '0 0 6px' }}>
-                        Each part counts once here. Items inside a part keep their own counts further down.
-                      </p>
+                      <div className="shelf-label" style={{ margin: '6px 0 var(--sp-1)' }}>Your plan, part by part</div>
+                      {/* Every part is a door to its section (owner, 11/24/2026),
+                          through openPart, the chips' and the ribbon's one opener. */}
                       {phaseCues.items.map((c, i) => c.handled ? (
-                        <div key={c.id || i} className="line" style={{ padding: '5px 0' }}>
-                          <span className="of">{areaLabelFor(c.id)}</span><span className="amt" style={{ color: 'var(--ok)', fontWeight: 600 }}>handled</span>
-                        </div>
+                        <button key={c.id || i} type="button" className="line" data-plan-part={c.id}
+                          style={{ padding: '5px 0', width: '100%', minHeight: 44, alignItems: 'center', background: 'none', border: 0, font: 'inherit', textAlign: 'left', cursor: partCanOpen(c) ? 'pointer' : 'default' }}
+                          onClick={() => openPart(c)} disabled={!partCanOpen(c)}>
+                          <span className="of">{areaLabelFor(c.id)}</span>
+                          <span className="amt" style={{ color: 'var(--ok)', fontWeight: 600 }}>handled{partCanOpen(c) ? <span aria-hidden="true" style={{ color: 'var(--faint)', marginLeft: 'var(--sp-2)' }}>›</span> : null}</span>
+                        </button>
                       ) : (
-                        <button key={c.id || i} className="frow" style={{ padding: 'var(--sp-2) 2px', minHeight: 44, alignItems: 'center' }}
-                          onClick={() => { if (c.route && routeSheet(c.route)) return; toast(c.cueLabel || areaLabelFor(c.id)); }}>
+                        <button key={c.id || i} className="frow" data-plan-part={c.id} style={{ padding: 'var(--sp-2) 2px', minHeight: 44, alignItems: 'center' }}
+                          onClick={() => { if (partCanOpen(c)) { openPart(c); return; } toast(c.cueLabel || areaLabelFor(c.id)); }}>
                           {/* `cueLabel` is legitimately null on some items in some
                               states, and this rendered it unconditionally — an
                               empty 44px button behind a navigation chevron, which
@@ -15119,7 +15513,7 @@ export default function HostShellV2() {
                               the house rule is a glyph only when the handler
                               routes, and this one is conditional on `c.route`. */}
                           <span className="f-main"><span className="f-name" style={{ fontSize: 'var(--t-body)' }}>{c.cueLabel || areaLabelFor(c.id)}</span></span>
-                          {c.route ? <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span> : null}
+                          {partCanOpen(c) ? <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span> : null}
                         </button>
                       ))}
                     </>
@@ -15469,7 +15863,11 @@ export default function HostShellV2() {
                   backyard." She could answer it an unlimited number of times.
                   vf.address is the fact this row is about; the digit heuristic
                   was standing in for it and was never the same question. */}
-              {!isPast && vf.name && !venueBlockerShown && !vf.address && (vf.kind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(vf.name)) && (
+              {/* Not at her home (owner, render 11, 11/24/2026): the one address ask
+                  takes a street, a city or a ZIP, and with a city or ZIP on
+                  record the street is asked when the invite goes out
+                  (lib/outwardReady), not here. */}
+              {!isPast && vf.name && !venueBlockerShown && !vf.address && !vf.isHome && (vf.kind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(vf.name)) && (
                 <div className="later-row" style={{ marginTop: 18 }}>
                   <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>
                     {addressOpen ? 'Where exactly?' : 'Guests will ask where — add the address for ' + vf.name.toLowerCase()}
@@ -15477,7 +15875,7 @@ export default function HostShellV2() {
                   {addressOpen ? null : <button className="mini" onClick={() => setAddressOpen(true)}>Add it</button>}
                 </div>
               )}
-              {!isPast && vf.name && !venueBlockerShown && !vf.address && (vf.kind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(vf.name)) && addressOpen && (
+              {!isPast && vf.name && !venueBlockerShown && !vf.address && !vf.isHome && (vf.kind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(vf.name)) && addressOpen && (
                 <div className="hc-row" style={{ marginTop: 'var(--sp-2)' }}>
                   <AddressField value={addressDraft} onChange={setAddressDraft} onPick={sg => setAddressDraft(sg.label)}
                     inputStyle={{ maxWidth: 'none' }} placeholder="Street address — invites and rain notes will carry it" ariaLabel="Venue address" />
@@ -15771,10 +16169,10 @@ export default function HostShellV2() {
                   branch's own comment already claims. */}
               {/* On a tall iPad the bar is the menu (owner, 11/22/2026); the sample
                   still says so, on its own line. */}
-              {elegantMode && tallTablet && !eventIsTheHostsOwn && (
+              {elegantMode && ttHead && !eventIsTheHostsOwn && (
                 <div className="tt-r1 tt-r1-solo"><span className="tt-chip" data-sample-event>Sample</span></div>
               )}
-              {elegantMode && !tallTablet && (
+              {elegantMode && !ttHead && (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
                   {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
@@ -16021,10 +16419,10 @@ export default function HostShellV2() {
                   times set yet actually renders (host-confirmed dead end). */}
               {/* On a tall iPad the bar is the menu (owner, 11/22/2026); the sample
                   still says so, on its own line. */}
-              {elegantMode && tallTablet && !eventIsTheHostsOwn && (
+              {elegantMode && ttHead && !eventIsTheHostsOwn && (
                 <div className="tt-r1 tt-r1-solo"><span className="tt-chip" data-sample-event>Sample</span></div>
               )}
-              {elegantMode && !tallTablet && (
+              {elegantMode && !ttHead && (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
                   {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
@@ -16655,10 +17053,10 @@ export default function HostShellV2() {
                   on the liveDay day-sec branch above. After had the identical gap. */}
               {/* On a tall iPad the bar is the menu (owner, 11/22/2026); the sample
                   still says so, on its own line. */}
-              {elegantMode && tallTablet && !eventIsTheHostsOwn && (
+              {elegantMode && ttHead && !eventIsTheHostsOwn && (
                 <div className="tt-r1 tt-r1-solo"><span className="tt-chip" data-sample-event>Sample</span></div>
               )}
-              {elegantMode && !tallTablet && (
+              {elegantMode && !ttHead && (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
                   {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
@@ -17005,6 +17403,9 @@ export default function HostShellV2() {
                       </li>
                     ))}
                   </ul>
+                  {/* THE INVITE RULES LIVE IN THE INVITE STEP (owner, render 10a,
+                      11/24/2026): the same component and record as the guest list. */}
+                  <InviteRules event={event} patchEvent={patchEvent} note="The RSVP page follows these. Also in your guest list." />
                   {(!has('date') || !has('time')) && renderEditor({ domain: 'date' })}
                   {!has('place') && (
                     <div style={{ marginTop: 'var(--sp-3)' }}>
@@ -17017,10 +17418,8 @@ export default function HostShellV2() {
                     <div style={{ marginTop: 'var(--sp-3)' }} data-outward-name>
                       <div className="f-name">What do you call it?</div>
                       <p className="grounding" style={{ margin: '2px 0 var(--sp-2)' }}>Everyone you send it to sees this name.</p>
-                      <form className="actions-row" style={{ alignItems: 'center' }} onSubmit={(e) => { e.preventDefault(); const v = String(new FormData(e.currentTarget).get('evname') || '').trim(); if (v) patchEvent({ name: v }, 'Named “' + v + '”.'); }}>
-                        <input className="field" name="evname" aria-label="The event’s name" placeholder={event.name || ''} />
-                        <button className="mini" type="submit">Save the name</button>
-                      </form>
+                      {/* The one rename field (EventNameField), as on the board. */}
+                      <EventNameField mode="invite" name={event.name} label="The event’s name" saveLabel="Save the name" onSave={renameTo} />
                     </div>
                   )}
                   {has('place') && !has('address') && (
@@ -17548,7 +17947,17 @@ export default function HostShellV2() {
                     </div>
                   );
                 })()}
-                {(decisionBoard.locked || []).length > 0 && (
+                {/* THE DECIDED CALLS ARE ONE GREEN ROW (owner, 11/24/2026, the
+                    DoneFold rule) until she reopens them for the session; a
+                    routed focus on one of them ("Change the call") opens them. */}
+                {(decisionBoard.locked || []).length > 0 && !reopened.isOpen('calls:settled', (decisionBoard.locked || []).length > 0)
+                  && !(sheet.focus && (decisionBoard.locked || []).some(r => r && r.id === sheet.focus)) && (
+                  <div style={{ marginTop: 'var(--sp-3)' }}>
+                    <DoneFold text={`Settled · all ${(decisionBoard.locked || []).length} decided`} onOpen={() => reopened.reopen('calls:settled')} />
+                  </div>
+                )}
+                {(decisionBoard.locked || []).length > 0 && (reopened.isOpen('calls:settled')
+                  || !!(sheet.focus && (decisionBoard.locked || []).some(r => r && r.id === sheet.focus))) && (
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)' }}>Settled</div>
                     {(decisionBoard.locked || []).map((r, i) => {
@@ -17767,7 +18176,7 @@ export default function HostShellV2() {
               <div className="fstat-list" style={{ marginTop: 'var(--sp-3)' }}>
                 <button type="button" className="fstat" data-space-days onClick={() => setSheet({ kind: 'days' })}>
                   <span className="fstat-l">Your days</span>
-                  <span className="fstat-v">{spanNights(event) + 1} days · open<span className="fstat-chev" aria-hidden="true">›</span></span>
+                  <RowValue status="open" chev>{spanNights(event) + 1} days · open</RowValue>
                 </button>
               </div>
             )}
@@ -17932,10 +18341,9 @@ export default function HostShellV2() {
                       <button className="fstat" onClick={() => setSettledOpen(m => ({ ...m, [capKey]: !open }))} aria-expanded={open}
                         aria-label={(it.short || it.item) + ' — ' + (remaining === 0 ? 'covered' : 'still need ' + remaining) + '. Tap to set what you have.'}>
                         <span className="fstat-l">{it.verb ? it.verb + ' ' : ''}{it.short || it.item} <span className="of">need {baseNeed}</span></span>
-                        <span className="fstat-v" style={remaining === 0 ? { color: 'var(--ok)' } : null}>
+                        <RowValue status={rowStatus({ settled: remaining === 0 })} chev>
                           {remaining === 0 ? (helperName ? helperName + ' brings ' + baseNeed : 'covered') : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : 'still need ' + remaining}
-                          <span className="fstat-chev" aria-hidden="true">›</span>
-                        </span>
+                        </RowValue>
                       </button>
                       {open && (
                         <div style={{ padding: '2px 2px 12px' }}>
@@ -18428,10 +18836,9 @@ export default function HostShellV2() {
                             {p.id === 'place' && p.sub && !p.set ? <span className="trip-part-sub">{p.sub}</span> : null}
                             {p.id === 'seats' && p.stepFree ? <span className="trip-part-sub" data-stepfree-check>You said “{p.stepFree}”: a step-free path {placeA ? `to ${/^an? /.test(placeA) ? placeA.replace(/^an? /, 'the ') : placeA}` : 'in'} and a seat she can reach.</span> : null}
                           </span>
-                          <span className="fstat-v" style={p.set ? { color: 'var(--ok)' } : null}>
+                          <RowValue status={rowStatus({ settled: !!p.set })} chev>
                             {p.set ? 'set' : p.goes === 'venue' ? 'name it' : p.goes === 'seating' ? 'who sits where' : 'open'}
-                            <span className="fstat-chev" aria-hidden="true">›</span>
-                          </span>
+                          </RowValue>
                         </button>
                       ))}
                     </div>
@@ -20957,7 +21364,8 @@ export default function HostShellV2() {
               // same doors as tiles, "Feeling stuck?" beside Ask in More (the
               // old menu's rows land here), and the pass as a row at the foot.
               // Every door appears once; nothing here is a second list.
-              if (tallTablet) {
+              // The phone's pill opens the same index (owner ruling 4, 11/23/2026).
+              if (ttHead) {
                 const passRow = groups.flatMap((g) => g.rows).find((r) => r.k === 'pass');
                 return (
                   <>
@@ -21578,6 +21986,16 @@ export default function HostShellV2() {
                       // invalid and reads unpredictably to a screen reader — the same
                       // defect the "our pick" badge had.
                       const isPast = d !== null && d < 0;
+                      // RENAME, ON THE CURRENT EVENT (owner, render 4b, 11/24/2026):
+                      // the same field as the board's title, in place of the row.
+                      if (isActive && renaming === 'sheet') return (
+                        <Fragment key={e.id}>
+                          <div className="frow evname-row">
+                            <EventNameField mode="sheet" name={e.name} saveLabel="Save" onSave={renameTo} onCancel={() => setRenaming(null)} />
+                            <span className="v-meta">{[eventTypeLabel(e), venueFor(e).name].filter(Boolean).join(' · ')}</span>
+                          </div>
+                        </Fragment>
+                      );
                       return (
                         <Fragment key={e.id}>
                         <button className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: rowEnter(i, 30) }}
@@ -21588,6 +22006,10 @@ export default function HostShellV2() {
                           </span>
                           <span className="of" style={{ whiteSpace: 'nowrap' }}>{d === null ? 'no date' : d === 0 ? 'today' : d < 0 ? `${-d}d ago` : 'in ' + d + 'd'}</span>
                         </button>
+                        {isActive && (
+                          <button className="mini evrename" data-rename-open onClick={() => setRenaming('sheet')}
+                            aria-label={'Rename ' + (e.name || 'this event')}>Rename</button>
+                        )}
                         {isPast && (
                           <button className="mini runagain" onClick={() => runItAgain(e)}
                             aria-label={'Start a new event from ' + (e.name || 'this one')}>
@@ -23374,23 +23796,29 @@ export default function HostShellV2() {
                   )}
                   <Panel on={panels}>
                   </Panel>
-                  {(event.timeline || []).some(t => t && t.done && !t.retired) && (
-                    <>
-                      <button className="fold-btn" style={{ color: 'var(--ok)' }} onClick={() => setDoneOpen(o => !o)}>
-                        {(event.timeline || []).filter(t => t && t.done && !t.retired).length} done — the plan has them
-                        <span className="chev" aria-hidden="true">{doneOpen ? '▾' : '›'}</span>
-                      </button>
-                      {doneOpen && (event.timeline || []).map((t, i) => (t && t.done && !t.retired) ? (
-                        <button key={t.id || i} className="frow got" onClick={() => toggleTask(i)}>
-                          <span className="fcheck" aria-hidden="true" />
-                          <span className="f-main">
-                            <span className="f-name">{t.task}</span>
-                            <span className="v-meta">{[t.week, t.owner].filter(Boolean).join(' · ')}</span>
-                          </span>
+                  {(event.timeline || []).some(t => t && t.done && !t.retired) && (() => {
+                    // FINISHED WORK COLLAPSES, ONE RULE (owner, 11/24/2026): the
+                    // done steps are one green row (DoneFold) until she opens
+                    // them; with every step done the whole list is "All N done".
+                    const live = (event.timeline || []).filter(t => t && !t.retired);
+                    const doneN = live.filter(t => t.done).length;
+                    const allDone = doneN === live.length;
+                    if (!reopened.isOpen('tasks:all', allDone) && allDone) {
+                      return <DoneFold all text={`All ${live.length} done`} onOpen={() => { reopened.reopen('tasks:all'); setDoneOpen(true); }} />;
+                    }
+                    if (!doneOpen) {
+                      return <DoneFold text={`${doneN} done — the plan has them`} onOpen={() => setDoneOpen(true)} />;
+                    }
+                    return (
+                      <>
+                        <button className="fold-btn" style={{ color: 'var(--ok)' }} onClick={() => setDoneOpen(false)}>
+                          {doneN} done — the plan has them
+                          <span className="chev" aria-hidden="true">▾</span>
                         </button>
-                      ) : null)}
-                    </>
-                  )}
+                        {(event.timeline || []).map((t, i) => (t && t.done && !t.retired) ? doneTaskRow(t, i) : null)}
+                      </>
+                    );
+                  })()}
                   </Panel>
                 </>
               ) : (
@@ -23463,127 +23891,15 @@ export default function HostShellV2() {
               })()}
               </Panel>
             </>)}
-            {/* ── THE THIRD MODE (host ruling 2026-09-24) ──────────────────────
-                When somebody else is carrying part of the meal, the host has TWO
-                jobs on this sheet and they are not the same job: what she buys,
-                and what she is waiting on. The review board's communal-host seat
-                put it plainly — every direction on the canvas assumed one host,
-                one cart, one store, and for a repast that is structurally wrong.
-
-                MODELLED AS A SHEET, not as tab state inside the food sheet. That
-                is this codebase's own idiom for a mode (`setSheet({kind})`), it
-                keeps the back/close behaviour every other sheet already has, and
-                it avoided wrapping a 1,700-line render in a conditional.
-
-                THE CONTROL ONLY APPEARS WHEN THERE IS SOMETHING TO BRING. A
-                cookout has no community lines, and a permanent "Bringing · 0" tab
-                would be chrome advertising an empty room — the exact speculative
-                UI the density work spent the morning removing. */}
-            {sheet.kind === 'bringing' && foodPlan ? (() => {
-              // The dishes someone else is carrying and that are being served:
-              // lib/foodBringing bringingRows, the list the Shop group, the Plan
-              // row and the bar's "N of M spoken for" all count.
-              const rows = bringingRows(foodPlan);
-              const who = (rows[0] && rows[0].broughtByLabel) || 'The community';
-              // Dishes the host took back ("I'll make it myself") and the host's
-              // own food lines she could hand to someone: the same editor, so a
-              // dish can be given to anyone from here, not only the default sides.
-              const taken = (foodPlan.list || []).filter((i) => i && i.hostTakes && !i.skipped);
-              const yours = (foodPlan.list || []).filter((i) => i && !i.broughtByCommunity && !i.skipped
-                && !i.hostTakes && i.group !== 'Supplies' && i.group !== 'Drinks');
-              const enteredCost = rows.reduce((t, r) => t + (Number(r.low) || 0), 0);
-              return (
-                <>
-                  <FoodModes mode="bringing" count={rows.length} setSheet={setSheet} />
-                  <div style={{ padding: '2px 0 14px' }}>
-                    <Eyebrow>Not yours to buy</Eyebrow>
-                    <BigValue>{rows.length === 0 ? 'No dishes yet' : rows.length === 1 ? 'One dish' : `${rows.length} dishes`}</BigValue>
-                    <GuideLine>
-                      {/* Some of the food or all of it: a Friendsgiving potluck's host still
-                          buys the turkey (owner, 11/18/2026). Plural names take "are". */}
-                      {(() => {
-                        if (!rows.length) return 'Nobody is bringing a dish yet. Name someone for one of yours below.';
-                        const are = /\b(friends|neighbors|families|guests)\b/i.test(who) ? 'are' : 'is';
-                        const allOfIt = !(foodPlan.list || []).some((i) => i && !i.broughtByCommunity && !i.skipped && i.group === 'Food');
-                        return allOfIt ? `${who} ${are} carrying the food. You are buying the table around it.`
-                          : `${who} ${are} bringing these dishes. You are buying the rest.`;
-                      })()}
-                    </GuideLine>
-                    {/* THE COUNT MOVED TO THE PINNED BAR (2026-09-27), so this
-                        line stops saying it. The bar keeps the count because the
-                        bar does not scroll away; this line keeps the fact the bar
-                        cannot carry: none of it is her bill. A dish she added with
-                        a cost she typed is the exception, and is said. */}
-                    {rows.length ? (
-                      <Grounding gap={ASK_RHYTHM.valueToWhy}>
-                        {enteredCost > 0 ? `nothing here costs you anything but the ${fmt(enteredCost)} you entered` : 'nothing here costs you anything'}
-                      </Grounding>
-                    ) : null}
-                  </div>
-                  {/* ONE RECORD (owner's iPad, 11/21/2026). Each row writes
-                      `foodOwner`, which Shop, Plan, the helpers panel, the guest
-                      rows and the day-before list all read through the engine's
-                      `broughtBy`. The picker offers the guest list and the
-                      helpers, or a typed name; "I'll make it myself" puts the
-                      dish back on her list; "Not serving it" is a skip.
-                      A RECORD, NOT A REQUEST: this writes down what she was
-                      told. Clearing the field removes the name rather than
-                      storing an empty one. */}
-                  {rows.length ? (
-                    <div className="fstat-list">
-                      {rows.map((r) => bringerRow(r))}
-                    </div>
-                  ) : null}
-                  {taken.length ? (
-                    <>
-                      <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 var(--sp-1)' }}>You’re making these yourself</div>
-                      <div className="fstat-list">
-                        {taken.map((r) => (
-                          <button key={r.id} className="fstat" onClick={() => {
-                            const next = { ...foodOwnerMap(event) }; delete next[r.id];
-                            patchEvent({ foodOwner: next }, `${r.short || r.item} is back with ${String(who).toLowerCase() === 'the community' ? 'the community' : 'your guests'} to bring.`);
-                          }}>
-                            <span className="fstat-l">{r.short || r.item}</span>
-                            <span className="fstat-v" style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>Hand it back</span>
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  ) : null}
-                  {yours.length ? (
-                    <>
-                      <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 var(--sp-1)' }}>Yours to make · someone could bring one</div>
-                      <div className="fstat-list">
-                        {yours.map((r) => bringerRow(r))}
-                      </div>
-                    </>
-                  ) : null}
-                  {/* A RECORD, NOT A REQUEST. The repast playbook carries a 2026-09-03
-                      three-seat ruling about not telling a family they are doing their
-                      funeral wrong; a screen that looked like it was chasing the church
-                      for dishes would be the same error in another register. Nothing
-                      here sends anything. */}
-                  <p className="grounding" style={{ margin: 'var(--sp-3) 0 0' }}>
-                    This is a note of what you were told. Nothing here is sent to anyone.
-                  </p>
-                </>
-              );
-            })() : null}
-            {/* SHOP AND PLAN ARE SEPARATE TABS (2026-09-24, boards D and E).
-                Host: "shop and plan should be separated in spread and shopping
-                like we have in prototypes." Board D's control is three wide —
-                Shop · Bringing · Plan — and this shipped with two, so the
-                planning rows (Your choices, Dietary needs, How it's sourced)
-                sat on top of the shopping list, which is what made the Shop tab
-                seven stacked blocks deep before the first grocery.
-
-                ONE BODY, TWO TABS rather than a second sheet: the hero, the
-                drill-in panels and the pinned footer are shared, and `planTab`
-                picks which rows and which hero belong to the tab in front. A
-                separate sheet kind would have duplicated all of it. */}
-            {(sheet.kind === 'food' || sheet.kind === 'foodplan') && (foodPlan ? (
+            {/* ── ONE FOOD PAGE, NO TABS (owner-approved renders 9a-9c, 11/24/2026) ──
+                The Plan / Bringing / Shop tabs (2026-09-24) are gone: one scroll,
+                the estimate card, Your choices, Bringing (when someone else
+                brings dishes), then the list by group. 'foodplan', 'bringing'
+                and 'food' stay as the kinds the doors open, and each lands on its
+                section (the scroll effect on `sheet.kind`). The header and the
+                pinned bar stay. */}
+            {(sheet.kind === 'food' || sheet.kind === 'foodplan' || sheet.kind === 'bringing') && (foodPlan ? (
               <>
-                <FoodModes mode={sheet.kind === 'foodplan' ? 'plan' : 'shop'} count={bringingRows(foodPlan).length} setSheet={setSheet} />
                 {/* PRINCIPLES REDESIGN: summary before detail — the bought count
                     leads (the host's real question: "how much is left to do?"),
                     one grounding line carries the rest of the engine's math. */}
@@ -23750,14 +24066,7 @@ export default function HostShellV2() {
                     ask). Content is byte-identical and still on the same screen;
                     only its type size changed. It is a tally, not a headline. */}
                 {(() => {
-                  const gs = event.guests || [];
-                  const counts = {};
-                  gs.forEach(g => {
-                    const m = String((g && g.meal) || '').trim();
-                    if (m && m !== '—') counts[m] = (counts[m] || 0) + 1;
-                  });
-                  const answered = Object.values(counts).reduce((a, b) => a + b, 0);
-                  const un = answered ? Math.max(0, gs.length - answered) : 0;
+                  const { counts, answered } = mealTally(event);  // lib/dietRows, the one tally
                   // Stable order: the invite's own meal choices first, then any
                   // free-text meals a CSV brought in.
                   const order = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
@@ -23799,13 +24108,10 @@ export default function HostShellV2() {
                           zero restrictions and three silent guests. On Shop
                           there is no dietary row, so the chip is the only way
                           that gap is said at all, and it stays. */}
-                      {un > 0 && sheet.kind !== 'foodplan' && (
-                        <button className="mini"
-                          style={{ color: 'var(--warn)', background: 'var(--warn-tint)', borderColor: 'var(--warn)' }}
-                          onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
-                          {un} meal{un === 1 ? '' : 's'} unanswered
-                        </button>
-                      )}
+                      {/* ONE PAGE (owner, 11/24/2026): the "N meals unanswered"
+                          chip opened Dietary needs, and Your choices now carries
+                          that row on the same page, so the chip is gone. Its count
+                          lives in that row (owner, 11/24/2026), from mealTally. */}
                       <button type="button" className="tap-44" onClick={() => setEstOpen(o => !o)}
                         aria-expanded={estOpen}
                         style={{ font: 'inherit', fontSize: 'var(--t-caption-min)', fontWeight: 600,
@@ -23969,6 +24275,81 @@ export default function HostShellV2() {
                   </>
                 )}
                 </Panel>
+                {/* ── YOUR CHOICES, SECTION 2 OF THE ONE PAGE (owner, renders 9a/9b,
+                    11/24/2026) ──────────────────────────────────────────────
+                    The menu, the dietary needs and how it is sourced, each a row
+                    that opens its drill-in. The "Who's bringing what" row is gone:
+                    Bringing is its own section just below. Once all three are
+                    settled the section is the two-line green "Choices set"
+                    (DoneFold) until she reopens it for the session. */}
+                {(() => {
+                  const anyDiet = anyDietFlagged(event);  // lib/dietRows
+                  const openN = choicesTally.total - choicesTally.settled;
+                  const hasChoices = (foodPlan.choices || []).length > 0;
+                  const hasSourcing = (foodPlan.sourcingTiers || []).length > 0;
+                  const curTier = (foodPlan.sourcingTiers || []).find(t => t && (t.id || t.key) === foodPlan.sourcing);
+                  const sourcingLabel = (curTier && (curTier.label || curTier.id)) || 'choose one';
+                  if (drillOpen) return null; // a drill-in panel is open below
+                  // THE MEALS STILL UNANSWERED (owner, 11/24/2026): the count the
+                  // estimate card's chip carried, back inside this row, from the
+                  // same tally (lib/dietRows mealTally). While any are open the row
+                  // is not settled, so "Choices set" does not fold it away.
+                  const mealsOpen = mealTally(event).unanswered;
+                  const dietSet = (anyDiet || dietaryNoted(event)) && mealsOpen === 0;
+                  const allSet = (!hasChoices || openN === 0) && dietSet && (!hasSourcing || sourcingSettled(event));
+                  const dietText = anyDiet ? dietRowsFor(event).flaggedCount + ' dietary noted' : 'dietary noted';
+                  // Settled, it is the bare two-line row of render 9b, not a card.
+                  if (!reopened.isOpen('choices', allSet) && allSet) {
+                    return (
+                      <div data-food-section="choices" className="choices-set">
+                        <DoneFold text="Choices set" sub={[hasSourcing ? sourcingLabel : null, dietText].filter(Boolean).join(' · ')}
+                          onOpen={() => reopened.reopen('choices')} />
+                      </div>
+                    );
+                  }
+                  return (
+                    <Panel on={panels}>
+                    <div data-food-section="choices">
+                        <>
+                          <div className="shelf-label" style={{ margin: '0 0 var(--sp-1)' }}>Your choices</div>
+                          <div className="fstat-list">
+                            {/* THE CHOICE THAT BUILDS THE LIST GOES FIRST (2026-09-17):
+                                the menu's answers produce the list and its totals. */}
+                            {hasChoices && (
+                              <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, choices: true }))}>
+                                <span className="fstat-l">Menu</span>
+                                <RowValue status={rowStatus({ settled: openN === 0 })} chev>
+                                  {/* Open now is the hero's count; the rest come up
+                                      closer to the date, as on Calls to make. */}
+                                  {openN > 0
+                                    ? (choicesTally.openNow.length > 0
+                                      ? choicesTally.openNow.length + ' open' + (choicesTally.later > 0 ? ' · ' + choicesTally.later + ' later' : '')
+                                      : choicesTally.later + ' later')
+                                    : 'all set'}
+                                </RowValue>
+                              </button>
+                            )}
+                            <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
+                              <span className="fstat-l">Dietary needs</span>
+                              <RowValue status={rowStatus({ settled: dietSet })} chev>
+                                {anyDiet ? 'noted · ' + dietRowsFor(event).flaggedCount + ' flagged' : dietaryNoted(event) ? 'noted' : 'none yet'}
+                                {mealsOpen > 0 ? ' · ' + mealsOpen + ' meal' + (mealsOpen === 1 ? '' : 's') + ' unanswered' : ''}
+                              </RowValue>
+                            </button>
+                            {hasSourcing && (
+                              <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, sourced: true }))}>
+                                <span className="fstat-l">How it’s sourced</span>
+                                <RowValue status={rowStatus({ settled: sourcingSettled(event) })} chev>
+                                  {sourcingLabel}
+                                </RowValue>
+                              </button>
+                            )}
+                          </div>
+                        </>
+                    </div>
+                    </Panel>
+                  );
+                })()}
                 {/* Menu decisions — the playbook's real choices; picking one re-sizes
                     and re-prices the spread through the same engine. */}
                 <Panel on={panels}>
@@ -24108,8 +24489,6 @@ export default function HostShellV2() {
                     </div>
                   );
                 })()}
-                <Panel on={panels}>
-                </Panel>
                 {(foodPlan.choices || []).length > 0 && (() => {
                   const openN = choicesTally.total - choicesTally.settled;
                   const open = !!foodSect.choices;
@@ -24119,111 +24498,7 @@ export default function HostShellV2() {
                 {/* Food across the trip (owner, 11/21/2026: A's money view). The
                     Spread is the DINNER's food on a trip with a celebration; the
                     trip's other meals are the layer around it. */}
-                {sheet.kind === 'foodplan' && trip && !drillOpen && tripLayers('spread')}
-                {/* ONE compact status strip replaces two heavy fold-rows — the
-                    same information, without the wall-of-rows drift. */}
-                {(() => {
-                  const dc = event.dietCounts || {};
-                  const anyDiet = anyDietFlagged(event);  // lib/dietRows — was hand-rolled here twice, identically
-                  const openN = choicesTally.total - choicesTally.settled;
-                  const hasChoices = (foodPlan.choices || []).length > 0;
-                  const hasSourcing = (foodPlan.sourcingTiers || []).length > 0;
-                  const curTier = (foodPlan.sourcingTiers || []).find(t => t && (t.id || t.key) === foodPlan.sourcing);
-                  const sourcingLabel = (curTier && (curTier.label || curTier.id)) || 'choose one';
-                  const listDone = shopTally.done;
-                  const planTab = sheet.kind === 'foodplan';
-                  if (drillOpen) return null; // a drill-in panel is open below
-                  // Progressive disclosure (port of Figma 391:60) — the heavy sections
-                  // (sourcing, the shopping list) fold to summary rows; each drills in
-                  // on tap. Hairline rows, value neutral until resolved (378:72 treatment).
-                  return (
-                    <div className="fstat-list">
-                      {/* ── THE CHOICE THAT BUILDS THE LIST GOES FIRST (2026-09-17) ──
-                          "Your choices" sat third, under Dietary needs, while the
-                          decisions inside it are what PRODUCE the list and its
-                          totals — major_event is authored when:'T-10d' (the
-                          earliest), weight:'high', blocks:['food','program'], and
-                          its own priorityBasis says "answering it first means
-                          everything else builds on the right assumption instead of
-                          a generic default". The sheet was ordering it as though it
-                          were a detail. Host-reported this session. */}
-                      {planTab && hasChoices && (
-                        <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, choices: true }))}>
-                          <span className="fstat-l">Your choices</span>
-                          <span className="fstat-v" style={openN > 0 ? null : { color: 'var(--ok)' }}>
-                            {/* Open now is the hero's count; the rest come up
-                                closer to the date, as on Calls to make. */}
-                            {openN > 0
-                              ? (choicesTally.openNow.length > 0
-                                ? choicesTally.openNow.length + ' open' + (choicesTally.later > 0 ? ' · ' + choicesTally.later + ' later' : '')
-                                : choicesTally.later + ' later')
-                              : 'all set'}
-                            <span className="fstat-chev" aria-hidden="true">›</span>
-                          </span>
-                        </button>
-                      )}
-                      {/* WHO'S BRINGING WHAT, ON THE PLAN (owner's iPad, 11/21/2026:
-                          "linked to other places that reference the same").
-                          A count from the one record and a door to the
-                          assignment, not a second list of names. */}
-                      {planTab && bringingTally.total > 0 && (
-                        <button className="fstat" data-plan-bringing onClick={() => setSheet({ kind: 'bringing' })}>
-                          <span className="fstat-l">Who’s bringing what</span>
-                          <span className="fstat-v" style={bringingTally.named === bringingTally.total ? { color: 'var(--ok)' } : null}>
-                            {bringingTally.named === bringingTally.total
-                              ? 'everyone named'
-                              : `${bringingTally.named} of ${bringingTally.total} named`}
-                            <span className="fstat-chev" aria-hidden="true">›</span>
-                          </span>
-                        </button>
-                      )}
-                      {planTab && (
-                      <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
-                        <span className="fstat-l">Dietary needs</span>
-                        <span className="fstat-v" style={anyDiet || dietaryNoted(event) ? { color: 'var(--ok)' } : null}>
-                          {anyDiet ? 'noted · ' + dietRowsFor(event).flaggedCount + ' flagged' : dietaryNoted(event) ? 'noted' : 'none yet'}
-                          <span className="fstat-chev" aria-hidden="true">›</span>
-                        </span>
-                      </button>
-                      )}
-                      {planTab && hasSourcing && (
-                        <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, sourced: true }))}>
-                          <span className="fstat-l">How it’s sourced</span>
-                          <span className="fstat-v">
-                            {sourcingLabel}
-                            <span className="fstat-chev" aria-hidden="true">›</span>
-                          </span>
-                        </button>
-                      )}
-                      {/* ── THE COUNT IS ALREADY PINNED (2026-09-26) ────────
-                          "N of M bought" rendered HERE and again in the .ftotal
-                          bar at the foot of the same sheet — the same sentence
-                          twice on one screen, which is the duplication the host
-                          called out on 2026-09-24 ("check for duplication of
-                          info and choices between shop/bringing/plan sections")
-                          and which the bar's own comment below already answers
-                          for the hero.
-
-                          The bar keeps the fraction: it is PINNED, and
-                          totalSurvivesScroll exists to keep it on screen through
-                          the whole list. So this row says what the list IS,
-                          which is what a row you are about to open should say.
-                          Done still reads done — that is a state, not a repeat
-                          of the tally. */}
-                      {!planTab && (
-                      <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, list: true }))}>
-                        <span className="fstat-l">The list</span>
-                        <span className="fstat-v" style={listDone ? { color: 'var(--ok)' } : null}>
-                          {listDone ? 'all bought' : COUNT_LABELS.listItems(shopTally.total)}
-                          <span className="fstat-chev" aria-hidden="true">›</span>
-                        </span>
-                      </button>
-                      )}
-                    </div>
-                  );
-                })()}
-                <Panel on={panels}>
-                </Panel>
+                {trip && !drillOpen && tripLayers('spread')}
                 {(foodPlan.choices || []).length > 0 && !!foodSect.choices && (
                   <>
                     <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)' }}>
@@ -24354,157 +24629,6 @@ export default function HostShellV2() {
                     "Send the list to Instacart" are the aisle's two actions; on a
                     tab whose whole content is Your choices / Dietary needs / How
                     it's sourced they are answers to a question nobody asked. */}
-                <Panel on={panels}>
-                {sheet.kind !== 'foodplan' && !drillOpen && !noKitchen && (
-                  <div className="shop-acts chips">
-                    {/* NO INLINE WIDTH OR MARGIN ON THESE TWO (2026-09-26).
-                        The row became a flex container when the chips were
-                        justified, and both still carried `width:100%;
-                        margin-bottom` from when it was inline flow. The margin
-                        was not cosmetic: a flex line's cross size counts each
-                        item's MARGIN, so 8px here made the line 52 tall and
-                        stretched Print and Email to 52 while this button
-                        stayed 44 — three same-class buttons, one row, two
-                        heights. Width and spacing belong to .shop-acts.chips
-                        now; one owner. */}
-                    <button className="food-act" onClick={() => {
-                      // foodShopItems/eventGeoQuery are the same shared engines legacy's
-                      // "Copy the shopping list" reads (App.js:10614-10615), so both apps
-                      // build the identical list.
-                      let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
-                      let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
-                      openDraft('Your shopping list', draftShoppingList(event, profile, { items: shopItems, anchor }));
-                    }}>Copy the shopping list</button>
-                    {/* ── AND SEND IT TO THE STORE ─────────────────────────────
-                        Truthful by construction, and the label is the reason it
-                        reads this way. We ask the backend for a PRE-FILLED cart;
-                        the Instacart key lives server-side and may not be set.
-                        When a real cart comes back we open it. When it does not,
-                        we copy the list and open Instacart's search so the host
-                        pastes it — and we SAY that, rather than opening an empty
-                        store and letting them think the send failed.
-
-                        "Search Instacart" is what happens today (G9, carried with
-                        Model H, 11/13/2026): there is no Instacart key in
-                        production, so the tap opens Instacart's search for ONE
-                        item at a time and the host adds each one. "Send to
-                        Instacart" read as the list arriving in a filled cart,
-                        which is false exactly when the key is missing. Copy
-                        only; the behavior is unchanged. */}
-                    <button className="food-act" disabled={sendingCart}
-                      onClick={searchInstacart}>{sendingCart ? 'Opening…' : 'Search Instacart'}</button>
-                    {/* ── ONE TAP TO EVERY LIST APP THE HOST ALREADY HAS ──────
-                        Host asked for print, email, and "integration with anylist
-                        or other apps". Researched 2026-09-24, and the honest
-                        finding is that the per-app integrations mostly do not
-                        exist:
-
-                        · AnyList publishes NO API, no URL scheme, no email-in.
-                          The wrappers that exist are reverse-engineered and want
-                          the host's AnyList PASSWORD, so they are unshippable at
-                          any price.
-                        · Google Keep's API is Workspace-admin only.
-                        · Paprika, Out of Milk and Flipp have no public path.
-                        · Apple Reminders has no documented URL scheme either.
-
-                        What all of them DO have is a share extension. The Web
-                        Share API has been in iOS Safari since 12.2, and one
-                        button reaches Messages, Mail, Notes, Reminders and
-                        AnyList's own importer through the system sheet — no
-                        OAuth, no install prompt, no integration per app.
-
-                        FEATURE-DETECTED, not assumed: desktop Safari and most
-                        desktop browsers have no share sheet, so the button is
-                        absent there rather than present and broken. Copy already
-                        covers that case.
-
-                        BUILT BEFORE THE CALL, and the call is synchronous.
-                        `navigator.share` requires transient user activation, and
-                        awaiting anything first can spend it — the same defect
-                        that was live in the Instacart handler above.
-
-                        AbortError is the host closing the sheet, and also fires
-                        when there is nothing to share to. Neither is a failure,
-                        so neither gets an error toast. */}
-                    {canShareLists && (
-                      <button className="food-act" onClick={() => {
-                        let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
-                        let text = '';
-                        try {
-                          let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
-                          const d = draftShoppingList(event, profile, { items: shopItems, anchor });
-                          text = typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n');
-                        } catch (_e) { text = ''; }
-                        if (!text) { toast('Nothing to share yet.'); return; }
-                        // No `url`: some targets take only one of text/url, and a
-                        // grocery list is the text. Synchronous — see above.
-                        navigator.share({ title: `${event.name || 'Event'} shopping list`, text })
-                          .catch((e) => {
-                            if (e && e.name === 'AbortError') return;   // closed the sheet
-                            toast('Couldn\u2019t open the share sheet.');
-                          });
-                      }}>Share the list</button>
-                    )}
-                    {/* PRINT AND EMAIL — the two handoffs that need no service and
-                        no key. Both read the SAME engines as Copy and Instacart.
-
-                        Print renders a paper sheet from foodShopItems; email hands
-                        `draftShoppingList`'s own subject and body to the host's mail
-                        app through mailto, which is the only way to send mail from
-                        here without routing a host's list through a third party. */}
-                    <button className="food-act" onClick={() => {
-                      let items = []; try { items = foodShopItems(foodPlan, event) || []; } catch { items = []; }
-                      if (!items.length) { toast('Nothing to print yet.'); return; }
-                      printSheet('shop');
-                    }}>Print</button>
-                    <button className="food-act" onClick={() => {
-                      let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
-                      let subject = ''; let body = '';
-                      try {
-                        let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
-                        const d = draftShoppingList(event, profile, { items: shopItems, anchor });
-                        if (typeof d === 'string') { body = d; } else { subject = d.subject || ''; body = d.body || ''; }
-                      } catch (_e) { body = ''; }
-                      if (!body) { toast('Nothing to email yet.'); return; }
-                      // SYNCHRONOUS, like the Instacart and Share handlers: a
-                      // navigation assigned after an await has lost the transient
-                      // user activation and is refused silently. That cost a whole
-                      // session once — the button sat on "Sending..." forever.
-                      // ── CRLF BEFORE ENCODING ────────────────────────────────
-                      // RFC 6068 wants %0D%0A. A bare \n survives some mail apps
-                      // and collapses the list into one paragraph in others — and
-                      // one-item-per-line is the whole property every paste
-                      // target needs, including AnyList's documented bulk paste.
-                      const crlf = String(body).replace(/\r\n|\r|\n/g, '\r\n');
-                      const subj = subject || `${event.name || 'Event'} shopping list`;
-                      const href = 'mailto:?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(crlf);
-                      // ── NO GUESSED LENGTH LIMIT. A SAFETY NET INSTEAD ──────
-                      // No vendor documents a mailto body limit; every figure in
-                      // circulation is a bug thread (~1,620 pessimistic, ~2,000
-                      // consensus). MEASURED over all 45 playbooks at 20 and 60
-                      // guests, 90 lists: longest 2,830 encoded (The Cookout at
-                      // 60), 52 of 90 over 1,600, 22 over 2,000, NONE over 6,000.
-                      //
-                      // So a threshold is a choice between two bad outcomes: set
-                      // it low and 58% of real lists never email at all, set it
-                      // high and it never fires. Either way the number is
-                      // invented, which this project does not do.
-                      //
-                      // The failure being guarded is that a too-long body is
-                      // TRUNCATED SILENTLY — the host sends half a list and does
-                      // not know. Copying first removes the loss without guessing
-                      // a limit: whatever the mail app does with the body, the
-                      // whole list is on the clipboard and the toast says so.
-                      try { navigator.clipboard.writeText(`${subj}\n\n${body}`); } catch (_e) { /* no clipboard: the mail draft is still the path */ }
-                      try {
-                        window.location.href = href;
-                        toast('Opening your mail app \u00b7 the full list is on your clipboard too');
-                      } catch (_e) { toast('Couldn\u2019t open your mail app \u2014 the list is on your clipboard.'); }
-                    }}>Email</button>
-                    {nudgeFor('food')}
-                  </div>
-                )}
-                </Panel>
                 {/* Sourcing tier — the plan's real cook/order axis; switching
                     re-prices proteins and changes where each line says to buy.
                     Drill-in (port of 391:60): gated behind the "How it's sourced" row. */}
@@ -24559,16 +24683,99 @@ export default function HostShellV2() {
                   </>
                 )}
                 </Panel>
+                {/* ── BRINGING, A SECTION OF THE ONE PAGE (owner, render 9b, 11/24/2026) ──
+                    It was the sheet's third tab. Now it sits between Your choices
+                    and the list, only when someone else brings dishes (or she
+                    took one back and can hand it on), and it is the ONE place a
+                    brought dish is listed: the list no longer carries a
+                    "… are bringing" group. Each row writes `foodOwner`, the one
+                    record. A RECORD, NOT A REQUEST: nothing here is sent. */}
+                {(() => {
+                  const rows = bringingRows(foodPlan);
+                  const who = (rows[0] && rows[0].broughtByLabel) || 'The community';
+                  const taken = (foodPlan.list || []).filter((i) => i && i.hostTakes && !i.skipped);
+                  const yours = (foodPlan.list || []).filter((i) => i && !i.broughtByCommunity && !i.skipped
+                    && !i.hostTakes && i.group !== 'Supplies' && i.group !== 'Drinks');
+                  if (!rows.length && !taken.length) return null;
+                  const enteredCost = rows.reduce((t, r) => t + (Number(r.low) || 0), 0);
+                  const allNamed = bringingTally.total > 0 && bringingTally.named === bringingTally.total;
+                  const folded = !reopened.isOpen('bring', allNamed) && allNamed
+                    && !rows.some((r) => r.id === bringFocus || (bringerEdit && bringerEdit.id === r.id));
+                  const yoursOpen = !!foodGroupsOpen.__yours || yours.some((r) => r.id === bringFocus || (bringerEdit && bringerEdit.id === r.id));
+                  return (
+                    <Panel on={panels}>
+                    <div data-food-section="bringing">
+                      {folded ? (
+                        <DoneFold text={`Bringing · all ${bringingTally.total} spoken for`} onOpen={() => reopened.reopen('bring')} />
+                      ) : (
+                        <>
+                          <div className="shelf-label" style={{ margin: '0 0 var(--sp-1)' }}>
+                            {rows.length ? `Bringing · ${bringingTally.named} of ${bringingTally.total} spoken for` : 'Bringing'}
+                          </div>
+                          {rows.length ? (
+                            <p className="grounding" style={{ margin: '0 0 var(--sp-1)' }}>
+                              {(() => {
+                                const are = /\b(friends|neighbors|families|guests)\b/i.test(who) ? 'are' : 'is';
+                                const allOfIt = !(foodPlan.list || []).some((i) => i && !i.broughtByCommunity && !i.skipped && i.group === 'Food');
+                                return allOfIt ? `${who} ${are} carrying the food. You are buying the table around it.`
+                                  : `${who} ${are} bringing these dishes. You are buying the rest.`;
+                              })()}
+                              {' '}{enteredCost > 0 ? `Nothing here costs you anything but the ${fmt(enteredCost)} you entered.` : 'Nothing here costs you anything.'}
+                            </p>
+                          ) : null}
+                          {rows.length ? (
+                            <div className="fstat-list">
+                              {rows.map((r) => bringerRow(r))}
+                            </div>
+                          ) : null}
+                        </>
+                      )}
+                      {taken.length ? (
+                        <>
+                          <div className="shelf-label" style={{ margin: 'var(--sp-3) 0 var(--sp-1)' }}>You’re making these yourself</div>
+                          <div className="fstat-list">
+                            {taken.map((r) => (
+                              <button key={r.id} className="fstat" onClick={() => {
+                                const next = { ...foodOwnerMap(event) }; delete next[r.id];
+                                patchEvent({ foodOwner: next }, `${r.short || r.item} is back with ${String(who).toLowerCase() === 'the community' ? 'the community' : 'your guests'} to bring.`);
+                              }}>
+                                <span className="fstat-l">{r.short || r.item}</span>
+                                <RowValue status="open" style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>Hand it back</RowValue>
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      ) : null}
+                      {/* Her own dishes, which she could hand to someone: one
+                          quiet door, so the section stays the dishes others bring. */}
+                      {yours.length ? (yoursOpen ? (
+                        <>
+                          <div className="shelf-label" style={{ margin: 'var(--sp-3) 0 var(--sp-1)' }}>Yours to make · someone could bring one</div>
+                          <div className="fstat-list">
+                            {yours.map((r) => bringerRow(r))}
+                          </div>
+                        </>
+                      ) : (
+                        <button className="fold-btn" data-yours-door onClick={() => setFoodGroupsOpen((m) => ({ ...m, __yours: true }))}>
+                          Hand one of yours to someone<span className="chev" aria-hidden="true">›</span>
+                        </button>
+                      )) : null}
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>
+                        This is a note of what you were told. Nothing here is sent to anyone.
+                      </p>
+                    </div>
+                    </Panel>
+                  );
+                })()}
                 {/* The list drill-in (port of Figma 391:60) — the shopping list, the
                     store filter, per-item pricing, and add-item all live here, gated
                     behind the "The list" summary row so the calm screen stays calm. */}
                 <Panel on={panels}>
-                {foodSect.list && (
-                  <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span>The list</span>
-                    {!barIsExit && <button className="mini" onClick={() => setFoodSect(m => ({ ...m, list: false }))}>Done</button>}
-                  </div>
-                )}
+                {/* THE LIST, SECTION 4 OF THE ONE PAGE (owner, 11/24/2026): always
+                    open now, so it has no Done of its own. */}
+                <div className="shelf-label" data-food-section="list" style={{ margin: '0 0 var(--sp-2)' }}>
+                  <span>The list</span>
+                </div>
                 {/* ── LAYER 2: PRICE THIS LIST AT A REAL STORE ───────────────
                     The plan's numbers are a national band moved by a regional
                     factor. A store price is the only number on this screen a
@@ -24633,14 +24840,14 @@ export default function HostShellV2() {
                     (foodShopItems + eventGeoQuery), so all three produce the
                     identical list — a second list that disagreed would be worse
                     than no second entry point. */}
-                {foodSect.list && !noKitchen && (
+                {!noKitchen && (
                   <button className="food-act" style={{ width: '100%', marginBottom: 'var(--sp-3)' }} onClick={() => {
                     let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
                     let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
                     openDraft('Your shopping list', draftShoppingList(event, profile, { items: shopItems, anchor }));
                   }}>Copy the shopping list</button>
                 )}
-                {foodSect.list && !noKitchen && (
+                {!noKitchen && (
                   <button className="food-act" data-list-instacart disabled={sendingCart} style={{ width: '100%', marginBottom: 'var(--sp-3)' }}
                     onClick={searchInstacart}>{sendingCart ? 'Opening…' : 'Search Instacart'}</button>
                 )}
@@ -24650,9 +24857,9 @@ export default function HostShellV2() {
                     a stray 14px gap under the action row where the ladder says
                     12 or 16. An empty layout box is invisible until you measure
                     the rhythm, which is the point of measuring it. */}
-                {foodSect.list && !noKitchen && (
+                {!noKitchen && (
                 <div className="list-acts">
-                {foodSect.list && !noKitchen && isStorePricesConfigured() && (() => {
+                {!noKitchen && isStorePricesConfigured() && (() => {
                   // Only what she buys is priced at her store: a dish someone
                   // else brings is not on her list (11/21/2026).
                   const lines = (foodPlan.list || []).filter(it => it && !it.skipped && it.item && !it.broughtByCommunity);
@@ -24839,7 +25046,7 @@ export default function HostShellV2() {
                     (added) items, skipped lines, and anything already locked or
                     unpriced (no low/high at all) — same gate as legacy, so both
                     apps agree on which lines qualify. */}
-                {foodSect.list && !noKitchen && (() => {
+                {!noKitchen && (() => {
                   const supplGroup = ((foodPlan && foodPlan.groups) || []).find(g => /suppl|paper|setup|gear/i.test(String(g)));
                   const unpriced = (foodPlan.list || []).filter(it => it && !it.skipped && it.group !== supplGroup && it.locked == null && !it.added && (Number(it.low) || Number(it.high)));
                   if (bulkPriced && bulkPriced.length > 0) {
@@ -24875,8 +25082,124 @@ export default function HostShellV2() {
                 })()}
                 </div>
                 )}
+                {!noKitchen && (
+                  <div className="list-acts" data-list-takeaway>
+                    {/* Copy and Search Instacart lead the list above (one copy
+                        of each, owner 11/24/2026); these are the other ways to
+                        take the list with you. */}
+                    {/* ── ONE TAP TO EVERY LIST APP THE HOST ALREADY HAS ──────
+                        Host asked for print, email, and "integration with anylist
+                        or other apps". Researched 2026-09-24, and the honest
+                        finding is that the per-app integrations mostly do not
+                        exist:
 
-                {foodSect.list && (() => {
+                        · AnyList publishes NO API, no URL scheme, no email-in.
+                          The wrappers that exist are reverse-engineered and want
+                          the host's AnyList PASSWORD, so they are unshippable at
+                          any price.
+                        · Google Keep's API is Workspace-admin only.
+                        · Paprika, Out of Milk and Flipp have no public path.
+                        · Apple Reminders has no documented URL scheme either.
+
+                        What all of them DO have is a share extension. The Web
+                        Share API has been in iOS Safari since 12.2, and one
+                        button reaches Messages, Mail, Notes, Reminders and
+                        AnyList's own importer through the system sheet — no
+                        OAuth, no install prompt, no integration per app.
+
+                        FEATURE-DETECTED, not assumed: desktop Safari and most
+                        desktop browsers have no share sheet, so the button is
+                        absent there rather than present and broken. Copy already
+                        covers that case.
+
+                        BUILT BEFORE THE CALL, and the call is synchronous.
+                        `navigator.share` requires transient user activation, and
+                        awaiting anything first can spend it — the same defect
+                        that was live in the Instacart handler above.
+
+                        AbortError is the host closing the sheet, and also fires
+                        when there is nothing to share to. Neither is a failure,
+                        so neither gets an error toast. */}
+                    {canShareLists && (
+                      <button className="food-act" onClick={() => {
+                        let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
+                        let text = '';
+                        try {
+                          let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
+                          const d = draftShoppingList(event, profile, { items: shopItems, anchor });
+                          text = typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n');
+                        } catch (_e) { text = ''; }
+                        if (!text) { toast('Nothing to share yet.'); return; }
+                        // No `url`: some targets take only one of text/url, and a
+                        // grocery list is the text. Synchronous — see above.
+                        navigator.share({ title: `${event.name || 'Event'} shopping list`, text })
+                          .catch((e) => {
+                            if (e && e.name === 'AbortError') return;   // closed the sheet
+                            toast('Couldn\u2019t open the share sheet.');
+                          });
+                      }}>Share the list</button>
+                    )}
+                    {/* PRINT AND EMAIL — the two handoffs that need no service and
+                        no key. Both read the SAME engines as Copy and Instacart.
+
+                        Print renders a paper sheet from foodShopItems; email hands
+                        `draftShoppingList`'s own subject and body to the host's mail
+                        app through mailto, which is the only way to send mail from
+                        here without routing a host's list through a third party. */}
+                    <button className="food-act" onClick={() => {
+                      let items = []; try { items = foodShopItems(foodPlan, event) || []; } catch { items = []; }
+                      if (!items.length) { toast('Nothing to print yet.'); return; }
+                      printSheet('shop');
+                    }}>Print</button>
+                    <button className="food-act" onClick={() => {
+                      let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
+                      let subject = ''; let body = '';
+                      try {
+                        let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
+                        const d = draftShoppingList(event, profile, { items: shopItems, anchor });
+                        if (typeof d === 'string') { body = d; } else { subject = d.subject || ''; body = d.body || ''; }
+                      } catch (_e) { body = ''; }
+                      if (!body) { toast('Nothing to email yet.'); return; }
+                      // SYNCHRONOUS, like the Instacart and Share handlers: a
+                      // navigation assigned after an await has lost the transient
+                      // user activation and is refused silently. That cost a whole
+                      // session once — the button sat on "Sending..." forever.
+                      // ── CRLF BEFORE ENCODING ────────────────────────────────
+                      // RFC 6068 wants %0D%0A. A bare \n survives some mail apps
+                      // and collapses the list into one paragraph in others — and
+                      // one-item-per-line is the whole property every paste
+                      // target needs, including AnyList's documented bulk paste.
+                      const crlf = String(body).replace(/\r\n|\r|\n/g, '\r\n');
+                      const subj = subject || `${event.name || 'Event'} shopping list`;
+                      const href = 'mailto:?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(crlf);
+                      // ── NO GUESSED LENGTH LIMIT. A SAFETY NET INSTEAD ──────
+                      // No vendor documents a mailto body limit; every figure in
+                      // circulation is a bug thread (~1,620 pessimistic, ~2,000
+                      // consensus). MEASURED over all 45 playbooks at 20 and 60
+                      // guests, 90 lists: longest 2,830 encoded (The Cookout at
+                      // 60), 52 of 90 over 1,600, 22 over 2,000, NONE over 6,000.
+                      //
+                      // So a threshold is a choice between two bad outcomes: set
+                      // it low and 58% of real lists never email at all, set it
+                      // high and it never fires. Either way the number is
+                      // invented, which this project does not do.
+                      //
+                      // The failure being guarded is that a too-long body is
+                      // TRUNCATED SILENTLY — the host sends half a list and does
+                      // not know. Copying first removes the loss without guessing
+                      // a limit: whatever the mail app does with the body, the
+                      // whole list is on the clipboard and the toast says so.
+                      try { navigator.clipboard.writeText(`${subj}\n\n${body}`); } catch (_e) { /* no clipboard: the mail draft is still the path */ }
+                      try {
+                        window.location.href = href;
+                        toast('Opening your mail app \u00b7 the full list is on your clipboard too');
+                      } catch (_e) { toast('Couldn\u2019t open your mail app \u2014 the list is on your clipboard.'); }
+                    }}>Email</button>
+                    {nudgeFor('food')}
+                  </div>
+                )}
+
+                {(() => {
                   // Skipped lines stay IN the list (parity with legacy's toggleSkip —
                   // App.js:11145 — which keeps a skipped line visible with strikethrough
                   // and a single toggle back). V2 used to filter them out entirely, so a
@@ -24923,7 +25246,6 @@ export default function HostShellV2() {
                   // its own quiet group below with the bringer's name from the
                   // one record. A skip (not served at all) stays a skip, on its shelf.
                   const allItems = (foodPlan.list || []).filter((it) => it && !(it.broughtByCommunity && !it.skipped));
-                  const broughtShown = bringingRows(foodPlan);
                   // ── Shopping-run mode: "I'm at X" — the list collapses to THIS
                   // store's unbought lines with a walk-in total. Store truth =
                   // the host's pick (foodWhere) first, else the plan's buyAt /
@@ -25012,6 +25334,21 @@ export default function HostShellV2() {
                     const focusHere = gItems.some(it => it.id === sheet.focus || it.id === foodTune);
                     const isOpen = !!foodGroupsOpen[g] || focusHere || !!shopStore; // run mode opens the shelves
                     const gDone = gBought === gActive.length;
+                    // A FINISHED GROUP COLLAPSES (owner, render 8b, 11/24/2026):
+                    // one green row until she reopens it. Not in a store run (it
+                    // opens the shelves on purpose) and not under a deep link.
+                    // Finishing it closes a tune panel or deep link inside it, so
+                    // the last check-off always folds it (owner, 11/24/2026).
+                    const gReopened = reopened.isOpen('shop:' + g, gDone && gActive.length > 0, () => {
+                      if (gItems.some(it => it.id === foodTune)) setFoodTune(null);
+                      if (gItems.some(it => it.id === sheet.focus)) setSheet(sh => (sh ? { ...sh, focus: null } : sh));
+                    });
+                    if (gDone && gActive.length > 0 && !shopStore && !focusHere && !gReopened) {
+                      return (
+                        <DoneFold key={g} text={`${g} · all ${gActive.length} bought`}
+                          onOpen={() => { reopened.reopen('shop:' + g); setFoodGroupsOpen(m => ({ ...m, [g]: true })); }} />
+                      );
+                    }
                     return (
                     <div key={g} className={'fgroup' + (isOpen ? ' open' : '')}>
                       <button className="fg-head" onClick={() => setFoodGroupsOpen(m => ({ ...m, [g]: !isOpen }))}>
@@ -25856,32 +26193,12 @@ export default function HostShellV2() {
                           })()}
                         </>
                       )}
-                      {groupRows}
-                      {!shopStore && broughtShown.length > 0 ? (() => {
-                        const lbl = broughtShown[0].broughtByLabel || 'Your friends';
-                        const are = /\b(friends|neighbors|families|guests)\b/i.test(lbl) ? 'are' : 'is';
-                        const named = broughtShown.filter((r) => r.broughtBy).length;
-                        const open = !!foodGroupsOpen.__bringing || broughtShown.some((r) => r.id === sheet.focus || (bringerEdit && bringerEdit.id === r.id));
-                        return (
-                          <div className={'fgroup' + (open ? ' open' : '')} data-brought-group>
-                            <button className="fg-head" onClick={() => setFoodGroupsOpen((m) => ({ ...m, __bringing: !open }))}>
-                              <div className="fg-badge" aria-hidden>{lbl.trim().charAt(0).toUpperCase()}</div>
-                              <div className="fg-id">
-                                <div className="fg-label">{lbl} {are} bringing ({broughtShown.length})</div>
-                                <div className="fg-sub" style={{ color: 'var(--muted)' }}>
-                                  {named === broughtShown.length ? 'everyone named · not yours to buy' : `${named} of ${broughtShown.length} named · not yours to buy`}
-                                </div>
-                              </div>
-                              <span className="fg-chev" aria-hidden="true">›</span>
-                            </button>
-                            {open ? (
-                              <div className="fstat-list" style={{ padding: '0 var(--sp-3) var(--sp-2)' }}>
-                                {broughtShown.map((r) => bringerRow(r))}
-                              </div>
-                            ) : null}
-                          </div>
-                        );
-                      })() : null}
+                      {/* EVERY GROUP BOUGHT: the whole list is one line (owner,
+                          render 8, 11/24/2026) until "Show the list". */}
+                      {(!shopStore && !reopened.isOpen('shop:all', shopTally.done) && shopTally.done
+                        && !items.some(it => it.id === sheet.focus || it.id === foodTune))
+                        ? <DoneFold all text={`All ${shopTally.total} bought`} onOpen={() => reopened.reopen('shop:all')} />
+                        : groupRows}
                     </>
                   );
                 })()}
@@ -25952,13 +26269,9 @@ export default function HostShellV2() {
                       <p className="grounding" style={{ marginTop: 'var(--sp-2)' }}>Cost is optional — leave it blank if you don’t know it yet, or if someone else is bringing it.{foodAddNames().length > 1 ? ' With several items, add each cost on its own line in the list.' : ''}</p>
                     </div>
                   ) : (
-                    sheet.kind === 'foodplan' ? null : (
-                    /* Adding a line to the shopping list is a SHOP act; on the
-                       Plan tab it was a third copy of the same door. */
                     <button className="fold-btn" style={{ marginTop: 'var(--sp-3)' }} onClick={() => setFoodAddOpen(true)}>
                       + Add an item you’re bringing or buying<span className="chev" aria-hidden="true">›</span>
                     </button>
-                    )
                   )}
                 </div>
                 </Panel>
@@ -26083,11 +26396,10 @@ export default function HostShellV2() {
                     onClick={() => setSheet(s => ({ ...s, focus: top.vendor.id }))}
                     aria-label={'Open ' + (top.vendor.name || 'this vendor') + ' — ' + (top.readiness.summary || top.readiness.label)}>
                     <span className="fstat-l" style={{ flex: '0 0 auto' }}>{top.vendor.name || 'A vendor'}</span>
-                    <span className="fstat-v fstat-note" style={{ textAlign: 'right', display: 'block',
-                      color: crit ? 'var(--warn)' : 'var(--faint)' }}>
+                    <RowValue note status={rowStatus({ overdue: crit })} style={{ textAlign: 'right', display: 'block' }}>
                       {top.readiness.summary || top.readiness.label}
                       <span className="fstat-chev" aria-hidden="true"> ›</span>
-                    </span>
+                    </RowValue>
                   </button>
                 );
               })()}
@@ -26099,7 +26411,7 @@ export default function HostShellV2() {
                   <div className="fstat-list" style={{ margin: '0 0 var(--sp-3)' }}>
                     <button className="fstat" style={{ borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }} onClick={() => setSheet(s => ({ ...s, marketOpen: true }))}>
                       <span className="fstat-l">Which market</span>
-                      <span className="fstat-v">{metroMkt ? metroMkt.label : metroSuggest ? `Suggested: ${metroSuggest.market.label}` : 'National baseline'}<span className="fstat-chev" aria-hidden="true">›</span></span>
+                      <RowValue status={rowStatus({ settled: !!metroMkt })} chev>{metroMkt ? metroMkt.label : metroSuggest ? `Suggested: ${metroSuggest.market.label}` : 'National baseline'}</RowValue>
                     </button>
                   </div>
                 ) : (
@@ -26553,8 +26865,7 @@ export default function HostShellV2() {
                                 {axes.map(a => (
                                   <div className="fstat" key={a.key} style={{ alignItems: 'flex-start', gap: 10 }}>
                                     <span className="fstat-l" style={{ flex: '0 0 auto' }}>{LABEL[a.key] || a.key}</span>
-                                    <span className="fstat-v fstat-note" style={{ textAlign: 'right', display: 'block',
-                                      color: tone(a.level) ? 'var(--warn)' : 'var(--faint)' }}>{a.note}</span>
+                                    <RowValue note status={rowStatus({ overdue: !!tone(a.level) })} style={{ textAlign: 'right', display: 'block' }}>{a.note}</RowValue>
                                   </div>
                                 ))}
                               </div>
@@ -28053,90 +28364,15 @@ export default function HostShellV2() {
               // and the invite + guest brief drafts read (giftWish). V2 hosts could
               // never set them. Values match the reads exactly; tapping an active
               // chip clears back to unset, and unset means the invite stays quiet.
-              const inviteRules = (() => {
-                const chipSm = { padding: '5px 11px', fontSize: 'var(--t-pill)' };
-                if (!inviteRulesOpen) {
-                  return (
-                    <button className="fold-btn" onClick={() => setInviteRulesOpen(true)}>
-                      Invite rules — plus-ones, kids, addresses, gifts
-                      <span className="chev" aria-hidden="true">›</span>
-                    </button>
-                  );
-                }
-                const gw = (event.giftWish && typeof event.giftWish === 'object') ? event.giftWish : {};
-                const GIFTS = [
-                  ['no_gifts', 'No gifts'], ['registry', 'Registry'], ['charity', 'A donation'],
-                  ['potluck', 'Potluck'], ['contribution', 'Chip in'],
-                ];
-                const GIFT_TOAST = {
-                  no_gifts: '“Your presence is the gift” goes on the invite.',
-                  registry: 'Registry noted — paste the link below so guests can find it.',
-                  charity: 'Donation wish noted — name the cause below.',
-                  potluck: 'Potluck — the guest brief asks everyone to bring a dish.',
-                  contribution: 'Chip-in noted — put the per-person amount below.',
-                };
-                const GIFT_DETAIL = { registry: 'Paste the registry link', charity: 'Cause name or link', potluck: 'Dish assignments — optional', contribution: '$ per person' };
-                return (
-                  <div className="brow" style={{ marginTop: 14, borderRadius: 'var(--r-md)', padding: '10px var(--sp-2)' }}>
-                    <div className="shelf-label" style={{ marginBottom: 6 }}>
-                      Invite rules — the RSVP page follows these
-                      <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => setInviteRulesOpen(false)}>Close</button>
-                    </div>
-                    <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
-                      <span className="of">plus-ones:</span>
-                      <button className="chip" style={chipSm} aria-pressed={event.plusOnePolicy === 'plus_one_ok'}
-                        onClick={() => patchEvent({ plusOnePolicy: event.plusOnePolicy === 'plus_one_ok' ? null : 'plus_one_ok' },
-                          event.plusOnePolicy === 'plus_one_ok' ? 'Unset — the invite stays quiet on plus-ones.' : 'Plus-ones welcome — the invite says so, and the RSVP page asks who they’re bringing.')}>Welcome</button>
-                      <button className="chip" style={chipSm} aria-pressed={event.plusOnePolicy === 'no_plus_ones'}
-                        onClick={() => patchEvent({ plusOnePolicy: event.plusOnePolicy === 'no_plus_ones' ? null : 'no_plus_ones' },
-                          event.plusOnePolicy === 'no_plus_ones' ? 'Unset — the RSVP page offers a plus-one again.' : 'Named guests only — the RSVP page won’t offer a plus-one.')}>Named guests only</button>
-                    </div>
-                    <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
-                      <span className={peopleMode ? 'people-cap' : 'of'}>CHILDREN</span>
-                      <button className="chip" style={chipSm} aria-pressed={event.kidsPolicy === 'kids_welcome'}
-                        onClick={() => patchEvent({ kidsPolicy: event.kidsPolicy === 'kids_welcome' ? null : 'kids_welcome' },
-                          event.kidsPolicy === 'kids_welcome' ? 'Unset — the invite stays quiet on kids.' : 'Kids welcome — the invite says so.')}>Welcome</button>
-                      <button className="chip" style={chipSm} aria-pressed={event.kidsPolicy === 'adults_only'}
-                        onClick={() => patchEvent({ kidsPolicy: event.kidsPolicy === 'adults_only' ? null : 'adults_only' },
-                          event.kidsPolicy === 'adults_only' ? 'Unset — the RSVP page asks about kids again.' : 'Adults-only — the RSVP page won’t ask about kids.')}>Adults only</button>
-                    </div>
-                    <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
-                      <span className="of">addresses:</span>
-                      <button className="chip" style={chipSm} aria-pressed={!!event.collectAddresses}
-                        onClick={() => patchEvent({ collectAddresses: !event.collectAddresses },
-                          !event.collectAddresses ? 'Yeses now get an optional mailing-address question, for thank-yous.' : 'Address question removed from the RSVP page.')}>
-                        {event.collectAddresses ? 'Collecting for thank-you mail' : 'collect for thank-you mail?'}
-                      </button>
-                    </div>
-                    {/* Fold-behind-Change (parity/MANIFEST) — one settled gift wish;
-                        the 5-chip grid folds to a hairline row, opens on tap. */}
-                    {(() => {
-                      const curGift = GIFTS.find(([m]) => m === gw.mode);
-                      const giftLabel = gw.mode ? (curGift ? curGift[1] : gw.mode) : 'none';
-                      if (!settledOpen.gifts) {
-                        return <SettledRow label="Gifts" value={giftLabel} tone={gw.mode ? 'ok' : 'default'} style={{ margin: '0 0 var(--sp-1)' }}
-                          onOpen={() => setSettledOpen(m => ({ ...m, gifts: true }))} />;
-                      }
-                      return (
-                        <>
-                          <div className="of" style={{ display: 'block', margin: '0 0 6px' }}>gifts</div>
-                          <OptionList ariaLabel="Gifts" style={{ margin: '0 0 var(--sp-1)' }}
-                            options={GIFTS.map(([mode, label]) => ({ label, value: mode }))}
-                            value={gw.mode || ''}
-                            onPick={(mode) => { patchEvent({ giftWish: { mode, detail: gw.mode === mode ? (gw.detail || '') : '' } }, GIFT_TOAST[mode]); setSettledOpen(m => ({ ...m, gifts: false })); }} />
-                        </>
-                      );
-                    })()}
-                    {gw.mode && gw.mode !== 'no_gifts' && (
-                      <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)', margin: 'var(--sp-1) 0 6px' }}
-                        placeholder={GIFT_DETAIL[gw.mode] || ''} value={gw.detail || ''}
-                        onChange={e => patchEvent({ giftWish: { mode: gw.mode, detail: e.target.value } }, null)}
-                        aria-label="Gift note detail" />
-                    )}
-                    <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>Anything left unset stays off the invite.</p>
-                  </div>
-                );
-              })();
+              // ONE COMPONENT, BOTH PLACES (owner, render 10b, 11/24/2026): the
+              // same InviteRules as "Before your invite goes out", open here
+              // rather than folded behind "Invite rules — …".
+              const inviteRules = (
+                <div style={{ marginTop: 14 }}>
+                  <InviteRules event={event} patchEvent={patchEvent}
+                    note="Same settings as “Before your invite goes out” — change them here or there. The RSVP page follows these." />
+                </div>
+              );
               // ── THE REDESIGNED ATTENDANCE ZONE (?people=1) ─────────────────
               // SCAFFOLD STATE, and deliberately additive: the new zone renders
               // ABOVE the legacy body while the remaining zones are built, so no
@@ -29686,7 +29922,8 @@ export default function HostShellV2() {
           same onCta path the named card uses), or scrolls to the full list when calm. */}
       {/* Not on a tall iPad (owner ruling, 11/23/2026): there the bar's Plan
           button takes the host back to the question, and The Day runs the day. */}
-      {stage === 'plan' && !heroInView && !tallTablet && (
+      {/* Nor on a phone (owner ruling 6, 11/23/2026): the pill's Plan does it. */}
+      {stage === 'plan' && !heroInView && !ttHead && (
         <button
           /* NOT "ALL QUIET" OVER LATE STEPS (owner screenshot 11/18/2026: the bar
              read "Next · All quiet" on a board whose top said "8 things are past
@@ -29750,7 +29987,8 @@ export default function HostShellV2() {
           { label: 'The spread & shopping', sub: 'food', go: openSpread },
           { label: 'People you’re hiring', sub: 'vendors', go: () => setSheet({ kind: 'vendors' }) },
           { label: 'Who sits where', sub: 'seating', go: () => setSheet({ kind: 'seating' }) },
-          { label: 'Guest list', sub: 'guests & replies', go: () => setSheet({ kind: 'guests' }) },
+          // The menu's own words for this door (sectionDirectory, owner 11/24/2026), so "invite" finds it.
+          { label: 'Guests & invite', sub: 'guests & replies', go: () => setSheet({ kind: 'guests' }) },
           { label: 'Your checklist', sub: 'tasks', go: () => setSheet({ kind: 'tasks' }) },
           { label: 'Calendar', sub: 'the plan by week or month', go: () => setSheet({ kind: 'calendar' }) },
           { label: 'Messages', sub: 'what you’ve sent, and what came of it', go: () => setSheet({ kind: 'messages', entry: 'jump' }) },

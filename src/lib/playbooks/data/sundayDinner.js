@@ -13,6 +13,8 @@ const sundayDinner = {
   // when dinner hits the table. Arrivals come first, by this playbook's own serve cue.
   timeAnchor: { means: 'serve', serveAt: 'T0 +30m' },
   vegMain: 'Smothered mushroom & bean main + cornbread',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Smothered mushrooms & white beans over rice + collard greens cooked in vegetable stock',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
@@ -227,7 +229,7 @@ const sundayDinner = {
     { id: 't-pick-main', target: 'spread', facts: ['calls-answered'], answeredBy: ['the-main', 'who-cooks-what'], milestoneId: 'm-menu-set', phase: 'planning', label: 'Decide the main and confirm who cooks it', when: 'T-4d' },
     { id: 't-assign-sides', target: 'spread', facts: [], milestoneId: 'm-menu-set', phase: 'planning', label: 'Assign sides, bread, and dessert across the family so nothing doubles up', when: 'T-4d' },
     { id: 't-headcount', target: 'guests', facts: ['or:dietary-noted', 'guest-count'], milestoneId: 'm-menu-set', phase: 'planning', label: 'Confirm headcount including elders and kids; note any dietary needs', when: 'T-4d' },
-    { id: 't-shop', target: 'list', facts: [], milestoneId: 'm-shopping', phase: 'logistics', label: 'Buy the bird/roast, greens, mac ingredients, cornbread/biscuit fixings, dessert, sweet tea and lemonade', when: 'T-2d' },
+    { id: 't-shop', target: 'list', facts: [], shopClock: true, milestoneId: 'm-shopping', phase: 'logistics', label: 'Buy the bird/roast, greens, mac ingredients, cornbread/biscuit fixings, dessert, sweet tea and lemonade', when: 'T-2d' },
     { id: 't-containers', target: 'list', facts: [], milestoneId: 'm-shopping', phase: 'logistics', label: 'Buy or set aside to-go containers and foil for plates to send home', when: 'T-2d' },
     { id: 't-greens-ahead', target: 'none', facts: [], milestoneId: 'm-make-ahead', phase: 'preparation', label: 'Slow-cook the greens with smoked meat — they are better a day later', when: 'T-1d' },
     { id: 't-dessert-ahead', target: 'none', facts: [], milestoneId: 'm-make-ahead', phase: 'preparation', label: 'Bake the cobbler or pie the night before so the oven is free Sunday', when: 'T-1d' },

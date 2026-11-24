@@ -51,4 +51,22 @@ export function timeStatusLabel(daysOut) {
   return `due in ${daysOut} days`;
 }
 
+/**
+ * dueByLabel(daysOut, now) -> string | null
+ *
+ * THE "by <day>" WORDS (owner, 11/24/2026, render 3: "by Tue · others wait on
+ * it"). A day this week reads as its weekday ("by Tue"); a week or more out as
+ * its date ("by Jan 2"), because a bare weekday would name two days. Today and
+ * past keep this module's words ("due today", "past its window"). `now` is the
+ * day the offset counts from (default: the clock), so a caller can pin it.
+ */
+export function dueByLabel(daysOut, now = new Date()) {
+  if (!Number.isFinite(daysOut)) return null;
+  if (daysOut <= 0) return timeStatusLabel(daysOut);
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysOut, 12);
+  return 'by ' + (daysOut < 7
+    ? d.toLocaleDateString('en-US', { weekday: 'short' })
+    : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+}
+
 export default timeStatusLabel;

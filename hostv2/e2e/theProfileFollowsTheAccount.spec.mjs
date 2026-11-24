@@ -193,9 +193,7 @@ test.describe('preferences follow the account', () => {
     await pa.keyboard.press('Escape');
     await pa.waitForTimeout(300);
     await pa.locator('.srail-row', { hasText: 'spread' }).first().click();
-    // The section door opens on Plan while a menu question is open
-    // (foodSheetKind); the list and its copy action are on Shop.
-    await pa.locator('.sheet').last().locator('.fmode', { hasText: /^Shop$/ }).first().click();
+    // One food page (owner, 11/24/2026): no Shop tab; Copy heads the list.
     await pa.locator('.sheet').last().getByText('Copy the shopping list').first().click({ timeout: 10000 });
     await pa.locator('.sheet').last().getByRole('radio', { name: 'Tighter' }).click();
     await pa.waitForTimeout(1200);
@@ -268,7 +266,10 @@ test.describe('Ask history is kept', () => {
     await install(pb, account, { local: { 'ngw-hostv2-last-event': EVENT_ID } });
     await pb.goto(BASE + '?elegant=1');
     await settle(pb, 3000);
-    await expect.poll(async () => (await pb.locator('.ev-eyebrow').first().innerText()).trim(), { timeout: 10000 }).toMatch(/Ask Probe Party/i);
+    // The board's title names the event (owner, 11/24/2026: the desktop wears
+    // the phone's title block). Was: the ☰ eyebrow's text, which no longer
+    // repeats the name at 1280+.
+    await expect.poll(async () => (await pb.locator('[data-tt-title] .tt-name').first().innerText()).trim(), { timeout: 10000 }).toMatch(/Ask Probe Party/i);
     await openAsk(pb);
     await expect(pb.locator('[data-ask-history]'), 'the exchange did not follow the account').toContainText(QUESTION);
     await b.close();

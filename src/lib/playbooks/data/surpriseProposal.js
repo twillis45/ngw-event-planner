@@ -15,6 +15,8 @@
 
 const surpriseProposal = {
   type: 'Surprise Proposal',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Roasted vegetable & chickpea platter with herbed couscous',
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'proposal',

@@ -58,6 +58,8 @@ const ptaBoosterFundraiser = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Cheese pizza slices plus a fruit-and-veggie tray at the stand',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Bean & rice bowls plus a fruit-and-veggie tray at the stand',
   solveFamily: 'gala',
   family: 'host_driven',
   recordKind: 'client',
@@ -199,7 +201,7 @@ const ptaBoosterFundraiser = {
     { id: 't_pickup_plan', target: 'assign', facts: [], milestoneId: 'pb_shifts', phase: 'planning', label: 'Write the pickup plan for close of night: a point person at the collection spot, the doors in use, and who sweeps the building', when: 'T-10d' },
     { id: 't_float', target: 'money', facts: ['nothing-owed'], milestoneId: 'pb_cash', phase: 'revenue', label: 'Get the float from the bank in small bills and coin, split across the cash boxes, so the gate can make change without holding up payments', when: 'T-2d' },
     { id: 't_counters', target: 'assign', facts: [], milestoneId: 'pb_cash', phase: 'revenue', label: 'Name the two people who count the cash together at close — never one person alone with the money', when: 'T-7d' },
-    { id: 't_shop', target: 'list', facts: ['then:food-bought'], milestoneId: 'pb_cash', phase: 'shopping', label: 'Buy the stand food, drinks, wristbands, prizes, and supplies to the presale-informed count', when: 'T-3d', whenChoice: { id: 'concessions', in: ['Volunteer-run concession stand', 'Both — trucks for meals, the stand for treats'] } },
+    { id: 't_shop', target: 'list', facts: ['then:food-bought'], shopClock: true, milestoneId: 'pb_cash', phase: 'shopping', label: 'Buy the stand food, drinks, wristbands, prizes, and supplies to the presale-informed count', when: 'T-3d', whenChoice: { id: 'concessions', in: ['Volunteer-run concession stand', 'Both — trucks for meals, the stand for treats'] } },
     { id: 't_setup_site', target: 'day', facts: [], milestoneId: 'pb_setup', phase: 'setup', label: 'Set up with the custodian: booths and tables placed, power where the stand needs it, and the areas off-limits to the crowd roped', when: 'T0' },
     { id: 't_gate_setup', target: 'day', facts: [], milestoneId: 'pb_setup', phase: 'setup', label: 'Build the gate table: wristbands, the presale list, a cash box with its float, and clear pricing on a sign', when: 'T0' },
     { id: 't_brief', target: 'day', facts: [], milestoneId: 'pb_setup', phase: 'setup', label: 'Brief the whole crew at once: shifts, the lost-child point person, the allergy plan, and where the first-aid kit lives', when: 'T0' },

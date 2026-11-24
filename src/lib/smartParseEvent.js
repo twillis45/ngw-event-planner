@@ -1269,6 +1269,21 @@ export function parseSmartEventText(text, opts = {}) {
   })();
   const loc = locZip;
 
+  // ── THE ZIP OF A FULL ADDRESS IS KEPT (owner ruling 11/24/2026) ──────────
+  // "123 Maple St, Springfield, VA 22150" resolved the town and the state and
+  // dropped the ZIP. A bare ZIP is the ZIP; otherwise only five digits written
+  // straight after the state that resolved count, so a house number, a budget
+  // or a headcount can never be read as one.
+  const venueZip = (() => {
+    if (!loc) return '';
+    if (loc.zip) return loc.zip;
+    if (!loc.state) return '';
+    const names = Object.keys(US_STATE_NAME_TO_ABBR).filter((n) => US_STATE_NAME_TO_ABBR[n] === loc.state)
+      .map((n) => n.replace(/\s+/g, '\\s+'));
+    const m = t.match(new RegExp('\\b(?:' + [loc.state, ...names].join('|') + ')\\.?\\s*,?\\s*(\\d{5})(?:-\\d{4})?\\b', 'i'));
+    return m && !(venueAddress && venueAddress.includes(m[1])) ? m[1] : '';
+  })();
+
   // ── Destination modifier — a real signal, surfaced as a SUGGESTION ───────
   // (the host confirms/edits it via a real toggle, same "suggest don't
   // invent" pattern as the guest-count typical and the month+year date
@@ -2105,6 +2120,7 @@ export function parseSmartEventText(text, opts = {}) {
     startTime: startTimeParsed ? startTimeParsed.startTime : null,
     startTimeBasis: startTimeParsed ? startTimeParsed.startTimeBasis : null,
     venueAddress: venueAddress || null,
+    venueZip: venueZip || null,
     honoree: hm ? hm[1] : null,
     // A NAMED ROOM IS A BOOKED VENUE. The church-hall/VFW/rec-center forms added
     // 2026-09-23 produced a venue NAME with an empty venueKind, so the shell

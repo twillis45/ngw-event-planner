@@ -203,7 +203,10 @@ describe('PART B2 — an address with no venue name agrees everywhere', () => {
     // The other three readers, asked the same question in their own vocabulary.
     expect(eventLocationStatus(ev)).toBe('full_address');
     expect(placeState(ev)).not.toBe('needs');
-    expect(phase(ev)).toEqual({ location: true, venueaddress: true });
+    // At home the board asks no separate street row (owner, 11/24/2026: one
+    // address ask; the street is asked again only when the invite goes out),
+    // so the home case has no venueaddress row. Was { location, venueaddress: true }.
+    expect(phase(ev)).toEqual(ev.venueKind === 'home' ? { location: true, venueaddress: undefined } : { location: true, venueaddress: true });
   });
 
   // THE 2026-08-14 BOARD RULING, RE-ASSERTED AGAINST THE NEW FIXTURES.
@@ -226,7 +229,9 @@ describe('PART B2 — an address with no venue name agrees everywhere', () => {
     const home = { venueKind: 'home', venueCity: 'Decatur' };
     expect(venueFor(home).isSet).toBe(true);               // set — the at-home carve-out
     expect(venueFor(home).address).toBe('');               // but there is still no address
-    expect(phase(home)).toEqual({ location: true, venueaddress: false });
+    // At home the street is not a board row (owner, 11/24/2026); the outward
+    // guard asks for it when the invite goes out. Was venueaddress: false.
+    expect(phase(home)).toEqual({ location: true, venueaddress: undefined });
   });
 
   // THE SECOND QUESTION, kept distinct from isSet on purpose: an at-home event
@@ -256,10 +261,12 @@ describe('PART B2 — an address with no venue name agrees everywhere', () => {
     null,
   ) || []).map((b) => b.type);
 
-  test('venue-kind address-only clears the blocker; at-home address-only does NOT (open disagreement)', () => {
+  // RULED (owner, 11/24/2026, one address ask): "the ask clears when a street,
+  // a city or a ZIP is on record". The at-home street now clears the blocker,
+  // as every other reader already said. Was: it raised venue-selection.
+  test('address-only clears the blocker, at home too (the disagreement, ruled)', () => {
     expect(blockerTypes({ venueKind: 'venue', venueAddress: ADDR })).not.toContain('venue-selection');
-    // ↓ the disagreement. Every other reader above says this event's venue is set.
-    expect(blockerTypes({ venueKind: 'home', venueAddress: ADDR })).toContain('venue-selection');
+    expect(blockerTypes({ venueKind: 'home', venueAddress: ADDR })).not.toContain('venue-selection');
     // Adding the city settles it, which is what identifies the city — not the
     // address — as what that branch is actually asking for.
     expect(blockerTypes({ venueKind: 'home', venueAddress: ADDR, venueCity: 'Greenbelt' }))

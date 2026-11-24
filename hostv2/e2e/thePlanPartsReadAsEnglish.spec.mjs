@@ -44,7 +44,7 @@ test('THE PLAN PARTS READ AS ENGLISH, not as engine keys', async ({ page }) => {
   await openWhatsCounted(page);
   const rows = await page.evaluate(() => {
     const head = [...document.querySelectorAll('*')].find((el) => !el.children.length
-      && /parts of your plan this count reads/i.test(el.textContent || ''));
+      && /Your plan, part by part/i.test(el.textContent || ''));
     if (!head) return null;
     const box = head.parentElement;
     return [...box.querySelectorAll('.line, .frow')]

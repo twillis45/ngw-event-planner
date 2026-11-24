@@ -64,7 +64,7 @@ for (const pb of ALL_PLAYBOOKS) {
   for (const r of (playbookChecklist(e, '2026-10-01') || [])) {
     const hit = routeByWords(r.task, { taskId: r.id, week: r.week, category: r.category }, e);
     const kind = !hit ? null : hit.href ? 'external' : ((resolveRoute(hit.route) || {}).kind || 'UNRESOLVED');
-    rows.push({ type: pb.type, id: r.id, task: r.task, hit, kind, calls: stepCalls(e, { task: r.task }) });
+    rows.push({ type: pb.type, id: r.id, task: r.task, hit, kind, calls: stepCalls(e, { id: r.id }) });
   }
 }
 

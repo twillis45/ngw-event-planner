@@ -18,6 +18,8 @@
 
 const bacheloretteParty = {
   type: 'Bachelorette Party',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Mezze platter (falafel, hummus, tabbouleh)',
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'bachelorette',
@@ -70,8 +72,8 @@ const bacheloretteParty = {
     { id: 't_invite', target: 'invite', facts: [], milestoneId: 'bp_invite', phase: 'guest', label: 'Send itinerary + cost-split + RSVP-by + dietary/no-alcohol ask; collect deposits via app', when: 'T-18d' },
     { id: 't_safety', target: 'assign', facts: [], milestoneId: 'bp_safety', phase: 'safety', label: 'Name a sober point person, set a buddy system + meetup spot, pre-load rideshare, share live location, save the Airbnb/hotel address in everyone\'s phone', when: 'T-7d' },
     { id: 't_rsvp', target: 'chase', facts: ['replies-chased'], milestoneId: 'bp_rsvp_close', phase: 'guest', label: 'Chase non-responders; confirm reservation party size + transport seat count', when: 'T-4d' },
-    { id: 't_nonperish_shop', target: 'list', facts: [], milestoneId: 'bp_shop_nonperish', phase: 'shopping', label: 'Sash/banner/decor, favors + matching items, games, liquor, mixers, paper goods', when: 'T-3d' },
-    { id: 't_fresh_shop', target: 'list', facts: [], milestoneId: 'bp_shop_fresh', phase: 'shopping', label: 'Apps/grazing, garnishes, bubbly, juice, electrolytes, and LOTS of water', when: 'T-1d' },
+    { id: 't_nonperish_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'bp_shop_nonperish', phase: 'shopping', label: 'Sash/banner/decor, favors + matching items, games, liquor, mixers, paper goods', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'bp_shop_fresh', phase: 'shopping', label: 'Apps/grazing, garnishes, bubbly, juice, electrolytes, and LOTS of water', when: 'T-1d' },
     { id: 't_setup', target: 'day', facts: [], milestoneId: 'bp_setup', phase: 'setup', label: 'Build grazing board, batch the cocktail, hang sash/decor, set games + a visible water station', when: 'T0 -3h' },
     { id: 't_close', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Account for every guest, ride the bride home first/safe, pack favors + gifts, water + trash sweep, settle the tab/split', when: 'T0 +6:00' },
   ],

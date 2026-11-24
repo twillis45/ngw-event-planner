@@ -21,6 +21,8 @@ const retirementParty = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Roasted vegetable & goat cheese tart',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Ratatouille over herbed white beans',
   solveFamily: 'retirement_party',
   family: 'host_driven',
   recordKind: 'client',
@@ -133,19 +135,19 @@ const retirementParty = {
     // Linked (owner, 11/21/2026): the step is the call, so the pick clears it.
     { id: 't_menu_lock', target: 'spread', facts: ['calls-answered'], answeredBy: ['format'], milestoneId: 'rp_menu', phase: 'food', label: 'Lock buffet (~0.5 lb protein/guest, 2-3 sides) or heavy apps (~10-12 bites/guest); always include a veg + GF option', when: 'T-21d' },
     { id: 't_fav_drink', target: 'spread', facts: [], milestoneId: 'rp_bar', phase: 'beverage', label: "Source the honoree's actual favorite drink; special-order if it's a specific scotch/wine/regional beer", when: 'T-18d' },
-    { id: 't_book_vendors', target: 'vendor-docs', facts: ['or:catering-moot', 'caterer-booked'], milestoneId: 'rp_vendors', phase: 'logistics', label: 'Book bartender / caterer / photographer; confirm arrival window + insurance + a power outlet for AV', when: 'T-18d' },
+    { id: 't_book_vendors', target: 'vendor-docs', facts: ['or:catering-moot', 'caterer-booked'], catererOut: ['host-cooks'], factsWithoutCaterer: [], coversCaterer: true, otherVendors: ['bartender', 'photographer'], labelWithoutCaterer: 'Book bartender / photographer; confirm arrival window + insurance + a power outlet for AV', milestoneId: 'rp_vendors', phase: 'logistics', label: 'Book bartender / caterer / photographer; confirm arrival window + insurance + a power outlet for AV', when: 'T-18d' },
     { id: 't_slideshow', target: 'call:tribute', facts: [], milestoneId: 'rp_tribute_plan', phase: 'program', label: 'Build the career slideshow/video from collected photos; keep it ~4-6 min set to music', when: 'T-14d' },
     { id: 't_speakers', target: 'guests', facts: [], milestoneId: 'rp_tribute_plan', phase: 'program', label: 'Confirm 3-5 speakers, set order (MC → peer → family → surprise guest → honoree), brief each to ~2-3 min', when: 'T-14d' },
     { id: 't_surprise_guest', target: 'guests', facts: [], milestoneId: 'rp_tribute_plan', phase: 'program', label: 'If using a surprise guest/mentor, book their travel and a quiet hold spot so they appear at the right beat', when: 'T-14d' },
     { id: 't_av_check', target: 'call:tribute', facts: [], milestoneId: 'rp_rentals', phase: 'logistics', label: 'Confirm a working mic + speaker and a screen/TV for the slideshow; reserve extra chairs for an older crowd', when: 'T-14d' },
     { id: 't_rsvp_chase', target: 'chase', facts: ['replies-chased'], milestoneId: 'rp_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock final headcount + the dietary/accessibility list', when: 'T-4d' },
-    { id: 't_pantry_shop', target: 'list', facts: [], milestoneId: 'rp_shop_pantry', phase: 'shopping', label: 'Alcohol + favorite drink + mixers + paper goods + decor + memory-display frames/board + the big signing card (non-perishables)', when: 'T-3d' },
+    { id: 't_pantry_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'rp_shop_pantry', phase: 'shopping', label: 'Alcohol + favorite drink + mixers + paper goods + decor + memory-display frames/board + the big signing card (non-perishables)', when: 'T-3d' },
     { id: 't_print_photos', target: 'call:tribute', facts: [], milestoneId: 'rp_prep', phase: 'program', label: 'Print photos for the memory wall; finalize + export the slideshow to the device that plays day-of; charge it', when: 'T-1d' },
     // A caterer or a restaurant cooks (Wanda audit P1-5, 11/22/2026): the
     // make-ahead cooking is not hers, and the fresh run is the cake, flowers
     // and ice only.
     { id: 't_prep_food', target: 'none', facts: [], milestoneId: 'rp_prep', phase: 'food', label: 'Make-ahead food (anything reheatable), prep buffet pans, assemble cold items', when: 'T-1d evening', whenChoice: { id: 'food_style', in: ['Host cooks', 'Potluck'] } },
-    { id: 't_fresh_shop', target: 'list', facts: [], milestoneId: 'rp_shop_fresh', phase: 'shopping', label: 'Deli/proteins, produce, cake, flowers, ice (24h out)', when: 'T-1d', copyByAnswer: { food_style: { 'Drop-off catering / buffet': 'Cake, flowers, ice (24h out)', 'Restaurant': 'Cake, flowers, ice (24h out)' } } },
+    { id: 't_fresh_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'rp_shop_fresh', phase: 'shopping', label: 'Deli/proteins, produce, cake, flowers, ice (24h out)', when: 'T-1d', copyByAnswer: { food_style: { 'Drop-off catering / buffet': 'Cake, flowers, ice (24h out)', 'Restaurant': 'Cake, flowers, ice (24h out)' } } },
     { id: 't_chill', target: 'day', facts: [], milestoneId: 'rp_setup', phase: 'beverage', label: 'Chill wine, beer, and the favorite drink; build the ice/bar tubs', when: 'T0 -4h' },
     { id: 't_room', target: 'day', facts: [], milestoneId: 'rp_setup', phase: 'setup', label: 'Set accessible seating (plenty of chairs, clear walkways), buffet table ≤36", and the bar; reserve front seats near the speakers', when: 'T0 -3h' },
     { id: 't_memory_stage', target: 'day', facts: [], milestoneId: 'rp_setup', phase: 'setup', label: 'Stage the memory/photo display, the signing card + pens, and the slideshow screen at a visible spot', when: 'T0 -2h' },
@@ -166,7 +168,7 @@ const retirementParty = {
     { id: 't_book_deliver', target: 'none', facts: [], milestoneId: 'rp_book_out', phase: 'memory', label: 'Bind the signed card, the memory-wall photos, and the mailed-in notes into the book and hand it over in person', when: 'T0 +7d' },
     { id: 't_thanks_speakers', target: 'vendors', facts: [], milestoneId: 'rp_thanks', phase: 'guest', label: 'Thank each speaker by name and tell them which line of theirs the room reacted to — they wrote it and then never got to hear how it landed', when: 'T0 +4d' },
     { id: 't_thanks_travel', target: 'guest-list', facts: [], milestoneId: 'rp_thanks', phase: 'guest', label: 'Thank the surprise guest and anyone who flew or drove in for one evening, and the helpers who set up and cleaned up', when: 'T0 +4d' },
-    { id: 't_settle_venue', target: 'vendors', facts: [], milestoneId: 'rp_settle', phase: 'payment', label: 'Pay the venue and caterer balances and get the damage deposit released — ask the room manager to confirm in writing that the room came back clean', labelWithoutCaterer: 'Pay the venue balance and get the damage deposit released — ask the room manager to confirm in writing that the room came back clean', when: 'T0 +5d', whenChoice: { id: 'venue', in: ['Restaurant private room', 'Banquet hall / event venue'] } },
+    { id: 't_settle_venue', target: 'vendors', facts: [], catererOut: ['host-cooks', 'none-hired'], coversCaterer: true, otherVendors: ['venue'], milestoneId: 'rp_settle', phase: 'payment', label: 'Pay the venue and caterer balances and get the damage deposit released — ask the room manager to confirm in writing that the room came back clean', labelWithoutCaterer: 'Pay the venue balance and get the damage deposit released — ask the room manager to confirm in writing that the room came back clean', when: 'T0 +5d', whenChoice: { id: 'venue', in: ['Restaurant private room', 'Banquet hall / event venue'] } },
     { id: 't_settle_rentals', target: 'vendors', facts: [], milestoneId: 'rp_settle', phase: 'payment', label: 'Return the rented chairs, tables, linens, and AV by the pickup date on the contract — late days bill as full days', when: 'T0 +5d' },
     { id: 't_settle_borrowed', target: 'borrowed', facts: ['borrowed-back'], milestoneId: 'rp_settle', phase: 'payment', label: 'Return every borrowed platter, urn, and folding chair, and write down what you owe whom before you forget whose is whose', when: 'T0 +5d' },
   ],

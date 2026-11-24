@@ -35,6 +35,8 @@ const halloweenParty = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Stuffed jack-o-lantern bell peppers',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Black bean & rice stuffed jack-o-lantern bell peppers (dairy-free)',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
@@ -157,7 +159,7 @@ const halloweenParty = {
     { id: 't_teal', target: 'list', facts: ['then:food-bought'], milestoneId: 'hw_shop_decor', phase: 'shopping', label: 'Buy non-food treats — stickers, glow bracelets, small toys — and plan the teal-pumpkin table that offers them alongside the candy', when: 'T-10d' },
     { id: 't_costume', target: 'none', facts: [], milestoneId: 'hw_shop_decor', phase: 'planning', label: 'Sort your own costume now — the host in a great costume sets the room\'s permission level, and it must leave both hands free to run a party', when: 'T-10d' },
     { id: 't_headcount', target: 'list', facts: ['guest-count'], milestoneId: 'hw_headcount', phase: 'guest', label: 'Confirm the headcount and the kid count separately — candy, prizes, and activity supplies all scale off the kid number', when: 'T-4d' },
-    { id: 't_shop_food', target: 'list', facts: ['then:food-bought'], milestoneId: 'hw_shop_food', phase: 'shopping', label: 'Buy the candy, food, and drinks — and batch the themed cocktail today so party day is assembly, not mixing', when: 'T-3d' },
+    { id: 't_shop_food', target: 'list', facts: ['then:food-bought'], shopClock: true, milestoneId: 'hw_shop_food', phase: 'shopping', label: 'Buy the candy, food, and drinks — and batch the themed cocktail today so party day is assembly, not mixing', when: 'T-3d' },
     { id: 't_lights', target: 'none', facts: [], milestoneId: 'hw_build', phase: 'setup', label: 'Light the path: every walkway, step, and door your guests will use in the dark — spooky inside, visible outside', when: 'T-1d' },
     { id: 't_decor', target: 'none', facts: [], milestoneId: 'hw_build', phase: 'setup', label: 'Decorate with the walking paths kept clear: cobwebs and props off the floor routes, cords taped down, nothing swinging at face height', when: 'T-1d' },
     { id: 't_access', target: 'none', facts: [], milestoneId: 'hw_build', phase: 'setup', label: 'Walk the route a guest with a stroller, cane, or wheelchair would take — decor moved off it, one step-free way in confirmed', when: 'T-1d' },

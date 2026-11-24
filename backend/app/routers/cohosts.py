@@ -25,6 +25,7 @@ from ..db import get_pool
 from ..email_frame import frame, hue_for
 from ..email_pictures import with_picture
 from ..emailer import _send_via_resend, failure_reason, is_email_configured
+from ..outward import real_host_name
 from ..rate_counter import bump
 
 router = APIRouter(tags=["cohosts"])
@@ -99,7 +100,7 @@ async def _record_invite_email(event_id: str, email: str, subject: str, ok: bool
 def compose_cohost_invite(name: str, email: str, host=None) -> tuple[str, str]:
     """(html, text) in the shared frame (email_frame): to someone who will
     plan with the host, so no RSVP parts."""
-    host = " ".join(str(host or "").split())[:80]
+    host = real_host_name(host)[:80]     # "Your host" is no name (outward.real_host_name)
     words = (f"Open the app and sign in with this email address ({email}). "
              "The plan will be there for you to see and change.")
     return frame(

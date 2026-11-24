@@ -14,6 +14,10 @@
 
 const housewarming = {
   type: 'Housewarming',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Roasted veggie & white bean crostini board',
+  // Bought items its label must be checked for (bread: milk, butter or honey).
+  vegMainVeganCheck: ['bread'],
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',
@@ -66,8 +70,8 @@ const housewarming = {
   tasks: [
     { id: 't_invite', target: 'invite', facts: ['invites-out'], milestoneId: 'hw_invite', phase: 'guest', label: 'Send invite: address, parking note, open-house window, shoes-off heads-up, and your gift stance ("no gifts, just come" or "we have a spot for them")', when: 'T-12d' },
     { id: 't_buffer', target: 'spread', facts: [], milestoneId: 'hw_rsvp', phase: 'guest', label: 'Estimate peak overlap (assume ~50-60% of an open-house list is present at once) and plan food/drink to that, not the full list', when: 'T-3d' },
-    { id: 't_dry_shop', target: 'list', facts: [], milestoneId: 'hw_shop_dry', phase: 'shopping', label: 'Drinks, soda, water, paper goods, napkins, trash bags, decor, candles, non-perishable snacks', when: 'T-3d' },
-    { id: 't_fresh_shop', target: 'list', facts: [], milestoneId: 'hw_shop_fresh', phase: 'shopping', label: 'Cheese, charcuterie, fruit, veg, dips, fresh herbs/garnish, flowers (buy ~24h out)', when: 'T-1d' },
+    { id: 't_dry_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'hw_shop_dry', phase: 'shopping', label: 'Drinks, soda, water, paper goods, napkins, trash bags, decor, candles, non-perishable snacks', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'hw_shop_fresh', phase: 'shopping', label: 'Cheese, charcuterie, fruit, veg, dips, fresh herbs/garnish, flowers (buy ~24h out)', when: 'T-1d' },
     { id: 't_board', target: 'none', facts: [], milestoneId: 'hw_prep', phase: 'food', label: 'Pre-build the grazing board on a tray (cover + fridge), portion dips, prep any passed bites that hold cold', when: 'T-1d evening' },
     { id: 't_clean_pre', target: 'day', facts: [], milestoneId: 'hw_setup', phase: 'cleanup', label: 'Pre-clean: empty dishwasher, clear sink, stage a trash + recycling station and a tub for used glasses', when: 'T0 -3h' },
     { id: 't_entry', target: 'day', facts: [], milestoneId: 'hw_setup', phase: 'setup', label: 'Set the entry: shoe tray + basket, coat space (hooks or a cleared bed), a small friendly sign, and a clear gift-landing spot', when: 'T0 -2h' },

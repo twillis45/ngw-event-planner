@@ -6,6 +6,10 @@
 
 const sweet16 = {
   type: 'Sweet 16',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Black bean & veggie taco bar (corn tortillas, guacamole, salsa)',
+  // Bought items its label must be checked for (pastry: butter; buns: eggs or milk; tortillas: lard).
+  vegMainVeganCheck: ['tortillas'],
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'sweet16',
@@ -258,7 +262,7 @@ const sweet16 = {
     { id: 't_menu_order', target: 'spread', facts: ['or:dietary-noted', 'deposits-paid'], milestoneId: 'confirm_catering', phase: 'plan', label: 'Finalize menu, count dietary needs, place food order/deposit', when: 'T-14d' },
     { id: 't_chaperones', target: 'assign', facts: [], milestoneId: 'finalize_headcount', phase: 'plan', label: 'Confirm chaperones, assign door + bar + floor watchers, set house rules', when: 'T-7d' },
     { id: 't_timeline', target: 'build-day', facts: [], milestoneId: 'finalize_headcount', phase: 'plan', label: 'Write the run-of-show: arrivals, entrance, dinner, dance, cake, send-off', when: 'T-7d' },
-    { id: 't_shop', target: 'list', facts: ['then:food-bought'], milestoneId: 'shop_perishables', phase: 'prep', label: 'Buy mocktail mixers, soda, ice, cake, and fresh garnishes', when: 'T-1d' },
+    { id: 't_shop', target: 'list', facts: ['then:food-bought'], shopClock: true, milestoneId: 'shop_perishables', phase: 'prep', label: 'Buy mocktail mixers, soda, ice, cake, and fresh garnishes', when: 'T-1d' },
     { id: 't_prep_food', target: 'none', facts: [], milestoneId: 'shop_perishables', phase: 'prep', label: 'Prep make-ahead food and pre-batch mocktail syrups', when: 'T-1d' },
     { id: 't_decorate', target: 'day', facts: [], milestoneId: 'setup_dayof', phase: 'setup', label: 'Hang decor, set photo booth, build the mocktail/soda bar', when: 'T0' },
     { id: 't_floor', target: 'day', facts: [], milestoneId: 'setup_dayof', phase: 'setup', label: 'Clear and mark the dance floor; place lights; DJ sound check', when: 'T0',

@@ -74,8 +74,11 @@ const geometry = (page) => page.evaluate(() => {
   // moment anyone runs it against dev.
   const zone3 = [...document.querySelectorAll('div,section,h1,h2,h3,p,span,li')].find(
     (e) => e.children.length === 0 && /YOUR DAY-BEFORE PLAN/i.test(e.textContent || ''));
+  const stand = document.querySelector('.escreen.on .bento');
   return {
     vh,
+    standBottom: stand ? Math.round(stand.getBoundingClientRect().bottom) : null,
+    foldBottom: fold ? Math.round(fold.getBoundingClientRect().bottom) : null,
     foldTop: fold ? Math.round(fold.getBoundingClientRect().top) : null,
     zone3Top: zone3 ? Math.round(zone3.getBoundingClientRect().top) : null,
   };
@@ -90,6 +93,25 @@ for (const [label, w, h] of SIZES) {
     expect(g.foldTop).not.toBeNull();
     expect(g.zone3Top).not.toBeNull();
   });
+
+  // EVERY TALL PORTRAIT TABLET IS ONE COLUMN WITH NO EMPTY BAND (owner ruling
+  // 9, 11/23/2026, render 17; extended to 768-1023 the same day after the live
+  // 1024x1366): the question sits under the ribbon, then Where you stand, then
+  // the handle, then the rest. The foot criterion and the 0px rule below are
+  // reversed there; what holds instead is measured here.
+  const oneColumn = h > w && w >= 640 && w < 1280;
+  if (oneColumn) {
+    test(`${label} ${w}x${h} — THE HANDLE FOLLOWS WHERE YOU STAND, AND THE REST FOLLOWS IT (ruling 9)`, async ({ page }) => {
+      await page.setViewportSize({ width: w, height: h });
+      await boot(page);
+      const { standBottom, foldTop, foldBottom, zone3Top } = await geometry(page);
+      expect(standBottom, 'premise: Where you stand is on the first screen').not.toBeNull();
+      expect(foldTop - standBottom, 'no empty band above the handle').toBeLessThanOrEqual(64);
+      expect(foldTop).toBeGreaterThanOrEqual(standBottom - 1);
+      expect(zone3Top, 'the rest follows the handle').toBeGreaterThanOrEqual(foldBottom - 1);
+    });
+    continue;
+  }
 
   test(`${label} ${w}x${h} — THE HANDLE SITS AT THE FOOT`, async ({ page }) => {
     // The host's own criterion. 80% is the floor, not the target — measured

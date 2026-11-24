@@ -8,6 +8,10 @@
 
 const babyShower = {
   type: 'Baby Shower',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Hummus & roasted veggie wraps + quinoa salad',
+  // Bought items its label must be checked for (pastry: butter; buns: eggs or milk; tortillas: lard).
+  vegMainVeganCheck: ['tortillas'],
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'baby_shower',
@@ -58,8 +62,8 @@ const babyShower = {
   tasks: [
     { id: 't_invite', target: 'invite', facts: ['invites-out'], milestoneId: 'bs_invite', phase: 'guest', label: 'Send invites with registry, RSVP-by, dietary ask', when: 'T-21d' },
     { id: 't_rsvp', target: 'chase', facts: ['replies-chased'], milestoneId: 'bs_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count', when: 'T-4d' },
-    { id: 't_nonperish_shop', target: 'list', facts: [], milestoneId: 'bs_shop_nonperish', phase: 'shopping', label: 'Decor, favors, mocktail mixers, games, paper goods', when: 'T-3d' },
-    { id: 't_fresh_shop', target: 'spread', facts: [], milestoneId: 'bs_shop_fresh', phase: 'shopping', label: 'Fresh food, cake/desserts, flowers', when: 'T-1d' },
+    { id: 't_nonperish_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'bs_shop_nonperish', phase: 'shopping', label: 'Decor, favors, mocktail mixers, games, paper goods', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'spread', facts: [], shopClock: true, milestoneId: 'bs_shop_fresh', phase: 'shopping', label: 'Fresh food, cake/desserts, flowers', when: 'T-1d' },
     { id: 't_prep', target: 'none', facts: [], milestoneId: 'bs_setup', phase: 'food', label: 'Make-ahead bites + dessert; assemble favors; set games', when: 'T-1d evening' },
     { id: 't_decorate', target: 'day', facts: [], milestoneId: 'bs_setup', phase: 'setup', label: 'Decorate, set the table, food + mocktail station', when: 'T0 -3h' },
     { id: 't_reset', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Gift list for thank-yous, pack leftovers, favors out, bag trash + recycling', when: 'T0 +3:00' },

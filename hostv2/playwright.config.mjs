@@ -55,6 +55,15 @@ const SELF_PINNED = [
   '**/theWelcomeIsFullBleedOnATablet.spec.mjs',
   // Opens its own 11" and 13" portrait contexts and turns one (tall iPad, 11/22/2026).
   '**/aTallIPadGetsItsOwnBoard.spec.mjs',
+  // Drives the phone, the 768 and 13" portrait iPads and two landscapes itself
+  // (the navigation package, owner rulings 11/23/2026).
+  '**/theNavigationPackage.spec.mjs',
+  // Drives the phone, the 768 and 13" portrait iPads and a desktop itself
+  // (the board package, owner-approved renders 11/24/2026).
+  '**/theBoardPackage.spec.mjs',
+  // Drives 1440x900, 1280x800 and the phone itself (the board package's
+  // follow-ups, owner rulings 11/24/2026).
+  '**/theBoardPackageFollowUps.spec.mjs',
   '**/tapTargets.spec.mjs',
   // Drives its own three geometries (one lit button per sheet, batch 4, 11/21/2026).
   '**/oneLitButtonPerSheet.spec.mjs',
@@ -247,6 +256,9 @@ const VIEWPORT_INDEPENDENT = [
   // server was sent; no geometry. Sets its own user agent per test (the mobile
   // project's iPhone UA would hide the row by design) and addresses 5277.
   '**/theDeviceNotificationsRow.spec.mjs',
+  // Toast text and the sign-in sheet only, on its own 5277 bundle (an
+  // unsaved plan's RSVP check asks to sign in, owner 11/24/2026).
+  '**/anUnsavedPlanAsksToSignInForRsvps.spec.mjs',
 ];
 
 const NON_RESPONSIVE = [...SELF_PINNED, ...VIEWPORT_INDEPENDENT];

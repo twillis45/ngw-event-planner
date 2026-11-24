@@ -327,60 +327,6 @@ async def _persist_observations(records: list) -> int:
         return 0
 
 
-def _result_row(name: str, p: dict, location_id: Optional[str]) -> dict:
-    """One matched product as the client sees it. Pure, so it can be tested."""
-    # ── THE PRICE WAS ALWAYS IN THIS RESPONSE ────────────────────
-    # Kroger returns price ONLY when filter.locationId is supplied
-    # ("To return the product price and aisle location, you must
-    # include the filter.locationId query parameter" — Kroger's own
-    # API reference). We already pass it when the caller sends one,
-    # and then discarded the price, so this endpoint matched products
-    # and answered nothing about cost.
-    #
-    # Shape, verified against Kroger's published reference:
-    #   data[].items[].price.regular | .promo   (promo is 0, not null,
-    #                                            when there is no sale)
-    #   data[].items[].size, .soldBy
-    # `nationalPrice` is deliberately NOT read: a national figure from
-    # a store API is the same national band the plan already has, and
-    # passing it off as a local price is the one thing this layer
-    # exists to avoid.
-    item = (p.get("items") or [{}])[0]
-    price = item.get("price") or {}
-    regular = price.get("regular")
-    promo = price.get("promo")
-    row = {
-        "name": name,
-        "matched": True,
-        "productId": p.get("productId"),
-        "description": p.get("description"),
-        "brand": p.get("brand"),
-    }
-    # ── THE STORE'S OWN CATEGORY, PASSED THROUGH (owner, 2026-11-24) ──
-    # A store that sells no alcohol answers "white wine" with White
-    # Cooking Wine. The client's word check catches the cases seen so
-    # far; the store's category is the durable signal, and this used to
-    # drop it. Verbatim strings only, absent when the store sends none:
-    # which names mean "alcohol" is for a live probe to establish, so
-    # nothing here interprets them.
-    cats = [c for c in (p.get("categories") or []) if isinstance(c, str) and c.strip()]
-    if cats:
-        row["categories"] = cats
-    # Only claim a price when a location was asked for AND a number
-    # came back. No location means Kroger sends none, and a missing
-    # price must stay missing rather than becoming zero.
-    if location_id and isinstance(regular, (int, float)) and regular > 0:
-        row["price"] = round(float(regular), 2)
-        # promo 0 means "no sale", not "free".
-        if isinstance(promo, (int, float)) and promo > 0:
-            row["promoPrice"] = round(float(promo), 2)
-        if item.get("size"):
-            row["size"] = item.get("size")
-        if item.get("soldBy"):
-            row["soldBy"] = item.get("soldBy")
-    return row
-
-
 @router.post("/kroger/search-list")
 async def kroger_search_list(req: SearchListRequest):
     """Match each shopping-list item name to a real Kroger product.
@@ -447,6 +393,60 @@ async def kroger_search_list(req: SearchListRequest):
     except Exception as e:  # network/timeout — degrade, never 500 the host
         log.warning("Kroger search-list failed: %s", e)
         return {"configured": True, "error": "unavailable", "results": []}
+
+
+def _result_row(name: str, p: dict, location_id: Optional[str]) -> dict:
+    """One matched product as the client sees it. Pure, so it can be tested."""
+    # ── THE PRICE WAS ALWAYS IN THIS RESPONSE ────────────────────
+    # Kroger returns price ONLY when filter.locationId is supplied
+    # ("To return the product price and aisle location, you must
+    # include the filter.locationId query parameter" — Kroger's own
+    # API reference). We already pass it when the caller sends one,
+    # and then discarded the price, so this endpoint matched products
+    # and answered nothing about cost.
+    #
+    # Shape, verified against Kroger's published reference:
+    #   data[].items[].price.regular | .promo   (promo is 0, not null,
+    #                                            when there is no sale)
+    #   data[].items[].size, .soldBy
+    # `nationalPrice` is deliberately NOT read: a national figure from
+    # a store API is the same national band the plan already has, and
+    # passing it off as a local price is the one thing this layer
+    # exists to avoid.
+    item = (p.get("items") or [{}])[0]
+    price = item.get("price") or {}
+    regular = price.get("regular")
+    promo = price.get("promo")
+    row = {
+        "name": name,
+        "matched": True,
+        "productId": p.get("productId"),
+        "description": p.get("description"),
+        "brand": p.get("brand"),
+    }
+    # ── THE STORE'S OWN CATEGORY, PASSED THROUGH (owner, 2026-11-24) ──
+    # A store that sells no alcohol answers "white wine" with White
+    # Cooking Wine. The client's word check catches the cases seen so
+    # far; the store's category is the durable signal, and this used to
+    # drop it. Verbatim strings only, absent when the store sends none:
+    # which names mean "alcohol" is for a live probe to establish, so
+    # nothing here interprets them.
+    cats = [c for c in (p.get("categories") or []) if isinstance(c, str) and c.strip()]
+    if cats:
+        row["categories"] = cats
+    # Only claim a price when a location was asked for AND a number
+    # came back. No location means Kroger sends none, and a missing
+    # price must stay missing rather than becoming zero.
+    if location_id and isinstance(regular, (int, float)) and regular > 0:
+        row["price"] = round(float(regular), 2)
+        # promo 0 means "no sale", not "free".
+        if isinstance(promo, (int, float)) and promo > 0:
+            row["promoPrice"] = round(float(promo), 2)
+        if item.get("size"):
+            row["size"] = item.get("size")
+        if item.get("soldBy"):
+            row["soldBy"] = item.get("soldBy")
+    return row
 
 
 @router.get("/kroger/locations")

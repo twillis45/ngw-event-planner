@@ -10,6 +10,8 @@
 
 const gameNight = {
   type: 'Game Night',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Falafel bites + hummus & veggie cups',
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',
@@ -66,7 +68,7 @@ const gameNight = {
     { id: 't_split_teams', target: 'none', facts: [], milestoneId: 'gn_games', phase: 'plan', label: 'Plan the teams: even sides, mix people who arrive together, and a quick re-split between games so no side runs away with the night', when: 'T-1d', whenChoice: { id: 'game_type', in: ['Team games'] } },
     { id: 't_check_games', target: 'none', facts: [], milestoneId: 'gn_games', phase: 'plan', label: 'Open every game box to confirm all pieces/cards/dice; READ or queue the rules of any NEW game so you can teach it in 5 min', when: 'T-3d' },
     { id: 't_menu', target: 'spread', facts: [], milestoneId: 'gn_menu', phase: 'food', label: 'Lock low-mess, one-hand finger foods that will not grease up the cards; coordinate categories if potluck', when: 'T-3d' },
-    { id: 't_shop', target: 'list', facts: ['then:food-bought'], milestoneId: 'gn_shop', phase: 'shopping', label: 'Main shop: snacks, drinks, ice, napkins/hand wipes, cups/plates, trash bags', when: 'T-1d' },
+    { id: 't_shop', target: 'list', facts: ['then:food-bought'], shopClock: true, milestoneId: 'gn_shop', phase: 'shopping', label: 'Main shop: snacks, drinks, ice, napkins/hand wipes, cups/plates, trash bags', when: 'T-1d' },
     { id: 't_prep', target: 'list', facts: [], milestoneId: 'gn_shop', phase: 'food', label: 'Pre-portion dips, assemble the snack/charcuterie board, start chilling all drinks', when: 'T-1d evening' },
     { id: 't_space', target: 'day', facts: [], milestoneId: 'gn_space', phase: 'setup', label: 'Clear + wipe the main table; a seat per guest; bright over-table lighting; queue a low playlist', when: 'T0 -1:00' },
     { id: 't_station', target: 'day', facts: [], milestoneId: 'gn_space', phase: 'setup', label: 'Set the snack + drink station (and a food tray) AWAY from the game table; ice out; napkins/hand wipes + scorepad + pen on the table; trash + recycling spot visible', when: 'T0 -0:30' },

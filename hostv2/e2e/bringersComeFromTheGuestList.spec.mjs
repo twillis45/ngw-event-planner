@@ -30,8 +30,7 @@ const saved = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('ngw
 
 test('Bringing: each dish picks from guests who haven\'t declined, or someone not on the list', async ({ page }) => {
   await boot(page);
-  await page.getByRole('tab', { name: /^Bringing · \d+$/ }).click();
-  await settled(page);
+  // One food page (owner, 11/24/2026): Bringing is a section, not a tab.
   const sheet = page.locator('.sheet').last();
   await sheet.locator('.fstat', { hasText: 'Mac and cheese' }).first().click();
   const pick = sheet.getByLabel(/Who is bringing/);
@@ -40,6 +39,8 @@ test('Bringing: each dish picks from guests who haven\'t declined, or someone no
   await pick.selectOption('Jordan');
   await expect.poll(async () => (await saved(page)).foodOwner || {}).toEqual({ p_mac: 'Jordan' });
 
+  // Her own dishes sit behind one door in the Bringing section (11/24/2026).
+  await sheet.locator('[data-yours-door]').click();
   await sheet.locator('.fstat', { hasText: 'Stuffing' }).first().click();
   await sheet.getByLabel(/Who is bringing/).selectOption({ label: 'Someone not on the list…' });
   const typed = sheet.locator('[data-bringer-text]');
@@ -50,8 +51,7 @@ test('Bringing: each dish picks from guests who haven\'t declined, or someone no
 
 test('Add an item: who\'s bringing it is picked from the guest list too', async ({ page }) => {
   await boot(page);
-  await page.getByRole('tab', { name: 'Shop' }).first().click();
-  await settled(page);
+  // One food page (owner, 11/24/2026): no Shop tab.
   await page.getByRole('button', { name: /Add an item you/ }).first().click();
   await page.getByRole('textbox', { name: 'Items to add, one per line' }).fill('Dinner rolls');
   await page.getByLabel("Who's bringing it (optional)").selectOption('Maya');
@@ -66,8 +66,7 @@ test('Add an item: who\'s bringing it is picked from the guest list too', async 
 
 test('Bringing: tapping away closes the picker, and Escape leaves a dish as it was', async ({ page }) => {
   await boot(page);
-  await page.getByRole('tab', { name: /^Bringing · \d+$/ }).click();
-  await settled(page);
+  // One food page (owner, 11/24/2026): Bringing is a section, not a tab.
   const sheet = page.locator('.sheet').last();
   await sheet.locator('.fstat', { hasText: 'Mac and cheese' }).first().click();
   await expect(sheet.getByLabel(/Who is bringing/)).toBeFocused();

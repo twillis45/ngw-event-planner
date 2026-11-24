@@ -14,6 +14,10 @@
 
 const bridalShower = {
   type: 'Bridal Shower',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Hummus & cucumber tea sandwiches + roasted veg quinoa salad',
+  // Bought items its label must be checked for (bread: milk, butter or honey).
+  vegMainVeganCheck: ['bread'],
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',
@@ -65,8 +69,8 @@ const bridalShower = {
     { id: 't_invite', target: 'invite', facts: ['invites-out'], milestoneId: 'br_invite', phase: 'guest', label: 'Send invites with registry, RSVP-by, dietary ask', when: 'T-21d' },
     { id: 't_rsvp', target: 'chase', facts: ['replies-chased'], milestoneId: 'br_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the count and seat plan', when: 'T-4d' },
     { id: 't_giftlog', target: 'guest-list', facts: [], milestoneId: 'br_setup', phase: 'planning', label: 'Set up the gift log (who-gave-what) for thank-you notes', when: 'T-1d' },
-    { id: 't_nonperish_shop', target: 'list', facts: [], milestoneId: 'br_shop_nonperish', phase: 'shopping', label: 'Decor, favors, prizes, bubbly, mixers, games, paper goods', when: 'T-3d' },
-    { id: 't_fresh_shop', target: 'spread', facts: [], milestoneId: 'br_shop_fresh', phase: 'shopping', label: 'Fresh food, cake/desserts, juice, flowers', when: 'T-1d' },
+    { id: 't_nonperish_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'br_shop_nonperish', phase: 'shopping', label: 'Decor, favors, prizes, bubbly, mixers, games, paper goods', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'spread', facts: [], shopClock: true, milestoneId: 'br_shop_fresh', phase: 'shopping', label: 'Fresh food, cake/desserts, juice, flowers', when: 'T-1d' },
     { id: 't_prep', target: 'none', facts: [], milestoneId: 'br_setup', phase: 'food', label: 'Make-ahead bites + dessert; assemble favors; set games', when: 'T-1d evening' },
     { id: 't_decorate', target: 'day', facts: [], milestoneId: 'br_setup', phase: 'setup', label: 'Decorate, set the table, food + coffee/mimosa bar, gift area', when: 'T0 -3h' },
     { id: 't_reset', target: 'day', facts: [], milestoneId: 'event', phase: 'cleanup', label: 'Finalize gift list for thank-yous, pack leftovers + gifts, favors out, bag trash + recycling', when: 'T0 +3:00' },

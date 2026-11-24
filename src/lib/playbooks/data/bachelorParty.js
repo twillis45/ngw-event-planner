@@ -15,6 +15,8 @@
 
 const bachelorParty = {
   type: 'Bachelor Party',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'BBQ cauliflower bites + grilled veggie skewers',
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'bachelorette',
@@ -65,8 +67,8 @@ const bachelorParty = {
     { id: 't_rides', target: 'rides', facts: [], milestoneId: 'bp_transport', phase: 'logistics', label: 'Lock the safe-rides plan: DD or pre-booked rideshare/van + the cash for it', when: 'T-14d' },
     { id: 't_buddy', target: 'assign', facts: [], milestoneId: 'bp_transport', phase: 'planning', label: 'Name a buddy for the groom + a sober point-person; share the plan in the group chat', when: 'T-14d' },
     { id: 't_collect', target: 'guests', facts: [], milestoneId: 'bp_rsvp', phase: 'guest', label: 'Lock headcount; collect each person\'s share (cover the groom)', when: 'T-5d' },
-    { id: 't_nonperish_shop', target: 'list', facts: [], milestoneId: 'bp_shop_nonperish', phase: 'shopping', label: 'Beer, whiskey, mixers, WATER, disposables, snacks', when: 'T-3d' },
-    { id: 't_fresh_shop', target: 'list', facts: [], milestoneId: 'bp_shop_fresh', phase: 'shopping', label: 'Proteins / wings / pizza order, fresh food', when: 'T-1d' },
+    { id: 't_nonperish_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'bp_shop_nonperish', phase: 'shopping', label: 'Beer, whiskey, mixers, WATER, disposables, snacks', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'bp_shop_fresh', phase: 'shopping', label: 'Proteins / wings / pizza order, fresh food', when: 'T-1d' },
     // MOVED OFF A DEAD SURFACE, 2026-09-23. Was a `schedules.preparation` row at
     // T-1d. `t_fresh_shop` buys the proteins and `bp_shop_fresh` is the milestone
     // for buying them; nothing marinated them. Charging phones and confirming

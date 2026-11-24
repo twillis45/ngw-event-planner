@@ -90,7 +90,7 @@ import { resolveEffectiveItem } from '../effectiveItem'; // FOOD-2A: read-only n
 import { buildCrabPlan } from '../crabPlan';
 import { isVendorBooked, bookedVendorIn, hiredVendors } from '../workstreams';
 import { crabsPerPicker, crabsPerBushel } from '../crabServing';
-import { kidCount, vegCount, KID_PROTEIN_FACTOR } from '../appetite';
+import { kidCount, vegCount, veganCount, KID_PROTEIN_FACTOR } from '../appetite';
 import { perHead } from '../perHead';
 import { getCompressionLevel, getStandardLeadProvenance, isGroundedLead } from '../workflowCompression';
 import { effectiveTimingProvenance, isGroundedTiming, timingConflict } from '../knowledge/timingProvenance';
@@ -1174,17 +1174,18 @@ function stepLeftAsk(event, t) {
   const kp = d ? decisionKnownPart(event, d) : null;
   return (kp && kp.step) || null;
 }
-// The calls a checklist step stands for: by its engine row id, or (for a
-// caller holding only the row's words, like the checklist's button) by the
-// authored label it was drafted from. [] when it names none.
+// The calls a checklist step stands for: the `answeredBy` its step declares,
+// found by its engine row id (`pbt-<event>-<step>`), never by its words. A row
+// holding only words (one she wrote, even in a step's own words) stands for
+// none (cause 1, remainder a, 11/23/2026). [] when it names none.
+function declaredStepByRowId(event, task, tasks) {
+  const id = task && typeof task.id === 'string' && task.id.startsWith('pbt-') ? task.id : null;
+  return id ? tasks.find((x) => x && id === `pbt-${event.id}-${x.id}`) || null : null;
+}
 export function stepCalls(event, task) {
   if (!event || !task) return [];
   const pb = getPlaybook(event.type);
-  const tasks = (pb && pb.tasks) || [];
-  const id = typeof task.id === 'string' && task.id.startsWith('pbt-') ? task.id : null;
-  const words = String(task.task || '').trim();
-  const t = id ? tasks.find((x) => x && id === `pbt-${event.id}-${x.id}`)
-    : (words ? tasks.find((x) => x && (x.label === words || stepLeftAsk(event, x) === words)) : null);
+  const t = declaredStepByRowId(event, task, (pb && pb.tasks) || []);
   return t && Array.isArray(t.answeredBy) ? t.answeredBy : [];
 }
 // ─── A STEP THAT LISTS ITS ROLES NAMES ONLY THOSE LEFT (queued from #222) ───
@@ -1199,18 +1200,15 @@ function booksLeftLabel(event, t, base) {
   const left = books.filter((r) => !roleBooked(event, r));
   return left.length && left.length < books.length ? String(base).replace(list, left.join(', ')) : base;
 }
-// The roles a checklist step lists: by its engine row id, or by its words
-// (the authored label, or the label with only the roles left). [] when none.
+// The roles a checklist step lists: the `books` its step declares, found by
+// its engine row id, never by its words (as stepCalls). [] when none.
 export function stepBooks(event, task) {
   if (!event || !task) return [];
   const pb = getPlaybook(event.type);
-  const tasks = ((pb && pb.tasks) || []).filter((x) => x && Array.isArray(x.books) && x.books.length);
-  if (!tasks.length) return [];
-  const id = typeof task.id === 'string' && task.id.startsWith('pbt-') ? task.id : null;
-  const words = String(task.task || task.text || '').trim();
-  const t = id ? tasks.find((x) => id === `pbt-${event.id}-${x.id}`)
-    : (words ? tasks.find((x) => x.label === words || booksLeftLabel(event, x, x.label) === words) : null);
-  return t ? t.books : [];
+  const t = declaredStepByRowId(event, task, (pb && pb.tasks) || []);
+  // Without its caterer, the roles it lists without the caterer.
+  const books = t && t.booksWithoutCaterer && t.labelWithoutCaterer && stepWithoutCaterer(event, t) ? t.booksWithoutCaterer : (t && t.books);
+  return Array.isArray(books) && books.length ? books : [];
 }
 export function stepCallsAnswered(event, task) {
   if (!event || !task || typeof task.id !== 'string' || !task.id.startsWith('pbt-')) return false;
@@ -1916,14 +1914,19 @@ export function playbookPacing(event) {
 // WHEN A STEP READS WITHOUT ITS CATERER: shared by the checklist builder (the
 // row's words) and lib/stepTarget (the row's declared facts, cause 1 part 2),
 // so a row's label variant and its facts variant are one decision.
-const BOOKS_A_CATERER = /\b(book|contract|choose|find|decide|tour|sign|hire|if catering|vs|or confirm|yourself)\b/i;
+// THE STEP DECLARES IT (cause 1, remainder b, 11/23/2026): `catererOut` lists
+// when its caterer comes out: 'host-cooks' (she chose no caterer) and
+// 'none-hired' (the meal arrives made, no caterer hired). It was read off the
+// label's words (/cater(er|ing)/ unless "vs", "instead", "yourself"…; /caterer/
+// unless "book", "sign", "hire"…); the declarations were derived once from
+// that rule and committed. A step that declares nothing keeps its caterer.
 function catererTakenOut(t, dropCaterer, noCatererHired) {
-  return (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy|yourself)\b/i.test(t.label))
-    || (noCatererHired && /\bcaterer/i.test(t.label) && !BOOKS_A_CATERER.test(t.label));
+  const out = Array.isArray(t.catererOut) ? t.catererOut : [];
+  return (dropCaterer && out.includes('host-cooks')) || (noCatererHired && out.includes('none-hired'));
 }
 /** Does this step read (and count) without its caterer for this event? */
 export function stepWithoutCaterer(event, t) {
-  if (!event || !t || !t.label) return false;
+  if (!event || !t) return false;
   const fa = foodApproach(event);
   return catererTakenOut(t, fa.usesCaterer === false, fa.usesCaterer === true && !catererHired(event, fa));
 }
@@ -1972,6 +1975,13 @@ export function playbookChecklist(event, asOf) {
   // (the Spread is sized for the dinner), so they carry the dinner's group.
   let celebration = false;
   try { celebration = celebrationAppliesWith(event, playbook); } catch (_e) { celebration = false; }
+  // A step that covers the caterer (`coversCaterer`, owner ruling 3a,
+  // 11/23/2026) keeps the generic caterer row below off the list. It was
+  // read off the rows' words (/cater/).
+  let _coversCaterer = false;
+  // A step that asks who brings which dish (`assignsDishes`, owner ruling 3b)
+  // keeps the generic who-brings row off. It was read off the rows' words.
+  let _assignsDishes = false;
   for (let t of taskList) {
     if (!t || !t.id || !t.label) continue;
     // Choice gate — a task tagged whenChoice appears only for the matching pick.
@@ -2006,7 +2016,9 @@ export function playbookChecklist(event, asOf) {
     if (_noCaterer) {
       if (!t.labelWithoutCaterer) continue;
       // Its answered copy is written for the caterer version, so it stays off.
-      t = { ...t, label: t.labelWithoutCaterer, copyByAnswer: undefined };
+      // A step that lists its roles lists them without the caterer too
+      // (`booksWithoutCaterer`, owner ruling 1, 11/23/2026).
+      t = { ...t, label: t.labelWithoutCaterer, copyByAnswer: undefined, ...(t.booksWithoutCaterer ? { books: t.booksWithoutCaterer } : null) };
     }
     // ── THE AIR-TRAVEL FLOOR REACHES THE CHECKLIST (2026-09-23) ─────────────
     // The floor was built into `playbookMilestones` and stopped there. Measured:
@@ -2032,6 +2044,8 @@ export function playbookChecklist(event, asOf) {
     // Day-of is offset ZERO exactly. A post-event task bucketed here would sit
     // under THE DAY tab, which is the same lie in a different place.
     const eventDay = offset === 0;
+    if (t.coversCaterer === true) _coversCaterer = true;
+    if (t.assignsDishes === true) _assignsDishes = true;
     rows.push({
       id: `pbt-${event.id}-${t.id}`,
       // The step's declared target (lib/stepTarget): where its work is done.
@@ -2086,7 +2100,7 @@ export function playbookChecklist(event, asOf) {
   // so the food CHOICE visibly reshapes "what's left" (it was previously inert in the task list;
   // the cook choice already recedes caterer tasks via the dropCaterer gate above). Deduped so a
   // playbook that already authors a caterer task isn't doubled.
-  if (fa.usesCaterer === true && catererHired(event, fa) && !rows.some((r) => /cater/i.test(r.task))) {
+  if (fa.usesCaterer === true && catererHired(event, fa) && !_coversCaterer) {
     const off = -7;
     rows.push({
       id: `pbt-${event.id}-fa-caterer`,
@@ -2113,8 +2127,7 @@ export function playbookChecklist(event, asOf) {
     const owners = foodOwnerMap(event);
     const unnamed = (playbook.purchases || []).filter((p) => p && p.category === 'food' && p.friendsBringWhen
       && choiceShown(event, p.friendsBringWhen) && choiceShown(event, p.whenChoice) && !isNamedBringer(owners[p.id]));
-    const authored = rows.some((r) => /bringing what|brings? what|assign (the )?dishes/i.test(String(r.task || '')));
-    if (unnamed.length && !authored) {
+    if (unnamed.length && !_assignsDishes) {
       const off = -14;
       rows.push({
         id: `pbt-${event.id}-fa-bringers`,
@@ -5421,6 +5434,42 @@ const VEG_MAIN_PROVENANCE = Object.freeze({
   sufficientWhen: 'A serving count for an organic tray (Amy\'s family size is $16.49 at Kroger) would say whether a higher ceiling belongs here.',
 });
 
+// THE MEATLESS MAIN, BY DECLARATION (owner-approved fix, 11/23/2026). The plan
+// counted vegans apart from vegetarians and then planned one main for both, and
+// many authored mains carry dairy, eggs or butter (a goat cheese tart, a gruyere
+// puff pastry), so a vegan guest could have nothing to eat. Each host-shell
+// playbook now declares `vegMainVegan`, a main its author vouches has no animal
+// product. When ANY guest is vegan that one is planned, for vegetarians and
+// vegans together; with only vegetarians the plan is what it was. Decided by the
+// declaration, never by matching the dish's words.
+const VEG_MAIN_DEFAULT = 'Stuffed peppers + grilled veg platter';
+const VEGAN_MAIN_DEFAULT = 'Black bean & rice stuffed peppers + grilled veg platter (dairy-free)';
+const authored = (v) => ((typeof v === 'string' && v.trim()) ? v.trim() : '');
+// CHECK LABELS (owner ruling 1, 11/23/2026). A vegan dish that leans on a bought
+// item which can hide an animal product declares it (`vegMainVeganCheck`), and
+// the line names only those. Read from the declaration, never the dish's words.
+const VEGAN_LABEL_CHECKS = Object.freeze({
+  pastry: ['butter'], buns: ['eggs', 'milk'], tortillas: ['lard'], 'refried beans': ['lard'],
+  // Owner ruling 11/24/2026.
+  bread: ['milk', 'butter', 'honey'],
+});
+const listOf = (xs, joiner) => (xs.length < 3 ? xs.join(` ${joiner} `) : `${xs.slice(0, -1).join(', ')}, ${joiner} ${xs[xs.length - 1]}`);
+const labelCheckSentence = (keys) => (keys.length
+  ? `Check labels: ${listOf(keys, 'and')} can contain ${listOf([...new Set(keys.flatMap((k) => VEGAN_LABEL_CHECKS[k]))], 'or')}.`
+  : '');
+/** The meatless main this event plans: `{ name, vegan }`, plus `check` (the
+ *  declared label checks) when it is the vegan one. */
+export function plannedVegMain(playbook, event) {
+  const pb = playbook || {};
+  if (veganCount(event) > 0) {
+    const authoredName = authored(pb.vegMainVegan);
+    const check = authoredName && Array.isArray(pb.vegMainVeganCheck)
+      ? pb.vegMainVeganCheck.filter((k) => VEGAN_LABEL_CHECKS[k]) : [];
+    return { name: authoredName || VEGAN_MAIN_DEFAULT, vegan: true, check };
+  }
+  return { name: authored(pb.vegMain) || VEG_MAIN_DEFAULT, vegan: false };
+}
+
 // The drop-off catering tier, as the two registered catering guides publish it.
 const DROPOFF_CATERING_PROVENANCE = Object.freeze({
   tier: 'researched', confidence: 'medium', verificationStatus: 'cited',
@@ -6187,7 +6236,8 @@ export function playbookFoodPlan(event, opts = {}) {
   // #16 — special-diet COUNTS drive food + budget. Vegetarians/vegans need a REAL,
   // named main (never a generic "plant-based main" placeholder); size it to their
   // count and let it flow into the totals so the budget reflects it. The dish is
-  // playbook-authored (playbook.vegMain) so it's appropriate to the cuisine — e.g.
+  // playbook-authored (playbook.vegMain, or vegMainVegan when any guest is vegan:
+  // plannedVegMain) so it's appropriate to the cuisine — e.g.
   // a cookout gets grilled portobello + veggie skewers, a dinner party a mushroom
   // wellington. Falls back to a real, appetizing default, never a placeholder.
   // (dietCounts/dietCnt/vegN are hoisted above, near proteinGuests — same values, no
@@ -6195,14 +6245,14 @@ export function playbookFoodPlan(event, opts = {}) {
   // A caterer cooks for every guest, the vegetarians included (the same gate
   // hostCooksIt reads): no grocery main on top of the catering line.
   if (vegN > 0 && !_foodOffPlate) {
-    const vegDish = (typeof playbook.vegMain === 'string' && playbook.vegMain.trim())
-      ? playbook.vegMain.trim()
-      : 'Stuffed peppers + grilled veg platter';
+    const { name: vegDish, vegan: veganMain, check: veganCheck } = plannedVegMain(playbook, event);
     // A PLATE OF TWO DISHES IS TWO LINES (owner, 11/24/2026): "Stuffed peppers +
     // grilled veg platter" searched the store for one thing. The plate splits at
     // its "+" / "plus" into the dish (diet-veg, which keeps the cited per-serving
     // price) and its side (diet-veg_side, priced with the dish, the batch 4 rule).
-    // A single named dish ("Mushroom & lentil wellington") stays one line.
+    // A single named dish ("Mushroom & lentil wellington") stays one line. The
+    // vegan main (plannedVegMain) splits the same way, and both halves carry its
+    // vegan mark.
     const [vegMainDish, vegSideDish] = vegDish.split(/\s+(?:\+|plus)\s+/i).map((s) => s.trim()).filter(Boolean)
       .reduce((acc, s, i) => (i === 0 ? [s] : [acc[0], acc[1] ? `${acc[1]} + ${s}` : s]), []);
     const forN = `(for ${vegN} ${vegN === 1 ? 'guest' : 'guests'})`;
@@ -6214,7 +6264,11 @@ export function playbookFoodPlan(event, opts = {}) {
       perUnitLow: roundCurrency(VEG_MAIN_PER_SERVING[0] * pf), perUnitHigh: roundCurrency(VEG_MAIN_PER_SERVING[1] * pf),
       costProvenance: VEG_MAIN_PROVENANCE,
       skipped: !!skip['diet-veg'], locked: ('diet-veg' in lockedMap) ? Math.max(0, roundCurrency(Number(lockedMap['diet-veg']) || 0)) : null,
-      note: 'So your vegetarian/vegan guests have a real main, not just sides.', forgotten: false, dietDerived: true,
+      note: veganMain
+        ? ['So your vegan and vegetarian guests have a real main, not just sides. This one is vegan: no meat, fish, dairy, eggs or honey.', labelCheckSentence(veganCheck)].filter(Boolean).join(' ')
+        : 'So your vegetarian/vegan guests have a real main, not just sides.',
+      forgotten: false, dietDerived: true,
+      ...(veganMain ? { vegan: true } : {}),
       // The regional factor moved this band, so the line says so (audit G #6).
       geoBasis: basketBasis,
     });
@@ -6228,6 +6282,7 @@ export function playbookFoodPlan(event, opts = {}) {
         skipped: !!skip['diet-veg'], locked: null, forgotten: false, dietDerived: true,
         partOf: 'diet-veg', pricedWith: 'diet-veg',
         note: 'The side for the vegetarian main; its price is in the main\'s line.',
+        ...(veganMain ? { vegan: true } : {}),
       });
     }
   }

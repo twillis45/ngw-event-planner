@@ -13,6 +13,10 @@ const dinnerParty = {
   // when dinner hits the table. Arrivals come first, by this playbook's own serve cue.
   timeAnchor: { means: 'serve', serveAt: 'T0 +1h' },
   vegMain: 'Mushroom & lentil wellington',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Mushroom & lentil wellington (vegan puff pastry)',
+  // Bought items its label must be checked for (pastry: butter; buns: eggs or milk; tortillas: lard).
+  vegMainVeganCheck: ['pastry'],
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
@@ -80,8 +84,8 @@ const dinnerParty = {
   tasks: [
     { id: 't_invite', target: 'invite', facts: ['invites-out'], milestoneId: 'dp_invite', phase: 'guest', label: 'Text/email invite with date, time, address, dietary-ask, and a soft RSVP-by date', when: 'T-18d' },
     { id: 't_rsvp_chase', target: 'chase', facts: ['replies-chased'], milestoneId: 'dp_rsvp_close', phase: 'guest', label: 'Chase non-responders; lock the seated count', when: 'T-3d' },
-    { id: 't_pantry_shop', target: 'list', facts: [], milestoneId: 'dp_shop_pantry', phase: 'shopping', label: 'Pantry + alcohol + paper goods run (non-perishables, can buy early)', when: 'T-3d' },
-    { id: 't_fresh_shop', target: 'list', facts: [], milestoneId: 'dp_shop_fresh', phase: 'shopping', label: 'Produce, proteins, bread, dairy, flowers (buy 24-36h out, not sooner)', when: 'T-1d' },
+    { id: 't_pantry_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'dp_shop_pantry', phase: 'shopping', label: 'Pantry + alcohol + paper goods run (non-perishables, can buy early)', when: 'T-3d' },
+    { id: 't_fresh_shop', target: 'list', facts: [], shopClock: true, milestoneId: 'dp_shop_fresh', phase: 'shopping', label: 'Produce, proteins, bread, dairy, flowers (buy 24-36h out, not sooner)', when: 'T-1d' },
     { id: 't_braise', target: 'none', facts: [], milestoneId: 'dp_prep_ahead', phase: 'food', label: "Cook anything that's better reheated (braises, stews, sauces, soups)", when: 'T-1d evening' },
     { id: 't_dessert', target: 'spread', facts: [], milestoneId: 'dp_prep_ahead', phase: 'food', label: 'Make dessert ahead (tart/cake/set custard chill overnight)', when: 'T-1d evening' },
     { id: 't_mise', target: 'none', facts: [], milestoneId: 'dp_prep_ahead', phase: 'food', label: 'Mise en place: chop, marinate, portion, label containers', when: 'T-1d evening' },

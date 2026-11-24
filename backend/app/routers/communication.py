@@ -23,6 +23,7 @@ from ..auth import require_planner
 from ..email_pictures import with_picture
 from ..emailer import send_approval_email, send_thread_email, is_email_configured
 from ..email_frame import frame, hue_for, paragraphs_html
+from ..outward import host_name_for, real_host_name
 from ..invite_email import compose_invite_email, invite_gaps
 from .invite_cards import card_url, stored_card_version
 from .rsvp import _assert_event_studio_read
@@ -161,11 +162,13 @@ def compose_message_email(ev: dict, body: str, recipient_name, sender: str, stop
     # A draft opens with its own greeting (lib/draftVoice); a second "Hi Rosa,"
     # above it would read twice.
     greets = bool(_GREETING.match(words))
+    host = real_host_name(sender, host_name_for(ev))     # the profile's name, else the host line
     return frame(
         kind="message", hue=hue_for(ev.get("type"), name), greeting=f"Hi {who}," if who and not greets else None,
-        eyebrow=f"A message from {sender}", title=name or None,
+        eyebrow=f"A message from {host or 'your host'}", title=name or None,
         blocks=[(paragraphs_html(words), words)],
-        footer=f"Sent by {sender} with No Guesswork Events.", stop_url=stop_url)
+        footer=f"Sent by {host} with No Guesswork Events." if host else "Sent with No Guesswork Events.",
+        stop_url=stop_url)
 
 
 class PortalResponse(BaseModel):
@@ -563,8 +566,10 @@ async def create_message(
         # the emails that arrive (live alias check, 11/19/2026: the invite
         # batch landed in Spam under the bare typed name, HTML only).
         body_text = payload.body or ""
-        sender = _one_line(payload.author_name) or "Your host"
-        subj = _one_line(payload.subject) or f"Message from {sender}"
+        # The profile's name, else the event's host line, else "Your host"
+        # (outward.real_host_name, owner ruling 11/24/2026).
+        sender = real_host_name(payload.author_name, host_name_for(event_data or {})) or "Your host"
+        subj = _one_line(payload.subject) or f"Message from {real_host_name(sender) or 'your host'}"
         stop_headers = None
         if stop_token:
             stop = email_stop_url(stop_token)

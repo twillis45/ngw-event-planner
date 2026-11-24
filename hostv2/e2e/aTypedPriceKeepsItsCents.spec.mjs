@@ -19,9 +19,7 @@ test('typing $42.50 for the turkey saves and shows $42.50', async ({ page }) => 
   await openSectionByName(page, 'The spread & shopping');
   await settled(page);
   const sheet = page.locator('.sheet').last();
-  const shop = sheet.locator('.fmode', { hasText: /^Shop$/ });
-  if (await shop.count()) { await shop.click(); await settled(page); }
-  await sheet.getByRole('button', { name: /^The list/ }).first().click().catch(() => {});
+  // One food page (owner, 11/24/2026): no Plan/Shop tabs, and the list is always open.
   const row = sheet.locator('.frow', { hasText: /Turkey/ }).first();
   // The Food group may start folded or open; open it only if the row is hidden.
   if (!await row.isVisible().catch(() => false)) {
