@@ -160,6 +160,23 @@ test('4: with a mouse, hovering the title shows a pencil and "Double-click to re
   await expect(pencil).toBeVisible();
   await expect(hint).toBeVisible();
   await expect(hint).toHaveText('Double-click to rename');
+  // On the title's own line, after the pencil (owner, 11/24/2026): under the
+  // title it sat over the progress bar. It covers nothing on the board.
+  const hb = await hint.boundingBox(); const tb = await page.locator('[data-tt-title] .tt-name').boundingBox(); const pb = await pencil.boundingBox();
+  const mid = hb.y + hb.height / 2;
+  expect(mid, 'the hint sits on the title line').toBeGreaterThan(tb.y);
+  expect(mid, 'the hint sits on the title line').toBeLessThan(tb.y + tb.height);
+  expect(hb.x, 'after the pencil').toBeGreaterThanOrEqual(pb.x + pb.width);
+  const covered = await hint.evaluate((h) => {
+    const r = h.getBoundingClientRect(); const hit = [];
+    for (const e of document.querySelectorAll('.escreen.on *')) {
+      if (h.contains(e) || e.contains(h) || e.children.length) continue;
+      const q = e.getBoundingClientRect(); if (!q.width || !q.height) continue;
+      if (q.left < r.right && q.right > r.left && q.top < r.bottom && q.bottom > r.top) hit.push(e.className || e.tagName);
+    }
+    return hit;
+  });
+  expect(covered, 'the hint covers nothing on the board').toEqual([]);
   // A tooltip, not a banner: it covers nothing on hover-out and moves nothing.
   const ask0 = await page.locator('h2.ask').first().boundingBox();
   expect(await hint.evaluate((e) => getComputedStyle(e).position), 'floats over the board').toBe('absolute');

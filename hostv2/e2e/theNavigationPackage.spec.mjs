@@ -201,7 +201,7 @@ test.describe('phone 390x844', () => {
     await expect(page.locator('#whats-counted')).toHaveAttribute('inert', '');
     await page.locator('[data-pp-line]').click();
     await expect(page.locator('#whats-counted')).not.toHaveAttribute('inert', '');
-    await expect(page.locator('#whats-counted')).toContainText('The 6 parts of your plan this count reads', { ignoreCase: true });
+    await expect(page.locator('#whats-counted')).toContainText('Your plan, part by part', { ignoreCase: true });
     expect(await page.locator('#whats-counted').count()).toBe(1);
     // ...and so do the bars. (Opening scrolls smoothly to the panel; let it land.)
     await page.waitForTimeout(800);
