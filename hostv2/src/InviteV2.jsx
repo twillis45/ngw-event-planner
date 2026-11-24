@@ -30,7 +30,7 @@ import { inviteTone, invitePalette } from '@app/lib/inviteTone';
 import { formatPhoneUS, isIncompletePhone, isValidPhone, isMalformedEmail, normalizePhone } from '@app/lib/contactFormat';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { hashtagLine } from '@app/lib/eventHashtag';
-import { venueFor, formatVenueAddress } from '@app/lib/venueFor';
+import { venueFor, formatVenueAddress, venueGeoQuery } from '@app/lib/venueFor';
 import { useBreakpoint } from '@app/lib/viewport';
 import { guestFacingDays, dayLabelFor } from '@app/lib/itinerary';
 // GUEST PAYLOAD: this page used buildExperienceContext for exactly ONE thing —
@@ -377,15 +377,13 @@ export default function InviteV2({ code }) {
   const startNearWatch = async () => {
     try {
       if (!navigator.geolocation) { setNearState('denied'); return; }
-      // venueFor constitution (ratchet shrink): name + gated city/state from the
-      // one accessor. Same state-suffix disambiguation as the shell's weather
-      // query — a bare city can silently geocode to the wrong same-named city.
+      // The shell's weather query (venueGeoQuery): the ZIP when the event holds
+      // one (venueZip or a bare ZIP), else "City, ST, US", so a bare city never
+      // geocodes to a same-named one in another state (11/24/2026: venueZip
+      // with a town was asked as the town).
       const vf = venueFor(event);
-      const zipRaw = String((event && event.venueCity) || '').trim(); // venue-exempt: ZIP passthrough — the city gate rejects digits by design, but the geocoder accepts a bare ZIP
       const homeish = /^(backyard|back\s?yard|home|house|my place)$/i.test(vf.name);
-      const vc = /^\d{5}$/.test(zipRaw) ? zipRaw : vf.city;
-      const vs = vf.state;
-      const q = (vc && !/^\d{5}$/.test(vc) && vs ? `${vc}, ${vs}, US` : vc) || (!homeish ? vf.name : '');
+      const q = venueGeoQuery(event) || (!homeish ? vf.name : '');
       if (!q) { setNearState('nocoords'); return; }
       const coords = await geocodeVenue(q);
       if (!coords) { setNearState('nocoords'); return; }
