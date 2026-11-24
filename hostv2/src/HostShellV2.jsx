@@ -23497,7 +23497,7 @@ export default function HostShellV2() {
                   <button className="si-collapse" aria-expanded={draftMsgOpen} onClick={() => setDraftMsgOpen((o) => !o)}>
                     <span className="si-cl-l">
                       <span className="si-cl-t">Your message</span>
-                      <span className="si-cl-s">{inviteSubjectAndBody(shownDraft(), inviteSubject).body.split('\n').find((l) => l.trim()) || ''}</span>
+                      <span className="si-cl-s">{inviteSubjectAndBody(shownDraft(), inviteSubject).body.split('\n').map((l) => l.trim()).filter(Boolean).join(' ')}</span>
                     </span>
                     <span className="si-cl-a">{draftMsgOpen ? 'Hide' : 'Show all'} {draftMsgOpen ? '⌃' : '⌄'}</span>
                   </button>
