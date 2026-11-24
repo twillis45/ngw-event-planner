@@ -142,12 +142,12 @@ describe('the blunt disclosure (Grandmother rider: informs, never sells)', () =>
     billingOn();
     // Model H (11/13/2026): planning is free, said plainly, and the pass is
     // named for exactly its two doors.
-    const FREE = 'Planning this event is free, including sharing one vendor brief (that takes a free account). Sharing with more than one vendor, or a destination or multi-day event, takes the $39 One-Event Pass.';
+    const FREE = 'Planning this event is free, including sending one vendor the details (that takes a free account). Sending them to more than one vendor, or a destination or multi-day event, takes the $39 One-Event Pass.';
     expect(creationDisclosure({ passRequired: false, passReasons: [] })).toBe(FREE);
     // The free brief needs an account; the free-tier promise must say so (11/12/2026).
-    expect(creationDisclosure({ passRequired: false, passReasons: [] })).toMatch(/one vendor brief \(that takes a free account\)/);
+    expect(creationDisclosure({ passRequired: false, passReasons: [] })).toMatch(/one vendor the details \(that takes a free account\)/);
     expect(creationDisclosure({ passRequired: true, passReasons: ['destination'] }))
-      .toBe('This is a destination event. Planning it is free. Its trip tools and sharing vendor briefs take the $39 One-Event Pass.');
+      .toBe('This is a destination event. Planning it is free. Its trip tools and sending vendors the details take the $39 One-Event Pass.');
     expect(creationDisclosure({ passRequired: true, passReasons: ['multi-day'] })).toMatch(/^This is a multi-day event\. Planning it is free\./);
     // A door-3-only verdict reads as the free event it now is.
     expect(creationDisclosure({ passRequired: true, passReasons: ['additional-event'] })).toBe(FREE);

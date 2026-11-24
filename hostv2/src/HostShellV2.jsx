@@ -4872,8 +4872,8 @@ export default function HostShellV2() {
       const gate = briefAllowed(event, v.id);
       if (!gate.allowed) {
         toast(gate.reason === 'second-vendor'
-          ? 'Your free brief went to your first vendor — the pass unlocks sharing with every vendor on this event.'
-          : 'Sharing vendor briefs on this event takes the One-Event Pass.');
+          ? 'Sending the details is free for your first vendor — the pass unlocks it for every vendor on this event.'
+          : 'Sending vendors the details on this event takes the One-Event Pass.');
         setSheet({ kind: 'pass' });
         return;
       }
@@ -10299,7 +10299,7 @@ export default function HostShellV2() {
                     right where the time lives, not a separate row below. */}
                 {!startTimeIsConfirmed(event) && String(event.startTime || '').trim() && (
                   <button className="mini" onClick={() => writeStartTime({ confirm: true },
-                    'Start time confirmed — your invite and vendor briefs can name it now.')}>
+                    'Start time confirmed — your invite and the details you send vendors can name it now.')}>
                     that’s right
                   </button>
                 )}
@@ -10311,7 +10311,7 @@ export default function HostShellV2() {
               {!startTimeIsConfirmed(event) && String(event.startTime || '').trim() && (
                 <>
                   <p className="grounding" style={{ width: '100%', margin: '6px 0 0' }}>
-                    <b>We set this one, not you.</b> {event.startTimeWhy || ''} Your invite and your vendor briefs won’t name an hour until you say it’s right (tap “that’s right” by the time above).
+                    <b>We set this one, not you.</b> {event.startTimeWhy || ''} Your invite and the details you send vendors won’t name an hour until you say it’s right (tap “that’s right” by the time above).
                   </p>
                 </>
               )}
@@ -17354,7 +17354,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the details' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -22910,7 +22910,7 @@ export default function HostShellV2() {
                 {sheet.vendorQr ? (
                   <>
                     <p className="grounding" style={{ margin: '2px 0 var(--sp-3)' }}>
-                      {(sheet.vendorQr.name || 'They')} scan{sheet.vendorQr.name ? 's' : ''} it to see their brief — arrival time, your address, their part of the day. Nothing about budget, payments, or other vendors.
+                      {(sheet.vendorQr.name || 'They')} scan{sheet.vendorQr.name ? 's' : ''} it to see the details — arrival time, your address, their part of the day. Nothing about budget, payments, or other vendors.
                     </p>
                     {sheet.vendorQr.dataUrl && (
                       <div style={{ background: '#ffffff', borderRadius: 'var(--r-lg)', padding: 18, display: 'flex', justifyContent: 'center' }}>
@@ -26411,7 +26411,7 @@ export default function HostShellV2() {
                   <div className="fstat-list" style={{ margin: '0 0 var(--sp-3)' }}>
                     <button className="fstat" style={{ borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }} onClick={() => setSheet(s => ({ ...s, marketOpen: true }))}>
                       <span className="fstat-l">Which market</span>
-                      <RowValue status={rowStatus({ settled: !!metroMkt })} chev>{metroMkt ? metroMkt.label : metroSuggest ? `Suggested: ${metroSuggest.market.label}` : 'National baseline'}</RowValue>
+                      <RowValue status={rowStatus({ settled: !!metroMkt })} chev>{metroMkt ? metroMkt.label : metroSuggest ? `Suggested: ${metroSuggest.market.label}` : 'National prices · no area set'}</RowValue>
                     </button>
                   </div>
                 ) : (
@@ -26437,7 +26437,7 @@ export default function HostShellV2() {
                         patchEvent({ market: id || null, metroMarket: null },
                           m ? `Estimates now use ${m.label} typical rates.` : 'Back to a national baseline — no market set.');
                       }}>
-                      <option value="">National baseline — no market set</option>
+                      <option value="">National prices — no area set</option>
                       {[1, 2, 3, 4].map(tier => (
                         <optgroup key={tier} label={`Tier ${tier} — ${METRO_TIER_LABEL[tier].label}`}>
                           {METRO_MARKETS.filter(m => m.tier === tier).map(m => (
@@ -26812,7 +26812,9 @@ export default function HostShellV2() {
                                   same six axes listed underneath — never a seventh. */}
                               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
                                 <strong style={{ fontSize: 'var(--t-row)' }}>{rd.label}</strong>
-                                {rd.summary && <span className="grounding" style={{ margin: 0 }}>{rd.summary}</span>}
+                                {/* Said once (cohesion audit #61): when the verdict's sentence
+                                    is one of the rows below, the row says it. */}
+                                {rd.summary && !axes.some(a => a.note === rd.summary) && <span className="grounding" style={{ margin: 0 }}>{rd.summary}</span>}
                               </div>
                               {/* ── THE NEXT ACTION POINTS AT THE CONTROL, IT DOES NOT COPY IT ──
                                   Slice 2. `getActionableNextStep` returns seven CTA kinds
@@ -26954,14 +26956,14 @@ export default function HostShellV2() {
                           {vConfirm && (
                             <div className="brow" style={{ marginBottom: 'var(--sp-3)' }}>
                               <div className="f-name" style={{ marginBottom: 3 }}>
-                                {vConfirm.state === 'confirmed' ? 'They confirmed the brief' : 'They flagged something'}
+                                {vConfirm.state === 'confirmed' ? 'They confirmed the details' : 'They flagged something'}
                                 <span className="tag plan" style={vConfirm.state === 'confirmed' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{vConfirm.state === 'confirmed' ? 'confirmed' : 'issue'}</span>
                               </div>
                               {(vConfirm.on_site_name || vConfirm.on_site_phone) && (
                                 <p className="grounding" style={{ margin: '0 0 2px' }}>On-site: {[vConfirm.on_site_name, vConfirm.on_site_phone].filter(Boolean).join(' · ')}</p>
                               )}
                               {vConfirm.note && <p className="grounding" style={{ margin: '0 0 2px' }}>“{vConfirm.note}”</p>}
-                              <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>Answered {(() => { try { return new Date(vConfirm.updated_at || vConfirm.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return 'recently'; } })()} — from the brief link you shared.</p>
+                              <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>Answered {(() => { try { return new Date(vConfirm.updated_at || vConfirm.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return 'recently'; } })()} — from the details link you sent.</p>
                             </div>
                           )}
                           {/* Contact info — a vendor added from a suggested category
@@ -26999,11 +27001,11 @@ export default function HostShellV2() {
                               bookkeeping and never leaves this cockpit). */}
                           <div className="actions-row" style={{ marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
                             <input className="field" style={{ maxWidth: 220, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="your contact there"
-                              value={v.contactName || ''} onChange={e => writeVendor(v.id, { contactName: e.target.value }, null)} aria-label="Your contact at this vendor, greeted in their brief" />
+                              value={v.contactName || ''} onChange={e => writeVendor(v.id, { contactName: e.target.value }, null)} aria-label="Your contact at this vendor, greeted by name in the details" />
                           </div>
                           <textarea className="field" style={{ maxWidth: 'none', width: '100%', boxSizing: 'border-box', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 10px', marginBottom: 'var(--sp-2)', resize: 'vertical' }}
                             placeholder="A note for them — parking, load-in door, anything they should know before they arrive" rows={2}
-                            value={v.briefNote || ''} onChange={e => writeVendor(v.id, { briefNote: e.target.value }, null)} aria-label="Note shared with this vendor in their brief" />
+                            value={v.briefNote || ''} onChange={e => writeVendor(v.id, { briefNote: e.target.value }, null)} aria-label="Note for this vendor, sent with the details" />
                           {/* Agent Opportunity Audit P0 — paste the vendor's reply, review
                               the extracted fields, apply through writeVendor. */}
                           <VendorReplyParserV2 vendor={v} event={event} writeVendor={writeVendor} signedIn={!!session} onSignIn={() => setSheet({ kind: 'settings' })} />
@@ -27198,7 +27200,7 @@ export default function HostShellV2() {
                                 </button>
                               </div>
                             )), more > 0 ? (
-                              <p key="more" className="vc-detail">+{more} more open — the vendor's own brief covers the rest.</p>
+                              <p key="more" className="vc-detail">+{more} more open — the details you send them list the rest.</p>
                             ) : null];
                           })()}
                           {/* ── THE COI ROW (host: "create the COI piece", 2026-07-29) ──────
@@ -27440,7 +27442,8 @@ export default function HostShellV2() {
                                 gated mint as before (shareVendorBrief — first vendor free,
                                 the pass after), now handed back as a pre-written text the
                                 host sends from their OWN phone. Only this button's words
-                                changed; "vendor brief" stays everywhere else for now. */}
+                                changed then; cohesion batch B (11/24/2026) gave the page,
+                                the toasts and the labels the same name: "the details". */}
                             <button className="mini" data-vaction="send-details" onClick={() => shareVendorBrief(v)}>
                               {vendorGreetingName(v) ? `Send ${vendorGreetingName(v)} the details` : 'Send the details'}
                             </button>
@@ -27461,17 +27464,17 @@ export default function HostShellV2() {
                           {vendorBrief && vendorBrief.vendorId === v.id && (
                             <div data-vbrief-panel={v.id} style={{ marginTop: 'var(--sp-2)', padding: 'var(--field-pad)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', scrollMarginBottom: 96 }}>
                               {vendorBrief.minting ? (
-                                <p className="vc-detail" style={{ margin: 0 }}>Putting the brief together…</p>
+                                <p className="vc-detail" style={{ margin: 0 }}>Putting the details together…</p>
                               ) : vendorBrief.error ? (
                                 // A failed mint: no link was made, and nothing
                                 // here pretends one was. One honest next step.
                                 <div role="alert" data-brief-error={vendorBrief.error}>
                                   <p className="vc-detail" style={{ margin: '0 0 var(--sp-2)' }}>
                                     {vendorBrief.error === 'pass-required'
-                                      ? 'Sharing this brief takes the One-Event Pass. No link was made.'
+                                      ? 'Sending these details takes the One-Event Pass. No link was made.'
                                       : vendorBrief.error === 'signed-out'
-                                        ? 'You’re not signed in on this browser — sign in to share the brief. No link was made.'
-                                        : 'Couldn’t create the brief link. Try again.'}
+                                        ? 'You’re not signed in on this browser — sign in to send the details. No link was made.'
+                                        : 'Couldn’t create the link to the details. Try again.'}
                                   </p>
                                   <div className="actions-row">
                                     {vendorBrief.error === 'pass-required' ? (
@@ -27542,9 +27545,9 @@ export default function HostShellV2() {
                                   <p className="vc-detail" style={{ margin: 'var(--sp-3) 0 var(--sp-1)' }}>Who should vendors call on the day? Leave blank and it’s you.</p>
                                   <div className="actions-row" style={{ marginTop: 0, flexWrap: 'wrap' }}>
                                     <input className="field" style={{ maxWidth: 190, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="day-of contact name"
-                                      value={event.briefContactName || ''} onChange={e => patchEvent({ briefContactName: e.target.value })} aria-label="Day-of contact name for vendor briefs" />
+                                      value={event.briefContactName || ''} onChange={e => patchEvent({ briefContactName: e.target.value })} aria-label="Day-of contact name vendors see" />
                                     <input className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="their phone" type="tel"
-                                      value={event.briefContactPhone || ''} onChange={e => patchEvent({ briefContactPhone: formatPhoneUS(e.target.value) })} aria-label="Day-of contact phone for vendor briefs" />
+                                      value={event.briefContactPhone || ''} onChange={e => patchEvent({ briefContactPhone: formatPhoneUS(e.target.value) })} aria-label="Day-of contact phone vendors see" />
                                   </div>
                                   <p className="vc-detail" style={{ margin: 'var(--sp-2) 0 0' }}>{(v.name || 'They')} will see only their arrival time, your address, their part of the day, who to call, and — if they bring food, drink or rentals — your guest count. Nothing about budget, payments, guests’ names, or other vendors.</p>
                                 </>
@@ -27563,7 +27566,7 @@ export default function HostShellV2() {
                       list (toCSV + COLUMNS.vendors already define the format);
                       missing fields export empty, exactly what's tracked. */}
                   <button className="fold-btn" onClick={exportVendorsCsv}>
-                    Download the vendor list (CSV)
+                    Download the vendor list as a spreadsheet
                   </button>
                   </Panel>
                 </>

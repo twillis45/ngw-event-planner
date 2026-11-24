@@ -188,7 +188,7 @@ const holidayParty = {
     { category: 'Bartender / Bar service', required: false, altToDIY: 'A trained bartender ($150-400) is the single strongest over-serving + liability safeguard — they control the pour, ID-check, and cut off. Self-serve removes that.', when: 'T-21d', costRange: [150, 400], costUnit: 'flat' },
     { category: 'DJ / Music', required: false, altToDIY: 'A curated 4-hour playlist on a good speaker covers most parties; a DJ ($400-800) adds energy + an MC for the toast at larger/corporate events', when: 'T-21d', costRange: [400, 800], costUnit: 'flat' },
     { category: 'Rentals', required: false, altToDIY: 'Borrow/buy for small home parties; rent glassware, high-tops, linens, warmers, and a coat rack once you cross ~25 guests', when: 'T-14d', costRange: [150, 600], costUnit: 'flat' },
-    { category: 'Cleaning', required: false, altToDIY: 'A post-party cleaner ($120-250) is high-ROI for host sanity after a 35-guest party', when: 'T-7d', costRange: [120, 250], costUnit: 'flat' },
+    { category: 'Cleaning', required: false, altToDIY: 'A post-party cleaner ($120-250) saves you the cleanup after a 35-guest party', when: 'T-7d', costRange: [120, 250], costUnit: 'flat' },
     { category: 'Event insurance / liability rider', required: false, altToDIY: 'A one-day event liability policy or host-liquor-liability rider (often $75-200) is worth pricing when serving a full bar, especially corporate', when: 'T-14d', costRange: [75, 200], costUnit: 'flat' },
   ],
 

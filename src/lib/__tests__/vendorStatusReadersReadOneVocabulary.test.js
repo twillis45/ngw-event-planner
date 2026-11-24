@@ -138,7 +138,7 @@ describe('vendorIntelligence reads the canonical sets', () => {
   it('Considering is not booked and Quoted needs a decision', () => {
     expect(getVendorChallengeSummary(vendorAt('Considering'), EVENT).booking.level).toBe('not_started');
     expect(getVendorChallengeSummary(vendorAt('Quoted'), EVENT).booking.note)
-      .toBe('Quoted — needs decision before booking.');
+      .toBe('Got a price — your call to book them or pass.');
   });
 
   // NEGATIVE CONTROL — the unknown-word fallback must survive. It is the branch

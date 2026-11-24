@@ -95,7 +95,7 @@ function Holding({ title, body, busy }) {
   return (
     <div className="stagewrap"><div className="app" style={TONE}><div className="content">
       <section style={{ paddingTop: 120, textAlign: 'center' }} aria-busy={busy ? 'true' : undefined}>
-        <div className="eyebrow">Vendor brief</div>
+        <div className="eyebrow">The details</div>
         {title && <h1 className="mega" style={{ fontSize: 'var(--t-display-l)', lineHeight: 1.1 }}>{title}</h1>}
         <p className="mega-sub" style={{ fontSize: 'var(--t-body-s)' }} aria-live="polite">{body}</p>
       </section>
@@ -124,9 +124,9 @@ export default function VendorBriefV2({ token }) {
 
   const brief = snapshot || resolved;
   if (brief) return <BriefPage brief={brief} briefCode={snapshot ? null : token} />;
-  if (isCode && resolved === undefined) return <Holding busy body="Loading your brief…" />;
+  if (isCode && resolved === undefined) return <Holding busy body="Loading the details…" />;
   // Invalid, revoked, or corrupt token.
-  return <Holding title="This link isn’t live anymore" body="Ask whoever sent it for a fresh brief link." />;
+  return <Holding title="This link isn’t live anymore" body="Ask whoever sent it for a fresh link." />;
 }
 
 function BriefPage({ brief: b, briefCode }) {
@@ -149,7 +149,7 @@ function BriefPage({ brief: b, briefCode }) {
   const where = formatVenueAddress(ev);
 
   const textBrief = [
-    sender ? `${sender} — Vendor brief` : 'Vendor brief',
+    sender ? `${sender} — The details` : 'The details',
     `Event: ${b.eventName || 'Event'}`,
     days,
     starts ? `Guests arrive: ${starts}` : '',
@@ -178,7 +178,7 @@ function BriefPage({ brief: b, briefCode }) {
       <div className="app" style={TONE}><div className="content vb2-content">
         <section className="inv2 vb2" data-surface="vendor-brief-v2">
           <div className="inv2-sheet">
-            <div className="inv2-mast lp"><span>Vendor brief</span><span className="mr" aria-hidden /><span className="vb2-from">{fromLine}</span></div>
+            <div className="inv2-mast lp"><span>The details</span><span className="mr" aria-hidden /><span className="vb2-from">{fromLine}</span></div>
             {logo && <img className="vb2-logo" src={logo} alt={sender} />}
             <h1 className="inv2-name lp-display">{b.eventName || 'Event'}</h1>
             {(days || starts) && (
@@ -240,8 +240,8 @@ function BriefPage({ brief: b, briefCode }) {
             )}
 
             <div className="actions-row vb2-tools">
-              <button className="mini" onClick={copyBrief}>{copied ? 'Copied' : 'Copy the brief'}</button>
-              <button className="mini" onClick={() => window.print()}>Print the brief</button>
+              <button className="mini" onClick={copyBrief}>{copied ? 'Copied' : 'Copy the details'}</button>
+              <button className="mini" onClick={() => window.print()}>Print the details</button>
             </div>
           </div>
           <p className="inv2-fine vb2-foot">{fromLine}</p>

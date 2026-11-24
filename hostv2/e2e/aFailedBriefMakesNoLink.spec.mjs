@@ -76,7 +76,7 @@ test('(control) a mint that succeeds shows a live short link, not the snapshot',
 
 test('a mint that returns 500 makes no legacy link, shows the error, and emits an event', async ({ page }) => {
   const calls = await boot(page, { status: 500, json: { detail: 'could not mint brief link' } });
-  const alert = page.getByRole('alert').filter({ hasText: 'Couldn’t create the brief link. Try again.' });
+  const alert = page.getByRole('alert').filter({ hasText: 'Couldn’t create the link to the details. Try again.' });
   await expect(alert).toBeVisible();
   await noLinkMade(page);
   expect(calls.mint, 'an HTTP 500 is the server’s answer and is not silently retried').toBe(1);
@@ -94,7 +94,7 @@ test('a mint that returns 500 makes no legacy link, shows the error, and emits a
 
 test('a 402 says the brief takes the pass and opens the pass sheet — no link', async ({ page }) => {
   await boot(page, { status: 402, json: { detail: { reason: 'pass-required', detail: 'Sharing this brief takes the One-Event Pass.' } } });
-  const alert = page.getByRole('alert').filter({ hasText: 'Sharing this brief takes the One-Event Pass.' });
+  const alert = page.getByRole('alert').filter({ hasText: 'Sending these details takes the One-Event Pass.' });
   await expect(alert).toBeVisible();
   await noLinkMade(page);
   await expect.poll(async () => (await track(page, 'brief_mint_failed')).length).toBe(1);

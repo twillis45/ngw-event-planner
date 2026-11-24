@@ -240,8 +240,8 @@ test('the host names a day-of contact in the share panel, and it is saved on the
   // 11/15/2026: the link now also appears inside the pre-written message, so
   // the link line is addressed by its own marker; the assertion is unchanged.
   await expect(page.locator('[data-brief-url]')).toContainText('?vendor=' + CODE);
-  await page.getByLabel('Day-of contact name for vendor briefs').fill('Sam Ortiz');
-  await page.getByLabel('Day-of contact phone for vendor briefs').fill('5550103000');
+  await page.getByLabel('Day-of contact name vendors see').fill('Sam Ortiz');
+  await page.getByLabel('Day-of contact phone vendors see').fill('5550103000');
   await expect.poll(async () => {
     const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]'));
     const ev = stored.find((x) => x.id === EVENT.id) || {};

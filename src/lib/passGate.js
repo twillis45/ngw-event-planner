@@ -226,9 +226,9 @@ export function creationDisclosure(verdict, cents = PASS_PRICE_CENTS) {
   const pass = (formatPassPrice(cents) ? formatPassPrice(cents) + ' ' : '') + 'One-Event Pass';
   const r = lockingReasons(verdict);
   if (r.length > 0) {
-    return 'This is a ' + (r.includes('destination') ? 'destination' : 'multi-day') + ' event. Planning it is free. Its trip tools and sharing vendor briefs take the ' + pass + '.';
+    return 'This is a ' + (r.includes('destination') ? 'destination' : 'multi-day') + ' event. Planning it is free. Its trip tools and sending vendors the details take the ' + pass + '.';
   }
-  return 'Planning this event is free, including sharing one vendor brief (that takes a free account). Sharing with more than one vendor, or a destination or multi-day event, takes the ' + pass + '.';
+  return 'Planning this event is free, including sending one vendor the details (that takes a free account). Sending them to more than one vendor, or a destination or multi-day event, takes the ' + pass + '.';
 }
 
 /**
