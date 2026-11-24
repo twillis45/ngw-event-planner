@@ -268,6 +268,38 @@ const keyframes = (page, names) => page.evaluate((ns) => {
 const alphaOf = (s) => { const m = /(?:\/\s*|,\s*)([\d.]+)\)\s*(?:\d|$|[a-z])/i.exec(s || '') || /(?:\/\s*|,\s*)([\d.]+)\)/.exec(s || ''); return m ? Number(m[1]) : null; };
 const peakPct = (frames) => { let max = null; for (const f of frames || []) for (const m of f.matchAll(/(\d+(?:\.\d+)?)%,\s*transparent/g)) max = Math.max(max ?? 0, Number(m[1])); return max; };
 
+
+// Every rendered occurrence of the event name (Rosa…s Harvest), as shown
+// (innerText, so CSS uppercase is what a host reads), plus field values.
+const nameScan = (page, scopeSel, fields) => page.evaluate(([sel, fields]) => {
+  const roots = sel ? [...document.querySelectorAll(sel)].filter((e) => e.getClientRects().length) : [document.body];
+  if (sel === '.sheet') roots.splice(0, roots.length - 1);
+  if (!roots.length) return { hits: [], note: 'surface not found' };
+  const hits = new Set();
+  for (const root of roots) {
+    const txt = root.innerText || '';
+    for (const m of txt.matchAll(/\bROSA\S{0,3}\s+HARVEST(\s+DINNER)?|\bRosa\S{0,3}\s+[Hh]arvest(\s+[Dd]inner)?/g)) hits.add(m[0]);
+    if (fields) for (const f of root.querySelectorAll('textarea, input')) for (const m of String(f.value || '').matchAll(/\bRosa\S{0,3}\s+[Hh]arvest(\s+[Dd]inner)?/gi)) hits.add(m[0]);
+  }
+  return { hits: [...hits] };
+}, [scopeSel, !!fields]);
+// A hit keeps the apostrophe when the letters before "s" carry the same mark.
+const judge = (surf, ap) => {
+  const bad = [], lines = [];
+  for (const [k, v] of Object.entries(surf)) {
+    if (!v || !Array.isArray(v.hits)) continue;
+    if (!v.hits.length) { lines.push(`${k}: name not shown`); continue; }
+    for (const h of v.hits) {
+      const m = /rosa(\S{0,3})s/i.exec(h.replace(/^title: /, ''));
+      const mark = m ? m[1] : '';
+      const ok = mark === ap;
+      lines.push(`${k}: ${h} ${ok ? 'OK' : mark ? `CHANGED to ${JSON.stringify(mark)}` : 'DROPPED'}`);
+      if (!ok) bad.push(`${k} "${h}"`);
+    }
+  }
+  return { bad, lines };
+};
+
 // ── the run ──────────────────────────────────────────────────────────────────
 async function step(rec, vpRec, name, page, fn, shotDir) {
   const s = { name, ok: false, console: [], http: [], blocked: [], texts: {}, floors: null, error: null, shot: null };
@@ -454,6 +486,88 @@ async function runViewport(browser, vp, runDir, meta) {
       return t;
     }, shotDir);
     await ctx.close();
+  }
+
+  // 6. THE NAME KEEPS ITS APOSTROPHE (parent, 11/24: "MOM LINDAS" on the
+  // iPad-landscape eyebrow vs "Mom Linda's" on the invite). Straight and curly,
+  // seeded and typed into creation. Read-only: the invite draft is opened and
+  // read, never copied or sent; the invite page is the local preview.
+  for (const [tag, ap] of [['straight', "'"], ['curly', '’']]) {
+    const NAME = `Rosa${ap}s Harvest Dinner`;
+    const want = (ap === "'" ? 'straight' : 'curly');
+    // a) seeded: board, What's counted, the invite draft, the invite page
+    {
+      const ev = { ...EV, id: 'lc-apos-' + tag, rsvpCode: 'lc-apos-' + tag + '-code', name: NAME };
+      const { ctx, page } = await newPage(browser, vp, { rec, seeded: false });
+      await page.addInitScript(seed, ev);
+      await page.addInitScript((e) => localStorage.setItem('ngw-hostv2-custom-event', JSON.stringify(e)), ev);
+      await step(rec, vpRec, `name-${tag}-seeded`, page, async () => {
+        await page.goto(SITE + Q);
+        await settled(page);
+        await page.waitForTimeout(600);
+        const surf = {};
+        surf.eyebrow = await nameScan(page, '.ev-eyebrow .eb-text, [data-tt-head] .tt-r1, .ev-eyebrow');
+        surf.title = await nameScan(page, '[data-tt-title], .hero h1, h1');
+        surf.tabTitle = await page.evaluate(() => ({ hits: /rosa/i.test(document.title) ? [document.title] : [] }));
+        // What's counted, opened
+        const panel = page.locator('#whats-counted');
+        if (await panel.count()) {
+          if ((await panel.getAttribute('inert')) !== null) await page.locator('[data-pp-line]:visible, [aria-controls="whats-counted"]:visible').first().click({ timeout: 6000 }).catch(() => {});
+          await page.waitForTimeout(700);
+          surf.whatsCounted = await nameScan(page, '#whats-counted');
+        }
+        // The invite draft (the share text), read in its sheet
+        await openSection(page, 'Guests & invite');
+        const sh = page.locator('.sheet').last();
+        const more = sh.getByRole('button', { name: /^More/ });
+        if (!(await sh.getByRole('button', { name: 'Copy the invite' }).count()) && await more.count()) await more.first().click().catch(() => {});
+        const copyBtn = sh.getByRole('button', { name: 'Copy the invite' });
+        if (await copyBtn.count()) {
+          await copyBtn.first().click({ timeout: 6000 });
+          await page.waitForTimeout(2500);
+          surf.inviteDraft = await nameScan(page, '.sheet', true);
+          surf.inviteDraftSheet = (await page.locator('#sheet-title').last().innerText().catch(() => '')).trim();
+        } else surf.inviteDraft = { note: 'no "Copy the invite" button' };
+        await closeSheets(page);
+        // The guest invite page, from this device's copy of the event
+        const g = await ctx.newPage();
+        await g.clock.setFixedTime(new Date(NOW));
+        await g.goto(SITE + Q + '&rsvp=' + ev.rsvpCode);
+        await g.locator('.inv2-ask, [class*=inv2]').first().waitFor({ state: 'visible', timeout: 20_000 }).catch(() => {});
+        await g.waitForTimeout(1000);
+        surf.invitePage = await nameScan(g, null);
+        surf.invitePageTab = await g.evaluate(() => ({ hits: /rosa/i.test(document.title) ? [document.title] : [] }));
+        await g.close();
+        const verdict = judge(surf, ap);
+        if (verdict.bad.length) throw new Error(`${want} apostrophe lost/changed on: ${verdict.bad.join('; ')}`);
+        return { name: NAME, surfaces: surf, verdict: verdict.lines };
+      }, shotDir);
+      await ctx.close();
+    }
+    // b) typed into creation: what the parser stores and the board shows
+    {
+      const { ctx, page } = await newPage(browser, vp, { rec, seeded: false });
+      await step(rec, vpRec, `name-${tag}-created`, page, async () => {
+        await page.goto(SITE + Q);
+        await page.getByRole('button', { name: 'Start my event' }).first().click({ timeout: 30_000 });
+        await page.getByPlaceholder(/crab feast/i).first().fill(`${NAME} for 12 friends at our home, 42 Elm Ct, Springfield, VA 22150, on Saturday December 19 at 6pm, budget $900`);
+        await page.getByRole('button', { name: /^Put my plan together$/ }).click({ timeout: 8000 });
+        const open = page.getByRole('button', { name: /^Open (your|my) plan/ });
+        await open.waitFor({ timeout: 30_000 });
+        const surf = { reveal: await nameScan(page, null) };
+        await open.click();
+        await settled(page);
+        await page.waitForTimeout(800);
+        surf.eyebrow = await nameScan(page, '.ev-eyebrow .eb-text, [data-tt-head] .tt-r1, .ev-eyebrow');
+        surf.title = await nameScan(page, '[data-tt-title], .hero h1, h1');
+        const stored = await page.evaluate(() => (JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]').at(-1) || {}).name);
+        surf.stored = { hits: [stored || ''] };
+        const verdict = judge(surf, ap);
+        if (verdict.bad.length) throw new Error(`${want} apostrophe lost/changed on: ${verdict.bad.join('; ')}`);
+        return { typed: NAME, stored, surfaces: surf, verdict: verdict.lines };
+      }, shotDir);
+      await ctx.close();
+    }
   }
 
   // 5. THE GUEST INVITE PAGE (view only)

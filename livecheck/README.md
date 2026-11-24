@@ -23,6 +23,8 @@ only — controls under 44×44 probed with `elementFromPoint` from the centre ou
 method of `hostv2/e2e/everyTapIsFortyFourSquare.spec.mjs`; inline links in a sentence exempt).
 Floors are measured in the open sheet when one is open, else the page.
 
+**Name check** (added 11/24 for the parent): "Rosa's" and "Rosa’s Harvest Dinner", seeded and typed into creation; eyebrow, title, What's counted, the "Copy the invite" draft (opened and read, never copied) and the local invite page must keep the same apostrophe. `probe-name-parse.cjs` tries the "Mom Linda's" wordings through creation.
+
 **Journeys** at 390×844, 834×1194, 1024×1366, 1194×834 (touch) and 1440×900:
 new host (create → sentence → put together → open, unsaved); board (hero ask, lit buttons,
 one `[data-cue]` with its keyframe peak and resting ring alpha, What's counted parts each
