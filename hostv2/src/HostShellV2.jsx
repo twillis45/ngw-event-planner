@@ -13454,7 +13454,11 @@ export default function HostShellV2() {
                           || /\bneeds? you today\b|\bfor the day\b/i.test(String(a.title || '')))).length;
                         const late = queue.some((a) => a && a.dueInDays != null && Number(a.dueInDays) < 0);
                         const when = dueToday ? `${dueToday} due today` : late ? 'if there’s time' : 'not today’s job';
-                        return <div className="sect" id="actionsAnchor"><h2>Still open from planning</h2><div className="rule" /><span className="when">{when}</span></div>;
+                        const todayList = queue.filter((a) => a && (a.level === 'critical' || (a.dueInDays != null && Number(a.dueInDays) === 0)
+                          || /\bneeds? you today\b|\bfor the day\b/i.test(String(a.title || '')))).length;
+                        return todayList
+                          ? <div className="sect" id="actionsAnchor"><h2>Still to do today</h2><div className="rule" /><span className="when">{todayList} left</span></div>
+                          : <div className="sect" id="actionsAnchor"><h2>Still open from planning</h2><div className="rule" /><span className="when">{when}</span></div>;
                       })()
                     : <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>}
               {plan && plan.planningState && plan.planningState.reasoning && (() => {
@@ -13592,7 +13596,12 @@ export default function HostShellV2() {
                 })();
                 const queueCap = queueFocus != null ? queueFocus : QUEUE_CAP;
                 const queueFolded = queueFocus != null && !queueOpen;
-                const visible = queueOpen ? shown : shown.slice(0, queueCap);
+                // RENDER PROPOSAL (cohesion batch A, not approved): on the day,
+                // only what is due today (or critical) shows; the rest of the
+                // planning folds behind one row.
+                const dayToday = (a) => a && (a.level === 'critical' || (a.dueInDays != null && Number(a.dueInDays) === 0)
+                  || /\bneeds? you today\b|\bfor the day\b/i.test(String(a.title || '')));
+                const visible = queueOpen ? shown : (dayHero ? shown.filter(dayToday) : shown.slice(0, queueCap));
                 const hiddenCount = shown.length - visible.length;
                 // Time-to-window, worn quietly on the card (engine contract:
                 // actions MAY carry dueInDays; absent = say nothing).
@@ -14260,10 +14269,10 @@ export default function HostShellV2() {
                   It still renders elsewhere (non-elegant shows real cards), where the label
                   now matches the disclosure scale of its siblings instead of out-typing
                   them — it was --muted/550 at body size against their --faint/450/12.5px. */}
-              {hiddenCount > 0 && !(nearDayPlan && !queueOpen) && !(elegantMode && askMode) && (
+              {hiddenCount > 0 && !(nearDayPlan && !queueOpen && !dayHero) && !(elegantMode && askMode) && (
                 <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: 'pointer', padding: '9px 0' }}
                   onClick={() => setQueueOpen(true)}>
-                  <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>+ {hiddenCount} more — show the rest</span>
+                  <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{dayHero ? `${hiddenCount} more from planning, if there’s time` : `+ ${hiddenCount} more — show the rest`}</span>
                   {/* setQueueOpen is an in-place expand, so this is a disclosure, not a
                       route (board re-sit 2026-07-30 — the third survivor of the glyph
                       rule ruling A enforced on decopt-disc only). */}
