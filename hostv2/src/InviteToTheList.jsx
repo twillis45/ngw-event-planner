@@ -19,8 +19,8 @@ import { inviteRecipients, inviteContacts, sendInviteEmails, smsHref } from '@ap
 // itself), or, while the text queue runs, "Text {name}"; then the email step
 // goes quiet. `onLead(true)` tells the sheet this block holds its one primary,
 // so the sheet's own "Share…" stands down to a quiet button.
-export default function InviteToTheList({ guests, draft, canEmail, sendOne, onReached, onLead }) {
-  const r = inviteRecipients(guests);
+export default function InviteToTheList({ guests, told, draft, canEmail, sendOne, onReached, onLead }) {
+  const r = inviteRecipients(guests, told);
   const [step, setStep] = useState('idle');          // idle | confirm | sending | done
   const [progress, setProgress] = useState([0, 0]);
   const [result, setResult] = useState(null);

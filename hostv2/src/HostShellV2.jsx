@@ -23520,7 +23520,7 @@ export default function HostShellV2() {
                   </div>
                 )}
                 {sheet.sendsInvite && (
-                  <InviteToTheList guests={event.guests} draft={shownDraft()}
+                  <InviteToTheList guests={event.guests} told={guestToldMap(event)} draft={shownDraft()}
                     canEmail={isCommApiConfigured() && !!session}
                     sendOne={sendInviteTo} onReached={reachInvite} onLead={setDraftListLead} />
                 )}
@@ -28345,7 +28345,7 @@ export default function HostShellV2() {
               // THE INVITE TO THE WHOLE LIST (owner, 11/19/2026). Same draft as
               // "Copy the invite", named for what it now does; shown while some
               // guest can still be reached and has not been invited.
-              const _reachable = (() => { const r = inviteRecipients(event.guests); return r.email.length + r.text.length; })();
+              const _reachable = (() => { const r = inviteRecipients(event.guests, guestToldMap(event)); return r.email.length + r.text.length; })();
               _inviteActs.list = _reachable > 0
                 ? { label: `Invite your guest list (${_reachable})`, onClick: () => openInviteDraft('Your invite', draftInvite, { sendsInvite: true }), data: 'invite-list' }
                 : null;

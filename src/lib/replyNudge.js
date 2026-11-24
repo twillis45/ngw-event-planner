@@ -21,7 +21,8 @@
 // is optional and exists so tests can pin the day.
 import { isMalformedEmail } from './contactFormat';
 import { rsvpHasResponded } from './rsvp';
-import { guestToldMap, isTold } from './guestTold';
+import { guestToldMap } from './guestTold';
+import { guestWasInvited } from './inviteBatch';
 import { showsReplyTracking } from './guestMode';
 import { daysUntil, isPastEvent, localISO, rsvpDeadlineFor } from './dates';
 import { emailStatus } from './messageTimeline';
@@ -37,9 +38,7 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 /** Did this guest's invite go out? The batch wrote `invitedAt`, or the host marked them told. */
 export function wasInvited(event, guest) {
-  if (!guest) return false;
-  if (guest.invitedAt) return true;
-  return guest.id != null && isTold(guestToldMap(event), guest.id);
+  return guestWasInvited(guest, guestToldMap(event));
 }
 
 /** Whole calendar days since the guest's last nudge (0 = today), or null if never nudged. */
