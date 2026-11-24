@@ -1,0 +1,152 @@
+From 5501fbeded0eacb1c2a990ce8f235e1672abaff9 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 24 Nov 2026 23:29:48 +0000
+Subject: [PATCH] The full invite shows in place
+
+'See the full invite' opened the public ?rsvp= link in a new tab, which shows
+the SAVED invite (Classic while the host had picked At a glance), and the
+440px preview window cut off the reply buttons. The button now opens the same
+preview to the whole draft invite, in place, and toggles back (Show less).
+
+New spec: e2e/theFullInviteShowsInPlace.spec.mjs (all 7 projects). The
+invite specs (theHostChoosesTheInvite, theInviteWearsItsColors) still pass:
+112 passed.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01AvdmPMBVcZtcxNoy5hTjAV
+---
+ hostv2/e2e/theFullInviteShowsInPlace.spec.mjs | 78 +++++++++++++++++++
+ hostv2/src/InviteDesignSheet.jsx              | 11 ++-
+ hostv2/src/styles.css                         |  1 +
+ 3 files changed, 88 insertions(+), 2 deletions(-)
+ create mode 100644 hostv2/e2e/theFullInviteShowsInPlace.spec.mjs
+
+diff --git a/hostv2/e2e/theFullInviteShowsInPlace.spec.mjs b/hostv2/e2e/theFullInviteShowsInPlace.spec.mjs
+new file mode 100644
+index 00000000..ce937e31
+--- /dev/null
++++ b/hostv2/e2e/theFullInviteShowsInPlace.spec.mjs
+@@ -0,0 +1,78 @@
++// ─── THE FULL INVITE SHOWS IN PLACE (owner, iPad, 11/24/2026) ───────────────
++//
++// "Not showing full preview." The Invite page's live preview is a 440px
++// window, so the bottom of the invite (the reply buttons and below) was cut
++// off, and "See the full invite" opened the public ?rsvp= link in a new tab:
++// the SAVED invite, so a host who had just picked "At a glance" saw Classic
++// there (measured live on e1ff88b at 1194x834, 1024x768 and 390x844).
++//
++// Now the button opens the same preview to the whole invite, built from the
++// draft she is editing, and toggles back. No new tab. Made-up event; nothing
++// is sent (every API request is answered here).
++import { test, expect, dateIn, sheetSettled } from './fixtures.mjs';
++
++const API = 'https://e2e-mock.invalid';
++const EVENT = {
++  id: 'cust-full-invite', rsvpCode: 'full-invite-code-000001',
++  name: 'Rosa’s Harvest Dinner', type: 'Dinner Party', date: dateIn(2), startTime: '18:00', startTimeSource: 'host',
++  venueAddress: '42 Elm Ct', venueCity: 'Springfield', venueState: 'VA', venueZip: '22150',
++  hostName: 'Rosa Vale', rsvpDeadline: dateIn(1),
++  guestEstimate: 12, guestMode: 'count', guests: [], vendors: [], budget: [], timeline: [],
++};
++
++const openPanel = async (page) => {
++  await page.addInitScript((e) => {
++    if (sessionStorage.getItem('seeded')) return;
++    sessionStorage.setItem('seeded', '1');
++    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
++    localStorage.setItem('ngw-hostv2-last-event', e.id);
++    localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
++    localStorage.setItem('ngw-welcomed', '1'); localStorage.setItem('ngw-v2-welcomed', '1');
++  }, EVENT);
++  await page.route(`${API}/**`, (route) => route.fulfill({ status: 404, json: { detail: 'not found' } }));
++  await page.goto('?open=invite');
++  await expect(page.locator('#sheet-title')).toHaveText('Invite page', { timeout: 10_000 });
++  await sheetSettled(page);
++  await expect(page.locator('[data-invite-preview] .inv2-sheet')).toBeVisible();
++};
++
++const frame = (page) => page.evaluate(() => {
++  const f = document.querySelector('[data-invite-preview]');
++  return { clientH: f.clientHeight, scrollH: f.scrollHeight };
++});
++
++test('"See the full invite" opens the preview to the whole draft invite, in place, and closes again', async ({ page, context }) => {
++  await openPanel(page);
++  // Pick the layout that is NOT saved, so the full view must be the draft.
++  await page.getByRole('radiogroup', { name: 'Layout' }).getByRole('radio', { name: /At a glance/ }).click();
++  const pv = page.locator('[data-invite-preview]');
++  await expect(pv.locator('.inv2-sheet')).toHaveAttribute('data-invite-layout', 'glance');
++
++  const btn = page.getByRole('button', { name: 'See the full invite' });
++  await expect(btn).toHaveAttribute('aria-expanded', 'false');
++  const box = await btn.boundingBox();
++  expect(box.height).toBeGreaterThanOrEqual(44);
++
++  let opened = false;
++  context.on('page', () => { opened = true; });
++  await btn.click();
++
++  // The whole invite is in view: nothing clipped, the reply buttons and the
++  // notice below them inside the frame.
++  await expect(page.getByRole('button', { name: 'Show less' })).toHaveAttribute('aria-expanded', 'true');
++  await expect.poll(async () => { const f = await frame(page); return f.scrollH - f.clientH; }).toBeLessThanOrEqual(1);
++  await expect(pv.locator('.inv2-sheet')).toHaveAttribute('data-invite-layout', 'glance');
++  const fr = await pv.boundingBox();
++  for (const label of [/Yes, I.m in/i, /Maybe/i]) {
++    const r = await pv.getByRole('radio', { name: label }).first().boundingBox();
++    expect(r.y + r.height, `${label} inside the frame`).toBeLessThanOrEqual(fr.y + fr.height + 1);
++  }
++  await expect(pv).toContainText('Just a preview');
++  expect(opened, 'no new tab').toBe(false);
++  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
++
++  // And back to the window.
++  await page.getByRole('button', { name: 'Show less' }).click();
++  await expect(page.getByRole('button', { name: 'See the full invite' })).toHaveAttribute('aria-expanded', 'false');
++  expect((await frame(page)).clientH).toBeLessThanOrEqual(441);
++});
+diff --git a/hostv2/src/InviteDesignSheet.jsx b/hostv2/src/InviteDesignSheet.jsx
+index 7daff622..5ff8db34 100644
+--- a/hostv2/src/InviteDesignSheet.jsx
++++ b/hostv2/src/InviteDesignSheet.jsx
+@@ -44,6 +44,12 @@ export default function InviteDesignSheet({
+   const [paper, setPaper] = useState(event.inviteStyle || '');
+   const [crest, setCrest] = useState(event.inviteCrest === 'off' ? 'off' : '');
+   const [open, setOpen] = useState('');            // which "other option" row is open
++  // THE FULL INVITE, IN PLACE (owner, iPad, 11/24/2026: "Not showing full
++  // preview"). The preview is a 440px window; "See the full invite" opened the
++  // public ?rsvp= link in a new tab, which shows the SAVED invite (Classic
++  // while she had picked At a glance) and, signed in, the server's copy. It now
++  // opens the window to the whole invite, built from this same draft.
++  const [full, setFull] = useState(false);
+   const [contactErr, setContactErr] = useState('');
+   const photoUrl = useMyHostPhoto((profile && profile.hostPhoto) || null);
+ 
+@@ -102,9 +108,10 @@ export default function InviteDesignSheet({
+       <div className="ivd-pv">
+         <div className="ivd-pv-top">
+           <span className="ivd-live"><i aria-hidden="true" />Live preview · {layout === 'glance' ? 'At a glance' : 'Classic'}</span>
+-          <button type="button" className="ghost ivd-full" onClick={onSeeFull}>See the full invite</button>
++          <button type="button" className="ghost ivd-full" aria-expanded={full} aria-controls="ivd-pv-frame"
++            data-invite-full onClick={() => setFull((f) => !f)}>{full ? 'Show less' : 'See the full invite'}</button>
+         </div>
+-        <div className="ivd-pv-frame" data-invite-preview inert>
++        <div id="ivd-pv-frame" className={'ivd-pv-frame' + (full ? ' is-full' : '')} data-invite-preview data-full={full ? '1' : '0'} inert>
+           <Suspense fallback={<p className="grounding">Loading the preview…</p>}>
+             <InviteV2 code={event.rsvpCode || event.id} preview={draft} previewPhotoUrl={photoUrl} />
+           </Suspense>
+diff --git a/hostv2/src/styles.css b/hostv2/src/styles.css
+index 817e96d5..48423267 100644
+--- a/hostv2/src/styles.css
++++ b/hostv2/src/styles.css
+@@ -9086,6 +9086,7 @@ input[data-cue], textarea[data-cue]{ outline:revert-layer; border-color:color-mi
+ .ivd-live i{ width:7px; height:7px; border-radius:50%; background:var(--ok); }
+ .ivd-full{ min-height:44px; }
+ .ivd-pv-frame{ max-height:440px; overflow:hidden; border-radius:var(--r-lg) var(--r-lg) 0 0; }
++.ivd-pv-frame.is-full{ max-height:none; border-radius:var(--r-lg); margin-bottom:var(--sp-3); }
+ .ivd-h{ margin:var(--sp-5) 0 4px; font-size:var(--t-card-title, 19px); font-weight:750; letter-spacing:-.01em; }
+ .ivd-why{ margin:0 0 var(--sp-3); font-family:var(--serif-read); font-style:italic; color:var(--muted); line-height:1.4; }
+ .ivd-lab{ display:flex; justify-content:space-between; align-items:baseline; margin:0 0 8px; font-weight:650; }
+-- 
+2.43.0
+
