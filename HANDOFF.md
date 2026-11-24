@@ -17,6 +17,23 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 24, 2026 — cohesion batch B (vendors): the every-sheet sweep, the pills, the words; the vendor detail redesign waits on renders
+
+- **Ask (the parent session, for the owner):** batch B of the owner-approved cohesion audit (`docs/audits/2026-11-24_cohesion/AUDIT.md` on `audit/cohesion-1124`), systemic: a sweep over EVERY sheet first, then the vendor fixes. Layout changes stop at renders.
+- **The sweep (`hostv2/e2e/everySheetKeepsTheCohesionRules.spec.mjs`, probes in `floorProbes.mjs`).** Opens the board, all 20 section doors and an opened vendor with its status picker on Wanda's 50th, at mobile, desktop, tablet-tall and landscape, clock fixed. Rule 9 (44x44, touch only), rule 3 (remove/delete/skip last, alone, named), rule 2 (no field labeled only by a placeholder). What it still finds is in `cohesionSweepKnown.mjs`, by batch, asserted EXACTLY per sheet and project: a new violation fails, and so does a fixed one still listed. `everyTapIsFortyFourSquare` now imports the same tap probe.
+- **First run, red:** 20 failing (sheet x project). Rule 9: the status picker pills (audit #9). Rule 3: vendor "Remove from this event" not last and not named (#7). Rule 2: the vendor fields (#8), Venue's field, Make it yours' 8 fields, Ask's field.
+- **Fixed here:**
+  - #9: `.vc-statuspick button.vc-pill` is 44 tall for real. Rule 9 is now clean on every sheet at every touch geometry.
+  - #23: vendorIntelligence speaks host words ("You have a way to reach them", "Nothing to settle until the event is over", "5 of 6 look good · 1 can't be checked yet (after the event)"); "National prices · no area set"; "Download the vendor list as a spreadsheet"; no "high-ROI" in two playbooks. Test: `src/lib/__tests__/theVendorAxesSpeakHostWords.test.js`.
+  - #61: the next step names the open row instead of repeating its sentence; the verdict's sentence shows once.
+  - #24: the vendor page, its Copy/Print, the toasts, the QR sheet, the aria labels and the Create pricing line (`passGate.js`) all say "the details", as the host's button does.
+  - #21: The Day's people-you're-counting-on row (`dayBefore.js`) counts hired vendors (`hiredVendors`), the population the board and the sheet read.
+  - E2E: `theVendorsSpeakHostWords.spec.mjs` (no engine words on the sheet or any opened card; each sentence once; the vendor page's name).
+- **Waiting on the owner (renders on `renders/cohesion-b`, never merges):** the vendor detail redesign (#7, #8, #22, and #36's list truncation for reference). The sweep's batch B lines delete when it is built.
+- **Not changed, owner's call:** #55, the vendor page's "Hosting something of your own? Plan it free" line, is a Marketing & Pricing Board decision (11/18/2026) pinned by `planYoursSaysWhereItCameFrom`. The audit calls it P3 under rule 15; removing it needs the owner to overrule the board.
+- **Gates (measured):** root jest 936 suites, 14,078 passed, 1 skipped. hostv2 vitest 18 files, 166 passed. `e2e:build` exit 0. E2E, 45 specs (vendor, details, The Day, taps, lit buttons, demo, pass), mobile + desktop + tablet-tall + landscape, `--workers=4 --retries=0`, two chunks: 963 passed, 84 skipped, 4 failed in the first chunk (the sweep's two renamed aria labels; list updated, rerun 88 of 88 passed). Backend not touched.
+- 🔴 **Trap: a style rule for a phantom class must shrink `classNameHasRule`'s baseline** in the same commit (`.vc-statuspick`).
+
 ## November 24, 2026 — `origin/main` (`78c1e8c1`, with #249 and #250) merged into `shopdata-2utz0n`
 
 - **Ask (the parent session, which the owner told to merge this work):** merge `origin/main` with a merge commit, keep both sides' intent in the 8 conflicting files, rerun the gates, then push. The parent opens the PR and merges; this session does not.

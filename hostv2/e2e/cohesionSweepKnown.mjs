@@ -40,10 +40,10 @@ export const KNOWN = {
     2: [
       [ALL, "input \"Link to VFW Post 1847 — Freedom Hall’s s\""],
       [ALL, "input \"Vendor name\""],
-      [ALL, "input \"Your contact at this vendor, greeted in \""],
+      [ALL, "input \"Your contact at this vendor, greeted by \""],
       [ALL, "input[email] \"Vendor email\""],
       [ALL, "input[tel] \"Vendor phone\""],
-      [ALL, "textarea \"Note shared with this vendor in their br\""],
+      [ALL, "textarea \"Note for this vendor, sent with the deta\""],
       [ALL, "textarea \"Paste the vendor's message\""],
     ],
     3: [
