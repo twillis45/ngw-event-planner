@@ -4050,6 +4050,54 @@ export default function HostShellV2() {
     if (!renameTipShown) return;
     try { localStorage.setItem('ngw-rename-tip-seen', new Date().toISOString()); } catch { /* shown this visit only */ }
   }, [renameTipShown]);
+  // ── THE TITLE BLOCK, ONE FOR EVERY BOARD THAT SHOWS IT ───────────────────
+  // The tall iPad's and the phone's header (owner rulings 11/22–11/23/2026),
+  // and since 11/24/2026 the desktop's too: at 1280+ the board had only the ☰
+  // eyebrow, so rename in place had nothing to act on. `menu` is the desktop's
+  // ☰, kept as its menu at the head of the date line; the eyebrow's other
+  // words (date, name, type) are these rows, so nothing is printed twice.
+  const titleHead = (menu) => {
+    const e = boardEyebrow();
+    const theme = String(event.theme || '').trim();
+    const nm = String(event.name || '').trim();
+    const tail = theme ? ' — ' + theme : '';
+    const title = (tail && nm.endsWith(tail) && nm.length > tail.length) ? nm.slice(0, -tail.length) : nm;
+    const sub = [theme, e.type].filter(Boolean).join(' · ');
+    return (
+      <header className="tt-head" data-tt-head>
+        <div className="tt-r1">
+          {menu}
+          {!eventIsTheHostsOwn && <span className="tt-chip" data-sample-event>Sample</span>}
+          <span>{e.when}{e.when && e.urgency.length ? ' · ' : ''}<span data-tt-urgency>{e.urgency.join(' · ')}</span></span>
+          {/* The weather pill lands here when it would show (near the date). */}
+          {ttHead && <span className="tt-wx-slot" ref={setTtWxSlot} />}
+        </div>
+        {renaming === 'title' ? (
+          <div className="tt-title-row tt-renaming">
+            <EventNameField mode="title" name={event.name} onSave={renameTo} onCancel={() => setRenaming(null)} />
+          </div>
+        ) : (
+          <div className={'tt-title-row' + (isPlaceholderName(event) ? ' has-nameit' : '')}>
+            <button type="button" className="tt-title" data-tt-title aria-haspopup="dialog" title="Your events" {...titleHandlers}>
+              <span className="tt-name">{title || e.type || 'This event'}</span>
+              <span className="tt-caret" aria-hidden="true">▾</span>
+            </button>
+            {/* While the name is one creation filled in, a quiet way to name it. */}
+            {isPlaceholderName(event) && (
+              <button type="button" className="tt-nameit" data-name-it onClick={() => { setSheet(null); setRenaming('title'); }}>Name it</button>
+            )}
+          </div>
+        )}
+        {renameTipShown && (
+          <div className="tt-tip" data-rename-tip>
+            <span>Tip: press and hold the name to rename it</span>
+            <button type="button" className="tt-tip-x" aria-label="Dismiss the tip" onClick={() => setRenameTip(false)}>×</button>
+          </div>
+        )}
+        {sub && <div className="tt-sub">{sub}</div>}
+      </header>
+    );
+  };
 
   // ── ASK THE SERVER WHETHER THIS EVENT HOLDS A PASS ─────────────────────────
   // Before this, the only answer was `ev.passPurchased` — written by the paid
@@ -12715,49 +12763,7 @@ export default function HostShellV2() {
                     with it (" — Black & Gold") the title does not say it twice.
                     No fill, not sticky: it scrolls with the board. */
                 <>
-                <header className="tt-head" data-tt-head>
-                  {(() => {
-                    const e = boardEyebrow();
-                    const theme = String(event.theme || '').trim();
-                    const nm = String(event.name || '').trim();
-                    const tail = theme ? ' — ' + theme : '';
-                    const title = (tail && nm.endsWith(tail) && nm.length > tail.length) ? nm.slice(0, -tail.length) : nm;
-                    const sub = [theme, e.type].filter(Boolean).join(' · ');
-                    return (
-                      <>
-                        <div className="tt-r1">
-                          {!eventIsTheHostsOwn && <span className="tt-chip" data-sample-event>Sample</span>}
-                          <span>{e.when}{e.when && e.urgency.length ? ' · ' : ''}<span data-tt-urgency>{e.urgency.join(' · ')}</span></span>
-                          {/* The weather pill lands here when it would show (near the date). */}
-                          <span className="tt-wx-slot" ref={setTtWxSlot} />
-                        </div>
-                        {renaming === 'title' ? (
-                          <div className="tt-title-row tt-renaming">
-                            <EventNameField mode="title" name={event.name} onSave={renameTo} onCancel={() => setRenaming(null)} />
-                          </div>
-                        ) : (
-                          <div className={'tt-title-row' + (isPlaceholderName(event) ? ' has-nameit' : '')}>
-                            <button type="button" className="tt-title" data-tt-title aria-haspopup="dialog" title="Your events" {...titleHandlers}>
-                              <span className="tt-name">{title || e.type || 'This event'}</span>
-                              <span className="tt-caret" aria-hidden="true">▾</span>
-                            </button>
-                            {/* While the name is one creation filled in, a quiet way to name it. */}
-                            {isPlaceholderName(event) && (
-                              <button type="button" className="tt-nameit" data-name-it onClick={() => { setSheet(null); setRenaming('title'); }}>Name it</button>
-                            )}
-                          </div>
-                        )}
-                        {renameTipShown && (
-                          <div className="tt-tip" data-rename-tip>
-                            <span>Tip: press and hold the name to rename it</span>
-                            <button type="button" className="tt-tip-x" aria-label="Dismiss the tip" onClick={() => setRenameTip(false)}>×</button>
-                          </div>
-                        )}
-                        {sub && <div className="tt-sub">{sub}</div>}
-                      </>
-                    );
-                  })()}
-                </header>
+                {titleHead(null)}
                 {/* THE RIBBON: the plan's parts, one tap each to what its chip opens.
                     Not on the day (the run of show leads) and not after. */}
                 {tallRibbon && tallTablet && !dayHero && !isPast && (
@@ -12833,6 +12839,15 @@ export default function HostShellV2() {
                   </div>
                 )}
                 </>
+              ) : elegantMode && bp === 'desktop' && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
+                /* THE DESKTOP'S TITLE (owner, 11/24/2026): the phone's title block,
+                   so rename in place has a title to act on at 1280+. The ☰ stays the
+                   menu (the stages and the menu's rows live there at this width). */
+                titleHead(
+                  <button className="ev-eyebrow tt-menu" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
+                    <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
+                  </button>
+                )
               ) : elegantMode && (askMode || dayHero || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>

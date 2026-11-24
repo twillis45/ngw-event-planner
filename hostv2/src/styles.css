@@ -296,7 +296,8 @@ button{font-family:inherit}
        staying well short of the phone's full-screen bound. */
     min-height:min(520px, calc(100vh - 260px));
   }
-  .stagewrap--responsive-command .hero.elegant .escreen.on > .ev-eyebrow{ grid-area:rail; align-self:start; }
+  .stagewrap--responsive-command .hero.elegant .escreen.on > .ev-eyebrow,
+  .stagewrap--responsive-command .hero.elegant .escreen.on > .tt-head{ grid-area:rail; align-self:start; }
   .stagewrap--responsive-command .hero.elegant .escreen.on > .ev-head{
     grid-area:rail; align-self:start; margin-top:44px;
   }
@@ -5938,7 +5939,8 @@ button.vc-pill::after{
     min-height:calc(100dvh - 72px - env(safe-area-inset-bottom,0px));
   }
 }
-.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .ev-eyebrow{
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .ev-eyebrow,
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .tt-head{
   grid-area:eyebrow; align-self:start;
 }
 .stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .ev-head{
@@ -8816,6 +8818,9 @@ button.tt-row{ cursor:pointer; }
 .tt-tip{ display:flex; align-items:center; gap:8px; margin:0 0 8px; color:var(--muted); font-size:13px; font-weight:550; }
 .tt-tip-x{ min-width:var(--tap-min,46px); min-height:var(--tap-min,46px); margin:-12px 0 -12px -8px; padding:0; background:none; border:0; color:var(--muted); font:inherit; font-size:16px; line-height:1; cursor:pointer; }
 .tt-tip-x:hover{ color:var(--ink); }
+/* THE DESKTOP'S TITLE (owner, 11/24/2026): the ☰ leads the date line, a
+   full tap square with no words of its own (the rows below say them). */
+.tt-menu{ min-width:var(--tap-min,46px); min-height:var(--tap-min,46px); padding:0; justify-content:flex-start; }
 .evname{ display:flex; align-items:center; gap:8px; margin:0; }
 .evname .evname-in{ flex:1 1 auto; min-width:0; max-width:none; }
 .tt-renaming{ margin-top:12px; width:100%; }
