@@ -5627,27 +5627,6 @@ export default function HostShellV2() {
     if (r && Array.isArray(r.satisfied) && r.satisfied.length) writeSettled(r.satisfied, false);
     try { if (r && r.fn) r.fn(); } catch { /* undo failed */ }
   };
-  // THE DECIDED LINE CLEARS ON HER NEXT ACTION (owner, render 2, 11/24/2026):
-  // any tap or key outside the line itself. Tab and Shift only move focus (to
-  // the Undo, say), so they are not an action. On the click, not the press:
-  // the line sits above the ask, and taking it away on pointerdown moved the
-  // next pick out from under her finger before the click landed.
-  // After the click has done its work (a task, not now: a state change made in
-  // a capture listener re-renders before React hands the click to its target,
-  // and the Undo it was aimed at would be gone). Only the receipt that was up
-  // goes: a pick made by that same click keeps its own line.
-  useEffect(() => {
-    const mine = heroReceipt;
-    if (!mine || !mine.decided) return undefined;
-    const clear = (e) => {
-      if (e.target && e.target.closest && e.target.closest('[data-decided], .receipt')) return;
-      if (e.type === 'keydown' && (e.key === 'Tab' || e.key === 'Shift')) return;
-      setTimeout(() => setHeroReceipt((r) => (r === mine ? null : r)), 0);
-    };
-    document.addEventListener('click', clear, true);
-    document.addEventListener('keydown', clear, true);
-    return () => { document.removeEventListener('click', clear, true); document.removeEventListener('keydown', clear, true); };
-  }, [heroReceipt]);
   const askModeRef = useRef(false);
   // ALL-CLEAR PAYOFF (host 2026-07-18): when a whole bundle goes N→0 on THIS event,
   // the hero shows the earned moment before advancing — {kind, count}. Conflicts get
@@ -5655,6 +5634,11 @@ export default function HostShellV2() {
   // bundle gets the clean type reward. Set by the prevBundleClear transition, dismissed
   // by the host's handoff tap (calm — no auto-timer to yank it away). Elegant loop only.
   const [justCleared, setJustCleared] = useState(null);
+  // A cleared bundle's words, once: the payoff card's head and the hero's
+  // one-line receipt ("✓ All covered") read them from here.
+  const clearedHead = (kind, solemnEv) => (kind === 'conflict'
+    ? (solemnEv ? 'The day’s in order' : 'All untangled')
+    : (solemnEv ? 'Everyone’s cleared to help' : 'All covered'));
   // Decluttered conflict hero (host 2026-07-18): the impact ("why") is tucked behind a
   // tap, and a "Set a different time" row opens an inline picker (custom arrival time).
   const [conflictWhyOpen, setConflictWhyOpen] = useState(false);
@@ -5787,6 +5771,33 @@ export default function HostShellV2() {
   // typing appended: 10 → "105", "1015").
   const [guestDraft, setGuestDraft] = useState(null);
   const [sheet, setSheet] = useState(() => (OPEN_ON_LOAD ? { kind: OPEN_ON_LOAD } : null));   // deep-link landing: {kind, focus}
+  // (Here, after `sheet`: an effect reading state declared later crashes the shell at boot.)
+  // THE DECIDED LINE CLEARS ON HER NEXT ACTION (owner, render 2, 11/24/2026):
+  // any tap or key outside the line itself. Tab and Shift only move focus (to
+  // the Undo, say), so they are not an action. On the click, not the press:
+  // the line sits above the ask, and taking it away on pointerdown moved the
+  // next pick out from under her finger before the click landed.
+  // After the click has done its work (a task, not now: a state change made in
+  // a capture listener re-renders before React hands the click to its target,
+  // and the Undo it was aimed at would be gone). Only the receipt that was up
+  // goes: a pick made by that same click keeps its own line.
+  // THE LINE'S CLOCK IS ITS OWN (11/24/2026): about 6s once it is on screen.
+  // A payoff line ("✓ All covered") can be raised by a write made in a sheet;
+  // it waits under the sheet, and neither the clock nor her next action
+  // (closing that sheet) counts until the sheet is gone.
+  useEffect(() => {
+    const mine = heroReceipt;
+    if (!mine || !mine.decided || sheet) return undefined;
+    const clear = (e) => {
+      if (e.target && e.target.closest && e.target.closest('[data-decided], .receipt')) return;
+      if (e.type === 'keydown' && (e.key === 'Tab' || e.key === 'Shift')) return;
+      setTimeout(() => setHeroReceipt((r) => (r === mine ? null : r)), 0);
+    };
+    const timer = setTimeout(() => setHeroReceipt((r) => (r === mine ? null : r)), 6000);
+    document.addEventListener('click', clear, true);
+    document.addEventListener('keydown', clear, true);
+    return () => { clearTimeout(timer); document.removeEventListener('click', clear, true); document.removeEventListener('keydown', clear, true); };
+  }, [heroReceipt, sheet]);
   // ── THE ATTENTION CUE (owner, renders 6a, 6b, 6c, 11/24/2026) ──────────────
   // The ONE input or button the hero asks for wears a soft steel ring: two
   // breaths, then a faint steady outline (styles.css [data-cue]). It plays when
@@ -8775,12 +8786,25 @@ export default function HostShellV2() {
       try { if (!isSolemnEvent(event)) feedback('magic'); } catch { /* no fx */ }
       // Surface the earned moment (conflict > decision > coi if several cleared at once — rare).
       // count = the peak the bundle reached (fallback to prev), so "6 of 6", not "1 of 1".
-      if (clearedConflicts) { setJustCleared({ kind: 'conflict', count: Math.max(pk.conflicts, prev.conflicts) }); pk.conflicts = 0; }
-      // THE LAST CALL ANSWERED WITH WORK STILL OPEN IS NOT A STOP (owner, render
-      // 2, 11/24/2026): the hero goes straight to the next item under the
-      // "✓ Decided · Undo" line. Only a board with nothing left gets the payoff.
-      else if (clearedDecisions) { if (!(queue.length && !listIsCalm)) setJustCleared({ kind: 'decision', count: Math.max(pk.decisions, prev.decisions) }); pk.decisions = 0; }
-      else { setJustCleared({ kind: 'coi', count: Math.max(pk.coi, coiCounts.total || prev.coi) }); pk.coi = 0; }
+      const kind = clearedConflicts ? 'conflict' : clearedDecisions ? 'decision' : 'coi';
+      const count = kind === 'conflict' ? Math.max(pk.conflicts, prev.conflicts)
+        : kind === 'decision' ? Math.max(pk.decisions, prev.decisions)
+        : Math.max(pk.coi, coiCounts.total || prev.coi);
+      pk[kind === 'conflict' ? 'conflicts' : kind === 'decision' ? 'decisions' : 'coi'] = 0;
+      // A CLEARED BUNDLE WITH WORK STILL OPEN IS NOT A STOP (owner, render 2,
+      // 11/24/2026, decisions; the same day for the conflict and insurance
+      // payoffs): the hero goes straight to the next item under the one quiet
+      // line, and only a board with nothing left gets the payoff card. A
+      // decision's line is raised by its pick ("✓ Decided", patchEvent); a
+      // payoff's here, in its own words ("✓ All covered"). Its Undo is the
+      // receipt's, only when the write that cleared it was answered on the
+      // hero; a write made in a sheet keeps its Undo on its toast.
+      if (!(queue.length && !listIsCalm)) setJustCleared({ kind, count });
+      else if (kind !== 'decision') {
+        const last = lastUndoRef.current;
+        const undoHere = !!(last && last.toHero && last.eventId === eventId);
+        setHeroReceipt((r) => ({ ...(undoHere && r ? r : null), decided: true, done: clearedHead(kind, isSolemnEvent(event)) }));
+      }
     }
   }, [elegantMode, eventId, conflictItems.length, callsOrdered.length, coiCounts.open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -9138,8 +9162,9 @@ export default function HostShellV2() {
           // change, and respects the silent-haptics layer (audit 2026-07-22).
           try { feedback('tick'); } catch { /* no haptics */ }
           if (receiptTimerRef.current) clearTimeout(receiptTimerRef.current);
-          // A decided line clears after about 6s (owner, 11/24/2026); other receipts 7s.
-          receiptTimerRef.current = setTimeout(() => setHeroReceipt(null), decidedNow ? 6000 : 7000);
+          // A decided line clears after about 6s on its own clock (owner,
+          // 11/24/2026; the effect that clears it); other receipts after 7s.
+          receiptTimerRef.current = decidedNow ? null : setTimeout(() => setHeroReceipt(null), 7000);
         } else {
           toast(msg, { label: 'Undo', fn: undoThatBringsBack(pend, undoFn, (back) => writeSettled(back, false)) }, 'ok');
         }
@@ -12896,8 +12921,8 @@ export default function HostShellV2() {
                   return (
                     <div className={'allclear' + (solemn ? ' solemn' : '')} role="status">
                       <h2 className="ac-head">{solemn
-                        ? (isConf ? 'The day’s in order.' : isCoi ? 'Everyone’s cleared to help.' : anythingOpen ? (jc.count === 1 ? 'That’s settled.' : 'Those are settled.') : 'It’s all settled.')
-                        : (isConf ? 'All untangled.' : isCoi ? 'All covered.' : anythingOpen ? (jc.count === 1 ? 'That’s decided.' : 'Those are decided.') : 'All decided.')}</h2>
+                        ? (isConf || isCoi ? clearedHead(jc.kind, true) + '.' : anythingOpen ? (jc.count === 1 ? 'That’s settled.' : 'Those are settled.') : 'It’s all settled.')
+                        : (isConf || isCoi ? clearedHead(jc.kind, false) + '.' : anythingOpen ? (jc.count === 1 ? 'That’s decided.' : 'Those are decided.') : 'All decided.')}</h2>
                       <p className="ac-voice">{isConf
                         ? (cues.length ? 'Every vendor has its own hour now — here’s the day, in order.'
                                        : 'Every vendor has its own hour now — nothing’s fighting for setup.')
@@ -13112,7 +13137,7 @@ export default function HostShellV2() {
                         dedup and the browser tab speak exactly what is rendered here. */}
                     {heroReceipt && heroReceipt.decided && (
                       <p className="decided-line" data-decided role="status">
-                        <span className="decided-ck" data-decided-check aria-hidden="true">✓</span>Decided<span className="decided-sep" aria-hidden="true">·</span><button type="button" className="decided-undo" onClick={undoHeroReceipt}>Undo</button>
+                        <span className="decided-ck" data-decided-check aria-hidden="true">✓</span>{heroReceipt.done || 'Decided'}{heroReceipt.fn && (<><span className="decided-sep" aria-hidden="true">·</span><button type="button" className="decided-undo" onClick={undoHeroReceipt}>Undo</button></>)}
                       </p>
                     )}
                     <h2 className="ask" key={'ask-' + String(queue[0].id || queue[0].title || '')} data-hero-part={tallNowPart}>{heroAskText}</h2>

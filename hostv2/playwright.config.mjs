@@ -61,6 +61,9 @@ const SELF_PINNED = [
   // Drives the phone, the 768 and 13" portrait iPads and a desktop itself
   // (the board package, owner-approved renders 11/24/2026).
   '**/theBoardPackage.spec.mjs',
+  // Drives 1440x900, 1280x800 and the phone itself (the board package's
+  // follow-ups, owner rulings 11/24/2026).
+  '**/theBoardPackageFollowUps.spec.mjs',
   '**/tapTargets.spec.mjs',
   // Drives its own three geometries (one lit button per sheet, batch 4, 11/21/2026).
   '**/oneLitButtonPerSheet.spec.mjs',
