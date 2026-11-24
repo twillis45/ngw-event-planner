@@ -152,61 +152,29 @@ const combinesItems = (item) => {
 };
 
 // Lines that read as combined and are not split, each with its reason.
-const SPARKLING = 'owner ruling 11/23/2026: leave the sparkling line as is (do not split or change "sparkling" drinks)';
 const NOT_SPLIT = {
-  'p_apps_hot\u0000Meatballs & sliders (bacon-wrapped, spanakopita)': 'OWNER CALL: aPoundPriceNeedsAPoundLineEverywhere asserts the key protein reads "Meatballs & sliders"; splitting it changes that assertion',
   'p_greencoffee\u0000Green coffee beans — Ethiopian, unroasted (roasted live at the ceremony)': 'one product; the commas describe the beans',
   'p_flutes\u0000Flutes (glass or good plastic), counted to the headcount plus spares': 'one product; the comma introduces how many',
   'p_roast_veg\u0000Roasted vegetables in oil, no butter (Brussels sprouts or squash: the real vegan dish)': 'one dish; the comma says how it is cooked',
   'p_libation\u0000Libation + unity-cup pour (juice, cider, or wine)': 'one drink poured twice: the libation and the unity cup are the same bottle',
   'p_kids_drinks\u0000Juice and kids\' drinks (the non-alcoholic spread)': 'one product: the kids\' drinks are the juice boxes',
-  // Held whole because an existing assertion names their current shape (batch 4
-  // rule: an assertion that would have to change is reported, not changed).
-  'p_cornbread\u0000Cornmeal and buttermilk for cornbread (or biscuit mix)': 'OWNER CALL: aPickMovesItsOwnLines A3/A4 lists exactly the ids friends bring; a split part goes with its dish, so the list would gain the parts (as #240 added p_drinks_cider) (Sunday Dinner)',
-  'p_dessert\u0000Peach cobbler, sweet potato pie & pound cake (or banana pudding)': 'OWNER CALL: aPickMovesItsOwnLines A3/A4 lists exactly the ids friends bring; a split part goes with its dish, so the list would gain the parts (as #240 added p_drinks_cider) (Sunday Dinner)',
-  'p_mac\u0000Elbow macaroni and block cheeses (sharp cheddar, plus a melting cheese)': 'OWNER CALL: aPickMovesItsOwnLines A3/A4 lists exactly the ids friends bring; a split part goes with its dish, so the list would gain the parts (as #240 added p_drinks_cider) (Sunday Dinner)',
-  'p_chips\u0000Chips + dips (queso, guac, salsa, French onion)': 'OWNER CALL: aPickMovesItsOwnLines A3/A4 lists exactly the ids friends bring; a split part goes with its dish, so the list would gain the parts (as #240 added p_drinks_cider) (Watch Party)',
-  'p_dessert\u0000Brownies, cookies & snack mix': 'OWNER CALL: aPickMovesItsOwnLines A3/A4 lists exactly the ids friends bring; a split part goes with its dish, so the list would gain the parts (as #240 added p_drinks_cider) (Watch Party)',
-  'p_drinks\u0000Beer + soda + water': 'OWNER CALL: aPickMovesItsOwnLines A3/A4 lists exactly the ids friends bring; a split part goes with its dish, so the list would gain the parts (as #240 added p_drinks_cider) (Watch Party)',
-  'p_apps\u0000Cheese & charcuterie (dips, easy bites)': 'OWNER CALL: aPickMovesItsOwnLines A3/A4 lists exactly the ids friends bring; a split part goes with its dish, so the list would gain the parts (as #240 added p_drinks_cider) (Retirement Party)',
-  'p_buffet_protein\u0000Carved meats & chicken (plus a vegetarian main)': 'OWNER CALL: aPickMovesItsOwnLines A3/A4 lists exactly the ids friends bring; a split part goes with its dish, so the list would gain the parts (as #240 added p_drinks_cider) (Retirement Party)',
-  'p_sides\u0000Salads & potatoes (rolls, a hot veg)': 'OWNER CALL: aPickMovesItsOwnLines A3/A4 lists exactly the ids friends bring; a split part goes with its dish, so the list would gain the parts (as #240 added p_drinks_cider) (Retirement Party)',
-  'p_sides\u0000Salads, beans, corn & chips': 'OWNER CALL: aPickMovesItsOwnLines A3/A4 lists exactly the ids friends bring; a split part goes with its dish, so the list would gain the parts (as #240 added p_drinks_cider) (Get-Together)',
-  'p_chips\u0000Chips, pretzels, party mix + dips/salsa': 'OWNER CALL: aPickMovesItsOwnLines A3/A4 lists exactly the ids friends bring; a split part goes with its dish, so the list would gain the parts (as #240 added p_drinks_cider) (Card Party)',
-  'p_wings\u0000Wings + meatballs (the warm proteins)': 'OWNER CALL: aPickMovesItsOwnLines A3/A4 lists exactly the ids friends bring; a split part goes with its dish, so the list would gain the parts (as #240 added p_drinks_cider) (Card Party)',
-  'p_dessert\u0000Banana pudding, pound cake & peach cobbler (red velvet)': 'OWNER CALL: aPickMovesItsOwnLines A3/A4 lists exactly the ids friends bring; a split part goes with its dish, so the list would gain the parts (as #240 added p_drinks_cider) (The Cookout)',
-  'p_sides\u0000Rice & peas, candied yams & mac & cheese (cornbread, plantains)': 'OWNER CALL: aPickMovesItsOwnLines A3/A4 lists exactly the ids friends bring; a split part goes with its dish, so the list would gain the parts (as #240 added p_drinks_cider) (Kwanzaa Gathering)',
-  'p_dips\u0000Dips (hummus, guac, queso, ranch) — at the station, not the table': 'OWNER CALL: aPickMovesItsOwnLines A3/A4 lists exactly the ids friends bring; a split part goes with its dish, so the list would gain the parts (as #240 added p_drinks_cider) (Game Night)',
-  'p_apps\u0000Cheese & charcuterie spread (crudite, sliders, skewers, dips)': 'OWNER CALL: aPickMovesItsOwnLines A3/A4 lists exactly the ids friends bring; a split part goes with its dish, so the list would gain the parts (as #240 added p_drinks_cider) (Vow Renewal)',
-  'p_drinks\u0000Beer, sweet tea, soda, water': 'OWNER CALL: aDryPartyBuysNoBar expects the non-dry soda and tea to stay by id under the dry pick, which buys its own p_tea_dry/p_soda_dry/p_water_dry lines (Low Country Boil)',
-  'p_drinks\u0000Beer, soda & water': 'OWNER CALL: theUnitMap pins the count of exact-text store-term entries (UNIT_MAPPED_LINES + 87); with this line split the count moves (Get-Together\'s old text is also the id-reuse test\'s input; Fish Fry\'s sweet tea and coleslaw would read the same as Repast\'s and Crab Feast\'s) (Get-Together)',
-  'p_drinks\u0000Sweet tea, red drink, soda, water': 'OWNER CALL: theUnitMap pins the count of exact-text store-term entries (UNIT_MAPPED_LINES + 87); with this line split the count moves (Get-Together\'s old text is also the id-reuse test\'s input; Fish Fry\'s sweet tea and coleslaw would read the same as Repast\'s and Crab Feast\'s) (Fish Fry)',
-  // Same text, same store-term entry as a line held above: split them together.
-  'p_protein\u0000Burgers, hot dogs & chicken': 'OWNER CALL: Reunion\'s line is held (aPickMovesItsOwnLines A3/A4), and Get-Together\'s shares its text and its exact store-term entry (Reunion, Get-Together)',
-  'p_sides\u0000Garden salad & roasted vegetables': 'OWNER CALL: Vow Renewal\'s line is held (aPickMovesItsOwnLines A3/A4), and Anniversary\'s shares its text and its exact store-term entry (Vow Renewal, Anniversary)',
-  // Held whole because an e2e assertion counts or marks these lines (batch 4).
-  'p_wine_cider\u0000Wine, red and white (a bottle of each per table end)': 'OWNER CALL: #240 kept it whole, and the e2e everyFoodDoorAsksTheRule marks Thanksgiving\'s bought lines by id (its BOUGHT fixture); a white-wine part would be left unbought (Thanksgiving Hosting)',
-  'p_softdrinks\u0000Soft drinks, juice, water': 'OWNER CALL: the e2e noKitchenNoShoppingList and oneTapForAShelf assert Birthday\'s "Drinks 0 of 3 bought" / "all 3 bought"; the parts would make it 5 (Birthday)',
-  'p_butter\u0000Butter (for melting) + dipping dishes': 'OWNER CALL: the e2e dietaryHoldsTwo opens the sample Crab Feast\'s Food group by "0 of 7 bought"; the parts would make it more (Crab Feast)',
-  'p_sides\u0000Coleslaw, potato salad, hush puppies': 'OWNER CALL: the e2e dietaryHoldsTwo opens the sample Crab Feast\'s Food group by "0 of 7 bought"; the parts would make it more (Crab Feast)',
-  'p_burgers_dogs\u0000Burgers, hot dogs + links (sausage)': 'OWNER CALL: the e2e threeLayersOfPrice asserts The Cookout\'s store hero reads "2 of 18 lines priced at your store"; any Cookout part moves the 18 (The Cookout)',
-  'p_condiments\u0000Condiments, BBQ sauce, hot sauce, cheese, lettuce, onion, pickles': 'OWNER CALL: the e2e threeLayersOfPrice asserts The Cookout\'s store hero reads "2 of 18 lines priced at your store"; any Cookout part moves the 18 (The Cookout)',
-  'p_seasoning\u0000Dry rub / seasoning + marinade': 'OWNER CALL: the e2e threeLayersOfPrice asserts The Cookout\'s store hero reads "2 of 18 lines priced at your store"; any Cookout part moves the 18 (The Cookout)',
-  'p_red_drink\u0000Red drink / Kool-Aid / punch + sugar': 'OWNER CALL: the e2e threeLayersOfPrice asserts The Cookout\'s store hero reads "2 of 18 lines priced at your store"; any Cookout part moves the 18 (The Cookout)',
-  'p_soda_water\u0000Soda + bottled water': 'OWNER CALL: the e2e threeLayersOfPrice asserts The Cookout\'s store hero reads "2 of 18 lines priced at your store"; any Cookout part moves the 18 (The Cookout)',
-  'p_grown_folks\u0000Grown-folks section: brown liquor + mixers, beer': 'OWNER CALL: the e2e threeLayersOfPrice asserts The Cookout\'s store hero reads "2 of 18 lines priced at your store"; any Cookout part moves the 18 (The Cookout)',
-  'p_fuel\u0000Charcoal / wood / propane + lighter fluid': 'OWNER CALL: the e2e threeLayersOfPrice asserts The Cookout\'s store hero reads "2 of 18 lines priced at your store"; any Cookout part moves the 18 (The Cookout)',
-  'p_foil_pans\u0000Foil pans + foil + serving spoons': 'OWNER CALL: the e2e threeLayersOfPrice asserts The Cookout\'s store hero reads "2 of 18 lines priced at your store"; any Cookout part moves the 18 (The Cookout)',
-  'p_togo\u0000To-go containers + foil + zip bags (everybody makes a plate)': 'OWNER CALL: the e2e threeLayersOfPrice asserts The Cookout\'s store hero reads "2 of 18 lines priced at your store"; any Cookout part moves the 18 (The Cookout)',
-  'p_tableware\u0000Disposable plates, cups, napkins, cutlery (sturdy)': 'OWNER CALL: the e2e threeLayersOfPrice asserts The Cookout\'s store hero reads "2 of 18 lines priced at your store"; any Cookout part moves the 18 (The Cookout)',
-  'p_cleanup\u0000Trash + recycling bags, gloves, sanitizing wipes': 'OWNER CALL: the e2e threeLayersOfPrice asserts The Cookout\'s store hero reads "2 of 18 lines priced at your store"; any Cookout part moves the 18 (The Cookout)',
-  'p_wine\u0000Wine and beer (only if the bar is self-supplied)': 'OWNER CALL: aCashBarAsksWhatTheHostStillCovers lists Gala\'s beverage ids exactly ([p_nonalc, p_wine]); a beer part would join them',
 };
+// THE VEGETARIAN MAIN (owner, 11/24/2026): a plate of two dishes joined by
+// "+" or "plus" ("Stuffed peppers + grilled veg platter") is two lines, the
+// dish and its side (diet-veg_side). A single named dish whose name carries
+// an "and" ("Mushroom & lentil wellington", "Roasted vegetable & goat cheese
+// tart") is one dish, one line.
+const VEG_DISH_JOINER = /\s\+\s|\splus\s/i;
 const notSplitReason = (l) => {
-  if (l.id === 'diet-veg') return 'OWNER CALL: the engine\'s vegetarian main is one plate for the vegetarian guests, priced per serving (theVegetarianMainIsPricedAtItsSources); its dish names are not split here';
-  if (/sparkling/i.test(l.item)) return SPARKLING;
+  if (l.id === 'diet-veg' || l.id === 'diet-veg_side') {
+    return VEG_DISH_JOINER.test(l.item) ? null : 'one named vegetarian dish; its "and" is part of the dish\'s name';
+  }
   return NOT_SPLIT[`${l.id}\u0000${l.item}`] || null;
 };
+// SPARKLING (owner ruling 11/23/2026, A): only Thanksgiving's sparkling line
+// stays whole; every other sparkling line splits like any combined line.
+// Thanksgiving's is one product already, so it needs no waiver; this pins it.
+const THANKSGIVING_SPARKLING = { id: 'p_cider', item: 'Sparkling cider (for kids and non-drinkers)', why: 'owner ruling 11/23/2026: Thanksgiving\'s sparkling line stays whole' };
 
 describe('no shopping line in any playbook combines items', () => {
   test('(premise) the rule reads a list as combined and a choice, an alternative or one dish as one line', () => {
@@ -222,6 +190,12 @@ describe('no shopping line in any playbook combines items', () => {
     const combined = LINES.filter((l) => combinesItems(l.item) && !notSplitReason(l))
       .map((l) => `${[...l.types].join(', ')} · ${l.id} · ${l.item}`);
     expect(combined).toEqual([]);
+  });
+
+  test('Thanksgiving\'s sparkling line stays whole (owner ruling 11/23/2026), and it is the only one left', () => {
+    const tg = LINES.find((l) => l.id === THANKSGIVING_SPARKLING.id && l.types.has('Thanksgiving Hosting') && /sparkling/i.test(l.item));
+    expect(tg && tg.item).toBe(THANKSGIVING_SPARKLING.item);
+    expect(LINES.filter((l) => /sparkling/i.test(l.item) && combinesItems(l.item)).map((l) => l.item)).toEqual([]);
   });
 
   test('no stale waiver: every line kept whole still exists and still reads as combined', () => {

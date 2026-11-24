@@ -91,5 +91,6 @@ test('Gender Reveal: the guest list never moves the drinks; mocktails-only buys 
 test('Get-Together: BYOB drops the drinks; a sides potluck no longer reads as BYOB', () => {
   const host = { potluck: 'Host provides all' };
   expect(ids(plan('Get-Together', { ...host, alcohol: 'BYOB' }))).toEqual(['p_ice']);
-  expect(ids(plan('Get-Together', { ...host, food_style: 'Potluck — guests bring sides' }))).toEqual(['p_drinks', 'p_ice']);
+  // Batch 4 (owner, 11/24/2026): "Beer, soda & water" split; soda and water are parts of the drinks line.
+  expect(ids(plan('Get-Together', { ...host, food_style: 'Potluck — guests bring sides' }))).toEqual(['p_drinks', 'p_drinks_soda', 'p_drinks_water', 'p_ice']);
 });

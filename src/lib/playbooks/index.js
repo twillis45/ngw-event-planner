@@ -6198,9 +6198,17 @@ export function playbookFoodPlan(event, opts = {}) {
     const vegDish = (typeof playbook.vegMain === 'string' && playbook.vegMain.trim())
       ? playbook.vegMain.trim()
       : 'Stuffed peppers + grilled veg platter';
+    // A PLATE OF TWO DISHES IS TWO LINES (owner, 11/24/2026): "Stuffed peppers +
+    // grilled veg platter" searched the store for one thing. The plate splits at
+    // its "+" / "plus" into the dish (diet-veg, which keeps the cited per-serving
+    // price) and its side (diet-veg_side, priced with the dish, the batch 4 rule).
+    // A single named dish ("Mushroom & lentil wellington") stays one line.
+    const [vegMainDish, vegSideDish] = vegDish.split(/\s+(?:\+|plus)\s+/i).map((s) => s.trim()).filter(Boolean)
+      .reduce((acc, s, i) => (i === 0 ? [s] : [acc[0], acc[1] ? `${acc[1]} + ${s}` : s]), []);
+    const forN = `(for ${vegN} ${vegN === 1 ? 'guest' : 'guests'})`;
     list.push({
-      id: 'diet-veg', group: 'Food', item: `${vegDish} (for ${vegN} ${vegN === 1 ? 'guest' : 'guests'})`,
-      short: `${vegDish} · ${vegN}`, owner: '', qty: vegN, unit: 'servings', essential: true, where: ['Grocery'],
+      id: 'diet-veg', group: 'Food', item: `${vegMainDish} ${forN}`,
+      short: `${vegMainDish} · ${vegN}`, owner: '', qty: vegN, unit: 'servings', essential: true, where: ['Grocery'],
       qtyOverridden: false, baseQty: vegN, perGuest: null,
       low: Math.round(vegN * VEG_MAIN_PER_SERVING[0] * pf), high: Math.round(vegN * VEG_MAIN_PER_SERVING[1] * pf), units: vegN, unitBase: 'servings',
       perUnitLow: roundCurrency(VEG_MAIN_PER_SERVING[0] * pf), perUnitHigh: roundCurrency(VEG_MAIN_PER_SERVING[1] * pf),
@@ -6210,6 +6218,18 @@ export function playbookFoodPlan(event, opts = {}) {
       // The regional factor moved this band, so the line says so (audit G #6).
       geoBasis: basketBasis,
     });
+    if (vegSideDish) {
+      const side = vegSideDish.charAt(0).toUpperCase() + vegSideDish.slice(1);
+      list.push({
+        id: 'diet-veg_side', group: 'Food', item: `${side} ${forN}`,
+        short: `${side} · ${vegN}`, owner: '', qty: vegN, unit: 'servings', essential: true, where: ['Grocery'],
+        qtyOverridden: false, baseQty: vegN, perGuest: null,
+        low: 0, high: 0, units: vegN, unitBase: 'servings', perUnitLow: 0, perUnitHigh: 0,
+        skipped: !!skip['diet-veg'], locked: null, forgotten: false, dietDerived: true,
+        partOf: 'diet-veg', pricedWith: 'diet-veg',
+        note: 'The side for the vegetarian main; its price is in the main\'s line.',
+      });
+    }
   }
   const specialDiets = Object.entries(dietCounts).filter(([, v]) => Number(v) > 0).map(([diet, count]) => ({ diet, count: Number(count) }));
 
@@ -6490,7 +6510,9 @@ export function playbookFoodPlan(event, opts = {}) {
       if (p && p.partOf && !_lineById.has(p.partOf)) list.splice(i, 1);
     }
     for (const it of list) {
-      const p = it && _purchaseById.get(it.id);
+      // An engine-built part (the vegetarian main's side) declares partOf on
+      // the line itself; an authored one, on its purchase.
+      const p = it && (_purchaseById.get(it.id) || (it.partOf ? it : null));
       const dish = p && p.partOf ? _lineById.get(p.partOf) : null;
       if (!dish) continue;
       it.partOf = p.partOf;
