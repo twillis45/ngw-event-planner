@@ -22,7 +22,7 @@ import re
 
 from .email_frame import frame, hue_for, when_fact, where_fact
 from .guest_notices import invite_url
-from .outward import event_days, place_line, real_host_name, venue_for, outward_gaps
+from .outward import event_days, host_name_for, place_line, real_host_name, venue_for, outward_gaps
 
 _URL_LINE = re.compile(r"^\s*https?://\S+\s*$")
 _INTRO_LINE = re.compile(r":\s*$")     # "Let us know you're coming:" — it only introduced the link
@@ -90,8 +90,9 @@ def compose_invite_email(ev: dict, note: str, recipient_name, sender: str, stop_
     # host's app and the invite page print it (outward.place_line).
     where = place_line(ev)
     place = venue_for(ev)["name"] or where
-    # A placeholder sender ("Your host") is no name: never "Only Your sees your reply".
-    host = real_host_name(sender)
+    # A placeholder sender ("Your host") is no name: never "Only Your sees your
+    # reply". Then the event's host line, then "your host".
+    host = real_host_name(sender, host_name_for(ev))
     first = host.split(" ")[0] if host else "your host"
     url = invite_url(str(ev.get("rsvpCode") or ev.get("id") or ""))
     hi = f"Hi {str(recipient_name).strip()}," if recipient_name and str(recipient_name).strip() else ""

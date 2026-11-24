@@ -41,10 +41,16 @@ def host_name_for(ev: dict) -> str:
 _NO_NAME = re.compile(r"^(?:(?:your|the|our|my|a)\s+)?host$|^your$", re.I)
 
 
-def real_host_name(v) -> str:
-    """The host's name as a guest should read it, or '' when none was given."""
-    s = " ".join(str(v or "").split())
-    return "" if _NO_NAME.match(s) else s
+def real_host_name(*candidates) -> str:
+    """The first candidate that names a person, as a guest should read it; ''
+    when none does. Callers pass the profile's name (the sender) first, then the
+    event's host line (host_name_for): with no name on the profile the email
+    reads "Only Rosa sees your reply.", not "your host" (owner ruling, 11/24/2026)."""
+    for v in candidates:
+        s = " ".join(str(v or "").split())
+        if s and not _NO_NAME.match(s):
+            return s
+    return ""
 
 
 # ── which days (fmtLongDate / spanEnd / fmtLongSpan) ─────────────────────────

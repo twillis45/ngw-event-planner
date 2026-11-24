@@ -104,3 +104,50 @@ def test_the_helper_ask_with_no_host_name(host):
 def test_the_cohost_invite_with_no_host_name():
     html, text = compose_cohost_invite(EV["name"], "sam@example.test", "Your host")
     assert "Sent with No Guesswork Events." in text and "Sent by Your" not in _all(html, text)
+
+
+# ── NO NAME ON THE PROFILE: THE EVENT'S HOST LINE (owner ruling, 11/24/2026) ──
+# When the profile names nobody, the email reads the event's host line
+# (hostNameFor's fields: hostName, hostNames, host) when it names a person;
+# "your host" only when nothing does. The profile's name still comes first.
+LINE = {**EV, "hostName": "Rosa Diaz"}
+
+
+def test_the_helper_takes_the_first_real_name():
+    assert real_host_name("Your host", "Rosa Diaz") == "Rosa Diaz"
+    assert real_host_name("Casey Lin", "Rosa Diaz") == "Casey Lin"
+    assert real_host_name("", None, "your host") == ""
+
+
+@pytest.mark.parametrize("sender,ev,first,full", [
+    ("Casey Lin", LINE, "Casey", "Casey Lin"),            # the profile's name
+    ("Your host", LINE, "Rosa", "Rosa Diaz"),             # the host line only
+    ("", {**EV, "host": "Rosa Diaz"}, "Rosa", "Rosa Diaz"),
+    ("Your host", EV, None, None),                        # neither
+])
+def test_the_invite_reads_the_host_line_when_the_profile_has_no_name(sender, ev, first, full):
+    html, text = compose_invite_email(ev, NOTE, "Sam", sender, None)
+    both = _all(html, text)
+    if first:
+        assert f"Only {first} sees your reply." in html
+        assert f"A note from {first}" in both
+        assert f"{full} invites you to" in both
+        assert f"Sent by {full} with No Guesswork Events." in both
+    else:
+        assert "Only your host sees your reply." in html and "Sent with No Guesswork Events." in both
+
+
+@pytest.mark.parametrize("sender,ev,full", [
+    ("Casey Lin", LINE, "Casey Lin"), ("Your host", LINE, "Rosa Diaz"), ("", EV, None)])
+def test_the_message_reads_the_host_line_when_the_profile_has_no_name(sender, ev, full):
+    html, text = compose_message_email(ev, "See you Saturday.", "Sam", sender, None)
+    if full:
+        assert f"A message from {full}" in html and f"Sent by {full} with No Guesswork Events." in text
+    else:
+        assert "A message from your host" in html and "Sent with No Guesswork Events." in text
+
+
+def test_the_cohost_invite_reads_the_host_line():
+    # cohosts.py passes the event's host line (hostName/hostNames); there is no profile on the server.
+    _html, text = compose_cohost_invite(EV["name"], "sam@example.test", "Rosa Diaz")
+    assert "Sent by Rosa Diaz with No Guesswork Events." in text
