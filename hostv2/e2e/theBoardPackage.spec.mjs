@@ -538,7 +538,7 @@ for (const [what, typed, want] of ADDRESS_CASES) {
     await page.locator('.efold').first().click(); await page.waitForTimeout(800);
     const words = await boardWords(page);
     expect(words, 'the ask is answered').not.toMatch(/Add your address|Add your city/);
-    expect(words, 'the board does not ask for the street again').not.toMatch(/Add your street address/);
+    expect(words, 'the board does not ask for the street again').not.toMatch(/Add your street address|Guests will ask where/);
     await ctx.close();
   });
 }
@@ -548,7 +548,7 @@ test('6: with only a city on record the street is asked once more when the invit
   const { venueAddress, ...cityOnly } = PLACEHOLDER;
   const { ctx, page } = await seededPhone(browser, { ...cityOnly, id: 'ev-city-only', name: 'Rose’s Thanksgiving' });
   expect(venueAddress, 'premise: the seed drops the street').toBeTruthy();
-  expect(await boardWords(page), 'the board does not ask for the street').not.toMatch(/Add your street address|Add your address/);
+  expect(await boardWords(page), 'the board does not ask for the street').not.toMatch(/Add your street address|Add your address|Guests will ask where/);
   await openSectionByName(page, 'Guests');
   await sheetSettled(page);
   await page.locator('.sheet button').filter({ hasText: /^Copy the invite$/ }).first().click();

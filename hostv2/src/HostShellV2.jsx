@@ -15734,7 +15734,11 @@ export default function HostShellV2() {
                   backyard." She could answer it an unlimited number of times.
                   vf.address is the fact this row is about; the digit heuristic
                   was standing in for it and was never the same question. */}
-              {!isPast && vf.name && !venueBlockerShown && !vf.address && (vf.kind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(vf.name)) && (
+              {/* Not at her home (owner, render 11, 11/24/2026): the one address ask
+                  takes a street, a city or a ZIP, and with a city or ZIP on
+                  record the street is asked when the invite goes out
+                  (lib/outwardReady), not here. */}
+              {!isPast && vf.name && !venueBlockerShown && !vf.address && !vf.isHome && (vf.kind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(vf.name)) && (
                 <div className="later-row" style={{ marginTop: 18 }}>
                   <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>
                     {addressOpen ? 'Where exactly?' : 'Guests will ask where — add the address for ' + vf.name.toLowerCase()}
@@ -15742,7 +15746,7 @@ export default function HostShellV2() {
                   {addressOpen ? null : <button className="mini" onClick={() => setAddressOpen(true)}>Add it</button>}
                 </div>
               )}
-              {!isPast && vf.name && !venueBlockerShown && !vf.address && (vf.kind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(vf.name)) && addressOpen && (
+              {!isPast && vf.name && !venueBlockerShown && !vf.address && !vf.isHome && (vf.kind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(vf.name)) && addressOpen && (
                 <div className="hc-row" style={{ marginTop: 'var(--sp-2)' }}>
                   <AddressField value={addressDraft} onChange={setAddressDraft} onPick={sg => setAddressDraft(sg.label)}
                     inputStyle={{ maxWidth: 'none' }} placeholder="Street address — invites and rain notes will carry it" ariaLabel="Venue address" />
