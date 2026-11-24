@@ -29,3 +29,15 @@ test('the covering figure rounds up the way the tiers do, never below the plan',
   expect(planCostsAboveNote(1234, 1000).cover).toBe(1300);
   expect(planCostsAboveNote(301, 300).cover).toBe(400);
 });
+
+// Owner, 11/24/2026 (live, Thanksgiving for 12): the hero said "$300", the
+// sentence said "about $334", and the lit button said "Use $400" — a figure
+// named nowhere on the screen (it is the covering figure, rounded up like the
+// tiers). Every number the host can tap must be said in the sentence above it.
+test('the sentence names the covering figure the lit button offers', () => {
+  const n = planCostsAboveNote(334, 300);
+  expect(n.cover).toBe(400);
+  expect(n.text).toMatch(/\$334/);
+  expect(n.text).toMatch(/\$300/);
+  expect(n.text).toMatch(/\$400 covers it/);
+});
