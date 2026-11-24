@@ -13,10 +13,37 @@
 // found none, and wrote `venueCity: ''`: the state went nowhere. With no town
 // typed and no city parsed, the parsed state is saved on its own. The town is
 // still asked; nothing is guessed.
+//
+// WHAT SHE TYPES IN THE TOWN CHIP IS READ BY THE SENTENCE'S READER (11/24/2026).
+// The chip's text went straight to parseVenueLocation, which refuses digits, so
+// a full street address saved no town and no street. It now goes through
+// readPlace (parseSmartEventText's own place fields): the street, the town and
+// the state land exactly where the same words in the sentence put them. What it
+// cannot place is kept: the street it read, and the rest as `cityHeard`.
 import { parseVenueLocation } from './cityText';
+import { readPlace } from './readPlace';
+
+function typedFields(typed) {
+  const place = readPlace(typed);
+  const street = place.venueAddress ? { venueAddress: place.venueAddress } : {};
+  if (place.located) {
+    return { ...street, ...(place.venueState ? { venueCity: place.venueCity, venueState: place.venueState } : { venueCity: place.venueCity }) };
+  }
+  const rest = place.venueAddress
+    ? typed.split(place.venueAddress).join(' ').replace(/^[\s,]+|[\s,]+$/g, '').replace(/\s+/g, ' ')
+    : typed;
+  const heard = place.venueCity || rest;
+  return {
+    ...street,
+    venueCity: '',
+    ...(place.venueState ? { venueState: place.venueState } : {}),
+    ...(heard ? { cityHeard: heard } : {}),
+  };
+}
 
 export function townFieldsToPersist(typedCity, parsed) {
   const typed = String(typedCity || '').trim();
+  if (typed) return typedFields(typed);
   const p = parsed || {};
   const text = typed || (p.venueCity ? (p.venueState ? p.venueCity + ', ' + p.venueState : p.venueCity) : '');
   const loc = text ? parseVenueLocation(text) : null;
