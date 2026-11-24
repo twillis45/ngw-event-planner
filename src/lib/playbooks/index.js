@@ -90,7 +90,7 @@ import { resolveEffectiveItem } from '../effectiveItem'; // FOOD-2A: read-only n
 import { buildCrabPlan } from '../crabPlan';
 import { isVendorBooked, bookedVendorIn, hiredVendors } from '../workstreams';
 import { crabsPerPicker, crabsPerBushel } from '../crabServing';
-import { kidCount, vegCount, KID_PROTEIN_FACTOR } from '../appetite';
+import { kidCount, vegCount, veganCount, KID_PROTEIN_FACTOR } from '../appetite';
 import { perHead } from '../perHead';
 import { getCompressionLevel, getStandardLeadProvenance, isGroundedLead } from '../workflowCompression';
 import { effectiveTimingProvenance, isGroundedTiming, timingConflict } from '../knowledge/timingProvenance';
@@ -5422,6 +5422,42 @@ const VEG_MAIN_PROVENANCE = Object.freeze({
   sufficientWhen: 'A serving count for an organic tray (Amy\'s family size is $16.49 at Kroger) would say whether a higher ceiling belongs here.',
 });
 
+// THE MEATLESS MAIN, BY DECLARATION (owner-approved fix, 11/23/2026). The plan
+// counted vegans apart from vegetarians and then planned one main for both, and
+// many authored mains carry dairy, eggs or butter (a goat cheese tart, a gruyere
+// puff pastry), so a vegan guest could have nothing to eat. Each host-shell
+// playbook now declares `vegMainVegan`, a main its author vouches has no animal
+// product. When ANY guest is vegan that one is planned, for vegetarians and
+// vegans together; with only vegetarians the plan is what it was. Decided by the
+// declaration, never by matching the dish's words.
+const VEG_MAIN_DEFAULT = 'Stuffed peppers + grilled veg platter';
+const VEGAN_MAIN_DEFAULT = 'Black bean & rice stuffed peppers + grilled veg platter (dairy-free)';
+const authored = (v) => ((typeof v === 'string' && v.trim()) ? v.trim() : '');
+// CHECK LABELS (owner ruling 1, 11/23/2026). A vegan dish that leans on a bought
+// item which can hide an animal product declares it (`vegMainVeganCheck`), and
+// the line names only those. Read from the declaration, never the dish's words.
+const VEGAN_LABEL_CHECKS = Object.freeze({
+  pastry: ['butter'], buns: ['eggs', 'milk'], tortillas: ['lard'], 'refried beans': ['lard'],
+  // Owner ruling 11/24/2026.
+  bread: ['milk', 'butter', 'honey'],
+});
+const listOf = (xs, joiner) => (xs.length < 3 ? xs.join(` ${joiner} `) : `${xs.slice(0, -1).join(', ')}, ${joiner} ${xs[xs.length - 1]}`);
+const labelCheckSentence = (keys) => (keys.length
+  ? `Check labels: ${listOf(keys, 'and')} can contain ${listOf([...new Set(keys.flatMap((k) => VEGAN_LABEL_CHECKS[k]))], 'or')}.`
+  : '');
+/** The meatless main this event plans: `{ name, vegan }`, plus `check` (the
+ *  declared label checks) when it is the vegan one. */
+export function plannedVegMain(playbook, event) {
+  const pb = playbook || {};
+  if (veganCount(event) > 0) {
+    const authoredName = authored(pb.vegMainVegan);
+    const check = authoredName && Array.isArray(pb.vegMainVeganCheck)
+      ? pb.vegMainVeganCheck.filter((k) => VEGAN_LABEL_CHECKS[k]) : [];
+    return { name: authoredName || VEGAN_MAIN_DEFAULT, vegan: true, check };
+  }
+  return { name: authored(pb.vegMain) || VEG_MAIN_DEFAULT, vegan: false };
+}
+
 // The drop-off catering tier, as the two registered catering guides publish it.
 const DROPOFF_CATERING_PROVENANCE = Object.freeze({
   tier: 'researched', confidence: 'medium', verificationStatus: 'cited',
@@ -6188,7 +6224,8 @@ export function playbookFoodPlan(event, opts = {}) {
   // #16 — special-diet COUNTS drive food + budget. Vegetarians/vegans need a REAL,
   // named main (never a generic "plant-based main" placeholder); size it to their
   // count and let it flow into the totals so the budget reflects it. The dish is
-  // playbook-authored (playbook.vegMain) so it's appropriate to the cuisine — e.g.
+  // playbook-authored (playbook.vegMain, or vegMainVegan when any guest is vegan:
+  // plannedVegMain) so it's appropriate to the cuisine — e.g.
   // a cookout gets grilled portobello + veggie skewers, a dinner party a mushroom
   // wellington. Falls back to a real, appetizing default, never a placeholder.
   // (dietCounts/dietCnt/vegN are hoisted above, near proteinGuests — same values, no
@@ -6196,9 +6233,7 @@ export function playbookFoodPlan(event, opts = {}) {
   // A caterer cooks for every guest, the vegetarians included (the same gate
   // hostCooksIt reads): no grocery main on top of the catering line.
   if (vegN > 0 && !_foodOffPlate) {
-    const vegDish = (typeof playbook.vegMain === 'string' && playbook.vegMain.trim())
-      ? playbook.vegMain.trim()
-      : 'Stuffed peppers + grilled veg platter';
+    const { name: vegDish, vegan: veganMain, check: veganCheck } = plannedVegMain(playbook, event);
     list.push({
       id: 'diet-veg', group: 'Food', item: `${vegDish} (for ${vegN} ${vegN === 1 ? 'guest' : 'guests'})`,
       short: `${vegDish} · ${vegN}`, owner: '', qty: vegN, unit: 'servings', essential: true, where: ['Grocery'],
@@ -6207,7 +6242,11 @@ export function playbookFoodPlan(event, opts = {}) {
       perUnitLow: roundCurrency(VEG_MAIN_PER_SERVING[0] * pf), perUnitHigh: roundCurrency(VEG_MAIN_PER_SERVING[1] * pf),
       costProvenance: VEG_MAIN_PROVENANCE,
       skipped: !!skip['diet-veg'], locked: ('diet-veg' in lockedMap) ? Math.max(0, roundCurrency(Number(lockedMap['diet-veg']) || 0)) : null,
-      note: 'So your vegetarian/vegan guests have a real main, not just sides.', forgotten: false, dietDerived: true,
+      note: veganMain
+        ? ['So your vegan and vegetarian guests have a real main, not just sides. This one is vegan: no meat, fish, dairy, eggs or honey.', labelCheckSentence(veganCheck)].filter(Boolean).join(' ')
+        : 'So your vegetarian/vegan guests have a real main, not just sides.',
+      forgotten: false, dietDerived: true,
+      ...(veganMain ? { vegan: true } : {}),
       // The regional factor moved this band, so the line says so (audit G #6).
       geoBasis: basketBasis,
     });

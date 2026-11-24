@@ -35,6 +35,8 @@ const halloweenParty = {
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   vegMain: 'Stuffed jack-o-lantern bell peppers',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Black bean & rice stuffed jack-o-lantern bell peppers (dairy-free)',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',

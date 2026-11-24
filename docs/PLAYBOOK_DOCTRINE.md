@@ -21,7 +21,8 @@ because the moat is the tested, grounded data, not an editing UI.
 Required: `type` (string — the canonical event type), `meta`, `heartMoments`, `decisions[]`,
 `milestones[]`, `tasks[]`, `purchases[]`, `vendors[]`, `risks[]`, `contingencies[]`, `schedules`,
 `knowledge`, plus `version` (integer, bump on change).
-Optional: `vegMain` (veg default for the food model), `dayOfChecklist`, `rentalsGap`, `solveFamily`,
+Optional: `vegMain` (veg default for the food model), `vegMainVegan` (the declared vegan main, planned when any
+guest is vegan; every host-shell playbook declares one), `dayOfChecklist`, `rentalsGap`, `solveFamily`,
 `family`, `recordKind`.
 
 ## `decisions[]` — the host's calls

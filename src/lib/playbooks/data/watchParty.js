@@ -279,6 +279,8 @@ const FORMAT_NO_HALFTIME = [...FORMAT_COMBAT, ...FORMAT_CONTINUOUS, ...FORMAT_BR
 
 const watchParty = {
   type: 'Watch Party',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Three-bean vegetable chili with avocado & salsa',
   // What the time she types means (lib/eventAnchor, cause 5): when guests arrive.
   timeAnchor: { means: 'arrival' },
   solveFamily: 'home_gathering',

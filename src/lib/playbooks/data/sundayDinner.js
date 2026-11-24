@@ -13,6 +13,8 @@ const sundayDinner = {
   // when dinner hits the table. Arrivals come first, by this playbook's own serve cue.
   timeAnchor: { means: 'serve', serveAt: 'T0 +30m' },
   vegMain: 'Smothered mushroom & bean main + cornbread',
+  // The meatless main when any guest is vegan, declared free of every animal product.
+  vegMainVegan: 'Smothered mushrooms & white beans over rice + collard greens cooked in vegetable stock',
   solveFamily: 'home_gathering',
   family: 'home_hosted',
   recordKind: 'event',
