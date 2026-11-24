@@ -3317,6 +3317,11 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    Monogram cards, semantic status pills, alert CHIPS not paragraphs,
    workstream strip, tap-to-expand with a real motion curve. */
 .wstrip{display:flex; gap:var(--sp-2); overflow-x:auto; padding:2px 0 var(--sp-3); scrollbar-width:none}
+/* NOTHING TAPPABLE IS CLIPPED (owner report, 11/24/2026). A sideways scroller
+   clips, and its first and last chips sat flush with its edges, so their
+   focus and attention rings (12px out) were cut. The scroller gives itself
+   12px inside and takes it back outside, so the chips stay where they were. */
+.wstrip, .rtool-lens{ padding-inline:var(--sp-3); margin-inline:calc(-1 * var(--sp-3)); scroll-padding-inline:var(--sp-3); }
 .wstrip::-webkit-scrollbar{display:none}
 .wchip{flex-shrink:0; display:flex; flex-direction:column; gap:2px; align-items:flex-start;
   border:1px solid var(--line-soft); background:var(--bg-band); border-radius:var(--r-row);
@@ -3430,7 +3435,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
 .vc-chip.warn{color:var(--warn); background:var(--warn-tint)}
 .vc-chip.ok{color:var(--ok); background:var(--ok-tint)}
 .vc-chip.quiet{color:var(--progress); background:var(--progress-tint)}/* audit S1 */
-.vc-more{max-height:0; opacity:0; overflow:hidden; overflow:clip;
+.vc-more{max-height:0; opacity:0; overflow:hidden; overflow-x:visible; overflow-y:clip;
   transition:max-height var(--ms-slow) var(--ease-standard), opacity var(--ms-slow) var(--ease-standard)}
 /* CLIP, NOT HIDDEN (11/23/2026). `overflow:hidden` makes the fold a scroll
    container. While the card is still opening, anything that brings a control
@@ -3441,7 +3446,11 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
    so the content slid under the finger and the tap landed on the card, not
    on "Send … the details". `clip` cuts the same way but cannot be scrolled,
    so a control stays where it was drawn until the reveal reaches it.
-   `hidden` stays first as the fallback for a browser without `clip`. */
+   `hidden` stays first as the fallback for a browser without `clip`.
+   SIDEWAYS IT DOES NOT CLIP AT ALL (owner report, 11/24/2026): the fold's
+   fields and buttons sit flush with its edges, and a horizontal clip cut
+   their focus and attention rings. The reveal only ever travels down, so
+   only the y axis clips. */
 /* WAVE-B: headroom for the new arrival/money row + COI expiry field —
    340px clipped the expanded card once the write affordances landed.
    VENDOR-BRIEF-AUTHORING: 640px clipped it again once the on-site-contact/

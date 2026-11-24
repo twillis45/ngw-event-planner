@@ -9,7 +9,13 @@
 //
 //   rule 9  every tap at least 44x44 (touch projects only, UX_03 rule 2);
 //   rule 3  remove, delete and skip are last, alone, and name what they remove;
-//   rule 2  every field has a visible label, not only a placeholder.
+//   rule 2  every field has a visible label, not only a placeholder;
+//   clip    nothing tappable sits within 12px of an ancestor that clips
+//           sideways (touch only). Owner report, 11/24/2026: the iPad
+//           landscape hero's lit button lost its left edge, focus ring and
+//           attention ring to a card's overflow; iPadOS Safari has no
+//           overflow-clip-margin to save it. Also run at that iPad's own
+//           Safari landscape size, 1000x690 ("ipad-1000").
 //
 // THE LIST OF WHAT IS STILL OPEN. The sweep landed before the later batches,
 // so it found violations those batches own. Each one is written down in
@@ -21,7 +27,7 @@
 // The clock is fixed so "N days to go" copy, and the wrapping it causes,
 // is the same on every run.
 import { test, expect, settled, sheetSettled, openSectionByName } from './fixtures.mjs';
-import { underFloor, destructiveNotLast, unlabeledFields } from './floorProbes.mjs';
+import { underFloor, destructiveNotLast, unlabeledFields, clippedSideways } from './floorProbes.mjs';
 import { KNOWN } from './cohesionSweepKnown.mjs';
 
 test.use({ hasTouch: true });
@@ -54,24 +60,23 @@ const boot = async (page) => {
   await settled(page);
 };
 
-const probe = async (page, root, project) => {
-  const sorted = (a) => [...new Set(a)].sort();
-  return {
-    9: TOUCH.test(project) ? sorted(await page.evaluate(underFloor, [root, FLOOR, null, false])) : [],
-    3: sorted(await page.evaluate(destructiveNotLast, [root])),
-    2: sorted(await page.evaluate(unlabeledFields, [root])),
-  };
-};
+const sorted = (a) => [...new Set(a)].sort();
+const probe = async (page, root, project) => ({
+  9: TOUCH.test(project) ? sorted(await page.evaluate(underFloor, [root, FLOOR, null, false])) : [],
+  3: sorted(await page.evaluate(destructiveNotLast, [root])),
+  2: sorted(await page.evaluate(unlabeledFields, [root])),
+  clip: TOUCH.test(project) ? sorted(await page.evaluate(clippedSideways, [root, 12])) : [],
+});
 
 const expected = (where, project) => {
   const k = KNOWN[where] || {};
   const pick = (rule) => [...new Set((k[rule] || []).filter(([projects]) => projects.includes(project)).map(([, s]) => s))].sort();
-  return { 9: pick(9), 3: pick(3), 2: pick(2) };
+  return { 9: pick(9), 3: pick(3), 2: pick(2), clip: pick('clip') };
 };
 
 const check = (found, where, project) => {
   if (process.env.SWEEP_RECORD) console.log('SWEEP ' + JSON.stringify({ where, project, found }));
-  expect(found, `${where} at ${project}: rules 9, 3 and 2`).toEqual(expected(where, project));
+  expect(found, `${where} at ${project}: rules 9, 3, 2 and clip`).toEqual(expected(where, project));
 };
 
 test.describe('every sheet keeps the cohesion rules', () => {
@@ -109,5 +114,45 @@ test.describe('every sheet keeps the cohesion rules', () => {
     await expect(card.locator('.vc-statuspick')).toBeVisible();
     await page.waitForTimeout(400);
     check(await probe(page, '.sheet', info.project.name), 'an opened vendor', info.project.name);
+  });
+});
+
+// iPad Safari landscape (1000x690, owner report 11/24/2026): the clip rule,
+// once, under the landscape project (touch on), on the same sheets.
+test.describe('nothing tappable is clipped at iPad Safari landscape, 1000x690', () => {
+  test.beforeEach(async ({ page }, info) => {
+    test.skip(info.project.name !== 'landscape', 'pins its own 1000x690; measured once');
+    await page.setViewportSize({ width: 1000, height: 690 });
+  });
+  const clipOnly = async (page, root, where) => {
+    const found = { 9: [], 3: [], 2: [], clip: sorted(await page.evaluate(clippedSideways, [root, 12])) };
+    const want = expected(where, 'ipad-1000');
+    if (process.env.SWEEP_RECORD) console.log('SWEEP ' + JSON.stringify({ where, project: 'ipad-1000', found }));
+    expect(found, `${where} at 1000x690: clip`).toEqual({ ...want, 9: [], 3: [], 2: [] });
+  };
+  test('the board', async ({ page }) => {
+    await boot(page);
+    await page.waitForTimeout(800);
+    await clipOnly(page, '.app', 'the board');
+  });
+  for (const door of DOORS) {
+    test(door, async ({ page }) => {
+      test.setTimeout(60_000);
+      await boot(page);
+      await openSectionByName(page, door, { settle: 600 });
+      await sheetSettled(page);
+      await clipOnly(page, '.sheet', door);
+    });
+  }
+  test('an opened vendor, with its status picker', async ({ page }) => {
+    test.setTimeout(60_000);
+    await boot(page);
+    await openSectionByName(page, 'People you’re hiring', { settle: 600 });
+    await sheetSettled(page);
+    const card = page.locator('.sheet .vcard:has(button[data-vaction="booking"])').first();
+    await card.locator('.vc-name').click();
+    await expect(card).toHaveClass(/\bopen\b/);
+    await card.evaluate((el) => Promise.allSettled(el.getAnimations({ subtree: true }).map((a) => a.finished)));
+    await clipOnly(page, '.sheet', 'an opened vendor');
   });
 });

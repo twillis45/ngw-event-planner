@@ -153,3 +153,46 @@ export const unlabeledFields = ([rootSel]) => {
   }
   return out;
 };
+// Rule 9 (owner report, 11/24/2026): nothing tappable is clipped. A tappable's
+// keycap edge, focus ring and attention ring reach 12px out; an ancestor that
+// clips horizontally (overflow-x not visible) within 12px of its left or right
+// edge cuts them. iPadOS Safari has no overflow-clip-margin, so it cannot save it.
+export const clippedSideways = ([rootSel, reach = 12]) => {
+  const root = [...document.querySelectorAll(rootSel)].pop() || document.body;
+  const PRESS = 'button, a[href], [role=button], [role=radio], summary, input:not([type=hidden]), select, textarea';
+  const out = [];
+  for (const el of root.querySelectorAll(PRESS)) {
+    if (el.closest('[inert], [aria-hidden="true"]')) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) continue;
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+    let hidden = false;
+    for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) {
+      const ac = getComputedStyle(a);
+      if (parseFloat(ac.opacity) < 0.05) { hidden = true; break; }
+      if (/hidden|clip/.test(ac.overflowY) && a.getBoundingClientRect().height < 2) { hidden = true; break; }
+    }
+    if (hidden) continue;
+    for (let a = el.parentElement; a && a !== document.documentElement; a = a.parentElement) {
+      const ox = getComputedStyle(a).overflowX;
+      if (ox === 'visible') continue;
+      const q = a.getBoundingClientRect();
+      // A chip partly scrolled out of a sideways scroller is reached by
+      // scrolling, not cut: judged only where the scroller shows it whole.
+      if (/auto|scroll/.test(ox) && (r.left < q.left - 0.5 || r.right > q.right + 0.5)) break;
+      const left = r.left - q.left, right = q.right - r.right;
+      // In a scroller with more to scroll, the edge with more content beyond
+      // it is a scroll edge: its padding waits at the end of the scroll.
+      const more = /auto|scroll/.test(ox) && a.scrollWidth > a.clientWidth + 1;
+      const atStart = a.scrollLeft <= 0.5, atEnd = a.scrollLeft >= a.scrollWidth - a.clientWidth - 0.5;
+      const near = (d) => d < reach - 0.5;   // half a pixel for sub-pixel layout
+      if ((near(left) && (!more || atStart)) || (near(right) && (!more || atEnd))) {
+        const who = String(a.className || a.tagName).split(' ')[0];
+        out.push(`${String(el.className || el.tagName).split(' ')[0]} "${(el.innerText || el.getAttribute('aria-label') || el.value || '').replace(/\s+/g, ' ').trim().slice(0, 26)}" in ${who}`);
+        break;
+      }
+    }
+  }
+  return out;
+};
