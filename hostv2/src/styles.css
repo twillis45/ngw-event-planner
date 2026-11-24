@@ -5939,9 +5939,16 @@ button.vc-pill::after{
     min-height:calc(100dvh - 72px - env(safe-area-inset-bottom,0px));
   }
 }
-.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .ev-eyebrow,
-.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .tt-head{
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .ev-eyebrow{
   grid-area:eyebrow; align-self:start;
+}
+/* The desktop's title block takes the eyebrow's cell, at 1280+ only: below
+   that the 13" upright's board is a flex column, where align-self:start would
+   shrink the header to its words and pull its right edge off the gutter. */
+@media (min-width:1280px){
+  .stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .tt-head{
+    grid-area:eyebrow; align-self:start;
+  }
 }
 .stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .ev-head{
   grid-area:head; align-self:start; margin-top:6px;
