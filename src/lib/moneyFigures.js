@@ -34,9 +34,15 @@ export function moneyFigures(money) {
   };
 }
 
-/** The words for each figure. Headroom is never called "left to spend". */
+/**
+ * The words for each figure. Nothing is called "left to spend" (cohesion audit
+ * #5, 11/24/2026, owner-approved): on one card "$4,380 left to spend" sat
+ * beside "$3,410 of $5,000 not yet spoken for", and both read as what is left
+ * of the budget. expected − spent is what she still has to pay out, so it says
+ * that. (The key keeps its name; the words are the host's.)
+ */
 export const MONEY_LABELS = Object.freeze({
-  leftToSpend: 'Left to spend',
+  leftToSpend: 'Still to pay',
   headroomUnder: 'Room left in your budget',
   headroomOver: 'Expected over by',
   unpledged: 'not yet spoken for',

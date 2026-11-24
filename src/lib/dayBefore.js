@@ -71,8 +71,17 @@ export function buildDayBeforePlan(event, now = new Date()) {
     const items = (cap && Array.isArray(cap.groups)) ? cap.groups.flatMap(g => g.items || []) : [];
     unboughtGear = items.filter(i => i && !i.skipped && !checked[i.key] && !owned[i.key] && !i.owned).length;
   } catch (e) { /* honest zero */ }
-  const unboughtSupplies = unboughtListSupplies + unboughtGear;
+  // UX_11 rule 12 (cohesion audit #4, 11/24/2026): "N items still to get" is
+  // the shopping list's own remainder (linesLeftToBuy, the one reader the
+  // spread, the board and the plan hero count) — Wanda's day read 37 beside
+  // the spread's 31 because the rentals (chairs, tables, linens…) were added
+  // in, and they are not on the list or in a store run. The section's `open`
+  // is still the whole concern (list + rentals, so the headline stays the
+  // sections' sum), split into three named parts: openFood + openSupplies is
+  // the list (`listLeft`, what "still to get" prints), openGear the rentals.
+  const unboughtSupplies = unboughtListSupplies;
   const stillToGet = unboughtFood + unboughtSupplies;
+  const shoppingOpen = stillToGet + unboughtGear;
 
   // 3 · Vendor gaps — explicit fields only, first-undone ordering.
   // RECON-I5: the "of N" denominator is the rollup's (workstreams.js counts every
@@ -138,21 +147,23 @@ export function buildDayBeforePlan(event, now = new Date()) {
       }];
     })()),
     {
-      key: 'shopping', label: 'Still to get', open: stillToGet,
+      key: 'shopping', label: 'Still to get', open: shoppingOpen, listLeft: stillToGet,
       // RECON-I5 split: openFood matches playbookFoodPlan's itemCount − boughtCount
-      // exactly; openSupplies = the list's Supplies lines + unowned capacity gear.
-      openFood: unboughtFood, openSupplies: unboughtSupplies,
-      detail: stillToGet
-        ? `${stillToGet} item${stillToGet === 1 ? '' : 's'} not checked off — one store run covers it.`
-        : 'Everything’s bought or in hand.',
+      // exactly; openSupplies = the list's Supplies lines; openGear = the unowned
+      // capacity gear (rentals). open = all three; listLeft = the first two.
+      openFood: unboughtFood, openSupplies: unboughtSupplies, openGear: unboughtGear,
+      detail: [
+        stillToGet ? `${stillToGet} item${stillToGet === 1 ? '' : 's'} not checked off — one store run covers it.` : null,
+        unboughtGear ? `${unboughtGear} rental${unboughtGear === 1 ? '' : 's'} still to sort.` : null,
+      ].filter(Boolean).join(' ') || 'Everything’s bought or in hand.',
       // ROW-LEVEL CTA RULE (Todd, 2026-07-07): land on the first unbought food
       // LINE (foodFocus); supplies-only remainder lands on the supplies card.
-      route: stillToGet
+      route: (stillToGet || unboughtGear)
         ? (firstUnboughtFoodId
           ? { tab: 'Planning', foodFocus: firstUnboughtFoodId }
           : { tab: 'Planning', focusField: `cap-hero-${ev.id}` })
         : null,
-      cta: stillToGet ? 'Open the list' : null,
+      cta: stillToGet ? 'Open the list' : unboughtGear ? 'See the rentals' : null,
     },
     ...(vendors.length ? [{
       key: 'vendors', label: 'People you’re counting on', open: vendorGaps.length,

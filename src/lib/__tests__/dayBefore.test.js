@@ -115,7 +115,10 @@ test('shopping food scope equals playbookFoodPlan itemCount − boughtCount; spl
   expect(plan && plan.itemCount).toBeGreaterThan(0); // the fixture really has a food plan
   const shopping = buildDayBeforePlan(base).sections.find(s => s.key === 'shopping');
   expect(shopping.openFood).toBe(plan.itemCount - plan.boughtCount);
-  expect(shopping.openFood + shopping.openSupplies).toBe(shopping.open);
+  // Rule 12 (cohesion audit #4): the rentals are their own part (openGear), so
+  // "still to get" (listLeft) is the list's remainder; the three reassemble open.
+  expect(shopping.openFood + shopping.openSupplies).toBe(shopping.listLeft);
+  expect(shopping.listLeft + shopping.openGear).toBe(shopping.open);
 
   // buying one FOOD line moves exactly the food part, and stays reconciled
   const firstFood = plan.list.find(i => i && !i.skipped && i.group !== 'Supplies');

@@ -26,7 +26,8 @@ test('money shows owned commitments, separate expectations, and conflicting reco
   await expect(sheet).toContainText('$3,100 spoken for');
   await expect(sheet).toContainText('$600 actually spent');
   await expect(sheet).toContainText('Expected costs');
-  await expect(sheet).toContainText('Food: budget entry $3,000; vendor payments $500');
+  // Audit #51 (rule 4): her budget line, not "budget entry"; the figures are unchanged.
+  await expect(sheet).toContainText('Food: your budget line $3,000; vendor payments $500');
   await expect(sheet).not.toContainText('Over by');
   await page.screenshot({ path: testInfo.outputPath('money-truth.png'), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

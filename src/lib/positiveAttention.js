@@ -13,6 +13,7 @@
 //     byte-identical to production. Host audience only for the first release.
 
 import { audiencePersona } from './nextActionRenderer';
+import { seatingClaim } from './seatingPlan';
 
 // pi.attention flag (default OFF). Enable via ?pi=attention / localStorage
 // 'ngw-pi-attention'='1' / REACT_APP_PI_ATTENTION='true'. Same triad as pi.voice/pi.nav.
@@ -69,8 +70,11 @@ export function positiveAttention(event, readiness) {
   }
   // SEATING — every confirmed (RSVP=Yes) guest has a table assignment. Direct read
   // of existing per-guest data; no score. Only meaningful with a real guest list.
-  const conf = guests.filter((g) => g && g.rsvp === 'Yes');
-  if (conf.length > 0 && conf.every((g) => g.table)) {
+  // UX_11 rule 12 (audit #6): "everyone" is the plan's people, not the roster's
+  // rows — one reader, seatingClaim, the same one Who sits where paints from.
+  let seatedClaim = null;
+  try { seatedClaim = seatingClaim(event); } catch (e) { seatedClaim = null; }
+  if (seatedClaim && seatedClaim.everyoneSeated) {
     items.push({ key: 'Seating', label: 'Seating', note: 'Everyone has a seat' });
   }
 

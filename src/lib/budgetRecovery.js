@@ -281,7 +281,8 @@ export function buildBudgetRecoveryPlan(event, priceFactor) {
   }
 
   const safeCount = suggestions.filter(s => s.class === 'safe_cut' || s.class === 'tradeoff').length;
-  const headline = `Expected costs are ${money(over)} over your current plan — this includes allocations and estimates.`;
+  // Audit #51 (rule 4): "allocations" is app shorthand; say what is counted.
+  const headline = `Expected costs are ${money(over)} over your current plan, counting what’s booked and estimates for the rest.`;
   const summary = safeCount > 0
     ? 'Here’s how to get back on plan: start with what’s still flexible — unbought items you can adjust without touching anything already committed.'
     : 'The remaining costs look committed or protected. Don’t assume savings without checking with the people involved.';

@@ -45,7 +45,7 @@
 //     consecutive tables — that is what shipped; noted, not changed).
 
 import { plusOneCount } from './plusOneCount';
-import { playbookCapacity } from './playbooks';
+import { playbookCapacity, eventSizing } from './playbooks';
 import { seatsForTable, tableTypeOf } from './tableTypes';
 import { guestNeedsStepFree } from './accessNeeds';
 import { guestCountFor } from './guestCountFor';
@@ -362,6 +362,31 @@ export function buildSeatingPlan(event) {
       tablesEven,
       allSeated: confirmedSeats > 0 && unassignedSeats === 0,
     },
+  };
+}
+
+// ── "EVERYONE HAS A SEAT" IS ONE CLAIM, READ HERE (UX_11 rule 12) ───────────
+// Cohesion audit #6 (11/24/2026): Wanda's plan read "17 of 17 · Everyone's in a
+// seat" in green, and the board's What's counted said "Seating · Everyone has a
+// seat", on a plan for 75. `allSeated` is true of the ROSTER (every confirmed
+// row has a table); "everyone" is a claim about the people the plan is for.
+// The claim holds only when every confirmed guest is seated AND the seated
+// count reaches the plan's own floor (eventSizing: the low end of "likely
+// 68–75", or the planned count itself) — the same reader behind the board's
+// "planned around". Every surface that says it, or paints it green, reads this.
+// → { everyoneSeated, rosterSeated, plannedFor, seated }
+export function seatingClaim(event, plan) {
+  const p = plan || buildSeatingPlan(event);
+  const t = (p && p.totals) || {};
+  let floor = 0; let ceiling = 0;
+  try { const s = eventSizing(event || {}); floor = Number(s.floor) || 0; ceiling = Number(s.ceiling) || 0; } catch (e) { floor = 0; ceiling = 0; }
+  const rosterSeated = !!t.allSeated;
+  const seated = Number(t.seated) || 0;
+  return {
+    rosterSeated,
+    everyoneSeated: rosterSeated && seated >= floor,
+    plannedFor: ceiling || null,
+    seated,
   };
 }
 

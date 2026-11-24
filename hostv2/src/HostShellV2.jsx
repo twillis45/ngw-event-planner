@@ -113,7 +113,7 @@ function rankReasonForV2(row) {
 // low|simple|light as easy, where this copy called all five moderate — a divergence waiting
 // for the first playbook to use one of those words. The surface now reads the engine.
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL, rideStatusOf, nextRideStatus, rideFieldsFor, RIDE_STATUS_LABEL, arrivalClusters } from '@app/lib/travelPlan';
-import { buildSeatingPlan, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, tableCountBasis, MEAL_SHORT } from '@app/lib/seatingPlan';
+import { buildSeatingPlan, seatingClaim, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, tableCountBasis, MEAL_SHORT } from '@app/lib/seatingPlan';
 import { costSharingSummary } from '@app/lib/costSharing';
 import { answerPlanQuestion } from '@app/lib/askPlan';
 import { askExchange, appendAskExchange, attachBroaderLook } from '@app/lib/askHistory';
@@ -14584,7 +14584,9 @@ export default function HostShellV2() {
                     const sx = dayBefore.sections || [];
                     const openOf = (k) => { const s = sx.find(x => x.key === k); return s ? (Number(s.open) || 0) : 0; };
                     const steps = openOf('tasks');
-                    const items = openOf('shopping');
+                    // Rule 12 (audit #4): "items to get" is the list's remainder; the
+                    // section's open also holds the rentals, which are not items to buy.
+                    const items = (() => { const sh = sx.find(x => x.key === 'shopping'); return sh ? (sh.listLeft != null ? Number(sh.listLeft) || 0 : Number(sh.open) || 0) : 0; })();
                     const people = openOf('vendors') + openOf('helpers');
                     const parts = [
                       steps ? `${steps} plan step${steps === 1 ? '' : 's'}` : null,
@@ -14609,7 +14611,9 @@ export default function HostShellV2() {
                     const lead = (() => {
                       switch (sec.key) {
                         case 'tasks': return n ? `${n} plan step${n === 1 ? '' : 's'} still open` : 'Plan steps — nothing open';
-                        case 'shopping': return n ? `${n} item${n === 1 ? '' : 's'} still to get` : 'Shopping — all in hand';
+                        // Rule 12: n is the list's remainder; rentals are their own fact,
+                        // so "all in hand" only when none of them is open either.
+                        case 'shopping': { const g = Number(sec.openGear) || 0; const l = sec.listLeft != null ? Number(sec.listLeft) || 0 : n; return l ? `${l} item${l === 1 ? '' : 's'} still to get` : g ? `${g} rental${g === 1 ? '' : 's'} still to sort` : 'Shopping — all in hand'; }
                         case 'vendors': return n ? `${n} ${n === 1 ? 'person' : 'people'} to lock in` : 'Everyone you hired is locked in';
                         case 'rain': return n ? 'No rain backup yet' : 'Rain backup saved';
                         case 'helpers': return n ? `${n} ${n === 1 ? 'helper' : 'helpers'} to confirm` : 'Helpers all confirmed';
@@ -14635,11 +14639,14 @@ export default function HostShellV2() {
                       if (sec.key === 'shopping' && n > 0 && (sec.openFood != null || sec.openSupplies != null)) {
                         const f = Number(sec.openFood) || 0;
                         const s = Number(sec.openSupplies) || 0;
+                        const g = Number(sec.openGear) || 0;
                         const bits = [
                           f ? `${f} on the food list` : null,
-                          s ? `${s} supplies & gear` : null,
+                          s ? `${s} supplies` : null,
                         ].filter(Boolean);
-                        if (bits.length) return `${bits.join(' · ')} — one store run covers it.`;
+                        // The rentals are not a store run (rule 12, audit #4): named apart.
+                        const gearBit = g ? ` ${g} rental${g === 1 ? '' : 's'} still to sort.` : '';
+                        if (bits.length) return `${bits.join(' · ')} — one store run covers it.${gearBit}`;
                       }
                       if (sec.key !== 'cues') return sec.detail;
                       const cueList = ros.filter(r => r && r.segment);
@@ -16359,7 +16366,10 @@ export default function HostShellV2() {
               )}
               {dayHelpers.length > 0 && (
                 <div style={{ marginTop: 28 }}>
-                  <div className="eyebrow" style={{ marginBottom: 10 }}>Who’s helping · {dayHelpers.length}</div>
+                  {/* UX_11 rule 12: this list is the day crew (the venue, the DJ
+                      and the helpers, with their times), not the helper count
+                      Space and the board print under "Who's helping". */}
+                  <div className="eyebrow" style={{ marginBottom: 10 }}>Your day crew · {dayHelpers.length}</div>
                   {dayHelpers.map((h, i) => (
                     <div className="then-row" key={i} style={{ alignItems: 'center' }}>
                       <span aria-hidden style={{
@@ -18342,7 +18352,8 @@ export default function HostShellV2() {
                         aria-label={(it.short || it.item) + ' — ' + (remaining === 0 ? 'covered' : 'still need ' + remaining) + '. Tap to set what you have.'}>
                         <span className="fstat-l">{it.verb ? it.verb + ' ' : ''}{it.short || it.item} <span className="of">need {baseNeed}</span></span>
                         <RowValue status={rowStatus({ settled: remaining === 0 })} chev>
-                          {remaining === 0 ? (helperName ? helperName + ' brings ' + baseNeed : 'covered') : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : 'still need ' + remaining}
+                          {/* Audit #37 (rules 4, 16): a rental range is the playbook's estimate, and says so. */}
+                          {remaining === 0 ? (helperName ? helperName + ' brings ' + baseNeed : 'covered') : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) + ' est.' : 'still need ' + remaining}
                         </RowValue>
                       </button>
                       {open && (
@@ -18476,7 +18487,11 @@ export default function HostShellV2() {
                 {(
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>Who’s helping{helperPeople.length ? ` · ${helperPeople.length}` : ''}</span>
+                      {/* UX_11 rule 12 (audit #19): the count is the rows it heads,
+                          the helper jobs the board's "Helpers x of N" counts
+                          (whoIsConfirmed reads the same responsibilities). It
+                          counted the de-duplicated people: 3 over six rows. */}
+                      <span>Who’s helping{helpers.length ? ` · ${helpers.length}` : ''}</span>
                       {(helperData.helpers || []).length > 0 && (
                         <button className="mini" onClick={startHelperMessages}>Draft helper messages</button>
                       )}
@@ -20844,12 +20859,23 @@ export default function HostShellV2() {
                     <div className="seat-ghost" style={{ left: guestDrag.x, top: guestDrag.y }} aria-hidden="true">{guestDrag.name}</div>,
                     document.body
                   )}
-                  <SheetHero
-                    eyebrow="Seated so far"
-                    star={`${sp.totals.seated} of ${sp.totals.confirmed}`}
-                    tone={sp.totals.allSeated ? 'ok' : undefined}
-                    sub={(sp.totals.allSeated ? 'Everyone’s in a seat — ' : '') + tableBits + '.'}
-                  />
+                  {(() => {
+                    // UX_11 rule 12 (audit #6): green and "Everyone's in a seat"
+                    // only when the plan's people are seated, not just the rows
+                    // on the list (seatingClaim, the board's reader too). A short
+                    // roster says what is true of it, and the plan's size.
+                    const claim = seatingClaim(event, sp);
+                    const lead = claim.everyoneSeated ? 'Everyone’s in a seat — '
+                      : claim.rosterSeated && claim.plannedFor ? `Everyone on your list is seated · the plan is for ${claim.plannedFor} — ` : '';
+                    return (
+                      <SheetHero
+                        eyebrow="Seated so far"
+                        star={`${sp.totals.seated} of ${sp.totals.confirmed}`}
+                        tone={claim.everyoneSeated ? 'ok' : undefined}
+                        sub={lead + tableBits + '.'}
+                      />
+                    );
+                  })()}
                   {sp.dietChips.length > 0 && (
                     <div className="chips" style={{ margin: '0 0 var(--sp-2)' }}>
                       {sp.dietChips.map(c => <span key={c} className="chip" style={{ cursor: 'default' }}>{c}</span>)}
@@ -27734,7 +27760,7 @@ export default function HostShellV2() {
                     return (
                       <div style={{ margin: '2px 0 var(--sp-4)' }}>
                         <div className="mbar" role="img"
-                          aria-label={`${fmt(spent)} spent, ${fmt(pledged)} spoken for, of a ${fmt(planned)} budget`}>
+                          aria-label={`${fmt(spent)} spent, ${fmt(pledged)} booked and not yet paid, of a ${fmt(planned)} budget`}>
                           {/* TWO SOLID VALUES, NOT A COLOUR AND ITS TINT (fixed 2026-07-30 after
                               looking at it at 2.4x). The pledged segment was --steel-tint: a 16%
                               alpha fill, which is a CHIP BACKGROUND token — it exists to sit behind
@@ -27766,7 +27792,10 @@ export default function HostShellV2() {
                           {/* The key swatches must be the SAME values the bar paints, or the legend
                               explains a chart the host is not looking at. */}
                           <span><i className="mbar-dot" style={{ background: over ? 'var(--danger)' : 'var(--steel-soft)' }} />{fmt(spent)} spent</span>
-                          {pledged > 0 && <span><i className="mbar-dot" style={{ background: over ? 'var(--danger-solid)' : 'var(--steel)' }} />{fmt(pledged)} spoken for</span>}
+                          {/* UX_11 rule 12: "spoken for" is one figure on this card (the
+                              committed total in the line above). This segment is the
+                              part of it not paid yet, so it says that. */}
+                          {pledged > 0 && <span><i className="mbar-dot" style={{ background: over ? 'var(--danger-solid)' : 'var(--steel)' }} />{fmt(pledged)} booked, not yet paid</span>}
                           <span className="mbar-cap">{over ? fmt(committed - planned) + ' over ' + fmt(planned) : fmt(free) + ' of ' + fmt(planned) + ' ' + MONEY_LABELS.unpledged}</span>
                         </div>
                       </div>
@@ -27777,7 +27806,7 @@ export default function HostShellV2() {
                   {(spend.moneyDiscrepancies || []).length > 0 && (
                     <div className="card" role="note">
                       <p className="grounding">Payment records overlap or differ. Each category is counted once; review the records before relying on spent.</p>
-                      {spend.moneyDiscrepancies.map(c => <p className="grounding" key={c.label}>{c.label}: budget entry {fmt(c.discrepancy.budgetActual)}; vendor payments {fmt(c.discrepancy.vendorPaid)}{c.discrepancy.shoppingPaid > 0 ? '; shopping record ' + fmt(c.discrepancy.shoppingPaid) : ''}.</p>)}
+                      {spend.moneyDiscrepancies.map(c => <p className="grounding" key={c.label}>{c.label}: your budget line {fmt(c.discrepancy.budgetActual)}; vendor payments {fmt(c.discrepancy.vendorPaid)}{c.discrepancy.shoppingPaid > 0 ? '; shopping record ' + fmt(c.discrepancy.shoppingPaid) : ''}.</p>)}
                       <button className="mini" style={{ minHeight: 'var(--tap-min)' }} onClick={() => setSheet({ kind: 'vendors' })}>Review vendor payments</button>
                     </div>
                   )}
@@ -27888,7 +27917,7 @@ export default function HostShellV2() {
                           budget" ask right above when no ceiling exists yet. This
                           row total is real (the plan's own cost estimate), just not
                           a budget, so the label says so instead of implying one. */}
-                      <div className="shelf-label" style={{ margin: '10px 0 6px' }}>{'Expected costs — includes allocations and estimates'}</div>
+                      <div className="shelf-label" style={{ margin: '10px 0 6px' }}>{'Expected costs — what’s booked, plus estimates for the rest'}</div>
                       {hostRows.map((r, i) => {
                         const alloc = money.planned ? Math.min(100, Math.round((r.est / money.planned) * 100)) : 0;
                         const got = r.est ? Math.min(100, Math.round((r.got / r.est) * 100)) : 0;
@@ -27899,7 +27928,7 @@ export default function HostShellV2() {
                               onClick={r.go} aria-label={'Open ' + r.label}>
                               <div className="line" style={{ padding: '0 0 5px' }}>
                                 <span>{r.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
-                                <span className="amt">{r.source === 'estimate' && !['crabs', 'lodging'].includes(r.kind) ? '~' : ''}{fmt(r.est)} <span className="of">{r.source === 'vendor' ? 'Vendor record' : r.source === 'budget' ? 'Budget entry' : ['crabs', 'lodging'].includes(r.kind) ? 'Your price' : 'Estimated'}</span></span>
+                                <span className="amt">{r.source === 'estimate' && !['crabs', 'lodging'].includes(r.kind) ? '~' : ''}{fmt(r.est)} <span className="of">{r.source === 'vendor' ? 'Vendor record' : r.source === 'budget' ? 'Your budget line' : ['crabs', 'lodging'].includes(r.kind) ? 'Your price' : 'Estimated'}</span></span>
                               </div>
                               {/* The 4% floor keeps a small-but-real category findable. It must
                                   not apply to a category costing nothing: while the fill was
