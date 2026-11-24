@@ -6,7 +6,9 @@
 // landscape on Wanda's 50th (cohesion batch B).
 //
 // Rule 9 (44x44) is clean on every sheet at every touch geometry since the
-// vendor status picker's pills went to full height (audit #9).
+// vendor status picker's pills went to full height (audit #9). Batch B's
+// own lines (the opened vendor, audit #7 and #8) left with the owner-approved
+// vendor detail.
 const ALL = ['mobile', 'desktop', 'tablet-tall', 'landscape'];
 
 export const KNOWN = {
@@ -33,22 +35,6 @@ export const KNOWN = {
   "Ask No Guesswork": {
     2: [
       [ALL, "input \"Ask a question about your plan\""],
-    ],
-  },
-  // Batch B (this batch), audit #7 and #8: the vendor detail redesign. Waits on the owner approving the renders on renders/cohesion-b; the build deletes these lines.
-  "an opened vendor": {
-    2: [
-      [ALL, "input \"Link to VFW Post 1847 — Freedom Hall’s s\""],
-      [ALL, "input \"Vendor name\""],
-      [ALL, "input \"Your contact at this vendor, greeted by \""],
-      [ALL, "input[email] \"Vendor email\""],
-      [ALL, "input[tel] \"Vendor phone\""],
-      [ALL, "textarea \"Note for this vendor, sent with the deta\""],
-      [ALL, "textarea \"Paste the vendor's message\""],
-    ],
-    3: [
-      [ALL, "vcard \"Remove from this event\" does not name what it removes"],
-      [ALL, "vcard \"Remove from this event\" is not last (then \"Your contact at this vendor, g\")"],
     ],
   },
 };

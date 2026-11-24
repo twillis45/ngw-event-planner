@@ -3368,6 +3368,36 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .vc-amt .amt{font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; color:var(--ink)}
 .vc-paid{font-size:var(--t-tag); font-weight:650; color:var(--ok)}
 .vc-id{min-width:0; flex:1}
+/* THE HEADER'S TWO ROWS (owner's fix 1 to the approved vendor renders,
+   11/24/2026). Row one: the name, then the price on the right. Row two: the
+   meta on ONE line, then the status pushed right. A flex line breaks on the
+   items' natural widths, so where both don't fit (390: 240px of meta plus a
+   107px pill in 282) the pill wraps to its own right-hand line instead of the
+   meta wrapping, and the name never shares its line with the status. */
+.vc-top{display:flex; align-items:baseline; gap:var(--sp-2); min-width:0}
+.vc-top .vc-name{flex:1 1 auto; min-width:0}
+.vc-sub{display:flex; flex-wrap:wrap; align-items:center; column-gap:var(--sp-2); row-gap:var(--sp-1); margin-top:1px}
+.vc-sub .vc-cat{flex:0 1 auto; min-width:0; margin-top:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.vc-sub .vc-pill{margin-left:auto}
+/* THE OPENED VENDOR'S GROUPS (cohesion batch B, approved renders). */
+.vd-group{margin:0 0 var(--sp-4)}
+.vd-group-label{display:flex; justify-content:space-between; align-items:baseline; gap:var(--sp-2)}
+.vd-group-state{text-transform:none; letter-spacing:0; font-weight:600; color:var(--muted); text-align:right}
+.vd-group-state.warn{color:var(--warn)}
+.vd-field{display:block; margin:0 0 var(--sp-3)}
+.vd-label{display:block; margin:0 0 var(--sp-1)}
+.vd-input{width:100%; max-width:none; box-sizing:border-box; font-size:var(--t-input)}
+/* Paperwork's actions are QUIET row-trailing links (owner's fix 2): the one
+   lit "Send … the details" is the only thing on the card that asks to be
+   pressed. Quiet, not small: the tap area keeps the 44px floor. */
+.vd-link{background:none; border:none; color:var(--steel-soft); font:inherit; font-size:var(--t-meta); font-weight:650;
+  min-height:var(--tap-min); min-width:var(--tap-min); padding:0 var(--sp-2); display:inline-flex; align-items:center;
+  justify-content:center; cursor:pointer; text-decoration:none}
+.vd-link:disabled{opacity:.6; cursor:wait}
+.vd-send{margin:var(--sp-1) 0 var(--sp-4)}
+.vd-send-cta{width:100%}
+.vd-remove{border-top:1px solid var(--line); padding-top:var(--sp-3); margin-top:var(--sp-2)}
+.vd-remove-btn{width:100%; min-height:var(--tap-min); color:var(--danger-text, var(--danger))}
 /* A VENDOR'S NAME IS ITS IDENTITY (click-through audit 2026-07-28). This was
    white-space:nowrap + ellipsis, so on a phone — where the status pill and the
    money take the right of the card — real names clipped mid-word: "Oxon Hill

@@ -20,7 +20,7 @@ const openNote = async (page, ev) => {
   await settled(page);
   const card = page.locator('.vcard', { hasText: 'Harvest Table Catering' }).first();
   await card.evaluate((c) => c.click());
-  await card.getByRole('button', { name: 'Draft note', exact: true }).click();
+  await card.getByRole('button', { name: 'Draft a note instead', exact: true }).click();
   return page.locator('.sheet').last().getByRole('link', { name: 'Text it', exact: true });
 };
 

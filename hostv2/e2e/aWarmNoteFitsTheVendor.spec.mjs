@@ -21,7 +21,7 @@ test('Warmer on a note to a vendor still quoting thanks them, and never says the
   await settled(page);
   const card = page.locator('.vcard', { hasText: 'Harvest Table Catering' }).first();
   await card.evaluate((c) => c.click());
-  await card.getByRole('button', { name: 'Draft note', exact: true }).click();
+  await card.getByRole('button', { name: 'Draft a note instead', exact: true }).click();
   const draft = page.locator('.sheet').last();
   await draft.getByRole('radio', { name: 'Warmer' }).click();
   await page.waitForTimeout(400);
