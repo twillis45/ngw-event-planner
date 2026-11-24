@@ -17,6 +17,38 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 24, 2026 — cohesion batch A: The Day stage speaks host words and fits the moment (`cohesion-a-2utz0n`)
+
+- **Ask (the parent session, for the owner):** batch A of the owner-approved cohesion audit (`origin/audit/cohesion-1124`, `AUDIT.md`), The Day stage. Fix rules 1, 4 and 13 systemically: each rule gets a test that sweeps every stage, watched red first. Layout changes stop at renders.
+- **Where the audit's "The Day" is:** it is the **Plan board on the event day** (the `dayHero` branch of `HostShellV2.jsx`): "Run the day", "Still open from planning · not today's job". The Day tab itself was swept too.
+- **Rule 4 (host words), fixed at the source.** The jargon list lives in `src/lib/hostWords.json`. `src/lib/__tests__/theEnginesSpeakHostWords.test.js` reads the engines; `hostv2/e2e/hostWordsOnEveryStage.spec.mjs` reads Plan, The Day and After for the host's own plan and the Wanda sample, at T-1, the day before the first cue, during a cue and T+2. Violations found and fixed:
+  - "(compound event, requires merging)": `eventIdentityEngine.js` canonicalDescription. `isCompound` and `requiresMerge` stay on the result.
+  - `Resolve "… for ".`: `CommandCenter.jsx` tier 2 cut the title at 80 characters inside its quotes. The title is now whole (the card wraps).
+  - "Open decisions block timeline, vendor, and approval progress downstream." / "…blocks downstream timeline + vendor work.": now "Overdue by N days. The steps after it wait on it." / "Still open. The steps after it wait on it."
+  - The Day: "Draft the helper brief" → "Draft everyone's part today" (the title of the draft it opens).
+  - After: "N foundation facts on record" → "N of the basics settled"; "“Thanked” feeds the wrap-up meter up top" → "Each “Thanked” is counted at the top" (and its toast).
+- **Rule 13 (fits the moment).** `hostv2/e2e/theDayFitsTheMoment.spec.mjs`. Violations found and fixed:
+  - The day-of board headed due-today and past-window cards "not today's job". Its label now reads the cards: "N due today", else "if there's time" (past window only), else "not today's job".
+  - The walkthrough's `.now-label` said "6:00 PM · NOW · you run this" the day before and two days after. NOW now shows only for the cue `dayOfHero` says the clock is on. An untimed later step reads "Then" (was "Now").
+- **Rule 1 (one lit), measured, no code change.**
+  - `oneLitButtonOnTheDay` gains the board on the day, The Day on the day and The Day the day before. In light each shows exactly one lit action ("Run the day"; "Done — what's next" / "Done — next"), and dark shows at most one. That holds on mobile, landscape, tablet-tall and desktop.
+  - `oneLitButtonPerSheet` gains two event-day runs (390 and 1440): no sheet shows two lit.
+  - The audit's lit=0 matches **dark**, where ruling 31 keeps the board's ask soft.
+  - **After lights three** ("Save it", "Publish the recap", "Draft the thank-you"; audit #11, batch E). It is not in the spec, so the spec is not red. It joins the spec in the change that fixes it, after renders.
+- **Stopped for renders (not built):** P1 #2's "about ten equal buttons" on the day-of board. The proposal is on `renders/cohesion-a` (`9df5de2`, never merges; `renders/cohesion-a/README.md` lists 16 PNGs at 390/834/1024/1440, dsf 2, clock fixed at 2027-03-20 5 PM):
+  - On the day, show only due-today or critical cards, under "Still to do today · N left".
+  - The rest folds behind "N more from planning, if there's time ▸".
+  - Owner decision: this folds past-window non-critical cards, against the wave-6 "cap yields to safety" guardrail.
+  - P3s #42 (`.idx` contrast) and #54 (concurrent `strataFocus`) are visual or motion changes and are left for the same approval.
+- **Gates (measured on `63e2caa`):**
+  - root jest: 936 suites, 14,081 passed, 1 skipped.
+  - hostv2 vitest: 18 files, 166 passed.
+  - `e2e:build`: exit 0.
+  - e2e, 68 specs the change can reach (`PW_CHROMIUM` set, `--workers=4 --retries=0`):
+    - mobile and desktop: 891 passed, 33 skipped, 0 failed (18.8m);
+    - tablet-tall and landscape: 671 passed, 110 skipped, 1 failed (12.6m).
+  - The failure was `everyTapIsFortyFourSquare.spec.mjs:94` on tablet-tall: a risks watch-row measured 121x36, a row this change does not touch. Alone with `--repeat-each=3` it passed 9 of 9. No code change.
+
 ## November 24, 2026 — `origin/main` (`78c1e8c1`, with #249 and #250) merged into `shopdata-2utz0n`
 
 - **Ask (the parent session, which the owner told to merge this work):** merge `origin/main` with a merge commit, keep both sides' intent in the 8 conflicting files, rerun the gates, then push. The parent opens the PR and merges; this session does not.
