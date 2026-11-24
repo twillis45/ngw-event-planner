@@ -17,6 +17,28 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 24, 2026 — cohesion batch B, part 3: main (#256) merged in; one clip probe for both clip specs
+
+- **Ask (the parent):** after #256 (e1ff88ba) landed on main:
+  1. merge it into cohesion-b-2utz0n and drop the board-hero clip lines;
+  2. make `floorProbes.clippedSideways` the single clip probe, with `nothingTappableIsClipped` calling it, and red-proof the result.
+  The parent later asked that B NOT merge main, because A, B and C ship bundled through its integration branch. That message arrived after the merge was already pushed (0859b54f). The merge only adds #256, which that branch already holds; a revert commit is offered if wanted.
+- **Merge conflicts:**
+  - `HostShellV2.jsx`: main dropped `mealPickFor` next to B's `vendorReplyOpen`. Main's sheet-title line keeps B's "Scan for the details".
+  - `HANDOFF.md`: both sides' entries kept.
+- **One probe:** `clippedSideways` takes options: `press`, `stopAt` and `firstRoot`. `nothingTappableIsClipped` (hero, six viewports) now calls it with `press:'button'` and `stopAt:'.escreen'`, plus premises that there is a hero card and that it has buttons. Both specs share the scroller exemptions and the 0.5px tolerance.
+- **The ratchet worked:** the board hero's 3 clip lines are gone (fixed by cb91bc95). Two Make it yours lines are gone too, because #256 labeled those fields; the sweep failed until they were removed.
+- **Red-proof:** I set `.hero.elegant .hero-card` back to `overflow:hidden`.
+  - The sweep failed on the board at mobile, tablet-tall, landscape and 1000×690.
+  - `nothingTappableIsClipped` failed at all six of its viewports.
+  - Restored afterward.
+- **Gates (measured on 0859b54f):**
+  - Root jest: 939 suites, 14,144 passed, 1 skipped.
+  - hostv2 vitest: 21 files, 176 passed.
+  - `e2e:build`: exit 0.
+  - E2E: 73 specs (batch B's reachable set, the clip spec, and every spec the merge changed), at mobile, desktop, tablet-tall and landscape, `--workers=4 --retries=0`, in three chunks: 1,487 passed, 204 skipped, 0 failed.
+  - Backend: not touched by B.
+
 ## November 24, 2026 — cohesion batch B, part 2: the vendor detail built as approved; the sweep's clip rule
 
 - **Ask (the parent, relaying the owner, 11/24/2026):** build the vendor detail as rendered on `renders/cohesion-b`, with two fixes: (1) the header keeps the name on one line and the meta on one line, with price and status on the right; (2) Paperwork's outlined buttons go quiet, so only "Send … the details" is lit. Then a sweep rule from an owner report: nothing tappable may sit within 12px of an ancestor that clips sideways.
