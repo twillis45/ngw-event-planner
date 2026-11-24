@@ -5763,6 +5763,35 @@ export default function HostShellV2() {
   // typing appended: 10 → "105", "1015").
   const [guestDraft, setGuestDraft] = useState(null);
   const [sheet, setSheet] = useState(() => (OPEN_ON_LOAD ? { kind: OPEN_ON_LOAD } : null));   // deep-link landing: {kind, focus}
+  // ── THE ATTENTION CUE (owner, renders 6a, 6b, 6c, 11/24/2026) ──────────────
+  // The ONE input or button the hero asks for wears a soft steel ring: two
+  // breaths, then a faint steady outline (styles.css [data-cue]). It plays when
+  // the hero settles and again after each completed step (a new ask), stops on
+  // her first tap or key, and is only ever on one element. With reduced motion
+  // the CSS leaves the steady outline alone. An attribute, not a class, so a
+  // re-render that rewrites the element's className cannot drop or double it.
+  const cueKey = elegantMode && askMode && stage === 'plan' && !sheet && queue[0]
+    ? String(heroAskText || '') + '|' + String(queue[0].id || queue[0].title || '') : null;
+  useEffect(() => {
+    const clear = () => { try { document.querySelectorAll('[data-cue]').forEach((e) => e.removeAttribute('data-cue')); } catch { /* no DOM */ } };
+    clear();
+    if (!cueKey) return undefined;
+    let timer = null;
+    const stop = () => { clearTimeout(timer); clear(); off(); };
+    const off = () => { document.removeEventListener('pointerdown', stop, true); document.removeEventListener('keydown', stop, true); };
+    timer = setTimeout(() => {
+      const card = document.querySelector('.escreen.on .hero-card') || document.querySelector('.hero .hero-card');
+      if (!card) return;
+      const first = (sel) => [...card.querySelectorAll(sel)].find((e) => e.getClientRects().length && !e.disabled);
+      const el = first('input.field:not([type=checkbox]):not([type=radio]), textarea')
+        || first('.decopt.pick') || first('button.cta:not(.soft)') || first('.decopt');
+      clear();
+      if (el) el.setAttribute('data-cue', '');
+    }, 450);
+    document.addEventListener('pointerdown', stop, true);
+    document.addEventListener('keydown', stop, true);
+    return () => { clearTimeout(timer); off(); clear(); };
+  }, [cueKey]);
   // Which section a host opens (11/16/2026, "add analytics"): the kind only.
   const sheetKind = sheet && sheet.kind;
   useEffect(() => {

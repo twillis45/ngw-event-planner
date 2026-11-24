@@ -8804,3 +8804,22 @@ button.tt-row{ cursor:pointer; }
 .evname-cancel:hover{ color:var(--ink); }
 .evname-row{ display:flex; flex-direction:column; align-items:stretch; gap:8px; cursor:default; }
 .evrename{ margin:0 0 4px; }
+
+/* ── THE ATTENTION CUE (owner, renders 6a, 6b, 6c, 11/24/2026) ───────────────
+   The one input or button the hero asks for: two soft breaths of about 1.2s,
+   then a faint steady outline. Steel (--steel-soft), low opacity. Drawn with
+   outline, not box-shadow, so a button's own keycap shadow is untouched. The
+   shell sets [data-cue] on one element and clears it on her first tap or key. */
+@keyframes cue-breathe{
+  0%{ outline-color:color-mix(in srgb, var(--steel-soft) 0%, transparent); outline-offset:0; }
+  40%{ outline-color:color-mix(in srgb, var(--steel-soft) 30%, transparent); outline-offset:3px; }
+  100%{ outline-color:color-mix(in srgb, var(--steel-soft) 0%, transparent); outline-offset:9px; }
+}
+@keyframes cue-settle{
+  from{ outline-color:color-mix(in srgb, var(--steel-soft) 0%, transparent); }
+  to{ outline-color:color-mix(in srgb, var(--steel-soft) 16%, transparent); }
+}
+[data-cue]{ outline:3px solid color-mix(in srgb, var(--steel-soft) 16%, transparent); outline-offset:0;
+  animation:cue-breathe 1.2s cubic-bezier(.2,0,0,1) 0s 2, cue-settle .6s ease-out 2.4s forwards; }
+input[data-cue], textarea[data-cue]{ border-color:color-mix(in srgb, var(--steel-soft) 42%, transparent); }
+@media (prefers-reduced-motion: reduce){ [data-cue]{ animation:none; } }

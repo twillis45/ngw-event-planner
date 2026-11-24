@@ -24,6 +24,11 @@
 //      current row has "Rename" (the same field). A placeholder name carries a
 //      quiet "Name it". A one-time tip: "Tip: press and hold the name to
 //      rename it ×". The invite step's name ask is the same field.
+//   5  THE ATTENTION CUE (renders 6a, 6b, 6c). The one input or button the
+//      hero asks for gets a soft steel ring: two breaths of about 1.2s, then a
+//      faint steady outline. It plays when the hero settles and after each
+//      completed step, stops on interaction, and never marks two elements.
+//      With reduced motion: the steady outline only.
 import { test, expect } from '@playwright/test';
 import { settled, sheetSettled, openSectionByName } from './fixtures.mjs';
 
@@ -34,8 +39,8 @@ const TABLET = { width: 768, height: 1024 };
 const TALL13 = { width: 1024, height: 1366 };
 const TEXT = 'Thanksgiving dinner for 14 at my house on Thursday 11/26 at 3pm, budget $400';
 
-const created = async (browser, vp, { touch = vp.width < 1100, init } = {}) => {
-  const ctx = await browser.newContext({ viewport: vp, hasTouch: touch, isMobile: touch });
+const created = async (browser, vp, { touch = vp.width < 1100, init, reducedMotion } = {}) => {
+  const ctx = await browser.newContext({ viewport: vp, hasTouch: touch, isMobile: touch, ...(reducedMotion ? { reducedMotion } : null) });
   const page = await ctx.newPage();
   await page.clock.setFixedTime(new Date('2026-11-23T12:00:00'));
   if (init) await page.addInitScript(init);
@@ -395,5 +400,54 @@ test('4: the invite step’s “What do you call it?” is the same rename field
   await expect(page.locator('[data-outward-name]')).toHaveCount(0);
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].name);
   expect(stored).toBe('Rose’s Thanksgiving');
+  await ctx.close();
+});
+
+// ═════════════════════════════ 5. THE ATTENTION CUE ═════════════════════════
+const cues = (page) => page.evaluate(() => [...document.querySelectorAll('[data-cue]')].map((e) => {
+  const cs = getComputedStyle(e);
+  return { tag: e.tagName.toLowerCase(), cls: String(e.className), inHero: !!e.closest('.escreen.on .hero-card'),
+    anim: cs.animationName, dur: cs.animationDuration, iter: cs.animationIterationCount, ow: parseFloat(cs.outlineWidth), os: cs.outlineStyle, oc: cs.outlineColor };
+}));
+
+test('5: one soft ring on the one field the hero asks for: two breaths, then steady; it stops on interaction and returns after a completed step', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const { ctx, page } = await created(browser, PHONE);
+  await expect.poll(() => cues(page).then((c) => c.length)).toBe(1);
+  let c = (await cues(page))[0];
+  expect(c.inHero, 'it is in the hero card').toBe(true);
+  expect(c.tag, 'the city field the hero asks for').toBe('input');
+  expect(c.anim).toMatch(/cue-breathe/);
+  expect(c.anim).toMatch(/cue-settle/);
+  expect(c.dur.split(',')[0].trim(), 'a breath is about 1.2s').toBe('1.2s');
+  expect(c.iter.split(',')[0].trim(), 'two breaths').toBe('2');
+  // Settled: a faint steady outline in steel, low opacity.
+  await page.waitForTimeout(3300);
+  c = (await cues(page))[0];
+  expect(c.ow).toBeGreaterThan(0);
+  // The alpha, however the browser serializes the color (rgba(…, a) or oklab(… / a)).
+  const alpha = Number((/(?:\/\s*|,\s*)([\d.]+)\)\s*$/.exec(c.oc) || [])[1]);
+  expect(alpha, `low opacity (${c.oc})`).toBeLessThanOrEqual(0.3);
+  // Her interaction stops it.
+  await page.locator('h2.ask').first().click();
+  await expect.poll(() => cues(page).then((x) => x.length)).toBe(0);
+  // A completed step: it plays again, on the next ask's one element.
+  await page.locator('.escreen.on .hero-card input.field').first().fill('Springfield, VA');
+  await page.locator('.escreen.on .hero-card').getByRole('button', { name: /^Save/ }).first().click();
+  await expect.poll(() => cues(page).then((x) => x.length), { timeout: 8000 }).toBe(1);
+  expect((await cues(page))[0].inHero).toBe(true);
+  // Never two.
+  for (let i = 0; i < 6; i++) { expect((await cues(page)).length).toBeLessThanOrEqual(1); await page.waitForTimeout(300); }
+  await ctx.close();
+});
+
+test('5: with reduced motion the cue is the steady outline only, no animation', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const { ctx, page } = await created(browser, PHONE, { reducedMotion: 'reduce' });
+  await expect.poll(() => cues(page).then((c) => c.length)).toBe(1);
+  const c = (await cues(page))[0];
+  expect(c.anim).toBe('none');
+  expect(c.ow).toBeGreaterThan(0);
+  expect(c.os).toBe('solid');
   await ctx.close();
 });
