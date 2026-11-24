@@ -1098,6 +1098,47 @@ function RowValue({ status = 'open', note = false, chev = false, style, children
   );
 }
 
+// ─── A FINISHED GROUP COLLAPSES, ONE RULE (owner, renders 8/8b, 11/24/2026) ──
+// One component for every list whose groups finish: the shopping groups, the
+// Bringing list, the checklist and the decided calls.
+//   a group with every item done   one compact green row, a chevron to reopen
+//                                  ("✓ Food · all 10 bought"), no progress bar
+//   every group done (`all`)       "✓ All 27 bought" and a quiet "Show the list"
+// Reopening is the caller's `onOpen`; it lasts for the browser session only
+// (useReopened below) and never writes to the plan.
+function DoneFold({ text, onOpen, all = false, showLabel = 'Show the list' }) {
+  if (all) {
+    return (
+      <div className="done-all" data-done-all>
+        <span className="done-tx"><span className="done-ck" aria-hidden="true">✓</span>{text}</span>
+        <button type="button" className="done-show" onClick={onOpen}>{showLabel}</button>
+      </div>
+    );
+  }
+  return (
+    <button type="button" className="done-fold" data-done-fold aria-expanded="false" onClick={onOpen}>
+      <span className="done-ck" aria-hidden="true">✓</span>
+      <span className="done-tx">{text}</span>
+      <span className="fg-chev" aria-hidden="true">›</span>
+    </button>
+  );
+}
+// Which finished groups she reopened, per plan, for this browser session.
+const REOPENED_KEY = 'ngw-v2-reopened';
+function useReopened(eventId) {
+  const [map, setMap] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem(REOPENED_KEY) || '{}') || {}; } catch { return {}; }
+  });
+  const key = (scope) => String(eventId || '') + ':' + scope;
+  const isOpen = (scope) => !!map[key(scope)];
+  const reopen = (scope) => setMap((m) => {
+    const next = { ...m, [key(scope)]: true };
+    try { sessionStorage.setItem(REOPENED_KEY, JSON.stringify(next)); } catch { /* private mode: this visit only */ }
+    return next;
+  });
+  return { isOpen, reopen };
+}
+
 // ─── SHOP / BRINGING — the spread sheet's two modes ──────────────────────────
 //
 // Renders NOTHING when no line is carried by somebody else, which is every
@@ -7430,15 +7471,43 @@ export default function HostShellV2() {
     } catch (_e) { /* no checklist, no group */ }
     return ids;
   }, [event]);
+  // Finished groups she reopened this session (DoneFold, owner 11/24/2026).
+  const reopened = useReopened(event && event.id);
+  // A checked-off step, as the done shelf and a reopened finished group show it.
+  const doneTaskRow = (t, i) => (
+    <button key={t.id || i} className="frow got" onClick={() => toggleTask(i)}>
+      <span className="fcheck" aria-hidden="true" />
+      <span className="f-main">
+        <span className="f-name">{t.task}</span>
+        <span className="v-meta">{[t.week, t.owner].filter(Boolean).join(' · ')}</span>
+      </span>
+    </button>
+  );
   const renderGroupedTasks = (renderRow) => {
     const order = groupDinnerSteps(event.timeline, dinnerStepIds);
+    const members = order.filter((x) => x.inGroup && x.t && !x.t.retired);
     const group = order.filter((x) => x.inGroup).map((x) => ({ x, el: renderRow(x.t, x.i) })).filter((g) => g.el);
+    // THE DINNER'S STEPS, ALL DONE, ARE ONE GREEN ROW (owner, 11/24/2026),
+    // reopened for the session to show the checked-off steps.
+    const dinnerDone = !group.length && members.length > 0 && members.every((x) => x.t.done);
     const out = [];
     let placed = false;
     for (const x of order) {
       if (!x.inGroup) { out.push(renderRow(x.t, x.i)); continue; }
-      if (placed || !group.length) continue;
+      if (placed || !(group.length || dinnerDone)) continue;
       placed = true;
+      if (dinnerDone) {
+        out.push(reopened.isOpen('tasks:dinner') ? (
+          <div className="dinner-steps" data-dinner-steps key="dinner-steps">
+            <div className="shelf-label">{celebrationTitle(event)}</div>
+            {members.map((m) => doneTaskRow(m.t, m.i))}
+          </div>
+        ) : (
+          <DoneFold key="dinner-steps" text={`${celebrationTitle(event)} · all ${members.length} done`}
+            onOpen={() => reopened.reopen('tasks:dinner')} />
+        ));
+        continue;
+      }
       out.push(
         <div className="dinner-steps" data-dinner-steps key="dinner-steps">
           <div className="shelf-label">{celebrationTitle(event)}</div>
@@ -17686,7 +17755,17 @@ export default function HostShellV2() {
                     </div>
                   );
                 })()}
-                {(decisionBoard.locked || []).length > 0 && (
+                {/* THE DECIDED CALLS ARE ONE GREEN ROW (owner, 11/24/2026, the
+                    DoneFold rule) until she reopens them for the session; a
+                    routed focus on one of them ("Change the call") opens them. */}
+                {(decisionBoard.locked || []).length > 0 && !reopened.isOpen('calls:settled')
+                  && !(sheet.focus && (decisionBoard.locked || []).some(r => r && r.id === sheet.focus)) && (
+                  <div style={{ marginTop: 'var(--sp-3)' }}>
+                    <DoneFold text={`Settled · all ${(decisionBoard.locked || []).length} decided`} onOpen={() => reopened.reopen('calls:settled')} />
+                  </div>
+                )}
+                {(decisionBoard.locked || []).length > 0 && (reopened.isOpen('calls:settled')
+                  || !!(sheet.focus && (decisionBoard.locked || []).some(r => r && r.id === sheet.focus))) && (
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)' }}>Settled</div>
                     {(decisionBoard.locked || []).map((r, i) => {
@@ -23511,23 +23590,29 @@ export default function HostShellV2() {
                   )}
                   <Panel on={panels}>
                   </Panel>
-                  {(event.timeline || []).some(t => t && t.done && !t.retired) && (
-                    <>
-                      <button className="fold-btn" style={{ color: 'var(--ok)' }} onClick={() => setDoneOpen(o => !o)}>
-                        {(event.timeline || []).filter(t => t && t.done && !t.retired).length} done — the plan has them
-                        <span className="chev" aria-hidden="true">{doneOpen ? '▾' : '›'}</span>
-                      </button>
-                      {doneOpen && (event.timeline || []).map((t, i) => (t && t.done && !t.retired) ? (
-                        <button key={t.id || i} className="frow got" onClick={() => toggleTask(i)}>
-                          <span className="fcheck" aria-hidden="true" />
-                          <span className="f-main">
-                            <span className="f-name">{t.task}</span>
-                            <span className="v-meta">{[t.week, t.owner].filter(Boolean).join(' · ')}</span>
-                          </span>
+                  {(event.timeline || []).some(t => t && t.done && !t.retired) && (() => {
+                    // FINISHED WORK COLLAPSES, ONE RULE (owner, 11/24/2026): the
+                    // done steps are one green row (DoneFold) until she opens
+                    // them; with every step done the whole list is "All N done".
+                    const live = (event.timeline || []).filter(t => t && !t.retired);
+                    const doneN = live.filter(t => t.done).length;
+                    const allDone = doneN === live.length;
+                    if (allDone && !reopened.isOpen('tasks:all')) {
+                      return <DoneFold all text={`All ${live.length} done`} onOpen={() => { reopened.reopen('tasks:all'); setDoneOpen(true); }} />;
+                    }
+                    if (!doneOpen) {
+                      return <DoneFold text={`${doneN} done — the plan has them`} onOpen={() => setDoneOpen(true)} />;
+                    }
+                    return (
+                      <>
+                        <button className="fold-btn" style={{ color: 'var(--ok)' }} onClick={() => setDoneOpen(false)}>
+                          {doneN} done — the plan has them
+                          <span className="chev" aria-hidden="true">▾</span>
                         </button>
-                      ) : null)}
-                    </>
-                  )}
+                        {(event.timeline || []).map((t, i) => (t && t.done && !t.retired) ? doneTaskRow(t, i) : null)}
+                      </>
+                    );
+                  })()}
                   </Panel>
                 </>
               ) : (
@@ -23667,9 +23752,14 @@ export default function HostShellV2() {
                       told. Clearing the field removes the name rather than
                       storing an empty one. */}
                   {rows.length ? (
-                    <div className="fstat-list">
-                      {rows.map((r) => bringerRow(r))}
-                    </div>
+                    (bringingTally.total > 0 && bringingTally.named === bringingTally.total && !reopened.isOpen('bring')
+                      && !rows.some((r) => r.id === bringFocus || (bringerEdit && bringerEdit.id === r.id)))
+                      ? <DoneFold text={`Bringing · all ${bringingTally.total} spoken for`} onOpen={() => reopened.reopen('bring')} />
+                      : (
+                        <div className="fstat-list">
+                          {rows.map((r) => bringerRow(r))}
+                        </div>
+                      )
                   ) : null}
                   {taken.length ? (
                     <>
@@ -25139,6 +25229,15 @@ export default function HostShellV2() {
                     const focusHere = gItems.some(it => it.id === sheet.focus || it.id === foodTune);
                     const isOpen = !!foodGroupsOpen[g] || focusHere || !!shopStore; // run mode opens the shelves
                     const gDone = gBought === gActive.length;
+                    // A FINISHED GROUP COLLAPSES (owner, render 8b, 11/24/2026):
+                    // one green row until she reopens it. Not in a store run (it
+                    // opens the shelves on purpose) and not under a deep link.
+                    if (gDone && gActive.length > 0 && !shopStore && !focusHere && !reopened.isOpen('shop:' + g)) {
+                      return (
+                        <DoneFold key={g} text={`${g} · all ${gActive.length} bought`}
+                          onOpen={() => { reopened.reopen('shop:' + g); setFoodGroupsOpen(m => ({ ...m, [g]: true })); }} />
+                      );
+                    }
                     return (
                     <div key={g} className={'fgroup' + (isOpen ? ' open' : '')}>
                       <button className="fg-head" onClick={() => setFoodGroupsOpen(m => ({ ...m, [g]: !isOpen }))}>
@@ -25974,7 +26073,12 @@ export default function HostShellV2() {
                           })()}
                         </>
                       )}
-                      {groupRows}
+                      {/* EVERY GROUP BOUGHT: the whole list is one line (owner,
+                          render 8, 11/24/2026) until "Show the list". */}
+                      {(!shopStore && shopTally.done && !reopened.isOpen('shop:all')
+                        && !items.some(it => it.id === sheet.focus || it.id === foodTune))
+                        ? <DoneFold all text={`All ${shopTally.total} bought`} onOpen={() => reopened.reopen('shop:all')} />
+                        : groupRows}
                       {!shopStore && broughtShown.length > 0 ? (() => {
                         const lbl = broughtShown[0].broughtByLabel || 'Your friends';
                         const are = /\b(friends|neighbors|families|guests)\b/i.test(lbl) ? 'are' : 'is';

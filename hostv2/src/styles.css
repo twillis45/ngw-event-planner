@@ -3163,6 +3163,22 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    the sentence takes the room left and wraps, as the board's reasons do. */
 .fstat-v.fstat-note{white-space:normal; flex:1 1 auto; min-width:0}
 .fstat-chev{color:var(--faint)}
+/* A FINISHED GROUP COLLAPSES (owner, renders 8/8b, 11/24/2026). DoneFold:
+   one compact green row with a chevron to reopen, no progress bar; with every
+   group done, one "All N done" line and a quiet "Show the list". */
+.done-fold{display:flex; align-items:center; gap:var(--sp-2); width:100%; min-height:var(--tap-min);
+  background:none; border:0; padding:var(--sp-3) 2px; font:inherit; font-size:var(--t-row); font-weight:600;
+  color:var(--ok); text-align:left; cursor:pointer}
+.done-fold + .done-fold{border-top:1px solid var(--line-soft)}
+.done-fold .done-ck{font-weight:700; flex:0 0 auto}
+.done-fold .done-tx{flex:1 1 auto; min-width:0}
+.done-fold .fg-chev{color:var(--muted); flex:0 0 auto}
+.done-all{display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3);
+  padding:var(--sp-3) 2px; margin:0 0 var(--sp-3)}
+.done-all .done-tx{color:var(--ok); font-size:var(--t-row); font-weight:650}
+.done-all .done-ck{margin-right:var(--sp-2); font-weight:700}
+.done-show{background:none; border:0; padding:0 2px; min-height:var(--tap-min); font:inherit;
+  font-size:var(--t-row-sub); font-weight:600; color:var(--steel-soft); cursor:pointer; white-space:nowrap}
 /* SETTLED = GREEN, ONE RULE (owner, 11/24/2026). A row's value is colored by
    the one reader's answer (lib/rowStatus via RowValue): settled is --ok, open
    stays neutral, overdue is --warn. A note sentence that is open keeps its

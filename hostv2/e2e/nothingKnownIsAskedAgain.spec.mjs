@@ -29,6 +29,9 @@ const hero = async (page) => (await page.locator('.hero').first().innerText()).r
 // Calls to make, split into what it still asks and what it holds as settled.
 const calls = async (page) => {
   await openSectionByName(page, 'Calls to make');
+  // The decided calls are one green row until reopened (DoneFold, owner 11/24/2026).
+  const fold = page.locator('.sheet').last().locator('[data-done-fold]', { hasText: /Settled · all \d+ decided/ });
+  if (await fold.count()) { await fold.click(); await page.waitForTimeout(300); }
   const t = (await page.locator('.sheet').last().innerText()).replace(/\r/g, '');
   const at = t.search(/\nSETTLED\n/i);
   return { asks: at < 0 ? t : t.slice(0, at), settled: at < 0 ? '' : t.slice(at) };

@@ -50,6 +50,9 @@ const bootWatchParty = async (page, foodChoices = {}) => {
 const readSheet = async (page, sectionName, sheetTitleMatch) => {
   await openSectionByName(page, sectionName, { timeout: 8000 });
   await expect(page.locator('#sheet-title')).toHaveText(sheetTitleMatch, { timeout: 8000 });
+  // The decided calls are one green row until reopened (DoneFold, owner 11/24/2026).
+  const fold = page.locator('.sheet').last().locator('[data-done-fold]', { hasText: /Settled · all \d+ decided/ });
+  if (await fold.count()) { await fold.click(); await page.waitForTimeout(300); }
   return page.locator('.sheet').last().innerText();
 };
 
