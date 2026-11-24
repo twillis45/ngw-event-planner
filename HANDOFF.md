@@ -17,7 +17,17 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
-## November 24, 2026 (latest) — Share & invite in four steps; the invite message saved, previewed, confirmed and recorded; no reply link, nothing goes out
+## November 24, 2026 (latest) — cohesion batches A, B and C, bundled (owner: "Bundle")
+
+- **What:** A (The Day's "Still to do today" + "the day's schedule" wording), B (the vendor detail + the one clip probe), C (rule 12 "the numbers agree" + the budget card + Space + the family checklist count, + the flipReorder fix). Each batch's own entry is below.
+- **Integration fixes (each found on the merged tree, each red first):**
+  - B's new vendor axis words said "the run of show"; A's ban caught it. Now it reads `THE_SCHEDULE`.
+  - Live check of #256 found a three-answer ask at 1024x768 touch with answers under the fold. New spec `aShortLandscapeFitsEveryAsk` (pointer + touch, both ask kinds); short tablet-land: 16px question offset, rename tip beside the title.
+  - `a11yFloor` didn't count `<label>`s and called B's labeled fields unnamed. It now reads `el.labels`. Red-proofed.
+- **Not root-caused:** one `theVendorsSpeakHostWords` mobile failure (card 4 didn't open); 60/60 under load after. Its trace was lost in a cleanup, so CI's trace decides.
+- **Handed to batch F:** on touch at short landscape, the fold handle sits just below the screen.
+
+## November 24, 2026 — Share & invite in four steps; the invite message saved, previewed, confirmed and recorded; no reply link, nothing goes out
 
 - **Ask:** the owner-approved follow-on (renders s2-1 to s2-6, 11/24/2026), test-first, on `ux-send` from `ux-integrate` (`27253b02`). Not pushed. New e2e `theInviteMessageIsDraftedSavedAndSent.spec.mjs` (14 tests, rsvpsync bundle), watched failing 14/14 on the old build.
 - **The card (`ShareInviteCard.jsx`).** 1 Get it right: "Invite page" (the panel, renamed from "Your invite" everywhere; the guest list's second door is gone outside `?people=1`) and "Invite message" ("Written from your plan · check it" / "Draft saved · edited" / "Sent Nov 24 · see what went out"). 2 Send it: lit "Invite your guest list (N)" with "I already sent it another way"; quiet "Everyone on your list is invited"; lit again as "Invite N new guests". 3 Share another way: Share the link (copies where there is no share sheet; "Copy the link" is merged into it), Show QR code, Invite text (before sending, Copy lit). 4 After it's out: a fold until sent; then the tally, lit "Nudge the N who haven't replied" (quiet while step 2 is lit), Update everyone, Send the details ("Parking, dress, what to bring"). "Out" is `invitesOut` or any guest `wasInvited`. Readers only: inviteRecipients, nudgeRecipients/nudgeCount, wasInvited, rsvpHasResponded.
