@@ -120,3 +120,27 @@ test('#20: "still unpriced" counts hired vendors only', () => {
 test('#5: no money figure is called "left to spend"', () => {
   for (const w of Object.values(MONEY_LABELS)) expect(w).not.toMatch(/left to spend/i);
 });
+
+// #35 (owner ruling 11/24/2026, option a): the checklist's "N of M" is one
+// reader, checklistProgress, the formula the host's checklist sheet prints
+// (done = ticked or proven handled by the plan, over the live steps). Her app
+// saves it on the event as `checklistCount`, and the family page prints that.
+test('#35: the checklist count is one reader, the host sheet’s own formula', () => {
+  const { checklistProgress, timelineStepResolved } = require('../taskEngine');
+  const bad = [];
+  for (const ev of events()) {
+    const live = (ev.timeline || []).filter((t) => t && !t.retired);
+    const open = live.filter((t) => !t.done && !timelineStepResolved(ev, t)).length;
+    const want = { done: live.length - open, total: live.length };
+    const got = checklistProgress(ev);
+    if (got.done !== want.done || got.total !== want.total) bad.push(`${ev.id}: ${got.done}/${got.total} vs ${want.done}/${want.total}`);
+  }
+  expect(bad).toEqual([]);
+  const ev = { id: 'c', type: 'Birthday', timeline: [
+    { id: 'a', task: 'Pick up the cake', done: true },
+    { id: 'b', task: 'Hang the lights' },
+    { id: 'r', task: 'Book a sitter', retired: true },
+  ] };
+  expect(checklistProgress(ev)).toEqual({ done: 1, total: 2, open: 1 });
+  expect(checklistProgress(null)).toEqual({ done: 0, total: 0, open: 0 });
+});

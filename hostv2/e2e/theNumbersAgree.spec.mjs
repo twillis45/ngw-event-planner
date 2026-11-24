@@ -334,3 +334,32 @@ test(`a lit button never offers a figure its screen hasn’t named — ${who}, e
   for (const b of lit) for (const fig of figuresIn(b.label)) if (!mentions(b.around, fig)) bad.push(`${b.where}: the lit "${b.label}" offers ${fig}, named nowhere around it`);
   expect(bad).toEqual([]);
 });
+
+// ── 7. The family page's checklist count is the host's (audit #35) ───────────
+// Owner ruling 11/24/2026, option a: her app saves its own "N of M" on the
+// event (checklistCount); the server passes it to the family link (pinned in
+// backend/tests/test_family_checklist_count.py). Here: what she reads on her
+// checklist is what the family page prints from the event her app saved.
+test('the family page counts the checklist the host counts', async ({ page }) => {
+  test.setTimeout(120_000);
+  await bootOwn(page);
+  await openSectionByName(page, 'Your checklist', { settle: 600 });
+  await sheetSettled(page);
+  const host = /Checked off\s*(\d+) of (\d+)/.exec(await page.locator('.sheet').last().innerText());
+  expect(host, 'premise: the host checklist shows N of M').not.toBeNull();
+  // The event as her app saved it (the ordinary event write the sync sends).
+  await expect.poll(() => page.evaluate(() => (JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0] || {}).checklistCount || null))
+    .toEqual({ done: Number(host[1]), total: Number(host[2]) });
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0]);
+  // The family projection's checklist is her stored steps (done = ticked), plus her count.
+  const plan = {
+    name: saved.name, type: saved.type, date: saved.date,
+    checklist: (saved.timeline || []).filter((t) => t && !t.retired && t.task).map((t) => ({ task: t.task, done: !!t.done })),
+    checklistCount: saved.checklistCount,
+  };
+  const CODE = 'fam-' + 'n'.repeat(28);
+  await page.route('https://e2e-mock.invalid/api/public/family/' + CODE, (r) => r.fulfill({ status: 200, json: { ok: true, plan } }));
+  await page.goto('?family=' + CODE);
+  const line = page.locator('[data-family="checklist-count"]');
+  await expect(line).toHaveText(`The checklist · ${host[1]} of ${host[2]} handled`);
+});

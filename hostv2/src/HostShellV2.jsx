@@ -175,7 +175,7 @@ import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, readEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
 import { deleteAccount, isAccountDeletionAvailable } from '@app/lib/api/account';
-import { effectiveDone, factsATickRecords, invitesOut, timelineStepResolved, TRIP_DETAILS_DRAFT } from '@app/lib/taskEngine';
+import { effectiveDone, factsATickRecords, invitesOut, timelineStepResolved, checklistProgress, TRIP_DETAILS_DRAFT } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
@@ -9101,6 +9101,26 @@ export default function HostShellV2() {
   }, [event && event.id, event && JSON.stringify(event.foodChoices || null), event && JSON.stringify(event.tripMeals || null), event && JSON.stringify(event.celebration || null),
       event && event.travelMode, event && event.isDestination, event && event.foodFocus,
       event && event.caterer, event && event.date]);
+
+  // ── HER CHECKLIST'S "N OF M" TRAVELS WITH THE EVENT (rule 12, audit #35) ──
+  // Owner ruling 11/24/2026, option a: the family page printed "1 of 41" while
+  // her checklist said "2 of 41" — it can see the ticks but not the steps her
+  // plan proves handled. Her app saves its own count (checklistProgress, the
+  // sheet's reader) through the ordinary event write, so the family link's
+  // projection carries her number. Written only when it changes; silent, and
+  // it leaves her last Undo alone.
+  const savedChecklistCount = event && event.checklistCount;
+  const liveChecklistCount = useMemo(() => { try { return checklistProgress(event); } catch { return null; } }, [event]);
+  useEffect(() => {
+    if (!event || !event.id || !liveChecklistCount) return;
+    const { done, total } = liveChecklistCount;
+    const prev = savedChecklistCount;
+    if (prev && prev.done === done && prev.total === total) return;
+    if (!prev && total === 0) return;   // nothing to count, nothing to say
+    patchEvent({ checklistCount: { done, total } }, '', { noUndo: true, keepsUndo: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event && event.id, liveChecklistCount && liveChecklistCount.done, liveChecklistCount && liveChecklistCount.total,
+      savedChecklistCount && savedChecklistCount.done, savedChecklistCount && savedChecklistCount.total]);
 
   // THE START TIME'S ONE WRITE PATH (owner 11/22/2026, "Both can edit"):
   // Date & time and the run of show's "guests arrive" both write `startTime`
@@ -18300,16 +18320,35 @@ export default function HostShellV2() {
                     : basis === 'playbook' ? `${tables} for ${gc} guests — what ${aOccasion(event.type || 'event')} this size usually needs.`
                       : basis === 'headcount' ? `About ${tables} of 8 for ${gc} guests — a standard round or banquet table seats 8.`
                         : `${tables} — a starting point, not a read of your room.`;
+                  // ONE DOOR TO THE TABLES (cohesion audit #18; owner approved the
+                  // render 11/24/2026). Once Who sits where is open (a guest has
+                  // said yes) it owns the table count with its own ±, so this
+                  // sheet says the count and routes there. Before that, Who sits
+                  // where has nothing to show and this ± is the only place to set
+                  // the tables (owner, 11/18/2026), so it stays.
+                  const seatingOpen = !!(seating.hasRoster && seating.totals.confirmed > 0);
                   return (
                     <div data-seat-check style={{ margin: '0 0 var(--sp-3)' }}>
                       <div className="shelf-label" style={{ margin: '2px 0 var(--sp-1)' }}>Seating</div>
-                      <div className="actions-row" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span style={{ flex: 1, minWidth: 0 }}>{why}</span>
-                        <button className="mini" aria-label="One fewer table" disabled={n <= 1}
-                          onClick={() => patchEvent({ tables: clampTableCount(n - 1) })}>−</button>
-                        <button className="mini" aria-label="One more table"
-                          onClick={() => patchEvent({ tables: clampTableCount(n + 1) })}>+</button>
-                      </div>
+                      {seatingOpen ? (
+                        <>
+                          <span>{why}</span>
+                          <div className="fstat-list" style={{ marginTop: 'var(--sp-2)' }}>
+                            <button type="button" className="fstat" data-seat-door onClick={() => setSheet({ kind: 'seating' })}>
+                              <span className="fstat-l">Change the tables</span>
+                              <RowValue status="open" chev>Who sits where</RowValue>
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="actions-row" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ flex: 1, minWidth: 0 }}>{why}</span>
+                          <button className="mini" aria-label="One fewer table" disabled={n <= 1}
+                            onClick={() => patchEvent({ tables: clampTableCount(n - 1) })}>−</button>
+                          <button className="mini" aria-label="One more table"
+                            onClick={() => patchEvent({ tables: clampTableCount(n + 1) })}>+</button>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
@@ -23473,12 +23512,12 @@ export default function HostShellV2() {
                     // every time a decision closed a gate — the host would watch
                     // their progress jump for work they never did, which is the
                     // opposite of what this number is for.
+                    // One reader for "N of M" (lib/taskEngine checklistProgress, rule 12):
+                    // the family page prints the count her app saves from it.
                     const live = (event.timeline || []).filter(t => t && !t.retired);
-                    const total = live.length;
                     const openRows = live.filter(t => !t.done);
                     const inferredN = openRows.filter(t => isTimelineStepResolved(t)).length;
-                    const openN = openRows.length - inferredN;
-                    const doneN = total - openN;
+                    const { done: doneN, total, open: openN } = checklistProgress(event);
                     return (
                       <SheetHero
                         eyebrow="Checked off"
