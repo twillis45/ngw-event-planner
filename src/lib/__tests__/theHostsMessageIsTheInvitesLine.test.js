@@ -5,8 +5,9 @@
 // written invite (lib/doItForMe, the "warmer" voice used to hard-code "It
 // wouldn't be the same without you"). Signed "— <first name>" only when the
 // host wrote or changed it; empty, the suggested line for the event, unsigned.
-// Two overrides stay as they were (owner calls): a past event reads "A day
-// worth remembering", an empty memorial "In loving memory".
+// Two overrides (owner calls): a past event with no message of hers reads "A
+// day worth remembering" (her words win once she wrote one, owner 11/24/2026:
+// aPastEventKeepsHerWords), an empty memorial "In loving memory".
 import { inviteMessage, suggestedInviteLine, INVITE_MESSAGE_MAX, deckLineFor } from '../inviteDeck';
 import { inviteCardModel } from '../inviteCard';
 import { draftInvite } from '../doItForMe';
@@ -41,7 +42,7 @@ test('no host name: her words still show, with no signature to put under them', 
 });
 
 test('the two overrides stand: a past event, and an empty memorial', () => {
-  expect(inviteMessage({ ...EV, deckLine: MINE }, { past: true })).toEqual({ text: 'A day worth remembering', signedBy: '' });
+  expect(inviteMessage({ ...EV, deckLine: '' }, { past: true })).toEqual({ text: 'A day worth remembering', signedBy: '' });
   expect(inviteMessage({ ...EV, deckLine: '' }, { somber: true })).toEqual({ text: 'In loving memory', signedBy: '' });
   // deckLineFor (the older reader) still answers the same text.
   expect(deckLineFor({ ...EV, deckLine: MINE }, false, false)).toBe(MINE);
