@@ -50,6 +50,13 @@ None of the proposal’s own controls measured under 44×44 at any touch width.
 | D4 | When "Up next" has no route (e.g. "Lock catering": `checklistRouteFor` returns none), the lit button is **"Check it off"**. Or should it borrow the area's door (People you're hiring)? | "Check it off" now. Add the fallback route with batch F's "step routing fallbacks", so the lit button always goes somewhere real. |
 | D5 | Steps "your plan did this" (inferred) stay in their group with a green "confirm" tag (proposed). Or move them into one "Your plan handled N · confirm" row? | Keep them in place. There is one in Wanda; a separate row is worth it only past about 3. |
 
+**Owner decisions (11/24/2026): D1–D5 approved as recommended.**
+- **D1:** group by when.
+- **D2:** later groups folded.
+- **D3:** a row tap opens the step in place; the check keeps its own box.
+- **D4:** a step with no declared target lights "Check it off" on the checklist. The parent confirmed the routing fallback: everywhere else, such as the board's "Then, in order", a step with no declared target goes to its own checklist row (`stepRoute`). The checklist itself has no further fallback to borrow.
+- **D5:** inferred steps stay in their group with the green "confirm" tag.
+
 ## What the build needs
 
 - **View-only.** No new data. The groups come from the existing due date (`taskDueLabel`/`taskLeadDays`) against `event.date`. "Up next" is the first open, non-inferred step in that order. The host match uses the existing `hostNameFor(event, profile)`.
