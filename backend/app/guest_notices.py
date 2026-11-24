@@ -22,6 +22,7 @@ from .db import get_pool
 from .email_frame import frame, hue_for, paragraphs_html
 from .email_pictures import with_picture
 from .emailer import _send_via_resend, failure_reason, is_email_configured
+from .outward import real_host_name
 
 log = logging.getLogger("ngw.guest_notices")
 
@@ -45,21 +46,22 @@ def _notice(kind, host, name, eyebrow, words, rsvp_code, guest_token, why):
         kind=kind, hue=hue_for(name), eyebrow=eyebrow, title=name,
         blocks=[(paragraphs_html(str(words or "")[:1000]), str(words or "")[:1000])],
         primary=("Open your invite", invite_url(rsvp_code)),
-        fine=f"Reply on your invite. Replies to this email don't reach {host}.",
-        footer=f"Sent by {host} with No Guesswork Events. {why}",
+        fine=f"Reply on your invite. Replies to this email don't reach {host or 'your host'}.",
+        footer=f"Sent by {host} with No Guesswork Events. {why}" if host else f"Sent with No Guesswork Events. {why}",
         stop_url=stop, stop_label="Stop these emails")
 
 
 def compose_reply_notice(host_first: str, event_name: str, reply: str, rsvp_code: str, guest_token: str):
     """(from_name, subject, html, headers, text). Pure."""
-    host = _one_line(host_first, 40) or "Your host"
+    host = real_host_name(_one_line(host_first, 40))     # '' when she gave no name
+    who = host or "Your host"
     name = _one_line(event_name) or "the event"
     stop = unsubscribe_url(guest_token)
-    subject = f"{host} answered your question — {name}"
-    body, text = _notice("reply_notice", host, name, f"{host} answered your question", reply, rsvp_code, guest_token,
-                         f"You get this because you asked for email when {host} replies.")
+    subject = f"{who} answered your question — {name}"
+    body, text = _notice("reply_notice", host, name, f"{who} answered your question", reply, rsvp_code, guest_token,
+                         f"You get this because you asked for email when {host or 'your host'} replies.")
     headers = {"List-Unsubscribe": f"<{stop}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
-    return f"{host} via No Guesswork", subject, body, headers, text
+    return f"{who} via No Guesswork", subject, body, headers, text
 
 
 async def notify_guest_of_reply(thread_id, reply: str) -> None:
@@ -79,7 +81,7 @@ async def notify_guest_of_reply(thread_id, reply: str) -> None:
             )
         if not row or not row["email_opt_in"] or not row["guest_email"] or row["blocked_at"] is not None:
             return
-        host_first = (str(row["host_name"] or "").split() or [""])[0]
+        host_first = (real_host_name(row["host_name"]).split() or [""])[0]
         from_name, subject, body, headers, text = compose_reply_notice(
             host_first, row["event_name"], reply, row["rsvp_code"], row["guest_token"])
         body, text = await with_picture(body, text)
@@ -93,14 +95,15 @@ async def notify_guest_of_reply(thread_id, reply: str) -> None:
 # ── Announcements (027): one post, emailed once to every opted-in guest ──────
 def compose_announcement(host_first: str, event_name: str, body: str, rsvp_code: str, guest_token: str):
     """(from_name, subject, html, headers, text). Pure."""
-    host = _one_line(host_first, 40) or "Your host"
+    host = real_host_name(_one_line(host_first, 40))     # '' when she gave no name
+    who = host or "your host"
     name = _one_line(event_name) or "the event"
     stop = unsubscribe_url(guest_token)
-    subject = f"Update from {host} — {name}"
-    html_body, text = _notice("announcement", host, name, f"An update from {host}", body, rsvp_code, guest_token,
-                              f"You get this because you asked for email when {host} replies or posts an update.")
+    subject = f"Update from {who} — {name}"
+    html_body, text = _notice("announcement", host, name, f"An update from {who}", body, rsvp_code, guest_token,
+                              f"You get this because you asked for email when {who} replies or posts an update.")
     headers = {"List-Unsubscribe": f"<{stop}>", "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"}
-    return f"{host} via No Guesswork", subject, html_body, headers, text
+    return f"{host or 'Your host'} via No Guesswork", subject, html_body, headers, text
 
 
 SEND_GAP_SECONDS = 0.6   # Resend's default limit is 2 requests a second
@@ -127,7 +130,7 @@ async def notify_guests_of_announcement(announcement_id) -> None:
                      from public.guest_threads
                     where event_id = $1 and email_opt_in and guest_email is not null and blocked_at is null
                     order by lower(guest_email), created_at""", a["event_id"])
-        host_first = (str(a["host_name"] or "").split() or [""])[0]
+        host_first = (real_host_name(a["host_name"]).split() or [""])[0]
         sent = failed = 0
         pictures = {}     # one picture for the whole batch: the card is the same for every guest
         for i, r in enumerate(rows):

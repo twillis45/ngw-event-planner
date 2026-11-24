@@ -34,6 +34,25 @@ def host_name_for(ev: dict) -> str:
     return _clean(ev.get("hostName")) or _clean(ev.get("hostNames")) or _clean(ev.get("host"))
 
 
+# A host with no name (owner's invite, 11/24/2026). The app signs "Your host"
+# when her profile has no name (HostShellV2 author_name), and the invite email
+# took its first word as her first name: "Only Your sees your reply." This is
+# the one reader every outbound template asks; '' means "say your host".
+_NO_NAME = re.compile(r"^(?:(?:your|the|our|my|a)\s+)?host$|^your$", re.I)
+
+
+def real_host_name(*candidates) -> str:
+    """The first candidate that names a person, as a guest should read it; ''
+    when none does. Callers pass the profile's name (the sender) first, then the
+    event's host line (host_name_for): with no name on the profile the email
+    reads "Only Rosa sees your reply.", not "your host" (owner ruling, 11/24/2026)."""
+    for v in candidates:
+        s = " ".join(str(v or "").split())
+        if s and not _NO_NAME.match(s):
+            return s
+    return ""
+
+
 # ── which days (fmtLongDate / spanEnd / fmtLongSpan) ─────────────────────────
 _WD = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 _MO = ("January", "February", "March", "April", "May", "June", "July", "August", "September",
@@ -213,13 +232,16 @@ def venue_for(ev: dict) -> dict:
     zip_ = _zip_of(ev, address)
     town = _join_town(city, state, zip_)
     full = _with_missing_parts(address, city, state, zip_) if address else ""
+
+    def zip_tail(x):     # the ZIP wherever it is known (owner's invite, 11/24/2026)
+        return f"{x} {zip_}" if zip_ and not _carries(x, zip_) else x
     if name_is_street:
         line = full
     elif name:
         alone = not full and (dash or (_carries(name, city) and (not state or _carries(name, state))))
-        line = name if alone else " · ".join(x for x in (name, full or town) if x)
+        line = zip_tail(name) if alone else " · ".join(x for x in (name, full or town) if x)
     else:
-        line = f"At home in {_join_town(city, state, '')}" if is_home and city and not address else (full or town)
+        line = zip_tail(f"At home in {_join_town(city, state, '')}") if is_home and city and not address else (full or town)
     return {"name": name, "isHome": is_home, "address": address, "fullAddress": full, "townLine": town,
             "displayLine": line, "nameIsStreet": name_is_street}
 
