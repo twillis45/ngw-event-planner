@@ -8855,33 +8855,35 @@ button.tt-row{ cursor:pointer; }
 .evrename{ margin:0 0 4px; }
 
 /* ── THE ATTENTION CUE (owner, renders 6a, 6b, 6c, 11/24/2026) ───────────────
-   The one input or button the hero asks for: two soft breaths of about 1.2s,
-   then a faint steady outline. Steel (--steel-soft), low opacity. On a button
+   The one input or button the hero asks for: two strong pulses of about 1.2s,
+   then a steady, clearly visible outline. Steel (--steel-soft): 75% at the
+   pulse's peak, 45% at rest (owner, 11/24/2026: "make pulse strong"; it was
+   30% and 16%, too faint to catch the eye). On a button
    it is drawn with outline, so its own keycap shadow is untouched. The
    shell sets [data-cue] on one element and clears it on her first tap or key. */
 @keyframes cue-breathe{
   0%{ outline-color:color-mix(in srgb, var(--steel-soft) 0%, transparent); outline-offset:0; }
-  40%{ outline-color:color-mix(in srgb, var(--steel-soft) 30%, transparent); outline-offset:3px; }
-  100%{ outline-color:color-mix(in srgb, var(--steel-soft) 0%, transparent); outline-offset:9px; }
+  40%{ outline-color:color-mix(in srgb, var(--steel-soft) 75%, transparent); outline-offset:4px; }
+  100%{ outline-color:color-mix(in srgb, var(--steel-soft) 0%, transparent); outline-offset:12px; }
 }
 @keyframes cue-settle{
   from{ outline-color:color-mix(in srgb, var(--steel-soft) 0%, transparent); }
-  to{ outline-color:color-mix(in srgb, var(--steel-soft) 16%, transparent); }
+  to{ outline-color:color-mix(in srgb, var(--steel-soft) 45%, transparent); }
 }
-[data-cue]{ outline:3px solid color-mix(in srgb, var(--steel-soft) 16%, transparent); outline-offset:0;
+[data-cue]{ outline:3px solid color-mix(in srgb, var(--steel-soft) 45%, transparent); outline-offset:0;
   animation:cue-breathe 1.2s cubic-bezier(.2,0,0,1) 0s 2, cue-settle .6s ease-out 2.4s forwards; }
 /* A field is focused when the hero settles, and its focus ring is the outline,
    so on a field the cue is the render's own ring, a box-shadow (a field casts
    none of its own). */
 @keyframes cue-breathe-ring{ 0%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--steel-soft) 0%, transparent); }
-  40%{ box-shadow:0 0 0 5px color-mix(in srgb, var(--steel-soft) 30%, transparent); }
-  100%{ box-shadow:0 0 0 11px color-mix(in srgb, var(--steel-soft) 0%, transparent); } }
+  40%{ box-shadow:0 0 0 8px color-mix(in srgb, var(--steel-soft) 75%, transparent); }
+  100%{ box-shadow:0 0 0 16px color-mix(in srgb, var(--steel-soft) 0%, transparent); } }
 @keyframes cue-settle-ring{ from{ box-shadow:0 0 0 0 color-mix(in srgb, var(--steel-soft) 0%, transparent); }
-  to{ box-shadow:0 0 0 3px color-mix(in srgb, var(--steel-soft) 16%, transparent); } }
+  to{ box-shadow:0 0 0 3px color-mix(in srgb, var(--steel-soft) 45%, transparent); } }
 input[data-cue], textarea[data-cue]{ outline:revert-layer; border-color:color-mix(in srgb, var(--steel-soft) 42%, transparent);
-  box-shadow:0 0 0 3px color-mix(in srgb, var(--steel-soft) 16%, transparent);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--steel-soft) 45%, transparent);
   animation:cue-breathe-ring 1.2s cubic-bezier(.2,0,0,1) 0s 2, cue-settle-ring .6s ease-out 2.4s forwards; }
 @media (prefers-reduced-motion: reduce){ [data-cue], input[data-cue], textarea[data-cue]{ animation:none; } }
 /* The hero card and its editor slot clip their contents (overflow hidden and
    clip); while they hold the cue they clip 16px out, so the ring is not cut. */
-.hero-card:has([data-cue]), .editor-slot:has([data-cue]){ overflow:clip; overflow-clip-margin:16px; }
+.hero-card:has([data-cue]), .editor-slot:has([data-cue]){ overflow:clip; overflow-clip-margin:20px; }
