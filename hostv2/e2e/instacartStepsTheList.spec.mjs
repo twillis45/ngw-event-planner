@@ -124,7 +124,15 @@ const opened = async (page, sheet, click) => {
   const urls = [];
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e && e.message)));
-  await page.context().route('**instacart.com/**', (r) => { urls.push(r.request().url()); return r.abort(); });
+  // ANSWERED, NOT ABORTED (11/24/2026). An aborted navigation leaves the new
+  // tab on Chrome's network-error page, and that page RELOADS ITSELF about a
+  // second later — re-requesting the same search. Measured under load: the
+  // first tab's retry ("Blue crabs", frame chrome-error://chromewebdata/)
+  // landed in `urls` before the Next tap's "old bay seasoning", so urls[1]
+  // equalled urls[0] in 28 of 100 runs although the app opened one tab per
+  // tap. An empty page records the same request and gives Chrome nothing to
+  // retry, so every entry here is one open the app made.
+  await page.context().route('**instacart.com/**', (r) => { urls.push(r.request().url()); return r.fulfill({ status: 200, contentType: 'text/html', body: '' }); });
   await click();
   await settled(page);
   await expect.poll(() => urls.length, { timeout: 5000 }).toBeGreaterThan(0);
