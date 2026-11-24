@@ -164,7 +164,7 @@ const anniversary = {
     { id: 'r_toast_low', target: 'budget-tab', trigger: 'Not enough champagne for everyone to toast', severity: 'med', mitigation: 'Budget ~1 bottle per 6-8 guests for one pour each; keep a zero-proof sparkling so non-drinkers can raise a glass too.' },
     { id: 'r_surprise', target: 'timeline', trigger: 'A surprise leaks, or the couple arrives off-cue', severity: 'med', mitigation: 'Limit who knows logistics; assign one person to manage the arrival and the "now" signal; have a graceful plan if it leaks (it becomes a co-host).' },
     { id: 'r_access', target: 'seating', trigger: 'Older or mobility-limited guests can’t navigate the space', severity: 'med', mitigation: 'Ask accessibility needs on the invite; ensure seating, a clear path, parking, and audible toast/slideshow placement.' },
-    { id: 'r_ice', target: 'none', trigger: 'No ice / warm drinks', severity: 'med', mitigation: 'Buy ~1.5 lb ice/guest day-of; pre-chill whites + champagne ~3h ahead.' },
+    { id: 'r_ice', target: 'none', trigger: 'No ice / warm drinks', severity: 'med', mitigation: 'Buy about 1.5 lb of ice a guest (est., your playbook) the day of; pre-chill whites + champagne ~3h ahead.' },
     { id: 'r_cleanup', target: 'none', trigger: 'No cleanup plan → host trapped at the sink', severity: 'low', mitigation: 'Stage a bus tub + empty dishwasher pre-party; clear into the tub, don’t wash mid-party; consider a cleaner.' },
   ],
 

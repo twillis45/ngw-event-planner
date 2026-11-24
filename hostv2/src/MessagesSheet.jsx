@@ -8,7 +8,8 @@
 // app's existing way to start: the guest list, where the invite is sent.
 import { useEffect, useRef, useState } from 'react';
 import { listSentMessages } from '@app/lib/commApi';
-import { buildMessageTimeline, filterTimeline, groupsPresent, EMPTY_LINE } from '@app/lib/messageTimeline';
+import { buildMessageTimeline, filterTimeline, groupsPresent, EMPTY_LINE, EMPTY_EYEBROW, EMPTY_STAR, NOTE_TITLE } from '@app/lib/messageTimeline';
+import { Eyebrow, BigValue, GuideLine } from './parity/askKit';
 import { trackMessagesViewOpened } from '@app/lib/flowAnalytics';
 
 const TONE = {
@@ -46,11 +47,24 @@ export default function MessagesSheet({ event, helpers, helperAnswers, onOpenGue
   return (
     <div data-messages>
       {server.status === 'loading' && <p className="grounding" style={{ margin: '2px 0 var(--sp-3)' }}>Loading what the app sent…</p>}
-      {note && <p className="grounding" data-messages-note style={{ margin: '2px 0 var(--sp-3)' }}>{note}</p>}
-      {empty && (
-        <div data-messages-empty>
-          <p className="grounding" style={{ margin: '2px 0 var(--sp-3)' }}>{EMPTY_LINE}</p>
-          {onOpenGuests && <button className="mini" onClick={onOpenGuests}>Open your guest list</button>}
+      {/* Nothing listed: the hero says so and what will be listed (cohesion G
+          #27). A load failure is its own row below it, never a pointer to a
+          list that is not there. `empty` (every source answered) still decides
+          the way to start. */}
+      {/* Signed out, email the app sent may exist on the account, so "Nothing
+          yet" is not said; the note row says where it will show. */}
+      {server.status !== 'loading' && server.status !== 'signed-out' && entries.length === 0 && (
+        <div data-messages-empty style={{ padding: '2px 0 14px' }}>
+          <Eyebrow>{EMPTY_EYEBROW}</Eyebrow>
+          <BigValue>{EMPTY_STAR}</BigValue>
+          <GuideLine>{EMPTY_LINE}</GuideLine>
+          {empty && onOpenGuests && <button className="mini" style={{ marginTop: 'var(--sp-2)' }} onClick={onOpenGuests}>Open your guest list</button>}
+        </div>
+      )}
+      {note && (
+        <div className="later-row" data-messages-note style={{ display: 'block', borderTop: '1px solid var(--line-soft)', padding: 'var(--sp-3) 0', margin: '0 0 var(--sp-3)' }}>
+          <strong className="t" style={{ display: 'block', color: 'var(--ink)' }}>{NOTE_TITLE}</strong>
+          <span className="grounding" style={{ display: 'block', margin: '2px 0 0' }}>{note}</span>
         </div>
       )}
       {groups.length > 2 && (

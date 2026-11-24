@@ -123,16 +123,16 @@ test.describe('desktop Chrome', () => {
     await expect(row(page)).toContainText('never what they wrote');
     expect(await page.evaluate(() => window.__askedPermission), 'permission was requested before any tap').toBe(0);
 
-    await row(page).getByRole('button', { name: 'Off — tap to turn on' }).click();
-    await expect(row(page).getByRole('button', { name: 'On — tap to turn off' })).toBeVisible({ timeout: 15_000 });
+    await row(page).getByRole('button', { name: 'Off', exact: true }).click();
+    await expect(row(page).getByRole('button', { name: 'On', exact: true })).toBeVisible({ timeout: 15_000 });
     expect(await page.evaluate(() => window.__askedPermission)).toBe(1);
     expect(api.filter((c) => c.method === 'POST')).toEqual([{
       method: 'POST', path: '/api/push/subscribe',
       body: { endpoint: 'https://fcm.googleapis.com/fcm/send/e2e-device', keys: { p256dh: 'BPubE2e', auth: 'SecE2e' } },
     }]);
 
-    await row(page).getByRole('button', { name: 'On — tap to turn off' }).click();
-    await expect(row(page).getByRole('button', { name: 'Off — tap to turn on' })).toBeVisible();
+    await row(page).getByRole('button', { name: 'On', exact: true }).click();
+    await expect(row(page).getByRole('button', { name: 'Off', exact: true })).toBeVisible();
     expect(api.filter((c) => c.method === 'DELETE')).toEqual([{
       method: 'DELETE', path: '/api/push/subscribe', body: { endpoint: 'https://fcm.googleapis.com/fcm/send/e2e-device' },
     }]);

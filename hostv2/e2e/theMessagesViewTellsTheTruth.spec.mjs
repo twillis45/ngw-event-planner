@@ -125,7 +125,9 @@ test('signed in: a delivered invite, a bounced email, a text handoff, co-hosts a
 test('nothing sent yet: the honest line and the guest list, the app’s way to start', async ({ page }) => {
   await boot(page, { sent: { emails: [], cohosts: [] } });
   const sheet = await openMessages(page);
-  await expect(sheet.locator('[data-messages-empty]')).toContainText('Nothing sent yet — invites and vendor notes you send show up here.');
+  // The empty state names what will be listed (cohesion G #27, owner 11/24/2026).
+  await expect(sheet.locator('[data-messages-empty]')).toContainText('Nothing yet');
+  await expect(sheet.locator('[data-messages-empty]')).toContainText('When you send the invite, a nudge or an update, it’s listed here: what went out, to whom, and when.');
   await expect(sheet.locator('[data-messages-note]')).toHaveCount(0);
   await sheet.getByRole('button', { name: 'Open your guest list' }).click();
   await expect(page.locator('#sheet-title')).not.toHaveText('Messages');
@@ -134,8 +136,9 @@ test('nothing sent yet: the honest line and the guest list, the app’s way to s
 test('signed out: only this device’s records, with the note — never "nothing sent"', async ({ page }) => {
   await boot(page, { status: 401, ev: { ...EVENT, sendLedger: { 'You’re invited': LEDGER['You’re invited'] } } });
   const sheet = await openMessages(page);
+  // Its own row now, never a pointer "below" (cohesion G #27).
   await expect(sheet.locator('[data-messages-note]')).toHaveText(
-    'Email the app sent for you shows here after you sign in. Below is only what this device recorded.');
+    'Email historyEmail the app sends for you shows here after you sign in. Anything sent from this device still shows here.');
   await expect(sheet.locator('[data-messages-list] > li')).toHaveCount(1);
   await expect(row(sheet, 'ledger-You’re invited').locator('[data-message-status]')).toHaveText('Handed off by text');
   await expect(sheet.locator('[data-messages-empty]')).toHaveCount(0);

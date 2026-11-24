@@ -49,7 +49,7 @@ test('GOLD-01: the real cold start preserves intent and discloses the unapplied 
   await expect(page.locator('.sheet').last()).toContainText(/color guard|honor guard/i);
   await page.screenshot({ path: testInfo.outputPath('gold01-army.png'), fullPage: true });
   await openSectionByName(page, 'Calls to make');
-  for (const label of ['Who posts the Colors?', 'The shadowbox', 'Who reads the Retirement Order?', 'Who presides, and the official party?', 'Uniform of the day?', 'How to recognize the spouse / Family?']) {
+  for (const label of ['Who posts the Colors?', 'The shadowbox', 'Who reads the Retirement Order?', 'Who presides, and the official party?', 'Uniform of the day?', 'How will you thank the spouse and family?']) {
     await expect(page.locator('.sheet').last()).toContainText(label.replace(/\?$/, ''));
   }
   await openSectionByName(page, 'People you’re hiring');

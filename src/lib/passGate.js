@@ -228,7 +228,7 @@ export function creationDisclosure(verdict, cents = PASS_PRICE_CENTS) {
   if (r.length > 0) {
     return 'This is a ' + (r.includes('destination') ? 'destination' : 'multi-day') + ' event. Planning it is free. Its trip tools and sharing vendor briefs take the ' + pass + '.';
   }
-  return 'Planning this event is free, including sharing one vendor brief (that takes a free account). Sharing with more than one vendor, or a destination or multi-day event, takes the ' + pass + '.';
+  return 'Planning this event is free, including sending the details to one vendor (that takes a free account). Sharing with more than one vendor, or a destination or multi-day event, takes the ' + pass + '.';
 }
 
 /**

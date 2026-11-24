@@ -9,6 +9,10 @@ import { previewUrl } from './deployBase.mjs';
 // Specs whose every test calls setViewportSize (or a boot() helper that does).
 // See the note above `projects` for why this is per-test, not per-file.
 const SELF_PINNED = [
+  // Its own viewports (the small sheets say it plainly, cohesion G, 11/24/2026).
+  '**/theSmallSheetsSayItPlainly.spec.mjs',
+  // Its own viewports (every input has a visible label, cohesion G, 11/24/2026).
+  '**/everyInputHasAVisibleLabel.spec.mjs',
   // Five wide viewports itself (every wide board: stages in the rail, the title; 11/24/2026).
   '**/everyWideBoardKnowsItsEventAndStages.spec.mjs',
   // Six viewports itself, phone to desktop, including iPad Safari landscape (nothing tappable is clipped, 11/24/2026).

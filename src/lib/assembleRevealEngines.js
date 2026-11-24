@@ -695,8 +695,11 @@ function deriveTopRisks(event, eventIdentity) {
       risks.push({
         type: 'compound-confusion',
         severity: 'medium',
-        description: 'Guest expectations for ceremony vs. celebration formality will diverge if not clarified early.',
-        mitigation: `Clarity on ${open.join(' + ')} cascades to reduce all downstream friction.`
+        // Host words (cohesion G #25, owner 11/24/2026): what guests may not
+        // know, and the one thing that tells them.
+        description: 'Guests may not know if this is a formal ceremony or a party.',
+        mitigation: open.length === 2 ? 'Say which it is on the invite: the dress, and when the ceremony part starts.'
+          : open[0] === 'dress code' ? 'Say which it is on the invite: the dress.' : 'Say which it is on the invite: when the ceremony part starts.'
       });
     }
   }

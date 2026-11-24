@@ -183,9 +183,11 @@ test.describe('preferences follow the account', () => {
     await install(pa, account, { local: { 'ngw-hostv2-last-event': 'test-day-before-vendors' } });
     await openSettings(pa);
     const sheet = pa.locator('.sheet').last();
-    await sheet.getByRole('button', { name: /Off — tap for light/ }).click();
-    await sheet.getByRole('button', { name: /On — tap to mute/ }).click();
-    await sheet.getByRole('button', { name: /On — tap to turn off/ }).click();
+    // Toggles say On / Off since cohesion G5 (owner, 11/24/2026); the row names the setting.
+    const tog = (s, label) => s.locator('.later-row', { has: pa.locator('.t', { hasText: new RegExp('^' + label + '$') }) }).first().getByRole('button');
+    await expect(tog(sheet, 'Light mode')).toHaveText('Off'); await tog(sheet, 'Light mode').click();
+    await expect(tog(sheet, 'Sound')).toHaveText('On'); await tog(sheet, 'Sound').click();
+    await expect(tog(sheet, 'Help improve the app')).toHaveText('On'); await tog(sheet, 'Help improve the app').click();
     await pa.waitForTimeout(800);
     // The writing voice lives on a draft: the shopping list's. A list is a note to
     // yourself, so it offers As written and Tighter only (lib/draftVoice voicesFor,
@@ -215,9 +217,10 @@ test.describe('preferences follow the account', () => {
     }));
     expect(stored).toEqual({ theme: 'light', voice: 'tighter', muted: '1', optout: '1' });
     const sb = pb.locator('.sheet').last();
-    await expect(sb.getByRole('button', { name: /On — tap for dark/ })).toBeVisible();
-    await expect(sb.getByRole('button', { name: /Muted — tap for sound/ })).toBeVisible();
-    await expect(sb.getByRole('button', { name: /Off — tap to turn on/ })).toBeVisible();
+    const togB = (label) => sb.locator('.later-row', { has: pb.locator('.t', { hasText: new RegExp('^' + label + '$') }) }).first().getByRole('button');
+    await expect(togB('Light mode')).toHaveText('On');
+    await expect(togB('Sound')).toHaveText('Off');
+    await expect(togB('Help improve the app')).toHaveText('Off');
     await b.close();
   });
 

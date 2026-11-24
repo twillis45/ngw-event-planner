@@ -56,7 +56,7 @@ export default function DeviceNotificationsRow({ signedIn }) {
         ? <span className="v-meta" data-device-notifications-blocked>Blocked in this browser</span>
         : (
           <button className="mini" aria-pressed={row.on} disabled={busy} onClick={tap}>
-            {row.on ? 'On — tap to turn off' : 'Off — tap to turn on'}
+            {row.on ? 'On' : 'Off'}
           </button>
         )}
       <span className="v-meta" style={{ flexBasis: '100%', margin: '4px 0 0' }} data-device-notifications-line>

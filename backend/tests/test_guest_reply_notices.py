@@ -25,8 +25,11 @@ class _NoticeConn(_Conn):
             if not t:
                 return None
             data = self.events[t["rsvp_code"]][1]
+            # The event's data and the planner's profile name, as the query reads
+            # them (cohesion G, 11/24/2026: the host is read through
+            # real_host_name(profile name, host_name_for(event))).
             return {**{k: t[k] for k in ("guest_email", "email_opt_in", "guest_token", "blocked_at", "rsvp_code")},
-                    "event_name": data.get("name"), "host_name": data.get("hostName") or data.get("hostNames")}
+                    "event_name": data.get("name"), "event_data": data, "profile_name": getattr(self, "profile_name", None)}
         return await super().fetchrow(q, *a)
 
     async def execute(self, q, *a):

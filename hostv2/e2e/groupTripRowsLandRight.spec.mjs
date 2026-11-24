@@ -50,7 +50,7 @@ const tapRow = async (page, task, label) => {
   await btn.click();
 };
 const atTheStay = (page) => expect.poll(async () => /[?&]demo=lodging\b/.test(page.url())
-  || (await page.locator('#sheet-title').allInnerTexts()).includes('Where everyone stays'), { timeout: 15_000 }).toBe(true);
+  || (await page.locator('#sheet-title').allInnerTexts()).includes('Travel & where everyone stays'), { timeout: 15_000 }).toBe(true);
 
 test('"Book the place" opens Where everyone stays', async ({ page }) => {
   await tapRow(page, ROWS.book, 'Open where everyone stays');

@@ -239,7 +239,7 @@ import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveRet
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
 import { raiseCounts } from '@app/lib/surfaceRegistry';
-import { riskSeverityLabel, riskSeverityTone } from '@app/lib/riskSeverity';
+import { riskSeverityLabel, riskSeverityTone, normalizeRiskSeverity } from '@app/lib/riskSeverity';
 // Vendor cockpit port, slice 1 (owner rulings 2026-09-23: the frozen shell is
 // NOT deleted post-Sprint-2, and only the host-important pieces come over).
 // getHostVendorChallenges / getHostVendorReadiness are the SIX-axis pair — the
@@ -269,7 +269,7 @@ import { storeSearchTerm } from '@app/lib/knowledge/storeUnitMap';
 // threw after the "1 of N" notice and before the tab opened (owner, 11/18/2026).
 const icSearchTerm = (line) => storeSearchTerm(line);
 import { parseSmartEventText, HOST_TYPES } from '@app/lib/smartParseEvent';
-import { townFieldsToPersist } from '@app/lib/townFieldsToPersist';
+import { townFieldsToPersist, bareTownFields, bareTownNote } from '@app/lib/townFieldsToPersist';
 import { readPlace } from '@app/lib/readPlace';
 import { createSetDown, undoThatBringsBack, settleCountRow, carrySettled } from './setDown.js';
 import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcomeGate';
@@ -390,7 +390,7 @@ import { parseMin } from '@app/lib/dayAlerts';
 // on the root as a data attribute rather than forking JSX at every call site:
 // layout is the stylesheet's job, and one attribute lets it do that job.
 import { useBreakpoint, useWideScreen, usePortrait } from '@app/lib/viewport';
-import { sectionGroups, ASK_LABEL } from '@app/lib/sectionDirectory';
+import { sectionGroups, ASK_LABEL, LODGING_LABEL } from '@app/lib/sectionDirectory';
 import { sectionIcon } from './sectionIcons';
 
 // Which engine tiers are NOT actually asks. The calm check used to fingerprint the
@@ -522,10 +522,11 @@ function VendorReplyParserV2({ vendor, event, writeVendor, signedIn, onSignIn })
       <div style={{ fontSize: 12, color: 'var(--carbon-muted)', marginBottom: 8, lineHeight: 1.5 }}>
         Paste their email or text. We’ll pull out times, contacts, counts, and payment status to review; nothing saves until you apply it.
       </div>
-      <textarea className="field" rows={3}
+      <label className="field-wrap"><span className="field-label">Their message, pasted</span>
+      <textarea className="field ex-ph" rows={3}
         style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 10px' }}
-        placeholder="e.g. We'll arrive at 2pm, deposit received, final count 85. Day-of contact Dana, 301-555-0134."
-        value={replyText} onChange={e => setReplyText(e.target.value)} aria-label="Paste the vendor's message" />
+        placeholder="For example: We'll arrive at 2pm, deposit received, final count 85. Day-of contact Dana, 301-555-0134."
+        value={replyText} onChange={e => setReplyText(e.target.value)} /></label>
       <div className="actions-row" style={{ marginTop: 8, alignItems: 'center', gap: 8 }}>
         <button className="mini" onClick={analyze} disabled={busy || !replyText.trim()}>{busy ? 'Reading…' : 'Read the message'}</button>
         {err && err !== 'signed-out' && <span className="warn-note" style={{ fontSize: 12 }}>{err}</span>}
@@ -946,6 +947,17 @@ function AddressField({ value, onChange, onPick, onEnter, placeholder, ariaLabel
 // other town field. Saves on pick, Enter, or leaving the field — the blur save
 // waits a beat so a tap on a suggestion (which blurs first) saves the pick,
 // not the half-typed text.
+// AN EXAMPLE IS SAID AS ONE (cohesion G, owner 11/24/2026): a placeholder that
+// reads like a saved answer ("Good food, good people") is a trap. Example
+// placeholders open "For example:" and are faint italic (.ex-ph).
+// The settle-up ask's key in the send ledger (cohesion G #32).
+const SETTLE_UP_TITLE = 'Settle-up ask';
+const exampleText = (ph) => {
+  const t = String(ph || '').trim();
+  if (!t) return t;
+  return /^for example\b/i.test(t) ? t : 'For example: ' + t.replace(/^e\.g\.,?\s*/i, '');
+};
+
 function AreaField({ profile, patchProfile, toast }) {
   const saved = (profile && profile.city) || '';
   const [draft, setDraft] = useState(saved);
@@ -963,7 +975,7 @@ function AreaField({ profile, patchProfile, toast }) {
   return (
     <CityField value={draft} onChange={set} onPick={(c) => { set(c); commit(c); }} onEnter={commit}
       onBlur={() => setTimeout(() => commit(cur.current), 200)}
-      inputStyle={{ maxWidth: 'none' }} placeholder="Town or city — “Annapolis, MD”" ariaLabel="Your area" />
+      id="set-area" className="field ex-ph" inputStyle={{ maxWidth: 'none' }} placeholder="For example: Springfield, VA" />
   );
 }
 
@@ -1734,12 +1746,19 @@ export default function HostShellV2() {
     // place stays her home. Text it cannot read at all goes the old way.
     const homeFields = (!pendingPick && venueFor(event).isHome && venueFor(event).needsCityForWeather) ? townFieldsToPersist(v) : null;
     const homeRead = homeFields && (homeFields.venueAddress || homeFields.venueCity || homeFields.venueZip) ? homeFields : null;
+    // A BARE CITY IS A TOWN, NOT A PLACE (cohesion G4, owner 11/24/2026):
+    // "Springfield, VA" typed here was saved as the place's NAME, and guests
+    // read a city as a place to go. Only a town (or a ZIP) is saved as the
+    // town; the name stays empty and is asked for later.
+    const townOnly = (!pendingPick && !homeRead) ? bareTownFields(v) : null;
     const patch = pendingPick ? setVenue(event, { resolved: pendingPick })
       : homeRead ? homeRead
+      : townOnly ? townOnly
       : setVenue(event, { name: v, locationText: pendingCity });
     const after = venueFor({ ...event, ...patch });
     const msg = pendingPick
       ? (after.zip ? `Address on the plan: ${after.fullAddress}.` : `Address on the plan: ${after.fullAddress}. The lookup had no ZIP for it.`)
+      : townOnly ? bareTownNote(townOnly)
       : (after.address && !after.zip ? 'Saved as typed — we couldn’t find the ZIP.' : 'Venue on the plan — invites, maps, and the rain note now carry it.');
     patchEvent({ ...patch, ...(venueParked(event) ? unparkVenuePatch(event) : {}) }, msg);
     setVenueErr(null); setVenueDraft(''); setPendingCity(''); setPendingPick(null); setAddrSugs([]);
@@ -1776,11 +1795,15 @@ export default function HostShellV2() {
       'Parked — the plan will stop leading with the venue.')}
     >I’ll sort this</button>
   );
-  const renderVenueCapture = ({ ctaClass = 'cta', wrapStyle = { display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }, wrapClass, autoFocus = false, placeOnly = false } = {}) => (
+  const renderVenueCapture = ({ ctaClass = 'cta', wrapStyle = { display: 'flex', gap: 'var(--sp-2)', marginTop: 10, alignItems: 'flex-end' }, wrapClass, autoFocus = false, placeOnly = false } = {}) => (
     <>
       <div className={wrapClass} style={wrapStyle}>
-        <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder={venueFor(event).needsCityForWeather ? 'Street, city, state' : 'Name or address'}
-          value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); setPendingPick(null); fetchAddrSugs(e.target.value); }} aria-label="Venue" autoFocus={autoFocus} />
+        {/* Labeled, with an example (cohesion G): it was named only by its placeholder. */}
+        <label className="field-wrap" style={{ flex: 1, minWidth: 0 }}>
+          <span className="field-label">{venueFor(event).needsCityForWeather ? 'Your street, city and state' : 'The place’s name or street address'}</span>
+          <input className="field ex-ph" style={{ maxWidth: 'none', width: '100%' }} placeholder={venueFor(event).needsCityForWeather ? 'For example: 42 Elm Ct, Springfield, VA' : 'For example: Elm Court Hall, or 42 Elm Ct'}
+            value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); setPendingPick(null); fetchAddrSugs(e.target.value); }} autoFocus={autoFocus} />
+        </label>
         {/* Not lit while there is nothing to save (Wanda audit P1-2). */}
         <button className={ctaClass} onClick={saveVenue} disabled={!String(venueDraft || '').trim()}>Save</button>
       </div>
@@ -2666,7 +2689,7 @@ export default function HostShellV2() {
                         <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
                       </div>
                       {authErr && <p className="grounding" role="alert" data-auth-err style={{ margin: 'var(--sp-2) 0 0', color: 'var(--danger)', fontWeight: 600 }}>{authErr}</p>}
-                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>No password — the email has a code to type here. One account, both apps, this device and your others.</p>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>No password — the email has a code to type here. One sign-in for your phone and your computer.</p>
                       <PolicyLinks prefix="Signing in means you agree to:" style={{ margin: 'var(--sp-1) 0 0' }} />
                     </>
                   ));
@@ -4047,7 +4070,7 @@ export default function HostShellV2() {
   // desktop opens it on the title; a single tap still opens the events sheet.
   const [renaming, setRenaming] = useState(null);
   useEffect(() => { setRenaming(null); }, [eventId]);
-  const renameTo = (v) => { setRenaming(null); setRenameTip(false); patchEvent({ name: v }, 'Named “' + v + '”.'); };
+  const renameTo = (v) => { setRenaming(null); patchEvent({ name: v }, 'Named “' + v + '”.'); };
   const titlePress = useRef({ timer: null, clickTimer: null, fired: false, x: 0, y: 0, type: '' });
   const titleHandlers = {
     onPointerDown: (e) => {
@@ -4072,16 +4095,11 @@ export default function HostShellV2() {
       setSheet({ kind: 'events' });
     },
   };
-  // THE ONE-TIME TIP (render 12b): "Tip: press and hold the name to rename it",
-  // once per device, on a touch screen (the words are a touch gesture), on her
-  // own event; dismissible, then never again. Stored the first time it shows.
-  const [renameTip, setRenameTip] = useState(() => { try { return !localStorage.getItem('ngw-rename-tip-seen'); } catch { return false; } });
+  // A VISIBLE RENAME ON TOUCH (cohesion G #57, owner 11/24/2026): the one-time
+  // tip ("Tip: press and hold the name to rename it") taught a hidden gesture
+  // once. A touch screen gets a visible "✎ Rename" beside her own title instead,
+  // as the desktop has its pencil. Press-and-hold still works.
   const touchScreen = (() => { try { return window.matchMedia('(pointer: coarse)').matches; } catch { return false; } })();
-  const renameTipShown = renameTip && touchScreen && eventIsTheHostsOwn && !renaming;
-  useEffect(() => {
-    if (!renameTipShown) return;
-    try { localStorage.setItem('ngw-rename-tip-seen', new Date().toISOString()); } catch { /* shown this visit only */ }
-  }, [renameTipShown]);
   // THE DESKTOP RENAME HINT (owner, 11/24/2026): with a mouse, hovering the
   // title shows a pencil and "Double-click to rename" (styles.css, under
   // `(hover:hover) and (pointer:fine)`); nothing shows until then. The title's
@@ -4126,12 +4144,9 @@ export default function HostShellV2() {
             {isPlaceholderName(event) && (
               <button type="button" className="tt-nameit" data-name-it onClick={() => { setSheet(null); setRenaming('title'); }}>Name it</button>
             )}
-          </div>
-        )}
-        {renameTipShown && (
-          <div className="tt-tip" data-rename-tip>
-            <span>Tip: press and hold the name to rename it</span>
-            <button type="button" className="tt-tip-x" aria-label="Dismiss the tip" onClick={() => setRenameTip(false)}>×</button>
+            {!isPlaceholderName(event) && touchScreen && eventIsTheHostsOwn && (
+              <button type="button" className="tt-nameit" data-rename-btn onClick={() => { setSheet(null); setRenaming('title'); }}>✎ Rename</button>
+            )}
           </div>
         )}
         {sub && <div className="tt-sub">{sub}</div>}
@@ -5977,6 +5992,10 @@ export default function HostShellV2() {
   const railUp = showsRail({ bp, portrait: elegantMode && portrait, stage, sheet: sheet && sheet.kind });
   // The tall iPad's first-screen slots (Where you stand, the fold control).
   const [ttStandSlot, setTtStandSlot] = useState(null);
+  // The stay open in Travel & where everyone stays' editor (cohesion G2).
+  const [stayEdit, setStayEdit] = useState(null);
+  // The call whose ⋯ is open in Calls to make (cohesion G #59).
+  const [decMore, setDecMore] = useState(null);
   const [ttFoldSlot, setTtFoldSlot] = useState(null);
   // The header's weather slot (owner ruling 11/23/2026): on a tall iPad the
   // weather pill rides the date line instead of floating over the board.
@@ -10060,7 +10079,7 @@ export default function HostShellV2() {
               the suggestions, and an error in .because/--warn where the others
               use .grounding/--danger — two colours for one meaning. Both are
               resolved by there being a single control. */}
-          {renderVenueCapture({ ctaClass: 'mini', wrapClass: 'actions-row', wrapStyle: { alignItems: 'center', marginTop: 'var(--sp-2)' }, autoFocus: true })}
+          {renderVenueCapture({ ctaClass: 'mini', wrapClass: 'actions-row', wrapStyle: { alignItems: 'flex-end', marginTop: 'var(--sp-2)' }, autoFocus: true })}
         </>
       );
     }
@@ -10279,6 +10298,7 @@ export default function HostShellV2() {
         // (what Space's "Drop the last day" used to ask). Say what before writing.
         const oldEnd = spanEnd(event);
         const newEnd = patch.endDate || patch.date;
+        let strandedNote = null;
         if (oldEnd && newEnd < oldEnd) {
           const stranded = [];
           for (let d = new Date(newEnd + 'T12:00:00'); ; ) {
@@ -10287,8 +10307,10 @@ export default function HostShellV2() {
             if (iso > oldEnd) break;
             stranded.push(...rowsOn(event, iso));
           }
-          if (stranded.length && !window.confirm(
-            `${stranded.length} thing${stranded.length === 1 ? '' : 's'} planned after the new last day: ${stranded.map(r => r.title || 'an item').slice(0, 3).join(', ')}. Change the dates anyway? Nothing is deleted.`)) return;
+          // NO CONFIRM, AN UNDO (cohesion G #53, owner 11/24/2026; UX_11 rule
+          // 18): nothing is deleted, so the change lands and its toast says what
+          // now falls after the last day, with Undo (patchEvent's).
+          if (stranded.length) strandedNote = `Dates changed. ${stranded.length} thing${stranded.length === 1 ? '' : 's'} now fall${stranded.length === 1 ? 's' : ''} after the last day — they’re kept.`;
         }
         // THE DATE TAP DOES NOT CONFIRM THE HOUR (audit finding, 2026-09-18).
         // This line used to read:
@@ -10322,9 +10344,9 @@ export default function HostShellV2() {
         //
         // The datetime domino now stays open until she confirms the hour, which
         // is what an unconfirmed hour should look like.
-        patchEvent(patch, patch.endDate
+        patchEvent(patch, strandedNote || (patch.endDate
           ? 'Dates set: ' + eventSpanLabel({ ...event, ...patch }) + '. Countdowns, deadlines, and shopping windows count from them.'
-          : 'Date confirmed. Countdowns, deadlines, and shopping windows now count from it.');
+          : 'Date confirmed. Countdowns, deadlines, and shopping windows now count from it.'));
         setDateDraft(null);
         setEndDraft(null);
       };
@@ -10915,7 +10937,7 @@ export default function HostShellV2() {
             type="number" inputMode="numeric" min="0" placeholder="Your own number"
             value={customBudget} onChange={e => setCustomBudget(e.target.value)}
             aria-label="Custom budget amount" />
-          <button className="cta" disabled={customN <= 0} style={customN <= 0 ? { opacity: .45 } : undefined}
+          <button className="cta" disabled={customN <= 0}
             onClick={() => setB(customN)}>Use it</button>
         </CtaRow>
         <Grounding gap={ASK_COMPACT.ctaToFoot}>
@@ -12348,7 +12370,8 @@ export default function HostShellV2() {
                           const town = String(effCityText || '').trim().toLowerCase();
                           const lv = v.toLowerCase();
                           if (town && (town === lv || town.startsWith(lv + ',') || town.startsWith(lv + ' ') || lv.startsWith(town))) return null;
-                          return <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>{v}</span>;
+                          // Not a chip: nothing to tap. Plain words (cohesion G #49).
+                          return <span className="heard-found" data-heard-found>Found: {v}</span>;
                         })()}
                         {/* THE STREET SHE TYPED, SHOWN BACK TO HER (host report 2026-09-18:
                             "Address from creation field not carrying to venue"). The row
@@ -12363,7 +12386,9 @@ export default function HostShellV2() {
                           if (!a) return null;
                           const vname = String(parsed.venue || '').trim().toLowerCase();
                           if (vname && vname.includes(a.toLowerCase())) return null;
-                          return <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>{a}</span>;
+                          // A read-out, not a control: plain and unbordered, so it never
+                          // looks pressable (cohesion G #49, owner 11/24/2026).
+                          return <span className="heard-found" data-heard-found>Found: {a}</span>;
                         })()}
                         {/* A TOWN THAT CANNOT BE SAVED SAYS SO HERE (run 2, R2-4):
                             "in Chicago" showed a settled "Chicago" chip, then the
@@ -16007,7 +16032,7 @@ export default function HostShellV2() {
                 <div className="hc-row" style={{ marginTop: 'var(--sp-2)' }}>
                   <AddressField value={addressDraft} onChange={setAddressDraft} onPick={sg => setAddressDraft(sg.label)}
                     inputStyle={{ maxWidth: 'none' }} placeholder="Street address — invites and rain notes will carry it" ariaLabel="Venue address" />
-                  <button className="cta" disabled={!addressDraft.trim()} style={!addressDraft.trim() ? { opacity: .45 } : undefined}
+                  <button className="cta" disabled={!addressDraft.trim()}
                     onClick={() => {
                       if (!validPlace(addressDraft) && !/\d/.test(addressDraft)) { toast('That doesn’t read like an address — street and number help guests find you.'); return; }
                       // venueFor wave 4 (divergence #6): the address is a FIELD,
@@ -17412,7 +17437,7 @@ export default function HostShellV2() {
                       const albumOk = !clean || /^https?:\/\//i.test(clean);
                       const dirty = recapDraft.trim() !== String(event.recapNote || '').trim() || clean !== String(event.albumUrl || '').trim();
                       return (
-                        <button className="cta" disabled={!dirty || !albumOk} style={(!dirty || !albumOk) ? { opacity: .45 } : undefined}
+                        <button className="cta" disabled={!dirty || !albumOk}
                           onClick={() => patchEvent({ recapNote: recapDraft.trim(), albumUrl: clean },
                             (recapDraft.trim() || clean) ? 'Saved — it’s on your invite link’s recap now.' : 'Recap cleared.')}>
                           {(event.recapNote || event.albumUrl) ? 'Update the recap' : 'Publish the recap'}
@@ -17482,7 +17507,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'invite-design' ? 'Your invite' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'invite-design' ? 'Your invite' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? LODGING_LABEL : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -17549,7 +17574,7 @@ export default function HostShellV2() {
                   {!has('place') && (
                     <div style={{ marginTop: 'var(--sp-3)' }}>
                       <div className="f-name">Where is it?</div>
-                      {renderVenueCapture({ ctaClass: 'mini', wrapClass: 'actions-row', wrapStyle: { alignItems: 'center', marginTop: 'var(--sp-2)' }, placeOnly: true })}
+                      {renderVenueCapture({ ctaClass: 'mini', wrapClass: 'actions-row', wrapStyle: { alignItems: 'flex-end', marginTop: 'var(--sp-2)' }, placeOnly: true })}
                     </div>
                   )}
                   {/* The one outward guard's asks (lib/outwardReady, cause 6). */}
@@ -17564,7 +17589,7 @@ export default function HostShellV2() {
                   {has('place') && !has('address') && (
                     <div style={{ marginTop: 'var(--sp-3)' }} data-outward-address>
                       <div className="f-name">What is the street address?</div>
-                      {renderVenueCapture({ ctaClass: 'mini', wrapClass: 'actions-row', wrapStyle: { alignItems: 'center', marginTop: 'var(--sp-2)' } })}
+                      {renderVenueCapture({ ctaClass: 'mini', wrapClass: 'actions-row', wrapStyle: { alignItems: 'flex-end', marginTop: 'var(--sp-2)' } })}
                     </div>
                   )}
                   <div className="actions-row" style={{ marginTop: 'var(--sp-4)' }}>
@@ -17631,7 +17656,7 @@ export default function HostShellV2() {
                     </div>
                   </div>
                 )}
-                {renderVenueCapture({ wrapStyle: { display: 'flex', gap: 'var(--sp-2)' } })}
+                {renderVenueCapture({ wrapStyle: { display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-end' } })}
                 {vf.name && needsCity() && (
                   <div style={{ marginTop: 'var(--sp-3)' }}>
                     <p className="grounding" style={{ marginBottom: 'var(--sp-2)' }}>Add the town and state (or ZIP) so weather and maps find the right place.</p>
@@ -17973,12 +17998,20 @@ export default function HostShellV2() {
                             {((!ndForCard && acceptBtn) || pinBtn || (hasExplain && !focused)) && (
                               <span style={{ flex: '1 0 100%', display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 2, alignItems: 'center' }}>
                                 {!ndForCard && acceptBtn}
-                                {pinBtn ? cloneElement(pinBtn, { style: { ...pinBtn.props.style, ...quiet } }) : null}
+                                {/* The why folds under the pick, first; "Pin to top" moves
+                                    into the call's ⋯ (cohesion G #59, owner 11/24/2026). */}
                                 {hasExplain && !focused && (
                                   <button className="mini" aria-expanded={explained} style={quiet}
                                     onClick={() => setDecExplain(o => (o === r.id ? null : r.id))}>
                                     {explained ? 'Hide the why' : 'Why this call matters'}
                                   </button>
+                                )}
+                                {pinBtn && (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+                                    {decMore === r.id && cloneElement(pinBtn, { style: { ...pinBtn.props.style, ...quiet } })}
+                                    <button type="button" className="mini" data-call-more aria-label="More for this call" aria-expanded={decMore === r.id}
+                                      style={{ ...quiet, minWidth: 44, letterSpacing: '.08em' }} onClick={(e) => { e.stopPropagation(); setDecMore((o) => (o === r.id ? null : r.id)); }}>⋯</button>
+                                  </span>
                                 )}
                               </span>
                             )}
@@ -19106,21 +19139,77 @@ export default function HostShellV2() {
                   if (!g) { g = { place: key, rows: [] }; byPlace.push(g); }
                   g.rows.push(st);
                 }
+                // EDITED IN PLACE (cohesion G2, owner 11/24/2026): the names were
+                // link-blue with no handler and there was nothing to do here. Each
+                // stay is a row that opens a small editor on event.lodging (who,
+                // where, the note — the fields it already holds); the address is
+                // said once (the hero) when everyone is at one place; one quiet
+                // "Add a stay". Writes go through patchEvent, so Undo is in the toast.
+                const rows = Array.isArray(event.lodging) ? event.lodging : [];
+                const saveStay = (ed) => {
+                  const clean = { who: String(ed.who || '').trim(), address: String(ed.address || '').trim(), notes: String(ed.notes || '').trim() };
+                  if (!clean.who && !clean.address) { toast('Add who’s staying or where.'); return; }
+                  const exists = rows.some((r) => r && r.id === ed.id);
+                  const next = exists ? rows.map((r) => (r && r.id === ed.id ? { ...r, ...clean } : r)) : [...rows, { id: ed.id, ...clean }];
+                  patchEvent({ lodging: next }, exists ? 'Stay saved.' : 'Stay added.');
+                  setStayEdit(null);
+                };
+                const removeStay = (id) => {
+                  patchEvent({ lodging: rows.filter((r) => !(r && r.id === id)) }, 'Stay removed.');
+                  setStayEdit(null);
+                };
+                const editor = (ed, isNew) => (
+                  <div className="stay-editor" data-stay-editor key={'ed-' + ed.id}>
+                    <label className="field-label" htmlFor="stay-who">Who’s staying</label>
+                    <input id="stay-who" className="field ex-ph" style={{ maxWidth: 'none' }} value={ed.who} placeholder="For example: Rosa + Sam"
+                      onChange={(e) => setStayEdit({ ...ed, who: e.target.value })} />
+                    <label className="field-label" htmlFor="stay-where" style={{ marginTop: 10 }}>Where</label>
+                    <input id="stay-where" className="field ex-ph" style={{ maxWidth: 'none' }} value={ed.address} placeholder="For example: 42 Elm Ct, Springfield, VA"
+                      onChange={(e) => setStayEdit({ ...ed, address: e.target.value })} />
+                    <label className="field-label" htmlFor="stay-note" style={{ marginTop: 10 }}>A note</label>
+                    <input id="stay-note" className="field ex-ph" style={{ maxWidth: 'none' }} value={ed.notes} placeholder="For example: arriving the day before"
+                      onChange={(e) => setStayEdit({ ...ed, notes: e.target.value })} />
+                    <div className="actions-row" style={{ marginTop: 'var(--sp-3)' }}>
+                      <button className="cta" onClick={() => saveStay(ed)}>{isNew ? 'Add this stay' : 'Save this stay'}</button>
+                      <button className="mini" onClick={() => setStayEdit(null)}>Cancel</button>
+                    </div>
+                    {!isNew && (
+                      <div style={{ marginTop: 'var(--sp-4)' }}>
+                        <button className="mini" data-stay-remove onClick={() => removeStay(ed.id)}>Remove this stay</button>
+                      </div>
+                    )}
+                  </div>
+                );
+                const onePlace = byPlace.length === 1 && byPlace[0].place !== 'Place not named yet';
+                const editing = stayEdit && rows.some((r) => r && r.id === stayEdit.id) ? stayEdit : null;
+                const adding = stayEdit && !editing ? stayEdit : null;
                 return (
                   <div data-lodging-stays>
                     <SheetHero eyebrow="Where everyone stays"
                       star={`${stays.length} ${stays.length === 1 ? 'stay' : 'stays'}`}
-                      sub={byPlace.length === 1 ? `All at ${byPlace[0].place}.` : `Across ${byPlace.length} places.`} />
+                      sub={onePlace ? `All at ${byPlace[0].place}.` : `Across ${byPlace.length} places.`} />
                     {byPlace.map((g) => (
-                      <div key={g.place} className="brow stay-place">
-                        <div className="f-name stay-place-name">{g.place}</div>
+                      <div key={g.place} className="stay-place">
+                        {!onePlace && <div className="f-name stay-place-name">{g.place}</div>}
                         {g.rows.map((st) => (
-                          <p key={st.id} className="grounding stay-row" data-lodging-stay>
-                            <b>{st.who || 'Who’s staying: not noted'}</b>{st.notes ? ' — ' + st.notes : ''}
-                          </p>
+                          editing && editing.id === st.id ? editor(editing, false) : (
+                            <button key={st.id} type="button" className="stay-row" data-lodging-stay
+                              aria-expanded={false} onClick={() => setStayEdit({ id: st.id, who: st.who, address: st.address, notes: st.notes })}>
+                              <span className="stay-txt">
+                                <span className="stay-who">{st.who || 'Who’s staying: not noted'}</span>
+                                {st.notes && <span className="stay-note">{st.notes}</span>}
+                              </span>
+                              <span className="chev" aria-hidden="true">▸</span>
+                            </button>
+                          )
                         ))}
                       </div>
                     ))}
+                    {adding ? editor(adding, true) : (
+                      <button className="mini" style={{ marginTop: 'var(--sp-3)' }}
+                        onClick={() => setStayEdit({ id: 'stay-' + Date.now().toString(36), who: '', address: onePlace ? byPlace[0].place : '', notes: '' })}>Add a stay</button>
+                    )}
+                    <p className="grounding" style={{ margin: 'var(--sp-3) 0 0' }}>Tap a stay to change who, where or the note.</p>
                   </div>
                 );
               }
@@ -20125,7 +20214,7 @@ export default function HostShellV2() {
                               }}>{unfurling ? 'Reading…' : 'Read the listing'}</button>
                           )}
                           {!canAdd && <span className="v-meta" style={{ color: 'var(--muted)' }}>Paste the listing link, or give it a name, and this turns on.</span>}
-                          <button className="cta soft" disabled={!canAdd} style={!canAdd ? { opacity: .45 } : undefined}
+                          <button className="cta soft" disabled={!canAdd}
                             onClick={() => {
                               // AUTO-READ ON ADD (DIFM audit 2026-07-28). Adding with only a
                               // link produced a row called "Option 4" carrying nothing — the
@@ -20309,9 +20398,19 @@ export default function HostShellV2() {
                             Ask the group to settle up by {new Date(m.collectBy + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} — a small cushion before the window closes (adjust to your booking).
                           </p>
                         )}
+                        {settleUpDraft(event) && sendStateFor(event.sendLedger, SETTLE_UP_TITLE) && (() => {
+                          const at = sendStateFor(event.sendLedger, SETTLE_UP_TITLE).at;
+                          return at ? <p className="v-meta" data-settle-copied style={{ padding: '0 2px 2px' }}>Settle-up ask copied {new Date(at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p> : null;
+                        })()}
                         {settleUpDraft(event) && (
                           <div className="actions-row" style={{ marginTop: 2, marginBottom: 'var(--sp-2)' }}>
-                            <button className="mini" onClick={() => { try { navigator.clipboard.writeText(settleUpDraft(event)); } catch { /* copy blocked */ } }}>
+                            {/* A copy says so and is remembered (cohesion G #32, owner
+                                11/24/2026): it copied silently, with no record. The
+                                send ledger's own "copied to send" handoff. */}
+                            <button className="mini" data-settle-copy onClick={() => {
+                              try { navigator.clipboard.writeText(settleUpDraft(event)); } catch { /* copy blocked: the text is still recorded below */ }
+                              patchEvent({ sendLedger: recordHandoff(event.sendLedger, SETTLE_UP_TITLE, 'copy', new Date().toISOString(), { kind: 'guests' }) }, 'Copied — paste it in your group chat.');
+                            }}>
                               Copy the settle-up ask
                             </button>
                           </div>
@@ -21282,84 +21381,67 @@ export default function HostShellV2() {
                     ? 'None of these are happening; they’re worth a plan. Clear any you’ve covered.'
                     : 'Everything flagged has a plan or got dismissed.'}
                 />
-                {/* ctx.activeRisks (PC-2): the reveal's risk deriver, already
-                    filtered through event.riskStatus — dismissing here writes
-                    the SAME field production writes, one loop everywhere. */}
-                {ctx && (ctx.activeRisks || []).map((r, i) => {
-                  const why = riskWhy(r);
-                  const route = riskRouteFor(r);
-                  // Row-level landing: a registry raise routes {tab:'Risks', riskId} and
-                  // routeSheet stores it as sheet.focus — ctx risks key on r.type. Same
-                  // rowfocus + scroll pattern as the tasks sheet; the CTA rule says land
-                  // on the row, never the sheet top.
-                  const focused = sheet.focus != null && String(sheet.focus) === String(r.type);
-                  return (
-                  <div key={'ctx-' + (r.type || i)} className={'brow' + (focused ? ' rowfocus' : '')}
-                    ref={scrollIntoViewOnOpen(focused)}
-                    style={{ animation: rowEnter(i) }}>
-                    <div className="f-name" style={{ marginBottom: 3 }}>
-                      {r.description}
-                      {/* Same one table as the playbook rows below — these are
-                          DERIVED risks (assembleRevealEngines) and they were
-                          reading a second, identical copy of the broken lookup. */}
-                      <span className="tag plan" style={riskSeverityTone(r.severity)}>{riskSeverityLabel(r.severity)}</span>
-                    </div>
-                    <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
-                    {why && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--faint)' }}>{why}</p>}
-                    {/* EXACTLY TWO BUTTONS, ALWAYS ONE OF THEM CONSTRUCTIVE.
-                        Where the route resolves, "Plan for this" is the act;
-                        where it does not, the authored mitigation becomes a real
-                        checklist step. The dismiss NEVER renders alone. This also
-                        settles the board's affordance finding — buttons used to
-                        appear on some rows and not others down a uniform list,
-                        teaching the host that a missing button meant "nothing to
-                        do here", which was false on three of five rows. */}
-                    <div className="actions-row" style={{ marginTop: 6 }}>
-                      {route
-                        ? <button className="mini" onClick={() => { if (!routeSheet(route)) setSheet({ kind: 'risks' }); }}>Plan for this</button>
-                        : <button className="mini" onClick={() => addRiskToChecklist(r, r.type)}>Add to my checklist</button>}
-                      <button className="mini" onClick={() => patchEvent({ riskStatus: { ...(event.riskStatus || {}), [r.type]: 'dismissed' } }, 'Noted — that one stops surfacing.')}>Handled — stop showing this</button>
-                    </div>
-                  </div>
-                  );
-                })}
-                {staticRisks.map((r, i) => {
-                  const why = riskWhy(r);
-                  const route = riskRouteFor(r);
-                  // Playbook risks are what the registry actually raises (riskId = r.id) —
-                  // this is the row a "Have a plan for: X" tap must land on.
-                  const focused = sheet.focus != null && String(sheet.focus) === String(r.id);
-                  return (
-                  <div key={r.id || i} className={'brow' + (focused ? ' rowfocus' : '')}
-                    ref={scrollIntoViewOnOpen(focused)}
-                    style={{ animation: rowEnter(i) }}>
-                    <div className="f-name" style={{ marginBottom: 3 }}>
-                      {r.trigger}
-                      {/* ONE table, in lib/riskSeverity.js. This inline lookup was
-                          duplicated verbatim at both risk render sites and keyed on
-                          `medium` while 261 authored records say `med` — so the
-                          largest severity class fell to a fallback string, and the
-                          4 `critical` records fell there too and were painted AMBER,
-                          quieter than `high`. See the module header for the census. */}
-                      <span className="tag plan" style={riskSeverityTone(r.severity)}>{riskSeverityLabel(r.severity)}</span>
-                    </div>
-                    <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
-                    {why && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--faint)' }}>{why}</p>}
-                    {/* Same two-button contract as the derived rows above. The old
-                        gate was `(route || r.id)` with each button separately
-                        conditional — and `r.id` is always present on a playbook
-                        risk, so dismissal was unconditional while planning was
-                        conditional: the destructive act always, the constructive
-                        act sometimes. */}
-                    <div className="actions-row" style={{ marginTop: 6 }}>
-                      {route
-                        ? <button className="mini" onClick={() => { if (!routeSheet(route)) setSheet({ kind: 'risks' }); }}>Plan for this</button>
-                        : <button className="mini" onClick={() => addRiskToChecklist(r, r.id)}>Add to my checklist</button>}
-                      {r.id && <button className="mini" onClick={() => patchEvent({ riskStatus: { ...(event.riskStatus || {}), [r.id]: 'dismissed' } }, 'Noted — that one stops surfacing.')}>Handled — stop showing this</button>}
-                    </div>
-                  </div>
-                  );
-                })}
+                {/* ONE ROW SHAPE, GROUPED BY THE TAG EACH CARD WEARS (cohesion G1/#26,
+                    owner 11/24/2026). Both sources — ctx.activeRisks (PC-2, the
+                    reveal's deriver, already filtered through event.riskStatus) and
+                    the playbook's static risks — become one list, grouped by
+                    riskSeverityLabel in its own order. The work (safety, worth
+                    planning now) is open; "Keep an eye on it" and "Minor" fold with
+                    their counts. Every row: the constructive act first — "Plan for
+                    this ›" where the risk routes, "Add it to my checklist" where it
+                    does not — then "I’ve covered this", whose toast keeps Undo.
+                    Dismissing writes the SAME riskStatus field production writes. */}
+                {(() => {
+                  const rows = [
+                    ...((ctx && ctx.activeRisks) || []).map((r, i) => ({ r, key: 'ctx-' + (r.type || i), id: r.type, title: r.description, focusKey: r.type })),
+                    ...staticRisks.map((r, i) => ({ r, key: r.id || 's-' + i, id: r.id, title: r.trigger, focusKey: r.id })),
+                  ];
+                  const order = ['critical', 'high', 'medium', 'low'];
+                  const groups = order.map((sev) => ({ sev, label: riskSeverityLabel(sev), rows: rows.filter((x) => normalizeRiskSeverity(x.r.severity) === sev) }))
+                    .filter((g) => g.rows.length);
+                  const row = (x, i) => {
+                    const { r } = x;
+                    const why = riskWhy(r);
+                    const route = riskRouteFor(r);
+                    // Row-level landing: a raise routes {tab:'Risks', riskId}, stored as
+                    // sheet.focus; land on the row, never the sheet top.
+                    const focused = sheet.focus != null && String(sheet.focus) === String(x.focusKey);
+                    return (
+                      <div key={x.key} data-risk-row className={'brow' + (focused ? ' rowfocus' : '')}
+                        ref={scrollIntoViewOnOpen(focused)} style={{ animation: rowEnter(i) }}>
+                        <div className="f-name" style={{ marginBottom: 3 }}>
+                          {x.title}
+                          <span className="tag plan" style={riskSeverityTone(r.severity)}>{riskSeverityLabel(r.severity)}</span>
+                        </div>
+                        <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
+                        {why && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--faint)' }}>{why}</p>}
+                        <div className="actions-row" style={{ marginTop: 6 }}>
+                          {route
+                            ? <button className="mini" onClick={() => { if (!routeSheet(route)) setSheet({ kind: 'risks' }); }}>Plan for this ›</button>
+                            : <button className="mini" onClick={() => addRiskToChecklist(r, x.id)}>Add it to my checklist</button>}
+                          {x.id && <button className="mini" onClick={() => patchEvent({ riskStatus: { ...(event.riskStatus || {}), [x.id]: 'dismissed' } }, 'Covered — that one stops surfacing.')}>I’ve covered this</button>}
+                        </div>
+                      </div>
+                    );
+                  };
+                  return groups.map((g) => {
+                    const quiet = g.sev === 'medium' || g.sev === 'low';
+                    // A folded group opens itself when a raise lands on one of its rows.
+                    const holdsFocus = sheet.focus != null && g.rows.some((x) => String(x.focusKey) === String(sheet.focus));
+                    const head = <><span>{g.label}</span><span className="risk-g-n" data-risk-count>{g.rows.length}</span></>;
+                    return quiet ? (
+                      <details key={g.sev} className="risk-g" data-risk-group={g.label} open={holdsFocus || undefined}>
+                        <summary className="risk-g-h">{head}</summary>
+                        {g.rows.map(row)}
+                      </details>
+                    ) : (
+                      <section key={g.sev} className="risk-g" data-risk-group={g.label}>
+                        <h3 className="risk-g-h">{head}</h3>
+                        {g.rows.map(row)}
+                      </section>
+                    );
+                  });
+                })()}
               </>
             )}
             {sheet.kind === 'meaning' && meaningDraft && (
@@ -21378,7 +21460,7 @@ export default function HostShellV2() {
                 <SheetHero
                   eyebrow="The heart of it"
                   star="What are we really protecting?"
-                  sub="The day-before brief, the run of show, and the toast draw from your words. Nothing here is required."
+                  sub="Your words go into the run of show, the toast and the note we draft the day before. Nothing here is required."
                 />
                 {/* MILITARY RETIREMENT intelligence (knowledge/militaryRetirement.js): when the
                     event is a military retirement, surface the real ceremony protocol — the
@@ -21433,13 +21515,16 @@ export default function HostShellV2() {
                   <div key={key} style={{ marginBottom: 'var(--sp-4)' }}>
                     {/* Warm sentence-case prompt (was a tiny uppercase faint form
                         label) — these are questions to the host, not field captions. */}
-                    <div style={{ fontSize: 'var(--t-body)', fontWeight: 650, color: 'var(--ink)', letterSpacing: '-.01em', marginBottom: 6 }}>{label}</div>
+                    {/* The words above the field ARE its label (cohesion G, UX_11 rule
+                        2): a placeholder vanishes as she types. The placeholder is an
+                        example, said as one ("For example: …"), faint and italic. */}
+                    <label htmlFor={'mean-' + key} style={{ display: 'block', fontSize: 'var(--t-body)', fontWeight: 650, color: 'var(--ink)', letterSpacing: '-.01em', marginBottom: 6 }}>{label}</label>
                     {multi ? (
-                      <textarea className="field" style={{ maxWidth: 'none', minHeight: 58, resize: 'vertical', fontSize: 'var(--t-input)' }} placeholder={ph}
-                        value={meaningDraft[key]} onChange={e => setMeaningDraft(d => ({ ...d, [key]: e.target.value }))} aria-label={label} />
+                      <textarea id={'mean-' + key} className="field ex-ph" style={{ maxWidth: 'none', minHeight: 58, resize: 'vertical', fontSize: 'var(--t-input)' }} placeholder={exampleText(ph)}
+                        value={meaningDraft[key]} onChange={e => setMeaningDraft(d => ({ ...d, [key]: e.target.value }))} />
                     ) : (
-                      <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)' }} placeholder={ph}
-                        value={meaningDraft[key]} onChange={e => setMeaningDraft(d => ({ ...d, [key]: e.target.value }))} aria-label={label} />
+                      <input id={'mean-' + key} className="field ex-ph" style={{ maxWidth: 'none', fontSize: 'var(--t-input)' }} placeholder={exampleText(ph)}
+                        value={meaningDraft[key]} onChange={e => setMeaningDraft(d => ({ ...d, [key]: e.target.value }))} />
                     )}
                   </div>
                 ))}
@@ -21457,7 +21542,7 @@ export default function HostShellV2() {
                     const base = buildMeaningDraft();
                     const dirty = _mk.some(k => String(meaningDraft[k] || '').trim() !== String(base[k] || '').trim());
                     return (
-                      <button className="cta" disabled={!dirty} style={!dirty ? { opacity: .5 } : undefined} onClick={() => {
+                      <button className="cta" disabled={!dirty} onClick={() => {
                         if (!dirty) return;
                         const clean = {};
                         Object.entries(meaningDraft).forEach(([k, v]) => { clean[k] = String(v || '').trim(); });
@@ -21922,9 +22007,12 @@ export default function HostShellV2() {
                     star="Ask me anything"
                     sub="Money, food, guests, weather, or what’s next — with the assumptions shown, and nothing made up."
                   />
-                  <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
-                    <input className="field" style={{ maxWidth: 'none', flex: 1, fontSize: 'var(--t-input)' }} placeholder="e.g. will $2,000 cover it?"
-                      value={askQ} onChange={e => setAskQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') ask(askQ); }} aria-label="Ask a question about your plan" autoFocus />
+                  <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-end' }}>
+                    <label className="field-wrap" style={{ flex: 1, minWidth: 0 }}>
+                      <span className="field-label">Your question</span>
+                      <input className="field ex-ph" style={{ maxWidth: 'none', width: '100%', fontSize: 'var(--t-input)' }} placeholder="For example: will $2,000 cover it?"
+                        value={askQ} onChange={e => setAskQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') ask(askQ); }} autoFocus />
+                    </label>
                     <button className="cta" onClick={() => ask(askQ)} disabled={!askQ.trim()}>Ask</button>
                   </div>
                   {!askResult && (
@@ -22524,9 +22612,11 @@ export default function HostShellV2() {
                         </div>
                         {st === 'ready' && !v.reconfirmed72 && (
                           <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                            {phone && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + phone.replace(/[^+\d]/g, '') + '?&body=' + encodeURIComponent(d.body)}>Text them</a>}
-                            <button className="mini" onClick={() => { try { navigator.clipboard.writeText(d.body); toast('Copied — paste it wherever you talk to ' + v.name + '.'); } catch { openDraft('Reconfirm — ' + v.name, d, null, { vendorId: v.id }); } }}>Copy the note</button>
-                            <button className="mini" onClick={() => openDraft('Reconfirm — ' + v.name, d, null, { vendorId: v.id })}>Read it first</button>
+                            {/* THE VENDOR DRAFT'S ORDER (cohesion G #31, owner 11/24/2026):
+                                read it first; the draft holds "Text them", "Copy" and
+                                "Mark it sent — I sent it myself", which records it. A
+                                text or copy from here recorded nothing. */}
+                            <button className="mini" data-sweep-read onClick={() => openDraft('Reconfirm — ' + v.name, d, null, { vendorId: v.id })}>Read it first</button>
                           </div>
                         )}
                         {st !== 'answered' && (
@@ -22566,17 +22656,18 @@ export default function HostShellV2() {
                     hostName={(profile && profile.name) || ''} />
                   <SheetHero
                     eyebrow="You & settings"
-                    star={mem && mem.present ? `${(mem.groups || []).length} remembered` : 'Nothing remembered yet'}
+                    star="Your setup"
                     sub={mem && mem.present
-                      ? `What ${BRAND.short} knows about how you host — yours to change or clear.`
-                      : 'Tell it how you host and it stops asking twice. Nothing is inferred.'}
+                      ? `How you host, your area and your data — ${(mem.groups || []).length} thing${(mem.groups || []).length === 1 ? '' : 's'} remembered, yours to change or clear.`
+                      : 'How you host, your area and your data. Nothing is guessed about you.'}
                   />
                   {/* Sound lives here now (host request 2026-07-11) — the header
                       carries only the account icon. Same toggle, same prime. */}
                   <div className="later-row" style={{ borderTop: 'none', padding: 'var(--sp-1) 2px 14px' }}>
                     <span className="t">Sound</span>
-                    <button className="mini" onClick={() => { primeMessageSound(); const m = !muted; setMuted(m); patchProfile({ messageSoundMuted: m }); }}>
-                      {muted ? 'Muted — tap for sound' : 'On — tap to mute'}
+                    {/* On / Off (cohesion G5): the switch shows the state; the row names the setting. */}
+                    <button className="mini" aria-pressed={!muted} onClick={() => { primeMessageSound(); const m = !muted; setMuted(m); patchProfile({ messageSoundMuted: m }); }}>
+                      {muted ? 'Off' : 'On'}
                     </button>
                   </div>
                   {/* ── LIGHT MODE (host, 2026-09-29) ───────────────────────
@@ -22597,7 +22688,7 @@ export default function HostShellV2() {
                     <span className="t">Light mode</span>
                     <button className="mini" aria-pressed={theme === 'light'}
                       onClick={() => { const t = setStoredTheme(theme === 'light' ? 'dark' : 'light'); setThemeState(t); patchProfile({ theme: t }); }}>
-                      {theme === 'light' ? 'On — tap for dark' : 'Off — tap for light'}
+                      {theme === 'light' ? 'On' : 'Off'}
                     </button>
                   </div>
                   {/* ── HELP IMPROVE THE APP (owner ruling 2026-11-02, option A) ──
@@ -22610,7 +22701,7 @@ export default function HostShellV2() {
                     <span className="t">Help improve the app</span>
                     <button className="mini" aria-pressed={!analyticsOff}
                       onClick={() => { const off = !analyticsOff; setAnalyticsOptOut(off); setAnalyticsOff(off); patchProfile({ analyticsOff: off }); }}>
-                      {analyticsOff ? 'Off — tap to turn on' : 'On — tap to turn off'}
+                      {analyticsOff ? 'Off' : 'On'}
                     </button>
                     <span className="v-meta" style={{ flexBasis: '100%', margin: '4px 0 0' }} data-analytics-line>
                       {analyticsOff
@@ -22752,10 +22843,12 @@ export default function HostShellV2() {
                     );
                   })()}
                   <div className="shelf-label" style={{ margin: '14px 0 6px' }}>You</div>
-                  <input className="field" style={{ maxWidth: 'none' }} placeholder="Your name — it signs every note we draft"
-                    defaultValue={(profile && profile.name) || ''} aria-label="Your name"
+                  <label className="field-label" htmlFor="set-name">Your name — it signs the notes we draft for you</label>
+                  <input id="set-name" className="field ex-ph" style={{ maxWidth: 'none' }} placeholder="For example: Rosa Delgado"
+                    defaultValue={(profile && profile.name) || ''}
                     onBlur={e => { const v = e.target.value.trim(); if (v !== ((profile && profile.name) || '')) patchProfile({ name: v }, v ? 'Your notes now sign as ' + v + '.' : 'Signature cleared.'); }} />
                   <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Your area</div>
+                  <label className="field-label" htmlFor="set-area">Your town or city</label>
                   <AreaField profile={profile} patchProfile={patchProfile} toast={toast} />
                   <p className="grounding" style={{ margin: '6px 0 0' }}>Used for local food prices and as the weather fallback when an event has no town of its own.</p>
 
@@ -22845,7 +22938,7 @@ export default function HostShellV2() {
                     <p className="grounding" data-keep-signin style={{ margin: '0 0 var(--sp-2)', color: 'var(--ink-soft)' }}>Make a free account to keep your plan and send your invite.</p>
                   )}
                   {!isSupabaseConfigured() ? (
-                    <p className="grounding" style={{ margin: 0 }}>Everything lives on this device. Accounts turn on when the cloud is configured.</p>
+                    <p className="grounding" style={{ margin: 0 }}>Your plans are saved on this device only.</p>
                   ) : session ? (
                     <>
                       <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Signed in as <strong style={{ color: 'var(--ink-soft)' }}>{(session.user && session.user.email) || 'your account'}</strong> — your name, area, and what {BRAND.short} remembers sync to your account across devices.</p>
@@ -26168,7 +26261,7 @@ export default function HostShellV2() {
                         })}
                       </div>
                       <div className="actions-row" style={{ marginTop: 10 }}>
-                        <button className="cta" data-food-add-commit disabled={!foodAddName.trim()} style={!foodAddName.trim() ? { opacity: .45 } : undefined}
+                        <button className="cta" data-food-add-commit disabled={!foodAddName.trim()}
                           onClick={commitFoodAdd}>{foodAddNames().length > 1 ? `Add ${foodAddNames().length} to the plan` : 'Add to the plan'}</button>
                         <button className="mini" onClick={() => { setFoodAddOpen(false); setFoodAddName(''); setFoodAddOwner(''); setFoodAddCost(''); setFoodAddGroup(null); }}>Done</button>
                       </div>
@@ -26451,10 +26544,10 @@ export default function HostShellV2() {
                     ];
                     return (
                       <div className="rtoolbar">
+                        <label className="field-wrap rtool-qwrap"><span className="field-label">Find someone you’re hiring</span>
                         <input className="field rtool-q" type="search" value={vendorQ}
                           onChange={(e) => setVendorQ(e.target.value)}
-                          placeholder="Find someone you're hiring"
-                          aria-label="Find someone on this list by name or what they do" />
+                          placeholder="A name or what they do" /></label>
                         <span className="rtool-lens" role="group" aria-label="Show only">
                           {LENS.map(([k, lbl, c]) => (
                             <button key={k} className="chip" aria-pressed={vendorLens === k}
@@ -26877,12 +26970,16 @@ export default function HostShellV2() {
                               button (below) could never appear. Legacy already has this
                               as a plain form field; V2 never got it. */}
                           <div className="actions-row" style={{ marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                            <input className="field" style={{ maxWidth: 170, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="vendor name"
-                              value={v.name || ''} onChange={e => writeVendor(v.id, { name: e.target.value }, null)} aria-label="Vendor name" />
-                            <input className="field" style={{ maxWidth: 140, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="phone" type="tel"
-                              value={v.phone || ''} onChange={e => writeVendor(v.id, { phone: formatPhoneUS(e.target.value) }, null)} aria-label="Vendor phone" />
-                            <input className="field" style={{ maxWidth: 185, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="email" type="email"
-                              value={v.email || ''} onChange={e => writeVendor(v.id, { email: e.target.value }, null)} aria-label="Vendor email" aria-invalid={isMalformedEmail(v.email)} />
+                            {/* Each field names itself above it (cohesion G, UX_11 rule 2). */}
+                            <label className="field-wrap" style={{ maxWidth: 170 }}><span className="field-label">Name</span>
+                              <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
+                                value={v.name || ''} onChange={e => writeVendor(v.id, { name: e.target.value }, null)} /></label>
+                            <label className="field-wrap" style={{ maxWidth: 140 }}><span className="field-label">Phone</span>
+                              <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="tel"
+                                value={v.phone || ''} onChange={e => writeVendor(v.id, { phone: formatPhoneUS(e.target.value) }, null)} /></label>
+                            <label className="field-wrap" style={{ maxWidth: 185 }}><span className="field-label">Email</span>
+                              <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="email"
+                                value={v.email || ''} onChange={e => writeVendor(v.id, { email: e.target.value }, null)} aria-invalid={isMalformedEmail(v.email)} /></label>
                           </div>
                           <button className="mini" aria-label={'Remove vendor ' + (v.name || v.category || 'Unnamed')}
                             onClick={e => {
@@ -26904,12 +27001,14 @@ export default function HostShellV2() {
                               goes to the VENDOR (never v.notes, which is host-private
                               bookkeeping and never leaves this cockpit). */}
                           <div className="actions-row" style={{ marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                            <input className="field" style={{ maxWidth: 220, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="your contact there"
-                              value={v.contactName || ''} onChange={e => writeVendor(v.id, { contactName: e.target.value }, null)} aria-label="Your contact at this vendor, greeted in their brief" />
+                            <label className="field-wrap" style={{ maxWidth: 260 }}><span className="field-label">Your contact there — their brief greets them</span>
+                              <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
+                                value={v.contactName || ''} onChange={e => writeVendor(v.id, { contactName: e.target.value }, null)} /></label>
                           </div>
-                          <textarea className="field" style={{ maxWidth: 'none', width: '100%', boxSizing: 'border-box', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 10px', marginBottom: 'var(--sp-2)', resize: 'vertical' }}
-                            placeholder="A note for them — parking, load-in door, anything they should know before they arrive" rows={2}
-                            value={v.briefNote || ''} onChange={e => writeVendor(v.id, { briefNote: e.target.value }, null)} aria-label="Note shared with this vendor in their brief" />
+                          <label className="field-wrap"><span className="field-label">A note for them, in their brief</span>
+                          <textarea className="field ex-ph" style={{ maxWidth: 'none', width: '100%', boxSizing: 'border-box', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 10px', marginBottom: 'var(--sp-2)', resize: 'vertical' }}
+                            placeholder="For example: parking, the load-in door, anything they should know before they arrive" rows={2}
+                            value={v.briefNote || ''} onChange={e => writeVendor(v.id, { briefNote: e.target.value }, null)} /></label>
                           {/* Agent Opportunity Audit P0 — paste the vendor's reply, review
                               the extracted fields, apply through writeVendor. */}
                           <VendorReplyParserV2 vendor={v} event={event} writeVendor={writeVendor} signedIn={!!session} onSignIn={() => setSheet({ kind: 'settings' })} />
@@ -27275,11 +27374,10 @@ export default function HostShellV2() {
                                 </label>
                               ) : (
                                 // Fallback when storage isn't configured: a link to where it lives.
-                                <input className="field" style={{ flex: 1, minWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
-                                  placeholder="paste a link to the signed contract"
+                                <label className="field-wrap" style={{ flex: 1, minWidth: 150 }}><span className="field-label">Link to the signed contract</span>
+                                <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                                   value={v.contractUrl || ''}
-                                  onChange={e => writeVendor(v.id, { contractUrl: e.target.value || null }, e.target.value ? null : undefined)}
-                                  aria-label={'Link to ' + (v.name || 'the vendor') + '’s signed contract'} />
+                                  onChange={e => writeVendor(v.id, { contractUrl: e.target.value || null }, e.target.value ? null : undefined)} /></label>
                               )}
                             </div>
                           )}
@@ -28050,7 +28148,8 @@ export default function HostShellV2() {
                         onClick={() => setQuickAddOpen(false)}>Done</button>
                     ) : null}
                   </div>
-                  <textarea className="field" style={{ maxWidth: 'none', minHeight: 74, resize: 'vertical', fontSize: 'var(--t-input)', fontWeight: 500 }}
+                  <label className="field-label" htmlFor="roster-add">Add guest names, one per line</label>
+                  <textarea id="roster-add" className="field" style={{ maxWidth: 'none', minHeight: 74, resize: 'vertical', fontSize: 'var(--t-input)', fontWeight: 500 }}
                     /* ── A PLACEHOLDER MUST NOT READ AS TYPED TEXT ──────────────────
                        Board 2026-08-07, unanimous across two panels. This held
                        'Denise & Ray\nThe Okafors\nUncle Joe' at the field's own
@@ -28062,7 +28161,7 @@ export default function HostShellV2() {
                        not an example, it is a trap.
                        A format hint cannot be mistaken for data. */
                     placeholder={'One name per line'}
-                    value={rosterText} onChange={e => setRosterText(e.target.value)} aria-label="Add guest names" />
+                    value={rosterText} onChange={e => setRosterText(e.target.value)} />
                   {/* ── THE BRIDGE BETWEEN WHAT SHE SAID AND WHAT SHE TYPES ──────
                       Host 2026-10-03: "address plus 1s on guest list in creation
                       (couples are plus one situations)". Both ends of this already
@@ -28102,7 +28201,7 @@ export default function HostShellV2() {
                     </div>
                   )}
                   <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                    <button className="cta" disabled={!rosterText.trim()} style={!rosterText.trim() ? { opacity: .45 } : undefined} onClick={addRoster}>Add them</button>
+                    <button className="cta" disabled={!rosterText.trim()} onClick={addRoster}>Add them</button>
                   </div>
                   </>)}
                 </div>
@@ -29016,9 +29115,10 @@ export default function HostShellV2() {
                         {toldRollup(event).line}
                       </div> : null}
                       <div className={'rtoolbar' + (peopleMode ? ' people-rtoolbar' : '')}>
+                        <label className="field-wrap rtool-qwrap"><span className="field-label">Find someone on the list</span>
                         <input className="field rtool-q" type="search" value={rosterQ}
                           onChange={(e) => setRosterQ(e.target.value)}
-                          placeholder="Find someone" aria-label="Find someone on the guest list" />
+                          placeholder="A name" /></label>
                         <span className="rtool-lens" role="group" aria-label="Show only">
                           {LENS.map(([k, lbl, c]) => (
                             <button key={k} className="chip" aria-pressed={rosterLens === k}

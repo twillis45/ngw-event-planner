@@ -2999,8 +2999,10 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    privacy line), so it uses the app's steel brand period like the real header
    wordmark, not the cream-card tokens. Ceremonial-bespoke type (exempt from the
    --tracking-* tokens, like the other .inv2 labels). */
+/* --ink-soft at full opacity (cohesion G #44, owner 11/24/2026): --faint at .85
+   measured 3.55–4.24:1 at 12px on the guest pages; the mark clears 4.5:1. */
 .inv2-wordmark{ margin-top:16px; font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--faint); opacity:.85; display:flex; align-items:baseline; justify-content:center; }
+  color:var(--ink-soft); display:flex; align-items:baseline; justify-content:center; }
 .inv2-wm-dot{ width:5px; height:5px; border-radius:50%; margin-left:5px; align-self:flex-end; margin-bottom:2px;
   background:var(--steel); box-shadow:inset 0 1px 1px rgba(255,255,255,.38), inset 0 -1px 2px rgba(0,0,0,.4), 0 0 3px var(--steel-tint); }
 /* staged reveal — one element per beat; reduced motion lands instantly */
@@ -9235,3 +9237,46 @@ input[data-cue], textarea[data-cue]{ outline:revert-layer; border-color:color-mi
 /* A run's bulk button names the store, and a priced store's name is long. */
 .run-all{max-width:100%; white-space:normal; text-align:left}
 .fstat-tag{display:inline-block; margin-top:4px}
+
+/* ── EVERY INPUT HAS A VISIBLE LABEL (cohesion G, UX_11 rule 2, 11/24/2026) ────
+   A placeholder vanishes as she types, so the field forgot what it asks. The
+   words above a field are its <label>; a wrapping label (.field-wrap) carries
+   them where the field sits in a row with its button. Example placeholders
+   ("For example: …") are faint and italic so they never read as a saved answer. */
+.field-label{ display:block; font-size:var(--t-body-s, 14px); font-weight:650; color:var(--ink); margin:0 0 6px; }
+.field-wrap{ display:flex; flex-direction:column; min-width:0; }
+.field-wrap > .field-label{ margin-bottom:6px; }
+.ex-ph::placeholder{ font-style:italic; color:var(--faint); font-weight:400; opacity:1; }
+/* The finder's label wrapper takes the search field's place in the toolbar. */
+.rtoolbar > .rtool-qwrap{ flex:1 1 220px; min-width:0; }
+.rtoolbar > .rtool-qwrap > .rtool-q{ flex:none; width:100%; }
+/* What could go wrong, grouped by tag (cohesion G1): a group head with its
+   count; the quiet groups fold, their summary a full 44px row. */
+.risk-g{ margin:0 0 var(--sp-4); }
+.risk-g-h{ display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; margin:0; padding:0;
+  font-size:var(--t-body-s, 14px); font-weight:650; color:var(--ink); border-bottom:1px solid var(--line-soft); }
+details.risk-g > summary.risk-g-h{ cursor:pointer; list-style:none; }
+details.risk-g > summary.risk-g-h::-webkit-details-marker{ display:none; }
+details.risk-g > summary.risk-g-h::after{ content:'▸'; color:var(--muted); margin-left:8px; }
+details.risk-g[open] > summary.risk-g-h::after{ content:'▾'; }
+.risk-g-n{ margin-left:auto; color:var(--muted); font-weight:550; }
+/* Each stay is a row that opens in place (cohesion G2): the name in ink, never link blue. */
+.stay-row{ display:flex; align-items:center; gap:12px; width:100%; min-height:52px; padding:12px 0; margin:0; border:0;
+  border-top:1px solid var(--line-soft); background:none; text-align:left; font:inherit; cursor:pointer; color:var(--ink); }
+.stay-row .stay-txt{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.stay-row .stay-who{ color:var(--ink); font-weight:650; }
+.stay-row .stay-note{ color:var(--muted); font-size:var(--t-body-s, 14px); }
+.stay-row .chev{ color:var(--muted); }
+.stay-editor{ border-top:1px solid var(--line-soft); padding:var(--sp-3) 0; }
+
+/* NO DIMMED LIT BUTTON (cohesion G #43, owner 11/24/2026). A primary with
+   nothing to save rendered as the lit gradient at opacity .45 (2.5–2.7:1).
+   Until there is something to save it is the quiet button, at full contrast;
+   it lights when it can act. Specific enough to outrank the hero's and the
+   themes' .cta fills. */
+html:root .cta.cta:disabled, html:root[data-theme] .hero.elegant .cta.cta:disabled, html:root[data-theme] .cta.cta:disabled{
+  background:var(--bg-band); background-image:none; color:var(--ink-soft); box-shadow:none; opacity:1; border:1px solid var(--line);
+}
+/* What creation heard but cannot be tapped (cohesion G #49): plain words in the
+   chip row, unbordered, so it never reads as a button. */
+.chips.heard .heard-found{ display:inline-flex; align-items:center; min-height:32px; padding:0 4px; color:var(--ink-soft); font-size:var(--t-pill); font-weight:600; }

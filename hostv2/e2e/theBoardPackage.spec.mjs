@@ -370,27 +370,23 @@ test('4: a placeholder name carries a quiet “Name it” that opens the same fi
   await ctx.close();
 });
 
-test('4: the tip shows once per device, under the title, and × dismisses it', async ({ browser }) => {
+// CHANGED BY THE OWNER (cohesion G #57, 11/24/2026): the one-time
+// "press and hold" tip is gone; a touch screen shows a visible "✎ Rename"
+// beside her own title, every time, and it opens the same rename field.
+test('4: on a touch screen her title carries a visible “✎ Rename”, every time, and it opens the field', async ({ browser }) => {
   test.setTimeout(90_000);
   const { ctx, page } = await seededPhone(browser, { ...PLACEHOLDER, id: 'ev-tip', name: 'Rose’s Thanksgiving' });
-  const tip = page.locator('[data-rename-tip]');
-  await expect(tip).toBeVisible();
-  await expect(tip).toHaveText('Tip: press and hold the name to rename it×', { useInnerText: false });
-  const [t, b] = [await page.locator('[data-tt-title]').boundingBox(), await tip.boundingBox()];
-  expect(b.y, 'under the title').toBeGreaterThanOrEqual(t.y + t.height - 1);
-  await tip.getByRole('button', { name: 'Dismiss the tip' }).click();
-  await expect(tip).toHaveCount(0);
-  // Never again on this device, dismissed or not.
-  await page.reload(); await settled(page); await page.waitForTimeout(500);
-  await expect(page.locator('[data-tt-title]')).toBeVisible();
   await expect(page.locator('[data-rename-tip]')).toHaveCount(0);
+  const btn = page.locator('[data-rename-btn]');
+  await expect(btn).toHaveText('✎ Rename');
+  const [t, b] = [await page.locator('[data-tt-title]').boundingBox(), await btn.boundingBox()];
+  expect(b.height, 'a 44px tap').toBeGreaterThanOrEqual(44);
+  expect(Math.abs((b.y + b.height / 2) - (t.y + t.height / 2)) <= t.height || b.y >= t.y, 'beside or under the title').toBe(true);
+  await page.reload(); await settled(page); await page.waitForTimeout(500);
+  await expect(page.locator('[data-rename-btn]'), 'still there after a reload').toBeVisible();
+  await page.locator('[data-rename-btn]').click();
+  await expect(page.locator('.tt-renaming input')).toBeVisible();
   await ctx.close();
-  const s2 = await seededPhone(browser, { ...PLACEHOLDER, id: 'ev-tip2', name: 'Rose’s Thanksgiving' });
-  await expect(s2.page.locator('[data-rename-tip]')).toBeVisible();
-  await s2.page.reload(); await settled(s2.page); await s2.page.waitForTimeout(500);
-  await expect(s2.page.locator('[data-tt-title]')).toBeVisible();
-  await expect(s2.page.locator('[data-rename-tip]'), 'shown once, not dismissed: still not again').toHaveCount(0);
-  await s2.ctx.close();
 });
 
 test('4: the invite step’s “What do you call it?” is the same rename field', async ({ browser }) => {
@@ -548,7 +544,9 @@ test('6: at home with no address the hero asks for the address once, in the appr
   const card = page.locator('.escreen.on .ecenter');
   await expect(card).toContainText('Guests, weather and shopping all use it — a city or ZIP works too.');
   const input = card.locator('.hero-card input.field').first();
-  await expect(input).toHaveAttribute('placeholder', 'Street, city, state');
+  // Labeled, with a made-up example (cohesion G: every input has a visible label).
+  await expect(input).toHaveAttribute('placeholder', 'For example: 42 Elm Ct, Springfield, VA');
+  await expect(card.getByLabel('Your street, city and state').first()).toBeVisible();
   await expect(card.locator('.hero-card').getByRole('button', { name: 'Save', exact: true }).first()).toBeVisible();
   const words = await boardWords(page);
   expect(words).not.toMatch(/Add your city|Your home is set — weather and shopping need the city/);

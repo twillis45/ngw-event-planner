@@ -87,7 +87,8 @@ class _Conn:
             if not r:
                 return None
             return {"event_id": r["event_id"], "body": r["body"], "removed_at": r["removed_at"],
-                    "event_name": EVENT["name"], "rsvp_code": CODE, "host_name": EVENT["hostNames"]}
+                    "event_name": EVENT["name"], "rsvp_code": CODE,
+                    "event_data": getattr(self, "event_data", None) or dict(EVENT), "profile_name": getattr(self, "profile_name", None)}
         return None
 
     async def fetch(self, q, *a):

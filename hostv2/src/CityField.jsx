@@ -12,7 +12,7 @@ import { useMemo, useState } from 'react';
 // dropdown rather than a native <datalist> — the native one is unreliable on
 // mobile (host report 2026-06-12: "autocomplete not working on mobile").
 // A ZIP still passes through as free text; the parse/reject rule is unchanged.
-export default function CityField({ value, onChange, onPick, onEnter, onBlur, placeholder, ariaLabel, style, inputStyle, className = 'field' }) {
+export default function CityField({ value, onChange, onPick, onEnter, onBlur, placeholder, ariaLabel, style, inputStyle, className = 'field', id }) {
   const [cities, setCities] = useState(null);
   const [open, setOpen] = useState(false);
   const load = () => {
@@ -39,7 +39,7 @@ export default function CityField({ value, onChange, onPick, onEnter, onBlur, pl
   const show = open && matches.length > 0 && matches[0].toLowerCase() !== q;
   return (
     <div style={{ position: 'relative', flex: 1, ...style }}>
-      <input className={className} style={inputStyle} value={value} placeholder={placeholder}
+      <input id={id} className={className} style={inputStyle} value={value} placeholder={placeholder}
         aria-label={ariaLabel} autoComplete="off" onBlur={onBlur}
         onFocus={() => { load(); setOpen(true); }}
         onChange={e => { load(); setOpen(true); onChange(e.target.value); }}
