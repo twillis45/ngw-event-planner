@@ -214,6 +214,7 @@ import { rosBasisNote } from '@app/lib/rosBasis';
 import { parseStartMinutes } from '@app/lib/eventWhen';
 import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
+import { rowStatus, sourcingSettled } from '@app/lib/rowStatus';
 import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
 import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt, menuChoicesTally, menuBoardRowSub } from '@app/lib/playbooks';
 import InviteToTheList from './InviteToTheList';
@@ -1084,6 +1085,18 @@ const DEMO_TOOLS_ARMED = (() => {
 // The "Test — …" QA fixtures list (shelf + Search) only with the tools armed;
 // they still resolve by id either way (stage-4 P1, N2).
 const LISTED_ROSTER = listedSamples(ROSTER, DEMO_TOOLS_ARMED);
+
+// ─── A ROW'S STATUS VALUE, ONE READER (owner, 11/24/2026) ────────────────────
+// The right-hand value on a sheet row. Its color is lib/rowStatus's answer,
+// carried as data-status and colored in styles.css; no row sets its own.
+function RowValue({ status = 'open', note = false, chev = false, style, children }) {
+  return (
+    <span className={'fstat-v' + (note ? ' fstat-note' : '')} data-status={status} style={style}>
+      {children}
+      {chev ? <span className="fstat-chev" aria-hidden="true">›</span> : null}
+    </span>
+  );
+}
 
 // ─── SHOP / BRINGING — the spread sheet's two modes ──────────────────────────
 //
@@ -7518,9 +7531,9 @@ export default function HostShellV2() {
         <span className="fstat-l">{dish}</span>
         {/* NO WRAP. Beside a long dish the label broke to "Add a / name"; the
             label is the act and stays whole, the DISH takes the wrapping. */}
-        <span className="fstat-v" style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>
+        <RowValue status={rowStatus({ settled: !!saved })} style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>
           {saved || (r.broughtByCommunity ? 'Add a name' : 'Someone’s bringing it?')}
-        </span>
+        </RowValue>
       </button>
     );
   };
@@ -7595,12 +7608,12 @@ export default function HostShellV2() {
           {trip.cel && mo.celebration && (
             <button type="button" className="fstat" data-layer="celebration" onClick={() => setSheet({ kind: 'celebration' })}>
               <span className="fstat-l">The celebration<span className="trip-part-sub">{mo.celebration.title} · {mo.celebration.basis === 'restaurant' ? 'the restaurant’s rate, before drinks, tax and tip' : 'this spread’s estimate · all in'}</span></span>
-              <span className="fstat-v">{mo.celebration.low != null ? money(mo.celebration.low, mo.celebration.high) : 'needs a guest count'}<span className="fstat-chev" aria-hidden="true">›</span></span>
+              <RowValue status="open" chev>{mo.celebration.low != null ? money(mo.celebration.low, mo.celebration.high) : 'needs a guest count'}</RowValue>
             </button>
           )}
           <button type="button" className="fstat" data-layer="around" onClick={() => goToSection('days')}>
             <span className="fstat-l">{trip.cel ? 'Around it' : 'Meals on the trip'}<span className="trip-part-sub">{mo.around.planned ? `${mo.around.total} meals · ${summary}` : `${mo.around.total} meals · not planned yet`}</span></span>
-            <span className="fstat-v">{mo.around.planned ? (by.out && by.out.low ? `${money(by.out.low, by.out.high)} to you` : '$0 to you') : 'plan them'}<span className="fstat-chev" aria-hidden="true">›</span></span>
+            <RowValue status={rowStatus({ settled: !!mo.around.planned })} chev>{mo.around.planned ? (by.out && by.out.low ? `${money(by.out.low, by.out.high)} to you` : '$0 to you') : 'plan them'}</RowValue>
           </button>
         </div>
         {mo.around.planned > 0 && (
@@ -17892,7 +17905,7 @@ export default function HostShellV2() {
               <div className="fstat-list" style={{ marginTop: 'var(--sp-3)' }}>
                 <button type="button" className="fstat" data-space-days onClick={() => setSheet({ kind: 'days' })}>
                   <span className="fstat-l">Your days</span>
-                  <span className="fstat-v">{spanNights(event) + 1} days · open<span className="fstat-chev" aria-hidden="true">›</span></span>
+                  <RowValue status="open" chev>{spanNights(event) + 1} days · open</RowValue>
                 </button>
               </div>
             )}
@@ -18057,10 +18070,9 @@ export default function HostShellV2() {
                       <button className="fstat" onClick={() => setSettledOpen(m => ({ ...m, [capKey]: !open }))} aria-expanded={open}
                         aria-label={(it.short || it.item) + ' — ' + (remaining === 0 ? 'covered' : 'still need ' + remaining) + '. Tap to set what you have.'}>
                         <span className="fstat-l">{it.verb ? it.verb + ' ' : ''}{it.short || it.item} <span className="of">need {baseNeed}</span></span>
-                        <span className="fstat-v" style={remaining === 0 ? { color: 'var(--ok)' } : null}>
+                        <RowValue status={rowStatus({ settled: remaining === 0 })} chev>
                           {remaining === 0 ? (helperName ? helperName + ' brings ' + baseNeed : 'covered') : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : 'still need ' + remaining}
-                          <span className="fstat-chev" aria-hidden="true">›</span>
-                        </span>
+                        </RowValue>
                       </button>
                       {open && (
                         <div style={{ padding: '2px 2px 12px' }}>
@@ -18553,10 +18565,9 @@ export default function HostShellV2() {
                             {p.id === 'place' && p.sub && !p.set ? <span className="trip-part-sub">{p.sub}</span> : null}
                             {p.id === 'seats' && p.stepFree ? <span className="trip-part-sub" data-stepfree-check>You said “{p.stepFree}”: a step-free path {placeA ? `to ${/^an? /.test(placeA) ? placeA.replace(/^an? /, 'the ') : placeA}` : 'in'} and a seat she can reach.</span> : null}
                           </span>
-                          <span className="fstat-v" style={p.set ? { color: 'var(--ok)' } : null}>
+                          <RowValue status={rowStatus({ settled: !!p.set })} chev>
                             {p.set ? 'set' : p.goes === 'venue' ? 'name it' : p.goes === 'seating' ? 'who sits where' : 'open'}
-                            <span className="fstat-chev" aria-hidden="true">›</span>
-                          </span>
+                          </RowValue>
                         </button>
                       ))}
                     </div>
@@ -23670,7 +23681,7 @@ export default function HostShellV2() {
                             patchEvent({ foodOwner: next }, `${r.short || r.item} is back with ${String(who).toLowerCase() === 'the community' ? 'the community' : 'your guests'} to bring.`);
                           }}>
                             <span className="fstat-l">{r.short || r.item}</span>
-                            <span className="fstat-v" style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>Hand it back</span>
+                            <RowValue status="open" style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>Hand it back</RowValue>
                           </button>
                         ))}
                       </div>
@@ -24276,7 +24287,7 @@ export default function HostShellV2() {
                       {planTab && hasChoices && (
                         <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, choices: true }))}>
                           <span className="fstat-l">Your choices</span>
-                          <span className="fstat-v" style={openN > 0 ? null : { color: 'var(--ok)' }}>
+                          <RowValue status={rowStatus({ settled: openN === 0 })} chev>
                             {/* Open now is the hero's count; the rest come up
                                 closer to the date, as on Calls to make. */}
                             {openN > 0
@@ -24284,8 +24295,7 @@ export default function HostShellV2() {
                                 ? choicesTally.openNow.length + ' open' + (choicesTally.later > 0 ? ' · ' + choicesTally.later + ' later' : '')
                                 : choicesTally.later + ' later')
                               : 'all set'}
-                            <span className="fstat-chev" aria-hidden="true">›</span>
-                          </span>
+                          </RowValue>
                         </button>
                       )}
                       {/* WHO'S BRINGING WHAT, ON THE PLAN (owner's iPad, 11/21/2026:
@@ -24295,30 +24305,27 @@ export default function HostShellV2() {
                       {planTab && bringingTally.total > 0 && (
                         <button className="fstat" data-plan-bringing onClick={() => setSheet({ kind: 'bringing' })}>
                           <span className="fstat-l">Who’s bringing what</span>
-                          <span className="fstat-v" style={bringingTally.named === bringingTally.total ? { color: 'var(--ok)' } : null}>
+                          <RowValue status={rowStatus({ settled: bringingTally.named === bringingTally.total })} chev>
                             {bringingTally.named === bringingTally.total
                               ? 'everyone named'
                               : `${bringingTally.named} of ${bringingTally.total} named`}
-                            <span className="fstat-chev" aria-hidden="true">›</span>
-                          </span>
+                          </RowValue>
                         </button>
                       )}
                       {planTab && (
                       <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
                         <span className="fstat-l">Dietary needs</span>
-                        <span className="fstat-v" style={anyDiet || dietaryNoted(event) ? { color: 'var(--ok)' } : null}>
+                        <RowValue status={rowStatus({ settled: anyDiet || dietaryNoted(event) })} chev>
                           {anyDiet ? 'noted · ' + dietRowsFor(event).flaggedCount + ' flagged' : dietaryNoted(event) ? 'noted' : 'none yet'}
-                          <span className="fstat-chev" aria-hidden="true">›</span>
-                        </span>
+                        </RowValue>
                       </button>
                       )}
                       {planTab && hasSourcing && (
                         <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, sourced: true }))}>
                           <span className="fstat-l">How it’s sourced</span>
-                          <span className="fstat-v">
+                          <RowValue status={rowStatus({ settled: sourcingSettled(event) })} chev>
                             {sourcingLabel}
-                            <span className="fstat-chev" aria-hidden="true">›</span>
-                          </span>
+                          </RowValue>
                         </button>
                       )}
                       {/* ── THE COUNT IS ALREADY PINNED (2026-09-26) ────────
@@ -24339,10 +24346,9 @@ export default function HostShellV2() {
                       {!planTab && (
                       <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, list: true }))}>
                         <span className="fstat-l">The list</span>
-                        <span className="fstat-v" style={listDone ? { color: 'var(--ok)' } : null}>
+                        <RowValue status={rowStatus({ settled: listDone })} chev>
                           {listDone ? 'all bought' : COUNT_LABELS.listItems(shopTally.total)}
-                          <span className="fstat-chev" aria-hidden="true">›</span>
-                        </span>
+                        </RowValue>
                       </button>
                       )}
                     </div>
@@ -26195,11 +26201,10 @@ export default function HostShellV2() {
                     onClick={() => setSheet(s => ({ ...s, focus: top.vendor.id }))}
                     aria-label={'Open ' + (top.vendor.name || 'this vendor') + ' — ' + (top.readiness.summary || top.readiness.label)}>
                     <span className="fstat-l" style={{ flex: '0 0 auto' }}>{top.vendor.name || 'A vendor'}</span>
-                    <span className="fstat-v fstat-note" style={{ textAlign: 'right', display: 'block',
-                      color: crit ? 'var(--warn)' : 'var(--faint)' }}>
+                    <RowValue note status={rowStatus({ overdue: crit })} style={{ textAlign: 'right', display: 'block' }}>
                       {top.readiness.summary || top.readiness.label}
                       <span className="fstat-chev" aria-hidden="true"> ›</span>
-                    </span>
+                    </RowValue>
                   </button>
                 );
               })()}
@@ -26211,7 +26216,7 @@ export default function HostShellV2() {
                   <div className="fstat-list" style={{ margin: '0 0 var(--sp-3)' }}>
                     <button className="fstat" style={{ borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }} onClick={() => setSheet(s => ({ ...s, marketOpen: true }))}>
                       <span className="fstat-l">Which market</span>
-                      <span className="fstat-v">{metroMkt ? metroMkt.label : metroSuggest ? `Suggested: ${metroSuggest.market.label}` : 'National baseline'}<span className="fstat-chev" aria-hidden="true">›</span></span>
+                      <RowValue status={rowStatus({ settled: !!metroMkt })} chev>{metroMkt ? metroMkt.label : metroSuggest ? `Suggested: ${metroSuggest.market.label}` : 'National baseline'}</RowValue>
                     </button>
                   </div>
                 ) : (
@@ -26665,8 +26670,7 @@ export default function HostShellV2() {
                                 {axes.map(a => (
                                   <div className="fstat" key={a.key} style={{ alignItems: 'flex-start', gap: 10 }}>
                                     <span className="fstat-l" style={{ flex: '0 0 auto' }}>{LABEL[a.key] || a.key}</span>
-                                    <span className="fstat-v fstat-note" style={{ textAlign: 'right', display: 'block',
-                                      color: tone(a.level) ? 'var(--warn)' : 'var(--faint)' }}>{a.note}</span>
+                                    <RowValue note status={rowStatus({ overdue: !!tone(a.level) })} style={{ textAlign: 'right', display: 'block' }}>{a.note}</RowValue>
                                   </div>
                                 ))}
                               </div>

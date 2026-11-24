@@ -3163,6 +3163,13 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    the sentence takes the room left and wraps, as the board's reasons do. */
 .fstat-v.fstat-note{white-space:normal; flex:1 1 auto; min-width:0}
 .fstat-chev{color:var(--faint)}
+/* SETTLED = GREEN, ONE RULE (owner, 11/24/2026). A row's value is colored by
+   the one reader's answer (lib/rowStatus via RowValue): settled is --ok, open
+   stays neutral, overdue is --warn. A note sentence that is open keeps its
+   faint tone. No row sets its own color. */
+.fstat-v[data-status="settled"]{color:var(--ok)}
+.fstat-v[data-status="overdue"]{color:var(--warn)}
+.fstat-v.fstat-note[data-status="open"]{color:var(--faint)}
 /* Sourcing tiers as bordered cards (378:94): active one tinted + steel border. */
 .srctier-list{display:flex; flex-direction:column; gap:var(--sp-2); margin-bottom:var(--sp-2)}
 .srctier{display:flex; flex-direction:column; gap:3px; width:100%; text-align:left;
