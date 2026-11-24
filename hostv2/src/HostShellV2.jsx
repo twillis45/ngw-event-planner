@@ -5825,6 +5825,11 @@ export default function HostShellV2() {
   const [lens, setLens] = useState('all');
   const lensSet = [...new Set(queue.map(a => DOMAIN_LENS[a.domain] || 'Plan'))];
   const show = a => lens === 'all' || (DOMAIN_LENS[a.domain] || 'Plan') === lens;
+  // TODAY'S LIST ON THE DAY (cohesion batch A, owner-approved renders,
+  // 11/24/2026). On the event day the list under the run-of-show hero holds
+  // only what is due today and anything critical; the rest of the planning
+  // folds behind one row. A critical card never folds.
+  const onTheDayList = (a) => !!a && (a.level === 'critical' || (a.dueInDays != null && Number(a.dueInDays) === 0));
   // Queue presentation state (wave-6 hero): the "+N more" expander past the
   // 6-card cap, and per-bundle in-place expansion. Both reset per event.
   const [queueOpen, setQueueOpen] = useState(false);
@@ -13450,11 +13455,13 @@ export default function HostShellV2() {
                        is counted as that; what is only past its window is
                        optional; "not today’s job" only when neither is there. */
                     ? (() => {
-                        const dueToday = queue.filter((a) => a && ((a.dueInDays != null && Number(a.dueInDays) === 0)
-                          || /\bneeds? you today\b|\bfor the day\b/i.test(String(a.title || '')))).length;
+                        // Today's list leads: "Still to do today · N left", N being
+                        // exactly the cards shown. With nothing for today, every card
+                        // is folded, and the label says how optional they are.
+                        const todayList = queue.filter(show).filter(onTheDayList).length;
+                        if (todayList) return <div className="sect" id="actionsAnchor"><h2>Still to do today</h2><div className="rule" /><span className="when">{todayList} left</span></div>;
                         const late = queue.some((a) => a && a.dueInDays != null && Number(a.dueInDays) < 0);
-                        const when = dueToday ? `${dueToday} due today` : late ? 'if there’s time' : 'not today’s job';
-                        return <div className="sect" id="actionsAnchor"><h2>Still open from planning</h2><div className="rule" /><span className="when">{when}</span></div>;
+                        return <div className="sect" id="actionsAnchor"><h2>Still open from planning</h2><div className="rule" /><span className="when">{late ? 'if there’s time' : 'not today’s job'}</span></div>;
                       })()
                     : <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>}
               {plan && plan.planningState && plan.planningState.reasoning && (() => {
@@ -13592,7 +13599,7 @@ export default function HostShellV2() {
                 })();
                 const queueCap = queueFocus != null ? queueFocus : QUEUE_CAP;
                 const queueFolded = queueFocus != null && !queueOpen;
-                const visible = queueOpen ? shown : shown.slice(0, queueCap);
+                const visible = queueOpen ? shown : (dayHero ? shown.filter(onTheDayList) : shown.slice(0, queueCap));
                 const hiddenCount = shown.length - visible.length;
                 // Time-to-window, worn quietly on the card (engine contract:
                 // actions MAY carry dueInDays; absent = say nothing).
@@ -13608,6 +13615,9 @@ export default function HostShellV2() {
                 // in N days still print, because those point forward and are true. The
                 // eyebrow already carries the runway ("4 DAYS · REPAST"), so nothing
                 // true is lost — only the blame.
+                // The engine's own timing and level, on each card (read by
+                // e2e/theDayShowsTodayFirst.spec.mjs).
+                const queueCardData = (a) => ({ 'data-queue-card': '', 'data-due-in-days': (a && a.dueInDays != null) ? String(a.dueInDays) : '', 'data-level': (a && a.level) || '' });
                 const dueChip = (a) => {
                   if (!a || a.dueInDays == null || !Number.isFinite(Number(a.dueInDays))) return null;
                   if (solemn && a.dueInDays < 0) return null;
@@ -13692,7 +13702,7 @@ export default function HostShellV2() {
                     const to12 = (s) => { const t = cParse(s); if (t == null) return s; let h = Math.floor(t / 60); const mm = t % 60; const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return h + ':' + String(mm).padStart(2, '0') + ' ' + ap; };
                     const applyCustomTime = (val) => { if (!val || !custom || !it.affectedVendorId) return; const disp = to12(val); writeVendor(it.affectedVendorId, { [custom.field]: disp }, `${vendName || 'They'} now arrive at ${disp}.`); setConflictTime(null); };
                     return (
-                      <article className={'card hero-card bundle-hero conflict-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key}
+                      <article className={'card hero-card bundle-hero conflict-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key} {...queueCardData(a)}
                         style={{ animation: 'askin 240ms var(--ease-out) 60ms both' }}>
                         <div className="card-head">
                           {(it.detailShort || it.detail) && <p className="because">{it.detailShort || it.detail}</p>}
@@ -13768,7 +13778,7 @@ export default function HostShellV2() {
                   if (elegantMode && askMode && i === 0 && heroDecisionRow && heroDecisionND) {
                     const dec = heroDecisionRow;
                     return (
-                      <article className={'card hero-card bundle-hero decision-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key}
+                      <article className={'card hero-card bundle-hero decision-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key} {...queueCardData(a)}
                         style={{ animation: 'askin 240ms var(--ease-out) 60ms both' }}>
                         <div className="card-head">
                           {/* THE HERO SAYS WHAT IS TRUE FORWARD (board re-sit 2026-07-30).
@@ -13838,7 +13848,7 @@ export default function HostShellV2() {
                     );
                   }
                   return (
-                    <article className={'card' + (spot === key ? ' spot' : '') + (askMode && i === 0 ? ' hero-card bundle-hero' : '')} id={'card-' + key} key={key}
+                    <article className={'card' + (spot === key ? ' spot' : '') + (askMode && i === 0 ? ' hero-card bundle-hero' : '')} id={'card-' + key} key={key} {...queueCardData(a)}
                       style={spot === key ? undefined : { animation: rowEnter(i, 45, 6) }}>
                       {!(askMode && i === 0) && <span className="idx">{i + 1}</span>}
                       <div className="card-head">
@@ -14032,7 +14042,7 @@ export default function HostShellV2() {
                 // second expression and breaks the build — the same trap documented
                 // on the conflict-hero disclosure ~:6100.)
                 return (
-                  <article className={'card' + (spot === key ? ' spot' : '') + (isHero ? ' hero-card' + (heroReceipt ? ' receipted' : '') : '')} id={'card-' + key} key={key}
+                  <article className={'card' + (spot === key ? ' spot' : '') + (isHero ? ' hero-card' + (heroReceipt ? ' receipted' : '') : '')} id={'card-' + key} key={key} {...queueCardData(a)}
                     data-decision-id={(isHero && heroSelection && heroSelection.decisionId) || undefined}
                     data-confidence={(isHero && heroEvidence && heroEvidence.confidence) || undefined}
                     data-why={(isHero && heroWhy.length) ? heroWhy.join(' · ') : undefined}
@@ -14262,8 +14272,9 @@ export default function HostShellV2() {
                   them — it was --muted/550 at body size against their --faint/450/12.5px. */}
               {hiddenCount > 0 && !(nearDayPlan && !queueOpen) && !(elegantMode && askMode) && (
                 <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: 'pointer', padding: '9px 0' }}
+                  data-day-fold={dayHero ? '' : undefined}
                   onClick={() => setQueueOpen(true)}>
-                  <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>+ {hiddenCount} more — show the rest</span>
+                  <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{dayHero ? `${hiddenCount} more from planning, if there’s time` : `+ ${hiddenCount} more — show the rest`}</span>
                   {/* setQueueOpen is an in-place expand, so this is a disclosure, not a
                       route (board re-sit 2026-07-30 — the third survivor of the glyph
                       rule ruling A enforced on decopt-disc only). */}
