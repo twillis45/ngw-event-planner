@@ -44,6 +44,7 @@ const SELF_PINNED = [
   // a different fold and this rule does not govern it.
   '**/foldAtTheFoot.spec.mjs',
   '**/theStatColumnStandsBesideTheQuestion.spec.mjs',
+  '**/aShortLandscapeFitsEveryAsk.spec.mjs',
   '**/aSheetFillsTheColumnAndTheScreen.spec.mjs',
   '**/theTouchFrameIsFullBleed.spec.mjs',
   '**/statColumnChips.spec.mjs',

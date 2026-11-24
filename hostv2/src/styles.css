@@ -8546,14 +8546,25 @@ button.vc-pill::after{
 /* A SHORT LANDSCAPE STILL FITS ITS FIRST SCREEN. The title block (owner,
    11/24/2026: every wide board names its event) is taller than the eyebrow it
    replaced, and at 1024x768 it pushed the option card 66px under the fold
-   (theStatColumnStandsBesideTheQuestion). On a short screen the question sizes
-   by height and the header drops its top padding; tall boards are unchanged. */
+   (theStatColumnStandsBesideTheQuestion). The live check of e1ff88b then
+   found a three-answer ask on a touch screen with two answers under the fold
+   (aShortLandscapeFitsEveryAsk asserts every ask kind, pointer and touch). On
+   a short screen: the question sizes by height, the header drops its top
+   padding, the touch-only rename tip sits beside the title instead of on a
+   line of its own (it wraps back under a long name), and the question column's
+   top offset is 16px. Tall boards are unchanged. */
 @media (max-height:860px){
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) .ask{
     font-size:clamp(36px,6vh,56px);
   }
-  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head{ padding-top:0; }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head{
+    padding-top:0; display:flex; flex-wrap:wrap; align-items:center; column-gap:16px;
+  }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-r1,
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-sub{ flex-basis:100%; }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-tip{ margin:0; }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head .tt-title{ margin-top:0 !important; }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{ padding-top:16px; }
 }
 
 /* ══ SHEETS FROM 1024: THE FULL COLUMN, NEVER TALLER THAN THE SCREEN ═════════
