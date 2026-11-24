@@ -40,9 +40,14 @@ const boot = async (page, theme) => {
 
 // Where each treatment lives, and the selector for its selected and unselected forms.
 const SURFACES = [
-  { name: 'Guests', on: '.chip[aria-pressed="true"]', off: '.chip[aria-pressed="false"]' },
+  // The invite rules' chips wear their own owner-approved look (render 10,
+  // 11/24/2026: a green outline and a check, no fill), so the guest list's
+  // one-look check reads its other chips.
+  { name: 'Guests', on: '.chip[aria-pressed="true"]:not(.invite-rules .chip)', off: '.chip[aria-pressed="false"]:not(.invite-rules .chip)' },
   { name: 'Who sits where', on: '.chip[aria-pressed="true"]', off: '.chip[aria-pressed="false"]' },
-  { name: 'The spread & shopping', on: '.fmode.on', off: '.fmode:not(.on)' },
+  // One food page (owner, 11/24/2026): the Plan / Shop tabs are gone; the
+  // spread's selected control is now the menu's chips, behind its Menu row.
+  { name: 'The spread & shopping', on: '.chip[aria-pressed="true"]', off: '.chip[aria-pressed="false"]', pick: '[data-food-section="choices"] .fstat' },
   { name: 'Calendar', on: '.cal-toggle .mini.on', off: '.cal-toggle .mini:not(.on)' },
   { name: 'You & settings', on: '.optrow.on', off: '.optrow:not(.on)', pick: '.optrow' },
   { name: '__jump', on: '.navseg-b.on', off: '.navseg-b:not(.on)' },
@@ -54,7 +59,9 @@ const read = ([on, off, scope]) => {
   const a = [...sh.querySelectorAll(on)].find(vis);
   const b = [...sh.querySelectorAll(off)].find(vis);
   const res = (v) => { const p = document.createElement('div'); p.style.color = v; document.body.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; };
-  const look = (e) => { if (!e) return null; const cs = getComputedStyle(e); return { bg: cs.backgroundColor, img: cs.backgroundImage, ink: cs.color, edge: `${cs.borderTopColor} ${cs.borderTopWidth} ${cs.boxShadow}`, label: (e.innerText || '').trim().slice(0, 20) }; };
+  // The stage label's own bar (the nav's underline, owner 11/24/2026).
+  const under = (e) => { const l = e.querySelector('.nav-l, .srail-l'); if (!l) return 'none'; const a = getComputedStyle(l, '::after'); return a.content === 'none' || a.content === 'normal' ? 'none' : `${a.width} ${a.height}`; };
+  const look = (e) => { if (!e) return null; const cs = getComputedStyle(e); return { bg: cs.backgroundColor, img: cs.backgroundImage, ink: cs.color, edge: `${cs.borderTopColor} ${cs.borderTopWidth} ${cs.boxShadow}`, ring: (cs.borderTopColor !== 'rgba(0, 0, 0, 0)' && parseFloat(cs.borderTopWidth) > 0) || cs.boxShadow !== 'none', under: under(e), label: (e.innerText || '').trim().slice(0, 20) }; };
   return {
     on: look(a), off: look(b),
     primary: res('var(--steel)'),
@@ -90,22 +97,25 @@ for (const theme of ['dark', 'light']) {
       expect.soft(r.on.img, `${where}: selected is not a gradient`).toBe('none');
       expect.soft(r.on.bg, `${where}: selected is not the primary button's fill`).not.toBe(r.primary);
       expect.soft(r.status, `${where}: selected is not a status color`).not.toContain(r.on.bg);
-      expect.soft(`${r.on.bg} ${r.on.edge}`, `${where}: selected differs from unselected`).not.toBe(`${r.off.bg} ${r.off.edge}`);
-      // THE PHASE IS OUTLINED, NOT FILLED, on the phone's pill, the tall bar and
-      // the 13" rail (owner rulings 4 and 8, 11/23/2026: no fill on the nav; "the
-      // current stage outlined (not filled)"). Held to that, and to the one
-      // selected ink; the one-fill rule below holds everywhere else.
+      // THE PHASE IS UNDERLINED, NOT FILLED OR OUTLINED, on the phone's pill,
+      // the tall bar and the 13" rail (owner rulings 4 and 8, 11/23/2026: no
+      // fill on the nav; owner 11/24/2026, renders 1a and 7: "no circle,
+      // outline or box", a 2px bar under the label). Held to that, and to the
+      // one selected ink; the one-fill rule below holds everywhere else.
       // (Every tall iPad's bar too, owner 11/23/2026: no fill on any nav.)
-      const outlined = inBar || inRail;
-      if (outlined) {
+      const underlined = inBar || inRail;
+      if (underlined) {
         expect.soft(r.on.bg, `${where}: the phase has no fill`).toBe('rgba(0, 0, 0, 0)');
-        expect.soft(parseFloat(r.on.edge.split(' ').find((t) => /px$/.test(t)) || '0'), `${where}: the phase is outlined`).toBeGreaterThan(0);
+        expect.soft(r.on.ring, `${where}: the phase has no outline (${r.on.edge})`).toBe(false);
+        expect.soft(r.on.under, `${where}: the phase is underlined`).not.toBe('none');
+        expect.soft(r.off.under, `${where}: an unselected phase is not`).toBe('none');
         selInk.push(r.on.ink);
         continue;
       }
+      expect.soft(`${r.on.bg} ${r.on.edge}`, `${where}: selected differs from unselected`).not.toBe(`${r.off.bg} ${r.off.edge}`);
       seen.push({ where, bg: r.on.bg, ink: r.on.ink, label: r.on.label });
     }
-    for (const ink of selInk) expect.soft(ink, 'the outlined phase wears the one selected ink').toBe(seen[0] && seen[0].ink);
+    for (const ink of selInk) expect.soft(ink, 'the underlined phase wears the one selected ink').toBe(seen[0] && seen[0].ink);
     const looks = [...new Set(seen.map((s) => `${s.bg} / ${s.ink}`))];
     expect.soft(looks, `one selected look across ${seen.map((s) => `${s.where} "${s.label}" = ${s.bg} / ${s.ink}`).join('; ')}`).toHaveLength(1);
   });

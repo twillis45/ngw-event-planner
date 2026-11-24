@@ -46,11 +46,22 @@ const boot = async (page, ev, route = '?elegant=1') => {
   await page.goto(route);
   await settled(page);
 };
-const selectedTab = (page) => page.locator('.fmodes [role="tab"][aria-selected="true"]').first().innerText();
+// ONE FOOD PAGE (owner, 11/24/2026): the tabs are gone and the rule now names
+// a SECTION of the one page; the door lands with that section in view.
+// Plan → Your choices, Shop → the list.
+const SECTION = { Plan: 'choices', Shop: 'list', Bringing: 'bringing' };
 const landsOn = async (page, want) => {
   await settled(page);
-  await expect(page.locator('.fmodes [role="tab"][aria-selected="true"]').first()).toBeVisible();
-  expect(await selectedTab(page)).toBe(want);
+  await expect(page.locator('.sheet').last().locator(`[data-food-section="${SECTION[want]}"]`)).toBeVisible();
+  await page.waitForTimeout(300);
+  const seen = await page.evaluate((sec) => {
+    const sh = [...document.querySelectorAll('.sheet')].pop();
+    const body = sh.querySelector('.sheet-body');
+    const el = sh.querySelector(`[data-food-section="${sec}"]`);
+    const b = body.getBoundingClientRect(); const r = el.getBoundingClientRect();
+    return r.top >= b.top - 2 && r.top < b.bottom - 60;
+  }, SECTION[want]);
+  expect(seen, `${want} (${SECTION[want]}) is in view`).toBe(true);
 };
 
 const CASES = [

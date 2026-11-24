@@ -138,7 +138,7 @@ test.describe('the shopping list can leave the app', () => {
     await openSection(page, 'The spread & shopping');
     // The section door opens on Plan while a menu question is open
     // (foodSheetKind); the store actions are on Shop, so tap Shop.
-    await page.locator('.sheet').last().locator('.fmode', { hasText: /^Shop$/ }).first().click();
+    // One food page (owner, 11/24/2026): no Shop tab, and the list is always open.
     await settled(page);
     const text = await sheetText(page);
     // SHORTENED 2026-09-26 to fit three actions on one row at 390px; the verb

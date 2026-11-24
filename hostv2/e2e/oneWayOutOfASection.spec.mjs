@@ -84,9 +84,10 @@ const openTheList = async (page) => {
   await tapText(page, '^Done$');          // back out of any dietary drill-in
   await page.waitForTimeout(1200);
   await settled(page);
-  await tapText(page, '^Shop$');          // the menu door opens Plan while the menu is open (11/21/2026)
-  await sheetSettled(page);
-  await tapText(page, 'The list[\\s\\S]*item');
+  // ONE FOOD PAGE (owner, 11/24/2026): the list is always open, so it is no
+  // longer a section you enter and leave. The sections with an exit are the
+  // drill-ins; Dietary needs is the one every plan has.
+  await tapText(page, '^Dietary needs');
   await sheetSettled(page);
 };
 
@@ -125,7 +126,7 @@ test('and it actually closes the section', async ({ page }) => {
   expect(await countDone(page)).toBe(0);
 });
 
-test('THE TRAP, NOW CLOSED AT THE SOURCE: Plan has the bar too', async ({ page }) => {
+test('THE TRAP, NOW CLOSED AT THE SOURCE: another drill-in has the bar too', async ({ page }) => {
   // This test used to assert the OPPOSITE — that the bar was absent on Plan,
   // so the drill-in headers had to keep their own exit. That was true and it
   // was the trap: the list drill-in has no tab guard and survives the switch,
@@ -135,8 +136,12 @@ test('THE TRAP, NOW CLOSED AT THE SOURCE: Plan has the bar too', async ({ page }
   // food tab, so the trap is gone at its source rather than worked around.
   // The PROPERTY this file exists for is unchanged and is why the rewrite was
   // safe to make: always exactly one way out, wherever you are.
+  // One food page (11/24/2026): no Plan tab to switch to. The menu's own
+  // drill-in, opened after leaving Dietary needs, is the other section.
   await openTheList(page);
-  await tapText(page, '^Plan$');
+  await page.locator('.ftotal').getByRole('button', { name: 'Done' }).click();
+  await sheetSettled(page);
+  await tapText(page, '^Menu');
   await sheetSettled(page);
 
   const hasBar = await page.evaluate(() => !!document.querySelector('.ftotal'));

@@ -26,12 +26,7 @@ const openShop = async (page) => {
   // page, as before, so the sticky next-bar over a scrolled row does not catch it.
   await page.getByRole('button', { name: /what you.?re serving/i }).first().evaluate((el) => el.click());
   await sheetSettled(page);
-  // "What you're serving" opens the spread on Plan while the menu is open
-  // (owner's iPad, 11/21/2026); the list is on Shop.
-  await page.getByRole('tab', { name: 'Shop' }).first().evaluate((el) => el.click());
-  await sheetSettled(page);
-  await page.getByRole('button', { name: /The list.*item/i }).first().evaluate((el) => el.click());
-  await sheetSettled(page);
+  // One food page (owner, 11/24/2026): no Plan/Shop tabs, and the list is always open.
   await page.getByRole('button', { name: /Add an item you/ }).first().click();
 };
 const added = (page) => page.evaluate(() => (JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].foodAdd || []).map((a) => a.name));
@@ -100,8 +95,7 @@ test('scrolled to, the Add button clears the pinned total bar', async ({ page })
   await settled(page);
   await openSectionByName(page, /spread/i);
   await settled(page);
-  await page.getByRole('tab', { name: 'Shop' }).first().click();
-  await settled(page);
+  // One food page (owner, 11/24/2026): no Plan/Shop tabs, and the list is always open.
   await page.getByRole('button', { name: /Add an item you/ }).first().click();
   await page.getByRole('textbox', { name: 'Items to add, one per line' }).fill('Ice\nCharcoal');
   const btn = page.locator('[data-food-add-commit]');

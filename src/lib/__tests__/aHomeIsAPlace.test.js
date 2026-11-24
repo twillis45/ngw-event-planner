@@ -17,7 +17,9 @@ test('a home with no town asks for the TOWN, never "where is the event"', () => 
   expect(st).toBeTruthy();
   expect(text(st)).not.toMatch(/Where is the event/i);
   expect(text(st)).not.toMatch(/Choose or confirm the venue/i);
-  expect(text(st)).toMatch(/town/i);
+  // One address ask (owner, 11/24/2026): it asks for the address, not the
+  // town. Was /town/i.
+  expect(text(st)).toMatch(/address/i);
 });
 
 test('a home with its town asks nothing', () => {

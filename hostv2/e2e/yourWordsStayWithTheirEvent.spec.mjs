@@ -34,9 +34,8 @@ const boot = async (page) => {
 
 const openShoppingDraft = async (page) => {
   await openSectionByName(page, 'spread');
-  // The section door opens on Plan while a menu question is open
-  // (foodSheetKind); the copy action is on Shop, so tap Shop.
-  await page.locator('.sheet').last().locator('.fmode', { hasText: /^Shop$/ }).first().click({ timeout: 10_000 });
+  // One food page, no tabs (owner, 11/24/2026, 0a5dc641): the copy action
+  // sits at the list's head on the same page. Was: tap the Shop tab first.
   const copy = page.locator('.sheet').last().getByText('Copy the shopping list').first();
   await copy.click({ timeout: 10_000 });
   await expect(page.locator('#sheet-title')).toHaveText(/shopping list/i, { timeout: 8000 });

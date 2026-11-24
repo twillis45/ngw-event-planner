@@ -19,8 +19,8 @@
 //
 //  13" iPAD PORTRAIT (layout width >= 1024)
 //   8  The landscape rail, always up, on the page color with a hairline right
-//      edge, with a "Your event" group (the phases, the current one outlined,
-//      not filled). No bottom bar.
+//      edge, with a "Your event" group (the phases, the current one
+//      underlined, not filled or outlined: owner, 11/24/2026). No bottom bar.
 //   9  The question sits under the ribbon; one column: question, Where you
 //      stand, the rest.
 //  10  No NOW tag, no "dated work needs you now"; the current part is bold.
@@ -353,7 +353,8 @@ for (const [name, vp] of [['phone', PHONE], ['13" portrait', TALL13]]) {
   test(`${name}: at home with no city, the plan asks for the city once, in the hero card; the street waits its turn`, async ({ browser }) => {
     const { ctx, page } = await created(browser, vp);
     const txt = await boardText(page);
-    await expect(page.locator('h2.ask').first()).toHaveText('Add your city.');
+    // One address ask (owner, 11/24/2026). Was 'Add your city.'.
+    await expect(page.locator('h2.ask').first()).toHaveText('Add your address.');
     expect(txt).not.toMatch(/What city, state/i);
     expect(txt).not.toMatch(/Guests will ask where/i);
     // One city field on the board, in the hero.
@@ -363,19 +364,21 @@ for (const [name, vp] of [['phone', PHONE], ['13" portrait', TALL13]]) {
     const card = page.locator('.escreen.on .ecenter');
     await card.locator('input').first().fill('Annapolis, MD');
     await card.getByRole('button', { name: 'Save', exact: true }).first().click();
-    await expect(page.locator('h2.ask').first()).not.toHaveText('Add your city.', { timeout: 8000 });
+    await expect(page.locator('h2.ask').first()).not.toHaveText('Add your address.', { timeout: 8000 });
     await page.waitForTimeout(600);
     const after = await boardText(page);
-    expect(after).not.toMatch(/What city, state|Add your city/i);
-    // The street is asked once, where the plan's steps are (the "Then" row).
-    expect((after.match(/Add your street address|Guests will ask where/g) || []).length, after).toBe(1);
+    expect(after).not.toMatch(/What city, state|Add your city|Add your address/i);
+    // The street is not asked again on the board (owner, 11/24/2026: with a
+    // city or ZIP on record it is asked once more when the invite goes out).
+    // Was: asked once, in the "Then" row.
+    expect((after.match(/Add your street address|Guests will ask where/g) || []).length, after).toBe(0);
     await ctx.close();
   });
 }
 
 // ═══════════════════════ 13" iPAD PORTRAIT ═══════════════════════════════
 test.describe('13" portrait 1024x1366', () => {
-  test('8: the rail is up on the page color with a hairline edge, a Your event group on top, the phase outlined; no bar', async ({ browser }) => {
+  test('8: the rail is up on the page color with a hairline edge, a Your event group on top, the phase underlined; no bar', async ({ browser }) => {
     const { ctx, page } = await created(browser, TALL13);
     expect(await shown(page, '.srail'), 'the rail').toBe(1);
     expect(await shown(page, '[data-tt-bar]'), 'no bottom bar').toBe(0);
@@ -386,7 +389,7 @@ test.describe('13" portrait 1024x1366', () => {
       const page = bg(document.querySelector('.app')) !== 'rgba(0, 0, 0, 0)' ? bg(document.querySelector('.app')) : bg(document.querySelector('.stagewrap'));
       const groups = [...rail.querySelectorAll('.srail-g')];
       const first = groups[0];
-      const stages = [...rail.querySelectorAll('[data-rail-stage]')].map((b) => { const s = getComputedStyle(b); const br = b.getBoundingClientRect(); return { label: b.textContent.trim(), on: b.getAttribute('aria-current') === 'page', border: parseFloat(s.borderTopWidth), bg: s.backgroundColor, h: br.height, w: br.width }; });
+      const stages = [...rail.querySelectorAll('[data-rail-stage]')].map((b) => { const s = getComputedStyle(b); const br = b.getBoundingClientRect(); const a = getComputedStyle(b.querySelector('.srail-l'), '::after'); return { label: b.textContent.trim(), on: b.getAttribute('aria-current') === 'page', border: s.borderTopColor === 'rgba(0, 0, 0, 0)' ? 0 : parseFloat(s.borderTopWidth), bar: a.content !== 'none' && a.content !== 'normal' ? parseFloat(a.height) : 0, bg: s.backgroundColor, h: br.height, w: br.width }; });
       return { left: r.left, bg: cs.backgroundColor, bgImg: cs.backgroundImage, page, edge: parseFloat(cs.borderRightWidth), firstTitle: first && first.querySelector('.srail-t').textContent.trim(), firstHasStages: !!first && !!first.querySelector('[data-rail-stage]'), stages };
     });
     expect(m.left).toBeLessThanOrEqual(1);
@@ -400,7 +403,9 @@ test.describe('13" portrait 1024x1366', () => {
     for (const s of m.stages) expect(s.h).toBeGreaterThanOrEqual(44);
     const on = m.stages.filter((s) => s.on);
     expect(on.map((s) => s.label)).toEqual(['Plan']);
-    expect(on[0].border, 'outlined').toBeGreaterThan(0);
+    // Underlined, not outlined (owner, 11/24/2026, render 7; was "outlined").
+    expect(on[0].border, 'no outline').toBe(0);
+    expect(on[0].bar, 'a 2px bar under the label').toBe(2);
     expect(on[0].bg, 'not filled').toBe('rgba(0, 0, 0, 0)');
     for (const s of m.stages.filter((x) => !x.on)) expect(s.border).toBe(0);
     await ctx.close();

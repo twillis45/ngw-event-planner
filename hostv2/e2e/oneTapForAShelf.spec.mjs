@@ -89,10 +89,15 @@ test('a section offers one tap for the whole shelf, and it undoes', async ({ pag
   await sheetSettled(page);
   // The section header is the independent witness — it counts from `foodGot`,
   // which is the same storage the row taps write.
+  // A finished section is now one green row (DoneFold, owner 11/24/2026);
+  // reopening it shows the section with its undo.
   const after = await labels(page);
-  expect(after.some((x) => /Drinks all 3 bought/i.test(x))).toBe(true);
+  expect(after.some((x) => /Drinks · all 3 bought/i.test(x))).toBe(true);
+  await tapText(page, 'Drinks · all 3 bought');
+  await sheetSettled(page);
+  expect((await labels(page)).some((x) => /Drinks all 3 bought/i.test(x))).toBe(true);
   // …and the button has flipped to its undo.
-  expect(after.some((x) => /^Uncheck all 3/i.test(x))).toBe(true);
+  expect((await labels(page)).some((x) => /^Uncheck all 3/i.test(x))).toBe(true);
 
   await tapText(page, 'Uncheck all');
   await sheetSettled(page);

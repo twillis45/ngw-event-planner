@@ -66,7 +66,9 @@ export function sectionGroups(state) {
   return [
     { title: 'Your plan', rows: [
       { k: 'venue', label: 'Venue', sub: 'The place, address, and town' },
-      { k: 'guests', label: 'Guests', sub: 'Who’s coming, and what they need' },
+      // "Guests & invite" (owner, 11/24/2026): the invite lives behind this door,
+      // and the menu now says so. Same door, same sheet.
+      { k: 'guests', label: 'Guests & invite', sub: 'Who’s coming, and what they need' },
       { k: 'food', label: 'The spread & shopping', sub: 'The menu and the store run' },
       { k: 'budget', label: 'Your money', sub: 'Planned, spoken for, and spent' },
       { k: 'vendors', label: 'People you’re hiring', sub: 'Bookings, deposits, day-of arrival' },

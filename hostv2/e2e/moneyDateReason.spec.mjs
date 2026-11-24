@@ -75,7 +75,9 @@ test.describe('a money deadline on the host screen', () => {
   test('THE ROW CARRIES A REASON — it did not before dueInDays', async ({ page }) => {
     await boot(page, MONEY_PATCH);
     const cell = await reasonCell(page);
-    expect(cell.why).toMatch(/due in 4 days/i);
+    // The day, in the time-status module's words (owner, 11/24/2026: "by
+    // <weekday>"). Was /due in 4 days/.
+    expect(cell.why).toMatch(/^by (Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/);
     expect(cell.type).toBe('time');
   });
 

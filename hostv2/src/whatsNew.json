@@ -1,5 +1,32 @@
 [
   {
+    "date": "2026-11-24",
+    "headline": "The board on a computer, and a few loose ends",
+    "bullets": [
+      "On a computer, the board shows the date and your event's name at the top. Double-click the name to rename it.",
+      "When the last insurance or vendor-clash item is handled, the board says so and moves on to your next step.",
+      "Dietary needs shows how many meals are still unanswered."
+    ]
+  },
+  {
+    "date": "2026-11-23",
+    "headline": "Invites and the town ask",
+    "bullets": [
+      "Invites use your own words for the event's name, and the email is signed with the event's host line.",
+      "At home, the city is asked once. A ZIP code answers it, and guests see the ZIP wherever the event has one.",
+      "When any guest is vegan, the menu has a vegan main, with a note to check the labels on bought items."
+    ]
+  },
+  {
+    "date": "2026-11-23",
+    "headline": "A cleaner board on phones and tall iPads",
+    "bullets": [
+      "The phone's menu bar hides only when you scroll down, and the selected tab is underlined.",
+      "A tall iPad gets its own board, with no empty band above Where you stand.",
+      "Every shopping line has a store search term, and combined lines are split."
+    ]
+  },
+  {
     "date": "2026-11-22",
     "headline": "Smaller fixes you'll notice",
     "bullets": [

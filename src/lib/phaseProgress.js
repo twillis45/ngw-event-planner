@@ -195,7 +195,12 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   // counts; elsewhere a named place is its address, as before.
   const _vf = venueFor(ev);
   const _addressSigned = _vf.findable;
-  add('venueaddress', !_locationMissing, _addressSigned,
+  // AT HOME THE STREET IS NOT ASKED AGAIN ON THE BOARD (owner, render 11,
+  // 11/24/2026): the one address ask takes a street, a city or a ZIP, and
+  // when only a city or ZIP is on record the street is asked once more when
+  // the invite goes out (lib/outwardReady), not here. Was: asked here once the
+  // town was in ("Add your street address").
+  add('venueaddress', !_locationMissing && !_vf.isHome, _addressSigned,
     _vf.isHome ? 'Add your street address' : 'Name the venue',
     { tab: 'Event Details', focusField: 'event-venue' }, 3,
     // Away from home the place is asked for as the location; at home the cue's
