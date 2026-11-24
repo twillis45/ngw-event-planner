@@ -214,6 +214,7 @@ import { rosBasisNote } from '@app/lib/rosBasis';
 import { parseStartMinutes } from '@app/lib/eventWhen';
 import { BRAND } from '@app/lib/brand';
 import BringerPicker from './BringerPicker';
+import { dietTagText } from './dietTags';
 import InviteRules from './InviteRules';
 import { rowStatus, sourcingSettled } from '@app/lib/rowStatus';
 import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
@@ -1110,6 +1111,10 @@ function RowValue({ status = 'open', note = false, chev = false, style, children
 // (useReopened below) and never writes to the plan. A reopen holds only while
 // the group stays finished (owner, 11/24/2026, a live report): once a line is
 // undone the reopen is forgotten, so finishing the group folds it again.
+// The shopping-run key for "I'm at <the store you priced>" (render f-3). The
+// store-type runs key on the type's own name; this one on the price picker's.
+const PRICED_RUN = '@price';
+
 function DoneFold({ text, sub, onOpen, all = false, showLabel = 'Show the list' }) {
   if (all) {
     return (
@@ -3049,7 +3054,16 @@ export default function HostShellV2() {
       .slice(0, 3);
   }, [decisionBoard, event, travel]);
   const [crabAdd, setCrabAdd] = useState({ size: 'large', unit: 'dozen', qty: 1, price: '' });
-  const [foodTune, setFoodTune] = useState(null); // per-item cost-structure panel
+  const [foodTune, setFoodTune] = useState(null); // the shopping item opened in place (one at a time)
+  // An opened item scrolls to the top of the sheet, under its own name bar
+  // (owner, render f-2b, 11/24/2026). Instant under reduced motion.
+  useEffect(() => {
+    if (!foodTune) return;
+    const el = document.querySelector('[data-food-open="' + String(foodTune).replace(/"/g, '\\"') + '"]');
+    if (!el || !el.scrollIntoView) return;
+    const still = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    el.scrollIntoView({ block: 'start', behavior: still ? 'auto' : 'smooth' });
+  }, [foodTune]);
   const [choiceOpen, setChoiceOpen] = useState(null); // re-opened settled choice (auto-collapse)
   // ── T-72h reconfirm sweep ── staged drafting state: {} | {vendorId: 'drafting'|'ready'}
   const [sweepState, setSweepState] = useState({});
@@ -3410,11 +3424,10 @@ export default function HostShellV2() {
     const v = Math.max(0, Math.round(esc.getBoundingClientRect().top - app.getBoundingClientRect().top + app.scrollTop)) + 'px';
     if (app.style.getPropertyValue('--pp-above') !== v) app.style.setProperty('--pp-above', v);
   });
-  const [tuneCost, setTuneCost] = useState(''); // lock-the-cost input in the tune panel
-  // Did the host actually TYPE in the cost field, vs accept the store-based
-  // prefill? Only a typed value is a real receipt (event.foodReal); accepting
-  // the prefill is an honest estimate, not a "real price" — the truth fix.
-  const [tuneEdited, setTuneEdited] = useState(false);
+  // "What you paid" in an opened shopping item. It starts empty (no prefill),
+  // so anything in it was typed, and a typed number is a real receipt
+  // (event.foodReal); the low/high-end buttons write an estimate instead.
+  const [tuneCost, setTuneCost] = useState('');
   // Bulk price-lock — parity with legacy's "Use typical prices for the other
   // N items →" (App.js ~11040-11060). ids just locked by the bulk action, kept
   // local (never persisted to the event) so a one-tap undo can unwind exactly
@@ -7751,32 +7764,60 @@ export default function HostShellV2() {
         v ? `${v} is bringing ${dish}.`
           : stillBrought ? `Cleared — nobody is named for ${dish} yet.` : `${dish} is back on your list.`);
     };
+    const dietText = dietTagText(r.dietFlags);
     if (editing) {
+      // OPENED IN PLACE (owner, render f-4, 11/24/2026): the dish's own bar,
+      // "Who is bringing it?", a lit Save for a typed name, and "Not serving
+      // it" alone at the bottom. A guest or helper picked from the list still
+      // saves in one tap (BringerPicker commits on change).
+      const pending = String(bringerEdit.value || '').trim();
       return (
-        <div key={r.id} className="fstat" style={{ display: 'block' }} data-bringer-row={r.id}>
-          <label className="shelf-label" htmlFor={'bringer-' + r.id}
-            style={{ display: 'block', marginBottom: 'var(--sp-1)' }}>
-            Who is bringing {dish}?
-          </label>
-          {/* From the guest list and the helpers (owner, 11/18 and 11/21/2026),
-              or "Someone not on the list…" for the church kitchen or a neighbor. */}
-          <BringerPicker guests={event.guests} extra={bringerNamesExtra} id={'bringer-' + r.id} autoFocus
-            value={bringerEdit.value}
-            onChange={(v) => setBringerEdit({ id: r.id, value: v })}
-            onCommit={(v) => commit(v)} onCancel={() => setBringerEdit(null)} />
+        <div key={r.id} className="fstat fopen fopen-bring" style={{ display: 'block' }} data-bringer-row={r.id}>
+          <div className="fo-bar">
+            <span className="fo-name">
+              {dish}
+              {dietText ? <span className="tag plan">{dietText}</span> : null}
+            </span>
+            <button type="button" className="fo-close" aria-expanded="true" aria-label={'Close ' + dish}
+              onMouseDown={(e) => e.preventDefault()} onClick={() => setBringerEdit(null)}>
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </button>
+          </div>
+          <div className="fo-sec">
+            <label className="fo-cap" htmlFor={'bringer-' + r.id}>Who is bringing it?</label>
+            {/* From the guest list and the helpers (owner, 11/18 and 11/21/2026),
+                or "Someone not on the list…" for the church kitchen or a neighbor. */}
+            <BringerPicker guests={event.guests} extra={bringerNamesExtra} id={'bringer-' + r.id} autoFocus
+              value={bringerEdit.value}
+              onChange={(v) => setBringerEdit({ id: r.id, value: v })}
+              onCommit={(v) => commit(v)} onCancel={() => setBringerEdit(null)} />
+          </div>
+          {(pending && pending !== saved) || r.broughtByCommunity ? (
+            <div className="fo-foot">
+              {pending && pending !== saved ? (
+                <button type="button" className="cta" onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => commit(pending)}>Save — {pending} brings it</button>
+              ) : null}
+              {r.broughtByCommunity ? (
+                <button type="button" className="mini" onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    setBringerEdit(null);
+                    patchEvent({ foodOwner: { ...owners(), [r.id]: false } }, `You’re making ${dish} — it’s on your list.`);
+                  }}>I’ll make it myself</button>
+              ) : null}
+            </div>
+          ) : null}
           {r.broughtByCommunity ? (
-            <div className="actions-row" style={{ margin: 'var(--sp-2) 0 0' }}>
-              <button type="button" className="mini" onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setBringerEdit(null);
-                  patchEvent({ foodOwner: { ...owners(), [r.id]: false } }, `You’re making ${dish} — it’s on your list.`);
-                }}>I’ll make it myself</button>
-              <button type="button" className="mini" onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setBringerEdit(null);
-                  patchEvent({ foodOwner: { ...owners(), [r.id]: false }, foodSkip: { ...(event.foodSkip || {}), [r.id]: true } },
-                    `${dish} is off the menu.`);
-                }}>Not serving it</button>
+            <div className="fo-skip">
+              <div className="fo-skip-row">
+                <button type="button" className="mini" onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    setBringerEdit(null);
+                    patchEvent({ foodOwner: { ...owners(), [r.id]: false }, foodSkip: { ...(event.foodSkip || {}), [r.id]: true } },
+                      `${dish} is off the menu.`);
+                  }}>Not serving it</button>
+              </div>
+              <p className="fo-note">Takes {dish} off the menu.</p>
             </div>
           ) : null}
         </div>
@@ -7785,7 +7826,10 @@ export default function HostShellV2() {
     return (
       <button key={r.id} className="fstat" data-bringer-row={r.id}
         onClick={() => setBringerEdit({ id: r.id, value: saved })}>
-        <span className="fstat-l">{dish}</span>
+        <span className="fstat-l">
+          <span className="fstat-dish">{dish}</span>
+          {dietText ? <span className="tag plan fstat-tag">{dietText}</span> : null}
+        </span>
         {/* NO WRAP. Beside a long dish the label broke to "Add a / name"; the
             label is the act and stays whole, the DISH takes the wrapping. */}
         <RowValue status={rowStatus({ settled: !!saved })} style={{ whiteSpace: 'nowrap', flex: '0 0 auto' }}>
@@ -24870,6 +24914,7 @@ export default function HostShellV2() {
                           <span className="of" style={{ fontWeight: 700 }}>{priceStore.name}</span>
                           <button className="mini" onClick={() => {
                             setPriceStore(null); setPriceIdx(null); setStorePicker(null);
+                            setShopStore((cur) => (cur === PRICED_RUN ? null : cur));
                           }}>Change</button>
                         </div>
                         {/* The sentence that stops the best layer speaking for the
@@ -25255,7 +25300,21 @@ export default function HostShellV2() {
                   const storeOf = (it) => (event.foodWhere || {})[it.id] || firstStoreIn(it.where) || null;
                   const activeAll = allItems.filter(it => !it.skipped);
                   const stores = [...new Set(activeAll.map(storeOf).filter(Boolean))];
-                  const inStore = (it) => !shopStore || storeOf(it) === shopStore || (Array.isArray(it.where) && it.where.includes(shopStore));
+                  // ── "I'M AT <THE STORE YOU PRICED>" (owner, render f-3, 11/24/2026) ──
+                  // The store from the price picker joins the store-type chips as a
+                  // run of its own. New wiring between existing data: it reads the
+                  // session-only `priceStore` and its shelf matches, and writes
+                  // nothing. The priced store is a supermarket (the Kroger family),
+                  // so its run holds the lines with a shelf price there plus the
+                  // lines bought at a grocery; a line with no shelf price falls back
+                  // to its estimate.
+                  const atPriced = shopStore === PRICED_RUN && !!priceStore;
+                  const runName = atPriced ? priceStore.name : shopStore;
+                  const grocerish = (w) => /grocery|supermarket/i.test(String(w || ''));
+                  const inStore = (it) => !shopStore || (shopStore === PRICED_RUN
+                    ? (layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx }).layer === 'store'
+                      || grocerish(storeOf(it)) || (Array.isArray(it.where) && it.where.some(grocerish)))
+                    : storeOf(it) === shopStore || (Array.isArray(it.where) && it.where.includes(shopStore)));
                   const items = shopStore ? activeAll.filter(inStore) : allItems;
                   const runLeft = shopStore ? items.filter(it => !(event.foodGot || {})[it.id]) : [];
                   const runLo = runLeft.reduce((t, it) => t + (Number(it.locked != null ? it.locked : it.low) || 0), 0);
@@ -25264,15 +25323,6 @@ export default function HostShellV2() {
                   // Decision flags: a menu decision the host hasn't explicitly
                   // made yet marks every line it re-prices (playbook `affects`).
                   const undecidedAffects = (() => { try { return playbookOpenDecisionAffects(event); } catch { return {}; } })();
-                  // Head-start pricing (host request, 2026-07-12): the midpoint of
-                  // THIS item's current low/high — already reshaped by its own
-                  // per-item sourcing pick (event.foodWhere), not just the plan-wide
-                  // tier — pre-fills the tune field instead of a blank input.
-                  const midpointStr = (it) => {
-                    const lo = Number(it.low) || 0, hi = Number(it.high) || 0;
-                    if (!lo && !hi) return '';
-                    return String(Math.round((lo + hi) / 2));
-                  };
                   // ── TWO GROUPS, ONE LETTER ─────────────────────────────
                   // The badge was `g.charAt(0)`, so Drinks and Dessert both
                   // rendered "D" and the monogram stopped identifying
@@ -25343,11 +25393,11 @@ export default function HostShellV2() {
                       <button className="fg-head" onClick={() => setFoodGroupsOpen(m => ({ ...m, [g]: !isOpen }))}>
                         <div className={'fg-badge' + (gDone ? ' done' : '')} aria-hidden>{groupGlyph[g] || g.trim().charAt(0).toUpperCase()}</div>
                         <div className="fg-id">
-                          <div className="fg-label">{g}
+                          <div className="fg-label">{g}{atPriced ? ' at ' + priceStore.name : ''}
                             {gDecisions > 0 ? <span className="tag essential" style={{ marginLeft: 'var(--sp-2)' }}>{gDecisions} decision{gDecisions === 1 ? '' : 's'} open</span> : null}
                           </div>
                           <div className="fg-sub" style={{ color: gDone ? 'var(--ok)' : 'var(--muted)' }}>
-                            {!gActive.length ? 'all skipped' : gDone ? 'all ' + gActive.length + ' bought' : gBought + ' of ' + gActive.length + ' bought' + (foodPlan.hasRealCount ? ' · ' + (gLow === gHigh ? fmt(gLow) : fmt(gLow) + '–' + fmt(gHigh)) : '')}
+                            {!gActive.length ? 'all skipped' : gDone ? 'all ' + gActive.length + ' bought' : gBought + ' of ' + gActive.length + ' bought' + (foodPlan.hasRealCount ? ' · ' + (gLow === gHigh ? fmt(gLow) : fmt(gLow) + '–' + fmt(gHigh)) + ' est.' : '')}
                           </div>
                           <div className={'fg-track' + (gDone ? ' done' : '')}><i style={{ '--fill': gActive.length ? gBought / gActive.length : 1 }} /></div>
                         </div>
@@ -25384,7 +25434,7 @@ export default function HostShellV2() {
                                 { foodGot: next },
                                 gDone
                                   ? `${g} cleared — ${gActive.length} back on the list.`
-                                  : `${g} checked off — all ${gActive.length}${shopStore ? ' at ' + shopStore : ''}.`,
+                                  : `${g} checked off — all ${gActive.length}${shopStore ? ' at ' + runName : ''}.`,
                               );
                             }}
                           >
@@ -25398,7 +25448,19 @@ export default function HostShellV2() {
                       {isOpen && gItems.map((it, i) => {
                         const got = !!(event.foodGot || {})[it.id];
                         const cost = it.locked != null ? Number(it.locked) : ((Number(it.low) || 0) + (Number(it.high) || 0)) / 2;
-                        const tuning = foodTune === it.id;
+                        // ── ONE ROW, TWO TAPS (owner, renders f-1/f-2, 11/24/2026) ──
+                        // The check only checks (the same `toggleGot` writer as
+                        // before); the rest of the row opens the item in place.
+                        // `foodTune` is now the opened item; there is no "tune".
+                        const opened = foodTune === it.id;
+                        const name = it.short || it.item;
+                        // "you paid" only when the host TYPED the number
+                        // (event.foodReal) — a low/high-end pick is still an estimate.
+                        const real = it.locked != null && (event.foodReal || {})[it.id] === true;
+                        const L = layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx });
+                        const shelf = L.layer === 'store' ? L : null;
+                        const storeName = (priceStore && priceStore.name) || 'Your store';
+                        const dietText = dietTagText(it.dietFlags);
                         // Keep the FULL normalized alt (name + unitCostRange) — not just its
                         // name — so the chip below can show what picking it would cost, not
                         // just its label. Same parser the engine's own swap re-pricing uses
@@ -25406,694 +25468,432 @@ export default function HostShellV2() {
                         // alt (no unitCostRange) and a priced object alt both land in one shape.
                         const alts = (it.alternatives || []).map(normalizeAlternative).filter(a => a.name).slice(0, 4);
                         const activeSwapName = (event.foodSwap || {})[it.id] || null;
+                        // Skipped rows stay visible; tapping one (either half) is the
+                        // undo — the same single-toggle symmetry legacy's toggleSkip
+                        // uses (App.js:11145).
+                        const restore = () => {
+                          const m = { ...(event.foodSkip || {}) }; delete m[it.id];
+                          patchEvent({ foodSkip: m }, name + ' is back in the total.');
+                        };
+                        const toggle = () => { if (it.skipped) { restore(); return; } toggleGot(it, cost); };
+                        // Host-added lines carry a single committed cost (event.foodAdd's
+                        // cost — never a range), so no invented spread. Blank/$0 at add
+                        // time is an honest state, not a fake number: "bringing it" when
+                        // someone's named, "no cost yet" otherwise. Never "$0–$0" — the
+                        // honesty rule legacy's money() helper applies (App.js ~11246).
+                        const priceMain = it.locked != null
+                          ? fmt(it.locked)
+                          : it.added
+                            ? (it.low > 0 ? fmt(it.low) : (it.owner ? 'bringing it' : 'no cost yet'))
+                            : (foodPlan.hasRealCount ? fmt(it.low) + '–' + fmt(it.high) : '—');
+                        const priceSub = real ? 'you paid'
+                          : (it.added && it.locked == null) || priceMain === '—' ? null : 'est.';
+                        // In a run at the store she priced, a line with a shelf price
+                        // leads with that store's product and price (render f-3).
+                        const runLead = shopStore === PRICED_RUN && shelf;
+                        const checkBtn = (
+                          <button type="button" className="fcheck-hit" aria-pressed={got}
+                            aria-label={it.skipped ? 'Bring back ' + name : got ? 'Unmark ' + name : 'Mark ' + name + ' bought'}
+                            onClick={toggle}>
+                            <span className="fcheck" aria-hidden="true" />
+                          </button>
+                        );
+                        // The paid box commits on Enter or on leaving it. Only a
+                        // typed number is written, and a typed number is a receipt.
+                        const commitPaid = () => {
+                          if (tuneCost === '' || !(parseFloat(tuneCost) >= 0)) return;
+                          const n = Math.max(0, roundCurrency(parseFloat(tuneCost) || 0));   // cents kept: $42.50, not $43
+                          patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: true } },
+                            name + ' set at ' + fmt(n) + ' — a real price now, not a range.');
+                          setTuneCost('');
+                        };
+                        const setEnd = (n, which) => {
+                          patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: false } },
+                            name + ' set at ' + fmt(n) + ' — the ' + which + ' of the estimate for where you buy it.');
+                        };
+                        if (!opened) {
+                          // ── THE CLOSED ROW: what, how much, where; the price on the right ──
+                          const tags = [];
+                          if (!it.skipped) {
+                            // The allergen marker goes FIRST (2026-09-18): only two tags
+                            // render and this is the one whose absence can hurt somebody.
+                            // Plain English from the shell's one display map (dietTags.js).
+                            if (dietText) tags.push(<span key="diet" className="tag plan">{dietText}</span>);
+                            // Who is carrying it outranks what is left to do (2026-09-24):
+                            // the host's own answer outranks the engine's collective noun.
+                            if (it.broughtByCommunity) tags.push(<span key="bring" className="tag plan">{it.broughtBy || it.broughtByLabel || 'The community'}</span>);
+                            else if (it.owner) tags.push(<span key="own" className="tag plan">{it.owner}</span>);
+                            else if (it.added) tags.push(<span key="yours" className="tag plan">yours</span>);
+                            if (undecidedAffects[it.id]) tags.push(<span key="dec" className="tag essential" title={undecidedAffects[it.id]}>decision open</span>);
+                            if (it.essential && !got) tags.push(<span key="ess" className="tag essential">essential</span>);
+                            // WAVE-5 (UX_02 amber budget): "day-of" is an IDENTIFICATION
+                            // label, so it takes the neutral .tag.plan treatment.
+                            if (it.buyAt === 'day-of') tags.push(<span key="dof" className="tag plan">day-of</span>);
+                            if (it.swappedFrom) tags.push(<span key="swap" className="tag plan">swapped</span>);
+                            if (it.badge) tags.push(<span key="badge" className="tag plan">{String(it.badge).toLowerCase()}</span>);
+                          }
+                          const shownTags = tags.slice(0, 2);
+                          if (tags.length > 2) shownTags.push(<span key="more" className="tag plan">+{tags.length - 2}</span>);
+                          // The amount in bold, then the per-unit rate. The rate STAYS
+                          // (restored 2026-09-24; aRateIsNotFree.spec.mjs): a rate is
+                          // what makes a quantity checkable at the counter. The ice
+                          // bag hint (shoppingHint) says what to carry to the till.
+                          const qtyText = it.qty && it.unit ? `${it.qty} ${it.unit}` : null;
+                          const amtRest = (shopStore === PRICED_RUN && !shelf)
+                            ? ['no shelf price here']
+                            : [shoppingHint(it, it.qty),
+                              foodPlan.hasRealCount ? perUnitBand(it.perUnitLow, it.perUnitHigh, it.unitBase) : null,
+                              it.forgotten ? 'often forgotten' : null].filter(Boolean);
+                          // The store line, smaller, underneath. WHICH REGIONAL ANSWER
+                          // the line got (board ruling 2026-09-27, option A) is printed
+                          // verbatim from priceLayers, store or no store.
+                          let storeLine = null;
+                          if (shopStore !== PRICED_RUN) {
+                            if (shelf) {
+                              storeLine = (
+                                <>
+                                  <b>{storeName}:</b> ${shelf.exact.toFixed(2)}
+                                  {shelf.size ? ' · ' + shelf.size : ''}
+                                  {shelf.onSale ? <> · <span className="f-sale">sale</span></> : null}
+                                </>
+                              );
+                            } else if (priceIdx && L.layer !== 'quote') {
+                              storeLine = 'No shelf price' + (L.layer === 'regional' ? ' · ' + L.scopeLabel : '');
+                            } else if (L.layer === 'regional') {
+                              storeLine = L.scopeLabel;
+                            }
+                          }
+                          return (
+                            <div key={it.id} className={'frow food-row' + (got ? ' got' : '') + (it.skipped ? ' skipped' : '') + (shopStore ? ' run' : '')}
+                              data-food-row={it.id} style={{ animation: rowEnter(i) }}>
+                              {checkBtn}
+                              <button type="button" className="f-body" aria-expanded="false"
+                                aria-label={it.skipped ? 'Bring back ' + name : 'Open ' + name}
+                                onClick={() => {
+                                  if (it.skipped) { restore(); return; }
+                                  setTuneCost(''); setFoodTune(it.id);
+                                }}>
+                                <span className="f-main">
+                                  {runLead ? (
+                                    <>
+                                      <span className="r-prod">{shelf.product || name}</span>
+                                      <span className="v-meta r-sub"><b>{name}</b>{qtyText ? ' · ' + qtyText : ''}</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="f-name" style={it.skipped ? { textDecoration: 'line-through', color: 'var(--muted)' } : undefined}>
+                                        {name}
+                                        {it.skipped ? <span className="tag plan">skipped — tap to restore</span> : shownTags}
+                                      </span>
+                                      {(qtyText || amtRest.length) ? (
+                                        <span className="v-meta f-amt">
+                                          {qtyText ? <b>{qtyText}</b> : null}
+                                          {amtRest.length ? (qtyText ? ' · ' : '') + amtRest.join(' · ') : ''}
+                                        </span>
+                                      ) : null}
+                                      {storeLine ? <span className="v-meta f-store">{storeLine}</span> : null}
+                                    </>
+                                  )}
+                                </span>
+                                <span className="f-price">
+                                  <span className="amt">{runLead && !real ? '$' + shelf.exact.toFixed(2) : priceMain}</span>
+                                  {(runLead && !real)
+                                    ? <span className="f-price-s">{[shelf.size, shelf.onSale ? 'on sale' : null].filter(Boolean).join(' · ')}</span>
+                                    : priceSub ? <span className="f-price-s">{priceSub}</span> : null}
+                                </span>
+                                <span className="f-chev" aria-hidden="true">›</span>
+                              </button>
+                            </div>
+                          );
+                        }
+                        // ── THE OPENED ITEM (render f-2): a slim name bar, then
+                        // Amount, Price and Where to buy, one lit "Mark … bought",
+                        // and Skip alone at the bottom. Everything the tune panel
+                        // held is here: the stepper and its reset, the basis, the
+                        // ice card, the price entry, back-to-estimate, store and
+                        // swap chips.
+                        const amountHead = [
+                          it.basis ? String(it.basis).replace(/\/guest\b/, ' a guest') : null,
+                          foodPlan.guests ? foodPlan.guests + (foodPlan.guests === 1 ? ' guest' : ' guests') : null,
+                        ].filter(Boolean).join(' · ');
+                        // The claim behind the amount — reachable, not in the aisle
+                        // (host, 2026-09-24). The detail is whatever the author wrote;
+                        // never synthesised.
+                        const claim = classifyClaim(it.provenance, it.costProvenance, it.costFactorApplied);
+                        const claimDetail = (it.provenance && typeof it.provenance === 'object' && it.provenance.note)
+                          ? it.provenance.note : claim.rationale;
+                        const estLayer = shelf ? layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: null }) : L;
+                        const rate = foodPlan.hasRealCount ? perUnitBand(it.perUnitLow, it.perUnitHigh, it.unitBase) : null;
+                        const where = Array.isArray(it.where) ? it.where.slice(0, 4) : [];
+                        const buyingAt = storeOf(it);
+                        const priceHead = it.locked == null ? 'Your list uses the estimate'
+                          : real ? 'Your list uses what you paid' : 'Your list uses ' + fmt(it.locked);
+                        const hasWhere = (shelf && shelf.product) || where.length > 1 || alts.length > 0 || !!it.swappedFrom;
                         return (
-                          <div key={it.id}>
-                            <button className={'frow' + (got ? ' got' : '') + (it.skipped ? ' skipped' : '')}
-                              style={{ animation: rowEnter(i) }}
-                              onClick={() => {
-                                // Skipped rows stay visible (see the audit note above);
-                                // tapping one is the undo — the same single-toggle
-                                // symmetry legacy's toggleSkip uses (App.js:11145).
-                                if (it.skipped) {
-                                  const m = { ...(event.foodSkip || {}) }; delete m[it.id];
-                                  patchEvent({ foodSkip: m }, (it.short || it.item) + ' is back in the total.');
-                                  return;
-                                }
-                                toggleGot(it, cost);
-                              }}>
-                              <span className="fcheck" aria-hidden="true" />
-                              <span className="f-main">
-                                <span className="f-name" style={it.skipped ? { textDecoration: 'line-through', color: 'var(--muted)' } : undefined}>
-                                  {it.short || it.item}
-                                  {it.skipped ? <span className="tag plan">skipped — tap to restore</span> : (() => {
-                                    // Cap at 2 tags by priority (was up to 7 → wrapped and
-                                    // shoved the price/tune controls onto a 3rd line). The
-                                    // rest fold into a "+N" that the tune panel expands.
-                                    const tags = [];
-                                    // ── THE ALLERGEN MARKER GOES FIRST (2026-09-18) ──────────
-                                    // Only the first TWO tags render; the rest fold into "+N".
-                                    // This sat FOURTH, behind `decision open`, `essential` and
-                                    // `day-of` — so on Blue crabs, a row carrying the first two,
-                                    // the shellfish marker was ALWAYS the one collapsed. DRIVEN
-                                    // at 390px: the row read "decision open · essential · +1"
-                                    // with the allergen inside the +1.
-                                    //
-                                    // Every other tag here says something about shopping. This
-                                    // one is the only label whose absence can hurt somebody, so
-                                    // it outranks them. It keeps the neutral `.tag.plan`
-                                    // treatment WAVE-5 gave it — an identification label, not a
-                                    // gap warning — this is about ORDER, not about shouting.
-                                    if (Array.isArray(it.dietFlags) && it.dietFlags.length) tags.push(<span key="diet" className="tag plan">{it.dietFlags.join(' · ').toLowerCase()}</span>);
-                                    // ── WHO IS CARRYING IT OUTRANKS WHAT IS LEFT TO DO ─────────
-                                    //
-                                    // This sat FIFTH, behind diet, decision, essential and
-                                    // day-of, under a two-tag cap — so on the repast rows it
-                                    // was always the one folded into "+1". Measured on the
-                                    // shipped repast: after writing "Sister Vaughn" against
-                                    // the chicken, the Shop list rendered
-                                    //
-                                    //   Fried or baked chicken & baked ham  decision open essential +1
-                                    //
-                                    // and her name was inside the +1. Naming a bringer looked
-                                    // like it had done nothing.
-                                    //
-                                    // ORDER, not shouting — it keeps the neutral `.tag.plan`
-                                    // WAVE-5 gave it. A line somebody else is carrying is a
-                                    // line the host has nothing to do about, which makes the
-                                    // carrier the fact that settles the row; "decision open"
-                                    // and "essential" describe work, and there is none here.
-                                    if (it.broughtByCommunity) tags.push(<span key="bring" className="tag plan">{it.broughtBy || it.broughtByLabel || 'The community'}</span>);
-                                    else if (it.owner) tags.push(<span key="own" className="tag plan">{it.owner}</span>);
-                                    else if (it.added) tags.push(<span key="yours" className="tag plan">yours</span>);
-                                    if (undecidedAffects[it.id]) tags.push(<span key="dec" className="tag essential" title={undecidedAffects[it.id]}>decision open</span>);
-                                    if (it.essential && !got) tags.push(<span key="ess" className="tag essential">essential</span>);
-                                    // WAVE-5 (UX_02 amber budget): "day-of" and diet flags are
-                                    // IDENTIFICATION labels — when to buy, who it serves — not
-                                    // gap warnings, so they take the neutral .tag.plan treatment
-                                    // their sibling tags (owner/yours/swapped) already use.
-                                    // Only `essential && !got` above stays amber: that one IS a gap.
-                                    if (it.buyAt === 'day-of') tags.push(<span key="dof" className="tag plan">day-of</span>);
-                                    // WHO IS CARRYING IT (2026-09-24). `owner` is on EVERY
-                                    // row, but this was gated on `it.added`, so only a
-                                    // dish the host typed herself could ever name a
-                                    // bringer — the playbook's own community lines never
-                                    // could. The community attribution comes first
-                                    // because it is the stronger fact: the engine
-                                    // established it from the host's food_source pick.
-                                    // The host's own answer outranks the engine's
-                                    // collective noun: once she has written down
-                                    // "Sister Vaughn", the Shop list must not keep
-                                    // saying "The repast committee" beside the same
-                                    // dish. One fact, two surfaces, one answer.
-                                    if (it.swappedFrom) tags.push(<span key="swap" className="tag plan">swapped</span>);
-                                    if (it.badge) tags.push(<span key="badge" className="tag plan">{String(it.badge).toLowerCase()}</span>);
-                                    const shown = tags.slice(0, 2);
-                                    if (tags.length > 2) shown.push(<span key="more" className="tag plan">+{tags.length - 2}</span>);
-                                    return shown;
-                                  })()}
-                                </span>
-                                <span className="v-meta">
-                                  {/* ── BOARD D'S ROW IS THREE LINES; THIS WAS SEVEN ─────
-                                      Host: "the current items has trivia leaking and
-                                      should be more like D." Measured on the shipped
-                                      repast, one row:
-
-                                        Fried or baked chicken & baked ham
-                                        [Sister Vaughn] [decision open] [+1]
-                                        23 lbs · $3–$7/lb · Grocery, Caterer, Restaurant
-                                        ½ lb/guest × 46 guests · typical
-                                        Directly sourced — Grounded to webstaurant-protein-
-                                        2026: ~0.5 lb protein/guest is the source-stated
-                                        one-main portion for a multi-protein spread.
-                                        $0–$0
-
-                                      Board D, same job: `5 lb · 0.5 lb a guest`.
-
-                                      THREE THINGS LEFT THIS LINE, none of them deleted
-                                      from the product:
-
-                                      · the per-unit band ($3–$7/lb) — the row already
-                                        prints the line total the band produces, so this
-                                        is the same fact at a finer grain.
-                                      · the shop-KIND list (Grocery, Caterer, Restaurant)
-                                        — not a store, just a category. A real pick still
-                                        shows, as "your pick: …", because that one names
-                                        somewhere a host is actually going.
-                                      · the "× 46 guests · typical" tail — 23 lbs IS
-                                        ½ × 46, printed one line above it.
-
-                                      The grounding claim moved behind `tune` (host,
-                                      2026-09-24: "provenance can be reachable but hide
-                                      it"). */}
-                                  {[
-                                    it.qty && it.unit ? `${it.qty} ${it.unit}` : null,
-                                    // …AND WHAT THAT IS TO BUY. The regional seat at the
-                                    // 2026-09-27 ice board: nobody buys 46 pounds of ice,
-                                    // it comes in bags, and a host in a Royal Farms cannot
-                                    // do the division. The line stays priced per pound —
-                                    // that is what its cost evidence measured — and this
-                                    // only says what to carry to the till. Ice only, and
-                                    // only in pounds; `shoppingHint` refuses everything
-                                    // else, because ribs by the pound are bought by the
-                                    // pound and a "bag" of them is nonsense.
-                                    shoppingHint(it, it.qty),
-                                    // RESTORED 2026-09-24, same day I removed it. I cut
-                                    // this as trivia while collapsing the row to board
-                                    // D's three lines, reasoning that the line total
-                                    // states the same fact at a coarser grain. It does
-                                    // not, and `aRateIsNotFree.spec.mjs` exists to say
-                                    // so: rows once rendered "$0–$0/lb" and told a host
-                                    // the ice was free. Three of its tests went red,
-                                    // including "ICE IS TWENTY CENTS A POUND, and the
-                                    // sheet now says so."
-                                    //
-                                    // A per-unit rate is what makes a quantity
-                                    // checkable in the aisle — 23 lbs is a number, $3/lb
-                                    // is a number you can argue with at the counter. The
-                                    // density fix was the shop-kind list, the doubled
-                                    // multiplication and the citation essay; this was
-                                    // never part of it.
-                                    foodPlan.hasRealCount ? perUnitBand(it.perUnitLow, it.perUnitHigh, it.unitBase) : null,
-                                    it.basis || null,
-                                    it.forgotten ? 'often forgotten' : null,
-                                    // A PERSON IS NOT A SHOP, second site. This printed
-                                    // `it.where` raw, so a repast line read
-                                    // "Brought by the community,Grocery,Caterer" — the
-                                    // same defect `firstStoreIn` fixed in the store picker,
-                                    // one element over. `storesIn` drops the people and
-                                    // keeps the shops in authored order; when there are no
-                                    // shops it returns [] and the segment falls away
-                                    // entirely, which is the honest meta for a line nobody
-                                    // is buying — the tag beside it already names who is.
-                                    // Comma-space, not comma: it is a list a host reads.
-                                    (event.foodWhere || {})[it.id]
-                                      ? 'your pick: ' + (event.foodWhere || {})[it.id]
-                                      : null,
-                                  ].filter(Boolean).join(' · ')}
-                                </span>
-                                {/* ── THE SHELF PRICE, BESIDE THE ESTIMATE ─────
-                                    Its own line, not folded into the meta above,
-                                    because it is a different KIND of number: the
-                                    band is what this line should cost, this is
-                                    what one package costs at one store today.
-
-                                    NOT ROUNDED. `fmt` rounds to whole dollars,
-                                    which is right for an estimate and wrong here
-                                    — $18.49 shown as $18 throws away the precision
-                                    that is the entire reason a shelf price beats
-                                    the band.
-
-                                    The size travels with it, always. "$18.49"
-                                    alone invites a host to read it as the cost of
-                                    this LINE; "$18.49 · 12 pk" cannot be. */}
-                                {/* ── WHICH REGIONAL ANSWER THIS LINE GOT ─────
-                                    Board ruling 2026-09-27, option A. Two lines
-                                    on this sheet can both be "adjusted for the
-                                    South" and not be the same quality of claim:
-                                    one has its own published BLS series, the
-                                    other took the region's basket mean because
-                                    BLS prices nothing like it. Ice is the
-                                    second kind — no series at all — and it was
-                                    rendering $0.20–$0.39 under a header that
-                                    said "Adjusted for the South" and nothing
-                                    else.
-
-                                    The sentence is NOT written here. It has
-                                    existed in priceLayers since the layers
-                                    landed, and threeLayersOfPrice.test.js has
-                                    been asserting it the whole time — against a
-                                    string no surface rendered. That is the
-                                    finding the board called the important one:
-                                    the composition was tested and the DELIVERY
-                                    never was. Printed verbatim so the test and
-                                    the screen cannot drift apart again.
-
-                                    Deliberately NOT gated on priceIdx, unlike
-                                    the shelf price below it: a host who has not
-                                    picked a store still got a regional number
-                                    and is still owed its basis. */}
-                                {(() => {
-                                  const L = layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx });
-                                  if (L.layer !== 'regional') return null;
-                                  return (
-                                    <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
-                                      {L.scopeLabel}
-                                    </span>
-                                  );
-                                })()}
-                                {priceIdx && (() => {
-                                  const L = layerForLine({ purchase: it, geoBasis: it.geoBasis, storeIndex: priceIdx });
-                                  if (L.layer !== 'store') return null;
-                                  return (
-                                    <>
-                                      <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
-                                        {(priceStore && priceStore.name) || 'Your store'}: ${L.exact.toFixed(2)}
-                                        {L.size ? ' · ' + L.size : ''}
-                                        {L.onSale && L.was ? ` · on sale, was $${L.was.toFixed(2)}` : ''}
-                                      </span>
-                                      {/* ── AND WHAT IT PRICED ───────────────
-                                          The product's own name, because a
-                                          price with no product is unauditable.
-                                          Probed live 2026-09-23: "injera"
-                                          returns Airplus® Gel Orthotic Shoe
-                                          Inserts at $8.99 · 1 ct. The match
-                                          guard now refuses that one at the
-                                          source (priceLayers.js), but a
-                                          heuristic catches a familiar way of
-                                          being wrong, never every way — and a
-                                          host reading "Airplus® Gel Orthotic
-                                          Shoe Inserts" catches all of them.
-                                          Muted and secondary: it is evidence
-                                          for the number above, not a claim of
-                                          its own. */}
-                                      {L.product && (
-                                        <span className="v-meta" style={{ display: 'block' }}>
-                                          {L.product}
-                                        </span>
-                                      )}
-                                      {/* ── AND WHAT THE WHOLE LINE COSTS THERE ──
-                                          Only when the unit map could reconcile
-                                          the plan's quantity with the store's
-                                          package — 63 of the corpus's 491 lines.
-                                          For every other line this is absent and
-                                          the row reads exactly as it did before
-                                          the map existed: a shelf reference beside
-                                          an estimate.
-
-                                          THE ARITHMETIC IS PRINTED, not just the
-                                          answer. "5 × 7 lb at $2.99 = $14.95 —
-                                          covers 30, you take home 35 lbs" is
-                                          checkable standing in the aisle; "$14.95"
-                                          is something a host has to trust. And the
-                                          rounding is the part they most need to
-                                          see, because you cannot buy 4.29 bags. */}
-                                      {L.total != null && (
-                                        <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
-                                          {L.math}
-                                          {/* ── WHEN THE TWO SOURCES DISAGREE ──
-                                              The plan's authored band and the
-                                              shelf are independent measurements
-                                              of the same commodity, and 26 of 35
-                                              live matches agreed. When they do
-                                              not, the host is told — and NOT told
-                                              why, because a small format, a dear
-                                              store and a stale band cannot be
-                                              told apart from here, and picking
-                                              one would be invention. */}
-                                          {L.band ? ' ' + L.band.note : ''}
-                                        </span>
-                                      )}
-                                    </>
-                                  );
-                                })()}
-                                {/* The basis line that used to sit here — "½ lb/guest × 46
-                                    guests · typical" — is folded into the meta above as
-                                    "23 lbs · ½ lb/guest". The multiplication was printing
-                                    the arithmetic behind a number already on the row. */}
-                                {/* GOVERNED KNOWLEDGE, VISIBLE (Phase 5C.10; rewritten 5G-B).
-                                    5C.10 rendered "Sourced — …" on the 52 lines that pass
-                                    isGroundedItemQty and NOTHING on the other 485. The Phase A
-                                    audit found that silence was the largest honesty defect in
-                                    the product: it reads as "we have no view", when most of
-                                    those lines rest on board judgment, trade practice or
-                                    cultural knowledge that authors had already recorded and
-                                    the grounding predicate could not see.
-
-                                    classifyClaim() is presentation only — the same contract
-                                    confidenceGrammar works under. It computes no quantity and
-                                    moves no threshold; it reads the GOVERNED provenance the
-                                    row already carries and names what it rests on, in one of
-                                    six truthful labels. `Directly sourced` still means exactly
-                                    what `Sourced —` meant, on exactly the same 52 lines.
-                                    Muted, one line, no accent (UX_02 restraint). */}
-                                {(() => {
-                                  // ── REACHABLE, NOT IN THE AISLE (host, 2026-09-24) ──────
-                                  // "provenance can be reachable but hide it."
-                                  //
-                                  // This rendered on EVERY row, and on a grounded line it
-                                  // is the longest thing on the screen:
-                                  //
-                                  //   Directly sourced — Grounded to webstaurant-protein-
-                                  //   2026: ~0.5 lb protein/guest is the source-stated
-                                  //   one-main portion for a multi-protein spread.
-                                  //
-                                  // Three lines of citation above a chicken the host is
-                                  // trying to buy. Board D shows no provenance on a row.
-                                  //
-                                  // NOT DELETED, AND THIS MATTERS. The 5G-B rationale
-                                  // above still holds — silence about what a number rests
-                                  // on was itself judged the largest honesty defect in the
-                                  // product. So the claim renders in full, with its author-
-                                  // written detail, the moment the host opens `tune` on the
-                                  // line: the panel where they interrogate the number is
-                                  // exactly where its basis belongs. Hidden by default,
-                                  // one tap away, never gone.
-                                  if (!tuning) return null;
-                                  // Third argument added 2026-09-19: the cost factor that
-                                  // actually moved this line. Without it the badge went on
-                                  // vouching for a base rate after a synthesized multiplier
-                                  // had changed the number printed beside it.
-                                  const claim = classifyClaim(it.provenance, it.costProvenance, it.costFactorApplied);
-                                  if (!claim.hostLabel) return null;
-                                  // The detail is whatever the author actually wrote. Never
-                                  // synthesised — a label with no recorded reasoning stands
-                                  // alone rather than inventing one.
-                                  const detail = (it.provenance && typeof it.provenance === 'object' && it.provenance.note)
-                                    ? it.provenance.note
-                                    : claim.rationale;
-                                  // The price's own basis, in words, when it is not a cited
-                                  // source (lib/priceBasis): "Estimate — no price source yet".
-                                  const pb = it.priceBasis && it.priceBasis.label ? it.priceBasis.label : null;
-                                  return (
-                                    <>
-                                      {pb ? <span className="v-meta" data-testid="price-basis" style={{ display: 'block' }}>{pb}</span> : null}
-                                      <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
-                                        {claim.hostLabel}{detail ? ` — ${detail}` : ''}
-                                      </span>
-                                    </>
-                                  );
-                                })()}
+                          <div key={it.id} className={'fopen' + (got ? ' got' : '')} data-food-row={it.id} data-food-open={it.id}>
+                            <div className="fo-bar">
+                              {checkBtn}
+                              <span className="fo-name">
+                                {name}
+                                {dietText ? <span className="tag plan">{dietText}</span> : null}
                               </span>
-                              {/* Frictionless price entry: the amount itself is the
-                                  input, not a link to a panel two taps away. Tap the
-                                  estimate range, type what you actually paid, Enter or
-                                  tap away commits it — same foodLocked write the old
-                                  "tune → set it" flow used, just without the detour.
-                                  Locked (already-real) prices still route through tune
-                                  to reach "back to estimate" — editing a committed
-                                  number is the rarer path and can afford one more tap. */}
-                              {tuning && it.locked == null ? (
-                                <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-1)', flexWrap: 'wrap' }}>
-                                  {/* Head-start pricing (host request, 2026-07-12 — "like we
-                                      did in legacy"): legacy's CostLockSegments gave a one-tap
-                                      Value/Premium lock off the current estimate, but that
-                                      estimate was only ever plan-wide-sourcing-aware. Here the
-                                      low/high THIS item shows already reflects its own
-                                      per-item store pick (event.foodWhere — perItemStoreRange,
-                                      lib/playbooks/index.js), which legacy's plan-wide tier
-                                      picker can't do — so these two buttons are a genuine
-                                      one-tap "lock to what this specific sourcing choice
-                                      actually costs," not just a generic range. The input still
-                                      pre-fills with the midpoint as the head-start number for a
-                                      host who wants to type their own real receipt total. */}
-                                  {foodPlan.hasRealCount && (Number(it.low) || Number(it.high)) ? (
+                              <button type="button" className="fo-close" aria-expanded="true" aria-label={'Close ' + name}
+                                onClick={() => { commitPaid(); setFoodTune(null); }}>
+                                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 15l6-6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                              </button>
+                            </div>
+                            <section className="fo-sec" data-fo-sec="amount">
+                              <h3>Amount{amountHead ? <span className="of">{amountHead}</span> : null}</h3>
+                              {/* The engine's own knob: foodQty re-prices the line. */}
+                              <div className="fo-stepper" role="group" aria-label={'How much ' + name}>
+                                <button type="button" aria-label={'Less ' + name} onClick={() => {
+                                  const q = Math.max(0, (Number(it.qty) || 0) - 1);
+                                  patchEvent({ foodQty: { ...(event.foodQty || {}), [it.id]: q } }, 'Sized to ' + q + ' ' + (it.unit || '') + ' — cost updated.');
+                                }}>−</button>
+                                <span className="fo-qty">{it.qty} {it.unit}</span>
+                                <button type="button" aria-label={'More ' + name} onClick={() => {
+                                  const q = (Number(it.qty) || 0) + 1;
+                                  patchEvent({ foodQty: { ...(event.foodQty || {}), [it.id]: q } }, 'Sized to ' + q + ' ' + (it.unit || '') + ' — cost updated.');
+                                }}>+</button>
+                              </div>
+                              {/* Drift cue + reset (host request 2026-07-12): stepped off
+                                  the recommended baseline, show it and a one-tap way back. */}
+                              {it.qtyOverridden && it.baseQty != null && Number(it.baseQty) !== Number(it.qty) && (
+                                <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
+                                  <span className="of" style={{ color: 'var(--muted)' }}>aim ~{it.baseQty} {it.unit}</span>
+                                  <button className="mini" onClick={() => {
+                                    const m = { ...(event.foodQty || {}) }; delete m[it.id];
+                                    patchEvent({ foodQty: m }, name + ' back to the recommended ' + it.baseQty + ' ' + (it.unit || '') + '.');
+                                  }}>reset</button>
+                                </div>
+                              )}
+                              {claim.hostLabel ? (
+                                <p className="fo-why">{claim.hostLabel}{claimDetail ? ` — ${claimDetail}` : ''}</p>
+                              ) : null}
+                              {/* WHERE THIS NUMBER CAME FROM (Phase 5G-C1): the canonical-
+                                  family card — ice only, by design (familyFor). It never
+                                  shows an adjusted quantity. */}
+                              {(() => {
+                                const rec = iceRecommendation(event.type, it.id, {
+                                  guestCount: foodPlan.guests || 0,
+                                  claim,
+                                  facts: claimFacts,
+                                });
+                                if (!rec) return null;
+                                const settledRec = rec.recommendationState === 'recommended';
+                                return (
+                                  <div style={{ marginTop: 'var(--sp-2)' }}>
+                                    <div className="of" style={{ letterSpacing: 'var(--tracking-2)' }}>WHERE THIS NUMBER CAME FROM</div>
+                                    <p className="v-meta" style={{ margin: '2px 0 0' }}>
+                                      {rec.perGuest} {it.unitBase || 'lb'} per guest
+                                      {rec.total != null ? ` × ${foodPlan.guests} ${foodPlan.guests === 1 ? 'guest' : 'guests'} = ${rec.total} ${it.unitBase || 'lb'}` : ''}
+                                      {rec.basisLabel ? ` · ${rec.basisLabel}` : ''}
+                                    </p>
+                                    {rec.why && <p className="v-meta" style={{ margin: '2px 0 0' }}>{rec.why}</p>}
+                                    {rec.assumption && (
+                                      <p className="v-meta" style={{ margin: '2px 0 0' }}>{rec.recommendationStateLabel} — {rec.assumption}</p>
+                                    )}
+                                    {!settledRec && (
+                                      <p className="v-meta" style={{ margin: '2px 0 0' }}>
+                                        What could change it: {ICE_CHANGE_FACTORS.slice(0, 3).join(' · ').toLowerCase()}.
+                                      </p>
+                                    )}
+                                    {/* A BUTTON only when there is somewhere real to go. */}
+                                    {rec.nextAction && rec.nextAction.route && (
+                                      <button className="mini" style={{ marginTop: 'var(--sp-1)' }} title={rec.nextAction.why}
+                                        onClick={() => { if (!routeSheet(rec.nextAction.route)) toast('Not wired here yet.'); }}>
+                                        {rec.nextAction.label}
+                                      </button>
+                                    )}
+                                    {rec.nextAction && !rec.nextAction.route && (
+                                      <p className="v-meta" style={{ margin: '2px 0 0' }}>{rec.nextAction.why}</p>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </section>
+                            <section className="fo-sec" data-fo-sec="price">
+                              <h3>Price<span className="of">{priceHead}</span></h3>
+                              <div className="plist">
+                                <div className={'prow' + (it.locked == null ? ' mine' : '')}>
+                                  <div className="k">
+                                    <div className="t">{it.added ? 'Your number' : 'Estimate'}</div>
+                                    <div className="m">
+                                      {rate && it.qty ? <span className="fo-line">{rate.replace('/', ' a ')} × {it.qty} {it.unit}</span> : null}
+                                      {/* The estimate's own layer: with a shelf price on the
+                                          line, the band below it is still the area's or the
+                                          nation's, and says which. */}
+                                      {estLayer.layer === 'regional' ? <span className="fo-line">{estLayer.label} · {estLayer.scopeLabel}</span>
+                                        : estLayer.layer === 'national' ? <span className="fo-line">{estLayer.label}</span> : null}
+                                      {/* The price's own basis, in words, when it is not a
+                                          cited source (lib/priceBasis). */}
+                                      {it.priceBasis && it.priceBasis.label ? <span className="fo-line" data-testid="price-basis">{it.priceBasis.label}</span> : null}
+                                    </div>
+                                  </div>
+                                  <div className="v">
+                                    {it.added ? (it.low > 0 ? fmt(it.low) : (it.owner ? 'bringing it' : 'no cost yet'))
+                                      : (foodPlan.hasRealCount ? fmt(it.low) + '–' + fmt(it.high) : '—')}
+                                    {!it.added && foodPlan.hasRealCount ? <small>est.</small> : null}
+                                  </div>
+                                </div>
+                                {it.locked != null && (
+                                  <div className="prow mine">
+                                    <div className="k">
+                                      <div className="t">{real ? 'What you paid' : 'Set at'}</div>
+                                      <div className="m">The number your list counts.</div>
+                                    </div>
+                                    <div className="v">{fmt(it.locked)}<small>{real ? 'you paid' : 'est.'}</small></div>
+                                  </div>
+                                )}
+                                {/* THE SHELF PRICE, BESIDE THE ESTIMATE: a different KIND
+                                    of number — one package at one store today. NOT ROUNDED,
+                                    and the size travels with it. The arithmetic is printed
+                                    when the unit map reconciles the line, and a band that
+                                    disagrees is said, never explained. */}
+                                {shelf && (
+                                  <div className="prow">
+                                    <div className="k">
+                                      <div className="t">{storeName} shelf price</div>
+                                      <div className="m">
+                                        {shelf.onSale && shelf.was ? <span className="fo-line">On sale, was ${shelf.was.toFixed(2)}</span> : null}
+                                        {shelf.total != null ? <span className="fo-line">{shelf.math}{shelf.band ? ' ' + shelf.band.note : ''}</span> : null}
+                                        <span className="fo-line">Your store · a reference, not in your total</span>
+                                      </div>
+                                    </div>
+                                    <div className="v">${shelf.exact.toFixed(2)}{shelf.size ? <small>{shelf.size}</small> : null}</div>
+                                  </div>
+                                )}
+                              </div>
+                              <label className="fo-cap" htmlFor={'paid-' + it.id}>What you paid · optional</label>
+                              <input id={'paid-' + it.id} className="field fo-paid" type="number" min="0" inputMode="decimal" placeholder="$ paid"
+                                aria-label={'What you paid for ' + name}
+                                value={tuneCost} onChange={e => setTuneCost(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') commitPaid();
+                                  else if (e.key === 'Escape') setTuneCost('');
+                                }}
+                                onBlur={commitPaid} />
+                              {(!it.added && foodPlan.hasRealCount && (Number(it.low) || Number(it.high))) || it.locked != null ? (
+                                <div className="chips" style={{ marginTop: 'var(--sp-2)' }}>
+                                  {/* One-tap ends of THIS item's estimate, already reshaped
+                                      by its own store pick (perItemStoreRange) — legacy's
+                                      CostLockSegments, per item (host, 2026-07-12). */}
+                                  {!it.added && foodPlan.hasRealCount && (Number(it.low) || Number(it.high)) ? (
                                     <>
-                                      {/* onMouseDown preventDefault: without it, clicking this button
-                                          blurs the focused input FIRST, whose own onBlur commits the
-                                          pre-filled midpoint via patchEvent — which sets it.locked,
-                                          flipping this whole branch to the locked display and
-                                          unmounting this button before its click ever fires. Found
-                                          live-testing: tapping "Value" was silently locking the
-                                          midpoint instead. preventDefault on mousedown keeps focus
-                                          put, so blur never fires and this onClick is the one write. */}
-                                      <button type="button" className="mini" onMouseDown={e => e.preventDefault()} onClick={() => {
-                                        const n = Math.max(0, Math.round(Number(it.low) || 0));
-                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: false } },
-                                          (it.short || it.item) + ' set at ' + fmt(n) + ' — the value estimate for the store you picked.');
-                                        setTuneCost(''); setTuneEdited(false); setFoodTune(null);
-                                      }}>Value {fmt(Math.round(Number(it.low) || 0))}</button>
-                                      <button type="button" className="mini" onMouseDown={e => e.preventDefault()} onClick={() => {
-                                        const n = Math.max(0, Math.round(Number(it.high) || 0));
-                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: false } },
-                                          (it.short || it.item) + ' set at ' + fmt(n) + ' — the premium estimate for the store you picked.');
-                                        setTuneCost(''); setTuneEdited(false); setFoodTune(null);
-                                      }}>Premium {fmt(Math.round(Number(it.high) || 0))}</button>
+                                      <button type="button" className="mini" onClick={() => setEnd(Math.max(0, Math.round(Number(it.low) || 0)), 'low end')}>
+                                        Low end · {fmt(Math.round(Number(it.low) || 0))}
+                                      </button>
+                                      <button type="button" className="mini" onClick={() => setEnd(Math.max(0, Math.round(Number(it.high) || 0)), 'high end')}>
+                                        High end · {fmt(Math.round(Number(it.high) || 0))}
+                                      </button>
                                     </>
                                   ) : null}
-                                  <input className="field" style={{ width: 72, fontSize: 'var(--t-input)', padding: 'var(--sp-1) var(--sp-2)' }} type="number" min="0"
-                                    inputMode="decimal" placeholder="$ paid" autoFocus
-                                    aria-label={'Real cost for ' + (it.short || it.item)}
-                                    value={tuneCost} onChange={e => { setTuneCost(e.target.value); setTuneEdited(true); }}
-                                    onKeyDown={e => {
-                                      if (e.key === 'Enter' && parseFloat(tuneCost) >= 0 && tuneCost !== '') {
-                                        const n = Math.max(0, roundCurrency(parseFloat(tuneCost) || 0));   // cents kept: $42.50, not $43
-                                        // Real receipt ONLY if the host typed a value; accepting the
-                                        // store-based prefill unchanged stays an honest estimate.
-                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: tuneEdited } },
-                                          (it.short || it.item) + (tuneEdited ? ' set at ' + fmt(n) + ' — a real price now, not a range.' : ' set at ~' + fmt(n) + ' — the estimate; add the receipt total anytime.'));
-                                        setTuneCost(''); setTuneEdited(false); setFoodTune(null);
-                                      } else if (e.key === 'Escape') { setTuneCost(''); setTuneEdited(false); setFoodTune(null); }
-                                    }}
-                                    onBlur={() => {
-                                      if (parseFloat(tuneCost) >= 0 && tuneCost !== '') {
-                                        const n = Math.max(0, roundCurrency(parseFloat(tuneCost) || 0));   // cents kept: $42.50, not $43
-                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: tuneEdited } },
-                                          (it.short || it.item) + (tuneEdited ? ' set at ' + fmt(n) + ' — a real price now, not a range.' : ' set at ~' + fmt(n) + ' — the estimate; add the receipt total anytime.'));
-                                        setTuneCost(''); setTuneEdited(false);
-                                      }
-                                    }} />
-                                </span>
-                              ) : (
-                                <span className="amt" role="button" tabIndex={0}
-                                  onClick={e => { e.stopPropagation(); setTuneCost(midpointStr(it)); setTuneEdited(false); setFoodTune(it.id); }}
-                                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setTuneCost(midpointStr(it)); setTuneEdited(false); setFoodTune(it.id); } }}
-                                  title="Tap to enter the real price">
-                                  {/* Host-added lines carry a single committed cost (event.foodAdd's
-                                      cost — never a range), so no invented spread. Blank/$0 at add
-                                      time is an honest state, not a fake number: "bringing it" when
-                                      someone's named (their name already shows as its own tag chip
-                                      next to the item name — repeating it here made this span too
-                                      wide and collided with a long wrapped item name, found live
-                                      testing this feature), "no cost yet" otherwise. Never displayed
-                                      as "$0–$0". Same honesty rule legacy's money() helper applies
-                                      (App.js ~11246-11250). */}
-                                  {it.locked != null
-                                    ? fmt(it.locked)
-                                    : it.added
-                                      ? (it.low > 0 ? fmt(it.low) : (it.owner ? 'bringing it' : 'no cost yet'))
-                                      : (foodPlan.hasRealCount ? fmt(it.low) + '–' + fmt(it.high) : '—')}
-                                </span>
-                              )}
-                              <span className="mini" role="button" tabIndex={0} style={{ marginLeft: 6 }}
-                                onClick={e => { e.stopPropagation(); if (!tuning) { setTuneCost(midpointStr(it)); setTuneEdited(false); } setFoodTune(tuning ? null : it.id); }}
-                                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (!tuning) { setTuneCost(midpointStr(it)); setTuneEdited(false); } setFoodTune(tuning ? null : it.id); } }}>
-                                {tuning ? 'more' : 'tune'}
-                              </span>
-                              {/* Host-added lines are fully deletable (not just skippable) —
-                                  parity with legacy's removeAdded (App.js ~11122). */}
-                              {it.added && (
-                                <span className="mini" role="button" tabIndex={0} style={{ marginLeft: 6 }}
-                                  title={'Remove ' + (it.short || it.item)}
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    patchEvent({ foodAdd: (event.foodAdd || []).filter(a => a.id !== it.id) },
-                                      (it.short || it.item) + ' removed.');
-                                  }}
-                                  onKeyDown={e => {
-                                    if (e.key !== 'Enter') return;
-                                    e.stopPropagation();
-                                    patchEvent({ foodAdd: (event.foodAdd || []).filter(a => a.id !== it.id) },
-                                      (it.short || it.item) + ' removed.');
-                                  }}>
-                                  remove
-                                </span>
-                              )}
-                            </button>
-                            {/* ── SKIP, ONE LEVEL UP (host, 2026-09-22) ──────────
-                                "Skip it" lived inside the tune panel, so dropping
-                                a line you are not buying meant opening the row
-                                first, finding it past the quantity stepper and
-                                the price controls, and tapping again. Three taps
-                                to say no to one thing.
-
-                                It sits beside the row now. It cannot sit INSIDE
-                                it — `.frow` is itself a <button>, and a nested
-                                button is invalid and would swallow the row's own
-                                tap — so it is a sibling, and deliberately quiet:
-                                the row is the star, this is the small out.
-
-                                Only on a row not yet bought. Once something is
-                                checked off, "skip it" is a contradiction, and
-                                the undo for a skip is already the row itself
-                                (tapping a skipped row restores it). The copy in
-                                the tune panel stays where it is — a host who has
-                                the row open should not have to close it to find
-                                the same control. */}
-                            {!it.skipped && !got ? (
-                              <div style={{ padding: '0 var(--sp-3) var(--sp-2)', marginTop: 'calc(var(--sp-1) * -1)' }}>
-                                <button
-                                  className="mini"
-                                  onClick={() => patchEvent(
-                                    { foodSkip: { ...(event.foodSkip || {}), [it.id]: true } },
-                                    (it.short || it.item) + ' skipped and out of the total.',
-                                  )}
-                                >skip it</button>
-                              </div>
-                            ) : null}
-                            {tuning && (
-                              // onMouseDown preventDefault (bubbles from every button/chip
-                              // inside): while the cost input is focused (autoFocus in tune
-                              // mode), tapping ANY control in here — size stepper, skip-it,
-                              // a store chip, a swap chip — would otherwise blur the input
-                              // first, and its onBlur commits the pre-filled midpoint, locking
-                              // a fabricated price and unmounting the very control you tapped
-                              // before its click lands. Found live-testing: tapping "Costco"
-                              // to re-source silently locked the midpoint instead. Killing the
-                              // default focus shift on mousedown keeps focus put so no blur
-                              // fires, and click still runs on mouseup — so the store re-price
-                              // (which reshapes it.low/high, hence Value/Premium too) actually
-                              // happens instead of a stray commit.
-                              <div className="brow" style={{ margin: '2px 0 var(--sp-2)', paddingLeft: 30 }} onMouseDown={e => e.preventDefault()}>
-                                {/* ── WHERE THIS NUMBER CAME FROM (Phase 5G-C1) ────────────
-                                    The canonical-family recommendation card. The ROW above
-                                    already carries the amount and the basis label; repeating
-                                    them here would be the duplicate-summary defect, so this
-                                    explains instead: the per-guest derivation, the condition
-                                    the playbook was actually written for, the assumption we
-                                    are carrying, what would change it, and one CTA to the
-                                    exact control that resolves it.
-
-                                    Currently ice only — familyFor() returns null for every
-                                    other line, by design. A family is joined by a human
-                                    ruling on shared meaning and unit, never by field name.
-
-                                    It NEVER shows an adjusted quantity. `perGuest` is the
-                                    authored figure; knowing the setting confirms the
-                                    recommendation, it does not recompute it. */}
-                                {(() => {
-                                  const rec = iceRecommendation(event.type, it.id, {
-                                    guestCount: foodPlan.guests || 0,
-                                    claim: classifyClaim(it.provenance, it.costProvenance, it.costFactorApplied),
-                                    facts: claimFacts,
-                                  });
-                                  if (!rec) return null;
-                                  const settled = rec.recommendationState === 'recommended';
-                                  return (
-                                    <div style={{ marginBottom: 'var(--sp-2)' }}>
-                                      <div className="of" style={{ letterSpacing: 'var(--tracking-2)' }}>WHERE THIS NUMBER CAME FROM</div>
-                                      <p className="v-meta" style={{ margin: '2px 0 0' }}>
-                                        {rec.perGuest} {it.unitBase || 'lb'} per guest
-                                        {rec.total != null ? ` × ${foodPlan.guests} ${foodPlan.guests === 1 ? 'guest' : 'guests'} = ${rec.total} ${it.unitBase || 'lb'}` : ''}
-                                        {rec.basisLabel ? ` · ${rec.basisLabel}` : ''}
-                                      </p>
-                                      {rec.why && (
-                                        <p className="v-meta" style={{ margin: '2px 0 0' }}>{rec.why}</p>
-                                      )}
-                                      {rec.assumption && (
-                                        <p className="v-meta" style={{ margin: '2px 0 0' }}>
-                                          {rec.recommendationStateLabel} — {rec.assumption}
-                                        </p>
-                                      )}
-                                      {!settled && (
-                                        <p className="v-meta" style={{ margin: '2px 0 0' }}>
-                                          What could change it: {ICE_CHANGE_FACTORS.slice(0, 3).join(' · ').toLowerCase()}.
-                                        </p>
-                                      )}
-                                      {/* A BUTTON only when there is somewhere real to go.
-                                          When the missing fact is answered on this very
-                                          surface, the ask is a sentence — rendering a CTA
-                                          that reopens the screen you are already on is the
-                                          dead-navigation defect, found by clicking it live. */}
-                                      {rec.nextAction && rec.nextAction.route && (
-                                        <button className="mini" style={{ marginTop: 'var(--sp-1)' }}
-                                          title={rec.nextAction.why}
-                                          onClick={e => {
-                                            e.stopPropagation();
-                                            // Real landing or an honest toast — never a dead CTA.
-                                            if (!routeSheet(rec.nextAction.route)) {
-                                              toast('Not wired here yet.');
-                                            }
-                                          }}>
-                                          {rec.nextAction.label}
-                                        </button>
-                                      )}
-                                      {rec.nextAction && !rec.nextAction.route && (
-                                        <p className="v-meta" style={{ margin: '2px 0 0' }}>{rec.nextAction.why}</p>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                                {/* COST STRUCTURE, per item — the engine's own knobs:
-                                    size it (foodQty re-prices), swap it (alternatives
-                                    carry their own real ranges), or skip it. */}
-                                <div className="actions-row" style={{ alignItems: 'center' }}>
-                                  <span className="of">size:</span>
-                                  <button className="mini" onClick={() => {
-                                    const q = Math.max(0, (Number(it.qty) || 0) - 1);
-                                    patchEvent({ foodQty: { ...(event.foodQty || {}), [it.id]: q } }, 'Sized to ' + q + ' ' + (it.unit || '') + ' — cost updated.');
-                                  }}>−</button>
-                                  <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>{it.qty} {it.unit}</span>
-                                  <button className="mini" onClick={() => {
-                                    const q = (Number(it.qty) || 0) + 1;
-                                    patchEvent({ foodQty: { ...(event.foodQty || {}), [it.id]: q } }, 'Sized to ' + q + ' ' + (it.unit || '') + ' — cost updated.');
-                                  }}>+</button>
-                                  {/* Drift cue + reset (host request 2026-07-12): once a host
-                                      steps the size off the recommended baseline (it.baseQty,
-                                      the engine's rate×guests result — qtyOverridden flags it),
-                                      show what the recommendation was and a one-tap way back,
-                                      so the stepper can't silently strand them above/below the
-                                      portion goal. Both fields already ride on the item from
-                                      playbooks/index.js:2273; V2 just never read them. */}
-                                  {it.qtyOverridden && it.baseQty != null && Number(it.baseQty) !== Number(it.qty) && (
-                                    <>
-                                      <span className="of" style={{ color: 'var(--muted)' }}>aim ~{it.baseQty} {it.unit}</span>
-                                      <button className="mini" onClick={() => {
-                                        const m = { ...(event.foodQty || {}) }; delete m[it.id];
-                                        patchEvent({ foodQty: m }, (it.short || it.item) + ' back to the recommended ' + it.baseQty + ' ' + (it.unit || '') + '.');
-                                      }}>reset</button>
-                                    </>
-                                  )}
-                                  <button className="mini" onClick={() => {
-                                    if (it.skipped) {
-                                      const m = { ...(event.foodSkip || {}) }; delete m[it.id];
-                                      patchEvent({ foodSkip: m }, (it.short || it.item) + ' is back in the total.');
-                                    } else {
-                                      patchEvent({ foodSkip: { ...(event.foodSkip || {}), [it.id]: true } }, (it.short || it.item) + ' skipped and out of the total.');
-                                    }
-                                  }}>{it.skipped ? 'restore it' : 'skip it'}</button>
-                                </div>
-                                {/* Real-cost entry now lives inline on the row itself
-                                    (tap the amount) — the frictionless path. This stays
-                                    only for the already-locked reset case; "back to
-                                    estimate" has no other home. */}
-                                {it.locked != null && (
-                                  <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
-                                    <span className="of">cost:</span>
-                                    <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>set at {fmt(it.locked)}</span>
-                                    <button className="mini" onClick={() => {
+                                  {it.locked != null && (
+                                    <button type="button" className="mini" onClick={() => {
                                       const m = { ...(event.foodLocked || {}) }; delete m[it.id];
                                       const rm = { ...(event.foodReal || {}) }; delete rm[it.id];
-                                      patchEvent({ foodLocked: m, foodReal: rm }, (it.short || it.item) + ' back to the estimate range.');
-                                    }}>back to estimate</button>
+                                      patchEvent({ foodLocked: m, foodReal: rm }, name + ' back to the estimate range.');
+                                    }}>Back to the estimate</button>
+                                  )}
+                                </div>
+                              ) : null}
+                            </section>
+                            {hasWhere ? (
+                              <section className="fo-sec" data-fo-sec="where">
+                                <h3>Where to buy</h3>
+                                {/* AND WHAT IT PRICED: a price with no product is
+                                    unauditable (the shoe-insert case, 2026-09-23). */}
+                                {shelf && shelf.product ? (
+                                  <div className="plist">
+                                    <div className="prow">
+                                      <div className="k">
+                                        <div className="t">{shelf.product}</div>
+                                        <div className="m">{storeName} · the product that shelf price is for</div>
+                                      </div>
+                                    </div>
                                   </div>
-                                )}
-                                {Array.isArray(it.where) && it.where.length > 1 && (
-                                  <div className="chips" style={{ marginTop: 'var(--sp-2)' }}>
-                                    {it.where.slice(0, 4).map(w => (
-                                      <button key={w} className="chip" aria-pressed={(event.foodWhere || {})[it.id] === w}
-                                        onClick={() => {
-                                          // Store pick still isn't a "paid" price (cost-truth
-                                          // gate — that's foodLocked, only set on an actual
-                                          // purchase). But for a protein with a real per-channel
-                                          // price (sourcingPrices / canonicalProteinPrice, the
-                                          // same cited data the plan-wide sourcing tier uses),
-                                          // the engine now repriced THIS line's estimate to that
-                                          // channel the moment it's picked — was display-only
-                                          // before (2026-07-11 food-plan audit). Never invents a
-                                          // number for stores without sourced data.
-                                          patchEvent({ foodWhere: { ...(event.foodWhere || {}), [it.id]: w } },
-                                            'Buying at ' + w + ' — estimate re-priced to that channel when we have real numbers for it.');
-                                        }}>
-                                        {w}
-                                      </button>
-                                    ))}
-                                  </div>
-                                )}
-                                {(alts.length > 0 || it.swappedFrom) && (
-                                  <div className="chips" style={{ marginTop: 'var(--sp-2)' }}>
-                                    {it.swappedFrom && (
-                                      <button className="chip" onClick={() => {
-                                        const m = { ...(event.foodSwap || {}) }; delete m[it.id];
-                                        patchEvent({ foodSwap: m }, 'Back to ' + it.swappedFrom + ' — original pricing restored.');
-                                      }}>back to {it.swappedFrom}</button>
-                                    )}
-                                    {alts.map(na => {
-                                      const name = na.name;
-                                      const isActive = activeSwapName === name;
-                                      // A plain-string alt (no unitCostRange) keeps the line's
-                                      // current cost when swapped — no delta to show, honestly.
-                                      // A priced alt re-prices to units × ITS OWN range, the same
-                                      // math the engine applies on swap (playbookFoodPlan). Only
-                                      // shown when there's a real quantity + current cost to
-                                      // compare against (same honest-empty rule as the sourcing-
-                                      // tier delta above) and it isn't the alt already active.
-                                      const altCost = (!isActive && foodPlan.hasRealCount && Array.isArray(na.unitCostRange) && it.units)
-                                        ? (Number(it.units) || 0) * ((Number(na.unitCostRange[0]) || 0) + (Number(na.unitCostRange[1]) || 0)) / 2
-                                        : null;
-                                      const delta = (altCost != null && cost) ? Math.round(altCost - cost) : null;
-                                      const deltaLabel = (delta != null && delta !== 0)
-                                        ? (delta < 0 ? ' · saves ~' + fmt(Math.abs(delta)) : ' · ~' + fmt(Math.abs(delta)) + ' more')
-                                        : '';
-                                      return (
-                                        <button key={name} className="chip" onClick={() => patchEvent({ foodSwap: { ...(event.foodSwap || {}), [it.id]: name } }, 'Swapped to ' + name + ' — priced with its own real range.')}>
-                                          {name}{deltaLabel}
+                                ) : null}
+                                {where.length > 1 ? (
+                                  <>
+                                    <div className="fo-cap">Buy it at</div>
+                                    <div className="chips">
+                                      {where.map(w => (
+                                        <button key={w} type="button" className="chip" aria-pressed={buyingAt === w}
+                                          onClick={() => {
+                                            // A store pick re-prices this line's estimate to that
+                                            // channel when there is cited data for it; never a
+                                            // "paid" price (that is foodLocked).
+                                            patchEvent({ foodWhere: { ...(event.foodWhere || {}), [it.id]: w } },
+                                              'Buying at ' + w + ' — estimate re-priced to that channel when we have real numbers for it.');
+                                          }}>
+                                          {w}
                                         </button>
-                                      );
-                                    })}
-                                  </div>
+                                      ))}
+                                    </div>
+                                  </>
+                                ) : null}
+                                {(alts.length > 0 || it.swappedFrom) ? (
+                                  <>
+                                    <div className="fo-cap">Or buy instead</div>
+                                    <div className="chips">
+                                      {it.swappedFrom && (
+                                        <button type="button" className="chip" onClick={() => {
+                                          const m = { ...(event.foodSwap || {}) }; delete m[it.id];
+                                          patchEvent({ foodSwap: m }, 'Back to ' + it.swappedFrom + ' — original pricing restored.');
+                                        }}>back to {it.swappedFrom}</button>
+                                      )}
+                                      {alts.map(na => {
+                                        const altName = na.name;
+                                        const isActive = activeSwapName === altName;
+                                        // A priced alt re-prices to units × ITS OWN range (the
+                                        // engine's swap math); a plain-string alt keeps the cost.
+                                        const altCost = (!isActive && foodPlan.hasRealCount && Array.isArray(na.unitCostRange) && it.units)
+                                          ? (Number(it.units) || 0) * ((Number(na.unitCostRange[0]) || 0) + (Number(na.unitCostRange[1]) || 0)) / 2
+                                          : null;
+                                        const delta = (altCost != null && cost) ? Math.round(altCost - cost) : null;
+                                        const deltaLabel = (delta != null && delta !== 0)
+                                          ? (delta < 0 ? ' · saves ~' + fmt(Math.abs(delta)) : ' · ~' + fmt(Math.abs(delta)) + ' more')
+                                          : '';
+                                        return (
+                                          <button key={altName} type="button" className="chip" aria-pressed={isActive}
+                                            onClick={() => patchEvent({ foodSwap: { ...(event.foodSwap || {}), [it.id]: altName } }, 'Swapped to ' + altName + ' — priced with its own real range.')}>
+                                            {altName}{deltaLabel}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </>
+                                ) : null}
+                              </section>
+                            ) : null}
+                            <div className="fo-foot">
+                              {got ? (
+                                <button type="button" className="mini" onClick={toggle}>Uncheck {name}</button>
+                              ) : (
+                                <button type="button" className="cta" onClick={toggle}>Mark {name} bought</button>
+                              )}
+                              <p className="fo-note">{got ? 'It is in the cart total.' : 'Same as tapping its box. It moves into the cart total.'}</p>
+                            </div>
+                            {/* SKIP, ALONE AT THE BOTTOM (owner, 11/24/2026). This
+                                reverses the 9/22/2026 move onto the row: skipping is the
+                                rare act, and the row's second tap now opens the item.
+                                Undo is still the row itself. Remove sits beside it only
+                                on a line she added (parity with legacy's removeAdded). */}
+                            <div className="fo-skip">
+                              <div className="fo-skip-row">
+                                {it.added && (
+                                  <button type="button" className="mini" onClick={() => {
+                                    setFoodTune(null);
+                                    patchEvent({ foodAdd: (event.foodAdd || []).filter(a => a.id !== it.id) }, name + ' removed.');
+                                  }}>Remove {name}</button>
                                 )}
+                                <button type="button" className="mini" onClick={() => {
+                                  setFoodTune(null);
+                                  patchEvent({ foodSkip: { ...(event.foodSkip || {}), [it.id]: true } }, name + ' skipped and out of the total.');
+                                }}>Skip {name}</button>
                               </div>
-                            )}
+                              <p className="fo-note">Takes it out of the total. Tap its row to bring it back.</p>
+                            </div>
                           </div>
                         );
                       })}
@@ -26103,7 +25903,7 @@ export default function HostShellV2() {
                   });
                   return (
                     <>
-                      {stores.length > 1 && (
+                      {(stores.length > 1 || priceStore) && (
                         <>
                         <div className="shelf-label" style={{ margin: '10px 0 6px' }}>Shopping at</div>
                         {/* ── THESE ARE ORDINARY CHIPS (2026-09-26) ─────────────
@@ -26136,9 +25936,14 @@ export default function HostShellV2() {
                             vertical scroll alive, which is the gesture a
                             sideways rail otherwise competes with. */}
                         <div className="chiprail">
-                          {stores.slice(0, 5).map(s => (
+                          {/* Pressed, a chip says where she is: "I'm at …". */}
+                          {priceStore && (
+                            <button className="chip" aria-pressed={atPriced}
+                              onClick={() => setShopStore(atPriced ? null : PRICED_RUN)}>{atPriced ? 'I’m at ' + priceStore.name : priceStore.name}</button>
+                          )}
+                          {(stores.length > 1 ? stores.slice(0, 5) : []).map(s => (
                             <button key={s} className="chip" aria-pressed={shopStore === s}
-                              onClick={() => setShopStore(shopStore === s ? null : s)}>{shopStore === s ? 'At ' + s : s}</button>
+                              onClick={() => setShopStore(shopStore === s ? null : s)}>{shopStore === s ? 'I’m at ' + s : s}</button>
                           ))}
                           {shopStore && <button className="chip" onClick={() => setShopStore(null)}>Everything</button>}
                         </div>
@@ -26148,8 +25953,8 @@ export default function HostShellV2() {
                         <>
                           <p className="grounding" style={{ margin: '0 0 10px' }}>
                             {runLeft.length === 0
-                              ? 'Everything for ' + shopStore + ' is bought — nothing left on this run.'
-                              : runLeft.length + ' line' + (runLeft.length === 1 ? '' : 's') + ' left at ' + shopStore + ' — walk in expecting about ' + fmt(runLo) + (runHi > runLo ? '–' + fmt(runHi) : '') + '. Check them off as you buy — the real price is optional.'}
+                              ? 'Everything for ' + runName + ' is bought — nothing left on this run.'
+                              : runLeft.length + ' line' + (runLeft.length === 1 ? '' : 's') + ' left at ' + runName + ' — walk in expecting about ' + fmt(runLo) + (runHi > runLo ? '–' + fmt(runHi) : '') + '. Check them off as you buy — the real price is optional.'}
                           </p>
                           {/* #8 BULK CHECK-OFF (AnyList/Instacart parity): a real store
                               run is one cart, not 18 taps. One button marks every line
@@ -26163,11 +25968,11 @@ export default function HostShellV2() {
                               runLeft.forEach(it => { next[it.id] = true; });
                               let ns = null;
                               try { ns = hostSpending({ ...event, foodGot: next }, foodPP.priceFactor).spent; } catch { ns = null; }
-                              patchEvent({ foodGot: next }, `Marked all ${runLeft.length} lines at ${shopStore} bought` + (ns != null ? ` — spent is now ${fmt(ns)}.` : '.'));
+                              patchEvent({ foodGot: next }, `Marked all ${runLeft.length} lines at ${runName} bought` + (ns != null ? ` — spent is now ${fmt(ns)}.` : '.'));
                             };
                             return (
-                              <button className="mini" style={{ marginBottom: 10 }} onClick={markAllInStore}>
-                                Got everything at {shopStore} — mark all {runLeft.length} bought
+                              <button className="mini run-all" style={{ marginBottom: 10 }} onClick={markAllInStore}>
+                                Got everything at {runName} — mark all {runLeft.length} bought
                               </button>
                             );
                           })()}

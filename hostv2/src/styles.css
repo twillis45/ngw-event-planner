@@ -8885,3 +8885,83 @@ input[data-cue], textarea[data-cue]{ outline:revert-layer; border-color:color-mi
 /* The hero card and its editor slot clip their contents (overflow hidden and
    clip); while they hold the cue they clip 16px out, so the ring is not cut. */
 .hero-card:has([data-cue]), .editor-slot:has([data-cue]){ overflow:clip; overflow-clip-margin:16px; }
+
+/* ── THE SHOPPING ROW, TWO TAPS; THE ITEM OPENS IN PLACE (owner, renders
+   f-1 to f-4, 11/24/2026) ─────────────────────────────────────────────────
+   The check is its own column, at least 48px (64px in a store run), and only
+   checks. The rest of the row is one button that opens the item. The opened
+   item keeps a slim name bar stuck to the top of the sheet while its three
+   groups scroll under it, so the shelf and its cards clip rather than hide:
+   `overflow:hidden` would make them the sticky bar's scroller. */
+.fgroup, .fg-items{overflow:clip}
+.frow.food-row{padding:0; gap:0; flex-wrap:nowrap; align-items:stretch; cursor:default}
+.frow.food-row:hover{background:none}
+.fcheck-hit{flex:0 0 48px; min-height:48px; align-self:stretch; display:flex; align-items:flex-start; justify-content:center;
+  padding:var(--sp-3) 0 0; margin:0; background:none; border:none; cursor:pointer; color:inherit}
+.food-row .fcheck, .fopen .fcheck{width:26px; height:26px; border-radius:8px; border:1.75px solid var(--muted)}
+.food-row .fcheck::after, .fopen .fcheck::after{left:6px; top:7px; width:11px; height:6px}
+.fopen.got .fcheck{background:var(--ok); border-color:var(--ok)}
+.fopen.got .fcheck::after{transform:rotate(-45deg) scale(1)}
+.f-body{flex:1; min-width:0; display:flex; align-items:flex-start; gap:var(--sp-2); padding:var(--sp-3) 4px var(--sp-3) 0;
+  background:none; border:none; margin:0; color:inherit; font:inherit; text-align:left; cursor:pointer}
+@media (hover:hover){ .f-body:hover{background:var(--bg)} }
+.food-row .f-main{min-width:0}
+.food-row .f-name{font-weight:700}
+.food-row.got .f-name{font-weight:650}
+.food-row .f-amt{color:var(--muted)}
+.food-row .f-amt b{color:var(--ink); font-weight:600}
+.food-row.got .f-amt b{color:var(--muted)}
+.food-row .f-store{font-size:var(--t-caption-min); margin-top:1px}
+.food-row .f-store b, .food-row .f-sale{color:var(--ink-soft); font-weight:650}
+.f-price{flex:0 0 auto; text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:2px}
+.f-price .amt{font-size:var(--t-row)}
+.f-price-s{font-size:var(--t-caption-min); color:var(--muted); font-weight:600; white-space:nowrap}
+.frow.got .f-price .amt{color:var(--ok)}
+.f-chev{flex:0 0 auto; align-self:center; color:var(--faint); font-size:18px}
+/* In the store: a bigger check, the store's product first. */
+.frow.food-row.run .fcheck-hit{flex-basis:64px; min-height:64px; align-items:center; padding:0}
+.frow.food-row.run .fcheck{width:32px; height:32px; border-radius:9px; border-width:2px}
+.frow.food-row.run .fcheck::after{left:8px; top:9px; width:13px; height:7px}
+.r-prod{font-size:var(--t-row); font-weight:700; line-height:1.3}
+.frow.got .r-prod{color:var(--muted); font-weight:600}
+.r-sub b{color:var(--ink); font-weight:650}
+.frow.got .r-sub b{color:var(--muted)}
+
+.fopen{margin:var(--sp-1) 0 var(--sp-2); border:1px solid var(--line); border-radius:var(--r-lg); background:var(--bg);
+  overflow:clip; scroll-margin-top:var(--sp-2)}
+.fo-bar{position:sticky; top:0; z-index:2; display:flex; align-items:center; gap:var(--sp-1); min-height:52px;
+  padding:0 4px 0 0; background:var(--bg); border-bottom:1px solid var(--line-soft)}
+.fopen-bring .fo-bar{padding-left:var(--sp-4)}
+.fo-bar .fcheck-hit{min-height:52px; padding-top:var(--sp-3)}
+.fo-name{flex:1; min-width:0; font-size:var(--t-row); font-weight:750; display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-1) var(--sp-2)}
+.fo-close{flex:0 0 auto; width:44px; height:44px; border-radius:50%; border:none; background:var(--bg-band); color:var(--ink-soft);
+  display:inline-flex; align-items:center; justify-content:center; cursor:pointer}
+.fo-sec{padding:var(--sp-3) var(--sp-4) var(--sp-4); border-bottom:1px solid var(--line-soft)}
+.fo-sec h3{margin:0 0 var(--sp-3); font-size:var(--t-row); font-weight:750; display:flex; justify-content:space-between; align-items:baseline; gap:var(--sp-2); flex-wrap:wrap}
+.fo-sec h3 .of{font-size:var(--t-note); font-weight:550}
+.fo-stepper{display:flex; align-items:center; border:1px solid var(--line); border-radius:var(--r-md); width:max-content; max-width:100%}
+.fo-stepper button{width:52px; height:48px; border:none; background:none; color:var(--ink); font:inherit; font-size:22px; cursor:pointer}
+.fo-stepper .fo-qty{min-width:110px; padding:0 var(--sp-2); text-align:center; font-size:var(--t-sub); font-weight:750; font-variant-numeric:tabular-nums;
+  border-left:1px solid var(--line-soft); border-right:1px solid var(--line-soft); line-height:48px; white-space:nowrap}
+.fo-why{font-family:var(--serif-read); font-style:italic; font-size:var(--t-body-s); color:var(--muted); line-height:1.45; margin:var(--sp-3) 0 0}
+.plist{border:1px solid var(--line); border-radius:var(--r-md); overflow:clip}
+.prow{display:flex; gap:var(--sp-3); align-items:flex-start; padding:var(--sp-3); border-top:1px solid var(--line-soft)}
+.prow:first-child{border-top:none}
+.prow .k{flex:1; min-width:0}
+.prow .t{font-size:var(--t-body-s); font-weight:650}
+.prow .m{font-size:var(--t-caption-min); color:var(--muted); margin-top:2px; line-height:1.4}
+.fo-line{display:block}
+.prow .v{font-size:var(--t-row); font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; text-align:right}
+.prow .v small{display:block; font-size:var(--t-caption-min); color:var(--muted); font-weight:600; margin-top:2px}
+.prow.mine{background:var(--steel-tint)}
+.fo-cap{display:block; margin:var(--sp-3) 0 var(--sp-2); font-size:var(--t-caption-min); font-weight:700; letter-spacing:var(--tracking-1); text-transform:uppercase; color:var(--muted)}
+.fo-paid{width:100%; max-width:none}
+.fo-foot{padding:var(--sp-4); display:flex; flex-direction:column; gap:var(--sp-2)}
+.fo-foot .cta, .fo-foot .mini{width:100%}
+.fo-note{margin:0; font-size:var(--t-note); color:var(--muted); text-align:center}
+.fo-skip{padding:var(--sp-4); text-align:center; border-top:1px solid var(--line-soft)}
+.fo-skip-row{display:flex; justify-content:center; gap:var(--sp-2); flex-wrap:wrap; margin-bottom:var(--sp-2)}
+.fstat-dish{display:block; font-weight:700}
+/* A run's bulk button names the store, and a priced store's name is long. */
+.run-all{max-width:100%; white-space:normal; text-align:left}
+.fstat-tag{display:inline-block; margin-top:4px}

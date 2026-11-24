@@ -25,7 +25,9 @@ test('a chosen caterer replaces the homemade food and remains an unbooked vendor
   const sheet = page.locator('.sheet').last();
   // One food page (owner, 11/24/2026): no Plan/Shop tabs, and the list is always open.
   await sheet.getByRole('button', { name: /Food.*0 of 1 bought/ }).click();
-  const catering = sheet.getByRole('button', { name: /Catering \(the food\)/ });
+  // A row is two buttons since 11/24/2026 (its check, and the rest that opens
+  // it); the line itself is the one that opens.
+  const catering = sheet.getByRole('button', { name: /^Open Catering \(the food\)/ });
   await catering.scrollIntoViewIfNeeded();
   await expect(catering).toBeVisible();
   await expect(sheet).not.toContainText('Main protein');

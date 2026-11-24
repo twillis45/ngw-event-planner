@@ -187,16 +187,21 @@ test('reopened, then unchecked and checked again: the group folds again', async 
   await first.click(); await page.waitForTimeout(300);
   await expect(foodFold(page), 'finished again: it folds again').toBeVisible();
   expect(await groupCount(page, 'Food')).toBe(0);
+  expect(await sheet(page).locator('[data-food-open]').count(), 'the opened item closed with its group').toBe(0);
 });
 
-test('a line\'s tune panel open: finishing the group still folds it', async ({ page }) => {
+// The tune panel became the opened item (owner, 11/24/2026): the same rule
+// holds for an item opened in place.
+test('a line opened in place: finishing the group still folds it', async ({ page }) => {
   await boot(page, seed('e2e-fold-tune', {}));
   await openShopList(page);
   const g = foodGroup(page);
   if (!(await g.locator('.fg-items .frow').count())) await g.locator('.fg-head').click();
-  await g.getByRole('button', { name: /^tune$/ }).first().click();
+  await g.locator('.fg-items .frow .f-body').first().click();
+  await expect(g.locator('[data-food-open]')).toHaveCount(1);
   await page.waitForTimeout(300);
   await checkOffGroup(page, 'Food');
   await expect(foodFold(page)).toBeVisible();
   expect(await groupCount(page, 'Food')).toBe(0);
+  expect(await sheet(page).locator('[data-food-open]').count(), 'the opened item closed with its group').toBe(0);
 });
