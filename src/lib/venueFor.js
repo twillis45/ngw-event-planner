@@ -147,7 +147,10 @@ export function venueFor(event) {
   // "set" (name or city) yet still need a CITY for weather geocoding and maps.
   // The reveal blocker and the shell's city ask both ask THIS, not isSet —
   // they were two of the three hand-copied variants the audit flagged.
-  const needsCityForWeather = isHome && !city;
+  // A ZIP answers it too (11/24/2026): a bare ZIP is stored in venueCity, which
+  // the city gate above refuses (digits), so "at my house in 22150" was saved
+  // and then asked "Add your city." zipOf reads the same record `zip` publishes.
+  const needsCityForWeather = isHome && !city && !zipOf(ev, address);
   // ── THE PRODUCTION-LAYER VERDICT, PUBLISHED (2026-09-18) ─────────────────
   // The 2026-08-14 board ruling split the venue fact in two: the TOWN unblocks
   // travel (weather, shopping, lodging search), the ADDRESS unblocks production
