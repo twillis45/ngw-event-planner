@@ -31,7 +31,7 @@ const stored = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('ng
 const asks = (page) => page.evaluate(() => {
   const ok = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
   const out = [];
-  for (const el of document.querySelectorAll('button, h3, input[aria-label="Venue"]')) {
+  for (const el of document.querySelectorAll('button, h3, input[data-venue-field]')) {
     if (!ok(el)) continue;
     const t = el.tagName === 'INPUT' ? 'venue box' : (el.innerText || '').trim().replace(/\s+/g, ' ');
     if (/^venue box$|name the venue|where is it happening|where is the event|pick the place|add the location/i.test(t)) out.push(t);
@@ -81,9 +81,9 @@ test('saved in one place, every place shows it and none asks again', async ({ pa
   // The Venue sheet, from the section list (the board's duplicate "Name the
   // venue" row is gone — one place to answer it on the board itself).
   await openSectionByName(page, 'Venue');
-  const box = page.locator('.sheet input[aria-label="Venue"]:visible').first();
+  const box = page.locator('.sheet input[data-venue-field]:visible').first();
   await box.click(); await page.keyboard.type('House of Blues Anaheim', { delay: 5 });
-  await box.locator('xpath=..').getByRole('button', { name: 'Save' }).click();
+  await box.locator('xpath=../..').getByRole('button', { name: 'Save' }).click();
   await page.waitForTimeout(800);
   const e = await stored(page);
   expect([e.venue, e.venueKind || 'venue']).toEqual(['House of Blues Anaheim', 'venue']);
@@ -119,5 +119,5 @@ test('the board asks for the venue in one place, not a row and a card', async ({
   await create(page, SAID);
   const rows = await page.locator('.then-fold button').allInnerTexts();
   expect(rows.filter((t) => /name the venue|add the location|pick the place/i.test(t))).toEqual([]);
-  await expect(page.locator('article input[aria-label="Venue"]:visible')).toHaveCount(1);
+  await expect(page.locator('article input[data-venue-field]:visible')).toHaveCount(1);
 });

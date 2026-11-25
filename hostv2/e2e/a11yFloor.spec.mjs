@@ -120,7 +120,11 @@ const NAME_PROBE = () => {
     // off-screen content-visibility:auto section, but a screen reader names it
     // from its DOM text (WebKit full run, 11/17/2026: 261 false findings).
     const t = (el.innerText || el.textContent || '').trim();
-    return !t && !el.getAttribute('aria-label') && !el.getAttribute('aria-labelledby') && !el.getAttribute('title');
+    // A field's <label> names it (the accessible-name rule): since cohesion G
+    // (11/24/2026) every field carries a visible label instead of an aria-label,
+    // so the label's own words count — only when it has words.
+    const labelled = !!(el.labels && [...el.labels].some((l) => (l.innerText || l.textContent || '').trim()));
+    return !t && !labelled && !el.getAttribute('aria-label') && !el.getAttribute('aria-labelledby') && !el.getAttribute('title');
   }).map((el) => `${el.tagName}.${(el.className || '').toString().slice(0, 40)}`);
   return { total: els.length, unnamed };
 };

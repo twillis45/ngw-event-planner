@@ -1801,7 +1801,7 @@ export default function HostShellV2() {
         {/* Labeled, with an example (cohesion G): it was named only by its placeholder. */}
         <label className="field-wrap" style={{ flex: 1, minWidth: 0 }}>
           <span className="field-label">{venueFor(event).needsCityForWeather ? 'Your street, city and state' : 'The place’s name or street address'}</span>
-          <input className="field ex-ph" style={{ maxWidth: 'none', width: '100%' }} placeholder={venueFor(event).needsCityForWeather ? 'For example: 42 Elm Ct, Springfield, VA' : 'For example: Elm Court Hall, or 42 Elm Ct'}
+          <input className="field ex-ph" data-venue-field style={{ maxWidth: 'none', width: '100%' }} placeholder={venueFor(event).needsCityForWeather ? 'For example: 42 Elm Ct, Springfield, VA' : 'For example: Elm Court Hall, or 42 Elm Ct'}
             value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); setPendingPick(null); fetchAddrSugs(e.target.value); }} autoFocus={autoFocus} />
         </label>
         {/* Not lit while there is nothing to save (Wanda audit P1-2). */}
@@ -6559,8 +6559,13 @@ export default function HostShellV2() {
       // the dialog — cycle first<->last, and pull focus back in if it's escaped.
       if (e.key === 'Tab' && el) {
         const nodes = Array.from(el.querySelectorAll(
-          'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
-        )).filter(n => n.offsetWidth > 0 || n.offsetHeight > 0 || n === document.activeElement);
+          // `summary` (cohesion G1): a folded group's head is a tab stop too, so
+          // the trap must count it or Tab walks out past the last one.
+          'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]:not([tabindex="-1"])'
+        )).filter(n => n.offsetWidth > 0 || n.offsetHeight > 0 || n === document.activeElement)
+          // A closed <details> still lays out its contents in Chrome (width, no
+          // tab stop), so they are not stops: only its summary is.
+          .filter(n => { const d = n.closest('details:not([open])'); return !d || (n.tagName === 'SUMMARY' && n.parentElement === d); });
         if (!nodes.length) return;
         const first = nodes[0], last = nodes[nodes.length - 1], a = document.activeElement;
         if (!el.contains(a)) { e.preventDefault(); first.focus(); }

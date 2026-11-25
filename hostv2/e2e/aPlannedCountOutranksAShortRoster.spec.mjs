@@ -37,7 +37,7 @@ const seed = async (page, ev) => {
 const openSection = (page, label) => openSectionByName(page, label, { settle: 800 });
 const sheetText = (page) => page.evaluate(() => (([...document.querySelectorAll('[role=dialog], .sheet')].pop() || document.body).innerText || '').replace(/\s+/g, ' '));
 const ask = async (page, q) => {
-  await page.getByLabel('Ask a question about your plan').fill(q);
+  await page.getByLabel('Your question').fill(q);
   await page.getByRole('button', { name: 'Ask', exact: true }).click();
   await page.waitForTimeout(1200);
   return sheetText(page);

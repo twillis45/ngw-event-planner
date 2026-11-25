@@ -44,7 +44,7 @@ test('the vendor card carries the field the sentence promises', async ({ page })
   await boot(page);
   await page.locator('.vcard').first().click();
   await settled(page);
-  const field = page.locator('.vc-more [aria-label="Vendor email"]').first();
+  const field = page.locator('.vc-more input[type="email"]').first();
   await expect(field).toBeVisible();
   await field.fill('not-an-email');
   await settled(page);

@@ -93,8 +93,8 @@ for (const c of CASES) {
       await boot(page, seed('e2e-door-ask-' + c.want, { foodChoices: c.choices }));
       await openSectionByName(page, /^Ask No Guesswork/);
       await settled(page);
-      await page.getByLabel('Ask a question about your plan').fill('How much food do I need?');
-      await page.getByLabel('Ask a question about your plan').press('Enter');
+      await page.getByLabel('Your question').fill('How much food do I need?');
+      await page.getByLabel('Your question').press('Enter');
       const go = page.locator('.sheet').last().locator('.brow .actions-row button.mini').first();
       await expect(go).toBeVisible();
       await go.click();

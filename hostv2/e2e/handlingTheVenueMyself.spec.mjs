@@ -113,9 +113,9 @@ test('naming the venue after parking it ends the parking', async ({ page }) => {
   await openBoard(page);
   await tapText(page, 'I.ll sort this');
   await page.waitForTimeout(1200);
-  const box = page.locator('article input[aria-label="Venue"]:visible').first();
+  const box = page.locator('article input[data-venue-field]:visible').first();
   await box.click(); await page.keyboard.type('House of Blues Anaheim', { delay: 5 });
-  await box.locator('xpath=..').getByRole('button', { name: 'Save' }).click();
+  await box.locator('xpath=../..').getByRole('button', { name: 'Save' }).click();
   await page.waitForTimeout(1200);
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]')[0] || {});
   expect(stored.venue).toBe('House of Blues Anaheim');
@@ -145,9 +145,9 @@ test('past the stay window, an open venue still leads — the stay comes after',
 
 test('once a venue is typed, the stay leads as before', async ({ page }) => {
   await openBoard(page, 209);
-  const box = page.locator('article input[aria-label="Venue"]:visible').first();
+  const box = page.locator('article input[data-venue-field]:visible').first();
   await box.click(); await page.keyboard.type('La Fonda on the Plaza', { delay: 5 });
-  await box.locator('xpath=..').getByRole('button', { name: 'Save' }).click();
+  await box.locator('xpath=../..').getByRole('button', { name: 'Save' }).click();
   await page.waitForTimeout(1200);
   await settled(page);
   const h2 = (await page.locator('h2:visible').first().innerText()).trim();

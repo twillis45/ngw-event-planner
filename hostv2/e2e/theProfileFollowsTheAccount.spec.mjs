@@ -237,7 +237,7 @@ test.describe('preferences follow the account', () => {
 test.describe('Ask history is kept', () => {
   const openAsk = async (page) => {
     await page.locator('.srail-row', { hasText: 'Ask' }).first().click({ timeout: 10000 });
-    await expect(page.getByLabel('Ask a question about your plan')).toBeVisible({ timeout: 8000 });
+    await expect(page.getByLabel('Your question')).toBeVisible({ timeout: 8000 });
   };
   const QUESTION = 'How much food do I need?';
 
@@ -249,7 +249,7 @@ test.describe('Ask history is kept', () => {
     await pa.goto(BASE + '?elegant=1');
     await settle(pa);
     await openAsk(pa);
-    await pa.getByLabel('Ask a question about your plan').fill(QUESTION);
+    await pa.getByLabel('Your question').fill(QUESTION);
     await pa.getByRole('button', { name: 'Ask', exact: true }).click();
     await pa.waitForTimeout(1500);
     const history = pa.locator('[data-ask-history]');

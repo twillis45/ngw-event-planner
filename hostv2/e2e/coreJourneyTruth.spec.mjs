@@ -62,7 +62,7 @@ test('the phone directory can change an already-set venue using the existing edi
   await boot(page, base());
   await openSectionByName(page, 'Venue');
   const sheet = page.getByRole('dialog', { name: 'Venue', exact: true });
-  await sheet.getByRole('textbox', { name: 'Venue', exact: true }).fill('New Community Center');
+  await sheet.locator('input[data-venue-field]').fill('New Community Center');
   await sheet.getByRole('button', { name: 'Save', exact: true }).first().click();
   expect((await saved(page)).venue).toBe('New Community Center');
 });
