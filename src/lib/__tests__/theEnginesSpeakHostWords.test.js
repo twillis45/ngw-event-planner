@@ -17,6 +17,7 @@ import { eventPlan, _selectEventNextActionInner } from '../../CommandCenter';
 import { buildExperienceContext } from '../experienceContext';
 import { resolveEventIdentity } from '../eventIdentityEngine';
 import { WANDA_GOLD_EVENT } from '../../data/wandaGoldEvent';
+import { computeDayAlerts } from '../dayAlerts';
 
 const RULES = [...HOST_WORDS.banned, HOST_WORDS.brokenTemplate]
   .map((b) => ({ word: b.word, re: new RegExp(b.re, b.flags == null ? 'i' : b.flags) }));
@@ -70,6 +71,41 @@ describe('the board’s engine copy is in host words', () => {
       });
     }
   }
+});
+
+// THE DAY'S ALERTS ARE ENGINE COPY TOO (live check of 19841da0, 11/25/2026):
+// The Day said "2 haven't RSVP'd" while Guests & invite said "2 haven't
+// replied". The reply alert shows only on the day, for a guest list with
+// replies still out, so it needs its own plan: one guest said yes, one maybe,
+// two never answered.
+const ON_THE_DAY = {
+  id: 'cohesion-day-list', name: 'Casey’s Garden Party', type: 'Birthday',
+  date: '2027-03-20', startTime: '18:00', startTimeSource: 'host',
+  venue: 'Home', venueKind: 'home', venueAddress: '42 Elm Ct, Springfield, VA 22150',
+  guestMode: 'list', guestEstimate: 4, guestCountSource: 'host',
+  guests: [{ id: 'g1', name: 'Ada Pine', rsvp: 'Yes' }, { id: 'g2', name: 'Ben Oak', rsvp: 'Maybe' },
+    { id: 'g3', name: 'Cy Fern', rsvp: '' }, { id: 'g4', name: 'Di Ash' }],
+  vendors: [], budget: [], timeline: [],
+};
+
+describe('The Day’s alerts are in host words', () => {
+  test.each([...EVENTS, ['a guest list on its day', ON_THE_DAY]])('%s', (label, ev) => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(`${ev.date}T15:00:00`));
+    const alerts = computeDayAlerts(ev) || [];
+    if (ev === ON_THE_DAY) expect(alerts.map((a) => a.id)).toContain('rsvp-pending'); // premise
+    const found = [];
+    for (const al of alerts) for (const k of ['headline', 'move', 'text']) found.push(...offenders(`dayAlert ${al.id}.${k}`, al[k]));
+    expect(found).toEqual([]);
+  });
+
+  test('one guest, one verb: "1 hasn’t replied"', () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2027-03-20T15:00:00'));
+    const one = { ...ON_THE_DAY, guests: [ON_THE_DAY.guests[0], ON_THE_DAY.guests[3]] };
+    const a = (computeDayAlerts(one) || []).find((x) => x.id === 'rsvp-pending');
+    expect(a && a.headline).toBe('1 hasn’t replied');
+  });
 });
 
 describe('a step’s title keeps its whole quote', () => {

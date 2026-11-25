@@ -82,6 +82,11 @@
       "sourceRe": "\\bR[oO]S\\b",
       "sourceFlags": "",
       "source": true
+    },
+    {
+      "word": "RSVP'd",
+      "re": "\\bRSVP['’]?(d|ed)\\b",
+      "why": "Owner ruling 11/20/2026: the host word is \"replied\" (\"Nudge the N who haven't replied\"). Live check of 19841da0: The Day said \"2 haven't RSVP'd\" beside Guests & invite's \"2 haven't replied\"."
     }
   ],
   "brokenTemplate": {

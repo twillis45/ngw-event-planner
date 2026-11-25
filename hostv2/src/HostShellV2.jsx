@@ -71,7 +71,7 @@ import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — 
 import { boardDecisionND, foodDecisionND, blockerDecisionND, foodPanelQuestion, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
-import { rsvpHasResponded } from '@app/lib/rsvp';
+import { rsvpHasResponded, notRepliedYet } from '@app/lib/rsvp';
 import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, rainPlanOptions, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, travelHazard, guestTravelMessage } from '@app/lib/weather';
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
@@ -28663,10 +28663,10 @@ export default function HostShellV2() {
                     // when the count is 0.
                     : yes.length === 0
                       ? (gcr && gcr.pending > 0
-                        ? 'no yes replies yet · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t replied' : ' haven’t replied')
+                        ? 'no yes replies yet · ' + notRepliedYet(gcr.pending)
                         : 'no yes replies yet — everyone’s answered')
                       : (gcr && gcr.pending > 0
-                        ? 'said yes so far · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t replied' : ' haven’t replied') + tail
+                        ? 'said yes so far · ' + notRepliedYet(gcr.pending) + tail
                         : 'said yes — the list has settled' + (planLbl ? ' · planning for ' + planLbl : bandLbl ? ' · likely ' + bandLbl + ' on the day' : ''));
                 } else {
                   n = Number(guests) || 0;

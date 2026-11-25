@@ -17,6 +17,7 @@ import { effectiveDone } from './taskEngine';
 import { showsReplyTracking } from './guestMode';
 import { isEventDay } from './dates';
 import { taskIsOverdue } from './taskLead';
+import { notRepliedYet } from './rsvp';
 
 // Time-string → minutes-since-midnight. Contract (exported so both shells and
 // tests read the same parser): 24-hour "HH:MM" → h*60+m; falsy input → null;
@@ -113,7 +114,7 @@ export function computeDayAlerts(event, opts = {}) {
   const yesCount = (event.guests || []).filter(g => g.rsvp === 'Yes').length;
   const pendingRsvp = (event.guests || []).filter(g => g && g.name && (!g.rsvp || g.rsvp === 'Pending' || g.rsvp === 'Maybe')).length;
   if (isToday(event.date) && pendingRsvp > 0 && showsReplyTracking(event))
-    push({ id: 'rsvp-pending', tier: 'warning', askKind: 'rsvp', headline: `${pendingRsvp} haven't RSVP'd`, move: yesCount > 0 ? `Headcount may shift — text them, or plan for ${yesCount} to be safe.` : `Headcount may shift — text them so you can plan portions.`, navTo: 'Guests' });
+    push({ id: 'rsvp-pending', tier: 'warning', askKind: 'rsvp', headline: notRepliedYet(pendingRsvp), move: yesCount > 0 ? `Headcount may shift — text them, or plan for ${yesCount} to be safe.` : `Headcount may shift — text them so you can plan portions.`, navTo: 'Guests' });
 
   // "Still open" must read the SAME done-truth every other what's-left surface uses:
   // a task the host never ticked but that real event state proves handled (effectiveDone)
