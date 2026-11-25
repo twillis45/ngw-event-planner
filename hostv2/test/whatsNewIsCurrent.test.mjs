@@ -80,6 +80,24 @@ describe('the guard: never older than the last release', () => {
 });
 
 describe('on screen', () => {
+  // THE TIME OF THE RELEASE (owner, 11/25/2026: "What's new should carry time
+  // of the release"). An entry names the last release it covers (`through`);
+  // the build knows each release's time (its tag, or for the release being
+  // built, the build itself). Shown in the host's own zone. An entry whose
+  // release time isn't known keeps its date alone: never a made-up time.
+  it('each entry carries the time of its release, in the host\'s zone', () => {
+    const list = [
+      { date: '2026-11-24', through: 'v2026.11.24.11', headline: 'See the full invite', bullets: ['One.'] },
+      { date: '2026-11-23', headline: 'Older', bullets: ['Two.'] },
+    ];
+    const html = renderToStaticMarkup(createElement(WhatsNewList, {
+      entries: list, releaseTimes: { 'v2026.11.24.11': '2026-11-25T04:44:25Z' }, timeZone: 'America/New_York',
+    }));
+    expect(html).toContain('Nov 24, 2026 · 11:44 PM EST');
+    expect(html).toContain('Nov 23, 2026<');
+    expect(html).not.toMatch(/Nov 23, 2026 ·/);
+  });
+
   it('the version line is a closed button until tapped, then the list', () => {
     const closed = renderToStaticMarkup(createElement(VersionAndWhatsNew, { build: { commit: 'abc1234def', builtAt: null, version: '2026.11.22.3' } }));
     expect(closed).toContain('data-build-line');
