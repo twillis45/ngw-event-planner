@@ -582,6 +582,10 @@ async function runViewport(browser, vp, runDir, meta) {
         Object.assign(t, await boardTexts(page));
       }
       t.screen = await page.evaluate(() => { const h = document.querySelector('.escreen.on') || document.querySelector('.app'); return h ? h.innerText.replace(/\s+/g, ' ').trim().slice(0, 300) : null; });
+      t.headings = await page.evaluate(() => { const h = document.querySelector('.escreen.on') || document.querySelector('.app');
+        return h ? [...h.querySelectorAll('h2, h3, h4, [role=heading], .sec-label, .eyebrow, .cap')].filter((e) => e.getClientRects().length)
+          .map((e) => e.innerText.replace(/\s+/g, ' ').trim()).filter((x) => x && x.length < 60).slice(0, 14) : []; });
+      t.schedule = await page.evaluate(() => /schedule/i.test((document.querySelector('.app') || document.body).innerText));
       t.lit = await litButtons(page);
       if (t.stage !== want) throw new Error(`stage is ${t.stage}, wanted ${want}`);
       return t;
