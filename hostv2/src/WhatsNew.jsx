@@ -15,12 +15,28 @@ const fmtDate = (iso) => {
   return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 };
 
-export function WhatsNewList({ entries = ENTRIES }) {
+// When each release went out, baked by vite.config.js from the release tags
+// (owner, 11/25/2026). Empty in a build without tags.
+// eslint-disable-next-line no-undef
+const RELEASE_TIMES = typeof __NGW_RELEASE_TIMES__ !== 'undefined' ? __NGW_RELEASE_TIMES__ : {};
+
+// "Nov 24, 2026 · 11:44 PM EST": the release's own date and time, in the
+// host's zone. Without a known release time, the entry's date alone.
+const fmtWhen = (e, releaseTimes, timeZone) => {
+  const at = e.through && releaseTimes[e.through] ? new Date(releaseTimes[e.through]) : null;
+  if (!at || !Number.isFinite(at.getTime())) return fmtDate(e.date);
+  const opts = timeZone ? { timeZone } : {};
+  const day = at.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', ...opts });
+  const time = at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZoneName: 'short', ...opts });
+  return day + ' · ' + time;
+};
+
+export function WhatsNewList({ entries = ENTRIES, releaseTimes = RELEASE_TIMES, timeZone }) {
   return (
     <div className="whats-new" data-whats-new-list>
       {entries.map((e, i) => (
         <section key={i} className="whats-new-entry">
-          <div className="grounding">{fmtDate(e.date)}</div>
+          <div className="grounding">{fmtWhen(e, releaseTimes, timeZone)}</div>
           <h3>{e.headline}</h3>
           <ul>{e.bullets.map((b, j) => <li key={j}>{b}</li>)}</ul>
         </section>
