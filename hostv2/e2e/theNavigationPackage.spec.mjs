@@ -189,7 +189,9 @@ test.describe('phone 390x844', () => {
     const lit = segs.filter((s) => s.state === 'now');
     expect(lit, 'one lit segment, the current part').toHaveLength(1);
     for (const s of segs.filter((x) => x.state !== 'now')) expect(lit[0].h, 'the lit segment is thicker').toBeGreaterThan(s.h);
-    await expect(page.locator('[data-pp-line]')).toHaveText('3 of 6 handled · What’s counted ›');
+    // It opens What's counted in place (cohesion F3, 11/24/2026), so its glyph
+    // is the disclosure ▾, not the navigation ›.
+    await expect(page.locator('[data-pp-line]')).toHaveText('3 of 6 handled · What’s counted ▾');
     const txt = await boardText(page);
     expect(txt).not.toMatch(/\bNOW\b/);
     expect(txt).not.toMatch(/this one first/i);

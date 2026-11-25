@@ -64,18 +64,20 @@ import { parseVendorReply, isAiProxyConfigured, extractDocumentAI } from '@app/l
 import { buildReplyDiff, buildPatch, replyLogEntry } from '@app/lib/vendorReplyParse';
 import { positiveAttention } from '@app/lib/positiveAttention';
 import { isSolemnEvent } from '@app/lib/solemn';
-import { heroAskFor, heroRecord, foodCallsAsk } from '@app/lib/heroAsk'; // the ASK vocabulary — see src/lib/heroAsk.js
+import { heroAskFor, heroRecord, foodCallsAsk, asksForTheVenue } from '@app/lib/heroAsk'; // the ASK vocabulary — see src/lib/heroAsk.js
 // ONE selected decision across the hero, the panel and the CTA — see src/lib/selectedAction.js
 import { resolveSelection, decisionIdentityFor } from '@app/lib/selectedAction';
 import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — see src/lib/decisionEvidence.js
 import { boardDecisionND, foodDecisionND, blockerDecisionND, foodPanelQuestion, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
+import { rsvpHasResponded } from '@app/lib/rsvp';
 import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, rainPlanOptions, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, travelHazard, guestTravelMessage } from '@app/lib/weather';
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
-import { inviteRecipients, inviteSubjectAndBody, markInvited } from '@app/lib/inviteBatch';
-import { nudgeRecipients, nudgeCount, markNudged, nudgeRowLine, nudgeDeliveryFor, nudgeTextBody } from '@app/lib/replyNudge';
+import { inviteRecipients, inviteSubjectAndBody, markInvited, greetingName } from '@app/lib/inviteBatch';
+import { nudgeRecipients, nudgeCount, markNudged, nudgeRowLine, nudgeDeliveryFor, nudgeTextBody, wasInvited, NUDGE_GAP_DAYS } from '@app/lib/replyNudge';
+import { LINK_PLACEHOLDER, savedInviteDraft, inviteDraftRecord, withLink, lineChange, swapPageLine, textMessageBody, sentSnapshot, draftStatus, plainText, sentRecipients } from '@app/lib/inviteMessageDraft';
 import { inviteGaps } from '@app/lib/inviteGaps';
 import { inviteCardModel, inviteCardKey } from '@app/lib/inviteCard';
 import SignInCheck, { signInCheckOn } from '@app/components/SignInCheck';
@@ -113,7 +115,7 @@ function rankReasonForV2(row) {
 // low|simple|light as easy, where this copy called all five moderate — a divergence waiting
 // for the first playbook to use one of those words. The surface now reads the engine.
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL, rideStatusOf, nextRideStatus, rideFieldsFor, RIDE_STATUS_LABEL, arrivalClusters } from '@app/lib/travelPlan';
-import { buildSeatingPlan, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, tableCountBasis, MEAL_SHORT } from '@app/lib/seatingPlan';
+import { buildSeatingPlan, seatingClaim, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, tableCountBasis, MEAL_SHORT } from '@app/lib/seatingPlan';
 import { costSharingSummary } from '@app/lib/costSharing';
 import { answerPlanQuestion } from '@app/lib/askPlan';
 import { askExchange, appendAskExchange, attachBroaderLook } from '@app/lib/askHistory';
@@ -175,7 +177,7 @@ import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, readEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
 import { deleteAccount, isAccountDeletionAvailable } from '@app/lib/api/account';
-import { effectiveDone, factsATickRecords, invitesOut, timelineStepResolved, TRIP_DETAILS_DRAFT } from '@app/lib/taskEngine';
+import { effectiveDone, factsATickRecords, invitesOut, timelineStepResolved, checklistProgress, TRIP_DETAILS_DRAFT } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
@@ -206,7 +208,7 @@ import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
 import { expectedFromPlanned, likelyAttendancePhrase } from '@app/lib/attendanceModel';
-import { estimateTotalRange, notIncludedFor, notIncludedSummary } from '@app/lib/budgetEstimator';
+import { estimateTotalRange, notIncludedFor } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
 import { venueLeadsStay } from '@app/lib/venueLeadsStay'; // owner ruling 11/20/2026: the venue leads the stay
 import { dietRowsFor, anyDietFlagged, dietCountsFor, guestDietCounts, mealTally } from '@app/lib/dietRows';
@@ -220,6 +222,10 @@ import { rowStatus, sourcingSettled } from '@app/lib/rowStatus';
 import { migrateBringing, foodSheetKind, bringingRows, bringingTally as bringingTallyOf } from '@app/lib/foodBringing';
 import { foodOwnerMap, isNamedBringer, openFoodChoices, dietaryNotedReceipt, menuChoicesTally, menuBoardRowSub } from '@app/lib/playbooks';
 import InviteToTheList from './InviteToTheList';
+import ShareInviteCard from './ShareInviteCard';
+import InviteSentRecord from './InviteSentRecord';
+import MessagePreview from './MessagePreview';
+import { publicHostPhotoUrl } from '@app/lib/api/hostPhoto';
 import InviteDesignSheet from './InviteDesignSheet.jsx';
 import { inviteStyleLabel } from '@app/lib/inviteTone';
 import HostPhotoRow from './HostPhotoRow.jsx';
@@ -299,7 +305,7 @@ import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow, cheaperBarOption } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence, placeIsOutdoors, outdoorsGuess } from '@app/lib/placeIntelligence';
-import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote, planHeadroomLine, expectedHeadroom, afterSpendVerdict, budgetProposalCta } from '@app/lib/budgetCopy';
+import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planHeadroomLine, expectedHeadroom, afterSpendVerdict, budgetProposalCta, budgetAskCopy, notIncludedLine } from '@app/lib/budgetCopy';
 import { CRAB_REFERENCE_MARKET } from '@app/lib/crabServing';
 import { priceSourceNote } from '@app/lib/priceBasis';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
@@ -365,7 +371,7 @@ import { tripDays, celebrationNight, celebrationTitle, celebrationPlace, celebra
 import { celebrationApplies, tripFoodMoney, aroundSummary, dinnerParts, RESTAURANT_DINNER } from '@app/lib/tripFood';
 import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
 import { mayExhale, calmVetoFor } from '@app/lib/exhaleGate';
-import { checklistRouteFor } from '@app/lib/taskRoute';
+import { checklistRouteFor, actionRoute } from '@app/lib/taskRoute';
 import { editorKindFor, isBalanceDueAction, stepRowIdOf } from '@app/lib/heroEditor';
 import { stepIsASend, riskTargetFor, stepTargetFor } from '@app/lib/stepTarget';
 import { withSettled, withoutSettled, unsettledActions } from '@app/lib/settledAsks';
@@ -459,6 +465,8 @@ import EventHashtag from './EventHashtag.jsx';
 import { isGuestMessagesApiConfigured, fetchGuestThreads } from '@app/lib/api/guestMessages';
 import { isGuestPhotosApiConfigured, fetchEventGuestPhotos } from '@app/lib/api/guestPhotos';
 import { questionsWaiting, questionsWaitingLine, photosWaitingLine } from '@app/lib/guestInbox';
+// The host's word for the day's plan (owner: "Host doesn't use run of show language", 11/24/2026).
+import { SCHEDULE, THE_SCHEDULE, SCHEDULE_WORD } from '@app/lib/scheduleWords';
 
 
 const fmt = formatCurrency;
@@ -519,14 +527,13 @@ function VendorReplyParserV2({ vendor, event, writeVendor, signedIn, onSignIn })
           {onSignIn && <button className="mini" onClick={onSignIn}>Sign in</button>}
         </div>
       ) : (<>
-      <div style={{ fontSize: 12, color: 'var(--carbon-muted)', marginBottom: 8, lineHeight: 1.5 }}>
+      <label htmlFor={'vreply-' + (vendor && vendor.id)} style={{ display: 'block', fontSize: 12, color: 'var(--carbon-muted)', marginBottom: 8, lineHeight: 1.5 }}>
         Paste their email or text. We’ll pull out times, contacts, counts, and payment status to review; nothing saves until you apply it.
-      </div>
-      <label className="field-wrap"><span className="field-label">Their message, pasted</span>
-      <textarea className="field ex-ph" rows={3}
+      </label>
+      <textarea id={'vreply-' + (vendor && vendor.id)} className="field ex-ph" rows={3}
         style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 10px' }}
         placeholder="For example: We'll arrive at 2pm, deposit received, final count 85. Day-of contact Dana, 301-555-0134."
-        value={replyText} onChange={e => setReplyText(e.target.value)} /></label>
+        value={replyText} onChange={e => setReplyText(e.target.value)} aria-label="Paste the vendor's message" />
       <div className="actions-row" style={{ marginTop: 8, alignItems: 'center', gap: 8 }}>
         <button className="mini" onClick={analyze} disabled={busy || !replyText.trim()}>{busy ? 'Reading…' : 'Read the message'}</button>
         {err && err !== 'signed-out' && <span className="warn-note" style={{ fontSize: 12 }}>{err}</span>}
@@ -1247,6 +1254,10 @@ export default function HostShellV2() {
       // The page's crest (InviteV2 markUrlFor): the event's artwork unless the host turned it off.
       const crestFile = ev.inviteCrest === 'off' ? null : eventArtworkFile(ev);
       if (crestFile) model.crest = import.meta.env.BASE_URL + crestFile;
+      // Her photo (owner, 11/24/2026), by the public route the invite page reads;
+      // its version is in the URL, so a changed photo is a new picture.
+      const photoUrl = publicHostPhotoUrl(ev.rsvpCode || ev.id, (profile && profile.hostPhoto) || null);
+      if (photoUrl) model.photo = photoUrl;
       const key = inviteCardKey(model);
       const m = inviteCardRef.current;
       if (m[ev.id] && m[ev.id].key === key) return m[ev.id].p;
@@ -3188,11 +3199,29 @@ export default function HostShellV2() {
     decidingRef.current = true;
     try { nd.settle(v); } finally { decidingRef.current = false; }
   };
-  const renderDecision = (nd) => {
+  // `opts.lit` (the board's hero only): our pick is also said as the board's
+  // one lit button, "Go with <the pick>", directly under its row (cohesion F1,
+  // owner 11/24/2026; UX_11 rule 1). Sheets keep their own lit button.
+  const renderDecision = (nd, opts = {}) => {
     if (!nd || !Array.isArray(nd.options) || !nd.options.length) return null;
     const proposedOpt = nd.proposed ? nd.options.find(o => o.value === nd.proposed.value) : null;
+    const litPick = !!(opts.lit && proposedOpt);
+    const goWith = (label) => {
+      // The option's head ("Drop-off catering / buffet" says "drop-off catering"),
+      // as the owner-approved render reads.
+      const t = String(label || '').replace(/\s*\/.*$/, '').trim();
+      return 'Go with ' + (/^[A-Z][a-z]/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t);
+    };
     const alts = proposedOpt ? nd.options.filter(o => o !== proposedOpt) : nd.options;
     const open = decDiscloseId === nd.id;
+    // THE ONE DISCLOSURE CONTROL (ruling A, 2026-07-30). It toggles
+    // decDiscloseId IN PLACE — it settles nothing and routes nowhere — so it
+    // wears the disclosure triangle (▸ closed, ▾ open), never a navigation
+    // glyph, and no count (the rows it reveals carry their own). Defined once;
+    // with a lit pick (F1) it shares the "Go with …" row.
+    const disc = alts.length > 0 ? (open
+      ? <button className="decopt-disc" onClick={() => setDecDiscloseId(null)}>Other ways  ▾</button>
+      : <button className="decopt-disc" onClick={() => setDecDiscloseId(nd.id)}>Other ways  ▸</button>) : null;
     const optRow = (o, isPick) => (
       <button key={o.value} className={'decopt' + (isPick ? ' pick' : '')} onClick={() => decide(nd, o.value)}>
         <span className="decopt-main">
@@ -3281,29 +3310,28 @@ export default function HostShellV2() {
             answer is the drink lines the plan buys, so "nothing else changes"
             would be false there. Nor after "which course does the caterer
             bring?" (owner, 11/23/2026): its answer leaves the shopping list. */}
-        <p className="decopts-lead">Tap one to settle it — {String(nd.id || '').endsWith(BAR_COVER_ID)
+        {/* With a lit pick (F1) the lead says which row is ours and what the
+            others do; without one it names the act as before. */}
+        <p className="decopts-lead">{litPick ? 'Our pick is first. Tap another to choose it instead — ' : <>Tap one to settle it — </>}{String(nd.id || '').endsWith(BAR_COVER_ID)
           ? 'the drinks line in your budget moves to match.'
           : String(nd.id || '').endsWith(CATERED_COURSE_ID) ? 'that course comes off your shopping list.' : 'nothing else changes.'}</p>
         {proposedOpt ? (
           <>
             {optRow(proposedOpt, true)}
-            {alts.length > 0 && (open ? (
-              <>
-                <button className="decopt-disc" onClick={() => setDecDiscloseId(null)}>Other ways  ▾</button>
-                {alts.map(o => optRow(o, false))}
-              </>
-            ) : (
-              /* RULING A (2026-07-30). Two fixes, both about telling the truth:
-                 • NO GLYPH. This handler toggles decDiscloseId IN PLACE — it settles
-                   nothing and routes nowhere, so a `›` was false navigation under the
-                   standing rule (render →/› ONLY when the handler routes). `▸` is a
-                   disclosure triangle, the closed twin of the `▾` this same control
-                   wears when open, so the two states now read as one control.
-                 • NO COUNT. The rows it reveals carry their own number, and the count
-                   here collided with the sibling-bundle disclosure's identical "3" —
-                   two grey links a few px apart both offering "3" different things. */
-              <button className="decopt-disc" onClick={() => setDecDiscloseId(nd.id)}>Other ways  ▸</button>
-            ))}
+            {/* The lit act and "Other ways" share one row (F1): the primary and
+                its secondary, so the tall iPad's first screen still ends above
+                its bar. They wrap to two lines where the row is too narrow.
+                RULING A (2026-07-30) holds for `disc` above: a disclosure
+                triangle, never a navigation glyph, and no count. */}
+            {litPick ? (
+              <div className="decopt-acts">
+                <button type="button" className="cta decopt-go" data-pick-go onClick={() => decide(nd, proposedOpt.value)}>
+                  {goWith(proposedOpt.label)}
+                </button>
+                {disc}
+              </div>
+            ) : disc}
+            {open && alts.map(o => optRow(o, false))}
           </>
         ) : (
           // Ask-mode: a genuine either/or — every option an equal row, no faked pick.
@@ -4771,6 +4799,7 @@ export default function HostShellV2() {
   // tap did, or jump straight to "Confirmed"). This opens an explicit picker of
   // the whole ladder; the pill toggles it, a chip sets the status directly.
   const [statusPickFor, setStatusPickFor] = useState(null); // vendor id whose picker is open
+  const [vendorReplyOpen, setVendorReplyOpen] = useState(null); // vendor id whose paste-their-reply box is open
   // (rsvpPickFor retired 2026-08-07: the reply picker lives in the guest's own
   // disclosure now, so `guestOpen` is the only open/closed state for that row.)
   const setVendorStatus = (v, status) => {
@@ -4900,8 +4929,8 @@ export default function HostShellV2() {
       const gate = briefAllowed(event, v.id);
       if (!gate.allowed) {
         toast(gate.reason === 'second-vendor'
-          ? 'Your free brief went to your first vendor — the pass unlocks sharing with every vendor on this event.'
-          : 'Sharing vendor briefs on this event takes the One-Event Pass.');
+          ? 'Sending the details is free for your first vendor — the pass unlocks it for every vendor on this event.'
+          : 'Sending vendors the details on this event takes the One-Event Pass.');
         setSheet({ kind: 'pass' });
         return;
       }
@@ -5853,6 +5882,11 @@ export default function HostShellV2() {
   const [lens, setLens] = useState('all');
   const lensSet = [...new Set(queue.map(a => DOMAIN_LENS[a.domain] || 'Plan'))];
   const show = a => lens === 'all' || (DOMAIN_LENS[a.domain] || 'Plan') === lens;
+  // TODAY'S LIST ON THE DAY (cohesion batch A, owner-approved renders,
+  // 11/24/2026). On the event day the list under the run-of-show hero holds
+  // only what is due today and anything critical; the rest of the planning
+  // folds behind one row. A critical card never folds.
+  const onTheDayList = (a) => !!a && (a.level === 'critical' || (a.dueInDays != null && Number(a.dueInDays) === 0));
   // Queue presentation state (wave-6 hero): the "+N more" expander past the
   // 6-card cap, and per-bundle in-place expansion. Both reset per event.
   const [queueOpen, setQueueOpen] = useState(false);
@@ -5996,6 +6030,10 @@ export default function HostShellV2() {
   const [stayEdit, setStayEdit] = useState(null);
   // The call whose ⋯ is open in Calls to make (cohesion G #59).
   const [decMore, setDecMore] = useState(null);
+  // Where What's counted opens: the slot under its door's line (cohesion F3).
+  const [wcSlot, setWcSlot] = useState(null);
+  // Who's confirmed: the groups opened past their first three rows on the phone (F6).
+  const [whoMore, setWhoMore] = useState({});
   const [ttFoldSlot, setTtFoldSlot] = useState(null);
   // The header's weather slot (owner ruling 11/23/2026): on a tall iPad the
   // weather pill rides the date line instead of floating over the board.
@@ -7378,6 +7416,8 @@ export default function HostShellV2() {
   const [draftBody, setDraftBody] = useState(null); // non-null = host's own edit
   // The invite or nudge block holds the draft sheet's one lit button (11/21/2026).
   const [draftListLead, setDraftListLead] = useState(false);
+  // The send confirm's folded message: "Show all" (owner, 11/24/2026: render s2-4).
+  const [draftMsgOpen, setDraftMsgOpen] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false); // slice (b): one send at a time
   // One checkout at a time: a second tap on a slow network opened a second
   // Stripe session (Nielsen re-run N7, 2026-11-02).
@@ -7395,8 +7435,9 @@ export default function HostShellV2() {
   const openDraft = (title, d, queue, opts) => {
     const body = d ? (typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n')) : '';
     if (!body.trim()) { toast('Nothing to draft yet — add a few more details first.'); return; }
-    const kept = draftEditsRef.current[draftEditKey(title)];
+    const kept = draftEditsRef.current[draftEditKey((opts && opts.editTitle) || title)];
     setDraftBody(kept != null ? kept : null);
+    setDraftMsgOpen(false);
     // Optional queue: remaining {title, body, name} items for "message
     // everyone" flows (one separate draft per person, reviewed/sent one at a
     // time through the SAME real handoffs below — never a silent bulk send).
@@ -7423,6 +7464,18 @@ export default function HostShellV2() {
       // posted on every guest's invite (HostUpdates' one post path).
       postsToInvite: !!(opts && opts.postsToInvite),
       voices: (opts && opts.voices) || null,
+      // THE INVITE MESSAGE (owner, 11/24/2026: renders s2-3 to s2-6). `mode`:
+      // 'save' (Invite message: the words, a preview, Save draft, no hand-offs),
+      // 'confirm' (Invite your guest list: who gets what, then the send),
+      // 'copy' (Invite text: the hand-offs, Copy lit). `editTitle` keys her
+      // edits, so the invite's words are the same whichever door opened it.
+      mode: (opts && opts.mode) || null,
+      heading: (opts && opts.heading) || null,
+      editTitle: (opts && opts.editTitle) || null,
+      // No reply link (owner, 11/24/2026): nothing that carries the link can go
+      // out until "Try again" brings it. Editing and saving the words stay.
+      linkMissing: !!(opts && opts.linkMissing),
+      linkReason: (opts && opts.linkReason) || null,
       subject: (d && typeof d === 'object' && d.subject) || '',
       from: prev ? (prev.kind === 'draft' ? prev.from || null : prev) : null,
     }));
@@ -7497,7 +7550,10 @@ export default function HostShellV2() {
   // with nothing on screen, so a host tapped again and again. A second tap
   // while it runs does nothing (null), and the notice names the wait.
   const rsvpChecking = useRef(false);
-  const verifiedRsvpUrl = async () => {
+  // `withReason`: answers { url, reason } instead of the bare url, so a draft can
+  // say why its link is missing ('' url when not ready; null while a check runs).
+  const verifiedRsvpUrl = async (opt) => {
+    const why = !!(opt && opt.withReason);
     if (rsvpChecking.current) return null;
     rsvpChecking.current = true;
     toast('Checking your invite link…', null, null, { busy: true });
@@ -7505,6 +7561,11 @@ export default function HostShellV2() {
     try { result = await checkRsvpCapability(event); } finally { rsvpChecking.current = false; }
     endBusyToast();
     if (!result.ready) {
+      // ONE MESSAGE, ONE PLACE (11/25/2026). A draft that asked `withReason`
+      // opens with its own "Your reply link isn't ready" box, which says why and
+      // holds the way forward. A toast saying it again lay over the sheet's
+      // "Preview as: Email | Text" toggle at 1440x900.
+      if (why) return { url: '', reason: result.reason };
       // AN UNSAVED PLAN IS ASKED TO BE SAVED (owner, 11/24/2026). Signed out,
       // the plan never reached an account, so it has no public invite yet:
       // saying "not available" read as a dead end. The way forward is the
@@ -7512,10 +7573,10 @@ export default function HostShellV2() {
       if (result.reason === 'unpublished' && isSupabaseConfigured() && !session) {
         toast('Sign in to save this plan, then guests can RSVP online.', { label: 'Sign in to save', fn: openKeepSignIn });
       } else toast(rsvpUnavailable(result));
-      return '';
+      return why ? { url: '', reason: result.reason } : '';
     }
-    try { return inviteLinkUrl(); }
-    catch { toast('Can’t share: the public link address is missing. Nothing was shared.'); return ''; }
+    try { const u = inviteLinkUrl(); return why ? { url: u, reason: null } : u; }
+    catch { toast('Can’t share: the public link address is missing. Nothing was shared.'); return why ? { url: '', reason: 'unavailable' } : ''; }
   };
   // The reply-by editor, hoisted to the shell (11/24/2026) so the guest list
   // and the "Your invite" panel open the SAME one.
@@ -7572,26 +7633,69 @@ export default function HostShellV2() {
         );
   };
 
+  // The invite's words are one draft whichever door opens them (Invite message,
+  // Invite your guest list, Invite text): her edits are kept under one key.
+  const INVITE_EDIT_TITLE = 'Your invite';
   const openInviteDraft = async (title, build, opts) => {
+    const isInvite = build === draftInvite;
+    // ONE SEND SHEET (owner, 11/24/2026: render s2-4): an invite with a guest
+    // list to send to opens as the confirm step, whichever door it came from.
+    let o = { ...(opts || {}) };
+    const toInvite = inviteRecipients(event.guests, guestToldMap(event));
+    if (isInvite && o.sendsInvite && !o.mode && toInvite.email.length + toInvite.text.length > 0) o.mode = 'confirm';
+    if (isInvite) o.editTitle = INVITE_EDIT_TITLE;
+    if (o.mode === 'confirm') o.heading = 'Invite your guest list';
     // WHAT AN INVITE CANNOT GO OUT WITHOUT (owner, 11/19/2026: "Before sending
     // invites app should verify if the important info is included"). The day,
     // the hour the host set, and the place are asked for FIRST, so the invite is
     // written with them and no email, text, share or copy carries a hole.
-    if (build === draftInvite && inviteGaps(event).length) {
-      setSheet({ kind: 'invite-check', title, opts: opts || null });
+    // Saving the words sends nothing, so it is not stopped here.
+    if (isInvite && o.mode !== 'save' && inviteGaps(event).length) {
+      setSheet({ kind: 'invite-check', title, opts: o });
       return;
     }
-    const url = await verifiedRsvpUrl();
-    if (url === null) return;   // a check is already running
+    const checked = await verifiedRsvpUrl({ withReason: true });
+    if (checked === null) return;   // a check is already running
+    const url = checked.url;
+    // NO REPLY LINK, NOTHING GOES OUT (owner, 11/24/2026: render s2-6). The
+    // draft still opens, with the link's place held, so she can edit and save
+    // the words; every hand-off and the list sender wait for "Try again".
+    const link = url || LINK_PLACEHOLDER;
+    if (!url) { o.linkMissing = true; o.linkReason = checked.reason || 'unavailable'; }
     // The invite is written in each voice from the facts (doItForMe.inviteInVoice),
     // so picking a voice shows that version, not a word swap on one draft.
-    const voices = build === draftInvite
+    const voices = isInvite
       ? Object.fromEntries(inviteVoicesFor(event).map((v) => {
-          const d = draftInvite(event, profile, { rsvpUrl: url, voice: v });
+          const d = draftInvite(event, profile, { rsvpUrl: link, voice: v });
           return [v, [d.subject, d.body].filter(Boolean).join('\n\n')];
         }))
       : null;
-    openDraft(title, build(event, profile, { rsvpUrl: url }), null, voices ? { ...(opts || {}), voices } : opts);
+    if (isInvite) {
+      // HER SAVED WORDS COME FIRST (event.inviteMessageDraft): her edits, or the
+      // voice she saved. Words she typed this session and has not saved yet
+      // are newer, so they stay.
+      const key = draftEditKey(INVITE_EDIT_TITLE);
+      const saved = savedInviteDraft(event);
+      if (draftEditsRef.current[key] == null && saved && saved.edited) draftEditsRef.current[key] = saved.body;
+      if (draftEditsRef.current[key] != null && url) draftEditsRef.current[key] = withLink(draftEditsRef.current[key], url);
+      if (saved && !saved.edited && voices[saved.voice]) setDraftTone(saved.voice);
+      o.voices = voices;
+    }
+    openDraft(title, build(event, profile, { rsvpUrl: link }), null, o);
+  };
+  // "Try again" on a draft whose reply link wasn't ready: the link goes into its
+  // place in every version of the words, and the hand-offs come back.
+  const retryDraftLink = async () => {
+    const checked = await verifiedRsvpUrl({ withReason: true });
+    if (!checked || !checked.url) return;
+    const url = checked.url;
+    const key = draftEditKey((sheet && (sheet.editTitle || sheet.title)) || '');
+    if (draftEditsRef.current[key] != null) draftEditsRef.current[key] = withLink(draftEditsRef.current[key], url);
+    setDraftBody((b) => (b == null ? b : withLink(b, url)));
+    setSheet((sh) => (sh && sh.kind === 'draft' ? {
+      ...sh, body: withLink(sh.body, url), linkMissing: false, linkReason: null,
+      voices: sh.voices ? Object.fromEntries(Object.entries(sh.voices).map(([k, v]) => [k, withLink(v, url)])) : sh.voices,
+    } : sh));
   };
   // ── THE NUDGE (owner ruling, 11/20/2026) ─────────────────────────────────
   // One door for the board's reply-by row, the chase step, and the guest
@@ -7637,15 +7741,6 @@ export default function HostShellV2() {
         invitesOut(event) ? null : { label: 'I sent it', fn: () => patchEvent({ invitesSentAt: new Date().toISOString() }, 'Invite marked as sent.') });
       feedback('act');
     } catch { toast('Couldn’t copy on this browser — nothing was shared.'); }
-  };
-  // THE LINK ALONE (live smoke test, 11/8/2026). On Android, the share sheet's
-  // Copy takes the whole message ("You're invited… RSVP here: <link>"), and
-  // pasted into a browser that is a search, not the invite. The message stays
-  // right for texting; this copies only the verified link.
-  const copyInviteLink = async () => {
-    const url = await verifiedRsvpUrl();
-    if (!url) return;
-    await copyLinkOnly(url);
   };
 
   // Tasks: toggle done on the SAME timeline the readiness engine reads —
@@ -9244,6 +9339,26 @@ export default function HostShellV2() {
       event && event.travelMode, event && event.isDestination, event && event.foodFocus,
       event && event.caterer, event && event.date]);
 
+  // ── HER CHECKLIST'S "N OF M" TRAVELS WITH THE EVENT (rule 12, audit #35) ──
+  // Owner ruling 11/24/2026, option a: the family page printed "1 of 41" while
+  // her checklist said "2 of 41" — it can see the ticks but not the steps her
+  // plan proves handled. Her app saves its own count (checklistProgress, the
+  // sheet's reader) through the ordinary event write, so the family link's
+  // projection carries her number. Written only when it changes; silent, and
+  // it leaves her last Undo alone.
+  const savedChecklistCount = event && event.checklistCount;
+  const liveChecklistCount = useMemo(() => { try { return checklistProgress(event); } catch { return null; } }, [event]);
+  useEffect(() => {
+    if (!event || !event.id || !liveChecklistCount) return;
+    const { done, total } = liveChecklistCount;
+    const prev = savedChecklistCount;
+    if (prev && prev.done === done && prev.total === total) return;
+    if (!prev && total === 0) return;   // nothing to count, nothing to say
+    patchEvent({ checklistCount: { done, total } }, '', { noUndo: true, keepsUndo: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event && event.id, liveChecklistCount && liveChecklistCount.done, liveChecklistCount && liveChecklistCount.total,
+      savedChecklistCount && savedChecklistCount.done, savedChecklistCount && savedChecklistCount.total]);
+
   // THE START TIME'S ONE WRITE PATH (owner 11/22/2026, "Both can edit"):
   // Date & time and the run of show's "guests arrive" both write `startTime`
   // through lib/eventDates, so the two editors cannot store it two ways.
@@ -10444,7 +10559,7 @@ export default function HostShellV2() {
                     right where the time lives, not a separate row below. */}
                 {!startTimeIsConfirmed(event) && String(event.startTime || '').trim() && (
                   <button className="mini" onClick={() => writeStartTime({ confirm: true },
-                    'Start time confirmed — your invite and vendor briefs can name it now.')}>
+                    'Start time confirmed — your invite and the details you send vendors can name it now.')}>
                     that’s right
                   </button>
                 )}
@@ -10456,7 +10571,7 @@ export default function HostShellV2() {
               {!startTimeIsConfirmed(event) && String(event.startTime || '').trim() && (
                 <>
                   <p className="grounding" style={{ width: '100%', margin: '6px 0 0' }}>
-                    <b>We set this one, not you.</b> {event.startTimeWhy || ''} Your invite and your vendor briefs won’t name an hour until you say it’s right (tap “that’s right” by the time above).
+                    <b>We set this one, not you.</b> {event.startTimeWhy || ''} Your invite and the details you send vendors won’t name an hour until you say it’s right (tap “that’s right” by the time above).
                   </p>
                 </>
               )}
@@ -10701,7 +10816,8 @@ export default function HostShellV2() {
     // "computed and shown to nobody" became "shown on one branch of three".
     // Hoisted here, above every return, so a branch cannot silently omit it.
     const roomsNote = (() => {
-      const t = (() => { try { return stayOnTopOfTheRangeNote(est, _stayBasis); } catch (_e) { return null; } })();
+      // One sentence on this card (owner, 11/24/2026: "Copy is too wordy").
+      const t = (() => { try { return stayOnTopOfTheRangeNote(est, _stayBasis, { short: true }); } catch (_e) { return null; } })();
       return t ? <Grounding>{t}</Grounding> : null;
     })();
 
@@ -10725,6 +10841,11 @@ export default function HostShellV2() {
     }
     // PROPOSED — no budget yet and we can ground one: lead with Typical + Use/Change.
     if (!budgetChanging && !forceChange && typical > 0) {
+      // ── FEW WORDS, AND THE NUMBERS AGREE (owner, 11/24/2026: "Copy is too
+      // wordy"). budgetAskCopy: the headline is the figure the lit button
+      // offers, the per-head is that headline over the guests (rounded as the
+      // tiers round), and one line says where it comes from.
+      const ask = budgetAskCopy({ expected: spend && spend.expected, typical, guests, type: event.type, mustMark: !!(estDisclosure && estDisclosure.mustMark) });
       // Composed from the parity kit (./parity/askKit) — the locked 6/14/20/16 rhythm + 44/750
       // type live in the atoms now, not inline here. Matches Figma 344:61 B1.
       return (
@@ -10762,7 +10883,7 @@ export default function HostShellV2() {
                 <span style={{
                   fontSize: 22, fontWeight: 700, letterSpacing: '-.02em',
                   color: 'var(--ink)', fontVariantNumeric: 'tabular-nums',
-                }}>{perHeadText(perHeadRange(typical, typical, guests), fmt)}</span>
+                }}>{ask.perHead}</span>
               )}
               {/* The separator binds FORWARD, not back: at 390px the suffix
                   wraps after the per-head figure, and a trailing "·" left
@@ -10770,15 +10891,10 @@ export default function HostShellV2() {
                   word. Glued to what follows, the whole marker moves down
                   together. */}
               {guests > 0 ? ' ' : ''}
-              {`${guests > 0 ? '· ' : ''}${estDisclosure && estDisclosure.mustMark ? 'Mid‑range\u00A0·\u00A0est.' : 'Mid‑range'}`}
+              {`${guests > 0 ? '· ' : ''}${ask.tag.replace(/ /g, '\u00A0')}`}
             </>
-          )}>{fmt(typical)}</BigValue>
-          <Grounding>
-            {`For ${guests} at ${aOccasion(event.type)}, the middle of the range is ${fmt(typical)}. `}
-            {estDisclosure && estDisclosure.mustMark
-              ? 'That is the midpoint of a planning band, not an average of real events and not a quote. '
-              : ''}The plan sizes food, vendors and shopping from here — change it anytime.
-          </Grounding>
+          )}>{fmt(ask.headline)}</BigValue>
+          <Grounding>{ask.grounding}</Grounding>
           {/* ── WHEN THIS PLAN'S OWN VENDORS COST MORE THAN THE RANGE ──────
               `belowRequiredVendors` has been on the estimate result since
               2026-09-19 with no reader. Surprise Proposal's own roster needs a
@@ -10789,7 +10905,7 @@ export default function HostShellV2() {
               ranges carrying zero provenance. They get both, and are told
               which is which. See lib/budgetCopy.js#estimateShortfallNote. */}
           {(() => {
-            const short = (() => { try { return estimateShortfallNote(est); } catch (_e) { return null; } })();
+            const short = (() => { try { return estimateShortfallNote(est, { short: true }); } catch (_e) { return null; } })();
             return short ? <Grounding>{short}</Grounding> : null;
           })()}
           {/* ── AND THE ROOMS, WHICH THIS RANGE DOES NOT COVER ─────────────
@@ -10806,19 +10922,9 @@ export default function HostShellV2() {
               why this does not cry "contradiction" and why it mints no new
               band. */}
           {roomsNote}
-          {/* The plan's own lines can already cost more than the band's middle
-              (issue #100: "Use $200" over "$293 expected"). Both numbers, said
-              plainly — see lib/budgetCopy.js#planCostsAboveNote. */}
-          {(() => {
-            // The lit button below carries the plan's figure (A P1-7), so the
-            // quiet link here is the band's middle — the sentence's other path.
-            const over = (() => { try { return planCostsAboveNote(spend && spend.expected, typical); } catch (_e) { return null; } })();
-            return over ? (
-              <Grounding gap={8}>
-                {over.text} <button className="tap-44" style={linkBtn} onClick={() => setB(typical)}>Use {fmt(typical)} and trim</button>
-              </Grounding>
-            ) : null;
-          })()}
+          {/* The plan's lines above the band's middle (issue #100) are said in
+              the one line above, and the band's middle is "Mid-range" in the tier
+              row (owner, 11/24/2026): the separate "Use $T and trim" link went. */}
           {/* ── AND WHOSE MONEY IT IS ──────────────────────────────────────
               The old line here said "travel-scale costs are part of the
               numbers", which a host reads as "the flights are in this". The
@@ -10871,7 +10977,7 @@ export default function HostShellV2() {
             return (
               <details className="excl-fold" style={{ marginTop: 8 }}>
                 <summary className="grounding" style={{ cursor: 'pointer' }}>
-                  {notIncludedSummary(excl)}
+                  {notIncludedLine(excl)}
                 </summary>
                 <p className="grounding" style={{ margin: '6px 0 0' }}>{excl.join(' · ')}</p>
               </details>
@@ -10900,7 +11006,17 @@ export default function HostShellV2() {
               a host choosing between tiers is now comparing per-person
               numbers rather than totals — which is the comparison they can
               actually reason about. */}
-          {(low || high) ? (
+          {ask.covers ? (
+            // The plan costs more than the mid-range: the mid-range is a tier,
+            // the path the old "Use $T and trim" link was (owner, 11/24/2026;
+            // "Mid-range", not "Typical", per the host's 10/06/2026 ruling).
+            <Grounding gap={16}>
+              or {[low ? <button key="l" className="tier-link" onClick={() => setB(low)}>Lean {fmt(low)}</button> : null,
+                <button key="t" className="tier-link" onClick={() => setB(typical)}>Mid‑range {fmt(typical)}</button>,
+                high ? <button key="h" className="tier-link" onClick={() => setB(high)}>All-out {fmt(high)}</button> : null,
+              ].filter(Boolean).reduce((acc, el, i) => (i ? [...acc, ' · ', el] : [el]), [])}
+            </Grounding>
+          ) : (low || high) ? (
             <Grounding gap={16}>
               or {low ? <button className="tier-link" onClick={() => setB(low)}>Lean {fmt(low)}</button> : null}
               {low && guests > 0 ? ` (${perHeadText(perHeadRange(low, low, guests), fmt)})` : ''}
@@ -11816,14 +11932,15 @@ export default function HostShellV2() {
               collapsed only as an aria-label, since the whole point is that
               nothing in the narrow rail carries text. */}
           <button className="srail-row srail-min" onClick={toggleRailMin}
-            aria-expanded={!railMin} aria-label={railMin ? 'Widen the menu' : 'Narrow the menu'}
-            title={railMin ? 'Widen the menu' : 'Narrow the menu'}>
+            aria-expanded={!railMin} aria-label={railMin ? 'Widen the menu' : 'Icons only'}
+            title={railMin ? 'Widen the menu' : 'Icons only'}>
             <svg className="srail-i" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"
               fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <rect x="1.8" y="2.6" width="12.4" height="10.8" rx="1.4" />
               <path d="M6.2 2.6v10.8" />
             </svg>
-            <span className="srail-l">{railMin ? 'Widen' : 'Narrow'}</span>
+            {/* Says what she will see (cohesion F5, owner 11/24/2026). Was "Narrow". */}
+            <span className="srail-l">{railMin ? 'Widen' : 'Icons only'}</span>
           </button>
           {/* YOUR EVENT (owner ruling 8, 11/23/2026): on a 13" iPad held upright
               the rail is the one menu, so the phases join it, first. The same
@@ -12989,10 +13106,7 @@ export default function HostShellV2() {
                           that panel must keep a door. */}
                       <span className="tt-rib-l">
                       <button type="button" className="tt-rib-count" aria-expanded={handledOpen} aria-controls="whats-counted"
-                        onClick={() => setHandledOpen((o) => {
-                          if (!o) setTimeout(() => { try { const el = document.getElementById('whats-counted'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* the panel is still open */ } }, 80);
-                          return !o;
-                        })}>
+                        onClick={() => setHandledOpen((o) => !o)}>
                         {tallRibbon.allHandled ? `All ${tallRibbon.total} handled` : `${tallRibbon.done} of ${tallRibbon.total} handled`}
                       </button>
                       {/* THE DENOMINATOR MOVES, SO SAY WHEN (audit C P1-8): the
@@ -13010,6 +13124,7 @@ export default function HostShellV2() {
                     </div>
                   </nav>
                 )}
+                {handledOpen && tallRibbon && tallTablet && !dayHero && !isPast && <div className="wc-slot" ref={setWcSlot} />}
                 {/* THE PHONE'S PROGRESS, ON TOP (owner ruling 3, 11/23/2026): the
                     ribbon's own parts (planRibbon, the one progress reader) as six
                     thin segments under the title, the current part's lit, and one
@@ -13020,10 +13135,7 @@ export default function HostShellV2() {
                   <div className="pp-prog" data-pp-prog>
                     <button type="button" className="pp-prog-b" aria-expanded={handledOpen} aria-controls="whats-counted"
                       aria-label={(tallRibbon.allHandled ? `All ${tallRibbon.total}` : `${tallRibbon.done} of ${tallRibbon.total}`) + ' parts of your plan handled. What’s counted.'}
-                      onClick={() => setHandledOpen((o) => {
-                        if (!o) setTimeout(() => { try { const el = document.getElementById('whats-counted'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* the panel is still open */ } }, 80);
-                        return !o;
-                      })}>
+                      onClick={() => setHandledOpen((o) => !o)}>
                       <span className="pp-segs" aria-hidden="true">
                         {tallRibbon.parts.map((p) => (
                           <i key={p.id} data-seg={p.id} data-state={p.now ? 'now' : p.handled ? 'done' : 'open'} className={'pp-seg is-' + (p.now ? 'now' : p.handled ? 'done' : 'open')} />
@@ -13032,11 +13144,12 @@ export default function HostShellV2() {
                       <span className="pp-line" data-pp-line>
                         {tallRibbon.allHandled ? `All ${tallRibbon.total} handled` : `${tallRibbon.done} of ${tallRibbon.total} handled`}
                         <span className="pp-dot" aria-hidden="true"> · </span>
-                        <span className="pp-wc">What’s counted ›</span>
+                        <span className="pp-wc">{handledOpen ? 'What’s counted ▴' : 'What’s counted ▾'}</span>
                       </span>
                     </button>
                   </div>
                 )}
+                {handledOpen && tallRibbon && phonePill && !dayHero && !isPast && <div className="wc-slot" ref={setWcSlot} />}
                 </>
               ) : elegantMode && bp !== 'mobile' ? (
                 /* THE DESKTOP'S TITLE (owner, 11/24/2026): the phone's title block,
@@ -13339,8 +13452,8 @@ export default function HostShellV2() {
                       </article>
                     ) : (<>
                       <p className="truth">{dayHero.state === 'done'
-                        ? 'Every cue on the run of show is done — enjoy the rest.'
-                        : 'There’s no run of show for today yet.'}</p>
+                        ? `Every moment on ${THE_SCHEDULE} is done — enjoy the rest.`
+                        : `There’s no ${SCHEDULE_WORD} for today yet.`}</p>
                       <div className="actions-row" style={{ alignItems: 'center' }}>
                         <button className="cta" onClick={() => setStage('day')}>{dayHero.state === 'done' ? 'See the day' : 'Open the day'}</button>
                       </div>
@@ -13601,7 +13714,21 @@ export default function HostShellV2() {
                   : dayHero
                     /* On the day the hero is the run of show; what is left here is
                        planning that did not get done, and is named as that. */
-                    ? <div className="sect" id="actionsAnchor"><h2>Still open from planning</h2><div className="rule" /><span className="when">not today’s job</span></div>
+                    /* FITS THE MOMENT (UX_11 rule 13, cohesion audit P1 #1,
+                       11/24/2026): "not today’s job" sat over cards tagged "due
+                       today" ("5 things need you today", "Reconfirm 3 vendors").
+                       The label now reads the cards under it: what is due today
+                       is counted as that; what is only past its window is
+                       optional; "not today’s job" only when neither is there. */
+                    ? (() => {
+                        // Today's list leads: "Still to do today · N left", N being
+                        // exactly the cards shown. With nothing for today, every card
+                        // is folded, and the label says how optional they are.
+                        const todayList = queue.filter(show).filter(onTheDayList).length;
+                        if (todayList) return <div className="sect" id="actionsAnchor"><h2>Still to do today</h2><div className="rule" /><span className="when">{todayList} left</span></div>;
+                        const late = queue.some((a) => a && a.dueInDays != null && Number(a.dueInDays) < 0);
+                        return <div className="sect" id="actionsAnchor"><h2>Still open from planning</h2><div className="rule" /><span className="when">{late ? 'if there’s time' : 'not today’s job'}</span></div>;
+                      })()
                     : <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>}
               {plan && plan.planningState && plan.planningState.reasoning && (() => {
                 // Re-audit 2026-07-17 (P0, "one hero instruction"): the milestone
@@ -13738,7 +13865,7 @@ export default function HostShellV2() {
                 })();
                 const queueCap = queueFocus != null ? queueFocus : QUEUE_CAP;
                 const queueFolded = queueFocus != null && !queueOpen;
-                const visible = queueOpen ? shown : shown.slice(0, queueCap);
+                const visible = queueOpen ? shown : (dayHero ? shown.filter(onTheDayList) : shown.slice(0, queueCap));
                 const hiddenCount = shown.length - visible.length;
                 // Time-to-window, worn quietly on the card (engine contract:
                 // actions MAY carry dueInDays; absent = say nothing).
@@ -13754,6 +13881,9 @@ export default function HostShellV2() {
                 // in N days still print, because those point forward and are true. The
                 // eyebrow already carries the runway ("4 DAYS · REPAST"), so nothing
                 // true is lost — only the blame.
+                // The engine's own timing and level, on each card (read by
+                // e2e/theDayShowsTodayFirst.spec.mjs).
+                const queueCardData = (a) => ({ 'data-queue-card': '', 'data-due-in-days': (a && a.dueInDays != null) ? String(a.dueInDays) : '', 'data-level': (a && a.level) || '' });
                 const dueChip = (a) => {
                   if (!a || a.dueInDays == null || !Number.isFinite(Number(a.dueInDays))) return null;
                   if (solemn && a.dueInDays < 0) return null;
@@ -13838,7 +13968,7 @@ export default function HostShellV2() {
                     const to12 = (s) => { const t = cParse(s); if (t == null) return s; let h = Math.floor(t / 60); const mm = t % 60; const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return h + ':' + String(mm).padStart(2, '0') + ' ' + ap; };
                     const applyCustomTime = (val) => { if (!val || !custom || !it.affectedVendorId) return; const disp = to12(val); writeVendor(it.affectedVendorId, { [custom.field]: disp }, `${vendName || 'They'} now arrive at ${disp}.`); setConflictTime(null); };
                     return (
-                      <article className={'card hero-card bundle-hero conflict-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key}
+                      <article className={'card hero-card bundle-hero conflict-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key} {...queueCardData(a)}
                         style={{ animation: 'askin 240ms var(--ease-out) 60ms both' }}>
                         <div className="card-head">
                           {(it.detailShort || it.detail) && <p className="because">{it.detailShort || it.detail}</p>}
@@ -13914,7 +14044,7 @@ export default function HostShellV2() {
                   if (elegantMode && askMode && i === 0 && heroDecisionRow && heroDecisionND) {
                     const dec = heroDecisionRow;
                     return (
-                      <article className={'card hero-card bundle-hero decision-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key}
+                      <article className={'card hero-card bundle-hero decision-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key} {...queueCardData(a)}
                         style={{ animation: 'askin 240ms var(--ease-out) 60ms both' }}>
                         <div className="card-head">
                           {/* THE HERO SAYS WHAT IS TRUE FORWARD (board re-sit 2026-07-30).
@@ -13938,7 +14068,7 @@ export default function HostShellV2() {
                           {/* Same one object the hero ask was built from — no second
                               lookup, so the options here always belong to the decision
                               the line above is asking about. */}
-                          {renderDecision(heroDecisionND)}
+                          {renderDecision(heroDecisionND, { lit: true })}
                           {heroReceipt && !heroReceipt.decided && (
                             <div className="receipt">
                               <span className="rdot" aria-hidden="true" />
@@ -13984,7 +14114,7 @@ export default function HostShellV2() {
                     );
                   }
                   return (
-                    <article className={'card' + (spot === key ? ' spot' : '') + (askMode && i === 0 ? ' hero-card bundle-hero' : '')} id={'card-' + key} key={key}
+                    <article className={'card' + (spot === key ? ' spot' : '') + (askMode && i === 0 ? ' hero-card bundle-hero' : '')} id={'card-' + key} key={key} {...queueCardData(a)}
                       style={spot === key ? undefined : { animation: rowEnter(i, 45, 6) }}>
                       {!(askMode && i === 0) && <span className="idx">{i + 1}</span>}
                       <div className="card-head">
@@ -14108,7 +14238,7 @@ export default function HostShellV2() {
                 const menuND = (isHero && Array.isArray(a.records) && a.records.length)
                   ? (a.id === 'phase:food' ? (heroDecisionND || (!elegantMode ? foodND(a.records) : null)) : (wired === 'food' ? foodND(a.records) : null))
                   : null;
-                const menuAsk = (menuND && menuND.selected == null && menuND.ask) || null;
+                const menuAsk = foodPanelQuestion(menuND);
                 const rec = isHero
                   ? (menuAsk ? `${String(menuAsk).replace(/\.+$/, '')} · ${a.records.length} open` : heroRecord(a, heroAskText))
                   : null;
@@ -14137,7 +14267,7 @@ export default function HostShellV2() {
                   // The receipt remembers the ask this pick set down, so its Undo
                   // brings the ask back (undoHeroReceipt) — otherwise an undone
                   // pick left its question filtered out of the queue.
-                  const panel = renderDecision({ ...nd, settle: (v) => { settleAndSetDown(!(a.id === 'phase:food' && Array.isArray(a.records)) ? a.id : null, () => nd.settle(v)); trackCompletion(a, getActionReason(a, { event }), 'settled'); } });
+                  const panel = renderDecision({ ...nd, settle: (v) => { settleAndSetDown(!(a.id === 'phase:food' && Array.isArray(a.records)) ? a.id : null, () => nd.settle(v)); trackCompletion(a, getActionReason(a, { event }), 'settled'); } }, { lit: true });
                   // A menu question carries the spread link here as in the food editor (ruling 3).
                   return a.id === 'phase:food' ? <>{panel}{spreadLink()}</> : panel;
                 })() : null;
@@ -14178,7 +14308,7 @@ export default function HostShellV2() {
                 // second expression and breaks the build — the same trap documented
                 // on the conflict-hero disclosure ~:6100.)
                 return (
-                  <article className={'card' + (spot === key ? ' spot' : '') + (isHero ? ' hero-card' + (heroReceipt ? ' receipted' : '') : '')} id={'card-' + key} key={key}
+                  <article className={'card' + (spot === key ? ' spot' : '') + (isHero ? ' hero-card' + (heroReceipt ? ' receipted' : '') : '')} id={'card-' + key} key={key} {...queueCardData(a)}
                     data-decision-id={(isHero && heroSelection && heroSelection.decisionId) || undefined}
                     data-confidence={(isHero && heroEvidence && heroEvidence.confidence) || undefined}
                     data-why={(isHero && heroWhy.length) ? heroWhy.join(' · ') : undefined}
@@ -14408,8 +14538,9 @@ export default function HostShellV2() {
                   them — it was --muted/550 at body size against their --faint/450/12.5px. */}
               {hiddenCount > 0 && !(nearDayPlan && !queueOpen) && !(elegantMode && askMode) && (
                 <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: 'pointer', padding: '9px 0' }}
+                  data-day-fold={dayHero ? '' : undefined}
                   onClick={() => setQueueOpen(true)}>
-                  <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>+ {hiddenCount} more — show the rest</span>
+                  <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{dayHero ? `${hiddenCount} more from planning, if there’s time` : `+ ${hiddenCount} more — show the rest`}</span>
                   {/* setQueueOpen is an in-place expand, so this is a disclosure, not a
                       route (board re-sit 2026-07-30 — the third survivor of the glyph
                       rule ruling A enforced on decopt-disc only). */}
@@ -14467,14 +14598,16 @@ export default function HostShellV2() {
                   // The green completion belongs to the complete-state screen, which
                   // does not exist yet. Until it does, this surface says the true thing:
                   // the parts are handled AND something is still open.
-                  <div className="eprog"
-                    role="img" aria-label={segmentsText(orient)}>
+                  // The text form of the strips rides the strip row itself (role=img),
+                  // not the whole block: since cohesion F3 the block also holds the
+                  // What's counted panel, and an image's children are not controls.
+                  <div className="eprog">
                     {orient && orient.segments.length > 0 && (
                       // A 2px bar is not a hoverable target. Each strip gets a padded
                       // hit area, and the row takes an equal negative margin back, so
                       // the strips stay on exactly the pixel row they were drawn on —
                       // the target grew, the composition did not move.
-                      <div aria-hidden="true" style={{ display: 'flex', gap: 3, margin: '-7px 0 -5px' }}>
+                      <div role="img" aria-label={segmentsText(orient)} style={{ display: 'flex', gap: 3, margin: '-7px 0 -5px' }}>
                         {orient.segments.map(s => (
                           <span key={s.id} title={s.label + (s.handled ? ' — handled' : ' — open')}
                             onMouseEnter={() => setHoverSeg(s)}
@@ -14529,6 +14662,10 @@ export default function HostShellV2() {
                         : (done >= total ? 'this one’s still open' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first'
                           : (horizonPhrase || 'more in your plan')))}</span>
                     </div>
+                    {/* What's counted opens here at the rail widths (owner F3): the
+                        door is in the narrow Where you stand card, so the panel opens
+                        under the hero's own "N of 7 plan parts handled" line. */}
+                    {handledOpen && !phonePill && !tallTablet && <div className="wc-slot" ref={setWcSlot} />}
                   </div>
                 );
               })()}
@@ -14621,8 +14758,11 @@ export default function HostShellV2() {
                 // (the blocker card, or the parked card), so a "Name the venue"
                 // row here asked the same question twice on one screen.
                 const venueBoxOnBoard = !vf.isSet;
-                const thenItems = (queue || []).slice(1).filter(a => a && a.level !== 'critical' && !!resolveRoute(a.route)
-                  && !(venueBoxOnBoard && (a.blockerType === 'venue-selection' || /^(name the venue|add the location|pick the place)/i.test(String(a.title || '').trim()))));
+                // By declared kinds only (cohesion F): the venue by asksForTheVenue,
+                // and a step with no route of its own keeps its row, opening its own
+                // line on the checklist (actionRoute — never dropped).
+                const thenItems = (queue || []).slice(1).map(a => (a && !a.route && actionRoute(event, a) ? { ...a, route: actionRoute(event, a) } : a))
+                  .filter(a => a && a.level !== 'critical' && !!resolveRoute(actionRoute(event, a)) && !(venueBoxOnBoard && asksForTheVenue(a)));
                 if (!thenItems.length) return null;
                 // Dated money obligations, read ONCE for the whole list — the reason
                 // service matches a row to an action by key/vendorId. Never an estimate.
@@ -14742,7 +14882,9 @@ export default function HostShellV2() {
                     const sx = dayBefore.sections || [];
                     const openOf = (k) => { const s = sx.find(x => x.key === k); return s ? (Number(s.open) || 0) : 0; };
                     const steps = openOf('tasks');
-                    const items = openOf('shopping');
+                    // Rule 12 (audit #4): "items to get" is the list's remainder; the
+                    // section's open also holds the rentals, which are not items to buy.
+                    const items = (() => { const sh = sx.find(x => x.key === 'shopping'); return sh ? (sh.listLeft != null ? Number(sh.listLeft) || 0 : Number(sh.open) || 0) : 0; })();
                     const people = openOf('vendors') + openOf('helpers');
                     const parts = [
                       steps ? `${steps} plan step${steps === 1 ? '' : 's'}` : null,
@@ -14767,7 +14909,9 @@ export default function HostShellV2() {
                     const lead = (() => {
                       switch (sec.key) {
                         case 'tasks': return n ? `${n} plan step${n === 1 ? '' : 's'} still open` : 'Plan steps — nothing open';
-                        case 'shopping': return n ? `${n} item${n === 1 ? '' : 's'} still to get` : 'Shopping — all in hand';
+                        // Rule 12: n is the list's remainder; rentals are their own fact,
+                        // so "all in hand" only when none of them is open either.
+                        case 'shopping': { const g = Number(sec.openGear) || 0; const l = sec.listLeft != null ? Number(sec.listLeft) || 0 : n; return l ? `${l} item${l === 1 ? '' : 's'} still to get` : g ? `${g} rental${g === 1 ? '' : 's'} still to sort` : 'Shopping — all in hand'; }
                         case 'vendors': return n ? `${n} ${n === 1 ? 'person' : 'people'} to lock in` : 'Everyone you hired is locked in';
                         case 'rain': return n ? 'No rain backup yet' : 'Rain backup saved';
                         case 'helpers': return n ? `${n} ${n === 1 ? 'helper' : 'helpers'} to confirm` : 'Helpers all confirmed';
@@ -14793,11 +14937,14 @@ export default function HostShellV2() {
                       if (sec.key === 'shopping' && n > 0 && (sec.openFood != null || sec.openSupplies != null)) {
                         const f = Number(sec.openFood) || 0;
                         const s = Number(sec.openSupplies) || 0;
+                        const g = Number(sec.openGear) || 0;
                         const bits = [
                           f ? `${f} on the food list` : null,
-                          s ? `${s} supplies & gear` : null,
+                          s ? `${s} supplies` : null,
                         ].filter(Boolean);
-                        if (bits.length) return `${bits.join(' · ')} — one store run covers it.`;
+                        // The rentals are not a store run (rule 12, audit #4): named apart.
+                        const gearBit = g ? ` ${g} rental${g === 1 ? '' : 's'} still to sort.` : '';
+                        if (bits.length) return `${bits.join(' · ')} — one store run covers it.${gearBit}`;
                       }
                       if (sec.key !== 'cues') return sec.detail;
                       const cueList = ros.filter(r => r && r.segment);
@@ -15116,7 +15263,8 @@ export default function HostShellV2() {
                       payment past its date does not get to read as nearly done. */}
                   {orient && (
                     <p className="v-meta" style={{ margin: '0 0 4px' }}>
-                      {orient.lifecycleLabel}{orient.countText ? ` · ${orient.countText}` : ''} — {orient.summary}
+                      {/* The count, then what still needs her (cohesion #48). */}
+                      {orient.statusLine}
                     </p>
                   )}
                   <div className="t-label">Where you stand{' '}{countedCaret()}</div>
@@ -15494,10 +15642,12 @@ export default function HostShellV2() {
                     {l.flagged && (
                       <button className="mini rowlink" data-who-flagged style={{ display: 'block', marginTop: 'var(--sp-2)', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }} onClick={go.vendors}>{l.flagged}</button>
                     )}
-                    {l.cantDo && !tallTablet && (
-                      <p className="vc-detail warn-note" data-who-cant style={{ margin: 'var(--sp-2) 0 0', overflowWrap: 'anywhere' }}>{l.cantDo}</p>
-                    )}
-                    {tallTablet ? (() => {
+                    {/* THE LIST AT EVERY WIDTH (cohesion #40, owner 11/24/2026): the
+                        tall iPad's grouped rows replace the run-on "Still waiting: …"
+                        sentence on the phone and the desktop. A helper who can't is
+                        a row ("can’t"), so the separate note is not said twice.
+                        On the phone each group shows 3 rows, then "+N more" (F6). */}
+                    {(() => {
                       /* ── THE SENTENCE AS ROWS (tall iPad, owner 11/22/2026) ──────
                          The same classification the sentence is built from
                          (lib/whoIsConfirmed), counted as the chips count. A row
@@ -15507,45 +15657,48 @@ export default function HostShellV2() {
                       try { g = whoIsConfirmedGroups(event, confirmationByVendor, helperAnswerByKey); } catch { g = null; }
                       if (!g) return null;
                       const routable = (r) => { try { return !!(r && resolveRoute(r)); } catch { return false; } };
+                      // F6: three rows a group on the phone, the rest behind "+N more".
+                      const cap = (k, rows) => (phonePill && !whoMore[k] ? rows.slice(0, 3) : rows);
+                      const moreRow = (k, rows) => (phonePill && !whoMore[k] && rows.length > 3 ? (
+                        <button type="button" className="tt-row tt-more" data-who-more onClick={() => setWhoMore((m) => ({ ...m, [k]: true }))}>
+                          <span className="tt-row-t">{`+${rows.length - 3} more`}</span>
+                        </button>
+                      ) : null);
                       return (
                         <>
                           {g.vendors && g.vendors.count > 0 && (
                             <div className="tt-who-g" data-who-group="vendors">
                               <h3 className="tt-who-h"><span>Vendors</span><span data-who-count>{g.vendors.count} not confirmed</span></h3>
-                              {g.vendors.rows.map((r) => (
+                              {cap('vendors', g.vendors.rows).map((r) => (
                                 <button key={r.id} type="button" className="tt-row" data-who-row onClick={() => setSheet({ kind: 'vendors', focus: r.id })}>
                                   <span className="tt-row-t">{r.label}</span>
                                   {r.note && <span className="tt-row-w">{r.note}</span>}
                                   <span className="chev" aria-hidden="true">›</span>
                                 </button>
                               ))}
+                              {moreRow('vendors', g.vendors.rows)}
                             </div>
                           )}
                           {g.helpers && g.helpers.count > 0 && (
                             <div className="tt-who-g" data-who-group="helpers">
                               <h3 className="tt-who-h"><span>Helpers &amp; tasks</span><span data-who-count>{g.helpers.count} not confirmed</span></h3>
-                              {g.helpers.rows.map((r, i) => {
-                                const inner = (
-                                  <>
-                                    <span className="tt-row-t">{r.label}</span>
-                                    <span className="tt-row-w">{r.note ? `${r.name} ${r.note}` : r.name}</span>
-                                  </>
-                                );
-                                return routable(r.route) ? (
-                                  <button key={i} type="button" className="tt-row" data-who-row onClick={() => routeSheet(r.route)}>
-                                    {inner}<span className="chev" aria-hidden="true">›</span>
-                                  </button>
-                                ) : (
-                                  <div key={i} className="tt-row" data-who-row>{inner}</div>
-                                );
-                              })}
+                              {cap('helpers', g.helpers.rows).map((r, i) => (
+                                /* Every row routes (#40): its job's own route, else the
+                                   helpers' section, where every job is assigned. */
+                                <button key={i} type="button" className="tt-row" data-who-row onClick={() => (routable(r.route) ? routeSheet(r.route) : go.helpers())}>
+                                  <span className="tt-row-t">{r.label}</span>
+                                  {/* A helper who can't wears the warning's honey here: the row is
+                                      where that note lives now (#40). */}
+                                  <span className={'tt-row-w' + (r.note ? ' warn-note' : '')}>{r.note ? `${r.name} ${r.note}` : r.name}</span>
+                                  <span className="chev" aria-hidden="true">›</span>
+                                </button>
+                              ))}
+                              {moreRow('helpers', g.helpers.rows)}
                             </div>
                           )}
                         </>
                       );
-                    })() : l.waiting && (
-                      <p className="vc-detail" data-who-waiting style={{ margin: 'var(--sp-2) 0 0', overflowWrap: 'anywhere' }}>{l.waiting}</p>
-                    )}
+                    })()}
                     {qLine && (
                       <button className="mini rowlink" data-who-questions style={{ display: 'block', marginTop: 'var(--sp-2)', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }}
                         onClick={() => setSheet({ kind: 'guests', focus: 'questions' })}>{qLine}</button>
@@ -15580,8 +15733,22 @@ export default function HostShellV2() {
                   controls that were not on the screen (measured: .focus() on the
                   Checklist pill succeeded and scrolled the board to a blank spot).
                   The id is the caret's aria-controls target. */}
+              {/* OPENS IN PLACE (cohesion F3, owner 11/24/2026; UX_11 rule 2). It
+                  used to open here, a screen or more below its door, and scroll the
+                  board there. Now it is portaled into the slot directly under the
+                  line that holds its door (the phone's progress line, the tall
+                  iPad's ribbon, the hero's progress line at the rail widths) and
+                  nothing scrolls. Where no door line is on the board, it stays here.
+                  The slot exists only while it is open, so a closed panel adds no
+                  gap to the first screen (the tall iPad's fold is measured).
+                  A slim bar heads it and a close row ends it. */}
+              {((el) => (wcSlot ? createPortal(el, wcSlot) : el))(
               <div id="whats-counted" className={'slidepanel' + (handledOpen ? ' open' : '')} inert={!handledOpen}>
                 <div className="slidepanel-inner">
+                  <button type="button" className="wc-bar" data-wc-bar onClick={() => setHandledOpen(false)}>
+                    <span className="wc-bar-t">What’s counted</span>
+                    <span className="wc-bar-c">Close ▴</span>
+                  </button>
                   {/* THE DATE THE PLAN NEXT NEEDS HER, BEHIND THE ONE DOOR (owner
                       ruling 3, 11/23/2026). The phone's progress is one line now,
                       "N of M handled · What's counted ›"; the hairline's horizon
@@ -15895,8 +16062,9 @@ export default function HostShellV2() {
                   {handled.length > 0 && handled.map((h, i) => (
                     <div className="later-row done" key={i} style={{ marginLeft: 0 }}><span className="t">{h}</span></div>
                   ))}
+                  <button type="button" className="wc-close" data-wc-close onClick={() => setHandledOpen(false)}>Close what’s counted ▴</button>
                 </div>
-              </div>
+              </div>)}
 
               {/* Re-audit 2026-07-17 (P2, "hide filters until there's volume"): a
                   domain filter over a near-empty plan is filter-heavy / content-light
@@ -16360,7 +16528,7 @@ export default function HostShellV2() {
               {rosOverlaps > 0 && (
                 <div className="later-row" style={{ background: 'var(--warn-tint)', borderRadius: 'var(--r-md)', padding: '10px 14px', marginBottom: 'var(--sp-2)' }}>
                   <span className="t" style={{ color: 'var(--warn)', fontWeight: 650 }}>
-                    {rosOverlaps} run-of-show {rosOverlaps === 1 ? 'moment overlaps' : 'moments overlap'} another — worth a look before things collide.
+                    {rosOverlaps} {rosOverlaps === 1 ? 'moment overlaps' : 'moments overlap'} another on {THE_SCHEDULE} — worth a look before things collide.
                   </span>
                 </div>
               )}
@@ -16517,7 +16685,10 @@ export default function HostShellV2() {
               )}
               {dayHelpers.length > 0 && (
                 <div style={{ marginTop: 28 }}>
-                  <div className="eyebrow" style={{ marginBottom: 10 }}>Who’s helping · {dayHelpers.length}</div>
+                  {/* UX_11 rule 12: this list is the day crew (the venue, the DJ
+                      and the helpers, with their times), not the helper count
+                      Space and the board print under "Who's helping". */}
+                  <div className="eyebrow" style={{ marginBottom: 10 }}>Your day crew · {dayHelpers.length}</div>
                   {dayHelpers.map((h, i) => (
                     <div className="then-row" key={i} style={{ alignItems: 'center' }}>
                       <span aria-hidden style={{
@@ -16535,8 +16706,11 @@ export default function HostShellV2() {
                     </div>
                   ))}
                   <div style={{ marginTop: 10 }}>
+                    {/* One name for one thing (rules 4 and 8, 11/24/2026): the
+                        button said "helper brief", the draft it opens is titled
+                        "Everyone’s part today". It now says what it opens. */}
                     <button className="cta soft" style={{ width: '100%' }} onClick={() => { try { openDraft('Everyone’s part today', draftHelperBrief(event, profile, { ros })); } catch { toast('Couldn’t draft it.'); } }}>
-                      Draft the helper brief
+                      Draft everyone’s part today
                     </button>
                     <div className="pill-grid" style={{ marginTop: 'var(--gap-chip)' }}>
                       <button className="mini" onClick={() => window.print()}>Print the day sheet</button>
@@ -16725,7 +16899,7 @@ export default function HostShellV2() {
                       return (
                         <div className="ros-sugg" data-ros-suggestions>
                           <p className="grounding ros-sugg-lead">
-                            This is your run of show, so it stays as you wrote it. Add to your night? The {String(event.type || 'event').toLowerCase()} playbook suggests:
+                            This is your {SCHEDULE_WORD}, so it stays as you wrote it. Add to your night? The {String(event.type || 'event').toLowerCase()} playbook suggests:
                           </p>
                           {sugg.map((r) => (
                             <div key={r.id} className="then-row ros-sugg-row" data-ros-suggestion>
@@ -16742,7 +16916,7 @@ export default function HostShellV2() {
                     if (!w || !w.owned || !w.count) return null;
                     return (
                       <p className="grounding" style={{ margin: '0 0 var(--sp-3)', color: 'var(--muted)' }}>
-                        This is your run of show, so it stays as you wrote it.
+                        This is your {SCHEDULE_WORD}, so it stays as you wrote it.
                         {' '}The {String(event.type || 'event').toLowerCase()} playbook has {w.count} more {w.count === 1 ? 'moment' : 'moments'} it didn’t add
                         {w.program > 0 ? `, ${w.program} of them during the event itself` : ''}.
                       </p>
@@ -16914,7 +17088,7 @@ export default function HostShellV2() {
                 </>
               ) : ros.length === 0 ? (
                 <>
-                  <h1 className="mega" style={{ fontSize: 'var(--t-display-l)', lineHeight: 1.08 }}>No run of show yet</h1>
+                  <h1 className="mega" style={{ fontSize: 'var(--t-display-l)', lineHeight: 1.08 }}>No {SCHEDULE_WORD} yet</h1>
                   <p className="day-empty">Your day schedule fills in as vendors and their arrival times settle — then this screen becomes one thing at a time, in the order the day runs.</p>
                   {/* Per-screen audit: the old empty state told a real host to “Try the
                       Wedding” (a demo) with no real action. The run of show is built from
@@ -16924,7 +17098,7 @@ export default function HostShellV2() {
               ) : dayIdx >= ros.length ? (
                 <>
                   <div className="clock" style={solemn ? { fontSize: 'clamp(30px,10cqw,40px)', fontFamily: 'var(--serif-read)', fontWeight: 500, letterSpacing: '-.01em' } : { fontSize: 'clamp(34px,11cqw,44px)', fontWeight: 700, letterSpacing: '-.03em' }}>{solemn ? 'That’s all of it. Thank you for carrying today.' : 'That’s the whole day.'}</div>
-                  <p className="day-empty">All {ros.length} moments walked through, in order, from the real run of show.</p>
+                  <p className="day-empty">All {ros.length} moments walked through, in order, from {THE_SCHEDULE}.</p>
                   <button className="cta" style={{ marginTop: 18 }} onClick={() => setDayIdx(0)}>Walk it again</button>
                 </>
               ) : (
@@ -16985,7 +17159,14 @@ export default function HostShellV2() {
                       <div style={{ marginTop: 'var(--sp-2)' }}>
                         {/* Eyebrow: time-set promotes to a live "10:30 · NOW" (state 2); otherwise the calm sequence label (state 1). */}
                         <div className="now-label" style={timeSet ? { color: 'var(--warn)' } : undefined}>
-                          {timeSet ? fmt12h(cur.time) + ' · NOW · you run this' : (dayIdx === 0 ? (isPast ? 'How it started' : 'Today · you run it') : 'Now')}
+                          {/* "NOW" ONLY MEANS NOW (UX_11 rule 13, 11/24/2026). This
+                              walkthrough runs any day, and every timed step wore
+                              "· NOW ·" the day before and two days after. It says
+                              now only for the cue the clock is on (lib/dayOfHero,
+                              the reader the board's hero uses). */}
+                          {timeSet
+                            ? fmt12h(cur.time) + ((() => { try { const h = dayOfHero(event, new Date()); return !!(h && h.state === 'now' && h.cue && (h.cue === cur || (h.cue.id && h.cue.id === cur.id))); } catch (_e) { return false; } })() ? ' · NOW · you run this' : ' · you run this')
+                            : (dayIdx === 0 ? (isPast ? 'How it started' : 'Today · you run it') : 'Then')}
                         </div>
                         {dayIdx === 0 && !timeSet && !solemn && <div className="of" style={{ marginTop: 6, color: 'var(--muted)' }}>First thing</div>}
                         {/* The moment NAME is the hero (Figma). Solemn → the calm serif leads. */}
@@ -17296,7 +17477,7 @@ export default function HostShellV2() {
 
               <div className="sect"><h2>What carries forward</h2><div className="rule" /></div>
               <div className="empty" style={{ background: 'var(--steel-tint)' }}>
-                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} foundation fact{handled.length === 1 ? '' : 's'} on record · {(money.committed > 0 || money.planned > 0) ? 'every budget line above stays saved' : 'your vendors and notes stay saved'}. The thank-you is drafted right here from what actually happened; your “for next time” note below comes back the next time you plan one of these.
+                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} of the basics settled · {(money.committed > 0 || money.planned > 0) ? 'every budget line above stays saved' : 'your vendors and notes stay saved'}. The thank-you is drafted right here from what actually happened; your “for next time” note below comes back the next time you plan one of these.
               </div>
               {/* Thank-yous & gifts — per-guest flags on the SAME roster rows the
                   wrap-up meter reads (phaseProgress post_event counts
@@ -17322,7 +17503,7 @@ export default function HostShellV2() {
                           {g.giftReceived ? 'gift received' : 'gift?'}
                         </button>
                         <button className="mini" style={g.thankYouSent ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
-                          onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? null : ((g.name || 'Guest') + ' thanked — the wrap-up meter keeps count.'))}>
+                          onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? null : ((g.name || 'Guest') + ' thanked — it’s counted at the top.'))}>
                           {g.thankYouSent ? 'thanked' : 'thank them'}
                         </button>
                       </span>
@@ -17360,7 +17541,7 @@ export default function HostShellV2() {
                         <span>Cash and gift cards</span>
                         <span className="amt">{fmt(cash.total)}{cash.from ? <span className="of"> from {cash.from}</span> : null}</span>
                       </div>
-                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>Your record, not a bank. “Thanked” feeds the wrap-up meter up top, and the thank-you note names what each person gave.</p>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>Your record, not a bank. Each “Thanked” is counted at the top, and the thank-you note names what each person gave.</p>
                     </div></div>
                   </div>
                 );
@@ -17498,7 +17679,10 @@ export default function HostShellV2() {
                     parent. And "‹ Sections" only shows on a sheet that IS a section
                     — a door in sectionGroups() — not on Jump to, Feeling stuck?,
                     Your events or a draft, which the directory does not list. */}
-                {!sheet.from && sectionGroups({ event, travel, crab, outdoor, passCents: devicePassPriceCents() })
+                {/* WHERE THE RAIL IS UP, THE RAIL IS THE LIST (cohesion F4, owner
+                    11/24/2026): "‹ Sections" beside it was a third door to the same
+                    list (with ☰). It stays below the rail, 44 px tall (#46). */}
+                {!sheet.from && !railUp && sectionGroups({ event, travel, crab, outdoor, passCents: devicePassPriceCents() })
                   .some(g => g.rows.some(r => r.k === (sheet.kind === 'bringing' || sheet.kind === 'foodplan' ? 'food' : sheet.kind))) && (
                   /* sheet-back: the 44px hit area comes from a ::after in the
                      stylesheet, NOT from padding or min-height here. Measured at
@@ -17512,7 +17696,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'invite-design' ? 'Your invite' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? LODGING_LABEL : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'invite-design' ? 'Invite page' : sheet.kind === 'invite-sent' ? 'What went out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.heading || sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? LODGING_LABEL : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the details' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -17546,6 +17730,11 @@ export default function HostShellV2() {
             {/* "YOUR INVITE" (owner-approved render r3-3, 11/24/2026): the layout,
                 her message, who it's from, the paper and reply-by, with a live
                 preview of the guest's own invite. */}
+            {/* WHAT WENT OUT (owner, 11/24/2026: render s2-5): read only. */}
+            {sheet.kind === 'invite-sent' && event.invitesSentMessage && (
+              <InviteSentRecord sent={event.invitesSentMessage} recipients={sentRecipients(event)}
+                onUpdate={() => { try { openDraft('Update to everyone', draftGuestUpdate(event, {}, profile)); } catch { toast('Couldn’t draft it.'); } }} />
+            )}
             {sheet.kind === 'invite-design' && (
               <InviteDesignSheet event={event} profile={profile} patchEvent={patchEvent} patchProfile={patchProfile}
                 signedIn={Boolean(session)} email={(session && session.user && session.user.email) || ''}
@@ -17573,7 +17762,7 @@ export default function HostShellV2() {
                   {/* THE INVITE RULES LIVE IN THE INVITE STEP (owner, render 10a,
                       11/24/2026): the same component and record as the guest list. */}
                   <InviteRules event={event} patchEvent={patchEvent} note="The RSVP page follows these. Also in your guest list." />
-                  <SettledRow label="Your invite" value={(event.inviteLayout === 'glance' ? 'At a glance' : 'Classic') + ' · how it looks and what it says'}
+                  <SettledRow label="Invite page" value={(event.inviteLayout === 'glance' ? 'At a glance' : 'Classic') + ' · how it looks and what it says'}
                     style={{ margin: 'var(--sp-3) 0 0' }} onOpen={() => setSheet({ kind: 'invite-design', from: sheet })} />
                   {(!has('date') || !has('time')) && renderEditor({ domain: 'date' })}
                   {!has('place') && (
@@ -18467,16 +18656,35 @@ export default function HostShellV2() {
                     : basis === 'playbook' ? `${tables} for ${gc} guests — what ${aOccasion(event.type || 'event')} this size usually needs.`
                       : basis === 'headcount' ? `About ${tables} of 8 for ${gc} guests — a standard round or banquet table seats 8.`
                         : `${tables} — a starting point, not a read of your room.`;
+                  // ONE DOOR TO THE TABLES (cohesion audit #18; owner approved the
+                  // render 11/24/2026). Once Who sits where is open (a guest has
+                  // said yes) it owns the table count with its own ±, so this
+                  // sheet says the count and routes there. Before that, Who sits
+                  // where has nothing to show and this ± is the only place to set
+                  // the tables (owner, 11/18/2026), so it stays.
+                  const seatingOpen = !!(seating.hasRoster && seating.totals.confirmed > 0);
                   return (
                     <div data-seat-check style={{ margin: '0 0 var(--sp-3)' }}>
                       <div className="shelf-label" style={{ margin: '2px 0 var(--sp-1)' }}>Seating</div>
-                      <div className="actions-row" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span style={{ flex: 1, minWidth: 0 }}>{why}</span>
-                        <button className="mini" aria-label="One fewer table" disabled={n <= 1}
-                          onClick={() => patchEvent({ tables: clampTableCount(n - 1) })}>−</button>
-                        <button className="mini" aria-label="One more table"
-                          onClick={() => patchEvent({ tables: clampTableCount(n + 1) })}>+</button>
-                      </div>
+                      {seatingOpen ? (
+                        <>
+                          <span>{why}</span>
+                          <div className="fstat-list" style={{ marginTop: 'var(--sp-2)' }}>
+                            <button type="button" className="fstat" data-seat-door onClick={() => setSheet({ kind: 'seating' })}>
+                              <span className="fstat-l">Change the tables</span>
+                              <RowValue status="open" chev>Who sits where</RowValue>
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="actions-row" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ flex: 1, minWidth: 0 }}>{why}</span>
+                          <button className="mini" aria-label="One fewer table" disabled={n <= 1}
+                            onClick={() => patchEvent({ tables: clampTableCount(n - 1) })}>−</button>
+                          <button className="mini" aria-label="One more table"
+                            onClick={() => patchEvent({ tables: clampTableCount(n + 1) })}>+</button>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
@@ -18519,7 +18727,8 @@ export default function HostShellV2() {
                         aria-label={(it.short || it.item) + ' — ' + (remaining === 0 ? 'covered' : 'still need ' + remaining) + '. Tap to set what you have.'}>
                         <span className="fstat-l">{it.verb ? it.verb + ' ' : ''}{it.short || it.item} <span className="of">need {baseNeed}</span></span>
                         <RowValue status={rowStatus({ settled: remaining === 0 })} chev>
-                          {remaining === 0 ? (helperName ? helperName + ' brings ' + baseNeed : 'covered') : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : 'still need ' + remaining}
+                          {/* Audit #37 (rules 4, 16): a rental range is the playbook's estimate, and says so. */}
+                          {remaining === 0 ? (helperName ? helperName + ' brings ' + baseNeed : 'covered') : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) + ' est.' : 'still need ' + remaining}
                         </RowValue>
                       </button>
                       {open && (
@@ -18653,7 +18862,11 @@ export default function HostShellV2() {
                 {(
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>Who’s helping{helperPeople.length ? ` · ${helperPeople.length}` : ''}</span>
+                      {/* UX_11 rule 12 (audit #19): the count is the rows it heads,
+                          the helper jobs the board's "Helpers x of N" counts
+                          (whoIsConfirmed reads the same responsibilities). It
+                          counted the de-duplicated people: 3 over six rows. */}
+                      <span>Who’s helping{helpers.length ? ` · ${helpers.length}` : ''}</span>
                       {(helperData.helpers || []).length > 0 && (
                         <button className="mini" onClick={startHelperMessages}>Draft helper messages</button>
                       )}
@@ -21087,12 +21300,23 @@ export default function HostShellV2() {
                     <div className="seat-ghost" style={{ left: guestDrag.x, top: guestDrag.y }} aria-hidden="true">{guestDrag.name}</div>,
                     document.body
                   )}
-                  <SheetHero
-                    eyebrow="Seated so far"
-                    star={`${sp.totals.seated} of ${sp.totals.confirmed}`}
-                    tone={sp.totals.allSeated ? 'ok' : undefined}
-                    sub={(sp.totals.allSeated ? 'Everyone’s in a seat — ' : '') + tableBits + '.'}
-                  />
+                  {(() => {
+                    // UX_11 rule 12 (audit #6): green and "Everyone's in a seat"
+                    // only when the plan's people are seated, not just the rows
+                    // on the list (seatingClaim, the board's reader too). A short
+                    // roster says what is true of it, and the plan's size.
+                    const claim = seatingClaim(event, sp);
+                    const lead = claim.everyoneSeated ? 'Everyone’s in a seat — '
+                      : claim.rosterSeated && claim.plannedFor ? `Everyone on your list is seated · the plan is for ${claim.plannedFor} — ` : '';
+                    return (
+                      <SheetHero
+                        eyebrow="Seated so far"
+                        star={`${sp.totals.seated} of ${sp.totals.confirmed}`}
+                        tone={claim.everyoneSeated ? 'ok' : undefined}
+                        sub={lead + tableBits + '.'}
+                      />
+                    );
+                  })()}
                   {sp.dietChips.length > 0 && (
                     <div className="chips" style={{ margin: '0 0 var(--sp-2)' }}>
                       {sp.dietChips.map(c => <span key={c} className="chip" style={{ cursor: 'default' }}>{c}</span>)}
@@ -21465,7 +21689,7 @@ export default function HostShellV2() {
                 <SheetHero
                   eyebrow="The heart of it"
                   star="What are we really protecting?"
-                  sub="Your words go into the run of show, the toast and the note we draft the day before. Nothing here is required."
+                  sub={`Your words go into ${THE_SCHEDULE}, the toast and the note we draft the day before. Nothing here is required.`}
                 />
                 {/* MILITARY RETIREMENT intelligence (knowledge/militaryRetirement.js): when the
                     event is a military retirement, surface the real ceremony protocol — the
@@ -21535,7 +21759,7 @@ export default function HostShellV2() {
                 ))}
                 {/* THE INVITE'S MESSAGE AND WHO IT'S FROM moved to "Your invite"
                     (owner, 11/24/2026): one editor for one field. */}
-                <SettledRow label="Your invite’s message" value={String(event.deckLine || '').trim() || 'Our line for this event'}
+                <SettledRow label="Invite page message" value={String(event.deckLine || '').trim() || 'Our line for this event'}
                   style={{ margin: '0 0 var(--sp-4)' }} onOpen={() => setSheet({ kind: 'invite-design', from: sheet })} />
                 <div className="actions-row">
                   {(() => {
@@ -23153,7 +23377,7 @@ export default function HostShellV2() {
                 {sheet.vendorQr ? (
                   <>
                     <p className="grounding" style={{ margin: '2px 0 var(--sp-3)' }}>
-                      {(sheet.vendorQr.name || 'They')} scan{sheet.vendorQr.name ? 's' : ''} it to see their brief — arrival time, your address, their part of the day. Nothing about budget, payments, or other vendors.
+                      {(sheet.vendorQr.name || 'They')} scan{sheet.vendorQr.name ? 's' : ''} it to see the details — arrival time, your address, their part of the day. Nothing about budget, payments, or other vendors.
                     </p>
                     {sheet.vendorQr.dataUrl && (
                       <div style={{ background: '#ffffff', borderRadius: 'var(--r-lg)', padding: 18, display: 'flex', justifyContent: 'center' }}>
@@ -23278,6 +23502,8 @@ export default function HostShellV2() {
                 // a send (the clipboard proves a draft, not delivery).
                 const invited = sheet.sendsInvite && channel !== 'copy' && !event.invitesSentAt
                   ? { invitesSentAt: new Date().toISOString() } : {};
+                // WHAT WENT OUT (owner, 11/24/2026): the words she sent, kept.
+                if (sheet.sendsInvite && channel !== 'copy') invited.invitesSentMessage = inviteSnapshotNow();
                 // A post already says "Posted" in its own line; the toast would repeat it.
                 patchEvent({ sendLedger: led, ...invited }, channel === 'invite' ? null : 'Noted — the plan remembers this went out.');
               };
@@ -23452,16 +23678,103 @@ export default function HostShellV2() {
               const reachNudge = (reached, via) => {
                 patchEvent({ guests: markNudged(event.guests || [], reached, via, new Date().toISOString()) }, null, { noUndo: true });
               };
+              // ── THE INVITE MESSAGE (owner, 11/24/2026: renders s2-3 to s2-6) ──
+              const mode = sheet.mode || null;
+              const isInviteWords = sheet.editTitle === INVITE_EDIT_TITLE;
+              const noLink = !!sheet.linkMissing;
+              const inviteSubject = isInviteWords
+                ? ((draftInvite(event, profile, { voice: (sheet.voices && sheet.voices[draftTone]) ? draftTone : 'as-written' }) || {}).subject || 'You’re invited')
+                : '';
+              const inviteSnapshotNow = (at) => {
+                const { subject, body } = inviteSubjectAndBody(shownDraft(), inviteSubject);
+                return sentSnapshot({ subject, body, voice: draftBody != null ? 'edited' : draftTone, at: at || new Date().toISOString() });
+              };
+              const savedDraft = isInviteWords ? savedInviteDraft(event) : null;
+              const savedChip = savedDraft ? (
+                <div className="of si-chip" data-draft-saved>
+                  Draft saved{(() => { const t = Date.parse(savedDraft.savedAt || ''); return Number.isFinite(t) ? ' ' + new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''; })()}{savedDraft.edited ? ' · edited' : ''}
+                </div>
+              ) : null;
+              const saveInviteDraft = () => {
+                const c = draftVoiceCtx();
+                const offered = sheet.voices ? !!sheet.voices[draftTone] : voicesFor(c.audience, c.sombre).includes(draftTone);
+                patchEvent({
+                  inviteMessageDraft: inviteDraftRecord({
+                    body: shownDraft(), voice: offered ? draftTone : 'as-written', edited: draftBody != null,
+                    line: String(event.deckLine || '').trim(), now: new Date().toISOString(),
+                  }),
+                }, 'Draft saved — nothing was sent.');
+              };
+              const linkBox = noLink ? (
+                <div className="si-warn" role="alert" data-link-not-ready>
+                  <p><b>Your reply link isn’t ready.</b>{' '}
+                    {sheet.linkReason === 'unpublished' && !session
+                      ? 'Sign in to save this plan, then try again.'
+                      : 'Check your connection and try again.'} Nothing can go out without it.</p>
+                  {sheet.linkReason === 'unpublished' && !session && isSupabaseConfigured()
+                    ? <div className="actions-row"><button className="cta" onClick={openKeepSignIn}>Sign in to save</button><button className="mini" onClick={retryDraftLink}>Try again</button></div>
+                    : <button className="cta" onClick={retryDraftLink}>Try again</button>}
+                </div>
+              ) : null;
+              const lc = isInviteWords && draftBody != null ? lineChange(event) : null;
+              const lineOffer = lc && lc.to && !shownDraft().includes(lc.to) ? (
+                <div className="si-newline" data-new-line>
+                  <p className="grounding">You changed the message on your invite page to “{lc.to}”. Use your new line?</p>
+                  <div className="actions-row">
+                    <button className="mini" onClick={() => {
+                      const nb = swapPageLine(shownDraft(), lc.from, lc.to);
+                      if (nb == null) { toast('Your old line isn’t in your words any more — edit them above.'); return; }
+                      setDraftBody(nb); draftEditsRef.current[draftEditKey(INVITE_EDIT_TITLE)] = nb;
+                    }}>Use your new line</button>
+                    <button className="mini" onClick={() => patchEvent({ inviteMessageDraft: { ...savedDraft, line: lc.to } }, 'Your words stay as they are.')}>Keep mine</button>
+                  </div>
+                </div>
+              ) : null;
+              const toInvite = isInviteWords ? inviteRecipients(event.guests, guestToldMap(event)) : null;
+              const goToSend = () => openInviteDraft('Your invite', draftInvite, { sendsInvite: true, mode: 'confirm' });
+              const previewTo = (() => {
+                if (!isInviteWords) return {};
+                const gs = (event.guests || []).filter(Boolean);
+                const em = (toInvite.email[0]) || gs.find((g) => String(g.email || '').trim()) || null;
+                const tx = (toInvite.text[0]) || gs.find((g) => String(g.phone || '').trim()) || null;
+                const card = (() => { try { const m = inviteCardModel(event); const w = m.facts.find((f) => f.label === 'When'); return { name: m.name, when: w ? [w.value, w.sub].filter(Boolean).join(' · ') : '' }; } catch { return null; } })();
+                return { toEmail: em ? em.name : '', toText: tx ? { name: tx.name, phone: formatPhoneUS(String(tx.phone || '')) } : null, card };
+              })();
               const reachInvite = (reached, via) => {
                 const at = new Date().toISOString();
                 try { trackEvent(ANALYTICS.INVITE_SENT, { via, count: (reached || []).length }); } catch (_e) { /* a counter never blocks an invite */ }
                 patchEvent({
                   guests: markInvited(event.guests || [], reached, via, at),
                   ...(event.invitesSentAt ? {} : { invitesSentAt: at }),
+                  ...(reached && reached.length ? { invitesSentMessage: inviteSnapshotNow(at) } : {}),
                 }, null, { noUndo: true });
               };
+              // THE SEND CONFIRM (owner, 11/24/2026: render s2-4): the message
+              // folded, who gets what, then the send. Nothing else on the sheet.
+              if (mode === 'confirm') return (
+              <>
+                {savedChip}
+                {linkBox}
+                <div data-invite-message-fold style={{ marginTop: noLink ? 'var(--sp-3)' : 0 }}>
+                  <button className="si-collapse" aria-expanded={draftMsgOpen} onClick={() => setDraftMsgOpen((o) => !o)}>
+                    <span className="si-cl-l">
+                      <span className="si-cl-t">Your message</span>
+                      <span className="si-cl-s">{inviteSubjectAndBody(shownDraft(), inviteSubject).body.split('\n').map((l) => l.trim()).filter(Boolean).join(' ')}</span>
+                    </span>
+                    <span className="si-cl-a">{draftMsgOpen ? 'Hide' : 'Show all'} {draftMsgOpen ? '⌃' : '⌄'}</span>
+                  </button>
+                  {draftMsgOpen && <div className="si-full" data-invite-message-full>{shownDraft()}</div>}
+                </div>
+                <button className="si-link" onClick={() => setSheet((sh) => ({ ...sh, mode: 'save', heading: null, title: 'Invite message' }))}>Edit the message</button>
+                <InviteToTheList guests={event.guests} told={guestToldMap(event)}
+                  textBody={textMessageBody(shownDraft(), inviteSubject)}
+                  canEmail={isCommApiConfigured() && !!session} disabled={noLink}
+                  sendOne={sendInviteTo} onReached={reachInvite} onLead={setDraftListLead} onNotYet={closeSheet} />
+              </>
+              );
               return (
               <>
+                {mode === 'save' ? savedChip : null}
                 {/* Host-attested state chip: RECORD-ONLY treatment (outline,
                     muted) — visually distinct from any system-verified pill,
                     per ruling clause 3. Renders only when an entry exists. */}
@@ -23518,7 +23831,7 @@ export default function HostShellV2() {
                       // Picking a voice still means "rewrite it" — but her typed words
                       // are no longer thrown away with no way back (Nielsen re-run N6,
                       // 2026-11-02; e2e yourWordsStayWithTheirEvent).
-                      const key = draftEditKey(sheet.title);
+                      const key = draftEditKey(sheet.editTitle || sheet.title);
                       const hers = draftBody; const prevTone = draftTone;
                       setDraftTone(k); setDraftBody(null); patchProfile({ draftTone: k });
                       try { delete draftEditsRef.current[key]; } catch { /* kept copy is best-effort */ }
@@ -23532,7 +23845,7 @@ export default function HostShellV2() {
                   {draftBody != null && <div className="of" style={{ marginTop: 6, color: 'var(--steel-soft)' }}>Your words — showing your edits</div>}
                 </div>
                 <textarea className="draft-body draft-edit" value={shownDraft()} aria-label="Edit the draft"
-                  onChange={e => { setDraftBody(e.target.value); draftEditsRef.current[draftEditKey(sheet.title)] = e.target.value; }}
+                  onChange={e => { setDraftBody(e.target.value); draftEditsRef.current[draftEditKey(sheet.editTitle || sheet.title)] = e.target.value; }}
                   rows={Math.min(14, shownDraft().split('\n').length + 2)} />
                 {/* ── UNFILLED BLANKS ARE NOT READY TO SEND (audit, 2026-09-18) ──
                     Several drafts deliberately bracket what the app does not know
@@ -23554,7 +23867,7 @@ export default function HostShellV2() {
                     their parking line vanished. Same defect class as the venue verdict
                     and the budget predicate; the accessor already existed. */}
                 {(() => {
-                  const blanks = unfilledBlanks(shownDraft());
+                  const blanks = unfilledBlanks(shownDraft()).filter((b) => b !== LINK_PLACEHOLDER);
                   if (!blanks.length) return null;
                   return (
                     <p className="grounding warn-note" style={{ margin: '10px 0 0' }}>
@@ -23575,6 +23888,23 @@ export default function HostShellV2() {
                 {sheet.notice ? (
                   <p className="grounding" style={{ margin: '10px 0 0' }}>{sheet.notice}</p>
                 ) : null}
+                {linkBox}
+                {lineOffer}
+                {/* SAVE ONLY (owner, 11/24/2026: render s2-3): the words, how they
+                    arrive, and one lit Save. No hand-offs: sending is step 2's. */}
+                {mode === 'save' && (<>
+                  <MessagePreview draft={shownDraft()} subject={inviteSubject}
+                    from={hostNameFor(event, profile) || (profile && profile.name) || ''}
+                    toEmail={previewTo.toEmail} toText={previewTo.toText} card={previewTo.card} />
+                  <div className="si-actions">
+                    <button className={(noLink ? 'mini' : 'cta') + ' si-wide'} onClick={saveInviteDraft}>Save draft</button>
+                  </div>
+                  <p className="grounding si-g">Saving sends nothing. Your message waits here until you send it from step 2.</p>
+                  {toInvite && toInvite.email.length + toInvite.text.length > 0 && (
+                    <button className="si-link" onClick={goToSend}>Ready? Go to Invite your guest list ›</button>
+                  )}
+                </>)}
+                {mode !== 'save' && (<>
                 {/* ── POST TO EVERYONE'S INVITE (owner pick, 11/21/2026) ─────
                     The trip details only. It posts through Updates to everyone
                     (every guest's invite, an email to those who asked, the
@@ -23594,20 +23924,26 @@ export default function HostShellV2() {
                     itself outranks a handoff. "Share…" is lit only when nothing
                     else is: not beside "Post to everyone's invite", "Send it to
                     …", or the invite/nudge block's email or text step. */}
-                <div className="actions-row" style={{ marginTop: 14 }}>
+                {/* NO REPLY LINK, NOTHING GOES OUT (owner, 11/24/2026): every
+                    hand-off waits for the link; the links become plain disabled
+                    buttons so no tap can open a composer. Invite text ('copy')
+                    makes Copy the lit one. */}
+                <div className={'actions-row' + (noLink ? ' si-dis' : '')} style={{ marginTop: 14 }}>
                   {canShareDraft && (
-                    <button className={shareLit ? 'cta' : 'mini'}
+                    <button className={shareLit && mode !== 'copy' && !noLink ? 'cta' : 'mini'} disabled={noLink}
                       onClick={() => { navigator.share({ title: sheet.title || 'From your plan', text: shownDraft() }).then(() => { recordSend('share'); }).catch(() => { /* declined — records NOTHING, by ruling */ }); }}>
                       Share…
                     </button>
                   )}
-                  <a className="mini" style={{ textDecoration: 'none' }} href={draftSmsHref(sheet.vendorId ? (event.vendors || []).find(v => v && v.id === sheet.vendorId) : null, shownDraft())} onClick={() => recordSend('sms')}>Text it</a>
-                  <a className="mini" style={{ textDecoration: 'none' }} href={'https://wa.me/?text=' + encodeURIComponent(shownDraft())} target="_blank" rel="noreferrer" onClick={() => recordSend('whatsapp')}>Open WhatsApp</a>
-                  <button className="mini" onClick={() => { copyDraft(shownDraft()); recordSend('copy'); }}>Copy it</button>
+                  {noLink ? <button className="mini" disabled>Text it</button>
+                    : <a className="mini" style={{ textDecoration: 'none' }} href={draftSmsHref(sheet.vendorId ? (event.vendors || []).find(v => v && v.id === sheet.vendorId) : null, isInviteWords ? textMessageBody(shownDraft(), inviteSubject) : shownDraft())} onClick={() => recordSend('sms')}>Text it</a>}
+                  {noLink ? <button className="mini" disabled>Open WhatsApp</button>
+                    : <a className="mini" style={{ textDecoration: 'none' }} href={'https://wa.me/?text=' + encodeURIComponent(shownDraft())} target="_blank" rel="noreferrer" onClick={() => recordSend('whatsapp')}>Open WhatsApp</a>}
+                  <button className={mode === 'copy' && !noLink ? 'cta' : 'mini'} disabled={noLink} onClick={() => { copyDraft(shownDraft()); recordSend('copy'); }}>Copy it</button>
                   {/* "I sent it earlier from my phone" — a RECORD, not an act
                       (UX_07:46): the label says Mark, the state says attested. */}
                   {!sendChip && (
-                    <button className="mini" onClick={() => recordSend('other')}>Mark it sent — I sent it myself</button>
+                    <button className="mini" disabled={noLink} onClick={() => recordSend('other')}>Mark it sent — I sent it myself</button>
                   )}
                 </div>
                 {/* The ONE thing we send ourselves. Names the recipient so the
@@ -23622,14 +23958,15 @@ export default function HostShellV2() {
                     </button>
                   </div>
                 )}
-                {sheet.sendsInvite && (
-                  <InviteToTheList guests={event.guests} draft={shownDraft()}
-                    canEmail={isCommApiConfigured() && !!session}
+                {sheet.sendsInvite && mode !== 'copy' && (
+                  <InviteToTheList guests={event.guests} told={guestToldMap(event)}
+                    textBody={textMessageBody(shownDraft(), inviteSubject)}
+                    canEmail={isCommApiConfigured() && !!session} disabled={noLink}
                     sendOne={sendInviteTo} onReached={reachInvite} onLead={setDraftListLead} />
                 )}
                 {sheet.sendsNudge && (
-                  <NudgeTheList event={event}
-                    textBody={nudgeTextBody(inviteSubjectAndBody(shownDraft(), (draftRsvpChase(event, profile) || {}).subject).body)}
+                  <NudgeTheList event={event} disabled={noLink}
+                    textBody={plainText(nudgeTextBody(inviteSubjectAndBody(shownDraft(), (draftRsvpChase(event, profile) || {}).subject).body))}
                     canEmail={isCommApiConfigured() && !!session}
                     sendOne={sendNudgeTo} onReached={reachNudge} onLead={setDraftListLead} />
                 )}
@@ -23645,6 +23982,7 @@ export default function HostShellV2() {
                   </div>
                 )}
                 <p className="grounding" style={{ marginTop: 10 }}>{typeof navigator !== 'undefined' && typeof navigator.share === 'function' ? '“Share…” opens your phone’s share sheet: Messages, WhatsApp, or anywhere else. ' : ''}Each voice changes how the note opens and closes, never its details. Edit any word above; your voice is remembered for every draft.</p>
+                </>)}
               </>
               );
             })()}
@@ -23690,12 +24028,12 @@ export default function HostShellV2() {
                     // every time a decision closed a gate — the host would watch
                     // their progress jump for work they never did, which is the
                     // opposite of what this number is for.
+                    // One reader for "N of M" (lib/taskEngine checklistProgress, rule 12):
+                    // the family page prints the count her app saves from it.
                     const live = (event.timeline || []).filter(t => t && !t.retired);
-                    const total = live.length;
                     const openRows = live.filter(t => !t.done);
                     const inferredN = openRows.filter(t => isTimelineStepResolved(t)).length;
-                    const openN = openRows.length - inferredN;
-                    const doneN = total - openN;
+                    const { done: doneN, total, open: openN } = checklistProgress(event);
                     return (
                       <SheetHero
                         eyebrow="Checked off"
@@ -26415,7 +26753,7 @@ export default function HostShellV2() {
                   <div className="fstat-list" style={{ margin: '0 0 var(--sp-3)' }}>
                     <button className="fstat" style={{ borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }} onClick={() => setSheet(s => ({ ...s, marketOpen: true }))}>
                       <span className="fstat-l">Which market</span>
-                      <RowValue status={rowStatus({ settled: !!metroMkt })} chev>{metroMkt ? metroMkt.label : metroSuggest ? `Suggested: ${metroSuggest.market.label}` : 'National baseline'}</RowValue>
+                      <RowValue status={rowStatus({ settled: !!metroMkt })} chev>{metroMkt ? metroMkt.label : metroSuggest ? `Suggested: ${metroSuggest.market.label}` : 'National prices · no area set'}</RowValue>
                     </button>
                   </div>
                 ) : (
@@ -26441,7 +26779,7 @@ export default function HostShellV2() {
                         patchEvent({ market: id || null, metroMarket: null },
                           m ? `Estimates now use ${m.label} typical rates.` : 'Back to a national baseline — no market set.');
                       }}>
-                      <option value="">National baseline — no market set</option>
+                      <option value="">National prices — no area set</option>
                       {[1, 2, 3, 4].map(tier => (
                         <optgroup key={tier} label={`Tier ${tier} — ${METRO_TIER_LABEL[tier].label}`}>
                           {METRO_MARKETS.filter(m => m.tier === tier).map(m => (
@@ -26633,36 +26971,44 @@ export default function HostShellV2() {
                     // Build-map #10: this vendor's own confirm-back, if they answered
                     // the brief link (backend + vendor-side form already shipped).
                     const vConfirm = confirmationByVendor[String(v.id)] || null;
+                    // The six host axes, read once for the groups' labels (cohesion batch B).
+                    let rd = null; const axesBy = {}; let na = null;
+                    if (!v.isInformal) {
+                      try {
+                        rd = getHostVendorReadiness(v, event);
+                        for (const a of getHostVendorChallenges(v, event)) axesBy[a.key] = a;
+                        na = getVendorNextAction(v, event);
+                      } catch { rd = null; }
+                    }
+                    const axisWarn = (k) => !!axesBy[k] && (axesBy[k].level === 'critical' || axesBy[k].level === 'attention');
+
                     return (
                       <div key={v.id} data-vid={v.id} className={'vcard' + (isOpen ? ' open' : '')}
                         ref={scrollIntoViewOnOpen(isOpen)}
                         onClick={() => setSheet(s => ({ ...s, focus: isOpen ? null : v.id }))}>
                         <div className="vc-head">
                           <div className="vc-avatar" aria-hidden>{String(v.name || '?').trim().charAt(0).toUpperCase()}</div>
+                          {/* THE NAME GETS ITS OWN LINE (owner's fix 1 to the approved
+                              renders, 11/24/2026). At 390 the meta wrapped into four lines
+                              beside the name. Now: the name with the price on its right;
+                              under it the meta on one line, and the status on the right
+                              where it fits, wrapping to its own right-hand line where it
+                              does not (the phone), never squeezing the name or the meta. */}
                           <div className="vc-id">
-                            <div className="vc-name">{v.name || 'Unnamed'}</div>
-                            {/* Audit #8: the agreed cost + paid state were hidden in
-                                the expanded editor, so a host couldn't compare vendor
-                                costs at a glance. Surface them on the collapsed card
-                                face (with status + arrival) so the list scans side-by-side. */}
-                            {/* MONEY LEFT THIS LINE (ruling clause 2). It used to be
-                                joined into the sub as "· $1,200 · paid", so the one
-                                figure a host compares across vendors was mid-sentence
-                                in a grey run-on, at a different x on every card and in
-                                a proportional face where 1 is narrower than 8. The
-                                sub keeps what describes the vendor; the number goes
-                                right, in `.amt`, where a column of them lines up. */}
-                            <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + fmt12h(v.arrivalTime) : null,
-                              // How this vendor prices (host report): a per-head figure for a caterer/bar
-                              // ("$20/head"), "flat rate" / "per item" for the rest — from the one pricing-basis source.
-                              Number(v.cost) > 0 ? vendorPricingHint(v, guestCountFor(event).count || 0) : null].filter(Boolean).join(' · ')}</div>
-                          </div>
+                            <div className="vc-top">
+                              <div className="vc-name">{v.name || 'Unnamed'}</div>
                           {Number(v.cost) > 0 && (
                             <div className="vc-amt">
                               <span className="amt">${Number(v.cost).toLocaleString()}</span>
                               {v.balancePaid ? <span className="vc-paid">paid</span> : null}
                             </div>
                           )}
+                            </div>
+                            <div className="vc-sub">
+                            <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + fmt12h(v.arrivalTime) : null,
+                              // How this vendor prices (host report): a per-head figure for a caterer/bar
+                              // ("$20/head"), "flat rate" / "per item" for the rest — from the one pricing-basis source.
+                              Number(v.cost) > 0 ? vendorPricingHint(v, guestCountFor(event).count || 0) : null].filter(Boolean).join(' · ')}</div>
                           {/* HOST-APPROPRIATE-VENDOR-UI: an informal helper isn't
                               missing paperwork — there's none to have. "no status"
                               reads like an incomplete paid booking; this reads like
@@ -26674,7 +27020,7 @@ export default function HostShellV2() {
                                (below) instead of silently cycling — the host sees
                                every state and taps the real one. */
                             <button data-vaction="booking" className={'vc-pill' + (good ? ' good' : v.status ? ' mid' : '')}
-                              onClick={ev => { ev.stopPropagation(); setStatusPickFor(statusPickFor === v.id ? null : v.id); }}
+                              onClick={ev => { ev.stopPropagation(); setStatusPickFor(v.id); setSheet(s => ({ ...s, focus: v.id })); }}
                               aria-expanded={statusPickFor === v.id} aria-haspopup="true"
                               title={v.status ? (VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] || vendorStatusLabel(v.status)) : 'Tap to set where this vendor stands'}
                               aria-label={'Booking status: ' + (v.status ? vendorStatusLabel(v.status) : 'not set') + (v.status && VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] ? ' — ' + VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] : '') + '. Tap to change.'}>
@@ -26685,6 +27031,8 @@ export default function HostShellV2() {
                               <span aria-hidden="true" style={{ marginLeft: 5, fontSize: '.85em' }}>▾</span>
                             </button>
                           )}
+                            </div>
+                          </div>
                         </div>
                         {/* ── ONE CHIP, RANKED BY TIME-TO-CONSEQUENCE ──────────────
                             Board ruling 2026-08-21 clause 3. Four chips could stack
@@ -26729,15 +27077,35 @@ export default function HostShellV2() {
                           );
                         })()}
                         <div className="vc-more" onClick={ev => ev.stopPropagation()}>
-                          {/* ── BELOW THE FOLD (board ruling 2026-08-21, clause 2) ──
-                              The status picker and the whole contact band used to
-                              live on the COLLAPSED face, which is why this sheet read
-                              as four stacked bands per vendor while every other
-                              restyled sheet shows one line. They are controls, and a
-                              resting row states rather than offers. The PROMPT stays
-                              visible up top as the ranked "Silent N days" chip, so
-                              moving the control never hides the need (ruling risk 2). */}
-                        {!v.isInformal && statusPickFor === v.id && (
+                          {/* ── THE OPENED VENDOR, IN LABELED GROUPS (cohesion batch B) ──────
+                              Owner-approved renders, 11/24/2026 (renders/cohesion-b). The
+                              audit (#8) measured ~30 unlabeled controls here. Each group's
+                              label carries its axis's sentence on the right (the six host
+                              axes, never a seventh); a friend helping out gets no status,
+                              money or paperwork groups (standing rule 2026-08-07). */}
+                          <div className="vd-group" data-vgroup="who">
+                            <div className="shelf-label vd-group-label"><span>Who they are</span></div>
+                            <label className="vd-field" htmlFor={'v-name-' + v.id}><span className="of vd-label">Name</span>
+                              <input id={'v-name-' + v.id} className="field vd-input" value={v.name || ''} onChange={e => writeVendor(v.id, { name: e.target.value }, null)} /></label>
+                            <label className="vd-field" htmlFor={'v-cat-' + v.id}><span className="of vd-label">What they do</span>
+                              <input id={'v-cat-' + v.id} className="field vd-input" value={v.category || ''} onChange={e => writeVendor(v.id, { category: e.target.value }, null)} /></label>
+                          {/* HOST-APPROPRIATE-VENDOR-UI: friends/family helping out
+                              shouldn't get chased for a certificate of insurance. This
+                              flag is read by the shared vendorAccountability engine
+                              (deriveVendorExpectedPromises etc.) and vendorCoiRequirement
+                              — setting it clears every COI/contract/promise nudge below,
+                              not just the label. */}
+                          <button className="chip" style={{ marginBottom: 10 }}
+                            aria-pressed={!!v.isInformal}
+                            onClick={() => writeVendor(v.id, { isInformal: !v.isInformal },
+                              !v.isInformal ? (v.name || 'This') + ' is a friend or family member helping out — no paperwork tracked.' : (v.name || 'This') + ' switched back to a paid vendor.')}>
+                            {v.isInformal ? 'Friend or family helping (not a paid vendor)' : 'not a paid vendor — friend or family helping?'}
+                          </button>
+                          </div>
+                          {!v.isInformal && (<>
+                          <div className="vd-group" data-vgroup="stands">
+                            <div className="shelf-label vd-group-label"><span>Where it stands</span>{rd ? <span className={'vd-group-state' + (rd.level === 'critical' || rd.level === 'attention' ? ' warn' : '')}>{rd.label}</span> : null}</div>
+                        {!v.isInformal && (
                           <div className="vc-statuspick" role="group" aria-label="Set booking status"
                             style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', margin: '2px 0 8px' }}>
                             {VENDOR_STATUS_LADDER.map(s => {
@@ -26756,84 +27124,9 @@ export default function HostShellV2() {
                                 </button>
                               );
                             })}
-                            <span className="grounding" style={{ flexBasis: '100%', margin: '2px 0 0', color: 'var(--faint)' }}>
-                              {v.status ? VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] || 'Tap where this vendor stands.' : 'Tap where this vendor stands. You can change it anytime.'}
-                            </span>
                           </div>
                         )}
-                        {/* ── WHERE THIS VENDOR STANDS ────────────────────────────────────
-                            Vendor cockpit port, slice 1. The engine has scored every vendor
-                            on these axes since Sprint 53 and NOTHING in this shell read it —
-                            hostv2 imported 2 of the 13 functions the CRA cockpit uses. The
-                            facts were already here (payDueDate, balancePaid, arrivalTime,
-                            contractSigned); the VERDICT on them was not.
-
-                            SIX AXES, NOT NINE (owner ruling: host-important only). scope
-                            ("we don't have a scope field" — the engine's own comment) and
-                            timeline (run-of-show cross-reference) are planner machinery;
-                            dayOf duplicates logistics, both keyed on the same arrival field.
-                            `closeout` was cut in the first scoping pass and put back by
-                            measurement — it is the only axis that can turn a past event
-                            critical, and its sentence is money the host still owes.
-
-                            BELOW THE FOLD, NOT ON THE CARD FACE. The 2026-08-21 ruling's
-                            clause 3 caps the resting card at ONE chip because four stacked
-                            amber marks spent the whole colour budget. Six would be worse.
-                            This renders inside .vc-more, which a host opens deliberately.
-
-                            NOT FOR HELPERS. Standing rule (2026-08-07): helpers get contact,
-                            never the paid-vendor ladder. An informal helper has no contract,
-                            no deposit and no COI to be judged against.
-
-                            NO CTA HERE YET. getActionableNextStep returns payment, contract
-                            and arrival flows that need real wiring; a button that cannot do
-                            what it says is the CTA-truthfulness defect (UX_07). The next
-                            action ships as a STATEMENT until its actions are wired. */}
-                        {!v.isInformal && (() => {
-                          let rd = null; let axes = []; let na = null;
-                          try {
-                            rd = getHostVendorReadiness(v, event);
-                            axes = getHostVendorChallenges(v, event);
-                            na = getVendorNextAction(v, event);
-                          } catch { return null; }
-                          if (!rd || !axes.length) return null;
-                          // Host words, not the engine's keys. "Logistics" and
-                          // "documents" are trade vocabulary; a host thinks arrival
-                          // and paperwork.
-                          const LABEL = {
-                            booking: 'Booking', communication: 'Staying in touch',
-                            logistics: 'Arrival', financial: 'Money',
-                            documents: 'Paperwork', closeout: 'After the event',
-                          };
-                          // UX_02 colour budget: amber and red are EXCEPTIONS. A safe or
-                          // untracked axis carries no tone at all, so six calm rows stay
-                          // six calm rows and the one that needs a host reads instantly.
-                          const tone = (lvl) => (lvl === 'critical' ? 'warn' : lvl === 'attention' ? 'warn' : null);
-                          return (
-                            <div style={{ margin: '2px 0 10px' }}>
-                              <div className="shelf-label">Where this stands</div>
-                              {/* The verdict, then its one sentence. Both come from the
-                                  same six axes listed underneath — never a seventh. */}
-                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
-                                <strong style={{ fontSize: 'var(--t-row)' }}>{rd.label}</strong>
-                                {rd.summary && <span className="grounding" style={{ margin: 0 }}>{rd.summary}</span>}
-                              </div>
-                              {/* ── THE NEXT ACTION POINTS AT THE CONTROL, IT DOES NOT COPY IT ──
-                                  Slice 2. `getActionableNextStep` returns seven CTA kinds
-                                  (patch / payment / contract / arrival / log / edit), and the
-                                  obvious build is seven buttons. Checked first: hostv2 ALREADY
-                                  has a working control for every one of them — the status
-                                  ladder, the COI ladder, the paid toggle, the arrival field,
-                                  "I reached out", the contract row. Building the CTAs would
-                                  have put a second write path beside each, which is the
-                                  duplicate-surface rule AND the defect this codebase keeps
-                                  finding: one fact, two owners, drifting apart.
-
-                                  So the action takes the host TO the control. One tap, the
-                                  real affordance, no second source of truth. A category with
-                                  no control to reach (the 'review' fallback, scope, timeline)
-                                  renders as prose with NO button — never a control that cannot
-                                  act, which is the UX_07 line. */}
+                            {axesBy.booking && <p className="grounding" style={{ margin: 0, color: 'var(--ink)' }}>{axesBy.booking.note}</p>}
                               {na && na.title && (() => {
                                 const anchor = {
                                   booking: 'booking', coi: 'coi', documents: 'contract',
@@ -26847,10 +27140,10 @@ export default function HostShellV2() {
                                   </>
                                 );
                                 if (!anchor) {
-                                  return <p className="grounding" style={{ margin: '6px 0 8px', color: 'var(--ink)' }}>{line}</p>;
+                                  return <p className="grounding" data-vnext style={{ margin: '6px 0 0', color: 'var(--ink)' }}>{line}</p>;
                                 }
                                 return (
-                                  <p className="grounding" style={{ margin: '6px 0 8px', color: 'var(--ink)' }}>
+                                  <p className="grounding" data-vnext style={{ margin: '6px 0 0', color: 'var(--ink)' }}>
                                     {line}{' '}
                                     <span role="button" tabIndex={0} className="mini rowlink"
                                       data-vgo={anchor}
@@ -26865,17 +27158,36 @@ export default function HostShellV2() {
                                   </p>
                                 );
                               })()}
-                              <div className="fstat-list" style={{ margin: 0 }}>
-                                {axes.map(a => (
-                                  <div className="fstat" key={a.key} style={{ alignItems: 'flex-start', gap: 10 }}>
-                                    <span className="fstat-l" style={{ flex: '0 0 auto' }}>{LABEL[a.key] || a.key}</span>
-                                    <RowValue note status={rowStatus({ overdue: !!tone(a.level) })} style={{ textAlign: 'right', display: 'block' }}>{a.note}</RowValue>
+
+                          </div>
+                          </>)}
+                          <div className="vd-group" data-vgroup="reach">
+                            <div className="shelf-label vd-group-label"><span>Reach them</span>{axesBy.communication ? <span className={'vd-group-state' + (axisWarn('communication') ? ' warn' : '')}>{axesBy.communication.note}</span> : null}</div>
+                            <label className="vd-field" htmlFor={'v-phone-' + v.id}><span className="of vd-label">Phone</span>
+                              <input id={'v-phone-' + v.id} className="field vd-input" type="tel" value={v.phone || ''} onChange={e => writeVendor(v.id, { phone: formatPhoneUS(e.target.value) }, null)} /></label>
+                            <label className="vd-field" htmlFor={'v-email-' + v.id}><span className="of vd-label">Email</span>
+                              <input id={'v-email-' + v.id} className="field vd-input" type="email" value={v.email || ''} onChange={e => writeVendor(v.id, { email: e.target.value }, null)} aria-invalid={isMalformedEmail(v.email)} /></label>
+                            {isMalformedEmail(v.email) && <p className="grounding warn-note" role="alert" style={{ margin: '-4px 0 var(--sp-2)' }}>That doesn’t look like an email address.</p>}
+                            {/* contactName rides the details' whitelist: the page opens "Hi <name>," (VB2). */}
+                            <label className="vd-field" htmlFor={'v-contact-' + v.id}><span className="of vd-label">Your contact there</span>
+                              <input id={'v-contact-' + v.id} className="field vd-input" value={v.contactName || ''} onChange={e => writeVendor(v.id, { contactName: e.target.value }, null)} /></label>
+                            {/* CONTACT OPENS THE PHONE'S OWN APPS (approved renders, 11/24/2026):
+                                tel:, sms: and mailto: links. Nothing is sent from here. */}
+                            {(() => {
+                              const dig = String(v.dayOfPhone || v.phone || '').replace(/[^+\d]/g, '');
+                              const mail = String(v.email || '').trim();
+                              if (!dig && !(mail && !isMalformedEmail(mail))) return null;
+                              return (
+                                <>
+                                  <div className="actions-row" style={{ flexWrap: 'wrap', margin: '2px 0 4px' }}>
+                                    {dig && <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + dig}>Call</a>}
+                                    {dig && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + dig}>Text</a>}
+                                    {mail && !isMalformedEmail(mail) && <a className="mini" style={{ textDecoration: 'none' }} href={'mailto:' + mail}>Email</a>}
                                   </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })()}
+                                  <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Call, Text and Email open your phone’s own apps. Nothing is sent from here.</p>
+                                </>
+                              );
+                            })()}
                         {/* ── CONTACT, ON THE ROW — FOR EVERYONE ─────────────────────────
                             Board ruling 2026-08-07: no comms hub. The act belongs where the
                             host is standing when they notice, not in a destination they must
@@ -26958,65 +27270,19 @@ export default function HostShellV2() {
                           {vConfirm && (
                             <div className="brow" style={{ marginBottom: 'var(--sp-3)' }}>
                               <div className="f-name" style={{ marginBottom: 3 }}>
-                                {vConfirm.state === 'confirmed' ? 'They confirmed the brief' : 'They flagged something'}
+                                {vConfirm.state === 'confirmed' ? 'They confirmed the details' : 'They flagged something'}
                                 <span className="tag plan" style={vConfirm.state === 'confirmed' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{vConfirm.state === 'confirmed' ? 'confirmed' : 'issue'}</span>
                               </div>
                               {(vConfirm.on_site_name || vConfirm.on_site_phone) && (
                                 <p className="grounding" style={{ margin: '0 0 2px' }}>On-site: {[vConfirm.on_site_name, vConfirm.on_site_phone].filter(Boolean).join(' · ')}</p>
                               )}
                               {vConfirm.note && <p className="grounding" style={{ margin: '0 0 2px' }}>“{vConfirm.note}”</p>}
-                              <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>Answered {(() => { try { return new Date(vConfirm.updated_at || vConfirm.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return 'recently'; } })()} — from the brief link you shared.</p>
+                              <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>Answered {(() => { try { return new Date(vConfirm.updated_at || vConfirm.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return 'recently'; } })()} — from the details link you sent.</p>
                             </div>
                           )}
-                          {/* Contact info — a vendor added from a suggested category
-                              starts life as { category, name:'' } with no way to name it
-                              or reach it; nothing in this cockpit ever wrote name/phone/
-                              email, so a vendor could stay "Unnamed" forever and the Call
-                              button (below) could never appear. Legacy already has this
-                              as a plain form field; V2 never got it. */}
-                          <div className="actions-row" style={{ marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                            {/* Each field names itself above it (cohesion G, UX_11 rule 2). */}
-                            <label className="field-wrap" style={{ maxWidth: 170 }}><span className="field-label">Name</span>
-                              <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
-                                value={v.name || ''} onChange={e => writeVendor(v.id, { name: e.target.value }, null)} /></label>
-                            <label className="field-wrap" style={{ maxWidth: 140 }}><span className="field-label">Phone</span>
-                              <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="tel"
-                                value={v.phone || ''} onChange={e => writeVendor(v.id, { phone: formatPhoneUS(e.target.value) }, null)} /></label>
-                            <label className="field-wrap" style={{ maxWidth: 185 }}><span className="field-label">Email</span>
-                              <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="email"
-                                value={v.email || ''} onChange={e => writeVendor(v.id, { email: e.target.value }, null)} aria-invalid={isMalformedEmail(v.email)} /></label>
                           </div>
-                          <button className="mini" aria-label={'Remove vendor ' + (v.name || v.category || 'Unnamed')}
-                            onClick={e => {
-                              e.stopPropagation();
-                              patchEvent({ vendors: (event.vendors || []).filter(x => x?.id !== v.id) }, (v.name || v.category || 'Vendor') + ' removed from this event.');
-                              setSheet(s => ({ ...s, focus: null }));
-                            }}>Remove from this event</button>
-                          {isMalformedEmail(v.email) && <p className="grounding warn-note" role="alert" style={{ margin: '-4px 0 var(--sp-2)' }}>That doesn’t look like an email address.</p>}
-                          {/* Vendor Brief authoring (VB2, ported): contactName and
-                              briefNote are both in buildVendorBriefPayload's audited
-                              whitelist (lib/vendorBrief.js) — legacy has always had a
-                              plain field for each; V2 never got either, so a brief
-                              minted here would leave them blank. contactName is the
-                              VENDOR'S person — the brief opens "Hi {contactName}," and
-                              prefills their confirm form (board 2026-11-12: it was
-                              labelled "on-site contact (if not you)", which read as the
-                              host's day-of contact; that is now its own per-event field,
-                              in the share panel below). briefNote is a plain note that
-                              goes to the VENDOR (never v.notes, which is host-private
-                              bookkeeping and never leaves this cockpit). */}
-                          <div className="actions-row" style={{ marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                            <label className="field-wrap" style={{ maxWidth: 260 }}><span className="field-label">Your contact there — their brief greets them</span>
-                              <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
-                                value={v.contactName || ''} onChange={e => writeVendor(v.id, { contactName: e.target.value }, null)} /></label>
-                          </div>
-                          <label className="field-wrap"><span className="field-label">A note for them, in their brief</span>
-                          <textarea className="field ex-ph" style={{ maxWidth: 'none', width: '100%', boxSizing: 'border-box', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 10px', marginBottom: 'var(--sp-2)', resize: 'vertical' }}
-                            placeholder="For example: parking, the load-in door, anything they should know before they arrive" rows={2}
-                            value={v.briefNote || ''} onChange={e => writeVendor(v.id, { briefNote: e.target.value }, null)} /></label>
-                          {/* Agent Opportunity Audit P0 — paste the vendor's reply, review
-                              the extracted fields, apply through writeVendor. */}
-                          <VendorReplyParserV2 vendor={v} event={event} writeVendor={writeVendor} signedIn={!!session} onSignIn={() => setSheet({ kind: 'settings' })} />
+                          <div className="vd-group" data-vgroup="day">
+                            <div className="shelf-label vd-group-label"><span>The day</span>{axesBy.logistics ? <span className={'vd-group-state' + (axisWarn('logistics') ? ' warn' : '')}>{axesBy.logistics.note}</span> : null}</div>
                           {/* WAVE-B write paths (b) + (c): arrival time (the day-of
                               roster, NOW card, and print sheet all read v.arrivalTime;
                               nothing wrote it) and money — the payment-note button
@@ -27025,7 +27291,7 @@ export default function HostShellV2() {
                               Money stays off informal helpers — they're not a paid
                               vendor by the host's own word. */}
                           <div className="actions-row" style={{ margin: '0 0 10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                            <label className="of" htmlFor={'v-arrive-' + v.id}>arrives</label>
+                            <label className="of vd-label" htmlFor={'v-arrive-' + v.id}>Arrives</label>
                             <input data-vaction="arrival" id={'v-arrive-' + v.id} className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                               value={v.arrivalTime || ''} onChange={e => writeVendor(v.id, { arrivalTime: e.target.value }, null)}
                               aria-label="Arrival time on the day" />
@@ -27056,8 +27322,44 @@ export default function HostShellV2() {
                                 </span>
                               );
                             })()}
-                            {!v.isInformal && (<>
-                              <label className="of" htmlFor={'v-cost-' + v.id}>agreed to pay $</label>
+                          </div>
+                              {/* The arrival ask: the deadline is the vendor's own playbook rule,
+                                  the hour is theirs to give, and the message is already written. */}
+                              {(() => {
+                                const ask = (() => { try { return arrivalAsk(v, event); } catch (_e) { return null; } })();
+                                if (!ask) return null;
+                                return (
+                                  <p className="grounding" style={{ width: '100%', margin: 'var(--sp-1) 0 0' }}>
+                                    {ask.why}{' '}
+                                    <span role="button" tabIndex={0} className="mini rowlink"
+                                      onClick={(e) => { e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile), null, { vendorId: v.id }); }}
+                                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile), null, { vendorId: v.id }); } }}>
+                                      Write the ask →
+                                    </span>
+                                  </p>
+                                );
+                              })()}
+                            <label className="vd-field" htmlFor={'v-note-' + v.id}><span className="of vd-label">A note for them, sent with the details</span>
+                              <textarea id={'v-note-' + v.id} className="field vd-input" rows={2} style={{ resize: 'vertical' }}
+                                placeholder="Parking, the load-in door, anything they should know before they arrive"
+                                value={v.briefNote || ''} onChange={e => writeVendor(v.id, { briefNote: e.target.value }, null)} /></label>
+                          {/* HIDE MARKED SURPRISES (owner, 11/22/2026): a vendor marked as
+                              a surprise (Cory's church singer) is left out of the family
+                              link. Her crew still sees it: the helper and vendor links are
+                              how the cue reaches them. */}
+                          <button className="chip vendor-surprise" data-vendor-surprise
+                            aria-pressed={!!v.surprise}
+                            onClick={() => writeVendor(v.id, { surprise: !v.surprise },
+                              !v.surprise ? (v.name || 'This') + ' is a surprise — the family link leaves it out.' : (v.name || 'This') + ' is no longer a surprise — the family link shows it.')}>
+                            {v.surprise ? 'Surprise · hidden from the family link' : 'Is this a surprise?'}
+                          </button>
+                          </div>
+                          {!v.isInformal && (<>
+                          <div className="vd-group" data-vgroup="money">
+                            <div className="shelf-label vd-group-label"><span>Money</span>{axesBy.financial ? <span className={'vd-group-state' + (axisWarn('financial') ? ' warn' : '')}>{axesBy.financial.note}</span> : null}</div>
+                          <div className="actions-row" style={{ margin: '0 0 10px', flexDirection: 'column', alignItems: 'flex-start' }}>
+
+                              <label className="of vd-label" htmlFor={'v-cost-' + v.id}>Agreed to pay ($)</label>
                               <input id={'v-cost-' + v.id} className="field" type="text" inputMode="decimal" placeholder="0"
                                 style={{ maxWidth: 104, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                                 value={vendorCostDraft !== null && ownsVendorCostDraft(v) && isOpen ? vendorCostDraft : (v.cost ?? '')}
@@ -27104,22 +27406,6 @@ export default function HostShellV2() {
                                   </p>
                                 );
                               })()}
-                              {/* The arrival ask: the deadline is the vendor's own playbook rule,
-                                  the hour is theirs to give, and the message is already written. */}
-                              {(() => {
-                                const ask = (() => { try { return arrivalAsk(v, event); } catch (_e) { return null; } })();
-                                if (!ask) return null;
-                                return (
-                                  <p className="grounding" style={{ width: '100%', margin: 'var(--sp-1) 0 0' }}>
-                                    {ask.why}{' '}
-                                    <span role="button" tabIndex={0} className="mini rowlink"
-                                      onClick={(e) => { e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile), null, { vendorId: v.id }); }}
-                                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile), null, { vendorId: v.id }); } }}>
-                                      Write the ask →
-                                    </span>
-                                  </p>
-                                );
-                              })()}
                               {/* THE DEPOSIT CAN BE SAID PAID (hero-clears sweep, 11/20/2026). A
                                   recorded deposit held the Vendors part open and nothing in
                                   this app wrote `depositPaid`, so the part could never close. */}
@@ -27143,7 +27429,7 @@ export default function HostShellV2() {
 
                                   Not shown once it's paid: a due date on a settled balance is noise. */}
                               {!v.balancePaid && (<>
-                                <label className="of" htmlFor={'v-paydue-' + v.id}>balance due</label>
+                                <label className="of vd-label" htmlFor={'v-paydue-' + v.id}>Balance due</label>
                                 <input id={'v-paydue-' + v.id} className="field" type="date"
                                   style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                                   value={v.payDueDate || ''}
@@ -27151,66 +27437,26 @@ export default function HostShellV2() {
                                     e.target.value ? 'Noted — you’ll get a heads-up before it’s due.' : null)}
                                   aria-label="When the final balance is due" />
                               </>)}
-                            </>)}
                           </div>
-                          {/* HIDE MARKED SURPRISES (owner, 11/22/2026): a vendor marked as
-                              a surprise (Cory's church singer) is left out of the family
-                              link. Her crew still sees it: the helper and vendor links are
-                              how the cue reaches them. */}
-                          <button className="chip vendor-surprise" data-vendor-surprise
-                            aria-pressed={!!v.surprise}
-                            onClick={() => writeVendor(v.id, { surprise: !v.surprise },
-                              !v.surprise ? (v.name || 'This') + ' is a surprise — the family link leaves it out.' : (v.name || 'This') + ' is no longer a surprise — the family link shows it.')}>
-                            {v.surprise ? 'Surprise · hidden from the family link' : 'Is this a surprise?'}
-                          </button>
-                          {/* HOST-APPROPRIATE-VENDOR-UI: friends/family helping out
-                              shouldn't get chased for a certificate of insurance. This
-                              flag is read by the shared vendorAccountability engine
-                              (deriveVendorExpectedPromises etc.) and vendorCoiRequirement
-                              — setting it clears every COI/contract/promise nudge below,
-                              not just the label. */}
-                          <button className="chip" style={{ marginBottom: 10 }}
-                            aria-pressed={!!v.isInformal}
-                            onClick={() => writeVendor(v.id, { isInformal: !v.isInformal },
-                              !v.isInformal ? (v.name || 'This') + ' is a friend or family member helping out — no paperwork tracked.' : (v.name || 'This') + ' switched back to a paid vendor.')}>
-                            {v.isInformal ? 'Friend or family helping (not a paid vendor)' : 'not a paid vendor — friend or family helping?'}
-                          </button>
-                          {/* Every open promise is CLEARABLE — the same promiseEvidence
-                              override production's vendor detail uses ("Mark proof on
-                              file"), so the worry chip can actually resolve, not just
-                              describe. Honest: it's the host asserting they have it,
-                              not a fake upload. */}
-                          {(() => {
-                            let openPromises = [];
-                            try {
-                              openPromises = (inferPromisesFromVendor(v, event) || []).filter(promiseNeedsHost);
-                            } catch { openPromises = []; }
-                            if (!openPromises.length) return null;
-                            // cap the visible list — a fresh vendor can carry a whole
-                            // playbook's worth of unconfirmed promises; show what's
-                            // actionable now, not an audit of everything at once.
-                            const shown = openPromises.slice(0, 3);
-                            const more = openPromises.length - shown.length;
-                            // Anchor for section:'promises' deep links (Up-Next #5) —
-                            // rides the first rendered promise row.
-                            return [...shown.map((p, pi) => (
-                              <div key={p.promiseKey} id={pi === 0 ? 'v-promises-' + v.id : undefined} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', scrollMarginTop: 12 }}>
-                                <span className="vc-detail" style={{ margin: 0 }}>{p.promiseText}{p.dueDate ? ' · due ' + usShortDate(p.dueDate) : ''}</span>
-                                {/* Item-scoped label (was a generic "Mark confirmed"
-                                    that read as confirming the VENDOR — a host tapped
-                                    it and got a "parking … marked confirmed" toast for
-                                    a single promise). "Mark done" is clearly about the
-                                    promise on this row, distinct from the vendor status
-                                    pills above. */}
-                                <button className="mini" onClick={() => writeVendor(v.id, { promiseEvidence: { ...(v.promiseEvidence || {}), [p.promiseKey]: 'attached' } },
-                                  p.promiseText + ' — marked done.')}>
-                                  {p.evidenceRequired ? 'Mark proof on file' : 'Mark done'}
-                                </button>
-                              </div>
-                            )), more > 0 ? (
-                              <p key="more" className="vc-detail">+{more} more open — the vendor's own brief covers the rest.</p>
-                            ) : null];
-                          })()}
+                            <div className="actions-row" style={{ flexWrap: 'wrap' }}>
+                            {Number(v.cost) > 0 && !v.balancePaid && (
+                              <button className="mini" onClick={() => { try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v, profile), null, { vendorId: v.id }); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
+                            )}
+                            {(() => { try {
+                              const m = getSuggestedPayMethod(v); if (!m) return null;
+                              const link = buildPayLink(m, v, null); if (!link) return null;
+                              return <a className="mini" style={{ textDecoration: 'none' }} href={link} target="_blank" rel="noreferrer">Pay via {m}</a>;
+                            } catch { return null; } })()}
+                            {(() => { try {
+                              const m = getSuggestedPayMethod(v); if (!m) return null;
+                              const link = buildPayLink(m, v, null); if (!link) return null;
+                              return <a className="mini" style={{ textDecoration: 'none' }} href={link} target="_blank" rel="noreferrer">Pay via {m}</a>;
+                            } catch { return null; } })()}
+                            </div>
+                            {axesBy.closeout && axesBy.closeout.level !== 'not_tracked' && <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>{axesBy.closeout.note}</p>}
+                          </div>
+                          <div className="vd-group" data-vgroup="papers">
+                            <div className="shelf-label vd-group-label"><span>Paperwork</span>{axesBy.documents ? <span className={'vd-group-state' + (axisWarn('documents') ? ' warn' : '')}>{axesBy.documents.note}</span> : null}</div>
                           {/* ── THE COI ROW (host: "create the COI piece", 2026-07-29) ──────
                               Found by clicking: "Collect all vendor COIs for M-NCPPC" landed
                               here (once its route named the documents section) and there was
@@ -27254,7 +27500,7 @@ export default function HostShellV2() {
                                   </label>
                                 )}
                                 {next && (
-                                  <button data-vaction="coi" className="mini" onClick={() => {
+                                  <button data-vaction="coi" className="vd-link" onClick={() => {
                                     // The engine names the step; the write matches it exactly:
                                     // requested → received → verified, and an expired one is asked for again.
                                     if (coi.status === 'requested') writeVendor(v.id, { coiStatus: 'received' }, next.ctaCopy + ' — noted.');
@@ -27271,7 +27517,7 @@ export default function HostShellV2() {
                                     have decided not to pursue, never for one you hold. */}
                                 {coi.required && !v.coiWaived && !coi.verified
                                   && coi.status !== 'received' && (
-                                  <button className="mini" onClick={() => writeVendor(v.id, { coiWaived: true }, 'Insurance waived for ' + (v.name || 'this vendor') + '.')}>Not needed</button>
+                                  <button className="vd-link" onClick={() => writeVendor(v.id, { coiWaived: true }, 'Insurance waived for ' + (v.name || 'this vendor') + '.')}>Not needed</button>
                                 )}
                               </div>
                             );
@@ -27305,7 +27551,7 @@ export default function HostShellV2() {
                                       it arrives — a popup opened after an await is refused by Safari
                                       (the Instacart button's lesson, 2026-09-24). */}
                                   {v.contractStoragePath ? (
-                                    <button className="mini" disabled={!!contractOpening[v.id]} onClick={async () => {
+                                    <button className="vd-link" disabled={!!contractOpening[v.id]} onClick={async () => {
                                       if (contractOpening[v.id]) return;
                                       let win = null;
                                       try { win = window.open('', '_blank'); } catch (_e) { win = null; }
@@ -27333,10 +27579,10 @@ export default function HostShellV2() {
                                       else toast('Your browser blocked the new tab.', { label: 'Open the contract', fn: () => { try { window.open(r.url, '_blank', 'noopener'); } catch (_e) { /* blocked again */ } } }, null, { sticky: true });
                                     }}>{contractOpening[v.id] ? 'Getting the contract…' : 'Open the contract'}</button>
                                   ) : v.contractUrl ? (
-                                    <a className="mini" style={{ textDecoration: 'none' }} href={v.contractUrl} target="_blank" rel="noreferrer">Open the contract</a>
+                                    <a className="vd-link" style={{ textDecoration: 'none' }} href={v.contractUrl} target="_blank" rel="noreferrer">Open the contract</a>
                                   ) : null}
                                   {isAiProxyConfigured() && (v.contractStoragePath || v.contractUrl) && (
-                                    <button className="mini" disabled={!!contractExtracting[v.id]}
+                                    <button className="vd-link" disabled={!!contractExtracting[v.id]}
                                       onClick={async () => {
                                         setContractExtracting(m => ({ ...m, [v.id]: true }));
                                         setContractExtractErr(m => ({ ...m, [v.id]: null }));
@@ -27353,12 +27599,12 @@ export default function HostShellV2() {
                                         }
                                       }}>{contractExtracting[v.id] ? 'Analyzing…' : 'Analyze with AI'}</button>
                                   )}
-                                  <button className="mini" onClick={() => writeVendor(v.id, { contractStoragePath: null, contractFileName: null, contractUrl: null }, 'Contract file removed.')}>Remove</button>
+                                  <button className="vd-link" onClick={() => writeVendor(v.id, { contractStoragePath: null, contractFileName: null, contractUrl: null }, 'Contract file removed.')}>Remove</button>
                                 </>
                               ) : isStorageConfigured() ? (
                                 // Real upload — same storage.js the app uses (Supabase). Stores the
                                 // file + records contractStoragePath/FileName, which clears the clash.
-                                <label className="mini" style={{ cursor: contractUploading[v.id] ? 'wait' : 'pointer', marginLeft: 'auto' }}>
+                                <label className="vd-link" style={{ cursor: contractUploading[v.id] ? 'wait' : 'pointer', marginLeft: 'auto' }}>
                                   {contractUploading[v.id] ? 'Uploading…' : 'Attach file'}
                                   <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" style={{ display: 'none' }} disabled={!!contractUploading[v.id]}
                                     onChange={async (e) => {
@@ -27400,7 +27646,7 @@ export default function HostShellV2() {
                               <div style={{ border: '1px solid var(--line-soft)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3)', margin: 'var(--sp-1) 0' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--sp-2)' }}>
                                   <span className="v-meta" style={{ textTransform: 'uppercase', letterSpacing: '.06em' }}>AI-extracted — verify against the original</span>
-                                  <button className="mini" onClick={() => setContractExtracted(m => ({ ...m, [v.id]: null }))}>Dismiss</button>
+                                  <button className="vd-link" onClick={() => setContractExtracted(m => ({ ...m, [v.id]: null }))}>Dismiss</button>
                                 </div>
                                 {Array.isArray(ex.action_items) && ex.action_items.length > 0 && (
                                   <div style={{ marginBottom: 'var(--sp-2)' }}>
@@ -27431,29 +27677,64 @@ export default function HostShellV2() {
                           })()}
                           {/* The second insurance row that sat here is gone (owner's demo,
                               11/16/2026): the insurance row above is the one place for it. */}
-                          {memLine && <p className="vc-detail">{memLine}</p>}
-                          <div className="pill-grid" style={{ marginTop: 'var(--sp-3)' }}>
-                            <button className="mini" onClick={() => openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile), null, { vendorId: v.id })}>Draft note</button>
-                            {Number(v.cost) > 0 && !v.balancePaid && (
-                              <button className="mini" onClick={() => { try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v, profile), null, { vendorId: v.id }); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
-                            )}
-                            {(() => { try {
-                              const m = getSuggestedPayMethod(v); if (!m) return null;
-                              const link = buildPayLink(m, v, null); if (!link) return null;
-                              return <a className="mini" style={{ textDecoration: 'none' }} href={link} target="_blank" rel="noreferrer">Pay via {m}</a>;
-                            } catch { return null; } })()}
-                            {String(v.dayOfPhone || v.phone || '').trim() && (
-                              <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + String(v.dayOfPhone || v.phone).replace(/[^+\d]/g, '')}>Call</a>
-                            )}
-                            {/* SEND THE DETAILS (owner + host board, 11/15/2026): the same
-                                gated mint as before (shareVendorBrief — first vendor free,
-                                the pass after), now handed back as a pre-written text the
-                                host sends from their OWN phone. Only this button's words
-                                changed; "vendor brief" stays everywhere else for now. */}
-                            <button className="mini" data-vaction="send-details" onClick={() => shareVendorBrief(v)}>
+                          {/* Every open promise is CLEARABLE — the same promiseEvidence
+                              override production's vendor detail uses ("Mark proof on
+                              file"), so the worry chip can actually resolve, not just
+                              describe. Honest: it's the host asserting they have it,
+                              not a fake upload. */}
+                          {(() => {
+                            let openPromises = [];
+                            try {
+                              openPromises = (inferPromisesFromVendor(v, event) || []).filter(promiseNeedsHost);
+                            } catch { openPromises = []; }
+                            if (!openPromises.length) return null;
+                            // cap the visible list — a fresh vendor can carry a whole
+                            // playbook's worth of unconfirmed promises; show what's
+                            // actionable now, not an audit of everything at once.
+                            const shown = openPromises.slice(0, 3);
+                            const more = openPromises.length - shown.length;
+                            // Anchor for section:'promises' deep links (Up-Next #5) —
+                            // rides the first rendered promise row.
+                            return [...shown.map((p, pi) => (
+                              <div key={p.promiseKey} id={pi === 0 ? 'v-promises-' + v.id : undefined} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', scrollMarginTop: 12 }}>
+                                <span className="vc-detail" style={{ margin: 0 }}>{p.promiseText}{p.dueDate ? ' · due ' + usShortDate(p.dueDate) : ''}</span>
+                                {/* Item-scoped label (was a generic "Mark confirmed"
+                                    that read as confirming the VENDOR — a host tapped
+                                    it and got a "parking … marked confirmed" toast for
+                                    a single promise). "Mark done" is clearly about the
+                                    promise on this row, distinct from the vendor status
+                                    pills above. */}
+                                <button className="vd-link" onClick={() => writeVendor(v.id, { promiseEvidence: { ...(v.promiseEvidence || {}), [p.promiseKey]: 'attached' } },
+                                  p.promiseText + ' — marked done.')}>
+                                  {p.evidenceRequired ? 'Mark proof on file' : 'Mark done'}
+                                </button>
+                              </div>
+                            )), more > 0 ? (
+                              <p key="more" className="vc-detail">+{more} more open — the details you send them list the rest.</p>
+                            ) : null];
+                          })()}
+                          </div>
+                          </>)}
+                          <div className="vd-group" data-vgroup="said">
+                            <div className="shelf-label vd-group-label"><span>What they said</span></div>
+                            {vendorReplyOpen === v.id
+                              ? <VendorReplyParserV2 vendor={v} event={event} writeVendor={writeVendor} signedIn={!!session} onSignIn={() => setSheet({ kind: 'settings' })} />
+                              : <button className="mini" onClick={() => setVendorReplyOpen(v.id)}>Paste their email or text</button>}
+                            {memLine && <p className="vc-detail">{memLine}</p>}
+                          </div>
+                          {/* ONE LIT ACTION (rule 1; approved renders 11/24/2026): sending the
+                              details. Drafting a note is the quiet alternative beside it. */}
+                          {/* Only on the OPEN card: a closed card's fold is still in the DOM at
+                              opacity 0, and its lit button would count as a second one. */}
+                          {isOpen && <div className="vd-send">
+                            <button className="cta vd-send-cta" data-vaction="send-details" onClick={() => shareVendorBrief(v)}>
                               {vendorGreetingName(v) ? `Send ${vendorGreetingName(v)} the details` : 'Send the details'}
                             </button>
-                          </div>
+                            <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', textAlign: 'center' }}>
+                              You read it first, then send it from your phone.{' '}
+                              <button className="mini" onClick={() => openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile), null, { vendorId: v.id })}>Draft a note instead</button>
+                            </p>
+                          </div>}
                           {briefSignIn === v.id && (
                             <div data-send-signin={v.id} ref={scrollIntoViewOnOpen(true)} role="group" aria-label={`Sign in to send ${vendorGreetingName(v) || 'them'} the details`}
                               style={{ marginTop: 'var(--sp-2)', padding: 'var(--field-pad)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
@@ -27470,17 +27751,17 @@ export default function HostShellV2() {
                           {vendorBrief && vendorBrief.vendorId === v.id && (
                             <div data-vbrief-panel={v.id} style={{ marginTop: 'var(--sp-2)', padding: 'var(--field-pad)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', scrollMarginBottom: 96 }}>
                               {vendorBrief.minting ? (
-                                <p className="vc-detail" style={{ margin: 0 }}>Putting the brief together…</p>
+                                <p className="vc-detail" style={{ margin: 0 }}>Putting the details together…</p>
                               ) : vendorBrief.error ? (
                                 // A failed mint: no link was made, and nothing
                                 // here pretends one was. One honest next step.
                                 <div role="alert" data-brief-error={vendorBrief.error}>
                                   <p className="vc-detail" style={{ margin: '0 0 var(--sp-2)' }}>
                                     {vendorBrief.error === 'pass-required'
-                                      ? 'Sharing this brief takes the One-Event Pass. No link was made.'
+                                      ? 'Sending these details takes the One-Event Pass. No link was made.'
                                       : vendorBrief.error === 'signed-out'
-                                        ? 'You’re not signed in on this browser — sign in to share the brief. No link was made.'
-                                        : 'Couldn’t create the brief link. Try again.'}
+                                        ? 'You’re not signed in on this browser — sign in to send the details. No link was made.'
+                                        : 'Couldn’t create the link to the details. Try again.'}
                                   </p>
                                   <div className="actions-row">
                                     {vendorBrief.error === 'pass-required' ? (
@@ -27549,17 +27830,28 @@ export default function HostShellV2() {
                                       builders (lib/vendorBrief.js, routers/vendor_brief.py);
                                       a live link reads it from the event on every open. */}
                                   <p className="vc-detail" style={{ margin: 'var(--sp-3) 0 var(--sp-1)' }}>Who should vendors call on the day? Leave blank and it’s you.</p>
-                                  <div className="actions-row" style={{ marginTop: 0, flexWrap: 'wrap' }}>
-                                    <input className="field" style={{ maxWidth: 190, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="day-of contact name"
-                                      value={event.briefContactName || ''} onChange={e => patchEvent({ briefContactName: e.target.value })} aria-label="Day-of contact name for vendor briefs" />
-                                    <input className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="their phone" type="tel"
-                                      value={event.briefContactPhone || ''} onChange={e => patchEvent({ briefContactPhone: formatPhoneUS(e.target.value) })} aria-label="Day-of contact phone for vendor briefs" />
-                                  </div>
+                                  <label className="vd-field" htmlFor={'v-dayof-name-' + v.id}><span className="of vd-label">Day-of contact</span>
+                                    <input id={'v-dayof-name-' + v.id} className="field vd-input" placeholder="day-of contact name"
+                                      value={event.briefContactName || ''} onChange={e => patchEvent({ briefContactName: e.target.value })} aria-label="Day-of contact name vendors see" /></label>
+                                  <label className="vd-field" htmlFor={'v-dayof-phone-' + v.id}><span className="of vd-label">Their phone</span>
+                                    <input id={'v-dayof-phone-' + v.id} className="field vd-input" placeholder="their phone" type="tel"
+                                      value={event.briefContactPhone || ''} onChange={e => patchEvent({ briefContactPhone: formatPhoneUS(e.target.value) })} aria-label="Day-of contact phone vendors see" /></label>
                                   <p className="vc-detail" style={{ margin: 'var(--sp-2) 0 0' }}>{(v.name || 'They')} will see only their arrival time, your address, their part of the day, who to call, and — if they bring food, drink or rentals — your guest count. Nothing about budget, payments, guests’ names, or other vendors.</p>
                                 </>
                               )}
                             </div>
                           )}
+                          {/* DESTRUCTIVE ALONE, AT THE BOTTOM (rule 3; audit #7). It names who
+                              goes, and patchEvent's toast carries Undo (rule 18). */}
+                          <div className="vd-remove">
+                            <button className="mini vd-remove-btn"
+                              onClick={e => {
+                                e.stopPropagation();
+                                patchEvent({ vendors: (event.vendors || []).filter(x => x?.id !== v.id) }, (v.name || v.category || 'Vendor') + ' removed from this event.');
+                                setSheet(s => ({ ...s, focus: null }));
+                              }}>Remove {v.name || v.category || 'this vendor'} from this event</button>
+                            <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', textAlign: 'center' }}>Their status, money and notes go with them. Undo for a few seconds after.</p>
+                          </div>
                         </div>
                       </div>
                     );
@@ -27572,7 +27864,7 @@ export default function HostShellV2() {
                       list (toCSV + COLUMNS.vendors already define the format);
                       missing fields export empty, exactly what's tracked. */}
                   <button className="fold-btn" onClick={exportVendorsCsv}>
-                    Download the vendor list (CSV)
+                    Download the vendor list as a spreadsheet
                   </button>
                   </Panel>
                 </>
@@ -27743,7 +28035,7 @@ export default function HostShellV2() {
                     return (
                       <div style={{ margin: '2px 0 var(--sp-4)' }}>
                         <div className="mbar" role="img"
-                          aria-label={`${fmt(spent)} spent, ${fmt(pledged)} spoken for, of a ${fmt(planned)} budget`}>
+                          aria-label={`${fmt(spent)} spent, ${fmt(pledged)} booked and not yet paid, of a ${fmt(planned)} budget`}>
                           {/* TWO SOLID VALUES, NOT A COLOUR AND ITS TINT (fixed 2026-07-30 after
                               looking at it at 2.4x). The pledged segment was --steel-tint: a 16%
                               alpha fill, which is a CHIP BACKGROUND token — it exists to sit behind
@@ -27775,7 +28067,10 @@ export default function HostShellV2() {
                           {/* The key swatches must be the SAME values the bar paints, or the legend
                               explains a chart the host is not looking at. */}
                           <span><i className="mbar-dot" style={{ background: over ? 'var(--danger)' : 'var(--steel-soft)' }} />{fmt(spent)} spent</span>
-                          {pledged > 0 && <span><i className="mbar-dot" style={{ background: over ? 'var(--danger-solid)' : 'var(--steel)' }} />{fmt(pledged)} spoken for</span>}
+                          {/* UX_11 rule 12: "spoken for" is one figure on this card (the
+                              committed total in the line above). This segment is the
+                              part of it not paid yet, so it says that. */}
+                          {pledged > 0 && <span><i className="mbar-dot" style={{ background: over ? 'var(--danger-solid)' : 'var(--steel)' }} />{fmt(pledged)} booked, not yet paid</span>}
                           <span className="mbar-cap">{over ? fmt(committed - planned) + ' over ' + fmt(planned) : fmt(free) + ' of ' + fmt(planned) + ' ' + MONEY_LABELS.unpledged}</span>
                         </div>
                       </div>
@@ -27786,7 +28081,7 @@ export default function HostShellV2() {
                   {(spend.moneyDiscrepancies || []).length > 0 && (
                     <div className="card" role="note">
                       <p className="grounding">Payment records overlap or differ. Each category is counted once; review the records before relying on spent.</p>
-                      {spend.moneyDiscrepancies.map(c => <p className="grounding" key={c.label}>{c.label}: budget entry {fmt(c.discrepancy.budgetActual)}; vendor payments {fmt(c.discrepancy.vendorPaid)}{c.discrepancy.shoppingPaid > 0 ? '; shopping record ' + fmt(c.discrepancy.shoppingPaid) : ''}.</p>)}
+                      {spend.moneyDiscrepancies.map(c => <p className="grounding" key={c.label}>{c.label}: your budget line {fmt(c.discrepancy.budgetActual)}; vendor payments {fmt(c.discrepancy.vendorPaid)}{c.discrepancy.shoppingPaid > 0 ? '; shopping record ' + fmt(c.discrepancy.shoppingPaid) : ''}.</p>)}
                       <button className="mini" style={{ minHeight: 'var(--tap-min)' }} onClick={() => setSheet({ kind: 'vendors' })}>Review vendor payments</button>
                     </div>
                   )}
@@ -27897,7 +28192,7 @@ export default function HostShellV2() {
                           budget" ask right above when no ceiling exists yet. This
                           row total is real (the plan's own cost estimate), just not
                           a budget, so the label says so instead of implying one. */}
-                      <div className="shelf-label" style={{ margin: '10px 0 6px' }}>{'Expected costs — includes allocations and estimates'}</div>
+                      <div className="shelf-label" style={{ margin: '10px 0 6px' }}>{'Expected costs — what’s booked, plus estimates for the rest'}</div>
                       {hostRows.map((r, i) => {
                         const alloc = money.planned ? Math.min(100, Math.round((r.est / money.planned) * 100)) : 0;
                         const got = r.est ? Math.min(100, Math.round((r.got / r.est) * 100)) : 0;
@@ -27908,7 +28203,7 @@ export default function HostShellV2() {
                               onClick={r.go} aria-label={'Open ' + r.label}>
                               <div className="line" style={{ padding: '0 0 5px' }}>
                                 <span>{r.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
-                                <span className="amt">{r.source === 'estimate' && !['crabs', 'lodging'].includes(r.kind) ? '~' : ''}{fmt(r.est)} <span className="of">{r.source === 'vendor' ? 'Vendor record' : r.source === 'budget' ? 'Budget entry' : ['crabs', 'lodging'].includes(r.kind) ? 'Your price' : 'Estimated'}</span></span>
+                                <span className="amt">{r.source === 'estimate' && !['crabs', 'lodging'].includes(r.kind) ? '~' : ''}{fmt(r.est)} <span className="of">{r.source === 'vendor' ? 'Vendor record' : r.source === 'budget' ? 'Your budget line' : ['crabs', 'lodging'].includes(r.kind) ? 'Your price' : 'Estimated'}</span></span>
                               </div>
                               {/* The 4% floor keeps a small-but-real category findable. It must
                                   not apply to a category costing nothing: while the fill was
@@ -28347,10 +28642,10 @@ export default function HostShellV2() {
                     // when the count is 0.
                     : yes.length === 0
                       ? (gcr && gcr.pending > 0
-                        ? 'no yes replies yet · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t answered' : ' haven’t answered')
+                        ? 'no yes replies yet · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t replied' : ' haven’t replied')
                         : 'no yes replies yet — everyone’s answered')
                       : (gcr && gcr.pending > 0
-                        ? 'said yes so far · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t answered' : ' haven’t answered') + tail
+                        ? 'said yes so far · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t replied' : ' haven’t replied') + tail
                         : 'said yes — the list has settled' + (planLbl ? ' · planning for ' + planLbl : bandLbl ? ' · likely ' + bandLbl + ' on the day' : ''));
                 } else {
                   n = Number(guests) || 0;
@@ -28413,9 +28708,10 @@ export default function HostShellV2() {
               };
               const countInviteTools = (<>
                     {markInviteSent && <button className="mini" data-invite-sent onClick={markInviteSent.onClick}>{markInviteSent.label}</button>}
-                    <button className="mini" onClick={shareInviteLink}>Check and share link</button>
-                    <button className="mini" onClick={copyInviteLink}>Copy the link</button>
-                    <button className="mini" onClick={showQr}>Check and show QR</button>
+                    {/* One link action (owner, 11/24/2026): it shares, or copies
+                        where there is no share sheet. Both check the link first. */}
+                    <button className="mini" onClick={shareInviteLink}>Share the link</button>
+                    <button className="mini" onClick={showQr}>Show QR code</button>
                     {/* A local preview does not attest public availability. Sharing
                         and QR generation perform the separate public lookup above. */}
                     <button className="mini" onClick={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} }}>Preview on this device</button>
@@ -28431,12 +28727,11 @@ export default function HostShellV2() {
               // Anything else would make the loudest button on the screen the
               // wrong one for the state the host is actually in.
               const _inviteActs = {
-                share:   { label: 'Check and share link', onClick: shareInviteLink },
-                link:    { label: 'Copy the link', onClick: copyInviteLink },
-                qr:      { label: 'Check and show QR', onClick: showQr },
+                share:   { label: 'Share the link', onClick: shareInviteLink },
+                qr:      { label: 'Show QR code', onClick: showQr },
                 preview: { label: 'Preview on this device', onClick: () => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} } },
                 copy:    { label: 'Copy the invite', onClick: () => openInviteDraft('Your invite', draftInvite, { sendsInvite: true }) },
-                brief:   { label: 'Draft the guest brief', onClick: () => openInviteDraft('The guest brief', draftGuestBrief) },
+                brief:   { label: 'Send the details', onClick: () => openInviteDraft('The guest brief', draftGuestBrief) },
                 update:  { label: 'Update everyone', onClick: () => { try { openDraft('Update to everyone', draftGuestUpdate(event, {}, profile)); } catch { toast('Couldn\u2019t draft it.'); } } },
                 // WAS "Nudge the quiet ones", which promised the app would go
                 // and nudge them. It cannot: this bulk draft has no recipient
@@ -28448,43 +28743,97 @@ export default function HostShellV2() {
                 // draft it always was, and it still says so.
                 nudge:   showsReplyTracking(event) ? (() => {
                   const n = nudgeCount(nudgeRecipients(event));
-                  return { label: n > 0 ? `Nudge the ${n} who ${n === 1 ? 'hasn’t' : 'haven’t'} answered` : 'Write a nudge to send', onClick: openNudge };
+                  return { label: n > 0 ? `Nudge the ${n} who ${n === 1 ? 'hasn’t' : 'haven’t'} replied` : 'Write a nudge to send', onClick: openNudge };
                 })() : null,
               };
               // THE INVITE TO THE WHOLE LIST (owner, 11/19/2026). Same draft as
               // "Copy the invite", named for what it now does; shown while some
               // guest can still be reached and has not been invited.
-              const _reachable = (() => { const r = inviteRecipients(event.guests); return r.email.length + r.text.length; })();
+              const _reachable = (() => { const r = inviteRecipients(event.guests, guestToldMap(event)); return r.email.length + r.text.length; })();
               _inviteActs.list = _reachable > 0
                 ? { label: `Invite your guest list (${_reachable})`, onClick: () => openInviteDraft('Your invite', draftInvite, { sendsInvite: true }), data: 'invite-list' }
                 : null;
+              // ── SHARE & INVITE IN FOUR STEPS (owner, 11/24/2026: renders s2-1,
+              // s2-2, s2-2b). Every number from the readers the rest of the app
+              // uses: inviteRecipients (who can still be invited, told guests
+              // skipped), nudgeRecipients / nudgeCount, wasInvited, rsvpHasResponded.
+              const shareInviteCard = (() => {
+                const told = guestToldMap(event);
+                const r = inviteRecipients(event.guests, told);
+                const n = r.email.length + r.text.length;
+                // Out: the task's own record (invitesSentAt, or a reply), or any
+                // guest the invite reached (invitedAt, or marked told).
+                const out = !!invitesOut(event) || (event.guests || []).some((g) => g && wasInvited(event, g));
+                const canEmail = isCommApiConfigured() && !!session;
+                const callName = (nm) => greetingName(nm) || 'a guest';
+                const andList = (xs) => { const a = xs.map((x) => callName(x.name)); if (a.length > 3) return a.slice(0, 3).join(', ') + ' and ' + (a.length - 3) + ' more'; return a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : (a[0] || ''); };
+                const verb = (xs, one, many) => (xs.length === 1 ? one : many);
+                const whoGets = (em, tx) => [
+                  em.length ? andList(em) + verb(em, ' gets an email', ' get an email') + (canEmail ? ' from the app' : ' from the app once you sign in') : '',
+                  tx.length ? andList(tx) + verb(tx, ' is a text', ' are texts') + ' you send from your phone' : '',
+                ].filter(Boolean).join('; ') + '.';
+                const guestsN = (event.guests || []).filter(Boolean);
+                const invited = guestsN.filter((g) => wasInvited(event, g));
+                const replied = invited.filter((g) => rsvpHasResponded(g)).length;
+                const send = n > 0
+                  ? (out
+                    ? {
+                      kind: 'new', label: n === 1 ? 'Invite 1 new guest' : `Invite ${n} new guests`,
+                      line: (() => {
+                        const all = [...r.email, ...r.text];
+                        const names = all.map((x) => x.name || 'A guest');
+                        const who = names.length === 1 ? names[0] + ' was' : (names.length === 2 ? names.join(' and ') : names.slice(0, 2).join(', ') + ' and ' + (names.length - 2) + ' more') + ' were';
+                        const how = r.email.length && r.text.length ? 'by email or text' : r.email.length ? 'by email' : 'by text';
+                        return `${who} added after your invite went out. ${all.length === 1 ? callName(all[0].name) + ' gets' : 'They get'} the same message ${how}.`;
+                      })(),
+                    }
+                    : { kind: 'first', label: `Invite your guest list (${n})`, line: 'You check it before anything goes. ' + whoGets(r.email, r.text) })
+                  : (out && invited.length ? { kind: 'done', line: 'Add someone and this lights up to invite just them.' }
+                    : { kind: 'none', line: guestsN.length ? 'Add a phone or email to a guest and this lights up to invite them.' : 'Add your guests and this lights up to invite them.' });
+                if (!out) send.onMarkSent = () => patchEvent({ invitesSentAt: new Date().toISOString() }, 'Invite marked as sent — the plan moves on.');
+                if (send.kind === 'first' || send.kind === 'new') send.onSend = () => openInviteDraft('Your invite', draftInvite, { sendsInvite: true, mode: 'confirm' });
+                const nr = showsReplyTracking(event) ? nudgeRecipients(event) : null;
+                const nc = nr ? nudgeCount(nr) : 0;
+                const waiting = invited.length - replied;
+                const sentMsg = draftStatus(event);
+                return {
+                  page: { live: out, onOpen: () => setSheet({ kind: 'invite-design', from: sheet }) },
+                  message: {
+                    kind: sentMsg.kind, line: sentMsg.line,
+                    onOpen: sentMsg.kind === 'sent'
+                      ? () => setSheet({ kind: 'invite-sent', from: sheet })
+                      : () => openInviteDraft('Invite message', draftInvite, { mode: 'save' }),
+                  },
+                  send,
+                  share: {
+                    onShare: shareInviteLink, onQr: showQr,
+                    onText: out ? null : () => openInviteDraft('Your invite', draftInvite, { sendsInvite: true, mode: 'copy' }),
+                  },
+                  after: {
+                    out,
+                    tally: invited.length ? { invited: invited.length, replied, waiting } : null,
+                    nudge: nr && (nc > 0 || waiting > 0) ? {
+                      count: nc,
+                      label: nc > 0 ? `Nudge the ${nc} who ${nc === 1 ? 'hasn’t' : 'haven’t'} replied` : 'Write a nudge to send',
+                      line: nc > 0 ? 'You check it first. ' + whoGets(nr.email, nr.text).replace(' from the app once you sign in', ' once you sign in').replace(' from the app', '').replace(' you send from your phone', ' from your phone') + ` Nobody gets two nudges within ${NUDGE_GAP_DAYS} days.` : '',
+                      onClick: openNudge,
+                    } : null,
+                    onUpdate: _inviteActs.update.onClick,
+                    onDetails: _inviteActs.brief.onClick,
+                  },
+                };
+              })();
               const _outstanding = (event.guests || []).filter((g) => g && !String(g.rsvp || '').trim()).length;
               const _chasing = _outstanding > 0 || !(event.guests || []).length;
               const inviteTiers = _chasing ? {
                 primary: _inviteActs.share,
-                secondary: [_inviteActs.list, markInviteSent, _inviteActs.link, _inviteActs.qr, _inviteActs.nudge].filter(Boolean),
+                secondary: [_inviteActs.list, markInviteSent, _inviteActs.qr, _inviteActs.nudge].filter(Boolean),
                 more: [_inviteActs.preview, _inviteActs.copy, _inviteActs.brief, _inviteActs.update],
               } : {
                 primary: _inviteActs.update,
                 secondary: [_inviteActs.share, _inviteActs.qr],
-                more: [_inviteActs.link, _inviteActs.preview, _inviteActs.copy, _inviteActs.brief, _inviteActs.nudge].filter(Boolean),
+                more: [_inviteActs.preview, _inviteActs.copy, _inviteActs.brief, _inviteActs.nudge].filter(Boolean),
               };
-              // The BASELINE composition keeps its flat 2-up grid, unchanged, so
-              // the two are still comparable on one build.
-              const inviteTools = (<>
-                  <div className="pill-grid" style={{ margin: '0 0 var(--sp-3)' }}>
-                    <button className="mini" onClick={_inviteActs.share.onClick}>Check and share link</button>
-                    <button className="mini" onClick={_inviteActs.link.onClick}>Copy the link</button>
-                    <button className="mini" onClick={_inviteActs.qr.onClick}>Check and show QR</button>
-                    <button className="mini" onClick={_inviteActs.preview.onClick}>Preview on this device</button>
-                    {_inviteActs.list && <button className="mini" data-invite-list-open onClick={_inviteActs.list.onClick}>{_inviteActs.list.label}</button>}
-                    <button className="mini" onClick={_inviteActs.copy.onClick}>Copy the invite</button>
-                    <button className="mini" onClick={_inviteActs.brief.onClick}>Draft the guest brief</button>
-                    <button className="mini" onClick={_inviteActs.update.onClick}>Update everyone</button>
-                    {_inviteActs.nudge && <button className="mini" onClick={_inviteActs.nudge.onClick}>{_inviteActs.nudge.label}</button>}
-                    {markInviteSent && <button className="mini" data-invite-sent onClick={markInviteSent.onClick}>{markInviteSent.label}</button>}
-                  </div>
-              </>);
               // ── THE GUEST EDITOR READS IN GROUPS (owner, 11/24/2026: "Combine
               // 1A and 1B") ───────────────────────────────────────────────────
               // One definition, two placements (§26): inline under its row on a
@@ -28555,6 +28904,7 @@ export default function HostShellV2() {
                   const handoffNudge = async (click, channel) => {
                     click.preventDefault();
                     const url = await verifiedRsvpUrl();
+                    if (!url) return;   // no reply link, nothing goes out (owner, 11/24/2026); the toast says why
                     const checked = draftRsvpChase(event, profile, { rsvpUrl: url });
                     const text = [checked.subject, checked.body].filter(Boolean).join('\n\n');
                     window.location.href = channel === 'sms'
@@ -28581,6 +28931,7 @@ export default function HostShellV2() {
                     let r;
                     try {
                       const url = await verifiedRsvpUrl();
+                      if (!url) { setNudgeEmail(null); return; }   // no reply link, nothing goes out
                       const checked = draftRsvpChase(event, profile, { rsvpUrl: url });
                       const res = await commApi.createMessage(event.id, 'CLIENT', {
                         message_type: 'standard', author_role: 'planner',
@@ -28710,12 +29061,33 @@ export default function HostShellV2() {
                           value={g.needs || ''} onChange={e => writeGuest(i, { needs: e.target.value }, null)} />
                       </div>
                       {/* The +1 is one text field on the row: a name, or a count
-                          as written ("+3 (Nia + 2 boys)"). The row has one meal,
-                          the guest's, so this card says nothing about a meal. */}
+                          as written ("+3 (Nia + 2 boys)"). THE +1'S MEAL AND NEED
+                          (owner, 11/24/2026): replies already store them apart
+                          (plusOneMeal, plusOneNeeds; seating and the diet rows read
+                          them), so the card shows and edits them, through the same
+                          writer as the rest of the row (writeGuest). */}
                       <div className="ged-card" data-ged-person="plusone">
                         <input className="field ged-field" placeholder="Their +1’s name, if any" aria-label="Plus one name"
                           value={g.plusOne || ''} onChange={e => writeGuest(i, { plusOne: e.target.value }, null)} />
                         {plus ? <div className="ged-note">{plus > 1 ? plus + ' people, as written' : 'Adult · guest of ' + first}</div> : null}
+                        {plus ? (() => {
+                          const pName = String(g.plusOne || '').trim() || 'their +1';
+                          const pMeal = String(g.plusOneMeal || '—');
+                          const pMeals = MEAL_CHOICES.includes(pMeal) ? MEAL_CHOICES : [...MEAL_CHOICES, pMeal];
+                          return (<>
+                            <select className="field ged-field" aria-label={'Meal for ' + pName} value={pMeal}
+                              onChange={(e) => {
+                                const m = e.target.value;
+                                writeGuest(i, { plusOneMeal: m }, m === '—'
+                                  ? pName + '’s meal cleared — counts as unanswered.'
+                                  : pName + ' → ' + m + ' — the meal tally keeps count.');
+                              }}>
+                              {pMeals.map((m) => <option key={m} value={m}>{m === '—' ? 'Meal not answered' : m}</option>)}
+                            </select>
+                            <input className="field ged-field" placeholder="Dietary needs, if any" aria-label={'Dietary needs for ' + pName}
+                              value={g.plusOneNeeds || ''} onChange={e => writeGuest(i, { plusOneNeeds: e.target.value }, null)} />
+                          </>);
+                        })() : null}
                       </div>
                       <div className="ged-kids">
                         <span className="ged-k">Children</span>
@@ -28799,8 +29171,13 @@ export default function HostShellV2() {
                       to a hairline row, opens the 3-up segmented control on tap. */}
                   {/* "YOUR INVITE" (owner, 11/24/2026): the invite look (now "Paper"), the
                       artwork, the layout and her message live in one panel. */}
-                  <SettledRow label="Your invite" value={(event.inviteLayout === 'glance' ? 'At a glance' : 'Classic') + ' · ' + inviteStyleLabel(event.inviteStyle)}
-                    style={{ margin: '0 0 10px' }} onOpen={() => setSheet({ kind: 'invite-design', from: sheet })} />
+                  {/* ONE DOOR, ONE NAME (owner, 11/24/2026; UX_11 rule 8): the Share &
+                      invite card's "Invite page" is the door. Only the people view,
+                      which has no card, keeps one here. */}
+                  {peopleMode ? (
+                    <SettledRow label="Invite page" value={(event.inviteLayout === 'glance' ? 'At a glance' : 'Classic') + ' · ' + inviteStyleLabel(event.inviteStyle)}
+                      style={{ margin: '0 0 10px' }} onOpen={() => setSheet({ kind: 'invite-design', from: sheet })} />
+                  ) : null}
                   {inviteRules}
                   {countingChips}
                   {csvBlock}
@@ -29473,7 +29850,7 @@ export default function HostShellV2() {
                   ) : (
                     <>
                       <div id="guests-invites-anchor" className="shelf-label" style={{ margin: 'var(--sp-6) 0 var(--sp-2)', scrollMarginTop: 12 }}>Share &amp; invite</div>
-                      {inviteTools}
+                      <ShareInviteCard {...shareInviteCard} />
                     </>
                   )}
                   {/* G8 HOST ALERTS (11/16/2026): a signed-in host's synced event
@@ -29610,7 +29987,7 @@ export default function HostShellV2() {
                         onSetReplyBy={() => setDeadlineOpen((o) => !o)}
                         editor={deadlineOpen ? renderDeadlineEditor() : null}
                         primary={_inviteActs.share}
-                        secondary={[_inviteActs.link, _inviteActs.qr]}
+                        secondary={[_inviteActs.qr]}
                         more={[_inviteActs.preview]}
                       />
                     </div>
@@ -29872,7 +30249,7 @@ export default function HostShellV2() {
         const dRaw = [
           { label: ASK_LABEL, sub: 'a question, answered from your plan', go: () => { setAskQ(''); setAskResult(null); setAskLLM(null); setSheet({ kind: 'ask' }); } },
           { label: 'Plan', sub: 'the command board', go: () => setStage('plan') },
-          { label: 'The Day', sub: 'day-of run of show', go: () => setStage('day') },
+          { label: 'The Day', sub: THE_SCHEDULE, go: () => setStage('day') },
           { label: 'After', sub: 'wrap-up & thank-yous', go: () => setStage('after') },
           { label: 'New event', sub: 'start another', go: startNewEvent },
           { label: 'Your money', sub: 'budget', go: () => setSheet({ kind: 'budget' }) },
@@ -29973,7 +30350,7 @@ export default function HostShellV2() {
             {/* The host's hashtag, when on (owner ruling E). */}
             {String(event.hashtag || '').trim() ? ` · ${String(event.hashtag).trim()}` : ''}
           </p>
-          <div className="p-head">Run of show</div>
+          <div className="p-head">{SCHEDULE}</div>
           {ros.map((r, i) => (
             <div className="p-row" key={r.id || i}>
               {/* PRINT HONESTY (2026-07-30, found by driving print emulation live).

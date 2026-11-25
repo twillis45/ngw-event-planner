@@ -122,7 +122,10 @@ test('Who’s confirmed: one block on the event home, right counts, names still 
   const block = page.locator('[data-who-confirmed]');
   await expect(block).toBeVisible();
   await expect(block.locator('[data-who-part]')).toHaveText(['Vendors 0 of 2 confirmed', 'Helpers 1 of 2', 'Guests 2 yes, 1 maybe']);
-  await expect(block.locator('[data-who-waiting]')).toHaveText('Still waiting: Harbor Rotisserie, Bakery, Stuffing (Jordan)');
+  // The waiting names are rows now, at every width (cohesion #40, 11/24/2026).
+  await expect(block.locator('[data-who-waiting]')).toHaveCount(0);
+  await expect(block.locator('[data-who-group="vendors"] [data-who-row] .tt-row-t')).toHaveText(['Harbor Rotisserie', 'Bakery']);
+  await expect(block.locator('[data-who-group="helpers"] [data-who-row]')).toHaveText([/^Stuffing\s*Jordan/]);
   await expect(block.locator('[data-who-flagged]')).toHaveCount(0);   // no vendor answered, so none flagged
   await expect(page.locator('[data-who-confirmed]')).toHaveCount(1);
   expect(await overflowX(page), 'the home is wider than the phone').toBeLessThanOrEqual(0);
@@ -145,5 +148,6 @@ test('Who’s confirmed reads the host’s confirm: with Jordan confirmed, the c
   await settled(page);
   const block = page.locator('[data-who-confirmed]');
   await expect(block.locator('[data-who-part="helpers"]')).toHaveText('Helpers 2 of 2');
-  await expect(block.locator('[data-who-waiting]')).toHaveText('Still waiting: Harbor Rotisserie, Bakery');
+  await expect(block.locator('[data-who-group="vendors"] [data-who-row] .tt-row-t')).toHaveText(['Harbor Rotisserie', 'Bakery']);
+  await expect(block.locator('[data-who-group="helpers"]')).toHaveCount(0);
 });

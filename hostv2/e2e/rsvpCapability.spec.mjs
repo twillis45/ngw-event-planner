@@ -26,7 +26,10 @@ const boot = async (page, status = 404) => {
   await settled(page);
   await openSectionByName(page, 'Guests');
 };
-const shareButton = page => page.getByRole('button', { name: /Check and share link/i }).first();
+// One link action (owner, 11/24/2026): "Share the link" shares, or copies where
+// there is no share sheet; QR is "Show QR code". Both check the link first.
+const shareButton = page => page.getByRole('button', { name: 'Share the link', exact: true }).first();
+const qrButton = page => page.getByRole('button', { name: 'Show QR code', exact: true }).first();
 
 test('a configured service cannot share an unpublished event through native share or clipboard', async ({ page }, testInfo) => {
   await boot(page);
@@ -41,16 +44,22 @@ test('a configured service cannot share an unpublished event through native shar
 
 test('an unpublished event cannot produce a guest QR', async ({ page }) => {
   await boot(page);
-  await page.getByRole('button', { name: /Check and show QR/i }).first().click();
+  await qrButton(page).click();
   await expect(page.locator('.toast')).toContainText('Online RSVPs are not available');
   await expect(page.getByAltText(/QR code for the/)).toHaveCount(0);
 });
 
-test('a plain invitation remains useful without an unverified URL', async ({ page }) => {
+// NO REPLY LINK, NOTHING GOES OUT (owner, 11/24/2026; was "a plain invitation
+// remains useful"): the invite opens with the link's place held and every
+// hand-off waits for it; the words can still be edited.
+test('an invitation without a verified reply link cannot go out', async ({ page }) => {
   await boot(page);
-  await page.getByRole('button', { name: 'Copy the invite', exact: true }).first().click();
-  await expect(page.locator('.sheet')).toContainText('Your invite');
-  await expect(page.locator('.sheet')).not.toContainText('?rsvp=');
+  await page.getByRole('button', { name: 'Invite text', exact: true }).first().click();
+  const sheet = page.locator('.sheet').last();
+  await expect(sheet.locator('[data-link-not-ready]')).toContainText('Your reply link isn’t ready.');
+  await expect(sheet).not.toContainText('?rsvp=');
+  await expect(sheet.getByRole('button', { name: 'Copy it', exact: true })).toBeDisabled();
+  await expect(sheet.getByRole('textbox', { name: 'Edit the draft' })).toBeEditable();
 });
 
 test('public lookup uncertainty blocks sharing with a retry explanation', async ({ page }) => {
@@ -86,29 +95,32 @@ test('a verified event also supports clipboard and a guest QR', async ({ page })
   await shareButton(page).click();
   await expect.poll(() => page.evaluate(() => window.__rsvpCopies.length)).toBe(1);
   expect(await page.evaluate(() => window.__rsvpCopies[0])).toContain('?rsvp=' + EVENT.rsvpCode);
-  await page.getByRole('button', { name: /Check and show QR/i }).first().click();
+  await qrButton(page).click();
   await expect(page.getByAltText(/QR code for the/)).toBeVisible();
 });
 
 
-// THE LINK ALONE (live smoke test, 11/8/2026). On Android the share sheet's
-// Copy took the whole "You're invited… RSVP here: <link>" message; pasted into
-// a browser it became a search. With the share sheet available (this boot
-// stubs navigator.share), "Copy the link" must still copy exactly the link and
-// open no share sheet.
-test('Copy the link copies only the verified link, even where a share sheet exists', async ({ page }) => {
+// THE LINK ALONE (live smoke test, 11/8/2026), ONE ACTION (owner, 11/24/2026).
+// "Copy the link" was merged into "Share the link", which copies where there is
+// no share sheet. What it copies is still exactly the verified link, never the
+// "You're invited… RSVP here: <link>" message that pasted into a browser as a
+// search on Android.
+test('with no share sheet, Share the link copies only the verified link', async ({ page }) => {
   await boot(page, 200);
-  await page.getByRole('button', { name: 'Copy the link', exact: true }).first().click();
+  await page.evaluate(() => { Object.defineProperty(navigator, 'share', { configurable: true, value: undefined }); });
+  await shareButton(page).click();
   await expect.poll(() => page.evaluate(() => window.__rsvpCopies.length)).toBe(1);
   const current = new URL(page.url());
   const appUrl = process.env.REACT_APP_PUBLIC_APP_URL || current.origin + current.pathname;
   expect(await page.evaluate(() => window.__rsvpCopies[0])).toBe(appUrl + '?rsvp=' + EVENT.rsvpCode);
   expect(await page.evaluate(() => window.__rsvpShares.length)).toBe(0);
+  await expect(page.getByRole('button', { name: 'Copy the link', exact: true })).toHaveCount(0);
 });
 
-test('Copy the link refuses an unpublished event, like every other share', async ({ page }) => {
+test('with no share sheet, Share the link refuses an unpublished event, like every other share', async ({ page }) => {
   await boot(page);
-  await page.getByRole('button', { name: 'Copy the link', exact: true }).first().click();
+  await page.evaluate(() => { Object.defineProperty(navigator, 'share', { configurable: true, value: undefined }); });
+  await shareButton(page).click();
   await expect(page.locator('.toast')).toContainText('Online RSVPs are not available');
   expect(await page.evaluate(() => window.__rsvpCopies.length)).toBe(0);
 });

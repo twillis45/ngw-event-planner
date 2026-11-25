@@ -187,3 +187,34 @@ def test_one_shared_file_prevents_removal_of_every_file(setup):
     ]
     with pytest.raises(A.HTTPException): delete()
     assert calls==[]
+
+
+# THE HOST'S PHOTO GOES WITH THE ACCOUNT (owner, 11/24/2026, follow-on item 7).
+# host-photos/{studio_id}.jpg is written by this server with the service role,
+# so it has no owner and the storage.objects select cannot see it. Deleting the
+# account deletes the file for each studio that goes with her, and clears the
+# reference (studio_settings.data.hostPhoto) so no invite points at it.
+def test_the_host_photo_file_is_deleted_and_its_reference_cleared(setup):
+    conn,calls,_=setup
+    STUDIO='22222222-3333-4444-5555-666666666666'
+    base_fetch=conn.fetch
+    async def fetch(sql,*args):
+        if 'solo_studio' in sql: return [{'solo_studio':STUDIO}]
+        return await base_fetch(sql,*args)
+    conn.fetch=fetch
+    delete()
+    photo=[c for c in calls if c[1].endswith('/storage/v1/object/guest-photos')]
+    assert photo and 'host-photos/'+STUDIO+'.jpg' in photo[0][2]['json']['prefixes']
+    assert calls[-1][1].endswith('/auth/v1/admin/users/'+UID)
+    cleared=[(sql,args) for sql,args in conn.executed if 'studio_settings' in sql and 'hostPhoto' in sql]
+    assert cleared and STUDIO in str(cleared[0][1])
+
+def test_no_solo_studio_deletes_no_host_photo(setup):
+    conn,calls,_=setup
+    base_fetch=conn.fetch
+    async def fetch(sql,*args):
+        if 'solo_studio' in sql: return []
+        return await base_fetch(sql,*args)
+    conn.fetch=fetch
+    delete()
+    assert not any('host-photos/' in str(c[2].get('json')) for c in calls)

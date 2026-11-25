@@ -44,7 +44,8 @@ test('the vendor card carries the field the sentence promises', async ({ page })
   await boot(page);
   await page.locator('.vcard').first().click();
   await settled(page);
-  const field = page.locator('.vc-more input[type="email"]').first();
+  // A visible "Email" label since the grouped vendor detail (cohesion batch B).
+  const field = page.locator('.vcard.open .vc-more').getByLabel('Email', { exact: true });
   await expect(field).toBeVisible();
   await field.fill('not-an-email');
   await settled(page);

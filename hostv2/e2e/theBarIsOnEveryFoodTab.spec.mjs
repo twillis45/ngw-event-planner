@@ -81,7 +81,7 @@ const openSpread = async (page) => {
   });
   await page.goto('?elegant=1');
   await settled(page);
-  await tapText(page, 'Plan the food|what you.?re serving|dietary needs on the food plan');
+  await tapText(page, 'Plan the food|what you.?re serving|\\? · \\d+ open|dietary needs on the food plan');
   await page.waitForTimeout(1500);
   await settled(page);
 };

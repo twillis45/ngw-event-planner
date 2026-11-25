@@ -17,6 +17,12 @@ const SELF_PINNED = [
   '**/theSmallSheetsSayItPlainly.spec.mjs',
   // Its own viewports (every input has a visible label, cohesion G, 11/24/2026).
   '**/everyInputHasAVisibleLabel.spec.mjs',
+  // Its own viewports (the lower board reads as rows, cohesion #40/F6/#16/#48, 11/24/2026).
+  '**/theLowerBoardReadsAsRows.spec.mjs',
+  // Five viewports itself (the rail is the list, cohesion F4/F5, 11/24/2026).
+  '**/theRailIsTheList.spec.mjs',
+  // Five viewports itself, phone to desktop (What's counted opens in place, cohesion F3, 11/24/2026).
+  '**/whatsCountedOpensInPlace.spec.mjs',
   // Five wide viewports itself (every wide board: stages in the rail, the title; 11/24/2026).
   '**/everyWideBoardKnowsItsEventAndStages.spec.mjs',
   // Six viewports itself, phone to desktop, including iPad Safari landscape (nothing tappable is clipped, 11/24/2026).
@@ -52,6 +58,7 @@ const SELF_PINNED = [
   // a different fold and this rule does not govern it.
   '**/foldAtTheFoot.spec.mjs',
   '**/theStatColumnStandsBesideTheQuestion.spec.mjs',
+  '**/aShortLandscapeFitsEveryAsk.spec.mjs',
   '**/aSheetFillsTheColumnAndTheScreen.spec.mjs',
   '**/theTouchFrameIsFullBleed.spec.mjs',
   '**/statColumnChips.spec.mjs',
@@ -81,6 +88,9 @@ const SELF_PINNED = [
   '**/tapTargets.spec.mjs',
   // Drives its own three geometries (one lit button per sheet, batch 4, 11/21/2026).
   '**/oneLitButtonPerSheet.spec.mjs',
+  // Drives 390, 834, 1024 and 1440 itself (today's list first on the day,
+  // owner-approved renders, cohesion batch A, 11/24/2026).
+  '**/theDayShowsTodayFirst.spec.mjs',
   // Drives 390, 768 and 1280 in both themes (one-row sign-in, owner ruling 25, 11/21/2026).
   '**/theSignInIsOneRow.spec.mjs',
   // Drives 390x844 and 1024x1366 in both themes (the board's ask is steel in light, owner ruling 29, 11/21/2026).

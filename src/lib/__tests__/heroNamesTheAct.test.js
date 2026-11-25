@@ -43,8 +43,13 @@ describe('an option-row hero always names the act', () => {
     // and passed while the regression shipped. That is the lesson worth more
     // than the fix: a check that reads the code cannot see what the code
     // renders. The rendered guarantee is asserted in e2e, not here.
-    expect(SHELL).toMatch(/<p className="decopts-lead">Tap one to settle it/);
+    // Since cohesion F1 (owner, 11/24/2026) the hero's proposed pick is also a
+    // lit "Go with …" button, and the lead then says which row is ours and what
+    // the others do; everywhere else it still says "Tap one to settle it". The
+    // lead itself is never gated away: one of the two always renders.
+    expect(SHELL).toMatch(/<p className="decopts-lead">\{litPick \? 'Our pick is first\. Tap another to choose it instead — ' : <>Tap one to settle it — <\/>\}/);
     expect(SHELL).not.toMatch(/\{!proposedOpt && <p className="decopts-lead">/);
+    expect(SHELL).not.toMatch(/\{litPick && <p className="decopts-lead">/);
   });
 
   test('the assurance that replaces it NAMES THE ACT', () => {

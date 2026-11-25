@@ -1,4 +1,5 @@
 import { planPartsProgress } from './planProgress';
+import { SCHEDULE_WORD } from './scheduleWords';
 // ─── eventOrientation — "where are we?", derived (Phase 5G-C1 Parts 8-9) ─────
 //
 // The host surface already showed counts ("4 of 5 plan parts handled") and a ranked
@@ -130,6 +131,24 @@ export function orientation(phaseCues, queue = [], opts = {}) {
     summary = 'Your plan is moving.';
   }
 
+  // THE RAIL'S STATUS LINE (cohesion #48, owner 11/24/2026): the count first,
+  // then what still needs her, in one plain sentence. "Active planning · … —
+  // Your plan is moving. food and vendors, plus 1 more still need you." became
+  // "4 of 7 handled. Food, vendors and 1 more still need you." Where the
+  // summary says something else first (no date, a blocker, all handled) it is
+  // the summary, after the count.
+  const countLead = total ? `${done} of ${total} handled.` : null;
+  let needs = null;
+  if (phase !== 'unknown' && !blocker && openNames.length && !(total && done >= total)) {
+    const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+    const more = openNames.length - 2;
+    const named = openNames.length === 1 ? cap(openNames[0])
+      : openNames.length === 2 ? `${cap(openNames[0])} and ${openNames[1]}`
+        : `${cap(openNames[0])}, ${openNames[1]} and ${more} more`;
+    needs = `${named} still need${openNames.length === 1 ? 's' : ''} you.`;
+  }
+  const statusLine = [countLead, needs || (summary === 'Your plan is moving.' && countLead ? null : summary)].filter(Boolean).join(' ');
+
   // A recommendation assumption worth surfacing here, passed in rather than read —
   // this module does not reach into the knowledge layer.
   const assumption = opts.assumption || null;
@@ -141,6 +160,7 @@ export function orientation(phaseCues, queue = [], opts = {}) {
     completedCount: done,
     totalCount: total,
     summary,
+    statusLine,
     segments,
     blocker,
     primaryAction: phaseCues.nextCue || null,
@@ -195,7 +215,7 @@ export function hairlineLabel(orientationResult, opts = {}) {
   // ON THE DAY the engine counts run-of-show cues the host has ticked
   // (phaseProgress liveProgress), not plan parts (audit 2 lane C P0-2: "0 of 13
   // plan parts handled" on a board whose plan was done). Named for what it counts.
-  if (o.phase === 'live_event') return total ? `${done} of ${total} run-of-show cues done` : '';
+  if (o.phase === 'live_event') return total ? `${done} of ${total} ${SCHEDULE_WORD} cues done` : '';
   // UNDER A CALM BOARD (Wanda audit follow-up, 11/22/2026). "5 of 7 · Food and
   // Vendors open" sat under "All quiet": the parts are open and nothing in them
   // is due, which is the board's own reason for being quiet. Said, not dropped.

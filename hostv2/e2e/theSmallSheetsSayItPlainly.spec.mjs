@@ -58,7 +58,7 @@ test('Make it yours: the intro names where her words go, and every placeholder i
   const { ctx, page } = await boot(browser);
   await open(page, 'Make it yours');
   const sheet = page.locator('.sheet').last();
-  await expect(sheet).toContainText('Your words go into the run of show, the toast and the note we draft the day before. Nothing here is required.');
+  await expect(sheet).toContainText('Your words go into the day’s schedule, the toast and the note we draft the day before. Nothing here is required.');
   const phs = await sheet.locator('input.field, textarea.field').evaluateAll((els) => els.filter((e) => e.getClientRects().length && e.placeholder).map((e) => e.placeholder));
   expect(phs.length).toBeGreaterThan(4);
   for (const ph of phs) expect(ph).toMatch(/^For example: /);

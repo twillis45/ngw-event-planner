@@ -66,7 +66,7 @@ function FamilyPage({ plan }) {
     // rows, and a reply can bring a plus-one, so "12 coming" read as heads
     // beside the host's own people count. It says who said yes.
     rep.yes ? `${rep.yes} said yes` : '', rep.maybe ? `${rep.maybe} maybe` : '',
-    rep.no ? `${rep.no} can’t make it` : '', rep.waiting ? `${rep.waiting} haven’t answered` : '',
+    rep.no ? `${rep.no} can’t make it` : '', rep.waiting ? `${rep.waiting} haven’t replied` : '',
   ].filter(Boolean).join(' · ') : '';
   const ros = (() => {
     // A marked surprise never shows here (owner, 11/22/2026). The server already
@@ -75,6 +75,10 @@ function FamilyPage({ plan }) {
   })();
   const list = (Array.isArray(plan.checklist) ? plan.checklist : []).filter((t) => t && !t.surprise);
   const done = list.filter((t) => t.done).length;
+  // Her own count when her app saved it (rule 12, audit #35, owner 11/24/2026):
+  // it counts the steps her plan proves handled, which this page cannot see.
+  const saved = plan.checklistCount && Number.isInteger(plan.checklistCount.done) && Number.isInteger(plan.checklistCount.total)
+    && plan.checklistCount.done >= 0 && plan.checklistCount.done <= plan.checklistCount.total ? plan.checklistCount : null;
   const vendors = (Array.isArray(plan.vendors) ? plan.vendors : []).filter((v) => v && !v.surprise);
   return (
     <div className="stagewrap vb2-stage">
@@ -116,7 +120,9 @@ function FamilyPage({ plan }) {
                 {/* What it counts, said (audit 2, E P1-4): the steps the host ticked.
                     Her own checklist also counts steps the plan proves handled,
                     which only her app can see. */}
-                <div className="inv2-label" style={{ marginTop: 18 }}>The checklist · {done} of {list.length} ticked off</div>
+                <div className="inv2-label" style={{ marginTop: 18 }} data-family="checklist-count">{saved
+                  ? <>The checklist · {saved.done} of {saved.total} handled</>
+                  : <>The checklist · {done} of {list.length} ticked off</>}</div>
                 <ul className="fam-list" data-family="checklist">
                   {list.map((t, i) => (
                     <li key={i} data-done={t.done ? 'yes' : 'no'}>

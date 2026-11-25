@@ -116,7 +116,7 @@ export function proposeReplyBy(event, now) {
   const iso = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-${String(base.getDate()).padStart(2, '0')}`;
 
   const why = grounded
-    ? `${driver.label} ${driver.daysBefore} ${driver.daysBefore === 1 ? 'day' : 'days'} before the event. This gives you ${CHASE_DAYS} days to chase whoever hasn’t answered.`
+    ? `${driver.label} ${driver.daysBefore} ${driver.daysBefore === 1 ? 'day' : 'days'} before the event. This gives you ${CHASE_DAYS} days to chase whoever hasn’t replied.`
     : `Nothing in your plan needs a final count yet, so this is a rule of thumb — a week to lock the count, plus ${CHASE_DAYS} days to chase. Change it to whatever suits you.`;
 
   return { iso, days: dueIn, leadDays, driver, drivers, grounded, tooClose: false, why };

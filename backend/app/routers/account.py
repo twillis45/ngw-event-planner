@@ -15,6 +15,7 @@ from .. import auth
 from ..auth import require_planner
 from ..config import SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 from ..db import get_pool
+from .host_photos import photo_path
 
 router = APIRouter(prefix="/api", tags=["account"])
 
@@ -84,6 +85,19 @@ async def delete_account(body: DeleteAccountRequest, authorization: Optional[str
                         by_bucket["guest-photos"].append(photo["storage_path"])
                         # …and its gallery thumbnail (guest_photos._thumb_path).
                         by_bucket["guest-photos"].append(photo["storage_path"][:-4] + ".t.jpg")
+                # The host's photo (host_photos.py): written by this server, so
+                # no owner either. One file per studio that goes with her; the
+                # reference (studio_settings.data.hostPhoto) is cleared here so
+                # no invite points at a file that is gone (owner, 11/24/2026).
+                solo_studios = await conn.fetch("""
+                    select s.id as solo_studio from public.studios s
+                      where (s.created_by=$1::uuid or exists (select 1 from public.studio_members m where m.studio_id=s.id and m.user_id=$1::uuid))
+                      and not exists (select 1 from public.studio_members m where m.studio_id=s.id and m.user_id<>$1::uuid)""", uid)
+                studio_ids = [str(row["solo_studio"]) for row in solo_studios if row.get("solo_studio")]
+                for sid in studio_ids:
+                    by_bucket["guest-photos"].append(photo_path(sid))
+                if studio_ids:
+                    await conn.execute("update public.studio_settings set data = data - 'hostPhoto' where studio_id::text = any($1::text[])", studio_ids)
                 for bucket, names in by_bucket.items():
                     for start in range(0, len(names), 100):
                         try:

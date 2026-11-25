@@ -83,7 +83,8 @@ test('(premise) the budget proposal is on screen with its one-tap chip', async (
   // Without this, every assertion below could pass over a sheet that never
   // opened — and an absent string is not a passing one.
   const t = await openBudget(page);
-  expect(t).toMatch(/the middle of the range is \$4,000/);
+  // Owner, 11/24/2026 ("Copy is too wordy"): the headline is read where it stands.
+  expect(t).toMatch(/A number to plan around \$4,000/);
   expect(t).toMatch(/Use \$4,000/);
 });
 
@@ -92,9 +93,12 @@ test('THE ROOMS REACH THE HOST — her own cheapest listing, in dollars', async 
   expect(t).toMatch(/The rooms are on top of this/);
   expect(t).toMatch(/\$2,180 for the stay/);
   expect(t).toMatch(/Private backyard with BBQ near the Plaza/);
-  // The relationship, not just the two numbers side by side.
-  expect(t).toMatch(/this range covers the party/i);
-  expect(t).toMatch(/lodging beyond a group block, the flights and travel insurance all sit outside it/i);
+  // The relationship, not just the two numbers side by side. Since the card
+  // went to one sentence a note (owner, 11/24/2026), "on top of this" says it;
+  // what lies outside the range (lodging beyond a group block, flights) is the
+  // exclusions fold's job, one tap away.
+  expect(t).toMatch(/The rooms are on top of this: Private backyard with BBQ near the Plaza, the least expensive place on your shortlist, showed \$2,180 for the stay\./);
+  expect(t).toMatch(/things? not included/);
   // $2,180 < $6,000, so the boolean is false and the stronger clause must be
   // absent. A sentence that always says "more than the top" would be wrong here.
   expect(t).not.toMatch(/more than the \$6,000 top/);
@@ -111,7 +115,7 @@ test('IT SITS BETWEEN THE ESTIMATE AND THE BUTTON, which is the point', async ({
   // The same reading-order rule the sibling note is held to: a true sentence
   // below the one-tap chip would not have informed the tap.
   const t = await openBudget(page);
-  const estimate = t.search(/the middle of the range is \$4,000/);
+  const estimate = t.search(/A number to plan around \$4,000/);
   const rooms = t.search(/The rooms are on top of this/);
   const chip = t.search(/Use \$4,000/);
   expect(estimate).toBeGreaterThan(-1);
@@ -124,7 +128,7 @@ test('NEGATIVE CONTROL: no shortlist, no sentence — and never a zero', async (
   // get silence here rather than "$0 for the stay".
   await page.addInitScript(() => { try { localStorage.clear(); } catch { /* private mode */ } });
   const t = await openBudget(page, { lodgingOptions: [] });
-  expect(t).toMatch(/the middle of the range is/);        // premise: still the budget screen
+  expect(t).toMatch(/A number to plan around/);           // premise: still the budget screen
   expect(t).not.toMatch(/The rooms are on top of this/);
   expect(t).not.toMatch(/\$0 for the stay/);
 });

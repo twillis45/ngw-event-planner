@@ -46,7 +46,7 @@ const openDraft = async (page) => {
   // not the thing under test.
   await expect(async () => {
     await card.evaluate((c) => c.click());
-    await card.getByRole('button', { name: 'Draft note', exact: true }).click({ timeout: 2000 });
+    await card.getByRole('button', { name: 'Draft a note instead', exact: true }).click({ timeout: 2000 });
     await expect(title).toHaveText(/Harvest Table Catering/, { timeout: 2000 });
   }).toPass({ timeout: 15000 });
   await sheetSettled(page);
@@ -90,9 +90,11 @@ test('"‹ Sections" is on a section, and not on sheets that are not one', async
   await boot(page);
   await openSectionByName(page, 'Your money');
   await sheetSettled(page);
-  // A section keeps the door to the directory (below the rail; at rail widths
-  // it is the same control, kept for the same reason).
-  await expect(page.locator('.sheet .sheet-back')).toHaveCount(1);
+  // A section keeps the door to the directory below the rail. Where the rail
+  // is up the rail IS the list, so "‹ Sections" is not shown (cohesion F4,
+  // owner 11/24/2026: it was a third door beside the rail and ☰).
+  const railUp = (await page.locator('.srail').count()) > 0;
+  await expect(page.locator('.sheet .sheet-back')).toHaveCount(railUp ? 0 : 1);
   await page.keyboard.press('Escape');
   // Your events is a list of events, not a section of this one.
   const rail = page.locator('.srail-row[aria-label="This event"]');

@@ -5,8 +5,9 @@
 // the run-of-show.") — same state, two different voices. Not a template:
 // nothing here is computed from event data, so there's nothing to keep in
 // sync except the words themselves.
+import { THE_SCHEDULE } from './scheduleWords';
 export const DAY_COMPLETE_COPY = Object.freeze({
   eyebrow: 'Everything handled',
   headline: 'That’s a wrap — every moment’s done.',
-  body: 'Go enjoy it. Nothing left on the run-of-show.',
+  body: `Go enjoy it. Nothing left on ${THE_SCHEDULE}.`,
 });

@@ -65,8 +65,9 @@ test('the guest list is invited: email where it can go, one text at a time where
   expect(await tap(/^Guests/)).toBe(true);
   await page.waitForTimeout(900);
 
-  // Maya (email) and Jordan (phone only): 2. Sam declined; Lee is already invited.
-  expect(await tap(/^Invite your guest list \(2\)$/)).toBe(true);
+  // Maya (email) and Jordan (phone only): 2. Sam declined; Lee is already invited,
+  // so the invite is out and the two read as new (owner, 11/24/2026: s2-2b).
+  expect(await tap(/^Invite 2 new guests$/)).toBe(true);
   const block = page.locator('[data-invite-list]');
   await expect(block).toBeVisible({ timeout: 10_000 });
   await expect(block).toContainText('Sign in to email 1 guest from here.');
@@ -98,7 +99,7 @@ test('the guest list is invited: email where it can go, one text at a time where
 
 // Owner, 11/19/2026: "check copy for text, each version doesn't change much."
 // Each voice is now its own invite; Tighter used to drop the date and place.
-const openInvite = async (page, ev) => {
+const openInvite = async (page, ev, door = 'message') => {
   await page.route(`${API}/**`, (r) => r.fulfill({ status: 200, json: [] }));
   await page.route(`${API}/api/public/invite/${ev.rsvpCode}`, (r) => r.fulfill({
     status: 200, json: { ok: true, event: { id: ev.id, name: ev.name, type: ev.type, date: ev.date, rsvpCode: ev.rsvpCode, goingCount: 0 } },
@@ -122,8 +123,15 @@ const openInvite = async (page, ev) => {
   await tap(/^Menu$/); await page.waitForTimeout(400);
   await tap(/^Jump to a section$/); await page.waitForTimeout(400);
   await tap(/^Guests/); await page.waitForTimeout(900);
-  expect(await tap(/^Invite your guest list \(\d+\)$/)).toBe(true);
-  await expect(page.getByLabel('Edit the draft')).toBeVisible({ timeout: 10_000 });
+  // The words and their voices are the "Invite message" row's (owner,
+  // 11/24/2026); the list send is "Invite your guest list", its confirm sheet.
+  if (door === 'send') {
+    expect(await tap(/^Invite (your guest list \(\d+\)|\d+ new guests?)$/)).toBe(true);
+    await expect(page.locator('[data-invite-list]')).toBeVisible({ timeout: 10_000 });
+  } else {
+    await page.locator('[data-si-row="message"]').click();
+    await expect(page.getByLabel('Edit the draft')).toBeVisible({ timeout: 10_000 });
+  }
 };
 
 test('each voice is its own invite, and none of them drops the day or the place', async ({ page }) => {
@@ -157,7 +165,7 @@ test('one guest at a time: text a guest the batch would only email, and see how 
       if (a) ev.preventDefault();
     }, true);
   });
-  await openInvite(page, hostEvent());
+  await openInvite(page, hostEvent(), 'send');
   const block = page.locator('[data-invite-list]');
   await block.locator('[data-invite-one-open]').click();
   const list = block.locator('[data-invite-one]');

@@ -70,7 +70,7 @@ test('a second event of her own is stamped free at creation, and the creation sc
   await goToStage(page, 'Create');
   await page.getByPlaceholder(/crab feast/i).first().fill('Game night at my place for 10 people on Friday');
   // The blunt disclosure, before any work is invested.
-  await expect(page.getByText(/^Planning this event is free, including sending the details to one vendor \(that takes a free account\)\./)).toBeVisible();
+  await expect(page.getByText(/^Planning this event is free, including sending one vendor the details \(that takes a free account\)\./)).toBeVisible();
   expect(await page.evaluate(() => document.body.innerText)).not.toMatch(/your next event|first event already had the free run/i);
   await page.getByRole('button', { name: /^Put my plan together$/ }).click();
   await expect.poll(async () => (await stored(page)).length, { timeout: 15000 }).toBe(2);
