@@ -73,6 +73,20 @@ export const HOLIDAYS = [
 const iso = (d) => d.toISOString().slice(0, 10);
 
 /**
+ * The holiday a date falls on, or null (owner, 11/25/2026: every date question,
+ * for every event, is checked for a holiday, and the host is told; nothing is
+ * moved off it). `date` is an ISO day ('2026-12-25') or anything starting with
+ * one. Same computed list as the parser above, so the two can never disagree.
+ */
+export function holidayOn(date) {
+  const m = String(date || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  const day = m[0]; const y = Number(m[1]);
+  for (const h of HOLIDAYS) if (iso(h.at(y)) === day) return h.label;
+  return null;
+}
+
+/**
  * Resolve a holiday named in free text to an exact date.
  *
  * `{ date, label, weekend }` or null. Never guesses a YEAR it was not given or
