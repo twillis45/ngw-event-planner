@@ -5,16 +5,17 @@
 //   - the message they get, in each voice (lib/doItForMe draftInvite), and
 //     "Save this version" (the edit hostv2 saves, lib/inviteMessageDraft);
 //   - the rules: plus-ones, kids, mailing addresses, the gift note (lib/guestEdits).
-// Sending needs the plan's reply link, which needs the plan in an account, so
-// it stays in the current app until hostv4 can sign in. The page says so, and
-// its one button opens the current app. Answering a missing day, time or
-// place does too: those editors carry rules (a suggested hour is never told to
+// Sending (owner, 11/25/2026: "Use the hostv2 sign-in for sending in hostv4")
+// opens the send sheet, which uses the account hostv2 signed in. Until the
+// day, the time and the place are set, the one button opens the current app
+// to add them: those editors carry rules (a suggested hour is never told to
 // guests until the host confirms it) that v4 does not copy.
 import { useMemo, useState } from 'react';
 import { inviteGaps } from '@app/lib/inviteGaps';
 import { draftInvite, inviteVoicesFor } from '@app/lib/doItForMe';
 import { LINK_PLACEHOLDER, savedInviteDraft, saveDraftEdit } from '@app/lib/inviteMessageDraft';
 import { plusOneEdit, kidsEdit, addressesEdit, giftEdit, giftDetailEdit } from '@app/lib/guestEdits';
+import SendSheet from './SendSheet.jsx';
 
 const VOICE = { 'as-written': 'As written', tighter: 'Tighter', warmer: 'Warmer', playful: 'Playful', formal: 'Formal' };
 const GAP = { date: 'The day', time: 'The time guests arrive', place: 'Where it is', name: 'The event’s name', address: 'The street address' };
@@ -38,11 +39,14 @@ export default function InvitePage({ ev, save, nav, status }) {
   const saved = savedInviteDraft(ev);
   const voices = useMemo(() => { try { return inviteVoicesFor(ev); } catch { return ['as-written']; } }, [ev]);
   const [voice, setVoice] = useState(() => (saved && voices.includes(saved.voice) ? saved.voice : 'as-written'));
+  const [sending, setSending] = useState(false);
+  const profile = useMemo(readProfile, []);
+  const subject = useMemo(() => { try { return draftInvite(ev, profile, { voice }).subject || 'You’re invited'; } catch { return 'You’re invited'; } }, [ev, profile, voice]);
   // The words: her saved version when it is the voice shown, else this voice written from the facts.
   const body = useMemo(() => {
     if (saved && saved.voice === voice) return saved.body;
-    try { return draftInvite(ev, readProfile(), { rsvpUrl: LINK_PLACEHOLDER, voice }).body || ''; } catch { return ''; }
-  }, [ev, voice, saved]);
+    try { return draftInvite(ev, profile, { rsvpUrl: LINK_PLACEHOLDER, voice }).body || ''; } catch { return ''; }
+  }, [ev, voice, saved, profile]);
   const isSaved = !!saved && saved.voice === voice && saved.body === body;
   const gift = (ev.giftWish && ev.giftWish.mode) || null;
 
@@ -84,9 +88,11 @@ export default function InvitePage({ ev, save, nav, status }) {
             onBlur={(e) => { if (e.target.value !== ((ev.giftWish && ev.giftWish.detail) || '')) save(giftDetailEdit(ev, e.target.value.trim())); }} />
         )}
         <p className="fine">The reply page follows these.</p>
-        <p className="fine">Sending needs the plan’s reply link, which comes from your account. For now you send it from the current app.</p>
       </section>
     </main>
-    <div className="action"><a className="primary" href="../hostv2/">Send it from the current app</a></div>
+    <div className="action">{gaps.length
+      ? <a className="primary" href="../hostv2/">Add what’s missing in the current app</a>
+      : <button className="primary" data-open-send onClick={() => setSending(true)}>{ev.invitesSentAt ? 'Send it again' : 'Send the invite'}</button>}</div>
+    {sending && <SendSheet ev={ev} draft={body} subject={subject} voice={voice} hostName={(profile && profile.name) || ''} save={save} onDone={() => setSending(false)} />}
   </>);
 }

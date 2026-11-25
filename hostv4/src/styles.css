@@ -106,6 +106,14 @@ h3.sh { font-size: 1rem; margin: 22px 2px 8px; }
 .rule .lbl { margin-top: 14px; }
 .val.warnv { color: var(--warn); }
 .okline { color: var(--ok); }
+/* The send sheet. */
+.sendbody { padding-top: 6px; }
+.sendbody .who { display: flex; flex-direction: column; gap: 2px; margin: 0 2px 12px; font-size: 1rem; }
+.sendbody .who span { color: var(--ink-2); }
+.sendbody .primary { margin: 14px 0 6px; }
+.sendbody > .link { display: block; min-height: 44px; }
+.sendbody .row.one .link { margin-left: 16px; }
+.done.warnline { color: var(--warn); }
 @keyframes push { from { transform: translateX(24%); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes rise { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
