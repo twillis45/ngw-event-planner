@@ -8,7 +8,7 @@
 //
 // ESM-only (per the prod-bundle lesson — no CJS module.exports in src/).
 
-import { rsvpState, rsvpIsSettled } from '../rsvp';
+import { rsvpState, rsvpIsSettled, notRepliedYet } from '../rsvp';
 import { guestCountFor, guestCountIsConfirmed } from '../guestCountFor';
 import { plusOneCount } from '../plusOneCount';
 import { isHostName } from '../hostNameFor';
@@ -2488,7 +2488,7 @@ export function topPlaybookDecision(event, asOf) {
     const pendingMsg = gc.reason === 'pending-rsvps'
       // The wording follows her guest mode (owner ruling 4b): by headcount, no chasing.
       ? byGuestMode(event, {
-        list: `${gc.pending} guest${gc.pending === 1 ? '' : 's'} still pending — chase the maybes, then buy to the confirmed count.`,
+        list: `${notRepliedYet(gc.pending)} — chase the maybes, then buy to the confirmed count.`,
         count: 'Confirm your final count, then buy to it.',
       })
       : 'Add a final guest count so every quantity is sized before you shop.';

@@ -11,6 +11,7 @@
 // sections with nothing open say so calmly (stop worrying about it); every
 // row's route obeys the deep-link doctrine (first-undone anchors); the guest
 // final-details message is LINKED, never embedded (host plan ≠ guest copy).
+import { notRepliedYet } from './rsvp';
 import { playbookFoodPlan, playbookCapacity, effectiveRos, guestCountResolved } from './playbooks';
 import { linesLeftToBuy } from './itemCounts';
 import { rainPlanStatus, RAIN_PLAN_TARGET } from './weather';
@@ -142,7 +143,7 @@ export function buildDayBeforePlan(event, now = new Date()) {
         detail: pending
           // The wording follows her guest mode (owner ruling 4b): by headcount, no chasing.
           ? byGuestMode(ev, {
-            list: `${gcnt.pending} still ${gcnt.pending === 1 ? 'hasn’t' : 'haven’t'} said — chase the maybes, then buy to the confirmed count.`,
+            list: `${notRepliedYet(gcnt.pending)} — chase the maybes, then buy to the confirmed count.`,
             count: 'Confirm your final count, then buy to it.',
           })
           : 'No count yet — food, drinks, ice, and rentals all scale from headcount.',

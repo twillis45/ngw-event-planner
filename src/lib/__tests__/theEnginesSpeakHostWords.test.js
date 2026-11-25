@@ -18,6 +18,8 @@ import { buildExperienceContext } from '../experienceContext';
 import { resolveEventIdentity } from '../eventIdentityEngine';
 import { WANDA_GOLD_EVENT } from '../../data/wandaGoldEvent';
 import { computeDayAlerts } from '../dayAlerts';
+import { buildDayBeforePlan } from '../dayBefore';
+import { topPlaybookDecision } from '../playbooks';
 
 const RULES = [...HOST_WORDS.banned, HOST_WORDS.brokenTemplate]
   .map((b) => ({ word: b.word, re: new RegExp(b.re, b.flags == null ? 'i' : b.flags) }));
@@ -96,6 +98,24 @@ describe('The Day’s alerts are in host words', () => {
     if (ev === ON_THE_DAY) expect(alerts.map((a) => a.id)).toContain('rsvp-pending'); // premise
     const found = [];
     for (const al of alerts) for (const k of ['headline', 'move', 'text']) found.push(...offenders(`dayAlert ${al.id}.${k}`, al[k]));
+    expect(found).toEqual([]);
+  });
+
+  // The run-through and the board's lead say it too (live check of 91f48c26:
+  // "2 still haven't said" on the event-day run-through).
+  test('the day before and on the day, the run-through and the lead say "haven’t replied"', () => {
+    const found = [];
+    for (const at of ['2027-03-19T15:00:00', '2027-03-20T09:00:00']) {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date(at));
+      // Copy only: keys and ids ("ros-now") have no space.
+      const strings = (o, out = []) => { if (typeof o === 'string') { if (/\s/.test(o)) out.push(o); } else if (o && typeof o === 'object') for (const v of Object.values(o)) strings(v, out); return out; };
+      const dayBefore = strings(buildDayBeforePlan(ON_THE_DAY, new Date(at)));
+      const lead = strings(topPlaybookDecision(ON_THE_DAY, new Date(at)));
+      if (at.startsWith('2027-03-19')) expect(dayBefore.join(' ')).toMatch(/chase the maybes/); // premise: the count row is there
+      for (const t of dayBefore) found.push(...offenders('dayBefore', t));
+      for (const t of lead) found.push(...offenders('topPlaybookDecision', t));
+    }
     expect(found).toEqual([]);
   });
 
