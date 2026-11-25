@@ -3,6 +3,7 @@
 // Each event's `type` maps to its own engine model via familyFor(). Do not hand-edit;
 // re-run the workflow + assembler to regenerate.
 import { rebaseSampleEvents } from '../lib/sampleDateRebase';
+import { SCHEDULE, SCHEDULE_WORD, THE_SCHEDULE } from '../lib/scheduleWords';
 const RAW_SAMPLE_EVENTS_DMV = [
   {
     "id": "ev-dmv-wedding",
@@ -2069,7 +2070,7 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-gala-t9",
         "week": "Week of 1/25",
-        "task": "Finalize run-of-show, program script, and paddle-raise ladder with auctioneer",
+        "task": `Finalize ${THE_SCHEDULE}, program script, and paddle-raise ladder with auctioneer`,
         "done": false,
         "owner": "Event Chair"
       },
@@ -2266,7 +2267,7 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-gala-d6",
         "kind": "other",
-        "title": "Run-of-Show & Program Script",
+        "title": `${SCHEDULE} & Program Script`,
         "status": "draft",
         "updatedAt": "2027-01-19T12:00:00.000Z",
         "notes": "Drafting with auctioneer and comms. Holds slots for council proclamation (pending) and ASL interpreter."
@@ -3293,7 +3294,7 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-bachelorette-t10",
         "week": "Day before",
-        "task": "Get Airbnb smart-lock code; print the weekend run-of-show for the crew",
+        "task": `Get Airbnb smart-lock code; print the weekend ${SCHEDULE_WORD} for the crew`,
         "done": false,
         "owner": "Tierra (MOH)"
       },
@@ -3461,7 +3462,7 @@ const RAW_SAMPLE_EVENTS_DMV = [
       {
         "id": "ev-dmv-bachelorette-d6",
         "kind": "other",
-        "title": "Weekend Run-of-Show + Packing List",
+        "title": `Weekend ${SCHEDULE} + Packing List`,
         "status": "draft",
         "updatedAt": "2026-08-11T12:00:00.000Z",
         "notes": "Crew schedule Fri-Sun, outfit notes (tees Sat, glam Sat night), what each person brings."

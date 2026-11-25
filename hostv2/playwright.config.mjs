@@ -44,6 +44,7 @@ const SELF_PINNED = [
   // a different fold and this rule does not govern it.
   '**/foldAtTheFoot.spec.mjs',
   '**/theStatColumnStandsBesideTheQuestion.spec.mjs',
+  '**/aShortLandscapeFitsEveryAsk.spec.mjs',
   '**/aSheetFillsTheColumnAndTheScreen.spec.mjs',
   '**/theTouchFrameIsFullBleed.spec.mjs',
   '**/statColumnChips.spec.mjs',
@@ -73,6 +74,9 @@ const SELF_PINNED = [
   '**/tapTargets.spec.mjs',
   // Drives its own three geometries (one lit button per sheet, batch 4, 11/21/2026).
   '**/oneLitButtonPerSheet.spec.mjs',
+  // Drives 390, 834, 1024 and 1440 itself (today's list first on the day,
+  // owner-approved renders, cohesion batch A, 11/24/2026).
+  '**/theDayShowsTodayFirst.spec.mjs',
   // Drives 390, 768 and 1280 in both themes (one-row sign-in, owner ruling 25, 11/21/2026).
   '**/theSignInIsOneRow.spec.mjs',
   // Drives 390x844 and 1024x1366 in both themes (the board's ask is steel in light, owner ruling 29, 11/21/2026).

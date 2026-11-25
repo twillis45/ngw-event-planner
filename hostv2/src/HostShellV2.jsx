@@ -115,7 +115,7 @@ function rankReasonForV2(row) {
 // low|simple|light as easy, where this copy called all five moderate — a divergence waiting
 // for the first playbook to use one of those words. The surface now reads the engine.
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL, rideStatusOf, nextRideStatus, rideFieldsFor, RIDE_STATUS_LABEL, arrivalClusters } from '@app/lib/travelPlan';
-import { buildSeatingPlan, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, tableCountBasis, MEAL_SHORT } from '@app/lib/seatingPlan';
+import { buildSeatingPlan, seatingClaim, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, tableCountBasis, MEAL_SHORT } from '@app/lib/seatingPlan';
 import { costSharingSummary } from '@app/lib/costSharing';
 import { answerPlanQuestion } from '@app/lib/askPlan';
 import { askExchange, appendAskExchange, attachBroaderLook } from '@app/lib/askHistory';
@@ -177,7 +177,7 @@ import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, readEventRsvps, isRsvpApiConfigured, checkRsvpCapability } from '@app/lib/api/rsvp';
 import { deleteAccount, isAccountDeletionAvailable } from '@app/lib/api/account';
-import { effectiveDone, factsATickRecords, invitesOut, timelineStepResolved, TRIP_DETAILS_DRAFT } from '@app/lib/taskEngine';
+import { effectiveDone, factsATickRecords, invitesOut, timelineStepResolved, checklistProgress, TRIP_DETAILS_DRAFT } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge, toCSV, COLUMNS, exportFileSlug } from '@app/lib/csvParsers';
@@ -208,7 +208,7 @@ import { travelFieldsToPersist } from '@app/lib/travelFieldsToPersist';
 import { isMultiDecision, answerList, answerText } from '@app/lib/decisionType';
 import { unfilledBlanks } from '@app/lib/guestFacing';
 import { expectedFromPlanned, likelyAttendancePhrase } from '@app/lib/attendanceModel';
-import { estimateTotalRange, notIncludedFor, notIncludedSummary } from '@app/lib/budgetEstimator';
+import { estimateTotalRange, notIncludedFor } from '@app/lib/budgetEstimator';
 import { venueParked, parkVenuePatch, unparkVenuePatch } from '@app/lib/venuePark';
 import { venueLeadsStay } from '@app/lib/venueLeadsStay'; // owner ruling 11/20/2026: the venue leads the stay
 import { dietRowsFor, anyDietFlagged, dietCountsFor, guestDietCounts, mealTally } from '@app/lib/dietRows';
@@ -305,7 +305,7 @@ import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow, cheaperBarOption } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence, placeIsOutdoors, outdoorsGuess } from '@app/lib/placeIntelligence';
-import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planCostsAboveNote, planHeadroomLine, expectedHeadroom, afterSpendVerdict, budgetProposalCta } from '@app/lib/budgetCopy';
+import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planHeadroomLine, expectedHeadroom, afterSpendVerdict, budgetProposalCta, budgetAskCopy, notIncludedLine } from '@app/lib/budgetCopy';
 import { CRAB_REFERENCE_MARKET } from '@app/lib/crabServing';
 import { priceSourceNote } from '@app/lib/priceBasis';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
@@ -465,6 +465,8 @@ import EventHashtag from './EventHashtag.jsx';
 import { isGuestMessagesApiConfigured, fetchGuestThreads } from '@app/lib/api/guestMessages';
 import { isGuestPhotosApiConfigured, fetchEventGuestPhotos } from '@app/lib/api/guestPhotos';
 import { questionsWaiting, questionsWaitingLine, photosWaitingLine } from '@app/lib/guestInbox';
+// The host's word for the day's plan (owner: "Host doesn't use run of show language", 11/24/2026).
+import { SCHEDULE, THE_SCHEDULE, SCHEDULE_WORD } from '@app/lib/scheduleWords';
 
 
 const fmt = formatCurrency;
@@ -525,10 +527,10 @@ function VendorReplyParserV2({ vendor, event, writeVendor, signedIn, onSignIn })
           {onSignIn && <button className="mini" onClick={onSignIn}>Sign in</button>}
         </div>
       ) : (<>
-      <div style={{ fontSize: 12, color: 'var(--carbon-muted)', marginBottom: 8, lineHeight: 1.5 }}>
+      <label htmlFor={'vreply-' + (vendor && vendor.id)} style={{ display: 'block', fontSize: 12, color: 'var(--carbon-muted)', marginBottom: 8, lineHeight: 1.5 }}>
         Paste their email or text. We’ll pull out times, contacts, counts, and payment status to review; nothing saves until you apply it.
-      </div>
-      <textarea className="field" rows={3}
+      </label>
+      <textarea id={'vreply-' + (vendor && vendor.id)} className="field" rows={3}
         style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 10px' }}
         placeholder="e.g. We'll arrive at 2pm, deposit received, final count 85. Day-of contact Dana, 301-555-0134."
         value={replyText} onChange={e => setReplyText(e.target.value)} aria-label="Paste the vendor's message" />
@@ -4766,6 +4768,7 @@ export default function HostShellV2() {
   // tap did, or jump straight to "Confirmed"). This opens an explicit picker of
   // the whole ladder; the pill toggles it, a chip sets the status directly.
   const [statusPickFor, setStatusPickFor] = useState(null); // vendor id whose picker is open
+  const [vendorReplyOpen, setVendorReplyOpen] = useState(null); // vendor id whose paste-their-reply box is open
   // (rsvpPickFor retired 2026-08-07: the reply picker lives in the guest's own
   // disclosure now, so `guestOpen` is the only open/closed state for that row.)
   const setVendorStatus = (v, status) => {
@@ -4895,8 +4898,8 @@ export default function HostShellV2() {
       const gate = briefAllowed(event, v.id);
       if (!gate.allowed) {
         toast(gate.reason === 'second-vendor'
-          ? 'Your free brief went to your first vendor — the pass unlocks sharing with every vendor on this event.'
-          : 'Sharing vendor briefs on this event takes the One-Event Pass.');
+          ? 'Sending the details is free for your first vendor — the pass unlocks it for every vendor on this event.'
+          : 'Sending vendors the details on this event takes the One-Event Pass.');
         setSheet({ kind: 'pass' });
         return;
       }
@@ -5848,6 +5851,11 @@ export default function HostShellV2() {
   const [lens, setLens] = useState('all');
   const lensSet = [...new Set(queue.map(a => DOMAIN_LENS[a.domain] || 'Plan'))];
   const show = a => lens === 'all' || (DOMAIN_LENS[a.domain] || 'Plan') === lens;
+  // TODAY'S LIST ON THE DAY (cohesion batch A, owner-approved renders,
+  // 11/24/2026). On the event day the list under the run-of-show hero holds
+  // only what is due today and anything critical; the rest of the planning
+  // folds behind one row. A critical card never folds.
+  const onTheDayList = (a) => !!a && (a.level === 'critical' || (a.dueInDays != null && Number(a.dueInDays) === 0));
   // Queue presentation state (wave-6 hero): the "+N more" expander past the
   // 6-card cap, and per-bundle in-place expansion. Both reset per event.
   const [queueOpen, setQueueOpen] = useState(false);
@@ -9282,6 +9290,26 @@ export default function HostShellV2() {
       event && event.travelMode, event && event.isDestination, event && event.foodFocus,
       event && event.caterer, event && event.date]);
 
+  // ── HER CHECKLIST'S "N OF M" TRAVELS WITH THE EVENT (rule 12, audit #35) ──
+  // Owner ruling 11/24/2026, option a: the family page printed "1 of 41" while
+  // her checklist said "2 of 41" — it can see the ticks but not the steps her
+  // plan proves handled. Her app saves its own count (checklistProgress, the
+  // sheet's reader) through the ordinary event write, so the family link's
+  // projection carries her number. Written only when it changes; silent, and
+  // it leaves her last Undo alone.
+  const savedChecklistCount = event && event.checklistCount;
+  const liveChecklistCount = useMemo(() => { try { return checklistProgress(event); } catch { return null; } }, [event]);
+  useEffect(() => {
+    if (!event || !event.id || !liveChecklistCount) return;
+    const { done, total } = liveChecklistCount;
+    const prev = savedChecklistCount;
+    if (prev && prev.done === done && prev.total === total) return;
+    if (!prev && total === 0) return;   // nothing to count, nothing to say
+    patchEvent({ checklistCount: { done, total } }, '', { noUndo: true, keepsUndo: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event && event.id, liveChecklistCount && liveChecklistCount.done, liveChecklistCount && liveChecklistCount.total,
+      savedChecklistCount && savedChecklistCount.done, savedChecklistCount && savedChecklistCount.total]);
+
   // THE START TIME'S ONE WRITE PATH (owner 11/22/2026, "Both can edit"):
   // Date & time and the run of show's "guests arrive" both write `startTime`
   // through lib/eventDates, so the two editors cannot store it two ways.
@@ -10479,7 +10507,7 @@ export default function HostShellV2() {
                     right where the time lives, not a separate row below. */}
                 {!startTimeIsConfirmed(event) && String(event.startTime || '').trim() && (
                   <button className="mini" onClick={() => writeStartTime({ confirm: true },
-                    'Start time confirmed — your invite and vendor briefs can name it now.')}>
+                    'Start time confirmed — your invite and the details you send vendors can name it now.')}>
                     that’s right
                   </button>
                 )}
@@ -10491,7 +10519,7 @@ export default function HostShellV2() {
               {!startTimeIsConfirmed(event) && String(event.startTime || '').trim() && (
                 <>
                   <p className="grounding" style={{ width: '100%', margin: '6px 0 0' }}>
-                    <b>We set this one, not you.</b> {event.startTimeWhy || ''} Your invite and your vendor briefs won’t name an hour until you say it’s right (tap “that’s right” by the time above).
+                    <b>We set this one, not you.</b> {event.startTimeWhy || ''} Your invite and the details you send vendors won’t name an hour until you say it’s right (tap “that’s right” by the time above).
                   </p>
                 </>
               )}
@@ -10736,7 +10764,8 @@ export default function HostShellV2() {
     // "computed and shown to nobody" became "shown on one branch of three".
     // Hoisted here, above every return, so a branch cannot silently omit it.
     const roomsNote = (() => {
-      const t = (() => { try { return stayOnTopOfTheRangeNote(est, _stayBasis); } catch (_e) { return null; } })();
+      // One sentence on this card (owner, 11/24/2026: "Copy is too wordy").
+      const t = (() => { try { return stayOnTopOfTheRangeNote(est, _stayBasis, { short: true }); } catch (_e) { return null; } })();
       return t ? <Grounding>{t}</Grounding> : null;
     })();
 
@@ -10760,6 +10789,11 @@ export default function HostShellV2() {
     }
     // PROPOSED — no budget yet and we can ground one: lead with Typical + Use/Change.
     if (!budgetChanging && !forceChange && typical > 0) {
+      // ── FEW WORDS, AND THE NUMBERS AGREE (owner, 11/24/2026: "Copy is too
+      // wordy"). budgetAskCopy: the headline is the figure the lit button
+      // offers, the per-head is that headline over the guests (rounded as the
+      // tiers round), and one line says where it comes from.
+      const ask = budgetAskCopy({ expected: spend && spend.expected, typical, guests, type: event.type, mustMark: !!(estDisclosure && estDisclosure.mustMark) });
       // Composed from the parity kit (./parity/askKit) — the locked 6/14/20/16 rhythm + 44/750
       // type live in the atoms now, not inline here. Matches Figma 344:61 B1.
       return (
@@ -10797,7 +10831,7 @@ export default function HostShellV2() {
                 <span style={{
                   fontSize: 22, fontWeight: 700, letterSpacing: '-.02em',
                   color: 'var(--ink)', fontVariantNumeric: 'tabular-nums',
-                }}>{perHeadText(perHeadRange(typical, typical, guests), fmt)}</span>
+                }}>{ask.perHead}</span>
               )}
               {/* The separator binds FORWARD, not back: at 390px the suffix
                   wraps after the per-head figure, and a trailing "·" left
@@ -10805,15 +10839,10 @@ export default function HostShellV2() {
                   word. Glued to what follows, the whole marker moves down
                   together. */}
               {guests > 0 ? ' ' : ''}
-              {`${guests > 0 ? '· ' : ''}${estDisclosure && estDisclosure.mustMark ? 'Mid‑range\u00A0·\u00A0est.' : 'Mid‑range'}`}
+              {`${guests > 0 ? '· ' : ''}${ask.tag.replace(/ /g, '\u00A0')}`}
             </>
-          )}>{fmt(typical)}</BigValue>
-          <Grounding>
-            {`For ${guests} at ${aOccasion(event.type)}, the middle of the range is ${fmt(typical)}. `}
-            {estDisclosure && estDisclosure.mustMark
-              ? 'That is the midpoint of a planning band, not an average of real events and not a quote. '
-              : ''}The plan sizes food, vendors and shopping from here — change it anytime.
-          </Grounding>
+          )}>{fmt(ask.headline)}</BigValue>
+          <Grounding>{ask.grounding}</Grounding>
           {/* ── WHEN THIS PLAN'S OWN VENDORS COST MORE THAN THE RANGE ──────
               `belowRequiredVendors` has been on the estimate result since
               2026-09-19 with no reader. Surprise Proposal's own roster needs a
@@ -10824,7 +10853,7 @@ export default function HostShellV2() {
               ranges carrying zero provenance. They get both, and are told
               which is which. See lib/budgetCopy.js#estimateShortfallNote. */}
           {(() => {
-            const short = (() => { try { return estimateShortfallNote(est); } catch (_e) { return null; } })();
+            const short = (() => { try { return estimateShortfallNote(est, { short: true }); } catch (_e) { return null; } })();
             return short ? <Grounding>{short}</Grounding> : null;
           })()}
           {/* ── AND THE ROOMS, WHICH THIS RANGE DOES NOT COVER ─────────────
@@ -10841,19 +10870,9 @@ export default function HostShellV2() {
               why this does not cry "contradiction" and why it mints no new
               band. */}
           {roomsNote}
-          {/* The plan's own lines can already cost more than the band's middle
-              (issue #100: "Use $200" over "$293 expected"). Both numbers, said
-              plainly — see lib/budgetCopy.js#planCostsAboveNote. */}
-          {(() => {
-            // The lit button below carries the plan's figure (A P1-7), so the
-            // quiet link here is the band's middle — the sentence's other path.
-            const over = (() => { try { return planCostsAboveNote(spend && spend.expected, typical); } catch (_e) { return null; } })();
-            return over ? (
-              <Grounding gap={8}>
-                {over.text} <button className="tap-44" style={linkBtn} onClick={() => setB(typical)}>Use {fmt(typical)} and trim</button>
-              </Grounding>
-            ) : null;
-          })()}
+          {/* The plan's lines above the band's middle (issue #100) are said in
+              the one line above, and the band's middle is "Mid-range" in the tier
+              row (owner, 11/24/2026): the separate "Use $T and trim" link went. */}
           {/* ── AND WHOSE MONEY IT IS ──────────────────────────────────────
               The old line here said "travel-scale costs are part of the
               numbers", which a host reads as "the flights are in this". The
@@ -10906,7 +10925,7 @@ export default function HostShellV2() {
             return (
               <details className="excl-fold" style={{ marginTop: 8 }}>
                 <summary className="grounding" style={{ cursor: 'pointer' }}>
-                  {notIncludedSummary(excl)}
+                  {notIncludedLine(excl)}
                 </summary>
                 <p className="grounding" style={{ margin: '6px 0 0' }}>{excl.join(' · ')}</p>
               </details>
@@ -10935,7 +10954,17 @@ export default function HostShellV2() {
               a host choosing between tiers is now comparing per-person
               numbers rather than totals — which is the comparison they can
               actually reason about. */}
-          {(low || high) ? (
+          {ask.covers ? (
+            // The plan costs more than the mid-range: the mid-range is a tier,
+            // the path the old "Use $T and trim" link was (owner, 11/24/2026;
+            // "Mid-range", not "Typical", per the host's 10/06/2026 ruling).
+            <Grounding gap={16}>
+              or {[low ? <button key="l" className="tier-link" onClick={() => setB(low)}>Lean {fmt(low)}</button> : null,
+                <button key="t" className="tier-link" onClick={() => setB(typical)}>Mid‑range {fmt(typical)}</button>,
+                high ? <button key="h" className="tier-link" onClick={() => setB(high)}>All-out {fmt(high)}</button> : null,
+              ].filter(Boolean).reduce((acc, el, i) => (i ? [...acc, ' · ', el] : [el]), [])}
+            </Grounding>
+          ) : (low || high) ? (
             <Grounding gap={16}>
               or {low ? <button className="tier-link" onClick={() => setB(low)}>Lean {fmt(low)}</button> : null}
               {low && guests > 0 ? ` (${perHeadText(perHeadRange(low, low, guests), fmt)})` : ''}
@@ -13371,8 +13400,8 @@ export default function HostShellV2() {
                       </article>
                     ) : (<>
                       <p className="truth">{dayHero.state === 'done'
-                        ? 'Every cue on the run of show is done — enjoy the rest.'
-                        : 'There’s no run of show for today yet.'}</p>
+                        ? `Every moment on ${THE_SCHEDULE} is done — enjoy the rest.`
+                        : `There’s no ${SCHEDULE_WORD} for today yet.`}</p>
                       <div className="actions-row" style={{ alignItems: 'center' }}>
                         <button className="cta" onClick={() => setStage('day')}>{dayHero.state === 'done' ? 'See the day' : 'Open the day'}</button>
                       </div>
@@ -13633,7 +13662,21 @@ export default function HostShellV2() {
                   : dayHero
                     /* On the day the hero is the run of show; what is left here is
                        planning that did not get done, and is named as that. */
-                    ? <div className="sect" id="actionsAnchor"><h2>Still open from planning</h2><div className="rule" /><span className="when">not today’s job</span></div>
+                    /* FITS THE MOMENT (UX_11 rule 13, cohesion audit P1 #1,
+                       11/24/2026): "not today’s job" sat over cards tagged "due
+                       today" ("5 things need you today", "Reconfirm 3 vendors").
+                       The label now reads the cards under it: what is due today
+                       is counted as that; what is only past its window is
+                       optional; "not today’s job" only when neither is there. */
+                    ? (() => {
+                        // Today's list leads: "Still to do today · N left", N being
+                        // exactly the cards shown. With nothing for today, every card
+                        // is folded, and the label says how optional they are.
+                        const todayList = queue.filter(show).filter(onTheDayList).length;
+                        if (todayList) return <div className="sect" id="actionsAnchor"><h2>Still to do today</h2><div className="rule" /><span className="when">{todayList} left</span></div>;
+                        const late = queue.some((a) => a && a.dueInDays != null && Number(a.dueInDays) < 0);
+                        return <div className="sect" id="actionsAnchor"><h2>Still open from planning</h2><div className="rule" /><span className="when">{late ? 'if there’s time' : 'not today’s job'}</span></div>;
+                      })()
                     : <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>}
               {plan && plan.planningState && plan.planningState.reasoning && (() => {
                 // Re-audit 2026-07-17 (P0, "one hero instruction"): the milestone
@@ -13770,7 +13813,7 @@ export default function HostShellV2() {
                 })();
                 const queueCap = queueFocus != null ? queueFocus : QUEUE_CAP;
                 const queueFolded = queueFocus != null && !queueOpen;
-                const visible = queueOpen ? shown : shown.slice(0, queueCap);
+                const visible = queueOpen ? shown : (dayHero ? shown.filter(onTheDayList) : shown.slice(0, queueCap));
                 const hiddenCount = shown.length - visible.length;
                 // Time-to-window, worn quietly on the card (engine contract:
                 // actions MAY carry dueInDays; absent = say nothing).
@@ -13786,6 +13829,9 @@ export default function HostShellV2() {
                 // in N days still print, because those point forward and are true. The
                 // eyebrow already carries the runway ("4 DAYS · REPAST"), so nothing
                 // true is lost — only the blame.
+                // The engine's own timing and level, on each card (read by
+                // e2e/theDayShowsTodayFirst.spec.mjs).
+                const queueCardData = (a) => ({ 'data-queue-card': '', 'data-due-in-days': (a && a.dueInDays != null) ? String(a.dueInDays) : '', 'data-level': (a && a.level) || '' });
                 const dueChip = (a) => {
                   if (!a || a.dueInDays == null || !Number.isFinite(Number(a.dueInDays))) return null;
                   if (solemn && a.dueInDays < 0) return null;
@@ -13870,7 +13916,7 @@ export default function HostShellV2() {
                     const to12 = (s) => { const t = cParse(s); if (t == null) return s; let h = Math.floor(t / 60); const mm = t % 60; const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return h + ':' + String(mm).padStart(2, '0') + ' ' + ap; };
                     const applyCustomTime = (val) => { if (!val || !custom || !it.affectedVendorId) return; const disp = to12(val); writeVendor(it.affectedVendorId, { [custom.field]: disp }, `${vendName || 'They'} now arrive at ${disp}.`); setConflictTime(null); };
                     return (
-                      <article className={'card hero-card bundle-hero conflict-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key}
+                      <article className={'card hero-card bundle-hero conflict-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key} {...queueCardData(a)}
                         style={{ animation: 'askin 240ms var(--ease-out) 60ms both' }}>
                         <div className="card-head">
                           {(it.detailShort || it.detail) && <p className="because">{it.detailShort || it.detail}</p>}
@@ -13946,7 +13992,7 @@ export default function HostShellV2() {
                   if (elegantMode && askMode && i === 0 && heroDecisionRow && heroDecisionND) {
                     const dec = heroDecisionRow;
                     return (
-                      <article className={'card hero-card bundle-hero decision-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key}
+                      <article className={'card hero-card bundle-hero decision-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key} {...queueCardData(a)}
                         style={{ animation: 'askin 240ms var(--ease-out) 60ms both' }}>
                         <div className="card-head">
                           {/* THE HERO SAYS WHAT IS TRUE FORWARD (board re-sit 2026-07-30).
@@ -14016,7 +14062,7 @@ export default function HostShellV2() {
                     );
                   }
                   return (
-                    <article className={'card' + (spot === key ? ' spot' : '') + (askMode && i === 0 ? ' hero-card bundle-hero' : '')} id={'card-' + key} key={key}
+                    <article className={'card' + (spot === key ? ' spot' : '') + (askMode && i === 0 ? ' hero-card bundle-hero' : '')} id={'card-' + key} key={key} {...queueCardData(a)}
                       style={spot === key ? undefined : { animation: rowEnter(i, 45, 6) }}>
                       {!(askMode && i === 0) && <span className="idx">{i + 1}</span>}
                       <div className="card-head">
@@ -14210,7 +14256,7 @@ export default function HostShellV2() {
                 // second expression and breaks the build — the same trap documented
                 // on the conflict-hero disclosure ~:6100.)
                 return (
-                  <article className={'card' + (spot === key ? ' spot' : '') + (isHero ? ' hero-card' + (heroReceipt ? ' receipted' : '') : '')} id={'card-' + key} key={key}
+                  <article className={'card' + (spot === key ? ' spot' : '') + (isHero ? ' hero-card' + (heroReceipt ? ' receipted' : '') : '')} id={'card-' + key} key={key} {...queueCardData(a)}
                     data-decision-id={(isHero && heroSelection && heroSelection.decisionId) || undefined}
                     data-confidence={(isHero && heroEvidence && heroEvidence.confidence) || undefined}
                     data-why={(isHero && heroWhy.length) ? heroWhy.join(' · ') : undefined}
@@ -14440,8 +14486,9 @@ export default function HostShellV2() {
                   them — it was --muted/550 at body size against their --faint/450/12.5px. */}
               {hiddenCount > 0 && !(nearDayPlan && !queueOpen) && !(elegantMode && askMode) && (
                 <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: 'pointer', padding: '9px 0' }}
+                  data-day-fold={dayHero ? '' : undefined}
                   onClick={() => setQueueOpen(true)}>
-                  <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>+ {hiddenCount} more — show the rest</span>
+                  <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{dayHero ? `${hiddenCount} more from planning, if there’s time` : `+ ${hiddenCount} more — show the rest`}</span>
                   {/* setQueueOpen is an in-place expand, so this is a disclosure, not a
                       route (board re-sit 2026-07-30 — the third survivor of the glyph
                       rule ruling A enforced on decopt-disc only). */}
@@ -14774,7 +14821,9 @@ export default function HostShellV2() {
                     const sx = dayBefore.sections || [];
                     const openOf = (k) => { const s = sx.find(x => x.key === k); return s ? (Number(s.open) || 0) : 0; };
                     const steps = openOf('tasks');
-                    const items = openOf('shopping');
+                    // Rule 12 (audit #4): "items to get" is the list's remainder; the
+                    // section's open also holds the rentals, which are not items to buy.
+                    const items = (() => { const sh = sx.find(x => x.key === 'shopping'); return sh ? (sh.listLeft != null ? Number(sh.listLeft) || 0 : Number(sh.open) || 0) : 0; })();
                     const people = openOf('vendors') + openOf('helpers');
                     const parts = [
                       steps ? `${steps} plan step${steps === 1 ? '' : 's'}` : null,
@@ -14799,7 +14848,9 @@ export default function HostShellV2() {
                     const lead = (() => {
                       switch (sec.key) {
                         case 'tasks': return n ? `${n} plan step${n === 1 ? '' : 's'} still open` : 'Plan steps — nothing open';
-                        case 'shopping': return n ? `${n} item${n === 1 ? '' : 's'} still to get` : 'Shopping — all in hand';
+                        // Rule 12: n is the list's remainder; rentals are their own fact,
+                        // so "all in hand" only when none of them is open either.
+                        case 'shopping': { const g = Number(sec.openGear) || 0; const l = sec.listLeft != null ? Number(sec.listLeft) || 0 : n; return l ? `${l} item${l === 1 ? '' : 's'} still to get` : g ? `${g} rental${g === 1 ? '' : 's'} still to sort` : 'Shopping — all in hand'; }
                         case 'vendors': return n ? `${n} ${n === 1 ? 'person' : 'people'} to lock in` : 'Everyone you hired is locked in';
                         case 'rain': return n ? 'No rain backup yet' : 'Rain backup saved';
                         case 'helpers': return n ? `${n} ${n === 1 ? 'helper' : 'helpers'} to confirm` : 'Helpers all confirmed';
@@ -14825,11 +14876,14 @@ export default function HostShellV2() {
                       if (sec.key === 'shopping' && n > 0 && (sec.openFood != null || sec.openSupplies != null)) {
                         const f = Number(sec.openFood) || 0;
                         const s = Number(sec.openSupplies) || 0;
+                        const g = Number(sec.openGear) || 0;
                         const bits = [
                           f ? `${f} on the food list` : null,
-                          s ? `${s} supplies & gear` : null,
+                          s ? `${s} supplies` : null,
                         ].filter(Boolean);
-                        if (bits.length) return `${bits.join(' · ')} — one store run covers it.`;
+                        // The rentals are not a store run (rule 12, audit #4): named apart.
+                        const gearBit = g ? ` ${g} rental${g === 1 ? '' : 's'} still to sort.` : '';
+                        if (bits.length) return `${bits.join(' · ')} — one store run covers it.${gearBit}`;
                       }
                       if (sec.key !== 'cues') return sec.detail;
                       const cueList = ros.filter(r => r && r.segment);
@@ -16392,7 +16446,7 @@ export default function HostShellV2() {
               {rosOverlaps > 0 && (
                 <div className="later-row" style={{ background: 'var(--warn-tint)', borderRadius: 'var(--r-md)', padding: '10px 14px', marginBottom: 'var(--sp-2)' }}>
                   <span className="t" style={{ color: 'var(--warn)', fontWeight: 650 }}>
-                    {rosOverlaps} run-of-show {rosOverlaps === 1 ? 'moment overlaps' : 'moments overlap'} another — worth a look before things collide.
+                    {rosOverlaps} {rosOverlaps === 1 ? 'moment overlaps' : 'moments overlap'} another on {THE_SCHEDULE} — worth a look before things collide.
                   </span>
                 </div>
               )}
@@ -16549,7 +16603,10 @@ export default function HostShellV2() {
               )}
               {dayHelpers.length > 0 && (
                 <div style={{ marginTop: 28 }}>
-                  <div className="eyebrow" style={{ marginBottom: 10 }}>Who’s helping · {dayHelpers.length}</div>
+                  {/* UX_11 rule 12: this list is the day crew (the venue, the DJ
+                      and the helpers, with their times), not the helper count
+                      Space and the board print under "Who's helping". */}
+                  <div className="eyebrow" style={{ marginBottom: 10 }}>Your day crew · {dayHelpers.length}</div>
                   {dayHelpers.map((h, i) => (
                     <div className="then-row" key={i} style={{ alignItems: 'center' }}>
                       <span aria-hidden style={{
@@ -16567,8 +16624,11 @@ export default function HostShellV2() {
                     </div>
                   ))}
                   <div style={{ marginTop: 10 }}>
+                    {/* One name for one thing (rules 4 and 8, 11/24/2026): the
+                        button said "helper brief", the draft it opens is titled
+                        "Everyone’s part today". It now says what it opens. */}
                     <button className="cta soft" style={{ width: '100%' }} onClick={() => { try { openDraft('Everyone’s part today', draftHelperBrief(event, profile, { ros })); } catch { toast('Couldn’t draft it.'); } }}>
-                      Draft the helper brief
+                      Draft everyone’s part today
                     </button>
                     <div className="pill-grid" style={{ marginTop: 'var(--gap-chip)' }}>
                       <button className="mini" onClick={() => window.print()}>Print the day sheet</button>
@@ -16757,7 +16817,7 @@ export default function HostShellV2() {
                       return (
                         <div className="ros-sugg" data-ros-suggestions>
                           <p className="grounding ros-sugg-lead">
-                            This is your run of show, so it stays as you wrote it. Add to your night? The {String(event.type || 'event').toLowerCase()} playbook suggests:
+                            This is your {SCHEDULE_WORD}, so it stays as you wrote it. Add to your night? The {String(event.type || 'event').toLowerCase()} playbook suggests:
                           </p>
                           {sugg.map((r) => (
                             <div key={r.id} className="then-row ros-sugg-row" data-ros-suggestion>
@@ -16774,7 +16834,7 @@ export default function HostShellV2() {
                     if (!w || !w.owned || !w.count) return null;
                     return (
                       <p className="grounding" style={{ margin: '0 0 var(--sp-3)', color: 'var(--muted)' }}>
-                        This is your run of show, so it stays as you wrote it.
+                        This is your {SCHEDULE_WORD}, so it stays as you wrote it.
                         {' '}The {String(event.type || 'event').toLowerCase()} playbook has {w.count} more {w.count === 1 ? 'moment' : 'moments'} it didn’t add
                         {w.program > 0 ? `, ${w.program} of them during the event itself` : ''}.
                       </p>
@@ -16946,7 +17006,7 @@ export default function HostShellV2() {
                 </>
               ) : ros.length === 0 ? (
                 <>
-                  <h1 className="mega" style={{ fontSize: 'var(--t-display-l)', lineHeight: 1.08 }}>No run of show yet</h1>
+                  <h1 className="mega" style={{ fontSize: 'var(--t-display-l)', lineHeight: 1.08 }}>No {SCHEDULE_WORD} yet</h1>
                   <p className="day-empty">Your day schedule fills in as vendors and their arrival times settle — then this screen becomes one thing at a time, in the order the day runs.</p>
                   {/* Per-screen audit: the old empty state told a real host to “Try the
                       Wedding” (a demo) with no real action. The run of show is built from
@@ -16956,7 +17016,7 @@ export default function HostShellV2() {
               ) : dayIdx >= ros.length ? (
                 <>
                   <div className="clock" style={solemn ? { fontSize: 'clamp(30px,10cqw,40px)', fontFamily: 'var(--serif-read)', fontWeight: 500, letterSpacing: '-.01em' } : { fontSize: 'clamp(34px,11cqw,44px)', fontWeight: 700, letterSpacing: '-.03em' }}>{solemn ? 'That’s all of it. Thank you for carrying today.' : 'That’s the whole day.'}</div>
-                  <p className="day-empty">All {ros.length} moments walked through, in order, from the real run of show.</p>
+                  <p className="day-empty">All {ros.length} moments walked through, in order, from {THE_SCHEDULE}.</p>
                   <button className="cta" style={{ marginTop: 18 }} onClick={() => setDayIdx(0)}>Walk it again</button>
                 </>
               ) : (
@@ -17017,7 +17077,14 @@ export default function HostShellV2() {
                       <div style={{ marginTop: 'var(--sp-2)' }}>
                         {/* Eyebrow: time-set promotes to a live "10:30 · NOW" (state 2); otherwise the calm sequence label (state 1). */}
                         <div className="now-label" style={timeSet ? { color: 'var(--warn)' } : undefined}>
-                          {timeSet ? fmt12h(cur.time) + ' · NOW · you run this' : (dayIdx === 0 ? (isPast ? 'How it started' : 'Today · you run it') : 'Now')}
+                          {/* "NOW" ONLY MEANS NOW (UX_11 rule 13, 11/24/2026). This
+                              walkthrough runs any day, and every timed step wore
+                              "· NOW ·" the day before and two days after. It says
+                              now only for the cue the clock is on (lib/dayOfHero,
+                              the reader the board's hero uses). */}
+                          {timeSet
+                            ? fmt12h(cur.time) + ((() => { try { const h = dayOfHero(event, new Date()); return !!(h && h.state === 'now' && h.cue && (h.cue === cur || (h.cue.id && h.cue.id === cur.id))); } catch (_e) { return false; } })() ? ' · NOW · you run this' : ' · you run this')
+                            : (dayIdx === 0 ? (isPast ? 'How it started' : 'Today · you run it') : 'Then')}
                         </div>
                         {dayIdx === 0 && !timeSet && !solemn && <div className="of" style={{ marginTop: 6, color: 'var(--muted)' }}>First thing</div>}
                         {/* The moment NAME is the hero (Figma). Solemn → the calm serif leads. */}
@@ -17328,7 +17395,7 @@ export default function HostShellV2() {
 
               <div className="sect"><h2>What carries forward</h2><div className="rule" /></div>
               <div className="empty" style={{ background: 'var(--steel-tint)' }}>
-                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} foundation fact{handled.length === 1 ? '' : 's'} on record · {(money.committed > 0 || money.planned > 0) ? 'every budget line above stays saved' : 'your vendors and notes stay saved'}. The thank-you is drafted right here from what actually happened; your “for next time” note below comes back the next time you plan one of these.
+                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} of the basics settled · {(money.committed > 0 || money.planned > 0) ? 'every budget line above stays saved' : 'your vendors and notes stay saved'}. The thank-you is drafted right here from what actually happened; your “for next time” note below comes back the next time you plan one of these.
               </div>
               {/* Thank-yous & gifts — per-guest flags on the SAME roster rows the
                   wrap-up meter reads (phaseProgress post_event counts
@@ -17354,7 +17421,7 @@ export default function HostShellV2() {
                           {g.giftReceived ? 'gift received' : 'gift?'}
                         </button>
                         <button className="mini" style={g.thankYouSent ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
-                          onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? null : ((g.name || 'Guest') + ' thanked — the wrap-up meter keeps count.'))}>
+                          onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? null : ((g.name || 'Guest') + ' thanked — it’s counted at the top.'))}>
                           {g.thankYouSent ? 'thanked' : 'thank them'}
                         </button>
                       </span>
@@ -17392,7 +17459,7 @@ export default function HostShellV2() {
                         <span>Cash and gift cards</span>
                         <span className="amt">{fmt(cash.total)}{cash.from ? <span className="of"> from {cash.from}</span> : null}</span>
                       </div>
-                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>Your record, not a bank. “Thanked” feeds the wrap-up meter up top, and the thank-you note names what each person gave.</p>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>Your record, not a bank. Each “Thanked” is counted at the top, and the thank-you note names what each person gave.</p>
                     </div></div>
                   </div>
                 );
@@ -17544,7 +17611,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'invite-design' ? 'Invite page' : sheet.kind === 'invite-sent' ? 'What went out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.heading || sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'invite-check' ? 'Before your invite goes out' : sheet.kind === 'invite-design' ? 'Invite page' : sheet.kind === 'invite-sent' ? 'What went out' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? ASK_LABEL : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'bringing' ? 'The spread & shopping' : sheet.kind === 'foodplan' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.heading || sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' : sheet.kind === 'celebration' ? ((trip && trip.title) || 'The dinner') : sheet.kind === 'days' ? 'Your days' : sheet.kind === 'split' ? 'Split the costs' : sheet.kind === 'family' ? 'Share with family' : sheet.kind === 'calendar' ? 'Calendar' : sheet.kind === 'cohosts' ? 'Co-hosts' : sheet.kind === 'messages' ? 'Messages' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the details' : 'Scan to RSVP') : sheet.kind === 'sweep' ? (sheet.focus === 'bookings' ? 'Confirm every booking' : 'Reconfirm your vendors') : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : (peopleMode ? 'People' : 'Guest list')}</strong>
               </div>
               {(() => {
                 // ── CLOSE EARNS ITS WEIGHT AS THE WORK LANDS (2026-09-17) ────────
@@ -18496,16 +18563,35 @@ export default function HostShellV2() {
                     : basis === 'playbook' ? `${tables} for ${gc} guests — what ${aOccasion(event.type || 'event')} this size usually needs.`
                       : basis === 'headcount' ? `About ${tables} of 8 for ${gc} guests — a standard round or banquet table seats 8.`
                         : `${tables} — a starting point, not a read of your room.`;
+                  // ONE DOOR TO THE TABLES (cohesion audit #18; owner approved the
+                  // render 11/24/2026). Once Who sits where is open (a guest has
+                  // said yes) it owns the table count with its own ±, so this
+                  // sheet says the count and routes there. Before that, Who sits
+                  // where has nothing to show and this ± is the only place to set
+                  // the tables (owner, 11/18/2026), so it stays.
+                  const seatingOpen = !!(seating.hasRoster && seating.totals.confirmed > 0);
                   return (
                     <div data-seat-check style={{ margin: '0 0 var(--sp-3)' }}>
                       <div className="shelf-label" style={{ margin: '2px 0 var(--sp-1)' }}>Seating</div>
-                      <div className="actions-row" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span style={{ flex: 1, minWidth: 0 }}>{why}</span>
-                        <button className="mini" aria-label="One fewer table" disabled={n <= 1}
-                          onClick={() => patchEvent({ tables: clampTableCount(n - 1) })}>−</button>
-                        <button className="mini" aria-label="One more table"
-                          onClick={() => patchEvent({ tables: clampTableCount(n + 1) })}>+</button>
-                      </div>
+                      {seatingOpen ? (
+                        <>
+                          <span>{why}</span>
+                          <div className="fstat-list" style={{ marginTop: 'var(--sp-2)' }}>
+                            <button type="button" className="fstat" data-seat-door onClick={() => setSheet({ kind: 'seating' })}>
+                              <span className="fstat-l">Change the tables</span>
+                              <RowValue status="open" chev>Who sits where</RowValue>
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="actions-row" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ flex: 1, minWidth: 0 }}>{why}</span>
+                          <button className="mini" aria-label="One fewer table" disabled={n <= 1}
+                            onClick={() => patchEvent({ tables: clampTableCount(n - 1) })}>−</button>
+                          <button className="mini" aria-label="One more table"
+                            onClick={() => patchEvent({ tables: clampTableCount(n + 1) })}>+</button>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
@@ -18548,7 +18634,8 @@ export default function HostShellV2() {
                         aria-label={(it.short || it.item) + ' — ' + (remaining === 0 ? 'covered' : 'still need ' + remaining) + '. Tap to set what you have.'}>
                         <span className="fstat-l">{it.verb ? it.verb + ' ' : ''}{it.short || it.item} <span className="of">need {baseNeed}</span></span>
                         <RowValue status={rowStatus({ settled: remaining === 0 })} chev>
-                          {remaining === 0 ? (helperName ? helperName + ' brings ' + baseNeed : 'covered') : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : 'still need ' + remaining}
+                          {/* Audit #37 (rules 4, 16): a rental range is the playbook's estimate, and says so. */}
+                          {remaining === 0 ? (helperName ? helperName + ' brings ' + baseNeed : 'covered') : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) + ' est.' : 'still need ' + remaining}
                         </RowValue>
                       </button>
                       {open && (
@@ -18682,7 +18769,11 @@ export default function HostShellV2() {
                 {(
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span>Who’s helping{helperPeople.length ? ` · ${helperPeople.length}` : ''}</span>
+                      {/* UX_11 rule 12 (audit #19): the count is the rows it heads,
+                          the helper jobs the board's "Helpers x of N" counts
+                          (whoIsConfirmed reads the same responsibilities). It
+                          counted the de-duplicated people: 3 over six rows. */}
+                      <span>Who’s helping{helpers.length ? ` · ${helpers.length}` : ''}</span>
                       {(helperData.helpers || []).length > 0 && (
                         <button className="mini" onClick={startHelperMessages}>Draft helper messages</button>
                       )}
@@ -21050,12 +21141,23 @@ export default function HostShellV2() {
                     <div className="seat-ghost" style={{ left: guestDrag.x, top: guestDrag.y }} aria-hidden="true">{guestDrag.name}</div>,
                     document.body
                   )}
-                  <SheetHero
-                    eyebrow="Seated so far"
-                    star={`${sp.totals.seated} of ${sp.totals.confirmed}`}
-                    tone={sp.totals.allSeated ? 'ok' : undefined}
-                    sub={(sp.totals.allSeated ? 'Everyone’s in a seat — ' : '') + tableBits + '.'}
-                  />
+                  {(() => {
+                    // UX_11 rule 12 (audit #6): green and "Everyone's in a seat"
+                    // only when the plan's people are seated, not just the rows
+                    // on the list (seatingClaim, the board's reader too). A short
+                    // roster says what is true of it, and the plan's size.
+                    const claim = seatingClaim(event, sp);
+                    const lead = claim.everyoneSeated ? 'Everyone’s in a seat — '
+                      : claim.rosterSeated && claim.plannedFor ? `Everyone on your list is seated · the plan is for ${claim.plannedFor} — ` : '';
+                    return (
+                      <SheetHero
+                        eyebrow="Seated so far"
+                        star={`${sp.totals.seated} of ${sp.totals.confirmed}`}
+                        tone={claim.everyoneSeated ? 'ok' : undefined}
+                        sub={lead + tableBits + '.'}
+                      />
+                    );
+                  })()}
                   {sp.dietChips.length > 0 && (
                     <div className="chips" style={{ margin: '0 0 var(--sp-2)' }}>
                       {sp.dietChips.map(c => <span key={c} className="chip" style={{ cursor: 'default' }}>{c}</span>)}
@@ -21445,7 +21547,7 @@ export default function HostShellV2() {
                 <SheetHero
                   eyebrow="The heart of it"
                   star="What are we really protecting?"
-                  sub="The day-before brief, the run of show, and the toast draw from your words. Nothing here is required."
+                  sub={`The day-before brief, ${THE_SCHEDULE}, and the toast draw from your words. Nothing here is required.`}
                 />
                 {/* MILITARY RETIREMENT intelligence (knowledge/militaryRetirement.js): when the
                     event is a military retirement, surface the real ceremony protocol — the
@@ -23122,7 +23224,7 @@ export default function HostShellV2() {
                 {sheet.vendorQr ? (
                   <>
                     <p className="grounding" style={{ margin: '2px 0 var(--sp-3)' }}>
-                      {(sheet.vendorQr.name || 'They')} scan{sheet.vendorQr.name ? 's' : ''} it to see their brief — arrival time, your address, their part of the day. Nothing about budget, payments, or other vendors.
+                      {(sheet.vendorQr.name || 'They')} scan{sheet.vendorQr.name ? 's' : ''} it to see the details — arrival time, your address, their part of the day. Nothing about budget, payments, or other vendors.
                     </p>
                     {sheet.vendorQr.dataUrl && (
                       <div style={{ background: '#ffffff', borderRadius: 'var(--r-lg)', padding: 18, display: 'flex', justifyContent: 'center' }}>
@@ -23771,12 +23873,12 @@ export default function HostShellV2() {
                     // every time a decision closed a gate — the host would watch
                     // their progress jump for work they never did, which is the
                     // opposite of what this number is for.
+                    // One reader for "N of M" (lib/taskEngine checklistProgress, rule 12):
+                    // the family page prints the count her app saves from it.
                     const live = (event.timeline || []).filter(t => t && !t.retired);
-                    const total = live.length;
                     const openRows = live.filter(t => !t.done);
                     const inferredN = openRows.filter(t => isTimelineStepResolved(t)).length;
-                    const openN = openRows.length - inferredN;
-                    const doneN = total - openN;
+                    const { done: doneN, total, open: openN } = checklistProgress(event);
                     return (
                       <SheetHero
                         eyebrow="Checked off"
@@ -26496,7 +26598,7 @@ export default function HostShellV2() {
                   <div className="fstat-list" style={{ margin: '0 0 var(--sp-3)' }}>
                     <button className="fstat" style={{ borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }} onClick={() => setSheet(s => ({ ...s, marketOpen: true }))}>
                       <span className="fstat-l">Which market</span>
-                      <RowValue status={rowStatus({ settled: !!metroMkt })} chev>{metroMkt ? metroMkt.label : metroSuggest ? `Suggested: ${metroSuggest.market.label}` : 'National baseline'}</RowValue>
+                      <RowValue status={rowStatus({ settled: !!metroMkt })} chev>{metroMkt ? metroMkt.label : metroSuggest ? `Suggested: ${metroSuggest.market.label}` : 'National prices · no area set'}</RowValue>
                     </button>
                   </div>
                 ) : (
@@ -26522,7 +26624,7 @@ export default function HostShellV2() {
                         patchEvent({ market: id || null, metroMarket: null },
                           m ? `Estimates now use ${m.label} typical rates.` : 'Back to a national baseline — no market set.');
                       }}>
-                      <option value="">National baseline — no market set</option>
+                      <option value="">National prices — no area set</option>
                       {[1, 2, 3, 4].map(tier => (
                         <optgroup key={tier} label={`Tier ${tier} — ${METRO_TIER_LABEL[tier].label}`}>
                           {METRO_MARKETS.filter(m => m.tier === tier).map(m => (
@@ -26714,36 +26816,44 @@ export default function HostShellV2() {
                     // Build-map #10: this vendor's own confirm-back, if they answered
                     // the brief link (backend + vendor-side form already shipped).
                     const vConfirm = confirmationByVendor[String(v.id)] || null;
+                    // The six host axes, read once for the groups' labels (cohesion batch B).
+                    let rd = null; const axesBy = {}; let na = null;
+                    if (!v.isInformal) {
+                      try {
+                        rd = getHostVendorReadiness(v, event);
+                        for (const a of getHostVendorChallenges(v, event)) axesBy[a.key] = a;
+                        na = getVendorNextAction(v, event);
+                      } catch { rd = null; }
+                    }
+                    const axisWarn = (k) => !!axesBy[k] && (axesBy[k].level === 'critical' || axesBy[k].level === 'attention');
+
                     return (
                       <div key={v.id} data-vid={v.id} className={'vcard' + (isOpen ? ' open' : '')}
                         ref={scrollIntoViewOnOpen(isOpen)}
                         onClick={() => setSheet(s => ({ ...s, focus: isOpen ? null : v.id }))}>
                         <div className="vc-head">
                           <div className="vc-avatar" aria-hidden>{String(v.name || '?').trim().charAt(0).toUpperCase()}</div>
+                          {/* THE NAME GETS ITS OWN LINE (owner's fix 1 to the approved
+                              renders, 11/24/2026). At 390 the meta wrapped into four lines
+                              beside the name. Now: the name with the price on its right;
+                              under it the meta on one line, and the status on the right
+                              where it fits, wrapping to its own right-hand line where it
+                              does not (the phone), never squeezing the name or the meta. */}
                           <div className="vc-id">
-                            <div className="vc-name">{v.name || 'Unnamed'}</div>
-                            {/* Audit #8: the agreed cost + paid state were hidden in
-                                the expanded editor, so a host couldn't compare vendor
-                                costs at a glance. Surface them on the collapsed card
-                                face (with status + arrival) so the list scans side-by-side. */}
-                            {/* MONEY LEFT THIS LINE (ruling clause 2). It used to be
-                                joined into the sub as "· $1,200 · paid", so the one
-                                figure a host compares across vendors was mid-sentence
-                                in a grey run-on, at a different x on every card and in
-                                a proportional face where 1 is narrower than 8. The
-                                sub keeps what describes the vendor; the number goes
-                                right, in `.amt`, where a column of them lines up. */}
-                            <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + fmt12h(v.arrivalTime) : null,
-                              // How this vendor prices (host report): a per-head figure for a caterer/bar
-                              // ("$20/head"), "flat rate" / "per item" for the rest — from the one pricing-basis source.
-                              Number(v.cost) > 0 ? vendorPricingHint(v, guestCountFor(event).count || 0) : null].filter(Boolean).join(' · ')}</div>
-                          </div>
+                            <div className="vc-top">
+                              <div className="vc-name">{v.name || 'Unnamed'}</div>
                           {Number(v.cost) > 0 && (
                             <div className="vc-amt">
                               <span className="amt">${Number(v.cost).toLocaleString()}</span>
                               {v.balancePaid ? <span className="vc-paid">paid</span> : null}
                             </div>
                           )}
+                            </div>
+                            <div className="vc-sub">
+                            <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + fmt12h(v.arrivalTime) : null,
+                              // How this vendor prices (host report): a per-head figure for a caterer/bar
+                              // ("$20/head"), "flat rate" / "per item" for the rest — from the one pricing-basis source.
+                              Number(v.cost) > 0 ? vendorPricingHint(v, guestCountFor(event).count || 0) : null].filter(Boolean).join(' · ')}</div>
                           {/* HOST-APPROPRIATE-VENDOR-UI: an informal helper isn't
                               missing paperwork — there's none to have. "no status"
                               reads like an incomplete paid booking; this reads like
@@ -26755,7 +26865,7 @@ export default function HostShellV2() {
                                (below) instead of silently cycling — the host sees
                                every state and taps the real one. */
                             <button data-vaction="booking" className={'vc-pill' + (good ? ' good' : v.status ? ' mid' : '')}
-                              onClick={ev => { ev.stopPropagation(); setStatusPickFor(statusPickFor === v.id ? null : v.id); }}
+                              onClick={ev => { ev.stopPropagation(); setStatusPickFor(v.id); setSheet(s => ({ ...s, focus: v.id })); }}
                               aria-expanded={statusPickFor === v.id} aria-haspopup="true"
                               title={v.status ? (VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] || vendorStatusLabel(v.status)) : 'Tap to set where this vendor stands'}
                               aria-label={'Booking status: ' + (v.status ? vendorStatusLabel(v.status) : 'not set') + (v.status && VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] ? ' — ' + VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] : '') + '. Tap to change.'}>
@@ -26766,6 +26876,8 @@ export default function HostShellV2() {
                               <span aria-hidden="true" style={{ marginLeft: 5, fontSize: '.85em' }}>▾</span>
                             </button>
                           )}
+                            </div>
+                          </div>
                         </div>
                         {/* ── ONE CHIP, RANKED BY TIME-TO-CONSEQUENCE ──────────────
                             Board ruling 2026-08-21 clause 3. Four chips could stack
@@ -26810,15 +26922,35 @@ export default function HostShellV2() {
                           );
                         })()}
                         <div className="vc-more" onClick={ev => ev.stopPropagation()}>
-                          {/* ── BELOW THE FOLD (board ruling 2026-08-21, clause 2) ──
-                              The status picker and the whole contact band used to
-                              live on the COLLAPSED face, which is why this sheet read
-                              as four stacked bands per vendor while every other
-                              restyled sheet shows one line. They are controls, and a
-                              resting row states rather than offers. The PROMPT stays
-                              visible up top as the ranked "Silent N days" chip, so
-                              moving the control never hides the need (ruling risk 2). */}
-                        {!v.isInformal && statusPickFor === v.id && (
+                          {/* ── THE OPENED VENDOR, IN LABELED GROUPS (cohesion batch B) ──────
+                              Owner-approved renders, 11/24/2026 (renders/cohesion-b). The
+                              audit (#8) measured ~30 unlabeled controls here. Each group's
+                              label carries its axis's sentence on the right (the six host
+                              axes, never a seventh); a friend helping out gets no status,
+                              money or paperwork groups (standing rule 2026-08-07). */}
+                          <div className="vd-group" data-vgroup="who">
+                            <div className="shelf-label vd-group-label"><span>Who they are</span></div>
+                            <label className="vd-field" htmlFor={'v-name-' + v.id}><span className="of vd-label">Name</span>
+                              <input id={'v-name-' + v.id} className="field vd-input" value={v.name || ''} onChange={e => writeVendor(v.id, { name: e.target.value }, null)} /></label>
+                            <label className="vd-field" htmlFor={'v-cat-' + v.id}><span className="of vd-label">What they do</span>
+                              <input id={'v-cat-' + v.id} className="field vd-input" value={v.category || ''} onChange={e => writeVendor(v.id, { category: e.target.value }, null)} /></label>
+                          {/* HOST-APPROPRIATE-VENDOR-UI: friends/family helping out
+                              shouldn't get chased for a certificate of insurance. This
+                              flag is read by the shared vendorAccountability engine
+                              (deriveVendorExpectedPromises etc.) and vendorCoiRequirement
+                              — setting it clears every COI/contract/promise nudge below,
+                              not just the label. */}
+                          <button className="chip" style={{ marginBottom: 10 }}
+                            aria-pressed={!!v.isInformal}
+                            onClick={() => writeVendor(v.id, { isInformal: !v.isInformal },
+                              !v.isInformal ? (v.name || 'This') + ' is a friend or family member helping out — no paperwork tracked.' : (v.name || 'This') + ' switched back to a paid vendor.')}>
+                            {v.isInformal ? 'Friend or family helping (not a paid vendor)' : 'not a paid vendor — friend or family helping?'}
+                          </button>
+                          </div>
+                          {!v.isInformal && (<>
+                          <div className="vd-group" data-vgroup="stands">
+                            <div className="shelf-label vd-group-label"><span>Where it stands</span>{rd ? <span className={'vd-group-state' + (rd.level === 'critical' || rd.level === 'attention' ? ' warn' : '')}>{rd.label}</span> : null}</div>
+                        {!v.isInformal && (
                           <div className="vc-statuspick" role="group" aria-label="Set booking status"
                             style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', margin: '2px 0 8px' }}>
                             {VENDOR_STATUS_LADDER.map(s => {
@@ -26837,84 +26969,9 @@ export default function HostShellV2() {
                                 </button>
                               );
                             })}
-                            <span className="grounding" style={{ flexBasis: '100%', margin: '2px 0 0', color: 'var(--faint)' }}>
-                              {v.status ? VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] || 'Tap where this vendor stands.' : 'Tap where this vendor stands. You can change it anytime.'}
-                            </span>
                           </div>
                         )}
-                        {/* ── WHERE THIS VENDOR STANDS ────────────────────────────────────
-                            Vendor cockpit port, slice 1. The engine has scored every vendor
-                            on these axes since Sprint 53 and NOTHING in this shell read it —
-                            hostv2 imported 2 of the 13 functions the CRA cockpit uses. The
-                            facts were already here (payDueDate, balancePaid, arrivalTime,
-                            contractSigned); the VERDICT on them was not.
-
-                            SIX AXES, NOT NINE (owner ruling: host-important only). scope
-                            ("we don't have a scope field" — the engine's own comment) and
-                            timeline (run-of-show cross-reference) are planner machinery;
-                            dayOf duplicates logistics, both keyed on the same arrival field.
-                            `closeout` was cut in the first scoping pass and put back by
-                            measurement — it is the only axis that can turn a past event
-                            critical, and its sentence is money the host still owes.
-
-                            BELOW THE FOLD, NOT ON THE CARD FACE. The 2026-08-21 ruling's
-                            clause 3 caps the resting card at ONE chip because four stacked
-                            amber marks spent the whole colour budget. Six would be worse.
-                            This renders inside .vc-more, which a host opens deliberately.
-
-                            NOT FOR HELPERS. Standing rule (2026-08-07): helpers get contact,
-                            never the paid-vendor ladder. An informal helper has no contract,
-                            no deposit and no COI to be judged against.
-
-                            NO CTA HERE YET. getActionableNextStep returns payment, contract
-                            and arrival flows that need real wiring; a button that cannot do
-                            what it says is the CTA-truthfulness defect (UX_07). The next
-                            action ships as a STATEMENT until its actions are wired. */}
-                        {!v.isInformal && (() => {
-                          let rd = null; let axes = []; let na = null;
-                          try {
-                            rd = getHostVendorReadiness(v, event);
-                            axes = getHostVendorChallenges(v, event);
-                            na = getVendorNextAction(v, event);
-                          } catch { return null; }
-                          if (!rd || !axes.length) return null;
-                          // Host words, not the engine's keys. "Logistics" and
-                          // "documents" are trade vocabulary; a host thinks arrival
-                          // and paperwork.
-                          const LABEL = {
-                            booking: 'Booking', communication: 'Staying in touch',
-                            logistics: 'Arrival', financial: 'Money',
-                            documents: 'Paperwork', closeout: 'After the event',
-                          };
-                          // UX_02 colour budget: amber and red are EXCEPTIONS. A safe or
-                          // untracked axis carries no tone at all, so six calm rows stay
-                          // six calm rows and the one that needs a host reads instantly.
-                          const tone = (lvl) => (lvl === 'critical' ? 'warn' : lvl === 'attention' ? 'warn' : null);
-                          return (
-                            <div style={{ margin: '2px 0 10px' }}>
-                              <div className="shelf-label">Where this stands</div>
-                              {/* The verdict, then its one sentence. Both come from the
-                                  same six axes listed underneath — never a seventh. */}
-                              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
-                                <strong style={{ fontSize: 'var(--t-row)' }}>{rd.label}</strong>
-                                {rd.summary && <span className="grounding" style={{ margin: 0 }}>{rd.summary}</span>}
-                              </div>
-                              {/* ── THE NEXT ACTION POINTS AT THE CONTROL, IT DOES NOT COPY IT ──
-                                  Slice 2. `getActionableNextStep` returns seven CTA kinds
-                                  (patch / payment / contract / arrival / log / edit), and the
-                                  obvious build is seven buttons. Checked first: hostv2 ALREADY
-                                  has a working control for every one of them — the status
-                                  ladder, the COI ladder, the paid toggle, the arrival field,
-                                  "I reached out", the contract row. Building the CTAs would
-                                  have put a second write path beside each, which is the
-                                  duplicate-surface rule AND the defect this codebase keeps
-                                  finding: one fact, two owners, drifting apart.
-
-                                  So the action takes the host TO the control. One tap, the
-                                  real affordance, no second source of truth. A category with
-                                  no control to reach (the 'review' fallback, scope, timeline)
-                                  renders as prose with NO button — never a control that cannot
-                                  act, which is the UX_07 line. */}
+                            {axesBy.booking && <p className="grounding" style={{ margin: 0, color: 'var(--ink)' }}>{axesBy.booking.note}</p>}
                               {na && na.title && (() => {
                                 const anchor = {
                                   booking: 'booking', coi: 'coi', documents: 'contract',
@@ -26928,10 +26985,10 @@ export default function HostShellV2() {
                                   </>
                                 );
                                 if (!anchor) {
-                                  return <p className="grounding" style={{ margin: '6px 0 8px', color: 'var(--ink)' }}>{line}</p>;
+                                  return <p className="grounding" data-vnext style={{ margin: '6px 0 0', color: 'var(--ink)' }}>{line}</p>;
                                 }
                                 return (
-                                  <p className="grounding" style={{ margin: '6px 0 8px', color: 'var(--ink)' }}>
+                                  <p className="grounding" data-vnext style={{ margin: '6px 0 0', color: 'var(--ink)' }}>
                                     {line}{' '}
                                     <span role="button" tabIndex={0} className="mini rowlink"
                                       data-vgo={anchor}
@@ -26946,17 +27003,36 @@ export default function HostShellV2() {
                                   </p>
                                 );
                               })()}
-                              <div className="fstat-list" style={{ margin: 0 }}>
-                                {axes.map(a => (
-                                  <div className="fstat" key={a.key} style={{ alignItems: 'flex-start', gap: 10 }}>
-                                    <span className="fstat-l" style={{ flex: '0 0 auto' }}>{LABEL[a.key] || a.key}</span>
-                                    <RowValue note status={rowStatus({ overdue: !!tone(a.level) })} style={{ textAlign: 'right', display: 'block' }}>{a.note}</RowValue>
+
+                          </div>
+                          </>)}
+                          <div className="vd-group" data-vgroup="reach">
+                            <div className="shelf-label vd-group-label"><span>Reach them</span>{axesBy.communication ? <span className={'vd-group-state' + (axisWarn('communication') ? ' warn' : '')}>{axesBy.communication.note}</span> : null}</div>
+                            <label className="vd-field" htmlFor={'v-phone-' + v.id}><span className="of vd-label">Phone</span>
+                              <input id={'v-phone-' + v.id} className="field vd-input" type="tel" value={v.phone || ''} onChange={e => writeVendor(v.id, { phone: formatPhoneUS(e.target.value) }, null)} /></label>
+                            <label className="vd-field" htmlFor={'v-email-' + v.id}><span className="of vd-label">Email</span>
+                              <input id={'v-email-' + v.id} className="field vd-input" type="email" value={v.email || ''} onChange={e => writeVendor(v.id, { email: e.target.value }, null)} aria-invalid={isMalformedEmail(v.email)} /></label>
+                            {isMalformedEmail(v.email) && <p className="grounding warn-note" role="alert" style={{ margin: '-4px 0 var(--sp-2)' }}>That doesn’t look like an email address.</p>}
+                            {/* contactName rides the details' whitelist: the page opens "Hi <name>," (VB2). */}
+                            <label className="vd-field" htmlFor={'v-contact-' + v.id}><span className="of vd-label">Your contact there</span>
+                              <input id={'v-contact-' + v.id} className="field vd-input" value={v.contactName || ''} onChange={e => writeVendor(v.id, { contactName: e.target.value }, null)} /></label>
+                            {/* CONTACT OPENS THE PHONE'S OWN APPS (approved renders, 11/24/2026):
+                                tel:, sms: and mailto: links. Nothing is sent from here. */}
+                            {(() => {
+                              const dig = String(v.dayOfPhone || v.phone || '').replace(/[^+\d]/g, '');
+                              const mail = String(v.email || '').trim();
+                              if (!dig && !(mail && !isMalformedEmail(mail))) return null;
+                              return (
+                                <>
+                                  <div className="actions-row" style={{ flexWrap: 'wrap', margin: '2px 0 4px' }}>
+                                    {dig && <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + dig}>Call</a>}
+                                    {dig && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + dig}>Text</a>}
+                                    {mail && !isMalformedEmail(mail) && <a className="mini" style={{ textDecoration: 'none' }} href={'mailto:' + mail}>Email</a>}
                                   </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })()}
+                                  <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Call, Text and Email open your phone’s own apps. Nothing is sent from here.</p>
+                                </>
+                              );
+                            })()}
                         {/* ── CONTACT, ON THE ROW — FOR EVERYONE ─────────────────────────
                             Board ruling 2026-08-07: no comms hub. The act belongs where the
                             host is standing when they notice, not in a destination they must
@@ -27039,59 +27115,19 @@ export default function HostShellV2() {
                           {vConfirm && (
                             <div className="brow" style={{ marginBottom: 'var(--sp-3)' }}>
                               <div className="f-name" style={{ marginBottom: 3 }}>
-                                {vConfirm.state === 'confirmed' ? 'They confirmed the brief' : 'They flagged something'}
+                                {vConfirm.state === 'confirmed' ? 'They confirmed the details' : 'They flagged something'}
                                 <span className="tag plan" style={vConfirm.state === 'confirmed' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{vConfirm.state === 'confirmed' ? 'confirmed' : 'issue'}</span>
                               </div>
                               {(vConfirm.on_site_name || vConfirm.on_site_phone) && (
                                 <p className="grounding" style={{ margin: '0 0 2px' }}>On-site: {[vConfirm.on_site_name, vConfirm.on_site_phone].filter(Boolean).join(' · ')}</p>
                               )}
                               {vConfirm.note && <p className="grounding" style={{ margin: '0 0 2px' }}>“{vConfirm.note}”</p>}
-                              <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>Answered {(() => { try { return new Date(vConfirm.updated_at || vConfirm.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return 'recently'; } })()} — from the brief link you shared.</p>
+                              <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>Answered {(() => { try { return new Date(vConfirm.updated_at || vConfirm.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return 'recently'; } })()} — from the details link you sent.</p>
                             </div>
                           )}
-                          {/* Contact info — a vendor added from a suggested category
-                              starts life as { category, name:'' } with no way to name it
-                              or reach it; nothing in this cockpit ever wrote name/phone/
-                              email, so a vendor could stay "Unnamed" forever and the Call
-                              button (below) could never appear. Legacy already has this
-                              as a plain form field; V2 never got it. */}
-                          <div className="actions-row" style={{ marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                            <input className="field" style={{ maxWidth: 170, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="vendor name"
-                              value={v.name || ''} onChange={e => writeVendor(v.id, { name: e.target.value }, null)} aria-label="Vendor name" />
-                            <input className="field" style={{ maxWidth: 140, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="phone" type="tel"
-                              value={v.phone || ''} onChange={e => writeVendor(v.id, { phone: formatPhoneUS(e.target.value) }, null)} aria-label="Vendor phone" />
-                            <input className="field" style={{ maxWidth: 185, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="email" type="email"
-                              value={v.email || ''} onChange={e => writeVendor(v.id, { email: e.target.value }, null)} aria-label="Vendor email" aria-invalid={isMalformedEmail(v.email)} />
                           </div>
-                          <button className="mini" aria-label={'Remove vendor ' + (v.name || v.category || 'Unnamed')}
-                            onClick={e => {
-                              e.stopPropagation();
-                              patchEvent({ vendors: (event.vendors || []).filter(x => x?.id !== v.id) }, (v.name || v.category || 'Vendor') + ' removed from this event.');
-                              setSheet(s => ({ ...s, focus: null }));
-                            }}>Remove from this event</button>
-                          {isMalformedEmail(v.email) && <p className="grounding warn-note" role="alert" style={{ margin: '-4px 0 var(--sp-2)' }}>That doesn’t look like an email address.</p>}
-                          {/* Vendor Brief authoring (VB2, ported): contactName and
-                              briefNote are both in buildVendorBriefPayload's audited
-                              whitelist (lib/vendorBrief.js) — legacy has always had a
-                              plain field for each; V2 never got either, so a brief
-                              minted here would leave them blank. contactName is the
-                              VENDOR'S person — the brief opens "Hi {contactName}," and
-                              prefills their confirm form (board 2026-11-12: it was
-                              labelled "on-site contact (if not you)", which read as the
-                              host's day-of contact; that is now its own per-event field,
-                              in the share panel below). briefNote is a plain note that
-                              goes to the VENDOR (never v.notes, which is host-private
-                              bookkeeping and never leaves this cockpit). */}
-                          <div className="actions-row" style={{ marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                            <input className="field" style={{ maxWidth: 220, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="your contact there"
-                              value={v.contactName || ''} onChange={e => writeVendor(v.id, { contactName: e.target.value }, null)} aria-label="Your contact at this vendor, greeted in their brief" />
-                          </div>
-                          <textarea className="field" style={{ maxWidth: 'none', width: '100%', boxSizing: 'border-box', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 10px', marginBottom: 'var(--sp-2)', resize: 'vertical' }}
-                            placeholder="A note for them — parking, load-in door, anything they should know before they arrive" rows={2}
-                            value={v.briefNote || ''} onChange={e => writeVendor(v.id, { briefNote: e.target.value }, null)} aria-label="Note shared with this vendor in their brief" />
-                          {/* Agent Opportunity Audit P0 — paste the vendor's reply, review
-                              the extracted fields, apply through writeVendor. */}
-                          <VendorReplyParserV2 vendor={v} event={event} writeVendor={writeVendor} signedIn={!!session} onSignIn={() => setSheet({ kind: 'settings' })} />
+                          <div className="vd-group" data-vgroup="day">
+                            <div className="shelf-label vd-group-label"><span>The day</span>{axesBy.logistics ? <span className={'vd-group-state' + (axisWarn('logistics') ? ' warn' : '')}>{axesBy.logistics.note}</span> : null}</div>
                           {/* WAVE-B write paths (b) + (c): arrival time (the day-of
                               roster, NOW card, and print sheet all read v.arrivalTime;
                               nothing wrote it) and money — the payment-note button
@@ -27100,7 +27136,7 @@ export default function HostShellV2() {
                               Money stays off informal helpers — they're not a paid
                               vendor by the host's own word. */}
                           <div className="actions-row" style={{ margin: '0 0 10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                            <label className="of" htmlFor={'v-arrive-' + v.id}>arrives</label>
+                            <label className="of vd-label" htmlFor={'v-arrive-' + v.id}>Arrives</label>
                             <input data-vaction="arrival" id={'v-arrive-' + v.id} className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                               value={v.arrivalTime || ''} onChange={e => writeVendor(v.id, { arrivalTime: e.target.value }, null)}
                               aria-label="Arrival time on the day" />
@@ -27131,8 +27167,44 @@ export default function HostShellV2() {
                                 </span>
                               );
                             })()}
-                            {!v.isInformal && (<>
-                              <label className="of" htmlFor={'v-cost-' + v.id}>agreed to pay $</label>
+                          </div>
+                              {/* The arrival ask: the deadline is the vendor's own playbook rule,
+                                  the hour is theirs to give, and the message is already written. */}
+                              {(() => {
+                                const ask = (() => { try { return arrivalAsk(v, event); } catch (_e) { return null; } })();
+                                if (!ask) return null;
+                                return (
+                                  <p className="grounding" style={{ width: '100%', margin: 'var(--sp-1) 0 0' }}>
+                                    {ask.why}{' '}
+                                    <span role="button" tabIndex={0} className="mini rowlink"
+                                      onClick={(e) => { e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile), null, { vendorId: v.id }); }}
+                                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile), null, { vendorId: v.id }); } }}>
+                                      Write the ask →
+                                    </span>
+                                  </p>
+                                );
+                              })()}
+                            <label className="vd-field" htmlFor={'v-note-' + v.id}><span className="of vd-label">A note for them, sent with the details</span>
+                              <textarea id={'v-note-' + v.id} className="field vd-input" rows={2} style={{ resize: 'vertical' }}
+                                placeholder="Parking, the load-in door, anything they should know before they arrive"
+                                value={v.briefNote || ''} onChange={e => writeVendor(v.id, { briefNote: e.target.value }, null)} /></label>
+                          {/* HIDE MARKED SURPRISES (owner, 11/22/2026): a vendor marked as
+                              a surprise (Cory's church singer) is left out of the family
+                              link. Her crew still sees it: the helper and vendor links are
+                              how the cue reaches them. */}
+                          <button className="chip vendor-surprise" data-vendor-surprise
+                            aria-pressed={!!v.surprise}
+                            onClick={() => writeVendor(v.id, { surprise: !v.surprise },
+                              !v.surprise ? (v.name || 'This') + ' is a surprise — the family link leaves it out.' : (v.name || 'This') + ' is no longer a surprise — the family link shows it.')}>
+                            {v.surprise ? 'Surprise · hidden from the family link' : 'Is this a surprise?'}
+                          </button>
+                          </div>
+                          {!v.isInformal && (<>
+                          <div className="vd-group" data-vgroup="money">
+                            <div className="shelf-label vd-group-label"><span>Money</span>{axesBy.financial ? <span className={'vd-group-state' + (axisWarn('financial') ? ' warn' : '')}>{axesBy.financial.note}</span> : null}</div>
+                          <div className="actions-row" style={{ margin: '0 0 10px', flexDirection: 'column', alignItems: 'flex-start' }}>
+
+                              <label className="of vd-label" htmlFor={'v-cost-' + v.id}>Agreed to pay ($)</label>
                               <input id={'v-cost-' + v.id} className="field" type="text" inputMode="decimal" placeholder="0"
                                 style={{ maxWidth: 104, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                                 value={vendorCostDraft !== null && ownsVendorCostDraft(v) && isOpen ? vendorCostDraft : (v.cost ?? '')}
@@ -27179,22 +27251,6 @@ export default function HostShellV2() {
                                   </p>
                                 );
                               })()}
-                              {/* The arrival ask: the deadline is the vendor's own playbook rule,
-                                  the hour is theirs to give, and the message is already written. */}
-                              {(() => {
-                                const ask = (() => { try { return arrivalAsk(v, event); } catch (_e) { return null; } })();
-                                if (!ask) return null;
-                                return (
-                                  <p className="grounding" style={{ width: '100%', margin: 'var(--sp-1) 0 0' }}>
-                                    {ask.why}{' '}
-                                    <span role="button" tabIndex={0} className="mini rowlink"
-                                      onClick={(e) => { e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile), null, { vendorId: v.id }); }}
-                                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile), null, { vendorId: v.id }); } }}>
-                                      Write the ask →
-                                    </span>
-                                  </p>
-                                );
-                              })()}
                               {/* THE DEPOSIT CAN BE SAID PAID (hero-clears sweep, 11/20/2026). A
                                   recorded deposit held the Vendors part open and nothing in
                                   this app wrote `depositPaid`, so the part could never close. */}
@@ -27218,7 +27274,7 @@ export default function HostShellV2() {
 
                                   Not shown once it's paid: a due date on a settled balance is noise. */}
                               {!v.balancePaid && (<>
-                                <label className="of" htmlFor={'v-paydue-' + v.id}>balance due</label>
+                                <label className="of vd-label" htmlFor={'v-paydue-' + v.id}>Balance due</label>
                                 <input id={'v-paydue-' + v.id} className="field" type="date"
                                   style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                                   value={v.payDueDate || ''}
@@ -27226,66 +27282,26 @@ export default function HostShellV2() {
                                     e.target.value ? 'Noted — you’ll get a heads-up before it’s due.' : null)}
                                   aria-label="When the final balance is due" />
                               </>)}
-                            </>)}
                           </div>
-                          {/* HIDE MARKED SURPRISES (owner, 11/22/2026): a vendor marked as
-                              a surprise (Cory's church singer) is left out of the family
-                              link. Her crew still sees it: the helper and vendor links are
-                              how the cue reaches them. */}
-                          <button className="chip vendor-surprise" data-vendor-surprise
-                            aria-pressed={!!v.surprise}
-                            onClick={() => writeVendor(v.id, { surprise: !v.surprise },
-                              !v.surprise ? (v.name || 'This') + ' is a surprise — the family link leaves it out.' : (v.name || 'This') + ' is no longer a surprise — the family link shows it.')}>
-                            {v.surprise ? 'Surprise · hidden from the family link' : 'Is this a surprise?'}
-                          </button>
-                          {/* HOST-APPROPRIATE-VENDOR-UI: friends/family helping out
-                              shouldn't get chased for a certificate of insurance. This
-                              flag is read by the shared vendorAccountability engine
-                              (deriveVendorExpectedPromises etc.) and vendorCoiRequirement
-                              — setting it clears every COI/contract/promise nudge below,
-                              not just the label. */}
-                          <button className="chip" style={{ marginBottom: 10 }}
-                            aria-pressed={!!v.isInformal}
-                            onClick={() => writeVendor(v.id, { isInformal: !v.isInformal },
-                              !v.isInformal ? (v.name || 'This') + ' is a friend or family member helping out — no paperwork tracked.' : (v.name || 'This') + ' switched back to a paid vendor.')}>
-                            {v.isInformal ? 'Friend or family helping (not a paid vendor)' : 'not a paid vendor — friend or family helping?'}
-                          </button>
-                          {/* Every open promise is CLEARABLE — the same promiseEvidence
-                              override production's vendor detail uses ("Mark proof on
-                              file"), so the worry chip can actually resolve, not just
-                              describe. Honest: it's the host asserting they have it,
-                              not a fake upload. */}
-                          {(() => {
-                            let openPromises = [];
-                            try {
-                              openPromises = (inferPromisesFromVendor(v, event) || []).filter(promiseNeedsHost);
-                            } catch { openPromises = []; }
-                            if (!openPromises.length) return null;
-                            // cap the visible list — a fresh vendor can carry a whole
-                            // playbook's worth of unconfirmed promises; show what's
-                            // actionable now, not an audit of everything at once.
-                            const shown = openPromises.slice(0, 3);
-                            const more = openPromises.length - shown.length;
-                            // Anchor for section:'promises' deep links (Up-Next #5) —
-                            // rides the first rendered promise row.
-                            return [...shown.map((p, pi) => (
-                              <div key={p.promiseKey} id={pi === 0 ? 'v-promises-' + v.id : undefined} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', scrollMarginTop: 12 }}>
-                                <span className="vc-detail" style={{ margin: 0 }}>{p.promiseText}{p.dueDate ? ' · due ' + usShortDate(p.dueDate) : ''}</span>
-                                {/* Item-scoped label (was a generic "Mark confirmed"
-                                    that read as confirming the VENDOR — a host tapped
-                                    it and got a "parking … marked confirmed" toast for
-                                    a single promise). "Mark done" is clearly about the
-                                    promise on this row, distinct from the vendor status
-                                    pills above. */}
-                                <button className="mini" onClick={() => writeVendor(v.id, { promiseEvidence: { ...(v.promiseEvidence || {}), [p.promiseKey]: 'attached' } },
-                                  p.promiseText + ' — marked done.')}>
-                                  {p.evidenceRequired ? 'Mark proof on file' : 'Mark done'}
-                                </button>
-                              </div>
-                            )), more > 0 ? (
-                              <p key="more" className="vc-detail">+{more} more open — the vendor's own brief covers the rest.</p>
-                            ) : null];
-                          })()}
+                            <div className="actions-row" style={{ flexWrap: 'wrap' }}>
+                            {Number(v.cost) > 0 && !v.balancePaid && (
+                              <button className="mini" onClick={() => { try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v, profile), null, { vendorId: v.id }); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
+                            )}
+                            {(() => { try {
+                              const m = getSuggestedPayMethod(v); if (!m) return null;
+                              const link = buildPayLink(m, v, null); if (!link) return null;
+                              return <a className="mini" style={{ textDecoration: 'none' }} href={link} target="_blank" rel="noreferrer">Pay via {m}</a>;
+                            } catch { return null; } })()}
+                            {(() => { try {
+                              const m = getSuggestedPayMethod(v); if (!m) return null;
+                              const link = buildPayLink(m, v, null); if (!link) return null;
+                              return <a className="mini" style={{ textDecoration: 'none' }} href={link} target="_blank" rel="noreferrer">Pay via {m}</a>;
+                            } catch { return null; } })()}
+                            </div>
+                            {axesBy.closeout && axesBy.closeout.level !== 'not_tracked' && <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>{axesBy.closeout.note}</p>}
+                          </div>
+                          <div className="vd-group" data-vgroup="papers">
+                            <div className="shelf-label vd-group-label"><span>Paperwork</span>{axesBy.documents ? <span className={'vd-group-state' + (axisWarn('documents') ? ' warn' : '')}>{axesBy.documents.note}</span> : null}</div>
                           {/* ── THE COI ROW (host: "create the COI piece", 2026-07-29) ──────
                               Found by clicking: "Collect all vendor COIs for M-NCPPC" landed
                               here (once its route named the documents section) and there was
@@ -27329,7 +27345,7 @@ export default function HostShellV2() {
                                   </label>
                                 )}
                                 {next && (
-                                  <button data-vaction="coi" className="mini" onClick={() => {
+                                  <button data-vaction="coi" className="vd-link" onClick={() => {
                                     // The engine names the step; the write matches it exactly:
                                     // requested → received → verified, and an expired one is asked for again.
                                     if (coi.status === 'requested') writeVendor(v.id, { coiStatus: 'received' }, next.ctaCopy + ' — noted.');
@@ -27346,7 +27362,7 @@ export default function HostShellV2() {
                                     have decided not to pursue, never for one you hold. */}
                                 {coi.required && !v.coiWaived && !coi.verified
                                   && coi.status !== 'received' && (
-                                  <button className="mini" onClick={() => writeVendor(v.id, { coiWaived: true }, 'Insurance waived for ' + (v.name || 'this vendor') + '.')}>Not needed</button>
+                                  <button className="vd-link" onClick={() => writeVendor(v.id, { coiWaived: true }, 'Insurance waived for ' + (v.name || 'this vendor') + '.')}>Not needed</button>
                                 )}
                               </div>
                             );
@@ -27380,7 +27396,7 @@ export default function HostShellV2() {
                                       it arrives — a popup opened after an await is refused by Safari
                                       (the Instacart button's lesson, 2026-09-24). */}
                                   {v.contractStoragePath ? (
-                                    <button className="mini" disabled={!!contractOpening[v.id]} onClick={async () => {
+                                    <button className="vd-link" disabled={!!contractOpening[v.id]} onClick={async () => {
                                       if (contractOpening[v.id]) return;
                                       let win = null;
                                       try { win = window.open('', '_blank'); } catch (_e) { win = null; }
@@ -27408,10 +27424,10 @@ export default function HostShellV2() {
                                       else toast('Your browser blocked the new tab.', { label: 'Open the contract', fn: () => { try { window.open(r.url, '_blank', 'noopener'); } catch (_e) { /* blocked again */ } } }, null, { sticky: true });
                                     }}>{contractOpening[v.id] ? 'Getting the contract…' : 'Open the contract'}</button>
                                   ) : v.contractUrl ? (
-                                    <a className="mini" style={{ textDecoration: 'none' }} href={v.contractUrl} target="_blank" rel="noreferrer">Open the contract</a>
+                                    <a className="vd-link" style={{ textDecoration: 'none' }} href={v.contractUrl} target="_blank" rel="noreferrer">Open the contract</a>
                                   ) : null}
                                   {isAiProxyConfigured() && (v.contractStoragePath || v.contractUrl) && (
-                                    <button className="mini" disabled={!!contractExtracting[v.id]}
+                                    <button className="vd-link" disabled={!!contractExtracting[v.id]}
                                       onClick={async () => {
                                         setContractExtracting(m => ({ ...m, [v.id]: true }));
                                         setContractExtractErr(m => ({ ...m, [v.id]: null }));
@@ -27428,12 +27444,12 @@ export default function HostShellV2() {
                                         }
                                       }}>{contractExtracting[v.id] ? 'Analyzing…' : 'Analyze with AI'}</button>
                                   )}
-                                  <button className="mini" onClick={() => writeVendor(v.id, { contractStoragePath: null, contractFileName: null, contractUrl: null }, 'Contract file removed.')}>Remove</button>
+                                  <button className="vd-link" onClick={() => writeVendor(v.id, { contractStoragePath: null, contractFileName: null, contractUrl: null }, 'Contract file removed.')}>Remove</button>
                                 </>
                               ) : isStorageConfigured() ? (
                                 // Real upload — same storage.js the app uses (Supabase). Stores the
                                 // file + records contractStoragePath/FileName, which clears the clash.
-                                <label className="mini" style={{ cursor: contractUploading[v.id] ? 'wait' : 'pointer', marginLeft: 'auto' }}>
+                                <label className="vd-link" style={{ cursor: contractUploading[v.id] ? 'wait' : 'pointer', marginLeft: 'auto' }}>
                                   {contractUploading[v.id] ? 'Uploading…' : 'Attach file'}
                                   <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" style={{ display: 'none' }} disabled={!!contractUploading[v.id]}
                                     onChange={async (e) => {
@@ -27476,7 +27492,7 @@ export default function HostShellV2() {
                               <div style={{ border: '1px solid var(--line-soft)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3)', margin: 'var(--sp-1) 0' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--sp-2)' }}>
                                   <span className="v-meta" style={{ textTransform: 'uppercase', letterSpacing: '.06em' }}>AI-extracted — verify against the original</span>
-                                  <button className="mini" onClick={() => setContractExtracted(m => ({ ...m, [v.id]: null }))}>Dismiss</button>
+                                  <button className="vd-link" onClick={() => setContractExtracted(m => ({ ...m, [v.id]: null }))}>Dismiss</button>
                                 </div>
                                 {Array.isArray(ex.action_items) && ex.action_items.length > 0 && (
                                   <div style={{ marginBottom: 'var(--sp-2)' }}>
@@ -27507,29 +27523,64 @@ export default function HostShellV2() {
                           })()}
                           {/* The second insurance row that sat here is gone (owner's demo,
                               11/16/2026): the insurance row above is the one place for it. */}
-                          {memLine && <p className="vc-detail">{memLine}</p>}
-                          <div className="pill-grid" style={{ marginTop: 'var(--sp-3)' }}>
-                            <button className="mini" onClick={() => openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile), null, { vendorId: v.id })}>Draft note</button>
-                            {Number(v.cost) > 0 && !v.balancePaid && (
-                              <button className="mini" onClick={() => { try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v, profile), null, { vendorId: v.id }); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
-                            )}
-                            {(() => { try {
-                              const m = getSuggestedPayMethod(v); if (!m) return null;
-                              const link = buildPayLink(m, v, null); if (!link) return null;
-                              return <a className="mini" style={{ textDecoration: 'none' }} href={link} target="_blank" rel="noreferrer">Pay via {m}</a>;
-                            } catch { return null; } })()}
-                            {String(v.dayOfPhone || v.phone || '').trim() && (
-                              <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + String(v.dayOfPhone || v.phone).replace(/[^+\d]/g, '')}>Call</a>
-                            )}
-                            {/* SEND THE DETAILS (owner + host board, 11/15/2026): the same
-                                gated mint as before (shareVendorBrief — first vendor free,
-                                the pass after), now handed back as a pre-written text the
-                                host sends from their OWN phone. Only this button's words
-                                changed; "vendor brief" stays everywhere else for now. */}
-                            <button className="mini" data-vaction="send-details" onClick={() => shareVendorBrief(v)}>
+                          {/* Every open promise is CLEARABLE — the same promiseEvidence
+                              override production's vendor detail uses ("Mark proof on
+                              file"), so the worry chip can actually resolve, not just
+                              describe. Honest: it's the host asserting they have it,
+                              not a fake upload. */}
+                          {(() => {
+                            let openPromises = [];
+                            try {
+                              openPromises = (inferPromisesFromVendor(v, event) || []).filter(promiseNeedsHost);
+                            } catch { openPromises = []; }
+                            if (!openPromises.length) return null;
+                            // cap the visible list — a fresh vendor can carry a whole
+                            // playbook's worth of unconfirmed promises; show what's
+                            // actionable now, not an audit of everything at once.
+                            const shown = openPromises.slice(0, 3);
+                            const more = openPromises.length - shown.length;
+                            // Anchor for section:'promises' deep links (Up-Next #5) —
+                            // rides the first rendered promise row.
+                            return [...shown.map((p, pi) => (
+                              <div key={p.promiseKey} id={pi === 0 ? 'v-promises-' + v.id : undefined} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', scrollMarginTop: 12 }}>
+                                <span className="vc-detail" style={{ margin: 0 }}>{p.promiseText}{p.dueDate ? ' · due ' + usShortDate(p.dueDate) : ''}</span>
+                                {/* Item-scoped label (was a generic "Mark confirmed"
+                                    that read as confirming the VENDOR — a host tapped
+                                    it and got a "parking … marked confirmed" toast for
+                                    a single promise). "Mark done" is clearly about the
+                                    promise on this row, distinct from the vendor status
+                                    pills above. */}
+                                <button className="vd-link" onClick={() => writeVendor(v.id, { promiseEvidence: { ...(v.promiseEvidence || {}), [p.promiseKey]: 'attached' } },
+                                  p.promiseText + ' — marked done.')}>
+                                  {p.evidenceRequired ? 'Mark proof on file' : 'Mark done'}
+                                </button>
+                              </div>
+                            )), more > 0 ? (
+                              <p key="more" className="vc-detail">+{more} more open — the details you send them list the rest.</p>
+                            ) : null];
+                          })()}
+                          </div>
+                          </>)}
+                          <div className="vd-group" data-vgroup="said">
+                            <div className="shelf-label vd-group-label"><span>What they said</span></div>
+                            {vendorReplyOpen === v.id
+                              ? <VendorReplyParserV2 vendor={v} event={event} writeVendor={writeVendor} signedIn={!!session} onSignIn={() => setSheet({ kind: 'settings' })} />
+                              : <button className="mini" onClick={() => setVendorReplyOpen(v.id)}>Paste their email or text</button>}
+                            {memLine && <p className="vc-detail">{memLine}</p>}
+                          </div>
+                          {/* ONE LIT ACTION (rule 1; approved renders 11/24/2026): sending the
+                              details. Drafting a note is the quiet alternative beside it. */}
+                          {/* Only on the OPEN card: a closed card's fold is still in the DOM at
+                              opacity 0, and its lit button would count as a second one. */}
+                          {isOpen && <div className="vd-send">
+                            <button className="cta vd-send-cta" data-vaction="send-details" onClick={() => shareVendorBrief(v)}>
                               {vendorGreetingName(v) ? `Send ${vendorGreetingName(v)} the details` : 'Send the details'}
                             </button>
-                          </div>
+                            <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', textAlign: 'center' }}>
+                              You read it first, then send it from your phone.{' '}
+                              <button className="mini" onClick={() => openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile), null, { vendorId: v.id })}>Draft a note instead</button>
+                            </p>
+                          </div>}
                           {briefSignIn === v.id && (
                             <div data-send-signin={v.id} ref={scrollIntoViewOnOpen(true)} role="group" aria-label={`Sign in to send ${vendorGreetingName(v) || 'them'} the details`}
                               style={{ marginTop: 'var(--sp-2)', padding: 'var(--field-pad)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
@@ -27546,17 +27597,17 @@ export default function HostShellV2() {
                           {vendorBrief && vendorBrief.vendorId === v.id && (
                             <div data-vbrief-panel={v.id} style={{ marginTop: 'var(--sp-2)', padding: 'var(--field-pad)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', scrollMarginBottom: 96 }}>
                               {vendorBrief.minting ? (
-                                <p className="vc-detail" style={{ margin: 0 }}>Putting the brief together…</p>
+                                <p className="vc-detail" style={{ margin: 0 }}>Putting the details together…</p>
                               ) : vendorBrief.error ? (
                                 // A failed mint: no link was made, and nothing
                                 // here pretends one was. One honest next step.
                                 <div role="alert" data-brief-error={vendorBrief.error}>
                                   <p className="vc-detail" style={{ margin: '0 0 var(--sp-2)' }}>
                                     {vendorBrief.error === 'pass-required'
-                                      ? 'Sharing this brief takes the One-Event Pass. No link was made.'
+                                      ? 'Sending these details takes the One-Event Pass. No link was made.'
                                       : vendorBrief.error === 'signed-out'
-                                        ? 'You’re not signed in on this browser — sign in to share the brief. No link was made.'
-                                        : 'Couldn’t create the brief link. Try again.'}
+                                        ? 'You’re not signed in on this browser — sign in to send the details. No link was made.'
+                                        : 'Couldn’t create the link to the details. Try again.'}
                                   </p>
                                   <div className="actions-row">
                                     {vendorBrief.error === 'pass-required' ? (
@@ -27625,17 +27676,28 @@ export default function HostShellV2() {
                                       builders (lib/vendorBrief.js, routers/vendor_brief.py);
                                       a live link reads it from the event on every open. */}
                                   <p className="vc-detail" style={{ margin: 'var(--sp-3) 0 var(--sp-1)' }}>Who should vendors call on the day? Leave blank and it’s you.</p>
-                                  <div className="actions-row" style={{ marginTop: 0, flexWrap: 'wrap' }}>
-                                    <input className="field" style={{ maxWidth: 190, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="day-of contact name"
-                                      value={event.briefContactName || ''} onChange={e => patchEvent({ briefContactName: e.target.value })} aria-label="Day-of contact name for vendor briefs" />
-                                    <input className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="their phone" type="tel"
-                                      value={event.briefContactPhone || ''} onChange={e => patchEvent({ briefContactPhone: formatPhoneUS(e.target.value) })} aria-label="Day-of contact phone for vendor briefs" />
-                                  </div>
+                                  <label className="vd-field" htmlFor={'v-dayof-name-' + v.id}><span className="of vd-label">Day-of contact</span>
+                                    <input id={'v-dayof-name-' + v.id} className="field vd-input" placeholder="day-of contact name"
+                                      value={event.briefContactName || ''} onChange={e => patchEvent({ briefContactName: e.target.value })} aria-label="Day-of contact name vendors see" /></label>
+                                  <label className="vd-field" htmlFor={'v-dayof-phone-' + v.id}><span className="of vd-label">Their phone</span>
+                                    <input id={'v-dayof-phone-' + v.id} className="field vd-input" placeholder="their phone" type="tel"
+                                      value={event.briefContactPhone || ''} onChange={e => patchEvent({ briefContactPhone: formatPhoneUS(e.target.value) })} aria-label="Day-of contact phone vendors see" /></label>
                                   <p className="vc-detail" style={{ margin: 'var(--sp-2) 0 0' }}>{(v.name || 'They')} will see only their arrival time, your address, their part of the day, who to call, and — if they bring food, drink or rentals — your guest count. Nothing about budget, payments, guests’ names, or other vendors.</p>
                                 </>
                               )}
                             </div>
                           )}
+                          {/* DESTRUCTIVE ALONE, AT THE BOTTOM (rule 3; audit #7). It names who
+                              goes, and patchEvent's toast carries Undo (rule 18). */}
+                          <div className="vd-remove">
+                            <button className="mini vd-remove-btn"
+                              onClick={e => {
+                                e.stopPropagation();
+                                patchEvent({ vendors: (event.vendors || []).filter(x => x?.id !== v.id) }, (v.name || v.category || 'Vendor') + ' removed from this event.');
+                                setSheet(s => ({ ...s, focus: null }));
+                              }}>Remove {v.name || v.category || 'this vendor'} from this event</button>
+                            <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', textAlign: 'center' }}>Their status, money and notes go with them. Undo for a few seconds after.</p>
+                          </div>
                         </div>
                       </div>
                     );
@@ -27648,7 +27710,7 @@ export default function HostShellV2() {
                       list (toCSV + COLUMNS.vendors already define the format);
                       missing fields export empty, exactly what's tracked. */}
                   <button className="fold-btn" onClick={exportVendorsCsv}>
-                    Download the vendor list (CSV)
+                    Download the vendor list as a spreadsheet
                   </button>
                   </Panel>
                 </>
@@ -27819,7 +27881,7 @@ export default function HostShellV2() {
                     return (
                       <div style={{ margin: '2px 0 var(--sp-4)' }}>
                         <div className="mbar" role="img"
-                          aria-label={`${fmt(spent)} spent, ${fmt(pledged)} spoken for, of a ${fmt(planned)} budget`}>
+                          aria-label={`${fmt(spent)} spent, ${fmt(pledged)} booked and not yet paid, of a ${fmt(planned)} budget`}>
                           {/* TWO SOLID VALUES, NOT A COLOUR AND ITS TINT (fixed 2026-07-30 after
                               looking at it at 2.4x). The pledged segment was --steel-tint: a 16%
                               alpha fill, which is a CHIP BACKGROUND token — it exists to sit behind
@@ -27851,7 +27913,10 @@ export default function HostShellV2() {
                           {/* The key swatches must be the SAME values the bar paints, or the legend
                               explains a chart the host is not looking at. */}
                           <span><i className="mbar-dot" style={{ background: over ? 'var(--danger)' : 'var(--steel-soft)' }} />{fmt(spent)} spent</span>
-                          {pledged > 0 && <span><i className="mbar-dot" style={{ background: over ? 'var(--danger-solid)' : 'var(--steel)' }} />{fmt(pledged)} spoken for</span>}
+                          {/* UX_11 rule 12: "spoken for" is one figure on this card (the
+                              committed total in the line above). This segment is the
+                              part of it not paid yet, so it says that. */}
+                          {pledged > 0 && <span><i className="mbar-dot" style={{ background: over ? 'var(--danger-solid)' : 'var(--steel)' }} />{fmt(pledged)} booked, not yet paid</span>}
                           <span className="mbar-cap">{over ? fmt(committed - planned) + ' over ' + fmt(planned) : fmt(free) + ' of ' + fmt(planned) + ' ' + MONEY_LABELS.unpledged}</span>
                         </div>
                       </div>
@@ -27862,7 +27927,7 @@ export default function HostShellV2() {
                   {(spend.moneyDiscrepancies || []).length > 0 && (
                     <div className="card" role="note">
                       <p className="grounding">Payment records overlap or differ. Each category is counted once; review the records before relying on spent.</p>
-                      {spend.moneyDiscrepancies.map(c => <p className="grounding" key={c.label}>{c.label}: budget entry {fmt(c.discrepancy.budgetActual)}; vendor payments {fmt(c.discrepancy.vendorPaid)}{c.discrepancy.shoppingPaid > 0 ? '; shopping record ' + fmt(c.discrepancy.shoppingPaid) : ''}.</p>)}
+                      {spend.moneyDiscrepancies.map(c => <p className="grounding" key={c.label}>{c.label}: your budget line {fmt(c.discrepancy.budgetActual)}; vendor payments {fmt(c.discrepancy.vendorPaid)}{c.discrepancy.shoppingPaid > 0 ? '; shopping record ' + fmt(c.discrepancy.shoppingPaid) : ''}.</p>)}
                       <button className="mini" style={{ minHeight: 'var(--tap-min)' }} onClick={() => setSheet({ kind: 'vendors' })}>Review vendor payments</button>
                     </div>
                   )}
@@ -27973,7 +28038,7 @@ export default function HostShellV2() {
                           budget" ask right above when no ceiling exists yet. This
                           row total is real (the plan's own cost estimate), just not
                           a budget, so the label says so instead of implying one. */}
-                      <div className="shelf-label" style={{ margin: '10px 0 6px' }}>{'Expected costs — includes allocations and estimates'}</div>
+                      <div className="shelf-label" style={{ margin: '10px 0 6px' }}>{'Expected costs — what’s booked, plus estimates for the rest'}</div>
                       {hostRows.map((r, i) => {
                         const alloc = money.planned ? Math.min(100, Math.round((r.est / money.planned) * 100)) : 0;
                         const got = r.est ? Math.min(100, Math.round((r.got / r.est) * 100)) : 0;
@@ -27984,7 +28049,7 @@ export default function HostShellV2() {
                               onClick={r.go} aria-label={'Open ' + r.label}>
                               <div className="line" style={{ padding: '0 0 5px' }}>
                                 <span>{r.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
-                                <span className="amt">{r.source === 'estimate' && !['crabs', 'lodging'].includes(r.kind) ? '~' : ''}{fmt(r.est)} <span className="of">{r.source === 'vendor' ? 'Vendor record' : r.source === 'budget' ? 'Budget entry' : ['crabs', 'lodging'].includes(r.kind) ? 'Your price' : 'Estimated'}</span></span>
+                                <span className="amt">{r.source === 'estimate' && !['crabs', 'lodging'].includes(r.kind) ? '~' : ''}{fmt(r.est)} <span className="of">{r.source === 'vendor' ? 'Vendor record' : r.source === 'budget' ? 'Your budget line' : ['crabs', 'lodging'].includes(r.kind) ? 'Your price' : 'Estimated'}</span></span>
                               </div>
                               {/* The 4% floor keeps a small-but-real category findable. It must
                                   not apply to a category costing nothing: while the fill was
@@ -30028,7 +30093,7 @@ export default function HostShellV2() {
         const dRaw = [
           { label: ASK_LABEL, sub: 'a question, answered from your plan', go: () => { setAskQ(''); setAskResult(null); setAskLLM(null); setSheet({ kind: 'ask' }); } },
           { label: 'Plan', sub: 'the command board', go: () => setStage('plan') },
-          { label: 'The Day', sub: 'day-of run of show', go: () => setStage('day') },
+          { label: 'The Day', sub: THE_SCHEDULE, go: () => setStage('day') },
           { label: 'After', sub: 'wrap-up & thank-yous', go: () => setStage('after') },
           { label: 'New event', sub: 'start another', go: startNewEvent },
           { label: 'Your money', sub: 'budget', go: () => setSheet({ kind: 'budget' }) },
@@ -30129,7 +30194,7 @@ export default function HostShellV2() {
             {/* The host's hashtag, when on (owner ruling E). */}
             {String(event.hashtag || '').trim() ? ` · ${String(event.hashtag).trim()}` : ''}
           </p>
-          <div className="p-head">Run of show</div>
+          <div className="p-head">{SCHEDULE}</div>
           {ros.map((r, i) => (
             <div className="p-row" key={r.id || i}>
               {/* PRINT HONESTY (2026-07-30, found by driving print emulation live).

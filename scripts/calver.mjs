@@ -62,13 +62,24 @@ export function latestCalverDate(tags = []) {
   return days.length ? days[days.length - 1].replaceAll('.', '-') : null;
 }
 
-// The What's new guard: the newest entry must not be older than the day of the
-// last release tag. No tags (a shallow checkout) → nothing to compare against.
+// The What's new guard, PER RELEASE (owner, 11/24/2026). The newest entry
+// names the last release it covers (`through`, a calver tag); any later
+// release tag means a release went out that What's new never described.
+// A newest entry without `through` is behind: a same-day date used to pass
+// while eight releases shipped under one entry. No tags (a shallow checkout)
+// → nothing to compare against.
+const order = (t) => (t ? `${t.day}.${String(t.n).padStart(4, '0')}` : '');
 export function whatsNewIsBehind(entries, tags) {
-  const last = latestCalverDate(tags || []);
+  const last = (tags || []).map(parse).filter(Boolean).map(order).sort().pop();
   if (!last) return false;
-  const newest = (entries || []).map((e) => e.date).sort().pop();
-  return !newest || newest < last;
+  // The list is newest first (whatsNewIsCurrent pins that); among same-day
+  // entries the first one is the newest, and it is the one that says `through`.
+  const list = entries || [];
+  const top = list.map((e) => e.date).sort().pop();
+  const newest = list.find((e) => e.date === top);
+  if (!newest || !newest.through) return true;
+  const covered = parse(newest.through);
+  return !covered || order(covered) < last;
 }
 
 const git = (...args) => {
@@ -88,12 +99,12 @@ if (isMain) {
     const file = process.argv[3] || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'hostv2', 'src', 'whatsNew.json');
     const entries = JSON.parse(fs.readFileSync(file, 'utf8'));
     const tags = git('tag', '-l', 'v*');
-    const newest = entries.map((e) => e.date).sort().pop() || null;
-    const lastTag = latestCalverDate(tags);
+    const covers = (entries.find((e) => e.through) || {}).through || '(no `through`)';
+    const lastTag = tags.filter((t) => /^v\d{4}\./.test(t)).sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).pop() || null;
     if (whatsNewIsBehind(entries, tags)) {
-      console.log(`::warning::What's new is behind: newest entry ${newest || '(none)'} is older than the last release (${lastTag}). Add an entry to hostv2/src/whatsNew.json.`);
+      console.log(`::warning::What's new is behind: the newest entry covers ${covers}, the last release is ${lastTag}. Add an entry for what shipped to hostv2/src/whatsNew.json and set its \`through\`.`);
     } else {
-      console.log(`What's new is current: newest entry ${newest}, last release ${lastTag || '(no tags fetched)'}.`);
+      console.log(`What's new is current: covers ${covers}, last release ${lastTag || '(no tags fetched)'}.`);
     }
   } else {
     console.error('usage: calver.mjs version [--github-output] | check-whats-new [file]');

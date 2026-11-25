@@ -468,7 +468,11 @@ const ROOT = path.join(__dirname, '..', '..', '..');
 // 71 → 72 (same day, cause 6): nothingGoesOutWithAPlaceholder.test.js pins that the
 // shell names from her words and that the helper, vendor and family paths ask
 // lib/outwardReady (the behavior is the lib's, tested over every playbook).
-const MAX_HOSTV2_TEXT_GATES = 72;
+// 72 → 73 (11/24/2026, cohesion batch A): theHostNeverReadsRunOfShow.test.js
+// parses hostv2/src for WORDS (owner: "Host doesn't use run of show
+// language"). A vocabulary census, not a behavior claim; what the host sees
+// is the e2e hostWordsOnEveryStage sweep, reading the same hostWords.json.
+const MAX_HOSTV2_TEXT_GATES = 73;
 
 const walk = (d, out = []) => {
   if (!fs.existsSync(d)) return out;

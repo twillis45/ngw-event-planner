@@ -107,13 +107,15 @@ test('(premise) the vendor card opens and the block is inside the fold', async (
   await settled(page);
   const closed = await page.evaluate(() => {
     const c = [...document.querySelectorAll('.vcard')].find((x) => (x.innerText || '').includes('Ironwood'));
-    return c ? !!c.querySelector('.vc-more .fstat-list') && c.classList.contains('open') : null;
+    return c ? !!c.querySelector('.vc-more [data-vgroup="stands"]') && c.classList.contains('open') : null;
   });
   expect(closed).toBe(false);          // present in the DOM, but the card is shut
   const card = await openVendor(page, 'Ironwood');
   console.log('IRONWOOD >>>', card);
   expect(card).toBeTruthy();
-  expect(card).toMatch(/Where this stands/i);
+  // The block became the "Where it stands" group of the grouped vendor detail
+  // (owner-approved renders, cohesion batch B, 11/24/2026).
+  expect(card).toMatch(/Where it stands/i);
 });
 
 test('THE VERDICT AND ITS SENTENCE REACH THE HOST', async ({ page }) => {
@@ -125,14 +127,36 @@ test('THE VERDICT AND ITS SENTENCE REACH THE HOST', async ({ page }) => {
 });
 
 test('ALL SIX AXES RENDER, AND NONE OF THE THREE CUT ONES DO', async ({ page }) => {
-  const card = await openVendor(page, 'Ironwood');
-  for (const label of ['Booking', 'Staying in touch', 'Arrival', 'Money', 'Paperwork', 'After the event']) {
-    expect(card).toContain(label);
+  // Since the grouped vendor detail (cohesion batch B, owner-approved renders
+  // 11/24/2026) each axis's sentence rides its group's label: booking under
+  // Where it stands, staying in touch under Reach them, arrival under The day,
+  // money and (once it can be judged) after the event under Money, paperwork
+  // under Paperwork. Every one of the six is read off the engine and must be
+  // on the card, in its own group.
+  await openVendor(page, 'Ironwood');
+  const placed = await page.evaluate(() => {
+    const c = [...document.querySelectorAll('.vcard')].find((x) => (x.innerText || '').includes('Ironwood'));
+    const g = (k) => { const e = c.querySelector(`[data-vgroup="${k}"]`); return e ? e.innerText.replace(/\s+/g, ' ') : null; };
+    return { stands: g('stands'), reach: g('reach'), day: g('day'), money: g('money'), papers: g('papers') };
+  });
+  for (const k of ['stands', 'reach', 'day', 'money', 'papers']) expect(placed[k], `the ${k} group`).toBeTruthy();
+  expect(placed.papers).toMatch(/Contract not on file/);
+  expect(placed.stands).toMatch(/Needs follow-up/);
+  // Each group label carries a sentence (the axis's note), not just a title.
+  for (const k of ['reach', 'day', 'money', 'papers']) {
+    const label = await page.evaluate((key) => {
+      const c = [...document.querySelectorAll('.vcard')].find((x) => (x.innerText || '').includes('Ironwood'));
+      const s = c.querySelector(`[data-vgroup="${key}"] .vd-group-state`);
+      return s ? s.innerText.trim() : '';
+    }, k);
+    expect(label.length, `the ${k} group names its axis's state`).toBeGreaterThan(8);
   }
+  const card = await page.evaluate(() => [...document.querySelectorAll('.vcard')].find((x) => (x.innerText || '').includes('Ironwood')).innerText.replace(/\s+/g, ' '));
   // The cut axes' own sentences. If a future pass re-adds them to the host
   // accessor, these are what a host would start seeing.
   expect(card).not.toMatch(/scope unclear/);
-  expect(card).not.toMatch(/run-of-show entries reference/);
+  // The timeline axis now says "schedule" (owner 11/24/2026), so both wordings stay cut.
+  expect(card).not.toMatch(/(run-of-show|schedule) entries reference/);
 });
 
 test('THE MONEY AXIS SAYS WHAT IS ACTUALLY UNTRACKED', async ({ page }) => {
@@ -150,7 +174,7 @@ test('AN INFORMAL HELPER IS NOT PUT THROUGH THE VENDOR LADDER', async ({ page })
   // scoring her against them would invent a problem.
   const card = await openVendor(page, 'Cousin Rae');
   expect(card).toBeTruthy();
-  expect(card).not.toMatch(/Where this stands/i);
+  expect(card).not.toMatch(/Where it stands/i);
   expect(card).not.toMatch(/Paperwork/);
 });
 
@@ -165,7 +189,7 @@ test('THE NEXT ACTION CARRIES NO WRITE CONTROL OF ITS OWN', async ({ page }) => 
   const inside = await page.evaluate(() => {
     const c = [...document.querySelectorAll('.vcard')].find((x) => (x.innerText || '').includes('Ironwood'));
     if (!c) return null;
-    const host = [...c.querySelectorAll('.vc-more > div')].find((d) => /Where this stands/i.test(d.innerText || ''));
+    const host = c.querySelector('[data-vnext]');
     if (!host) return null;
     return { writes: host.querySelectorAll('button, input, select, textarea').length,
       links: host.querySelectorAll('[data-vgo]').length };
@@ -284,7 +308,7 @@ test('A CATEGORY WITH NO SINGLE CONTROL GETS PROSE AND NO LINK', async ({ page }
   expect(card).toMatch(/Final guest count confirmed/);
   const links = await page.evaluate(() => {
     const c = [...document.querySelectorAll('.vcard')].find((x) => (x.innerText || '').includes('Fired Up'));
-    const block = [...c.querySelectorAll('.vc-more > div')].find((d) => /Where this stands/i.test(d.innerText || ''));
+    const block = c.querySelector('[data-vgroup="stands"] [data-vnext]');
     return block ? block.querySelectorAll('[data-vgo]').length : null;
   });
   expect(links).toBe(0);
@@ -297,7 +321,7 @@ test('NO SECOND WRITE PATH WAS GROWN — the block still holds one link and no c
   await openVendor(page, 'Ironwood');
   const counts = await page.evaluate(() => {
     const c = [...document.querySelectorAll('.vcard')].find((x) => (x.innerText || '').includes('Ironwood'));
-    const block = [...c.querySelectorAll('.vc-more > div')].find((d) => /Where this stands/i.test(d.innerText || ''));
+    const block = c.querySelector('[data-vgroup="stands"] [data-vnext]');
     if (!block) return null;
     return {
       links: block.querySelectorAll('[data-vgo]').length,

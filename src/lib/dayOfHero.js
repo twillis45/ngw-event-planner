@@ -12,6 +12,7 @@
 import { isDuringEvent, dayIndexOf, spanNights } from './dates';
 import { parseMin } from './dayAlerts';
 import { effectiveRos, classifyRos } from './playbooks';
+import { THE_SCHEDULE } from './scheduleWords';
 
 const mins = (r) => (r && r.time ? parseMin(r.time) : null);
 
@@ -59,7 +60,7 @@ export function dayOfHero(event, now = new Date()) {
   if (kind === 'empty') return { ...base, state: 'empty', label: null, cue: null };
   if (kind === 'untimed') {
     const first = ros.find((r) => !r.done) || null;
-    return { ...base, state: first ? 'untimed' : 'done', label: first ? 'Next on the run of show' : null, cue: first };
+    return { ...base, state: first ? 'untimed' : 'done', label: first ? `Next on ${THE_SCHEDULE}` : null, cue: first };
   }
   const { state, cue } = cueByTheClock(ros, now.getHours() * 60 + now.getMinutes());
   return { ...base, state, label: cueLabel(state), cue };
