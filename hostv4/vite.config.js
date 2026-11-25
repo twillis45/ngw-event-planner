@@ -14,7 +14,12 @@ export default defineConfig(({ mode }) => {
   const appEnv = loadEnv(mode, path.resolve(__dirname, '..'), 'REACT_APP_');
   return {
     base: './',
-    plugins: [react({ include: /\.(js|jsx)$/ })],
+    plugins: [react({ include: /\.(js|jsx)$/ }), {
+      // The page says which commit it is, as hostv2's does: the deploy refuses a
+      // build whose <meta name="ngw-build"> does not name the commit it shipped.
+      name: 'ngw-build-stamp',
+      transformIndexHtml: (html) => html.replace('</head>', `  <meta name="ngw-build" content="${process.env.RELEASE_SHA || 'dev'} ${new Date().toISOString()}" />\n  </head>`),
+    }],
     resolve: {
       alias: { '@app': path.resolve(__dirname, '../src') },
       dedupe: ['react', 'react-dom'],

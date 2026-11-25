@@ -181,6 +181,7 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             hostv2/package-lock.json
+            hostv4/package-lock.json
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -199,6 +200,8 @@ jobs:
       - run: npm ci
       - run: npm ci
         working-directory: hostv2
+      - run: npm ci
+        working-directory: hostv4
       # ── THE UNIT SUITE RUNS WITH NO RELEASE CONFIGURATION ────────────────
       # The job-level env above is for the BUILD. It was reaching this step too,
       # and five suites assert the UNCONFIGURED path — their own comments say so
@@ -299,6 +302,14 @@ jobs:
           grep -qF "<meta name=\"ngw-build\" content=\"${RELEASE_SHA} " build/hostv2/index.html \
             || { echo "::error::build/hostv2/index.html has no ngw-build meta tag naming ${RELEASE_SHA}"; exit 1; }
           echo "hostv2 stamped: $(grep -o '<meta name="ngw-build"[^>]*>' build/hostv2/index.html)"
+      # hostv4, the simplified design's own shell (owner, 11/25/2026), ships beside
+      # hostv2 and carries the same stamp; its own step so each page is checked alone.
+      - name: Verify hostv4 is stamped with this commit
+        run: |
+          set -euo pipefail
+          grep -qF "<meta name=\"ngw-build\" content=\"${RELEASE_SHA} " build/hostv4/index.html \
+            || { echo "::error::build/hostv4/index.html has no ngw-build meta tag naming ${RELEASE_SHA}"; exit 1; }
+          echo "hostv4 stamped: $(grep -o '<meta name="ngw-build"[^>]*>' build/hostv4/index.html)"
 
       # ── hostv2 source maps: to Sentry, never to the public site ──────────
       # (owner, 11/22/2026). Built only when SENTRY_SOURCEMAPS=1, as 'hidden'

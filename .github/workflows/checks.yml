@@ -557,6 +557,28 @@ jobs:
       - run: npm run build
         working-directory: hostv2
 
+  # hostv4: the simplified design's own shell (owner, 11/25/2026). Its unit tests
+  # (one of which fails if it copies hostv2 code instead of sharing src/), then
+  # the build. Root deps too: hostv4 bundles ../src through the @app alias.
+  hostv4-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            hostv4/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: hostv4
+      - run: npm run test:unit
+        working-directory: hostv4
+      - run: npm run build
+        working-directory: hostv4
+
   webkit-critical:
     name: WebKit critical journeys
     runs-on: ubuntu-latest
