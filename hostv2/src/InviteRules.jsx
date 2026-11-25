@@ -15,6 +15,7 @@
 // shown as its own selected chip rather than hidden; picking another replaces it.
 //
 // Chips are outlined; the selected one has a green outline and a check, no fill.
+import { plusOneEdit, kidsEdit, addressesEdit, giftEdit, giftDetailEdit } from '@app/lib/guestEdits';
 
 const LEGACY_GIFT = { charity: 'A donation', potluck: 'Potluck', contribution: 'Chip in' };
 const GIFT_DETAIL = { registry: 'Paste the registry link', charity: 'Cause name or link', potluck: 'Dish assignments — optional', contribution: '$ per person' };
@@ -27,33 +28,23 @@ export default function InviteRules({ event, patchEvent, note }) {
     {
       key: 'plus', label: 'Plus-ones', value: ev.plusOnePolicy || null,
       options: [['Welcome', 'plus_one_ok'], ['Not this time', 'no_plus_ones'], ['Not set', null]],
-      pick: (v) => patchEvent({ plusOnePolicy: v },
-        v === 'plus_one_ok' ? 'Plus-ones welcome — the invite says so, and the RSVP page asks who they’re bringing.'
-          : v === 'no_plus_ones' ? 'Named guests only — the RSVP page won’t offer a plus-one.'
-            : 'Plus-ones not set — the invite stays quiet on them.'),
+      pick: (v) => { const ed = plusOneEdit(v); patchEvent(ed.patch, ed.msg); },
     },
     {
       key: 'kids', label: 'Kids', value: ev.kidsPolicy || null,
       options: [['Kids welcome', 'kids_welcome'], ['Adults only', 'adults_only'], ['Not set', null]],
-      pick: (v) => patchEvent({ kidsPolicy: v },
-        v === 'kids_welcome' ? 'Kids welcome — the invite says so.'
-          : v === 'adults_only' ? 'Adults-only — the RSVP page won’t ask about kids.'
-            : 'Kids not set — the invite stays quiet on them.'),
+      pick: (v) => { const ed = kidsEdit(v); patchEvent(ed.patch, ed.msg); },
     },
     {
       key: 'addr', label: 'Collect mailing addresses', value: !!ev.collectAddresses,
       options: [['Yes', true], ['No', false]],
-      pick: (v) => patchEvent({ collectAddresses: v },
-        v ? 'Yeses now get an optional mailing-address question, for thank-yous.' : 'Address question removed from the RSVP page.'),
+      pick: (v) => { const ed = addressesEdit(v); patchEvent(ed.patch, ed.msg); },
     },
     {
       key: 'gift', label: 'Gift note', value: giftMode,
       options: [['None', null], ['“No gifts, please”', 'no_gifts'], ['Registry link', 'registry'],
         ...(LEGACY_GIFT[giftMode] ? [[LEGACY_GIFT[giftMode], giftMode]] : [])],
-      pick: (v) => patchEvent({ giftWish: v ? { mode: v, detail: v === giftMode ? (gw.detail || '') : '' } : null },
-        v === 'no_gifts' ? '“Your presence is the gift” goes on the invite.'
-          : v === 'registry' ? 'Registry noted — paste the link below so guests can find it.'
-            : v ? 'Gift note kept.' : 'No gift note on the invite.'),
+      pick: (v) => { const ed = giftEdit(ev, v); patchEvent(ed.patch, ed.msg); },
     },
   ];
   return (
@@ -76,7 +67,7 @@ export default function InviteRules({ event, patchEvent, note }) {
       {giftMode && giftMode !== 'no_gifts' && (
         <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)', margin: '0 0 var(--sp-2)' }}
           placeholder={GIFT_DETAIL[giftMode] || ''} value={gw.detail || ''}
-          onChange={(e) => patchEvent({ giftWish: { mode: giftMode, detail: e.target.value } }, null)}
+          onChange={(e) => { const ed = giftDetailEdit(ev, e.target.value); patchEvent(ed.patch, ed.msg); }}
           aria-label="Gift note detail" />
       )}
       {note ? <p className="grounding invite-rules-note">{note}</p> : null}

@@ -8,78 +8,23 @@
 // Posting to guests who will get an email takes a second tap that says so,
 // because an email cannot be taken back. Removing a post takes it off the
 // invite and says plainly that emails already sent stay sent.
-import { useEffect, useState } from 'react';
-import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
-import { listAnnouncements, postAnnouncement, removeAnnouncement, isAnnouncementsApiConfigured } from '@app/lib/api/announcements';
+import { useState } from 'react';
+import { isAnnouncementsApiConfigured } from '@app/lib/api/announcements';
+import { useGuestUpdates, updatesFailedLine, updatesLimitLine, updatesReachLine, updatesRoom } from '@app/lib/guestUpdatesKit';
 import BusyLine from './BusyLine.jsx';
 
 const when = (iso) => {
   try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return ''; }
 };
 const guests = (n) => `${n} guest${n === 1 ? '' : 's'}`;
-const gets = (n) => (n === 1 ? 'gets' : 'get');   // "1 guest gets", "2 guests get" (live check 11/16)
-
-// THE ONE POST PATH (11/21/2026): the Guest list box below and the trip
-// details draft's "Post to everyone's invite" both post through this, with the
-// same limits, the same second tap before an email, and the same answers.
-function useGuestUpdates(eventId) {
-  const [st, setSt] = useState(undefined);       // undefined loading · { announcements, limits, email_guests } · { failed }
-  const [confirm, setConfirm] = useState(false);
-  const [busy, setBusy] = useState('');
-  const [line, setLine] = useState('');
-  const [err, setErr] = useState('');
-
-  const load = async () => {
-    const r = await listAnnouncements(eventId);
-    // A 200 without the expected shape (a proxy, a half-deployed server) is a
-    // failed load, never a crash: the e2e mock host answers {ok:true} to
-    // anything, and that took this whole sheet down on desktop.
-    const good = r.ok && r.limits && Array.isArray(r.announcements);
-    setSt(good ? r : { failed: r.ok ? 'unavailable' : r.reason, status: r.ok ? 0 : r.status });
-  };
-  useEffect(() => { if (isAnnouncementsApiConfigured()) load(); }, [eventId]); // eslint-disable-line react-hooks/exhaustive-deps
-  const emailN = (st && !st.failed && st.email_guests) || 0;
-
-  // → true once the server took it. The first tap only asks when guests will be emailed.
-  const post = async (text) => {
-    const body = String(text || '').trim();
-    if (!body || busy) return false;
-    if (emailN > 0 && !confirm) { setConfirm(true); return false; }
-    setBusy('post'); setErr(''); setLine('');
-    const r = await postAnnouncement(eventId, body);
-    setBusy(''); setConfirm(false);
-    if (!r.ok) { setErr(r.status === 429 || r.status === 422 ? r.reason : 'That didn’t post. Try again.'); return false; }
-    try { trackEvent(ANALYTICS.GUEST_UPDATE_POSTED, { emailing: r.emailing || 0 }); } catch (_e) { /* counter only */ }
-    setLine(r.emailing > 0 ? `Posted — it’s on every invite, and ${guests(r.emailing)} ${gets(r.emailing)} it by email.` : 'Posted — it’s on every invite.');
-    load();
-    return true;
-  };
-  const remove = async (a) => {
-    setBusy(a.id); setErr('');
-    const r = await removeAnnouncement(eventId, a.id);
-    setBusy('');
-    if (!r.ok) { setErr('That didn’t go through. Try again.'); return; }
-    setLine('Taken off the invite. Emails already sent stay sent.');
-    load();
-  };
-  return { st, emailN, confirm, setConfirm, busy, line, err, post, remove };
-}
-
-const failedLine = (st) => (st.status === 503 ? 'Updates to everyone aren’t switched on yet.'
-  : st.failed === 'signed-out' ? 'Sign in to post updates.'
-  : st.failed === 'forbidden' ? 'This account can’t post updates for this event.'
-  : 'Couldn’t load updates — check your connection and reopen this list.');
-const limitLine = (limits, eventLeft) => (eventLeft === 0
-  ? `You’ve posted the most updates this event allows (${limits.per_event}).`
-  : `You’ve posted ${limits.per_day} updates in the last day — you can post again tomorrow.`);
-const reachLine = (emailN) => (emailN > 0
-  ? `It shows on every guest’s invite, and the ${guests(emailN)} who asked for email ${gets(emailN)} it by email.`
-  : 'It shows on every guest’s invite. No guest has asked for email yet, so nobody is emailed.');
-const room = (limits) => {
-  const dayLeft = Math.max(0, limits.per_day - limits.today);
-  const eventLeft = Math.max(0, limits.per_event - limits.total);
-  return { dayLeft, eventLeft, canPost: dayLeft > 0 && eventLeft > 0 };
-};
+// THE ONE POST PATH (11/21/2026, shared with hostv4 11/25/2026): the Guest
+// list box below, the trip details draft's "Post to everyone's invite" and
+// hostv4's Updates page all post through lib/guestUpdatesKit, with the same
+// limits, the same second tap before an email, and the same answers.
+const failedLine = updatesFailedLine;
+const limitLine = updatesLimitLine;
+const reachLine = updatesReachLine;
+const room = updatesRoom;
 
 export default function HostUpdates({ eventId }) {
   const u = useGuestUpdates(eventId);

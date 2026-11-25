@@ -42,6 +42,8 @@ import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaR
 // the legacy body as the default until parity closes.
 import { PeopleHero, AttendanceDecision, StillUnknown, OneMove, GetResponses, PeopleRail, SectionHead } from './PeopleSurface';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
+import { replyLinkUrl, emailInviteTo, invitesReachedEdit, inviteSentFields, emailNudgeTo, nudgedEdit, linkSharedFields } from '@app/lib/inviteSend';
+import { countEdit, modeEdit, addNamesEdit, rsvpEdit, removeGuestEdit, replyByEdit, lockCountEdit, reopenCountEdit, guestFieldEdit, mealEdit, kidsAddedLine, toldEdit, MEAL_CHOICES, guestListCsv, replyAlertsEdit } from '@app/lib/guestEdits';
 import { saveCustomEvents, patchSavedEvent, exportCustomEvents, listBackups, restoreBackup, importCustomEvents, durabilityStatus, readCustomEvents } from '@app/lib/customEventStore';
 import { buildCrabProcurement } from '@app/lib/procurement';
 import { buildAssembleRevealStages, unresolvedBlockerStages } from '@app/lib/assembleRevealEngines';
@@ -75,9 +77,9 @@ import { rsvpHasResponded, notRepliedYet } from '@app/lib/rsvp';
 import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, rainPlanOptions, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, travelHazard, guestTravelMessage } from '@app/lib/weather';
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
-import { inviteRecipients, inviteSubjectAndBody, markInvited, greetingName } from '@app/lib/inviteBatch';
+import { inviteRecipients, inviteSubjectAndBody, greetingName } from '@app/lib/inviteBatch';
 import { nudgeRecipients, nudgeCount, markNudged, nudgeRowLine, nudgeDeliveryFor, nudgeTextBody, wasInvited, NUDGE_GAP_DAYS } from '@app/lib/replyNudge';
-import { LINK_PLACEHOLDER, savedInviteDraft, inviteDraftRecord, withLink, lineChange, swapPageLine, textMessageBody, sentSnapshot, draftStatus, plainText, sentRecipients } from '@app/lib/inviteMessageDraft';
+import { LINK_PLACEHOLDER, savedInviteDraft, withLink, lineChange, swapPageLine, textMessageBody, sentSnapshot, draftStatus, plainText, sentRecipients, saveDraftEdit } from '@app/lib/inviteMessageDraft';
 import { inviteGaps } from '@app/lib/inviteGaps';
 import { inviteCardModel, inviteCardKey } from '@app/lib/inviteCard';
 import SignInCheck, { signInCheckOn } from '@app/components/SignInCheck';
@@ -138,7 +140,7 @@ import { settleChoicePatch, choiceStateFor, choiceAttribution } from '@app/lib/c
 import { reconcileChecklist, reconcileSummary } from '@app/lib/checklistReconcile';
 import { measureRows, playReorder } from '@app/lib/flipReorder';
 import { tweenNumber } from '@app/lib/tweenNumber';
-import { recordTold, clearTold, isTold, guestToldMap, toldRollup } from '@app/lib/guestTold';
+import { isTold, guestToldMap, toldRollup } from '@app/lib/guestTold';
 import { rowsOn } from '@app/lib/spanEdit';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { startTimeFieldsToPersist, startTimeReading } from '@app/lib/startTimeFieldsToPersist';
@@ -237,7 +239,7 @@ import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_NUDGE } from '@app/lib/knowledge/geoCostIndex';
 import { firstStoreIn, storesIn } from '@app/lib/communitySource';
 import { typeLineFor } from '@app/lib/eventMasthead';
-import { confirmedCovers, confirmedRsvpCovers, coversWithWord } from '@app/lib/confirmedCovers';
+import { confirmedCovers, coversWithWord } from '@app/lib/confirmedCovers';
 import { shoppingHint } from '@app/lib/shoppableUnit';
 import { markSignal, lastSignalNote } from './offline/lastSignal';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, rosSuggestions, hostRosRows, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, sizingRange, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum, dietaryNoted, playbookPacing } from '@app/lib/playbooks';
@@ -351,7 +353,7 @@ import { appEmailWords, messageEmailResult } from '@app/lib/appEmail';
 import { buildHelperAsk } from '@app/lib/helperAsk';
 import PolicyLinks from './PolicyLinks.jsx';
 import { VersionAndWhatsNew } from './WhatsNew.jsx';
-import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine, renamedGuestPatch } from '@app/lib/guestMerge';
+import { mergeGuestReplies, confirmSameGuest, keepSeparateGuest, sameGuestAskLine, renamedGuestPatch } from '@app/lib/guestMerge';
 import { MAX_DATE_OPTIONS, dateOptionsOf, datePollTally, dateOptionPatch, nextDateOptionId } from '@app/lib/datePoll';
 import { giftCashTotal, isAbsentGiver, thankYouGiftLine } from '@app/lib/giftLog';
 import { borrowedList, markReturned, addBorrowed } from '@app/lib/borrowedList';
@@ -7544,7 +7546,8 @@ export default function HostShellV2() {
 
   // Preview stays local. Outward links require the public event a guest sees,
   // not just a configured proxy or a historical cloud-save stamp.
-  const inviteLinkUrl = () => publicAppUrl() + '?rsvp=' + encodeURIComponent(event.rsvpCode || event.id);
+  // The reply link is built once, in lib/inviteSend, for both shells.
+  const inviteLinkUrl = () => replyLinkUrl(event);
   const rsvpUnavailable = (result) => result.reason === 'unavailable'
     ? 'Couldn’t verify this RSVP link. Nothing was shared. Check your connection and try again.'
     : 'Online RSVPs are not available for this event. Copy a plain invitation and collect replies yourself.';
@@ -7608,7 +7611,7 @@ export default function HostShellV2() {
               <span className="of">replies by:</span>
               <input className="field" style={{ maxWidth: 175, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="date"
                 value={already || ''}
-                onChange={e => patchEvent({ rsvpDeadline: e.target.value }, 'Reply-by date set — your invite and the nudges read it.')}
+                onChange={e => { const ed = replyByEdit(e.target.value); patchEvent(ed.patch, ed.msg); }}
                 aria-label="RSVP deadline" />
               {prop && prop.iso && already !== prop.iso && (
                 <button className="mini" onClick={() => patchEvent({ rsvpDeadline: prop.iso },
@@ -7728,7 +7731,8 @@ export default function HostShellV2() {
         try { trackEvent(ANALYTICS.INVITE_SHARED, { method: 'native_share', rsvp_live: true, event_type: event && event.type }); } catch (_e) { /* a counter never blocks a share */ }
         // The share sheet completed: the invite went out (issue #100, D-10). This
         // is the proof taskEngine reads for "Send the invite"; nothing wrote it.
-        if (!event.invitesSentAt) patchEvent({ invitesSentAt: new Date().toISOString() });
+        const sharedFields = linkSharedFields(event, new Date().toISOString());
+        if (Object.keys(sharedFields).length) patchEvent(sharedFields);
         return;
       } catch (error) { if (error && error.name === 'AbortError') return; }
     }
@@ -8871,16 +8875,10 @@ export default function HostShellV2() {
   // + lib/download), with V2's guest fields mapped back to the canonical
   // column keys so the file round-trips through the NGW Native import.
   const exportGuestsCsv = () => {
-    const rows = (event.guests || []).map(g => ({
-      name: g.name || '', email: g.email || '', phone: g.phone || '',
-      group: g.group || '',
-      rsvp_status: g.rsvp || 'Pending', // '' means no reply — canonical 'Pending' (the import maps it back)
-      meal_preference: g.meal || '', plus_one_name: g.plusOne || '',
-      table_number: g.table ?? '', dietary_restrictions: g.needs || '',
-      notes: g.partyNotes || '',
-    }));
-    downloadCSV(exportFileSlug(event.name) + '-guests.csv', toCSV(rows, COLUMNS.guests));
-    toast(rows.length + (rows.length === 1 ? ' guest' : ' guests') + ' downloaded — the file re-imports as NGW Native.');
+    // The same file hostv4's "Download the list" makes (lib/guestEdits).
+    const f = guestListCsv(event);
+    downloadCSV(f.filename, f.content);
+    toast(f.msg);
   };
   const exportVendorsCsv = () => {
     // COLUMNS.vendors reads `contact` for the email column; V2's cockpit
@@ -8938,17 +8936,14 @@ export default function HostShellV2() {
     setCsvPreview(null); setCsvOpen(false);
   };
   const writeGuest = (i, patch, msg) => {
-    const gs = (event.guests || []).map((g, ix) => ix === i ? { ...g, ...patch } : g);
     // kidsCount is the ENGINE's portion-skew knob (kids eat ~40% of adult
-    // protein) — derive it from the roster so food re-prices automatically.
-    const kidsCount = kidsCountAfterRoster(event, gs);
-    patchEvent({ guests: gs, kidsCount }, msg);
+    // protein): lib/guestEdits derives it from the roster, for both shells.
+    const ed = guestFieldEdit(event, i, patch, msg);
+    patchEvent(ed.patch, ed.msg);
   };
   const removeGuest = (i) => {
-    const g = (event.guests || [])[i];
-    const gs = (event.guests || []).filter((_, ix) => ix !== i);
-    const kidsCount = kidsCountAfterRoster(event, gs);
-    patchEvent({ guests: gs, kidsCount }, (g && g.name || 'Guest') + ' removed from the list.');
+    const ed = removeGuestEdit(event, i);
+    patchEvent(ed.patch, ed.msg);
     setGuestOpen(null);
   };
   // KEEP HER PLACE (owner, 11/24/2026): an opened guest's name scrolls to the
@@ -8981,30 +8976,10 @@ export default function HostShellV2() {
     .map(line => ({ line, hit: detectCoupleNames(line) }))
     .filter(x => x.hit);
   const addRoster = () => {
-    const entries = rosterLines.flatMap((line, li) => {
-      const hit = splitCouples ? detectCoupleNames(line) : null;
-      // A split couple stays CONNECTED: both rows share a coupleId, so the
-      // roster shows "with Nicole", counts stay per-person, and seating can
-      // keep them together (host ask 2026-07-27).
-      if (!hit) return [{ name: line, coupleId: null }];
-      const cid = 'cp-' + Date.now().toString(36) + '-' + li; // ONE id for the pair
-      return hit.names.map((name) => ({ name, coupleId: cid }));
-    });
-    if (!entries.length) return;
-    const names = entries.map((e2) => e2.name);
-    const existing = event.guests || [];
-    const add = entries.map((e2, i) => ({ id: 'g-' + Date.now() + '-' + i, name: e2.name, rsvp: '', ...(e2.coupleId ? { coupleId: e2.coupleId } : {}) }));
-    const splitNote = splitCouples && rosterCouples.length
-      ? ' (' + rosterCouples.length + (rosterCouples.length === 1 ? ' couple' : ' couples') + ' split so everyone gets counted)' : '';
-    const twice = repeatedGuestNames(existing, names);
-    const twiceNote = twice.length
-      ? ' ' + twice.join(', ') + (twice.length === 1 ? ' is' : ' are') + ' on the list twice — remove one if it’s the same person.' : '';
-    patchEvent({ guests: [...existing, ...add] },
-      // Host words, not app words (owner, 11/16/2026): "RSVPs start blank" said
-      // nothing a host could act on. The list itself shows "No reply".
-      'Added ' + names.length + (names.length === 1 ? ' person' : ' people')
-        + (existing.length ? ' — ' + (existing.length + add.length) + ' on the list' : '')
-        + '. Each shows “No reply” until they answer your invite, or you mark it yourself.' + splitNote + twiceNote);
+    const ed = addNamesEdit(event, rosterLines, { splitCouples });
+    if (!ed) return;
+    // Host words, not app words (owner, 11/16/2026): the list itself shows "No reply".
+    patchEvent(ed.patch, ed.msg);
     setRosterText('');
   };
 
@@ -9016,14 +8991,11 @@ export default function HostShellV2() {
   // Writes the same guests array the engine's confirmed-count and the
   // catering-drift detector read.
   const setRsvpValue = (i, value) => {
-    const gs = (event.guests || []).map((g, ix) => ix === i ? { ...g, rsvp: value } : g);
-    // COVERS, not rows, and computed against the NEW roster rather than the
-    // stale `event` — this receipt fires on the same tap that changes it.
-    // It said "5 confirmed" on a roster whose confirmed rows bring two kids,
-    // which is the same defect as the caterer's, in a toast.
-    const yes = confirmedRsvpCovers({ ...event, guests: gs });
-    patchEvent({ guests: gs }, (gs[i].name || 'Guest') + ' → ' + (value || 'no reply') + ' — ' + yes + ' confirmed.' + (value === 'Maybe' ? ' Maybes stay pending until they land.' : ''));
+    // Counted on the NEW roster (lib/guestEdits): covers, not rows.
+    const ed = rsvpEdit(event, i, value);
+    patchEvent(ed.patch, ed.msg);
   };
+
 
   // ── Feedback layer: haptic tick on real state changes, the original app's
   // synthesized chime reserved for magic moments. Muted preference persists.
@@ -9975,14 +9947,9 @@ export default function HostShellV2() {
   // Host-attested, exactly like `handed_off`. The app writes down what the host
   // says and never upgrades it into a claim of its own.
   const markTold = (guestId, name, channel) => {
-    const cur = guestToldMap(event);
-    const first = String(name || 'them').split(/\s+/)[0];
-    if (isTold(cur, guestId)) {
-      patchEvent({ guestTold: clearTold(cur, guestId) }, `Cleared — ${first} is back on the still-to-tell list.`);
-      return;
-    }
-    patchEvent({ guestTold: recordTold(cur, guestId, channel, new Date().toISOString()) },
-      `Noted: you told ${first}. Nothing was sent from here.`);
+    // A record only; the same edit hostv4 saves (lib/guestEdits).
+    const ed = toldEdit(event, guestId, name, channel, new Date().toISOString());
+    patchEvent(ed.patch, ed.msg);
   };
 
   const confirmHelper = (itemId, name) => {
@@ -10102,7 +10069,8 @@ export default function HostShellV2() {
   // A LOCKED COUNT MOVES WITH THE HOST'S EDIT (single-source audit 11/18/2026):
   // guestCountFor reads guestCount first, so writing only the estimate left a
   // locked 40 on screen under a toast saying 41.
-  const setGuests = (n) => patchEvent({ guestEstimate: n, guestCountSource: 'host', ...(Number(event.guestCount) > 0 ? { guestCount: n } : null) }, 'Planning around ' + n + ' now.');
+  // Guest edits are built in lib/guestEdits, so hostv4 changes a plan the same way.
+  const setGuests = (n) => { const ed = countEdit(event, n); return patchEvent(ed.patch, ed.msg); };
   // The count RESOLUTION rows — shared by the 'count' editor and the guests
   // editor's drift bridge (W14): when the caterer's number and the confirmed
   // yeses disagree, the fix is one of these two taps, wherever the host is.
@@ -10435,7 +10403,7 @@ export default function HostShellV2() {
         return (
           <div className="chips hc-row">
             <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>Confirmed at {confirmedAt}</span>
-            <button className="chip" onClick={() => patchEvent({ guestCount: '' }, 'Count reopened — settle it when the maybes answer.')}>Reopen the count</button>
+            <button className="chip" onClick={() => { const ed = reopenCountEdit(); patchEvent(ed.patch, ed.msg); }}>Reopen the count</button>
             <button className="chip" onClick={() => { patchEvent({ guestMode: 'list' }, 'Switched to a guest list — the roster drives the count now.'); setSheet({ kind: 'guests' }); }}>Switch to a guest list</button>
           </div>
         );
@@ -10443,12 +10411,12 @@ export default function HostShellV2() {
       return (
         <div className="chips hc-row">
           {yes > 0 && (
-            <button className="chip" onClick={() => patchEvent({ guestCount: yes, guestMode: 'count' }, 'Count set at ' + yes + ' — your confirmed yeses. Food and seats now size to it.')}>
+            <button className="chip" onClick={() => { const ed = lockCountEdit(yes, 'yes'); patchEvent(ed.patch, ed.msg); }}>
               Set it at {yes} — confirmed yeses
             </button>
           )}
           {planned > 0 && planned !== yes && (
-            <button className="chip" onClick={() => patchEvent({ guestCount: planned, guestMode: 'count' }, 'Count set at ' + planned + ' — the number you planned around.')}>
+            <button className="chip" onClick={() => { const ed = lockCountEdit(planned, 'planned'); patchEvent(ed.patch, ed.msg); }}>
               Set it at {planned} — as planned
             </button>
           )}
@@ -23635,10 +23603,8 @@ export default function HostShellV2() {
                 // invitesSentAt alone (taskEngine), so the board kept leading with
                 // it. A real send of the invite now credits it too. Copying is not
                 // a send (the clipboard proves a draft, not delivery).
-                const invited = sheet.sendsInvite && channel !== 'copy' && !event.invitesSentAt
-                  ? { invitesSentAt: new Date().toISOString() } : {};
-                // WHAT WENT OUT (owner, 11/24/2026): the words she sent, kept.
-                if (sheet.sendsInvite && channel !== 'copy') invited.invitesSentMessage = inviteSnapshotNow();
+                // WHAT WENT OUT (owner, 11/24/2026): the words she sent, kept (lib/inviteSend).
+                const invited = sheet.sendsInvite ? inviteSentFields(event, channel, inviteSnapshotNow(), new Date().toISOString()) : {};
                 // A post already says "Posted" in its own line; the toast would repeat it.
                 patchEvent({ sendLedger: led, ...invited }, channel === 'invite' ? null : 'Noted — the plan remembers this went out.');
               };
@@ -23755,31 +23721,9 @@ export default function HostShellV2() {
                 const draftSubject = (draftInvite(event, profile, { voice: (sheet.voices && sheet.voices[draftTone]) ? draftTone : 'as-written' }) || {}).subject || 'You’re invited';
                 const { subject, body } = inviteSubjectAndBody(shownDraft(), draftSubject);
                 const cardVersion = await ensureInviteCard(event);
-                try {
-                  const res = await commApi.createMessage(event.id, 'CLIENT', {
-                    // The picture just uploaded, by version: the server uses a stored
-                    // card only when it is THIS one, so a stale picture never goes out.
-                    ...(cardVersion ? { invite_card_version: cardVersion } : {}),
-                    message_type: 'standard', author_role: 'planner',
-                    author_name: (profile && profile.name) || 'Your host',
-                    // invite: the email IS the invitation, its facts from the saved event (backend invite_email).
-                    body, deliver_email: true, invite: true, recipient_email: g.email, recipient_name: g.name || undefined, subject,
-                    ...(((session && session.user && session.user.email) || '').trim()
-                      ? { reply_to: String(session.user.email).trim() } : {}),
-                  });
-                  const d = res && res.metadata && res.metadata.delivery;
-                  return d && d.status === 'accepted' ? { ok: true } : { ok: false, error: (d && d.error) || 'no delivery confirmation' };
-                } catch (e) {
-                  const m = String((e && e.message) || '');
-                  if (/→ 429/.test(m)) return { ok: false, capped: true };
-                  if (/→ 403/.test(m)) return { ok: false, error: 'not saved to your account yet' };
-                  if (/→ 410/.test(m)) return { ok: false, error: 'they asked not to get emails about this event — text them instead' };
-                  // The server read the SAVED event and found no day, hour or place
-                  // (backend invite_gaps). The app checked its own copy first, so this
-                  // is the saved copy lagging: it says so rather than "request failed".
-                  if (/→ 422/.test(m)) return { ok: false, error: 'the saved copy of your event is missing the day, time or place — give it a moment to save, then try again' };
-                  return { ok: false, error: 'request failed' };
-                }
+                // The email and its refusals are lib/inviteSend's, the same as hostv4's.
+                return emailInviteTo(event, g, { subject, body, cardVersion, hostName: profile && profile.name,
+                  replyTo: (session && session.user && session.user.email) || '' });
               };
               // ── THE NUDGE TO THE ONES WHO HAVEN'T ANSWERED (owner ruling, 11/20/2026)
               // The same guarded route as the invite above and the per-guest
@@ -23790,28 +23734,15 @@ export default function HostShellV2() {
               const sendNudgeTo = async (g) => {
                 const draftSubject = (draftRsvpChase(event, profile) || {}).subject || 'Can you make it?';
                 const { subject, body } = inviteSubjectAndBody(shownDraft(), draftSubject);
-                try {
-                  const res = await commApi.createMessage(event.id, 'CLIENT', {
-                    message_type: 'standard', author_role: 'planner',
-                    author_name: (profile && profile.name) || 'Your host',
-                    body, deliver_email: true, recipient_email: g.email, recipient_name: g.name || undefined, subject,
-                    ...(((session && session.user && session.user.email) || '').trim()
-                      ? { reply_to: String(session.user.email).trim() } : {}),
-                  });
-                  const r = messageEmailResult(res, null);
-                  return r.ok ? { ok: true } : { ok: false, error: 'the email service didn’t take it' };
-                } catch (e) {
-                  const r = messageEmailResult(null, e);
-                  if (r.kind === 'capped') return { ok: false, capped: true };
-                  if (r.kind === 'stopped') return { ok: false, error: 'they asked not to get emails about this event — text them instead' };
-                  if (r.kind === 'refused') return { ok: false, error: 'not saved to your account yet' };
-                  return { ok: false, error: r.kind === 'network' ? 'no connection' : 'request failed' };
-                }
+                // The email and its refusals are lib/inviteSend's, the same as hostv4's.
+                return emailNudgeTo(event, g, { subject, body, hostName: profile && profile.name,
+                  replyTo: (session && session.user && session.user.email) || '' });
               };
               // Recorded on the guest: when, and how (an email the service took,
               // or a text the host says they sent). Never a delivery claim.
               const reachNudge = (reached, via) => {
-                patchEvent({ guests: markNudged(event.guests || [], reached, via, new Date().toISOString()) }, null, { noUndo: true });
+                const ed = nudgedEdit(event, reached, via, new Date().toISOString());
+                patchEvent(ed.patch, ed.msg, { noUndo: true });
               };
               // ── THE INVITE MESSAGE (owner, 11/24/2026: renders s2-3 to s2-6) ──
               const mode = sheet.mode || null;
@@ -23833,12 +23764,12 @@ export default function HostShellV2() {
               const saveInviteDraft = () => {
                 const c = draftVoiceCtx();
                 const offered = sheet.voices ? !!sheet.voices[draftTone] : voicesFor(c.audience, c.sombre).includes(draftTone);
-                patchEvent({
-                  inviteMessageDraft: inviteDraftRecord({
-                    body: shownDraft(), voice: offered ? draftTone : 'as-written', edited: draftBody != null,
-                    line: String(event.deckLine || '').trim(), now: new Date().toISOString(),
-                  }),
-                }, 'Draft saved — nothing was sent.');
+                // The same edit hostv4 saves (lib/inviteMessageDraft).
+                const ed = saveDraftEdit({
+                  body: shownDraft(), voice: offered ? draftTone : 'as-written', edited: draftBody != null,
+                  line: String(event.deckLine || '').trim(), now: new Date().toISOString(),
+                });
+                patchEvent(ed.patch, ed.msg);
               };
               const linkBox = noLink ? (
                 <div className="si-warn" role="alert" data-link-not-ready>
@@ -23878,11 +23809,8 @@ export default function HostShellV2() {
               const reachInvite = (reached, via) => {
                 const at = new Date().toISOString();
                 try { trackEvent(ANALYTICS.INVITE_SENT, { via, count: (reached || []).length }); } catch (_e) { /* a counter never blocks an invite */ }
-                patchEvent({
-                  guests: markInvited(event.guests || [], reached, via, at),
-                  ...(event.invitesSentAt ? {} : { invitesSentAt: at }),
-                  ...(reached && reached.length ? { invitesSentMessage: inviteSnapshotNow(at) } : {}),
-                }, null, { noUndo: true });
+                const ed = invitesReachedEdit(event, reached, via, at, inviteSnapshotNow(at));
+                patchEvent(ed.patch, ed.msg, { noUndo: true });
               };
               // THE SEND CONFIRM (owner, 11/24/2026: render s2-4): the message
               // folded, who gets what, then the send. Nothing else on the sheet.
@@ -28685,9 +28613,9 @@ export default function HostShellV2() {
                 <div id="guests-counting-anchor" className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center', scrollMarginTop: 12 }}>
                   <span className="of">counting:</span>
                   <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={chase}
-                    onClick={() => patchEvent({ guestMode: 'list' }, 'By list — replies are tracked and the quiet ones can be nudged.')}>By list</button>
+                    onClick={() => { const ed = modeEdit('list'); patchEvent(ed.patch, ed.msg); }}>By list</button>
                   <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={event.guestMode === 'count'}
-                    onClick={() => patchEvent({ guestMode: 'count' }, 'By headcount — replies are optional and nobody gets chased.')}>By headcount</button>
+                    onClick={() => { const ed = modeEdit('count'); patchEvent(ed.patch, ed.msg); }}>By headcount</button>
                 </div>
               );
               // CSV import — lib/csvParsers end to end: platform map → validate →
@@ -29014,7 +28942,6 @@ export default function HostShellV2() {
               // reply and its covers receipt), removeGuest (its toast's Undo
               // puts the guest back). Same data model: one +1 text field, a
               // children count, one meal, one dietary field.
-              const MEAL_CHOICES = ['—', 'Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
               // The four replies in the order a host reads them; the labels and
               // values stay RSVP_VALUES's.
               const REPLY_ORDER = ['Yes', 'Maybe', 'No', ''].map((v) => RSVP_VALUES.find(([x]) => x === v));
@@ -29219,10 +29146,8 @@ export default function HostShellV2() {
                         {/* Writes the SAME guest.meal the RSVP page and CSV import write. */}
                         <select className="field ged-field" aria-label={'Meal for ' + (name || 'guest')} value={meal}
                           onChange={(e) => {
-                            const m = e.target.value;
-                            writeGuest(i, { meal: m }, m === '—'
-                              ? (name || 'Guest') + '’s meal cleared — counts as unanswered.'
-                              : (name || 'Guest') + ' → ' + m + ' — the meal tally keeps count.');
+                            const ed = mealEdit(event, i, 'meal', e.target.value, name);
+                            patchEvent(ed.patch, ed.msg);
                           }}>
                           {meals.map((m) => <option key={m} value={m}>{m === '—' ? 'Meal not answered' : m}</option>)}
                         </select>
@@ -29246,10 +29171,8 @@ export default function HostShellV2() {
                           return (<>
                             <select className="field ged-field" aria-label={'Meal for ' + pName} value={pMeal}
                               onChange={(e) => {
-                                const m = e.target.value;
-                                writeGuest(i, { plusOneMeal: m }, m === '—'
-                                  ? pName + '’s meal cleared — counts as unanswered.'
-                                  : pName + ' → ' + m + ' — the meal tally keeps count.');
+                                const ed = mealEdit(event, i, 'plusOneMeal', e.target.value, pName);
+                                patchEvent(ed.patch, ed.msg);
                               }}>
                               {pMeals.map((m) => <option key={m} value={m}>{m === '—' ? 'Meal not answered' : m}</option>)}
                             </select>
@@ -29264,7 +29187,7 @@ export default function HostShellV2() {
                           onClick={() => writeGuest(i, { kids: Math.max(0, kids - 1) }, null)}>−</button>
                         <span className="ged-count" data-ged-kids>{kids}</span>
                         <button className="ged-icon" aria-label={'Add a child to ' + (name || 'this guest') + '’s party'}
-                          onClick={() => writeGuest(i, { kids: kids + 1 }, (kids + 1) + ' kids with ' + (name || 'this guest') + ' — the food plan sizes them lighter.')}>+</button>
+                          onClick={() => writeGuest(i, { kids: kids + 1 }, kidsAddedLine(kids + 1, name))}>+</button>
                       </div>
                       <p className="ged-note">Children count in the food plan at a lighter portion.</p>
                     </section>
@@ -30033,8 +29956,7 @@ export default function HostShellV2() {
                       {event.hostAlerts === false
                         ? 'Reply alerts are off for this event, by email and on your devices. '
                         : 'You hear when a guest replies or asks a question, by email and on devices with notifications on. At most once an hour. '}
-                      <button className="mini" onClick={() => patchEvent({ hostAlerts: event.hostAlerts === false ? null : false },
-                        event.hostAlerts === false ? 'Reply alerts are on.' : 'Reply alerts are off for this event.')}>
+                      <button className="mini" onClick={() => { const ed = replyAlertsEdit(event); patchEvent(ed.patch, ed.msg); }}>
                         {event.hostAlerts === false ? 'Turn on' : 'Turn off'}
                       </button>
                     </p>

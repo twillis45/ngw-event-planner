@@ -19,79 +19,26 @@
 // unavailable) instead of showing an empty list as if nothing were there.
 import { useEffect, useState } from 'react';
 import {
-  isGuestMessagesApiConfigured, fetchGuestThreads, fetchGuestThread, replyToGuestThread, blockGuestThread, fetchInviteOpens,
+  isGuestMessagesApiConfigured, fetchInviteOpens,
 } from '@app/lib/api/guestMessages';
 import {
   isGuestPhotosApiConfigured, fetchEventGuestPhotos, approveGuestPhoto, hideGuestPhoto, deleteGuestPhoto, setGuestPhotoSharing,
 } from '@app/lib/api/guestPhotos';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
-import { sortThreads, questionsWaiting, openedLine, openDayLine } from '@app/lib/guestInbox';
+import { openedLine, openDayLine } from '@app/lib/guestInbox';
+import { useGuestQuestions, firstName, inboxWhy } from '@app/lib/guestUpdatesKit';
 import { PhotoShareControls } from './GuestPhotosV2.jsx';
 import PhotoViewer from './PhotoViewer.jsx';
 import { instagramTagUrl } from '@app/lib/photoShare';
 import BusyLine from './BusyLine.jsx';
 
-const first = (n) => String(n || '').trim().split(/\s+/)[0] || 'this guest';
-const why = (reason, what) => (reason === 'signed-out'
-  ? `Sign in to see ${what}.`
-  : reason === 'forbidden' ? `This account can’t see ${what} for this event.`
-  : `Couldn’t load ${what} — check your connection and reopen this list.`);
+const first = firstName;
+const why = inboxWhy;
 
 export function HostQuestions({ eventId, onWaiting }) {
-  const [rows, setRows] = useState(undefined);    // undefined loading · array · { failed }
-  const [open, setOpen] = useState(null);          // { id, thread, messages } | null
-  const [draft, setDraft] = useState('');
-  const [busy, setBusy] = useState('');
-  const [line, setLine] = useState('');
-  const [err, setErr] = useState('');
-
-  const load = async () => {
-    const r = await fetchGuestThreads(eventId);
-    if (!r.ok) { setRows({ failed: r.reason }); return; }
-    const sorted = sortThreads(r.rows);
-    setRows(sorted);
-    if (onWaiting) onWaiting(questionsWaiting(sorted));
-  };
-  useEffect(() => { if (isGuestMessagesApiConfigured()) load(); }, [eventId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The state, the reply and the block are lib/guestUpdatesKit's, shared with hostv4.
+  const { rows, open, draft, setDraft, busy, line, err, openThread, reply, block, close } = useGuestQuestions(eventId, onWaiting);
   if (!isGuestMessagesApiConfigured()) return null;
-
-  // keep: a refresh after a reply or a block keeps that status line.
-  const openThread = async (id, keep = false) => {
-    if (!keep) { setErr(''); setLine(''); setDraft(''); }
-    const r = await fetchGuestThread(eventId, id);
-    if (!r.ok) { setErr(why(r.reason, 'this question')); return; }
-    setOpen({ id, thread: r.thread, messages: r.messages });
-  };
-  const reply = async () => {
-    const body = draft.trim();
-    if (!body || busy || !open) return;
-    setBusy('reply'); setErr(''); setLine('');
-    try {
-      await replyToGuestThread(eventId, open.id, body);
-      try { trackEvent(ANALYTICS.GUEST_ANSWERED, { emailed: !!open.thread.email_notices }); } catch (_e) { /* counter only */ }
-      setDraft('');
-      setLine(open.thread.email_notices
-        ? `Sent — it shows on ${first(open.thread.guest_name)}’s invite, and ${first(open.thread.guest_name)} gets it by email.`
-        : `Sent — it shows on ${first(open.thread.guest_name)}’s invite.`);
-      await openThread(open.id, true);
-      await load();
-    } catch (e) {
-      setErr(e && e.status === 409 ? 'This guest is blocked. Unblock them to reply.'
-        : e && e.status === 422 ? 'Plain text only, up to 1,000 characters.'
-        : 'Your reply didn’t send. Check your connection and try again.');
-    } finally { setBusy(''); }
-  };
-  const block = async (blocked) => {
-    if (!open || busy) return;
-    setBusy(blocked ? 'block' : 'unblock'); setErr('');
-    try {
-      await blockGuestThread(eventId, open.id, blocked);
-      setLine(blocked ? `${first(open.thread.guest_name)} can’t send more questions.` : `${first(open.thread.guest_name)} can ask again.`);
-      await openThread(open.id, true);
-      await load();
-    } catch { setErr('That didn’t save. Try again.'); }
-    finally { setBusy(''); }
-  };
 
   return (
     <section id="guests-questions-anchor" data-host-questions aria-label="Questions & updates" style={{ marginTop: 'var(--sp-4)', scrollMarginTop: 12 }}>
@@ -135,7 +82,7 @@ export function HostQuestions({ eventId, onWaiting }) {
                       <button className="mini" onClick={() => block(!open.thread.blocked)} disabled={busy}>
                         {open.thread.blocked ? `Unblock ${first(t.guest_name)}` : `Block ${first(t.guest_name)}’s questions`}
                       </button>
-                      <button className="mini" onClick={() => { setOpen(null); setLine(''); setErr(''); }}>Close</button>
+                      <button className="mini" onClick={close}>Close</button>
                     </div>
                     {busy && <BusyLine>{busy === 'reply' ? `Sending your reply to ${first(t.guest_name)}…`
                       : busy === 'block' ? `Blocking ${first(t.guest_name)}’s questions…` : `Letting ${first(t.guest_name)} ask again…`}</BusyLine>}

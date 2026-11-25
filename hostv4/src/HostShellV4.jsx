@@ -5,7 +5,10 @@
 // hostv2 saved on this device and asks the SAME shared code what comes next, so
 // the two shells never disagree. Where v4 cannot act yet, it says so and opens
 // the plan in the current app; it never pretends.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import GuestsPage from './GuestsPage.jsx';
+import InvitePage from './InvitePage.jsx';
+import UpdatesPage from './UpdatesPage.jsx';
 import { readCustomEvents, patchSavedEvent } from '@app/lib/customEventStore';
 import { sourcedBudget } from '@app/lib/playbooks';
 import { saveEvent as cloudSaveEvent } from '@app/lib/api/events';
@@ -40,8 +43,11 @@ function useNext(ev) {
     try {
       const a = (eventPlan(ev).nextActions || [])[0];
       if (!a) return null;
-      const budget = String(a.domain || '').toLowerCase() === 'budget' || /^set your budget/i.test(String(a.title || '').trim());
-      return { ask: heroAskFor(a, ev) || a.title, title: a.title, budget };
+      const dom = String(a.domain || '').toLowerCase();
+      const budget = dom === 'budget' || /^set your budget/i.test(String(a.title || '').trim());
+      // A Guests ask opens the Guests page, which v4 can do (step 1, 11/25/2026).
+      const guests = dom === 'guests' || dom === 'start' || (a.route && a.route.tab === 'Guests');
+      return { ask: heroAskFor(a, ev) || a.title, title: a.title, budget, guests: !budget && guests };
     } catch { return null; }
   }, [ev]);
 }
@@ -115,6 +121,17 @@ export default function HostShellV4() {
   const [why, setWhy] = useState(false);
   const [done, setDone] = useState(null); // { msg, undo } — one quiet line, with Undo
   const [failed, setFailed] = useState(null);
+  const [stack, setStack] = useState([]); // pages pushed over the tab: 'guests', then 'invite'
+  const page = stack[stack.length - 1] || null;
+  // Every pushed page is a history entry, so browser back (and Safari's edge
+  // swipe) equals app back (UX_12 §7a.7).
+  useEffect(() => {
+    const onPop = () => setStack((st) => st.slice(0, -1));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  const push = (pg) => { try { window.history.pushState({ v4: pg }, ''); } catch { /* the page still opens */ } setDone(null); setStack((st) => [...st, pg]); };
+  const back = () => { try { window.history.back(); } catch { setStack((st) => st.slice(0, -1)); } };
   const next = useNext(ev);
   const { items: rows, cue } = usePlanRows(ev);
   const date = longDate(ev.date);
@@ -136,11 +153,12 @@ export default function HostShellV4() {
   // it cannot write yet. The sample plan is never saved.
   const save = (obj, msg, prev) => {
     setFailed(null);
-    if (sample) { setPicked({ ev: { ...ev, ...obj }, sample: true }); setDone({ msg: msg + ' Sample plan, not saved.', prev }); setPick(null); return; }
+    if (sample) { setPicked({ ev: { ...ev, ...obj }, sample: true }); setDone({ msg: msg + ' Sample plan, not saved.', prev }); setPick(null); return true; }
     const res = patchSavedEvent(ev.id, obj, { reason: 'hostv4:patch-event' });
-    if (!res.ok) { setFailed('That didn’t save on this phone. Your last saved version is still here.'); return; }
+    if (!res.ok) { setFailed('That didn’t save on this phone. Your last saved version is still here.'); return false; }
     setPicked({ ev: res.saved, sample: false });
-    setDone(prev ? { msg, prev } : { msg });
+    // A save with no line (a field saved as she types) shows nothing.
+    setDone(msg ? (prev ? { msg, prev } : { msg }) : null);
     setPick(null);
     if (getLastSyncTime(res.saved.id)) {
       cloudSaveEvent(res.saved).then((r) => {
@@ -153,9 +171,47 @@ export default function HostShellV4() {
         }
       }).catch(() => {});
     }
+    return true;
+  };
+  // A shared edit ({ patch, msg } from lib/guestEdits), undoable: Undo puts back
+  // exactly the fields it changed.
+  const saveEdit = (ed) => {
+    if (!ed) return false;
+    // Nothing to save (a download): the line alone, with no Undo.
+    if (!Object.keys(ed.patch).length) { if (ed.msg) setDone({ msg: ed.msg }); return true; }
+    const prev = {}; for (const k of Object.keys(ed.patch)) prev[k] = ev[k] === undefined ? null : ev[k];
+    return save(ed.patch, ed.msg, prev);
   };
   const setBudget = (n) => save({ totalBudget: n }, 'Budget set to ' + money(n) + '.', { totalBudget: ev.totalBudget === undefined ? '' : ev.totalBudget });
   const undo = () => { const d = done; setDone(null); if (d && d.prev) save(d.prev, 'Undone.'); };
+
+  const status = (<>
+    {done && <p className="done" role="status" data-done>{done.msg}{done.prev && <> <button className="link" onClick={undo}>Undo</button></>}</p>}
+    {failed && <p className="fine warn" role="alert">{failed}</p>}
+  </>);
+  const tabbar = (
+    <nav className="tabbar" role="tablist">
+      {TABS.map(([id, label, d]) => (
+        <button key={id} role="tab" aria-selected={!page && tab === id} onClick={() => { if (stack.length) { try { window.history.go(-stack.length); } catch { /* falls through */ } setStack([]); } setTab(id); }}><Icon d={d} />{label}</button>
+      ))}
+    </nav>
+  );
+
+  if (page) {
+    const from = stack.length > 1 ? 'Guests' : tab === 'plan' ? 'Your plan' : 'Next step';
+    const navbar = (title) => (<>
+      <div className="navbar"><button className="backbtn" onClick={back} aria-label={'Back to ' + from}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>{from}</button></div>
+      <h1 className="lt">{title}</h1>
+    </>);
+    return (
+      <div className="app pushed" key={page}>
+        {page === 'guests' && <GuestsPage key={ev.id} ev={ev} save={saveEdit} sample={sample} nav={navbar('Guests')} status={status} onInvite={() => push('invite')} onUpdates={() => push('updates')} />}
+        {page === 'updates' && <UpdatesPage key={ev.id} ev={ev} nav={navbar('Updates and questions')} status={status} />}
+        {page === 'invite' && <InvitePage key={ev.id} ev={ev} save={saveEdit} nav={navbar('Your invite')} status={status} />}
+        {tabbar}
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -165,10 +221,7 @@ export default function HostShellV4() {
         {/* The sentence lives on Your plan, so a question screen stays inside its word budget. */}
         {sample && tab === 'plan' && <p className="fine" data-sample>A sample plan. Plans you make in the current app open here.</p>}
 
-        {tab === 'next' && done && (
-          <p className="done" role="status" data-done>{done.msg}{done.prev && <> <button className="link" onClick={undo}>Undo</button></>}</p>
-        )}
-        {tab === 'next' && failed && <p className="fine warn" role="alert">{failed}</p>}
+        {tab === 'next' && status}
         {tab === 'next' && sb && (
           <section data-next data-budget>
             <h2 className="q">How much do you want to spend?</h2>
@@ -179,18 +232,19 @@ export default function HostShellV4() {
         {tab === 'next' && !sb && (
           <section data-next>
             {next ? <h2 className="q">{next.ask}</h2> : <h2 className="q">You’re set for now.</h2>}
-            {next && <p className="qhelp">This new design shows one step at a time. Doing it here comes next; for now it opens in the current app.</p>}
+            {next && !next.guests && <p className="qhelp">This new design shows one step at a time. Doing it here comes next; for now it opens in the current app.</p>}
           </section>
         )}
 
         {tab === 'plan' && (
           <section className="grp" data-plan>
-            {rows.map((r, i) => (
-              <div className="row" key={r.id}>
-                <span>{r.cueLabel}</span>
-                <span className={'val' + (r.handled ? ' ok' : i === firstOpen ? ' next' : '')}>{r.handled ? 'Done' : i === firstOpen ? 'Next' : 'Later'}</span>
-              </div>
-            ))}
+            {rows.map((r, i) => {
+              const val = <span className={'val' + (r.handled ? ' ok' : i === firstOpen ? ' next' : '')}>{r.handled ? 'Done' : i === firstOpen ? 'Next' : 'Later'}</span>;
+              // A Guests row opens the Guests page; the rest stay in the current app for now.
+              return r.route && r.route.tab === 'Guests'
+                ? <button className="row go" key={r.id} data-plan-row="guests" onClick={() => push('guests')}><span>{r.cueLabel}</span>{val}</button>
+                : <div className="row" key={r.id}><span>{r.cueLabel}</span>{val}</div>;
+            })}
           </section>
         )}
 
@@ -199,14 +253,11 @@ export default function HostShellV4() {
 
       {tab === 'next' && sb && <div className="action"><button className="primary" onClick={() => setBudget(tierPick)}>Plan with {money(tierPick)}</button></div>}
       {/* Never a dead end (live check, 11/25/2026): the sample said "opens in the current app" with nothing to tap. */}
-      {tab === 'next' && !sb && next && <div className="action">{openInCurrent}</div>}
+      {tab === 'next' && !sb && next && next.guests && <div className="action"><button className="primary" onClick={() => push('guests')}>Open Guests</button></div>}
+      {tab === 'next' && !sb && next && !next.guests && <div className="action">{openInCurrent}</div>}
       {why && sb && <HowWeGotThese sb={sb} type={ev.type} onDone={() => setWhy(false)} />}
 
-      <nav className="tabbar" role="tablist">
-        {TABS.map(([id, label, d]) => (
-          <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}><Icon d={d} />{label}</button>
-        ))}
-      </nav>
+      {tabbar}
     </div>
   );
 }
