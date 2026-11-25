@@ -55,7 +55,7 @@ const scrollTop = (page) => page.locator('.vcard.open').first().evaluate((card) 
 test('typing in the open card’s phone field does not move the sheet', async ({ page }) => {
   await boot(page);
   // A person taps a field they can see: bring it on screen first, then measure.
-  const phone = page.locator('.vcard.open input[placeholder="phone"]').first();
+  const phone = page.locator('.vcard.open').first().getByLabel('Phone', { exact: true });
   await phone.scrollIntoViewIfNeeded();
   await phone.click();
   await page.waitForTimeout(300);
