@@ -160,6 +160,10 @@ export const settled = (page) =>
   page.waitForFunction(() => {
     const sp = document.querySelector('.splash');
     if (sp) {
+      // A leaving splash is transparent but still swallows taps until it
+      // unmounts, ~220ms later (styles.css, .splash-leaving, a ruled choice):
+      // a hit test in that window lands on the splash, not the app.
+      if (sp.classList.contains('splash-leaving')) return false;
       const cs = getComputedStyle(sp);
       if (cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0.01) return false;
     }
