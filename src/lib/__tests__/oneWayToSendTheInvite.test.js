@@ -84,3 +84,36 @@ test('sent another way: the first send is stamped and what went out kept; a copy
   expect(inviteSentFields({ ...ev, invitesSentAt: 'earlier' }, 'other', snap, 'now')).toEqual({ invitesSentMessage: snap });
   expect(inviteSentFields(ev, 'copy', snap, 'now')).toEqual({});
 });
+
+describe('the nudge', () => {
+  const { emailNudgeTo, nudgedEdit } = require('../inviteSend');
+  test('one guest’s nudge email: from the host, replies to the host, not marked as an invite', async () => {
+    commApi.createMessage.mockResolvedValue({ metadata: { delivery: { status: 'accepted' } } });
+    await expect(emailNudgeTo(ev, { id: 'g1', name: 'Ada', email: 'ada@example.test' }, { subject: 'Can you make it?', body: 'b', hostName: 'Rosa', replyTo: 'rosa@example.test' })).resolves.toEqual({ ok: true });
+    expect(commApi.createMessage).toHaveBeenCalledWith('cust-1', 'CLIENT', {
+      message_type: 'standard', author_role: 'planner', author_name: 'Rosa',
+      body: 'b', deliver_email: true, recipient_email: 'ada@example.test', recipient_name: 'Ada', subject: 'Can you make it?', reply_to: 'rosa@example.test',
+    });
+  });
+  test('its refusals, in words', async () => {
+    const cases = [
+      ['POST /x → 429', { ok: false, capped: true }],
+      ['POST /x → 410', { ok: false, error: 'they asked not to get emails about this event — text them instead' }],
+      ['POST /x → 403', { ok: false, error: 'not saved to your account yet' }],
+      ['Failed to fetch', { ok: false, error: 'no connection' }],
+      ['POST /x → 500', { ok: false, error: 'request failed' }],
+    ];
+    for (const [m, want] of cases) {
+      commApi.createMessage.mockRejectedValueOnce(new Error(m));
+      await expect(emailNudgeTo(ev, { email: 'a@b.test' }, { subject: 's', body: 'b' })).resolves.toEqual(want);
+    }
+    commApi.createMessage.mockResolvedValueOnce({ metadata: { delivery: { status: 'failed' } } });
+    await expect(emailNudgeTo(ev, { email: 'a@b.test' }, { subject: 's', body: 'b' })).resolves.toEqual({ ok: false, error: 'the email service didn’t take it' });
+  });
+  test('the nudge is recorded on each guest it reached, with no line', () => {
+    const r = nudgedEdit(ev, [{ id: 'g2' }], 'text', '2026-11-25T18:00:00.000Z');
+    expect(r.patch.guests[1]).toEqual({ id: 'g2', name: 'Bo', rsvp: '', nudgedAt: '2026-11-25T18:00:00.000Z', nudgedVia: 'text' });
+    expect(r.patch.guests[0]).toEqual(ev.guests[0]);
+    expect(r.msg).toBe(null);
+  });
+});

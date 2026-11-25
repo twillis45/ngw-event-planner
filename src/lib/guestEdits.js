@@ -119,3 +119,16 @@ export function giftDetailEdit(event, detail) {
   const gw = (event && event.giftWish && typeof event.giftWish === 'object') ? event.giftWish : {};
   return { patch: { giftWish: { mode: gw.mode, detail } }, msg: null };
 }
+
+/** Lock the count: at the confirmed yeses ('yes') or at the number planned around ('planned'). */
+export function lockCountEdit(n, why) {
+  return {
+    patch: { guestCount: n, guestMode: 'count' },
+    msg: why === 'yes' ? 'Count set at ' + n + ' — your confirmed yeses. Food and seats now size to it.' : 'Count set at ' + n + ' — the number you planned around.',
+  };
+}
+
+/** Reopen a locked count. */
+export function reopenCountEdit() {
+  return { patch: { guestCount: '' }, msg: 'Count reopened — settle it when the maybes answer.' };
+}

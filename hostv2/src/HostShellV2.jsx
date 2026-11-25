@@ -42,8 +42,8 @@ import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaR
 // the legacy body as the default until parity closes.
 import { PeopleHero, AttendanceDecision, StillUnknown, OneMove, GetResponses, PeopleRail, SectionHead } from './PeopleSurface';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
-import { replyLinkUrl, emailInviteTo, invitesReachedEdit, inviteSentFields } from '@app/lib/inviteSend';
-import { countEdit, modeEdit, addNamesEdit, rsvpEdit, removeGuestEdit, replyByEdit } from '@app/lib/guestEdits';
+import { replyLinkUrl, emailInviteTo, invitesReachedEdit, inviteSentFields, emailNudgeTo, nudgedEdit } from '@app/lib/inviteSend';
+import { countEdit, modeEdit, addNamesEdit, rsvpEdit, removeGuestEdit, replyByEdit, lockCountEdit, reopenCountEdit } from '@app/lib/guestEdits';
 import { saveCustomEvents, patchSavedEvent, exportCustomEvents, listBackups, restoreBackup, importCustomEvents, durabilityStatus, readCustomEvents } from '@app/lib/customEventStore';
 import { buildCrabProcurement } from '@app/lib/procurement';
 import { buildAssembleRevealStages, unresolvedBlockerStages } from '@app/lib/assembleRevealEngines';
@@ -10414,7 +10414,7 @@ export default function HostShellV2() {
         return (
           <div className="chips hc-row">
             <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>Confirmed at {confirmedAt}</span>
-            <button className="chip" onClick={() => patchEvent({ guestCount: '' }, 'Count reopened — settle it when the maybes answer.')}>Reopen the count</button>
+            <button className="chip" onClick={() => { const ed = reopenCountEdit(); patchEvent(ed.patch, ed.msg); }}>Reopen the count</button>
             <button className="chip" onClick={() => { patchEvent({ guestMode: 'list' }, 'Switched to a guest list — the roster drives the count now.'); setSheet({ kind: 'guests' }); }}>Switch to a guest list</button>
           </div>
         );
@@ -10422,12 +10422,12 @@ export default function HostShellV2() {
       return (
         <div className="chips hc-row">
           {yes > 0 && (
-            <button className="chip" onClick={() => patchEvent({ guestCount: yes, guestMode: 'count' }, 'Count set at ' + yes + ' — your confirmed yeses. Food and seats now size to it.')}>
+            <button className="chip" onClick={() => { const ed = lockCountEdit(yes, 'yes'); patchEvent(ed.patch, ed.msg); }}>
               Set it at {yes} — confirmed yeses
             </button>
           )}
           {planned > 0 && planned !== yes && (
-            <button className="chip" onClick={() => patchEvent({ guestCount: planned, guestMode: 'count' }, 'Count set at ' + planned + ' — the number you planned around.')}>
+            <button className="chip" onClick={() => { const ed = lockCountEdit(planned, 'planned'); patchEvent(ed.patch, ed.msg); }}>
               Set it at {planned} — as planned
             </button>
           )}
@@ -23745,28 +23745,15 @@ export default function HostShellV2() {
               const sendNudgeTo = async (g) => {
                 const draftSubject = (draftRsvpChase(event, profile) || {}).subject || 'Can you make it?';
                 const { subject, body } = inviteSubjectAndBody(shownDraft(), draftSubject);
-                try {
-                  const res = await commApi.createMessage(event.id, 'CLIENT', {
-                    message_type: 'standard', author_role: 'planner',
-                    author_name: (profile && profile.name) || 'Your host',
-                    body, deliver_email: true, recipient_email: g.email, recipient_name: g.name || undefined, subject,
-                    ...(((session && session.user && session.user.email) || '').trim()
-                      ? { reply_to: String(session.user.email).trim() } : {}),
-                  });
-                  const r = messageEmailResult(res, null);
-                  return r.ok ? { ok: true } : { ok: false, error: 'the email service didn’t take it' };
-                } catch (e) {
-                  const r = messageEmailResult(null, e);
-                  if (r.kind === 'capped') return { ok: false, capped: true };
-                  if (r.kind === 'stopped') return { ok: false, error: 'they asked not to get emails about this event — text them instead' };
-                  if (r.kind === 'refused') return { ok: false, error: 'not saved to your account yet' };
-                  return { ok: false, error: r.kind === 'network' ? 'no connection' : 'request failed' };
-                }
+                // The email and its refusals are lib/inviteSend's, the same as hostv4's.
+                return emailNudgeTo(event, g, { subject, body, hostName: profile && profile.name,
+                  replyTo: (session && session.user && session.user.email) || '' });
               };
               // Recorded on the guest: when, and how (an email the service took,
               // or a text the host says they sent). Never a delivery claim.
               const reachNudge = (reached, via) => {
-                patchEvent({ guests: markNudged(event.guests || [], reached, via, new Date().toISOString()) }, null, { noUndo: true });
+                const ed = nudgedEdit(event, reached, via, new Date().toISOString());
+                patchEvent(ed.patch, ed.msg, { noUndo: true });
               };
               // ── THE INVITE MESSAGE (owner, 11/24/2026: renders s2-3 to s2-6) ──
               const mode = sheet.mode || null;

@@ -11,6 +11,8 @@ import { checkRsvpCapability } from './api/rsvp';
 import { commApi } from './commApi';
 import { publicAppUrl } from './publicAppUrl';
 import { markInvited } from './inviteBatch';
+import { markNudged } from './replyNudge';
+import { messageEmailResult } from './appEmail';
 
 /** The public reply page for this plan. */
 export const replyLinkUrl = (event) => publicAppUrl() + '?rsvp=' + encodeURIComponent((event && (event.rsvpCode || event.id)) || '');
@@ -73,4 +75,33 @@ export function invitesReachedEdit(event, reached, via, at, snapshot) {
 export function inviteSentFields(event, channel, snapshot, at) {
   if (channel === 'copy') return {};
   return { ...((event && event.invitesSentAt) ? {} : { invitesSentAt: at }), invitesSentMessage: snapshot };
+}
+
+/**
+ * Email the RSVP nudge to one guest (the reviewed words, its reply link checked
+ * when the sheet opened). Same answers as the invite: ok, capped, or an error
+ * in words.
+ */
+export async function emailNudgeTo(event, guest, { subject, body, hostName, replyTo } = {}) {
+  try {
+    const res = await commApi.createMessage(event.id, 'CLIENT', {
+      message_type: 'standard', author_role: 'planner',
+      author_name: hostName || 'Your host',
+      body, deliver_email: true, recipient_email: guest.email, recipient_name: guest.name || undefined, subject,
+      ...(String(replyTo || '').trim() ? { reply_to: String(replyTo).trim() } : {}),
+    });
+    const r = messageEmailResult(res, null);
+    return r.ok ? { ok: true } : { ok: false, error: 'the email service didn’t take it' };
+  } catch (e) {
+    const r = messageEmailResult(null, e);
+    if (r.kind === 'capped') return { ok: false, capped: true };
+    if (r.kind === 'stopped') return { ok: false, error: 'they asked not to get emails about this event — text them instead' };
+    if (r.kind === 'refused') return { ok: false, error: 'not saved to your account yet' };
+    return { ok: false, error: r.kind === 'network' ? 'no connection' : 'request failed' };
+  }
+}
+
+/** The nudge on each guest it reached: when, and how. Never a delivery claim. */
+export function nudgedEdit(event, reached, via, at) {
+  return { patch: { guests: markNudged((event && event.guests) || [], reached, via, at) }, msg: null };
 }

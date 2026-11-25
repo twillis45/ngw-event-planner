@@ -85,3 +85,10 @@ test('saving the invite words sends nothing, and says so', () => {
   const r = saveDraftEdit({ body: 'Hi', voice: 'warmer', edited: false, line: 'Come!', now: '2026-11-25T18:00:00.000Z' });
   expect(r).toEqual({ patch: { inviteMessageDraft: { body: 'Hi', voice: 'warmer', savedAt: '2026-11-25T18:00:00.000Z', edited: false, line: 'Come!' } }, msg: 'Draft saved — nothing was sent.' });
 });
+
+test('locking the count, and reopening it', () => {
+  const { lockCountEdit, reopenCountEdit } = require('../guestEdits');
+  expect(lockCountEdit(14, 'yes')).toEqual({ patch: { guestCount: 14, guestMode: 'count' }, msg: 'Count set at 14 — your confirmed yeses. Food and seats now size to it.' });
+  expect(lockCountEdit(20, 'planned')).toEqual({ patch: { guestCount: 20, guestMode: 'count' }, msg: 'Count set at 20 — the number you planned around.' });
+  expect(reopenCountEdit()).toEqual({ patch: { guestCount: '' }, msg: 'Count reopened — settle it when the maybes answer.' });
+});
