@@ -102,13 +102,13 @@ export const COST_SOURCES = {
   'soda-12pack-2026': {
     org: 'LatestCost, "12 Pack Soda Pricing Guide for U.S. Shoppers 2026" (fetched)',
     url: 'https://latestcost.com/12-pack-soda-pricing-u-s-shoppers/',
-    fetched: '2026-08-15',
+    fetched: '2026-11-25',
     claim: 'A 12-pack of soda runs $3.00-6.50 (average $4.50), which is $0.25-0.60 per can with an average of $0.38. Store brand $2.50-5.00; craft or specialty $6.00-14.00. By region: urban $4.50-6.50, suburban $3.50-5.50, rural $3.00-5.00; Northeast and South run $5.50-7.00 while the Midwest and West Coast sit at $3.50-5.50 on discount-chain competition. Promotions cut 10-25%.',
   },
   'bottledwater-case-2026': {
     org: 'LatestCost pack-of-water pricing and 2026 bulk-beverage listings (listing - figures read from search results)',
     url: 'https://latestcost.com/cost-pack-water-bottles/',
-    fetched: '2026-08-15',
+    fetched: '2026-11-25',
     claim: 'A 24-pack of 16.9oz bottled water runs $4-7 on sale and $6-9 at everyday pricing; 40-48 bottle packs $8-15, premium brands $20+. Per bottle that is $0.13-0.25 for basic brands in a larger pack, rising to $0.50-1.00+ for premium.',
   },
   // ── CLEANUP KIT (registered 2026-08-15) ────────────────────────────────────
@@ -121,14 +121,14 @@ export const COST_SOURCES = {
   'costco-cleaning-2026': {
     org: 'Wealthy Single Mommy, "16 Costco cleaning supply deals" - Kirkland Signature shelf prices (fetched)',
     url: 'https://www.wealthysinglemommy.com/costco-cleaning-supply-deals',
-    fetched: '2026-08-15',
+    fetched: '2026-11-25',
     claim: 'Costco 2026: 200 13-gallon drawstring trash bags $20.42 (about 10 cents a bag); 12 rolls of paper towels at 160 sheets each $23.60 (about $1.97 a roll); dish soap starter spray plus two 21.5oz refills $14.74; five 85-count disinfecting wipe canisters $21.33 (about $4.27 each); 24 sponges $12.47. The source notes prices vary by store.',
   },
   'trashbags-retail-2026': {
     org: 'Grocery and big-box trash-bag listings, 2026 (listing - figures read from search results)',
     url: 'https://www.walmart.com/browse/household-essentials/trash-bags/1115193_1073264_1149385',
-    fetched: '2026-08-15',
-    claim: 'Retail (non-warehouse) tall kitchen bags: 120-count Hefty 13-gallon $17.99, or about $13.49 per 120 on a subscribe-and-save bulk price - roughly 11-15 cents a bag against the warehouse 10 cents. Confirms the warehouse-to-grocery spread on the single largest component of a cleanup kit.',
+    fetched: '2026-11-25',
+    claim: 'Re-check 2026-11-25 at Walmart: Great Value 13-gallon 40-count $6.78 (17.0c a bag); Husky 120-count $13.47 (11.2c). As cited 2026-08-15, retail (non-warehouse) tall kitchen bags: 120-count Hefty 13-gallon $17.99, or about $13.49 per 120 on a subscribe-and-save bulk price - roughly 11-15 cents a bag against the warehouse 10 cents. Confirms the warehouse-to-grocery spread on the single largest component of a cleanup kit.',
   },
   // ── DISPOSABLE TABLEWARE, per guest set (registered 2026-08-15) ────────────
   // The largest reusable family left: 17 free per-guest-set lines across the
@@ -139,14 +139,14 @@ export const COST_SOURCES = {
   'disposables-bulk-2026': {
     org: 'DTOCS, "Bulk Disposable Plates for Large Seasonal Gatherings" - a host costing a 200-person event (fetched)',
     url: 'https://dtocs.com/blogs/news/bulk-disposable-plates-for-large-seasonal-gatherings-everything-i-learned-hosting-200-people',
-    fetched: '2026-08-15',
+    fetched: '2026-11-25',
     claim: 'Per plate 2026: basic white paper at a grocery store $0.25-0.40; the same from bulk restaurant supply $0.08-0.15; coated paper $0.10-0.12 bulk; good foam $0.09 bulk; premium plastic $0.15-0.25; compartment plates $0.12-0.18; compostable or bamboo $0.18-0.35. Worked example for 200 plates: grocery $50-80 against bulk supply $16-30. The article warns that bulk is not automatically cheaper and that cost-per-plate must be computed before buying.',
   },
   'disposables-partyqty-2026': {
-    org: '2026 party-supply planning guides and bulk retail listings (listing - figures read from search results)',
+    org: '2026 party-supply planning guides and bulk retail listings (listing - figures read from search results; re-check 2026-11-25 read Walmart and Sams Club 300-count listings from search results)',
     url: 'https://www.webstaurantstore.com/48825/disposable-party-supplies.html',
-    fetched: '2026-08-15',
-    claim: 'Basic paper plates run about $18 per 300 (roughly 6 cents each) in bulk packs. Planning norm for a full place setting is 2-3 plates per guest across appetizer, main and dessert, 2-3 cups, one set of cutlery per course and 2-3 napkins, plus 10-15% extra for spills and unexpected guests. Buying cups, utensils and napkins in bulk together saves $100-200 across a party.',
+    fetched: '2026-11-25',
+    claim: 'Basic paper plates run about $18 per 300 (roughly 6 cents each) in bulk packs; on 2026-11-25 300-count packs listed at $12.88-20.98 (about 4-7 cents a plate) at Walmart and Sams Club. Planning norm for a full place setting is 2-3 plates per guest across appetizer, main and dessert, 2-3 cups, one set of cutlery per course and 2-3 napkins, plus 10-15% extra for spills and unexpected guests. Buying cups, utensils and napkins in bulk together saves $100-200 across a party.',
   },
   // ── WINE, per bottle (registered 2026-08-15) ───────────────────────────────
   // Registered once and applied to every uncited per-bottle wine line in the
@@ -162,7 +162,7 @@ export const COST_SOURCES = {
   'wine-retail-2026': {
     org: 'LatestCost, "Average Bottle of Wine Cost 2026" (fetched)',
     url: 'https://latestcost.com/average-bottle-of-wine-cost/',
-    fetched: '2026-08-15',
+    fetched: '2026-11-25',
     claim: 'US retail 2026 by tier: everyday table wine (the grocery shelf) $8-15; mid-range $15-30; premium $30-100+. By type: red $12-40, white $10-30, rose $10-25. Sparkling $20-60. Retail stores hold $8-25 overall while restaurant markups run $30-100+; online $10-40 before shipping.',
   },
   // NAME CORRECTED TO MATCH THE URL (11/20/2026, seasonal leftovers). The URL is
@@ -176,7 +176,7 @@ export const COST_SOURCES = {
   'wine-statewide-2026': {
     org: "Today's Homeowner, \"This Is How Much a Bottle of Wine Costs in Your State\" (fetched; page last updated March 15, 2025)",
     url: 'https://todayshomeowner.com/blog/cost/wine-cost-state/',
-    fetched: '2026-08-15',
+    fetched: '2026-11-25',
     claim: 'Average price of a 750ml bottle by state, from three wines priced at retailers in up to 10 ZIP codes per state. Cheapest Massachusetts $10.97, then Maryland $11.14, Delaware $11.31, New Mexico $11.43, Connecticut $11.47; most expensive Mississippi $15.51, then Georgia $15.16 — the only two states above $15.',
   },
   // ── BACHELORETTE (registered 2026-08-15) ───────────────────────────────────
@@ -262,14 +262,14 @@ export const COST_SOURCES = {
   'paperlust-weddingcake-2026': {
     org: 'Paperlust, "How Much Does a Wedding Cake Cost? (2026 Guide)" (fetched)',
     url: 'https://paperlust.co/blog/how-much-does-a-wedding-cake-cost/',
-    fetched: '2026-08-15',
+    fetched: '2026-11-25',
     claim: 'Per slice 2026: grocery-store bakery $1-5; standard custom bakery $3-8; designer/fondant and boutique studio $8-20+. Whole cakes: Costco full sheet $25-30 (~48 servings); Publix full sheet $80-95 (75-80 servings); Publix tiered $150-800. National average wedding cake ~$540 (The Knot Real Weddings), typical budgets $300-700.',
   },
   'retail-sheetcake-2026': {
     org: 'Costco / Walmart / Publix bakery sheet-cake pricing (listing — figures read from 2026 price-guide search results)',
     url: 'https://costcoguides.com/costco-bakery-menu-prices/',
-    fetched: '2026-08-15',
-    claim: 'Warehouse and supermarket sheet cakes 2026: Costco half-sheet $24.99 feeding ~48; Publix quarter sheet from ~$24 serving 20-30; Walmart quarter-sheet or 8-inch rounds $25-45. A single-tier rectangular sheet cake with a custom design spans $25-300 by size.',
+    fetched: '2026-11-25',
+    claim: 'Re-check 2026-11-25 (page updated 2026-11-07): Costco half-sheet $27.99 feeding 48, up from $24.99 in early 2025; 10-inch round about $17.99 feeding 12-16. As cited 2026-08-15: warehouse and supermarket sheet cakes 2026: Costco half-sheet $24.99 feeding ~48; Publix quarter sheet from ~$24 serving 20-30; Walmart quarter-sheet or 8-inch rounds $25-45. A single-tier rectangular sheet cake with a custom design spans $25-300 by size.',
   },
   'paperlust-centerpieces-2026': {
     org: 'Paperlust, "Wedding Centerpieces: 50+ Ideas + Cost Breakdown (2026 Trends)" (fetched)',
@@ -373,13 +373,13 @@ export const COST_SOURCES = {
   'zola-favors-2026': {
     org: 'Zola 2026 Registry & Gifting Survey, as reported and quoted by Paperlust, "How Much Do Wedding Favors Cost?" (2026 guide)',
     url: 'https://paperlust.co/blog/how-much-do-wedding-favors-cost/',
-    fetched: '2026-08-14',
+    fetched: '2026-11-25',
     claim: 'US wedding favors, 2026: the common spend is $1–5 per guest, with $3 the typical mid-range figure. 56% of couples in Zola\'s 2026 Registry & Gifting Survey kept favors at $5 or less per guest. Tiers as published: budget ≤$1, mid-range $2–3, premium $5+.',
   },
   'theknot-realweddings-2025': {
     org: 'The Knot 2025 Real Weddings Study (couples married 2024; ~17,000 respondents), via theknot.com',
     url: 'https://www.theknot.com/content/average-cost-wedding-favors',
-    fetched: '2026-08-14',
+    fetched: '2026-11-25',
     claim: 'Favors AND gifts COMBINED average $460 (this figure includes wedding-party gifts, so the favors-only portion is lower). By guest count: ≤50 guests $301, >100 guests $529. By region: Northeast $473, Mid-Atlantic $591, Midwest $409, South $415, West $419, destination $702. Corroborates the per-guest band from the total side; it does NOT state a per-guest favors figure on its own.',
   },
   // ── CORROBORATION FOR THE PROTEIN AND CATERING LINES (added 2026-08-16) ────
@@ -426,13 +426,13 @@ export const COST_SOURCES = {
   'ice-retail-2026': {
     org: 'Hip2Save — "Where to Buy Ice from Everywhere & Best Prices" (fetched; per-retailer survey)',
     url: 'https://hip2save.com/tips/where-to-buy-ice/',
-    fetched: '2026-08-16',
+    fetched: '2026-11-25',
     claim: 'Bagged ice per pound 2026 by retailer: BJs 20lb $4.49 (23c/lb); 7-Eleven 20lb $4.79 (23c); Giant 20lb $4.99 (25c); Walmart 5-10lb $2.33 (as low as 23c); Albertsons 10lb $2.99 (30c); Kroger 7lb crushed $2.19 (31c); Publix 16lb $4.99 (31c); Lowes 7lb $2.88 (41c); Safeway 16lb $7.29 (45c); bulk Ice2U 20lb $3.00 (15c). Grocery and gas-station bags cluster 23-31c/lb; small bags and hardware stores run higher.',
   },
   'ice-warehouse-2026': {
     org: 'Eat Healthy 365 — "How Much is a Bag of Ice at Sams Club? (2026 Price)" (fetched)',
     url: 'https://eathealthy365.com/sams-club-ice-prices-your-complete-2026-buying-guide/',
-    fetched: '2026-08-16',
+    fetched: '2026-11-25',
     claim: 'A 20lb bag of Members Mark ice runs $1.75-2.50 at Sams Club (most commonly about $2.00), which is 10-12c per pound; Costco is near-identical at $1.80-2.50 or about 11c. Walmart 10lb is $2.50 (25c/lb) and a 7lb gas-station bag is about $3.00 (43c/lb) — convenience ice is more than four times warehouse ice per pound.',
   },
   // ── BEER, WHICH WAS WRITTEN OFF TOO EARLY (registered 2026-08-16) ─────────
@@ -449,13 +449,13 @@ export const COST_SOURCES = {
   'beer-retail-2026': {
     org: 'LatestCost — "Average Cost of Beer 2026" (fetched; states its figures are ranges, not confirmed year-end prices)',
     url: 'https://latestcost.com/average-cost-of-beer/',
-    fetched: '2026-08-16',
-    claim: 'Per 12oz unit 2026: domestic lager $0.80-1.20; imported $1.20-2.50; craft $1.50-3.00. A domestic six-pack runs $6.00-10.00 depending on state (Ohio at the low end, California at the high end), and a 24-pack case is the best per-unit price though no case figure is given.',
+    fetched: '2026-11-25',
+    claim: 'Per 12oz unit 2026: domestic lager $0.80-1.20 at retail (its summary table widens this to $0.80-1.50 across formats); imported $1.20-2.50; craft $1.50-3.00. A domestic six-pack runs $6.00-10.00 depending on state (Ohio at the low end, California at the high end), and a 24-pack case is the best per-unit price though no case figure is given.',
   },
   'beer-budget-2026': {
     org: 'PorchDrinking — "Best Cheap Beer for 2026" (fetched; range estimates, varies by state and retailer)',
     url: 'https://porchdrinking.com/best-cheap-beer/',
-    fetched: '2026-08-16',
+    fetched: '2026-11-25',
     claim: 'Domestic lagers run about $20-22 for a 24-pack in many states in 2026; value brands go lower (Hamms and Genesee 30-packs about $15-20, Miller High Life often under $1 per 12oz in large packs). Mid-tier 12-packs: Yuengling $12-16, Narragansett $12-15, Blue Moon $15-19, Sierra Nevada Hazy Little Thing about $19-20 — so craft runs roughly 1.5-2x domestic at the same pack size.',
   },
   // ── HARD SELTZER (registered 2026-08-16) ──────────────────────────────────
@@ -993,8 +993,15 @@ export const COST_SOURCES = {
   'birthdaycandles-lighters-2026': {
     org: 'Target, Oasis Supply, Ace Hardware and Zippo listings (all fetched)',
     url: 'https://www.target.com/p/celebration-candles-24ct-favorite-day-8482/-/A-81917107',
-    fetched: '2026-08-18',
-    claim: 'Birthday candles and lighters 2026. CANDLES - thin striped wax, a distinct product from pillars, votives or LEDs: a 24-count retail pack $1.19 ($0.05 each); a 24-count wholesale pack $0.69 ($0.029 each). LIGHTERS: a disposable butane multi-purpose lighter $4.19-5.59; a refillable flex-neck lighter $26.95 shipped unfilled, a different class needing fuel separately.',
+    fetched: '2026-11-25',
+    claim: 'Birthday candles and lighters 2026 (the Target 24-count candle pack re-fetched 2026-11-25 at $1.19; the lighter figures are as of 2026-08-18). CANDLES - thin striped wax, a distinct product from pillars, votives or LEDs: a 24-count retail pack $1.19 ($0.05 each); a 24-count wholesale pack $0.69 ($0.029 each). LIGHTERS: a disposable butane multi-purpose lighter $4.19-5.59; a refillable flex-neck lighter $26.95 shipped unfilled, a different class needing fuel separately.',
+  },
+  'lighters-retail-2026': {
+    org: 'Target and Walmart BIC multi-purpose lighter listings (listing - figures read from search results)',
+    url: 'https://www.target.com/p/bic-multi-purpose-classic-edition-and-extra-long-lighters-2ct/-/A-14776969',
+    fetched: '2026-11-25',
+    sourceClass: 'commercial_practitioner',
+    claim: 'A single disposable multi-purpose (utility) lighter is $3.69-4.19 at Target and $4.12 at Walmart; two-packs run $5.49-6.49 ($2.75-3.25 each) at Target and $6.34 at Walmart. Ace Hardware listing showed no price.',
   },
   'namebadges-adhesive-2026': {
     org: 'Quill and Avery direct listings for adhesive name badges (both fetched)',
@@ -1113,14 +1120,14 @@ export const COST_SOURCES = {
   'beverage-singleserve-2026': {
     org: 'Instacart storefront listings with Walgreens (Instacart fetched; Walgreens search-results after a 403)',
     url: 'https://www.instacart.com/products/16706881-coke-classic-soda-soft-drink-20-oza',
-    fetched: '2026-08-18',
-    claim: 'SINGLE-SERVE bought individually 2026: a 20oz Coca-Cola bottle is $2.29-3.39 depending on store ($0.17 a fluid ounce at one), against $2.99 at a pharmacy chain. For contrast a 12-pack of 12oz cans is $12.49, about $1.04 a can. A single bottle therefore costs two to three times the multipack unit and the two must never be interconverted.',
+    fetched: '2026-11-25',
+    claim: 'SINGLE-SERVE bought individually 2026: a 20oz Coca-Cola bottle is $2.29-3.39 depending on store ($2.48 at a Walmart storefront on 2026-11-25) ($0.17 a fluid ounce at one), against $2.99 at a pharmacy chain. For contrast a 12-pack of 12oz cans is $12.49, about $1.04 a can. A single bottle therefore costs two to three times the multipack unit and the two must never be interconverted.',
   },
   'juice-rtd-2026': {
     org: 'Instacart and Kroger listings for ready-to-drink juice (Instacart fetched; Kroger search-results after two timeouts)',
     url: 'https://www.instacart.com/products/16480535-tropicana-pure-premium-original-no-pulp-orange-juice-128-fl-oz',
-    fetched: '2026-08-18',
-    claim: 'READY-TO-DRINK juice 2026, which is NOT frozen concentrate. Tropicana 100% orange juice, 128oz gallon, $10.99-14.09 - about $0.69-0.88 per 8oz serving. A 52oz carton of Simply is $4.99-6.79 ($0.77-1.04 a serving). An orange juice DRINK such as SunnyD is a different product at $3.68-4.79 a gallon ($0.23-0.30 a serving). By comparison, BLS frozen concentrate reconstitutes to about $0.60 a glass, so ready-to-drink carries a real premium.',
+    fetched: '2026-11-25',
+    claim: 'READY-TO-DRINK juice 2026, which is NOT frozen concentrate. Tropicana 100% orange juice, 128oz gallon, $10.97-14.09 ($10.97 at a Walmart storefront, from $12.49 at five other stores, on 2026-11-25) - about $0.69-0.88 per 8oz serving. A 52oz carton of Simply is $4.99-6.79 ($0.77-1.04 a serving). An orange juice DRINK such as SunnyD is a different product at $3.68-4.79 a gallon ($0.23-0.30 a serving). By comparison, BLS frozen concentrate reconstitutes to about $0.60 a glass, so ready-to-drink carries a real premium.',
   },
   'sparkling-na-2026': {
     org: 'Instacart, Target, Athletic Brewing direct and The Zero Proof (all fetched except Target, search-results after a 404)',
@@ -1273,10 +1280,10 @@ export const COST_SOURCES = {
     claim: 'LED flameless candles 2026 divide sharply by tier: commodity multipacks are $30.00 for 8 ($3.75 each) or $22.99-25.99 for 3 ($7.66-8.66 each), while a premium moving-flame pillar is $33.99 EACH - an order of magnitude apart, and not to be merged. Instant-read thermometers: budget $13-14, mid $35-40 (ThermoPop 2), premium $94-100 (Thermapen ONE), with two publishers converging on all three tiers.',
   },
   'warehouse-trays-2026': {
-    org: 'Chowhound and The Takeout on the Costco wing tray, with WarehouseRunner and Instacart on Kirkland pantry items (all fetched except WarehouseRunner, which 403d and is search-results)',
+    org: 'Chowhound and The Takeout on the Costco wing tray, with WarehouseRunner and Instacart on Kirkland pantry items (all fetched except WarehouseRunner, which 403d and is search-results); re-checked 2026-11-25 with The Daily Meal on the same tray (fetched)',
     url: 'https://www.chowhound.com/2083221/chicken-wings-costco-party-tray-super-bowl/',
-    fetched: '2026-08-18',
-    claim: 'Warehouse party food 2026. WING TRAY: 8 pounds, about 70-72 pieces, about $47 - roughly $5.88/lb and $0.65-0.67 a wing; this is the one tray with a genuine published piece count, and two publishers agree on weight and price while differing on count. Kirkland cookies 24-count $9.99 warehouse ($0.42 each) against $12.43 on a delivery marketplace ($0.52) - a 24% channel markup on the identical SKU. Kirkland mixed nuts 2.5lb $15.99 ($6.40/lb). Kirkland steak strips 12oz $11.89 warehouse ($15.85/lb) against $16.16 delivered ($21.55/lb) - a 36% spread.',
+    fetched: '2026-11-25',
+    claim: 'Warehouse party food 2026. WING TRAY: 8 pounds, about 70-72 pieces, about $47 - roughly $5.88/lb and $0.65-0.67 a wing; this is the one tray with a genuine published piece count, and two publishers agree on weight and price while differing on count; The Daily Meal (re-check 2026-11-25) gives the same tray at $5.99/lb, about 70 wings for about $47, against Kirkland raw party wings at $3.99/lb. Kirkland cookies 24-count $9.99 warehouse ($0.42 each) against $12.43 on a delivery marketplace ($0.52) - a 24% channel markup on the identical SKU. Kirkland mixed nuts 2.5lb $15.99 ($6.40/lb). Kirkland steak strips 12oz $11.89 warehouse ($15.85/lb) against $16.16 delivered ($21.55/lb) - a 36% spread.',
   },
   'deli-trays-2026': {
     org: 'Sporked survey of supermarket deli platters, with a Publix product listing (Sporked fetched; Publix search-results)',
@@ -1521,14 +1528,14 @@ export const COST_SOURCES = {
   'chips-bls-2026': {
     org: 'US Bureau of Labor Statistics CPI Average Price Data, potato chips per 16 ounces (series APU0000718311), via FRED (listing - figures read from search results)',
     url: 'https://fred.stlouisfed.org/series/APU0000718311',
-    fetched: '2026-08-18',
-    claim: 'BLS US city average for potato chips was $6.559 per 16 ounces in July 2026, i.e. about $6.56 a pound.',
+    fetched: '2026-11-25',
+    claim: 'BLS US city average for potato chips was $6.559 per 16 ounces in July 2026 and $6.638 in October 2026 (FRED, fetched 2026-11-25), i.e. about $6.56-6.75 a pound across July-October.',
   },
   'chips-retail-2026': {
     org: 'Walmart, Costco and supermarket snack listings with unit pricing, 2026 (listing - figures read from search results)',
     url: 'https://www.walmart.com/c/kp/potato-chips',
-    fetched: '2026-08-18',
-    claim: 'Snack unit pricing 2026: Great Value wavy potato chips party size 13oz $2.96 (22.8c/oz, about $3.64/lb); Lays Classic party size 13oz $4.77 (36.7c/oz, about $5.87/lb); Rold Gold pretzel sticks and tiny twists 16oz $3.98 each (24.9c/oz). Multipacks: Costco Boulder Canyon 36x1oz $20.49; Snack Factory Pretzel Crisps 24x1.5oz $18.79; a supermarket 18x1oz variety pack $6.99-10.89 depending on chain.',
+    fetched: '2026-11-25',
+    claim: 'Snack unit pricing 2026: Great Value wavy potato chips party size 13oz $2.96 (22.8c/oz, about $3.64/lb; on rollback at $2.50, about $3.08/lb, on 2026-11-25); Lays Classic party size 13oz $4.77 (36.7c/oz, about $5.87/lb); Rold Gold pretzel sticks and tiny twists 16oz $3.98 each (24.9c/oz). Multipacks: Costco Boulder Canyon 36x1oz $20.49; Snack Factory Pretzel Crisps 24x1.5oz $18.79; a supermarket 18x1oz variety pack $6.99-10.89 depending on chain.',
   },
   'watermelon-market-2026': {
     org: 'Selina Wamucii US watermelon market prices, updated monthly (listing - figures read from search results)',
@@ -1581,7 +1588,7 @@ export const COST_SOURCES = {
   'wings-extension-2026': {
     org: 'Alabama Cooperative Extension System, "Chicken Wings Market Starts Strong in 2026" - land-grant extension market report (fetched)',
     url: 'https://www.aces.edu/blog/topics/farm-management/chicken-wings-market-starts-strong-in-2026/',
-    fetched: '2026-08-18',
+    fetched: '2026-11-25',
     claim: 'Chicken wings 2026: wholesale started the year below $1.00/lb and has risen to slightly above $1.10/lb as of early February. Southeast retail average for conventional fresh party wings is $2.49/lb, with IQF (frozen) slightly higher at $2.67/lb.',
   },
   'wings-retail-2026': {
@@ -1629,19 +1636,19 @@ export const COST_SOURCES = {
   'balloon-kits-2026': {
     org: 'Shimmer & Confetti balloon garland collection - fetched catalogue with per-kit pricing',
     url: 'https://shimmerandconfetti.com/collections/balloon-garland',
-    fetched: '2026-08-18',
-    claim: 'DIY balloon garland and arch kits 2026: a 10-foot pastel kit is $20.99; a 155-piece premium white/silver/gold/gray arch and garland kit is $36.99 (from $64.99); a custom kit with 5, 11 and 18-inch balloons is $89.99 at the top of the range. Standard 16-foot kits carry roughly 150+ balloons.',
+    fetched: '2026-11-25',
+    claim: 'Re-check 2026-11-25: 16-foot DIY kits $36.99-55.99 on sale; the custom kit $38.99-89.99. As cited 2026-08-18: a 10-foot pastel kit is $20.99; a 155-piece premium white/silver/gold/gray arch and garland kit is $36.99 (from $64.99); a custom kit with 5, 11 and 18-inch balloons is $89.99 at the top of the range. Standard 16-foot kits carry roughly 150+ balloons.',
   },
   'balloon-bulk-2026': {
     org: 'TableclothsFactory balloon arch kits and garlands - fetched wholesale catalogue',
     url: 'https://tableclothsfactory.com/collections/balloon-arch-kits-garlands',
-    fetched: '2026-08-18',
-    claim: 'Wholesale balloon pricing 2026: latex garland kits of 94-120 balloons run about $12.09 each and hold that price across the catalogue; 100-128 balloon assortment kits $5.49-9.59; foil balloon bouquet sets $1.89-4.19 for 5-6 balloons; a 19ft heavy-duty arch STAND holding up to 400 balloons is $51.69. The stand is reusable equipment, not a per-event consumable.',
+    fetched: '2026-11-25',
+    claim: 'Wholesale balloon pricing 2026: latex garland kits of 94-124 balloons run about $12.09 each (unchanged on 2026-11-25) and hold that price across the catalogue; 100-128 balloon assortment kits $5.49-9.59; foil balloon bouquet sets $1.89-4.19 for 5-6 balloons; a 19ft heavy-duty arch STAND holding up to 400 balloons is $51.69. The stand is reusable equipment, not a per-event consumable.',
   },
   'banner-retail-2026': {
     org: 'Dollar Tree happy-birthday banner listings (listing - figures read from search results; dollartree.com returned 503 and partycity.com 404 on direct fetch)',
     url: 'https://www.dollartree.com/happy-birthday-letter-banner-1-ct/326583',
-    fetched: '2026-08-18',
+    fetched: '2026-11-25',
     claim: 'A party-store happy-birthday banner is $1.25 at Dollar Tree, including foil letter banners and 2-count banner packs, and shoppers assemble complete birthday decoration sets there for under $10. Generic (non-personalised) party backdrops run about $9.99-25.99. Custom printed backdrops are a separate tier at $49-98 and are excluded from this claim.',
   },
   'linen-rental-2026': {
@@ -1693,8 +1700,8 @@ export const COST_SOURCES = {
   'foil-wrap-2026': {
     org: 'Target product listing, Reynolds Wrap aluminum foil, full size ladder with unit pricing (fetched)',
     url: 'https://www.target.com/p/reynolds-wrap-heavy-duty-aluminum-foil-130-sq-ft/-/A-47976048',
-    fetched: '2026-08-16',
-    claim: 'Aluminum foil at retail 2026, with Target unit pricing: standard 75 sq ft $5.99 ($0.08/sq ft); standard 200 sq ft $16.19 ($0.08); heavy duty 50 sq ft $5.99 ($0.12); heavy duty 130 sq ft $13.49 ($0.10); heavy duty wide 75 sq ft $10.19 ($0.14); non-stick 130 sq ft $15.19 ($0.12). So foil runs $0.08-0.14 per square foot and $6-16 a roll depending on size and grade.',
+    fetched: '2026-11-25',
+    claim: 'Aluminum foil at retail 2026, with Target unit pricing: standard 75 sq ft $5.99 ($0.08/sq ft); standard 200 sq ft $16.19 ($0.08); heavy duty 50 sq ft $5.99 ($0.12); heavy duty 130 sq ft $13.49 ($0.10), $16.49 ($0.13) on 2026-11-25; heavy duty wide 75 sq ft $10.19 ($0.14); non-stick 130 sq ft $15.19 ($0.12). So foil runs $0.08-0.14 per square foot and $6-16 a roll depending on size and grade.',
   },
   // ── THE PAPER-GOODS KIT, COMPONENT BY COMPONENT (2026-08-16) ──────────────
   //
@@ -1705,9 +1712,9 @@ export const COST_SOURCES = {
   // just been registered; the rest are here, all from listings that publish
   // per-unit pricing so a sum can be built rather than guessed.
   'disposable-kit-2026': {
-    org: 'Target listings for disposable table covers, foil pans, food storage bags and chafing fuel, all with per-unit pricing (fetched)',
+    org: 'Target listings for disposable table covers, foil pans, food storage bags and chafing fuel, all with per-unit pricing (fetched; on 2026-11-25 the search page returned no content and the $1.00 single 54x108 cover was re-read from search results)',
     url: 'https://www.target.com/s/disposable+plastic+tablecloth',
-    fetched: '2026-08-16',
+    fetched: '2026-11-25',
     claim: 'Kit components at retail 2026, with unit pricing: plastic table covers $1.00 each for a single 54x108 (multi-packs $21.99 per 32 to $29.99 per 12, decorative prints $2.50-3.50); disposable foil pans $1.18-4.45 each in small packs, or bulk at $22.99 per 50 8x8 and $33.99 per 30 9x13; gallon storage bags $0.09-0.26 per bag (Dealworthy 13ct $1.19, Hefty 38ct $4.99, Ziploc slider 28ct $6.69); Sterno canned chafing fuel $3.99 per 6.96oz can, $0.57 per fluid ounce.',
   },
   // ── CANDLES AND PROPANE (registered 2026-08-16) ───────────────────────────
@@ -1817,8 +1824,8 @@ export const COST_SOURCES = {
   'usda-meat-2026': {
     org: 'USDA ERS Meat Price Spreads / U.S. BLS retail food prices',
     url: 'https://www.ers.usda.gov/data-products/meat-price-spreads',
-    fetched: '2026-07-16',
-    claim: 'US retail, 2026: all-fresh beef ~$9.64/lb (record, +13% YoY); ground beef ~$5.63–6.83/lb; brisket ~$4.50/lb (range $2.50–8); pork chops ~$4.33/lb; chicken is the most affordable meat; premium beef cuts (ribeye ~$14.24/lb, strip ~$13.56/lb) run ~2–3x chicken — so a brisket/steak upgrade over a chicken/ribs base raises protein cost materially.',
+    fetched: '2026-11-25',
+    claim: 'BLS retail via the ERS retail-price file (updated 2026-11-10), October 2026: ground beef $6.76/lb, all pork chops $4.18/lb, boneless chicken breast $4.10/lb, whole chicken $2.03/lb, bone-in chicken legs $1.75/lb. Earlier reading, US retail, 2026: all-fresh beef ~$9.64/lb (record, +13% YoY); ground beef ~$5.63–6.83/lb; brisket ~$4.50/lb (range $2.50–8); pork chops ~$4.33/lb; chicken is the most affordable meat; premium beef cuts (ribeye ~$14.24/lb, strip ~$13.56/lb) run ~2–3x chicken — so a brisket/steak upgrade over a chicken/ribs base raises protein cost materially.',
   },
   'catering-perperson-2026': {
     org: 'The Catering Finder — Average Catering Cost Per Person 2026 (and corroborating 2026 catering guides)',
@@ -1931,29 +1938,29 @@ export const COST_SOURCES = {
   },
   // ── WAVE 7 (registered 2026-08-18) ──────────────────────────────────────
   'salad-kroger-2026': {
-    org: 'Kroger.com — Kroger Traditional Macaroni Salad, 48oz',
+    org: 'Kroger.com — Kroger deli salad tubs, 16oz and 48oz (search page fetched)',
     url: 'https://www.kroger.com/q/pasta+salad',
-    fetched: '2026-08-18',
-    claim: 'Kroger 48oz macaroni salad $3.99 (~$1.33/lb).',
+    fetched: '2026-11-25',
+    claim: 'Kroger Traditional Macaroni Salad 48oz $8.49 ($0.18/oz, ~$2.83/lb) and 16oz $3.99 ($3.99/lb); the 48oz mustard potato salad, egg mustard potato salad and creamy cole slaw are also $8.49. CORRECTION 2026-11-25: the earlier reading of "48oz $3.99 (~$1.33/lb)" paired the 48oz size with the 16oz price.',
   },
   'salad-walmart-2026': {
-    org: 'Walmart.com — Freshness Guaranteed Garden Pasta Salad, 14oz',
+    org: 'Walmart.com — Freshness Guaranteed Garden Pasta Salad, 14oz (re-check 2026-11-25 read from search results; the snapshot is undated)',
     url: 'https://www.walmart.com',
-    fetched: '2026-08-18',
-    claim: 'Walmart 14oz garden pasta salad $3.74 (~$4.27/lb). No retailer publishes an online per-lb deli-counter salad price with a stated serving count, so this and salad-kroger-2026 cover packaged tub salad only.',
+    fetched: '2026-11-25',
+    claim: 'Walmart 14oz garden pasta salad $3.74 (~$4.27/lb), with other options at $3.97 (~$4.54/lb). No retailer publishes an online per-lb deli-counter salad price with a stated serving count, so this and salad-kroger-2026 cover packaged tub salad only.',
   },
   'veggietray-publix-2026': {
-    org: 'Publix.com — Deli Garden Fresh Vegetable Platter, Large (112oz, serves 26-30)',
+    org: 'Publix.com — Deli Garden Fresh Vegetable Platter, Large (serves about 28 per the 2026-11-25 product page)',
     url: 'https://delivery.publix.com',
-    fetched: '2026-08-18',
-    claim: 'Publix large veggie platter, 112oz, $41.99, explicitly stated to serve 26-30 (~$1.40-1.60/person).',
+    fetched: '2026-11-25',
+    claim: 'Publix large veggie platter $41.99 as read 2026-08-18, then stated to serve 26-30 (~$1.40-1.60/person). Re-fetched 2026-11-25: the product page states sizes (mini about 4, small 10, medium 18, large 28) but shows only "starts at $37.99" with no per-size price, so the large-size price is unconfirmed since August.',
   },
   'veggietray-krogerwalmart-2026': {
-    org: 'Kroger.com and Walmart.com — 40oz veggie trays',
+    org: 'Kroger.com and Walmart.com — 40oz veggie trays; Target.com Good & Gather 40oz tray added 2026-11-25 (Kroger fetched; Target figures read from search results)',
     url: 'https://www.kroger.com',
     corroboratingUrl: 'https://www.walmart.com',
-    fetched: '2026-08-18',
-    claim: 'Kroger and Walmart 40oz trays run $11.97-12.99 without a stated headcount (~8-12 people estimated, not retailer-confirmed) — corroborates veggietray-publix-2026 in the same per-person range.',
+    fetched: '2026-11-25',
+    claim: 'Re-check 2026-11-25: Kroger 40oz tray with ranch $10.99 regular ($9.99 sale); Target 40oz $11.69-12.69. As cited 2026-08-18: Kroger and Walmart 40oz trays run $11.97-12.99 without a stated headcount (~8-12 people estimated, not retailer-confirmed) — corroborates veggietray-publix-2026 in the same per-person range.',
   },
   'salsa-costco-2026': {
     org: 'Costco.com — Tostitos Chunky Salsa 2-pack (40.575oz each)',

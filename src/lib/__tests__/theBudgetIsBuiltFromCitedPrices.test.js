@@ -18,15 +18,18 @@ test('a 25-guest birthday is three cited steps, cumulative', () => {
   expect(b.guests).toBe(25);
   expect(b.steps.map((s) => s.key)).toEqual(['essentials', 'extras', 'everything']);
   const [e, x, all] = b.steps;
-  expect([Math.round(e.low), Math.round(e.high)]).toEqual([177, 621]);
-  expect([Math.round(x.low), Math.round(x.high)]).toEqual([242, 876]);
-  expect([Math.round(all.low), Math.round(all.high)]).toEqual([467, 1326]);
+  // (re-priced 11/25/2026 against current listings: the cake floor fell $20 → $18,
+  // the veggie tray floor $12 → $11 and the salad floor rose $1.30 → $2.80/lb,
+  // so the lows moved 177/242/467 → 173/246/471; every ceiling held.)
+  expect([Math.round(e.low), Math.round(e.high)]).toEqual([173, 621]);
+  expect([Math.round(x.low), Math.round(x.high)]).toEqual([246, 876]);
+  expect([Math.round(all.low), Math.round(all.high)]).toEqual([471, 1326]);
   // Counted things are bought whole (resolveQuantity): 37.5 place settings is 38.
   expect([e.mid, x.mid, all.mid]).toEqual([400, 550, 900]);
   // each step lists the lines it adds, each with its sources and check date
   const cake = e.adds.find((l) => l.id === 'p_cake');
   expect(cake.sources.length).toBeGreaterThan(0);
-  expect(cake.lastVerified).toBe('2026-08-15');
+  expect(cake.lastVerified).toBe('2026-11-25');
   expect(all.adds.map((l) => l.id)).toEqual(['p_alcohol']);
   expect(b.leftOut).toEqual([]);
 });
@@ -45,8 +48,10 @@ test('a type with no cited line gets no figure', () => {
 });
 
 test('freshness is the app’s own rule, per line', () => {
-  const fresh = sourcedBudget({ type: 'Birthday', guestEstimate: 25 }, new Date('2026-08-20T12:00:00Z'));
+  // every birthday price was re-checked 11/25/2026, so it is fresh that day
+  // and stale past the 28-day rule.
+  const fresh = sourcedBudget({ type: 'Birthday', guestEstimate: 25 }, new Date('2026-11-26T12:00:00Z'));
   expect(fresh.stale).toEqual([]);
-  const later = sourcedBudget({ type: 'Birthday', guestEstimate: 25 }, new Date('2026-11-25T12:00:00Z'));
+  const later = sourcedBudget({ type: 'Birthday', guestEstimate: 25 }, new Date('2027-01-15T12:00:00Z'));
   expect(later.stale.length).toBe(14);
 });
