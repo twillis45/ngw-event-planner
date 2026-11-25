@@ -42,6 +42,7 @@ import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaR
 // the legacy body as the default until parity closes.
 import { PeopleHero, AttendanceDecision, StillUnknown, OneMove, GetResponses, PeopleRail, SectionHead } from './PeopleSurface';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
+import { replyLinkUrl, emailInviteTo, invitesReachedEdit, inviteSentFields } from '@app/lib/inviteSend';
 import { countEdit, modeEdit, addNamesEdit, rsvpEdit, removeGuestEdit, replyByEdit } from '@app/lib/guestEdits';
 import { saveCustomEvents, patchSavedEvent, exportCustomEvents, listBackups, restoreBackup, importCustomEvents, durabilityStatus, readCustomEvents } from '@app/lib/customEventStore';
 import { buildCrabProcurement } from '@app/lib/procurement';
@@ -76,7 +77,7 @@ import { rsvpHasResponded, notRepliedYet } from '@app/lib/rsvp';
 import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, rainPlanOptions, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, travelHazard, guestTravelMessage } from '@app/lib/weather';
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
-import { inviteRecipients, inviteSubjectAndBody, markInvited, greetingName } from '@app/lib/inviteBatch';
+import { inviteRecipients, inviteSubjectAndBody, greetingName } from '@app/lib/inviteBatch';
 import { nudgeRecipients, nudgeCount, markNudged, nudgeRowLine, nudgeDeliveryFor, nudgeTextBody, wasInvited, NUDGE_GAP_DAYS } from '@app/lib/replyNudge';
 import { LINK_PLACEHOLDER, savedInviteDraft, withLink, lineChange, swapPageLine, textMessageBody, sentSnapshot, draftStatus, plainText, sentRecipients, saveDraftEdit } from '@app/lib/inviteMessageDraft';
 import { inviteGaps } from '@app/lib/inviteGaps';
@@ -7545,7 +7546,8 @@ export default function HostShellV2() {
 
   // Preview stays local. Outward links require the public event a guest sees,
   // not just a configured proxy or a historical cloud-save stamp.
-  const inviteLinkUrl = () => publicAppUrl() + '?rsvp=' + encodeURIComponent(event.rsvpCode || event.id);
+  // The reply link is built once, in lib/inviteSend, for both shells.
+  const inviteLinkUrl = () => replyLinkUrl(event);
   const rsvpUnavailable = (result) => result.reason === 'unavailable'
     ? 'Couldn’t verify this RSVP link. Nothing was shared. Check your connection and try again.'
     : 'Online RSVPs are not available for this event. Copy a plain invitation and collect replies yourself.';
@@ -23612,10 +23614,8 @@ export default function HostShellV2() {
                 // invitesSentAt alone (taskEngine), so the board kept leading with
                 // it. A real send of the invite now credits it too. Copying is not
                 // a send (the clipboard proves a draft, not delivery).
-                const invited = sheet.sendsInvite && channel !== 'copy' && !event.invitesSentAt
-                  ? { invitesSentAt: new Date().toISOString() } : {};
-                // WHAT WENT OUT (owner, 11/24/2026): the words she sent, kept.
-                if (sheet.sendsInvite && channel !== 'copy') invited.invitesSentMessage = inviteSnapshotNow();
+                // WHAT WENT OUT (owner, 11/24/2026): the words she sent, kept (lib/inviteSend).
+                const invited = sheet.sendsInvite ? inviteSentFields(event, channel, inviteSnapshotNow(), new Date().toISOString()) : {};
                 // A post already says "Posted" in its own line; the toast would repeat it.
                 patchEvent({ sendLedger: led, ...invited }, channel === 'invite' ? null : 'Noted — the plan remembers this went out.');
               };
@@ -23732,31 +23732,9 @@ export default function HostShellV2() {
                 const draftSubject = (draftInvite(event, profile, { voice: (sheet.voices && sheet.voices[draftTone]) ? draftTone : 'as-written' }) || {}).subject || 'You’re invited';
                 const { subject, body } = inviteSubjectAndBody(shownDraft(), draftSubject);
                 const cardVersion = await ensureInviteCard(event);
-                try {
-                  const res = await commApi.createMessage(event.id, 'CLIENT', {
-                    // The picture just uploaded, by version: the server uses a stored
-                    // card only when it is THIS one, so a stale picture never goes out.
-                    ...(cardVersion ? { invite_card_version: cardVersion } : {}),
-                    message_type: 'standard', author_role: 'planner',
-                    author_name: (profile && profile.name) || 'Your host',
-                    // invite: the email IS the invitation, its facts from the saved event (backend invite_email).
-                    body, deliver_email: true, invite: true, recipient_email: g.email, recipient_name: g.name || undefined, subject,
-                    ...(((session && session.user && session.user.email) || '').trim()
-                      ? { reply_to: String(session.user.email).trim() } : {}),
-                  });
-                  const d = res && res.metadata && res.metadata.delivery;
-                  return d && d.status === 'accepted' ? { ok: true } : { ok: false, error: (d && d.error) || 'no delivery confirmation' };
-                } catch (e) {
-                  const m = String((e && e.message) || '');
-                  if (/→ 429/.test(m)) return { ok: false, capped: true };
-                  if (/→ 403/.test(m)) return { ok: false, error: 'not saved to your account yet' };
-                  if (/→ 410/.test(m)) return { ok: false, error: 'they asked not to get emails about this event — text them instead' };
-                  // The server read the SAVED event and found no day, hour or place
-                  // (backend invite_gaps). The app checked its own copy first, so this
-                  // is the saved copy lagging: it says so rather than "request failed".
-                  if (/→ 422/.test(m)) return { ok: false, error: 'the saved copy of your event is missing the day, time or place — give it a moment to save, then try again' };
-                  return { ok: false, error: 'request failed' };
-                }
+                // The email and its refusals are lib/inviteSend's, the same as hostv4's.
+                return emailInviteTo(event, g, { subject, body, cardVersion, hostName: profile && profile.name,
+                  replyTo: (session && session.user && session.user.email) || '' });
               };
               // ── THE NUDGE TO THE ONES WHO HAVEN'T ANSWERED (owner ruling, 11/20/2026)
               // The same guarded route as the invite above and the per-guest
@@ -23855,11 +23833,8 @@ export default function HostShellV2() {
               const reachInvite = (reached, via) => {
                 const at = new Date().toISOString();
                 try { trackEvent(ANALYTICS.INVITE_SENT, { via, count: (reached || []).length }); } catch (_e) { /* a counter never blocks an invite */ }
-                patchEvent({
-                  guests: markInvited(event.guests || [], reached, via, at),
-                  ...(event.invitesSentAt ? {} : { invitesSentAt: at }),
-                  ...(reached && reached.length ? { invitesSentMessage: inviteSnapshotNow(at) } : {}),
-                }, null, { noUndo: true });
+                const ed = invitesReachedEdit(event, reached, via, at, inviteSnapshotNow(at));
+                patchEvent(ed.patch, ed.msg, { noUndo: true });
               };
               // THE SEND CONFIRM (owner, 11/24/2026: render s2-4): the message
               // folded, who gets what, then the send. Nothing else on the sheet.
