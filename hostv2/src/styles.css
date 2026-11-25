@@ -8602,6 +8602,11 @@ button.vc-pill::after{
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .bento .tile-a .bar{ margin:8px 0 4px; }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .bento .tile-a .bar + div{ margin-top:4px; row-gap:2px; }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .bento :is(.tile-b, .tile-c){ padding-block:8px; }
+  /* Light theme sets the column on a card (16px padding, 1px line): 34px more,
+     and the handle sat at 739 on a 744-tall screen. Here the card's padding
+     and the rows' are halved; every row stays over the tap floor. */
+  :root[data-theme="light"] .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .bento{ padding-block:8px; }
+  :root[data-theme="light"] .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .bento :is(.tile-b, .tile-c){ padding-block:4px; }
 }
 
 /* ══ SHEETS FROM 1024: THE FULL COLUMN, NEVER TALLER THAN THE SCREEN ═════════

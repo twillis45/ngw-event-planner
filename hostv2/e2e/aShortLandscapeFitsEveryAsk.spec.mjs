@@ -85,9 +85,12 @@ for (const [kind, ev] of [['a card ask', CARD_ASK], ['a three-answer ask', OPTIO
   // fell back to innerHeight). Its top must leave at least 28px of it showing;
   // with a mouse at 1024x768 it sits at innerHeight − 32. Run with a mouse and
   // with touch (the describe blocks above).
-  for (const [w, h] of [[1024, 768], [1133, 744], [1180, 820]]) {
-    test(`${w}x${h}: the fold handle starts on the first screen`, async ({ page }) => {
+  // Both themes: light sets the stat column on a padded card (34px taller).
+  for (const theme of ['dark', 'light']) for (const [w, h] of [[1024, 768], [1133, 744], [1180, 820]]) {
+    test(`${w}x${h}, ${theme}: the fold handle starts on the first screen`, async ({ page }) => {
+      await page.addInitScript((t) => localStorage.setItem('ngw-theme', t), theme);
       await boot(page, CARD_ASK, w, h);
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       const m = await measure(page);
       const fold = await page.evaluate(() => {
         const f = document.querySelector('.hero.elegant > .efold');
