@@ -5,7 +5,7 @@
 // Your money: add a business, amount and what their name goes on; Mark
 // received, Mark thanked; Draft their report. Pledged vs in hand, never spend.
 // Jest twin: src/lib/__tests__/sponsorsAreMoneyComingIn.test.js.
-import { test, expect, settled, sheetSettled, dateIn, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled, dateIn, openSectionByName, checklistStepAction, openAllPhases } from './fixtures.mjs';
 
 const ASK = 'Ask local businesses to sponsor, with a one-page ask that names the goal and what their name goes on';
 const THANKS = 'Thank the sponsors, the volunteers, and the custodian by name, and send sponsors a photo of their name on the banner';
@@ -23,7 +23,8 @@ const stored = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('ng
 const closeSheets = async (page) => {
   for (let i = 0; i < 4 && await page.locator('.sheet').count(); i += 1) { await page.keyboard.press('Escape'); await page.waitForTimeout(350); }
 };
-const rowBtn = (page, label) => page.locator('.sheet').last().locator('button[data-row-action]').filter({ hasText: label });
+// A step's own action, wherever it sits (Up next, or inside its opened step).
+const rowBtn = (page, label) => checklistStepAction(page, label);
 
 test('the ask drafts; the sponsor list records pledges, receipts and thanks, apart from spending', async ({ page }) => {
   await page.addInitScript((ev) => {
@@ -39,7 +40,7 @@ test('the ask drafts; the sponsor list records pledges, receipts and thanks, apa
   await settled(page);
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  await rowBtn(page, 'Draft the sponsor ask').click();
+  await (await rowBtn(page, 'Draft the sponsor ask')).click();
   await sheetSettled(page);
   await expect(page.locator('#sheet-title')).toHaveText('The sponsor ask');
   await expect(page.locator('.sheet').last()).toContainText('blanks still to fill');
@@ -47,7 +48,7 @@ test('the ask drafts; the sponsor list records pledges, receipts and thanks, apa
   await closeSheets(page);
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  await rowBtn(page, 'Open your sponsors').first().click();
+  await (await rowBtn(page, 'Open your sponsors')).click();
   await sheetSettled(page);
   await expect(page.locator('#sheet-title')).toHaveText('Your money');
   const list = page.locator('.sheet').last().locator('[data-sponsors]');
@@ -75,6 +76,7 @@ test('the ask drafts; the sponsor list records pledges, receipts and thanks, apa
   await closeSheets(page);
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  await expect(page.locator('.sheet').last().locator('button.frow').filter({ hasText: 'Ask local businesses to sponsor' })).toHaveClass(/\bgot\b/);
-  await expect(page.locator('.sheet').last().locator('button.frow').filter({ hasText: 'Thank the sponsors' })).not.toHaveClass(/\bgot\b/);
+  await openAllPhases(page);   // a step the plan handled sits in its phase (cohesion batch D)
+  await expect(page.locator('.sheet').last().locator('.frow').filter({ hasText: 'Ask local businesses to sponsor' })).toHaveClass(/\bgot\b/);
+  await expect(page.locator('.sheet').last().locator('.frow').filter({ hasText: 'Thank the sponsors' })).not.toHaveClass(/\bgot\b/);
 });

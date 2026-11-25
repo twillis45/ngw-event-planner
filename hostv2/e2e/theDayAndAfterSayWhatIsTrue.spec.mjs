@@ -55,6 +55,15 @@ const landsOnTheDayThenPlan = async (page) => {
   await settled(page);
 };
 
+// Cohesion E (owner E4, 11/24/2026): after the day, her own plan opens on
+// After. The "day after" tests read the plan's hero, so they assert that
+// landing first, then step to Plan, the same way the event-day tests do.
+const landsOnAfterThenPlan = async (page) => {
+  await expect(page.locator('button[aria-current="true"]', { hasText: /^After$/ }).first()).toBeAttached();
+  await page.evaluate(() => { const b = [...document.querySelectorAll('button[aria-current]')].find((x) => x.innerText.trim() === 'Plan'); if (b) b.click(); });
+  await settled(page);
+};
+
 test('8 AM on the wedding day: the hero is the run of show, and its first cue', async ({ page }) => {
   await boot(page, WEDDING, '2027-10-16T08:00:00');
   await landsOnTheDayThenPlan(page);
@@ -91,6 +100,7 @@ test('a trip’s day 1 and day 3 are the same trip-day hero, with no venue ask',
 
 test('the day after a trip counts from its last day, and is not "the day"', async ({ page }) => {
   await boot(page, TRIP, '2027-05-17T10:00:00');
+  await landsOnAfterThenPlan(page);
   await expect(identityLine(page)).toContainText('1 DAY AGO', { useInnerText: true });
   await expect(hero(page).locator('h2.ask')).toHaveText('All 4 days, done.');
   await expect(hero(page)).toContainText('yesterday');
@@ -98,6 +108,7 @@ test('the day after a trip counts from its last day, and is not "the day"', asyn
 
 test('the day after the wedding: what is owed leads, and nothing calls it all clear', async ({ page }) => {
   await boot(page, WEDDING, '2027-10-17T10:00:00');
+  await landsOnAfterThenPlan(page);
   await expect(hero(page)).toContainText(/still owed — settle up with Bluemont Vineyard/i);
   await expect(hero(page)).not.toContainText(/Nothing needs you/);
   const main = page.getByRole('main');
@@ -109,6 +120,7 @@ test('the day after the wedding: what is owed leads, and nothing calls it all cl
 
 test('the day after a potluck with nothing recorded spent: never "Landed inside"', async ({ page }) => {
   await boot(page, BIRTHDAY, '2027-06-13T10:00:00');
+  await landsOnAfterThenPlan(page);
   await expect(hero(page)).not.toContainText(/Landed inside/);
   // Its own plan expects more than the $600 (owner ruling D-03: judged on expected).
   await expect(hero(page)).toContainText(/Expected to land \$[\d,]+ over the \$600 you planned/);
@@ -116,6 +128,7 @@ test('the day after a potluck with nothing recorded spent: never "Landed inside"
 
 test('the day after, nothing recorded and nothing expected over: it says nothing was recorded', async ({ page }) => {
   await boot(page, { ...BIRTHDAY, totalBudget: 5000 }, '2027-06-13T10:00:00');
+  await landsOnAfterThenPlan(page);
   await expect(hero(page)).not.toContainText(/Landed inside/);
   await expect(hero(page)).toContainText(/Nothing was recorded as spent against the \$5,000/);
 });

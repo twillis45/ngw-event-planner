@@ -93,7 +93,7 @@ test('copy the invite, say it was sent, and the invite task is credited — with
   await openSection('Your checklist');
   t = await sheetText();
   const row = t.slice(t.indexOf('Send the invite'), t.indexOf('Send the invite') + 220);
-  expect(row).toMatch(/done by your plan/);
+  expect(row).toMatch(/your plan did this/);
 });
 
 // ─── THE INVITE SENT FROM ITS DRAFT IS SENT (owner, live, 11/18/2026) ────────
@@ -179,5 +179,5 @@ test('"I already sent it" credits the invite, survives a reload, and then goes a
   await openSection('Your checklist');
   const t = await page.evaluate(() => (document.querySelector('.sheet:last-of-type')?.innerText || document.body.innerText || '').replace(/\s+/g, ' '));
   const row = t.slice(t.indexOf('Send the invite'), t.indexOf('Send the invite') + 220);
-  expect(row).toMatch(/done by your plan/);
+  expect(row).toMatch(/your plan did this/);
 });

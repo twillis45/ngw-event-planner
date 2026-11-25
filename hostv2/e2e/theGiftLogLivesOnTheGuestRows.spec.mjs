@@ -6,7 +6,7 @@
 // sent a gift" from + chips; the cash is totaled; the rows check off when the
 // work is on the log; the thank-you note names the gift.
 // Jest twin: src/lib/__tests__/theGiftLogLivesOnTheGuestRows.test.js.
-import { test, expect, settled, sheetSettled, dateIn, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled, dateIn, openSectionByName, checklistStepAction, openAllPhases } from './fixtures.mjs';
 
 const CASH = 'Record the cash and gift cards separately, with the amount, then put them somewhere that is not the card box on the counter';
 const MAILED = 'Add the gifts that arrived by mail or came from people who could not make it — those are the ones that get thanked last, if at all';
@@ -42,9 +42,10 @@ test('the gift rows open the log on the guest rows, and the log checks them off'
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
   // The two seeded rows, plus the playbook's own "Go through the gifts…".
-  const btns = page.locator('.sheet').last().locator('button[data-row-action]').filter({ hasText: 'Log gifts and cash' });
-  await expect(btns).toHaveCount(3);
-  await btns.first().click();
+  // Each carries the action (cohesion batch D: Up next, or inside its step).
+  await openAllPhases(page);
+  await expect(page.locator('.sheet').last().locator('[data-up-next][data-step-action="Log gifts and cash"], [data-step-row][data-step-action="Log gifts and cash"]')).toHaveCount(3);
+  await (await checklistStepAction(page, 'Log gifts and cash')).click();
   const log = page.locator('[data-gift-log]');
   await expect(log).toBeVisible();
   await expect(page.locator('.sheet')).toHaveCount(0);
@@ -52,7 +53,7 @@ test('the gift rows open the log on the guest rows, and the log checks them off'
 
   // Jordan's gift: a card with cash.
   const jordan = log.locator('[data-gift-row="g2"]');
-  await jordan.getByRole('button', { name: 'gift?' }).click();
+  await jordan.getByRole('button', { name: 'Gift received' }).click();   // was "gift?" (cohesion batch E)
   await jordan.getByLabel('What Jordan Hale gave').fill('Card with cash');
   await jordan.getByLabel('Cash or card amount from Jordan Hale').fill('100');
   await jordan.getByLabel('Cash or card amount from Jordan Hale').blur();
@@ -74,8 +75,9 @@ test('the gift rows open the log on the guest rows, and the log checks them off'
   // Both rows are on the log now.
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
+  await openAllPhases(page);
   for (const lead of ['Record the cash and gift cards', 'Add the gifts that arrived by mail']) {
-    await expect(page.locator('.sheet').last().locator('button.frow').filter({ hasText: lead })).toHaveClass(/\bgot\b/);
+    await expect(page.locator('.sheet').last().locator('.frow').filter({ hasText: lead })).toHaveClass(/\bgot\b/);
   }
 });
 
@@ -94,8 +96,8 @@ test('the thank-you note names the gift', async ({ page }) => {
   await settled(page);
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  await page.locator('.sheet').last().locator('button[data-row-action]').filter({ hasText: 'Log gifts and cash' }).first().click();
-  await page.getByRole('button', { name: 'Start the thank-you run' }).click();
+  await (await checklistStepAction(page, 'Log gifts and cash')).click();
+  await page.getByRole('button', { name: 'Write the thank-yous' }).click();   // the one door (owner E1)
   await sheetSettled(page);
   await expect(page.locator('.sheet').last()).toContainText('thank you for the Spa day voucher');
 });

@@ -12,7 +12,7 @@
 // were not idempotent, each write would re-render, reconcile, and write again,
 // forever. A render loop does not look like a crash — it looks like a warm
 // laptop and a battery going flat.
-import { test, expect, settled, RAIL_MIN_WIDTH, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, RAIL_MIN_WIDTH, openSectionByName, checklistText } from './fixtures.mjs';
 
 // The app's own crab feast, not a hand-seeded one. The first version invented
 // an event id and localStorage shape; the shell ignored both and booted the
@@ -62,7 +62,7 @@ const bootAndDraft = async (page, choice) => {
   await openChecklist(page);
   await page.getByRole('button', { name: /Draft my checklist/i }).click();
   await settled(page);
-  const drafted = await page.locator('.sheet').last().innerText();
+  const drafted = await checklistText(page);
   // The premise, asserted rather than assumed: the list really was written
   // under the ordering answer. If this ever stops holding, the swap assertion
   // below would be passing for the wrong reason.
@@ -83,7 +83,7 @@ const bootAndDraft = async (page, choice) => {
     await settled(page);
     await openChecklist(page);
   }
-  return page.locator('.sheet').last().innerText();
+  return checklistText(page);
 };
 
 test.describe('the reconcile reaches the host', () => {
@@ -183,7 +183,7 @@ test('the crab swap, driven through the decision board itself', async ({ page })
   await openChecklist(page);
   await page.getByRole('button', { name: /Draft my checklist/i }).click();
   await settled(page);
-  const before = await page.locator('.sheet').last().innerText();
+  const before = await checklistText(page);
   expect(before, 'the drafted list was not written under the ordering answer')
     .toMatch(/Lock a hot pickup slot/i);
   expect(before).not.toMatch(/rack steamer pot/i);
@@ -200,7 +200,7 @@ test('the crab swap, driven through the decision board itself', async ({ page })
 
   // 3. The checklist followed, without a reload.
   await openChecklist(page);
-  const after = await page.locator('.sheet').last().innerText();
+  const after = await checklistText(page);
   expect(after, 'the steamer row never arrived').toMatch(/rack steamer pot/i);
   expect(after, 'the pickup row is still being asked for').not.toMatch(/Lock a hot pickup slot/i);
 });

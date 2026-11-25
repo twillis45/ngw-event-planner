@@ -13,7 +13,7 @@
 // "Save what worked", so that is the state measured here.
 //
 // SELF-PINNED (playwright.config.mjs): drives 390x844 and 1024x1366 itself.
-import { test, expect, settled, dateIn } from './fixtures.mjs';
+import { test, expect, settled, dateIn, goToStage } from './fixtures.mjs';
 
 const PAST = {
   id: 'b29-past', name: 'Maya’s 40th Birthday', type: 'Birthday', createdAt: '2026-11-01',
@@ -34,6 +34,9 @@ const boot = async (page, theme, [w, h]) => {
   }, PAST);
   await page.goto(`?theme=${theme}`);
   await settled(page);
+  // Her own plan after its day lands on After (owner, 11/24/2026, cohesion
+  // batch E); this ask is the Plan board's, so step there, as she would.
+  await goToStage(page, 'Plan');
   const cta = page.locator('.hero.elegant .cta', { hasText: 'Save what worked' });
   await expect(cta, 'premise: the hero ask renders its .cta').toBeVisible();
   // the keycap transition is .1s; let any entrance settle before reading styles

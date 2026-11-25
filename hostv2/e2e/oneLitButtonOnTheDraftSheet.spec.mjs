@@ -23,7 +23,7 @@
 // bundle with no session. Every request is answered here; all synthetic.
 import { test, expect } from '@playwright/test';
 import { previewUrl } from '../deployBase.mjs';
-import { dateIn, settled, sheetSettled, openSectionByName } from './fixtures.mjs';
+import { dateIn, settled, sheetSettled, openSectionByName, checklistStepAction } from './fixtures.mjs';
 import { litButtons } from './tripDetailsFixture.mjs';
 
 const BASE = previewUrl(Number(process.env.PW_RSVPSYNC_PORT || 5277));
@@ -165,7 +165,7 @@ test('a vendor’s draft, signed in with their email: “Send it to …” is th
   await boot(page, trip, { signedIn: true });
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  await page.locator('.sheet').last().locator('button[data-row-action]').filter({ hasText: 'Reconfirm each booking' }).click();
+  await (await checklistStepAction(page, 'Reconfirm each booking')).click();
   await sheetSettled(page);
   await page.locator('.sheet').last().getByRole('button', { name: 'Read it first' }).first().click();
   await sheetSettled(page);

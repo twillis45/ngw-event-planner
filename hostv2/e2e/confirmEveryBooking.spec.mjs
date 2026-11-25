@@ -8,7 +8,7 @@
 // banner, which reads the same list. Its subtitle claimed "their arrival time
 // and your address" for every note; it now says only what the note carries.
 // Jest twin: src/lib/__tests__/confirmEveryBooking.test.js.
-import { test, expect, settled, sheetSettled, dateIn, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled, dateIn, openSectionByName, checklistStepAction } from './fixtures.mjs';
 
 const STEP = 'Confirm every reservation: the place to stay, the dinners, and anything else that is booked';
 const trip = (id, days, extra = {}) => ({
@@ -40,7 +40,7 @@ const boot = async (page, e) => {
 const openFromTheRow = async (page) => {
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  await page.locator('.sheet').last().locator('button[data-row-action]').filter({ hasText: 'Reconfirm each booking' }).click();
+  await (await checklistStepAction(page, 'Reconfirm each booking')).click();
   await sheetSettled(page);
   return page.locator('.sheet').last();
 };

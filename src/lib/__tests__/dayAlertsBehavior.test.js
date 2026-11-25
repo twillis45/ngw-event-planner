@@ -71,7 +71,9 @@ describe('computeDayAlerts — rsvp-pending gated by guest mode', () => {
     const rsvp = alerts.find(a => a.id === 'rsvp-pending');
     expect(rsvp).toBeTruthy();
     expect(rsvp.tier).toBe('warning');
-    expect(rsvp.headline).toBe("2 haven't RSVP'd");
+    // Host word "replied", one phrase with Guests & invite (live check of
+    // 19841da0, 11/25/2026; rsvp.js notRepliedYet).
+    expect(rsvp.headline).toBe('2 haven’t replied');
     // yesCount > 0 → the "plan for N" move variant
     expect(rsvp.move).toContain('plan for 1');
   });

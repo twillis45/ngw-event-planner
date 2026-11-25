@@ -30,6 +30,11 @@ const boot = async (page) => {
   await settled(page);
   const draft = page.getByRole('button', { name: /Draft my checklist/i });
   if (await draft.count()) { await draft.click(); await settled(page); }
+  // A step's controls live inside the step, opened in place (cohesion batch D,
+  // 11/24/2026): open the first step of the current phase, as a host would.
+  const body = page.locator('.sheet').last().locator('[data-phase][data-open="true"] [data-step-body]').first();
+  await body.click();
+  await expect(body).toHaveAttribute('aria-expanded', 'true');
 };
 
 test('assigning names the person AND says they have not been told', async ({ page }) => {

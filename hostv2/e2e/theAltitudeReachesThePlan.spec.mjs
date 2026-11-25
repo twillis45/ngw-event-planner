@@ -7,7 +7,7 @@
 // reached an object and stopped there, and a gate on the object could never
 // have caught it. That is this repo's standing law and it is the reason this
 // file exists rather than one more jest assertion.
-import { test, expect, openWhatsCounted } from './fixtures.mjs';
+import { test, expect, openWhatsCounted, readWholeChecklist } from './fixtures.mjs';
 
 const SEED = "Mom's 80th birthday in Santa Fe New Mexico on June 14 2027, "
   + 'about 30 people flying in for 3 nights, dinner at an adobe courtyard, '
@@ -71,7 +71,8 @@ test('THE ALTITUDE REACHES THE PLAN: the pacing task is on the host\'s checklist
   // It names the authored copy of `dest_t_health` now — the one string that
   // can only be on screen if the clause survived the parse, the creation
   // seam, the fact, the recommendation and the whenChoice gate.
-  const txt = await page.evaluate(() => document.body.innerText || '');
+  // The step's why is inside the opened step (cohesion D): read every step.
+  const txt = await readWholeChecklist(page);
   expect(txt).toMatch(/Pace the schedule for the guests who need it/i);
   expect(txt).toMatch(/build in real rest/i);
 });

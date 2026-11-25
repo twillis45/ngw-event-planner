@@ -10,7 +10,7 @@
 //
 // The API is mocked at the e2e bundle's fake host, as the vendor-page spec
 // does. Everything here is synthetic.
-import { test, expect, settled, openSectionByName, dateIn } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName, dateIn, revealChecklistStep, openAllPhases } from './fixtures.mjs';
 
 const API = 'https://e2e-mock.invalid';
 const CODE = 'helpercodeabcdef123456';
@@ -58,6 +58,9 @@ const openChecklist = async (page) => {
   await settled(page);
   await openSectionByName(page, 'Your checklist');
   await settled(page);
+  // The helper's step, with its controls on screen: Up next shows them, else
+  // the step opens in place (cohesion batch D, 11/24/2026).
+  await revealChecklistStep(page, 'Bring folding chairs');
 };
 
 test.describe('the host sends it', () => {
@@ -253,12 +256,13 @@ test.describe('checklist buttons are justified', () => {
     ])(page);
     await mockHost(page);
     await openChecklist(page);
+    await openAllPhases(page);
     const handled = page.locator('.frow', { hasText: 'Set the date' });
-    await expect(handled.getByText('done by your plan — tap to confirm')).toBeVisible();
+    await expect(handled.getByText('your plan did this · confirm')).toBeVisible();
     await expect(handled).not.toContainText(/Do now|due now|past its window/);
     await expect(page.locator('.row-assign').filter({ has: page.locator('[aria-label*="Set the date"]') })).toHaveCount(0);
     // control: the open row keeps both, so the absence above is the fix
-    const open = page.locator('.frow', { hasText: 'Bring folding chairs' });
+    const open = await revealChecklistStep(page, 'Bring folding chairs');
     await expect(open).toContainText(/Do now|due now|past its window/);
     await expect(page.getByRole('button', { name: 'Assign Bring folding chairs to someone' })).toBeVisible();
   });
