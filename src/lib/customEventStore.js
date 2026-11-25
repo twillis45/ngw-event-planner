@@ -271,6 +271,28 @@ export function saveCustomEvents(next, opts = {}) {
   return { ok: true, wrote: true, backupKey, dropped };
 }
 
+/**
+ * One edit to one saved event, for every shell (hostv2 and hostv4).
+ * Reads the COMMITTED list, so back-to-back edits build on the last successful
+ * write even before a caller re-renders; `opts.fallback` is the caller's list,
+ * used only when the store does not hold the event yet.
+ * @returns {{ok:boolean, saved:object|null, next:Array|null, reason?:string}}
+ */
+export function patchSavedEvent(eventId, obj, opts = {}) {
+  const stored = readCustomEvents();
+  const has = (l) => Array.isArray(l) && l.some((c) => c && c.id === eventId);
+  const list = has(stored) ? stored : has(opts.fallback) ? opts.fallback : null;
+  if (!list) return { ok: false, saved: null, next: null, reason: 'no-such-event' };
+  let saved = null;
+  const next = list.map((c) => {
+    if (!c || c.id !== eventId) return c;
+    saved = { ...c, ...obj };
+    return saved;
+  });
+  const res = saveCustomEvents(next, { reason: opts.reason || 'patch-event', eventId });
+  return res.ok ? { ok: true, saved, next } : { ok: false, saved: null, next: null, reason: res.reason };
+}
+
 /** Put a backup back. Guarded the same way — restoring cannot silently drop either. */
 export function restoreBackup(key, opts = {}) {
   const list = readBackup(key);

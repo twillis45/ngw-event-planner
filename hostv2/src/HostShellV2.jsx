@@ -42,7 +42,7 @@ import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaR
 // the legacy body as the default until parity closes.
 import { PeopleHero, AttendanceDecision, StillUnknown, OneMove, GetResponses, PeopleRail, SectionHead } from './PeopleSurface';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
-import { saveCustomEvents, exportCustomEvents, listBackups, restoreBackup, importCustomEvents, durabilityStatus, readCustomEvents } from '@app/lib/customEventStore';
+import { saveCustomEvents, patchSavedEvent, exportCustomEvents, listBackups, restoreBackup, importCustomEvents, durabilityStatus, readCustomEvents } from '@app/lib/customEventStore';
 import { buildCrabProcurement } from '@app/lib/procurement';
 import { buildAssembleRevealStages, unresolvedBlockerStages } from '@app/lib/assembleRevealEngines';
 import { buildExperienceContext } from '@app/lib/experienceContext';
@@ -9483,19 +9483,14 @@ export default function HostShellV2() {
         savedEv = own;
       }
     } else if (activeCustom) {
-      // Read the committed list so back-to-back edits build on the preceding
-      // successful write, even before React has rendered it.
-      const stored = readCustomEvents();
-      const list = stored.some(c => c && c.id === eventId) ? stored : customs;
-      const next = list.map(c => {
-        if (!c || c.id !== eventId) return c;
-        savedEv = { ...c, ...obj };
-        return savedEv;
-      });
-      result = saveCustomEvents(next, { reason: 'hostshell:patch-event', eventId });
+      // One edit to one saved event: the same function hostv4 saves through.
+      // It reads the committed list, so back-to-back edits build on the
+      // preceding successful write, even before React has rendered it.
+      result = patchSavedEvent(eventId, obj, { fallback: customs, reason: 'hostshell:patch-event' });
       if (result.ok) {
-        committedCustomSnapshot.current = JSON.stringify(next);
-        setCustoms(next);
+        savedEv = result.saved;
+        committedCustomSnapshot.current = JSON.stringify(result.next);
+        setCustoms(result.next);
       }
     } else {
       let current = patch;

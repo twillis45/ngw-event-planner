@@ -6,7 +6,10 @@
 // the two shells never disagree. Where v4 cannot act yet, it says so and opens
 // the plan in the current app; it never pretends.
 import { useMemo, useState } from 'react';
-import { readCustomEvents } from '@app/lib/customEventStore';
+import { readCustomEvents, patchSavedEvent } from '@app/lib/customEventStore';
+import { sourcedBudget } from '@app/lib/playbooks';
+import { saveEvent as cloudSaveEvent } from '@app/lib/api/events';
+import { recordSaveResult, getLastSyncTime } from '@app/lib/api/syncState';
 import { eventPlan } from '@app/CommandCenter';
 import { heroAskFor } from '@app/lib/heroAsk';
 import { deriveEventPhaseProgress } from '@app/lib/phaseProgress';
@@ -37,7 +40,8 @@ function useNext(ev) {
     try {
       const a = (eventPlan(ev).nextActions || [])[0];
       if (!a) return null;
-      return { ask: heroAskFor(a, ev) || a.title, title: a.title };
+      const budget = String(a.domain || '').toLowerCase() === 'budget' || /^set your budget/i.test(String(a.title || '').trim());
+      return { ask: heroAskFor(a, ev) || a.title, title: a.title, budget };
     } catch { return null; }
   }, [ev]);
 }
@@ -48,6 +52,55 @@ function usePlanRows(ev) {
   }, [ev]);
 }
 
+const money = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('en-US');
+const TIER = { essentials: 'Just the essentials', extras: 'With extras', everything: 'Everything' };
+const shortDay = (iso) => { const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'date unknown'; };
+
+// THE BUDGET QUESTION (owner, 11/25/2026: "Build from cited"). Every figure is
+// sourcedBudget's: cited shopping prices only, each choice adding to the one
+// before. How they were built is one tap down, never on the question screen.
+function BudgetChoices({ sb, pick, setPick }) {
+  return (
+    <div className="grp" role="radiogroup" aria-label="Budget">
+      {sb.steps.map((t) => (
+        <button key={t.key} className="row choice" role="radio" aria-checked={pick === t.mid} onClick={() => setPick(t.mid)}>
+          <span className="radio" aria-hidden="true" />
+          <span>{TIER[t.key]}</span>
+          <span className="val">about {money(t.mid)}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function HowWeGotThese({ sb, type, onDone }) {
+  return (
+    <div className="scrim" onClick={onDone}>
+      <div className="sheet" role="dialog" aria-label="How we got these" onClick={(e) => e.stopPropagation()}>
+        <div className="grabber" aria-hidden="true" />
+        <div className="sheethead"><h2>How we got these</h2><button className="link" onClick={onDone}>Done</button></div>
+        <p className="fine">From our {String(type || 'party').toLowerCase()} shopping list for {sb.guests} guests. Every price has a published source; each choice adds to the one before.</p>
+        {sb.steps.map((t) => (
+          <section key={t.key}>
+            <div className="sh"><h3>{TIER[t.key]}</h3><span>{money(t.low)}–{money(t.high)}</span></div>
+            <div className="grp">
+              {t.adds.map((l) => (
+                <div className="row" key={l.id}>
+                  <span className="nm">{l.item}<small>{l.sources.length} {l.sources.length === 1 ? 'source' : 'sources'} · checked {shortDay(l.lastVerified)}</small></span>
+                  <span className="val">{money(l.low)}–{money(l.high)}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+        {sb.stale.length > 0 && <p className="fine warn" data-stale>{sb.stale.length === 1 ? 'One price was' : sb.stale.length + ' prices were'} last checked more than four weeks ago.</p>}
+        {sb.leftOut.length > 0 && <p className="fine">Left out, no published price yet: {sb.leftOut.map((l) => l.item).join(', ')}.</p>}
+        <p className="fine">Only the shopping list. Not included: anyone you hire, a venue, gifts or tips.</p>
+      </div>
+    </div>
+  );
+}
+
 const Icon = ({ d }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;
 const TABS = [
   ['next', 'Next step', <><circle cx="12" cy="12" r="8.5" /><path d="M10.5 8.5L14 12l-3.5 3.5" /></>],
@@ -56,8 +109,12 @@ const TABS = [
 ];
 
 export default function HostShellV4() {
-  const [{ ev, sample }] = useState(pickEvent);
+  const [{ ev, sample }, setPicked] = useState(pickEvent);
   const [tab, setTab] = useState('next');
+  const [pick, setPick] = useState(null);
+  const [why, setWhy] = useState(false);
+  const [done, setDone] = useState(null); // { msg, undo } — one quiet line, with Undo
+  const [failed, setFailed] = useState(null);
   const next = useNext(ev);
   const { items: rows, cue } = usePlanRows(ev);
   const date = longDate(ev.date);
@@ -69,15 +126,56 @@ export default function HostShellV4() {
   const askRow = next ? rows.findIndex((r) => !r.handled && r.cueLabel === String(next.ask).replace(/\.$/, '')) : -1;
   const firstOpen = askRow >= 0 ? askRow : rows.findIndex((r) => cue && r.id === cue.id);
   const openInCurrent = <a className="primary" href="../hostv2/">Open it in the current app</a>;
+  const sb = useMemo(() => (next && next.budget ? sourcedBudget(ev) : null), [ev, next]);
+  const tierPick = sb ? (pick != null ? pick : (sb.steps[1] || sb.steps[0]).mid) : null;
+
+  // SAVE: one edit to one saved event, through the function hostv2 saves with
+  // (patchSavedEvent). A plan already in an account also goes to the account,
+  // the same rule hostv2 applies (its sync record); cloudSaveEvent queues when
+  // it cannot write yet. The sample plan is never saved.
+  const save = (obj, msg, prev) => {
+    setFailed(null);
+    if (sample) { setPicked({ ev: { ...ev, ...obj }, sample: true }); setDone({ msg: msg + ' Sample plan, not saved.', prev }); setPick(null); return; }
+    const res = patchSavedEvent(ev.id, obj, { reason: 'hostv4:patch-event' });
+    if (!res.ok) { setFailed('That didn’t save on this phone. Your last saved version is still here.'); return; }
+    setPicked({ ev: res.saved, sample: false });
+    setDone(prev ? { msg, prev } : { msg });
+    setPick(null);
+    if (getLastSyncTime(res.saved.id)) {
+      cloudSaveEvent(res.saved).then((r) => {
+        try { recordSaveResult(res.saved, r); } catch { /* stamping is best-effort */ }
+        if (r && r.ok && r.updatedAt) {
+          const st = patchSavedEvent(res.saved.id, { _cloudUpdatedAt: r.updatedAt }, { reason: 'hostv4:cloud-stamp' });
+          if (st.ok) setPicked({ ev: st.saved, sample: false });
+        } else if (r && r.reason === 'conflict') {
+          setFailed('Saved on this phone. Your plan changed on another device, so open the current app to choose which to keep.');
+        }
+      }).catch(() => {});
+    }
+  };
+  const setBudget = (n) => save({ totalBudget: n }, 'Budget set to ' + money(n) + '.', { totalBudget: ev.totalBudget === undefined ? '' : ev.totalBudget });
+  const undo = () => { const d = done; setDone(null); if (d && d.prev) save(d.prev, 'Undone.'); };
 
   return (
     <div className="app">
       <main className="view" data-tab={tab}>
         <h1 className="lt">{tab === 'plan' ? 'Your plan' : tab === 'day' ? 'The Day' : ev.name}</h1>
-        <p className="sub">{tab === 'plan' ? ev.name + (date ? ' · ' + date : '') : date}{holiday && tab !== 'plan' ? ' · ' + holiday : ''}</p>
-        {sample && <p className="fine" data-sample>A sample plan. Plans you make in the current app open here.</p>}
+        <p className="sub">{sample && tab !== 'plan' ? 'Sample · ' : ''}{tab === 'plan' ? ev.name + (date ? ' · ' + date : '') : date}{holiday && tab !== 'plan' ? ' · ' + holiday : ''}</p>
+        {/* The sentence lives on Your plan, so a question screen stays inside its word budget. */}
+        {sample && tab === 'plan' && <p className="fine" data-sample>A sample plan. Plans you make in the current app open here.</p>}
 
-        {tab === 'next' && (
+        {tab === 'next' && done && (
+          <p className="done" role="status" data-done>{done.msg}{done.prev && <> <button className="link" onClick={undo}>Undo</button></>}</p>
+        )}
+        {tab === 'next' && failed && <p className="fine warn" role="alert">{failed}</p>}
+        {tab === 'next' && sb && (
+          <section data-next data-budget>
+            <h2 className="q">How much do you want to spend?</h2>
+            <BudgetChoices sb={sb} pick={tierPick} setPick={setPick} />
+            <p className="fine"><button className="link" onClick={() => setWhy(true)}>How we got these</button></p>
+          </section>
+        )}
+        {tab === 'next' && !sb && (
           <section data-next>
             {next ? <h2 className="q">{next.ask}</h2> : <h2 className="q">You’re set for now.</h2>}
             <p className="qhelp">This new design shows one step at a time. Doing it here comes next; for now it opens in the current app.</p>
@@ -98,7 +196,9 @@ export default function HostShellV4() {
         {tab === 'day' && <p className="qhelp" data-day>The Day’s timeline comes after Guests in the new design. Until then it’s in the current app.</p>}
       </main>
 
-      {tab === 'next' && !sample && <div className="action">{openInCurrent}</div>}
+      {tab === 'next' && sb && <div className="action"><button className="primary" onClick={() => setBudget(tierPick)}>Plan with {money(tierPick)}</button></div>}
+      {tab === 'next' && !sb && !sample && <div className="action">{openInCurrent}</div>}
+      {why && sb && <HowWeGotThese sb={sb} type={ev.type} onDone={() => setWhy(false)} />}
 
       <nav className="tabbar" role="tablist">
         {TABS.map(([id, label, d]) => (
