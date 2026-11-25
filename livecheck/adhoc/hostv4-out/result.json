@@ -1,0 +1,112 @@
+[
+ {
+  "vp": "390x844",
+  "console": [],
+  "http": [],
+  "blocked": [],
+  "status": 200,
+  "m": {
+   "title": "NGW Event Planner",
+   "sideways": 0,
+   "textChars": 253,
+   "head": "Rosa’s 40th Birthday Monday, January 4 A sample plan. Plans you make in the current app open here. Set your budget. This new design shows one step at a time. Doing it here comes next; for now it opens",
+   "buttons": [
+    "Next step",
+    "Your plan",
+    "The Day"
+   ],
+   "smallText": 0,
+   "smallTextEx": [],
+   "smallTargetsBox": 0,
+   "smallTargetsEx": []
+  }
+ },
+ {
+  "vp": "834x1194",
+  "console": [],
+  "http": [],
+  "blocked": [],
+  "status": 200,
+  "m": {
+   "title": "NGW Event Planner",
+   "sideways": 0,
+   "textChars": 253,
+   "head": "Rosa’s 40th Birthday Monday, January 4 A sample plan. Plans you make in the current app open here. Set your budget. This new design shows one step at a time. Doing it here comes next; for now it opens",
+   "buttons": [
+    "Next step",
+    "Your plan",
+    "The Day"
+   ],
+   "smallText": 0,
+   "smallTextEx": [],
+   "smallTargetsBox": 0,
+   "smallTargetsEx": []
+  }
+ },
+ {
+  "vp": "1024x1366",
+  "console": [],
+  "http": [],
+  "blocked": [],
+  "status": 200,
+  "m": {
+   "title": "NGW Event Planner",
+   "sideways": 0,
+   "textChars": 253,
+   "head": "Rosa’s 40th Birthday Monday, January 4 A sample plan. Plans you make in the current app open here. Set your budget. This new design shows one step at a time. Doing it here comes next; for now it opens",
+   "buttons": [
+    "Next step",
+    "Your plan",
+    "The Day"
+   ],
+   "smallText": 0,
+   "smallTextEx": [],
+   "smallTargetsBox": 0,
+   "smallTargetsEx": []
+  }
+ },
+ {
+  "vp": "1194x834",
+  "console": [],
+  "http": [],
+  "blocked": [],
+  "status": 200,
+  "m": {
+   "title": "NGW Event Planner",
+   "sideways": 0,
+   "textChars": 253,
+   "head": "Rosa’s 40th Birthday Monday, January 4 A sample plan. Plans you make in the current app open here. Set your budget. This new design shows one step at a time. Doing it here comes next; for now it opens",
+   "buttons": [
+    "Next step",
+    "Your plan",
+    "The Day"
+   ],
+   "smallText": 0,
+   "smallTextEx": [],
+   "smallTargetsBox": 0,
+   "smallTargetsEx": []
+  }
+ },
+ {
+  "vp": "1440x900",
+  "console": [],
+  "http": [],
+  "blocked": [],
+  "status": 200,
+  "m": {
+   "title": "NGW Event Planner",
+   "sideways": 0,
+   "textChars": 253,
+   "head": "Rosa’s 40th Birthday Monday, January 4 A sample plan. Plans you make in the current app open here. Set your budget. This new design shows one step at a time. Doing it here comes next; for now it opens",
+   "buttons": [
+    "Next step",
+    "Your plan",
+    "The Day"
+   ],
+   "smallText": 0,
+   "smallTextEx": [],
+   "smallTargetsBox": 0,
+   "smallTargetsEx": []
+  }
+ }
+]
