@@ -3134,8 +3134,8 @@ button:disabled, .cta:disabled{ pointer-events:none; }
      sticky child would stick to the card instead of the window. */
 /* Guest pages (invite, helper, vendor brief, family) clear a sideways phone's
    sensor band. Placed before the >=1024 rule below on purpose: there the
-   invite runs full-bleed with its own column padding, and no tablet or desktop
-   reports a side inset. */
+   invite runs full-bleed with its own column padding, which also takes the
+   side inset where one is reported (none on a real tablet or desktop). */
 .inv2-stage .content, .vb2-stage .content{
   padding-left:max(var(--sp-5), var(--safe-l)); padding-right:max(var(--sp-5), var(--safe-r)); }
 @media (min-width:1024px){
@@ -3145,9 +3145,14 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   .inv2-stage .inv2-sheet{ display:grid; grid-template-columns:minmax(0,1.3fr) minmax(400px,1fr); align-items:start;
     min-height:100dvh; padding:0; border-radius:0; overflow:clip; }
   .inv2-stage .inv2-face{ display:flex; flex-direction:column; justify-content:center; position:sticky; top:0;
-    min-height:100dvh; padding:clamp(32px,6vh,80px) clamp(40px,6vw,80px); }
+    min-height:100dvh; padding:clamp(32px,6vh,80px) clamp(40px,6vw,80px);
+    padding-left:max(clamp(40px,6vw,80px), var(--safe-l)); }
   .inv2-stage .inv2-ask{ margin:0; min-height:100dvh; text-align:left;
     padding:max(48px, calc(50dvh - 9rem)) clamp(32px,4vw,80px) 48px;
+    /* A side inset, where one is reported, still clears the column (with none,
+       max() is the clamp itself). Measured: at 1024x768 sideways with a 47px
+       band, "Maybe" sat 6px in it (guestPagesClearTheNotch, 11/25/2026). */
+    padding-right:max(clamp(32px,4vw,80px), var(--safe-r));
     border-left:1px solid rgba(196,178,148,.45); background:rgba(255,255,255,.3); }
   .inv2-stage .inv2-dark .inv2-ask{ border-left-color:rgba(255,244,224,.09); background:rgba(255,255,255,.025); }
   .inv2-stage .inv2-ask.inv2-done{ text-align:center; }
