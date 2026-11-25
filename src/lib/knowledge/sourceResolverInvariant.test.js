@@ -212,8 +212,11 @@ describe('1 — the source universe is what we think it is', () => {
     // (467 since 11/23/2026, the split shopping lines: `harristeeter-oldtown-2026`
     // in COST_SOURCES, the owner's store read live through the Kroger Products
     // API that day.)
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(467);
-    expect(unionIds().size).toBe(467);        // therefore every id is globally unique
+    // (468 since 11/25/2026, the birthday price re-check: `lighters-retail-2026`
+    // in COST_SOURCES, Target and Walmart lighter listings read from search
+    // results that day.)
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(468);
+    expect(unionIds().size).toBe(468);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {
