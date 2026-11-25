@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';
+import { execFileSync } from 'node:child_process';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -48,6 +49,22 @@ export default defineConfig(({ command, mode }) => {
   const build = releaseSha
     ? { commit: releaseSha, builtAt: new Date().toISOString(), version: releaseVersion }
     : { commit: 'dev', builtAt: null, version: releaseVersion };
+  // WHEN EACH RELEASE WENT OUT (owner, 11/25/2026: What's new carries the time
+  // of the release). Each past release's time is its tag's (the deploy fetches
+  // the v* tags before building; tags are annotated, so they carry a time). The
+  // release being built has no tag yet (it is pushed once the site is live), so
+  // its time is this build's. No tags (a shallow local clone): an empty map, and
+  // What's new shows dates alone.
+  const releaseTimes = {};
+  try {
+    const out = execFileSync('git', ['for-each-ref', '--format=%(refname:strip=2) %(taggerdate:iso-strict)', 'refs/tags/v*'],
+      { cwd: path.resolve(__dirname, '..'), encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    for (const line of out.split('\n')) {
+      const [tag, at] = line.trim().split(' ');
+      if (tag && at) releaseTimes[tag] = at;
+    }
+  } catch { /* no git here: dates alone */ }
+  if (releaseVersion && build.builtAt) releaseTimes['v' + releaseVersion] = build.builtAt;
   return {
     // Production build ships as a static bundle under the Pages site.
     // E2E_BASE: `vite preview` runs as command==='serve', so without this the
@@ -161,6 +178,7 @@ export default defineConfig(({ command, mode }) => {
         REACT_APP_RELEASE_PROFILE: process.env.RELEASE_PROFILE || appEnv.REACT_APP_RELEASE_PROFILE || 'unreported',
       }),
       __NGW_BUILD__: JSON.stringify(build),
+      __NGW_RELEASE_TIMES__: JSON.stringify(releaseTimes),
     },
     // ── HTTPS=1 FOR PHONE TESTING, OPT-IN ────────────────────────────────
     // `navigator.clipboard.readText()` requires a SECURE CONTEXT. `localhost`

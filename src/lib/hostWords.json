@@ -97,6 +97,11 @@
       "word": "still pending",
       "re": "\\bstill pending\\b",
       "why": "UX_06: no \"pending\" in host copy; guests still out \"haven't replied\"."
+    },
+    {
+      "word": "engine",
+      "re": "\\bengines?\\b",
+      "why": "App shorthand a host never says. Live check of bf38dde1: the checklist toast said \"the engine gates them by your choices\"."
     }
   ],
   "brokenTemplate": {
