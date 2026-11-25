@@ -371,7 +371,7 @@ import { tripDays, celebrationNight, celebrationTitle, celebrationPlace, celebra
 import { celebrationApplies, tripFoodMoney, aroundSummary, dinnerParts, RESTAURANT_DINNER } from '@app/lib/tripFood';
 import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
 import { mayExhale, calmVetoFor } from '@app/lib/exhaleGate';
-import { checklistRouteFor, actionRoute } from '@app/lib/taskRoute';
+import { checklistRouteFor, actionRoute, upNextRoute } from '@app/lib/taskRoute';
 import { editorKindFor, isBalanceDueAction, stepRowIdOf } from '@app/lib/heroEditor';
 import { stepIsASend, riskTargetFor, stepTargetFor } from '@app/lib/stepTarget';
 import { withSettled, withoutSettled, unsettledActions } from '@app/lib/settledAsks';
@@ -3739,7 +3739,7 @@ export default function HostShellV2() {
     if (!hit) return null;
     // External grounded destinations (the CVB search link): a real new-tab
     // open, glyph-earning navigation — never a toast pretending to be one.
-    if (hit.href) return { label: hit.label, go: () => { try { window.open(hit.href, '_blank', 'noopener'); } catch { toast('Couldn’t open the link.'); } } };
+    if (hit.href) return { label: hit.label, href: hit.href, go: () => { try { window.open(hit.href, '_blank', 'noopener'); } catch { toast('Couldn’t open the link.'); } } };
     // The album rows (owner pick, 11/21/2026) carry a quiet second line when
     // guests' photos wait for approval; the row says which one it is.
     const res = (() => { try { return resolveRoute(hit.route); } catch { return null; } })();
@@ -14930,6 +14930,7 @@ export default function HostShellV2() {
                         const reason = getActionReason(a, { event, moneyRows });
                         return (
                           <button key={String(a.id || i)} data-flip={String(a.id || i)} className={'ef-row' + (detail && detail.a && String(detail.a.id) === String(a.id) ? ' is-picked' : '')}
+                            data-then-step={a.stepRowId || a.taskId || undefined} data-route={(a.stepRowId || a.taskId) && a.route ? JSON.stringify(a.route) : undefined}
                             onClick={() => {
                               if (reason) trackReason(ANALYTICS.ROW_WITH_REASON_CLICKED, a, reason);
                               // UX_04 Zone 4: on a real canvas a click SELECTS and the
@@ -17479,22 +17480,17 @@ export default function HostShellV2() {
             <section role="main">
               {/* Same day-of nav dead-end fix as the Day tab — see the comment
                   on the liveDay day-sec branch above. After had the identical gap. */}
-              {/* On a tall iPad the bar is the menu (owner, 11/22/2026); the sample
-                  still says so, on its own line. */}
-              {elegantMode && ttHead && !eventIsTheHostsOwn && (
-                <div className="tt-r1 tt-r1-solo"><span className="tt-chip" data-sample-event>Sample</span></div>
-              )}
-              {elegantMode && !ttHead && (
-                <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
+              {/* AFTER NAMES ITS EVENT, AND ITS TITLE IS THE SWITCHER (cohesion F,
+                  answering D's open question, 11/25/2026). A past plan lands on
+                  After, which had no event name and, on a phone or iPad, no way to
+                  another plan but back through Plan. It wears Plan's own title
+                  block: the same door (the title opens the events sheet), the same
+                  name, the Sample chip in its first row. Not a new surface. */}
+              {elegantMode && (ttHead ? titleHead(null) : titleHead(
+                <button className="ev-eyebrow tt-menu" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
-                  {/* A SAMPLE SAYS SO (owner, 11/16/2026). A built-in sample's plan —
-                      its caterer bill, its vendors — read as the host's own when she
-                      landed on one. Every board layout carries this header, so the
-                      label is here once per layout, beside the text the tests read. */}
-                  {!eventIsTheHostsOwn && <span className="eb-sample" data-sample-event>Sample</span>}
-                  <span className="eb-text">MENU</span>
                 </button>
-              )}
+              ))}
               <div className="eyebrow">{isPast ? 'Afterward' : 'Preview — how it’ll wrap up'}</div>
               {/* Sans, not serif (font audit): After is an OPERATIONAL host-shell
                   tab, so its hero matches Plan's "56 days" / the sheet heroes (the
@@ -24452,14 +24448,21 @@ export default function HostShellV2() {
                     );
                     // UP NEXT is this same step, opened, with its route as the sheet's
                     // one lit button (or "Check it off" when it declares none, D4).
+                    const upRoute = asNext ? upNextRoute(event, t.id) : null;
+                    const upGo = !!(action && (upRoute || action.href));
                     const nextCard = (inner) => (
-                      <div key="up-next" className="ck-next" data-up-next data-step-action={action ? action.label : undefined}>
+                      <div key="up-next" className="ck-next" data-up-next data-up-next-step={t.id || undefined} data-step-action={action ? action.label : undefined}>
                         <div className="sect"><h2>Up next</h2><div className="rule" />{dueBits ? <span className="when">{dueBits}</span> : null}</div>
                         <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
                           <div className="f-name ck-next-name">{lead}</div>
                           {openTop}{whoLine}
-                          <button type="button" className="cta" style={{ width: '100%' }} data-up-next-go data-row-action={action ? '' : undefined}
-                            onClick={() => (action ? action.go() : toggleTask(i))}>{action ? action.label : 'Check it off'}</button>
+                          {/* Where it goes is where a board row for this step goes:
+                              taskRoute.upNextRoute reads actionRoute (cohesion F's
+                              one step fallback). An outside link (the visitor
+                              bureau) stays the row's own; no target: Check it off. */}
+                          <button type="button" className="cta" style={{ width: '100%' }} data-up-next-go data-row-action={upGo ? '' : undefined}
+                            data-route={upRoute ? JSON.stringify(upRoute) : undefined}
+                            onClick={() => (!upGo ? toggleTask(i) : upRoute ? (routeSheet(upRoute) || toast(action.label)) : action.go())}>{upGo ? action.label : 'Check it off'}</button>
                           <div className="ck-next-more">{inner}{action ? checkOff : null}</div>
                         </div></div>
                       </div>

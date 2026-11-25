@@ -97,3 +97,21 @@ export function actionRoute(event, action) {
   const rowId = action.stepRowId || action.taskId || null;
   return rowId ? stepRoute(event, rowId) : null;
 }
+
+/**
+ * upNextRoute(event, taskId) — where the checklist's "Up next" lit button goes
+ * (cohesion D's hookup, 11/25/2026): the same place a board row for that step
+ * goes, read from actionRoute, so the two can never disagree. When the step
+ * declares no target, actionRoute's fallback is the step's own checklist row,
+ * which is where "Up next" already is: that is null here, and the button says
+ * "Check it off" (D4).
+ */
+export function upNextRoute(event, taskId) {
+  if (!taskId) return null;
+  const r = actionRoute(event, { taskId });
+  if (!r) return null;
+  // Exactly stepRoute's own-row fallback, never a declared target.
+  const ownRow = r.tab === 'Timeline' && r.taskId === taskId && r.timelineId === taskId
+    && Object.keys(r).length === 3;
+  return ownRow ? null : r;
+}
