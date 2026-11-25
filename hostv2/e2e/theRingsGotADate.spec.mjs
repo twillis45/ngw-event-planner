@@ -15,7 +15,7 @@
 // DRIVEN, BECAUSE JEST CANNOT EXECUTE hostv2, and because the checklist is not
 // rendered until the host drafts it — a claim about "the task exists" proves
 // nothing about the screen until that button is pressed.
-import { test, expect, settled, dateIn } from './fixtures.mjs';
+import { test, expect, settled, dateIn, openAllPhases, openChecklistStep } from './fixtures.mjs';
 
 const tapText = (page, src) => page.evaluate((s) => {
   const rx = new RegExp(s, 'i');
@@ -55,6 +55,9 @@ const draftChecklist = async (page, type, daysOut) => {
   const drafted = await tapText(page, 'Draft my checklist from the playbook');
   await page.waitForTimeout(1600);
   await settled(page);
+  // The checklist folds later phases (cohesion D, 11/24/2026); this spec reads
+  // the whole drafted list, so it opens every phase first.
+  await openAllPhases(page);
   return drafted;
 };
 
@@ -70,9 +73,10 @@ test('(premise) the checklist really drafts, with the rest of the runway on it',
 
 test('THE RINGS HAVE A DATE — and it says why they take that long', async ({ page }) => {
   await draftChecklist(page, 'Elopement', 70);
-  const t = await bodyText(page);
-  expect(t).toMatch(/Order and size the rings/);
-  expect(t).toMatch(/allow 6–8 weeks for making, engraving and any resize/);
+  expect(await bodyText(page)).toMatch(/Order and size the rings/);
+  // Why it takes that long is the step's detail, inside the opened step (D).
+  await openChecklistStep(page, 'Order and size the rings');
+  expect(await bodyText(page)).toMatch(/allow 6–8 weeks for making, engraving and any resize/);
 });
 
 test('IT IS SEQUENCED, not appended — after the travel booking, before attire', async ({ page }) => {

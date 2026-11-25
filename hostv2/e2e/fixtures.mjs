@@ -375,6 +375,22 @@ export const openAllPhases = async (page) => {
     await closed.first().click();
   }
 };
+// THE WHOLE CHECKLIST AS TEXT (cohesion D, 11/24/2026). Later phases fold and
+// one step opens at a time, holding its detail; a spec that reads "is this
+// sentence anywhere on the checklist" opens every phase, then each step in
+// turn, and gets the sheet's text plus every step's opened text.
+export const readWholeChecklist = async (page) => {
+  await openAllPhases(page);
+  const sheet = page.locator('.sheet').last();
+  const parts = [await sheet.innerText()];
+  const bodies = sheet.locator('[data-step-body]');
+  for (let i = 0, n = await bodies.count(); i < n; i += 1) {
+    const b = bodies.nth(i);
+    if ((await b.getAttribute('aria-expanded')) !== 'true') await b.click();
+    parts.push(await sheet.locator('[data-step-row]').nth(i).innerText());
+  }
+  return parts.join('\n');
+};
 // The step whose title holds `text`, opened in place. Returns its [data-step-row].
 export const openChecklistStep = async (page, text) => {
   await openAllPhases(page);
