@@ -105,8 +105,15 @@ test('the email checkbox is prominent, directly under the email, unchecked, and 
   await expect(box).not.toContainText('coming soon');        // both are sent now: nothing is promised for later
 
   // Measured: directly under the email field, full width, a finger-sized target.
-  const e = await email.boundingBox();
-  const b = await box.boundingBox();
+  // Both rects in ONE frame: two boundingBox() calls are two frames, and a
+  // layout shift between them read as an 18px overlap on main (536d63a, desktop)
+  // that the page never had. A real overlap still fails here.
+  await expect(box).toBeVisible();
+  const [e, b] = await page.evaluate(() => {
+    const r = (el) => { const x = el.getBoundingClientRect(); return { x: x.x, y: x.y, width: x.width, height: x.height }; };
+    const root = document.querySelector('[data-guest-ask]');
+    return [r(root.querySelector('[aria-label="Email for answers — optional"]')), r(root.querySelector('[data-email-optin]'))];
+  });
   expect(b.y - (e.y + e.height)).toBeGreaterThanOrEqual(0);
   expect(b.y - (e.y + e.height)).toBeLessThanOrEqual(12);
   expect(b.height).toBeGreaterThanOrEqual(44);
