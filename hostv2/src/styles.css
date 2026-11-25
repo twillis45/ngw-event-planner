@@ -8508,8 +8508,10 @@ button.vc-pill::after{
    placed into the question column (501px at 1133), the touch-only rename tip
    could not sit beside the 261px title, wrapped onto a 22px line of its own,
    and on touch the fold handle dropped to y=759 on a 744-tall screen
-   (aShortLandscapeFitsEveryAsk, the fold handle starts on the first screen). */
-.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > :is(.ev-eyebrow, .tt-head){
+   (aShortLandscapeFitsEveryAsk, the fold handle starts on the first screen).
+   Short screens only (the block below): the tall iPad board lays out its own
+   header to the shared 48px edges (aTallIPadGetsItsOwnBoard). */
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ev-eyebrow{
   grid-column:1 / -1; grid-row:1; align-self:start;
 }
 /* The desktop header placement ("THE ORDER, NOT THE COLUMNS"), one row under
@@ -8568,6 +8570,7 @@ button.vc-pill::after{
     font-size:clamp(36px,6vh,56px);
   }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head{
+    grid-column:1 / -1; grid-row:1; align-self:start;
     padding-top:0; display:flex; flex-wrap:wrap; align-items:center; column-gap:16px;
   }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-r1,
