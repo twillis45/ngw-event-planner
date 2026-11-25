@@ -17,7 +17,13 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
-## November 24, 2026 (latest) — cohesion batches A, B and C, bundled (owner: "Bundle")
+## November 25, 2026 (latest) — "See the full invite" opens in place; What's new is checked per release
+
+- **Full invite (owner report, iPad):** the button opened the public link in a new tab (the SAVED invite, so Classic while At a glance was picked), and the 440px preview cut off the reply buttons. It now expands the same draft in place; "Show less" folds it back. Test in `theHostChoosesTheInvite` (red: a new tab opened), plus the live check's extra assertions (44px button, notice inside, folds back to 440).
+- **What's new per release (owner question):** `whatsNewIsBehind` now needs the newest entry's `through` tag to cover the last release tag; entries written for 11/24 .2–.11. Shipped with #258 (.10) and this PR (.11).
+- **#258's CI-only failure, root-caused:** the short-screen fold handle was exactly 44px; at a fractional offset CI's floor probe counted 43. It now keeps `--tap-min` (46px). The board sweep attaches evidence on any rule-9 finding.
+
+## November 24, 2026 — cohesion batches A, B and C, bundled (owner: "Bundle")
 
 - **What:** A (The Day's "Still to do today" + "the day's schedule" wording), B (the vendor detail + the one clip probe), C (rule 12 "the numbers agree" + the budget card + Space + the family checklist count, + the flipReorder fix). Each batch's own entry is below.
 - **Integration fixes (each found on the merged tree, each red first):**
