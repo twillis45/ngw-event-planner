@@ -7538,6 +7538,11 @@ export default function HostShellV2() {
     try { result = await checkRsvpCapability(event); } finally { rsvpChecking.current = false; }
     endBusyToast();
     if (!result.ready) {
+      // ONE MESSAGE, ONE PLACE (11/25/2026). A draft that asked `withReason`
+      // opens with its own "Your reply link isn't ready" box, which says why and
+      // holds the way forward. A toast saying it again lay over the sheet's
+      // "Preview as: Email | Text" toggle at 1440x900.
+      if (why) return { url: '', reason: result.reason };
       // AN UNSAVED PLAN IS ASKED TO BE SAVED (owner, 11/24/2026). Signed out,
       // the plan never reached an account, so it has no public invite yet:
       // saying "not available" read as a dead end. The way forward is the
@@ -23609,7 +23614,9 @@ export default function HostShellV2() {
                     {sheet.linkReason === 'unpublished' && !session
                       ? 'Sign in to save this plan, then try again.'
                       : 'Check your connection and try again.'} Nothing can go out without it.</p>
-                  <button className="cta" onClick={retryDraftLink}>Try again</button>
+                  {sheet.linkReason === 'unpublished' && !session && isSupabaseConfigured()
+                    ? <div className="actions-row"><button className="cta" onClick={openKeepSignIn}>Sign in to save</button><button className="mini" onClick={retryDraftLink}>Try again</button></div>
+                    : <button className="cta" onClick={retryDraftLink}>Try again</button>}
                 </div>
               ) : null;
               const lc = isInviteWords && draftBody != null ? lineChange(event) : null;
