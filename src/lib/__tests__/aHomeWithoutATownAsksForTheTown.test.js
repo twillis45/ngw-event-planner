@@ -9,6 +9,13 @@ import { useFrozenClock } from '../../testUtils/frozenClock';
 const base = { id: 'e-town', name: 'Thanksgiving Dinner', type: 'Thanksgiving Hosting', date: '2026-11-26', startTime: '15:00', guestEstimate: 14 };
 const cue = (ev) => (deriveEventPhaseProgress(ev).items || []).find((i) => i.id === 'location');
 
+// FROZEN (11/25/2026): these two read the real clock while the event is dated
+// 2026-11-26. CI runs jest at UTC+14, where that date arrived on 11/25 and the
+// location row changes on the event day, so both went red with no code change.
+// Pinned to the live day this test was written for, like the block below.
+describe('the location row', () => {
+useFrozenClock('2026-11-23T12:00:00.000Z');
+
 test('at home with no town, the location row asks for the town', () => {
   const c = cue({ ...base, venueKind: 'home' });
   expect(c).toBeTruthy();
@@ -19,6 +26,7 @@ test('at home with no town, the location row asks for the town', () => {
 test('away from home with nothing set, the ask is still the location', () => {
   const c = cue({ ...base });
   expect(heroAskFor(c)).toBe('Add the location.');
+});
 });
 
 // THE PRODUCER THE HERO ACTUALLY READS. The test above passed while the live
