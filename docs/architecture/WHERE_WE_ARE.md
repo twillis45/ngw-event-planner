@@ -1,5 +1,13 @@
 # Where We Are -- live status board
 
+## November 25, 2026 (evening) — hostv4: the new design starts doing the work
+
+The owner chose to build the simplified design as its own shell, hostv4, beside hostv2 rather than replace screens inside it. By the end of the day it asks for the budget from cited prices, and it runs Guests end to end: the questions one at a time, the list, each guest's details, the invite and its sending, nudges, locking the count, and updates and guests' questions. It sends on the account the host signed into in hostv2.
+
+The rule that made it safe: hostv4 copies nothing. Every change it makes and every message it sends goes through shared code that hostv2 now calls too, so the two shells cannot disagree about a guest, an invite or a send. What hostv4 cannot do yet (import, QR, the day-of details, photos, the date and place editors) says so and opens the current app.
+
+One correction from the day: local browser tests for hostv2 had been reading an old build. CI, which rebuilds, was the real check throughout; the local numbers were redone on a fresh build before the last merge.
+
 ## November 25, 2026 — the cohesion batches land, and a host tester resets the direction
 
 All seven cohesion batches (A–G) are now on main or in the integration PR: one lit action per board, the checklist and After rebuilt (D+E, #260), small sheets and copy, the short iPad's fold, risks folded into one group, every field labeled (F+G). #261 added release times to What's new and moved "Up next" onto its panel.
