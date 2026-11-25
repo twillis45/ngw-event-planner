@@ -7,6 +7,8 @@
 // the plan in the current app; it never pretends.
 import { useEffect, useMemo, useState } from 'react';
 import GuestsPage from './GuestsPage.jsx';
+import Sidebar from './Sidebar.jsx';
+import { useLayout } from './layout.js';
 import InvitePage from './InvitePage.jsx';
 import UpdatesPage from './UpdatesPage.jsx';
 import { readCustomEvents, patchSavedEvent } from '@app/lib/customEventStore';
@@ -122,6 +124,8 @@ export default function HostShellV4() {
   const [done, setDone] = useState(null); // { msg, undo } — one quiet line, with Undo
   const [failed, setFailed] = useState(null);
   const [stack, setStack] = useState([]); // pages pushed over the tab: 'guests', then 'invite'
+  const layout = useLayout();
+  const [sideOpen, setSideOpen] = useState(false);
   const page = stack[stack.length - 1] || null;
   // Every pushed page is a history entry, so browser back (and Safari's edge
   // swipe) equals app back (UX_12 §7a.7).
@@ -197,15 +201,29 @@ export default function HostShellV4() {
     </nav>
   );
 
+  // TABLETS (UX_13): the sidebar replaces the tab bar; every view sits beside it
+  // (split) or under it (compact, behind a menu button). The phone is unchanged.
+  const goTab = (id) => { if (stack.length) { try { window.history.go(-stack.length); } catch { /* falls through */ } setStack([]); } setTab(id); };
+  const goGuests = () => { if (page !== 'guests') { if (stack.length) { try { window.history.go(-stack.length); } catch { /* falls through */ } setStack([]); } push('guests'); } };
+  const frame = (content) => (layout === 'phone' ? content : (
+    <div className={'tablet ' + layout + (sideOpen ? ' sideopen' : '')} data-layout={layout}>
+      <Sidebar ev={ev} date={date} tabs={TABS.map(([id, label, d]) => [id, label, <Icon d={d} />])} here={page === 'guests' || stack.includes('guests') ? 'guests' : page ? null : tab}
+        onTab={goTab} onGuests={goGuests} onClose={() => setSideOpen(false)} />
+      {layout === 'compact' && <div className="sidescrim" onClick={() => setSideOpen(false)} />}
+      {layout === 'compact' && !page && <button className="menubtn" aria-label="Show places" onClick={() => setSideOpen(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button>}
+      {content}
+    </div>
+  ));
+
   if (page) {
     const from = stack.length > 1 ? 'Guests' : tab === 'plan' ? 'Your plan' : 'Next step';
     const navbar = (title) => (<>
       <div className="navbar"><button className="backbtn" onClick={back} aria-label={'Back to ' + from}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>{from}</button></div>
       <h1 className="lt">{title}</h1>
     </>);
-    return (
+    return frame(
       <div className="app pushed" key={page}>
-        {page === 'guests' && <GuestsPage key={ev.id} ev={ev} save={saveEdit} sample={sample} nav={navbar('Guests')} status={status} onInvite={() => push('invite')} onUpdates={() => push('updates')} />}
+        {page === 'guests' && <GuestsPage key={ev.id} ev={ev} save={saveEdit} sample={sample} nav={navbar('Guests')} status={status} onInvite={() => push('invite')} onUpdates={() => push('updates')} layout={layout} />}
         {page === 'updates' && <UpdatesPage key={ev.id} ev={ev} nav={navbar('Updates and questions')} status={status} />}
         {page === 'invite' && <InvitePage key={ev.id} ev={ev} save={saveEdit} nav={navbar('Your invite')} status={status} />}
         {tabbar}
@@ -213,7 +231,7 @@ export default function HostShellV4() {
     );
   }
 
-  return (
+  return frame(
     <div className="app">
       <main className="view" data-tab={tab}>
         <h1 className="lt">{tab === 'plan' ? 'Your plan' : tab === 'day' ? 'The Day' : ev.name}</h1>
