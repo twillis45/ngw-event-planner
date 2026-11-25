@@ -10,8 +10,15 @@ const path = require('path');
 const { EVENTS } = require('../analytics');
 
 const SRC = path.join(__dirname, '..', '..', '..', 'hostv2', 'src');
-const all = fs.readdirSync(SRC).filter((f) => /\.(jsx|js)$/.test(f))
+const shell = fs.readdirSync(SRC).filter((f) => /\.(jsx|js)$/.test(f))
   .map((f) => fs.readFileSync(path.join(SRC, f), 'utf8')).join('\n');
+// SHARED BY BOTH SHELLS (11/25/2026): some moments fire from a lib/ module the
+// host app imports (guestUpdatesKit holds the update post and the reply, for
+// hostv2 and hostv4). Such a module counts only while the host app imports it,
+// so an event fired from a file nothing ships still fails here.
+const LIB = path.join(__dirname, '..');
+const sharedFiring = ['guestUpdatesKit.js'].filter((f) => shell.includes(`@app/lib/${f.replace(/\.js$/, '')}'`));
+const all = [shell, ...sharedFiring.map((f) => fs.readFileSync(path.join(LIB, f), 'utf8'))].join('\n');
 
 const NEW = {
   SECTION_OPENED: 'section_opened',
