@@ -112,7 +112,9 @@ describe('THE DEFECT ITSELF, re-proved against the live corpus', () => {
     // 44 on 11/22/2026: the Gala's first dated rows (its zero-proof line, audit G #1).
     // Client Dinner on 11/23/2026 (batch 10): its wine bottle is now cited, so it
     // stamps that month.
-    expect(labels).toEqual({ 'Aug 2026': 44, 'Nov 2026': 2 });
+    // Birthday on 11/25/2026: all 14 of its priced rows re-checked (the sourced
+    // budget is built from them), so it moves from Aug to Nov.
+    expect(labels).toEqual({ 'Aug 2026': 43, 'Nov 2026': 3 });
     // Two playbooks have no researched price row at all. They previously showed
     // a confident "Jan 2026" over nothing; they now show no stamp. Named, so
     // that if one gains a priced row this count moves WITH a reason.
