@@ -271,7 +271,7 @@ const PLAYBOOK_EXPORTS_NOT_IN_HOSTV2 = {
   playbookBudgetCategories: 'The PLANNER surface (src/plan/ClientIntakeFlow), not the host app.',
 
   // ── Built for the next host shell, not wired yet ──────────────────────────
-  sourcedBudget: 'Built for hostv4\'s budget question (owner, 11/25/2026: "build from cited"). Not wired yet: hostv4 must save through the same path hostv2 uses (patchEvent, which also syncs signed-in plans), and that is the next hostv4 step. Remove this entry when hostv4 or hostv2 shows it.',
+  sourcedBudget: 'Shown by hostv4\'s budget question (owner, 11/25/2026: "build from cited"), saved through patchSavedEvent like hostv2. hostv4 is internal; this walk covers hostv2 only. Remove this entry when hostv2 shows it or the walk covers hostv4.',
 
   // ── Reaches nothing at all. Recorded, not deleted: each is a decision for
   // the owner, and a wrong deletion is harder to undo than a wrong entry here.

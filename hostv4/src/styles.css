@@ -30,4 +30,31 @@ body { font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: anti
 .tabbar button { background: none; border: 0; color: var(--ink-3); font: 500 .6875rem var(--sans); display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 46px; min-width: 72px; cursor: pointer; }
 .tabbar button svg { width: 24px; height: 24px; }
 .tabbar button[aria-selected="true"] { color: var(--accent); }
-@media (prefers-reduced-motion: reduce) { .primary:active { transform: none; } }
+button.primary { border: 0; cursor: pointer; font-family: var(--sans); }
+/* Choices are rows with a radio (UX_12 §6); the picked row takes a faint tint of the accent. */
+.row.choice { width: 100%; border: 0; background: none; color: var(--ink); font: inherit; font-size: 1.0625rem; text-align: left; cursor: pointer; }
+.row.choice[aria-checked="true"] { background: rgba(241, 237, 230, .07); }
+.row.choice:active { opacity: .7; }
+.radio { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--ink-3); position: relative; }
+[aria-checked="true"] > .radio { border-color: var(--accent); }
+[aria-checked="true"] > .radio::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--accent); }
+.link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-weight: 500; cursor: pointer; min-height: 44px; }
+.fine .link { min-height: 0; padding: 12px 0; }
+.fine.warn { color: var(--warn); }
+.grp + .fine { margin-top: 12px; }
+.done { font-size: .9375rem; color: var(--ok); margin: 0 2px 12px; }
+.nm { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nm small { font-size: .8125rem; color: var(--ink-3); }
+/* A sheet rises from the bottom, shows a grabber and Done (UX_12 §2). */
+.scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, .5); display: flex; align-items: flex-end; justify-content: center; z-index: 10; animation: fade .25s ease-out; }
+.sheet { width: 100%; max-width: 430px; max-height: 88vh; overflow-y: auto; background: var(--raised-2); border-radius: 14px 14px 0 0; padding: 8px 16px max(20px, env(safe-area-inset-bottom, 0px)); animation: rise .35s cubic-bezier(0.22, 1, 0.36, 1); }
+.sheet .grp { background: var(--raised); }
+.grabber { width: 36px; height: 5px; border-radius: 3px; background: var(--ink-3); opacity: .5; margin: 0 auto 6px; }
+.sheethead { display: flex; align-items: center; justify-content: space-between; }
+.sheethead h2 { font-size: 1.1875rem; margin: 0; }
+.sh { display: flex; align-items: baseline; justify-content: space-between; margin: 18px 2px 8px; }
+.sh h3 { font-size: 1rem; margin: 0; }
+.sh span { color: var(--ink-2); font-size: .9375rem; }
+@keyframes rise { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .primary:active { transform: none; } .sheet { animation: fade .2s ease-out; } }
