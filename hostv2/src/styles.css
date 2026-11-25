@@ -8563,6 +8563,11 @@ button.vc-pill::after{
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-r1,
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-sub{ flex-basis:100%; }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-tip{ margin:0; }
+  /* The tip's × keeps its -12px margins (it hugs its line, adding no height)
+     and sits above the next row, so its whole 46px tap box stays tappable:
+     in this compact header the following row covered half of it (47x26,
+     everyTapIsFortyFourSquare at 1024x768). */
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-tip .tt-tip-x{ position:relative; z-index:1; }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head .tt-title{ margin-top:0 !important; }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{ padding-top:16px; }
 }
