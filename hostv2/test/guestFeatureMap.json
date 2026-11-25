@@ -1,0 +1,732 @@
+{
+  "about": "Every guest feature in today's host shell, with where it lives in the simplified Guests design (UX_12, direction E). The test guestEveryFeatureHasAHome.test.mjs checks that each feature still exists in the code (its anchor) and that each has a home. When the new screens are built, each entry gains a selector the e2e suite finds on that screen. Recommendations still awaiting the owner are marked pending.",
+  "places": {
+    "question": "Asked once, one per screen, at the top of the Guests page until answered",
+    "guestsPage": "A section or row on the Guests page",
+    "guestSheet": "The sheet for one guest (tap a name)",
+    "invitePage": "The Your invite page (pushed from Guests)",
+    "sendSheet": "The Send the invite sheet",
+    "repliesSheet": "The Who has replied sheet",
+    "nudgeSheet": "The nudge sheet",
+    "updatesPage": "The Updates and questions page (pushed from Guests)",
+    "more": "The More section at the foot of the Guests page",
+    "button": "The Guests page's bottom button, by state",
+    "elsewhere": "Stays in another part of the app"
+  },
+  "features": [
+    {
+      "id": "count",
+      "feature": "About how many are coming (count stepper)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const setGuests"
+      },
+      "home": "question",
+      "where": "About how many are coming?"
+    },
+    {
+      "id": "count-hero",
+      "feature": "The headline count and its line (yes so far, not replied yet)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const guestHero"
+      },
+      "home": "guestsPage",
+      "where": "Header: Planning for N · N named · N coming"
+    },
+    {
+      "id": "counting-mode",
+      "feature": "By list or by headcount",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const countingChips"
+      },
+      "home": "question",
+      "where": "Do you want to track who's coming by name?"
+    },
+    {
+      "id": "kids-count",
+      "feature": "How many are kids (count-only plans)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "are kids"
+      },
+      "home": "question",
+      "where": "Follows Are kids welcome? when tracking by headcount"
+    },
+    {
+      "id": "lock-count",
+      "feature": "Lock the count, reopen it",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "kind === 'lockcount'"
+      },
+      "home": "button",
+      "where": "Lock the count at N, after the reply-by date (owner decision pending: Guests only)",
+      "pending": true
+    },
+    {
+      "id": "plus-one-rule",
+      "feature": "Plus-ones welcome or not",
+      "anchor": {
+        "file": "src/InviteRules.jsx",
+        "contains": "plusOnePolicy"
+      },
+      "home": "question",
+      "where": "Can guests bring someone?"
+    },
+    {
+      "id": "kids-rule",
+      "feature": "Kids welcome or adults only",
+      "anchor": {
+        "file": "src/InviteRules.jsx",
+        "contains": "kidsPolicy"
+      },
+      "home": "question",
+      "where": "Are kids welcome?"
+    },
+    {
+      "id": "reply-by",
+      "feature": "Reply-by date, or pick one for me",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "renderDeadlineEditor"
+      },
+      "home": "question",
+      "where": "When should replies be in by?"
+    },
+    {
+      "id": "addresses-rule",
+      "feature": "Collect mailing addresses",
+      "anchor": {
+        "file": "src/InviteRules.jsx",
+        "contains": "collectAddresses"
+      },
+      "home": "invitePage",
+      "where": "Rules: Ask for mailing addresses (owner decision pending)",
+      "pending": true
+    },
+    {
+      "id": "gift-rule",
+      "feature": "Gift note: none, no gifts, registry link",
+      "anchor": {
+        "file": "src/InviteRules.jsx",
+        "contains": "giftWish"
+      },
+      "home": "invitePage",
+      "where": "Rules: Gifts (owner decision pending)",
+      "pending": true
+    },
+    {
+      "id": "quick-add",
+      "feature": "Add names, one per line",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const quickAdd"
+      },
+      "home": "guestsPage",
+      "where": "Names: Add a name (paste several at once)"
+    },
+    {
+      "id": "couple-split",
+      "feature": "Counting a couple as two people",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "Count couples separately"
+      },
+      "home": "guestsPage",
+      "where": "Names: the line under the box after adding a couple"
+    },
+    {
+      "id": "roster",
+      "feature": "The list of names with reply, +1, kids, diet tags",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const addRoster"
+      },
+      "home": "guestsPage",
+      "where": "Names: the list (swipe right for coming, left to remove)"
+    },
+    {
+      "id": "search",
+      "feature": "Find someone on the list, and the reply filters",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "Find someone on the list"
+      },
+      "home": "guestsPage",
+      "where": "Names: search and filter, at 8 or more names (owner decision pending)",
+      "pending": true
+    },
+    {
+      "id": "same-person",
+      "feature": "A reply signed differently: same person or different",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "Same person"
+      },
+      "home": "guestsPage",
+      "where": "Names: a line above the list when a match is flagged"
+    },
+    {
+      "id": "guest-name",
+      "feature": "Rename a guest in place",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const guestDetail"
+      },
+      "home": "guestSheet",
+      "where": "Name"
+    },
+    {
+      "id": "guest-reply",
+      "feature": "Set a guest's reply",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const setRsvpValue"
+      },
+      "home": "guestSheet",
+      "where": "Reply: Yes, Maybe, No, No reply"
+    },
+    {
+      "id": "guest-meal",
+      "feature": "Meal and dietary needs",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "Dietary needs, if any"
+      },
+      "home": "guestSheet",
+      "where": "Meal and diet"
+    },
+    {
+      "id": "guest-plus-one",
+      "feature": "Their +1's name, meal and diet",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "Their +1"
+      },
+      "home": "guestSheet",
+      "where": "Their +1 (when plus-ones are welcome)"
+    },
+    {
+      "id": "guest-kids",
+      "feature": "Children with this guest",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "Children"
+      },
+      "home": "guestSheet",
+      "where": "Children (when kids are welcome)"
+    },
+    {
+      "id": "guest-reach",
+      "feature": "Phone, email, group",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "How to reach them"
+      },
+      "home": "guestSheet",
+      "where": "How to reach them"
+    },
+    {
+      "id": "guest-nudge",
+      "feature": "Email or text one guest the nudge",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const sendNudgeTo"
+      },
+      "home": "guestSheet",
+      "where": "Nudge them (no reply yet, invite out)"
+    },
+    {
+      "id": "guest-told",
+      "feature": "I told them myself",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const markTold"
+      },
+      "home": "guestSheet",
+      "where": "I told them myself"
+    },
+    {
+      "id": "guest-remove",
+      "feature": "Remove a guest, with Undo",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const removeGuest"
+      },
+      "home": "guestSheet",
+      "where": "Remove (also swipe left on the list)"
+    },
+    {
+      "id": "csv-import",
+      "feature": "Import a guest list (CSV)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const onCsvFile"
+      },
+      "home": "more",
+      "where": "Import a list"
+    },
+    {
+      "id": "csv-apply",
+      "feature": "Preview an import, bring them in",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const applyCsv"
+      },
+      "home": "more",
+      "where": "Import a list: preview, Bring them in"
+    },
+    {
+      "id": "csv-undo",
+      "feature": "Past imports, undo last import",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "Undo last import"
+      },
+      "home": "more",
+      "where": "Past imports"
+    },
+    {
+      "id": "csv-clear",
+      "feature": "Clear import history",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "Clear import history"
+      },
+      "home": "more",
+      "where": "Past imports: Clear"
+    },
+    {
+      "id": "csv-export",
+      "feature": "Download the guest list",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const exportGuestsCsv"
+      },
+      "home": "more",
+      "where": "Download the list"
+    },
+    {
+      "id": "invite-design",
+      "feature": "The invite page: layout, preview, message, hosted by, photo, contact, colors, artwork",
+      "anchor": {
+        "file": "src/InviteDesignSheet.jsx",
+        "contains": "InviteDesignSheet"
+      },
+      "home": "invitePage",
+      "where": "Your invite"
+    },
+    {
+      "id": "invite-rules-panel",
+      "feature": "The invite rules panel",
+      "anchor": {
+        "file": "src/InviteRules.jsx",
+        "contains": "export"
+      },
+      "home": "invitePage",
+      "where": "Rules"
+    },
+    {
+      "id": "invite-check",
+      "feature": "Before your invite goes out: what's missing",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "Before your invite goes out"
+      },
+      "home": "sendSheet",
+      "where": "What's missing, shown first when anything is"
+    },
+    {
+      "id": "invite-draft",
+      "feature": "The invite message draft: voice, edit, save",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const openInviteDraft"
+      },
+      "home": "invitePage",
+      "where": "Your message"
+    },
+    {
+      "id": "invite-share-card",
+      "feature": "Share & invite steps",
+      "anchor": {
+        "file": "src/ShareInviteCard.jsx",
+        "contains": "ShareInviteCard"
+      },
+      "home": "button",
+      "where": "Send the invite (bottom button) opens the send sheet"
+    },
+    {
+      "id": "invite-to-list",
+      "feature": "Send to N by email, then text the rest",
+      "anchor": {
+        "file": "src/InviteToTheList.jsx",
+        "contains": "InviteToTheList"
+      },
+      "home": "sendSheet",
+      "where": "Email N, then text the others"
+    },
+    {
+      "id": "invite-send-email",
+      "feature": "Email one guest the invite",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const sendInviteTo"
+      },
+      "home": "sendSheet",
+      "where": "Send to one guest instead"
+    },
+    {
+      "id": "invite-mark-sent",
+      "feature": "I already sent it another way",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const recordSend"
+      },
+      "home": "sendSheet",
+      "where": "I already sent it another way"
+    },
+    {
+      "id": "invite-sent-record",
+      "feature": "What went out",
+      "anchor": {
+        "file": "src/InviteSentRecord.jsx",
+        "contains": "InviteSentRecord"
+      },
+      "home": "invitePage",
+      "where": "What went out (once sent)"
+    },
+    {
+      "id": "share-link",
+      "feature": "Share the link",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const shareInviteLink"
+      },
+      "home": "more",
+      "where": "Share the link"
+    },
+    {
+      "id": "qr",
+      "feature": "Show QR code",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "Scan to RSVP"
+      },
+      "home": "more",
+      "where": "QR code"
+    },
+    {
+      "id": "rsvp-link",
+      "feature": "The reply link, checked with the server first",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const verifiedRsvpUrl"
+      },
+      "home": "sendSheet",
+      "where": "Every send checks the link; signed out, it asks to sign in"
+    },
+    {
+      "id": "replies-pull",
+      "feature": "Replies come in from the invite link",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "readEventRsvps"
+      },
+      "home": "repliesSheet",
+      "where": "Counts and names update; a line says N replies came in"
+    },
+    {
+      "id": "nudge-list",
+      "feature": "Nudge everyone who hasn't replied",
+      "anchor": {
+        "file": "src/NudgeTheList.jsx",
+        "contains": "NudgeTheList"
+      },
+      "home": "nudgeSheet",
+      "where": "Email N, text the rest; skips anyone nudged lately"
+    },
+    {
+      "id": "nudge-open",
+      "feature": "The nudge draft",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const openNudge"
+      },
+      "home": "button",
+      "where": "Nudge the N who haven't replied (bottom button) opens the nudge sheet"
+    },
+    {
+      "id": "no-contact",
+      "feature": "None of the quiet ones left a phone or email",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "None of the quiet ones"
+      },
+      "home": "nudgeSheet",
+      "where": "Shown when nobody waiting can be reached"
+    },
+    {
+      "id": "reply-alerts",
+      "feature": "Hear when a guest replies (turn on or off)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "You hear when a guest replies"
+      },
+      "home": "more",
+      "where": "Reply alerts"
+    },
+    {
+      "id": "updates",
+      "feature": "Updates to everyone",
+      "anchor": {
+        "file": "src/HostUpdates.jsx",
+        "contains": "HostUpdates"
+      },
+      "home": "updatesPage",
+      "where": "Post an update"
+    },
+    {
+      "id": "questions",
+      "feature": "Questions from guests, answer, block",
+      "anchor": {
+        "file": "src/GuestInboxHost.jsx",
+        "contains": "HostQuestions"
+      },
+      "home": "updatesPage",
+      "where": "Questions"
+    },
+    {
+      "id": "opens",
+      "feature": "Who opened the invite",
+      "anchor": {
+        "file": "src/GuestInboxHost.jsx",
+        "contains": "HostInviteOpens"
+      },
+      "home": "updatesPage",
+      "where": "Who opened the invite"
+    },
+    {
+      "id": "send-details",
+      "feature": "Send the details, update everyone (drafts)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const guestComms"
+      },
+      "home": "updatesPage",
+      "where": "Send the details"
+    },
+    {
+      "id": "photos",
+      "feature": "Guest photos: approve, hide, share",
+      "anchor": {
+        "file": "src/GuestInboxHost.jsx",
+        "contains": "HostGuestPhotos"
+      },
+      "home": "elsewhere",
+      "where": "The Day and After"
+    },
+    {
+      "id": "who-confirmed",
+      "feature": "Who's confirmed on the board",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "Who's confirmed"
+      },
+      "home": "elsewhere",
+      "where": "Board; opens the Guests page"
+    },
+    {
+      "id": "after-lines",
+      "feature": "Waiting on you from guests (After)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const afterGuestLines"
+      },
+      "home": "elsewhere",
+      "where": "After"
+    },
+    {
+      "id": "how-many-came",
+      "feature": "How many came",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "How many came"
+      },
+      "home": "elsewhere",
+      "where": "After"
+    },
+    {
+      "id": "thank-yous",
+      "feature": "Thank-yous and gifts, the thank-you run",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "The thank-you run"
+      },
+      "home": "elsewhere",
+      "where": "After"
+    },
+    {
+      "id": "recap",
+      "feature": "The recap for guests",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "The recap for guests"
+      },
+      "home": "elsewhere",
+      "where": "After"
+    },
+    {
+      "id": "attendance",
+      "feature": "The earlier redesign's count statement (?people=1)",
+      "anchor": {
+        "file": "src/PeopleSurface.jsx",
+        "contains": "AttendanceDecision"
+      },
+      "home": "guestsPage",
+      "where": "Header; the ?people=1 layout retires when the new page ships (owner decision pending)",
+      "pending": true
+    },
+    {
+      "id": "cultural-tip",
+      "feature": "A tip for this kind of event (cultural nudge)",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "nudgeFor('guests')"
+      },
+      "home": "guestsPage",
+      "where": "One quiet line above Names, when there is one"
+    },
+    {
+      "id": "diet-tally",
+      "feature": "Diet totals merged from replies",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const pullFromGuests"
+      },
+      "home": "elsewhere",
+      "where": "Food"
+    },
+    {
+      "id": "caterer-count",
+      "feature": "Your caterer's count against confirmed yeses",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const holdGuests"
+      },
+      "home": "elsewhere",
+      "where": "Food (owner decision pending: the count lock itself lives on Guests)",
+      "pending": true
+    },
+    {
+      "id": "seating",
+      "feature": "Who sits where",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const seatGuestAt"
+      },
+      "home": "elsewhere",
+      "where": "Space & seats"
+    },
+    {
+      "id": "rain-note",
+      "feature": "A note to guests about the weather",
+      "anchor": {
+        "file": "src/HostShellV2.jsx",
+        "contains": "const showGuestNote"
+      },
+      "home": "elsewhere",
+      "where": "The Day"
+    }
+  ],
+  "guestFacing": {
+    "about": "Files that render the guest's side (the public invite and reply page). Not part of the host's Guests page.",
+    "files": [
+      "src/GuestAskV2.jsx",
+      "src/GuestPhotosV2.jsx",
+      "src/GuestUpdatesV2.jsx",
+      "src/InviteV2.jsx"
+    ]
+  },
+  "handlers": {
+    "about": "Every guest-related name the shell declares (const ...Guest|Roster|Rsvp|Nudge|Invite|Csv|Told...). Each points at the feature it serves, or is 'internal' (a value, not something the host does), or 'notGuest'. A new name fails the test until it is placed here.",
+    "map": {
+      "_inviteActs": "invite-share-card",
+      "addRoster": "roster",
+      "afterGuestLines": "after-lines",
+      "applyCsv": "csv-apply",
+      "appNudge": "guest-nudge",
+      "countInviteTools": "invite-share-card",
+      "effGuests": "internal",
+      "emailNudge": "guest-nudge",
+      "emailNudged": "guest-nudge",
+      "ensureInviteCard": "invite-send-email",
+      "exportGuestsCsv": "csv-export",
+      "exportVendorsCsv": "notGuest",
+      "fGuestPhrase": "internal",
+      "guest": "internal",
+      "guestComms": "send-details",
+      "guestDetail": "guest-name",
+      "guestDiet": "diet-tally",
+      "guestDraggedRef": "seating",
+      "guestHero": "count-hero",
+      "guestN": "internal",
+      "guestNumber": "internal",
+      "guestPhrase": "internal",
+      "guestRow": "roster",
+      "guests": "internal",
+      "guestsN": "internal",
+      "guestsOpen": "internal",
+      "guestSub": "seating",
+      "handoffNudge": "guest-nudge",
+      "holdGuests": "caterer-count",
+      "inviteCardRef": "invite-send-email",
+      "invited": "internal",
+      "invitedN": "internal",
+      "inviteLinkUrl": "rsvp-link",
+      "invitePost": "updates",
+      "inviteRules": "invite-rules-panel",
+      "inviteSnapshotNow": "invite-sent-record",
+      "inviteSubject": "invite-send-email",
+      "inviteTiers": "invite-share-card",
+      "isInvite": "internal",
+      "isInviteWords": "internal",
+      "markInviteSent": "invite-mark-sent",
+      "markTold": "guest-told",
+      "myNudge": "guest-nudge",
+      "nudge": "guest-nudge",
+      "nudgeFor": "cultural-tip",
+      "onCsvFile": "csv-import",
+      "openInviteDraft": "invite-draft",
+      "openNudge": "nudge-open",
+      "pullFromGuests": "diet-tally",
+      "reachInvite": "invite-to-list",
+      "reachNudge": "nudge-list",
+      "removeGuest": "guest-remove",
+      "rosNudge": "guest-nudge",
+      "rsvpBy": "reply-by",
+      "rsvpByIsSet": "reply-by",
+      "rsvpChecking": "rsvp-link",
+      "rsvpUnavailable": "rsvp-link",
+      "saveInviteDraft": "invite-draft",
+      "seatGuestAt": "seating",
+      "sendInviteTo": "invite-send-email",
+      "sendNudgeTo": "guest-nudge",
+      "setGuests": "count",
+      "setRsvpValue": "guest-reply",
+      "shareInviteCard": "invite-share-card",
+      "shareInviteLink": "share-link",
+      "showGuestNote": "rain-note",
+      "startGuestDrag": "seating",
+      "tHelperGuest": "guest-name",
+      "toInvite": "internal",
+      "told": "guest-told",
+      "undoLastCsvImport": "csv-undo",
+      "unseatGuest": "seating",
+      "verifiedRsvpUrl": "rsvp-link",
+      "writeGuest": "guest-name"
+    }
+  }
+}
