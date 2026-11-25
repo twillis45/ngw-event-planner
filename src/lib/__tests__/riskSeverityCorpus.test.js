@@ -123,8 +123,14 @@ describe('the shell renders severity through the one table', () => {
     expect(SHELL).not.toMatch(/'Worth a look'/);
   });
 
-  test('both risk rows call the shared helpers', () => {
-    expect([...SHELL.matchAll(/riskSeverityTone\(/g)]).toHaveLength(2);
+  // Cohesion G1 (owner, 11/24/2026) folded the two risk lists into ONE grouped
+  // list with one row renderer: the row wears its tier through both helpers,
+  // and each group's head ("Worth planning now (2)") names its tier through
+  // the same label helper. Every tier the shell shows still reads the table.
+  test('the one risk row and its group heads call the shared helpers', () => {
+    expect([...SHELL.matchAll(/riskSeverityTone\(/g)]).toHaveLength(1);
     expect([...SHELL.matchAll(/riskSeverityLabel\(/g)]).toHaveLength(2);
+    expect(SHELL).toMatch(/label: riskSeverityLabel\(sev\)/);
+    expect(SHELL).toMatch(/style=\{riskSeverityTone\(r\.severity\)\}>\{riskSeverityLabel\(r\.severity\)\}/);
   });
 });
