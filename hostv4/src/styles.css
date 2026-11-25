@@ -42,7 +42,10 @@ button.primary { border: 0; cursor: pointer; font-family: var(--sans); }
 .fine .link { min-height: 0; padding: 12px 0; }
 .fine.warn { color: var(--warn); }
 .grp + .fine { margin-top: 12px; }
-.done { font-size: .9375rem; color: var(--ok); margin: 0 2px 12px; }
+.done { font-size: .9375rem; line-height: 1.4; color: var(--ok); margin: 0 2px 12px; }
+.done .link { min-height: 0; padding: 0; }
+.sheet .card { margin-top: 14px; }
+.sheet .card .q { font-size: 1.1875rem; }
 .nm { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .nm small { font-size: .8125rem; color: var(--ink-3); }
 /* A sheet rises from the bottom, shows a grabber and Done (UX_12 §2). */
@@ -55,6 +58,48 @@ button.primary { border: 0; cursor: pointer; font-family: var(--sans); }
 .sh { display: flex; align-items: baseline; justify-content: space-between; margin: 18px 2px 8px; }
 .sh h3 { font-size: 1rem; margin: 0; }
 .sh span { color: var(--ink-2); font-size: .9375rem; }
+/* Pushed pages: a back button labeled with where it returns (UX_12 §2). */
+.pushed .view { animation: push .35s cubic-bezier(0.22, 1, 0.36, 1); }
+.navbar { display: flex; align-items: center; min-height: 44px; margin: 4px -6px 0; }
+.backbtn { display: flex; align-items: center; gap: 2px; background: none; border: 0; color: var(--accent); font: 400 1.0625rem var(--sans); min-height: 44px; padding: 0 6px; cursor: pointer; }
+.backbtn svg { width: 22px; height: 22px; }
+.row.go { width: 100%; border: 0; background: none; color: var(--ink); font: inherit; font-size: 1.0625rem; text-align: left; cursor: pointer; }
+.row.go:active, .row.guest:active { background: var(--raised-2); }
+.chev { width: 18px; height: 18px; color: var(--ink-3); margin-left: auto; flex: none; }
+.row.go .val + .chev { margin-left: 4px; }
+.card { margin-bottom: 8px; }
+.lt + .card, .lt + section .card { margin-top: 14px; }
+[data-guests] > .card:first-child { margin-top: 14px; }
+.check { margin-left: auto; color: var(--accent); font-weight: 600; }
+.lbl { display: block; font-size: .9375rem; font-weight: 600; color: var(--ink-2); margin: 16px 2px 8px; }
+.field { width: 100%; background: var(--raised); color: var(--ink); border: 1px solid var(--hair); border-radius: 10px; padding: 12px 14px; font: 1.0625rem var(--sans); resize: none; margin-bottom: 10px; }
+.field:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+.addrow { display: flex; gap: 12px; align-items: flex-start; }
+.addrow .link { padding: 0 4px; }
+.line { font-size: .9375rem; color: var(--ink-2); margin: 0 2px 12px; }
+.line .link { min-height: 0; padding: 10px 0; }
+.stepper { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; min-height: 64px; }
+.stepper .num { font-size: 1.75rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.stepper .btns { display: flex; gap: 10px; }
+.stepper .btns button { width: 48px; height: 44px; border-radius: 10px; border: 0; background: var(--raised-2); color: var(--ink); font-size: 1.5rem; cursor: pointer; }
+.stepper .btns button:active { transform: scale(.97); }
+.seg { display: flex; background: var(--raised); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg button { flex: 1; min-height: 44px; border: 0; border-radius: 8px; background: none; color: var(--ink-2); font: 500 .9375rem var(--sans); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--raised-2); color: var(--ink); }
+.chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px 12px; padding: 0 16px; scrollbar-width: none; }
+.chips button { flex: none; min-height: 44px; padding: 0 14px; border-radius: 22px; border: 1px solid var(--hair); background: none; color: var(--ink-2); font: 500 .9375rem var(--sans); cursor: pointer; }
+.chips button[aria-pressed="true"] { background: rgba(241, 237, 230, .1); color: var(--ink); border-color: transparent; }
+.swipe { position: relative; overflow: hidden; }
+.swipe + .swipe::before { content: ""; position: absolute; top: 0; right: 0; left: 14px; border-top: 1px solid var(--hair); z-index: 1; }
+.under { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 18px; font-size: .9375rem; font-weight: 600; }
+.under.ok { left: 0; color: var(--ok); }
+.under.rm { right: 0; color: var(--warn); }
+.row.guest { width: 100%; border: 0; background: var(--raised); color: var(--ink); font: inherit; font-size: 1.0625rem; text-align: left; cursor: pointer; touch-action: pan-y; position: relative; z-index: 1; }
+.row.danger { width: 100%; border: 0; background: none; color: var(--warn); font: inherit; font-size: 1.0625rem; justify-content: center; cursor: pointer; }
+.datein { margin-left: auto; background: none; border: 0; color: var(--accent); font: inherit; min-height: 44px; color-scheme: dark; }
+.hol { color: var(--warn); }
+h3.sh { font-size: 1rem; margin: 22px 2px 8px; }
+@keyframes push { from { transform: translateX(24%); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes rise { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .primary:active { transform: none; } .sheet { animation: fade .2s ease-out; } }
+@media (prefers-reduced-motion: reduce) { .primary:active { transform: none; } .sheet, .pushed .view { animation: fade .2s ease-out; } }
