@@ -1292,6 +1292,12 @@ button{font-family:inherit}
      the normal-height .efold is untouched) buys back real, deliberate margin
      instead of a boundary tuned to the sub-pixel. */
   .efold{ margin-top:0; padding-top:2px; }
+  /* ...but never under the house tap height. The trim left the handle exactly
+     44px, and at a fractional offset a 44px box measures 43 (CI, 11/25/2026:
+     everySheetKeepsTheCohesionRules at 860x430). --tap-min is 46 so a tap box
+     clears that rounding; the 2px goes below the label, not above it, so the
+     top edge this rule protects does not move. */
+  .efold{ min-height:var(--tap-min,46px); box-sizing:border-box; }
 }
 /* A 320px PHONE (run 2, R2-12): the left label truncated to "3 of 7 plan par…" —
    losing the count itself — and the short-viewport rule above (max-height:699px,
@@ -8563,6 +8569,11 @@ button.vc-pill::after{
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-r1,
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-sub{ flex-basis:100%; }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-tip{ margin:0; }
+  /* The tip's × keeps its -12px margins (it hugs its line, adding no height)
+     and sits above the next row, so its whole 46px tap box stays tappable:
+     in this compact header the following row covered half of it (47x26,
+     everyTapIsFortyFourSquare at 1024x768). */
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-tip .tt-tip-x{ position:relative; z-index:1; }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head .tt-title{ margin-top:0 !important; }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{ padding-top:16px; }
 }

@@ -87,7 +87,49 @@ test.describe('every sheet keeps the cohesion rules', () => {
   test('the board', async ({ page }, info) => {
     await boot(page);
     await page.waitForTimeout(800);
-    check(await probe(page, '.app', info.project.name), 'the board', info.project.name);
+    const found = await probe(page, '.app', info.project.name);
+    // EVIDENCE WHEN IT FAILS (11/25/2026). On CI only, at 860x430, rule 9 found
+    // the fold handle with a short tap box; every local run (full Chromium and
+    // the headless shell, alone and under load) had it entirely below the
+    // screen. The snapshot's content matched, so the difference is position or
+    // scroll state. On a finding, attach the screen and where each flagged
+    // control and every scrolled box sit, so the next run says why.
+    if (found[9].length) {
+      const where = await page.evaluate(() => {
+        const box = (el) => { const r = el.getBoundingClientRect(); return [Math.round(r.top), Math.round(r.bottom), Math.round(r.left), Math.round(r.right)]; };
+        const fold = document.querySelector('.efold');
+        // As the probe judged it: scrolled to the middle, then read in place.
+        if (fold) fold.scrollIntoView({ block: 'center', inline: 'center' });
+        const column = fold ? (() => { const r = fold.getBoundingClientRect(); const out = []; for (let y = r.top - 8; y <= r.bottom + 8; y += 4) { const t = document.elementFromPoint(r.left + r.width / 2, y); out.push(`${Math.round(y)}:${t ? String(t.className || t.tagName).split(' ')[0] : 'none'}`); } return out; })() : null;
+        const fonts = [...document.fonts].map((f) => `${f.family} ${f.weight} ${f.status}`);
+        const scrolled = [...document.querySelectorAll('*')].filter((e) => e.scrollTop > 0)
+          .map((e) => `${String(e.className || e.tagName).split(' ')[0]} scrollTop=${Math.round(e.scrollTop)} of ${e.scrollHeight - e.clientHeight}`);
+        const atFold = fold ? (() => { const r = fold.getBoundingClientRect(); return [r.top + 2, r.top + r.height / 2, r.bottom - 2].map((y) => { const t = document.elementFromPoint(r.left + r.width / 2, y); return t ? String(t.className || t.tagName).split(' ')[0] : 'none'; }); })() : null;
+        return { vh: innerHeight, scrollY, fold: fold && box(fold), atFold, column, fonts, scrolled, active: document.activeElement && String(document.activeElement.className || document.activeElement.tagName).slice(0, 40) };
+      });
+      await info.attach('board-at-failure.json', { body: JSON.stringify(where, null, 2), contentType: 'application/json' });
+      await info.attach('board-at-failure.png', { body: await page.screenshot(), contentType: 'image/png' });
+      console.log('BOARD-AT-FAILURE ' + JSON.stringify(where));
+    }
+    check(found, 'the board', info.project.name);
+  });
+
+  // THE FOLD HANDLE KEEPS THE HOUSE TAP HEIGHT (11/25/2026). On a short screen
+  // the handle's padding is trimmed so it fits above the fold, and that left it
+  // exactly 44px tall. CI's evidence: centered at a fractional offset
+  // (194 to 237), the pixel walk counted 43, so rule 9 failed there and passed
+  // everywhere else. The house minimum is --tap-min (46px), which exists to
+  // clear that rounding. Measured directly, so it cannot depend on where the
+  // handle happens to land.
+  test('the fold handle keeps the house tap height', async ({ page }) => {
+    await boot(page);
+    // Only a handle that is laid out is a tap target; the wide board has none.
+    const h = await page.evaluate(() => {
+      const f = [...document.querySelectorAll('.efold')].find((e) => e.getBoundingClientRect().height > 0);
+      return f ? f.getBoundingClientRect().height : null;
+    });
+    test.skip(h === null, 'no fold handle on this layout');
+    expect(h, `fold handle height ${h}px`).toBeGreaterThanOrEqual(46);
   });
 
   for (const door of DOORS) {

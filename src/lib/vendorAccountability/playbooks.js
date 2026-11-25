@@ -39,7 +39,7 @@
  * @prop {Record<string,string>} whyItMattersByField
  */
 
-import { THE_SCHEDULE } from '../scheduleWords';
+import { THE_SCHEDULE } from '../scheduleWords.js';
 const COMMON_RISK_PRESETS = {
   delayedArrival:   'Late vendor arrival disrupts setup and downstream schedule.',
   countMismatch:    'Mismatched counts cause shortfall or waste.',

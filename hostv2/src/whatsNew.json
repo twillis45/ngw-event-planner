@@ -1,6 +1,51 @@
 [
   {
     "date": "2026-11-24",
+    "through": "v2026.11.24.10",
+    "headline": "The Day, your vendors, and numbers that agree",
+    "bullets": [
+      "On the day of your event, the board shows only what's due today. The rest of your plan folds away until you want it.",
+      "A vendor's page opens in clear groups: who they are, where it stands, how to reach them, the day, money and paperwork.",
+      "Counts and money now match on every screen, the budget card is shorter, and the plan for the day is called the day's schedule everywhere."
+    ]
+  },
+  {
+    "date": "2026-11-24",
+    "headline": "Sending your invite",
+    "bullets": [
+      "Share & invite now goes in four steps: check your invite page and message, invite your list, share another way, then follow up.",
+      "Write and save your invite message, preview it as an email or a text, and see who gets what before anything goes out.",
+      "Nothing goes out without your reply link, and a guest you already told is never invited twice."
+    ]
+  },
+  {
+    "date": "2026-11-24",
+    "headline": "Guests, your invite page, and bigger screens",
+    "bullets": [
+      "Tap a guest to edit them in one place: their reply, who's coming with them, their +1's meal, and how to reach them.",
+      "Your invite page has two layouts and eight color palettes, and it can show your photo.",
+      "On iPads and computers, the side menu has Create, Plan, The Day and After, and the top shows your event's name."
+    ]
+  },
+  {
+    "date": "2026-11-24",
+    "headline": "Folding, weather and the budget",
+    "bullets": [
+      "Finished groups fold up on their own, and each part of your plan opens its section when you tap it.",
+      "Weather works when you give a city and state, like Springfield, VA.",
+      "The budget suggestion says where the figure on its button comes from."
+    ]
+  },
+  {
+    "date": "2026-11-24",
+    "headline": "Shopping lines",
+    "bullets": [
+      "Combined shopping lines are split, so each item is found and priced on its own.",
+      "A store that sells no alcohol no longer prices the bar with mixers or cooking wine."
+    ]
+  },
+  {
+    "date": "2026-11-24",
     "headline": "The board on a computer, and a few loose ends",
     "bullets": [
       "On a computer, the board shows the date and your event's name at the top. Double-click the name to rename it.",
