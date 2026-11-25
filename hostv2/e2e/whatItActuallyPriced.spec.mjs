@@ -91,7 +91,7 @@ const openPriced = async (page, description) => {
   });
   await page.goto('?elegant=1');
   await settled(page);
-  await tapText(page, "what you.?re serving");
+  await tapText(page, "what you.?re serving|\\? · \\d+ open");   // the food call by its own question (cohesion F2)
   await sheetSettled(page);
   // The list sits behind the Shop tab now (it used to be one tap from the
   // food sheet); without this tap the store button is never found and every

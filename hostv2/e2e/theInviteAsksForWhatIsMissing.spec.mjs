@@ -67,14 +67,14 @@ test('a missing place and an unconfirmed time are asked for before the invite is
   await expect(check.locator('[data-invite-check-item="time"]')).toHaveAttribute('data-ok', '1');
   await expect(go).toBeDisabled();                                       // the place is still missing
 
-  await check.getByLabel('Venue').fill('Vida’s place');
+  await check.locator('input[data-venue-field]').fill('Vida’s place');   // labeled by its visible words since cohesion G
   await check.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(check.locator('[data-invite-check-item="place"]')).toHaveAttribute('data-ok', '1');
   // At her place a guest needs a street (six root causes, cause 6: one outward
   // guard, lib/outwardReady): the check asks for it before the invite.
   await expect(check.locator('[data-invite-check-item="address"]')).toHaveAttribute('data-ok', '0');
   await expect(go).toBeDisabled();
-  await check.locator('[data-outward-address]').getByLabel('Venue').fill('Vida’s place, 12 Pine Street, Springfield, IL');
+  await check.locator('[data-outward-address] input[data-venue-field]').fill('Vida’s place, 12 Pine Street, Springfield, IL');
   await check.locator('[data-outward-address]').getByRole('button', { name: 'Save', exact: true }).click();
   await expect(go).toBeEnabled();
 

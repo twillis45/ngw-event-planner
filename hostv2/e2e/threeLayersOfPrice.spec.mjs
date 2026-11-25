@@ -104,7 +104,7 @@ const openList = async (page, venueCity) => {
   // twice — 3.2s of guess per test, in a file with sixteen such calls. The
   // sleep was not even measuring the right thing: `settled` answers "the app
   // booted", and what happens after these taps is a SHEET opening.
-  await tapText(page, "what you.?re serving");
+  await tapText(page, "what you.?re serving|\\? · \\d+ open");   // the food call by its own question (cohesion F2)
   await sheetSettled(page);
   // The menu door opens the spread on Plan while the menu is open (owner's
   // iPad, 11/21/2026); the list is on Shop.

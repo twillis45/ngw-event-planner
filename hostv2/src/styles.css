@@ -8611,6 +8611,13 @@ button.vc-pill::after{
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .board:has(> .keep-ask) .hero.elegant .escreen.on > .ecenter .ask{
     font-size:clamp(32px,5vh,48px);
   }
+  /* And with the hero's lit pick (cohesion F1: "Go with …" in one 44px row with
+     "Other ways"), the card ended 3px under a 768-tall screen under the row.
+     The row of acts sits flush under the options there; every tap keeps its
+     height. */
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .board:has(> .keep-ask) .hero.elegant .decopt-acts{
+    margin-top:0;
+  }
 }
 /* ON A SHORT TOUCH SCREEN THE STAT CARD'S CHIPS ARE 46px, not 28 (the touch
    floor), three rows of them: the Where you stand card grows 62px and, as the
