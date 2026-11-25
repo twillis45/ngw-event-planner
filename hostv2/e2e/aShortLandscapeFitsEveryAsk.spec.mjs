@@ -8,6 +8,17 @@
 // every answer it offers starts and ends in the first screen, above the fold
 // handle. Made-up events only.
 import { test, expect, settled, dateIn } from './fixtures.mjs';
+import { previewUrl } from '../deployBase.mjs';
+
+// WITH THE SIGN-IN ROW (live check of 19841da0, 11/25/2026). A signed-out
+// host's own plan opens with the "Not saved yet. Sign in to save" row above
+// the hero, once per plan, so a new iPad visitor sees it first. The e2e build
+// has no account service, so the specs above never drew it, and live at
+// 1024x768 the row pushed the third answer under the screen. Each case runs
+// again on the synctest harness (a fake account service, signed out), where
+// the row shows.
+const SYNC = previewUrl(Number(process.env.PW_SYNCTEST_PORT || 5244));
+const PROJECT = 'https://synctest.supabase.co';
 
 const CARD_ASK = {
   id: 'E2E_TEST_short-card', name: 'Maya’s 40th Birthday', type: 'Birthday', createdAt: '2026-11-01',
@@ -36,7 +47,9 @@ const OPTIONS_ASK = {
   timeline: [{ id: 't1', task: 'Confirm final headcount', week: 'This week' }],
 };
 
-const boot = async (page, ev, w, h) => {
+const boot = async (page, ev, w, h, withRow) => {
+  if (withRow) await page.route(`${PROJECT}/**`, (route) => route.fulfill({ status: 200, contentType: 'application/json',
+    body: route.request().url().includes('/auth/v1/') ? '{}' : '[]' }));
   await page.addInitScript((e) => {
     localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([e]));
     localStorage.setItem('ngw-hostv2-last-event', e.id);
@@ -45,7 +58,8 @@ const boot = async (page, ev, w, h) => {
     localStorage.setItem('ngw-v2-welcomed', '1');
   }, ev);
   await page.setViewportSize({ width: w, height: h });
-  await page.goto('./?elegant=1');
+  await page.goto(withRow ? SYNC + '?elegant=1' : './?elegant=1');
+  if (withRow) await expect(page.locator('[data-keep-ask]'), 'the sign-in row is up').toBeVisible({ timeout: 20000 });
   await settled(page);
   await page.waitForFunction(() => {
     const a = document.querySelector('.hero.elegant .ask');
@@ -70,9 +84,15 @@ const measure = (page) => page.evaluate(() => {
 for (const touch of [false, true]) test.describe(touch ? 'touch' : 'pointer', () => {
   test.use({ hasTouch: touch, isMobile: touch });
 for (const [kind, ev] of [['a card ask', CARD_ASK], ['a three-answer ask', OPTIONS_ASK]]) {
-  for (const [w, h] of [[1024, 768], [1133, 744], [1180, 820]]) {
-    test(`${w}x${h}: ${kind} keeps every answer in the first screen`, async ({ page }) => {
-      await boot(page, ev, w, h);
+  for (const [w, h] of [[1024, 768], [1133, 744], [1180, 820]]) for (const withRow of [false, true]) {
+    test(`${w}x${h}: ${kind}${withRow ? ', under the sign-in row,' : ''} keeps every answer in the first screen`, async ({ page }) => {
+      await boot(page, ev, w, h, withRow);
+      // One notice at a time: under the row, the touch rename tip waits, and
+      // is not spent, so it shows on the next visit.
+      if (withRow && touch) {
+        await expect(page.locator('[data-rename-tip]')).toHaveCount(0);
+        expect(await page.evaluate(() => localStorage.getItem('ngw-rename-tip-seen'))).toBeNull();
+      }
       const m = await measure(page);
       expect(m.answers.length, 'the ask offers answers').toBeGreaterThan(0);
       const limit = Math.min(m.vh, m.fold);

@@ -4092,11 +4092,7 @@ export default function HostShellV2() {
   // own event; dismissible, then never again. Stored the first time it shows.
   const [renameTip, setRenameTip] = useState(() => { try { return !localStorage.getItem('ngw-rename-tip-seen'); } catch { return false; } });
   const touchScreen = (() => { try { return window.matchMedia('(pointer: coarse)').matches; } catch { return false; } })();
-  const renameTipShown = renameTip && touchScreen && eventIsTheHostsOwn && !renaming;
-  useEffect(() => {
-    if (!renameTipShown) return;
-    try { localStorage.setItem('ngw-rename-tip-seen', new Date().toISOString()); } catch { /* shown this visit only */ }
-  }, [renameTipShown]);
+  // renameTipShown is decided below keepAskEvent: one notice at a time.
   // THE DESKTOP RENAME HINT (owner, 11/24/2026): with a mouse, hovering the
   // title shows a pencil and "Double-click to rename" (styles.css, under
   // `(hover:hover) and (pointer:fine)`); nothing shows until then. The title's
@@ -11578,6 +11574,18 @@ export default function HostShellV2() {
       if (!seen.includes(id)) localStorage.setItem(LS_KEEP_ASKED, JSON.stringify([...seen, id]));
     } catch { /* private mode — it may ask once more */ }
   }, [keepAskEvent && keepAskEvent.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ONE NOTICE AT A TIME (live check of 19841da0, 11/25/2026). The rename tip
+  // waits while the "Not saved yet" row is up: two dismissible notices on one
+  // first screen pushed the ask's last answer under the fold at 1024x768. The
+  // tip is marked seen only when it actually shows, so it comes next visit.
+  // It also waits for the sign-in check, or it would show (and be spent) for
+  // the moment before the row appears.
+  const renameTipShown = renameTip && touchScreen && eventIsTheHostsOwn && !renaming && !keepAskEvent
+    && !(isSupabaseConfigured() && !authChecked);
+  useEffect(() => {
+    if (!renameTipShown) return;
+    try { localStorage.setItem('ngw-rename-tip-seen', new Date().toISOString()); } catch { /* shown this visit only */ }
+  }, [renameTipShown]);
   // The sign-in sits below the profile rows: bring it to her. A declined ask
   // (the sheet closed signed out) forgets where she was going.
   useEffect(() => {
