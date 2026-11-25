@@ -41,6 +41,10 @@ export const postingLine = (emailN) => (emailN > 0 ? `Posting, and emailing ${gu
 export const postAndEmailLabel = (emailN) => `Post and email ${guests(emailN)}`;
 
 export const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || 'this guest';
+// Placeholders never pass for an answer (owner, 11/25/2026; UX_11 rule 2): the
+// update box's example is marked as one, and the reply box says what to do.
+export const UPDATE_PLACEHOLDER = 'For example: Parking is on Elm after 5.';
+export const replyPlaceholder = (name) => 'Write your reply to ' + firstName(name);
 export const inboxWhy = (reason, what) => (reason === 'signed-out'
   ? `Sign in to see ${what}.`
   : reason === 'forbidden' ? `This account can’t see ${what} for this event.`
