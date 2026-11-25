@@ -49,3 +49,24 @@ describe('a placeholder never looks like an answer', () => {
     expect(rule).toMatch(/color:\s*var\(--ink-3\)/);
   });
 });
+
+// The owner, 11/25/2026: "Is there enough difference to tell between host and
+// guest question and response?" There wasn't: the two bubble fills were 1.48:1
+// apart. He chose option 2: the host's replies are outlined in bone, guests'
+// stay solid. A boundary needs 3:1 against what is around it (WCAG 1.4.11).
+describe("the host's replies are told from a guest's at a glance", () => {
+  const css = readFileSync(path.resolve(here, '../src/styles.css'), 'utf8');
+  const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const lum = (c) => { const [r, g, b] = c.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+  const token = (n) => hex(css.match(new RegExp('--' + n + ':\\s*(#[0-9a-f]{6})', 'i'))[1]);
+  it('a reply has an outline of at least 3:1 against the sheet', () => {
+    const rule = (css.match(/\.thread li\.me\s*\{([^}]*)\}/) || [])[1] || '';
+    const m = rule.match(/border:\s*[\d.]+px solid rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+    expect(m).toBeTruthy();
+    const sheet = token('raised-2');
+    const a = Number(m[4]);
+    const line = [1, 2, 3].map((i, k) => Math.round(sheet[k] + a * (Number(m[i]) - sheet[k])));
+    expect(ratio(line, sheet)).toBeGreaterThanOrEqual(3);
+  });
+});

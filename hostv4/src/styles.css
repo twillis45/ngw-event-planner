@@ -122,7 +122,10 @@ h3.sh { font-size: 1rem; margin: 22px 2px 8px; }
 .thread { list-style: none; margin: 10px 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .thread li { max-width: 85%; padding: 10px 12px; border-radius: 14px; background: var(--raised); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 1rem; }
 .thread li b { display: block; font-size: .8125rem; color: var(--ink-3); font-weight: 600; margin-bottom: 2px; }
-.thread li.me { align-self: flex-end; background: rgba(241, 237, 230, .1); }
+/* The host's replies are outlined in bone, a guest's stay solid (owner chose
+   option 2, 11/25/2026: the two fills were 1.48:1 apart). */
+.thread li.me { align-self: flex-end; background: transparent; border: 1.5px solid rgba(241, 237, 230, .55); }
+.thread li.me b { color: var(--ink-2); }
 [data-view="updates"] .addrow .link:disabled, .link:disabled { opacity: .45; }
 select.field { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%); background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 36px; }
 .field[aria-invalid="true"] { border-color: var(--warn); }
