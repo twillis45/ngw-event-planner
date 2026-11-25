@@ -82,6 +82,21 @@
       "sourceRe": "\\bR[oO]S\\b",
       "sourceFlags": "",
       "source": true
+    },
+    {
+      "word": "RSVP'd",
+      "re": "\\bRSVP['’]?(d|ed)\\b",
+      "why": "Owner ruling 11/20/2026: the host word is \"replied\" (\"Nudge the N who haven't replied\"). Live check of 19841da0: The Day said \"2 haven't RSVP'd\" beside Guests & invite's \"2 haven't replied\"."
+    },
+    {
+      "word": "haven't said",
+      "re": "\\b(has|have)n['’]?t said\\b(?! no)",
+      "why": "Same ruling as RSVP'd: guests still out \"haven't replied\" (rsvp.js notRepliedYet). Live check of 91f48c26: the event-day run-through said \"2 still haven't said\"."
+    },
+    {
+      "word": "still pending",
+      "re": "\\bstill pending\\b",
+      "why": "UX_06: no \"pending\" in host copy; guests still out \"haven't replied\"."
     }
   ],
   "brokenTemplate": {

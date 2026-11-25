@@ -14,14 +14,17 @@
 //   (a) a plan she has opened is hers on this device, saved or not ("try
 //       first, sign in to keep", #122): it is landed on like any other;
 //   (b) on a day of the event, the app opens on The Day.
+// OWNER RULING, 11/24/2026 (cohesion batch E, rule 13 "fits the moment"):
+//   (c) once her event's last day has passed, it opens on After, and stays
+//       there indefinitely: a new plan of hers lands by its own dates.
 // And: a sentence left in the Create box never outranks a plan she has.
 
-import { isDuringEvent } from './dates';
+import { isDuringEvent, daysUntilEnd } from './dates';
 
 export const STAGES = Object.freeze(['create', 'plan', 'day', 'after']);
 
 /**
- * landingStage({ event, ownPlan, draftText, now }) → 'create' | 'plan' | 'day'
+ * landingStage({ event, ownPlan, draftText, now }) → 'create' | 'plan' | 'day' | 'after'
  *   event     — the event she would land on (may be a sample);
  *   ownPlan   — that event is hers on this device (created here, saved or
  *               not, or from her account);
@@ -37,7 +40,11 @@ export function landingStage({ event = null, ownPlan = false, draftText = '', no
   let live = false;
   try { live = !!(event.date && isDuringEvent(event, now)); } catch (_e) { live = false; }
   if (live) return 'day';
-  // Before it, the day before it, after it: the plan. Her draft waits in
-  // Create; it never takes the landing from a plan she has.
+  // (c) After its last day (a trip's too): After, with no time limit.
+  let over = false;
+  try { const d = event.date ? daysUntilEnd(event, now) : null; over = d != null && d < 0; } catch (_e) { over = false; }
+  if (over) return 'after';
+  // Before it and the day before it: the plan. Her draft waits in Create; it
+  // never takes the landing from a plan she has.
   return 'plan';
 }

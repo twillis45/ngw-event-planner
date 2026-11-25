@@ -23,6 +23,7 @@ const SELF_PINNED = [
   '**/theRailIsTheList.spec.mjs',
   // Five viewports itself, phone to desktop (What's counted opens in place, cohesion F3, 11/24/2026).
   '**/whatsCountedOpensInPlace.spec.mjs',
+  '**/theChecklistOpensInPlace.spec.mjs',
   // Five wide viewports itself (every wide board: stages in the rail, the title; 11/24/2026).
   '**/everyWideBoardKnowsItsEventAndStages.spec.mjs',
   // Six viewports itself, phone to desktop, including iPad Safari landscape (nothing tappable is clipped, 11/24/2026).

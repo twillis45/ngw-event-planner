@@ -6,7 +6,7 @@
 // Mark returned records each; "Still to go back" names who is owed what; the
 // row checks off once everything is back.
 // Jest twin: src/lib/__tests__/theBorrowedListGoesBack.test.js.
-import { test, expect, settled, sheetSettled, dateIn, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled, dateIn, openSectionByName, checklistStepAction, openAllPhases } from './fixtures.mjs';
 
 const STEP = 'Return every borrowed platter, urn, and folding chair, and write down what you owe whom before you forget whose is whose';
 const EVENT = {
@@ -32,7 +32,7 @@ test('the return row opens the borrowed list; add, mark returned, and the row ch
   await settled(page);
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  await page.locator('.sheet').last().locator('button[data-row-action]').filter({ hasText: 'Open the borrowed list' }).click();
+  await (await checklistStepAction(page, 'Open the borrowed list')).click();
   await sheetSettled(page);
   const list = page.locator('.sheet').last().locator('[data-borrowed]');
   await expect(list).toBeInViewport();
@@ -51,5 +51,6 @@ test('the return row opens the borrowed list; add, mark returned, and the row ch
     .toEqual([['Three platters', 'Grandma June', true], ['Coffee urn', 'Aunt Rose', true]]);
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  await expect(page.locator('.sheet').last().locator('button.frow').filter({ hasText: 'Return every borrowed platter' })).toHaveClass(/\bgot\b/);
+  await openAllPhases(page);   // a step the plan handled sits in its phase (cohesion batch D)
+  await expect(page.locator('.sheet').last().locator('.frow').filter({ hasText: 'Return every borrowed platter' })).toHaveClass(/\bgot\b/);
 });

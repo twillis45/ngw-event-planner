@@ -33,3 +33,11 @@ export function rsvpIsSettled(guest) {
 export function rsvpHasResponded(guest) {
   return rsvpState(guest) !== 'pending';
 }
+
+/** THE ONE PHRASE for guests still out (live check of 19841da0, 11/25/2026:
+ *  The Day said "2 haven't RSVP'd" beside Guests & invite's "2 haven't
+ *  replied"). The host word is "replied" (owner ruling 11/20/2026), and one
+ *  guest takes "hasn't". Every screen that counts them says it this way. */
+export function notRepliedYet(n) {
+  return `${n} ${n === 1 ? 'hasn’t' : 'haven’t'} replied`;
+}

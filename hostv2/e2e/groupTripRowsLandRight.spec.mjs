@@ -7,7 +7,7 @@
 // bookings, Updates to everyone, the stay. The rules were fixed, not the rows.
 // Jest twin (with the neighbors that must not move):
 // src/lib/__tests__/groupTripRowsLandRight.test.js.
-import { test, expect, settled, sheetSettled, dateIn, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled, dateIn, openSectionByName, checklistActionByTitle } from './fixtures.mjs';
 
 const API = 'https://e2e-mock.invalid';
 const ID = 'e2e-trip-routes';
@@ -42,11 +42,11 @@ const tapRow = async (page, task, label) => {
   await settled(page);
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  // The row's own button: the one under the row whose lead is this step.
-  const sheet = page.locator('.sheet').last();
+  // The step's own button: Up next's lit button when this step is next, else
+  // the one inside the step, opened in place (cohesion batch D, 11/24/2026).
   const lead = task.split(/:| — |; | \(|\. /)[0];
-  const btn = sheet.locator('.frow', { hasText: lead }).locator('xpath=following-sibling::*[1]').locator('button[data-row-action]');
-  await expect(btn).toHaveText(`${label} →`);
+  const btn = await checklistActionByTitle(page, lead);
+  await expect(btn).toHaveText(new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}( →)?$`));
   await btn.click();
 };
 const atTheStay = (page) => expect.poll(async () => /[?&]demo=lodging\b/.test(page.url())

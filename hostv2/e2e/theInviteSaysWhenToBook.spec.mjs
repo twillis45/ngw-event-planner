@@ -15,7 +15,7 @@
 // This spec gates the DELIVERY, not the string. A jest assertion on
 // `airFloor.because` has been green the whole time the screen said nothing;
 // that is the failure mode this file exists for.
-import { test, expect, openWhatsCounted } from './fixtures.mjs';
+import { test, expect, openWhatsCounted, readWholeChecklist } from './fixtures.mjs';
 
 const SEED = "Mom's 80th birthday in Santa Fe New Mexico on June 14 2027, "
   + 'about 30 people flying in for 3 nights, dinner at an adobe courtyard, '
@@ -52,7 +52,8 @@ test('THE WINDOW REACHES THE HOST: the invite row explains its own date', async 
   expect(opened, 'the host can reach a Checklist surface').toBe(true);
   await page.waitForTimeout(1500);
 
-  const txt = await page.evaluate(() => document.body.innerText || '');
+  // The step's why is inside the opened step (cohesion D): read every step.
+  const txt = await readWholeChecklist(page);
   // The host's half: why this date and not the authored one.
   expect(txt).toMatch(/fares step up/i);
   // The guest's half: the dates to act on.
@@ -85,7 +86,8 @@ test('US ENGLISH on the one sentence that reaches a screen', async ({ page }) =>
   });
   expect(opened, 'the host can reach a Checklist surface').toBe(true);
   await page.waitForTimeout(1500);
-  const txt = await page.evaluate(() => document.body.innerText || '');
+  // The step's why is inside the opened step (cohesion D): read every step.
+  const txt = await readWholeChecklist(page);
   // PREMISE FIRST: the sentence has to be on screen for its spelling to mean
   // anything. Without this line the assertion below is satisfied by absence.
   expect(txt).toMatch(/two weeks to decide/i);

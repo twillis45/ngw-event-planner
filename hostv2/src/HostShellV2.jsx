@@ -71,7 +71,7 @@ import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — 
 import { boardDecisionND, foodDecisionND, blockerDecisionND, foodPanelQuestion, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
-import { rsvpHasResponded } from '@app/lib/rsvp';
+import { rsvpHasResponded, notRepliedYet } from '@app/lib/rsvp';
 import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, rainPlanOptions, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, travelHazard, guestTravelMessage } from '@app/lib/weather';
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
@@ -130,7 +130,7 @@ import { afterOwed } from '@app/lib/afterOwed';
 import { eventDatesPatch, eventSpanLabel, eventStartTimePatch } from '@app/lib/eventDates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
-import { taskLeadDays, taskDueLabel, taskIsOverdue, taskWindowClosed } from '@app/lib/taskLead';
+import { taskLeadDays, taskDueLabel, taskIsOverdue, taskWindowClosed, planningStepAfterTheDay } from '@app/lib/taskLead';
 // playbookDayOfChecklist was a finished engine with ZERO hostv2 imports — the
 // frozen CRA rendered it and the shipping shell never did (audit 2026-08-21).
 import { playbookDayOfChecklist } from '@app/lib/playbooks';
@@ -380,6 +380,7 @@ import { COUNT_LABELS } from '@app/lib/itemCounts';
 import { perHead, perHeadRange, perHeadText } from '@app/lib/perHead';
 import { listTotal, allInTotal } from '@app/lib/planCosts';
 import { landingStage } from '@app/lib/landingStage';
+import { checklistPhases, upNextStep, stepWhen, stepDateText } from '@app/lib/checklistPhases';
 import { planPartsProgress, planPartsLine } from '@app/lib/planProgress';
 import { moneyFigures, headroomLabel, MONEY_LABELS } from '@app/lib/moneyFigures';
 import { outwardGaps, outwardPrompt, isPlaceholderName } from '@app/lib/outwardReady';
@@ -3686,13 +3687,15 @@ export default function HostShellV2() {
   // guests + a real photo-album URL. Both appear on the invite ONLY after the
   // event date (the recap state), and only when set — never fabricated.
   const [recapDraft, setRecapDraft] = useState('');
+  // The recap is previewed before it reaches the invite link (owner E2, 11/24/2026).
+  const [recapPreview, setRecapPreview] = useState(false);
   const [albumDraft, setAlbumDraft] = useState('');
   // The checklist's "Add the album link" (owner pick, 11/21/2026) shows the
   // recap block before the day too, so the link can be ready in advance.
   const [albumAsked, setAlbumAsked] = useState(false);
   // Birthday's gift rows (owner pick A, 11/21/2026) open the gift log before the day too.
   const [giftsAsked, setGiftsAsked] = useState(false);
-  useEffect(() => { setRecapDraft(String(event.recapNote || '')); setAlbumDraft(String(event.albumUrl || '')); setAlbumAsked(false); setGiftsAsked(false); }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setRecapDraft(String(event.recapNote || '')); setAlbumDraft(String(event.albumUrl || '')); setAlbumAsked(false); setGiftsAsked(false); setRecapPreview(false); }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Event memory: the one persisted field the original uses (event.lessons).
   // Recall reads across the loaded events — a past event of the same type.
   const lastLesson = useMemo(() => {
@@ -7857,38 +7860,102 @@ export default function HostShellV2() {
       </span>
     </button>
   );
-  const renderGroupedTasks = (renderRow) => {
+  // ── THE CHECKLIST: UP NEXT, THEN GROUPED BY WHEN (cohesion batch D) ───────
+  // Owner D1–D5 (11/24/2026), renders/cohesion-d. The open steps sit in
+  // phases by when (lib/checklistPhases: the one due-date reader against
+  // event.date). The first step the plan has not handled leaves its phase and
+  // becomes "Up next", the sheet's one lit action: its declared route, or
+  // "Check it off" when it declares none (D4). Only the current phase is open;
+  // the rest fold to one row each and open in place (D2). The dinner's steps
+  // stay one group inside their phase, and fold to one green row when all done.
+  const renderChecklistPhases = (renderRow) => {
     const order = groupDinnerSteps(event.timeline, dinnerStepIds);
+    const dinnerIds = new Set(order.filter((x) => x.inGroup && x.t).map((x) => x.t.id));
     const members = order.filter((x) => x.inGroup && x.t && !x.t.retired);
-    const group = order.filter((x) => x.inGroup).map((x) => ({ x, el: renderRow(x.t, x.i) })).filter((g) => g.el);
-    // THE DINNER'S STEPS, ALL DONE, ARE ONE GREEN ROW (owner, 11/24/2026),
-    // reopened for the session to show the checked-off steps.
-    const dinnerDone = !group.length && members.length > 0 && members.every((x) => x.t.done);
+    const dinnerDone = members.length > 0 && members.every((x) => x.t.done);
     reopened.isOpen('tasks:dinner', dinnerDone); // seen every render, so an undone step drops the reopen
+    const open = (event.timeline || []).map((t, i) => ({ t, i })).filter((x) => x.t && !x.t.done && !x.t.retired);
+    const now = new Date();
+    // The dinner's steps stay ONE group: the whole open group sits in the phase
+    // of its earliest step (owner, 11/24/2026: "one group under the dinner").
+    const phases = (() => {
+      const ps = checklistPhases(event, open, now);
+      const home = ps.find((p) => p.rows.some((r) => dinnerIds.has(r.t.id)));
+      if (!home) return ps;
+      const moved = [];
+      for (const p of ps) {
+        if (p === home) continue;
+        moved.push(...p.rows.filter((r) => dinnerIds.has(r.t.id)));
+        p.rows = p.rows.filter((r) => !dinnerIds.has(r.t.id));
+      }
+      home.rows = [...home.rows, ...moved];
+      return ps.filter((p) => p.rows.length);
+    })();
+    // Up next is never a step the plan already handled, nor, once the day has
+    // passed, a step whose job was to get the day ready (rule 13: it fits the
+    // moment; taskLead.planningStepAfterTheDay, the label's own reader).
+    const next = upNextStep(phases, (t) => isTimelineStepResolved(t) || planningStepAfterTheDay(t, event, now));
     const out = [];
-    let placed = false;
-    for (const x of order) {
-      if (!x.inGroup) { out.push(renderRow(x.t, x.i)); continue; }
-      if (placed || !(group.length || dinnerDone)) continue;
-      placed = true;
-      if (dinnerDone) {
-        out.push(reopened.isOpen('tasks:dinner', dinnerDone) ? (
-          <div className="dinner-steps" data-dinner-steps key="dinner-steps">
-            <div className="shelf-label">{celebrationTitle(event)}</div>
-            {members.map((m) => doneTaskRow(m.t, m.i))}
-          </div>
-        ) : (
-          <DoneFold key="dinner-steps" text={`${celebrationTitle(event)} · all ${members.length} done`}
-            onOpen={() => reopened.reopen('tasks:dinner')} />
-        ));
-        continue;
+    if (next) out.push(renderRow(next.t, next.i, 'next'));
+    const rest = phases.map((p) => ({ ...p, rows: p.rows.filter((r) => !next || r.t !== next.t) })).filter((p) => p.rows.length);
+    const focusPhase = sheet.focus ? (rest.find((p) => p.rows.some((r) => r.t.id === sheet.focus)) || {}).key : null;
+    // The current phase is the first that holds a step that can still happen;
+    // after the day, that is "After the party", not a month of steps whose
+    // window passed with the day (rule 13).
+    const curIdx = Math.max(0, rest.findIndex((p) => p.rows.some((r) => !planningStepAfterTheDay(r.t, event, now))));
+    rest.forEach((p, k) => {
+      const pk = `${event.id}|${p.key}`;
+      const current = k === curIdx;
+      const isOpen = current || !!ckOpenPhases[pk] || p.key === focusPhase;
+      const handedOff = p.rows.filter((r) => { const o = String(r.t.owner || '').trim(); return o && !isHostName(o); }).length;
+      const rows = [];
+      let dinnerPlaced = false;
+      for (const r of p.rows) {
+        if (dinnerIds.has(r.t.id)) {
+          if (dinnerPlaced) continue;
+          dinnerPlaced = true;
+          const inPhase = p.rows.filter((x) => dinnerIds.has(x.t.id));
+          rows.push(
+            <div className="dinner-steps" data-dinner-steps key={`dinner-${p.key}`}>
+              <div className="shelf-label">{celebrationTitle(event)}</div>
+              {inPhase.map((x) => <Fragment key={(x.t.id || x.i) + '-dn'}>{renderRow(x.t, x.i)}</Fragment>)}
+            </div>,
+          );
+          continue;
+        }
+        rows.push(renderRow(r.t, r.i));
       }
       out.push(
+        <section key={pk} className={'ck-phase' + (isOpen ? ' open' : '')} data-phase={p.key} data-phase-start={p.start} data-open={isOpen ? 'true' : 'false'}>
+          {current ? (
+            <div className="shelf-label ck-phase-h">
+              <span data-phase-label>{p.label}</span>
+              <span className="ck-phase-n">{p.rows.length} left</span>
+            </div>
+          ) : (
+            <button type="button" className="later-row ck-phase-fold" data-phase-toggle aria-expanded={isOpen ? 'true' : 'false'}
+              onClick={() => setCkOpenPhases((m) => ({ ...m, [pk]: !isOpen }))}>
+              <span className="ck-phase-t">
+                <span className="shelf-label ck-phase-l" data-phase-label>{p.label}</span>
+                <span className="v-meta">{p.rows.length} step{p.rows.length === 1 ? '' : 's'}{handedOff ? ` · ${handedOff} handed off` : ''}</span>
+              </span>
+              <span className="chev" aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
+            </button>
+          )}
+          {isOpen && <div>{rows}</div>}
+        </section>,
+      );
+    });
+    if (dinnerDone) {
+      out.push(reopened.isOpen('tasks:dinner', dinnerDone) ? (
         <div className="dinner-steps" data-dinner-steps key="dinner-steps">
           <div className="shelf-label">{celebrationTitle(event)}</div>
-          {group.map((g) => <Fragment key={(g.x.t.id || g.x.i) + '-dn'}>{g.el}</Fragment>)}
-        </div>,
-      );
+          {members.map((m) => doneTaskRow(m.t, m.i))}
+        </div>
+      ) : (
+        <DoneFold key="dinner-steps" text={`${celebrationTitle(event)} · all ${members.length} done`}
+          onOpen={() => reopened.reopen('tasks:dinner')} />
+      ));
     }
     return out;
   };
@@ -9828,6 +9895,20 @@ export default function HostShellV2() {
   // which is why this is worth a comment rather than a re-discovery.
   const [settledVendorsOpen, setSettledVendorsOpen] = useState(false);
   const [assignFor, setAssignFor] = useState(null);   // the timeline row whose owner is being set
+  // The checklist (cohesion batch D): which step is open in place (null =
+  // follow the sheet's focus, '' = she closed it) and which folded phases she
+  // opened, keyed `${event.id}|${phase}`, for this session.
+  const [ckOpenStep, setCkOpenStep] = useState(null);
+  const [ckOpenPhases, setCkOpenPhases] = useState({});
+  useEffect(() => { setCkOpenStep(null); }, [sheet && sheet.kind, sheet && sheet.focus]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Is this name the host's own (hostNameFor: the plan's host line, else her
+  // profile)? Her full name or her first name. Her own steps read "Yours", and
+  // she is never asked to tell or confirm herself (audit #33).
+  const isHostName = (name) => {
+    const host = String(hostNameFor(event, profile) || '').trim().toLowerCase();
+    const n = String(name || '').trim().toLowerCase();
+    return !!host && !!n && (n === host || n === host.split(/\s+/)[0]);
+  };
   const [vendorQ, setVendorQ] = useState('');
   const [vendorLens, setVendorLens] = useState('all');
   // ONE definition of "settled", read by both the fold and the chip selector.
@@ -11549,6 +11630,9 @@ export default function HostShellV2() {
       if (!seen.includes(id)) localStorage.setItem(LS_KEEP_ASKED, JSON.stringify([...seen, id]));
     } catch { /* private mode — it may ask once more */ }
   }, [keepAskEvent && keepAskEvent.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // (The rename tip that waited here for the "Not saved yet" row, b9ec765, is
+  // gone: cohesion G #57 replaced it with a visible "✎ Rename" in the title
+  // row, which adds no notice and no line to the first screen.)
   // The sign-in sits below the profile rows: bring it to her. A declined ask
   // (the sheet closed signed out) forgets where she was going.
   useEffect(() => {
@@ -11717,6 +11801,22 @@ export default function HostShellV2() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId, elegantMode, askMode, nearDayPlan, queueOpen, queue, actions]);
   const isPast = isPastEvent(event);                      // lib/closeoutIntel — tense authority
+  // Guests' photos and questions waiting on the host after the day (owner
+  // rulings A and B, 11/16/2026). One renderer for the Plan board and After:
+  // her own plan lands on After once its day is past (cohesion batch E), so the
+  // lines must be where she lands, not only on the board.
+  const afterGuestLines = () => ((photosWaitingLine(guestPhotoList) || questionsWaitingLine(guestQuestionsWaiting)) ? (
+                <section data-after-guest-lines aria-label="Waiting on you from guests" style={{ marginTop: 'var(--sp-3)', padding: 'var(--sp-3)', border: '1px solid var(--line-soft)', borderRadius: 'var(--r-md)', minWidth: 0 }}>
+                  {photosWaitingLine(guestPhotoList) && (
+                    <button className="mini rowlink" data-after-photos style={{ display: 'block', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }}
+                      onClick={() => setSheet({ kind: 'guests', focus: 'photos' })}>{photosWaitingLine(guestPhotoList)}</button>
+                  )}
+                  {questionsWaitingLine(guestQuestionsWaiting) && (
+                    <button className="mini rowlink" data-after-questions style={{ display: 'block', marginTop: photosWaitingLine(guestPhotoList) ? 'var(--sp-2)' : 0, color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }}
+                      onClick={() => setSheet({ kind: 'guests', focus: 'questions' })}>{questionsWaitingLine(guestQuestionsWaiting)}</button>
+                  )}
+                </section>
+  ) : null);
   // THE DAY'S PENCIL OFFER, ONCE: an untimed day proposes a start (or asks her to
   // confirm ours). Read by the offer card and by the walk-through's button, which
   // steps down to soft while the offer is up — one lit button on The Day (owner,
@@ -15711,18 +15811,7 @@ export default function HostShellV2() {
                   host (owner rulings A and B, 11/16/2026). "Who's confirmed" is
                   done once the day is past, so these get their own line each, on
                   the same home, only when one waits, into the Guest list sheet. */}
-              {isPast && (photosWaitingLine(guestPhotoList) || questionsWaitingLine(guestQuestionsWaiting)) && (
-                <section data-after-guest-lines aria-label="Waiting on you from guests" style={{ marginTop: 'var(--sp-3)', padding: 'var(--sp-3)', border: '1px solid var(--line-soft)', borderRadius: 'var(--r-md)', minWidth: 0 }}>
-                  {photosWaitingLine(guestPhotoList) && (
-                    <button className="mini rowlink" data-after-photos style={{ display: 'block', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }}
-                      onClick={() => setSheet({ kind: 'guests', focus: 'photos' })}>{photosWaitingLine(guestPhotoList)}</button>
-                  )}
-                  {questionsWaitingLine(guestQuestionsWaiting) && (
-                    <button className="mini rowlink" data-after-questions style={{ display: 'block', marginTop: photosWaitingLine(guestPhotoList) ? 'var(--sp-2)' : 0, color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }}
-                      onClick={() => setSheet({ kind: 'guests', focus: 'questions' })}>{questionsWaitingLine(guestQuestionsWaiting)}</button>
-                  )}
-                </section>
-              )}
+              {isPast && afterGuestLines()}
 
               {/* Slide-down readouts: hidden until the "what's counted" caret is
                   tapped — never-dense doctrine. Pills = the 4 readiness pillars;
@@ -17475,10 +17564,45 @@ export default function HostShellV2() {
                 </>
               )}
 
-              <div className="sect"><h2>What carries forward</h2><div className="rule" /></div>
-              <div className="empty" style={{ background: 'var(--steel-tint)' }}>
-                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} of the basics settled · {(money.committed > 0 || money.planned > 0) ? 'every budget line above stays saved' : 'your vendors and notes stay saved'}. The thank-you is drafted right here from what actually happened; your “for next time” note below comes back the next time you plan one of these.
-              </div>
+              {/* Waiting on her from guests, where she lands after the day. */}
+              {isPast && afterGuestLines()}
+
+              {/* The final number — teaches attendance learning (INTEL R1).
+                  Production contract verbatim: applyReconciliation entry
+                  {eventId, date, attendance:{planned, actual}} onto
+                  profile.hostIntelligence. Once per event; past events only. */}
+              {isPast && (() => {
+                const done = (() => { try { return isReconciled(profile, event.id); } catch { return false; } })();
+                const planned = guests || 0;
+                if (!planned) return null;
+                if (done) return (
+                  <p className="grounding" style={{ marginTop: 'var(--sp-3)' }}>Turnout recorded — the next plan sizes smarter for it.</p>
+                );
+                return (
+                  <>
+                  <div className="sect"><h2>How many came?</h2><div className="rule" /><span className="when">{planned} planned</span></div>
+                  <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
+                    <label className="of" htmlFor="v2-actual-attendance" style={{ display: 'block', marginBottom: 'var(--sp-1)' }}>The final number</label>
+                    <div className="actions-row" style={{ alignItems: 'center', marginTop: 0 }}>
+                      <input className="field" type="number" min="0" style={{ maxWidth: 110, fontSize: 'var(--t-input)' }}
+                        placeholder={String(planned)} aria-label="Actual attendance" id="v2-actual-attendance" />
+                      <span className="of">of {planned} planned</span>
+                      <button className="mini" onClick={() => {
+                        const el = document.getElementById('v2-actual-attendance');
+                        const actual = Number(el && el.value);
+                        if (!Number.isFinite(actual) || actual < 0) { toast('The real headcount — a number.'); return; }
+                        try {
+                          const entry = { eventId: event.id, date: (event.date && String(event.date).slice(0, 10)) || undefined, attendance: { planned, actual } };
+                          patchProfile({ hostIntelligence: applyReconciliation(profile && profile.hostIntelligence, entry) },
+                            `Recorded — ${BRAND.short} learns from the real number.`);
+                        } catch { toast('Couldn’t record it.'); }
+                      }}>Record it</button>
+                    </div>
+                    <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>One number, once. Your next plan sizes the food and chairs from it.</p>
+                  </div></div>
+                  </>
+                );
+              })()}
               {/* Thank-yous & gifts — per-guest flags on the SAME roster rows the
                   wrap-up meter reads (phaseProgress post_event counts
                   thankYouSent), so thanking someone literally moves the meter. */}
@@ -17495,16 +17619,18 @@ export default function HostShellV2() {
                 const cash = giftCashTotal(event);
                 const row = ({ g, i }) => (
                   <div key={i} data-gift-row={g.id || i} style={{ borderTop: '1px solid var(--line-soft)', padding: 'var(--sp-2) 0' }}>
-                    <div className="actions-row" style={{ alignItems: 'center', justifyContent: 'space-between', flexWrap: 'nowrap' }}>
-                      <span>{g.name}{plusOneCount(g) ? <span className="of"> +{plusOneCount(g)}</span> : null}</span>
-                      <span style={{ display: 'flex', gap: 6 }}>
-                        <button className="mini" style={g.giftReceived ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
+                    <div className="actions-row after-gift-line">
+                      <span className="after-gift-name">{g.name}{plusOneCount(g) ? <span className="of"> +{plusOneCount(g)}</span> : null}</span>
+                      <span className="after-gift-flags">
+                        <button className="mini" aria-pressed={g.giftReceived ? 'true' : 'false'} style={g.giftReceived ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
                           onClick={() => writeGuest(i, { giftReceived: !g.giftReceived }, null)}>
-                          {g.giftReceived ? 'gift received' : 'gift?'}
+                          {g.giftReceived ? '✓ Gift received' : 'Gift received'}
                         </button>
-                        <button className="mini" style={g.thankYouSent ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
-                          onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? null : ((g.name || 'Guest') + ' thanked — it’s counted at the top.'))}>
-                          {g.thankYouSent ? 'thanked' : 'thank them'}
+                        {/* A RECORD, NOT A SEND (audit #12, owner E3 11/24/2026): the
+                            thank-you run's own words. The toast offers Undo. */}
+                        <button className="mini" aria-pressed={g.thankYouSent ? 'true' : 'false'} style={g.thankYouSent ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
+                          onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? `${g.name || 'Guest'} is not marked thanked.` : `Marked ${g.name || 'Guest'} thanked.`)}>
+                          {g.thankYouSent ? '✓ Thanked' : 'Mark thanked'}
                         </button>
                       </span>
                     </div>
@@ -17522,8 +17648,13 @@ export default function HostShellV2() {
                 );
                 return (
                   <div id="after-gifts" data-gift-log>
-                    <div className="sect"><h2>Thank-yous &amp; gifts</h2><div className="rule" /><span className="when">{thanked} of {yesIdx.length} sent</span></div>
+                    <div className="sect"><h2>Thank-yous &amp; gifts</h2><div className="rule" /><span className="when">{thanked} of {yesIdx.length} thanked</span></div>
                     <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
+                      {/* THE ONE DOOR TO THE THANK-YOUS (audit #11, #29; owner E1): the
+                          run, one note at a time, each naming the gift. The stage's
+                          one lit action. */}
+                      <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'thanks' })}>Write the thank-yous</button>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 var(--sp-3)', textAlign: 'center' }}>One at a time. Each note names what they gave. You send it from your phone.</p>
                       {yesIdx.map(row)}
                       {absent.length > 0 && <div className="shelf-label" style={{ margin: 'var(--sp-3) 0 var(--sp-1)' }}>Couldn’t come, sent a gift</div>}
                       {absent.map(row)}
@@ -17541,107 +17672,116 @@ export default function HostShellV2() {
                         <span>Cash and gift cards</span>
                         <span className="amt">{fmt(cash.total)}{cash.from ? <span className="of"> from {cash.from}</span> : null}</span>
                       </div>
-                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>Your record, not a bank. Each “Thanked” is counted at the top, and the thank-you note names what each person gave.</p>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>Your record, not a bank. “Mark thanked” only checks them off here; it sends nothing.</p>
                     </div></div>
                   </div>
                 );
               })()}
-              {/* The final number — teaches attendance learning (INTEL R1).
-                  Production contract verbatim: applyReconciliation entry
-                  {eventId, date, attendance:{planned, actual}} onto
-                  profile.hostIntelligence. Once per event; past events only. */}
-              {isPast && (() => {
-                const done = (() => { try { return isReconciled(profile, event.id); } catch { return false; } })();
-                const planned = guests || 0;
-                if (!planned) return null;
-                if (done) return (
-                  <p className="grounding" style={{ marginTop: 'var(--sp-3)' }}>Turnout recorded — the next plan sizes smarter for it.</p>
-                );
+              {/* No named guests (a headcount plan): the thank-yous keep their one
+                  door, the run, which writes one note for everyone (owner E1). */}
+              {isPast && !(event.guests || []).some(g => g && String(g.name || '').trim()) && (
+                <>
+                  <div className="sect"><h2>Thank-yous</h2><div className="rule" /></div>
+                  <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
+                    <button className="cta" style={{ width: '100%' }} onClick={() => setSheet({ kind: 'thanks' })}>Write the thank-yous</button>
+                  </div></div>
+                </>
+              )}
+              {/* THE RECAP FOR GUESTS, PREVIEWED FIRST (audit #30, owner E2
+                  11/24/2026): it goes on every guest's invite link, so nothing
+                  reaches it in one tap. Draft → preview → "Put it on the invite
+                  link". The host's note and a real album link only; blank ones
+                  never show (the recap never fabricates content). */}
+              {(isPast || albumAsked) && (() => {
+                const clean = albumDraft.trim();
+                const albumOk = !clean || /^https?:\/\//i.test(clean);
+                const dirty = recapDraft.trim() !== String(event.recapNote || '').trim() || clean !== String(event.albumUrl || '').trim();
+                const live = !!(event.recapNote || event.albumUrl);
+                const state = recapPreview ? 'preview' : live && !dirty ? 'on the invite link' : dirty ? 'not published' : 'not started';
                 return (
-                  <div style={{ marginTop: 'var(--sp-3)' }}>
-                    <div className="shelf-label" style={{ marginBottom: 6 }}>The final number — how many actually came?</div>
-                    <div className="actions-row" style={{ alignItems: 'center' }}>
-                      <input className="field" type="number" min="0" style={{ maxWidth: 110, fontSize: 'var(--t-input)' }}
-                        placeholder={String(planned)} aria-label="Actual attendance" id="v2-actual-attendance" />
-                      <span className="of">of {planned} planned</span>
-                      <button className="mini" onClick={() => {
-                        const el = document.getElementById('v2-actual-attendance');
-                        const actual = Number(el && el.value);
-                        if (!Number.isFinite(actual) || actual < 0) { toast('The real headcount — a number.'); return; }
-                        try {
-                          const entry = { eventId: event.id, date: (event.date && String(event.date).slice(0, 10)) || undefined, attendance: { planned, actual } };
-                          patchProfile({ hostIntelligence: applyReconciliation(profile && profile.hostIntelligence, entry) },
-                            `Recorded — ${BRAND.short} learns from the real number.`);
-                        } catch { toast('Couldn’t record it.'); }
-                      }}>Record it</button>
-                    </div>
-                    <p className="grounding" style={{ margin: '6px 0 0' }}>One number, once. Future plans adjust to how your crowds actually show.</p>
-                  </div>
+                  <>
+                    <div className="sect"><h2>The recap for guests</h2><div className="rule" /><span className="when">{state}</span></div>
+                    <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
+                      {recapPreview ? (
+                        <div data-recap-preview>
+                          <div className="shelf-label" style={{ margin: '0 0 var(--sp-2)' }}>What guests will see on the invite link</div>
+                          <div className="recap-preview">
+                            <div className="of" style={{ marginBottom: 'var(--sp-2)' }}>Preview · nothing is published yet</div>
+                            {recapDraft.trim()
+                              ? <p style={{ margin: '0 0 var(--sp-2)', whiteSpace: 'pre-wrap' }}>{recapDraft.trim()}</p>
+                              : <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>No note.</p>}
+                            {clean ? <span className="mini" aria-hidden="true">See the photos</span> : null}
+                            {!recapDraft.trim() && !clean ? <p className="v-meta" style={{ margin: 0 }}>Guests see the invitation again.</p> : null}
+                          </div>
+                          <p className="grounding" style={{ margin: 'var(--sp-2) 0' }}>
+                            {isPast ? 'Anyone who opens your invite link sees this, in place of the invitation.' : 'Anyone who opens your invite link sees this once the party’s over.'} You can change it or take it down any time.
+                          </p>
+                          <div className="actions-row" style={{ marginTop: 0 }}>
+                            <button className="mini" data-recap-publish onClick={() => {
+                              patchEvent({ recapNote: recapDraft.trim(), albumUrl: clean },
+                                (recapDraft.trim() || clean) ? 'It’s on your invite link now.' : 'Recap taken down.');
+                              setRecapPreview(false);
+                            }}>{(recapDraft.trim() || clean) ? 'Put it on the invite link' : 'Take it down'}</button>
+                            <button className="mini" onClick={() => setRecapPreview(false)}>Keep editing</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {!isPast && <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>On your invite link, guests see it once the party’s over.</p>}
+                          <label className="of" htmlFor="v2-recap-note" style={{ display: 'block', marginBottom: 'var(--sp-1)' }}>A note to everyone</label>
+                          <textarea id="v2-recap-note" className="field" style={{ maxWidth: 'none', minHeight: 52, resize: 'vertical', fontSize: 'var(--t-input)' }}
+                            placeholder="For example: “What a day. Thank you all for coming.”"
+                            value={recapDraft} onChange={e => setRecapDraft(e.target.value)} />
+                          <label className="of" htmlFor="v2-recap-album" style={{ display: 'block', margin: 'var(--sp-3) 0 var(--sp-1)' }}>Photo album link</label>
+                          <input id="v2-recap-album" className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)' }}
+                            type="url" inputMode="url" placeholder="Google Photos, iCloud, a shared drive…"
+                            value={albumDraft} onChange={e => setAlbumDraft(e.target.value)} aria-label="Photo album link" />
+                          {clean && !albumOk && (
+                            <p className="grounding warn-note" style={{ margin: '4px 0 0' }}>Add the full link (starts with https://) so it opens for guests.</p>
+                          )}
+                          <div className="actions-row">
+                            <button className="mini" onClick={() => { try { setRecapDraft(String((draftRecap(event, profile) || {}).body || '')); } catch { toast('Couldn’t draft it.'); } }}>Write it for me</button>
+                            <button className="mini" data-recap-preview-open disabled={!dirty || !albumOk} onClick={() => setRecapPreview(true)}>Preview what guests see</button>
+                          </div>
+                          <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>
+                            {live && !dirty ? 'This is on your invite link now.' : 'Nothing goes on the invite link until you’ve seen the preview.'}
+                          </p>
+                        </>
+                      )}
+                    </div></div>
+                  </>
                 );
               })()}
               {/* Event memory capture — writes event.lessons via the canonical
                   setLesson (lib/eventMemory); recalled on Plan for the next
-                  same-type event. Past events only — a preview has no lessons. */}
+                  same-type event. Past events only. Quiet, never lit (one lit
+                  action on After, audit #11). The carry-forward line replaces
+                  "What carries forward" (audit #34: no "foundation facts", no
+                  "wrap-up meter"). */}
               {isPast && (
-                <div style={{ marginTop: 'var(--sp-3)' }}>
-                  <div className="shelf-label" style={{ marginBottom: 6 }}>For next time — the one thing you’d tell yourself</div>
-                  <textarea className="field" style={{ maxWidth: 'none', minHeight: 58, resize: 'vertical', fontSize: 'var(--t-input)' }}
-                    placeholder="Two bags of ice per cooler wasn’t enough — get three"
-                    value={lessonDraft} onChange={e => setLessonDraft(e.target.value)} aria-label="Lesson for next time" />
-                  <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                    <button className="cta" disabled={lessonDraft.trim() === getLesson(event)}
-                      style={lessonDraft.trim() === getLesson(event) ? { opacity: .45 } : undefined}
-                      onClick={() => patchEvent({ lessons: setLesson(event, lessonDraft).lessons },
-                        lessonDraft.trim() ? 'Saved — it’ll come back when you plan the next one.' : 'Note cleared.')}>
-                      {getLesson(event) ? 'Update it' : 'Save it'}
-                    </button>
-                    {getLesson(event) && lessonDraft.trim() === getLesson(event) && (
-                      <span className="of" style={{ color: 'var(--ok)' }}>on record</span>
-                    )}
-                  </div>
-                </div>
+                <>
+                  <div className="sect"><h2>For next time</h2><div className="rule" /></div>
+                  <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
+                    <label className="of" htmlFor="v2-lesson" style={{ display: 'block', marginBottom: 'var(--sp-1)' }}>The one thing you’d tell yourself</label>
+                    <textarea id="v2-lesson" className="field" style={{ maxWidth: 'none', minHeight: 58, resize: 'vertical', fontSize: 'var(--t-input)' }}
+                      placeholder="For example: two bags of ice per cooler wasn’t enough — get three"
+                      value={lessonDraft} onChange={e => setLessonDraft(e.target.value)} aria-label="Lesson for next time" />
+                    <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                      <button className="mini" disabled={lessonDraft.trim() === getLesson(event)}
+                        onClick={() => patchEvent({ lessons: setLesson(event, lessonDraft).lessons },
+                          lessonDraft.trim() ? 'Saved — it’ll come back when you plan the next one.' : 'Note cleared.')}>
+                        {getLesson(event) ? 'Update it' : 'Save it'}
+                      </button>
+                      {getLesson(event) && lessonDraft.trim() === getLesson(event) && (
+                        <span className="of" style={{ color: 'var(--ok)' }}>on record</span>
+                      )}
+                    </div>
+                    <p className="grounding" style={{ margin: 'var(--sp-3) 0 0' }}>
+                      It comes back the next time you plan {event.type ? `${/^[aeiou]/i.test(String(event.type)) ? 'an' : 'a'} ${String(event.type).toLowerCase()}` : 'one of these'}. Your guest list, vendors and every money line above stay saved with this plan.
+                    </p>
+                  </div></div>
+                </>
               )}
-              {/* Recap keepsake on the invite link — when a guest reopens the
-                  shared link after the event, it becomes a recap. The host's note
-                  and a real photo-album URL land there. Both optional; blank ones
-                  simply don't show (the recap never fabricates content). */}
-              {(isPast || albumAsked) && (
-                <div style={{ marginTop: 'var(--sp-4)' }}>
-                  <div className="shelf-label" style={{ marginBottom: 6 }}>{isPast ? 'On your invite link — guests see this when they reopen it' : 'On your invite link — guests see this once the party’s over'}</div>
-                  <textarea className="field" style={{ maxWidth: 'none', minHeight: 52, resize: 'vertical', fontSize: 'var(--t-input)' }}
-                    placeholder="A note to everyone — “What a day. Thank you all for coming.”"
-                    value={recapDraft} onChange={e => setRecapDraft(e.target.value)} aria-label="Recap note for guests" />
-                  <input className="field" style={{ maxWidth: 'none', marginTop: 'var(--sp-2)', fontSize: 'var(--t-input)' }}
-                    type="url" inputMode="url" placeholder="Photo album link — Google Photos, iCloud, a shared drive…"
-                    value={albumDraft} onChange={e => setAlbumDraft(e.target.value)} aria-label="Photo album link" />
-                  {albumDraft.trim() && !/^https?:\/\//i.test(albumDraft.trim()) && (
-                    <p className="grounding warn-note" style={{ margin: '4px 0 0' }}>Add the full link (starts with https://) so it opens for guests.</p>
-                  )}
-                  <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                    {(() => {
-                      const clean = albumDraft.trim();
-                      const albumOk = !clean || /^https?:\/\//i.test(clean);
-                      const dirty = recapDraft.trim() !== String(event.recapNote || '').trim() || clean !== String(event.albumUrl || '').trim();
-                      return (
-                        <button className="cta" disabled={!dirty || !albumOk}
-                          onClick={() => patchEvent({ recapNote: recapDraft.trim(), albumUrl: clean },
-                            (recapDraft.trim() || clean) ? 'Saved — it’s on your invite link’s recap now.' : 'Recap cleared.')}>
-                          {(event.recapNote || event.albumUrl) ? 'Update the recap' : 'Publish the recap'}
-                        </button>
-                      );
-                    })()}
-                  </div>
-                </div>
-              )}
-              {/* Primary full-width, the two secondaries in a balanced 2-col grid
-                  (was a ragged cta+mini+mini flex-wrap). */}
-              <div style={{ marginTop: 14 }}>
-                <button className="cta" style={{ width: '100%' }} onClick={() => openDraft('The thank-you', draftThankYou(event, profile))}>Draft the thank-you</button>
-                <div className="pill-grid" style={{ marginTop: 'var(--gap-chip)' }}>
-                  <button className="mini" onClick={() => { try { openDraft('The recap', draftRecap(event, profile)); } catch { toast('Couldn’t draft it.'); } }}>Write the recap</button>
-                  <button className="mini" onClick={() => setSheet({ kind: 'thanks' })}>Start the thank-you run</button>
-                </div>
-              </div>
             </section>
           )}
         </div>
@@ -17738,8 +17878,7 @@ export default function HostShellV2() {
             {sheet.kind === 'invite-design' && (
               <InviteDesignSheet event={event} profile={profile} patchEvent={patchEvent} patchProfile={patchProfile}
                 signedIn={Boolean(session)} email={(session && session.user && session.user.email) || ''}
-                onDone={closeSheet} renderDeadlineEditor={renderDeadlineEditor} hasArtwork={!!eventArtworkFile(event)}
-                onSeeFull={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch { /* blocked */ } }} />
+                onDone={closeSheet} renderDeadlineEditor={renderDeadlineEditor} hasArtwork={!!eventArtworkFile(event)} />
             )}
             {sheet.kind === 'invite-check' && (() => {
               const gaps = inviteGaps(event);
@@ -23339,6 +23478,11 @@ export default function HostShellV2() {
                   )}
                   <div className="bar" aria-hidden style={{ marginBottom: 'var(--sp-3)' }}><i style={{ '--fill': pct / 100, background: 'var(--ok)' }} /></div>
                   {!yes.length && <p className="grounding">No confirmed guests on this one yet.</p>}
+                  {/* ONE NOTE FOR EVERYONE (owner E1, 11/24/2026): the group thank-you
+                      lives inside the run now, not as a second door on After. */}
+                  <div className="actions-row" style={{ marginTop: 0, marginBottom: 'var(--sp-3)' }}>
+                    <button className="mini" data-thanks-group onClick={() => openDraft('The thank-you', draftThankYou(event, profile))}>One note for everyone</button>
+                  </div>
                   {cur && (() => {
                     const { g, i } = cur;
                     const body = noteFor(g);
@@ -24054,7 +24198,7 @@ export default function HostShellV2() {
                       report line (tap to review) — same green-dot semantics as
                       the handled sections everywhere else. */}
                   <Panel on={panels}>
-                  {renderGroupedTasks((t, i) => {
+                  {renderChecklistPhases((t, i, mode) => {
                     // A RETIRED row is off the open list. The reconcile marks a
                     // row retired when the gate that authored it closes — pick
                     // "steam them myself" and the two crab-house pickup rows
@@ -24077,78 +24221,74 @@ export default function HostShellV2() {
                     // The visitors-bureau row carries its own brief (host directive
                     // 2026-07-28): contact capture + the asks with direct links.
                     const isCvbRow = /visitors bureau|convention .{0,3}visitors|\bcvb\b/i.test(String(t.task || ''));
+                    // ── ONE STEP, OPENED IN PLACE (cohesion batch D, owner D3 11/24/2026) ──
+                    // The row was ONE button that checked the step off, with up to
+                    // five more buttons under it (~126 in Wanda's sheet). Now the
+                    // check is its own 44px box, and the rest of the row opens the
+                    // step under itself: its detail, who has it, its route, the
+                    // hand-off and "Check it off". A tap to read never checks off.
+                    const focusedRow = !!sheet.focus && t.id === sheet.focus;
+                    const isOpenStep = ckOpenStep != null ? ckOpenStep === t.id : focusedRow;
+                    const ownerName = String((t && t.owner) || '').trim();
+                    const hostHolds = !!ownerName && isHostName(ownerName);
+                    const when = stepWhen(t, event, new Date());
+                    const dueBits = (() => {
+                      if (inferred) return when.key === 'nodate' || when.key === 'day' ? '' : stepDateText(when.due);
+                      if (when.key === 'nodate') return t.week || '';
+                      let late = '';
+                      try { late = when.dueIn <= 0 ? (taskDueLabel(t, event) || '') : ''; } catch (_e) { late = ''; }
+                      if (when.key === 'day') return late;
+                      return [stepDateText(when.due), late].filter(Boolean).join(' · ');
+                    })();
+                    const rowMeta = [dueBits, ownerName ? (hostHolds ? 'Yours' : ownerName) : ''].filter(Boolean).join(' · ');
                     const rowBtn = (
-                    <button key={t.id || i} className={'frow' + (inferred ? ' got' : '') + (sheet.focus && t.id === sheet.focus ? ' rowfocus' : '')}
-                      ref={scrollIntoViewOnOpen(sheet.focus && t.id === sheet.focus)}
-                      style={{ animation: rowEnter(i) }}
-                      onClick={() => toggleTask(i)}>
-                      <span className="fcheck" aria-hidden="true" />
-                      <span className="f-main">
-                        <span className="f-name">{lead}
-                          {inferred ? <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>done by your plan — tap to confirm</span> : null}
-                          {(() => { // compressed-timeline urgency, the engine's word (never for standard)
-                            // A row the plan already handled is not urgent: "Do now" beside
-                            // "done by your plan" contradicts itself (owner, 11/16/2026).
-                            if (inferred) return null;
-                            try {
-                              // WAS: /T-(\d+)d/.exec(t.week) — and `week` is PROSE ('Week of'),
-                              // never 'T-5d'. It matched NOTHING, so `po` was always null, so
-                              // this chip NEVER RENDERED, on any task, on any event. The one
-                              // urgency signal in the whole checklist was dead code. The lead
-                              // now comes from the one reader (lib/taskLead.js) off the
-                              // persisted leadDays, and the map is built from the real number.
-                              const lead = taskLeadDays(t);
-                              const po = lead != null ? { [t.week || '_']: lead } : null;
-                              const u = days != null && po ? taskUrgencyChip({ ...t, week: t.week || '_' }, days, event.type, po) : null;
-                              return u && u.label ? <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>{u.label}</span> : null;
-                            } catch { return null; }
-                          })()}
+                    <div className={'frow step-line' + (inferred ? ' got' : '') + (focusedRow ? ' rowfocus' : '')} style={{ animation: rowEnter(i) }}>
+                      <button type="button" className="step-ck" data-step-check
+                        aria-label={inferred ? `Confirm ${lead} is done` : `Check off ${lead}`}
+                        onClick={() => toggleTask(i)}>
+                        <span className="fcheck" aria-hidden="true" />
+                      </button>
+                      <button type="button" className="step-body" data-step-body aria-expanded={isOpenStep ? 'true' : 'false'}
+                        onClick={() => setCkOpenStep(isOpenStep ? '' : t.id)}>
+                        <span className="f-main">
+                          <span className="f-name">{lead}
+                            {inferred ? <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>your plan did this · confirm</span> : null}
+                            {(() => { // compressed-timeline urgency, the engine's word (never for standard)
+                              if (inferred) return null;
+                              try {
+                                const ld = taskLeadDays(t);
+                                const po = ld != null ? { [t.week || '_']: ld } : null;
+                                const u = days != null && po ? taskUrgencyChip({ ...t, week: t.week || '_' }, days, event.type, po) : null;
+                                return u && u.label ? <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>{u.label}</span> : null;
+                              } catch { return null; }
+                            })()}
+                          </span>
+                          {rowMeta ? <span className="v-meta">{rowMeta}</span> : null}
                         </span>
-                        {detail ? <span className="v-meta" style={{ fontWeight: 400, whiteSpace: 'normal' }}>{detail}</span> : null}
-                        {/* ── THE BOOKING WINDOW, SAID OUT LOUD ──────────────
-                            Two audiences, one row. The host needs to know why
-                            this date is not the one the playbook authored; the
-                            guest needs the dates to act on, which is the half
-                            the host has to pass along and could not. The
-                            window edges are cited (CheapAir 2024, corroborated
-                            by Google Flights and Expedia via Frommers); the
-                            two-week decision buffer inside `because` is
-                            reasoned, and travelLeadTime marks the whole thing
-                            `synthesized` rather than cited for exactly that
-                            reason. Named here as "what the studies measured",
-                            never as a quote or a promise. */}
+                        <span className="step-chev" aria-hidden="true">▸</span>
+                      </button>
+                    </div>
+                    );
+                    // The opened step's top: the detail and the booking window
+                    // (cited; see travelLeadTime), then who has it.
+                    const openTop = (
+                      <>
+                        {detail ? <p className="grounding step-detail">{detail}</p> : null}
                         {(() => {
                           const af = airFloorById.get(t.id);
                           if (!af) return null;
                           return (
-                            <span className="v-meta" style={{ fontWeight: 400, whiteSpace: 'normal', display: 'block', marginTop: 4 }}>
+                            <p className="v-meta step-detail" style={{ whiteSpace: 'normal' }}>
                               {af.because}
                               {' Tell guests to book '}
                               {`${af.primeOpensDays}–${af.primeClosesDays}`}
                               {' days out — about '}
                               {af.bestSingleDay}
                               {' days ahead is the average sweet spot. Measured by CheapAir (917M fares, 2024), with Google Flights and Expedia landing in the same window.'}
-                            </span>
+                            </p>
                           );
                         })()}
-                        <span className="v-meta" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                          {/* The DUE DATE, finally. taskDueLabel had zero call sites — the app
-                              computed every task's lead and then showed the host only a prose
-                              bucket ("Week of"), which is why nothing ever read as late.
-                              taskDueLabel also distinguishes "13 days past its window" from
-                              "today", so a closed window stops masquerading as a deadline. */}
-                          {(() => {
-                            let due = null;
-                            try { due = (t.done || inferred) ? null : (taskDueLabel(t, event) || null); } catch (_e) { due = null; }
-                            // Once there is a REAL due label, the prose bucket is noise —
-                            // "7 days past its window · Week of" says the same thing twice and
-                            // the second half is the vaguer one. `week` stays only as the
-                            // fallback for a task whose lead we genuinely cannot resolve.
-                            return [due, due ? null : t.week, t.owner].filter(Boolean).join(' · ');
-                          })()}
-                        </span>
-                      </span>
-                    </button>
+                      </>
                     );
                     // ── ASSIGN (ownership ruling clauses 1a, 3, 7) ───────────────
                     // A SIBLING of the row button, never a child: nested
@@ -24204,26 +24344,27 @@ export default function HostShellV2() {
                         )}
                       </>
                     ) : null;
+                    const asNext = mode === 'next';
                     const assignEl = assignablePeople.length && !(inferred && !owner) ? (
                       <div className="row-assign" key={(t.id || i) + '-assign'}>
-                        {actionEl}
+                        {asNext ? (photosLine ? <span className="row-act"><button type="button" className="mini rowlink row-quiet" data-row-photos onClick={() => setSheet({ kind: 'guests', focus: 'photos' })}>{photosLine} →</button></span> : null) : actionEl}
                         <button className="mini rowlink assign-btn"
-                          aria-label={owner
+                          aria-label={owner && !hostHolds
                             ? `${owner} has ${lead2}, ${rStatus}. Change who has this.`
                             : `Assign ${lead2} to someone`}
                           onClick={(e) => { e.stopPropagation(); setAssignFor(assignFor === t.id ? null : t.id); }}>
-                          {owner
+                          {owner && !hostHolds
                             ? <span aria-hidden="true">{owner} — {rStatus}</span>
                             : <span aria-hidden="true">Give this to someone</span>}
                         </button>
-                        {owner && !t.done && !tAnswer && tHelper && isHelperLinkApiConfigured() && (
+                        {owner && !hostHolds && !t.done && !tAnswer && tHelper && isHelperLinkApiConfigured() && (
                           <button className="mini rowlink helper-send"
                             disabled={!!(tSend && tSend.busy)}
                             onClick={(e) => { e.stopPropagation(); sendHelperJob(t.id); }}>
                             {tSend && tSend.busy ? 'Making the link…' : `Send ${tFirst} their job`}
                           </button>
                         )}
-                        {owner && !t.done && !tAnswer && tHelper && tHelperEmail && isHelperLinkApiConfigured() && (() => {
+                        {owner && !hostHolds && !t.done && !tAnswer && tHelper && tHelperEmail && isHelperLinkApiConfigured() && (() => {
                           const w = helperEmailWords(tFirst, tMail);
                           return (
                             <>
@@ -24239,7 +24380,7 @@ export default function HostShellV2() {
                             </>
                           );
                         })()}
-                        {owner && tHelperDial && (
+                        {owner && !hostHolds && tHelperDial && (
                           <a className="mini rowlink" data-helper-call style={{ textDecoration: 'none' }}
                             href={'tel:' + tHelperDial} onClick={(e) => e.stopPropagation()}>{`Call ${tFirst}`}</a>
                         )}
@@ -24261,7 +24402,7 @@ export default function HostShellV2() {
                               : <>{tSend.hasEmail ? 'No number' : 'No number or email'} for {tSend.first} — share or paste it yourself. Nothing is sent from here.</>}
                           </span>
                         )}
-                        {owner && !t.done && !tAnswer && (
+                        {owner && !hostHolds && !t.done && !tAnswer && (
                           // RECORD-ONLY (UX_07 level 4): it stores the host's word
                           // that the helper agreed and contacts no one, so the
                           // label says "Mark", never "Confirm with" (11/16/2026).
@@ -24288,12 +24429,43 @@ export default function HostShellV2() {
                           </div>
                         )}
                       </div>
-                    ) : (actionEl ? <div className="row-assign" key={(t.id || i) + '-act'}>{actionEl}</div> : null);
-                    if (!isCvbRow) {
-                      return assignEl
-                        ? <Fragment key={(t.id || i) + '-w'}>{rowBtn}{assignEl}</Fragment>
-                        : rowBtn;
-                    }
+                    ) : (!asNext && actionEl ? <div className="row-assign" key={(t.id || i) + '-act'}>{actionEl}</div>
+                      : asNext && photosLine ? <div className="row-assign" key={(t.id || i) + '-act'}><span className="row-act"><button type="button" className="mini rowlink row-quiet" data-row-photos onClick={() => setSheet({ kind: 'guests', focus: 'photos' })}>{photosLine} →</button></span></div>
+                      : null);
+                    const checkOff = (
+                      <div className="row-assign">
+                        <button type="button" className="mini rowlink" data-step-checkoff onClick={() => toggleTask(i)}>{inferred ? 'Confirm it’s done' : 'Check it off'}</button>
+                      </div>
+                    );
+                    const whoLine = (
+                      <p className="v-meta step-who">
+                        {ownerName && !hostHolds ? `Who has it: ${ownerName} · ${rStatus}` : 'Who has it: you'}
+                      </p>
+                    );
+                    const stepWrap = (inner) => (
+                      <div key={(t.id || i) + '-step'} className="step-row" data-step-row={t.id || i}
+                        data-step-action={action ? action.label : undefined}
+                        ref={scrollIntoViewOnOpen(focusedRow)}>
+                        {rowBtn}
+                        {isOpenStep && <div className="step-open" data-step-open>{openTop}{whoLine}{inner}{checkOff}</div>}
+                      </div>
+                    );
+                    // UP NEXT is this same step, opened, with its route as the sheet's
+                    // one lit button (or "Check it off" when it declares none, D4).
+                    const nextCard = (inner) => (
+                      <div key="up-next" className="ck-next" data-up-next data-step-action={action ? action.label : undefined}>
+                        <div className="sect"><h2>Up next</h2><div className="rule" />{dueBits ? <span className="when">{dueBits}</span> : null}</div>
+                        <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
+                          <div className="f-name ck-next-name">{lead}</div>
+                          {openTop}{whoLine}
+                          <button type="button" className="cta" style={{ width: '100%' }} data-up-next-go data-row-action={action ? '' : undefined}
+                            onClick={() => (action ? action.go() : toggleTask(i))}>{action ? action.label : 'Check it off'}</button>
+                          <div className="ck-next-more">{inner}{action ? checkOff : null}</div>
+                        </div></div>
+                      </div>
+                    );
+                    const place = (inner) => (asNext ? nextCard(inner) : stepWrap(inner));
+                    if (!isCvbRow) return place(assignEl);
                     // ── The bureau brief — sibling of the row (inputs can't live
                     // inside a <button>). Contact is host-entered; every ask link
                     // is an honestly-labeled find link scoped to the destination;
@@ -24306,10 +24478,9 @@ export default function HostShellV2() {
                       patchEvent({ cvb: { ...(event.cvb || {}), ...c } }, 'Bureau contact saved — it rides this row now.');
                       setCvbForm({ name: '', phone: '', url: '' });
                     };
-                    return (
-                      <Fragment key={(t.id || i) + '-cvb'}>
-                        {rowBtn}
-                        {actionEl && <div className="row-assign">{actionEl}</div>}
+                    return place(
+                      <>
+                        {assignEl}
                         <details className="cvb-brief" style={{ margin: '2px 0 10px', padding: '0 2px' }}>
                           <summary className="v-meta" style={{ cursor: 'pointer', listStyle: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span className="mini rowlink">{savedCvb ? 'Their contact + what to ask for' : 'What to ask for — and where their contact goes'} ▾</span>
@@ -24347,7 +24518,7 @@ export default function HostShellV2() {
                             <p className="grounding" style={{ margin: 0 }}>Grounded in verified bureau programs (Gwinnett, Atlanta, Myrtle Beach) and hotel group-sales practice — sources under You &amp; settings → Grounding.</p>
                           </div>
                         </details>
-                      </Fragment>
+                      </>
                     );
                   })}
                   </Panel>
@@ -28642,10 +28813,10 @@ export default function HostShellV2() {
                     // when the count is 0.
                     : yes.length === 0
                       ? (gcr && gcr.pending > 0
-                        ? 'no yes replies yet · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t replied' : ' haven’t replied')
+                        ? 'no yes replies yet · ' + notRepliedYet(gcr.pending)
                         : 'no yes replies yet — everyone’s answered')
                       : (gcr && gcr.pending > 0
-                        ? 'said yes so far · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t replied' : ' haven’t replied') + tail
+                        ? 'said yes so far · ' + notRepliedYet(gcr.pending) + tail
                         : 'said yes — the list has settled' + (planLbl ? ' · planning for ' + planLbl : bandLbl ? ' · likely ' + bandLbl + ' on the day' : ''));
                 } else {
                   n = Number(guests) || 0;

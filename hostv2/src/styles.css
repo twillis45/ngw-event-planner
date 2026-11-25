@@ -1292,6 +1292,12 @@ button{font-family:inherit}
      the normal-height .efold is untouched) buys back real, deliberate margin
      instead of a boundary tuned to the sub-pixel. */
   .efold{ margin-top:0; padding-top:2px; }
+  /* ...but never under the house tap height. The trim left the handle exactly
+     44px, and at a fractional offset a 44px box measures 43 (CI, 11/25/2026:
+     everySheetKeepsTheCohesionRules at 860x430). --tap-min is 46 so a tap box
+     clears that rounding; the 2px goes below the label, not above it, so the
+     top edge this rule protects does not move. */
+  .efold{ min-height:var(--tap-min,46px); box-sizing:border-box; }
 }
 /* A 320px PHONE (run 2, R2-12): the left label truncated to "3 of 7 plan par…" —
    losing the count itself — and the short-viewport rule above (max-height:699px,
@@ -8591,6 +8597,15 @@ button.vc-pill::after{
      bottom 8px (84x38, everyTapIsFortyFourSquare at 1024x768). */
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head .tt-nameit{ margin-top:0 !important; position:relative; z-index:1; }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{ padding-top:16px; }
+  /* Under the "Not saved yet" row (live check of 19841da0, 11/25/2026): the
+     row takes about 64px, once per plan for a signed-out host, and at 1024x768
+     it pushed the three-answer ask's last answer under the screen. With the
+     row up, the touch rename tip waits (HostShellV2: one notice at a time)
+     and every ask kind takes a height-sized question, a step smaller than the
+     card ask's (aShortLandscapeFitsEveryAsk, with the row). */
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .board:has(> .keep-ask) .hero.elegant .escreen.on > .ecenter .ask{
+    font-size:clamp(32px,5vh,48px);
+  }
 }
 /* ON A SHORT TOUCH SCREEN THE STAT CARD'S CHIPS ARE 46px, not 28 (the touch
    floor), three rows of them: the Where you stand card grows 62px and, as the
@@ -9193,6 +9208,8 @@ input[data-cue], textarea[data-cue]{ outline:revert-layer; border-color:color-mi
 .ivd-live i{ width:7px; height:7px; border-radius:50%; background:var(--ok); }
 .ivd-full{ min-height:44px; }
 .ivd-pv-frame{ max-height:440px; overflow:hidden; border-radius:var(--r-lg) var(--r-lg) 0 0; }
+/* "See the full invite" opens the same draft whole, in place (owner report, 11/24/2026). */
+.ivd-pv-frame.full{ max-height:none; }
 .ivd-h{ margin:var(--sp-5) 0 4px; font-size:var(--t-card-title, 19px); font-weight:750; letter-spacing:-.01em; }
 .ivd-why{ margin:0 0 var(--sp-3); font-family:var(--serif-read); font-style:italic; color:var(--muted); line-height:1.4; }
 .ivd-lab{ display:flex; justify-content:space-between; align-items:baseline; margin:0 0 8px; font-weight:650; }
@@ -9510,3 +9527,54 @@ html:root .cta.cta:disabled, html:root[data-theme] .hero.elegant .cta.cta:disabl
 .si-dis button[disabled], .si-dis a[aria-disabled="true"]{opacity:.42; pointer-events:none}
 .si-whohead{margin:var(--sp-5) 0 var(--sp-1)}
 .si-first{margin-top:0; margin-bottom:var(--sp-2)}
+
+/* ── THE CHECKLIST: UP NEXT, PHASES, ONE STEP OPENED IN PLACE ──────────────────
+   Cohesion batch D (owner D1–D5, 11/24/2026; renders/cohesion-d). A row is two
+   targets: the check (its own 44×48 box) and the body, which opens the step
+   under itself. The opened step holds what used to hang under every row. */
+.step-row{ border-top:1px solid var(--line-soft); }
+.frow.step-line{ padding:0; gap:0; border-top:none; flex-wrap:nowrap; align-items:flex-start; cursor:default; }
+.frow.step-line:hover{ background:none; }
+.step-ck{ flex:none; width:48px; min-height:48px; display:grid; place-items:center; padding:0;
+  background:none; border:0; cursor:pointer; }
+.step-body{ flex:1; min-width:0; min-height:48px; display:flex; gap:var(--sp-2); align-items:flex-start;
+  padding:12px var(--sp-2) 12px 0; background:none; border:0; text-align:left; color:inherit; font:inherit; cursor:pointer; }
+.step-body:hover{ background:var(--bg); }
+.step-body .f-main{ min-width:0; }
+.step-chev{ flex:none; color:var(--faint); margin-top:var(--sp-1); transition:transform var(--ms-press) var(--ease-out); }
+.step-body[aria-expanded="true"] .step-chev{ transform:rotate(90deg); }
+.step-open{ margin:0 0 var(--sp-3) 48px; padding:var(--sp-3) var(--sp-4);
+  border-radius:var(--r-md); background:color-mix(in srgb, var(--ink) 4%, transparent); }
+.step-open .row-assign, .ck-next-more .row-assign{ padding:0; margin:0; }
+/* One even gap between the blocks of buttons, the same 12px (--sp-3) the
+   buttons keep inside a block (theChecklistButtonsLineUp). */
+.step-open .row-assign + .row-assign, .step-open .row-assign + details, .step-open details + .row-assign,
+.ck-next-more .row-assign + .row-assign, .ck-next-more .row-assign + details, .ck-next-more details + .row-assign{ margin-top:var(--sp-3); }
+.step-detail{ margin:0 0 var(--sp-2); color:var(--ink); }
+.step-who{ margin:0 0 var(--sp-2); }
+.ck-next{ margin:0 0 var(--sp-5); }
+.ck-next-name{ font-size:17px; line-height:1.3; }
+.ck-next-more{ margin-top:var(--sp-3); }
+.ck-next-more:empty{ display:none; }
+.ck-phase{ margin:0 0 var(--sp-1); }
+.ck-phase.open{ margin-bottom:var(--sp-4); }
+.ck-phase-h{ display:flex; justify-content:space-between; align-items:baseline; gap:var(--sp-2); }
+.ck-phase-n{ text-transform:none; letter-spacing:0; font-weight:600; color:var(--muted); }
+.ck-phase-fold{ width:100%; display:flex; justify-content:space-between; align-items:center; gap:var(--sp-2);
+  min-height:48px; padding:var(--sp-2) 0; background:none; border:0; border-top:1px solid var(--line);
+  text-align:left; color:inherit; font:inherit; cursor:pointer; }
+.ck-phase-t{ display:flex; flex-direction:column; gap:2px; }
+.ck-phase-l{ display:block; margin:0; border:0; padding:0; }
+/* A folded phase's label is a label, not a section rule (the sheet's
+   .shelf-label carries a rule and top margin). */
+.sheet .ck-phase-fold .shelf-label.ck-phase-l{ margin:0 !important; padding:0 !important; border:0 !important; }
+.sheet .ck-phase-fold .shelf-label.ck-phase-l::after{ content:none; }
+
+/* ── AFTER: THE THANK-YOU ROWS AND THE RECAP PREVIEW (cohesion batch E) ──────
+   A guest's name keeps its line; the two record flags wrap under it on a
+   phone. The recap preview is drawn as what guests will see, dashed: it is
+   not published until she says so (owner E2, 11/24/2026). */
+.after-gift-line{ align-items:center; justify-content:space-between; flex-wrap:wrap; gap:var(--sp-2); margin-top:0; }
+.after-gift-name{ flex:1 1 150px; min-width:0; }
+.after-gift-flags{ display:flex; gap:var(--sp-2); margin-left:auto; }
+.recap-preview{ padding:var(--sp-4); border:1px dashed var(--line); border-radius:var(--r-md); }

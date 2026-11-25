@@ -7,7 +7,14 @@
 // far right. Every button a row carries now starts where the row's title does.
 // Measured, not eyeballed: each button's left edge against its own row title.
 // Synthetic event (same as aHelperGetsTheirJobByLink).
-import { test, expect, settled, openSectionByName, dateIn } from './fixtures.mjs';
+//
+// SINCE COHESION BATCH D (owner D1–D5, 11/24/2026) a step's buttons live
+// inside the step, opened in place, or on the "Up next" card. The rule moved
+// with them: every button in an opened step (or the Up next card) starts at
+// one left edge, the block's own, with one even gap. One step opens at a time,
+// so the helper's row and a routed playbook row ("Assign each friend a dish",
+// "Map the spread") are each opened and measured in turn.
+import { test, expect, settled, openSectionByName, dateIn, revealChecklistStep } from './fixtures.mjs';
 
 const API = 'https://e2e-mock.invalid';
 const CODE = 'helpercodeabcdef123456';
@@ -57,36 +64,31 @@ const openChecklist = async (page) => {
   await settled(page);
 };
 
-
+// Every button in each opened step and in the Up next card, against the
+// block's own left edge (its content box).
 const lefts = (page) => page.evaluate(() => {
   const out = [];
-  for (const row of document.querySelectorAll('.frow')) {
-    const title = row.querySelector('.f-name');
-    if (!title) continue;
-    const tx = Math.round(title.getBoundingClientRect().x);
-    const btns = [];
-    // every button under a row sits in the sibling .row-assign: the row's own
-    // action first (11/16: moved out of the row's <button>, axe
-    // nested-interactive), then helper / assign
-    const sib = row.nextElementSibling && row.nextElementSibling.classList.contains('row-assign') ? row.nextElementSibling : null;
-    // and the helper's "Call Jordan" (a tel: link styled as the same control):
-    // in a section panel (both themes since 11/22/2026) the row is 34px
-    // narrower, it takes its own line, and a buttons-only walk read the line
-    // it took as a 70px gap.
-    if (sib) btns.push(...sib.querySelectorAll(':scope > button, :scope > a.rowlink, :scope > .row-act > button'));
+  for (const box of document.querySelectorAll('.sheet .step-open, .sheet .ck-next-more')) {
+    const owner = box.closest('[data-step-row], [data-up-next]');
+    const title = owner && (owner.querySelector('.ck-next-name') || owner.querySelector('.f-name'));
+    const ref = box.getBoundingClientRect().x + parseFloat(getComputedStyle(box).paddingLeft);
+    const btns = [...box.querySelectorAll('.row-assign > button, .row-assign > a.rowlink, .row-assign > .row-act > button')];
     for (const b of btns) {
       const r = b.getBoundingClientRect();
-      if (r.width) out.push({ row: title.innerText.slice(0, 30), label: b.innerText.slice(0, 30), dx: Math.round(r.x) - tx, left: Math.round(r.x), top: Math.round(r.top), bottom: Math.round(r.bottom) });
+      if (r.width) out.push({ row: (title ? title.innerText : '').slice(0, 30), label: b.innerText.slice(0, 30), dx: Math.round(r.x - ref), left: Math.round(r.x), top: Math.round(r.top), bottom: Math.round(r.bottom) });
     }
   }
   return out;
 });
 
-test('every checklist button starts at its row title’s left edge', async ({ page }) => {
+test('every button in an opened step starts at one left edge', async ({ page }) => {
   await boot(page);
   await mockHost(page);
   await openChecklist(page);
-  const all = await lefts(page);
+  await revealChecklistStep(page, 'Assign each friend a dish');
+  const routed = await lefts(page);
+  await revealChecklistStep(page, 'Bring folding chairs');
+  const all = [...routed, ...(await lefts(page))];
   expect(all.length, 'the checklist has rows with buttons to measure').toBeGreaterThanOrEqual(3);
   expect(all.some((b) => /Mark Jordan Avery confirmed/.test(b.label)), 'a helper row is among them').toBe(true);
   expect(all.some((b) => / →$/.test(b.label)), 'a row link is among them').toBe(true);
@@ -98,11 +100,14 @@ test('the buttons under one row keep one even gap between them', async ({ page }
   await boot(page);
   await mockHost(page);
   await openChecklist(page);
+  await revealChecklistStep(page, 'Bring folding chairs');
   const chairs = (await lefts(page)).filter((b) => /folding chairs/.test(b.row));
   // "Jordan Avery — not told yet", "Send Jordan their job", "Call Jordan", "Mark Jordan Avery confirmed".
   // A row the host wrote has no row link since 11/23/2026 (six root causes,
   // cause 1: no button is guessed from a row's words), so four, not five.
-  expect(chairs.length).toBe(4);
+  // Opened in place, the step adds its own "Check it off" (it has no route
+  // to light), so five.
+  expect(chairs.length).toBe(5);
   const gaps = chairs.slice(1).map((b, i) => b.top - chairs[i].bottom);
   // one gap (12px, --sp-3) between every pair — it was 3px under the row link and 12 below
   expect(Math.max(...gaps) - Math.min(...gaps), JSON.stringify(gaps)).toBeLessThanOrEqual(2);
@@ -117,11 +122,12 @@ test('no checklist row hides a button inside its own button', async ({ page }) =
   await boot(page);
   await mockHost(page);
   await openChecklist(page);
-  const nested = await page.evaluate(() => [...document.querySelectorAll('button.frow')]
+  await revealChecklistStep(page, 'Assign each friend a dish');
+  const nested = await page.evaluate(() => [...document.querySelectorAll('.sheet [data-step-body], .sheet [data-step-check]')]
     .filter((b) => b.querySelector('button, [role="button"], a[href], input, select, textarea, [tabindex]'))
     .map((b) => (b.innerText || '').slice(0, 40)));
   expect(nested).toEqual([]);
-  const act = page.locator('.row-assign [data-row-action]').first();
+  const act = page.locator('.step-open .row-assign [data-row-action]').first();
   await expect(act).toBeVisible();
   expect(await act.evaluate((el) => el.tagName)).toBe('BUTTON');
 });
