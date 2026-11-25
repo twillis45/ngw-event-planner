@@ -28,6 +28,14 @@ describe('a placeholder never looks like an answer', () => {
     }
     expect(bad).toEqual([]);
   });
+  // The owner, same evening: a guest took "Is there parking nearby?" in the
+  // ask-the-host box for a question already written, and tapped Send.
+  it("the guest's question box says what to do, not a sample question", () => {
+    const src = readFileSync(path.resolve(here, '../../hostv2/src/GuestAskV2.jsx'), 'utf8');
+    const ph = [...src.matchAll(/placeholder=\{([^}]*)\}/g)].map((m) => m[1]).join(' ');
+    expect(ph).not.toMatch(/'[^']*\?'/);
+    expect(src).toMatch(/Type your question/);
+  });
   it('the update box gives an example, marked as one', () => {
     expect(UPDATE_PLACEHOLDER).toMatch(/^For example: /);
   });

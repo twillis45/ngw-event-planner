@@ -137,7 +137,7 @@ export default function GuestAskV2({ code, eventKey, hostName, guestName }) {
                 autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} aria-label="Name to sign your question" />
             )}
             <textarea className="field" style={{ maxWidth: 'none', minHeight: 72, resize: 'vertical', fontSize: 'var(--t-input)' }}
-              maxLength={MAX} placeholder={msgs.length ? 'Ask another question' : 'Is there parking nearby?'}
+              maxLength={MAX} placeholder={msgs.length ? 'Type another question' : 'Type your question'}
               value={body} onChange={(e) => setBody(e.target.value)} aria-label="Your question for your host" />
             <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 'var(--t-input)' }} placeholder="Your email — optional"
               type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)}
