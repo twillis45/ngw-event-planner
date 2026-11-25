@@ -46,7 +46,7 @@ const openDraft = async (page) => {
   // not the thing under test.
   await expect(async () => {
     await card.evaluate((c) => c.click());
-    await card.getByRole('button', { name: 'Draft note', exact: true }).click({ timeout: 2000 });
+    await card.getByRole('button', { name: 'Draft a note instead', exact: true }).click({ timeout: 2000 });
     await expect(title).toHaveText(/Harvest Table Catering/, { timeout: 2000 });
   }).toPass({ timeout: 15000 });
   await sheetSettled(page);

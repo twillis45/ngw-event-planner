@@ -24,7 +24,7 @@ test('a note to a vendor reads differently in every voice, and keeps every fact'
   await settled(page);
   const card = page.locator('.vcard', { hasText: 'Harvest Table Catering' }).first();
   await card.evaluate((c) => c.click());
-  await card.getByRole('button', { name: 'Draft note', exact: true }).click();
+  await card.getByRole('button', { name: 'Draft a note instead', exact: true }).click();
   const draft = page.locator('.sheet').last();
   const box = draft.getByLabel('Edit the draft');
   const asWritten = await box.inputValue();

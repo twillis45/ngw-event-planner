@@ -27,6 +27,8 @@ test('a signed-out read answers in plain words and leads to sign-in, keeping the
   await settled(page);
   const card = page.locator('.vcard', { hasText: 'Capital Rotisserie' }).first();
   await card.evaluate((c) => c.click());
+  // The paste box opens in place from its own row (batch B, rule 2).
+  await card.getByRole('button', { name: 'Paste their email or text', exact: true }).click();
   const box = card.locator('textarea[aria-label="Paste the vendor\'s message"]');
   await box.fill('We will arrive at 2pm, final count 85.');
   await card.getByRole('button', { name: 'Read the message', exact: true }).click();
@@ -58,6 +60,7 @@ test('while the message is read, a status line says so, and it clears', async ({
   await settled(page);
   const card = page.locator('.vcard', { hasText: 'Capital Rotisserie' }).first();
   await card.evaluate((c) => c.click());
+  await card.getByRole('button', { name: 'Paste their email or text', exact: true }).click();
   await card.locator('textarea[aria-label="Paste the vendor\'s message"]').fill('We will arrive at 2pm, final count 85.');
   await card.getByRole('button', { name: 'Read the message', exact: true }).click();
   await expect(card.locator('[data-busy-line]')).toContainText(/Reading the message from Capital Rotisserie/);
