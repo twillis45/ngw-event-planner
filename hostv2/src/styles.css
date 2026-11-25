@@ -8503,7 +8503,13 @@ button.vc-pill::after{
    Held to the question column (433px at 1024) a long name wrapped it onto two
    lines (CI, 11/21/2026: Game Night on the day), and that 16px pushed the fold
    handle to y=774 on a 768-tall screen while the question itself still fit. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ev-eyebrow{
+/* The event-title header (owner, 11/24/2026: every wide board names its event)
+   replaced the eyebrow and needs the same span. Without it `.tt-head` auto-
+   placed into the question column (501px at 1133), the touch-only rename tip
+   could not sit beside the 261px title, wrapped onto a 22px line of its own,
+   and on touch the fold handle dropped to y=759 on a 744-tall screen
+   (aShortLandscapeFitsEveryAsk, the fold handle starts on the first screen). */
+.stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > :is(.ev-eyebrow, .tt-head){
   grid-column:1 / -1; grid-row:1; align-self:start;
 }
 /* The desktop header placement ("THE ORDER, NOT THE COLUMNS"), one row under
@@ -8574,6 +8580,17 @@ button.vc-pill::after{
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-tip .tt-tip-x{ position:relative; z-index:1; }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head .tt-title{ margin-top:0 !important; }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{ padding-top:16px; }
+}
+/* ON A SHORT TOUCH SCREEN THE STAT CARD'S CHIPS ARE 46px, not 28 (the touch
+   floor), three rows of them: the Where you stand card grows 62px and, as the
+   tallest item in the question's row, pushes the fold handle down with it
+   (measured 1133x744: pointer 693, touch 759). The spacing around the chips was
+   set for 28px pills; at 46 the boxes carry their own air, so it tightens here.
+   The chips keep their full tap boxes. */
+@media (max-height:860px) and (pointer:coarse){
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .bento .tile-a .bar{ margin:8px 0 4px; }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .bento .tile-a .bar + div{ margin-top:4px; row-gap:2px; }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .bento :is(.tile-b, .tile-c){ padding-block:8px; }
 }
 
 /* ══ SHEETS FROM 1024: THE FULL COLUMN, NEVER TALLER THAN THE SCREEN ═════════
