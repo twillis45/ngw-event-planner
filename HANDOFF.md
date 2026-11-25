@@ -17,6 +17,30 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
+## November 25, 2026 (latest) — cohesion batches D and E: the checklist opens in place, and After has one lit action
+
+Branch `cohesion-e-2utz0n` (from `origin/main-2utz0n` @ `ce7e757`, before the A+B+C bundle; carries batch D, which is also on `cohesion-d-2utz0n` up to `8e004ea`). Renders and screenshots of the built screens: `renders/cohesion-d/` and `renders/cohesion-e/` on `renders/cohesion-defg` (that branch never merges).
+
+- **D, the checklist (owner D1–D5, 11/24/2026).**
+  - Steps are grouped by when (`src/lib/checklistPhases.js`, reading only `taskLead`): "By the end of <Month>", "Early <Month> · Mar 1–13", "The last week", "On the day", "After the party", "No date set". Only the current group is open; the rest are one folded row each.
+  - One lit action: the "Up next" card, which is the first step the plan has not handled. After the day, steps that can no longer happen are skipped (`planningStepAfterTheDay`).
+  - A tap on a row opens the step in place, under it; the check is its own 48 px target. The host's own steps read "Yours"; nothing asks her to tell or confirm herself.
+  - Routing slip fixed at its source: Retirement Party's `t_memory_collect` declares `album`, not `guest-list`. The photo *asks* keep the earlier guest-list ruling. Guard: `aSharedAlbumStepOpensTheAlbum` (a ruled table on declared data).
+  - Wording: "done by your plan" → "your plan did this · confirm".
+- **E, After (owner E1–E4; land-on-After "indefinitely").**
+  - One lit button, "Write the thank-yous", the one door to the run. "Draft the thank-you", "Start the thank-you run", "Write the recap" and "What carries forward" are gone.
+  - Guest rows say "Mark thanked": a record that sends nothing, with Undo.
+  - The recap is previewed ("nothing is published yet") before "Put it on the invite link".
+  - Order: How many came? → Thank-yous & gifts → The recap for guests → For next time.
+  - Her own plan after its day opens on After until she starts a new plan (`landingStage.js`; samples stay on Plan).
+- **Tests.** New: `theChecklistOpensInPlace` (self-pinned, 390/834/1024/1440), `oneLitButtonOnAfter`, jest `theChecklistGroupsByWhen`, `aSharedAlbumStepOpensTheAlbum`. `oneLitButtonPerSheet` now pins exactly 1 on the checklist. All red-proofed first. About 30 specs now reach a step through the fixtures (`checklistStepAction`, `openAllPhases`, …); `openEventsSheet` steps to Plan when the stage has no board header.
+- **Gates on the combined head:** jest 940 suites / 14,148 passed / 1 skipped · vitest 176/176 · `gate:cra` compiled, no new warnings (241 of 241) · e2e, 64 specs on all 7 projects (mobile, landscape, tablet, tablet-land, tablet-tall, desktop, wide), 4 workers, no retries: **1,538 passed / 361 skipped / 3 failed**. The 3 are `sharingTheInviteCreditsIt`, which is bound to port 5255 and refused here; a copy on port 7355 passed 3/3. A first 7-project run (1,527 / 14 failed) found the After gap below and a splash race in `settled`.
+- **After shows what guests left waiting.** The photos-waiting and questions-waiting lines (owner rulings A and B, 11/16) rendered only on the Plan board, which she no longer lands on after the day. One renderer, `afterGuestLines`, now draws them on Plan and After (`theHostApprovesGuestPhotos` red 5/5 before).
+- **`settled` waits for a leaving splash to unmount.** The fading splash swallows taps for ~220 ms by design; a hit test in that window read the board's watch row as 121x26 on tablet-tall, now and then.
+- 🔴 **Trap: the event switcher lives only in the Plan header.** Any spec or flow that starts on a past own plan now lands on After and must step to Plan first. Batch F (navigation) should decide whether After carries it.
+- **For the integrator:** batch F's `taskRoute.actionRoute` is on `cohesion-f-2utz0n`, not here. D's Up next routes through the existing `checklistRouteFor` / `stepRoute`. No second reader was built. Once F lands, `[data-up-next-go]` should read `actionRoute`.
+- **Known:** Wanda's sample rows say "Week of Feb 22" in prose, which `taskLeadDays` cannot read, so they sit in "No date set". The checklist hero still counts locally (the `SheetHero` "Checked off" block in the tasks sheet): batch C's `checklistProgress` call site. `sharingTheInviteCreditsIt` fails only on the fixed port 5255 here (desktop-only spec); it passes on a free port.
+
 ## November 24, 2026 (latest) — every wide board carries its event name and the four stages
 
 - **Owner report:** iPad landscape and desktop had no Create · Plan · The Day · After in the side menu, and iPad landscape had no event name in the header.
