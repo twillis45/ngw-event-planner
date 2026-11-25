@@ -70,7 +70,7 @@ test('"Open the stay" goes to Where everyone stays', async ({ page }) => {
   await stay.getByRole('button', { name: 'Open the stay' }).click();
   // The cockpit is its own page (?demo=lodging); a pass-locked trip opens the lodging sheet.
   await expect.poll(async () => /[?&]demo=lodging\b/.test(page.url())
-    || (await page.locator('#sheet-title').allInnerTexts()).includes('Where everyone stays'), { timeout: 15_000 }).toBe(true);
+    || (await page.locator('#sheet-title').allInnerTexts()).includes('Travel & where everyone stays'), { timeout: 15_000 }).toBe(true);
 });
 
 test('two days out, the reconfirm banner counts only the booked vendor', async ({ page }) => {

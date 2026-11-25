@@ -55,6 +55,18 @@ const tap = (p, rx) => p.evaluate((s) => {
   return (el.innerText || '').trim().replace(/\s+/g, ' ').slice(0, 60);
 }, rx.source);
 
+// The panel boot() opens (What's counted). Since cohesion F3 (11/24/2026) it
+// opens in place under the hero's line, above "Then, in order", so "the last
+// match on the page" is no longer its row; the tap names where it means.
+const tapIn = (p, sel, rx) => p.evaluate(([s, src]) => {
+  const re = new RegExp(src, 'i');
+  const root = document.querySelector(s);
+  const el = root && [...root.querySelectorAll('button,[role="button"],a')].find((x) => re.test((x.innerText || '').trim()));
+  if (!el) return null;
+  el.click();
+  return (el.innerText || '').trim();
+}, [sel, rx.source]);
+
 const storedEvent = (p) => p.evaluate(() => {
   try { return JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]')[0] || null; }
   catch { return null; }
@@ -140,7 +152,7 @@ test.describe('BASELINE · If it rains', () => {
     await boot(page, EV());
     expect(await bodyText(page), 'the ranked plan carries the ask').toMatch(/Add a rain backup/i);
 
-    await tap(page, /Add a rain backup/i);
+    await tapIn(page, '#whats-counted', /Add a rain backup/i);
     await page.waitForTimeout(900);
     const s = await sheetText(page);
 
@@ -165,7 +177,7 @@ test.describe('BASELINE · If it rains', () => {
     // notification it cannot send. Recorded because a redesign rewriting this
     // copy is exactly when the caveat goes missing.
     await boot(page, EV());
-    await tap(page, /Add a rain backup/i);
+    await tapIn(page, '#whats-counted', /Add a rain backup/i);
     await page.waitForTimeout(900);
     const s = await sheetText(page);
     expect(s).toMatch(/While the app is open/i);
@@ -174,7 +186,7 @@ test.describe('BASELINE · If it rains', () => {
 
   test('picking a backup writes it, and leads straight to telling the guests', async ({ page }) => {
     await boot(page, EV());
-    await tap(page, /Add a rain backup/i);
+    await tapIn(page, '#whats-counted', /Add a rain backup/i);
     await page.waitForTimeout(900);
     await tap(page, /^Carport \/ garage$/);
     await page.waitForTimeout(900);
@@ -190,7 +202,7 @@ test.describe('BASELINE · If it rains', () => {
 
   test('"Do it for me" writes the authored plan it previewed, word for word', async ({ page }) => {
     await boot(page, EV());
-    await tap(page, /Add a rain backup/i);
+    await tapIn(page, '#whats-counted', /Add a rain backup/i);
     await page.waitForTimeout(900);
     const preview = await sheetText(page);
     await tap(page, /^Do it for me$/);

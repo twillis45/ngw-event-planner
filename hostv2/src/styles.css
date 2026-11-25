@@ -3005,8 +3005,10 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    privacy line), so it uses the app's steel brand period like the real header
    wordmark, not the cream-card tokens. Ceremonial-bespoke type (exempt from the
    --tracking-* tokens, like the other .inv2 labels). */
+/* --ink-soft at full opacity (cohesion G #44, owner 11/24/2026): --faint at .85
+   measured 3.55–4.24:1 at 12px on the guest pages; the mark clears 4.5:1. */
 .inv2-wordmark{ margin-top:16px; font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--faint); opacity:.85; display:flex; align-items:baseline; justify-content:center; }
+  color:var(--ink-soft); display:flex; align-items:baseline; justify-content:center; }
 .inv2-wm-dot{ width:5px; height:5px; border-radius:50%; margin-left:5px; align-self:flex-end; margin-bottom:2px;
   background:var(--steel); box-shadow:inset 0 1px 1px rgba(255,255,255,.38), inset 0 -1px 2px rgba(0,0,0,.4), 0 0 3px var(--steel-tint); }
 /* staged reveal — one element per beat; reduced motion lands instantly */
@@ -3132,8 +3134,8 @@ button:disabled, .cta:disabled{ pointer-events:none; }
      sticky child would stick to the card instead of the window. */
 /* Guest pages (invite, helper, vendor brief, family) clear a sideways phone's
    sensor band. Placed before the >=1024 rule below on purpose: there the
-   invite runs full-bleed with its own column padding, and no tablet or desktop
-   reports a side inset. */
+   invite runs full-bleed with its own column padding, which also takes the
+   side inset where one is reported (none on a real tablet or desktop). */
 .inv2-stage .content, .vb2-stage .content{
   padding-left:max(var(--sp-5), var(--safe-l)); padding-right:max(var(--sp-5), var(--safe-r)); }
 @media (min-width:1024px){
@@ -3143,9 +3145,14 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   .inv2-stage .inv2-sheet{ display:grid; grid-template-columns:minmax(0,1.3fr) minmax(400px,1fr); align-items:start;
     min-height:100dvh; padding:0; border-radius:0; overflow:clip; }
   .inv2-stage .inv2-face{ display:flex; flex-direction:column; justify-content:center; position:sticky; top:0;
-    min-height:100dvh; padding:clamp(32px,6vh,80px) clamp(40px,6vw,80px); }
+    min-height:100dvh; padding:clamp(32px,6vh,80px) clamp(40px,6vw,80px);
+    padding-left:max(clamp(40px,6vw,80px), var(--safe-l)); }
   .inv2-stage .inv2-ask{ margin:0; min-height:100dvh; text-align:left;
     padding:max(48px, calc(50dvh - 9rem)) clamp(32px,4vw,80px) 48px;
+    /* A side inset, where one is reported, still clears the column (with none,
+       max() is the clamp itself). Measured: at 1024x768 sideways with a 47px
+       band, "Maybe" sat 6px in it (guestPagesClearTheNotch, 11/25/2026). */
+    padding-right:max(clamp(32px,4vw,80px), var(--safe-r));
     border-left:1px solid rgba(196,178,148,.45); background:rgba(255,255,255,.3); }
   .inv2-stage .inv2-dark .inv2-ask{ border-left-color:rgba(255,244,224,.09); background:rgba(255,255,255,.025); }
   .inv2-stage .inv2-ask.inv2-done{ text-align:center; }
@@ -6161,6 +6168,10 @@ button.vc-pill::after{
 /* Zone 3 — the work, side by side in the width that just freed up. */
 .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .then-fold{ grid-column:1; grid-row:2; }
 .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .ef-watch{ grid-column:2; grid-row:2; }
+/* ALONE, IT TAKES THE HERO'S WIDTH (cohesion #16, owner 11/24/2026). With no
+   "Then, in order" beside it, "Worth having a plan for" sat in column 2 (x=676,
+   363px at 1440) beside an empty band. It spans the hero's columns 1–2 then. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant:not(:has(> .then-fold)) > .ef-watch{ grid-column:1 / 3; }
 /* Stat cards — UX_04 Zone 1 puts them to the RIGHT of the title on desktop.
    The track ceiling is 288px, under UX_03's 300px rule, and they stack down
    their own column instead of stretching. */
@@ -8505,6 +8516,14 @@ button.vc-pill::after{
    Held to the question column (433px at 1024) a long name wrapped it onto two
    lines (CI, 11/21/2026: Game Night on the day), and that 16px pushed the fold
    handle to y=774 on a 768-tall screen while the question itself still fit. */
+/* The event-title header (owner, 11/24/2026: every wide board names its event)
+   replaced the eyebrow and needs the same span. Without it `.tt-head` auto-
+   placed into the question column (501px at 1133), the touch-only rename tip
+   could not sit beside the 261px title, wrapped onto a 22px line of its own,
+   and on touch the fold handle dropped to y=759 on a 744-tall screen
+   (aShortLandscapeFitsEveryAsk, the fold handle starts on the first screen).
+   Short screens only (the block below): the tall iPad board lays out its own
+   header to the shared 48px edges (aTallIPadGetsItsOwnBoard). */
 .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ev-eyebrow{
   grid-column:1 / -1; grid-row:1; align-self:start;
 }
@@ -8564,6 +8583,7 @@ button.vc-pill::after{
     font-size:clamp(36px,6vh,56px);
   }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head{
+    grid-column:1 / -1; grid-row:1; align-self:start;
     padding-top:0; display:flex; flex-wrap:wrap; align-items:center; column-gap:16px;
   }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-r1,
@@ -8575,6 +8595,12 @@ button.vc-pill::after{
      everyTapIsFortyFourSquare at 1024x768). */
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-tip .tt-tip-x{ position:relative; z-index:1; }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head .tt-title{ margin-top:0 !important; }
+  /* The touch "✎ Rename" (cohesion G #57) rides the title's 12px top margin
+     elsewhere; in this compact header the title has none, so neither does it
+     (it made the title row 58px and lowered the fold handle 12px). Like the
+     tip's × above, it sits over the next row, which otherwise covered its
+     bottom 8px (84x38, everyTapIsFortyFourSquare at 1024x768). */
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head .tt-nameit{ margin-top:0 !important; position:relative; z-index:1; }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{ padding-top:16px; }
   /* Under the "Not saved yet" row (live check of 19841da0, 11/25/2026): the
      row takes about 64px, once per plan for a signed-out host, and at 1024x768
@@ -8585,6 +8611,29 @@ button.vc-pill::after{
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .board:has(> .keep-ask) .hero.elegant .escreen.on > .ecenter .ask{
     font-size:clamp(32px,5vh,48px);
   }
+  /* And with the hero's lit pick (cohesion F1: "Go with …" in one 44px row with
+     "Other ways"), the card ended 3px under a 768-tall screen under the row.
+     The row of acts sits flush under the options there; every tap keeps its
+     height. */
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .board:has(> .keep-ask) .hero.elegant .decopt-acts{
+    margin-top:0;
+  }
+}
+/* ON A SHORT TOUCH SCREEN THE STAT CARD'S CHIPS ARE 46px, not 28 (the touch
+   floor), three rows of them: the Where you stand card grows 62px and, as the
+   tallest item in the question's row, pushes the fold handle down with it
+   (measured 1133x744: pointer 693, touch 759). The spacing around the chips was
+   set for 28px pills; at 46 the boxes carry their own air, so it tightens here.
+   The chips keep their full tap boxes. */
+@media (max-height:860px) and (pointer:coarse){
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .bento .tile-a .bar{ margin:8px 0 4px; }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .bento .tile-a .bar + div{ margin-top:4px; row-gap:2px; }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .bento :is(.tile-b, .tile-c){ padding-block:8px; }
+  /* Light theme sets the column on a card (16px padding, 1px line): 34px more,
+     and the handle sat at 739 on a 744-tall screen. Here the card's padding
+     and the rows' are halved; every row stays over the tap floor. */
+  :root[data-theme="light"] .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .bento{ padding-block:8px; }
+  :root[data-theme="light"] .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .bento :is(.tile-b, .tile-c){ padding-block:4px; }
 }
 
 /* ══ SHEETS FROM 1024: THE FULL COLUMN, NEVER TALLER THAN THE SCREEN ═════════
@@ -9323,6 +9372,82 @@ input[data-cue], textarea[data-cue]{ outline:revert-layer; border-color:color-mi
 .run-all{max-width:100%; white-space:normal; text-align:left}
 .fstat-tag{display:inline-block; margin-top:4px}
 
+/* ── EVERY INPUT HAS A VISIBLE LABEL (cohesion G, UX_11 rule 2, 11/24/2026) ────
+   A placeholder vanishes as she types, so the field forgot what it asks. The
+   words above a field are its <label>; a wrapping label (.field-wrap) carries
+   them where the field sits in a row with its button. Example placeholders
+   ("For example: …") are faint and italic so they never read as a saved answer. */
+.field-label{ display:block; font-size:var(--t-body-s, 14px); font-weight:650; color:var(--ink); margin:0 0 8px; }
+.field-wrap{ display:flex; flex-direction:column; min-width:0; }
+.field-wrap > .field-label{ margin-bottom:8px; }
+.ex-ph::placeholder{ font-style:italic; color:var(--faint); font-weight:400; opacity:1; }
+/* The finder's label wrapper takes the search field's place in the toolbar. */
+.rtoolbar > .rtool-qwrap{ flex:1 1 220px; min-width:0; }
+.rtoolbar > .rtool-qwrap > .rtool-q{ flex:none; width:100%; }
+/* What could go wrong, grouped by tag (cohesion G1): a group head with its
+   count; the quiet groups fold, their summary a full 44px row. */
+.risk-g{ margin:0 0 var(--sp-4); }
+.risk-g-h{ display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; margin:0; padding:0;
+  font-size:var(--t-body-s, 14px); font-weight:650; color:var(--ink); border-bottom:1px solid var(--line-soft); }
+details.risk-g > summary.risk-g-h{ cursor:pointer; list-style:none; }
+details.risk-g > summary.risk-g-h::-webkit-details-marker{ display:none; }
+details.risk-g > summary.risk-g-h::after{ content:'▸'; color:var(--muted); margin-left:8px; }
+details.risk-g[open] > summary.risk-g-h::after{ content:'▾'; }
+.risk-g-n{ margin-left:auto; color:var(--muted); font-weight:550; }
+/* Each stay is a row that opens in place (cohesion G2): the name in ink, never link blue. */
+.stay-row{ display:flex; align-items:center; gap:12px; width:100%; min-height:52px; padding:12px 0; margin:0; border:0;
+  border-top:1px solid var(--line-soft); background:none; text-align:left; font:inherit; cursor:pointer; color:var(--ink); }
+.stay-row .stay-txt{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.stay-row .stay-who{ color:var(--ink); font-weight:650; }
+.stay-row .stay-note{ color:var(--muted); font-size:var(--t-body-s, 14px); }
+.stay-row .chev{ color:var(--muted); }
+.stay-editor{ border-top:1px solid var(--line-soft); padding:var(--sp-3) 0; }
+
+/* NO DIMMED LIT BUTTON (cohesion G #43, owner 11/24/2026). A primary with
+   nothing to save rendered as the lit gradient at opacity .45 (2.5–2.7:1).
+   Until there is something to save it is the quiet button, at full contrast;
+   it lights when it can act. Specific enough to outrank the hero's and the
+   themes' .cta fills. */
+html:root .cta.cta:disabled, html:root[data-theme] .hero.elegant .cta.cta:disabled, html:root[data-theme] .cta.cta:disabled{
+  background:var(--bg-band); background-image:none; color:var(--ink-soft); box-shadow:none; opacity:1; border:1px solid var(--line);
+}
+/* What creation heard but cannot be tapped (cohesion G #49): plain words in the
+   chip row, unbordered, so it never reads as a button. */
+.chips.heard .heard-found{ display:inline-flex; align-items:center; min-height:32px; padding:0 4px; color:var(--ink-soft); font-size:var(--t-pill); font-weight:600; }
+
+/* Messages (cohesion G #27): the empty state, and the load failure as its own row. */
+.msg-empty{ padding:2px 0 16px; }
+.msg-empty-go{ margin-top:var(--sp-2); }
+.later-row.msg-note{ display:block; border-top:1px solid var(--line-soft); padding:var(--sp-3) 0; margin:0 0 var(--sp-3); }
+.msg-note-t{ display:block; color:var(--ink); }
+.msg-note-b{ display:block; margin:2px 0 0; }
+/* ── WHAT'S COUNTED OPENS IN PLACE (cohesion F3, #38, owner 11/24/2026) ─────────
+   The panel is portaled under its door's line; a slim bar heads it ("What's
+   counted · Close ▴") and a close row ends it. Every tap in it is 44px tall
+   (UX_11 rule 9): the readiness pills were 28px. */
+.wc-slot{ width:100% }
+#whats-counted .wc-bar{ display:flex; width:100%; justify-content:space-between; align-items:center; min-height:44px;
+  background:none; border:0; border-bottom:1px solid var(--line); padding:0; margin:0 0 12px; color:inherit; font:inherit; cursor:pointer; text-align:left }
+#whats-counted .wc-bar-t{ font-size:var(--t-eyebrow, 12px); font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft) }
+#whats-counted .wc-bar-c{ color:var(--ink-soft); font-weight:600 }
+#whats-counted .wc-close{ display:block; width:100%; text-align:center; min-height:44px; background:none; border:0;
+  border-top:1px solid var(--line); margin-top:12px; color:var(--ink-soft); font:inherit; cursor:pointer }
+#whats-counted .pill{ min-height:44px; display:inline-flex; align-items:center }
+#whats-counted button, #whats-counted [role="button"], #whats-counted a{ min-height:44px }
+/* The board's one lit act under our pick (cohesion F1): full width, under its row. */
+/* 44px, the tap floor, not the hero ask's 54: the tall iPad's first screen must
+   still end above its bar with Where you stand on it (aTallIPadGetsItsOwnBoard). */
+.decopt-acts{ display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; margin:8px 0 0; }
+.decopts .decopt-go, .hero.elegant .decopts .cta.decopt-go{ flex:1 1 220px; margin:0; min-height:44px; padding-top:8px; padding-bottom:8px; }
+.app-elegant .decopt-acts > .decopt-disc, .decopt-acts > .decopt-disc{ flex:0 0 auto; width:auto; align-self:center; margin:0; border-top:0; }
+/* THE SHEET HEAD'S TWO TAPS ARE 44 PX BOXES, NOT 44 PX HALOS (cohesion #46,
+   owner 11/24/2026). Measured 67×16 ("‹ Sections") and 64×28 ("Close"): the
+   ::after hit areas reached 44 but the controls themselves did not. Each is a
+   real 44 px box now; equal negative margins give the height back, so the
+   title and the head do not move. */
+.sheet-head .sheet-back{ display:inline-flex; align-items:center; min-height:44px; min-width:44px; margin:-16px 0 -12px; }
+.sheet-head .sheet-x{ display:inline-flex; align-items:center; justify-content:center; min-height:44px; min-width:64px; margin:-8px 0; }
+.tt-who-g .tt-more .tt-row-t{ color:var(--steel-soft); font-weight:600; }
 /* ── SHARE & INVITE IN FOUR STEPS, THE INVITE MESSAGE (owner, 11/24/2026:
    renders s2-1 to s2-6). The card (ShareInviteCard.jsx), the message sheet's
    preview, the send confirm, "What went out" and the link-not-ready notice. ── */

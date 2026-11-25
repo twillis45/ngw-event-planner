@@ -227,7 +227,7 @@ const DRIVE = {
   },
   async 'Where it happens'(page, how) {
     const fillIn = async (scope) => {
-      const f = scope.getByRole('textbox', { name: 'Venue' });
+      const f = scope.locator('input[data-venue-field]');
       if (!(await f.count())) return false;
       await f.first().fill('Lakeside Hall, 12 Oak St, Austin, TX');
       return tryClick(scope.getByRole('button', { name: 'Save' }));
@@ -323,7 +323,7 @@ const DRIVE = {
     const hero = page.locator('.hero');
     if (await tryClick(hero.locator('button').filter({ hasText: /our pick/ }))) return 'hero';
     if (await tryClick(hero.getByRole('button', { name: /^Use \$/ }))) return 'hero';
-    const v = hero.getByRole('textbox', { name: 'Venue' });
+    const v = hero.locator('input[data-venue-field]');
     if (await v.count()) { await v.first().fill('Lakeside Hall, 12 Oak St, Austin, TX'); if (await tryClick(hero.getByRole('button', { name: 'Save' }))) return 'hero'; }
     return 'n/a';
   },

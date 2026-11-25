@@ -35,27 +35,32 @@ describe('the risk row contract', () => {
     // match a call-shaped pattern — assert it separately rather than folding it
     // into the count and getting the arithmetic wrong.
     expect(CODE).toMatch(/const addRiskToChecklist = \(/);
-    expect([...CODE.matchAll(/addRiskToChecklist\(/g)].length).toBe(2);
+    // Since cohesion G1 (owner, 11/24/2026) both lists render through ONE row
+    // renderer, so the fallback act is written once and cannot diverge.
+    expect(CODE).toMatch(/\.\.\.\(\(ctx && ctx\.activeRisks\) \|\| \[\]\)\.map[\s\S]{0,200}\.\.\.staticRisks\.map/);
+    expect([...CODE.matchAll(/addRiskToChecklist\(/g)].length).toBe(1);
   });
 
   test('the constructive act is a ternary, never a bare && on the route', () => {
     // `{route && <Plan for this>}` is the exact shape of the defect: a null
     // route silently removes the button. A ternary cannot do that.
     expect(CODE).not.toMatch(/\{route &&\s*<button/);
-    expect([...CODE.matchAll(/\{route\s*\n?\s*\?\s*<button/g)].length).toBe(2);
+    expect([...CODE.matchAll(/\{route\s*\n?\s*\?\s*<button/g)].length).toBe(1);
   });
 
   test('dismissal never renders without a sibling act', () => {
     // Every "Handled" button must sit in an actions-row that also contains a
     // constructive branch. Checked by slicing each dismiss back to its row open.
-    const dismissals = [...CODE.matchAll(/Handled — stop showing this/g)];
-    expect(dismissals.length).toBe(2);
+    // "I’ve covered this" since cohesion G #26 (was "Handled — stop showing this").
+    const dismissals = [...CODE.matchAll(/I’ve covered this/g)];
+    expect(dismissals.length).toBe(1);
+    expect(CODE).not.toMatch(/Handled — stop showing this/);
     for (const d of dismissals) {
       const before = CODE.slice(0, d.index);
       const rowStart = before.lastIndexOf('actions-row');
       expect(rowStart).toBeGreaterThan(-1);
       const row = CODE.slice(rowStart, d.index);
-      expect(row).toMatch(/Plan for this[\s\S]*Add to my checklist|Add to my checklist/);
+      expect(row).toMatch(/Plan for this ›[\s\S]*Add it to my checklist/);
     }
   });
 

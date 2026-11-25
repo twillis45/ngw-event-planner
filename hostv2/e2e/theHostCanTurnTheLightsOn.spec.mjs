@@ -65,7 +65,7 @@ test('the switch is in You & settings, and it is a real control', async ({ page 
   const btn = row(page).locator('button');
   await expect(btn).toHaveCount(1);
   // It says which way it will go, not just where it stands.
-  await expect(btn).toHaveText(/Off — tap for light/);
+  await expect(btn).toHaveText('Off');
   await expect(btn).toHaveAttribute('aria-pressed', 'false');
   expect(await pageLum(page)).toBeLessThan(0.2);
 });
@@ -79,7 +79,7 @@ test('tapping it paints the page, and tapping it back undoes that', async ({ pag
   await row(page).locator('button').click();
   await page.waitForTimeout(400);
   expect(await pageLum(page)).toBeGreaterThan(0.7);
-  await expect(row(page).locator('button')).toHaveText(/On — tap for dark/);
+  await expect(row(page).locator('button')).toHaveText('On');
   await expect(row(page).locator('button')).toHaveAttribute('aria-pressed', 'true');
 
   await row(page).locator('button').click();

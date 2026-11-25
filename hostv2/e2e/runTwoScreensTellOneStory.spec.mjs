@@ -47,7 +47,7 @@ test('R2-11: a vendor deadline on an event planned today is not "overdue", and n
 test('R2-17/18: Ask speaks the expected total and never says "crab" on a game night', async ({ page }, testInfo) => {
   test.skip(!RAIL.test(testInfo.project.name), 'rail viewports');
   await open(page, 'Ask No Guesswork');
-  await page.getByLabel('Ask a question about your plan').fill('Will $5,000 cover it?');
+  await page.getByLabel('Your question').fill('Will $5,000 cover it?');
   await page.getByRole('button', { name: 'Ask', exact: true }).click();
   await page.waitForTimeout(1200);
   const t = await sheetText(page);

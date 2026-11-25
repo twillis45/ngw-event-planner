@@ -30,9 +30,16 @@ export const MESSAGE_GROUPS = Object.freeze([
   ['all', 'All'], ['guests', 'Guests'], ['vendors', 'Vendors'], ['cohosts', 'Co-hosts'], ['helpers', 'Helpers'],
 ]);
 
-export const EMPTY_LINE = 'Nothing sent yet — invites and vendor notes you send show up here.';
-export const SIGNED_OUT_NOTE = 'Email the app sent for you shows here after you sign in. Below is only what this device recorded.';
-export const UNAVAILABLE_NOTE = 'Couldn’t load the email the app sent — check your connection and reopen this. Below is only what this device recorded.';
+// THE EMPTY STATE AND THE FAILURE ROW (cohesion G #27, owner 11/24/2026). The
+// old note pointed "below" at a list that was not there. The empty state now
+// says what will be listed; a load failure is its own row ("Email history")
+// and says what still shows.
+export const EMPTY_EYEBROW = 'Sent from this plan';
+export const EMPTY_STAR = 'Nothing yet';
+export const EMPTY_LINE = 'When you send the invite, a nudge or an update, it’s listed here: what went out, to whom, and when.';
+export const NOTE_TITLE = 'Email history';
+export const SIGNED_OUT_NOTE = 'Email the app sends for you shows here after you sign in. Anything sent from this device still shows here.';
+export const UNAVAILABLE_NOTE = 'Couldn’t reach it just now. Check your connection and reopen this. Anything sent from this device still shows here.';
 
 /** The ledger title a helper's job is handed off under. One derivation, shared with the shell. */
 export const helperAskTitle = (name) => `${String(name || 'Your helper').trim()}’s job`;

@@ -131,6 +131,24 @@ export function orientation(phaseCues, queue = [], opts = {}) {
     summary = 'Your plan is moving.';
   }
 
+  // THE RAIL'S STATUS LINE (cohesion #48, owner 11/24/2026): the count first,
+  // then what still needs her, in one plain sentence. "Active planning · … —
+  // Your plan is moving. food and vendors, plus 1 more still need you." became
+  // "4 of 7 handled. Food, vendors and 1 more still need you." Where the
+  // summary says something else first (no date, a blocker, all handled) it is
+  // the summary, after the count.
+  const countLead = total ? `${done} of ${total} handled.` : null;
+  let needs = null;
+  if (phase !== 'unknown' && !blocker && openNames.length && !(total && done >= total)) {
+    const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+    const more = openNames.length - 2;
+    const named = openNames.length === 1 ? cap(openNames[0])
+      : openNames.length === 2 ? `${cap(openNames[0])} and ${openNames[1]}`
+        : `${cap(openNames[0])}, ${openNames[1]} and ${more} more`;
+    needs = `${named} still need${openNames.length === 1 ? 's' : ''} you.`;
+  }
+  const statusLine = [countLead, needs || (summary === 'Your plan is moving.' && countLead ? null : summary)].filter(Boolean).join(' ');
+
   // A recommendation assumption worth surfacing here, passed in rather than read —
   // this module does not reach into the knowledge layer.
   const assumption = opts.assumption || null;
@@ -142,6 +160,7 @@ export function orientation(phaseCues, queue = [], opts = {}) {
     completedCount: done,
     totalCount: total,
     summary,
+    statusLine,
     segments,
     blocker,
     primaryAction: phaseCues.nextCue || null,

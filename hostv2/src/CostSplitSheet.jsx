@@ -92,15 +92,17 @@ export default function CostSplitSheet({ event, plan, onSave, onLine }) {
           {people.map((p) => (
             <li key={p.id}>
               <span>{p.name}</span>
-              <button className="mini" aria-label={`Take ${p.name} out of the split`} onClick={() => removePerson(p.id)}>Remove</button>
+              <button className="mini" onClick={() => removePerson(p.id)}>{/* Names exactly what goes (cohesion G #56); Undo is in the toast. */}{expenses.some((x) => x.who === p.id) ? `Remove ${String(p.name || '').split(/\s+/)[0]} and what they paid` : `Remove ${String(p.name || '').split(/\s+/)[0]}`}</button>
             </li>
           ))}
         </ul>
       )}
-      <div className="actions-row" style={{ alignItems: 'center', flexWrap: 'wrap', margin: 'var(--sp-2) 0 0' }}>
-        <input className="field" style={{ maxWidth: 220, fontSize: 'var(--t-input)' }} placeholder="A name" aria-label="Name to add to the split"
+      <div className="actions-row" style={{ alignItems: 'flex-end', flexWrap: 'wrap', margin: 'var(--sp-2) 0 0' }}>
+        {/* Labeled (cohesion G, UX_11 rule 2). */}
+        <label className="field-wrap" style={{ maxWidth: 220 }}><span className="field-label">Add someone to the split</span>
+        <input className="field ex-ph" style={{ maxWidth: 'none', fontSize: 'var(--t-input)' }} placeholder="For example: Sam"
           value={name} onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { addPeople([name]); setName(''); } }} />
+          onKeyDown={(e) => { if (e.key === 'Enter') { addPeople([name]); setName(''); } }} /></label>
         <button className="mini" disabled={!name.trim()} onClick={() => { addPeople([name]); setName(''); }}>Add</button>
         {yesNames.length > 0 && (
           <button className="mini" data-split-add-yes onClick={() => addPeople(yesNames)}>

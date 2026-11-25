@@ -177,7 +177,7 @@ const vowRenewal = {
     { id: 'r_weather', target: 'rain', trigger: 'Outdoor/destination ceremony hit by weather', severity: 'med', mitigation: 'Have a covered/indoor backup, a tent option, and a go/no-go call time; for a destination, build a buffer day.' },
     { id: 'r_access', target: 'seating', trigger: 'Older or mobility-limited guests cannot navigate ceremony seating', severity: 'med', mitigation: 'Ask accessibility needs on the invite; reserve a front seating zone, a clear path, parking, and audible vows placement.' },
     { id: 'r_music', target: 'none', trigger: 'Processional/reception music fails (no speaker, dead phone, streaming drops)', severity: 'med', mitigation: 'Use a tested speaker with a charged backup and an OFFLINE/downloaded processional track; assign one person to run it.' },
-    { id: 'r_ice', target: 'none', trigger: 'No ice / warm drinks', severity: 'med', mitigation: 'Buy ~1.5 lb ice/guest day-of; pre-chill whites + champagne ~3h ahead.' },
+    { id: 'r_ice', target: 'none', trigger: 'No ice / warm drinks', severity: 'med', mitigation: 'Buy about 1.5 lb of ice a guest (est., your playbook) the day of; pre-chill whites + champagne ~3h ahead.' },
     { id: 'r_cleanup', target: 'none', trigger: 'No cleanup plan → couple trapped at the sink', severity: 'low', mitigation: 'Stage a bus tub + empty dishwasher pre-event; clear into the tub, do not wash mid-party; consider a cleaner.' },
   ],
 

@@ -80,3 +80,38 @@ export function stepRoute(event, rowId) {
   const t = targetFor(stepTargetKey(event, { id: rowId }), event);
   return t && t.route ? t.route : { tab: 'Timeline', taskId: rowId, timelineId: rowId };
 }
+
+/**
+ * actionRoute(event, action) — where a board row's work is done (cohesion F,
+ * 11/24/2026). THE ONE STEP FALLBACK: its declared route when it has one;
+ * otherwise, when the row IS a checklist step (it carries the row's id), the
+ * step's declared target or its own row on the checklist (stepRoute). Never
+ * dropped, never a dead end. "Then, in order" reads this, and so does batch
+ * D's "Up next" lit button. An action that is no step and has no route stays
+ * null: there is nowhere honest to send it.
+ */
+export function actionRoute(event, action) {
+  if (!action) return null;
+  const declared = action.route || action.primaryRoute || null;
+  if (declared) return declared;
+  const rowId = action.stepRowId || action.taskId || null;
+  return rowId ? stepRoute(event, rowId) : null;
+}
+
+/**
+ * upNextRoute(event, taskId) — where the checklist's "Up next" lit button goes
+ * (cohesion D's hookup, 11/25/2026): the same place a board row for that step
+ * goes, read from actionRoute, so the two can never disagree. When the step
+ * declares no target, actionRoute's fallback is the step's own checklist row,
+ * which is where "Up next" already is: that is null here, and the button says
+ * "Check it off" (D4).
+ */
+export function upNextRoute(event, taskId) {
+  if (!taskId) return null;
+  const r = actionRoute(event, { taskId });
+  if (!r) return null;
+  // Exactly stepRoute's own-row fallback, never a declared target.
+  const ownRow = r.tab === 'Timeline' && r.taskId === taskId && r.timelineId === taskId
+    && Object.keys(r).length === 3;
+  return ownRow ? null : r;
+}

@@ -14,7 +14,7 @@
 //
 //   NormalizedDecision = { id, options:[{value,label,note?}], proposed:{value,why}|null,
 //                          selected?:string|null, why?:string }
-import { playbookDecisionOptions, foodApproach, openFoodChoices, getPlaybook, decisionSettledByData } from './playbooks';
+import { playbookDecisionOptions, foodApproach, openFoodChoices, getPlaybook, decisionSettledByData, playbookDecisionBoard } from './playbooks';
 import { venueKindOf } from './knownFacts';
 import { normalizeAsk, questionFrom } from './askVoice';
 import { decisionApproach } from './doItForMe';
@@ -53,6 +53,20 @@ export function boardDecisionND(event, dec) {
 export function foodPanelQuestion(nd) {
   if (!nd || nd.id === 'phase:food' || nd.selected != null) return null;
   return normalizeAsk(nd.ask) || (nd.label ? questionFrom(nd.label) : null);
+}
+
+// THE FOOD CALL'S ONE NAME (cohesion F2, owner 11/24/2026): the question the
+// food item asks, for the records it counts — the same builder the hero panel
+// renders (foodDecisionND over the board's open and locked rows), read through
+// foodPanelQuestion. The ledger's cue ("<question> · N open") and the hero
+// record both read this, so the part-by-part row, the NEXT pill, the hero and
+// Calls to make say one name. Null for the generic trio or an answered call.
+export function foodCallQuestion(event, claimed, asOf) {
+  try {
+    const board = playbookDecisionBoard(event, asOf) || {};
+    const rows = [...(board.open || []), ...(board.locked || [])];
+    return foodPanelQuestion(foodDecisionND(event, (event && event.guests) || [], rows, claimed));
+  } catch { return null; }
 }
 
 // The generic host/caterer/potluck trio, for event types with NO authored

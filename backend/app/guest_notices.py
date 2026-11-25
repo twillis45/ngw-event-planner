@@ -15,6 +15,7 @@ announcements next).
     event and the reason, never an address.
 """
 import asyncio
+import json
 import logging
 
 from .config import APP_BASE_URL, API_PUBLIC_BASE_URL
@@ -22,7 +23,7 @@ from .db import get_pool
 from .email_frame import frame, hue_for, paragraphs_html
 from .email_pictures import with_picture
 from .emailer import _send_via_resend, failure_reason, is_email_configured
-from .outward import real_host_name
+from .outward import host_name_for, real_host_name
 
 log = logging.getLogger("ngw.guest_notices")
 
@@ -51,6 +52,23 @@ def _notice(kind, host, name, eyebrow, words, rsvp_code, guest_token, why):
         stop_url=stop, stop_label="Stop these emails")
 
 
+def host_first(profile_name, event_data) -> str:
+    """The host's first name for a guest notice, or '' ("your host"). The same
+    reader every outbound template asks (communication.py, invite_email.py):
+    the planner's profile name first, then the event's host line
+    (host_name_for: hostName, hostNames, host). Cohesion G, 11/24/2026: these
+    notices read hostName/hostNames only, so "Wanda Mundy" in `host` became
+    "Your host answered your question"."""
+    data = event_data
+    if isinstance(data, str):
+        try:
+            data = json.loads(data)
+        except ValueError:
+            data = None
+    host = real_host_name(profile_name, host_name_for(data if isinstance(data, dict) else {}))
+    return (host.split() or [""])[0]
+
+
 def compose_reply_notice(host_first: str, event_name: str, reply: str, rsvp_code: str, guest_token: str):
     """(from_name, subject, html, headers, text). Pure."""
     host = real_host_name(_one_line(host_first, 40))     # '' when she gave no name
@@ -73,17 +91,17 @@ async def notify_guest_of_reply(thread_id, reply: str) -> None:
         async with pool.acquire() as conn:
             row = await conn.fetchrow(
                 """select t.guest_email, t.email_opt_in, t.guest_token, t.blocked_at, t.rsvp_code,
-                          e.data->>'name' as event_name,
-                          coalesce(e.data->>'hostName', e.data->>'hostNames') as host_name
+                          e.data->>'name' as event_name, e.data as event_data,
+                          (select ss.data->>'name' from public.studio_settings ss
+                            where ss.studio_id = e.studio_id) as profile_name
                      from public.guest_threads t join public.events e on e.id = t.event_id
                     where t.id = $1""",
                 thread_id,
             )
         if not row or not row["email_opt_in"] or not row["guest_email"] or row["blocked_at"] is not None:
             return
-        host_first = (real_host_name(row["host_name"]).split() or [""])[0]
         from_name, subject, body, headers, text = compose_reply_notice(
-            host_first, row["event_name"], reply, row["rsvp_code"], row["guest_token"])
+            host_first(row["profile_name"], row["event_data"]), row["event_name"], reply, row["rsvp_code"], row["guest_token"])
         body, text = await with_picture(body, text)
         await _send_via_resend(to=row["guest_email"], subject=subject, html=body,
                                from_name=from_name, headers=headers, text=text)
@@ -119,8 +137,9 @@ async def notify_guests_of_announcement(announcement_id) -> None:
         async with pool.acquire() as conn:
             a = await conn.fetchrow(
                 """select a.event_id, a.body, a.removed_at, e.data->>'name' as event_name,
-                          e.data->>'rsvpCode' as rsvp_code,
-                          coalesce(e.data->>'hostName', e.data->>'hostNames') as host_name
+                          e.data->>'rsvpCode' as rsvp_code, e.data as event_data,
+                          (select ss.data->>'name' from public.studio_settings ss
+                            where ss.studio_id = e.studio_id) as profile_name
                      from public.event_announcements a join public.events e on e.id = a.event_id
                     where a.id = $1""", announcement_id)
             if not a or a["removed_at"] is not None or not a["rsvp_code"]:
@@ -130,14 +149,14 @@ async def notify_guests_of_announcement(announcement_id) -> None:
                      from public.guest_threads
                     where event_id = $1 and email_opt_in and guest_email is not null and blocked_at is null
                     order by lower(guest_email), created_at""", a["event_id"])
-        host_first = (real_host_name(a["host_name"]).split() or [""])[0]
+        first = host_first(a["profile_name"], a["event_data"])
         sent = failed = 0
         pictures = {}     # one picture for the whole batch: the card is the same for every guest
         for i, r in enumerate(rows):
             if i:
                 await asyncio.sleep(SEND_GAP_SECONDS)
             from_name, subject, body, headers, text = compose_announcement(
-                host_first, a["event_name"], a["body"], a["rsvp_code"], r["guest_token"])
+                first, a["event_name"], a["body"], a["rsvp_code"], r["guest_token"])
             body, text = await with_picture(body, text, pictures)
             try:
                 await _send_via_resend(to=r["guest_email"], subject=subject, html=body,

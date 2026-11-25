@@ -55,6 +55,13 @@ export const ASK_KINDS = Object.freeze({
   'get-food': 'Get the food.',
   'catch-up': 'Catch up on this step.',
 });
+// IS THIS THE VENUE ASK? (cohesion F, 11/24/2026). By what the item DECLARES:
+// the venue blocker's type, or the location kind its producer stamps (the
+// ledger's location and venue-address cues). Never by its words — "Then, in
+// order" used a regex over the title here, and a title is copy.
+export function asksForTheVenue(a) {
+  return !!a && (a.blockerType === 'venue-selection' || a.askKind === 'location');
+}
 // A vendor kind's verb. The noun is the declared vendor's category.
 export const VENDOR_ASK_VERBS = Object.freeze({
   'vendor-confirm': 'Confirm', 'vendor-book': 'Book', 'vendor-call': 'Call',

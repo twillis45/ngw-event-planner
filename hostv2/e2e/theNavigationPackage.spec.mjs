@@ -189,7 +189,9 @@ test.describe('phone 390x844', () => {
     const lit = segs.filter((s) => s.state === 'now');
     expect(lit, 'one lit segment, the current part').toHaveLength(1);
     for (const s of segs.filter((x) => x.state !== 'now')) expect(lit[0].h, 'the lit segment is thicker').toBeGreaterThan(s.h);
-    await expect(page.locator('[data-pp-line]')).toHaveText('3 of 6 handled · What’s counted ›');
+    // It opens What's counted in place (cohesion F3, 11/24/2026), so its glyph
+    // is the disclosure ▾, not the navigation ›.
+    await expect(page.locator('[data-pp-line]')).toHaveText('3 of 6 handled · What’s counted ▾');
     const txt = await boardText(page);
     expect(txt).not.toMatch(/\bNOW\b/);
     expect(txt).not.toMatch(/this one first/i);
@@ -358,7 +360,7 @@ for (const [name, vp] of [['phone', PHONE], ['13" portrait', TALL13]]) {
     expect(txt).not.toMatch(/What city, state/i);
     expect(txt).not.toMatch(/Guests will ask where/i);
     // One city field on the board, in the hero.
-    const cityFields = await page.evaluate(() => [...document.querySelectorAll('.app input')].filter((i) => !i.closest('[inert]') && i.getBoundingClientRect().height > 0 && /city/i.test(i.placeholder + ' ' + (i.getAttribute('aria-label') || ''))).map((i) => !!i.closest('.escreen.on .ecenter')));
+    const cityFields = await page.evaluate(() => [...document.querySelectorAll('.app input')].filter((i) => !i.closest('[inert]') && i.getBoundingClientRect().height > 0 && /city/i.test(i.placeholder + ' ' + (i.getAttribute('aria-label') || '') + ' ' + [...(i.labels || [])].map((l) => l.textContent).join(' '))).map((i) => !!i.closest('.escreen.on .ecenter')));
     expect(cityFields).toEqual([true]);
     // Once the city is in, nothing asks for it, and the street ask takes its place.
     const card = page.locator('.escreen.on .ecenter');

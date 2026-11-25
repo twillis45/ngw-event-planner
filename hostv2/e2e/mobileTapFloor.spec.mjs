@@ -19,7 +19,7 @@
 //     hit box is the element UNIONED with its pseudo-elements, so `.sheet-back`
 //     legitimately measures 16px tall and 44px tappable.
 import { test, expect } from '@playwright/test';
-import { settled } from './fixtures.mjs';
+import { settled, openWhatsCounted } from './fixtures.mjs';
 
 const EV = {
   id: 'E2E_TEST_tapfloor', type: 'Birthday', name: 'Tap floor', isDestination: true,
@@ -42,7 +42,9 @@ const FLOOR = 44;
 //
 // Listed here so it is a DECISION with a reason rather than an omission. Any
 // OTHER control under the floor still fails.
-const KNOWN_OPEN = [/(^|\s)pill(\s|$)/];
+// The readiness pills were the one known exception; cohesion #38 (owner,
+// 11/24/2026) made them 44 px, so the exception is gone, as its premise test said.
+const KNOWN_OPEN = [];
 const surprising = (offenders) => offenders.filter(o => !KNOWN_OPEN.some(re => re.test(o.cls)));
 
 const sweep = (page) => page.evaluate((FLOOR) => {
@@ -123,14 +125,16 @@ async function boot(page) {
   await settled(page);
 }
 
-test('the known-open pill is still really under the floor (premise)', async ({ page }) => {
-  // If the pill is ever fixed, this fails and the KNOWN_OPEN entry above must
-  // be deleted — so the exception cannot quietly outlive the defect.
+test('the readiness pills clear the floor (was the known-open exception; cohesion #38)', async ({ page }) => {
+  // This was the premise that the pill was still under the floor, kept so the
+  // exception could not outlive the defect. The defect is fixed (11/24/2026),
+  // the exception is deleted, and the premise is now the floor itself.
   await boot(page);
+  await openWhatsCounted(page);
   const pills = await page.evaluate(() => [...document.querySelectorAll('button.pill')]
     .map(p => Math.round(p.getBoundingClientRect().height)).filter(h => h > 0));
-  if (!pills.length) test.skip(true, 'no pill buttons on this surface');
-  expect(Math.min(...pills)).toBeLessThan(FLOOR);
+  expect(pills.length, 'the pills were measured').toBeGreaterThan(0);
+  expect(Math.min(...pills)).toBeGreaterThanOrEqual(FLOOR);
 });
 
 test('the home surface clears the 44px floor', async ({ page }) => {

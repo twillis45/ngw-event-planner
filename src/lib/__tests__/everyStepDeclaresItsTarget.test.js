@@ -804,3 +804,52 @@ describe('each host-shell playbook’s shop clock is its real grocery run', () =
     expect(clocked).toBeGreaterThan(30);
   });
 });
+
+// ─── "THEN, IN ORDER" READS DECLARED KINDS AND NEVER DROPS A STEP (cohesion F, 11/24/2026) ──
+// Two leftovers of cause 1 in the board's "Then, in order" filter:
+//   • it hid the venue row (while the venue box is on the board) by the declared
+//     blocker type OR a regex over the row's title ("name the venue|add the
+//     location|pick the place");
+//   • it dropped any row whose route did not resolve, so a step with no declared
+//     target (one she wrote herself, "Lock catering") vanished from the list.
+// Now the venue is read by its declared kind only (heroAsk.asksForTheVenue), and
+// a step with no route falls back to its own checklist row (taskRoute.actionRoute,
+// the one fallback reader; batch D's "Up next" reads it too).
+describe('"Then, in order" reads declared kinds and never drops a step', () => {
+  const { asksForTheVenue } = require('../heroAsk');
+  const { actionRoute } = require('../taskRoute');
+  const { resolveRoute } = require('../routeResolver');
+  const shell = () => fs.readFileSync(path.join(__dirname, '../../../hostv2/src/HostShellV2.jsx'), 'utf8');
+
+  test('the venue row is known by its declared kind, never its words', () => {
+    expect(asksForTheVenue({ blockerType: 'venue-selection', title: 'anything' })).toBe(true);
+    expect(asksForTheVenue({ askKind: 'location', title: 'Name the venue' })).toBe(true);
+    expect(asksForTheVenue({ askKind: 'location', title: DECOY })).toBe(true);
+    // The old regex's words, with no declaration, are not a venue ask.
+    for (const t of ['Name the venue', 'Add the location', 'Pick the place in Springfield.']) expect(asksForTheVenue({ title: t })).toBe(false);
+    expect(asksForTheVenue({ askKind: 'menu', title: 'Name the venue' })).toBe(false);
+  });
+
+  test('a step with no declared target falls back to its own checklist row', () => {
+    const ev = { id: 'ev-own', type: 'Birthday', date: DATE };
+    const r = actionRoute(ev, { id: 'step:ev-own-t1', taskId: 'ev-own-t1', title: 'Lock catering', route: null });
+    expect(r).toEqual({ tab: 'Timeline', taskId: 'ev-own-t1', timelineId: 'ev-own-t1' });
+    expect(resolveRoute(r)).toEqual({ kind: 'tasks', focus: 'ev-own-t1' });
+    expect(actionRoute(ev, { stepRowId: 'ev-own-t2', title: 'x' })).toEqual({ tab: 'Timeline', taskId: 'ev-own-t2', timelineId: 'ev-own-t2' });
+    // A declared route always wins; an action that is no step and has no route stays null.
+    expect(actionRoute(ev, { taskId: 'ev-own-t1', route: { tab: 'Vendors' } })).toEqual({ tab: 'Vendors' });
+    expect(actionRoute(ev, { primaryRoute: { tab: 'Budget' } })).toEqual({ tab: 'Budget' });
+    expect(actionRoute(ev, { id: 'x', title: 'Lock catering' })).toBeNull();
+  });
+
+  test('the shell’s "Then, in order" filter reads the kind and the fallback, no title regex', () => {
+    const src = shell();
+    const at = src.indexOf('const thenItems = ');
+    expect(at).toBeGreaterThan(-1);
+    const body = src.slice(at, src.indexOf(';\n', at));
+    expect(body).toMatch(/asksForTheVenue\(a\)/);
+    expect(body).toMatch(/actionRoute\(event, a\)/);
+    expect(body).not.toMatch(/\.test\(|\.match\(|a\.title/);
+    expect(body).not.toMatch(/name the venue|add the location|pick the place/i);
+  });
+});

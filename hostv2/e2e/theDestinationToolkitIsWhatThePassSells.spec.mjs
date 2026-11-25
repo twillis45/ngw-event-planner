@@ -62,7 +62,7 @@ test.describe('no pass held: each surface the pass sells is teased with the pass
   test('lodging: the board door opens the locked sheet instead of leaving for the cockpit', async ({ page }) => {
     await bootShell(page, LOCKED);
     await openSectionByName(page, 'Travel & where everyone stays');
-    await expect(page.locator('#sheet-title')).toHaveText('Where everyone stays');
+    await expect(page.locator('#sheet-title')).toHaveText('Travel & where everyone stays');
     await expect(sheet(page).getByText(LODGING_LOCK)).toBeVisible();
     expect(new URL(page.url()).searchParams.get('demo')).toBeNull();
     await sheet(page).getByRole('button', { name: DOOR, exact: true }).click();
@@ -111,7 +111,7 @@ test.describe('no pass held: each surface the pass sells is teased with the pass
     const row = page.locator('[data-venue-stay]');
     await expect(row.getByRole('button', { name: 'Find places near the party' })).toHaveCount(0);
     await row.getByRole('button', { name: 'Where everyone stays — with the Pass', exact: true }).click();
-    await expect(page.locator('#sheet-title')).toHaveText('Where everyone stays');
+    await expect(page.locator('#sheet-title')).toHaveText('Travel & where everyone stays');
     await expect(sheet(page).getByText(LODGING_LOCK)).toBeVisible();
   });
 });

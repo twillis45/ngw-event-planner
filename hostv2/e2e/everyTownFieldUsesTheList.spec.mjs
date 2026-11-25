@@ -34,7 +34,7 @@ test('"Your area" offers the city list and saves the picked town with its state'
     await openMenuDoor(page, 'You & settings');
   }
   await expect(page.locator('#sheet-title')).toHaveText('You & settings', { timeout: 8000 });
-  const area = page.getByRole('textbox', { name: 'Your area' });
+  const area = page.getByRole('textbox', { name: 'Your town or city' });
   await area.fill('Annap');
   const pick = page.getByRole('button', { name: 'Annapolis, MD' }).first();
   await expect(pick).toBeVisible();

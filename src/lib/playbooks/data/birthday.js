@@ -160,7 +160,7 @@ const birthday = {
   risks: [
     { id: 'r_headcount', target: 'none', trigger: 'Final headcount still not locked 3 days out', severity: 'high', mitigation: 'Chase RSVPs; buy fresh after the count locks; round up ~10%, not 30%.' },
     { id: 'r_cake', target: 'none', trigger: 'Cake ordered too late', severity: 'med', mitigation: 'Order 3–5 days ahead; have a grocery-cake backup.' },
-    { id: 'r_ice', target: 'none', trigger: 'No ice / warm drinks', severity: 'low', mitigation: 'Buy ~1.5 lb ice/guest day-of; pre-chill drinks.' },
+    { id: 'r_ice', target: 'none', trigger: 'No ice / warm drinks', severity: 'low', mitigation: 'Buy about 1.5 lb of ice a guest (est., your playbook) the day of; pre-chill drinks.' },
     // KID-WORDED ON AN EVENT WITH NO KIDS (2026-10-06). This read "Kid food
     // allergies not collected" unconditionally, and on the Santa Fe 80th —
     // thirty adults flying in, zero children — it was the ONLY row in the

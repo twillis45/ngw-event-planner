@@ -79,7 +79,7 @@ const openTheList = async (page) => {
   });
   await page.goto('?elegant=1');
   await settled(page);
-  await tapText(page, "what you.?re serving|dietary needs on the food plan");
+  await tapText(page, "what you.?re serving|\\? · \\d+ open|dietary needs on the food plan");
   await sheetSettled(page);
   await tapText(page, '^Done$');          // back out of any dietary drill-in
   await page.waitForTimeout(1200);

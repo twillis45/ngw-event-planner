@@ -51,7 +51,8 @@ test('a Thanksgiving at home with no town asks for the town over the town card',
   // One address ask (owner, render 11, 11/24/2026). Were "Your home is set —
   // weather and shopping need the city." and "City, state or ZIP".
   await expect(body).toContainText('Guests, weather and shopping all use it — a city or ZIP works too.');
-  await expect(body.getByLabel('Venue')).toHaveAttribute('placeholder', 'Street, city, state');
+  // Labeled, with a made-up example (cohesion G, every input has a visible label).
+  await expect(body.getByLabel('Your street, city and state')).toHaveAttribute('placeholder', 'For example: 42 Elm Ct, Springfield, VA');
   await expect(body).not.toContainText('location');
   expect((await page.title()).startsWith(TOWN_ASK)).toBe(true);
 

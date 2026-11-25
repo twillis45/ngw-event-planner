@@ -40,14 +40,14 @@ test('a host can turn analytics off from Settings, and it stays off', async ({ p
   await boot(page);
   await openSettings(page);
   await expect(row(page)).toContainText('never your guests');
-  await row(page).getByRole('button', { name: /On — tap to turn off/ }).click();
+  await row(page).getByRole('button', { name: 'On', exact: true }).click();
   await expect(row(page)).toContainText('Nothing about how you use the app is sent');
   expect(await page.evaluate((k) => localStorage.getItem(k), KEY)).toBe('1');
 
   await page.reload();
   await openSettings(page);
-  await expect(row(page).getByRole('button', { name: /Off — tap to turn on/ }), 'the choice did not survive a reload').toBeVisible();
+  await expect(row(page).getByRole('button', { name: 'Off', exact: true }), 'the choice did not survive a reload').toBeVisible();
 
-  await row(page).getByRole('button', { name: /Off — tap to turn on/ }).click();
+  await row(page).getByRole('button', { name: 'Off', exact: true }).click();
   expect(await page.evaluate((k) => localStorage.getItem(k), KEY)).toBe(null);
 });

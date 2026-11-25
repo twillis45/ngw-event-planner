@@ -51,13 +51,13 @@ const seed = async (page, lookup) => {
 
 const typeInVenue = async (page, text) => {
   await openSectionByName(page, 'Venue');
-  const box = page.locator('.sheet input[aria-label="Venue"]:visible').first();
+  const box = page.locator('.sheet input[data-venue-field]:visible').first();
   await box.click();
   await box.fill('');
   await page.keyboard.type(text, { delay: 5 });
   return box;
 };
-const saveVenue = (page, box) => box.locator('xpath=..').getByRole('button', { name: 'Save' }).click();
+const saveVenue = (page, box) => box.locator('xpath=../..').getByRole('button', { name: 'Save' }).click();
 const stored = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events') || '[]')[0] || {});
 const spaceVenueLine = async (page) => {
   await openSectionByName(page, 'Space, seats');

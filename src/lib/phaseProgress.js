@@ -28,6 +28,7 @@ import { allergyAsk } from './knownFacts';
 import { eventLocationStatus } from './locationAssist';
 import { venueFor } from './venueFor';
 import { ASK_KINDS } from './heroAsk';
+import { foodCallQuestion } from './decisionND';
 import { linesLeftToBuy } from './itemCounts';
 import { buildCrabPlan } from './crabPlan';
 import { isVendorSettled } from './workstreams';
@@ -276,7 +277,9 @@ function preProgress(ev, phase, daysOut, now = new Date(), prices = null) {
   const foodCue =
     activeChoices.length > 0
       ? {
-        label: `Decide what you're serving · ${activeChoices.length} open`,
+        // The call's own question is its one name (cohesion F2): the hero
+        // asks the same reader, so this row and the NEXT pill cannot drift.
+        label: `${(() => { const q = foodCallQuestion(ev, activeChoices.map((c) => c.id), now); return q ? q.replace(/\.+$/, '') : "Decide what you're serving"; })()} · ${activeChoices.length} open`,
         route: { tab: 'Planning', focusField: 'food-plan' },
         // WAVE-6: the exact choice records the "N open" count claims — the same
         // ids playbookDecisionBoard rows carry, so record-level dedup can

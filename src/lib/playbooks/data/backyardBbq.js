@@ -126,7 +126,7 @@ const backyardBbq = {
     { id: 'r_weather', target: 'rain', trigger: 'Rain or extreme heat, no plan', severity: 'high', mitigation: 'Check the forecast at 3 days out; secure a canopy/indoor fallback; move earlier/later to dodge peak heat.' },
     { id: 'r_fuel', target: 'none', trigger: 'Out of charcoal / empty propane tank', severity: 'high', mitigation: 'Check + buy fuel at 3 days out; keep a spare bag/tank.' },
     { id: 'r_grillfire', target: 'rain', trigger: 'Grill flare-up or grease fire', severity: 'high', mitigation: 'NFPA/USFA rules: grill outdoors only, well away from the house, deck rails, and eaves — never a porch or balcony — with a 3-foot kid-and-pet zone, and never left alone while lit. A dirty grill is the top fire factor, so scrape the grease. If a grease fire starts: lid on, burner off, never water; any doubt — everyone away and 911. Cool coals go in a lidded metal can.' },
-    { id: 'r_ice', target: 'rain', trigger: 'Ice melts, drinks go warm', severity: 'med', mitigation: 'Buy ~2 lb ice/guest day-of (outdoor melts fast); keep a shaded backup cooler.' },
+    { id: 'r_ice', target: 'rain', trigger: 'Ice melts, drinks go warm', severity: 'med', mitigation: 'Buy about 2 lb of ice a guest (est., your playbook) the day of (outdoor melts fast); keep a shaded backup cooler.' },
     { id: 'r_foodsafe', target: 'food', trigger: 'Food left out in the heat', severity: 'high', mitigation: 'Keep cold food on ice; don\'t leave perishables out >1h in 90°F+; grill to safe temps.' },
     { id: 'r_bugs', target: 'none', trigger: 'Mosquitoes / sun run guests off', severity: 'low', mitigation: 'Bug spray, citronella, shade, and water available.' },
   ],

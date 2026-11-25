@@ -193,7 +193,7 @@ describe('the food summary drops its claim to individually-raised records', () =
     const remainder = openIds.filter((id) => !raisedKeys.has(String(id)));
     expect(remainder.length).toBeGreaterThan(0);         // fixture integrity: partial, not full, coverage
 
-    const summary = eventPlan(ev).nextActions.find((a) => /Decide what you're serving/.test(String(a.title || '')));
+    const summary = eventPlan(ev).nextActions.find((a) => a.id === 'phase:food' && / · \d+ open$/.test(String(a.title || '')));
     expect(summary).toBeTruthy();
     expect(summary.title).toContain(`· ${remainder.length} open`);   // not the raw openIds.length
     expect(summary.title).not.toContain(`· ${openIds.length} open`);
@@ -207,7 +207,7 @@ describe('the food summary drops its claim to individually-raised records', () =
     const fp = playbookFoodPlan(ev);
     const openIds = (fp.choices || []).filter((c) => ev.foodChoices[c.id] == null).map((c) => c.id);
     expect(openIds.every((id) => raisedKeys.has(String(id)))).toBe(true);  // fixture integrity
-    const summary = eventPlan(ev).nextActions.find((a) => /Decide what you're serving/.test(String(a.title || '')));
+    const summary = eventPlan(ev).nextActions.find((a) => a.id === 'phase:food' && / · \d+ open$/.test(String(a.title || '')));
     expect(summary).toBeUndefined();
   });
 });

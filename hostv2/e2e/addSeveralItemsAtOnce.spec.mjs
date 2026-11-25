@@ -24,7 +24,7 @@ const openShop = async (page) => {
   // pieces without spaces, so a text match found nothing there (full WebKit
   // run 11/19; probe 11/20). The name is what VoiceOver reads. Clicked in the
   // page, as before, so the sticky next-bar over a scrolled row does not catch it.
-  await page.getByRole('button', { name: /what you.?re serving/i }).first().evaluate((el) => el.click());
+  await page.getByRole('button', { name: /what you.?re serving|\? · \d+ open/i }).first().evaluate((el) => el.click());
   await sheetSettled(page);
   // One food page (owner, 11/24/2026): no Plan/Shop tabs, and the list is always open.
   await page.getByRole('button', { name: /Add an item you/ }).first().click();

@@ -100,7 +100,10 @@ describe('buildMessageTimeline', () => {
   test('empty only when every source answered', () => {
     expect(buildMessageTimeline({ event: EVENT, server: { status: 'ok', emails: [], cohosts: [] } }).empty).toBe(true);
     expect(buildMessageTimeline({ event: EVENT, server: { status: 'unavailable' } }).empty).toBe(false);
-    expect(EMPTY_LINE).toMatch(/^Nothing sent yet/);
+    // Cohesion G #27 (owner, 11/24/2026): the empty line says what will be listed.
+    expect(EMPTY_LINE).toBe('When you send the invite, a nudge or an update, it’s listed here: what went out, to whom, and when.');
+    // No note points "below" at a list that may not be there.
+    expect(SIGNED_OUT_NOTE).not.toMatch(/below/i);
   });
 
   test('a handoff with no known recipient names nobody', () => {

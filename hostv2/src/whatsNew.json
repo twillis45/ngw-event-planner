@@ -1,6 +1,16 @@
 [
   {
     "date": "2026-11-25",
+    "through": "v2026.11.25.3",
+    "headline": "Clearer pages, everywhere",
+    "bullets": [
+      "After shows the name of the event you planned, and its title opens your other plans.",
+      "The button under \"Up next\" goes exactly where that step goes on your board.",
+      "Every box you type in has a label you can see, with an example of what to write."
+    ]
+  },
+  {
+    "date": "2026-11-25",
     "through": "v2026.11.25.2",
     "headline": "A tidier checklist",
     "bullets": [

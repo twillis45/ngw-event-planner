@@ -46,8 +46,12 @@ export default function EventHashtag({ event, onSet }) {
         </div>
       )}
       <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center', flexWrap: 'wrap' }}>
-        <input className="field" style={{ maxWidth: 260, fontSize: 'var(--t-input)' }} placeholder="Your own tag"
-          value={custom} onChange={(e) => setCustom(e.target.value)} aria-label="Your own hashtag" />
+        {/* Labeled (cohesion G): it had no words above it to promote. */}
+        <label className="field-wrap" style={{ flex: '1 1 200px', maxWidth: 260 }}>
+          <span className="field-label">Your own hashtag</span>
+          <input className="field ex-ph" style={{ maxWidth: 'none', width: '100%', fontSize: 'var(--t-input)' }} placeholder="For example: #RosaTurns50"
+            value={custom} onChange={(e) => setCustom(e.target.value)} />
+        </label>
         <button className="mini" disabled={!cleaned || cleaned === current} style={!cleaned || cleaned === current ? { opacity: .45 } : undefined}
           onClick={() => { onSet(cleaned, `${cleaned} is on your invite now.`); setCustom(''); }}>
           {cleaned ? `Use ${cleaned}` : 'Use this tag'}

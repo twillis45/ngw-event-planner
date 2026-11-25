@@ -43,7 +43,7 @@ const openList = async (page) => {
   });
   await page.goto('?elegant=1');
   await settled(page);
-  await tapText(page, "what you.?re serving");
+  await tapText(page, "what you.?re serving|\\? · \\d+ open");   // the food call by its own question (cohesion F2)
   await sheetSettled(page);
   // The menu door opens Plan while the menu is open (owner's iPad,
   // 11/21/2026, foodSheetKind); the list is on Shop.

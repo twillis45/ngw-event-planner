@@ -54,6 +54,11 @@ import { formatPassPrice, PASS_PRICE_CENTS } from './passPrice';
 // button label is.
 export const ASK_LABEL = `Ask ${BRAND.short}`;
 
+// ONE NAME FOR THE LODGING DOOR AND ITS SHEET (cohesion G3, owner 11/24/2026):
+// the door said "Travel & where everyone stays" and the sheet's title said
+// "Where everyone stays". The shell's title reads this too.
+export const LODGING_LABEL = 'Travel & where everyone stays';
+
 export function sectionGroups(state) {
   // `state || {}` rather than a default parameter: a default only covers
   // `undefined`, so destructuring a NULL state would throw. Nav policy must
@@ -109,7 +114,7 @@ export function sectionGroups(state) {
         const md = moneyDatesFor(ev);
         const due = md.relevant ? md.rows.filter((r) => !r.passed && r.daysLeft <= 14) : [];
         const shortlist = (ev.lodgingOptions || []).length;
-        return { k: 'lodging', label: 'Travel & where everyone stays',
+        return { k: 'lodging', label: LODGING_LABEL,
           sub: due.length ? due[0].label.toLowerCase() + ' in ' + due[0].daysLeft + (due[0].daysLeft === 1 ? ' day' : ' days')
             : shortlist ? shortlist + (shortlist === 1 ? ' place on your shortlist' : ' places on your shortlist')
             // Her own list of who stays where (Wanda audit P0-5).

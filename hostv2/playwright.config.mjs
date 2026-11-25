@@ -9,6 +9,24 @@ import { previewUrl } from './deployBase.mjs';
 // Specs whose every test calls setViewportSize (or a boot() helper that does).
 // See the note above `projects` for why this is per-test, not per-file.
 const SELF_PINNED = [
+  // Pins 1440x900 (a date change is undone, not confirmed, cohesion G #53, 11/24/2026).
+  '**/aDateChangeIsUndoneNotConfirmed.spec.mjs',
+  // Pins 390x844 (a bare city is a town, not a place, cohesion G4, 11/24/2026).
+  '**/aBareCityIsATownNotAPlace.spec.mjs',
+  // Its own viewports (the small sheets say it plainly, cohesion G, 11/24/2026).
+  '**/theSmallSheetsSayItPlainly.spec.mjs',
+  // Its own viewports (every input has a visible label, cohesion G, 11/24/2026).
+  '**/everyInputHasAVisibleLabel.spec.mjs',
+  // Its own viewports (the lower board reads as rows, cohesion #40/F6/#16/#48, 11/24/2026).
+  '**/theLowerBoardReadsAsRows.spec.mjs',
+  // Five viewports itself (the rail is the list, cohesion F4/F5, 11/24/2026).
+  '**/theRailIsTheList.spec.mjs',
+  // Five viewports itself, phone to desktop (What's counted opens in place, cohesion F3, 11/24/2026).
+  '**/whatsCountedOpensInPlace.spec.mjs',
+  // Three viewports itself (After names its event and switches, cohesion F, 11/25/2026).
+  '**/afterNamesItsEventAndSwitches.spec.mjs',
+  // Pins 1440x900 (Up next goes where the row goes, cohesion D/F hookup, 11/25/2026).
+  '**/upNextGoesWhereTheRowGoes.spec.mjs',
   '**/theChecklistOpensInPlace.spec.mjs',
   // Five wide viewports itself (every wide board: stages in the rail, the title; 11/24/2026).
   '**/everyWideBoardKnowsItsEventAndStages.spec.mjs',

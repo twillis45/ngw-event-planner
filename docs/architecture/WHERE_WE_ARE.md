@@ -1,5 +1,13 @@
 # Where We Are -- live status board
 
+## November 25, 2026 — the cohesion batches land, and a host tester resets the direction
+
+All seven cohesion batches (A–G) are now on main or in the integration PR: one lit action per board, the checklist and After rebuilt (D+E, #260), small sheets and copy, the short iPad's fold, risks folded into one group, every field labeled (F+G). #261 added release times to What's new and moved "Up next" onto its panel.
+
+Then a host who plans parties but doesn't use apps for work found the shell crowded and intimidating: she missed the next-step cues, lost her place after typing, and couldn't tell sections apart. The owner's answer is "a duck": calm on top, all the planning underneath. Five prototypes were built and rendered; the owner approved direction E (a home with the next step, a page for each part of the plan), a bone accent for now, Guests first, no eyebrows, and Apple's interface rules adapted for the web, including gestures that save room. Those rules are UX_12 in the workspace skills. A full-screen, touch-tested prototype is the reference for the build, which starts with the bottom button, then the home screen, then Guests, each shown as a render before it changes the app.
+
+The open decision is money: the first budget figure a host sees comes from a price table whose rows have no source. The recommendation is to lead with each playbook's per-guest figure ($15–60 for a birthday, not $60–250) and let her total grow from what she chooses.
+
 ## November 24, 2026 — the Thanksgiving audit, rechecked on the live build
 
 **On live build `15b34e15`, the owner's Thanksgiving audit rechecks as 20 fixed, 9 still open, 2 changed by ruling, 3 not checked (34 rows).** Phone and iPad, not signed in, nothing sent. The two ruling changes match their rulings (the day-of landing; the typed time is when dinner is served). Not checked: the sign-in path, a step that no longer exists, and a wording note that names no wording.

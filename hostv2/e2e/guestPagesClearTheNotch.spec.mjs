@@ -84,7 +84,13 @@ for (const pg of PAGES) {
     await page.goto(pg.url);
     await page.locator(pg.ready).first().waitFor({ timeout: 20000 });
     if (pg.go) await pg.go(page);
-    await page.waitForTimeout(1500);   // the stationery's staged reveal settles
+    // The stationery's staged reveal fades the page in, and `intrusions` skips
+    // anything under 5% opacity. A fixed 1.5s wait often measured before the
+    // reply buttons had faded in, so they were never checked (9 of 10 invite
+    // runs at 1024x768 passed while "Maybe" sat 6px in the band on every load,
+    // 11/25/2026). Wait for every animation and transition to finish instead.
+    await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' && a.playState !== 'pending'), null, { timeout: 15000 });
+    await page.waitForTimeout(200);
     // Premise: the override reaches CSS on this page.
     const seen = await page.evaluate(() => {
       const d = document.createElement('div'); d.style.paddingLeft = 'env(safe-area-inset-left, 0px)';

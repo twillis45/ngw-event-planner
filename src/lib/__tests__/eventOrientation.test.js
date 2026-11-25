@@ -301,3 +301,29 @@ describe('hairlineLabel — names when they help, the specified count when they 
     expect(label).toBe(`0 of ${cues.totalCount} ${SCHEDULE_WORD} cues done`); // owner 11/24/2026: the host's word, not "run of show"
   });
 });
+
+// ─── THE RAIL'S STATUS LINE, SHORTER (cohesion #48, owner 11/24/2026) ────────
+// "Active planning · 4 of 7 handled — Your plan is moving. food and vendors,
+// plus 1 more still need you." became "4 of 7 handled. Food, vendors and 1
+// more still need you." The count leads; the open parts follow in a sentence
+// that starts with a capital. Engine words ("Active planning") are not host words.
+describe('statusLine — the count, then what still needs her', () => {
+  const { orientation: orient } = require('../eventOrientation');
+  const cues = (open, done = 4) => ({
+    phase: 'active_planning', completedCount: done, totalCount: done + open.length,
+    items: [
+      ...Array.from({ length: done }, (_, i) => ({ id: ['datetime', 'location', 'venueaddress', 'headcount'][i] || 'x' + i, handled: true })),
+      ...open.map((id) => ({ id, handled: false })),
+    ],
+  });
+  test('Wanda: three open parts', () => {
+    expect(orient(cues(['food', 'vendors', 'budget'])).statusLine).toBe('4 of 7 handled. Food, vendors and 1 more still need you.');
+  });
+  test('two and one open parts', () => {
+    expect(orient(cues(['food', 'vendors'])).statusLine).toBe('4 of 6 handled. Food and vendors still need you.');
+    expect(orient(cues(['food'])).statusLine).toBe('4 of 5 handled. Food still needs you.');
+  });
+  test('never the engine’s lifecycle words', () => {
+    expect(orient(cues(['food', 'vendors', 'budget'])).statusLine).not.toMatch(/Active planning|Your plan is moving/);
+  });
+});
