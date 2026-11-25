@@ -1,5 +1,15 @@
 [
   {
+    "date": "2026-11-25",
+    "through": "v2026.11.25.1",
+    "headline": "Your checklist and After",
+    "bullets": [
+      "Your checklist leads with the one step that's up next, groups the rest by when they're due, and opens a step right where it sits.",
+      "After the day, your plan opens on After, with one clear next step: write the thank-yous. Marking someone thanked only checks them off, and you can undo it.",
+      "On an iPad held sideways, the whole question and its answers fit the first screen, even with the \"Sign in to save\" row showing."
+    ]
+  },
+  {
     "date": "2026-11-24",
     "through": "v2026.11.24.11",
     "headline": "See the full invite",
