@@ -104,6 +104,10 @@ test(`no sheet renders two lit primary buttons — ${label}, ${w}x${h}`, async (
   const names = await sectionNames(page);
   expect(names.length, 'premise: the sections were listed').toBeGreaterThan(8);
   const twoLit = [];
+  // EXACTLY ONE on the checklist (cohesion batch D, owner D1–D5 11/24/2026):
+  // "Up next" carries the sheet's one lit action, or the empty plan's
+  // "Draft my checklist". Elsewhere the rule stays "at most one".
+  const exactlyOne = { 'Your checklist': null };
   let measured = 0;
   for (const name of names) {
     try {
@@ -114,10 +118,12 @@ test(`no sheet renders two lit primary buttons — ${label}, ${w}x${h}`, async (
     expect(r.lit, 'premise: --cta-grad resolves to a gradient').toMatch(/gradient/);
     measured += 1;
     if (r.found.length > 1) twoLit.push(`${name}: ${r.found.join(' | ')}`);
+    if (name in exactlyOne) exactlyOne[name] = r.found.length;
     await page.keyboard.press('Escape');
     await page.waitForTimeout(250);
   }
   expect(measured, 'premise: sheets were measured').toBeGreaterThan(8);
   test.info().annotations.push({ type: 'measured', description: `${measured} of ${names.length} sections` });
   expect(twoLit, 'sheets with more than one lit primary').toEqual([]);
+  expect(exactlyOne, 'the checklist has exactly one lit action').toEqual({ 'Your checklist': 1 });
 });

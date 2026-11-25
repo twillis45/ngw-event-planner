@@ -13,7 +13,7 @@
 //   · the demo bar covered the "Next" bar and real buttons.
 // The pure rules are pinned in src/lib/__tests__/theDemoReadsTrue.test.js;
 // this proves the shell. Synthetic data only (the demo seed).
-import { test, expect, settled, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName, revealChecklistStep } from './fixtures.mjs';
 
 const API = 'https://e2e-mock.invalid';
 const CODE = 'abcdefghij1234567890xy';
@@ -67,6 +67,9 @@ test('the seeded checklist has a helper with a job to confirm', async ({ page })
   await seeded(page);
   await openSectionByName(page, 'Your checklist');
   await settled(page);
+  // The step's controls live inside it, opened in place, or on Up next
+  // (cohesion batch D, 11/24/2026).
+  await revealChecklistStep(page, 'Bring the shadow box and flag case');
   await expect(page.getByText('Bring the shadow box and flag case').first()).toBeVisible();
   await expect(page.getByRole('button', { name: /^Mark Renee Carter confirmed/ })).toBeVisible();
 });

@@ -160,6 +160,10 @@ export const settled = (page) =>
   page.waitForFunction(() => {
     const sp = document.querySelector('.splash');
     if (sp) {
+      // A leaving splash is transparent but still swallows taps until it
+      // unmounts, ~220ms later (styles.css, .splash-leaving, a ruled choice):
+      // a hit test in that window lands on the splash, not the app.
+      if (sp.classList.contains('splash-leaving')) return false;
       const cs = getComputedStyle(sp);
       if (cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0.01) return false;
     }
@@ -276,6 +280,11 @@ export const openSectionByName = async (page, name, opts = {}) => {
 export const identityLine = (page) => page.locator('.ev-eyebrow .eb-text, [data-tt-head] .tt-r1').first();
 export const openEventsSheet = async (page, opts = {}) => {
   const timeout = opts.timeout || 15_000;
+  // Her own plan after its day lands on After (owner, 11/24/2026, cohesion
+  // batch E), and the event switcher lives in the board's header: on a stage
+  // without it, step to Plan first, as she would.
+  await anyDoor(page);
+  if (!(await page.locator('[data-tt-title], .ev-eyebrow').count())) await goToStage(page, 'Plan');
   // Wait for the board's header, whichever layout it is, before choosing.
   await page.locator('[data-tt-title], .ev-eyebrow').first().waitFor({ timeout });
   const title = page.locator('[data-tt-title]');
@@ -351,3 +360,80 @@ export const openJumpTo = async (page) => {
   await expect(page.locator('#sheet-title')).toHaveText('Jump to');
 };
 export const passRow = (page) => page.locator('.nav-pass, .tt-index-pass, .srail:has([data-rail-stage]) .srail-pass');
+
+// ─── THE CHECKLIST'S STEPS OPEN IN PLACE (cohesion batch D, 11/24/2026) ──────
+// Owner D1–D5: the first open step is "Up next" (its route is the sheet's one
+// lit button), the rest sit in phases by when with only the current phase
+// open, and a step's controls live inside the step, opened under its row. A
+// spec that wants a step's own action asks here, wherever that step sits.
+// Rows carry `data-step-action` (the route's label), so nothing reads words
+// to find them.
+export const openAllPhases = async (page) => {
+  const sheet = page.locator('.sheet').last();
+  const closed = sheet.locator('[data-phase][data-open="false"] [data-phase-toggle]');
+  for (let n = await closed.count(); n > 0; n -= 1) {
+    await closed.first().click();
+  }
+};
+// The step whose title holds `text`, opened in place. Returns its [data-step-row].
+export const openChecklistStep = async (page, text) => {
+  await openAllPhases(page);
+  const row = page.locator('.sheet').last().locator('[data-step-row]')
+    .filter({ has: page.locator('[data-step-body]', { hasText: text }) }).first();
+  await row.waitFor();
+  const body = row.locator('[data-step-body]');
+  if ((await body.getAttribute('aria-expanded')) !== 'true') await body.click();
+  return row;
+};
+// A step's own action button by its label: Up next's lit button when that
+// step is next, else the button inside the (opened) step.
+export const checklistStepAction = async (page, label, { nth = 0 } = {}) => {
+  const sheet = page.locator('.sheet').last();
+  const up = sheet.locator('[data-up-next] [data-row-action]').filter({ hasText: label });
+  const upN = await up.count();
+  if (nth < upN) return up.nth(nth);
+  await openAllPhases(page);
+  const row = sheet.locator('[data-step-row]').filter({ has: page.locator(`[data-step-action="${label}"]`) }).nth(nth - upN);
+  const rowSelf = sheet.locator(`[data-step-row][data-step-action="${label}"]`).nth(nth - upN);
+  const target = (await rowSelf.count()) ? rowSelf : row;
+  await target.waitFor();
+  const body = target.locator('[data-step-body]');
+  if ((await body.getAttribute('aria-expanded')) !== 'true') await body.click();
+  return target.locator('[data-row-action]').first();
+};
+// A step's row (title holding `text`) whether it is Up next, in a phase, or
+// done: for class checks (.got) and check-offs.
+export const checklistRow = (page, text) => page.locator('.sheet').last().locator('.frow').filter({ hasText: text });
+// A step's own action, found by the step's title: Up next's lit button when
+// that step is next, else the button inside the opened step.
+export const checklistActionByTitle = async (page, text) => {
+  const sheet = page.locator('.sheet').last();
+  const up = sheet.locator('[data-up-next]').filter({ has: page.locator('.ck-next-name', { hasText: text }) });
+  if (await up.count()) return up.locator('[data-row-action]').first();
+  const row = await openChecklistStep(page, text);
+  return row.locator('[data-row-action]').first();
+};
+// Every word the checklist can show: every phase opened, then each step opened
+// in turn (its detail and controls live inside it). For specs that check that
+// a step's words reach the screen. Lower-cased only if asked.
+export const checklistText = async (page) => {
+  await openAllPhases(page);
+  const sheet = page.locator('.sheet').last();
+  const parts = [await sheet.innerText()];
+  const bodies = sheet.locator('[data-step-row] [data-step-body]');
+  const n = await bodies.count();
+  for (let k = 0; k < n; k += 1) {
+    const b = bodies.nth(k);
+    if ((await b.getAttribute('aria-expanded')) !== 'true') await b.click();
+    const open = sheet.locator('[data-step-row]').nth(k).locator('[data-step-open]');
+    if (await open.count()) parts.push(await open.innerText());
+  }
+  return parts.join('\n');
+};
+// Bring a step's controls on screen by its title: nothing to do when it is up
+// next (the card shows them), else open it in place.
+export const revealChecklistStep = async (page, text) => {
+  const up = page.locator('.sheet').last().locator('[data-up-next]').filter({ has: page.locator('.ck-next-name', { hasText: text }) });
+  if (await up.count()) return up.first();
+  return openChecklistStep(page, text);
+};

@@ -7,7 +7,7 @@
 // names" per range; "Use these dates" sets the dates and checks the row off.
 // Signed out, the sheet says the poll needs the account and counts nothing new.
 // Jest twin: src/lib/__tests__/theDatePollAsksOnTheInvite.test.js.
-import { test, expect, settled, sheetSettled, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled, openSectionByName, checklistStepAction } from './fixtures.mjs';
 
 const API = 'https://e2e-mock.invalid';
 const STEP = 'Offer two or three date ranges and give everyone three days to answer';
@@ -48,7 +48,7 @@ test('the row opens Dates to offer: each range says who can make it, and "Use th
   await boot(page, EVENT);
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  const btn = page.locator('.sheet').last().locator('button[data-row-action]').filter({ hasText: 'Ask on the invite' });
+  const btn = (await checklistStepAction(page, 'Ask on the invite'));
   await expect(btn).toHaveCount(1);
   await btn.click();
   await sheetSettled(page);
@@ -69,7 +69,7 @@ test('the row opens Dates to offer: each range says who can make it, and "Use th
   await page.waitForTimeout(300);
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  const row = page.locator('.sheet').last().locator('button.frow').filter({ hasText: 'Offer two or three date ranges' });
+  const row = page.locator('.sheet').last().locator('.frow').filter({ hasText: 'Offer two or three date ranges' });
   await expect(row).toHaveClass(/\bgot\b/);
 });
 
@@ -77,7 +77,7 @@ test('a host can add a range and take the poll off the invite', async ({ page })
   await boot(page, { ...EVENT, id: 'e2e-dates-edit', dateOptions: [OPTS[0]], guests: [] });
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  await page.locator('.sheet').last().locator('button[data-row-action]').filter({ hasText: 'Ask on the invite' }).click();
+  await (await checklistStepAction(page, 'Ask on the invite')).click();
   await sheetSettled(page);
   const poll = page.locator('.sheet').last().locator('[data-date-poll]');
   await poll.getByRole('button', { name: 'Add another range' }).click();

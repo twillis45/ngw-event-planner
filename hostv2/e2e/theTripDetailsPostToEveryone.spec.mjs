@@ -11,7 +11,7 @@
 // API base. Every request is answered here. Everything is synthetic.
 import { test, expect } from '@playwright/test';
 import { previewUrl } from '../deployBase.mjs';
-import { settled, sheetSettled, openSectionByName } from './fixtures.mjs';
+import { settled, sheetSettled, openSectionByName, checklistStepAction } from './fixtures.mjs';
 import { tripEvent, litButtons } from './tripDetailsFixture.mjs';
 
 const BASE = previewUrl(Number(process.env.PW_RSVPSYNC_PORT || 5277));
@@ -67,7 +67,7 @@ const boot = async (page, { ev = tripEvent(ID), emailGuests = 2, today = 0, post
   await settled(page);
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  await page.locator('.sheet').last().locator('button[data-row-action]').filter({ hasText: 'Draft the trip details' }).click();
+  await (await checklistStepAction(page, 'Draft the trip details')).click();
   await sheetSettled(page);
   return { sheet: page.locator('.sheet').last(), posts };
 };
@@ -98,7 +98,7 @@ test('signed in with travelers listed, it posts the reviewed words, asking first
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
   const row = page.locator('.sheet').last().locator('.frow').filter({ hasText: 'Send everyone the trip details' });
-  await expect(row).toContainText('done by your plan');
+  await expect(row).toContainText('your plan did this');
 });
 
 test('a refused post says so and never claims it posted', async ({ page }) => {

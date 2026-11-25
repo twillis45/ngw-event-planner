@@ -9,7 +9,7 @@
 // (src/lib/api/__tests__/helperEmail.test.js); this drives the shipped row.
 //
 // The API is mocked at the e2e bundle's fake host. Everything is synthetic.
-import { test, expect, settled, openSectionByName, dateIn } from './fixtures.mjs';
+import { test, expect, settled, openSectionByName, dateIn, revealChecklistStep } from './fixtures.mjs';
 
 const API = 'https://e2e-mock.invalid';
 const EVENT_ID = 'he-e2e';
@@ -45,6 +45,7 @@ const boot = async (page, answer) => {
   await settled(page);
   await openSectionByName(page, 'Your checklist');
   await settled(page);
+  await revealChecklistStep(page, 'Bring folding chairs');   // its controls on screen (cohesion batch D)
   return { calls, release };
 };
 

@@ -9,7 +9,7 @@
 // signed out, one line says why and nothing is lit for it.
 // The signed-in post: theTripDetailsPostToEveryone.spec.mjs (5277 bundle).
 // Jest twin: src/lib/__tests__/draftTripDetails.test.js.
-import { test, expect, settled, sheetSettled, openSectionByName } from './fixtures.mjs';
+import { test, expect, settled, sheetSettled, openSectionByName, checklistStepAction } from './fixtures.mjs';
 import { tripEvent, litButtons, STEP } from './tripDetailsFixture.mjs';
 
 const ID = 'e2e-trip-details';
@@ -29,7 +29,7 @@ const boot = async (page, e) => {
   await settled(page);
   await openSectionByName(page, 'Your checklist');
   await sheetSettled(page);
-  await page.locator('.sheet').last().locator('button[data-row-action]').filter({ hasText: 'Draft the trip details' }).click();
+  await (await checklistStepAction(page, 'Draft the trip details')).click();
   await sheetSettled(page);
   return page.locator('.sheet').last();
 };
@@ -64,7 +64,7 @@ test('what is missing is left out and named to the host', async ({ page }) => {
 
 // Marking it sent (or any handoff but Copy) is the send ledger's record, and
 // the ledger is the step's proof (taskEngine, 11/21/2026): the row reads
-// "done by your plan" instead of asking for the send again.
+// "your plan did this · confirm" (was "done by your plan", cohesion batch D) instead of asking for the send again.
 test('marking it sent ticks “Send everyone the trip details”', async ({ page }) => {
   const sheet = await boot(page, tripEvent(ID + '-marked'));
   await sheet.getByRole('button', { name: 'Mark it sent — I sent it myself', exact: true }).click();
@@ -77,7 +77,7 @@ test('marking it sent ticks “Send everyone the trip details”', async ({ page
   await sheetSettled(page);
   const row = page.locator('.sheet').last().locator('.frow').filter({ hasText: STEP.split(':')[0] });
   await expect(row).toHaveClass(/\bgot\b/);
-  await expect(row).toContainText('done by your plan');
+  await expect(row).toContainText('your plan did this');
 });
 
 test('copying it is not sending it', async ({ page }) => {
