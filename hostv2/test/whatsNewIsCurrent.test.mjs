@@ -49,18 +49,33 @@ describe('the list itself', () => {
 
 describe('the guard: never older than the last release', () => {
   it('the rule, on fixtures', () => {
-    const list = [{ date: '2026-11-22' }, { date: '2026-11-20' }];
+    const list = [{ date: '2026-11-22', through: 'v2026.11.22.2' }, { date: '2026-11-20', through: 'v2026.11.20.1' }];
     expect(whatsNewIsBehind(list, ['v2026.11.21.1', 'v2026.11.22.2'])).toBe(false);
     expect(whatsNewIsBehind(list, ['v2026.11.23.1'])).toBe(true);
     expect(whatsNewIsBehind([], ['v2026.11.23.1'])).toBe(true);
     expect(whatsNewIsBehind(list, [])).toBe(false);
   });
 
+  // PER RELEASE, NOT PER DAY (owner, 11/24/2026: "Is the what's new section
+  // being updated on each release"). It wasn't: one 11/24 entry covered .1 and
+  // eight more releases went out under it, because a same-day date passed. The
+  // newest entry now names the last release it covers (`through`), and a later
+  // release tag with no entry is behind.
+  it('the rule, per release', () => {
+    const tags = ['v2026.11.24.1', 'v2026.11.24.9'];
+    expect(whatsNewIsBehind([{ date: '2026-11-24', through: 'v2026.11.24.1' }], tags)).toBe(true);
+    expect(whatsNewIsBehind([{ date: '2026-11-24', through: 'v2026.11.24.9' }], tags)).toBe(false);
+    expect(whatsNewIsBehind([{ date: '2026-11-24', through: 'v2026.11.24.10' }], tags)).toBe(false);
+    expect(whatsNewIsBehind([{ date: '2026-11-25', through: 'v2026.11.25.1' }], tags)).toBe(false);
+    // The newest entry must say what it covers; a date alone no longer will do.
+    expect(whatsNewIsBehind([{ date: '2026-11-24' }], tags)).toBe(true);
+  });
+
   it('the real list against the real tags', () => {
     let tags = [];
     try { tags = execFileSync('git', ['tag', '-l', 'v*'], { encoding: 'utf8' }).split('\n').filter(Boolean); } catch { tags = []; }
     const last = latestCalverDate(tags);
-    expect(whatsNewIsBehind(entries, tags), `newest What's new entry ${entries[0].date} is older than the last release ${last}`).toBe(false);
+    expect(whatsNewIsBehind(entries, tags), `newest What's new entry covers ${entries[0].through || 'no release (no `through`)'}; the last release is ${[...tags].sort().pop()} (${last}). Write the entry for what shipped.`).toBe(false);
   });
 });
 
