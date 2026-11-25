@@ -17,6 +17,8 @@ const read = (f) => readFileSync(join(dir, f), 'utf8');
 const imports = (src) => [...src.matchAll(/from\s+'([^']+)'/g)].map((m) => m[1]);
 const page = read('InvitePage.jsx');
 const sheet = read('SendSheet.jsx');
+const nudge = read('NudgeSheet.jsx');
+const kit = read('sendKit.jsx');
 const missing = { id: 'e1', name: 'Rosa’s 40th Birthday', type: 'Birthday', date: '2027-01-04', startTime: '15:00', startTimeSource: 'derived', guests: [] };
 const render = (ev) => renderToStaticMarkup(createElement(InvitePage, { ev, save: () => true, nav: null, status: null }));
 
@@ -25,17 +27,23 @@ describe('the invite sends one way', () => {
     expect(imports(page).filter((p) => /api|rsvp|supabase|comm|inviteSend|inviteBatch/i.test(p))).toEqual([]);
     expect(page).not.toMatch(/fetch\(/);
   });
-  it('the send sheet sends only through the shared steps', () => {
-    const net = imports(sheet).filter((p) => /api\/|commApi|rsvp|supabase|inviteSend|inviteBatch/i.test(p));
-    expect(net.sort()).toEqual(['@app/lib/commApi', '@app/lib/inviteBatch', '@app/lib/inviteSend', '@app/lib/supabaseClient']);
-    expect(sheet).not.toMatch(/fetch\(|createMessage|\.from\(|\.insert\(|\.update\(/);
-    // supabase is read for the session only.
-    expect([...sheet.matchAll(/supabase\.(\w+)/g)].map((m) => m[1]).every((x) => x === 'auth')).toBe(true);
-    expect(sheet).toMatch(/getSession\(\)/);
-    expect(sheet).not.toMatch(/signIn|signUp|signOut/);
+  it('the send and nudge sheets send only through the shared steps', () => {
+    for (const [name, src] of [['SendSheet', sheet], ['NudgeSheet', nudge]]) {
+      const net = imports(src).filter((p) => /api\/|commApi|rsvp|supabase|inviteSend|inviteBatch/i.test(p));
+      expect(net.sort(), name).toEqual(['@app/lib/commApi', '@app/lib/inviteBatch', '@app/lib/inviteSend']);
+      expect(src, name).not.toMatch(/fetch\(|createMessage|supabase|\.insert\(|\.update\(/);
+    }
+  });
+  it('the account is read, never signed in or out, in one place (sendKit)', () => {
+    expect(imports(kit).filter((p) => /supabase|inviteSend/.test(p)).sort()).toEqual(['@app/lib/inviteSend', '@app/lib/supabaseClient']);
+    expect([...kit.matchAll(/supabase\.(\w+)/g)].map((m) => m[1]).every((x) => x === 'auth')).toBe(true);
+    expect(kit).toMatch(/getSession\(\)/);
+    expect(kit).not.toMatch(/signIn|signUp|signOut|fetch\(/);
   });
   it('every send is recorded through the shared edits, never a hand-built patch', () => {
     expect(sheet).toMatch(/invitesReachedEdit\(/);
+    expect(nudge).toMatch(/nudgedEdit\(/);
+    expect(nudge).not.toMatch(/nudgedAt:|patchSavedEvent|localStorage\.setItem/);
     expect(sheet).toMatch(/inviteSentFields\(/);
     expect(sheet).not.toMatch(/invitesSentAt:/);
     expect(sheet).not.toMatch(/patchSavedEvent|saveCustomEvents|localStorage/);

@@ -18,6 +18,9 @@ import { confirmedRsvpCovers } from '@app/lib/confirmedCovers';
 import { rsvpState } from '@app/lib/rsvp';
 import { filterGuestsByName } from '@app/lib/seatingPlan';
 import { proposeReplyBy } from '@app/lib/replyBy';
+import { nudgeRecipients, nudgeCount, wasInvited } from '@app/lib/replyNudge';
+import NudgeSheet from './NudgeSheet.jsx';
+import LockSheet from './LockSheet.jsx';
 
 const REPLY = { yes: 'Coming', maybe: 'Maybe', no: 'Can’t make it', pending: 'No reply' };
 const RSVP_VALUE = { yes: 'Yes', maybe: 'Maybe', no: 'No', pending: '' };
@@ -186,11 +189,20 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite }) 
   const [filter, setFilter] = useState('all');
   const [open, setOpen] = useState(null);
   const [answers, setAnswers] = useState(false);
+  const [sheet, setSheet] = useState(null); // 'nudge' | 'lock'
   const guests = useMemo(() => (Array.isArray(ev.guests) ? ev.guests : []), [ev]);
   const named = guests.length;
   const coming = confirmedRsvpCovers(ev);
   const planned = Number(guestCountFor(ev).count) || null;
-  const byName = ev.guestMode !== 'count';
+  // Names stay on the page once there are any, even after the count is locked
+  // (locking writes guestMode 'count', as hostv2's lock does).
+  const byName = ev.guestMode !== 'count' || named > 0;
+  const locked = ev.guestMode === 'count' ? Number(ev.guestCount) || 0 : 0;
+  const today = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+  const replyByPassed = !!ev.rsvpDeadline && String(ev.rsvpDeadline).slice(0, 10) < today;
+  const toNudge = nudgeCount(nudgeRecipients(ev));
+  const invited = guests.filter((g) => wasInvited(ev, g)).length;
+  const replied = guests.filter((g) => wasInvited(ev, g) && rsvpState(g) !== 'pending').length;
 
   const add = () => {
     const lines = nameLines(text);
@@ -211,14 +223,18 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite }) 
   const action = qs[0] === 'count' ? { label: 'Plan for ' + count, go: () => save(countEdit(ev, count)) }
     : qs.length ? null
       : byName && !named ? { label: 'Add names', go: () => { const f = document.getElementById('addname'); if (f) f.focus(); } }
-        : { label: 'Send the invite in the current app', href: '../hostv2/' };
+        : !ev.invitesSentAt ? { label: 'Review your invite', go: onInvite }
+          // LOCK THE COUNT: the bottom button after the reply-by date, and nowhere else (owner, 11/25/2026).
+          : replyByPassed && !locked ? { label: 'Lock the count', go: () => setSheet('lock') }
+            : toNudge ? { label: toNudge === 1 ? 'Nudge the one who hasn’t replied' : 'Nudge the ' + toNudge + ' who haven’t replied', go: () => setSheet('nudge') }
+              : null;
 
   // The page owns its screen and its bottom button (one primary, same place).
   return (<>
     <main className="view" data-view="guests">
     {nav}
     <section data-guests>
-      {planned && <p className="sub">Planning for {planned}{byName && !qs.length ? ' · ' + named + ' named · ' + coming + ' coming' : ''}{sample ? ' · Sample' : ''}</p>}
+      {planned && <p className="sub">{locked ? 'Locked at ' + locked : 'Planning for ' + planned}{byName && !qs.length ? ' · ' + named + ' named · ' + coming + ' coming' : ''}{sample ? ' · Sample' : ''}</p>}
       {status}
       {qs.length > 0 && <div className="card" data-question={qs[0]}><QuestionCard k={qs[0]} ev={ev} count={count} setCount={setCount} save={save} /></div>}
 
@@ -258,10 +274,16 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite }) 
 
       {!qs.length && (<>
         <h3 className="sh">The invite</h3>
-        <div className="grp"><button className="row go" data-open-invite onClick={onInvite}><span>Your invite</span><span className={'val' + (ev.invitesSentAt ? ' ok' : '')}>{ev.invitesSentAt ? 'Sent' : 'Not sent yet'}</span>{chev}</button></div>
-        <p className="fine">Sending it, replies, nudges and updates are in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>
+        <div className="grp">
+          <button className="row go" data-open-invite onClick={onInvite}><span>Your invite</span><span className={'val' + (ev.invitesSentAt ? ' ok' : '')}>{ev.invitesSentAt ? 'Sent' : 'Not sent yet'}</span>{chev}</button>
+          {ev.invitesSentAt && <div className="row" data-replied><span>Who has replied</span><span className="val">{replied} of {invited}</span></div>}
+          {(replyByPassed || locked > 0) && <button className="row go" data-count-row onClick={() => setSheet('lock')}><span>The count</span><span className={'val' + (locked ? ' ok' : '')}>{locked ? 'Locked at ' + locked : 'Not locked'}</span>{chev}</button>}
+        </div>
+        <p className="fine">Updates and guest questions are in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>
       </>)}
 
+      {sheet === 'nudge' && <NudgeSheet ev={ev} save={save} onDone={() => setSheet(null)} />}
+      {sheet === 'lock' && <LockSheet ev={ev} save={save} onDone={() => setSheet(null)} />}
       {opened && <GuestSheet g={opened} onDone={() => setOpen(null)}
         onReply={(v) => save(rsvpEdit(ev, indexOf(opened), v))}
         onRemove={() => { const i = indexOf(opened); setOpen(null); save(removeGuestEdit(ev, i)); }} />}

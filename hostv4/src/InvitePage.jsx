@@ -16,12 +16,12 @@ import { draftInvite, inviteVoicesFor } from '@app/lib/doItForMe';
 import { LINK_PLACEHOLDER, savedInviteDraft, saveDraftEdit } from '@app/lib/inviteMessageDraft';
 import { plusOneEdit, kidsEdit, addressesEdit, giftEdit, giftDetailEdit } from '@app/lib/guestEdits';
 import SendSheet from './SendSheet.jsx';
+import { readProfile } from './sendKit.jsx';
 
 const VOICE = { 'as-written': 'As written', tighter: 'Tighter', warmer: 'Warmer', playful: 'Playful', formal: 'Formal' };
 const GAP = { date: 'The day', time: 'The time guests arrive', place: 'Where it is', name: 'The event’s name', address: 'The street address' };
 const GIFT = [['None', null], ['No gifts, please', 'no_gifts'], ['Registry link', 'registry']];
 
-function readProfile() { try { return JSON.parse(window.localStorage.getItem('ngw-profile')) || null; } catch { return null; } }
 
 function Seg({ label, value, options, pick }) {
   return (

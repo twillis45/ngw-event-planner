@@ -10,10 +10,10 @@
 // Every send is recorded on the plan through the same edits hostv2 saves.
 // The invite picture hostv2 draws and uploads is not drawn here yet, so the
 // email carries the HTML card the server builds (the designed fallback).
-import { useEffect, useState } from 'react';
-import { supabase, isSupabaseConfigured } from '@app/lib/supabaseClient';
+import { useState } from 'react';
 import { isCommApiConfigured } from '@app/lib/commApi';
-import { replyLinkFor, emailInviteTo, invitesReachedEdit, inviteSentFields } from '@app/lib/inviteSend';
+import { emailInviteTo, invitesReachedEdit, inviteSentFields } from '@app/lib/inviteSend';
+import { useSendReady, NotReady } from './sendKit.jsx';
 import { inviteRecipients, inviteContacts, sendInviteEmails, smsHref, inviteSubjectAndBody } from '@app/lib/inviteBatch';
 import { guestToldMap } from '@app/lib/guestTold';
 import { withLink, textMessageBody, sentSnapshot } from '@app/lib/inviteMessageDraft';
@@ -21,30 +21,8 @@ import { recordHandoff } from '@app/lib/sendLedger';
 
 const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
 const names = (xs) => xs.map((g) => g.name || 'A guest').join(', ');
-const LINK_WHY = {
-  unpublished: 'Your plan isn’t saved to your account yet. Open it once in the current app, signed in, and it saves.',
-  'not-configured': 'Replies aren’t switched on for this app.',
-  unavailable: 'We couldn’t reach your reply page. Check your connection and try again.',
-};
-
-/** The account hostv2 signed in, read once: { state: 'checking' | 'in' | 'out', email }. */
-function useAccount() {
-  const [acct, setAcct] = useState({ state: 'checking', email: '' });
-  useEffect(() => {
-    let live = true;
-    if (!isSupabaseConfigured() || !supabase) { setAcct({ state: 'out', email: '' }); return undefined; }
-    supabase.auth.getSession().then(({ data }) => {
-      const s = data && data.session;
-      if (live) setAcct(s ? { state: 'in', email: (s.user && s.user.email) || '' } : { state: 'out', email: '' });
-    }).catch(() => { if (live) setAcct({ state: 'out', email: '' }); });
-    return () => { live = false; };
-  }, []);
-  return acct;
-}
-
 export default function SendSheet({ ev, draft, subject, voice, hostName, save, onDone }) {
-  const acct = useAccount();
-  const [link, setLink] = useState({ state: 'idle', url: '', reason: null });
+  const { acct, link, ready, check } = useSendReady(ev);
   // Who it goes to is fixed when the sheet opens, so the labels hold still as each send is recorded.
   const [r] = useState(() => inviteRecipients(ev.guests, guestToldMap(ev)));
   const [step, setStep] = useState('idle'); // idle | sending | done
@@ -54,18 +32,11 @@ export default function SendSheet({ ev, draft, subject, voice, hostName, save, o
   const [oneOpen, setOneOpen] = useState(false);
   const [oneState, setOneState] = useState({});
 
-  const check = () => {
-    setLink({ state: 'checking', url: '', reason: null });
-    replyLinkFor(ev).then((x) => setLink({ state: x.url ? 'ready' : 'missing', url: x.url, reason: x.reason }))
-      .catch(() => setLink({ state: 'missing', url: '', reason: 'unavailable' }));
-  };
-  useEffect(() => { if (acct.state === 'in') check(); }, [acct.state]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const full = withLink(draft, link.url);
   const email = inviteSubjectAndBody(full, subject);
   const textBody = textMessageBody(full, subject);
   const canEmail = isCommApiConfigured() && acct.state === 'in';
-  const ready = link.state === 'ready';
   const reached = (list, via) => {
     const at = new Date().toISOString();
     save(invitesReachedEdit(ev, list, via, at, sentSnapshot({ subject: email.subject, body: email.body, voice, at })));
@@ -99,17 +70,9 @@ export default function SendSheet({ ev, draft, subject, voice, hostName, save, o
   const emailLit = canEmail && ready && r.email.length > 0 && step === 'idle';
   const textsLit = ready && r.text.length > 0 && queueAt == null && step !== 'sending' && !emailLit;
 
+  const gate = <NotReady acct={acct} link={link} check={check} />;
   let body;
-  if (acct.state === 'checking') body = <p className="fine" role="status">Checking your account…</p>;
-  else if (acct.state === 'out') body = (<>
-    <p className="qhelp">Sending uses your account, so replies come back to this plan. Sign in once in the current app, then come back here.</p>
-    <a className="primary" href="../hostv2/">Sign in in the current app</a>
-  </>);
-  else if (link.state === 'checking' || link.state === 'idle') body = <p className="fine" role="status">Checking your reply link…</p>;
-  else if (!ready) body = (<>
-    <p className="qhelp" role="alert" data-link-missing><b>Your reply link isn’t ready.</b> {LINK_WHY[link.reason] || LINK_WHY.unavailable} Nothing can go out without it.</p>
-    {link.reason === 'unpublished' ? <a className="primary" href="../hostv2/">Open it in the current app</a> : <button className="primary" onClick={check}>Try again</button>}
-  </>);
+  if (!ready) body = gate;
   else body = (<>
     {r.email.length > 0 && <div className="who" data-who="email"><b>Email · {plural(r.email.length, 'guest', 'guests')}</b><span>{names(r.email)}</span></div>}
     {r.text.length > 0 && <div className="who" data-who="text"><b>Text · {r.text.length}, one at a time</b><span>{names(r.text)}</span></div>}
