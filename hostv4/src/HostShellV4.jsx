@@ -8,6 +8,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import GuestsPage from './GuestsPage.jsx';
 import InvitePage from './InvitePage.jsx';
+import UpdatesPage from './UpdatesPage.jsx';
 import { readCustomEvents, patchSavedEvent } from '@app/lib/customEventStore';
 import { sourcedBudget } from '@app/lib/playbooks';
 import { saveEvent as cloudSaveEvent } from '@app/lib/api/events';
@@ -202,7 +203,8 @@ export default function HostShellV4() {
     </>);
     return (
       <div className="app pushed" key={page}>
-        {page === 'guests' && <GuestsPage key={ev.id} ev={ev} save={saveEdit} sample={sample} nav={navbar('Guests')} status={status} onInvite={() => push('invite')} />}
+        {page === 'guests' && <GuestsPage key={ev.id} ev={ev} save={saveEdit} sample={sample} nav={navbar('Guests')} status={status} onInvite={() => push('invite')} onUpdates={() => push('updates')} />}
+        {page === 'updates' && <UpdatesPage key={ev.id} ev={ev} nav={navbar('Updates and questions')} status={status} />}
         {page === 'invite' && <InvitePage key={ev.id} ev={ev} save={saveEdit} nav={navbar('Your invite')} status={status} />}
         {tabbar}
       </div>

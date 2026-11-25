@@ -180,7 +180,7 @@ function GuestSheet({ g, onReply, onRemove, onDone }) {
   );
 }
 
-export default function GuestsPage({ ev, save, sample, nav, status, onInvite }) {
+export default function GuestsPage({ ev, save, sample, nav, status, onInvite, onUpdates }) {
   const qs = guestQuestions(ev);
   const [count, setCount] = useState(() => Number(ev.guestEstimate) || Number(guestCountFor(ev).count) || 20);
   const [text, setText] = useState('');
@@ -278,8 +278,8 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite }) 
           <button className="row go" data-open-invite onClick={onInvite}><span>Your invite</span><span className={'val' + (ev.invitesSentAt ? ' ok' : '')}>{ev.invitesSentAt ? 'Sent' : 'Not sent yet'}</span>{chev}</button>
           {ev.invitesSentAt && <div className="row" data-replied><span>Who has replied</span><span className="val">{replied} of {invited}</span></div>}
           {(replyByPassed || locked > 0) && <button className="row go" data-count-row onClick={() => setSheet('lock')}><span>The count</span><span className={'val' + (locked ? ' ok' : '')}>{locked ? 'Locked at ' + locked : 'Not locked'}</span>{chev}</button>}
+          <button className="row go" data-open-updates onClick={onUpdates}><span>Updates and questions</span>{chev}</button>
         </div>
-        <p className="fine">Updates and guest questions are in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>
       </>)}
 
       {sheet === 'nudge' && <NudgeSheet ev={ev} save={save} onDone={() => setSheet(null)} />}

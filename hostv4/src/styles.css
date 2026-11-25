@@ -114,6 +114,14 @@ h3.sh { font-size: 1rem; margin: 22px 2px 8px; }
 .sendbody > .link { display: block; min-height: 44px; }
 .sendbody .row.one .link { margin-left: 16px; }
 .done.warnline { color: var(--warn); }
+/* Updates and questions. */
+.row.update { align-items: flex-start; }
+.row.update .nm { white-space: pre-wrap; overflow-wrap: anywhere; }
+.thread { list-style: none; margin: 10px 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.thread li { max-width: 85%; padding: 10px 12px; border-radius: 14px; background: var(--raised); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 1rem; }
+.thread li b { display: block; font-size: .8125rem; color: var(--ink-3); font-weight: 600; margin-bottom: 2px; }
+.thread li.me { align-self: flex-end; background: rgba(241, 237, 230, .1); }
+[data-view="updates"] .addrow .link:disabled, .link:disabled { opacity: .45; }
 @keyframes push { from { transform: translateX(24%); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes rise { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
