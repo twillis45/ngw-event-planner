@@ -11655,6 +11655,22 @@ export default function HostShellV2() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId, elegantMode, askMode, nearDayPlan, queueOpen, queue, actions]);
   const isPast = isPastEvent(event);                      // lib/closeoutIntel — tense authority
+  // Guests' photos and questions waiting on the host after the day (owner
+  // rulings A and B, 11/16/2026). One renderer for the Plan board and After:
+  // her own plan lands on After once its day is past (cohesion batch E), so the
+  // lines must be where she lands, not only on the board.
+  const afterGuestLines = () => ((photosWaitingLine(guestPhotoList) || questionsWaitingLine(guestQuestionsWaiting)) ? (
+                <section data-after-guest-lines aria-label="Waiting on you from guests" style={{ marginTop: 'var(--sp-3)', padding: 'var(--sp-3)', border: '1px solid var(--line-soft)', borderRadius: 'var(--r-md)', minWidth: 0 }}>
+                  {photosWaitingLine(guestPhotoList) && (
+                    <button className="mini rowlink" data-after-photos style={{ display: 'block', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }}
+                      onClick={() => setSheet({ kind: 'guests', focus: 'photos' })}>{photosWaitingLine(guestPhotoList)}</button>
+                  )}
+                  {questionsWaitingLine(guestQuestionsWaiting) && (
+                    <button className="mini rowlink" data-after-questions style={{ display: 'block', marginTop: photosWaitingLine(guestPhotoList) ? 'var(--sp-2)' : 0, color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }}
+                      onClick={() => setSheet({ kind: 'guests', focus: 'questions' })}>{questionsWaitingLine(guestQuestionsWaiting)}</button>
+                  )}
+                </section>
+  ) : null);
   // THE DAY'S PENCIL OFFER, ONCE: an untimed day proposes a start (or asks her to
   // confirm ours). Read by the offer card and by the walk-through's button, which
   // steps down to soft while the offer is up — one lit button on The Day (owner,
@@ -15609,18 +15625,7 @@ export default function HostShellV2() {
                   host (owner rulings A and B, 11/16/2026). "Who's confirmed" is
                   done once the day is past, so these get their own line each, on
                   the same home, only when one waits, into the Guest list sheet. */}
-              {isPast && (photosWaitingLine(guestPhotoList) || questionsWaitingLine(guestQuestionsWaiting)) && (
-                <section data-after-guest-lines aria-label="Waiting on you from guests" style={{ marginTop: 'var(--sp-3)', padding: 'var(--sp-3)', border: '1px solid var(--line-soft)', borderRadius: 'var(--r-md)', minWidth: 0 }}>
-                  {photosWaitingLine(guestPhotoList) && (
-                    <button className="mini rowlink" data-after-photos style={{ display: 'block', color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }}
-                      onClick={() => setSheet({ kind: 'guests', focus: 'photos' })}>{photosWaitingLine(guestPhotoList)}</button>
-                  )}
-                  {questionsWaitingLine(guestQuestionsWaiting) && (
-                    <button className="mini rowlink" data-after-questions style={{ display: 'block', marginTop: photosWaitingLine(guestPhotoList) ? 'var(--sp-2)' : 0, color: 'var(--warn)', textAlign: 'left', whiteSpace: 'normal' }}
-                      onClick={() => setSheet({ kind: 'guests', focus: 'questions' })}>{questionsWaitingLine(guestQuestionsWaiting)}</button>
-                  )}
-                </section>
-              )}
+              {isPast && afterGuestLines()}
 
               {/* Slide-down readouts: hidden until the "what's counted" caret is
                   tapped — never-dense doctrine. Pills = the 4 readiness pillars;
@@ -17344,6 +17349,9 @@ export default function HostShellV2() {
                   </div></div>
                 </>
               )}
+
+              {/* Waiting on her from guests, where she lands after the day. */}
+              {isPast && afterGuestLines()}
 
               {/* The final number — teaches attendance learning (INTEL R1).
                   Production contract verbatim: applyReconciliation entry
