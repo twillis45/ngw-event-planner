@@ -127,6 +127,7 @@ import { byGuestMode } from '../guestMode';
 // looked green.
 import { DEST_LODGING_OPTIONS } from '../destLodgingOptions';
 import { SCHEDULE_WORD } from '../scheduleWords';
+import { assessFreshness, DATA_FRESHNESS } from '../knowledge/dataQuality';
 
 // One list, so every reader takes the same shape as destinationDecisionsFor and
 // nobody re-derives "is there a cook lever" locally. Declared BELOW the imports:
@@ -5235,6 +5236,61 @@ export function playbookBudgetCategories(eventType, guestCount) {
     const g = groups.get(k);
     return { key: g.key, label: g.label, essential: g.essential, low: round5(g.low), high: round5(g.high) };
   });
+}
+
+// ── THE BUDGET, BUILT FROM CITED PRICES (owner, 11/25/2026) ───────────────────
+// "The budget figure is going to come from source material … build from cited."
+// The per-head table (budgetEstimator PER_HEAD_BY_TYPE) has a source for one row
+// of eighteen. A playbook's shopping lines price themselves with registered
+// sources and a lastVerified date, so the first figure a host sees is built from
+// THOSE, scaled by the same quantity rules the shopping list uses (resolveQuantity,
+// guestCountOf) and read through governance (governedPurchase), like every other
+// host-visible purchase field.
+//
+// THREE CUMULATIVE STEPS a host can read: the essentials; then the extras (the
+// non-essential lines that hang on no decision); then everything (the lines that
+// hang on a decision, such as beer and wine). A line counts only when its cost
+// claim is CITED; any other priced line is never added and is named in
+// `leftOut`. A type with no cited line returns null: no figure, rather than a
+// made-up one. Freshness is the app's own rule (assessFreshness): a line checked
+// more than 28 days before `asOf` is listed in `stale`, and the figure says so.
+// Hired help (caterer, venue) is not here: those ranges are not research
+// (moneyProvenance vendor.playbookCostRange) and join only when the host picks one.
+export function sourcedBudget(event, asOf = new Date()) {
+  const ev = event || {};
+  const playbook = getPlaybook(ev.type);
+  if (!playbook || !Array.isArray(playbook.purchases)) return null;
+  const guests = guestCountOf(ev, playbook);
+  const asOfIso = (asOf instanceof Date ? asOf : new Date(asOf)).toISOString();
+  const lines = []; const leftOut = [];
+  for (const raw of playbook.purchases) {
+    const p = governedPurchase(playbook, raw);
+    const range = Array.isArray(p.unitCostRange) ? p.unitCostRange : null;
+    if (!range || !(Number(range[1]) > 0)) continue;           // priced with another line, or unpriced
+    const cp = purchaseCostProvenance(playbook, p) || {};
+    const sources = Array.isArray(cp.sources) ? cp.sources : [];
+    if (cp.verificationStatus !== 'cited' || !sources.length) { leftOut.push({ id: p.id, item: p.item }); continue; }
+    const qty = resolveQuantity(p, guests);
+    const units = qty == null ? 1 : qty;
+    lines.push({
+      id: p.id, item: p.item, qty: units, unit: p.unit || null,
+      low: units * Number(range[0]), high: units * Number(range[1]),
+      step: p.essential ? 'essentials' : p.dependsOnDecision ? 'everything' : 'extras',
+      sources, lastVerified: cp.lastVerified || null, claim: cp.claim || null,
+      fresh: assessFreshness(cp.lastVerified, asOfIso),
+    });
+  }
+  if (!lines.length) return null;
+  const order = ['essentials', 'extras', 'everything'];
+  let low = 0; let high = 0;
+  const steps = order.map((key) => {
+    const adds = lines.filter((l) => l.step === key);
+    adds.forEach((l) => { low += l.low; high += l.high; });
+    return { key, low, high, mid: Math.round(((low + high) / 2) / 50) * 50, adds };
+  }).filter((s) => s.adds.length || s.key === 'essentials');
+  const stale = lines.filter((l) => l.fresh === DATA_FRESHNESS.STALE || l.fresh === DATA_FRESHNESS.ARCHIVED)
+    .map((l) => ({ id: l.id, item: l.item, lastVerified: l.lastVerified }));
+  return { guests, steps, leftOut, stale };
 }
 
 // ── Food / Menu plan (host-facing food intelligence) ──────────────────────────

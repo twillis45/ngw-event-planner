@@ -27,6 +27,7 @@
 import { daysUntil } from './dates';
 import { getVendorPlaybook } from './vendorAccountability/playbooks';
 import { taskLeadDays } from './taskLead';
+import { holidayOn } from './holidayDates.mjs';
 
 // The promise keys across the vendor playbooks that mean "I need to know how many people".
 const COUNT_PROMISE_KEYS = new Set(['final_guest_count', 'final_count', 'headcount', 'guest_count', 'passenger_count']);
@@ -82,7 +83,7 @@ export function countDrivers(event) {
  * @returns {null | {
  *   iso: string|null, days: number|null, leadDays: number,
  *   driver: {label,daysBefore,source}|null, drivers: [], grounded: boolean,
- *   why: string, tooClose: boolean
+ *   why: string, tooClose: boolean, holiday: string|null
  * }}
  * `grounded: false` means nothing in the plan needs a count yet — the date is a rule of
  * thumb, and every surface that shows it must say so.
@@ -104,7 +105,7 @@ export function proposeReplyBy(event, now) {
   const dueIn = toEvent + leadDays;
   if (dueIn < 0) {
     return {
-      iso: null, days: dueIn, leadDays, driver, drivers, grounded, tooClose: true,
+      iso: null, days: dueIn, leadDays, driver, drivers, grounded, tooClose: true, holiday: null,
       why: grounded
         ? `${driver.label} ${driver.daysBefore} days before the event — that window is already open, so ask for replies as soon as they can.`
         : 'The event is close — ask for replies as soon as they can, rather than naming a date that has passed.',
@@ -119,5 +120,7 @@ export function proposeReplyBy(event, now) {
     ? `${driver.label} ${driver.daysBefore} ${driver.daysBefore === 1 ? 'day' : 'days'} before the event. This gives you ${CHASE_DAYS} days to chase whoever hasn’t replied.`
     : `Nothing in your plan needs a final count yet, so this is a rule of thumb — a week to lock the count, plus ${CHASE_DAYS} days to chase. Change it to whatever suits you.`;
 
-  return { iso, days: dueIn, leadDays, driver, drivers, grounded, tooClose: false, why };
+  // A HOLIDAY IS NAMED, NEVER DODGED (owner, 11/25/2026): the date stays where
+  // the reasoning put it; the screen says what day it is and the host decides.
+  return { iso, days: dueIn, leadDays, driver, drivers, grounded, tooClose: false, why, holiday: holidayOn(iso) };
 }
