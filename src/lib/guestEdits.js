@@ -1,0 +1,99 @@
+// ─── GUEST EDITS — built once, saved by both host shells (11/25/2026) ────────
+// hostv4's Guests page changes a plan exactly the way hostv2's does, so each
+// change is built here and saved by the shell (patchEvent in hostv2,
+// patchSavedEvent in hostv4). Each builder is pure: it returns
+// { patch, msg } — the fields to save and the confirmation line — or null
+// when there is nothing to change. The lines are hostv2's, word for word.
+import { detectCoupleNames } from './guestSplit';
+import { repeatedGuestNames } from './guestMerge';
+import { kidsCountAfterRoster } from './kidsCountAfterRoster';
+import { confirmedRsvpCovers } from './confirmedCovers';
+
+/** About how many are coming. A caterer count, once set, follows the host's number. */
+export function countEdit(event, n) {
+  const patch = { guestEstimate: n, guestCountSource: 'host', ...(Number((event || {}).guestCount) > 0 ? { guestCount: n } : null) };
+  return { patch, msg: 'Planning around ' + n + ' now.' };
+}
+
+/** Track who's coming by name ('list') or by headcount ('count'). */
+export function modeEdit(mode) {
+  return mode === 'count'
+    ? { patch: { guestMode: 'count' }, msg: 'By headcount — replies are optional and nobody gets chased.' }
+    : { patch: { guestMode: 'list' }, msg: 'By list — replies are tracked and the quiet ones can be nudged.' };
+}
+
+/** Pasted text → one name per line, trimmed, blanks dropped. */
+export const nameLines = (text) => String(text || '').split('\n').map((x) => x.trim()).filter(Boolean);
+
+/**
+ * Add names. A line naming a couple ("John and Nicole Smith") becomes two
+ * people who stay linked by one coupleId, so counts stay per person and
+ * seating can keep them together. Every new guest starts with no reply.
+ */
+export function addNamesEdit(event, lines, { splitCouples = true, now = Date.now() } = {}) {
+  const ls = Array.isArray(lines) ? lines.filter(Boolean) : [];
+  const entries = ls.flatMap((line, li) => {
+    const hit = splitCouples ? detectCoupleNames(line) : null;
+    if (!hit) return [{ name: line, coupleId: null }];
+    const cid = 'cp-' + Number(now).toString(36) + '-' + li; // ONE id for the pair
+    return hit.names.map((name) => ({ name, coupleId: cid }));
+  });
+  if (!entries.length) return null;
+  const couples = ls.filter((line) => detectCoupleNames(line)).length;
+  const names = entries.map((e) => e.name);
+  const existing = (event && event.guests) || [];
+  const add = entries.map((e, i) => ({ id: 'g-' + now + '-' + i, name: e.name, rsvp: '', ...(e.coupleId ? { coupleId: e.coupleId } : {}) }));
+  const splitNote = splitCouples && couples ? ' (' + couples + (couples === 1 ? ' couple' : ' couples') + ' split so everyone gets counted)' : '';
+  const twice = repeatedGuestNames(existing, names);
+  const twiceNote = twice.length ? ' ' + twice.join(', ') + (twice.length === 1 ? ' is' : ' are') + ' on the list twice — remove one if it’s the same person.' : '';
+  return {
+    patch: { guests: [...existing, ...add] },
+    msg: 'Added ' + names.length + (names.length === 1 ? ' person' : ' people')
+      + (existing.length ? ' — ' + (existing.length + add.length) + ' on the list' : '')
+      + '. Each shows “No reply” until they answer your invite, or you mark it yourself.' + splitNote + twiceNote,
+  };
+}
+
+/** One guest's reply ('Yes', 'Maybe', 'No' or '' for no reply), with the confirmed count after it. */
+export function rsvpEdit(event, i, value) {
+  const gs = ((event && event.guests) || []).map((g, ix) => (ix === i ? { ...g, rsvp: value } : g));
+  // COVERS, not rows, counted on the NEW roster: a confirmed row can bring kids.
+  const yes = confirmedRsvpCovers({ ...event, guests: gs });
+  return {
+    patch: { guests: gs },
+    msg: ((gs[i] && gs[i].name) || 'Guest') + ' → ' + (value || 'no reply') + ' — ' + yes + ' confirmed.' + (value === 'Maybe' ? ' Maybes stay pending until they land.' : ''),
+  };
+}
+
+/** Take one guest off the list; the kids count follows the roster. */
+export function removeGuestEdit(event, i) {
+  const all = (event && event.guests) || [];
+  const g = all[i];
+  const gs = all.filter((_, ix) => ix !== i);
+  return { patch: { guests: gs, kidsCount: kidsCountAfterRoster(event, gs) }, msg: ((g && g.name) || 'Guest') + ' removed from the list.' };
+}
+
+/** Can guests bring someone? 'plus_one_ok', 'no_plus_ones' or null (not set). */
+export function plusOneEdit(v) {
+  return {
+    patch: { plusOnePolicy: v },
+    msg: v === 'plus_one_ok' ? 'Plus-ones welcome — the invite says so, and the RSVP page asks who they’re bringing.'
+      : v === 'no_plus_ones' ? 'Named guests only — the RSVP page won’t offer a plus-one.'
+        : 'Plus-ones not set — the invite stays quiet on them.',
+  };
+}
+
+/** Are kids welcome? 'kids_welcome', 'adults_only' or null (not set). */
+export function kidsEdit(v) {
+  return {
+    patch: { kidsPolicy: v },
+    msg: v === 'kids_welcome' ? 'Kids welcome — the invite says so.'
+      : v === 'adults_only' ? 'Adults-only — the RSVP page won’t ask about kids.'
+        : 'Kids not set — the invite stays quiet on them.',
+  };
+}
+
+/** The reply-by date the host committed to (YYYY-MM-DD). */
+export function replyByEdit(iso) {
+  return { patch: { rsvpDeadline: iso }, msg: 'Reply-by date set — your invite and the nudges read it.' };
+}

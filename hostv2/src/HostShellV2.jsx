@@ -42,6 +42,7 @@ import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaR
 // the legacy body as the default until parity closes.
 import { PeopleHero, AttendanceDecision, StillUnknown, OneMove, GetResponses, PeopleRail, SectionHead } from './PeopleSurface';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
+import { countEdit, modeEdit, addNamesEdit, rsvpEdit, removeGuestEdit, replyByEdit } from '@app/lib/guestEdits';
 import { saveCustomEvents, patchSavedEvent, exportCustomEvents, listBackups, restoreBackup, importCustomEvents, durabilityStatus, readCustomEvents } from '@app/lib/customEventStore';
 import { buildCrabProcurement } from '@app/lib/procurement';
 import { buildAssembleRevealStages, unresolvedBlockerStages } from '@app/lib/assembleRevealEngines';
@@ -237,7 +238,7 @@ import { moneyDisclosure } from '@app/lib/budgetEstimator/moneyProvenance';
 import { geoPlanNote, regionForZip, regionForAddress, priceStateFor, ADD_STATE_NUDGE } from '@app/lib/knowledge/geoCostIndex';
 import { firstStoreIn, storesIn } from '@app/lib/communitySource';
 import { typeLineFor } from '@app/lib/eventMasthead';
-import { confirmedCovers, confirmedRsvpCovers, coversWithWord } from '@app/lib/confirmedCovers';
+import { confirmedCovers, coversWithWord } from '@app/lib/confirmedCovers';
 import { shoppingHint } from '@app/lib/shoppableUnit';
 import { markSignal, lastSignalNote } from './offline/lastSignal';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, rosSuggestions, hostRosRows, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, sizingRange, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, playbookGuestBand, normalizeAlternative, computeMomentum, dietaryNoted, playbookPacing } from '@app/lib/playbooks';
@@ -351,7 +352,7 @@ import { appEmailWords, messageEmailResult } from '@app/lib/appEmail';
 import { buildHelperAsk } from '@app/lib/helperAsk';
 import PolicyLinks from './PolicyLinks.jsx';
 import { VersionAndWhatsNew } from './WhatsNew.jsx';
-import { mergeGuestReplies, repeatedGuestNames, confirmSameGuest, keepSeparateGuest, sameGuestAskLine, renamedGuestPatch } from '@app/lib/guestMerge';
+import { mergeGuestReplies, confirmSameGuest, keepSeparateGuest, sameGuestAskLine, renamedGuestPatch } from '@app/lib/guestMerge';
 import { MAX_DATE_OPTIONS, dateOptionsOf, datePollTally, dateOptionPatch, nextDateOptionId } from '@app/lib/datePoll';
 import { giftCashTotal, isAbsentGiver, thankYouGiftLine } from '@app/lib/giftLog';
 import { borrowedList, markReturned, addBorrowed } from '@app/lib/borrowedList';
@@ -7608,7 +7609,7 @@ export default function HostShellV2() {
               <span className="of">replies by:</span>
               <input className="field" style={{ maxWidth: 175, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="date"
                 value={already || ''}
-                onChange={e => patchEvent({ rsvpDeadline: e.target.value }, 'Reply-by date set — your invite and the nudges read it.')}
+                onChange={e => { const ed = replyByEdit(e.target.value); patchEvent(ed.patch, ed.msg); }}
                 aria-label="RSVP deadline" />
               {prop && prop.iso && already !== prop.iso && (
                 <button className="mini" onClick={() => patchEvent({ rsvpDeadline: prop.iso },
@@ -8945,10 +8946,8 @@ export default function HostShellV2() {
     patchEvent({ guests: gs, kidsCount }, msg);
   };
   const removeGuest = (i) => {
-    const g = (event.guests || [])[i];
-    const gs = (event.guests || []).filter((_, ix) => ix !== i);
-    const kidsCount = kidsCountAfterRoster(event, gs);
-    patchEvent({ guests: gs, kidsCount }, (g && g.name || 'Guest') + ' removed from the list.');
+    const ed = removeGuestEdit(event, i);
+    patchEvent(ed.patch, ed.msg);
     setGuestOpen(null);
   };
   // KEEP HER PLACE (owner, 11/24/2026): an opened guest's name scrolls to the
@@ -8981,30 +8980,10 @@ export default function HostShellV2() {
     .map(line => ({ line, hit: detectCoupleNames(line) }))
     .filter(x => x.hit);
   const addRoster = () => {
-    const entries = rosterLines.flatMap((line, li) => {
-      const hit = splitCouples ? detectCoupleNames(line) : null;
-      // A split couple stays CONNECTED: both rows share a coupleId, so the
-      // roster shows "with Nicole", counts stay per-person, and seating can
-      // keep them together (host ask 2026-07-27).
-      if (!hit) return [{ name: line, coupleId: null }];
-      const cid = 'cp-' + Date.now().toString(36) + '-' + li; // ONE id for the pair
-      return hit.names.map((name) => ({ name, coupleId: cid }));
-    });
-    if (!entries.length) return;
-    const names = entries.map((e2) => e2.name);
-    const existing = event.guests || [];
-    const add = entries.map((e2, i) => ({ id: 'g-' + Date.now() + '-' + i, name: e2.name, rsvp: '', ...(e2.coupleId ? { coupleId: e2.coupleId } : {}) }));
-    const splitNote = splitCouples && rosterCouples.length
-      ? ' (' + rosterCouples.length + (rosterCouples.length === 1 ? ' couple' : ' couples') + ' split so everyone gets counted)' : '';
-    const twice = repeatedGuestNames(existing, names);
-    const twiceNote = twice.length
-      ? ' ' + twice.join(', ') + (twice.length === 1 ? ' is' : ' are') + ' on the list twice — remove one if it’s the same person.' : '';
-    patchEvent({ guests: [...existing, ...add] },
-      // Host words, not app words (owner, 11/16/2026): "RSVPs start blank" said
-      // nothing a host could act on. The list itself shows "No reply".
-      'Added ' + names.length + (names.length === 1 ? ' person' : ' people')
-        + (existing.length ? ' — ' + (existing.length + add.length) + ' on the list' : '')
-        + '. Each shows “No reply” until they answer your invite, or you mark it yourself.' + splitNote + twiceNote);
+    const ed = addNamesEdit(event, rosterLines, { splitCouples });
+    if (!ed) return;
+    // Host words, not app words (owner, 11/16/2026): the list itself shows "No reply".
+    patchEvent(ed.patch, ed.msg);
     setRosterText('');
   };
 
@@ -9016,14 +8995,11 @@ export default function HostShellV2() {
   // Writes the same guests array the engine's confirmed-count and the
   // catering-drift detector read.
   const setRsvpValue = (i, value) => {
-    const gs = (event.guests || []).map((g, ix) => ix === i ? { ...g, rsvp: value } : g);
-    // COVERS, not rows, and computed against the NEW roster rather than the
-    // stale `event` — this receipt fires on the same tap that changes it.
-    // It said "5 confirmed" on a roster whose confirmed rows bring two kids,
-    // which is the same defect as the caterer's, in a toast.
-    const yes = confirmedRsvpCovers({ ...event, guests: gs });
-    patchEvent({ guests: gs }, (gs[i].name || 'Guest') + ' → ' + (value || 'no reply') + ' — ' + yes + ' confirmed.' + (value === 'Maybe' ? ' Maybes stay pending until they land.' : ''));
+    // Counted on the NEW roster (lib/guestEdits): covers, not rows.
+    const ed = rsvpEdit(event, i, value);
+    patchEvent(ed.patch, ed.msg);
   };
+
 
   // ── Feedback layer: haptic tick on real state changes, the original app's
   // synthesized chime reserved for magic moments. Muted preference persists.
@@ -10102,7 +10078,8 @@ export default function HostShellV2() {
   // A LOCKED COUNT MOVES WITH THE HOST'S EDIT (single-source audit 11/18/2026):
   // guestCountFor reads guestCount first, so writing only the estimate left a
   // locked 40 on screen under a toast saying 41.
-  const setGuests = (n) => patchEvent({ guestEstimate: n, guestCountSource: 'host', ...(Number(event.guestCount) > 0 ? { guestCount: n } : null) }, 'Planning around ' + n + ' now.');
+  // Guest edits are built in lib/guestEdits, so hostv4 changes a plan the same way.
+  const setGuests = (n) => { const ed = countEdit(event, n); return patchEvent(ed.patch, ed.msg); };
   // The count RESOLUTION rows — shared by the 'count' editor and the guests
   // editor's drift bridge (W14): when the caterer's number and the confirmed
   // yeses disagree, the fix is one of these two taps, wherever the host is.
@@ -28685,9 +28662,9 @@ export default function HostShellV2() {
                 <div id="guests-counting-anchor" className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center', scrollMarginTop: 12 }}>
                   <span className="of">counting:</span>
                   <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={chase}
-                    onClick={() => patchEvent({ guestMode: 'list' }, 'By list — replies are tracked and the quiet ones can be nudged.')}>By list</button>
+                    onClick={() => { const ed = modeEdit('list'); patchEvent(ed.patch, ed.msg); }}>By list</button>
                   <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={event.guestMode === 'count'}
-                    onClick={() => patchEvent({ guestMode: 'count' }, 'By headcount — replies are optional and nobody gets chased.')}>By headcount</button>
+                    onClick={() => { const ed = modeEdit('count'); patchEvent(ed.patch, ed.msg); }}>By headcount</button>
                 </div>
               );
               // CSV import — lib/csvParsers end to end: platform map → validate →
