@@ -114,6 +114,24 @@ test.describe('every sheet keeps the cohesion rules', () => {
     check(found, 'the board', info.project.name);
   });
 
+  // THE FOLD HANDLE KEEPS THE HOUSE TAP HEIGHT (11/25/2026). On a short screen
+  // the handle's padding is trimmed so it fits above the fold, and that left it
+  // exactly 44px tall. CI's evidence: centered at a fractional offset
+  // (194 to 237), the pixel walk counted 43, so rule 9 failed there and passed
+  // everywhere else. The house minimum is --tap-min (46px), which exists to
+  // clear that rounding. Measured directly, so it cannot depend on where the
+  // handle happens to land.
+  test('the fold handle keeps the house tap height', async ({ page }) => {
+    await boot(page);
+    // Only a handle that is laid out is a tap target; the wide board has none.
+    const h = await page.evaluate(() => {
+      const f = [...document.querySelectorAll('.efold')].find((e) => e.getBoundingClientRect().height > 0);
+      return f ? f.getBoundingClientRect().height : null;
+    });
+    test.skip(h === null, 'no fold handle on this layout');
+    expect(h, `fold handle height ${h}px`).toBeGreaterThanOrEqual(46);
+  });
+
   for (const door of DOORS) {
     test(door, async ({ page }, info) => {
       test.setTimeout(60_000);

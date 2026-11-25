@@ -1292,6 +1292,12 @@ button{font-family:inherit}
      the normal-height .efold is untouched) buys back real, deliberate margin
      instead of a boundary tuned to the sub-pixel. */
   .efold{ margin-top:0; padding-top:2px; }
+  /* ...but never under the house tap height. The trim left the handle exactly
+     44px, and at a fractional offset a 44px box measures 43 (CI, 11/25/2026:
+     everySheetKeepsTheCohesionRules at 860x430). --tap-min is 46 so a tap box
+     clears that rounding; the 2px goes below the label, not above it, so the
+     top edge this rule protects does not move. */
+  .efold{ min-height:var(--tap-min,46px); box-sizing:border-box; }
 }
 /* A 320px PHONE (run 2, R2-12): the left label truncated to "3 of 7 plan par…" —
    losing the count itself — and the short-viewport rule above (max-height:699px,
