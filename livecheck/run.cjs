@@ -549,8 +549,8 @@ async function runViewport(browser, vp, runDir, meta) {
           await card.click({ timeout: 6000 }); await page.waitForTimeout(700);
           out.openedItem = 'Maple Table Catering';
           out.afterTitle = (await page.locator('#sheet-title').last().innerText().catch(() => '')).trim();
-          out.expanded = /where this stands/i.test(await page.locator('.sheet').last().innerText());
-          if (!out.expanded) throw new Error('vendor card did not open (no "Where this stands")');
+          out.expanded = /where (this|it) stands|who they are/i.test(await page.locator('.sheet').last().innerText());
+          if (!out.expanded) throw new Error('vendor card did not open (no "Where it stands" / "Who they are")');
         }
         if (name === 'You & settings') {
           const v = page.locator('[data-whats-new]');
