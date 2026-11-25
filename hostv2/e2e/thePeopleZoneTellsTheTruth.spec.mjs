@@ -307,7 +307,7 @@ test('A DERIVED REPLY-BY IS NEVER SPOKEN AS A DATE SHE SET', async ({ page }) =>
 
   // The outcome block is there and names the real outstanding replies...
   expect(body).toMatch(/GET RESPONSES/i);
-  expect(body).toMatch(/3 people haven’t answered yet/i);
+  expect(body).toMatch(/3 people haven’t replied yet/i);
   // ...and offers the deadline as something to SET, never as something that is.
   expect(body).toMatch(/Set a date you need the final number by/i);
   expect(body).not.toMatch(/Replies close/i);
@@ -343,9 +343,12 @@ test('AND WHEN SHE HAS SET ONE, IT IS SPOKEN AS THE OUTCOME IT BUYS', async ({ p
 // to break by accident — a control does not throw when it stops being rendered.
 // So the rule these pin is: EVERY action is reachable in at most ONE disclosure
 // from the state the host is already in.
+// Owner, 11/24/2026: share and copy are one action ("Share the link" copies
+// where there is no share sheet), QR is "Show QR code", and the guest brief is
+// "Send the details".
 const ACTIONS = [
-  'Check and share link', 'Copy the link', 'Check and show QR', 'Preview on this device', 'Copy the invite',
-  'Draft the guest brief', 'Update everyone', 'Write a nudge to send',
+  'Share the link', 'Show QR code', 'Preview on this device', 'Copy the invite',
+  'Send the details', 'Update everyone', 'Write a nudge to send',
 ];
 
 const buttonTexts = (page) => page.evaluate(() => [...document.querySelectorAll('.sheet button')]
@@ -367,7 +370,7 @@ test('ALL SEVEN INVITE ACTIONS SURVIVE — one fold away at most', async ({ page
     const b = document.querySelector('#guests-invites-anchor button.cta');
     return b ? (b.innerText || '').trim() : null;
   });
-  expect(primary, 'with replies outstanding the dominant action is the share link').toBe('Check and share link');
+  expect(primary, 'with replies outstanding the dominant action is the share link').toBe('Share the link');
 
   // The rest are reachable after exactly one tap on a LABELLED fold — not an
   // anonymous overflow, because a labelled fold says what is inside it.
@@ -401,7 +404,7 @@ test('THE ADMIN TAIL IS SUBORDINATED, NOT REMOVED', async ({ page }) => {
   expect(await open(page, 'How the invite looks, and your list')).toBe(true);
   await page.waitForTimeout(250);
   const after = await sheetText(page);
-  for (const m of ['Your invite', 'By headcount', 'Import a guest list', 'Download the guest list']) {
+  for (const m of ['Invite page', 'By headcount', 'Import a guest list', 'Download the guest list']) {
     expect(after, `${m} survives inside the fold`).toContain(m);
   }
 });

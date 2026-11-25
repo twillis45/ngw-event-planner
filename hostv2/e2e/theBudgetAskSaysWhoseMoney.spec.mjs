@@ -46,7 +46,7 @@ const SEED = "Mom's 80th birthday in Santa Fe New Mexico on June 14 2027, "
 const openExclusions = async (page) => {
   const opened = await page.evaluate(() => {
     const d = [...document.querySelectorAll('details')]
-      .find((x) => /things this number leaves out/i.test(x.innerText || ''));
+      .find((x) => /things? not included/i.test(x.innerText || ''));
     if (!d) return false;
     d.open = true;
     return true;
@@ -76,7 +76,8 @@ test('THE PER-HEAD FIGURE: the ask shows what the total is per person', async ({
   // move, the arithmetic does not, and a test that pins the band fails for a
   // reason that has nothing to do with what it is guarding.
   const total = Number((txt.match(/\$([\d,]+)/) || [])[1]?.replace(/,/g, ''));
-  const guests = Number((txt.match(/For (\d+) at a/) || [])[1]);
+  // "For N at a …" or "… for N at a …" (owner's short copy, 11/24/2026).
+  const guests = Number((txt.match(/for (\d+) at an? /i) || [])[1]);
   expect(Number.isFinite(total) && total > 0).toBe(true);
   expect(Number.isFinite(guests) && guests > 0).toBe(true);
 
@@ -150,7 +151,7 @@ test('EVERY TIER IS CHECKABLE, not just the middle one', async ({ page }) => {
   // numbers. Read off the screen rather than pinned, because the bands move.
   await toBudget(page);
   const txt = await page.evaluate(() => document.body.innerText || '');
-  const guests = Number((txt.match(/For (\d+) at a/) || [])[1]);
+  const guests = Number((txt.match(/for (\d+) at an? /i) || [])[1]);
   expect(Number.isFinite(guests) && guests > 0).toBe(true);
   const money = (re) => Number((txt.match(re) || [])[1]?.replace(/,/g, ''));
   const lean = money(/Lean \$([\d,]+)/);
@@ -170,13 +171,14 @@ test('THE ASK IS NOT A WALL OF TEXT: the exclusions are summarised, not spilled'
   await toBudget(page);
   const closed = await page.evaluate(() => document.body.innerText || '');
   // Closed by default…
-  expect(closed).toMatch(/things this number leaves out/i);
+  // The summary's words since the owner's 11/24/2026 copy ruling.
+  expect(closed).toMatch(/things? not included/i);
   // …and the long tail is NOT on screen until asked for.
   expect(closed).not.toMatch(/pre- or post-event gatherings/i);
   expect(closed).not.toMatch(/tips and gratuities beyond service charge/i);
   // The summary still earns its place: it says how many, and names something
   // with real money behind it rather than being a bare chevron.
-  expect(closed).toMatch(/\b8 things this number leaves out\b/i);
+  expect(closed).toMatch(/\b8 things not included\b/i);
 });
 
 // ── "TYPICAL" WAS THE MIDPOINT OF A GUESS ────────────────────────────────

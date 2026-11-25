@@ -17,15 +17,32 @@
 //
 // PURE except for the `send` function handed to sendInviteEmails.
 import { isMalformedEmail } from './contactFormat';
+import { isTold } from './guestTold';
 
 const digitsOf = (p) => String(p || '').replace(/[^+\d]/g, '');
 
-/** Who the invite can go to, and how. Declined guests are in no list. */
-export function inviteRecipients(guests) {
+/**
+ * THE ONE RULE for "was this guest invited?" (owner, 11/24/2026): the batch
+ * wrote `invitedAt`, or the host marked them told ("I sent it myself",
+ * lib/guestTold recordTold). The invite batch and the nudge (replyNudge.wasInvited)
+ * both read this, so "Invite your guest list (N)" never re-invites a told guest.
+ */
+export function guestWasInvited(guest, toldMap) {
+  if (!guest) return false;
+  if (guest.invitedAt) return true;
+  return guest.id != null && isTold(toldMap, guest.id);
+}
+
+/**
+ * Who the invite can go to, and how. Declined guests are in no list. `toldMap`
+ * is the event's `guestTold` (guestTold.guestToldMap); a told guest counts as
+ * already invited.
+ */
+export function inviteRecipients(guests, toldMap) {
   const out = { email: [], text: [], unreachable: [], alreadyInvited: 0 };
   for (const g of Array.isArray(guests) ? guests : []) {
     if (!g || g.rsvp === 'No') continue;
-    if (g.invitedAt) { out.alreadyInvited += 1; continue; }
+    if (guestWasInvited(g, toldMap)) { out.alreadyInvited += 1; continue; }
     const email = String(g.email || '').trim();
     const phone = digitsOf(g.phone);
     const who = { id: g.id, name: String(g.name || '').trim() };
@@ -90,11 +107,19 @@ export function inviteContacts(guests) {
     });
 }
 
-const firstName = (name) => String(name || '').trim().split(/\s+/)[0] || '';
+/**
+ * What a text calls a guest: the first name, or a family title with it
+ * ("Aunt Rosa", never "Hi Aunt,"). Owner, 11/24/2026.
+ */
+export function greetingName(name) {
+  const w = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!w.length) return '';
+  return /^(aunt|auntie|uncle|grandma|grandpa|granny|nana|papa|cousin|dr\.?|mr\.?|mrs\.?|ms\.?)$/i.test(w[0]) && w[1] ? w[0] + ' ' + w[1] : w[0];
+}
 
 /** The text for one guest, greeted by first name. */
 export function smsHref(guest, body) {
-  const hi = firstName(guest && guest.name);
+  const hi = greetingName(guest && guest.name);
   const text = (hi ? `Hi ${hi}, ` : '') + String(body || '');
   return 'sms:' + digitsOf(guest && guest.phone) + '?&body=' + encodeURIComponent(text);
 }

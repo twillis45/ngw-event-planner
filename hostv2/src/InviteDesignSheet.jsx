@@ -1,4 +1,5 @@
-// InviteDesignSheet — "Your invite" (owner-approved render r3-3, 11/24/2026).
+// InviteDesignSheet — "Invite page" (owner-approved render r3-3, 11/24/2026;
+// renamed from "Your invite" 11/24/2026, one door, one name).
 // The host's one place to shape what guests see when they open her link:
 //   · the layout, "Classic" or "At a glance" (event.inviteLayout);
 //   · her message, the line under the event's name (event.deckLine — the ONE
@@ -7,7 +8,7 @@
 //   · Paper (inviteStyle), Replies by (the shell's one reply-by editor),
 //     Artwork (inviteCrest);
 //   · a LIVE preview that is the guest's own invite component (InviteV2 with
-//     `preview`), not a copy, and one lit "Save your invite".
+//     `preview`), not a copy, and one lit "Save your invite page".
 // Nothing is sent from here. Saving writes the event; the link shows it.
 import { lazy, Suspense, useMemo, useState } from 'react';
 import { SettledRow, OptionList } from './parity/askKit';
@@ -60,7 +61,7 @@ export default function InviteDesignSheet({
     if (c && !isValidPhone(c) && !isValidEmail(c)) { setContactErr('Add a phone number or an email address, or leave it empty.'); return; }
     setContactErr('');
     patchEvent({ inviteLayout: layout, deckLine: stored, hostName: host.trim(), hostContact: c, inviteStyle: paper, inviteCrest: crest },
-      'Your invite is saved — your link shows it now.');
+      'Your invite page is saved — your link shows it now.');
     onDone();
   };
 
@@ -182,7 +183,7 @@ export default function InviteDesignSheet({
       )}
 
       <div className="ivd-foot">
-        <button type="button" className="cta" onClick={save}>Save your invite</button>
+        <button type="button" className="cta" onClick={save}>Save your invite page</button>
         <p className="grounding">Anyone who already has your link sees the changes next time they open it.</p>
       </div>
     </div>

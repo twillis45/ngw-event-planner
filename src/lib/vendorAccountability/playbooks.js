@@ -39,6 +39,7 @@
  * @prop {Record<string,string>} whyItMattersByField
  */
 
+import { THE_SCHEDULE } from '../scheduleWords.js';
 const COMMON_RISK_PRESETS = {
   delayedArrival:   'Late vendor arrival disrupts setup and downstream schedule.',
   countMismatch:    'Mismatched counts cause shortfall or waste.',
@@ -590,7 +591,7 @@ const AV_PRODUCTION = {
   categoryKey: 'av_production',
   displayName: 'AV / Production',
   plainDescription:
-    'AV and production teams handle sound, lighting, projection, staging. Their setup window depends on venue access and their schedule depends on the run of show.',
+    `AV and production teams handle sound, lighting, projection, staging. Their setup window depends on venue access and their schedule depends on ${THE_SCHEDULE}.`,
   commonPromises: [
     { key: 'arrival_time',    label: 'Arrival time',           daysBefore: 7,  critical: true,  evidenceRequired: false, ownerHint: 'vendor' },
     { key: 'setup_window',    label: 'Setup window',           daysBefore: 14, critical: true,  evidenceRequired: false, ownerHint: 'vendor' },

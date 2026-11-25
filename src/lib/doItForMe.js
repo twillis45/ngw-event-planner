@@ -22,7 +22,7 @@ import { vendorGreetingName } from './vendorDetailsMessage';
 import { vendorDisplayName } from './vendorDisplayName';
 import { hashtagLine } from './eventHashtag';
 import { hostNameFor } from './hostNameFor';
-import { inviteMessage } from './inviteDeck';
+import { inviteMessage, suggestedInviteLine } from './inviteDeck';
 import { spanEnd } from './dates';
 
 // A gathering that must carry a somber, respectful tone — never the festive template.
@@ -289,7 +289,13 @@ export function draftInvite(event, profile, opts = {}) {
   const rsvpUrl = (opts && opts.rsvpUrl) ? String(opts.rsvpUrl).trim() : '';
   const when = [date, time].filter(Boolean).join(' · ');
   const dress = dressLine(event);
-  const lines = [v.emoji ? `${v.emoji} ${v.head}` : v.head, v.line, ''];
+  // HER PAGE MESSAGE OPENS THE DRAFT (owner, 11/24/2026): when she wrote one
+  // (deckLine, not our suggestion), it stands in for the stock line.
+  const hers = (() => {
+    const t = String(event.deckLine || '').trim();
+    try { return t && t !== suggestedInviteLine(event) ? t : ''; } catch { return ''; }
+  })();
+  const lines = [v.emoji ? `${v.emoji} ${v.head}` : v.head, hers || v.line, ''];
   if (when)  lines.push(when);
   if (place) lines.push(place);
   if (dress) lines.push(dress);

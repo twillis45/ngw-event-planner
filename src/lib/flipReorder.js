@@ -54,15 +54,25 @@ const prefersReducedMotion = () => {
  * component would only ever be layout noise here, and carrying it would make
  * the "did it move" test fire on width changes that are not reorders.
  */
+// WITHIN THE LIST, NOT ON THE SCREEN (11/24/2026). A row's position is read
+// from the list's own top, so content above the list growing or shrinking (a
+// late hero line, the weather landing) moves the list without counting as a
+// reorder. Read on the screen, every row "travelled" 260ms back to where the
+// list used to be, and a tap in that window landed on a moving target.
+const listTop = (container) => {
+  try { return typeof container.getBoundingClientRect === 'function' ? (container.getBoundingClientRect().top || 0) : 0; } catch (_e) { return 0; }
+};
+
 export function measureRows(container, attr = 'data-flip') {
   const out = new Map();
   if (!container || typeof container.querySelectorAll !== 'function') return out;
   const nodes = container.querySelectorAll(`[${attr}]`);
   if (!nodes.length || nodes.length > MAX_ROWS) return out;
+  const top0 = listTop(container);
   for (const el of nodes) {
     const id = el.getAttribute(attr);
     if (!id) continue;
-    out.set(id, el.getBoundingClientRect().top);
+    out.set(id, el.getBoundingClientRect().top - top0);
   }
   return out;
 }
@@ -90,10 +100,11 @@ export function playReorder(container, before, opts) {
   if (!nodes.length || nodes.length > MAX_ROWS) return 0;
 
   const moved = [];
+  const top0 = listTop(container);
   for (const el of nodes) {
     const id = el.getAttribute(attr);
     if (!id || !before.has(id)) continue;             // arrived: not our job
-    const delta = before.get(id) - el.getBoundingClientRect().top;
+    const delta = before.get(id) - (el.getBoundingClientRect().top - top0);
     if (Math.abs(delta) < MIN_TRAVEL) continue;
     moved.push([el, delta]);
   }

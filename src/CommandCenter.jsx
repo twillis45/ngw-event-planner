@@ -100,6 +100,8 @@ import { daysUntil } from './lib/dates';
 import { milestoneActionRoute, checklistRouteFor, stepRoute } from './lib/taskRoute';
 import { stepIsSetComposite } from './lib/stepTarget';
 import { confirmedCovers } from './lib/confirmedCovers';
+// The host's word for the day's plan (owner: "Host doesn't use run of show language", 11/24/2026).
+import { THE_SCHEDULE, THE_SCHEDULE_CAP } from './lib/scheduleWords';
 export { milestoneActionRoute };
 const approvalIsSent = (m) => !!m.requestSentAt || m.direction === 'outbound' || m.sender === 'planner' || /sent|delivered/i.test(m.deliveryStatus || '');
 
@@ -1208,8 +1210,8 @@ export function selectStudioCommand(events = []) {
         eventId: todayEv.id,
         eventName: todayEv.name,
         title: `${count} thing${count !== 1 ? 's' : ''} need${count === 1 ? 's' : ''} attention right now.`,
-        consequence: top ? `Start with "${top.title || top.label || 'the highest-priority item'}".` : 'Open your run of show to work the day.',
-        primaryCta: 'Open your run of show',
+        consequence: top ? `Start with "${top.title || top.label || 'the highest-priority item'}".` : `Open ${THE_SCHEDULE} to work the day.`,
+        primaryCta: `Open ${THE_SCHEDULE}`,
         primaryRoute: { eventId: todayEv.id, tab: 'Event Day Schedule', focusField: 'ros-now' },
         secondaryCta: 'View messages',
         secondaryRoute: { eventId: todayEv.id, tab: 'Communication' },
@@ -1225,8 +1227,8 @@ export function selectStudioCommand(events = []) {
       // B5 — promise only what production delivers: the real run-of-show (Event Day
       // Schedule, derived from the playbook). The unified "Day-of Mode" with live vendor
       // arrivals + messages is a dev-only demo (App.js ~35410), so the CTA must not sell it.
-      consequence: 'Your run of show is ready — every cue for the day, top to bottom.',
-      primaryCta: 'Open your run of show',
+      consequence: `${THE_SCHEDULE_CAP} is ready — every moment of the day, top to bottom.`,
+      primaryCta: `Open ${THE_SCHEDULE}`,
       primaryRoute: { eventId: todayEv.id, tab: 'Event Day Schedule', focusField: 'ros-now' },
       secondaryCta: 'View full event details',
       secondaryRoute: { eventId: todayEv.id, tab: 'Planning' },
@@ -1726,7 +1728,7 @@ export function _eventFoundationActions(event) {
     }] : []),
     {
       id: 'food', domain: 'food', title: 'Plan the food.', askKind: 'menu',
-      consequence: 'How you’re feeding everyone — cook, cater, or potluck — drives the shopping and the run of show.',
+      consequence: `How you’re feeding everyone — cook, cater, or potluck — drives the shopping and ${THE_SCHEDULE}.`,
       // D-1B: deep-link to the open menu decision when one exists (its foodFocus
       // route scrolls + focuses the "Your choices" card), instead of dumping the
       // host at the Plan tab top. No pickable decision → the honest tab route.
@@ -3483,10 +3485,16 @@ export function _selectEventNextActionInner(event, prices = null) {
       // returns null for a task already past its window: never hidden).
       level: 'attention',
       category: 'decision',
-      title: `Resolve "${(urgent.title || 'an open decision').slice(0, 80)}".`,
+      // HOST WORDS (UX_11 rule 4, cohesion audit P1 #3, 11/24/2026). The title
+      // was cut at 80 characters INSIDE its own quotes, so a long step reached
+      // the board as `Resolve "… ask coworkers + family for ".`; the card wraps,
+      // so the step is named whole. The consequence was engine copy ("Open
+      // decisions block timeline, vendor, and approval progress downstream.").
+      // It now says what is true of a late step, in her words.
+      title: `Resolve "${urgent.title || 'an open decision'}".`,
       consequence: od > 0
-        ? `Overdue by ${daysWord(od)}. Open decisions block timeline, vendor, and approval progress downstream.`
-        : `Pending decision. Holding it open blocks downstream timeline + vendor work.`,
+        ? `Overdue by ${daysWord(od)}. The steps after it wait on it.`
+        : `Still open. The steps after it wait on it.`,
       // AN OVERDUE STEP GOES WHERE IT CAN BE DONE (owner, live, 11/18/2026: "Can't
       // get past this screen"). Every overdue checklist step lands in this list
       // ("Open Decisions = overdue uncompleted tasks"), and this tier sent each one
@@ -3964,7 +3972,7 @@ export function _selectEventNextActionInner(event, prices = null) {
         level: 'neutral',
         category: 'heart',
         title: `Protect the heart: "${mhShort}".`,
-        consequence: "Nothing's urgent right now — so use the calm to make sure the one thing that matters actually happens. Give it an owner and a moment in the run of show.",
+        consequence: `Nothing's urgent right now — so use the calm to make sure the one thing that matters actually happens. Give it an owner and a moment in ${THE_SCHEDULE}.`,
         primaryCta: 'Plan the moment',
         // Deep-link to the must-have card on the run of show (data-deeplink="musthave"),
         // so "Plan the moment" lands ON the host's own moment with a one-tap add — not on

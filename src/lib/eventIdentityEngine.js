@@ -346,14 +346,14 @@ export function resolveEventIdentity(intake, eventType, relationship, optionalFr
   confidence = Math.min(confidence, 0.95); // Cap at 0.95
 
   // Generate canonical description
+  // HOST WORDS (UX_11 rule 4, cohesion audit P1 #3, 11/24/2026): this string
+  // reaches the host as "Planning this as …". It used to end in the engine's
+  // own bookkeeping, "(compound event, requires merging)". The milestones
+  // already say it is two things; `isCompound` and `requiresMerge` stay on the
+  // result for the code that reads them.
   let canonicalDesc = `${primaryType}`;
   if (secondaryTypes.length > 0) {
     canonicalDesc += ` + ${secondaryTypes.join(' + ')}`;
-  }
-  if (isCompound) {
-    canonicalDesc += ` (compound event`;
-    if (requiresMerge) canonicalDesc += ', requires merging';
-    canonicalDesc += ')';
   }
 
   return {

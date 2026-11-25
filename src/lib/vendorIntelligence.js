@@ -44,6 +44,7 @@ import { daysUntil } from './dates';
 // is a module cycle — safe because neither side calls the other at module-eval
 // time, only inside functions. Do not move a call to top level.
 import { isVendorBooked, isVendorConfirmed } from './workstreams';
+import { SCHEDULE, SCHEDULE_WORD, THE_SCHEDULE } from './scheduleWords';
 
 // ── Tiny date utils (deliberately self-contained — no import from elsewhere) ──
 // daysFrom() used to compute this itself, subtracting a wall-clock instant from a
@@ -358,7 +359,7 @@ export function getVendorChallengeSummary(vendor, event) {
   // confirmed" is exactly isCommitted here — the canonical middle rung, rather
   // than a third private spelling of {Deposit Paid, Contracted}.
   else if (isCommitted) booking = { level: 'attention', note: 'Booking in progress — not yet confirmed.' };
-  else if (status === 'Quoted') booking = { level: 'attention', note: 'Quoted — needs decision before booking.' };
+  else if (status === 'Quoted') booking = { level: 'attention', note: 'Got a price — your call to book them or pass.' };
   else if (status === 'Considering' || !status) booking = { level: 'not_started', note: 'Not booked yet.' };
   else booking = { level: 'attention', note: `Status: ${status}.` };
 
@@ -397,9 +398,9 @@ export function getVendorChallengeSummary(vendor, event) {
     // Now readiness and the action ladder agree on when staleness matters.
     communication = { level: 'attention', note: `Last touch ${lastLogDays}d ago — reconfirm before the event.` };
   } else if (vendor.contact || vendor.phone) {
-    communication = { level: 'safe', note: 'Contact channels available.' };
+    communication = { level: 'safe', note: 'You have a way to reach them.' };
   } else {
-    communication = { level: 'not_tracked', note: 'Communication state not tracked yet.' };
+    communication = { level: 'not_tracked', note: 'No phone or email for them yet.' };
   }
 
   // ── Logistics ── (arrival, setup, access — we only really have arrivalTime)
@@ -409,7 +410,7 @@ export function getVendorChallengeSummary(vendor, event) {
   } else if (arrivalSet) {
     logistics = { level: 'safe', note: 'Arrival time set.' };
   } else {
-    logistics = { level: 'not_tracked', note: 'Logistics not tracked yet.' };
+    logistics = { level: 'not_tracked', note: 'No arrival time yet.' };
   }
 
   // ── Scope ── (we don't have a scope field. Use category presence + budgetCategory match)
@@ -421,9 +422,9 @@ export function getVendorChallengeSummary(vendor, event) {
   // ── Timeline ── (based on run-of-show match)
   let timeline;
   const rosMatches = (event && event.ros) ? event.ros.filter(r => r.vendorName && vendor.name && r.vendorName.toLowerCase().includes(vendor.name.toLowerCase())).length : 0;
-  if (rosMatches > 0) timeline = { level: 'safe', note: `${rosMatches} run-of-show entr${rosMatches === 1 ? 'y' : 'ies'} linked.` };
-  else if (isCommitted && eventClose) timeline = { level: 'attention', note: 'No run-of-show entries reference this vendor.' };
-  else timeline = { level: 'not_tracked', note: 'No run-of-show entries yet.' };
+  if (rosMatches > 0) timeline = { level: 'safe', note: `${rosMatches} ${SCHEDULE_WORD} entr${rosMatches === 1 ? 'y' : 'ies'} linked.` };
+  else if (isCommitted && eventClose) timeline = { level: 'attention', note: `No ${SCHEDULE_WORD} entries reference this vendor.` };
+  else timeline = { level: 'not_tracked', note: `No ${SCHEDULE_WORD} entries yet.` };
 
   // ── Financial ──
   let financial;
@@ -446,7 +447,7 @@ export function getVendorChallengeSummary(vendor, event) {
   }
   else if (depositPaid) financial = { level: 'safe', note: 'Deposit paid; balance pending.' };
   else if (isCommitted && !depositPaid) financial = { level: 'attention', note: 'Deposit not yet recorded.' };
-  else financial = { level: 'not_tracked', note: 'Payment state not tracked yet.' };
+  else financial = { level: 'not_tracked', note: 'Nothing paid or due on file yet.' };
 
   // ── Documents ── (contract + COI compliance gate)
   let documents;
@@ -477,14 +478,14 @@ export function getVendorChallengeSummary(vendor, event) {
   else if (eventClose) {
     if (arrivalSet) dayOf = { level: 'safe', note: 'Arrival time set — day-of ready.' }; // Readiness reflectivity (2026-06-10): condition (arrival) satisfied → green, not stuck amber. Live check-in is not_tracked, not an open issue.
     else dayOf = { level: 'attention', note: 'Day-of plan not confirmed.' };
-  } else dayOf = { level: 'not_tracked', note: 'Day-of activates closer to the event.' };
+  } else dayOf = { level: 'not_tracked', note: 'Nothing to check until closer to the day.' };
 
   // ── Closeout ── (no closeout fields exist)
   let closeout;
   if (eventPast) {
     if (balancePaid) closeout = { level: 'safe', note: 'Paid in full.' }; // Readiness reflectivity: condition (paid in full) satisfied → green, not stuck amber.
     else closeout = { level: 'critical', note: 'Final payment not recorded after event.' };
-  } else closeout = { level: 'not_tracked', note: 'Closeout activates after the event.' };
+  } else closeout = { level: 'not_tracked', note: 'Nothing to settle until the event is over.' };
 
   return { booking, communication, logistics, scope, timeline, financial, documents, dayOf, closeout };
 }
@@ -514,6 +515,14 @@ export function getVendorChallengeSummary(vendor, event) {
 // That is this codebase's recurring defect once more: a verdict derived over a
 // different population than the one its reader is looking at. Fixed at the
 // source, with ONE ladder — not a second copy that drifts.
+// The card's own words for each axis (hostv2 labels the six it shows the same
+// way), so a sentence that names an axis says what the host sees.
+const AXIS_WORDS = {
+  booking: 'booking', communication: 'staying in touch', logistics: 'arrival',
+  financial: 'money', documents: 'paperwork', closeout: 'after the event',
+  scope: 'what they’re doing', timeline: THE_SCHEDULE, dayOf: 'the day itself',
+};
+
 export function getVendorReadiness(vendor, event, axes = null) {
   if (!vendor) return { level: 'not_started', label: 'Not started', summary: '', counts: {} };
   const status = vendor.status || '';
@@ -573,13 +582,15 @@ export function getVendorReadiness(vendor, event, axes = null) {
   const untrackedNames = Object.entries(c)
     .filter(([, v]) => v && v.level === 'not_tracked')
     .map(([k]) => k);
-  const nameList = untrackedNames.join(', ');
+  // The host reads the rows by their card labels, not the engine's keys
+  // (cohesion audit #23: "(closeout)").
+  const hostNameList = untrackedNames.map((k) => AXIS_WORDS[k] || k).join(', ');
 
   if (notTracked > 0 && (eventSoon || eventToday)) {
     return {
       level: 'attention',
       label: eventToday ? 'Day-of follow-up' : 'Needs follow-up',
-      summary: `Nothing flagged, but ${notTracked} check${notTracked === 1 ? '' : 's'} never ran${nameList ? ` (${nameList})` : ''} — not the same as passing, and the day is close.`,
+      summary: `Nothing flagged, but ${notTracked} check${notTracked === 1 ? '' : 's'} can’t be made yet${hostNameList ? ` (${hostNameList})` : ''} — not the same as passing, and the day is close.`,
       counts,
     };
   }
@@ -589,7 +600,7 @@ export function getVendorReadiness(vendor, event, axes = null) {
   let label = 'Safe';
   if (eventSoon || eventToday) label = 'Ready for day-of';
   const summary = notTracked > 0
-    ? `${safe} of ${safe + notTracked} checks passing · ${notTracked} not tracked yet${nameList ? ` (${nameList})` : ''}.`
+    ? `${safe} of ${safe + notTracked} look good · ${notTracked} can’t be checked yet${hostNameList ? ` (${hostNameList})` : ''}.`
     : (eventSoon ? 'All checks passing — ready for event day.' : 'Booking healthy.');
   return { level: 'safe', label, summary, counts };
 }
@@ -681,7 +692,7 @@ export function getVendorNextAction(vendor, event) {
   if (eventPast && !balancePaid && (vendor.cost || 0) > 0) {
     return {
       title: `Settle final payment with ${vname}.`,
-      consequence: 'Event passed and balance not marked paid. Closeout is incomplete until payment lands.',
+      consequence: 'The event is over and the balance isn’t marked paid. They’re not settled until it is.',
       ctaCopy: 'Mark balance paid',
       sourceCategory: 'closeout',
     };
@@ -729,7 +740,7 @@ export function getVendorNextAction(vendor, event) {
   if (isCommitted && !depositPaid && (vendor.cost || 0) > 0) {
     return {
       title: `Confirm deposit paid to ${vname}.`,
-      consequence: 'Deposit not yet recorded. Booking is not fully secured until deposit lands.',
+      consequence: 'The booking isn’t secure until the deposit lands.',
       ctaCopy: 'Mark deposit paid',
       sourceCategory: 'financial',
     };
@@ -769,8 +780,8 @@ export function getVendorNextAction(vendor, event) {
   const rosMatches = (event && event.ros) ? event.ros.filter(r => r.vendorName && r.vendorName.toLowerCase().includes((vendor.name || '').toLowerCase())).length : 0;
   if (isCommitted && rosMatches === 0 && eventVeryClose) {
     return {
-      title: `Add ${vname} to the run of show.`,
-      consequence: `This vendor isn't on the run of show yet — adding them makes sure their setup is included in the day-of timeline.`,
+      title: `Add ${vname} to ${THE_SCHEDULE}.`,
+      consequence: `This vendor isn't on ${THE_SCHEDULE} yet — adding them makes sure their setup is included in the day-of timeline.`,
       ctaCopy: 'Open timeline',
       sourceCategory: 'timeline',
       route: { tab: 'Timeline' },
@@ -822,16 +833,22 @@ export function getVendorNextAction(vendor, event) {
   if (isCommitted && ch.booking && ch.booking.level === 'attention') {
     return {
       title: `Confirm ${vname} is fully booked.`,
-      consequence: ch.booking.note || 'Booking is recorded but not yet confirmed.',
+      // Not the booking row's own sentence again: the card shows that row
+      // right below this line (cohesion audit #61).
+      consequence: 'Ask them to confirm, then set them to Locked in.',
       ctaCopy: 'Mark confirmed',
       sourceCategory: 'booking',
     };
   }
-  const stillOpen = Object.values(ch).filter(v => v && (v.level === 'attention' || v.level === 'critical'));
+  const stillOpenEntries = Object.entries(ch).filter(([, v]) => v && (v.level === 'attention' || v.level === 'critical'));
+  const stillOpen = stillOpenEntries.map(([, v]) => v);
+  const stillOpenKey = stillOpenEntries.length ? stillOpenEntries[0][0] : null;
   if (stillOpen.length > 0) {
     return {
       title: `Follow up with ${vname}.`,
-      consequence: `${stillOpen[0].note} Not fully clear yet.`,
+      // Names the row that is open rather than repeating its sentence, which
+      // the card already shows (cohesion audit #61: one sentence, four times).
+      consequence: `${AXIS_WORDS[stillOpenKey] ? 'Start with ' + AXIS_WORDS[stillOpenKey] + '.' : 'One thing is still open.'}`,
       ctaCopy: 'Open vendor',
       sourceCategory: 'review',
     };
@@ -995,7 +1012,7 @@ export function getActionableNextStep(nextAction, vendor) {
     return {
       kind: 'edit',
       ctaLabel: 'Open vendor details',
-      editHint: 'Add this vendor to the Run of Show tab manually for now.',
+      editHint: `Add this vendor to ${THE_SCHEDULE} by hand for now.`,
     };
   }
 
@@ -1146,7 +1163,7 @@ export function getVendorDayOfState(vendor, event) {
       label: 'Arrival / setup time',
       status: arrivalTime ? 'done' : (eventClose ? 'missing' : 'pending'),
       value: arrivalTime || (eventToday ? 'Not set — needed today' : 'Not set'),
-      consequence: !arrivalTime && eventClose ? 'Run-of-show timing cannot be trusted without an arrival time.' : undefined,
+      consequence: !arrivalTime && eventClose ? `${SCHEDULE} timing cannot be trusted without an arrival time.` : undefined,
     },
     {
       key: 'loadInOrder',
@@ -1266,7 +1283,7 @@ export function getVendorLinkedWork(vendor, event) {
   // Timeline / RoS entries matching this vendor by name
   const timeline = (event.ros || [])
     .filter(r => r.vendorName && vname && r.vendorName.toLowerCase().includes(vname))
-    .map(r => ({ id: r.id, label: r.title || r.activity || 'Run-of-show entry', note: r.time ? `${r.time}` : undefined }));
+    .map(r => ({ id: r.id, label: r.title || r.activity || `${SCHEDULE} entry`, note: r.time ? `${r.time}` : undefined }));
 
   // Decisions linked by vendor name or category mention in title
   const decisions = (event.decisions || event.approvals || [])

@@ -148,3 +148,15 @@ def test_the_resolver_reads_the_version_from_the_account_in_the_same_query():
     asyncio.run(R._resolve_event(Conn(), CODE))
     assert len(seen) == 1
     assert "studio_settings" in seen[0] and "hostPhoto" in seen[0] and "data->>'rsvpCode'" in seen[0]
+
+
+# THE EMAIL PICTURE DRAWS THE PHOTO (owner, 11/24/2026, follow-on item 6). The
+# invite card is drawn on a canvas in the host's browser (hostv2
+# inviteCardImage.js) and uploaded; a cross-origin image without CORS taints the
+# canvas and the upload fails. So the photo routes allow cross-origin image use.
+def test_the_public_photo_allows_cross_origin_image_use(photos):
+    photos.c.post("/api/host-photo", content=plain_jpeg(), headers={"Content-Type": "image/jpeg"})
+    r = photos.c.get(f"/api/public/host-photo/{CODE}", headers={"Origin": "https://example.com"})
+    assert r.status_code == 200
+    assert r.headers.get("access-control-allow-origin") == "*"
+    assert r.headers.get("cross-origin-resource-policy") == "cross-origin"

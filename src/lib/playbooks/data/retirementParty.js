@@ -15,6 +15,7 @@
 // the authoring brief these are synthesized from trade consensus and NOT
 // individually cited: knowledge.sources stays [] and verificationStatus is
 // 'synthesized'.
+import { SCHEDULE_WORD } from '../../scheduleWords';
 
 const retirementParty = {
   type: 'Retirement Party',
@@ -246,7 +247,7 @@ const retirementParty = {
     { category: 'AV / Slideshow Tech', required: false, altToDIY: 'Some venues rent a mic + screen (~$75-200); a borrowed Bluetooth speaker + a wheeled-in TV is the DIY alt', when: 'T-14d', costRange: [75, 250], costUnit: 'flat' },
     // "at home" only when the host answered home (owner's demo, 11/15/2026: a VFW
     // event was told "after a bar + buffet at home").
-    { category: 'Cleaning', required: false, altToDIY: 'A post-party cleaner (~$120-180) is high-ROI host sanity after a bar + buffet', copyByAnswer: { venue: { 'Host home': 'A post-party cleaner (~$120-180) is high-ROI host sanity after a bar + buffet at home', 'Backyard / outdoor': 'A post-party cleaner (~$120-180) is high-ROI host sanity after a bar + buffet at home' } }, when: 'T-7d', costRange: [120, 180], costUnit: 'flat' },
+    { category: 'Cleaning', required: false, altToDIY: 'A post-party cleaner (~$120-180) saves you the cleanup after a bar + buffet', copyByAnswer: { venue: { 'Host home': 'A post-party cleaner (~$120-180) saves you the cleanup after a bar + buffet at home', 'Backyard / outdoor': 'A post-party cleaner (~$120-180) saves you the cleanup after a bar + buffet at home' } }, when: 'T-7d', costRange: [120, 180], costUnit: 'flat' },
     { category: 'DJ / Music', required: false, altToDIY: 'A DJ (~$300-600) reads the room, MCs, and cues the tribute\'s music beats; a curated playlist through a real Bluetooth speaker is the free DIY alt', when: 'T-14d', costRange: [300, 600], costUnit: 'flat' },
   ],
 
@@ -314,7 +315,7 @@ const retirementParty = {
   knowledge: {
     governanceVersion: '1.0.0',
     verificationStatus: 'synthesized',
-    note: 'Quantities here are synthesized from standard US catering and party-planning heuristics rather than a single authoritative source: a meal-hour buffet target of roughly 0.5 lb cooked protein per guest plus 2-3 sides (or, for a heavy-appetizers format, ~10-12 hors d\'oeuvre bites per guest); about one drink per guest per hour split across beer, wine, and the honoree\'s favorite drink; a champagne toast pour of a half-glass, where one 750ml bottle yields ~6-8 toast portions, so plan ~1 bottle per 6-8 guests; and roughly 1.5 lb of ice per guest for chilling plus drinks. Because a retirement guest list skews older and mixes coworkers with family, the playbook treats audibility of the speeches (a real mic), ample real seating, a no-stairs accessible room, a reachable buffet, and a heavy non-alcoholic/coffee pour as first-class requirements, not nice-to-haves. These are planning midpoints, not guarantees — actual consumption and needs vary with crowd, time of day, region, and duration, so the playbook rounds up on food and drinks and treats headcount confirmation as the master variable. The surprise choreography, the tribute run-of-show, and the ROI/coaching framing are authored judgment. Per the authoring brief, no citations are claimed; verificationStatus is "synthesized" and sources is intentionally empty.',
+    note: `Quantities here are synthesized from standard US catering and party-planning heuristics rather than a single authoritative source: a meal-hour buffet target of roughly 0.5 lb cooked protein per guest plus 2-3 sides (or, for a heavy-appetizers format, ~10-12 hors d'oeuvre bites per guest); about one drink per guest per hour split across beer, wine, and the honoree's favorite drink; a champagne toast pour of a half-glass, where one 750ml bottle yields ~6-8 toast portions, so plan ~1 bottle per 6-8 guests; and roughly 1.5 lb of ice per guest for chilling plus drinks. Because a retirement guest list skews older and mixes coworkers with family, the playbook treats audibility of the speeches (a real mic), ample real seating, a no-stairs accessible room, a reachable buffet, and a heavy non-alcoholic/coffee pour as first-class requirements, not nice-to-haves. These are planning midpoints, not guarantees — actual consumption and needs vary with crowd, time of day, region, and duration, so the playbook rounds up on food and drinks and treats headcount confirmation as the master variable. The surprise choreography, the tribute ${SCHEDULE_WORD}, and the ROI/coaching framing are authored judgment. Per the authoring brief, no citations are claimed; verificationStatus is "synthesized" and sources is intentionally empty.`,
     sources: [],
   },
 };

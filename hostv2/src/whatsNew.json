@@ -30,7 +30,7 @@
     "date": "2026-11-22",
     "headline": "Smaller fixes you'll notice",
     "bullets": [
-      "The run of show opens the doors at your start time, not five minutes after it.",
+      "The day’s schedule opens the doors at your start time, not five minutes after it.",
       "Warnings, like a date that can't work, are easier to spot in dark mode.",
       "The family page shows the dress code, and reply counts say who said yes."
     ]
@@ -74,7 +74,7 @@
     "date": "2026-11-22",
     "headline": "The day of, and the days after",
     "bullets": [
-      "On the day, your plan opens on the run of show: what is up first and what is happening now.",
+      "On the day, your plan opens on the day’s schedule: what is up first and what is happening now.",
       "After the date, planning reminders stop, and the money summary says what was spent and who is still owed."
     ]
   },

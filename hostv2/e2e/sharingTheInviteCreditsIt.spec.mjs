@@ -79,7 +79,7 @@ test('copy the invite, say it was sent, and the invite task is credited — with
 
   // Share: a copy is not a send, so the host is asked.
   await openSection('Guests');
-  expect(await tap(/^Check and share link$/)).toBe(true);
+  expect(await tap(/^Share the link$/)).toBe(true);
   await expect(page.getByRole('button', { name: 'I sent it' })).toBeVisible({ timeout: 10_000 });
   await page.getByRole('button', { name: 'I sent it' }).click();
   await page.waitForTimeout(800);
@@ -131,7 +131,7 @@ test('the invite written and sent from its draft credits "Send the invite"', asy
   await tap(/^Jump to a section$/); await page.waitForTimeout(400);
   expect(await tap(/^Guests/)).toBe(true);
   await page.waitForTimeout(900);
-  expect(await tap(/^Copy the invite$/), 'the invite draft is offered').toBe(true);
+  expect(await tap(/^Invite text$/), 'the invite draft is offered').toBe(true);
   await expect(page.getByRole('button', { name: 'Mark it sent — I sent it myself' })).toBeVisible({ timeout: 10_000 });
   expect((await stored()).invitesSentAt || null, '(premise) not credited yet').toBe(null);
   await page.getByRole('button', { name: 'Mark it sent — I sent it myself' }).click();

@@ -106,7 +106,7 @@ const openTheNudge = async (page) => {
   await sheetSettled(page);
   // Maya, Jordan and Lee: invited, unanswered, not nudged lately. Sam answered,
   // Ana was nudged yesterday, Rae was never invited.
-  await page.getByRole('button', { name: 'Nudge the 3 who haven’t answered', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Nudge the 3 who haven’t replied', exact: true }).first().click();
   const block = page.locator('[data-nudge-list]');
   await expect(block).toBeVisible({ timeout: 15_000 });
   return block;
@@ -115,7 +115,7 @@ const openTheNudge = async (page) => {
 test('the batch emails the unanswered, skips the recently nudged, and texts go into the queue', async ({ page }) => {
   const posts = await boot(page, [200, 200]);
   const block = await openTheNudge(page);
-  await expect(block).toContainText('Nudge the 3 who haven’t answered');
+  await expect(block).toContainText('Nudge the 3 who haven’t replied');
   await expect(block).toContainText('Skipped 1 guest nudged in the last 3 days.');
 
   await block.getByRole('button', { name: 'Email the nudge to 2 guests', exact: true }).click();
@@ -188,19 +188,19 @@ test('the board asks 3 days before the host’s reply-by date, and its row opens
   const posts = await boot(page, [200]);
   // The compact "Then, in order" row keeps the title's lead (the board trims
   // an em-dash tail on every row); the full title is the item's own.
-  const row = page.getByRole('button', { name: /^3 haven’t answered\b/ }).first();
+  const row = page.getByRole('button', { name: /^3 haven’t replied\b/ }).first();
   await expect(row).toBeVisible({ timeout: 15_000 });
   await row.click();
   // On a wide canvas a row selects, and its pane carries the full title and
   // the button; on a phone the row itself opens the nudge.
   const pane = page.getByRole('complementary', { name: 'Selected item' });
   if (await pane.count()) {
-    await expect(pane.getByRole('heading', { name: /^3 haven’t answered — replies due [A-Z][a-z]+day$/ })).toBeVisible();
-    await pane.getByRole('button', { name: /^3 haven’t answered — replies due [A-Z][a-z]+day$/ }).click();
+    await expect(pane.getByRole('heading', { name: /^3 haven’t replied — replies due [A-Z][a-z]+day$/ })).toBeVisible();
+    await pane.getByRole('button', { name: /^3 haven’t replied — replies due [A-Z][a-z]+day$/ }).click();
   }
   const block = page.locator('[data-nudge-list]');
   await expect(block).toBeVisible({ timeout: 15_000 });
-  await expect(block).toContainText('Nudge the 3 who haven’t answered');
+  await expect(block).toContainText('Nudge the 3 who haven’t replied');
   expect(posts).toEqual([]);   // opening it sent nothing
 });
 
@@ -217,6 +217,6 @@ test('with no reply-by date set, the chase step is the prompt, and tapping it op
   await page.getByRole('dialog', { name: 'Your checklist' }).getByRole('button', { name: /^Open the nudge\b/ }).first().click();
   const block = page.locator('[data-nudge-list]');
   await expect(block).toBeVisible({ timeout: 15_000 });
-  await expect(block).toContainText('Nudge the 3 who haven’t answered');
+  await expect(block).toContainText('Nudge the 3 who haven’t replied');
   expect(posts).toEqual([]);   // opening it sent nothing
 });

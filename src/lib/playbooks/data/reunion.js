@@ -18,6 +18,7 @@
 // budget language ("chip in", "cost split" — budgetContext.js). Quantities and
 // the shirt price band are synthesized — no fetched sources, no fabricated
 // citations, per the corroboration ratchet.
+import { A_SCHEDULE, THE_SCHEDULE } from '../../scheduleWords';
 
 const reunion = {
   type: 'Reunion',
@@ -122,7 +123,7 @@ const reunion = {
       deliversHeartMoment: true,
       priorityBasis: { rationale: 'The group photo is the one artifact people keep, and a named shooter at a fixed time is what keeps it from being lost to drift.', tier: 'reasoned' },
       why:
-        'The whole-group photo is the one thing people keep, and most reunions forget it until half the family has wandered off. Name a shooter and set a fixed time on the run of show (early-to-mid afternoon, before anyone leaves); a paid photographer for an hour is worth it for a milestone reunion.',
+        `The whole-group photo is the one thing people keep, and most reunions forget it until half the family has wandered off. Name a shooter and set a fixed time on ${THE_SCHEDULE} (early-to-mid afternoon, before anyone leaves); a paid photographer for an hour is worth it for a milestone reunion.`,
     },
     {
       id: 'kids-plan',
@@ -295,7 +296,7 @@ const reunion = {
     },
     {
       id: 'finalize-runofshow',
-      name: 'Finalize run-of-show (photo time, meal time, games)',
+      name: `Finalize ${THE_SCHEDULE} (photo time, meal time, games)`,
       offsetDays: 14,
       owner: 'host',
       dependsOn: ['collect-rsvps'],
@@ -406,7 +407,7 @@ const reunion = {
     { id: 't-photographer', target: 'assign', facts: [], milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Name the group-photo shooter and put the photo on the schedule at a fixed time', when: 'T-14d',
       // No group photo (owner, 11/21/2026): "Skip / candids only" retires the four group-photo steps.
       whenChoice: { id: 'group-photo', not: ['Skip / candids only'] } },
-    { id: 't-runofshow', target: 'build-day', facts: [], milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Write the run-of-show: arrival, photo, meal, games, cleanup — assign each to a volunteer', when: 'T-13d' },
+    { id: 't-runofshow', target: 'build-day', facts: [], milestoneId: 'finalize-runofshow', phase: 'planning', label: `Write ${THE_SCHEDULE}: arrival, photo, meal, games, cleanup — assign each to a volunteer`, when: 'T-13d' },
     { id: 't-nametags', target: 'guests', facts: [], milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Prep name tags, markers, and a sign-in / contact-update sheet for the registration table', when: 'T-12d' },
     { id: 't-weather-check', target: 'weather', facts: [], milestoneId: 'confirm-weather-plan', phase: 'planning', label: 'Check the 7-day forecast; confirm the rain backup (indoor space or tent on hold)', when: 'T-7d', whenChoice: { id: 'venue-setting', ask: 'Outside, inside, or outside with somewhere to move to?', in: ['Outdoor park pavilion', 'Backyard', 'Outdoor with indoor backup'] } },
     { id: 't-shop-dry', target: 'list', facts: [], shopClock: true, milestoneId: 'shop-nonperishables', phase: 'purchasing', label: 'Buy drinks, water, paper goods, trash bags, sunscreen, bug spray, games', when: 'T-3d' },
@@ -437,7 +438,7 @@ const reunion = {
     { id: 't-family-host-map', target: 'spread', facts: [], milestoneId: 'book-vendors', phase: 'planning', label: 'Map who is hosting whom — guest rooms and air mattresses claimed by name before anyone lands, with the overflow pointed at the group hotel options', when: 'T-30d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
     { id: 't-arrival-windows', target: 'none', facts: [], milestoneId: 'collect-rsvps', phase: 'planning', label: 'Collect each household\'s arrival window — who gets in the night before, who lands the morning of the big day', when: 'T-21d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
     { id: 't-airport-runs', target: 'none', facts: [], milestoneId: 'collect-rsvps', phase: 'planning', label: 'Match every non-driver to a ride — who picks up whom, with phone numbers swapped before travel day', when: 'T-14d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] }, whenMode: { not: ['drive'] } },
-    { id: 't-perday-ros', target: 'build-day', facts: [], milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Write a run-of-show for each day — even the easy arrival evening gets a where-and-when, so nobody is calling around for the plan', when: 'T-13d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
+    { id: 't-perday-ros', target: 'build-day', facts: [], milestoneId: 'finalize-runofshow', phase: 'planning', label: `Write ${A_SCHEDULE} for each day — even the easy arrival evening gets a where-and-when, so nobody is calling around for the plan`, when: 'T-13d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
     { id: 't-memory-moment', target: 'none', facts: [], milestoneId: 'finalize-runofshow', phase: 'planning', label: 'Plan the main day\'s memory moment — an elder walks the family tree, a word for those lost this year — kept simple and open to everyone', when: 'T-12d', whenChoice: { id: 'reunion-span', in: ['A full weekend (2-3 days)'] } },
 
     // SHARED PAYMENTS (cost-share → 'Each family chips in a set amount')

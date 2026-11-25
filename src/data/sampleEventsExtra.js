@@ -3,6 +3,7 @@
 // Each event's `type` maps to its own engine model via familyFor(). Do not hand-edit;
 // re-run the workflow + assembler to regenerate.
 import { rebaseSampleEvents } from '../lib/sampleDateRebase';
+import { SCHEDULE, SCHEDULE_WORD, THE_SCHEDULE } from '../lib/scheduleWords';
 const RAW_SAMPLE_EVENTS_EXTRA = [
   {
     "id": "ev-x-engagement-party",
@@ -2353,7 +2354,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-baby-shower-t10",
         "week": "-3 days",
-        "task": "Finalize day-of run-of-show & gift-opening / display plan; assign helpers",
+        "task": `Finalize day-of ${SCHEDULE_WORD} & gift-opening / display plan; assign helpers`,
         "done": false,
         "owner": "Whitney Okafor"
       },
@@ -3617,7 +3618,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-graduation-t11",
         "week": "2 days out",
-        "task": "Finalize day-of run-of-show: food timing, cap toss, speech, shaded seating for elders",
+        "task": `Finalize day-of ${SCHEDULE_WORD}: food timing, cap toss, speech, shaded seating for elders`,
         "done": false,
         "owner": "Diana Restrepo"
       }
@@ -3720,7 +3721,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
         "owner": "Carlos Restrepo",
         "confirmed": false,
         "vendorName": "",
-        "notes": "Short remarks; finalize who speaks at run-of-show review"
+        "notes": `Short remarks; finalize who speaks at ${SCHEDULE_WORD} review`
       },
       {
         "id": "ev-x-graduation-r10",
@@ -4871,7 +4872,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-reunion-t11",
         "week": "2027-06",
-        "task": "Lock final headcount with caterer, finalize run-of-show, send logistics email to all confirmed",
+        "task": `Lock final headcount with caterer, finalize ${THE_SCHEDULE}, send logistics email to all confirmed`,
         "done": false,
         "owner": "Marcus DeLeon"
       }
@@ -5233,7 +5234,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
         "plusOne": "",
         "plusOneMeal": "—",
         "kids": 0,
-        "needs": "Run-of-show owner; on comms headset all day",
+        "needs": `${SCHEDULE} owner; on comms headset all day`,
         "email": "amara.boateng@aperturelabs.io",
         "phone": "+1-415-555-0193",
         "address": "",
@@ -6746,7 +6747,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-town-hall-t6",
         "week": "Wk of Jun 15 (T-3wk)",
-        "task": "Draft run-of-show, assign speaker slots & timings, confirm demo readiness",
+        "task": `Draft ${THE_SCHEDULE}, assign speaker slots & timings, confirm demo readiness`,
         "done": false,
         "owner": "Hannah Schmidt"
       },
@@ -6940,7 +6941,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-town-hall-d3",
         "kind": "other",
-        "title": "Run-of-Show v0.4 (DRAFT)",
+        "title": `${SCHEDULE} v0.4 (DRAFT)`,
         "status": "draft",
         "updatedAt": "2026-05-24T12:00:00.000Z",
         "notes": "Speaker slots + timings drafted; demo slot + Q&A block still being finalized. Locks after 7/8 rehearsal."
@@ -7884,7 +7885,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
         "website": "",
         "contractSigned": false,
         "backup": "",
-        "notes": "BEHIND. Quote received but show production scope (number of category VT packages, LED wall size, livestream tier) is undefined because honoree list isn't locked. Cannot contract until run-of-show is set. This is the slipping milestone.",
+        "notes": `BEHIND. Quote received but show production scope (number of category VT packages, LED wall size, livestream tier) is undefined because honoree list isn't locked. Cannot contract until ${SCHEDULE_WORD} is set. This is the slipping milestone.`,
         "serviceArea": "",
         "insuranceStatus": "Insured",
         "log": [
@@ -7977,7 +7978,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-award-ceremony-t7",
         "week": "2026-06 (Wk of Jun 15)",
-        "task": "Lock run-of-show segments + category VT package list; contract AV/show production",
+        "task": `Lock ${SCHEDULE_WORD} segments + category VT package list; contract AV/show production`,
         "done": false,
         "owner": "Show Producer"
       },
@@ -8053,7 +8054,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
         "owner": "Show Producer",
         "confirmed": false,
         "vendorName": "",
-        "notes": "Needs locked run-of-show + honoree VT packages. Blocked until honorees confirmed."
+        "notes": `Needs locked ${SCHEDULE_WORD} + honoree VT packages. Blocked until honorees confirmed.`
       },
       {
         "id": "ev-x-award-ceremony-r5",
@@ -8167,7 +8168,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
         "title": "Apex Stage & Show Production Agreement",
         "status": "draft",
         "updatedAt": "2026-09-29T12:00:00.000Z",
-        "notes": "NOT signed. Awaiting locked run-of-show + production scope. Critical blocker."
+        "notes": `NOT signed. Awaiting locked ${SCHEDULE_WORD} + production scope. Critical blocker.`
       },
       {
         "id": "ev-x-award-ceremony-d4",
@@ -8747,7 +8748,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
         "address": "",
         "giftReceived": false,
         "thankYouSent": false,
-        "partyNotes": "Confirmed moderator. Wants run-of-show 48h ahead."
+        "partyNotes": `Confirmed moderator. Wants ${SCHEDULE_WORD} 48h ahead.`
       },
       {
         "id": "ev-x-networking-event-g2",
@@ -9113,7 +9114,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-networking-event-t9",
         "week": "2026-06-29",
-        "task": "Confirm all panelists registered and send run-of-show",
+        "task": `Confirm all panelists registered and send ${THE_SCHEDULE}`,
         "done": false,
         "owner": "Priya Nair"
       },
@@ -9310,7 +9311,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
       {
         "id": "ev-x-networking-event-d6",
         "kind": "other",
-        "title": "Speaker Run-of-Show & Panel Brief",
+        "title": `Speaker ${SCHEDULE} & Panel Brief`,
         "status": "draft",
         "updatedAt": "2026-06-28T12:00:00.000Z",
         "notes": "Draft pending Diego Fuentes confirmation; send to panelists 48h out."
@@ -12706,7 +12707,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
         "website": "",
         "contractSigned": false,
         "backup": "",
-        "notes": "Closing-night sound bath. Quote received, contract NOT sent yet. Needs to lock before final ROS. Low risk but trending late.",
+        "notes": `Closing-night sound bath. Quote received, contract NOT sent yet. Needs to lock before final ${SCHEDULE_WORD}. Low risk but trending late.`,
         "serviceArea": "",
         "insuranceStatus": "Insured",
         "log": [
@@ -12941,7 +12942,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
         "owner": "Idris (Sound Healing)",
         "confirmed": false,
         "vendorName": "",
-        "notes": "Vendor contract not yet signed — confirm before printing final ROS."
+        "notes": `Vendor contract not yet signed — confirm before printing final ${SCHEDULE_WORD}.`
       },
       {
         "id": "ev-x-wellness-retreat-r11",
@@ -13021,7 +13022,7 @@ const RAW_SAMPLE_EVENTS_EXTRA = [
         "title": "Resonance Sound Healing Agreement",
         "status": "requested",
         "updatedAt": "2026-09-15T12:00:00.000Z",
-        "notes": "Quote in hand; contract not yet sent. Needed to finalize closing-night ROS."
+        "notes": `Quote in hand; contract not yet sent. Needed to finalize closing-night ${SCHEDULE_WORD}.`
       }
     ]
   }

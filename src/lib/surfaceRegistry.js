@@ -572,7 +572,7 @@ export const SURFACES = [
           severity: 'attention',
           title: item.title,
           why: item.why,
-          ask: item.count === 1 ? 'Nudge the 1 who hasn’t answered.' : `Nudge the ${item.count} who haven’t answered.`,
+          ask: item.count === 1 ? 'Nudge the 1 who hasn’t replied.' : `Nudge the ${item.count} who haven’t replied.`,
           route: { tab: 'Guests', focusField: 'rsvp-nudge' },
           key: 'rsvp-chase',
           dueInDays: item.days,

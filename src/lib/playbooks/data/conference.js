@@ -15,6 +15,7 @@
 // refresh breaks every 90 min). Authored honestly and labeled `synthesized`
 // (PCMA/MPI/BizBash trade consensus) until a verification pass attaches
 // citations. ESM default export.
+import { SCHEDULE_WORD, THE_SCHEDULE } from '../../scheduleWords';
 
 const conference = {
   type: 'Conference',
@@ -25,7 +26,7 @@ const conference = {
   recordKind: 'client',
   version: '1.0.0',
   meta: {
-    summary: 'A multi-day professional conference / summit. Vendor-led: most spend is venue + AV/production + F&B (via BEOs). General session + breakout tracks + an expo floor, registration/check-in desk, badges/wayfinding, a hotel room block + shuttles, and a producer-grade run-of-show. The playbook front-loads the venue + date (books a year+ out) and keynote-speaker acquisition, then drives the long runway down to show-call and rehearsal.',
+    summary: `A multi-day professional conference / summit. Vendor-led: most spend is venue + AV/production + F&B (via BEOs). General session + breakout tracks + an expo floor, registration/check-in desk, badges/wayfinding, a hotel room block + shuttles, and a producer-grade ${SCHEDULE_WORD}. The playbook front-loads the venue + date (books a year+ out) and keynote-speaker acquisition, then drives the long runway down to show-call and rehearsal.`,
     typicalGuests: { low: 50, default: 200, high: 1000 },
     typicalDurationHours: 24,
     leadTimeDays: 180,
@@ -64,7 +65,7 @@ const conference = {
     { id: 'conf_app_comms', name: 'Launch attendee app + know-before-you-go comms', offsetDays: 14, owner: 'host', dependsOn: ['conf_agenda'], category: 'comms', risk: { ifDelayed: 'Attendees arrive without schedule/wayfinding; help desk swamped', severity: 'med' } },
     { id: 'conf_guarantee', name: 'Submit final headcount guarantee to venue/caterer', offsetDays: 7, owner: 'host', dependsOn: ['conf_beo', 'conf_registration'], category: 'catering', risk: { ifDelayed: 'You pay on a wrong number — over-cater (waste) or under-cater (shortfall)', severity: 'high' } },
     { id: 'conf_rehearsal', name: 'Speaker rehearsals + full tech check / dry run on stage', offsetDays: 1, owner: 'producer', dependsOn: ['conf_av', 'conf_print'], category: 'production', risk: { ifDelayed: 'Cues unrehearsed; the general-session/keynote failure mode goes uncaught', severity: 'high' } },
-    { id: 'event', name: 'Conference days (show-call the run-of-show)', offsetDays: 0, owner: 'producer', dependsOn: ['conf_rehearsal', 'conf_guarantee', 'conf_app_comms'], category: 'event', risk: { ifDelayed: 'n/a', severity: 'low' } },
+    { id: 'event', name: `Conference days (show-call ${THE_SCHEDULE})`, offsetDays: 0, owner: 'producer', dependsOn: ['conf_rehearsal', 'conf_guarantee', 'conf_app_comms'], category: 'event', risk: { ifDelayed: 'n/a', severity: 'low' } },
   ],
 
   tasks: [
@@ -152,7 +153,7 @@ const conference = {
       { when: 'T0 +8h', what: 'Reception, and collect the feedback before people scatter' },
     ],
     cleanup: [
-      { when: 'during', what: 'Run the run-of-show: show-call general session, manage track turnovers, breaks, expo, and reception each day' },
+      { when: 'during', what: `Run ${THE_SCHEDULE}: show-call general session, manage track turnovers, breaks, expo, and reception each day` },
       { when: 'T0 +5m', what: 'Tear down AV + expo; return rentals; collect lost-and-found; reconcile on-site badge/registration data' },
     ],
   },

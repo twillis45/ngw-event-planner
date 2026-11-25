@@ -126,6 +126,7 @@ import { byGuestMode } from '../guestMode';
 // deployed since. The local matrix never runs that gate, which is why every run
 // looked green.
 import { DEST_LODGING_OPTIONS } from '../destLodgingOptions';
+import { SCHEDULE_WORD } from '../scheduleWords';
 
 // One list, so every reader takes the same shape as destinationDecisionsFor and
 // nobody re-derives "is there a cook lever" locally. Declared BELOW the imports:
@@ -340,7 +341,7 @@ for (const pb of ALL_PLAYBOOKS) REGISTRY[norm(pb.type)] = pb;
 // reason is fine, and its surface says so. Silence without one is the defect.
 const BORROWED_PLAYBOOK = {
   'Town Hall':          ['Board Meeting', 'an all-hands runs like a board meeting scaled up: one room, one agenda, a start that has to be on time'],
-  'Product Launch':     ['Conference', 'a launch is a conference with one session — same AV, run-of-show, press and guest-list work'],
+  'Product Launch':     ['Conference', `a launch is a conference with one session — same AV, ${SCHEDULE_WORD}, press and guest-list work`],
   'Training / Workshop':['Conference', 'sessions, a room set for them, materials and catering on a clock'],
   'Award Ceremony':     ['Conference', 'a program with a stage, an AV cue sheet and a seated audience'],
   'Networking Event':   ['Holiday Party', 'the shape is a room, drinks, food that can be eaten standing, and a soft program'],

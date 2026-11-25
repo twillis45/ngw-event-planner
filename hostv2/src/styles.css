@@ -3372,6 +3372,11 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    Monogram cards, semantic status pills, alert CHIPS not paragraphs,
    workstream strip, tap-to-expand with a real motion curve. */
 .wstrip{display:flex; gap:var(--sp-2); overflow-x:auto; padding:2px 0 var(--sp-3); scrollbar-width:none}
+/* NOTHING TAPPABLE IS CLIPPED (owner report, 11/24/2026). A sideways scroller
+   clips, and its first and last chips sat flush with its edges, so their
+   focus and attention rings (12px out) were cut. The scroller gives itself
+   12px inside and takes it back outside, so the chips stay where they were. */
+.wstrip, .rtool-lens{ padding-inline:var(--sp-3); margin-inline:calc(-1 * var(--sp-3)); scroll-padding-inline:var(--sp-3); }
 .wstrip::-webkit-scrollbar{display:none}
 .wchip{flex-shrink:0; display:flex; flex-direction:column; gap:2px; align-items:flex-start;
   border:1px solid var(--line-soft); background:var(--bg-band); border-radius:var(--r-row);
@@ -3423,6 +3428,36 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .vc-amt .amt{font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; color:var(--ink)}
 .vc-paid{font-size:var(--t-tag); font-weight:650; color:var(--ok)}
 .vc-id{min-width:0; flex:1}
+/* THE HEADER'S TWO ROWS (owner's fix 1 to the approved vendor renders,
+   11/24/2026). Row one: the name, then the price on the right. Row two: the
+   meta on ONE line, then the status pushed right. A flex line breaks on the
+   items' natural widths, so where both don't fit (390: 240px of meta plus a
+   107px pill in 282) the pill wraps to its own right-hand line instead of the
+   meta wrapping, and the name never shares its line with the status. */
+.vc-top{display:flex; align-items:baseline; gap:var(--sp-2); min-width:0}
+.vc-top .vc-name{flex:1 1 auto; min-width:0}
+.vc-sub{display:flex; flex-wrap:wrap; align-items:center; column-gap:var(--sp-2); row-gap:var(--sp-1); margin-top:1px}
+.vc-sub .vc-cat{flex:0 1 auto; min-width:0; margin-top:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.vc-sub .vc-pill{margin-left:auto}
+/* THE OPENED VENDOR'S GROUPS (cohesion batch B, approved renders). */
+.vd-group{margin:0 0 var(--sp-4)}
+.vd-group-label{display:flex; justify-content:space-between; align-items:baseline; gap:var(--sp-2)}
+.vd-group-state{text-transform:none; letter-spacing:0; font-weight:600; color:var(--muted); text-align:right}
+.vd-group-state.warn{color:var(--warn)}
+.vd-field{display:block; margin:0 0 var(--sp-3)}
+.vd-label{display:block; margin:0 0 var(--sp-1)}
+.vd-input{width:100%; max-width:none; box-sizing:border-box; font-size:var(--t-input)}
+/* Paperwork's actions are QUIET row-trailing links (owner's fix 2): the one
+   lit "Send … the details" is the only thing on the card that asks to be
+   pressed. Quiet, not small: the tap area keeps the 44px floor. */
+.vd-link{background:none; border:none; color:var(--steel-soft); font:inherit; font-size:var(--t-meta); font-weight:650;
+  min-height:var(--tap-min); min-width:var(--tap-min); padding:0 var(--sp-2); display:inline-flex; align-items:center;
+  justify-content:center; cursor:pointer; text-decoration:none}
+.vd-link:disabled{opacity:.6; cursor:wait}
+.vd-send{margin:var(--sp-1) 0 var(--sp-4)}
+.vd-send-cta{width:100%}
+.vd-remove{border-top:1px solid var(--line); padding-top:var(--sp-3); margin-top:var(--sp-2)}
+.vd-remove-btn{width:100%; min-height:var(--tap-min); color:var(--danger-text, var(--danger))}
 /* A VENDOR'S NAME IS ITS IDENTITY (click-through audit 2026-07-28). This was
    white-space:nowrap + ellipsis, so on a phone — where the status pill and the
    money take the right of the card — real names clipped mid-word: "Oxon Hill
@@ -3455,7 +3490,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
 .vc-chip.warn{color:var(--warn); background:var(--warn-tint)}
 .vc-chip.ok{color:var(--ok); background:var(--ok-tint)}
 .vc-chip.quiet{color:var(--progress); background:var(--progress-tint)}/* audit S1 */
-.vc-more{max-height:0; opacity:0; overflow:hidden; overflow:clip;
+.vc-more{max-height:0; opacity:0; overflow:hidden; overflow-x:visible; overflow-y:clip;
   transition:max-height var(--ms-slow) var(--ease-standard), opacity var(--ms-slow) var(--ease-standard)}
 /* CLIP, NOT HIDDEN (11/23/2026). `overflow:hidden` makes the fold a scroll
    container. While the card is still opening, anything that brings a control
@@ -3466,7 +3501,11 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
    so the content slid under the finger and the tap landed on the card, not
    on "Send … the details". `clip` cuts the same way but cannot be scrolled,
    so a control stays where it was drawn until the reveal reaches it.
-   `hidden` stays first as the fallback for a browser without `clip`. */
+   `hidden` stays first as the fallback for a browser without `clip`.
+   SIDEWAYS IT DOES NOT CLIP AT ALL (owner report, 11/24/2026): the fold's
+   fields and buttons sit flush with its edges, and a horizontal clip cut
+   their focus and attention rings. The reveal only ever travels down, so
+   only the y axis clips. */
 /* WAVE-B: headroom for the new arrival/money row + COI expiry field —
    340px clipped the expanded card once the write affordances landed.
    VENDOR-BRIEF-AUTHORING: 640px clipped it again once the on-site-contact/
@@ -5308,6 +5347,13 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
      holding dense rows takes the width its rows would have. */
   .stagewrap--responsive-data > .sheet > .sheet-body > .panel:has(.roster, .grow, .brow, .later-row, .frow, .vcard),
   .stagewrap--responsive-food > .sheet > .sheet-body > .panel:has(.fstat-list, .food-act, .shelf, .later-row, .brow, .frow){ max-width:none; }
+  /* ── YOUR MONEY'S SUMMARY TAKES THE LIST'S WIDTH (audit #62; owner approved
+     the render 11/24/2026). The card holding the money bar is a chart and its
+     key, not a paragraph: at 1440 it sat at 820px beside the 1,130px Expected
+     costs list, leaving an empty band. Matched by what it holds (.mbar), like
+     the dense rows above, not by depth. */
+  .stagewrap--responsive-data > .sheet > .sheet-body > .panel:has(.mbar),
+  .stagewrap--responsive-food > .sheet > .sheet-body > .panel:has(.mbar){ max-width:none; }
   /* The head names the surface and carries its close — it belongs to both. */
   .stagewrap--responsive-data > .sheet > .sheet-body > .sheet-head{ grid-column:1 / -1; }
   /* Column 1 is the DEFAULT, and only the row list is moved out of it.
@@ -5620,6 +5666,14 @@ button.vc-pill::after{
   top:50%; transform:translateY(-50%); height:44px;
 }
 @media (hover:hover) and (pointer:fine){ button.vc-pill::after{ content:none; } }
+/* THE STATUS PICKER'S PILLS ARE 44 TALL FOR REAL (cohesion audit #9, rule 9,
+   11/24/2026). The invisible 44px expander above works for one pill alone; in
+   the picker five sit side by side and wrap, each row's expander laps over the
+   next, and the later pill wins the tap. Measured: 16px of "Deciding" was its
+   own on the phone, 35 on an iPad, so a wrong status was likely. In the picker
+   the pills ARE the choice, so they take the full height, and the rows clear
+   each other. The pill on the card's face keeps its quiet size. */
+.vc-statuspick button.vc-pill{ min-height:var(--tap-min); display:inline-flex; align-items:center; }
 
 /* ── THE RAIL EARNS ITS WIDTH, IT DOES NOT TAKE IT ──────────────────────────
    VIEWPORT_PORT_RULING step 4 asks for the 1280 stage cap to be raised. Doing
@@ -8496,14 +8550,30 @@ button.vc-pill::after{
 /* A SHORT LANDSCAPE STILL FITS ITS FIRST SCREEN. The title block (owner,
    11/24/2026: every wide board names its event) is taller than the eyebrow it
    replaced, and at 1024x768 it pushed the option card 66px under the fold
-   (theStatColumnStandsBesideTheQuestion). On a short screen the question sizes
-   by height and the header drops its top padding; tall boards are unchanged. */
+   (theStatColumnStandsBesideTheQuestion). The live check of e1ff88b then
+   found a three-answer ask on a touch screen with two answers under the fold
+   (aShortLandscapeFitsEveryAsk asserts every ask kind, pointer and touch). On
+   a short screen: the question sizes by height, the header drops its top
+   padding, the touch-only rename tip sits beside the title instead of on a
+   line of its own (it wraps back under a long name), and the question column's
+   top offset is 16px. Tall boards are unchanged. */
 @media (max-height:860px){
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) .ask{
     font-size:clamp(36px,6vh,56px);
   }
-  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head{ padding-top:0; }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head{
+    padding-top:0; display:flex; flex-wrap:wrap; align-items:center; column-gap:16px;
+  }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-r1,
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-sub{ flex-basis:100%; }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-tip{ margin:0; }
+  /* The tip's × keeps its -12px margins (it hugs its line, adding no height)
+     and sits above the next row, so its whole 46px tap box stays tappable:
+     in this compact header the following row covered half of it (47x26,
+     everyTapIsFortyFourSquare at 1024x768). */
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head > .tt-tip .tt-tip-x{ position:relative; z-index:1; }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head .tt-title{ margin-top:0 !important; }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{ padding-top:16px; }
 }
 
 /* ══ SHEETS FROM 1024: THE FULL COLUMN, NEVER TALLER THAN THE SCREEN ═════════
@@ -9267,3 +9337,94 @@ input[data-cue], textarea[data-cue]{ outline:revert-layer; border-color:color-mi
 .sheet-head .sheet-back{ display:inline-flex; align-items:center; min-height:44px; min-width:44px; margin:-16px 0 -12px; }
 .sheet-head .sheet-x{ display:inline-flex; align-items:center; justify-content:center; min-height:44px; min-width:64px; margin:-8px 0; }
 .tt-who-g .tt-more .tt-row-t{ color:var(--steel-soft); font-weight:600; }
+/* ── SHARE & INVITE IN FOUR STEPS, THE INVITE MESSAGE (owner, 11/24/2026:
+   renders s2-1 to s2-6). The card (ShareInviteCard.jsx), the message sheet's
+   preview, the send confirm, "What went out" and the link-not-ready notice. ── */
+:root{
+  --pv-mail-paper:#fbfaf7; --pv-mail-ink:#2f2b28; --pv-mail-dim:#6f6760; --pv-mail-rule:#e6e1d8;
+  --pv-mail-link:#1d5fbf; --pv-card-b:#f1ece4; --pv-card-line:#ddd6cc; --pv-card-accent:#9c4426;
+  --pv-av:#9c4426; --pv-av-ink:#ffffff;
+  --pv-phone:#000000; --pv-phone-dim:#a3a3aa; --pv-bubble:#1f6fe5; --pv-bubble-ink:#ffffff;
+  --si-warn-tint:rgba(236,161,63,.1);
+}
+.si-step{display:flex; align-items:center; gap:8px; margin:var(--sp-5) 0 var(--sp-2); font-size:var(--t-overline); font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+.si > .si-step:first-child{margin-top:var(--sp-2)}
+.si-n{display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; border:1px solid var(--line); font-size:var(--t-tag); letter-spacing:0; color:var(--ink-soft)}
+.si-wide{width:100%}
+.si-g{margin:var(--sp-2) 2px 0; font-size:var(--t-note)}
+.si-tight{margin:4px 2px var(--sp-2)}
+.si-link{display:inline-flex; align-items:center; margin:2px 0 0; min-height:44px; padding:0 2px; background:none; border:none; box-shadow:none; color:var(--steel-soft); font-size:var(--t-btn); font-weight:650; text-decoration:underline; text-underline-offset:3px; text-decoration-color:var(--line); cursor:pointer; text-align:left}
+.si-link:disabled{opacity:.45; cursor:default}
+.si-row{width:100%; margin-top:var(--sp-2); gap:12px; text-align:left}
+.si-row .settled-card-main{flex:1}
+.si-rowic{display:inline-flex; width:36px; height:36px; border-radius:10px; align-items:center; justify-content:center; background:var(--bg-band); flex:0 0 auto}
+.si-ok{color:var(--ok)}
+.si-row3{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--sp-2)}
+.si-row2b{display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-2)}
+.si-tile{flex-direction:column; gap:4px; white-space:normal; text-align:center; line-height:1.2; min-height:72px; padding:12px 4px}
+.si-ic{width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; flex:0 0 auto}
+.si-fold{width:100%; min-height:48px; background:none; border:none; padding:0 2px; cursor:pointer; text-align:left}
+.si-fold .fstat-l{font-size:var(--t-body-s); font-weight:600; color:var(--steel-soft)}
+.si-quiet[disabled]{opacity:1; color:var(--muted); background:transparent; border-color:var(--line); border-style:dashed}
+.si-tally{display:flex; flex-wrap:wrap; gap:var(--sp-4); margin:0 2px var(--sp-3); font-size:var(--t-row-sub); color:var(--muted); font-weight:550}
+.si-tally b{color:var(--ink); font-weight:750; font-variant-numeric:tabular-nums; margin-right:4px}
+.si-wait b{color:var(--warn)}
+.si-row2{display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-2); margin-top:var(--sp-3)}
+.si-two{flex-direction:column; align-items:flex-start; gap:2px; white-space:normal; text-align:left; min-height:60px; padding:8px 12px}
+.si-t{font-weight:700}
+.si-s{font-size:var(--t-tag); color:var(--muted); font-weight:550; line-height:1.3}
+.si-chip{display:inline-block; width:fit-content; max-width:100%; margin:0 0 var(--sp-3); padding:2px 12px; border-radius:var(--r-pill); border:1px solid var(--line); color:var(--steel-soft)}
+.si-actions{margin-top:var(--sp-4)}
+.si-newline{margin-top:var(--sp-3); padding:12px 12px; border:1px solid var(--line); border-radius:12px}
+.si-newline p{margin:0 0 var(--sp-2)}
+/* Preview as: Email | Text */
+.pv-head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:var(--sp-4) 0 var(--sp-2)}
+.pv-seg{display:grid; grid-template-columns:1fr 1fr; gap:4px; background:var(--bg-band); border:1px solid var(--line); border-radius:12px; padding:2px; min-width:180px}
+.pv-seg button{min-height:44px; border:none; background:none; border-radius:10px; color:var(--muted); font-size:var(--t-btn); font-weight:650; cursor:pointer}
+.pv-seg button[aria-checked="true"]{background:var(--steel-tint); color:var(--ink); box-shadow:inset 0 0 0 1px var(--steel-soft); font-weight:750}
+.pv-mail{background:var(--pv-mail-paper); color:var(--pv-mail-ink); border-radius:14px; overflow:hidden; border:1px solid var(--line)}
+.pv-mh{padding:12px 16px 8px; border-bottom:1px solid var(--pv-mail-rule)}
+.pv-from{display:flex; gap:8px; align-items:center; font-size:var(--t-row-sub); line-height:1.35}
+.pv-av{width:32px; height:32px; border-radius:50%; background:var(--pv-av); color:var(--pv-av-ink); display:inline-flex; align-items:center; justify-content:center; font-size:var(--t-tag); font-weight:700; flex:0 0 auto}
+.pv-dim{color:var(--pv-mail-dim); font-size:var(--t-tag)}
+.pv-subj{margin-top:8px; font-size:var(--t-row); font-weight:700; letter-spacing:-.01em}
+.pv-card{margin:12px 16px 0; border-radius:10px; background:var(--pv-card-b); border:1px solid var(--pv-card-line); padding:16px 12px; text-align:center}
+.pv-card-t{font-family:var(--serif-read, Georgia, serif); font-size:20px; color:var(--pv-mail-ink)}
+.pv-card-s{font-size:var(--t-tag); color:var(--pv-card-accent); font-weight:700; letter-spacing:.04em; margin-top:4px}
+.pv-card-n{font-size:var(--t-tag); color:var(--pv-mail-dim); margin-top:8px}
+.pv-body{padding:12px 16px 16px; font-size:15px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere}
+.pv-link{color:var(--pv-mail-link); text-decoration:underline; word-break:break-all}
+.pv-phone{background:var(--pv-phone); border:1px solid var(--line); border-radius:16px; padding:12px}
+.pv-to{font-size:var(--t-tag); color:var(--pv-phone-dim); text-align:center; margin-bottom:8px}
+.pv-bubble{margin-left:auto; max-width:86%; background:var(--pv-bubble); color:var(--pv-bubble-ink); border-radius:18px 18px 4px 18px; padding:8px 12px; font-size:15px; line-height:1.4; white-space:pre-wrap; overflow-wrap:anywhere}
+.pv-bubble .pv-link{color:var(--pv-bubble-ink)}
+.pv-count{margin-top:8px; text-align:right; font-size:var(--t-tag); color:var(--pv-phone-dim)}
+/* The send confirm: the message folded, who gets what. */
+.si-collapse{width:100%; display:flex; align-items:center; gap:12px; text-align:left; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 16px; min-height:64px; color:var(--ink); cursor:pointer}
+.si-cl-l{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px}
+.si-cl-t{font-weight:700; font-size:var(--t-row)}
+.si-cl-s{font-size:var(--t-row-sub); color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.si-cl-a{font-size:var(--t-btn); color:var(--steel-soft); font-weight:650; white-space:nowrap}
+.si-full{margin-top:var(--sp-2); background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 16px; font-size:15px; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; color:var(--ink)}
+.si-who{display:flex; flex-direction:column; gap:2px; padding:8px 0; border-top:1px solid var(--line)}
+.si-who-h{display:flex; align-items:center; gap:8px; font-weight:700; font-size:var(--t-row-sub); color:var(--ink)}
+.si-who-h .si-ic{width:16px; height:16px}
+.si-who-n{font-size:var(--t-row); color:var(--ink-soft); padding-left:24px}
+/* "What went out": read only. */
+.si-meta{display:flex; flex-direction:column; gap:2px; font-size:var(--t-row-sub); color:var(--muted); margin-bottom:var(--sp-2)}
+.si-sent{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 16px; font-size:15px; line-height:1.5; color:var(--ink); white-space:pre-wrap; overflow-wrap:anywhere}
+.si-sent .pv-link{color:var(--steel-soft)}
+.si-sent-s{font-weight:700; margin-bottom:8px}
+.si-rcp{list-style:none; margin:0; padding:0}
+.si-rcp li{display:grid; grid-template-columns:1fr auto; grid-template-areas:'n p' 'c p'; align-items:center; column-gap:12px; padding:8px 0; border-top:1px solid var(--line)}
+.si-rn{grid-area:n; font-weight:650; font-size:var(--t-row)}
+.si-rc{grid-area:c; font-size:var(--t-row-sub); color:var(--muted)}
+.si-pill{grid-area:p; font-size:var(--t-tag); font-weight:750; padding:4px 12px; border-radius:var(--r-pill); background:var(--bg-band); color:var(--muted)}
+.si-pill.ok{color:var(--ok); background:var(--ok-tint)}
+.si-note{margin-top:var(--sp-5); padding:var(--sp-3); border:1px solid var(--line); border-radius:12px}
+/* No reply link, nothing goes out (UX_11 rule 7). */
+.si-warn{border:1px solid var(--warn); background:var(--si-warn-tint); border-radius:12px; padding:12px 16px; margin-top:var(--sp-3)}
+.si-warn p{margin:0 0 var(--sp-2); font-size:var(--t-body-s); line-height:1.45; color:var(--ink)}
+.si-dis button[disabled], .si-dis a[aria-disabled="true"]{opacity:.42; pointer-events:none}
+.si-whohead{margin:var(--sp-5) 0 var(--sp-1)}
+.si-first{margin-top:0; margin-bottom:var(--sp-2)}

@@ -120,7 +120,14 @@ const NAME_PROBE = () => {
     // off-screen content-visibility:auto section, but a screen reader names it
     // from its DOM text (WebKit full run, 11/17/2026: 261 false findings).
     const t = (el.innerText || el.textContent || '').trim();
-    return !t && !el.getAttribute('aria-label') && !el.getAttribute('aria-labelledby') && !el.getAttribute('title');
+    // A <label> names its control (implicitly by wrapping, or by `for`); that
+    // is how a screen reader names a field, and floorProbes' visible-label rule
+    // already reads `el.labels` the same way. Without it, a correctly labeled
+    // field read as "unnamed" (batch B's vendor fields, 11/24/2026). A label
+    // whose `for` points at a different element does not name this one —
+    // `el.labels` already excludes it.
+    const labelled = [...(el.labels || [])].some((l) => (l.innerText || l.textContent || '').trim());
+    return !t && !labelled && !el.getAttribute('aria-label') && !el.getAttribute('aria-labelledby') && !el.getAttribute('title');
   }).map((el) => `${el.tagName}.${(el.className || '').toString().slice(0, 40)}`);
   return { total: els.length, unnamed };
 };

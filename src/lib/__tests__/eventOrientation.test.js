@@ -7,6 +7,7 @@ import {
   orientation, readinessSegments, severeBlocker, segmentsText, openPartsLabel, hairlineLabel,
   LIFECYCLE_LABELS, DIMENSION_LABELS,
 } from '../eventOrientation';
+import { SCHEDULE_WORD } from '../scheduleWords';
 
 const NOW = new Date('2026-08-02T12:00:00Z');
 const cuesFor = (ev) => deriveEventPhaseProgress(ev, NOW);
@@ -297,7 +298,7 @@ describe('hairlineLabel — names when they help, the specified count when they 
     expect(cues.phase).toBe('live_event');
     const label = hairlineLabel(orientation(cues));
     expect(label).not.toMatch(/plan parts/);
-    expect(label).toBe(`0 of ${cues.totalCount} run-of-show cues done`);
+    expect(label).toBe(`0 of ${cues.totalCount} ${SCHEDULE_WORD} cues done`); // owner 11/24/2026: the host's word, not "run of show"
   });
 });
 

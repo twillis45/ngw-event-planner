@@ -50,7 +50,7 @@ const seed = async (page, ev) => {
 const openPanel = async (page, over) => {
   await seed(page, EVENT(over));
   await page.goto('?open=invite');
-  await expect(page.locator('#sheet-title')).toHaveText('Your invite', { timeout: 10_000 });
+  await expect(page.locator('#sheet-title')).toHaveText('Invite page', { timeout: 10_000 });
   await sheetSettled(page);
   await expect(page.locator('[data-invite-preview] .inv2-sheet')).toBeVisible();
 };
@@ -87,7 +87,7 @@ test('the picker switches the live preview between the two layouts', async ({ pa
   // The preview IS the invite component, not a copy: the guest page's own reply row.
   await expect(preview(page).locator('.inv2-replies [role=radio]')).toHaveCount(3);
   // Saved: the guest's invite opens in the layout she picked.
-  await page.getByRole('button', { name: 'Save your invite' }).click();
+  await page.getByRole('button', { name: 'Save your invite page' }).click();
   await page.goto('?rsvp=' + CODE);
   await settledInvite(page);
   await expect(page.locator('.inv2-sheet')).toHaveAttribute('data-invite-layout', 'glance');
@@ -106,7 +106,7 @@ test('her message replaces the old line in the preview and on the guest invite, 
   await expect(msg).toContainText(MINE);
   await expect(msg).not.toContainText(SUGGESTED);
   await expect(msg.locator('[data-invite-sig]')).toContainText('— Dana');
-  await page.getByRole('button', { name: 'Save your invite' }).click();
+  await page.getByRole('button', { name: 'Save your invite page' }).click();
 
   await page.goto('?rsvp=' + CODE);
   await settledInvite(page);
@@ -125,7 +125,7 @@ test('an empty message falls back to the suggested line, unsigned, and Start ove
   await box.fill('');
   await expect(preview(page).locator('[data-invite-message]')).toContainText(SUGGESTED);
   await expect(preview(page).locator('[data-invite-message] [data-invite-sig]')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Save your invite' }).click();
+  await page.getByRole('button', { name: 'Save your invite page' }).click();
   await page.goto('?rsvp=' + CODE);
   await settledInvite(page);
   await expect(page.locator('[data-invite-message]')).toContainText(SUGGESTED);
