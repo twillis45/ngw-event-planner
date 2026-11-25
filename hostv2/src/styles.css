@@ -9440,6 +9440,11 @@ input[data-cue], textarea[data-cue]{ outline:revert-layer; border-color:color-mi
 .step-detail{ margin:0 0 var(--sp-2); color:var(--ink); }
 .step-who{ margin:0 0 var(--sp-2); }
 .ck-next{ margin:0 0 var(--sp-5); }
+/* A PANEL STARTS AT ITS HEADING (live check of bf38dde1, 11/25/2026): a
+   section heading's top margin separates it from the section above. At the
+   top of a panel there is nothing above, so the panel's padding is the space
+   (aPanelStartsAtItsHeading measures every door). */
+.panel > .sect:first-child, .panel > :first-child > .sect:first-child{ margin-top:0; }
 .ck-next-name{ font-size:17px; line-height:1.3; }
 .ck-next-more{ margin-top:var(--sp-3); }
 .ck-next-more:empty{ display:none; }

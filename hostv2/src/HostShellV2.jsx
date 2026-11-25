@@ -7756,7 +7756,7 @@ export default function HostShellV2() {
     // left re-parsing a sentence. (lib/taskLead.js can still recover a lossy lead from the
     // prose for legacy events — but a T-5d task deserves to stay a T-5d task.)
     const tasks = rows.map(r => ({ id: r.id, week: r.week || '', leadDays: r.leadDays != null ? r.leadDays : null, task: r.task || '', done: false, owner: '', category: r.category || '' }));
-    patchEvent({ timeline: tasks }, tasks.length + ' tasks drafted — the engine gates them by your choices and works back from the date.');
+    patchEvent({ timeline: tasks }, tasks.length + ' steps drafted, timed back from your date and shaped by what you’ve decided.');
   };
 
   // ── WHY THE INVITE MOVED, AND WHEN GUESTS SHOULD BUY ─────────────────────

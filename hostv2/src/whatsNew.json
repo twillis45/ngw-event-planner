@@ -1,6 +1,15 @@
 [
   {
     "date": "2026-11-25",
+    "through": "v2026.11.25.2",
+    "headline": "A tidier checklist",
+    "bullets": [
+      "\"Up next\" now sits at the top of your checklist, without the empty space above it.",
+      "Drafting your checklist says what it did in plain words: the steps are timed back from your date and shaped by what you've decided."
+    ]
+  },
+  {
+    "date": "2026-11-25",
     "through": "v2026.11.25.1",
     "headline": "Your checklist and After",
     "bullets": [
