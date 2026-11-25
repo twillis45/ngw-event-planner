@@ -268,6 +268,8 @@ const boardTexts = (page) => page.evaluate(() => {
     progress: t('[data-pp-line], [data-pp-prog]')[0] || null,
     standing: stand ? stand[1].replace(/\s+/g, ' ').trim().slice(0, 400) : null,
     stage: t('button[aria-current="true"]').filter((x) => /^(Create|Plan|The Day|After)$/.test(x))[0] || null,
+    // Every "N haven't …" / "still pending" phrasing on screen (wording rule, 11/25).
+    waitWords: [...new Set([...((document.querySelector('.app') || document.body).innerText.matchAll(/\d+\s+(?:still\s+)?(?:haven.t|hasn.t)\s+\w+(?:'d)?|\d+\s+guests?\s+still\s+pending/gi))].map((m) => m[0]))],
   };
 });
 
