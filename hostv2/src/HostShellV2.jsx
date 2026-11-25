@@ -42,8 +42,8 @@ import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaR
 // the legacy body as the default until parity closes.
 import { PeopleHero, AttendanceDecision, StillUnknown, OneMove, GetResponses, PeopleRail, SectionHead } from './PeopleSurface';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
-import { replyLinkUrl, emailInviteTo, invitesReachedEdit, inviteSentFields, emailNudgeTo, nudgedEdit } from '@app/lib/inviteSend';
-import { countEdit, modeEdit, addNamesEdit, rsvpEdit, removeGuestEdit, replyByEdit, lockCountEdit, reopenCountEdit } from '@app/lib/guestEdits';
+import { replyLinkUrl, emailInviteTo, invitesReachedEdit, inviteSentFields, emailNudgeTo, nudgedEdit, linkSharedFields } from '@app/lib/inviteSend';
+import { countEdit, modeEdit, addNamesEdit, rsvpEdit, removeGuestEdit, replyByEdit, lockCountEdit, reopenCountEdit, guestFieldEdit, mealEdit, kidsAddedLine, toldEdit, MEAL_CHOICES, guestListCsv, replyAlertsEdit } from '@app/lib/guestEdits';
 import { saveCustomEvents, patchSavedEvent, exportCustomEvents, listBackups, restoreBackup, importCustomEvents, durabilityStatus, readCustomEvents } from '@app/lib/customEventStore';
 import { buildCrabProcurement } from '@app/lib/procurement';
 import { buildAssembleRevealStages, unresolvedBlockerStages } from '@app/lib/assembleRevealEngines';
@@ -140,7 +140,7 @@ import { settleChoicePatch, choiceStateFor, choiceAttribution } from '@app/lib/c
 import { reconcileChecklist, reconcileSummary } from '@app/lib/checklistReconcile';
 import { measureRows, playReorder } from '@app/lib/flipReorder';
 import { tweenNumber } from '@app/lib/tweenNumber';
-import { recordTold, clearTold, isTold, guestToldMap, toldRollup } from '@app/lib/guestTold';
+import { isTold, guestToldMap, toldRollup } from '@app/lib/guestTold';
 import { rowsOn } from '@app/lib/spanEdit';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { startTimeFieldsToPersist, startTimeReading } from '@app/lib/startTimeFieldsToPersist';
@@ -7731,7 +7731,8 @@ export default function HostShellV2() {
         try { trackEvent(ANALYTICS.INVITE_SHARED, { method: 'native_share', rsvp_live: true, event_type: event && event.type }); } catch (_e) { /* a counter never blocks a share */ }
         // The share sheet completed: the invite went out (issue #100, D-10). This
         // is the proof taskEngine reads for "Send the invite"; nothing wrote it.
-        if (!event.invitesSentAt) patchEvent({ invitesSentAt: new Date().toISOString() });
+        const sharedFields = linkSharedFields(event, new Date().toISOString());
+        if (Object.keys(sharedFields).length) patchEvent(sharedFields);
         return;
       } catch (error) { if (error && error.name === 'AbortError') return; }
     }
@@ -8874,16 +8875,10 @@ export default function HostShellV2() {
   // + lib/download), with V2's guest fields mapped back to the canonical
   // column keys so the file round-trips through the NGW Native import.
   const exportGuestsCsv = () => {
-    const rows = (event.guests || []).map(g => ({
-      name: g.name || '', email: g.email || '', phone: g.phone || '',
-      group: g.group || '',
-      rsvp_status: g.rsvp || 'Pending', // '' means no reply — canonical 'Pending' (the import maps it back)
-      meal_preference: g.meal || '', plus_one_name: g.plusOne || '',
-      table_number: g.table ?? '', dietary_restrictions: g.needs || '',
-      notes: g.partyNotes || '',
-    }));
-    downloadCSV(exportFileSlug(event.name) + '-guests.csv', toCSV(rows, COLUMNS.guests));
-    toast(rows.length + (rows.length === 1 ? ' guest' : ' guests') + ' downloaded — the file re-imports as NGW Native.');
+    // The same file hostv4's "Download the list" makes (lib/guestEdits).
+    const f = guestListCsv(event);
+    downloadCSV(f.filename, f.content);
+    toast(f.msg);
   };
   const exportVendorsCsv = () => {
     // COLUMNS.vendors reads `contact` for the email column; V2's cockpit
@@ -8941,11 +8936,10 @@ export default function HostShellV2() {
     setCsvPreview(null); setCsvOpen(false);
   };
   const writeGuest = (i, patch, msg) => {
-    const gs = (event.guests || []).map((g, ix) => ix === i ? { ...g, ...patch } : g);
     // kidsCount is the ENGINE's portion-skew knob (kids eat ~40% of adult
-    // protein) — derive it from the roster so food re-prices automatically.
-    const kidsCount = kidsCountAfterRoster(event, gs);
-    patchEvent({ guests: gs, kidsCount }, msg);
+    // protein): lib/guestEdits derives it from the roster, for both shells.
+    const ed = guestFieldEdit(event, i, patch, msg);
+    patchEvent(ed.patch, ed.msg);
   };
   const removeGuest = (i) => {
     const ed = removeGuestEdit(event, i);
@@ -9953,14 +9947,9 @@ export default function HostShellV2() {
   // Host-attested, exactly like `handed_off`. The app writes down what the host
   // says and never upgrades it into a claim of its own.
   const markTold = (guestId, name, channel) => {
-    const cur = guestToldMap(event);
-    const first = String(name || 'them').split(/\s+/)[0];
-    if (isTold(cur, guestId)) {
-      patchEvent({ guestTold: clearTold(cur, guestId) }, `Cleared — ${first} is back on the still-to-tell list.`);
-      return;
-    }
-    patchEvent({ guestTold: recordTold(cur, guestId, channel, new Date().toISOString()) },
-      `Noted: you told ${first}. Nothing was sent from here.`);
+    // A record only; the same edit hostv4 saves (lib/guestEdits).
+    const ed = toldEdit(event, guestId, name, channel, new Date().toISOString());
+    patchEvent(ed.patch, ed.msg);
   };
 
   const confirmHelper = (itemId, name) => {
@@ -28953,7 +28942,6 @@ export default function HostShellV2() {
               // reply and its covers receipt), removeGuest (its toast's Undo
               // puts the guest back). Same data model: one +1 text field, a
               // children count, one meal, one dietary field.
-              const MEAL_CHOICES = ['—', 'Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
               // The four replies in the order a host reads them; the labels and
               // values stay RSVP_VALUES's.
               const REPLY_ORDER = ['Yes', 'Maybe', 'No', ''].map((v) => RSVP_VALUES.find(([x]) => x === v));
@@ -29158,10 +29146,8 @@ export default function HostShellV2() {
                         {/* Writes the SAME guest.meal the RSVP page and CSV import write. */}
                         <select className="field ged-field" aria-label={'Meal for ' + (name || 'guest')} value={meal}
                           onChange={(e) => {
-                            const m = e.target.value;
-                            writeGuest(i, { meal: m }, m === '—'
-                              ? (name || 'Guest') + '’s meal cleared — counts as unanswered.'
-                              : (name || 'Guest') + ' → ' + m + ' — the meal tally keeps count.');
+                            const ed = mealEdit(event, i, 'meal', e.target.value, name);
+                            patchEvent(ed.patch, ed.msg);
                           }}>
                           {meals.map((m) => <option key={m} value={m}>{m === '—' ? 'Meal not answered' : m}</option>)}
                         </select>
@@ -29185,10 +29171,8 @@ export default function HostShellV2() {
                           return (<>
                             <select className="field ged-field" aria-label={'Meal for ' + pName} value={pMeal}
                               onChange={(e) => {
-                                const m = e.target.value;
-                                writeGuest(i, { plusOneMeal: m }, m === '—'
-                                  ? pName + '’s meal cleared — counts as unanswered.'
-                                  : pName + ' → ' + m + ' — the meal tally keeps count.');
+                                const ed = mealEdit(event, i, 'plusOneMeal', e.target.value, pName);
+                                patchEvent(ed.patch, ed.msg);
                               }}>
                               {pMeals.map((m) => <option key={m} value={m}>{m === '—' ? 'Meal not answered' : m}</option>)}
                             </select>
@@ -29203,7 +29187,7 @@ export default function HostShellV2() {
                           onClick={() => writeGuest(i, { kids: Math.max(0, kids - 1) }, null)}>−</button>
                         <span className="ged-count" data-ged-kids>{kids}</span>
                         <button className="ged-icon" aria-label={'Add a child to ' + (name || 'this guest') + '’s party'}
-                          onClick={() => writeGuest(i, { kids: kids + 1 }, (kids + 1) + ' kids with ' + (name || 'this guest') + ' — the food plan sizes them lighter.')}>+</button>
+                          onClick={() => writeGuest(i, { kids: kids + 1 }, kidsAddedLine(kids + 1, name))}>+</button>
                       </div>
                       <p className="ged-note">Children count in the food plan at a lighter portion.</p>
                     </section>
@@ -29972,8 +29956,7 @@ export default function HostShellV2() {
                       {event.hostAlerts === false
                         ? 'Reply alerts are off for this event, by email and on your devices. '
                         : 'You hear when a guest replies or asks a question, by email and on devices with notifications on. At most once an hour. '}
-                      <button className="mini" onClick={() => patchEvent({ hostAlerts: event.hostAlerts === false ? null : false },
-                        event.hostAlerts === false ? 'Reply alerts are on.' : 'Reply alerts are off for this event.')}>
+                      <button className="mini" onClick={() => { const ed = replyAlertsEdit(event); patchEvent(ed.patch, ed.msg); }}>
                         {event.hostAlerts === false ? 'Turn on' : 'Turn off'}
                       </button>
                     </p>

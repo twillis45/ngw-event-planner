@@ -177,6 +177,8 @@ export default function HostShellV4() {
   // exactly the fields it changed.
   const saveEdit = (ed) => {
     if (!ed) return false;
+    // Nothing to save (a download): the line alone, with no Undo.
+    if (!Object.keys(ed.patch).length) { if (ed.msg) setDone({ msg: ed.msg }); return true; }
     const prev = {}; for (const k of Object.keys(ed.patch)) prev[k] = ev[k] === undefined ? null : ev[k];
     return save(ed.patch, ed.msg, prev);
   };

@@ -8,6 +8,8 @@ import { detectCoupleNames } from './guestSplit';
 import { repeatedGuestNames } from './guestMerge';
 import { kidsCountAfterRoster } from './kidsCountAfterRoster';
 import { confirmedRsvpCovers } from './confirmedCovers';
+import { guestToldMap, isTold, recordTold, clearTold } from './guestTold';
+import { toCSV, COLUMNS, exportFileSlug } from './csvParsers';
 
 /** About how many are coming. A caterer count, once set, follows the host's number. */
 export function countEdit(event, n) {
@@ -131,4 +133,57 @@ export function lockCountEdit(n, why) {
 /** Reopen a locked count. */
 export function reopenCountEdit() {
   return { patch: { guestCount: '' }, msg: 'Count reopened — settle it when the maybes answer.' };
+}
+
+/** The meal choices a guest (or their +1) can have; '—' is unanswered. */
+export const MEAL_CHOICES = ['—', 'Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
+
+/**
+ * One field (or several) on one guest. The kids count is the engine's portion
+ * knob (kids eat lighter), so it follows the roster on every write.
+ */
+export function guestFieldEdit(event, i, fields, msg) {
+  const gs = ((event && event.guests) || []).map((g, ix) => (ix === i ? { ...g, ...fields } : g));
+  return { patch: { guests: gs, kidsCount: kidsCountAfterRoster(event, gs) }, msg };
+}
+
+/** A meal for the guest ('meal') or their +1 ('plusOneMeal'); `who` is the name said back. */
+export function mealEdit(event, i, field, m, who) {
+  const name = who || 'Guest';
+  return guestFieldEdit(event, i, { [field]: m }, m === '—' ? name + '’s meal cleared — counts as unanswered.' : name + ' → ' + m + ' — the meal tally keeps count.');
+}
+
+/** The line when a child is added to a guest's party. */
+export const kidsAddedLine = (n, name) => n + ' kids with ' + (name || 'this guest') + ' — the food plan sizes them lighter.';
+
+/** "I told them myself": a record only (nothing is sent), and tapping again clears it. */
+export function toldEdit(event, guestId, name, channel, at) {
+  const cur = guestToldMap(event);
+  const first = String(name || 'them').split(/\s+/)[0];
+  if (isTold(cur, guestId)) return { patch: { guestTold: clearTold(cur, guestId) }, msg: `Cleared — ${first} is back on the still-to-tell list.` };
+  return { patch: { guestTold: recordTold(cur, guestId, channel, at) }, msg: `Noted: you told ${first}. Nothing was sent from here.` };
+}
+
+/** The guest list as a CSV that re-imports as NGW Native: { filename, content, count, msg }. */
+export function guestListCsv(event) {
+  const rows = ((event && event.guests) || []).map((g) => ({
+    name: g.name || '', email: g.email || '', phone: g.phone || '',
+    group: g.group || '',
+    rsvp_status: g.rsvp || 'Pending', // '' means no reply: canonical 'Pending' (the import maps it back)
+    meal_preference: g.meal || '', plus_one_name: g.plusOne || '',
+    table_number: g.table ?? '', dietary_restrictions: g.needs || '',
+    notes: g.partyNotes || '',
+  }));
+  return {
+    filename: exportFileSlug(event && event.name) + '-guests.csv',
+    content: toCSV(rows, COLUMNS.guests),
+    count: rows.length,
+    msg: rows.length + (rows.length === 1 ? ' guest' : ' guests') + ' downloaded — the file re-imports as NGW Native.',
+  };
+}
+
+/** Reply alerts for this event: on (the default, null) or off (false). */
+export function replyAlertsEdit(event) {
+  const off = event && event.hostAlerts === false;
+  return { patch: { hostAlerts: off ? null : false }, msg: off ? 'Reply alerts are on.' : 'Reply alerts are off for this event.' };
 }

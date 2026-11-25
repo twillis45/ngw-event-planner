@@ -92,3 +92,51 @@ test('locking the count, and reopening it', () => {
   expect(lockCountEdit(20, 'planned')).toEqual({ patch: { guestCount: 20, guestMode: 'count' }, msg: 'Count set at 20 — the number you planned around.' });
   expect(reopenCountEdit()).toEqual({ patch: { guestCount: '' }, msg: 'Count reopened — settle it when the maybes answer.' });
 });
+
+describe('one guest’s details', () => {
+  const { guestFieldEdit, mealEdit, kidsAddedLine, toldEdit, MEAL_CHOICES } = require('../guestEdits');
+  const e = { id: 'e1', kidsCount: 0, guests: [{ id: 'g1', name: 'Ada Pine', rsvp: 'Yes' }, { id: 'g2', name: 'Bo Lee', rsvp: '' }] };
+  test('a field on one guest, with the kids count following the roster', () => {
+    const r = guestFieldEdit(e, 0, { email: 'ada@example.test' }, null);
+    expect(r.patch.guests[0]).toEqual({ id: 'g1', name: 'Ada Pine', rsvp: 'Yes', email: 'ada@example.test' });
+    expect(r.patch.guests[1]).toEqual(e.guests[1]);
+    expect('kidsCount' in r.patch).toBe(true);
+    expect(r.msg).toBe(null);
+    expect(guestFieldEdit(e, 0, { kids: 2 }, kidsAddedLine(2, 'Ada Pine')).msg).toBe('2 kids with Ada Pine — the food plan sizes them lighter.');
+  });
+  test('the meal says where it counts', () => {
+    expect(MEAL_CHOICES).toEqual(['—', 'Standard', 'Vegetarian', 'Vegan', 'Gluten-Free']);
+    expect(mealEdit(e, 0, 'meal', 'Vegan', 'Ada Pine').msg).toBe('Ada Pine → Vegan — the meal tally keeps count.');
+    expect(mealEdit(e, 0, 'plusOneMeal', '—', 'Sam').msg).toBe('Sam’s meal cleared — counts as unanswered.');
+    expect(mealEdit(e, 0, 'plusOneMeal', 'Vegan', 'Sam').patch.guests[0].plusOneMeal).toBe('Vegan');
+  });
+  test('I told them myself, and undoing it', () => {
+    const r = toldEdit(e, 'g2', 'Bo Lee', 'other', '2026-11-25T18:00:00.000Z');
+    expect(r.patch.guestTold.g2).toBeTruthy();
+    expect(r.msg).toBe('Noted: you told Bo. Nothing was sent from here.');
+    const back = toldEdit({ ...e, guestTold: r.patch.guestTold }, 'g2', 'Bo Lee', 'other', 'later');
+    expect(back.patch.guestTold.g2).toBeUndefined();
+    expect(back.msg).toBe('Cleared — Bo is back on the still-to-tell list.');
+  });
+});
+
+describe('the More section', () => {
+  const { guestListCsv, replyAlertsEdit } = require('../guestEdits');
+  const { linkSharedFields } = require('../inviteSend');
+  test('the guest list as a file that re-imports', () => {
+    const f = guestListCsv({ name: 'Rosa’s 40th!', guests: [{ name: 'Ada Pine', email: 'a@b.test', rsvp: '', meal: 'Vegan', plusOne: 'Sam', needs: 'No nuts', table: 3 }] });
+    expect(f.count).toBe(1);
+    expect(f.filename).toMatch(/-guests\.csv$/);
+    expect(f.content.split('\n')[1]).toContain('Ada Pine');
+    expect(f.content).toContain('Pending');
+    expect(f.msg).toBe('1 guest downloaded — the file re-imports as NGW Native.');
+  });
+  test('reply alerts on and off', () => {
+    expect(replyAlertsEdit({})).toEqual({ patch: { hostAlerts: false }, msg: 'Reply alerts are off for this event.' });
+    expect(replyAlertsEdit({ hostAlerts: false })).toEqual({ patch: { hostAlerts: null }, msg: 'Reply alerts are on.' });
+  });
+  test('a completed share is the invite going out; a second keeps the first date', () => {
+    expect(linkSharedFields({}, 'now')).toEqual({ invitesSentAt: 'now' });
+    expect(linkSharedFields({ invitesSentAt: 'earlier' }, 'now')).toEqual({});
+  });
+});

@@ -55,6 +55,13 @@ describe('guests ask one thing at a time', () => {
     expect(text(html)).toContain('Add names');
   });
 
+  it('the guest sheet edits one guest through the shared builders hostv2 uses', () => {
+    for (const fn of ['guestFieldEdit(', 'mealEdit(', 'toldEdit(', 'rsvpEdit(', 'removeGuestEdit(']) expect(src).toContain(fn);
+    expect(src).not.toMatch(/kidsCount:|guestTold:/);
+    // Nothing on the sheet sends: "I told them myself" is a record only.
+    expect(src).not.toMatch(/sms:|mailto:|tel:/);
+  });
+
   it('changes a plan only through lib/guestEdits', () => {
     expect(src).toMatch(/from '@app\/lib\/guestEdits'/);
     expect(src).not.toMatch(/\{\s*guests:/);

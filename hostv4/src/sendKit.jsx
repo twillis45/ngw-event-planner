@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { supabase, isSupabaseConfigured } from '@app/lib/supabaseClient';
 import { replyLinkFor } from '@app/lib/inviteSend';
 
-const LINK_WHY = {
+export const LINK_WHY = {
   unpublished: 'Your plan isn’t saved to your account yet. Open it once in the current app, signed in, and it saves.',
   'not-configured': 'Replies aren’t switched on for this app.',
   unavailable: 'We couldn’t reach your reply page. Check your connection and try again.',

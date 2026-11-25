@@ -11,7 +11,9 @@
 // saved by the shell. What this step does not build yet (the invite, sending,
 // nudges, locking the count, updates) says so and opens the current app.
 import { useMemo, useRef, useState } from 'react';
-import { countEdit, modeEdit, addNamesEdit, nameLines, rsvpEdit, removeGuestEdit, plusOneEdit, kidsEdit, replyByEdit } from '@app/lib/guestEdits';
+import { countEdit, modeEdit, addNamesEdit, nameLines, rsvpEdit, removeGuestEdit, plusOneEdit, kidsEdit, replyByEdit, guestFieldEdit, mealEdit, kidsAddedLine, toldEdit, MEAL_CHOICES, guestListCsv, replyAlertsEdit } from '@app/lib/guestEdits';
+import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
+import { guestToldMap, isTold } from '@app/lib/guestTold';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { guestCountFor } from '@app/lib/guestCountFor';
 import { confirmedRsvpCovers } from '@app/lib/confirmedCovers';
@@ -21,6 +23,9 @@ import { proposeReplyBy } from '@app/lib/replyBy';
 import { nudgeRecipients, nudgeCount, wasInvited } from '@app/lib/replyNudge';
 import NudgeSheet from './NudgeSheet.jsx';
 import LockSheet from './LockSheet.jsx';
+import { replyLinkFor, linkSharedFields } from '@app/lib/inviteSend';
+import { downloadCSV } from '@app/lib/download';
+import { LINK_WHY } from './sendKit.jsx';
 
 const REPLY = { yes: 'Coming', maybe: 'Maybe', no: 'Can’t make it', pending: 'No reply' };
 const RSVP_VALUE = { yes: 'Yes', maybe: 'Maybe', no: 'No', pending: '' };
@@ -162,19 +167,78 @@ function GuestRow({ g, onOpen, onComing, onRemove }) {
   );
 }
 
-function GuestSheet({ g, onReply, onRemove, onDone }) {
+/** A text field that saves when she leaves it (no line, no save per keystroke). */
+function Field({ label, value, onSave, type = 'text', placeholder, invalid, format }) {
+  return (
+    <input className="field" type={type} aria-label={label} placeholder={placeholder || label} defaultValue={value || ''} aria-invalid={invalid || undefined}
+      onBlur={(e) => { const v = format ? format(e.target.value) : e.target.value.trim(); if (format) e.target.value = v; if (v !== String(value || '')) onSave(v); }} />
+  );
+}
+
+function MealPick({ label, value, onPick }) {
+  const v = String(value || '—');
+  const opts = MEAL_CHOICES.includes(v) ? MEAL_CHOICES : [...MEAL_CHOICES, v];
+  return (
+    <select className="field" aria-label={label} value={v} onChange={(e) => onPick(e.target.value)}>
+      {opts.map((m) => <option key={m} value={m}>{m === '—' ? 'Meal not answered' : m}</option>)}
+    </select>
+  );
+}
+
+// ONE GUEST (feature map: guest sheet). Every change is a lib/guestEdits edit,
+// the ones hostv2's guest editor saves: reply, meal and needs, their +1 (when
+// plus-ones are welcome), children (when kids are welcome), how to reach them,
+// "I told them myself" (a record only), remove.
+function GuestSheet({ ev, g, i, save, onDone }) {
   const r = rsvpState(g);
+  const name = String(g.name || '').trim();
+  const first = name.split(/\s+/)[0] || 'them';
+  const kids = Number(g.kids) || 0;
+  const plusOk = ev.plusOnePolicy === 'plus_one_ok' || !!String(g.plusOne || '').trim();
+  const kidsOk = ev.kidsPolicy === 'kids_welcome' || kids > 0;
+  const told = isTold(guestToldMap(ev), g.id);
+  const field = (fields) => save(guestFieldEdit(ev, i, fields, null));
   return (
     <div className="scrim" onClick={onDone}>
-      <div className="sheet" role="dialog" aria-label={g.name} onClick={(e) => e.stopPropagation()}>
+      <div className="sheet" role="dialog" aria-label={name} onClick={(e) => e.stopPropagation()}>
         <div className="grabber" aria-hidden="true" />
-        <div className="sheethead"><h2>{g.name}</h2><button className="link" onClick={onDone}>Done</button></div>
+        <div className="sheethead"><h2>{name}</h2><button className="link" onClick={onDone}>Done</button></div>
         <h3 className="lbl">Reply</h3>
         <div className="seg" role="group" aria-label="Reply">
-          {['yes', 'maybe', 'no', 'pending'].map((k) => <button key={k} aria-pressed={r === k} onClick={() => onReply(RSVP_VALUE[k])}>{k === 'pending' ? 'No reply' : k === 'no' ? 'No' : REPLY[k]}</button>)}
+          {['yes', 'maybe', 'no', 'pending'].map((k) => <button key={k} aria-pressed={r === k} onClick={() => save(rsvpEdit(ev, i, RSVP_VALUE[k]))}>{k === 'pending' ? 'No reply' : k === 'no' ? 'No' : REPLY[k]}</button>)}
         </div>
-        <p className="fine">Meal, their +1, how to reach them and nudges are in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>
-        <div className="grp" style={{ marginTop: 16 }}><button className="row danger" onClick={onRemove}>Remove from the list</button></div>
+        <h3 className="lbl">Meal</h3>
+        <MealPick label={'Meal for ' + name} value={g.meal} onPick={(m) => save(mealEdit(ev, i, 'meal', m, name))} />
+        <Field label="Dietary needs" placeholder="Dietary needs, if any" value={g.needs} onSave={(v) => field({ needs: v })} />
+        {plusOk && (<>
+          <h3 className="lbl">Their +1</h3>
+          <Field label="Plus one name" placeholder="Their +1’s name, if any" value={g.plusOne} onSave={(v) => field({ plusOne: v })} />
+          {String(g.plusOne || '').trim() && (<>
+            <MealPick label={'Meal for ' + g.plusOne} value={g.plusOneMeal} onPick={(m) => save(mealEdit(ev, i, 'plusOneMeal', m, String(g.plusOne).trim()))} />
+            <Field label={'Dietary needs for ' + g.plusOne} placeholder="Dietary needs, if any" value={g.plusOneNeeds} onSave={(v) => field({ plusOneNeeds: v })} />
+          </>)}
+        </>)}
+        {kidsOk && (<>
+          <h3 className="lbl">Children</h3>
+          <div className="grp"><div className="stepper">
+            <span className="num" data-kids>{kids}</span>
+            <span className="btns">
+              <button aria-label={'Remove a child from ' + name + '’s party'} onClick={() => field({ kids: Math.max(0, kids - 1) })}>−</button>
+              <button aria-label={'Add a child to ' + name + '’s party'} onClick={() => save(guestFieldEdit(ev, i, { kids: kids + 1 }, kidsAddedLine(kids + 1, name)))}>+</button>
+            </span>
+          </div></div>
+          <p className="fine">Children count in the food plan at a lighter portion.</p>
+        </>)}
+        <h3 className="lbl">How to reach them</h3>
+        <Field label="Phone" type="tel" placeholder="Phone" value={g.phone} format={formatPhoneUS} onSave={(v) => field({ phone: v })} />
+        <Field label="Email" type="email" placeholder="Email" value={g.email} invalid={isMalformedEmail(g.email)} onSave={(v) => field({ email: v })} />
+        {isMalformedEmail(g.email) && <p className="fine warn">That email doesn’t look right.</p>}
+        <div className="grp" style={{ marginTop: 16 }}>
+          <button className="row go" data-told aria-pressed={told} onClick={() => save(toldEdit(ev, g.id, name, 'other', new Date().toISOString()))}>
+            <span className="nm">I told {first} myself<small>A note for you. Nothing is sent.</small></span>{told ? <span className="check" aria-label="Done">✓</span> : null}
+          </button>
+          <button className="row danger" onClick={() => { onDone(); save(removeGuestEdit(ev, i)); }}>Remove from the list</button>
+        </div>
       </div>
     </div>
   );
@@ -190,6 +254,27 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   const [open, setOpen] = useState(null);
   const [answers, setAnswers] = useState(false);
   const [sheet, setSheet] = useState(null); // 'nudge' | 'lock'
+  const [shareLine, setShareLine] = useState('');
+  // SHARE THE LINK: the checked reply link (lib/inviteSend), through the phone's
+  // share sheet, else copied. A completed share is the invite going out.
+  const shareLink = async () => {
+    setShareLine('Checking your reply link…');
+    let x; try { x = await replyLinkFor(ev); } catch { x = { url: '', reason: 'unavailable' }; }
+    if (!x.url) { setShareLine('Your reply link isn’t ready. ' + (LINK_WHY[x.reason] || LINK_WHY.unavailable)); return; }
+    const text = 'You’re invited to ' + (ev.name || 'our event') + '. RSVP here: ' + x.url;
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: 'You’re invited — ' + (ev.name || 'our event'), text, url: x.url });
+        setShareLine('');
+        const f = linkSharedFields(ev, new Date().toISOString());
+        if (Object.keys(f).length) save({ patch: f, msg: 'Shared — the plan counts the invite as out.' });
+        return;
+      } catch (e) { if (e && e.name === 'AbortError') { setShareLine(''); return; } }
+    }
+    try { await navigator.clipboard.writeText(x.url); setShareLine('Link copied. Paste it anywhere guests will see it.'); }
+    catch { setShareLine('Your reply link: ' + x.url); }
+  };
+  const download = () => { const f = guestListCsv(ev); downloadCSV(f.filename, f.content); save({ patch: {}, msg: f.msg }); };
   const guests = useMemo(() => (Array.isArray(ev.guests) ? ev.guests : []), [ev]);
   const named = guests.length;
   const coming = confirmedRsvpCovers(ev);
@@ -282,11 +367,22 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
         </div>
       </>)}
 
+      {!qs.length && byName && (<>
+        <h3 className="sh">More</h3>
+        <div className="grp" data-more>
+          <button className="row go" data-share-link onClick={shareLink}><span>Share the link</span>{chev}</button>
+          {named > 0 && <button className="row go" data-download onClick={download}><span>Download the list</span>{chev}</button>}
+          <button className="row go" role="switch" aria-checked={ev.hostAlerts !== false} data-alerts onClick={() => save(replyAlertsEdit(ev))}>
+            <span className="nm">Tell me when someone replies<small>By email and notifications, at most once an hour</small></span>
+            <span className={'switch' + (ev.hostAlerts !== false ? ' on' : '')} aria-hidden="true" />
+          </button>
+        </div>
+        {shareLine && <p className="fine" role="status" data-share-line>{shareLine}</p>}
+        <p className="fine">Importing a list and the QR code are in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>
+      </>)}
       {sheet === 'nudge' && <NudgeSheet ev={ev} save={save} onDone={() => setSheet(null)} />}
       {sheet === 'lock' && <LockSheet ev={ev} save={save} onDone={() => setSheet(null)} />}
-      {opened && <GuestSheet g={opened} onDone={() => setOpen(null)}
-        onReply={(v) => save(rsvpEdit(ev, indexOf(opened), v))}
-        onRemove={() => { const i = indexOf(opened); setOpen(null); save(removeGuestEdit(ev, i)); }} />}
+      {opened && <GuestSheet key={opened.id} ev={ev} g={opened} i={indexOf(opened)} save={save} onDone={() => setOpen(null)} />}
     </section>
     </main>
     {action && <div className="action">{action.href

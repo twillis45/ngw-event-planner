@@ -105,3 +105,8 @@ export async function emailNudgeTo(event, guest, { subject, body, hostName, repl
 export function nudgedEdit(event, reached, via, at) {
   return { patch: { guests: markNudged((event && event.guests) || [], reached, via, at) }, msg: null };
 }
+
+/** A completed share of the reply link is the invite going out; the first share's date stays. */
+export function linkSharedFields(event, at) {
+  return (event && event.invitesSentAt) ? {} : { invitesSentAt: at };
+}
