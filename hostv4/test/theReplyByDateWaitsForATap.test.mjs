@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createElement } from 'react';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { QuestionCard } from '../src/GuestsPage.jsx';
+import { QuestionCard, guestQuestions, answersLine } from '../src/GuestsPage.jsx';
 import { replyByProblem } from '@app/lib/guestEdits';
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -53,6 +53,38 @@ describe('the reply-by date waits for a tap', () => {
     pick('2099-12-31');
     expect(useButton()).toBeUndefined();
     expect(host.textContent).toMatch(/before the party/);
+  });
+});
+
+// The owner's Thanksgiving plan, 11/25/2026, for the next day: no reply-by
+// date can be honest (today has passed, tomorrow is the party), so asking left
+// a question nothing could answer. Too close, it is not asked.
+describe('a party too close for a reply-by date', () => {
+  const iso = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const tomorrow = () => { const d = new Date(); d.setDate(d.getDate() + 1); return iso(d); };
+  const answered = { guestEstimate: 12, guestMode: 'list', plusOnePolicy: 'plus_one_ok', kidsPolicy: 'kids_welcome' };
+  it('is not asked when the party is tomorrow', () => {
+    expect(guestQuestions({ id: 't', eventType: 'thanksgiving', date: tomorrow(), ...answered })).toEqual([]);
+  });
+  it('is still asked when there is time', () => {
+    expect(guestQuestions({ id: 't', eventType: 'birthday', date: '2099-12-31', ...answered })).toEqual(['replyBy']);
+  });
+  it('the answers line says so instead of an invalid date', () => {
+    expect(answersLine({ ...answered })).toMatch(/no reply-by date/);
+    expect(answersLine({ ...answered })).not.toMatch(/Invalid/);
+  });
+});
+
+describe('a saved reply-by date can be cleared', () => {
+  it('shows "No reply-by date" when one is set, and it clears the date', () => {
+    act(() => root.render(createElement(QuestionCard, { k: 'replyBy', ev: { ...ev, rsvpDeadline: '2099-11-25' }, save: (ed) => { saved.push(ed); return true; } })));
+    const clear = [...host.querySelectorAll('button')].find((b) => b.textContent === 'No reply-by date');
+    expect(clear).toBeTruthy();
+    act(() => clear.click());
+    expect(saved.map((e) => e.patch)).toEqual([{ rsvpDeadline: null }]);
+  });
+  it('is not offered when no date is set', () => {
+    expect([...host.querySelectorAll('button')].some((b) => b.textContent === 'No reply-by date')).toBe(false);
   });
 });
 

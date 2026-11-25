@@ -100,6 +100,11 @@ export function replyByEdit(iso) {
   return { patch: { rsvpDeadline: iso }, msg: 'Reply-by date set — your invite and the nudges read it.' };
 }
 
+/** Take the reply-by date off (it had passed, or the party is too close for one). */
+export function clearReplyByEdit() {
+  return { patch: { rsvpDeadline: null }, msg: 'Reply-by date removed.' };
+}
+
 /**
  * Why a picked reply-by date can't be used, or null when it can. A reply-by
  * date must still be ahead (after today) and before the party. `today` is a
