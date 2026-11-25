@@ -62,8 +62,7 @@
         "contains": "kind === 'lockcount'"
       },
       "home": "button",
-      "where": "Lock the count at N, after the reply-by date (owner decision pending: Guests only)",
-      "pending": true
+      "where": "Lock the count, the bottom button after the reply-by date; Guests only (owner, 11/25/2026)"
     },
     {
       "id": "plus-one-rule",
@@ -93,7 +92,7 @@
         "contains": "renderDeadlineEditor"
       },
       "home": "question",
-      "where": "When should replies be in by?"
+      "where": "When should replies be in by? The app's proposal with its reason, an earlier date, or pick one"
     },
     {
       "id": "addresses-rule",
@@ -103,8 +102,7 @@
         "contains": "collectAddresses"
       },
       "home": "invitePage",
-      "where": "Rules: Ask for mailing addresses (owner decision pending)",
-      "pending": true
+      "where": "Rules: Ask for mailing addresses (owner, 11/25/2026)"
     },
     {
       "id": "gift-rule",
@@ -114,8 +112,7 @@
         "contains": "giftWish"
       },
       "home": "invitePage",
-      "where": "Rules: Gifts (owner decision pending)",
-      "pending": true
+      "where": "Rules: Gifts (owner, 11/25/2026)"
     },
     {
       "id": "quick-add",
@@ -155,8 +152,7 @@
         "contains": "Find someone on the list"
       },
       "home": "guestsPage",
-      "where": "Names: search and filter, at 8 or more names (owner decision pending)",
-      "pending": true
+      "where": "Names: search and filter, at 8 or more names (owner, 11/25/2026)"
     },
     {
       "id": "same-person",
@@ -335,8 +331,8 @@
         "file": "src/HostShellV2.jsx",
         "contains": "Before your invite goes out"
       },
-      "home": "sendSheet",
-      "where": "What's missing, shown first when anything is"
+      "home": "invitePage",
+      "where": "Before it can go out: the day, the arrival time and the place, asked at the top of the invite page before \"Looks good\""
     },
     {
       "id": "invite-draft",
@@ -346,7 +342,7 @@
         "contains": "const openInviteDraft"
       },
       "home": "invitePage",
-      "where": "Your message"
+      "where": "The message they get: how it sounds (Plain, Short, Warm, Fun, Formal) and the words; also reachable from the send sheet"
     },
     {
       "id": "invite-share-card",
@@ -617,8 +613,7 @@
         "contains": "const holdGuests"
       },
       "home": "elsewhere",
-      "where": "Food (owner decision pending: the count lock itself lives on Guests)",
-      "pending": true
+      "where": "Food; the count lock itself lives on Guests (owner, 11/25/2026)"
     },
     {
       "id": "seating",
