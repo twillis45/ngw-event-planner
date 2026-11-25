@@ -304,3 +304,36 @@ test.describe('the host photo in You & settings', () => {
     expect(after.hostPhoto || null).toBe(null);
   });
 });
+
+// OWNER REPORT, 11/24/2026 (iPad): "See the full invite" didn't show the full
+// invite. The preview frame clipped the bottom of the invite (its reply
+// buttons), and the button opened the PUBLIC link in a new tab, which shows the
+// SAVED invite, not the one being edited (Classic while At a glance was picked).
+// The full invite is the same draft, opened in place, whole.
+test('"See the full invite" shows the whole invite being edited, in place, in the layout picked', async ({ page, context }) => {
+  await openPanel(page);
+  await page.getByRole('radio', { name: /At a glance/ }).click();
+  await expect(preview(page).locator('[data-invite-layout="glance"]')).toBeVisible();
+  let popups = 0;
+  context.on('page', () => { popups += 1; });
+  const seeFull = page.getByRole('button', { name: 'See the full invite' });
+  expect((await seeFull.boundingBox()).height, 'the button is a 44px target').toBeGreaterThanOrEqual(44);
+  await seeFull.click();
+  // Nothing opens elsewhere; the preview itself is the full invite now.
+  await page.waitForTimeout(400);
+  expect(popups, 'no new tab').toBe(0);
+  await expect(preview(page).locator('[data-invite-layout="glance"]')).toBeVisible();
+  const clip = await preview(page).evaluate((f) => ({ sh: f.scrollHeight, ch: f.clientHeight }));
+  expect(clip.sh - clip.ch, `nothing cut off: ${clip.sh} of content in ${clip.ch}`).toBeLessThanOrEqual(1);
+  // The reply buttons, the bottom of the invite, are inside the frame.
+  const fb = await preview(page).boundingBox();
+  const yes = await preview(page).getByRole('radio', { name: /Yes, I.m in/i }).first().boundingBox();
+  expect(yes.y + yes.height, 'the reply buttons sit inside the frame').toBeLessThanOrEqual(fb.y + fb.height + 1);
+  // The guest-facing notice, at the invite's very foot, is inside it too.
+  const note = await preview(page).getByText(/Just a preview/).first().boundingBox();
+  expect(note.y + note.height, 'the preview notice sits inside the frame').toBeLessThanOrEqual(fb.y + fb.height + 1);
+  // And it folds back to the window it was.
+  await page.getByRole('button', { name: 'Show less' }).click();
+  await expect(page.getByRole('button', { name: 'See the full invite' })).toBeVisible();
+  expect((await preview(page).boundingBox()).height, 'back to the 440px window').toBeLessThanOrEqual(441);
+});

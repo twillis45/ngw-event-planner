@@ -1,7 +1,14 @@
 [
   {
     "date": "2026-11-24",
-    "through": "v2026.11.24.10",
+    "through": "v2026.11.24.11",
+    "headline": "See the full invite",
+    "bullets": [
+      "\"See the full invite\" opens the whole invite right where you're editing it, in the layout you picked. \"Show less\" folds it back."
+    ]
+  },
+  {
+    "date": "2026-11-24",
     "headline": "The Day, your vendors, and numbers that agree",
     "bullets": [
       "On the day of your event, the board shows only what's due today. The rest of your plan folds away until you want it.",

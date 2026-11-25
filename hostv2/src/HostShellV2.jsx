@@ -17653,8 +17653,7 @@ export default function HostShellV2() {
             {sheet.kind === 'invite-design' && (
               <InviteDesignSheet event={event} profile={profile} patchEvent={patchEvent} patchProfile={patchProfile}
                 signedIn={Boolean(session)} email={(session && session.user && session.user.email) || ''}
-                onDone={closeSheet} renderDeadlineEditor={renderDeadlineEditor} hasArtwork={!!eventArtworkFile(event)}
-                onSeeFull={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch { /* blocked */ } }} />
+                onDone={closeSheet} renderDeadlineEditor={renderDeadlineEditor} hasArtwork={!!eventArtworkFile(event)} />
             )}
             {sheet.kind === 'invite-check' && (() => {
               const gaps = inviteGaps(event);

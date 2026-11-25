@@ -34,10 +34,15 @@ const LEGACY_LABEL = { '': 'Today’s cream', bright: 'Today’s cream', elegant
 const LAYOUTS = [['classic', 'Classic'], ['glance', 'At a glance']];
 
 export default function InviteDesignSheet({
-  event, profile, patchEvent, patchProfile, signedIn, email, onDone, onSeeFull, renderDeadlineEditor, hasArtwork,
+  event, profile, patchEvent, patchProfile, signedIn, email, onDone, renderDeadlineEditor, hasArtwork,
 }) {
   const suggestion = useMemo(() => suggestedInviteLine(event), [event]);
   const [layout, setLayout] = useState(event.inviteLayout === 'glance' ? 'glance' : 'classic');
+  // THE FULL INVITE IS THIS ONE, OPENED IN PLACE (owner report, 11/24/2026).
+  // It used to open the public link in a new tab, which shows the SAVED invite
+  // (Classic while At a glance was picked), and the framed preview cut off the
+  // reply buttons. Expanding the same draft shows exactly what she is editing.
+  const [full, setFull] = useState(false);
   const [message, setMessage] = useState(String(event.deckLine || '').trim() || suggestion);
   const [host, setHost] = useState(hostNameFor(event, profile));
   const [contact, setContact] = useState(String(event.hostContact || ''));
@@ -102,9 +107,9 @@ export default function InviteDesignSheet({
       <div className="ivd-pv">
         <div className="ivd-pv-top">
           <span className="ivd-live"><i aria-hidden="true" />Live preview · {layout === 'glance' ? 'At a glance' : 'Classic'}</span>
-          <button type="button" className="ghost ivd-full" onClick={onSeeFull}>See the full invite</button>
+          <button type="button" className="ghost ivd-full" aria-expanded={full} onClick={() => setFull((f) => !f)}>{full ? 'Show less' : 'See the full invite'}</button>
         </div>
-        <div className="ivd-pv-frame" data-invite-preview inert>
+        <div className={'ivd-pv-frame' + (full ? ' full' : '')} data-invite-preview inert>
           <Suspense fallback={<p className="grounding">Loading the preview…</p>}>
             <InviteV2 code={event.rsvpCode || event.id} preview={draft} previewPhotoUrl={photoUrl} />
           </Suspense>
