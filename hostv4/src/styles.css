@@ -132,3 +132,55 @@ select.field { appearance: none; -webkit-appearance: none; background-image: lin
 @keyframes rise { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .primary:active { transform: none; } .sheet, .pushed .view { animation: fade .2s ease-out; } }
+
+/* ── TABLETS (UX_13, owner 11/25/2026): sidebar, pane bars, three panes ───── */
+.tablet { position: fixed; inset: 0; }
+.tablet .tabbar { display: none; }
+.tablet .side { position: absolute; top: 0; bottom: 0; left: 0; width: 260px; background: #121214; border-right: 1px solid var(--hair); overflow-y: auto; padding: calc(18px + env(safe-area-inset-top, 0px)) 12px 18px calc(12px + env(safe-area-inset-left, 0px)); z-index: 30; }
+.sidehead h1 { font-size: 1.25rem; margin: 6px 10px 2px; text-wrap: balance; }
+.sidehead .sub { margin: 0 10px 14px; font-size: .875rem; }
+.sidelbl { font-size: .8125rem; color: var(--ink-3); font-weight: 600; margin: 18px 10px 6px; }
+.sidenav { display: flex; flex-direction: column; gap: 2px; }
+.sidenav button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 0 10px; border: 0; border-radius: 10px; background: none; color: var(--ink); font: 1.0625rem var(--sans); text-align: left; cursor: pointer; }
+.sidenav button svg { width: 22px; height: 22px; flex: none; color: var(--ink-3); }
+.sidenav button[aria-current="page"] { background: rgba(241, 237, 230, .12); }
+.sidenav button[aria-current="page"] svg { color: var(--accent); }
+.sval { margin-left: auto; color: var(--ink-3); font-size: .875rem; }
+.tablet .side .fine { margin: 18px 10px; }
+.tablet .app { left: 260px; max-width: none; margin: 0; padding-top: 0; }
+/* Each pane has a bar: its back or menu button at the left, its one action at the right (owner: "top of pane"). */
+.tablet .view { padding: calc(60px + env(safe-area-inset-top, 0px)) 24px 32px; }
+.tablet .view > * { max-width: 680px; }
+.tablet .view > .navbar { position: absolute; top: calc(6px + env(safe-area-inset-top, 0px)); left: 16px; margin: 0; }
+.tablet .action { position: absolute; top: calc(8px + env(safe-area-inset-top, 0px)); right: 16px; padding: 0; z-index: 5; }
+.tablet .primary { width: auto; min-height: 44px; padding: 0 18px; }
+.tablet .view > .lt { margin-top: 0; }
+/* Portrait and split screen: one pane; the sidebar slides in over it. */
+.tablet.compact .app { left: 0; }
+.tablet.compact .side { transform: translateX(-105%); transition: transform .3s cubic-bezier(0.22, 1, 0.36, 1); }
+.tablet.compact.sideopen .side { transform: none; }
+.sidescrim { display: none; }
+.tablet.compact.sideopen .sidescrim { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 25; }
+.menubtn { position: fixed; top: calc(6px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px)); width: 44px; height: 44px; border: 0; border-radius: 10px; background: none; color: var(--accent); display: flex; align-items: center; justify-content: center; z-index: 6; cursor: pointer; }
+.menubtn svg { width: 22px; height: 22px; }
+/* Guests: the list pane and the guest. */
+.gsplit { display: flex; flex: 1; min-height: 0; height: 100%; }
+.listpane { position: relative; display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.gsplit.split .listpane { flex: none; width: 400px; border-right: 1px solid var(--hair); }
+.gsplit.split .listpane .view { padding-left: 16px; padding-right: 16px; }
+.gdetail { flex: 1; min-width: 0; overflow-y: auto; padding: calc(60px + env(safe-area-inset-top, 0px)) 24px 32px; }
+.gdetail > * { max-width: 560px; }
+.gdetail.pushedpane { position: absolute; inset: 0; background: var(--bg); z-index: 8; animation: push .35s cubic-bezier(0.22, 1, 0.36, 1); }
+.gdetail.pushedpane > .navbar { position: absolute; top: calc(6px + env(safe-area-inset-top, 0px)); left: 16px; margin: 0; }
+.dhead { font-size: 1.5rem; font-weight: 700; margin: 0 2px 6px; }
+.empty { color: var(--ink-3); margin: 40px auto; text-align: center; max-width: 34ch; }
+/* Solid, so the swipe labels under a row never show through the selection. */
+.row.guest[aria-selected="true"] { background: #323233; }
+.keys { display: flex; flex-wrap: wrap; gap: 14px; color: var(--ink-3); font-size: .8125rem; margin: 28px 2px 0; }
+kbd { font: 600 .75rem var(--sans); color: var(--ink-3); border: 1px solid var(--hair); border-radius: 5px; padding: 1px 5px; }
+/* A pointer shows where it is (UX_13 §3). */
+@media (hover: hover) {
+  .row.go:hover, .row.guest:hover, .sidenav button:hover, .row.choice:hover { background: var(--raised-2); }
+  .link:hover { text-decoration: underline; }
+}
+@media (prefers-reduced-motion: reduce) { .tablet.compact .side, .gdetail.pushedpane { transition: none; animation: none; } }
