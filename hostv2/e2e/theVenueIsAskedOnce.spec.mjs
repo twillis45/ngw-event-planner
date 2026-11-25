@@ -92,6 +92,12 @@ test('saved in one place, every place shows it and none asks again', async ({ pa
   // The help is for finding a place; once there is one, it is gone (50-host run).
   await expect(page.locator('.sheet').last().locator('[data-venue-help]')).toHaveCount(0);
   await page.keyboard.press('Escape');
+  // Closing a sheet pops the history entry it pushed (history.back(), so a
+  // phone's Back gesture closes it). A goto sent before that back lands is
+  // cancelled by it (net::ERR_ABORTED, tablet-tall, 11/25/2026): wait for the
+  // sheet to close and its entry to be gone first.
+  await expect(page.locator('.sheet')).toHaveCount(0);
+  await page.waitForFunction(() => !(history.state && history.state.ngwOverlay));
   await page.goto('./?elegant=1'); await settled(page);
   expect(await asks(page)).toEqual([]);                           // the board card is gone
   await page.goto('./'); await settled(page);

@@ -360,7 +360,7 @@ for (const [name, vp] of [['phone', PHONE], ['13" portrait', TALL13]]) {
     expect(txt).not.toMatch(/What city, state/i);
     expect(txt).not.toMatch(/Guests will ask where/i);
     // One city field on the board, in the hero.
-    const cityFields = await page.evaluate(() => [...document.querySelectorAll('.app input')].filter((i) => !i.closest('[inert]') && i.getBoundingClientRect().height > 0 && /city/i.test(i.placeholder + ' ' + (i.getAttribute('aria-label') || ''))).map((i) => !!i.closest('.escreen.on .ecenter')));
+    const cityFields = await page.evaluate(() => [...document.querySelectorAll('.app input')].filter((i) => !i.closest('[inert]') && i.getBoundingClientRect().height > 0 && /city/i.test(i.placeholder + ' ' + (i.getAttribute('aria-label') || '') + ' ' + [...(i.labels || [])].map((l) => l.textContent).join(' '))).map((i) => !!i.closest('.escreen.on .ecenter')));
     expect(cityFields).toEqual([true]);
     // Once the city is in, nothing asks for it, and the street ask takes its place.
     const card = page.locator('.escreen.on .ecenter');

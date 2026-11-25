@@ -53,6 +53,11 @@ const readSheet = async (page, sectionName, sheetTitleMatch) => {
   // The decided calls are one green row until reopened (DoneFold, owner 11/24/2026).
   const fold = page.locator('.sheet').last().locator('[data-done-fold]', { hasText: /Settled · all \d+ decided/ });
   if (await fold.count()) { await fold.click(); await page.waitForTimeout(300); }
+  // What could go wrong folds its quiet groups ("Keep an eye on it", "Minor";
+  // cohesion G1, owner 11/24/2026). Every group is opened first, so a risk that
+  // must be there is found and one that must be gone is not merely folded away.
+  const folded = page.locator('.sheet').last().locator('details.risk-g:not([open]) > summary');
+  while (await folded.count()) { await folded.first().click(); await page.waitForTimeout(150); }
   return page.locator('.sheet').last().innerText();
 };
 

@@ -8586,8 +8586,10 @@ button.vc-pill::after{
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head .tt-title{ margin-top:0 !important; }
   /* The touch "✎ Rename" (cohesion G #57) rides the title's 12px top margin
      elsewhere; in this compact header the title has none, so neither does it
-     (it made the title row 58px and lowered the fold handle 12px). */
-  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head .tt-nameit{ margin-top:0 !important; }
+     (it made the title row 58px and lowered the fold handle 12px). Like the
+     tip's × above, it sits over the next row, which otherwise covered its
+     bottom 8px (84x38, everyTapIsFortyFourSquare at 1024x768). */
+  .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .tt-head .tt-nameit{ margin-top:0 !important; position:relative; z-index:1; }
   .stagewrap--responsive-command[data-rail="1"][data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{ padding-top:16px; }
 }
 /* ON A SHORT TOUCH SCREEN THE STAT CARD'S CHIPS ARE 46px, not 28 (the touch

@@ -189,10 +189,15 @@ test('4: with a mouse, hovering the title shows a pencil and "Double-click to re
   await ctx.close();
 });
 
-test('4: on a touch phone the hover hint never shows; the press-and-hold tip does', async ({ browser }) => {
+// Cohesion G #57 (owner, 11/24/2026): the touch screen's one-time press-and-hold
+// tip became a visible "✎ Rename" beside the title (theBoardPackage asserts it
+// opens the rename). The hover hint still never shows on touch.
+test('4: on a touch phone the hover hint never shows; the visible ✎ Rename does', async ({ browser }) => {
   test.setTimeout(90_000);
   const { ctx, page } = await seeded(browser, PHONE, { ...DINNER, id: 'ev-touch-hint' }, { touch: true });
-  await expect(page.locator('[data-rename-tip]')).toBeVisible();
+  await expect(page.locator('[data-rename-btn]')).toBeVisible();
+  await expect(page.locator('[data-rename-btn]')).toHaveText('✎ Rename');
+  await expect(page.locator('[data-rename-tip]')).toHaveCount(0);
   await page.locator('[data-tt-title] .tt-name').hover();
   await expect(page.locator('[data-tt-title] [data-rename-pencil]')).toBeHidden();
   await expect(page.locator('[data-tt-title] [data-rename-hint]')).toBeHidden();
