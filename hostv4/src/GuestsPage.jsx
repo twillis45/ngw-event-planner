@@ -12,7 +12,7 @@
 // nudges, locking the count, updates) says so and opens the current app.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { typingIn } from './layout.js';
-import { countEdit, modeEdit, addNamesEdit, nameLines, rsvpEdit, removeGuestEdit, plusOneEdit, kidsEdit, replyByEdit, guestFieldEdit, mealEdit, kidsAddedLine, toldEdit, MEAL_CHOICES, guestListCsv, replyAlertsEdit } from '@app/lib/guestEdits';
+import { countEdit, modeEdit, addNamesEdit, nameLines, rsvpEdit, removeGuestEdit, plusOneEdit, kidsEdit, replyByEdit, replyByProblem, guestFieldEdit, mealEdit, kidsAddedLine, toldEdit, MEAL_CHOICES, guestListCsv, replyAlertsEdit } from '@app/lib/guestEdits';
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { guestToldMap, isTold } from '@app/lib/guestTold';
 import { detectCoupleNames } from '@app/lib/guestSplit';
@@ -89,6 +89,8 @@ export function QuestionCard({ k, ev, count, setCount, save }) {
 // The proposal's reasoning is one tap down (UX_12 §1.4), so the screen stays a question.
 function ReplyByCard({ ev, save }) {
   const [why, setWhy] = useState(false);
+  const [picked, setPicked] = useState('');
+  const problem = picked ? replyByProblem(ev, picked) : null;
   {
     let prop = null;
     try { prop = proposeReplyBy(ev); } catch { prop = null; }
@@ -100,10 +102,17 @@ function ReplyByCard({ ev, save }) {
             <span className="nm">{longDay(prop.iso)}<small>Our suggestion</small>{prop.holiday && <small className="hol" data-holiday>That’s {prop.holiday}. Keep it, or pick another date.</small>}</span>{chev}
           </button>
         )}
+        {/* iPad's picker changes the field as soon as it is touched, so a pick
+            waits for a tap on "Use <date>" (owner, 11/25/2026: the date kept
+            coming back after Undo). */}
         <label className="row">Pick another date
-          <input type="date" className="datein" aria-label="Reply-by date" onChange={(e) => e.target.value && save(replyByEdit(e.target.value))} />
+          <input type="date" className="datein" aria-label="Reply-by date" value={picked} onChange={(e) => setPicked(e.target.value)} />
         </label>
+        {picked && !problem && (
+          <button className="row go" onClick={() => save(replyByEdit(picked))}><span className="nm">Use {longDay(picked)}</span>{chev}</button>
+        )}
       </div>
+      {picked && problem && <p className="fine" data-problem>{problem}</p>}
       {prop && prop.tooClose && <p className="fine">{prop.why}</p>}
       {prop && !prop.tooClose && (why ? <p className="fine" data-why>{prop.why}</p> : <p className="fine"><button className="link" onClick={() => setWhy(true)}>Why this date</button></p>)}
     </>);
