@@ -99,6 +99,13 @@ button.primary { border: 0; cursor: pointer; font-family: var(--sans); }
 .datein { margin-left: auto; background: none; border: 0; color: var(--accent); font: inherit; min-height: 44px; color-scheme: dark; }
 .hol { color: var(--warn); }
 h3.sh { font-size: 1rem; margin: 22px 2px 8px; }
+/* The invite page. */
+.msg { background: var(--raised); border-radius: 12px; padding: 14px; white-space: pre-wrap; font-size: 1rem; line-height: 1.45; color: var(--ink); margin-top: 10px; overflow-wrap: anywhere; }
+.seg.voices { overflow-x: auto; scrollbar-width: none; }
+.seg.voices button { flex: none; padding: 0 12px; }
+.rule .lbl { margin-top: 14px; }
+.val.warnv { color: var(--warn); }
+.okline { color: var(--ok); }
 @keyframes push { from { transform: translateX(24%); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes rise { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }

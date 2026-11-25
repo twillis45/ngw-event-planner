@@ -78,7 +78,7 @@ import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { inviteRecipients, inviteSubjectAndBody, markInvited, greetingName } from '@app/lib/inviteBatch';
 import { nudgeRecipients, nudgeCount, markNudged, nudgeRowLine, nudgeDeliveryFor, nudgeTextBody, wasInvited, NUDGE_GAP_DAYS } from '@app/lib/replyNudge';
-import { LINK_PLACEHOLDER, savedInviteDraft, inviteDraftRecord, withLink, lineChange, swapPageLine, textMessageBody, sentSnapshot, draftStatus, plainText, sentRecipients } from '@app/lib/inviteMessageDraft';
+import { LINK_PLACEHOLDER, savedInviteDraft, withLink, lineChange, swapPageLine, textMessageBody, sentSnapshot, draftStatus, plainText, sentRecipients, saveDraftEdit } from '@app/lib/inviteMessageDraft';
 import { inviteGaps } from '@app/lib/inviteGaps';
 import { inviteCardModel, inviteCardKey } from '@app/lib/inviteCard';
 import SignInCheck, { signInCheckOn } from '@app/components/SignInCheck';
@@ -23810,12 +23810,12 @@ export default function HostShellV2() {
               const saveInviteDraft = () => {
                 const c = draftVoiceCtx();
                 const offered = sheet.voices ? !!sheet.voices[draftTone] : voicesFor(c.audience, c.sombre).includes(draftTone);
-                patchEvent({
-                  inviteMessageDraft: inviteDraftRecord({
-                    body: shownDraft(), voice: offered ? draftTone : 'as-written', edited: draftBody != null,
-                    line: String(event.deckLine || '').trim(), now: new Date().toISOString(),
-                  }),
-                }, 'Draft saved — nothing was sent.');
+                // The same edit hostv4 saves (lib/inviteMessageDraft).
+                const ed = saveDraftEdit({
+                  body: shownDraft(), voice: offered ? draftTone : 'as-written', edited: draftBody != null,
+                  line: String(event.deckLine || '').trim(), now: new Date().toISOString(),
+                });
+                patchEvent(ed.patch, ed.msg);
               };
               const linkBox = noLink ? (
                 <div className="si-warn" role="alert" data-link-not-ready>

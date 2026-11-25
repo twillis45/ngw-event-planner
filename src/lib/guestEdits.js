@@ -97,3 +97,25 @@ export function kidsEdit(v) {
 export function replyByEdit(iso) {
   return { patch: { rsvpDeadline: iso }, msg: 'Reply-by date set — your invite and the nudges read it.' };
 }
+
+/** Ask yeses for a mailing address (for thank-yous). */
+export function addressesEdit(v) {
+  return { patch: { collectAddresses: v }, msg: v ? 'Yeses now get an optional mailing-address question, for thank-yous.' : 'Address question removed from the RSVP page.' };
+}
+
+/** The gift note: null (none), 'no_gifts', 'registry', or a kept older mode. Its detail stays when the mode does. */
+export function giftEdit(event, v) {
+  const gw = (event && event.giftWish && typeof event.giftWish === 'object') ? event.giftWish : {};
+  return {
+    patch: { giftWish: v ? { mode: v, detail: v === gw.mode ? (gw.detail || '') : '' } : null },
+    msg: v === 'no_gifts' ? '“Your presence is the gift” goes on the invite.'
+      : v === 'registry' ? 'Registry noted — paste the link below so guests can find it.'
+        : v ? 'Gift note kept.' : 'No gift note on the invite.',
+  };
+}
+
+/** The gift note's detail (the registry link, the cause): saved as she types, no line. */
+export function giftDetailEdit(event, detail) {
+  const gw = (event && event.giftWish && typeof event.giftWish === 'object') ? event.giftWish : {};
+  return { patch: { giftWish: { mode: gw.mode, detail } }, msg: null };
+}

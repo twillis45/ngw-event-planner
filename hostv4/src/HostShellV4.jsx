@@ -7,6 +7,7 @@
 // the plan in the current app; it never pretends.
 import { useEffect, useMemo, useState } from 'react';
 import GuestsPage from './GuestsPage.jsx';
+import InvitePage from './InvitePage.jsx';
 import { readCustomEvents, patchSavedEvent } from '@app/lib/customEventStore';
 import { sourcedBudget } from '@app/lib/playbooks';
 import { saveEvent as cloudSaveEvent } from '@app/lib/api/events';
@@ -119,16 +120,17 @@ export default function HostShellV4() {
   const [why, setWhy] = useState(false);
   const [done, setDone] = useState(null); // { msg, undo } — one quiet line, with Undo
   const [failed, setFailed] = useState(null);
-  const [page, setPage] = useState(null); // a pushed page over the tab: 'guests'
+  const [stack, setStack] = useState([]); // pages pushed over the tab: 'guests', then 'invite'
+  const page = stack[stack.length - 1] || null;
   // Every pushed page is a history entry, so browser back (and Safari's edge
   // swipe) equals app back (UX_12 §7a.7).
   useEffect(() => {
-    const onPop = () => setPage(null);
+    const onPop = () => setStack((st) => st.slice(0, -1));
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
-  const push = (pg) => { try { window.history.pushState({ v4: pg }, ''); } catch { /* the page still opens */ } setDone(null); setPage(pg); };
-  const back = () => { try { window.history.back(); } catch { setPage(null); } };
+  const push = (pg) => { try { window.history.pushState({ v4: pg }, ''); } catch { /* the page still opens */ } setDone(null); setStack((st) => [...st, pg]); };
+  const back = () => { try { window.history.back(); } catch { setStack((st) => st.slice(0, -1)); } };
   const next = useNext(ev);
   const { items: rows, cue } = usePlanRows(ev);
   const date = longDate(ev.date);
@@ -154,7 +156,8 @@ export default function HostShellV4() {
     const res = patchSavedEvent(ev.id, obj, { reason: 'hostv4:patch-event' });
     if (!res.ok) { setFailed('That didn’t save on this phone. Your last saved version is still here.'); return false; }
     setPicked({ ev: res.saved, sample: false });
-    setDone(prev ? { msg, prev } : { msg });
+    // A save with no line (a field saved as she types) shows nothing.
+    setDone(msg ? (prev ? { msg, prev } : { msg }) : null);
     setPick(null);
     if (getLastSyncTime(res.saved.id)) {
       cloudSaveEvent(res.saved).then((r) => {
@@ -186,20 +189,21 @@ export default function HostShellV4() {
   const tabbar = (
     <nav className="tabbar" role="tablist">
       {TABS.map(([id, label, d]) => (
-        <button key={id} role="tab" aria-selected={!page && tab === id} onClick={() => { if (page) back(); setTab(id); }}><Icon d={d} />{label}</button>
+        <button key={id} role="tab" aria-selected={!page && tab === id} onClick={() => { if (stack.length) { try { window.history.go(-stack.length); } catch { /* falls through */ } setStack([]); } setTab(id); }}><Icon d={d} />{label}</button>
       ))}
     </nav>
   );
 
-  if (page === 'guests') {
-    const from = tab === 'plan' ? 'Your plan' : 'Next step';
-    const navbar = (<>
+  if (page) {
+    const from = stack.length > 1 ? 'Guests' : tab === 'plan' ? 'Your plan' : 'Next step';
+    const navbar = (title) => (<>
       <div className="navbar"><button className="backbtn" onClick={back} aria-label={'Back to ' + from}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>{from}</button></div>
-      <h1 className="lt">Guests</h1>
+      <h1 className="lt">{title}</h1>
     </>);
     return (
-      <div className="app pushed">
-        <GuestsPage key={ev.id} ev={ev} save={saveEdit} sample={sample} nav={navbar} status={status} />
+      <div className="app pushed" key={page}>
+        {page === 'guests' && <GuestsPage key={ev.id} ev={ev} save={saveEdit} sample={sample} nav={navbar('Guests')} status={status} onInvite={() => push('invite')} />}
+        {page === 'invite' && <InvitePage key={ev.id} ev={ev} save={saveEdit} nav={navbar('Your invite')} status={status} />}
         {tabbar}
       </div>
     );

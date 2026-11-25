@@ -177,7 +177,7 @@ function GuestSheet({ g, onReply, onRemove, onDone }) {
   );
 }
 
-export default function GuestsPage({ ev, save, sample, nav, status }) {
+export default function GuestsPage({ ev, save, sample, nav, status, onInvite }) {
   const qs = guestQuestions(ev);
   const [count, setCount] = useState(() => Number(ev.guestEstimate) || Number(guestCountFor(ev).count) || 20);
   const [text, setText] = useState('');
@@ -258,7 +258,8 @@ export default function GuestsPage({ ev, save, sample, nav, status }) {
 
       {!qs.length && (<>
         <h3 className="sh">The invite</h3>
-        <p className="fine">Your invite, sending it, replies, nudges and updates are in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>
+        <div className="grp"><button className="row go" data-open-invite onClick={onInvite}><span>Your invite</span><span className={'val' + (ev.invitesSentAt ? ' ok' : '')}>{ev.invitesSentAt ? 'Sent' : 'Not sent yet'}</span>{chev}</button></div>
+        <p className="fine">Sending it, replies, nudges and updates are in the current app for now. <a className="link" href="../hostv2/">Open the current app</a></p>
       </>)}
 
       {opened && <GuestSheet g={opened} onDone={() => setOpen(null)}

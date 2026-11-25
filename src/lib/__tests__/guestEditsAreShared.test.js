@@ -68,3 +68,20 @@ test('the invite rules and the reply-by date', () => {
   expect(kidsEdit(null).msg).toBe('Kids not set — the invite stays quiet on them.');
   expect(replyByEdit('2026-12-20')).toEqual({ patch: { rsvpDeadline: '2026-12-20' }, msg: 'Reply-by date set — your invite and the nudges read it.' });
 });
+
+test('mailing addresses and the gift note', () => {
+  const { addressesEdit, giftEdit, giftDetailEdit } = require('../guestEdits');
+  expect(addressesEdit(true)).toEqual({ patch: { collectAddresses: true }, msg: 'Yeses now get an optional mailing-address question, for thank-yous.' });
+  expect(addressesEdit(false).msg).toBe('Address question removed from the RSVP page.');
+  expect(giftEdit({}, 'no_gifts')).toEqual({ patch: { giftWish: { mode: 'no_gifts', detail: '' } }, msg: '“Your presence is the gift” goes on the invite.' });
+  expect(giftEdit({ giftWish: { mode: 'registry', detail: 'x.com' } }, 'registry').patch.giftWish.detail).toBe('x.com');
+  expect(giftEdit({}, 'registry').msg).toBe('Registry noted — paste the link below so guests can find it.');
+  expect(giftEdit({}, null)).toEqual({ patch: { giftWish: null }, msg: 'No gift note on the invite.' });
+  expect(giftDetailEdit({ giftWish: { mode: 'registry' } }, 'x.com')).toEqual({ patch: { giftWish: { mode: 'registry', detail: 'x.com' } }, msg: null });
+});
+
+test('saving the invite words sends nothing, and says so', () => {
+  const { saveDraftEdit } = require('../inviteMessageDraft');
+  const r = saveDraftEdit({ body: 'Hi', voice: 'warmer', edited: false, line: 'Come!', now: '2026-11-25T18:00:00.000Z' });
+  expect(r).toEqual({ patch: { inviteMessageDraft: { body: 'Hi', voice: 'warmer', savedAt: '2026-11-25T18:00:00.000Z', edited: false, line: 'Come!' } }, msg: 'Draft saved — nothing was sent.' });
+});

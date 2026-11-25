@@ -127,3 +127,8 @@ export function draftStatus(event) {
   if (!d) return { kind: 'none', line: 'Written from your plan · check it' };
   return { kind: 'saved', line: d.edited ? 'Draft saved · edited' : 'Draft saved' };
 }
+
+/** Saving the words is an edit both shells make: { patch, msg }. Nothing is sent. */
+export function saveDraftEdit({ body, voice, edited, line, now }) {
+  return { patch: { inviteMessageDraft: inviteDraftRecord({ body, voice, edited, line, now }) }, msg: 'Draft saved — nothing was sent.' };
+}
