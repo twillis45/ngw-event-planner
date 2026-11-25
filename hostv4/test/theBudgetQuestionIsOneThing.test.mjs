@@ -44,3 +44,11 @@ describe('the budget question is one thing', () => {
     expect(src).not.toMatch(/saveCustomEvents|localStorage\.setItem/);
   });
 });
+
+describe('a step v4 cannot do yet is never a dead end', () => {
+  it('every screen that says "opens in the current app" has the button that does it', () => {
+    // The budget branch answers in place; every other ask shows the link, the sample included.
+    expect(src).toMatch(/tab === 'next' && !sb && next && <div className="action">\{openInCurrent\}/);
+    expect(src).not.toMatch(/!sb && !sample/);
+  });
+});

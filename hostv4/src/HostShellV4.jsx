@@ -125,7 +125,8 @@ export default function HostShellV4() {
   // list's own pick is used only when no row matches the ask.
   const askRow = next ? rows.findIndex((r) => !r.handled && r.cueLabel === String(next.ask).replace(/\.$/, '')) : -1;
   const firstOpen = askRow >= 0 ? askRow : rows.findIndex((r) => cue && r.id === cue.id);
-  const openInCurrent = <a className="primary" href="../hostv2/">Open it in the current app</a>;
+  // The sample is not in the current app, so its button opens the app, not "it".
+  const openInCurrent = <a className="primary" href="../hostv2/">{sample ? 'Open the current app' : 'Open it in the current app'}</a>;
   const sb = useMemo(() => (next && next.budget ? sourcedBudget(ev) : null), [ev, next]);
   const tierPick = sb ? (pick != null ? pick : (sb.steps[1] || sb.steps[0]).mid) : null;
 
@@ -178,7 +179,7 @@ export default function HostShellV4() {
         {tab === 'next' && !sb && (
           <section data-next>
             {next ? <h2 className="q">{next.ask}</h2> : <h2 className="q">You’re set for now.</h2>}
-            <p className="qhelp">This new design shows one step at a time. Doing it here comes next; for now it opens in the current app.</p>
+            {next && <p className="qhelp">This new design shows one step at a time. Doing it here comes next; for now it opens in the current app.</p>}
           </section>
         )}
 
@@ -197,7 +198,8 @@ export default function HostShellV4() {
       </main>
 
       {tab === 'next' && sb && <div className="action"><button className="primary" onClick={() => setBudget(tierPick)}>Plan with {money(tierPick)}</button></div>}
-      {tab === 'next' && !sb && !sample && <div className="action">{openInCurrent}</div>}
+      {/* Never a dead end (live check, 11/25/2026): the sample said "opens in the current app" with nothing to tap. */}
+      {tab === 'next' && !sb && next && <div className="action">{openInCurrent}</div>}
       {why && sb && <HowWeGotThese sb={sb} type={ev.type} onDone={() => setWhy(false)} />}
 
       <nav className="tabbar" role="tablist">
