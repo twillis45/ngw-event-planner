@@ -6,7 +6,7 @@
 // step that names an item buys that item; a step naming nothing on the list
 // buys nothing.
 import { itemsBoughtByTask } from '../shopTaskItems';
-import { playbookFoodPlan } from '../playbooks';
+import { playbookFoodPlan, hostBuysLine } from '../playbooks';
 
 const EV = { id: 'fg', type: 'Friendsgiving', date: '2026-11-21', guestEstimate: 12, guestMode: 'count', guests: [], vendors: [], budget: [] };
 const LIST = playbookFoodPlan(EV, {}).list.filter((it) => !it.skipped);
@@ -24,10 +24,12 @@ test('"Buy the turkey: …" buys the turkey and nothing else', () => {
   names(r.ids).forEach((n) => expect(n).toMatch(/turkey/i));
 });
 
+// "The whole list" is every line SHE buys: a dish the guests bring is not
+// hers to mark bought (11/26/2026, doTheShoppingBuysOnlyHerLines).
 test.each(['Do the shopping', 'Do the big grocery shop', 'Buy everything on the list'])('a general step buys the whole list: %s', (t) => {
   const r = itemsBoughtByTask(t, LIST);
   expect(r.scope).toBe('all');
-  expect(r.ids.length).toBe(LIST.length);
+  expect(r.ids.length).toBe(LIST.filter(hostBuysLine).length);
 });
 
 test('a step naming nothing on the list buys nothing', () => {
