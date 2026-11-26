@@ -208,7 +208,7 @@ export default function HostShellV4() {
   const frame = (content) => (layout === 'phone' ? content : (
     <div className={'tablet ' + layout + (sideOpen ? ' sideopen' : '')} data-layout={layout}>
       <Sidebar ev={ev} date={date} tabs={TABS.map(([id, label, d]) => [id, label, <Icon d={d} />])} here={page === 'guests' || stack.includes('guests') ? 'guests' : page ? null : tab}
-        onTab={goTab} onGuests={goGuests} onClose={() => setSideOpen(false)} />
+        onTab={goTab} onGuests={goGuests} onClose={() => setSideOpen(false)} hidden={layout === 'compact' && !sideOpen} />
       {layout === 'compact' && <div className="sidescrim" onClick={() => setSideOpen(false)} />}
       {layout === 'compact' && !page && <button className="menubtn" aria-label="Show places" onClick={() => setSideOpen(true)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg></button>}
       {content}
