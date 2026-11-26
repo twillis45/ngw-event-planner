@@ -27,6 +27,8 @@ import { cueByTheClock } from './dayOfHero';
  *   nowCue / nowActive / clockState   lib/dayOfHero cueByTheClock
  *   nextCue   the open cue after the one happening now (or the upcoming one)
  *   openCues  cues not ticked, in their order
+ *   earlierCues  open cues whose time came before the one happening now: the
+ *             steps the day moved past without a tick (they fold away)
  *   allDone   cues exist and every one is ticked
  * }
  */
@@ -52,6 +54,13 @@ export function dayState(event, ros, now) {
       .sort((a, b) => parseMin(a.time) - parseMin(b.time))[0] || rest[0] || null;
   }
 
+  const nowStart = nowActive ? parseMin(nowCue.time) : null;
+  const earlierCues = nowStart === null ? [] : openCues.filter((r) => {
+    if (r === nowCue) return false;
+    const m = parseMin(r.time);
+    return m !== null && m < nowStart;
+  });
+
   const eventDay = !!event && isDuringEvent(event, now);
   const dayCount = (event ? spanNights(event) : 0) + 1;
   const dayIndex = eventDay ? dayIndexOf(event, now) : null;
@@ -66,6 +75,6 @@ export function dayState(event, ros, now) {
   return {
     phase, eventDay, dayIndex, dayCount, nowMin,
     started, doorsOpen, nowCue, nowActive, clockState: clock.state, nextCue,
-    openCues, allDone,
+    openCues, earlierCues, allDone,
   };
 }

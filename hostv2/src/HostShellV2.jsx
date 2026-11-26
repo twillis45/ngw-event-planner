@@ -130,6 +130,7 @@ import { identityStatement, honoreeApplies } from '@app/lib/eventIdentity';
 import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, spanEnd, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
 import { dayOfHero } from '@app/lib/dayOfHero';
 import { dayState } from '@app/lib/dayState';
+import { todaysRos, dayOfList, dayOfTickEdit } from '@app/lib/dayOfEdits';
 import { afterOwed } from '@app/lib/afterOwed';
 import { eventDatesPatch, eventSpanLabel, eventStartTimePatch } from '@app/lib/eventDates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
@@ -11636,14 +11637,11 @@ export default function HostShellV2() {
   // time of day), a stored ros only when the host has taken ownership.
   const rosBasis = useMemo(() => { try { return rosBasisNote(event); } catch (_e) { return null; } }, [event]);
   const ros = useMemo(() => {
-    try {
-      const all = effectiveRos(event) || [];
-      // ROS day dimension (P1, 2026-07-28): mid-span the Day stage runs TODAY's
-      // rows — day K keeps day-K rows plus the dayless single-day cues on day 1.
-      // Pre-event and single-day: the full program, day labels riding `rel`.
-      const k = dayIndexOf(event);
-      return (k && spanNights(event) > 0) ? all.filter(r => (r.day || 1) === k) : all;
-    } catch { return Array.isArray(event.ros) ? event.ros : []; }
+    // ROS day dimension (P1, 2026-07-28): mid-span the Day stage runs TODAY's
+    // rows — day K keeps day-K rows plus the dayless single-day cues on day 1.
+    // Pre-event and single-day: the full program. lib/dayOfEdits todaysRos, the
+    // reader hostv4's The Day uses too (11/26/2026).
+    try { return todaysRos(event, new Date()); } catch { return Array.isArray(event.ros) ? event.ros : []; }
   }, [event]);
   // Day-of ruling state 3: solemn events drop the count, soften verbs, lean the serif.
   const solemn = useMemo(() => isSolemnEvent(event), [event]);
@@ -12018,7 +12016,9 @@ export default function HostShellV2() {
   };
 
   const dayOfCard = (eyebrow) => {
-                const rc = (() => { try { return playbookDayOfChecklist(event); } catch { return null; } })();
+                // What is checked, and each tick, are lib/dayOfEdits (dayOfList,
+                // dayOfTickEdit): the same reads and writes as hostv4's The Day.
+                const rc = (() => { try { return dayOfList(event); } catch { return null; } })();
                 if (!rc || !rc.items || !rc.items.length) return null;
                 const checked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
                 // ONE RAIN PLAN (single-source audit, 11/18/2026): the 'weather'
@@ -12027,20 +12027,17 @@ export default function HostShellV2() {
                 // beside an unconfirmed "Rain / heat plan". The row now reads the
                 // saved plan, and with none saved a tap opens the rain editor —
                 // where the answer lives — instead of storing a second one.
-                const rainHas = (() => { try { return rainPlanStatus(event).hasPlan; } catch { return false; } })();
+                const rainHas = rc.items.some((p) => p.via === 'rain' && p.checked);
                 const isRainRow = (p) => p.key === 'weather';
                 // ONE TICK (audit 2 lane A P0-6): a row derived from the checklist's
                 // own day-of step IS that step, so it reads and writes the step.
-                const stepIx = (key) => (event.timeline || []).findIndex((t) => t && String(t.id) === String(key));
-                const stepDone = (key) => { const i = stepIx(key); return i >= 0 && !!event.timeline[i].done; };
-                const isChecked = (p) => (isRainRow(p) && rainHas) || !!checked[p.key] || stepDone(p.key);
-                const done = rc.items.filter(isChecked).length;
+                const isChecked = (p) => p.checked;
+                const done = rc.done;
                 const toggle = (key) => {
-                  if (stepIx(key) >= 0 && !checked[key]) { toggleTask(stepIx(key)); return; }
-                  const next = { ...checked };
-                  if (next[key]) delete next[key]; else next[key] = true;
-                  patchEvent({ safetyChecked: next },
-                    (next[key] ? 'Confirmed: ' : 'Reopened: ') + String(rc.items.find((p) => p.key === key)?.label || '').slice(0, 48));
+                  const it = rc.items.find((p) => p.key === key);
+                  if (it && it.via === 'step' && !checked[key]) { toggleTask(it.stepIndex); return; }
+                  const ed = dayOfTickEdit(event, key);
+                  patchEvent(ed.patch, ed.msg);
                 };
                 return (
                   <div className="card dayof-card">
