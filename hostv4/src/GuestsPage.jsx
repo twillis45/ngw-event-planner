@@ -32,6 +32,7 @@ import { useGuestQuestions } from '@app/lib/guestUpdatesKit';
 import { getLastSyncTime } from '@app/lib/api/syncState';
 import { readOpenGroup, writeOpenGroup } from './viewMemory.js';
 import { questionsWaitingLine } from '@app/lib/guestInbox';
+import { guestPath } from './guestPath.js';
 
 const REPLY = { yes: 'Coming', maybe: 'Maybe', no: 'Can’t make it', pending: 'No reply' };
 const RSVP_VALUE = { yes: 'Yes', maybe: 'Maybe', no: 'No', pending: '' };
@@ -462,15 +463,46 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  // THE BOTTOM BUTTON, by state (prototype PRIMARY.guests). One action.
-  const action = qs[0] === 'count' ? { label: 'Plan for ' + count, go: () => save(countEdit(ev, count)) }
-    : qs.length ? null
-      : byName && !named ? { label: 'Add names', go: () => { if (text.trim()) add(); else { const f = document.getElementById('addname'); if (f) f.focus(); } } }
-        : !ev.invitesSentAt ? { label: 'Review your invite', go: onInvite }
-          // LOCK THE COUNT: the bottom button after the reply-by date, and nowhere else (owner, 11/25/2026).
-          : replyByPassed && !locked ? { label: 'Lock the count', go: () => setSheet('lock') }
-            : toNudge ? { label: toNudge === 1 ? 'Nudge the one who hasn’t replied' : 'Nudge the ' + toNudge + ' who haven’t replied', go: () => setSheet('nudge') }
-              : null;
+  // THE PATH AND THE BOTTOM BUTTON come from one place (guestPath), so the lit
+  // step is always the button. LOCK THE COUNT stays the button after the reply-by
+  // date, and nowhere else (owner, 11/25/2026).
+  const path = guestPath({ qs, byName, named, sent: !!ev.invitesSentAt, replyByPassed, locked, toNudge, replied, invited, waiting, deadline: ev.rsvpDeadline }, 'Plan for ' + count);
+  const focusAdd = () => { const f = document.getElementById('addname'); if (f) f.focus(); };
+  const GO = {
+    plan: () => save(countEdit(ev, count)),
+    add: () => { if (text.trim()) add(); else focusAdd(); },
+    invite: onInvite,
+    lock: () => setSheet('lock'),
+    nudge: () => setSheet('nudge'),
+  };
+  const action = path.action && { label: path.action.label, go: GO[path.action.kind] };
+  // A step you can tap: where it leads. Later steps with nowhere to go yet are plain rows.
+  const TAP = {
+    answers: !qs.length ? () => setAnswers(true) : null,
+    names: !byName ? null : named ? () => setSheet('add') : focusAdd,
+    invite: onInvite,
+    replies: ev.invitesSentAt && toNudge ? () => setSheet('nudge') : null,
+    count: replyByPassed || locked ? () => setSheet('lock') : null,
+  };
+  const stepRow = (st) => {
+    const inner = (<>
+      <span className={'mark s-' + st.state} aria-hidden="true">{st.state === 'done' ? '✓' : ''}</span>
+      <span className="nm">{st.label}{st.k === 'answers' && !qs.length && <small>{answersLine(ev)}</small>}</span>
+      {st.val && <span className={'val' + (st.state === 'now' ? ' next' : '')}>{st.val}</span>}
+    </>);
+    const a = { key: st.k, 'data-step': st.k, 'data-state': st.state, 'aria-current': st.state === 'now' ? 'step' : undefined };
+    return TAP[st.k] ? <button className={'row go step s-' + st.state} {...a} onClick={TAP[st.k]}>{inner}{chev}</button>
+      : <div className={'row step s-' + st.state} {...a}>{inner}</div>;
+  };
+  const pathEl = (
+    <div className="grp path" data-path aria-label="Start to finish">
+      {path.steps.map(stepRow)}
+      <button className="row go step" data-step="updates" onClick={onUpdates}>
+        <span className="mark" aria-hidden="true" /><span className="nm">Updates and questions</span>
+        {waiting > 0 && <span className="val warn" data-questions-waiting>{questionsWaitingLine(waiting)}</span>}{chev}
+      </button>
+    </div>
+  );
 
   // The page owns its screen and its bottom button (one primary, same place).
   const actionEl = action && <div className="action">{action.href
@@ -505,6 +537,9 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
       {qs.length > 0 && <div className="card" data-question={qs[0]}><QuestionCard k={qs[0]} ev={ev} count={count} setCount={setCount} save={save} /></div>}
 
       {answers && <AnswersSheet ev={ev} save={save} onDone={() => setAnswers(false)} />}
+      {named > 0 && byName && !qs.length && <Headcount counts={counts} of={locked || planned} />}
+      {/* A question screen stays one question (UX_12: 40 words or fewer); the path returns once it's answered. */}
+      {!qs.length && <><h3 className="sh">Start to finish</h3>{pathEl}</>}
 
       {!qs.length && !byName && (<>
         <h3 className="sh">Headcount</h3>
@@ -513,8 +548,6 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
       </>)}
 
       {!qs.length && byName && named > 0 && (<>
-        <Headcount counts={counts} of={locked || planned} />
-        {waiting > 0 && <button className="pill warn" data-questions-waiting onClick={onUpdates}>{questionsWaitingLine(waiting)}{chev}</button>}
         {named >= FIND_AT && <input className="field" id="findguest" type="search" placeholder="Find someone on the list" aria-label="Find someone on the list" value={find} onChange={(e) => setFind(e.target.value)} />}
         {finding ? (
           shown.length ? <div className="grp" data-names>{shown.map(row)}</div> : <p className="fine">No one here matches.</p>
@@ -552,13 +585,6 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
           <div className="sheet" role="dialog" aria-label="More about guests" onClick={(e) => e.stopPropagation()}>
             <div className="grabber" aria-hidden="true" />
             <div className="sheethead"><h2>Guests</h2><button className="link" onClick={() => setSheet(null)}>Done</button></div>
-            <div className="grp"><button className="row go" data-answers onClick={() => { setSheet(null); setAnswers(true); }}><span className="nm">Your answers<small>{answersLine(ev)}</small></span>{chev}</button></div>
-            <div className="grp">
-              <button className="row go" data-open-invite onClick={() => { setSheet(null); onInvite(); }}><span>Your invite</span><span className={'val' + (ev.invitesSentAt ? ' ok' : '')}>{ev.invitesSentAt ? 'Sent' : 'Not sent yet'}</span>{chev}</button>
-              {ev.invitesSentAt && <div className="row" data-replied><span>Who has replied</span><span className="val">{replied} of {invited}</span></div>}
-              {(replyByPassed || locked > 0) && <button className="row go" data-count-row onClick={() => setSheet('lock')}><span>The count</span><span className={'val' + (locked ? ' ok' : '')}>{locked ? 'Locked at ' + locked : 'Not locked'}</span>{chev}</button>}
-              <button className="row go" data-open-updates onClick={() => { setSheet(null); onUpdates(); }}><span>Updates and questions</span>{chev}</button>
-            </div>
             {byName && (<div className="grp" data-more>
               <button className="row go" data-share-link onClick={shareLink}><span>Share the link</span>{chev}</button>
               {named > 0 && <button className="row go" data-download onClick={download}><span>Download the list</span>{chev}</button>}

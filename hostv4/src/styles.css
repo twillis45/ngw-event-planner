@@ -214,3 +214,13 @@ kbd { font: 600 .75rem var(--sans); color: var(--ink-3); border: 1px solid var(-
   .link:hover { text-decoration: underline; }
 }
 @media (prefers-reduced-motion: reduce) { .tablet.compact .side, .gdetail.pushedpane { transition: none; animation: none; } }
+/* START TO FINISH (owner, 11/26/2026: "Bring the path back"): every step, its
+   state, the lit one = the bottom button. Done is quiet with a check; later is
+   gray text, not faded, so it keeps its contrast. */
+.path { margin-bottom: 20px; }
+.path .mark { flex: 0 0 20px; min-width: 0; max-width: 20px; overflow: visible; text-align: center; color: var(--ok); font-weight: 600; font-size: .9375rem; }
+.path .mark.s-now::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); vertical-align: middle; }
+.path .step.s-now .nm { font-weight: 600; }
+.path .step.s-later .nm, .path .step.s-later .val { color: var(--ink-3); }
+.path .step.s-done .nm { color: var(--ink-2); }
+.val.warn { color: var(--warn); }
