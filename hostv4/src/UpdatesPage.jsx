@@ -16,7 +16,7 @@ import { isGuestMessagesApiConfigured, fetchInviteOpens } from '@app/lib/api/gue
 import { openedLine, openDayLine } from '@app/lib/guestInbox';
 import {
   useGuestUpdates, useGuestQuestions, updatesRoom, updatesReachLine, updatesLimitLine, updatesFailedLine,
-  postingLine, postAndEmailLabel, firstName, inboxWhy, replyHintLine,
+  postingLine, postAndEmailLabel, firstName, inboxWhy, replyHintLine, UPDATE_PLACEHOLDER, replyPlaceholder,
 } from '@app/lib/guestUpdatesKit';
 
 const when = (iso) => { try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return ''; } };
@@ -36,7 +36,7 @@ function Updates({ eventId }) {
     <p className="fine" data-updates-reach>{updatesReachLine(u.emailN)}</p>
     {canPost ? (<>
       <textarea className="field" rows={3} maxLength={1000} value={draft} onChange={(e) => { setDraft(e.target.value); u.setConfirm(false); }}
-        aria-label="Your update to every guest" placeholder="Parking is on Elm after 5 — the lot is closed." />
+        aria-label="Your update to every guest" placeholder={UPDATE_PLACEHOLDER} />
       <div className="addrow">
         <button className="link" data-update-post disabled={!draft.trim() || u.busy === 'post'} onClick={post}>
           {u.busy === 'post' ? 'Posting…' : u.confirm ? postAndEmailLabel(u.emailN) : 'Post the update'}
@@ -75,7 +75,7 @@ function ThreadSheet({ q, onDone }) {
         </ol>
         {!t.blocked && (<>
           <textarea className="field" rows={3} maxLength={1000} value={q.draft} onChange={(e) => q.setDraft(e.target.value)}
-            aria-label={'Your reply to ' + t.guest_name} placeholder="Street parking on Pine — the lot fills up by 4." />
+            aria-label={'Your reply to ' + t.guest_name} placeholder={replyPlaceholder(t.guest_name)} />
           <p className="fine" data-reply-email>{replyHintLine(t)}</p>
           <button className="primary" data-reply-send disabled={!!q.busy || !q.draft.trim()} onClick={q.reply}>{q.busy === 'reply' ? 'Sending…' : 'Send your reply'}</button>
         </>)}
