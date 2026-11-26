@@ -1,4 +1,4 @@
-# Live check 99402647 (#301 B6 who's here and at the table): Thu Nov 26, 2026, 2:30–3:05 PM EST
+# Live check 99402647 (#301 B6 who's here and at the table): Thu Nov 26, 2026, 2:25–2:46 PM EST
 
 Live: the hostv4 `ngw-build` meta and the hostv2 bundle both read 994026472feb (deployed 2:19 PM EST).
 Chromium at 5 sizes. Every POST/PUT/PATCH/DELETE aborted. Share, clipboard and open stubbed. "Text" (sms:) links were read, never tapped. E2E_TEST_ plans and made-up names only. Nothing sent.
