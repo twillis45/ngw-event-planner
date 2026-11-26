@@ -6,8 +6,9 @@
 // that same answer without a request: one rule in the API layer, every screen.
 // With a token they ask exactly as before.
 let mockSession = null;
+let mockConfigured = true;
 jest.mock('../../supabaseClient', () => ({
-  isSupabaseConfigured: () => true,
+  isSupabaseConfigured: () => mockConfigured,
   supabase: { auth: { getSession: async () => ({ data: { session: mockSession } }) } },
 }));
 jest.mock('../../sentry', () => ({ captureError: () => {} }));
@@ -50,5 +51,20 @@ describe('signed in, the same reads ask the server', () => {
     await listAnnouncements('e1'); await listSentMessages('e1'); await fetchEventPass('e1');
     expect(global.fetch).toHaveBeenCalledTimes(6);
     for (const [, init] of global.fetch.mock.calls) expect(init.headers.Authorization).toBe('Bearer tok');
+  });
+});
+
+// A build with no account system at all (the e2e suite: a fake API host, every
+// route mocked, no Supabase) can't know who is signed in, so it asks as it
+// always did and the server decides. Only a build WITH accounts and nobody
+// signed in skips the request (CI, #277: the e2e Updates sheet went blank).
+describe('a build without accounts still asks', () => {
+  beforeEach(() => { mockConfigured = false; mockSession = null; });
+  afterEach(() => { mockConfigured = true; });
+  it('reads go to the server, which decides', async () => {
+    global.fetch = jest.fn(async () => ok({ guests: [], days: [], photos: [], emails: [], limits: {}, announcements: [] }));
+    await fetchGuestThreads('e1'); await fetchInviteOpens('e1'); await fetchEventGuestPhotos('e1');
+    await listAnnouncements('e1'); await listSentMessages('e1'); await fetchEventPass('e1');
+    expect(global.fetch).toHaveBeenCalledTimes(6);
   });
 });

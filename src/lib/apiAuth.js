@@ -32,7 +32,10 @@ export async function authHeaders() {
 
 // Signed out, a host-only read can only come back 401. Its caller asks this
 // first and answers "signed out" itself, so no request is made (live check of
-// 2981924, 11/26/2026: a 401 per plan open, focus and page).
+// 2981924, 11/26/2026: a 401 per plan open, focus and page). A build with no
+// account system (the e2e suite's mocked API) can't know, so it asks as it
+// always did and the server decides.
 export async function isSignedIn() {
+  if (!isSupabaseConfigured() || !supabase) return true;
   return Boolean(await accessToken());
 }
