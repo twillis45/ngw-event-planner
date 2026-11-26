@@ -7,6 +7,15 @@ const fs = require('fs'); const path = require('path');
 const BASE = 'https://twillis45.github.io/ngw-event-planner/hostv4/?noanalytics=1';
 const OUT = path.resolve(process.argv[2] || 'livecheck/_run-hostv4-guests'); fs.mkdirSync(OUT, { recursive: true });
 const VPS = [[390, 844, true], [834, 1194, true], [1024, 1366, true], [1194, 834, true], [1440, 900, false]];
+// Tabs on phones; on iPad and wider (#268) the same places sit in the Places sidebar, behind "Show places" where it is folded.
+const navTo = async (p, name) => {
+  const tab = p.getByRole('tab', { name });
+  if ((await tab.count()) && (await tab.first().isVisible())) return tab.first().click();
+  const side = p.locator('aside[aria-label="Places"] button', { hasText: name }).first();
+  // A folded sidebar can still report visible (slid off-screen), so open it whenever the menu button is showing.
+  const show = p.getByRole('button', { name: 'Show places' }); if (await show.isVisible().catch(() => false)) { await show.click(); await p.waitForTimeout(400); }
+  await side.click();
+};
 const KEY = 'ngw-hostv2-custom-events', LAST = 'ngw-hostv2-last-event';
 const EV = { id: 'E2E_TEST_lc-v4g', name: 'E2E_TEST_ Rosa’s 40th', type: 'Birthday', date: '2027-01-04', startTime: '18:00', startTimeSource: 'derived', totalBudget: 550, guests: [], vendors: [] };
 
@@ -39,7 +48,7 @@ const txt = (p, sel) => p.locator(sel).first().innerText().then((t) => t.replace
     const step = async (name, fn) => { const s = { name, ok: true }; try { Object.assign(s, (await fn()) || {}); } catch (e) { s.ok = false; s.error = String(e.message).split('\n')[0].slice(0, 220); }
       try { s.floors = await floors(p, touch); await p.screenshot({ path: path.join(dir, String(++n).padStart(2, '0') + '-' + name + '.jpg'), type: 'jpeg', quality: 60 }); } catch {} r.steps.push(s); };
     const go = async () => { await p.goto(BASE, { waitUntil: 'networkidle' }).catch(() => {}); await p.waitForTimeout(1000); };
-    const openGuests = async () => { await p.getByRole('tab', { name: 'Your plan' }).click(); await p.waitForTimeout(300); await p.locator('[data-plan-row="guests"]').click(); await p.waitForSelector('[data-view="guests"]', { timeout: 5000 }); };
+    const openGuests = async () => { await navTo(p, 'Your plan'); await p.waitForTimeout(300); await p.locator('[data-plan-row="guests"]').click(); await p.waitForSelector('[data-view="guests"]', { timeout: 5000 }); };
 
     await go();
     await p.evaluate(([k, l, ev]) => { localStorage.setItem(k, JSON.stringify([ev])); localStorage.setItem(l, ev.id); }, [KEY, LAST, EV]);
@@ -68,18 +77,25 @@ const txt = (p, sel) => p.locator(sel).first().innerText().then((t) => t.replace
       return { rows: rows.map((t) => t.replace(/\s+/g, ' ')), couple: await txt(p, '[data-couple]'), sub: await txt(p, '.sub'), st: await stored(p) };
     });
     await step('04-guest-email-blur', async () => {
-      await p.locator('[data-guest]', { hasText: 'Ada Pine' }).click(); await p.waitForSelector('[role=dialog]');
-      const email = p.locator('[role=dialog] input[aria-label="Email"]'); await email.fill('ada.pine@example.com');
+      // Phones open the guest in a sheet; iPad and wider (#268) open it in the detail pane.
+      await p.locator('[data-guest]', { hasText: 'Ada Pine' }).click();
+      const email = p.locator('input[aria-label="Email"]').first(); await email.waitFor({ state: 'visible', timeout: 8000 });
+      const asSheet = (await p.locator('[role=dialog]').count()) > 0;
+      await email.fill('ada.pine@example.com');
       const before = (await stored(p)).guests.find((g) => g.startsWith('Ada'));
       await email.press('Tab'); await p.waitForTimeout(400);
       const after = (await stored(p)).guests.find((g) => g.startsWith('Ada'));
       if (!/ada\.pine@example\.com/.test(after || '')) throw new Error('email not saved on blur: ' + after);
       if (/@/.test(before || '')) throw new Error('saved before blur: ' + before);
-      const shot = { heads: await p.locator('[role=dialog] h3').allInnerTexts() };
-      await p.getByRole('button', { name: 'Done' }).click(); await p.waitForTimeout(300);
+      const shot = { asSheet, heads: await p.locator(asSheet ? '[role=dialog] h3' : 'h3.lbl').allInnerTexts() };
+      if (asSheet) { await p.getByRole('button', { name: 'Done' }).click(); await p.waitForTimeout(300); }
       return { before, after, ...shot };
     });
     await step('05-your-invite', async () => {
+      // At 834 the guest fills the screen; its back button returns to Guests.
+      // (The list stays in the DOM underneath and reports visible, so test for the back button instead.)
+      const back = p.getByRole('button', { name: 'Back to Guests', exact: true });
+      if (await back.isVisible().catch(() => false)) { await back.click(); await p.waitForTimeout(400); }
       await p.locator('[data-open-invite]').click(); await p.waitForSelector('[data-view="invite"]', { timeout: 5000 });
       const gaps = await p.locator('[data-gap]').evaluateAll((els) => els.map((e) => e.getAttribute('data-gap') + ': ' + e.innerText.replace(/\s+/g, ' ').trim()));
       const primary = await txt(p, '.action .primary');

@@ -7,6 +7,15 @@ const fs = require('fs'); const path = require('path');
 const BASE = 'https://twillis45.github.io/ngw-event-planner/hostv4/?noanalytics=1';
 const OUT = path.resolve(process.argv[2] || 'livecheck/_run-hostv4'); fs.mkdirSync(OUT, { recursive: true });
 const VPS = [[390, 844, true], [834, 1194, true], [1024, 1366, true], [1194, 834, true], [1440, 900, false]];
+// Tabs on phones; on iPad and wider (#268) the same places sit in the Places sidebar, behind "Show places" where it is folded.
+const navTo = async (p, name) => {
+  const tab = p.getByRole('tab', { name });
+  if ((await tab.count()) && (await tab.first().isVisible())) return tab.first().click();
+  const side = p.locator('aside[aria-label="Places"] button', { hasText: name }).first();
+  // A folded sidebar can still report visible (slid off-screen), so open it whenever the menu button is showing.
+  const show = p.getByRole('button', { name: 'Show places' }); if (await show.isVisible().catch(() => false)) { await show.click(); await p.waitForTimeout(400); }
+  await side.click();
+};
 const KEY = 'ngw-hostv2-custom-events', LAST = 'ngw-hostv2-last-event';
 const EV = { id: 'E2E_TEST_lc-v4', name: 'E2E_TEST_ Rosa’s Harvest Dinner', type: 'Birthday', date: '2026-12-19T18:00', guestEstimate: 25,
   location: '42 Elm Ct, Springfield, VA 22150', guests: [], vendors: [] };
@@ -52,7 +61,7 @@ const stored = (p) => p.evaluate(([k, id]) => { try { const l = JSON.parse(local
 
     // 1. Sample plan (new visitor)
     await step('sample-next', async () => { await go(); const s = await screen(p); if (!s.primary.length) throw new Error('no primary action on Next step (dead end)'); return { s }; });
-    await step('sample-tabs', async () => { const out = {}; for (const t of ['Your plan', 'The Day', 'Next step']) { await p.getByRole('tab', { name: t }).click(); await p.waitForTimeout(300); out[t] = await screen(p); } return { s: out }; });
+    await step('sample-tabs', async () => { const out = {}; for (const t of ['Your plan', 'The Day', 'Next step']) { await navTo(p, t); await p.waitForTimeout(300); out[t] = await screen(p); } return { s: out }; });
     await step('sample-budget-not-saved', async () => {
       if (!(await screen(p)).budget) return { skipped: 'no budget question on sample' };
       await p.getByRole('radio').first().click(); const label = (await p.locator('.action .primary').innerText()).trim();
