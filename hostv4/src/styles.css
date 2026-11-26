@@ -304,3 +304,6 @@ a.link { text-decoration: none; }
 
 /* A main button that waits on something (a draft with blanks) reads as waiting. */
 .primary:disabled { opacity: .45; cursor: default; }
+/* A row's action is a 44px target with its word centered in it (measured: the
+   box was centered but the text sat at its top). */
+.row .act { display: inline-flex; align-items: center; justify-content: center; }

@@ -13,7 +13,8 @@
 // lib/dayState and lib/dayOfEdits, and every write is one of their edits.
 import { useEffect, useState } from 'react';
 import { dayState } from '@app/lib/dayState';
-import { todaysRos, dayOfList, dayOfTickEdit, dayOfStepEdit, cuesDoneEdit, ridesDue, nextDayOfCheck, runningLate, addMomentEdit } from '@app/lib/dayOfEdits';
+import { todaysRos, dayOfList, dayOfTickEdit, dayOfStepEdit, cuesDoneEdit, ridesDue, nextDayOfCheck, runningLate, addMomentEdit, vendorsToday, vendorArrivalEdit } from '@app/lib/dayOfEdits';
+import { isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import { suggestableMoments } from '@app/lib/momentLibrary';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import { clock12 } from '@app/lib/clock';
@@ -150,6 +151,21 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
   const [hereOpen, setHereOpen] = useState(false);
   const [momentAt, setMomentAt] = useState(null); // the time field while the moment sheet is open
   const [tell, setTell] = useState(false);
+  const [vendorOpen, setVendorOpen] = useState(null); // a vendor's id while their sheet is open
+  const [vendorAnswers, setVendorAnswers] = useState({});
+  // VENDORS TODAY (B9): their own answers through the brief link, read once on
+  // the day (hostv2's confirmationByVendor: the latest per vendor wins).
+  const timedVendors = (ev.vendors || []).some((v) => v && v.arrivalTime);
+  useEffect(() => {
+    if (!st.eventDay || !timedVendors || !isVendorBriefApiConfigured()) return undefined;
+    let live = true;
+    fetchVendorConfirmations(ev.id).then((rows) => {
+      if (!live || !Array.isArray(rows)) return;
+      const m = {}; for (const c of rows) { const k = String(c && c.vendor_id); if (k && !m[k]) m[k] = c; }
+      setVendorAnswers(m);
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [ev.id, st.eventDay, timedVendors]);
   const start = clock12(ev.startTime);
 
   const tick = (item) => {
@@ -210,7 +226,40 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
     </button></div>
   );
 
+  const vendors = st.eventDay && (st.phase === 'morning' || st.phase === 'under-way')
+    ? (() => { try { return vendorsToday(ev, vendorAnswers); } catch { return []; } })()
+    : [];
+  const vendorSaid = (r) => (r.status === 'arrived' ? 'Here' : r.status === 'delayed' ? 'Running late'
+    : r.answer === 'confirmed' ? 'Confirmed' : r.answer === 'flagged' ? 'Flagged something' : null);
+  const markVendor = (id, status) => save(vendorArrivalEdit(ev, id, status));
+  const vendorsSection = vendors.length > 0 && (
+    <section data-vendors-today>
+      <h3 className="sh">Vendors today</h3>
+      <div className="grp">{vendors.map((r) => {
+        const tel = String(r.phone || '').replace(/[^+\d]/g, '');
+        return (
+          <div key={r.id} className={'row check' + (r.status === 'arrived' ? ' got' : '')} data-vendor-row={r.id}>
+            <button className="tickbtn" data-tick aria-pressed={r.status === 'arrived'} aria-label={(r.status === 'arrived' ? 'Not here: ' : 'Here: ') + r.name} onClick={() => markVendor(r.id, 'arrived')}><span className="box" aria-hidden="true">{r.status === 'arrived' ? '✓' : ''}</span></button>
+            <button className="nm checknm" data-vendor-open onClick={() => setVendorOpen(r.id)}>{r.name}<small>{clock12(r.time)}{vendorSaid(r) ? ' · ' + vendorSaid(r) : ''}</small></button>
+            {tel && r.status !== 'arrived' && <a className="link act" data-vendor-call href={'tel:' + tel}>Call</a>}
+          </div>
+        );
+      })}</div>
+    </section>
+  );
+  const vendorRow = vendorOpen ? vendors.find((r) => r.id === vendorOpen) : null;
   const sheets = (<>
+    {vendorRow && (
+      <Sheet title={vendorRow.name} onDone={() => setVendorOpen(null)}>
+        <p className="qhelp">{vendorRow.category ? vendorRow.category + ' · ' : ''}due {clock12(vendorRow.time)}{vendorSaid(vendorRow) ? ' · ' + vendorSaid(vendorRow) : ''}</p>
+        <button className="primary" data-vendor-here onClick={() => { markVendor(vendorRow.id, 'arrived'); setVendorOpen(null); }}>{vendorRow.status === 'arrived' ? 'Not here yet' : 'They’re here'}</button>
+        <div className="grp gap">
+          <button className="row go" data-vendor-late onClick={() => { markVendor(vendorRow.id, 'delayed'); setVendorOpen(null); }}><span className="nm">{vendorRow.status === 'delayed' ? 'Not running late' : 'Running late'}<small>Stops the “hasn’t confirmed” alert while you wait.</small></span>{chev}</button>
+          {String(vendorRow.phone || '').replace(/[^+\d]/g, '') && <a className="row go" href={'tel:' + String(vendorRow.phone).replace(/[^+\d]/g, '')}><span className="nm">Call</span>{chev}</a>}
+          <a className="row go" data-vendor-brief href="../hostv2/"><span className="nm">Send the details<small>In the current app, where their brief and its link live.</small></span>{chev}</a>
+        </div>
+      </Sheet>
+    )}
     {moment && momentAt !== null && (
       <Sheet title={moment.label} onDone={() => setMomentAt(null)}>
         <p className="qhelp">{moment.owner ? 'Usually led by: ' + moment.owner + '.' : 'A moment worth a spot on the day.'}{moment.note ? ' ' + moment.note : ''}</p>
@@ -226,7 +275,9 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
         <div className="grp">{alerts.map((a) => (
           <div key={a.id} className={'row alert ' + a.tier} data-alert-row={a.id}>
             <span className="nm"><b className="tier">{tierWord(a)}</b> {a.headline}{a.move && <small>{a.move}</small>}</span>
-            {a.navTo === 'Guests' && onGuests
+            {a.navTo === 'Arrivals' && vendors.length
+              ? <button className="link act" data-alert-go onClick={() => { setSheet(null); try { document.querySelector('[data-vendors-today]').scrollIntoView({ block: 'start' }); } catch { /* already on screen */ } }}>See them</button>
+              : a.navTo === 'Guests' && onGuests
               ? <button className="link act" data-alert-go onClick={() => { setSheet(null); onGuests(); }}>Guests</button>
               : <a className="link act" data-alert-go href="../hostv2/">Open</a>}
           </div>
@@ -399,6 +450,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
       {alertLine}
       {nowCard}
       {momentRow}
+      {vendorsSection}
       {weatherCard}
       <div className="grp gap">{runRow}{crewRow}{lateRow}<button className="row go" data-tell onClick={() => setTell(true)}><span className="nm">Tell your guests</span>{chev}</button><button className="row go" data-open-counter onClick={onCounter}><span className="nm">Counter mode<small>Large type for the kitchen. The screen stays on.</small></span>{chev}</button></div>
       {st.nowActive && list
@@ -414,6 +466,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
       {alertLine}
       <div className="gap">{nowCard}</div>
       {momentRow}
+      {vendorsSection}
       {weatherCard}
       {rides && <div className="grp gap"><CheckRow item={rides} attr={{ 'data-rides': true }} onTick={() => tick(rides)} onDetail={() => setSheet({ detail: 'rides' })} /></div>}
       {whosHere}
