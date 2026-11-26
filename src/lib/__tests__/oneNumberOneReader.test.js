@@ -147,7 +147,10 @@ describe('one number, one reader, on every playbook', () => {
     // 4 since 11/24/2026: the budget ask's headline per-head moved into
     // lib/budgetCopy budgetAskCopy (owner: "Copy is too wordy"), which reads
     // perHeadText itself, so it is still one division, read through one reader.
-    expect((SRC.match(/perHeadText\(/g) || []).length).toBe(4);
+    // 2 since 11/26/2026: the budget question reads its per-heads from the
+    // shared answer (lib/budgetChoices), and the tier links that divided twice
+    // more went with the old layout.
+    expect((SRC.match(/perHeadText\(/g) || []).length).toBe(2);
     const COPY = fs.readFileSync(path.join(__dirname, '../budgetCopy.js'), 'utf8');
     expect(COPY).toMatch(/perHeadText\(perHeadRange\(headline, headline, g\), fmt\)/);
   });

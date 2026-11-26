@@ -63,11 +63,19 @@ const toBudget = async (page) => {
   await page.getByPlaceholder(/crab feast/i).first().fill(SEED);
   await page.getByRole('button', { name: /^Put my plan together$/ }).click();
   await page.getByRole('button', { name: /^Open your plan$/ }).click();
-  await expect(page.getByText(/A number to plan around/i)).toBeVisible({ timeout: 20000 });
+  await expect(page.getByText(/How much do you want to spend\?/i)).toBeVisible({ timeout: 20000 });
+};
+// The ask's sentence ("… for N at a …") is one tap down since 11/26/2026 ("As
+// rendered is fine"): the tests that read it open "How we got these" first. The
+// wall-of-text test does not, because a closed fold is what it guards.
+const openWhy = async (page) => {
+  await page.locator('.hero [data-budget-why] summary').first().click();
+  await expect(page.locator('.hero [data-budget-why]').first()).toHaveAttribute('open', '');
 };
 
 test('THE PER-HEAD FIGURE: the ask shows what the total is per person', async ({ page }) => {
   await toBudget(page);
+  await openWhy(page);
   // The ask's own words, not the page's: the first "$" on the page was the
   // rail's pass row ("$39 · one event") once every rail carried it.
   const txt = await page.evaluate(() => (document.querySelector('.hero') || document.body).innerText || '');
@@ -135,7 +143,7 @@ test('AND THE ORDINARY CASE TOO: a local event still hears what it excludes', as
     .fill("Mom's 80th birthday party on June 14 2027, about 45 people at the church hall in Baltimore, sit-down lunch");
   await page.getByRole('button', { name: /^Put my plan together$/ }).click();
   await page.getByRole('button', { name: /^Open your plan$/ }).click();
-  await expect(page.getByText(/A number to plan around/i)).toBeVisible({ timeout: 20000 });
+  await expect(page.getByText(/How much do you want to spend\?/i)).toBeVisible({ timeout: 20000 });
   await openExclusions(page);
   const txt = await page.evaluate(() => document.body.innerText || '');
   expect(txt).toMatch(/cake \/ dessert when not included with catering/i);
@@ -150,6 +158,7 @@ test('EVERY TIER IS CHECKABLE, not just the middle one', async ({ page }) => {
   // uncheckable and were left that way, so the honesty reached one of three
   // numbers. Read off the screen rather than pinned, because the bands move.
   await toBudget(page);
+  await openWhy(page);
   const txt = await page.evaluate(() => document.body.innerText || '');
   const guests = Number((txt.match(/for (\d+) at an? /i) || [])[1]);
   expect(Number.isFinite(guests) && guests > 0).toBe(true);
@@ -216,7 +225,7 @@ test('A MIDPOINT IS NOT A TYPICAL: the label says what the number is', async ({ 
   const txt = await page.evaluate(() => document.body.innerText || '');
 
   // (premise) this really is the budget ask, carrying its figures.
-  expect(txt).toMatch(/A number to plan around/i);
+  expect(txt).toMatch(/How much do you want to spend\?/i);
   expect(txt).toMatch(/a head/i);
 
   expect(txt).not.toMatch(/\btypical\b/i);

@@ -43,7 +43,9 @@ const openBudget = async (page, type, guestCount) => {
   }, [type, guestCount, dateIn(120)]);
   await page.goto('?elegant=1');
   await settled(page);
-  await tapText(page, 'Set your budget');
+  // The question is on the plan's front (owner, 11/26/2026: "As rendered is
+  // fine"); the old hero needed a "Set your budget" tap first.
+  if (!(await page.locator('[data-budget-plan]').count())) await tapText(page, 'Set your budget');
   await page.waitForTimeout(1200);
   await settled(page);
   return bodyText(page);
@@ -53,8 +55,8 @@ test('(premise) the budget proposal really is on screen, with its one-tap chip',
   // Without this the assertions below could pass over a sheet that never opened.
   const t = await openBudget(page, 'Surprise Proposal', 2);
   // Owner, 11/24/2026 ("Copy is too wordy"): the budget ask card says it in one line; the headline is read where it stands.
-  expect(t).toMatch(/A number to plan around \$300/);
-  expect(t).toMatch(/Use \$300/);
+  expect(t).toMatch(/How much do you want to spend\?.{0,40}?\$300/);
+  expect(t).toMatch(/Plan with \$300/);
 });
 
 test('THE HOST IS TOLD BEFORE THEY TAP — both numbers, and which is which', async ({ page }) => {
@@ -70,9 +72,9 @@ test('IT SITS BETWEEN THE ESTIMATE AND THE BUTTON, which is the point', async ({
   // A true sentence below the fold would not have stopped the tap. This asserts
   // reading order: the estimate, then the warning, then the one-tap chip.
   const t = await openBudget(page, 'Surprise Proposal', 2);
-  const estimate = t.search(/A number to plan around \$300/);
+  const estimate = t.search(/How much do you want to spend\?.{0,40}?\$300/);
   const note = t.search(/start around \$1,750/);
-  const chip = t.search(/Use \$300/);
+  const chip = t.search(/Plan with \$300/);
   expect(estimate).toBeGreaterThan(-1);
   expect(note).toBeGreaterThan(estimate);
   expect(chip).toBeGreaterThan(note);
@@ -82,7 +84,7 @@ test('THE HEADLINE IS NOT MOVED — flooring was refused, not quietly applied', 
   // If a future pass "fixes" this by raising the number instead, the chip stops
   // saying $300 and this fails. That is the whole distinction call #3 turned on.
   const t = await openBudget(page, 'Surprise Proposal', 2);
-  expect(t).toMatch(/Use \$300/);
+  expect(t).toMatch(/Plan with \$300/);
   expect(t).toMatch(/Lean \$100/);
   expect(t).toMatch(/All-out \$500/);
 });
@@ -91,7 +93,7 @@ test('NEGATIVE CONTROL: an event whose estimate covers its plan says nothing', a
   // An 80-guest wedding clears its own roster. If the note appears here it has
   // become a disclaimer, and a disclaimer on every screen is read as decoration.
   const t = await openBudget(page, 'Wedding', 80);
-  expect(t).toMatch(/A number to plan around/);
+  expect(t).toMatch(/How much do you want to spend\?/);
   expect(t).not.toMatch(/start around \$/);
   expect(t).not.toMatch(/above this band’s/);
 });

@@ -43,5 +43,5 @@ test('a lone long title with no act names itself', () => {
 test('an over-budget item asks to bring the plan inside the budget, not to set one', () => {
   const a = { id: 'phase:budget', domain: 'budget', category: 'phase', askKind: 'budget-over', title: 'Expected costs are $225 over your budget' };
   expect(heroAskFor(a, {})).toBe('Bring the plan inside your budget.');
-  expect(heroAskFor({ id: 'phase:budget', domain: 'budget', title: 'Set your budget' }, {})).toBe('Set your budget.');
+  expect(heroAskFor({ id: 'phase:budget', domain: 'budget', title: 'Set your budget' }, {})).toBe('How much do you want to spend?');
 });

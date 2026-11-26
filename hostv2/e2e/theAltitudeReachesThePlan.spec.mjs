@@ -49,7 +49,7 @@ test('THE ALTITUDE REACHES THE PLAN: the pacing task is on the host\'s checklist
 
   await page.getByRole('button', { name: /^Put my plan together$/ }).click();
   await page.getByRole('button', { name: /^Open your plan$/ }).click();
-  await expect(page.getByText(/A number to plan around/i)).toBeVisible({ timeout: 20000 });
+  await expect(page.getByText(/How much do you want to spend\?/i)).toBeVisible({ timeout: 20000 });
 
   await openWhatsCounted(page);
   const opened = await page.evaluate(() => {

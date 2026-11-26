@@ -224,7 +224,7 @@ describe('an authored ask wins over domain/title classification', () => {
   });
 
   it('classification still runs for every raise that authors nothing', () => {
-    expect(heroAskFor({ title: 'Set the budget', domain: 'budget' }, {})).toBe('Set your budget.');
+    expect(heroAskFor({ title: 'Set the budget', domain: 'budget' }, {})).toBe('How much do you want to spend?');
     expect(heroAskFor({ title: 'Pick the day', domain: 'date' }, {})).toBe('Pick the day.');
   });
 

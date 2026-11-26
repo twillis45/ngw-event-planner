@@ -3333,6 +3333,8 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .optlabel{font-size:var(--t-row); color:var(--ink-soft)}
 .optrow.on .optlabel{color:var(--sel-ink); font-weight:650}
 .optsub{margin-left:auto; font-size:var(--t-meta); color:var(--muted)}
+/* A choice's note under its label ("Covers your plan", the budget question, 11/26/2026). Muted, not green: UX_12 keeps green for done. */
+.optnote{display:block; font-size:var(--t-row-sub); color:var(--muted); font-weight:500}
 
 
 

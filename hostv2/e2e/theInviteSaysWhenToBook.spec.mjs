@@ -30,9 +30,9 @@ const openChecklist = async (page) => {
   await page.getByPlaceholder(/crab feast/i).first().fill(SEED);
   await page.getByRole('button', { name: /^Put my plan together$/ }).click();
   await page.getByRole('button', { name: /^Open your plan$/ }).click();
-  await expect(page.getByText(/A number to plan around/i)).toBeVisible({ timeout: 20000 });
+  await expect(page.getByText(/How much do you want to spend\?/i)).toBeVisible({ timeout: 20000 });
   // Take the proposed budget so the ask stops standing in front of the plan.
-  await page.getByRole('button', { name: /^Use \$[\d,]+$/ }).click();
+  await page.getByRole('button', { name: /^Plan with \$[\d,]+$/ }).click();
   await page.waitForTimeout(1200);
   await openWhatsCounted(page);
 };
