@@ -284,3 +284,8 @@ kbd { font: 600 .75rem var(--sans); color: var(--ink-3); border: 1px solid var(-
 /* A row that leaves for the current app is a link, but it reads as a row: no
    underline, the row's own ink (The Day's Before tomorrow and After). */
 a.row { color: inherit; text-decoration: none; }
+/* A row's own action (Your day crew · Send): the link button, at the row's end,
+   after its status when it has one. */
+.row .act { margin-left: auto; padding-left: 12px; white-space: nowrap; }
+.nm small b.ok { color: var(--ok); font-weight: 500; }
+.nm small b.warn { color: var(--warn); font-weight: 500; }

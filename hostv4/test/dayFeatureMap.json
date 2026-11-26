@@ -36,8 +36,8 @@
         "contains": "Who’s confirmed"
       },
       "home": "planned",
-      "where": "Your day crew: who answered (needs the vendor and helper answers hostv4 does not read yet)",
-      "batch": "B3 day crew"
+      "where": "Helpers’ own answers show on Your day crew (Has it, Can’t do it); vendors’ answers come with B9",
+      "batch": "B9 vendors on the day"
     },
     {
       "id": "helper-links",
@@ -46,9 +46,9 @@
         "file": "src/HostShellV2.jsx",
         "contains": "mintHelperLinkResult"
       },
-      "home": "planned",
-      "where": "Your day crew (pushed from The Day)",
-      "batch": "B3 day crew"
+      "home": "built",
+      "where": "The Day · Your day crew: Send (a text or a copy), and Email when they have an address",
+      "selector": "data-crew-send"
     },
     {
       "id": "crew-brief",
@@ -57,9 +57,9 @@
         "file": "src/HostShellV2.jsx",
         "contains": "draftHelperBrief"
       },
-      "home": "planned",
-      "where": "Your day crew",
-      "batch": "B3 day crew"
+      "home": "built",
+      "where": "Your day crew · Everyone’s part today",
+      "selector": "data-crew-brief"
     },
     {
       "id": "day-sheet",
@@ -68,9 +68,9 @@
         "file": "src/HostShellV2.jsx",
         "contains": "window.print"
       },
-      "home": "planned",
-      "where": "Your day crew · Print the day sheet",
-      "batch": "B3 day crew"
+      "home": "linked",
+      "where": "Your day crew · Print the day sheet (in the current app for now)",
+      "selector": "data-crew-print"
     },
     {
       "id": "parking-note",

@@ -13,9 +13,9 @@ import InvitePage from './InvitePage.jsx';
 import InviteDesignPage from './InviteDesignPage.jsx';
 
 // Pushed pages, by id: their title and the name of the link back to them.
-const PAGE_TITLE = { guests: 'Guests', updates: 'Updates and questions', invite: 'Your invite', 'invite-design': 'Design this page', run: 'Today’s run' };
+const PAGE_TITLE = { guests: 'Guests', updates: 'Updates and questions', invite: 'Your invite', 'invite-design': 'Design this page', run: 'Today’s run', crew: 'Your day crew' };
 import UpdatesPage from './UpdatesPage.jsx';
-import DayPage, { RunPage, CounterMode } from './DayPage.jsx';
+import DayPage, { RunPage, CounterMode, CrewPage } from './DayPage.jsx';
 import { readCustomEvents, patchSavedEvent } from '@app/lib/customEventStore';
 import { sourcedBudget } from '@app/lib/playbooks';
 import { saveEvent as cloudSaveEvent } from '@app/lib/api/events';
@@ -235,6 +235,7 @@ export default function HostShellV4() {
         {page === 'invite' && <InvitePage key={ev.id} ev={ev} save={saveEdit} nav={navbar(PAGE_TITLE.invite)} status={status} onDesign={() => push('invite-design')} />}
         {page === 'invite-design' && <InviteDesignPage key={ev.id} ev={ev} save={saveEdit} nav={navbar(PAGE_TITLE['invite-design'])} status={status} />}
         {page === 'run' && <RunPage key={ev.id} ev={ev} save={saveEdit} nav={navbar(PAGE_TITLE.run)} status={status} />}
+        {page === 'crew' && <CrewPage key={ev.id} ev={ev} save={saveEdit} nav={navbar(PAGE_TITLE.crew)} status={status} />}
         {tabbar}
       </div>
     );
@@ -245,7 +246,7 @@ export default function HostShellV4() {
   // THE DAY (11/26/2026): its own page, with its own title, button and sheets.
   if (tab === 'day') return frame(
     <div className="app">
-      <DayPage key={ev.id} ev={ev} save={saveEdit} status={status} date={date} onRun={() => push('run')} onCounter={() => setCounter(true)} onGuests={() => push('guests')} />
+      <DayPage key={ev.id} ev={ev} save={saveEdit} status={status} date={date} onRun={() => push('run')} onCounter={() => setCounter(true)} onGuests={() => push('guests')} onCrew={() => push('crew')} />
       {tabbar}
     </div>
   );

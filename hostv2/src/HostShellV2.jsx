@@ -327,7 +327,6 @@ import { isBillingLive, passVerdictAtCreation, briefAllowed, destinationLocked, 
 import { refreshEventPass, subscribePassEntitlements, serverPassHeld } from '@app/lib/passEntitlement';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent, listedSamples } from '@app/lib/demoSeed';
 import { recordHandoff, recordEmailSend, sendStateFor, sendStateLine, isVerifiedState } from '@app/lib/sendLedger';
-import { helperAskTitle } from '@app/lib/messageTimeline';
 import { commApi, isCommApiConfigured, listSentMessages } from '@app/lib/commApi';
 import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
@@ -349,8 +348,8 @@ import { buildVendorDetailsMessage, vendorGreetingName, detailsSmsHref, detailsM
 import { summarizeWhoIsConfirmed, whoIsConfirmedLines, whoIsConfirmedGroups } from '@app/lib/whoIsConfirmed';
 import { mintVendorBriefLinkResult, mintStatusClass, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import { mintHelperLinkResult, isHelperLinkApiConfigured, fetchHelperConfirmations, emailHelperJob, helperEmailWords } from '@app/lib/api/helperLink';
+import { helperJobMessage, helperLinkPatch, helperHandoffPatch, helperMintWhy } from '@app/lib/helperJob';
 import { appEmailWords, messageEmailResult } from '@app/lib/appEmail';
-import { buildHelperAsk } from '@app/lib/helperAsk';
 import PolicyLinks from './PolicyLinks.jsx';
 import { VersionAndWhatsNew } from './WhatsNew.jsx';
 import { mergeGuestReplies, confirmSameGuest, keepSeparateGuest, sameGuestAskLine, renamedGuestPatch } from '@app/lib/guestMerge';
@@ -9688,42 +9687,26 @@ export default function HostShellV2() {
     catch { toast(`The public link address is missing, so ${first}'s link can't be made. Nothing was sent.`); return; }
     setHelperSend({ taskId, busy: true });
     const r = await mintHelperLinkResult(event.id, resp.helperName);
-    if (!r.ok) {
-      const why = r.kind === 'signed-out' ? `Sign in to make ${first}'s link.`
-        : r.kind === 'not-found' ? `${first}'s job hasn't saved to your plan yet. Give it a moment, then try again.`
-          : `Couldn't make ${first}'s link just now.`;
-      setHelperSend({ taskId, error: `${why} Nothing was sent.` });
-      return;
-    }
-    const url = appUrl + '?helper=' + encodeURIComponent(r.code);
-    const mine = (helperData.responsibilities || []).filter(x => x.helperId === resp.helperId);
-    const body = buildHelperAsk({
-      event, hostName: hostNameFor(event, profile), helperName: resp.helperName,
-      jobs: mine.map(x => ({ kind: x.itemType, label: x.label })), url,
-    });
-    const guest = resp.guestId ? (event.guests || []).find(g => g && g.id === resp.guestId) : null;
-    const digits = String((guest && guest.phone) || '').replace(/[^+\d]/g, '');
-    // EMAIL GOES FROM THE APP NOW (owner, 11/20/2026: the helper ask gets the
-    // invite's branded envelope). A helper with an email has its own button,
-    // "Email <name> their job" (emailHelperFor); this one is the phone's text,
-    // or the share sheet when there is no number.
-    const hasEmail = !!String((guest && guest.email) || '').trim();
-    const href = digits ? 'sms:' + digits + '?&body=' + encodeURIComponent(body) : null;
-    setHelperSend({ taskId, href, first, body, hasEmail, channel: digits ? 'text' : 'share' });
+    if (!r.ok) { setHelperSend({ taskId, error: helperMintWhy(r.kind, first) }); return; }
+    // The message, text-or-share and email are lib/helperJob (B3, 11/26/2026),
+    // the same send hostv4's "Your day crew" makes. EMAIL GOES FROM THE APP
+    // (owner, 11/20/2026): a helper with an email has its own button, "Email
+    // <name> their job" (emailHelperFor); this one is the phone's text, or the
+    // share sheet when there is no number.
+    const m = helperJobMessage({ event, profile, helperId: resp.helperId, code: r.code, appUrl });
+    if (!m) return;
+    const { href, body, hasEmail } = m;
+    setHelperSend({ taskId, href, first, body, hasEmail, channel: m.channel });
     // THE HANDOFF IS RECORDED (Messages view, owner 11/20/2026): the send
     // ledger's host-attested `handed_off`, at the moment the host's own phone
     // takes the message — the composer opened, the share sheet completed, or
     // the clipboard took it. Never "Sent", and a cancelled share records
     // nothing. Before this, a helper ask left no record but helperLinkIds.
-    const handoff = (channel) => ({ sendLedger: recordHandoff(event.sendLedger, helperAskTitle(resp.helperName), channel,
-      new Date().toISOString(), { kind: 'helper', id: resp.helperId }) });
+    const handoff = (channel) => helperHandoffPatch(event, resp, channel);
     // The ledger: which helpers have a link. Silent, deduped, and true whether
     // or not the host goes on to send — a link exists either way.
     let linkPatch = {};
-    try {
-      const cur = Array.isArray(event.helperLinkIds) ? event.helperLinkIds : [];
-      if (resp.helperId && !cur.includes(resp.helperId)) linkPatch = { helperLinkIds: [...cur, resp.helperId] };
-    } catch { /* best-effort; the link itself already exists */ }
+    try { linkPatch = helperLinkPatch(event, resp.helperId); } catch { /* best-effort; the link itself already exists */ }
     if (href) {
       try { patchEvent({ ...linkPatch, ...(resp.helperId ? handoff('sms') : {}) }); } catch { /* the record is best-effort */ }
       try { window.location.href = href; } catch { /* the visible link below still works */ }
