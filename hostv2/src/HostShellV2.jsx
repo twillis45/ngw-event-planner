@@ -11824,6 +11824,11 @@ export default function HostShellV2() {
   const cuesAfterNow = nowCue ? openCues.filter(c => c !== nowCue) : [];
   const dayAllDone = liveDay && ros.length > 0 && openCues.length === 0;
   const dayStarted = ros.some(r => r && (r.done || (() => { const m = cueMins(r.time); return m !== null && m <= nowMin; })()));
+  // GUESTS ARE DUE once her start time has passed (fix for #281, 11/26/2026:
+  // the list was gated on eventLive, which is true all day, so it never showed).
+  // The day's prep cues (the turkey at 9) come before the doors; with no start
+  // time, the first cue stands in.
+  const doorsOpen = (() => { const m = cueMins(event && event.startTime); return m !== null ? nowMin >= m : dayStarted; })();
   // The alert stack — the SAME engine the production app reads (lib/dayAlerts,
   // extracted from App.js so both shells agree). nowMin keeps it current.
   const dayAlerts = useMemo(() => {
@@ -16669,7 +16674,7 @@ export default function HostShellV2() {
                 </div>
               )}
               {/* Until the doors open: once the event is under way the timeline leads. */}
-              {!eventLive && dayOfCard('Before guests arrive')}
+              {!doorsOpen && dayOfCard('Before guests arrive')}
               {/* Day alerts — the SAME engine the production app reads
                   (lib/dayAlerts): what needs you RIGHT NOW, three calm tiers. */}
               {rosOverlaps > 0 && (
