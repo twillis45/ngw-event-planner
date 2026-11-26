@@ -3712,6 +3712,15 @@ export default function HostShellV2() {
   // the plain forecast the Calendar and Date & time show. Live only — never
   // the sample, which describes no real sky.
   const [dayWx, setDayWx] = useState(null);
+  // FINISHED CHECKS FOLD AWAY (owner, 11/26/2026: "Collapse or remove checks
+  // as they finish" / "Allow collapsing of section"). `dayofDoneOpen` shows the
+  // folded checked rows; `dayofHidden` hides the whole list under its count and
+  // is remembered per event on this device (a convenience, never plan data).
+  const [dayofDoneOpen, setDayofDoneOpen] = useState(false);
+  const [dayofHiddenTick, setDayofHiddenTick] = useState(0);
+  const dayofFoldKey = 'ngw-dayof-hidden-' + (event && event.id);
+  const dayofHidden = (() => { void dayofHiddenTick; try { return localStorage.getItem(dayofFoldKey) === '1'; } catch { return false; } })();
+  const setDayofHidden = (v) => { try { if (v) localStorage.setItem(dayofFoldKey, '1'); else localStorage.removeItem(dayofFoldKey); } catch { /* not remembered */ } setDayofHiddenTick((n) => n + 1); };
   useEffect(() => {
     let dead = false;
     setLiveWx(null);
@@ -11063,8 +11072,9 @@ export default function HostShellV2() {
   // Day-before plan — lib/dayBefore, date-gated (0–2 days out). Pure and real:
   // set an event's date to tomorrow and this materializes.
   const dayBefore = useMemo(() => {
-    try { return buildDayBeforePlan(event); } catch { return { applicable: false }; }
-  }, [event]);
+    // dayWx: the live forecast row, so tomorrow's weather rides in the plan.
+    try { return buildDayBeforePlan(event, new Date(), dayWx); } catch { return { applicable: false }; }
+  }, [event, dayWx]);
 
   // ── Create: build a REAL event object and hand it to the engine ──
   const assemble = () => {
@@ -11691,12 +11701,15 @@ export default function HostShellV2() {
   // actions"). On the day, the forecast for any event: the plain line, and what
   // it asks of arrivals (rain: a spot for wet coats, a note to guests; snow or
   // ice: the path). lib/weather dayWeather, the one hostv4's The Day reads.
-  const dayWeatherCard = () => {
+  // `title` names the day when the card rides in the day-before plan
+  // (lib/dayBefore dayWeatherLabel: "Tomorrow’s weather").
+  const dayWeatherCard = (title) => {
     const w = (() => { try { return dayWeather(dayWx); } catch { return null; } })();
     if (!w) return null;
     const ticked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
     return (
       <div className="card dayof-card" data-day-weather={w.arrival ? w.arrival.kind : 'clear'}>
+        {title && <p className="eyebrow" data-day-weather-title>{title}</p>}
         <p className="f-name" data-day-weather-line><span className="wx-glyph" aria-hidden="true">{weatherGlyph(w.glyph, { mono: true })}</span> {w.line}</p>
         {w.arrival && <p className="grounding">{w.arrival.advice}</p>}
         {w.arrival && w.arrival.checks.map((c) => (
@@ -11755,17 +11768,36 @@ export default function HostShellV2() {
                         so these are the safety basics every event shares. Add anything this one needs.
                       </p>
                     )}
-                    {rc.items.map((p, i) => (
-                      <button key={p.key} className={'frow' + (isChecked(p) ? ' got' : '')}
-                        style={{ animation: rowEnter(i) }} data-dayof-item={p.key}
-                        onClick={() => (isRainRow(p) && (rainHas || !checked[p.key]) ? setSheet({ kind: 'rain' }) : toggle(p.key))}>
-                        <span className="fcheck" aria-hidden="true" />
-                        <span className="f-main">
-                          <span className="f-name">{p.label}</span>
-                          {p.detail ? <span className="f-sub">{p.detail}</span> : null}
-                        </span>
-                      </button>
-                    ))}
+                    <div className="actions-row">
+                      <button className="vd-link dayof-fold" data-dayof-fold aria-expanded={!dayofHidden}
+                        onClick={() => setDayofHidden(!dayofHidden)}>{dayofHidden ? 'Show the list' : 'Hide the list'}</button>
+                    </div>
+                    {!dayofHidden && (() => {
+                      const row = (p, i) => (
+                        <button key={p.key} className={'frow' + (isChecked(p) ? ' got' : '')}
+                          style={{ animation: rowEnter(i) }} data-dayof-item={p.key}
+                          onClick={() => (isRainRow(p) && (rainHas || !checked[p.key]) ? setSheet({ kind: 'rain' }) : toggle(p.key))}>
+                          <span className="fcheck" aria-hidden="true" />
+                          <span className="f-main">
+                            <span className="f-name">{p.label}</span>
+                            {p.detail ? <span className="f-sub">{p.detail}</span> : null}
+                          </span>
+                        </button>
+                      );
+                      // Open rows in full; finished ones fold into one "N done" row.
+                      const open = rc.items.filter((p) => !isChecked(p));
+                      const fin = rc.items.filter(isChecked);
+                      return (<>
+                        {open.map(row)}
+                        {fin.length > 0 && (
+                          <button className="vd-link dayof-done" data-dayof-done aria-expanded={dayofDoneOpen}
+                            onClick={() => setDayofDoneOpen(!dayofDoneOpen)}>
+                            {fin.length} done{dayofDoneOpen ? ' · hide' : ' · show'}
+                          </button>
+                        )}
+                        {dayofDoneOpen && fin.map(row)}
+                      </>);
+                    })()}
                   </div>
                 );
   };
@@ -14766,6 +14798,9 @@ export default function HostShellV2() {
                   {dayBefore.moment && <p><strong style={{ color: 'var(--carbon-text)' }}>Protect the moment:</strong> {dayBefore.moment.text}</p>}
                   <div className="db-rows">
                   {(dayBefore.sections || []).slice(0, 5).map(sec => {
+                    // Tomorrow's weather: the same card The Day shows (line,
+                    // arrival checks, note to guests), named for the day.
+                    if (sec.key === 'weather') return <Fragment key="weather">{dayWeatherCard(sec.label)}</Fragment>;
                     // Modernized rows (2026-07-11): each engine section reads as a
                     // full-width stacked row — a bold plain-language lead carrying
                     // the COUNT, the engine's own honest sentence beneath. The lead

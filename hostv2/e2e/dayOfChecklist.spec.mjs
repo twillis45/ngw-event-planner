@@ -59,15 +59,20 @@ test('an authored type gets its own day-of list, and a confirmation survives a r
   // to straddle a boot.
   // (The rain row is not a plain tick: it reads the saved rain plan and opens
   // the rain editor — oneRainPlanOnTheDay. Confirm the first ordinary row.)
+  // A finished check folds into "1 done" (finishedChecksFoldAway); open the
+  // fold to see it ticked.
   const plain = '.frow:not([data-dayof-item="weather"])';
+  const key = await card.locator(plain).first().getAttribute('data-dayof-item');
   await card.locator(plain).first().click();
   await settled(page);
-  await expect(card.locator(plain).first()).toHaveClass(/got/);
+  await card.locator('[data-dayof-done]').click();
+  await expect(card.locator(`[data-dayof-item="${key}"]`)).toHaveClass(/got/);
 
   await page.reload();
   await settled(page);
   await toTheDay(page);
-  await expect(page.locator('.dayof-card ' + plain).first()).toHaveClass(/got/);
+  await page.locator('.dayof-card [data-dayof-done]').click();
+  await expect(page.locator(`.dayof-card [data-dayof-item="${key}"]`)).toHaveClass(/got/);
 });
 
 // UPDATED (audit 2 lane A P0-6, 11/22/2026). This pinned the old floor: a
@@ -117,6 +122,7 @@ test('ticking a derived day-of row ticks the checklist step it came from', async
   await expect(row).toBeVisible();
   await row.click();
   await settled(page);
+  await page.locator('.dayof-card [data-dayof-done]').click();
   await expect(row).toHaveClass(/\bgot\b/);
   const done = await page.evaluate(() => JSON.parse(localStorage.getItem('ngw-hostv2-custom-events'))[0].timeline[0].done);
   expect(done).toBe(true);
