@@ -38,7 +38,7 @@ button.primary { border: 0; cursor: pointer; font-family: var(--sans); }
 .radio { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--ink-3); position: relative; }
 [aria-checked="true"] > .radio { border-color: var(--accent); }
 [aria-checked="true"] > .radio::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--accent); }
-.link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-weight: 500; cursor: pointer; min-height: 44px; }
+.link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-weight: 500; cursor: pointer; min-height: 44px; min-width: 44px; text-align: center; }
 /* A link inside a sentence is still a 44px target (live check, 11/26/2026:
    Undo measured 38×21); the negative margin keeps the sentence's lines even. */
 .fine .link, .done .link, .line .link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; margin: -12px -4px; vertical-align: middle; }
