@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { isAnnouncementsApiConfigured } from '@app/lib/api/announcements';
 import { isGuestMessagesApiConfigured, fetchInviteOpens } from '@app/lib/api/guestMessages';
 import { openedLine, openDayLine } from '@app/lib/guestInbox';
+import { getLastSyncTime } from '@app/lib/api/syncState';
 import {
   useGuestUpdates, useGuestQuestions, updatesRoom, updatesReachLine, updatesLimitLine, updatesFailedLine,
   postingLine, postAndEmailLabel, firstName, inboxWhy, replyHintLine, UPDATE_PLACEHOLDER, replyPlaceholder,
@@ -111,7 +112,7 @@ function Questions({ eventId }) {
 function Opens({ eventId }) {
   const [data, setData] = useState(undefined);
   useEffect(() => {
-    if (!isGuestMessagesApiConfigured()) return undefined;
+    if (!isGuestMessagesApiConfigured() || !eventId) return undefined;
     let live = true;
     fetchInviteOpens(eventId).then((r) => { if (live) setData(r); });
     return () => { live = false; };
@@ -133,6 +134,15 @@ function Opens({ eventId }) {
 }
 
 export default function UpdatesPage({ ev, nav, status }) {
+  // A plan never saved to an account has no updates, questions or opens to read:
+  // say so once and ask the server for nothing (no signed-out 401s).
+  if (!getLastSyncTime(ev.id)) return (
+    <main className="view" data-view="updates">
+      {nav}
+      {status}
+      <p className="fine" data-updates-signed-out>Updates and guests’ questions need this plan saved to your account. Sign in from the current app first. <a className="link" href="../hostv2/">Open the current app</a></p>
+    </main>
+  );
   return (
     <main className="view" data-view="updates">
       {nav}

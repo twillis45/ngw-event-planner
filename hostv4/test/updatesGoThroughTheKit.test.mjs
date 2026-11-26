@@ -20,7 +20,7 @@ describe('updates go through the kit', () => {
   });
   it('reads only the invite opens from the APIs directly, and never fetches', () => {
     const api = imports.filter((i) => /\/api\//.test(i.from)).flatMap((i) => i.names);
-    expect(api.sort()).toEqual(['fetchInviteOpens', 'isAnnouncementsApiConfigured', 'isGuestMessagesApiConfigured']);
+    expect(api.sort()).toEqual(['fetchInviteOpens', 'getLastSyncTime', 'isAnnouncementsApiConfigured', 'isGuestMessagesApiConfigured']);
     expect(src).not.toMatch(/fetch\(|localStorage|patchSavedEvent/);
   });
   it('a second tap stands before any guest is emailed, and it says an email can’t be taken back', () => {

@@ -81,7 +81,7 @@ export function useGuestUpdates(eventId) {
     const good = r.ok && r.limits && Array.isArray(r.announcements);
     setSt(good ? r : { failed: r.ok ? 'unavailable' : r.reason, status: r.ok ? 0 : r.status });
   };
-  useEffect(() => { if (isAnnouncementsApiConfigured()) load(); }, [eventId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (isAnnouncementsApiConfigured() && eventId) load(); }, [eventId]); // eslint-disable-line react-hooks/exhaustive-deps
   const emailN = (st && !st.failed && st.email_guests) || 0;
 
   const post = async (text) => {
