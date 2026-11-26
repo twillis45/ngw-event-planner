@@ -103,7 +103,9 @@ const groups = (p) => p.locator('button[data-group]').evaluateAll((els) => els.m
       await p.getByRole('button', { name: 'More', exact: true }).click(); await p.waitForTimeout(300);
       const d = p.locator('[role=dialog][aria-label="More about guests"]');
       const t = (await d.innerText()).replace(/\s+/g, ' ');
-      for (const want of ['Your answers', 'Your invite', 'Updates and questions', 'Share the link', 'Download the list', 'Tell me when someone replies']) if (!t.includes(want)) throw new Error('More sheet missing ' + want);
+      // #278 (c6e6c5a): the path moved Your answers, Your invite and Updates back onto the page; More keeps the utilities only.
+      for (const want of ['Share the link', 'Download the list', 'Tell me when someone replies']) if (!t.includes(want)) throw new Error('More sheet missing ' + want);
+      for (const gone of ['Your answers', 'Your invite']) if (t.includes(gone)) throw new Error('More sheet still has ' + gone);
       const fl = await floors(p, touch);
       await d.getByRole('button', { name: 'Done' }).click().catch(async () => { await p.keyboard.press('Escape'); }); await p.waitForTimeout(300);
       return { text: t.slice(0, 200), sheetFloors: fl };

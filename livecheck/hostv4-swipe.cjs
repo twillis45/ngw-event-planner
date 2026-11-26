@@ -47,6 +47,8 @@ const navTo = async (p, name) => {
     const row = (id) => p.locator(`[data-guest="${id}"]`);
     // dx > 0: start near the row's left edge; dx < 0: near its right edge, so the drag stays on screen.
     const drag = async (id, dx, dy = 0) => {
+      // #278 put the path above the groups, so a row can sit under the bottom button: centre it first.
+      await row(id).evaluate((e) => e.scrollIntoView({ block: 'center' })); await p.waitForTimeout(150);
       const bb = await row(id).boundingBox(); if (!bb) throw new Error('no row ' + id);
       const x0 = dx >= 0 ? bb.x + 20 : bb.x + bb.width - 20; const y0 = bb.y + bb.height / 2;
       await p.mouse.move(x0, y0); await p.mouse.down();
@@ -145,7 +147,7 @@ const navTo = async (p, name) => {
       await drag('gGusBay', 90); await drag('gHalFir', -90);
       await expectShown(['Mark Gus Bay maybe'], false); await expectShown(['Remove Hal Fir']);
       // tap the part of the open row still on screen (left of its revealed buttons)
-      const bb = await row('gHalFir').evaluate((e) => { const c = e.parentNode.getBoundingClientRect(); return { x: c.left + 24, y: c.top + c.height / 2 }; }); await p.mouse.click(bb.x, bb.y); await p.waitForTimeout(400);
+      const bb = await row('gHalFir').evaluate((e) => { e.parentNode.scrollIntoView({ block: 'center' }); const c = e.parentNode.getBoundingClientRect(); return { x: c.left + 24, y: c.top + c.height / 2 }; }); await p.mouse.click(bb.x, bb.y); await p.waitForTimeout(400);
       await expectShown(['Remove Hal Fir'], false);
       // Phone: nothing opens. Split layout: the pane stays on the guest it showed before (the tap does not select Hal).
       const sheet = await p.locator('[role=dialog]').count(); const sel1 = await selected();
