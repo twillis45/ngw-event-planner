@@ -1,0 +1,5836 @@
+{
+ "meta": {
+  "site": "https://twillis45.github.io/ngw-event-planner/hostv2/?noanalytics=1&elegant=1",
+  "startedAt": "2026-11-26T03:17:50.504Z",
+  "clock": {
+   "now": "2026-11-24T12:00:00-05:00",
+   "day": "2026-12-19T15:00:00-05:00",
+   "after": "2026-12-21T10:00:00-05:00",
+   "tz": "America/New_York"
+  },
+  "version": "Version 2026.11.25.12 (2981924)",
+  "siteStatus": 200,
+  "weather": {
+   "name": "weather-geocode",
+   "ok": true,
+   "status": 200,
+   "state": "Virginia",
+   "result": {
+    "lat": 38.7791227,
+    "lon": -77.1861196,
+    "name": "Springfield",
+    "state": "Virginia"
+   },
+   "ms": 357
+  },
+  "sha": "2981924",
+  "finishedAt": "2026-11-26T03:21:17.914Z",
+  "seconds": 207
+ },
+ "viewports": [
+  {
+   "id": "390x844",
+   "touch": true,
+   "steps": [
+    {
+     "name": "new-create-screen",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "lit": [
+       "Put my plan together"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/00-new-create-screen.jpg",
+     "ms": 7282
+    },
+    {
+     "name": "new-reveal",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "openLabel": "Open my plan (not saved yet)",
+      "lit": [
+       "Keep this plan"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/01-new-reveal.jpg",
+     "ms": 4513
+    },
+    {
+     "name": "new-plan-open",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/stripe/pass",
+      "401 GET https://ngw-events-api.onrender.com/api/events/cust-mwuxx280-jd821w/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": "DIY, or bring in help?",
+      "progress": "4 of 5 handled · What’s counted ▾",
+      "standing": "GUESTS 12 planned around · likely 10–13 on the day (usually ~10–15% no-shows, a few plus-ones) BUDGET $900 $0 spoken for · $0 spent",
+      "stage": "Plan",
+      "waitWords": [],
+      "lit": [
+       "Sign in to save"
+      ],
+      "parsed": {
+       "name": "Rosa’s Harvest Dinner",
+       "type": "Dinner Party",
+       "guests": 12,
+       "budget": 900,
+       "date": "2026-12-19"
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/02-new-plan-open.jpg",
+     "ms": 1635
+    },
+    {
+     "name": "board",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": "Ask Maple Table Catering about insurance.",
+      "progress": "3 of 6 handled · What’s counted ▾",
+      "standing": "GUESTS 12 2 confirmed · 2 replies still out BUDGET $900 $0 spoken for · $0 spent · $180 over, expected",
+      "stage": "Plan",
+      "waitWords": [],
+      "lit": [
+       "Sign in to save"
+      ],
+      "cue": {
+       "count": 1,
+       "restCount": 1,
+       "target": "button \"Send the ask — mark it requested\" [hero]",
+       "anim": "cue-breathe, cue-settle",
+       "dur": "1.2s, 0.6s",
+       "iter": "2, 1",
+       "peakPct": 75,
+       "settlePct": 45,
+       "restRing": "solid 3px oklab(0.803836 -0.0143031 -0.0174567 / 0.45)",
+       "restAlpha": 0.45
+      },
+      "wide": {
+       "railStages": [],
+       "passRow": [],
+       "titleShown": [
+        "Rosa’s Harvest Dinner ▾"
+       ]
+      },
+      "heroClip": []
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/03-board.jpg",
+     "ms": 6899
+    },
+    {
+     "name": "whats-counted",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements"
+     ],
+     "blocked": [],
+     "texts": {
+      "parts": [
+       "Date & time handled›",
+       "Where it happens handled›",
+       "Guests handled›",
+       "DIY, or bring in help? · 3 open ›",
+       "Follow up with Maple Table Catering ›",
+       "Expected costs are $180 over your budget ›"
+      ],
+      "opened": {
+       "Date & time handled›": "Date & time",
+       "Where it happens handled›": "Venue",
+       "Guests handled›": "Guest list",
+       "DIY, or bring in help? · 3 open ›": "The spread & shopping",
+       "Follow up with Maple Table Catering ›": "People you’re hiring",
+       "Expected costs are $180 over your budget ›": "Your money"
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/04-whats-counted.jpg",
+     "ms": 11343
+    },
+    {
+     "name": "menu",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "door": "bar",
+      "names": [
+       "Venue",
+       "Guests & invite",
+       "The spread & shopping",
+       "Your money",
+       "People you’re hiring",
+       "Space, seats & helpers",
+       "Who sits where",
+       "Your checklist",
+       "Calendar",
+       "Calls to make",
+       "What could go wrong",
+       "Messages",
+       "Split the costs",
+       "Make it yours",
+       "Share with family",
+       "Co-hosts",
+       "Ask No Guesswork",
+       "Feeling stuck?",
+       "You & settings",
+       "The One-Event Pass"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": null,
+     "ms": 947
+    },
+    {
+     "name": "section: Venue",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Venue",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/06-section-Venue.jpg",
+     "ms": 1626
+    },
+    {
+     "name": "section: Guests & invite",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements"
+     ],
+     "blocked": [],
+     "texts": {
+      "title": "Guest list",
+      "lit": [
+       "Sign in to save"
+      ],
+      "guestEditorGroups": [
+       "name",
+       "reply",
+       "coming",
+       "reach",
+       "remove"
+      ],
+      "plusOneCard": {
+       "plusField": "Plus one name",
+       "fieldsForPlusOne": [
+        "Meal for Sam Pine",
+        "Dietary needs for Sam Pine"
+       ],
+       "meal": true,
+       "diet": true
+      },
+      "shareCard": {
+       "steps": [
+        "1 GET IT RIGHT",
+        "2 SEND IT",
+        "3 SHARE ANOTHER WAY",
+        "4 AFTER IT’S OUT"
+       ],
+       "rows": [
+        "page: Invite page Live at your link Edit ›",
+        "message: Invite message Written from your plan · check it Edit ›"
+       ],
+       "buttons": [
+        "Invite page Live at your link Edit ›",
+        "Invite message Written from your plan · check it Edit ›",
+        "Share the link",
+        "Show QR code",
+        "Update everyone Something changed",
+        "Send the details Parking, dress, what to bring"
+       ]
+      },
+      "haventReplied": [
+       "2 haven’t replied — planning for 12 +1 plus-one"
+      ],
+      "inviteMessage": {
+       "title": "Invite message",
+       "saveDraft": 1,
+       "preview": 1,
+       "asText": "229 characters · sends as 2 texts",
+       "asEmail": 1
+      },
+      "seeFullInvite": {
+       "before": {
+        "h": 440,
+        "clipped": true,
+        "layout": "glance"
+       },
+       "newTab": false,
+       "after": {
+        "h": 696,
+        "clipped": false,
+        "layout": "glance"
+       },
+       "label": "Show less"
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/07-section-Guests-invite.jpg",
+     "ms": 13484
+    },
+    {
+     "name": "section: The spread & shopping",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements"
+     ],
+     "blocked": [],
+     "texts": {
+      "title": "The spread & shopping",
+      "lit": [
+       "Sign in to save"
+      ],
+      "openedItem": "Menu 3 open ›",
+      "afterTitle": "The spread & shopping",
+      "afterHead": "YOUR CHOICES Seated dinner or buffet / family-style? Plated 3-course Family-style Buffet Grazing + small plates Sets plate and serveware counts, table layout, a",
+      "foodRow": {
+       "shelf": "F Food 0 of 7 bought · $69–$213 est. ›",
+       "item": "Open Beef short rib",
+       "expanded": false,
+       "openPanel": 1,
+       "sameSheet": true
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/08-section-The-spread-shopping.jpg",
+     "ms": 6162
+    },
+    {
+     "name": "section: Your money",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Your money",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/09-section-Your-money.jpg",
+     "ms": 2231
+    },
+    {
+     "name": "section: People you’re hiring",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "People you’re hiring",
+      "lit": [
+       "Sign in to save"
+      ],
+      "openedItem": "Maple Table Catering",
+      "afterTitle": "People you’re hiring",
+      "expanded": true
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/10-section-People-you-re-hiring.jpg",
+     "ms": 2256
+    },
+    {
+     "name": "section: Space, seats & helpers",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Space, seats & helpers",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/11-section-Space-seats-helpers.jpg",
+     "ms": 1764
+    },
+    {
+     "name": "section: Who sits where",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Who sits where",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/12-section-Who-sits-where.jpg",
+     "ms": 2154
+    },
+    {
+     "name": "section: Your checklist",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Your checklist",
+      "lit": [
+       "Sign in to save",
+       "Open the nudge [sheet]"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/13-section-Your-checklist.jpg",
+     "ms": 2203
+    },
+    {
+     "name": "section: Calendar",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Calendar",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/14-section-Calendar.jpg",
+     "ms": 2189
+    },
+    {
+     "name": "section: Calls to make",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Calls to make",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/15-section-Calls-to-make.jpg",
+     "ms": 1849
+    },
+    {
+     "name": "section: What could go wrong",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "What could go wrong",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/16-section-What-could-go-wrong.jpg",
+     "ms": 2294
+    },
+    {
+     "name": "section: Messages",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/communication/sent"
+     ],
+     "blocked": [],
+     "texts": {
+      "title": "Messages",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/17-section-Messages.jpg",
+     "ms": 1756
+    },
+    {
+     "name": "section: Split the costs",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Split the costs",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/18-section-Split-the-costs.jpg",
+     "ms": 2340
+    },
+    {
+     "name": "section: Make it yours",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Make it yours",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/19-section-Make-it-yours.jpg",
+     "ms": 2144
+    },
+    {
+     "name": "section: You & settings",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "You & settings",
+      "lit": [
+       "Sign in to save",
+       "Email me a sign-in link [sheet]"
+      ],
+      "version": "Version 2026.11.25.12 (2981924)"
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 1,
+      "smallTargetSamples": [
+       "13x14 input \"on\""
+      ],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/20-section-You-settings.jpg",
+     "ms": 1849
+    },
+    {
+     "name": "the-day",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-photos"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": null,
+      "progress": null,
+      "standing": null,
+      "stage": "The Day",
+      "waitWords": [
+       "2 haven’t replied"
+      ],
+      "screen": "TODAY · LIVE · SATURDAY, DECEMBER 19 3:00 PM 2 confirmed Worth a spot on the schedule: Toast Add it WATCH 2 haven’t replied Headcount may shift — text them, or plan for 1 to be safe. WATCH 6 things still open Knock them out or let them go — the day's already here. Next up at 3:00 PM — Set the table:",
+      "headings": [
+       "TODAY · LIVE · SATURDAY, DECEMBER 19",
+       "THEN · 13 MORE MOMENTS"
+      ],
+      "schedule": true,
+      "lit": [
+       "Done — what’s next"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 1,
+      "smallTargetSamples": [
+       "121x21 summary \"If something goes wrong\""
+      ],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/21-the-day.jpg",
+     "ms": 3627
+    },
+    {
+     "name": "after",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-photos"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": null,
+      "progress": null,
+      "standing": null,
+      "stage": "After",
+      "waitWords": [],
+      "screen": "SAT, DEC 19 · 2 DAYS AGO Rosa’s Harvest Dinner ▾ ✎ Rename AFTERWARD How it landed. Expected to land $180 over the $900 you planned. The money from your plan Food › $0 of ~$600 Bar / Beverage › $0 of ~$213 Supplies › $0 of ~$48 Rentals › $0 of ~$219 Recorded spent $0 · against $900 How many came? 12 ",
+      "headings": [
+       "AFTERWARD",
+       "The money",
+       "How many came?",
+       "Thank-yous & gifts",
+       "The recap for guests",
+       "For next time"
+      ],
+      "schedule": false,
+      "lit": [
+       "Write the thank-yous"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/22-after.jpg",
+     "ms": 3591
+    },
+    {
+     "name": "name-straight-seeded",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/invite-opens"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "name": "Rosa's Harvest Dinner",
+      "surfaces": {
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "tabTitle": {
+        "hits": []
+       },
+       "whatsCounted": {
+        "hits": []
+       },
+       "inviteDraft": {
+        "note": "no \"Copy the invite\" button"
+       },
+       "invitePage": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "invitePageTab": {
+        "hits": []
+       }
+      },
+      "verdict": [
+       "eyebrow: name not shown",
+       "title: Rosa's Harvest Dinner OK",
+       "tabTitle: name not shown",
+       "whatsCounted: name not shown",
+       "invitePage: Rosa's Harvest Dinner OK",
+       "invitePageTab: name not shown"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/23-name-straight-seeded.jpg",
+     "ms": 8110
+    },
+    {
+     "name": "name-straight-created",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/stripe/pass",
+      "401 GET https://ngw-events-api.onrender.com/api/events/cust-mwuxx280-dmjn5b/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "typed": "Rosa's Harvest Dinner",
+      "stored": "Rosa's Harvest Dinner",
+      "surfaces": {
+       "reveal": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "stored": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       }
+      },
+      "verdict": [
+       "reveal: Rosa's Harvest Dinner OK",
+       "eyebrow: name not shown",
+       "title: Rosa's Harvest Dinner OK",
+       "stored: Rosa's Harvest Dinner OK"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/24-name-straight-created.jpg",
+     "ms": 8077
+    },
+    {
+     "name": "name-curly-seeded",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/announcements"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "name": "Rosa’s Harvest Dinner",
+      "surfaces": {
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "tabTitle": {
+        "hits": []
+       },
+       "whatsCounted": {
+        "hits": []
+       },
+       "inviteDraft": {
+        "note": "no \"Copy the invite\" button"
+       },
+       "invitePage": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "invitePageTab": {
+        "hits": []
+       }
+      },
+      "verdict": [
+       "eyebrow: name not shown",
+       "title: Rosa’s Harvest Dinner OK",
+       "tabTitle: name not shown",
+       "whatsCounted: name not shown",
+       "invitePage: Rosa’s Harvest Dinner OK",
+       "invitePageTab: name not shown"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/25-name-curly-seeded.jpg",
+     "ms": 7584
+    },
+    {
+     "name": "name-curly-created",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/stripe/pass",
+      "401 GET https://ngw-events-api.onrender.com/api/events/cust-mwuxx280-7effbz/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "typed": "Rosa’s Harvest Dinner",
+      "stored": "Rosa’s Harvest Dinner",
+      "surfaces": {
+       "reveal": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "stored": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       }
+      },
+      "verdict": [
+       "reveal: Rosa’s Harvest Dinner OK",
+       "eyebrow: name not shown",
+       "title: Rosa’s Harvest Dinner OK",
+       "stored: Rosa’s Harvest Dinner OK"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/26-name-curly-created.jpg",
+     "ms": 7327
+    },
+    {
+     "name": "guest-invite",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+     ],
+     "http": [
+      "404 GET https://ngw-events-api.onrender.com/api/public/announcements/test-two-days"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "title": "Test — Game Night (in 2 days)",
+      "nameField": true,
+      "replyButtons": [
+       "Add to calendar",
+       "Yes, I’m in",
+       "Can’t make it",
+       "Maybe",
+       "Forward this invite"
+      ],
+      "lit": [],
+      "layout": "classic",
+      "palette": null,
+      "hostAvatar": 0
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/390x844/27-guest-invite.jpg",
+     "ms": 2350
+    }
+   ]
+  },
+  {
+   "id": "834x1194",
+   "touch": true,
+   "steps": [
+    {
+     "name": "new-create-screen",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "lit": [
+       "Put my plan together"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/00-new-create-screen.jpg",
+     "ms": 6738
+    },
+    {
+     "name": "new-reveal",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "openLabel": "Open my plan (not saved yet)",
+      "lit": [
+       "Keep this plan"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/01-new-reveal.jpg",
+     "ms": 4560
+    },
+    {
+     "name": "new-plan-open",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/cust-mwuxx280-ehjgh6/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/stripe/pass"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": "DIY, or bring in help?",
+      "progress": null,
+      "standing": "GUESTS 12 planned around · likely 10–13 on the day (usually ~10–15% no-shows, a few plus-ones) BUDGET $900 $0 spoken for · $0 spent The rest of your plan WORTH HAVING A PLAN FOR If menu locked before allergies collected If final headcount still not confirmed 3 days out If too many à-la-minute dishes Coming up dated, not urgent Decide: Seated dinner or buffet / family-style by Nov 28 · in 4d Text/e",
+      "stage": "Plan",
+      "waitWords": [],
+      "lit": [
+       "Sign in to save"
+      ],
+      "parsed": {
+       "name": "Rosa’s Harvest Dinner",
+       "type": "Dinner Party",
+       "guests": 12,
+       "budget": 900,
+       "date": "2026-12-19"
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/02-new-plan-open.jpg",
+     "ms": 1507
+    },
+    {
+     "name": "board",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": "Ask Maple Table Catering about insurance.",
+      "progress": null,
+      "standing": "GUESTS 12 2 confirmed · 2 replies still out BUDGET $900 $0 spoken for · $0 spent · $180 over, expected The rest of your plan THEN, IN ORDER DIY, or bring in help? · 3 open → 2 confirmed guests still need seats 0 of 2 confirmed guests are seated → WORTH HAVING A PLAN FOR If menu locked before allergies collected If final headcount still not confirmed 3 days out If too many à-la-minute dishes Expect",
+      "stage": "Plan",
+      "waitWords": [],
+      "lit": [
+       "Sign in to save"
+      ],
+      "cue": {
+       "count": 1,
+       "restCount": 1,
+       "target": "button \"Send the ask — mark it requested\" [hero]",
+       "anim": "cue-breathe, cue-settle",
+       "dur": "1.2s, 0.6s",
+       "iter": "2, 1",
+       "peakPct": 75,
+       "settlePct": 45,
+       "restRing": "solid 3px oklab(0.803836 -0.0143031 -0.0174567 / 0.45)",
+       "restAlpha": 0.45
+      },
+      "wide": {
+       "railStages": [],
+       "passRow": [],
+       "titleShown": [
+        "Rosa’s Harvest Dinner ▾"
+       ]
+      },
+      "heroClip": []
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/03-board.jpg",
+     "ms": 6022
+    },
+    {
+     "name": "whats-counted",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements"
+     ],
+     "blocked": [],
+     "texts": {
+      "parts": [
+       "Date & time handled›",
+       "Where it happens handled›",
+       "Guests handled›",
+       "DIY, or bring in help? · 3 open ›",
+       "Follow up with Maple Table Catering ›",
+       "Expected costs are $180 over your budget ›"
+      ],
+      "opened": {
+       "Date & time handled›": "Date & time",
+       "Where it happens handled›": "Venue",
+       "Guests handled›": "Guest list",
+       "DIY, or bring in help? · 3 open ›": "The spread & shopping",
+       "Follow up with Maple Table Catering ›": "People you’re hiring",
+       "Expected costs are $180 over your budget ›": "Your money"
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/04-whats-counted.jpg",
+     "ms": 10670
+    },
+    {
+     "name": "menu",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "door": "bar",
+      "names": [
+       "Venue",
+       "Guests & invite",
+       "The spread & shopping",
+       "Your money",
+       "People you’re hiring",
+       "Space, seats & helpers",
+       "Who sits where",
+       "Your checklist",
+       "Calendar",
+       "Calls to make",
+       "What could go wrong",
+       "Messages",
+       "Split the costs",
+       "Make it yours",
+       "Share with family",
+       "Co-hosts",
+       "Ask No Guesswork",
+       "Feeling stuck?",
+       "You & settings",
+       "The One-Event Pass"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": null,
+     "ms": 865
+    },
+    {
+     "name": "section: Venue",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Venue",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/06-section-Venue.jpg",
+     "ms": 1176
+    },
+    {
+     "name": "section: Guests & invite",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements"
+     ],
+     "blocked": [],
+     "texts": {
+      "title": "Guest list",
+      "lit": [
+       "Sign in to save"
+      ],
+      "guestEditorGroups": [
+       "name",
+       "reply",
+       "coming",
+       "reach",
+       "remove"
+      ],
+      "plusOneCard": {
+       "plusField": "Plus one name",
+       "fieldsForPlusOne": [
+        "Meal for Sam Pine",
+        "Dietary needs for Sam Pine"
+       ],
+       "meal": true,
+       "diet": true
+      },
+      "shareCard": {
+       "steps": [
+        "1 GET IT RIGHT",
+        "2 SEND IT",
+        "3 SHARE ANOTHER WAY",
+        "4 AFTER IT’S OUT"
+       ],
+       "rows": [
+        "page: Invite page Live at your link Edit ›",
+        "message: Invite message Written from your plan · check it Edit ›"
+       ],
+       "buttons": [
+        "Invite page Live at your link Edit ›",
+        "Invite message Written from your plan · check it Edit ›",
+        "Share the link",
+        "Show QR code",
+        "Update everyone Something changed",
+        "Send the details Parking, dress, what to bring"
+       ]
+      },
+      "haventReplied": [
+       "2 haven’t replied — planning for 12 +1 plus-one"
+      ],
+      "inviteMessage": {
+       "title": "Invite message",
+       "saveDraft": 1,
+       "preview": 1,
+       "asText": "229 characters · sends as 2 texts",
+       "asEmail": 1
+      },
+      "seeFullInvite": {
+       "before": {
+        "h": 440,
+        "clipped": true,
+        "layout": "glance"
+       },
+       "newTab": false,
+       "after": {
+        "h": 649,
+        "clipped": false,
+        "layout": "glance"
+       },
+       "label": "Show less"
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/07-section-Guests-invite.jpg",
+     "ms": 12345
+    },
+    {
+     "name": "section: The spread & shopping",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements"
+     ],
+     "blocked": [],
+     "texts": {
+      "title": "The spread & shopping",
+      "lit": [
+       "Sign in to save"
+      ],
+      "openedItem": "Menu 3 open ›",
+      "afterTitle": "The spread & shopping",
+      "afterHead": "YOUR CHOICES Seated dinner or buffet / family-style? Plated 3-course Family-style Buffet Grazing + small plates Sets plate and serveware counts, table layout, a",
+      "foodRow": {
+       "shelf": "F Food 0 of 7 bought · $69–$213 est. ›",
+       "item": "Open Beef short rib",
+       "expanded": false,
+       "openPanel": 1,
+       "sameSheet": true
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/08-section-The-spread-shopping.jpg",
+     "ms": 5059
+    },
+    {
+     "name": "section: Your money",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Your money",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/09-section-Your-money.jpg",
+     "ms": 1621
+    },
+    {
+     "name": "section: People you’re hiring",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "People you’re hiring",
+      "lit": [
+       "Sign in to save"
+      ],
+      "openedItem": "Maple Table Catering",
+      "afterTitle": "People you’re hiring",
+      "expanded": true
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/10-section-People-you-re-hiring.jpg",
+     "ms": 2416
+    },
+    {
+     "name": "section: Space, seats & helpers",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Space, seats & helpers",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/11-section-Space-seats-helpers.jpg",
+     "ms": 1719
+    },
+    {
+     "name": "section: Who sits where",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Who sits where",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/12-section-Who-sits-where.jpg",
+     "ms": 1502
+    },
+    {
+     "name": "section: Your checklist",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Your checklist",
+      "lit": [
+       "Sign in to save",
+       "Open the nudge [sheet]"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/13-section-Your-checklist.jpg",
+     "ms": 1606
+    },
+    {
+     "name": "section: Calendar",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Calendar",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/14-section-Calendar.jpg",
+     "ms": 1519
+    },
+    {
+     "name": "section: Calls to make",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Calls to make",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/15-section-Calls-to-make.jpg",
+     "ms": 1625
+    },
+    {
+     "name": "section: What could go wrong",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "What could go wrong",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/16-section-What-could-go-wrong.jpg",
+     "ms": 1486
+    },
+    {
+     "name": "section: Messages",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/communication/sent"
+     ],
+     "blocked": [],
+     "texts": {
+      "title": "Messages",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/17-section-Messages.jpg",
+     "ms": 1171
+    },
+    {
+     "name": "section: Split the costs",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Split the costs",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/18-section-Split-the-costs.jpg",
+     "ms": 1504
+    },
+    {
+     "name": "section: Make it yours",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Make it yours",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/19-section-Make-it-yours.jpg",
+     "ms": 1536
+    },
+    {
+     "name": "section: You & settings",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "You & settings",
+      "lit": [
+       "Sign in to save",
+       "Email me a sign-in link [sheet]"
+      ],
+      "version": "Version 2026.11.25.12 (2981924)"
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 1,
+      "smallTargetSamples": [
+       "13x14 input \"on\""
+      ],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/20-section-You-settings.jpg",
+     "ms": 1666
+    },
+    {
+     "name": "the-day",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-photos"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": null,
+      "progress": null,
+      "standing": null,
+      "stage": "The Day",
+      "waitWords": [
+       "2 haven’t replied"
+      ],
+      "screen": "TODAY · LIVE · SATURDAY, DECEMBER 19 3:00 PM 2 confirmed Worth a spot on the schedule: Toast Add it WATCH 2 haven’t replied Headcount may shift — text them, or plan for 1 to be safe. WATCH 6 things still open Knock them out or let them go — the day's already here. Next up at 3:00 PM — Set the table:",
+      "headings": [
+       "TODAY · LIVE · SATURDAY, DECEMBER 19",
+       "THEN · 13 MORE MOMENTS"
+      ],
+      "schedule": true,
+      "lit": [
+       "Done — what’s next"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 1,
+      "smallTargetSamples": [
+       "121x21 summary \"If something goes wrong\""
+      ],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/21-the-day.jpg",
+     "ms": 3874
+    },
+    {
+     "name": "after",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-photos"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": null,
+      "progress": null,
+      "standing": null,
+      "stage": "After",
+      "waitWords": [],
+      "screen": "SAT, DEC 19 · 2 DAYS AGO Rosa’s Harvest Dinner ▾ ✎ Rename AFTERWARD How it landed. Expected to land $180 over the $900 you planned. The money from your plan Food › $0 of ~$600 Bar / Beverage › $0 of ~$213 Supplies › $0 of ~$48 Rentals › $0 of ~$219 Recorded spent $0 · against $900 How many came? 12 ",
+      "headings": [
+       "AFTERWARD",
+       "The money",
+       "How many came?",
+       "Thank-yous & gifts",
+       "The recap for guests",
+       "For next time"
+      ],
+      "schedule": false,
+      "lit": [
+       "Write the thank-yous"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/22-after.jpg",
+     "ms": 3124
+    },
+    {
+     "name": "name-straight-seeded",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/announcements"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "name": "Rosa's Harvest Dinner",
+      "surfaces": {
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "tabTitle": {
+        "hits": []
+       },
+       "whatsCounted": {
+        "hits": []
+       },
+       "inviteDraft": {
+        "note": "no \"Copy the invite\" button"
+       },
+       "invitePage": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "invitePageTab": {
+        "hits": []
+       }
+      },
+      "verdict": [
+       "eyebrow: name not shown",
+       "title: Rosa's Harvest Dinner OK",
+       "tabTitle: name not shown",
+       "whatsCounted: name not shown",
+       "invitePage: Rosa's Harvest Dinner OK",
+       "invitePageTab: name not shown"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/23-name-straight-seeded.jpg",
+     "ms": 7023
+    },
+    {
+     "name": "name-straight-created",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/cust-mwuxx280-j61bc5/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/stripe/pass"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "typed": "Rosa's Harvest Dinner",
+      "stored": "Rosa's Harvest Dinner",
+      "surfaces": {
+       "reveal": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "stored": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       }
+      },
+      "verdict": [
+       "reveal: Rosa's Harvest Dinner OK",
+       "eyebrow: name not shown",
+       "title: Rosa's Harvest Dinner OK",
+       "stored: Rosa's Harvest Dinner OK"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/24-name-straight-created.jpg",
+     "ms": 6989
+    },
+    {
+     "name": "name-curly-seeded",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "name": "Rosa’s Harvest Dinner",
+      "surfaces": {
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "tabTitle": {
+        "hits": []
+       },
+       "whatsCounted": {
+        "hits": []
+       },
+       "inviteDraft": {
+        "note": "no \"Copy the invite\" button"
+       },
+       "invitePage": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "invitePageTab": {
+        "hits": []
+       }
+      },
+      "verdict": [
+       "eyebrow: name not shown",
+       "title: Rosa’s Harvest Dinner OK",
+       "tabTitle: name not shown",
+       "whatsCounted: name not shown",
+       "invitePage: Rosa’s Harvest Dinner OK",
+       "invitePageTab: name not shown"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/25-name-curly-seeded.jpg",
+     "ms": 7271
+    },
+    {
+     "name": "name-curly-created",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/stripe/pass",
+      "401 GET https://ngw-events-api.onrender.com/api/events/cust-mwuxx280-g8wehy/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "typed": "Rosa’s Harvest Dinner",
+      "stored": "Rosa’s Harvest Dinner",
+      "surfaces": {
+       "reveal": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "stored": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       }
+      },
+      "verdict": [
+       "reveal: Rosa’s Harvest Dinner OK",
+       "eyebrow: name not shown",
+       "title: Rosa’s Harvest Dinner OK",
+       "stored: Rosa’s Harvest Dinner OK"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/26-name-curly-created.jpg",
+     "ms": 8666
+    },
+    {
+     "name": "guest-invite",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+     ],
+     "http": [
+      "404 GET https://ngw-events-api.onrender.com/api/public/announcements/test-two-days"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "title": "Test — Game Night (in 2 days)",
+      "nameField": true,
+      "replyButtons": [
+       "Add to calendar",
+       "Yes, I’m in",
+       "Can’t make it",
+       "Maybe",
+       "Forward this invite"
+      ],
+      "lit": [],
+      "layout": "classic",
+      "palette": null,
+      "hostAvatar": 0
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/834x1194/27-guest-invite.jpg",
+     "ms": 1502
+    }
+   ]
+  },
+  {
+   "id": "1024x1366",
+   "touch": true,
+   "steps": [
+    {
+     "name": "new-create-screen",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "lit": [
+       "Put my plan together"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/00-new-create-screen.jpg",
+     "ms": 6856
+    },
+    {
+     "name": "new-reveal",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "openLabel": "Open my plan (not saved yet)",
+      "lit": [
+       "Keep this plan"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/01-new-reveal.jpg",
+     "ms": 4555
+    },
+    {
+     "name": "new-plan-open",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/cust-mwuxx280-hxhsj6/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/stripe/pass"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": "DIY, or bring in help?",
+      "progress": null,
+      "standing": "GUESTS 12 planned around · likely 10–13 on the day (usually ~10–15% no-shows, a few plus-ones) BUDGET $900 $0 spoken for · $0 spent The rest of your plan WORTH HAVING A PLAN FOR If menu locked before allergies collected If final headcount still not confirmed 3 days out If too many à-la-minute dishes Coming up dated, not urgent Decide: Seated dinner or buffet / family-style by Nov 28 · in 4d Text/e",
+      "stage": "Plan",
+      "waitWords": [],
+      "lit": [
+       "Sign in to save"
+      ],
+      "parsed": {
+       "name": "Rosa’s Harvest Dinner",
+       "type": "Dinner Party",
+       "guests": 12,
+       "budget": 900,
+       "date": "2026-12-19"
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/02-new-plan-open.jpg",
+     "ms": 1645
+    },
+    {
+     "name": "board",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": "Ask Maple Table Catering about insurance.",
+      "progress": null,
+      "standing": "GUESTS 12 2 confirmed · 2 replies still out BUDGET $900 $0 spoken for · $0 spent · $180 over, expected The rest of your plan THEN, IN ORDER DIY, or bring in help? · 3 open → 2 confirmed guests still need seats 0 of 2 confirmed guests are seated → WORTH HAVING A PLAN FOR If menu locked before allergies collected Risks If final headcount still not confirmed 3 days out Risks If too many à-la-minute d",
+      "stage": "Plan",
+      "waitWords": [],
+      "lit": [
+       "Sign in to save"
+      ],
+      "cue": {
+       "count": 1,
+       "restCount": 1,
+       "target": "button \"Send the ask — mark it requested\" [hero]",
+       "anim": "cue-breathe, cue-settle",
+       "dur": "1.2s, 0.6s",
+       "iter": "2, 1",
+       "peakPct": 75,
+       "settlePct": 45,
+       "restRing": "solid 3px oklab(0.803836 -0.0143031 -0.0174567 / 0.45)",
+       "restAlpha": 0.45
+      },
+      "wide": {
+       "railStages": [
+        "Create",
+        "Plan",
+        "The Day",
+        "After"
+       ],
+       "passRow": [
+        "The One-Event Pass · $39 · one event"
+       ],
+       "titleShown": [
+        "Rosa’s Harvest Dinner ▾"
+       ]
+      },
+      "heroClip": []
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/03-board.jpg",
+     "ms": 6793
+    },
+    {
+     "name": "whats-counted",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements"
+     ],
+     "blocked": [],
+     "texts": {
+      "parts": [
+       "Date & time handled›",
+       "Where it happens handled›",
+       "Guests handled›",
+       "DIY, or bring in help? · 3 open ›",
+       "Follow up with Maple Table Catering ›",
+       "Expected costs are $180 over your budget ›"
+      ],
+      "opened": {
+       "Date & time handled›": "Date & time",
+       "Where it happens handled›": "Venue",
+       "Guests handled›": "Guest list",
+       "DIY, or bring in help? · 3 open ›": "The spread & shopping",
+       "Follow up with Maple Table Catering ›": "People you’re hiring",
+       "Expected costs are $180 over your budget ›": "Your money"
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/04-whats-counted.jpg",
+     "ms": 11504
+    },
+    {
+     "name": "menu",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "door": "rail",
+      "names": [
+       "Icons only",
+       "Create",
+       "Plan",
+       "The Day",
+       "After",
+       "Venue",
+       "Guests & invite",
+       "The spread & shopping",
+       "Your money",
+       "People you’re hiring",
+       "Space, seats & helpers",
+       "Who sits where",
+       "Your checklist",
+       "Calendar",
+       "Calls to make",
+       "What could go wrong",
+       "Messages",
+       "Split the costs",
+       "Make it yours",
+       "Share with family",
+       "Co-hosts",
+       "Ask No Guesswork",
+       "The One-Event Pass · $39 · one event",
+       "You & settings",
+       "This event",
+       "Search",
+       "Feeling stuck?"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": null,
+     "ms": 189
+    },
+    {
+     "name": "section: Venue",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Venue",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/06-section-Venue.jpg",
+     "ms": 728
+    },
+    {
+     "name": "section: Guests & invite",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens"
+     ],
+     "blocked": [],
+     "texts": {
+      "title": "Guest list",
+      "lit": [
+       "Sign in to save"
+      ],
+      "guestEditorGroups": [
+       "name",
+       "reply",
+       "coming",
+       "reach",
+       "remove"
+      ],
+      "plusOneCard": {
+       "plusField": "Plus one name",
+       "fieldsForPlusOne": [
+        "Meal for Sam Pine",
+        "Dietary needs for Sam Pine"
+       ],
+       "meal": true,
+       "diet": true
+      },
+      "shareCard": {
+       "steps": [
+        "1 GET IT RIGHT",
+        "2 SEND IT",
+        "3 SHARE ANOTHER WAY",
+        "4 AFTER IT’S OUT"
+       ],
+       "rows": [
+        "page: Invite page Live at your link Edit ›",
+        "message: Invite message Written from your plan · check it Edit ›"
+       ],
+       "buttons": [
+        "Invite page Live at your link Edit ›",
+        "Invite message Written from your plan · check it Edit ›",
+        "Share the link",
+        "Show QR code",
+        "Update everyone Something changed",
+        "Send the details Parking, dress, what to bring"
+       ]
+      },
+      "haventReplied": [
+       "2 haven’t replied — planning for 12 +1 plus-one"
+      ],
+      "inviteMessage": {
+       "title": "Invite message",
+       "saveDraft": 1,
+       "preview": 1,
+       "asText": "229 characters · sends as 2 texts",
+       "asEmail": 1
+      },
+      "seeFullInvite": {
+       "before": {
+        "h": 440,
+        "clipped": true,
+        "layout": "glance"
+       },
+       "newTab": false,
+       "after": {
+        "h": 649,
+        "clipped": false,
+        "layout": "glance"
+       },
+       "label": "Show less"
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/07-section-Guests-invite.jpg",
+     "ms": 10891
+    },
+    {
+     "name": "section: The spread & shopping",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens"
+     ],
+     "blocked": [],
+     "texts": {
+      "title": "The spread & shopping",
+      "lit": [
+       "Sign in to save"
+      ],
+      "openedItem": "Menu 3 open ›",
+      "afterTitle": "The spread & shopping",
+      "afterHead": "YOUR CHOICES Seated dinner or buffet / family-style? Plated 3-course Family-style Buffet Grazing + small plates Sets plate and serveware counts, table layout, a",
+      "foodRow": {
+       "shelf": "F Food 0 of 7 bought · $69–$213 est. ›",
+       "item": "Open Beef short rib",
+       "expanded": false,
+       "openPanel": 1,
+       "sameSheet": true
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/08-section-The-spread-shopping.jpg",
+     "ms": 5104
+    },
+    {
+     "name": "section: Your money",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Your money",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/09-section-Your-money.jpg",
+     "ms": 1294
+    },
+    {
+     "name": "section: People you’re hiring",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "People you’re hiring",
+      "lit": [
+       "Sign in to save"
+      ],
+      "openedItem": "Maple Table Catering",
+      "afterTitle": "People you’re hiring",
+      "expanded": true
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/10-section-People-you-re-hiring.jpg",
+     "ms": 2237
+    },
+    {
+     "name": "section: Space, seats & helpers",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Space, seats & helpers",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/11-section-Space-seats-helpers.jpg",
+     "ms": 1285
+    },
+    {
+     "name": "section: Who sits where",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Who sits where",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/12-section-Who-sits-where.jpg",
+     "ms": 1287
+    },
+    {
+     "name": "section: Your checklist",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Your checklist",
+      "lit": [
+       "Sign in to save",
+       "Open the nudge [sheet]"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/13-section-Your-checklist.jpg",
+     "ms": 1388
+    },
+    {
+     "name": "section: Calendar",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Calendar",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/14-section-Calendar.jpg",
+     "ms": 1352
+    },
+    {
+     "name": "section: Calls to make",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Calls to make",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/15-section-Calls-to-make.jpg",
+     "ms": 1270
+    },
+    {
+     "name": "section: What could go wrong",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "What could go wrong",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/16-section-What-could-go-wrong.jpg",
+     "ms": 1338
+    },
+    {
+     "name": "section: Messages",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/communication/sent"
+     ],
+     "blocked": [],
+     "texts": {
+      "title": "Messages",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/17-section-Messages.jpg",
+     "ms": 1206
+    },
+    {
+     "name": "section: Split the costs",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Split the costs",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/18-section-Split-the-costs.jpg",
+     "ms": 1232
+    },
+    {
+     "name": "section: Make it yours",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Make it yours",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/19-section-Make-it-yours.jpg",
+     "ms": 1210
+    },
+    {
+     "name": "section: You & settings",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "You & settings",
+      "lit": [
+       "Sign in to save",
+       "Email me a sign-in link [sheet]"
+      ],
+      "version": "Version 2026.11.25.12 (2981924)"
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 1,
+      "smallTargetSamples": [
+       "13x14 input \"on\""
+      ],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/20-section-You-settings.jpg",
+     "ms": 1427
+    },
+    {
+     "name": "the-day",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-photos"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": null,
+      "progress": null,
+      "standing": null,
+      "stage": "The Day",
+      "waitWords": [
+       "2 haven’t replied"
+      ],
+      "screen": "TODAY · LIVE · SATURDAY, DECEMBER 19 3:00 PM 2 confirmed Worth a spot on the schedule: Toast Add it WATCH 2 haven’t replied Headcount may shift — text them, or plan for 1 to be safe. WATCH 6 things still open Knock them out or let them go — the day's already here. Next up at 3:00 PM — Set the table:",
+      "headings": [
+       "TODAY · LIVE · SATURDAY, DECEMBER 19",
+       "THEN · 13 MORE MOMENTS"
+      ],
+      "schedule": true,
+      "lit": [
+       "Done — what’s next"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 1,
+      "smallTargetSamples": [
+       "121x21 summary \"If something goes wrong\""
+      ],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/21-the-day.jpg",
+     "ms": 3425
+    },
+    {
+     "name": "after",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-photos"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": null,
+      "progress": null,
+      "standing": null,
+      "stage": "After",
+      "waitWords": [],
+      "screen": "SAT, DEC 19 · 2 DAYS AGO Rosa’s Harvest Dinner ▾ ✎ Rename AFTERWARD How it landed. Expected to land $180 over the $900 you planned. The money from your plan Food › $0 of ~$600 Bar / Beverage › $0 of ~$213 Supplies › $0 of ~$48 Rentals › $0 of ~$219 Recorded spent $0 · against $900 How many came? 12 ",
+      "headings": [
+       "AFTERWARD",
+       "The money",
+       "How many came?",
+       "Thank-yous & gifts",
+       "The recap for guests",
+       "For next time"
+      ],
+      "schedule": false,
+      "lit": [
+       "Write the thank-yous"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/22-after.jpg",
+     "ms": 3448
+    },
+    {
+     "name": "name-straight-seeded",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/announcements"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "name": "Rosa's Harvest Dinner",
+      "surfaces": {
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "tabTitle": {
+        "hits": []
+       },
+       "whatsCounted": {
+        "hits": []
+       },
+       "inviteDraft": {
+        "note": "no \"Copy the invite\" button"
+       },
+       "invitePage": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "invitePageTab": {
+        "hits": []
+       }
+      },
+      "verdict": [
+       "eyebrow: name not shown",
+       "title: Rosa's Harvest Dinner OK",
+       "tabTitle: name not shown",
+       "whatsCounted: name not shown",
+       "invitePage: Rosa's Harvest Dinner OK",
+       "invitePageTab: name not shown"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/23-name-straight-seeded.jpg",
+     "ms": 6821
+    },
+    {
+     "name": "name-straight-created",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/stripe/pass",
+      "401 GET https://ngw-events-api.onrender.com/api/events/cust-mwuxx280-1zj4ks/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "typed": "Rosa's Harvest Dinner",
+      "stored": "Rosa's Harvest Dinner",
+      "surfaces": {
+       "reveal": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "stored": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       }
+      },
+      "verdict": [
+       "reveal: Rosa's Harvest Dinner OK",
+       "eyebrow: name not shown",
+       "title: Rosa's Harvest Dinner OK",
+       "stored: Rosa's Harvest Dinner OK"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/24-name-straight-created.jpg",
+     "ms": 7210
+    },
+    {
+     "name": "name-curly-seeded",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/announcements"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "name": "Rosa’s Harvest Dinner",
+      "surfaces": {
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "tabTitle": {
+        "hits": []
+       },
+       "whatsCounted": {
+        "hits": []
+       },
+       "inviteDraft": {
+        "note": "no \"Copy the invite\" button"
+       },
+       "invitePage": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "invitePageTab": {
+        "hits": []
+       }
+      },
+      "verdict": [
+       "eyebrow: name not shown",
+       "title: Rosa’s Harvest Dinner OK",
+       "tabTitle: name not shown",
+       "whatsCounted: name not shown",
+       "invitePage: Rosa’s Harvest Dinner OK",
+       "invitePageTab: name not shown"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/25-name-curly-seeded.jpg",
+     "ms": 6798
+    },
+    {
+     "name": "name-curly-created",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/cust-mwuxx280-qvlwb8/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/stripe/pass"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "typed": "Rosa’s Harvest Dinner",
+      "stored": "Rosa’s Harvest Dinner",
+      "surfaces": {
+       "reveal": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "stored": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       }
+      },
+      "verdict": [
+       "reveal: Rosa’s Harvest Dinner OK",
+       "eyebrow: name not shown",
+       "title: Rosa’s Harvest Dinner OK",
+       "stored: Rosa’s Harvest Dinner OK"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/26-name-curly-created.jpg",
+     "ms": 7920
+    },
+    {
+     "name": "guest-invite",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+     ],
+     "http": [
+      "404 GET https://ngw-events-api.onrender.com/api/public/announcements/test-two-days"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "title": "Test — Game Night (in 2 days)",
+      "nameField": true,
+      "replyButtons": [
+       "Add to calendar",
+       "Yes, I’m in",
+       "Can’t make it",
+       "Maybe",
+       "Forward this invite"
+      ],
+      "lit": [],
+      "layout": "classic",
+      "palette": null,
+      "hostAvatar": 0
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/27-guest-invite.jpg",
+     "ms": 2071
+    },
+    {
+     "name": "short-landscape-1024x768",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": "Ask Maple Table Catering about insurance.",
+      "fit": {
+       "askBottom": 382,
+       "height": 768,
+       "below": [],
+       "controls": 6
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1024x1366/28-short-landscape-1024x768.jpg",
+     "ms": 3492
+    }
+   ]
+  },
+  {
+   "id": "1194x834",
+   "touch": true,
+   "steps": [
+    {
+     "name": "new-create-screen",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "lit": [
+       "Put my plan together"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/00-new-create-screen.jpg",
+     "ms": 6545
+    },
+    {
+     "name": "new-reveal",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "openLabel": "Open my plan (not saved yet)",
+      "lit": [
+       "Keep this plan"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/01-new-reveal.jpg",
+     "ms": 4530
+    },
+    {
+     "name": "new-plan-open",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/stripe/pass",
+      "401 GET https://ngw-events-api.onrender.com/api/events/cust-mwuxx280-6qntgw/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": "DIY, or bring in help?",
+      "progress": null,
+      "standing": "▾ WHAT’S COUNTED Date & time Where it happens Guests Food Budget GUESTS 12 planned around · likely 10–13 on the day (usually ~10–15% no-shows, a few plus-ones) BUDGET $900 $0 spoken for · $0 spent",
+      "stage": "Plan",
+      "waitWords": [],
+      "lit": [
+       "Sign in to save"
+      ],
+      "parsed": {
+       "name": "Rosa’s Harvest Dinner",
+       "type": "Dinner Party",
+       "guests": 12,
+       "budget": 900,
+       "date": "2026-12-19"
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/02-new-plan-open.jpg",
+     "ms": 1559
+    },
+    {
+     "name": "board",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": "Ask Maple Table Catering about insurance.",
+      "progress": null,
+      "standing": "▾ WHAT’S COUNTED Date & time Where it happens Guests Food Vendors Budget GUESTS 12 2 confirmed · 2 replies still out BUDGET $900 $0 spoken for · $0 spent · $180 over, expected",
+      "stage": "Plan",
+      "waitWords": [],
+      "lit": [
+       "Sign in to save"
+      ],
+      "cue": {
+       "count": 1,
+       "restCount": 1,
+       "target": "button \"Send the ask — mark it requested\" [hero]",
+       "anim": "cue-breathe, cue-settle",
+       "dur": "1.2s, 0.6s",
+       "iter": "2, 1",
+       "peakPct": 75,
+       "settlePct": 45,
+       "restRing": "solid 3px oklab(0.803836 -0.0143031 -0.0174567 / 0.45)",
+       "restAlpha": 0.45
+      },
+      "wide": {
+       "railStages": [
+        "Create",
+        "Plan",
+        "The Day",
+        "After"
+       ],
+       "passRow": [
+        "The One-Event Pass · $39 · one event"
+       ],
+       "titleShown": [
+        "Rosa’s Harvest Dinner ▾"
+       ]
+      },
+      "heroClip": []
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/03-board.jpg",
+     "ms": 6182
+    },
+    {
+     "name": "whats-counted",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads"
+     ],
+     "blocked": [],
+     "texts": {
+      "parts": [
+       "Date & time handled›",
+       "Where it happens handled›",
+       "Guests handled›",
+       "DIY, or bring in help? · 3 open ›",
+       "Follow up with Maple Table Catering ›",
+       "Expected costs are $180 over your budget ›"
+      ],
+      "opened": {
+       "Date & time handled›": "Date & time",
+       "Where it happens handled›": "Venue",
+       "Guests handled›": "Guest list",
+       "DIY, or bring in help? · 3 open ›": "The spread & shopping",
+       "Follow up with Maple Table Catering ›": "People you’re hiring",
+       "Expected costs are $180 over your budget ›": "Your money"
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/04-whats-counted.jpg",
+     "ms": 11326
+    },
+    {
+     "name": "menu",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "door": "rail",
+      "names": [
+       "Icons only",
+       "Create",
+       "Plan",
+       "The Day",
+       "After",
+       "Venue",
+       "Guests & invite",
+       "The spread & shopping",
+       "Your money",
+       "People you’re hiring",
+       "Space, seats & helpers",
+       "Who sits where",
+       "Your checklist",
+       "Calendar",
+       "Calls to make",
+       "What could go wrong",
+       "Messages",
+       "Split the costs",
+       "Make it yours",
+       "Share with family",
+       "Co-hosts",
+       "Ask No Guesswork",
+       "The One-Event Pass · $39 · one event",
+       "You & settings",
+       "This event",
+       "Search",
+       "Feeling stuck?"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": null,
+     "ms": 266
+    },
+    {
+     "name": "section: Venue",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Venue",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/06-section-Venue.jpg",
+     "ms": 808
+    },
+    {
+     "name": "section: Guests & invite",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads"
+     ],
+     "blocked": [],
+     "texts": {
+      "title": "Guest list",
+      "lit": [
+       "Sign in to save"
+      ],
+      "guestEditorGroups": [
+       "name",
+       "reply",
+       "coming",
+       "reach",
+       "remove"
+      ],
+      "plusOneCard": {
+       "plusField": "Plus one name",
+       "fieldsForPlusOne": [
+        "Meal for Sam Pine",
+        "Dietary needs for Sam Pine"
+       ],
+       "meal": true,
+       "diet": true
+      },
+      "shareCard": {
+       "steps": [
+        "1 GET IT RIGHT",
+        "2 SEND IT",
+        "3 SHARE ANOTHER WAY",
+        "4 AFTER IT’S OUT"
+       ],
+       "rows": [
+        "page: Invite page Live at your link Edit ›",
+        "message: Invite message Written from your plan · check it Edit ›"
+       ],
+       "buttons": [
+        "Invite page Live at your link Edit ›",
+        "Invite message Written from your plan · check it Edit ›",
+        "Share the link",
+        "Show QR code",
+        "Update everyone Something changed",
+        "Send the details Parking, dress, what to bring"
+       ]
+      },
+      "haventReplied": [
+       "2 haven’t replied — planning for 12 +1 plus-one"
+      ],
+      "inviteMessage": {
+       "title": "Invite message",
+       "saveDraft": 1,
+       "preview": 1,
+       "asText": "229 characters · sends as 2 texts",
+       "asEmail": 1
+      },
+      "seeFullInvite": {
+       "before": {
+        "h": 440,
+        "clipped": true,
+        "layout": "glance"
+       },
+       "newTab": false,
+       "after": {
+        "h": 632,
+        "clipped": false,
+        "layout": "glance"
+       },
+       "label": "Show less"
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/07-section-Guests-invite.jpg",
+     "ms": 10794
+    },
+    {
+     "name": "section: The spread & shopping",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens"
+     ],
+     "blocked": [],
+     "texts": {
+      "title": "The spread & shopping",
+      "lit": [
+       "Sign in to save"
+      ],
+      "openedItem": "Menu 3 open ›",
+      "afterTitle": "The spread & shopping",
+      "afterHead": "YOUR CHOICES Seated dinner or buffet / family-style? Plated 3-course Family-style Buffet Grazing + small plates Sets plate and serveware counts, table layout, a",
+      "foodRow": {
+       "shelf": "F Food 0 of 7 bought · $69–$213 est. ›",
+       "item": "Open Beef short rib",
+       "expanded": false,
+       "openPanel": 1,
+       "sameSheet": true
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/08-section-The-spread-shopping.jpg",
+     "ms": 4907
+    },
+    {
+     "name": "section: Your money",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Your money",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/09-section-Your-money.jpg",
+     "ms": 1287
+    },
+    {
+     "name": "section: People you’re hiring",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "People you’re hiring",
+      "lit": [
+       "Sign in to save"
+      ],
+      "openedItem": "Maple Table Catering",
+      "afterTitle": "People you’re hiring",
+      "expanded": true
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/10-section-People-you-re-hiring.jpg",
+     "ms": 2150
+    },
+    {
+     "name": "section: Space, seats & helpers",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Space, seats & helpers",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/11-section-Space-seats-helpers.jpg",
+     "ms": 1299
+    },
+    {
+     "name": "section: Who sits where",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Who sits where",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/12-section-Who-sits-where.jpg",
+     "ms": 1238
+    },
+    {
+     "name": "section: Your checklist",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Your checklist",
+      "lit": [
+       "Sign in to save",
+       "Open the nudge [sheet]"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/13-section-Your-checklist.jpg",
+     "ms": 1214
+    },
+    {
+     "name": "section: Calendar",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Calendar",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/14-section-Calendar.jpg",
+     "ms": 1269
+    },
+    {
+     "name": "section: Calls to make",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Calls to make",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/15-section-Calls-to-make.jpg",
+     "ms": 1300
+    },
+    {
+     "name": "section: What could go wrong",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "What could go wrong",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/16-section-What-could-go-wrong.jpg",
+     "ms": 1272
+    },
+    {
+     "name": "section: Messages",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/communication/sent"
+     ],
+     "blocked": [],
+     "texts": {
+      "title": "Messages",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/17-section-Messages.jpg",
+     "ms": 1198
+    },
+    {
+     "name": "section: Split the costs",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Split the costs",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/18-section-Split-the-costs.jpg",
+     "ms": 1229
+    },
+    {
+     "name": "section: Make it yours",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Make it yours",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/19-section-Make-it-yours.jpg",
+     "ms": 1213
+    },
+    {
+     "name": "section: You & settings",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "You & settings",
+      "lit": [
+       "Sign in to save",
+       "Email me a sign-in link [sheet]"
+      ],
+      "version": "Version 2026.11.25.12 (2981924)"
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 1,
+      "smallTargetSamples": [
+       "13x14 input \"on\""
+      ],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/20-section-You-settings.jpg",
+     "ms": 1395
+    },
+    {
+     "name": "the-day",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-photos"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": null,
+      "progress": null,
+      "standing": null,
+      "stage": "The Day",
+      "waitWords": [
+       "2 haven’t replied"
+      ],
+      "screen": "MENU TODAY · LIVE · SATURDAY, DECEMBER 19 3:00 PM 2 confirmed Worth a spot on the schedule: Toast Add it WATCH 2 haven’t replied Headcount may shift — text them, or plan for 1 to be safe. WATCH 6 things still open Knock them out or let them go — the day's already here. Next up at 3:00 PM — Set the t",
+      "headings": [
+       "TODAY · LIVE · SATURDAY, DECEMBER 19",
+       "THEN · 13 MORE MOMENTS"
+      ],
+      "schedule": true,
+      "lit": [
+       "Done — what’s next"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 1,
+      "smallTargetSamples": [
+       "121x21 summary \"If something goes wrong\""
+      ],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/21-the-day.jpg",
+     "ms": 3068
+    },
+    {
+     "name": "after",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-photos"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": null,
+      "progress": null,
+      "standing": null,
+      "stage": "After",
+      "waitWords": [],
+      "screen": "SAT, DEC 19 · 2 DAYS AGO Rosa’s Harvest Dinner ▾ ✎ Rename AFTERWARD How it landed. Expected to land $180 over the $900 you planned. The money from your plan Food › $0 of ~$600 Bar / Beverage › $0 of ~$213 Supplies › $0 of ~$48 Rentals › $0 of ~$219 Recorded spent $0 · against $900 How many came? 12 ",
+      "headings": [
+       "AFTERWARD",
+       "The money",
+       "How many came?",
+       "Thank-yous & gifts",
+       "The recap for guests",
+       "For next time"
+      ],
+      "schedule": false,
+      "lit": [
+       "Write the thank-yous"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/22-after.jpg",
+     "ms": 3225
+    },
+    {
+     "name": "name-straight-seeded",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "name": "Rosa's Harvest Dinner",
+      "surfaces": {
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "tabTitle": {
+        "hits": []
+       },
+       "whatsCounted": {
+        "hits": []
+       },
+       "inviteDraft": {
+        "note": "no \"Copy the invite\" button"
+       },
+       "invitePage": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "invitePageTab": {
+        "hits": []
+       }
+      },
+      "verdict": [
+       "eyebrow: name not shown",
+       "title: Rosa's Harvest Dinner OK",
+       "tabTitle: name not shown",
+       "whatsCounted: name not shown",
+       "invitePage: Rosa's Harvest Dinner OK",
+       "invitePageTab: name not shown"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/23-name-straight-seeded.jpg",
+     "ms": 6715
+    },
+    {
+     "name": "name-straight-created",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/stripe/pass",
+      "401 GET https://ngw-events-api.onrender.com/api/events/cust-mwuxx280-wz9nks/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "typed": "Rosa's Harvest Dinner",
+      "stored": "Rosa's Harvest Dinner",
+      "surfaces": {
+       "reveal": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "stored": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       }
+      },
+      "verdict": [
+       "reveal: Rosa's Harvest Dinner OK",
+       "eyebrow: name not shown",
+       "title: Rosa's Harvest Dinner OK",
+       "stored: Rosa's Harvest Dinner OK"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/24-name-straight-created.jpg",
+     "ms": 6729
+    },
+    {
+     "name": "name-curly-seeded",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/invite-opens"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "name": "Rosa’s Harvest Dinner",
+      "surfaces": {
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "tabTitle": {
+        "hits": []
+       },
+       "whatsCounted": {
+        "hits": []
+       },
+       "inviteDraft": {
+        "note": "no \"Copy the invite\" button"
+       },
+       "invitePage": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "invitePageTab": {
+        "hits": []
+       }
+      },
+      "verdict": [
+       "eyebrow: name not shown",
+       "title: Rosa’s Harvest Dinner OK",
+       "tabTitle: name not shown",
+       "whatsCounted: name not shown",
+       "invitePage: Rosa’s Harvest Dinner OK",
+       "invitePageTab: name not shown"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/25-name-curly-seeded.jpg",
+     "ms": 6370
+    },
+    {
+     "name": "name-curly-created",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/stripe/pass",
+      "401 GET https://ngw-events-api.onrender.com/api/events/cust-mwuxx280-8t9b1e/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "typed": "Rosa’s Harvest Dinner",
+      "stored": "Rosa’s Harvest Dinner",
+      "surfaces": {
+       "reveal": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "stored": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       }
+      },
+      "verdict": [
+       "reveal: Rosa’s Harvest Dinner OK",
+       "eyebrow: name not shown",
+       "title: Rosa’s Harvest Dinner OK",
+       "stored: Rosa’s Harvest Dinner OK"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/26-name-curly-created.jpg",
+     "ms": 7465
+    },
+    {
+     "name": "guest-invite",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+     ],
+     "http": [
+      "404 GET https://ngw-events-api.onrender.com/api/public/announcements/test-two-days"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "title": "Test — Game Night (in 2 days)",
+      "nameField": true,
+      "replyButtons": [
+       "Add to calendar",
+       "Yes, I’m in",
+       "Can’t make it",
+       "Maybe",
+       "Forward this invite"
+      ],
+      "lit": [],
+      "layout": "classic",
+      "palette": null,
+      "hostAvatar": 0
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": 0,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1194x834/27-guest-invite.jpg",
+     "ms": 1395
+    }
+   ]
+  },
+  {
+   "id": "1440x900",
+   "touch": false,
+   "steps": [
+    {
+     "name": "new-create-screen",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "lit": [
+       "Put my plan together"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/00-new-create-screen.jpg",
+     "ms": 5243
+    },
+    {
+     "name": "new-reveal",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "openLabel": "Open my plan (not saved yet)",
+      "lit": [
+       "Keep this plan"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/01-new-reveal.jpg",
+     "ms": 4475
+    },
+    {
+     "name": "new-plan-open",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/stripe/pass",
+      "401 GET https://ngw-events-api.onrender.com/api/events/cust-mwuxx280-2ep5kn/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": "DIY, or bring in help?",
+      "progress": null,
+      "standing": "▾ WHAT’S COUNTED Date & time Where it happens Guests Food Budget GUESTS 12 planned around · likely 10–13 on the day (usually ~10–15% no-shows, a few plus-ones) BUDGET $900 $0 spoken for · $0 spent",
+      "stage": "Plan",
+      "waitWords": [],
+      "lit": [
+       "Sign in to save"
+      ],
+      "parsed": {
+       "name": "Rosa’s Harvest Dinner",
+       "type": "Dinner Party",
+       "guests": 12,
+       "budget": 900,
+       "date": "2026-12-19"
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/02-new-plan-open.jpg",
+     "ms": 1337
+    },
+    {
+     "name": "board",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": "Ask Maple Table Catering about insurance.",
+      "progress": null,
+      "standing": "▾ WHAT’S COUNTED Date & time Where it happens Guests Food Vendors Budget GUESTS 12 2 confirmed · 2 replies still out BUDGET $900 $0 spoken for · $0 spent · $180 over, expected",
+      "stage": "Plan",
+      "waitWords": [],
+      "lit": [
+       "Sign in to save"
+      ],
+      "cue": {
+       "count": 1,
+       "restCount": 1,
+       "target": "button \"Send the ask — mark it requested\" [hero]",
+       "anim": "cue-breathe, cue-settle",
+       "dur": "1.2s, 0.6s",
+       "iter": "2, 1",
+       "peakPct": 75,
+       "settlePct": 45,
+       "restRing": "solid 3px oklab(0.803836 -0.0143031 -0.0174567 / 0.45)",
+       "restAlpha": 0.45
+      },
+      "wide": {
+       "railStages": [
+        "Create",
+        "Plan",
+        "The Day",
+        "After"
+       ],
+       "passRow": [
+        "The One-Event Pass · $39 · one event"
+       ],
+       "titleShown": [
+        "Rosa’s Harvest Dinner ▾"
+       ]
+      },
+      "heroClip": []
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/03-board.jpg",
+     "ms": 6474
+    },
+    {
+     "name": "whats-counted",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements"
+     ],
+     "blocked": [],
+     "texts": {
+      "parts": [
+       "Date & time handled›",
+       "Where it happens handled›",
+       "Guests handled›",
+       "DIY, or bring in help? · 3 open ›",
+       "Follow up with Maple Table Catering ›",
+       "Expected costs are $180 over your budget ›"
+      ],
+      "opened": {
+       "Date & time handled›": "Date & time",
+       "Where it happens handled›": "Venue",
+       "Guests handled›": "Guest list",
+       "DIY, or bring in help? · 3 open ›": "The spread & shopping",
+       "Follow up with Maple Table Catering ›": "People you’re hiring",
+       "Expected costs are $180 over your budget ›": "Your money"
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/04-whats-counted.jpg",
+     "ms": 11120
+    },
+    {
+     "name": "menu",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "door": "rail",
+      "names": [
+       "Icons only",
+       "Create",
+       "Plan",
+       "The Day",
+       "After",
+       "Venue",
+       "Guests & invite",
+       "The spread & shopping",
+       "Your money",
+       "People you’re hiring",
+       "Space, seats & helpers",
+       "Who sits where",
+       "Your checklist",
+       "Calendar",
+       "Calls to make",
+       "What could go wrong",
+       "Messages",
+       "Split the costs",
+       "Make it yours",
+       "Share with family",
+       "Co-hosts",
+       "Ask No Guesswork",
+       "The One-Event Pass · $39 · one event",
+       "You & settings",
+       "This event",
+       "Search",
+       "Feeling stuck?"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": null,
+     "ms": 14
+    },
+    {
+     "name": "section: Venue",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Venue",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/06-section-Venue.jpg",
+     "ms": 815
+    },
+    {
+     "name": "section: Guests & invite",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements"
+     ],
+     "blocked": [],
+     "texts": {
+      "title": "Guest list",
+      "lit": [
+       "Sign in to save"
+      ],
+      "guestEditorGroups": [
+       "name",
+       "reply",
+       "coming",
+       "reach",
+       "remove"
+      ],
+      "plusOneCard": {
+       "plusField": "Plus one name",
+       "fieldsForPlusOne": [
+        "Meal for Sam Pine",
+        "Dietary needs for Sam Pine"
+       ],
+       "meal": true,
+       "diet": true
+      },
+      "shareCard": {
+       "steps": [
+        "1 GET IT RIGHT",
+        "2 SEND IT",
+        "3 SHARE ANOTHER WAY",
+        "4 AFTER IT’S OUT"
+       ],
+       "rows": [
+        "page: Invite page Live at your link Edit ›",
+        "message: Invite message Written from your plan · check it Edit ›"
+       ],
+       "buttons": [
+        "Invite page Live at your link Edit ›",
+        "Invite message Written from your plan · check it Edit ›",
+        "Share the link",
+        "Show QR code",
+        "Update everyone Something changed",
+        "Send the details Parking, dress, what to bring"
+       ]
+      },
+      "haventReplied": [
+       "2 haven’t replied — planning for 12 +1 plus-one"
+      ],
+      "inviteMessage": {
+       "title": "Invite message",
+       "saveDraft": 1,
+       "preview": 1,
+       "asText": "229 characters · sends as 2 texts",
+       "asEmail": 1
+      },
+      "seeFullInvite": {
+       "before": {
+        "h": 440,
+        "clipped": true,
+        "layout": "glance"
+       },
+       "newTab": false,
+       "after": {
+        "h": 635,
+        "clipped": false,
+        "layout": "glance"
+       },
+       "label": "Show less"
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/07-section-Guests-invite.jpg",
+     "ms": 10772
+    },
+    {
+     "name": "section: The spread & shopping",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads"
+     ],
+     "blocked": [],
+     "texts": {
+      "title": "The spread & shopping",
+      "lit": [
+       "Sign in to save"
+      ],
+      "openedItem": "Menu 3 open ›",
+      "afterTitle": "The spread & shopping",
+      "afterHead": "YOUR CHOICES Seated dinner or buffet / family-style? Plated 3-course Family-style Buffet Grazing + small plates Sets plate and serveware counts, table layout, a",
+      "foodRow": {
+       "shelf": "F Food 0 of 7 bought · $69–$213 est. ›",
+       "item": "Open Beef short rib",
+       "expanded": false,
+       "openPanel": 1,
+       "sameSheet": true
+      }
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/08-section-The-spread-shopping.jpg",
+     "ms": 4481
+    },
+    {
+     "name": "section: Your money",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Your money",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/09-section-Your-money.jpg",
+     "ms": 1226
+    },
+    {
+     "name": "section: People you’re hiring",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "People you’re hiring",
+      "lit": [
+       "Sign in to save"
+      ],
+      "openedItem": "Maple Table Catering",
+      "afterTitle": "People you’re hiring",
+      "expanded": true
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/10-section-People-you-re-hiring.jpg",
+     "ms": 2050
+    },
+    {
+     "name": "section: Space, seats & helpers",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Space, seats & helpers",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/11-section-Space-seats-helpers.jpg",
+     "ms": 1263
+    },
+    {
+     "name": "section: Who sits where",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Who sits where",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/12-section-Who-sits-where.jpg",
+     "ms": 1213
+    },
+    {
+     "name": "section: Your checklist",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Your checklist",
+      "lit": [
+       "Sign in to save",
+       "Open the nudge [sheet]"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/13-section-Your-checklist.jpg",
+     "ms": 1235
+    },
+    {
+     "name": "section: Calendar",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Calendar",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/14-section-Calendar.jpg",
+     "ms": 1230
+    },
+    {
+     "name": "section: Calls to make",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Calls to make",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/15-section-Calls-to-make.jpg",
+     "ms": 1227
+    },
+    {
+     "name": "section: What could go wrong",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "What could go wrong",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/16-section-What-could-go-wrong.jpg",
+     "ms": 1264
+    },
+    {
+     "name": "section: Messages",
+     "ok": true,
+     "console": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/communication/sent"
+     ],
+     "blocked": [],
+     "texts": {
+      "title": "Messages",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/17-section-Messages.jpg",
+     "ms": 1224
+    },
+    {
+     "name": "section: Split the costs",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Split the costs",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/18-section-Split-the-costs.jpg",
+     "ms": 1190
+    },
+    {
+     "name": "section: Make it yours",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "Make it yours",
+      "lit": [
+       "Sign in to save"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/19-section-Make-it-yours.jpg",
+     "ms": 1216
+    },
+    {
+     "name": "section: You & settings",
+     "ok": true,
+     "console": [],
+     "http": [],
+     "blocked": [],
+     "texts": {
+      "title": "You & settings",
+      "lit": [
+       "Sign in to save",
+       "Email me a sign-in link [sheet]"
+      ],
+      "version": "Version 2026.11.25.12 (2981924)"
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "sheet"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/20-section-You-settings.jpg",
+     "ms": 1327
+    },
+    {
+     "name": "the-day",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-photos",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": null,
+      "progress": null,
+      "standing": null,
+      "stage": "The Day",
+      "waitWords": [
+       "2 haven’t replied"
+      ],
+      "screen": "MENU TODAY · LIVE · SATURDAY, DECEMBER 19 3:00 PM 2 confirmed Worth a spot on the schedule: Toast Add it WATCH 2 haven’t replied Headcount may shift — text them, or plan for 1 to be safe. WATCH 6 things still open Knock them out or let them go — the day's already here. Next up at 3:00 PM — Set the t",
+      "headings": [
+       "TODAY · LIVE · SATURDAY, DECEMBER 19",
+       "THEN · 13 MORE MOMENTS"
+      ],
+      "schedule": true,
+      "lit": [
+       "Done — what’s next"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/21-the-day.jpg",
+     "ms": 3444
+    },
+    {
+     "name": "after",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-photos",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-rosa/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "ask": null,
+      "progress": null,
+      "standing": null,
+      "stage": "After",
+      "waitWords": [],
+      "screen": "SAT, DEC 19 · 2 DAYS AGO Rosa’s Harvest Dinner ▾ AFTERWARD How it landed. Expected to land $180 over the $900 you planned. The money from your plan Food › $0 of ~$600 Bar / Beverage › $0 of ~$213 Supplies › $0 of ~$48 Rentals › $0 of ~$219 Recorded spent $0 · against $900 How many came? 12 planned T",
+      "headings": [
+       "AFTERWARD",
+       "The money",
+       "How many came?",
+       "Thank-yous & gifts",
+       "The recap for guests",
+       "For next time"
+      ],
+      "schedule": false,
+      "lit": [
+       "Write the thank-yous"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/22-after.jpg",
+     "ms": 2898
+    },
+    {
+     "name": "name-straight-seeded",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/announcements",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-straight/invite-opens"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "name": "Rosa's Harvest Dinner",
+      "surfaces": {
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "tabTitle": {
+        "hits": []
+       },
+       "whatsCounted": {
+        "hits": []
+       },
+       "inviteDraft": {
+        "note": "no \"Copy the invite\" button"
+       },
+       "invitePage": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "invitePageTab": {
+        "hits": []
+       }
+      },
+      "verdict": [
+       "eyebrow: name not shown",
+       "title: Rosa's Harvest Dinner OK",
+       "tabTitle: name not shown",
+       "whatsCounted: name not shown",
+       "invitePage: Rosa's Harvest Dinner OK",
+       "invitePageTab: name not shown"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/23-name-straight-seeded.jpg",
+     "ms": 6377
+    },
+    {
+     "name": "name-straight-created",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/stripe/pass",
+      "401 GET https://ngw-events-api.onrender.com/api/events/cust-mwuxx280-9it3na/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "typed": "Rosa's Harvest Dinner",
+      "stored": "Rosa's Harvest Dinner",
+      "surfaces": {
+       "reveal": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       },
+       "stored": {
+        "hits": [
+         "Rosa's Harvest Dinner"
+        ]
+       }
+      },
+      "verdict": [
+       "reveal: Rosa's Harvest Dinner OK",
+       "eyebrow: name not shown",
+       "title: Rosa's Harvest Dinner OK",
+       "stored: Rosa's Harvest Dinner OK"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/24-name-straight-created.jpg",
+     "ms": 7297
+    },
+    {
+     "name": "name-curly-seeded",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/invite-opens",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/guest-threads",
+      "401 GET https://ngw-events-api.onrender.com/api/events/lc-apos-curly/announcements"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "name": "Rosa’s Harvest Dinner",
+      "surfaces": {
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "tabTitle": {
+        "hits": []
+       },
+       "whatsCounted": {
+        "hits": []
+       },
+       "inviteDraft": {
+        "note": "no \"Copy the invite\" button"
+       },
+       "invitePage": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "invitePageTab": {
+        "hits": []
+       }
+      },
+      "verdict": [
+       "eyebrow: name not shown",
+       "title: Rosa’s Harvest Dinner OK",
+       "tabTitle: name not shown",
+       "whatsCounted: name not shown",
+       "invitePage: Rosa’s Harvest Dinner OK",
+       "invitePageTab: name not shown"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/25-name-curly-seeded.jpg",
+     "ms": 6204
+    },
+    {
+     "name": "name-curly-created",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+     ],
+     "http": [
+      "401 GET https://ngw-events-api.onrender.com/api/stripe/pass",
+      "401 GET https://ngw-events-api.onrender.com/api/events/cust-mwuxx280-i0s1sh/guest-threads"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "typed": "Rosa’s Harvest Dinner",
+      "stored": "Rosa’s Harvest Dinner",
+      "surfaces": {
+       "reveal": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "eyebrow": {
+        "hits": []
+       },
+       "title": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       },
+       "stored": {
+        "hits": [
+         "Rosa’s Harvest Dinner"
+        ]
+       }
+      },
+      "verdict": [
+       "reveal: Rosa’s Harvest Dinner OK",
+       "eyebrow: name not shown",
+       "title: Rosa’s Harvest Dinner OK",
+       "stored: Rosa’s Harvest Dinner OK"
+      ]
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/26-name-curly-created.jpg",
+     "ms": 6536
+    },
+    {
+     "name": "guest-invite",
+     "ok": true,
+     "console": [
+      "Failed to load resource: net::ERR_BLOCKED_BY_CLIENT.Inspector",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+     ],
+     "http": [
+      "404 GET https://ngw-events-api.onrender.com/api/public/announcements/test-two-days"
+     ],
+     "blocked": [
+      "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+     ],
+     "texts": {
+      "title": "Test — Game Night (in 2 days)",
+      "nameField": true,
+      "replyButtons": [
+       "Add to calendar",
+       "Yes, I’m in",
+       "Can’t make it",
+       "Maybe",
+       "Forward this invite"
+      ],
+      "lit": [],
+      "layout": "classic",
+      "palette": null,
+      "hostAvatar": 0
+     },
+     "floors": {
+      "sideways": 0,
+      "appSideways": 0,
+      "smallText": 0,
+      "smallTextSamples": [],
+      "smallTargets": null,
+      "smallTargetSamples": [],
+      "scope": "page"
+     },
+     "error": null,
+     "shot": "2981924/shots/1440x900/27-guest-invite.jpg",
+     "ms": 1936
+    }
+   ]
+  }
+ ]
+}

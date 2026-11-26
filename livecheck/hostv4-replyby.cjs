@@ -43,7 +43,9 @@ const rb = (p, id) => p.evaluate(([k, id]) => { const e = JSON.parse(localStorag
       return { afterPick, label, afterUse };
     });
     await step('no-reply-by-clears', async () => {
-      await p.locator('[data-answers]').click(); await p.waitForSelector('[role=dialog]');
+      // #272 moved Your answers into the "More" sheet; open it first when the row is not on the page.
+      if (!(await p.locator('[data-answers]').first().isVisible().catch(() => false))) { await p.getByRole('button', { name: 'More', exact: true }).click(); await p.waitForTimeout(300); }
+      await p.locator('[data-answers]').first().click(); await p.waitForTimeout(400);
       await p.getByRole('button', { name: 'No reply-by date' }).click(); await p.waitForTimeout(400);
       const v = await rb(p, FAR.id); if (v && v !== '(unset)') throw new Error('still set: ' + v);
       await p.getByRole('button', { name: 'Done' }).click().catch(() => {}); await p.waitForTimeout(300);
