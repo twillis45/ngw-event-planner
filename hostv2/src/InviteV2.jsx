@@ -59,6 +59,7 @@ import GuestUpdatesV2 from './GuestUpdatesV2.jsx';
 import GuestPhotosV2 from './GuestPhotosV2.jsx';
 import { isGuestMessagesApiConfigured, recordInviteOpened, inviteDeviceId } from '@app/lib/api/guestMessages';
 import { isGuestPhotosApiConfigured } from '@app/lib/api/guestPhotos';
+import { MEALS, ALLERGENS, DIET_RULES } from '@app/lib/dietOptions';
 
 // Identity crest — the SAME registry the app's glyph system reads (real PD
 // artwork; artwork doctrine), and the HOST'S call whether it appears:
@@ -72,7 +73,6 @@ function markUrlFor(event) {
 // The plate (single-select) — drives food SIZING (veg/vegan/pescatarian net
 // out of the protein count). Gluten-Free moved out of "meal" into Diet below
 // (it's a restriction, not a plate); Pescatarian added.
-const MEALS = ['Standard', 'Vegetarian', 'Vegan', 'Pescatarian'];
 // Dietary & access, redesigned (host request 2026-07-12) into structured groups
 // that each flow to a real consumer — allergens → food item flags, diet → food
 // sizing/flags, access → seating. The old flat NEEDS list (Nut allergy /
@@ -80,8 +80,8 @@ const MEALS = ['Standard', 'Vegetarian', 'Vegan', 'Pescatarian'];
 // collected: no Peanut/Milk/Fish/Soy/Sesame, and "Egg" matched nothing
 // downstream. ALLERGENS is the FDA "big-9". DIET_RULES are preferences/rules
 // (a preference is softer than the same-named allergen — the host sees both).
-const ALLERGENS = ['Peanut', 'Tree nuts', 'Milk', 'Egg', 'Fish', 'Shellfish', 'Soy', 'Wheat / gluten', 'Sesame'];
-const DIET_RULES = ['Gluten-free', 'Dairy-free', 'Halal', 'Kosher', 'No alcohol'];
+// The meal, diet and allergen lists are lib/dietOptions (11/25/2026), shared
+// with the host's guest sheet in hostv4.
 const ACCESS_NEEDS = ['Step-free / wheelchair', 'Needs an accessible seat'];
 
 

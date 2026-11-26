@@ -211,5 +211,7 @@ test('filterGuestsByName: empty query passes all; otherwise case-insensitive sub
 });
 
 test('MEAL_SHORT keeps the exact legacy pill labels', () => {
-  expect(MEAL_SHORT).toEqual({ Standard: 'Std', Vegetarian: 'Veg', Vegan: 'Vgn', 'Gluten-Free': 'GF', '—': '' });
+  // Pescatarian added 11/25/2026: a guest can pick it (lib/dietOptions MEALS),
+  // so its pill needs a label; the legacy labels are unchanged.
+  expect(MEAL_SHORT).toEqual({ Standard: 'Std', Vegetarian: 'Veg', Vegan: 'Vgn', Pescatarian: 'Pesc', 'Gluten-Free': 'GF', '—': '' });
 });
