@@ -264,7 +264,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
       <Sheet title={moment.label} onDone={() => setMomentAt(null)}>
         <p className="qhelp">{moment.owner ? 'Usually led by: ' + moment.owner + '.' : 'A moment worth a spot on the day.'}{moment.note ? ' ' + moment.note : ''}</p>
         <input className="field" type="time" aria-label="When" data-moment-time value={momentAt} onChange={(e) => setMomentAt(e.target.value)} />
-        <button className="primary" data-moment-add onClick={() => { if (save(addMomentEdit(ev, moment, momentAt))) setMomentAt(null); }}>Add it to the run</button>
+        <button className="primary" data-moment-add onClick={() => { if (save(addMomentEdit(ev, moment, momentAt, now))) setMomentAt(null); }}>Add it to the run</button>
       </Sheet>
     )}
     {late && <LateSheet ev={ev} save={save} now={now} onDone={() => setLate(false)} onUpdates={onUpdates} />}
