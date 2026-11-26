@@ -183,7 +183,7 @@ export const PLATFORMS = {
 const MAX_ROWS = 2000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const VALID_RSVP = new Set(['Yes', 'No', 'Maybe', 'Pending', '']);
-const VALID_MEAL = new Set(['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free', '—', '']);
+const VALID_MEAL = new Set(['Standard', 'Vegetarian', 'Vegan', 'Pescatarian', 'Gluten-Free', '—', '']);
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 

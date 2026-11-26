@@ -217,13 +217,13 @@ export default function HostShellV4() {
 
   if (page) {
     const from = stack.length > 1 ? 'Guests' : tab === 'plan' ? 'Your plan' : 'Next step';
-    const navbar = (title) => (<>
+    const navbar = (title, acts) => (<>
       <div className="navbar"><button className="backbtn" onClick={back} aria-label={'Back to ' + from}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>{from}</button></div>
-      <h1 className="lt">{title}</h1>
+      {acts ? <div className="ltrow"><h1 className="lt">{title}</h1>{acts}</div> : <h1 className="lt">{title}</h1>}
     </>);
     return frame(
       <div className="app pushed" key={page}>
-        {page === 'guests' && <GuestsPage key={ev.id} ev={ev} save={saveEdit} sample={sample} nav={navbar('Guests')} status={status} onInvite={() => push('invite')} onUpdates={() => push('updates')} layout={layout} />}
+        {page === 'guests' && <GuestsPage key={ev.id} ev={ev} save={saveEdit} sample={sample} nav={(acts) => navbar('Guests', acts)} status={status} onInvite={() => push('invite')} onUpdates={() => push('updates')} layout={layout} />}
         {page === 'updates' && <UpdatesPage key={ev.id} ev={ev} nav={navbar('Updates and questions')} status={status} />}
         {page === 'invite' && <InvitePage key={ev.id} ev={ev} save={saveEdit} nav={navbar('Your invite')} status={status} />}
         {tabbar}

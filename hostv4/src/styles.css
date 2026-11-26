@@ -39,11 +39,12 @@ button.primary { border: 0; cursor: pointer; font-family: var(--sans); }
 [aria-checked="true"] > .radio { border-color: var(--accent); }
 [aria-checked="true"] > .radio::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--accent); }
 .link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-weight: 500; cursor: pointer; min-height: 44px; }
-.fine .link { min-height: 0; padding: 12px 0; }
+/* A link inside a sentence is still a 44px target (live check, 11/26/2026:
+   Undo measured 38×21); the negative margin keeps the sentence's lines even. */
+.fine .link, .done .link, .line .link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; margin: -12px -4px; vertical-align: middle; }
 .fine.warn { color: var(--warn); }
 .grp + .fine { margin-top: 12px; }
 .done { font-size: .9375rem; line-height: 1.4; color: var(--ok); margin: 0 2px 12px; }
-.done .link { min-height: 0; padding: 0; }
 .sheet .card { margin-top: 14px; }
 .sheet .card .q { font-size: 1.1875rem; }
 .nm { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -79,7 +80,6 @@ button.primary { border: 0; cursor: pointer; font-family: var(--sans); }
 .addrow { display: flex; gap: 12px; align-items: flex-start; }
 .addrow .link { padding: 0 4px; }
 .line { font-size: .9375rem; color: var(--ink-2); margin: 0 2px 12px; }
-.line .link { min-height: 0; padding: 10px 0; }
 .stepper { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; min-height: 64px; }
 .stepper .num { font-size: 1.75rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .stepper .btns { display: flex; gap: 10px; }
@@ -91,11 +91,36 @@ button.primary { border: 0; cursor: pointer; font-family: var(--sans); }
 .chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px 12px; padding: 0 16px; scrollbar-width: none; }
 .chips button { flex: none; min-height: 44px; padding: 0 14px; border-radius: 22px; border: 1px solid var(--hair); background: none; color: var(--ink-2); font: 500 .9375rem var(--sans); cursor: pointer; }
 .chips button[aria-pressed="true"] { background: rgba(241, 237, 230, .1); color: var(--ink); border-color: transparent; }
+/* GUESTS FOLDS AWAY (owner chose option E, 11/25/2026). */
+.ltrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 18px 0 4px; }
+.ltrow .lt { margin: 0 auto 0 2px; }
+.pageacts { display: flex; gap: 8px; flex: none; }
+.pageacts .ic { width: 44px; height: 44px; border-radius: 22px; border: 0; background: var(--raised); color: var(--ink); font: 500 1.25rem var(--sans); cursor: pointer; }
+.hbar { display: flex; gap: 3px; height: 10px; border-radius: 5px; overflow: hidden; margin: 4px 0 8px; background: var(--raised); }
+.hbar i { display: block; min-width: 4px; }
+.hbar .yes { background: var(--ok); } .hbar .maybe { background: var(--ink-2); } .hbar .pending { background: var(--ink-3); opacity: .55; } .hbar .no { background: var(--warn); opacity: .6; } .hbar .open { background: transparent; }
+.legend { color: var(--ink-3); font-size: .9375rem; margin: 0 0 14px; } .legend b { color: var(--ink); font-weight: 600; }
+.pill { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border-radius: 22px; border: 0; font: 600 .9375rem var(--sans); cursor: pointer; margin: 0 0 14px; }
+.pill.warn { background: rgba(255, 159, 10, .14); color: var(--warn); }
+.dot { width: 8px; height: 8px; border-radius: 4px; margin-right: 12px; flex: none; background: var(--ink-3); }
+.dot.yes { background: var(--ok); } .dot.maybe { background: var(--ink-2); } .dot.no { background: var(--warn); }
+/* Inside a group the group names the reply, so the row doesn't repeat it, and
+   the names line up with the group's label. */
+.inset .row.guest { padding-left: 46px; }
+.inset .row.guest .val { display: none; }
+/* Diet and allergies: a row each, what is picked under it as chips that remove it. */
+.chips.wrap { flex-wrap: wrap; overflow: visible; margin: 0 0 12px; padding: 0; }
+.grp.lists { margin-bottom: 12px; }
+.chips.picked { margin: 0; padding: 0 16px 12px; }
 .swipe { position: relative; overflow: hidden; }
 .swipe + .swipe::before { content: ""; position: absolute; top: 0; right: 0; left: 14px; border-top: 1px solid var(--hair); z-index: 1; }
-.under { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 18px; font-size: .9375rem; font-weight: 600; }
-.under.ok { left: 0; color: var(--ok); }
-.under.rm { right: 0; color: var(--warn); }
+/* Swipe actions (owner, 11/26/2026): revealed under the row, each a 44px+ button. */
+.acts { position: absolute; top: 0; bottom: 0; display: flex; }
+.acts.right { left: 0; } .acts.left { right: 0; }
+.swipe:not([data-dir="right"]) .acts.right, .swipe:not([data-dir="left"]) .acts.left { visibility: hidden; }
+.acts .a { width: 84px; min-height: 44px; border: 0; font: 600 .8125rem/1.15 var(--sans); padding: 0 6px; cursor: pointer; color: #0c0c0e; }
+.acts .a.ok { background: var(--ok); } .acts .a.maybe { background: var(--ink-2); }
+.acts .a.no { background: #8e8e93; color: #fff; } .acts .a.none { background: #48484a; color: var(--ink); } .acts .a.rm { background: var(--warn); }
 .row.guest { width: 100%; border: 0; background: var(--raised); color: var(--ink); font: inherit; font-size: 1.0625rem; text-align: left; cursor: pointer; touch-action: pan-y; position: relative; z-index: 1; }
 .row.danger { width: 100%; border: 0; background: none; color: var(--warn); font: inherit; font-size: 1.0625rem; justify-content: center; cursor: pointer; }
 .datein { margin-left: auto; background: none; border: 0; color: var(--accent); font: inherit; min-height: 44px; color-scheme: dark; }

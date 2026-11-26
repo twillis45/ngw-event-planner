@@ -105,7 +105,9 @@ describe('one guest’s details', () => {
     expect(guestFieldEdit(e, 0, { kids: 2 }, kidsAddedLine(2, 'Ada Pine')).msg).toBe('2 kids with Ada Pine — the food plan sizes them lighter.');
   });
   test('the meal says where it counts', () => {
-    expect(MEAL_CHOICES).toEqual(['—', 'Standard', 'Vegetarian', 'Vegan', 'Gluten-Free']);
+    // Every meal a guest can pick (Pescatarian added 11/25/2026), plus the
+    // legacy 'Gluten-Free' that older plans and CSV imports hold as a meal.
+    expect(MEAL_CHOICES).toEqual(['—', 'Standard', 'Vegetarian', 'Vegan', 'Pescatarian', 'Gluten-Free']);
     expect(mealEdit(e, 0, 'meal', 'Vegan', 'Ada Pine').msg).toBe('Ada Pine → Vegan — the meal tally keeps count.');
     expect(mealEdit(e, 0, 'plusOneMeal', '—', 'Sam').msg).toBe('Sam’s meal cleared — counts as unanswered.');
     expect(mealEdit(e, 0, 'plusOneMeal', 'Vegan', 'Sam').patch.guests[0].plusOneMeal).toBe('Vegan');

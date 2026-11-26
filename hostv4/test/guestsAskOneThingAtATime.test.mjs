@@ -47,10 +47,12 @@ describe('guests ask one thing at a time', () => {
     }
   });
 
-  it('once answered, the page shows the names, Your answers and one bottom button', () => {
+  // Your answers moved behind ⋯ with the rest (owner chose option E, 11/25/2026).
+  it('once answered, the page shows the add box, ⋯ and one bottom button', () => {
     const html = render({ ...base, guestEstimate: 25, guestMode: 'list', plusOnePolicy: 'plus_one_ok', kidsPolicy: 'adults_only', rsvpDeadline: '2026-12-20' });
     expect(html).not.toContain('data-question');
-    expect(html).toContain('data-answers');
+    expect(html).not.toContain('data-answers');
+    expect(html).toContain('aria-label="More"');
     expect((html.match(/class="primary"/g) || []).length).toBe(1);
     expect(text(html)).toContain('Add names');
   });

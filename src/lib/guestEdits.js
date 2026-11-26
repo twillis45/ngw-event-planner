@@ -4,6 +4,7 @@
 // patchSavedEvent in hostv4). Each builder is pure: it returns
 // { patch, msg } — the fields to save and the confirmation line — or null
 // when there is nothing to change. The lines are hostv2's, word for word.
+import { MEALS } from './dietOptions';
 import { detectCoupleNames } from './guestSplit';
 import { repeatedGuestNames } from './guestMerge';
 import { kidsCountAfterRoster } from './kidsCountAfterRoster';
@@ -154,7 +155,9 @@ export function reopenCountEdit() {
 }
 
 /** The meal choices a guest (or their +1) can have; '—' is unanswered. */
-export const MEAL_CHOICES = ['—', 'Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
+// Every meal a guest can pick (lib/dietOptions MEALS), plus 'Gluten-Free', which
+// older plans, CSV imports and the seating tally still hold as a meal.
+export const MEAL_CHOICES = ['—', ...MEALS, 'Gluten-Free'];
 
 /**
  * One field (or several) on one guest. The kids count is the engine's portion
@@ -163,6 +166,20 @@ export const MEAL_CHOICES = ['—', 'Standard', 'Vegetarian', 'Vegan', 'Gluten-F
 export function guestFieldEdit(event, i, fields, msg) {
   const gs = ((event && event.guests) || []).map((g, ix) => (ix === i ? { ...g, ...fields } : g));
   return { patch: { guests: gs, kidsCount: kidsCountAfterRoster(event, gs) }, msg };
+}
+
+/**
+ * Turn one item of a guest's list on or off: 'diets' (lib/dietOptions
+ * DIET_RULES) or 'allergens' (ALLERGENS), the fields the guest's RSVP saves.
+ */
+export function listToggleEdit(event, i, field, item, who) {
+  const g = ((event && event.guests) || [])[i] || {};
+  const cur = Array.isArray(g[field]) ? g[field] : [];
+  const on = !cur.includes(item);
+  const next = on ? [...cur, item] : cur.filter((x) => x !== item);
+  const name = who || 'Guest';
+  const what = field === 'allergens' ? item + ' allergy' : item;
+  return guestFieldEdit(event, i, { [field]: next }, on ? name + ': ' + what + ' noted.' : name + ': ' + what + ' removed.');
 }
 
 /** A meal for the guest ('meal') or their +1 ('plusOneMeal'); `who` is the name said back. */

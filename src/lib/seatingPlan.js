@@ -111,7 +111,7 @@ export function playbookTableCount(event) {
 }
 
 /** Short meal labels used on seating pills (legacy `mealShort`). */
-export const MEAL_SHORT = { Standard: 'Std', Vegetarian: 'Veg', Vegan: 'Vgn', 'Gluten-Free': 'GF', '—': '' };
+export const MEAL_SHORT = { Standard: 'Std', Vegetarian: 'Veg', Vegan: 'Vgn', Pescatarian: 'Pesc', 'Gluten-Free': 'GF', '—': '' };
 
 /**
  * The event's table count as every legacy read site resolves it:
