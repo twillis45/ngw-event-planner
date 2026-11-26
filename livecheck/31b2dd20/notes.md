@@ -1,4 +1,4 @@
-# Live check 31b2dd20 (#291, #294): Thu Nov 26, 2026, 9:45–10:20 AM EST
+# Live check 31b2dd20 (#291, #294): Thu Nov 26, 2026, 9:45–10:00 AM EST
 
 Live: the hostv4 `ngw-build` meta and the hostv2 bundle both read 31b2dd20fe8d (deployed 9:32 AM EST).
 Chromium at 5 sizes. Every POST/PUT/PATCH/DELETE aborted (only Sentry). GET /api/weather/geocode and /onecall were answered locally with moderate rain, 48–54°F, 100%. Share, clipboard and open stubbed; share was never called. E2E_TEST_ plans only. Nothing sent.
