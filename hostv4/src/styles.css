@@ -304,3 +304,6 @@ a.link { text-decoration: none; }
 
 /* A main button that waits on something (a draft with blanks) reads as waiting. */
 .primary:disabled { opacity: .45; cursor: default; }
+
+/* A choice's per-head sits under its amount (budget question, 11/26/2026). */
+.val small { display: block; font-size: .8125rem; color: var(--ink-3); text-align: right; }

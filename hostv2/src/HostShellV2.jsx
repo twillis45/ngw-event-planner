@@ -314,7 +314,7 @@ import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments } from '@app/lib/momentLibrary';
 import { deliverNotification, deliveryExcuse, notificationApiPresent, DELIVERY } from '@app/lib/notifyDelivery';
 import { signOutThisDevice } from '@app/lib/devicePush';
-import { lodgingBasisFor, budgetComparableTotal } from '@app/lib/knowledge/lodgingBasisLadder';
+import { lodgingBasisFor } from '@app/lib/knowledge/lodgingBasisLadder';
 import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
@@ -379,6 +379,7 @@ import { withSettled, withoutSettled, unsettledActions } from '@app/lib/settledA
 import { urgencyOf } from '@app/lib/urgency';
 import { COUNT_LABELS } from '@app/lib/itemCounts';
 import { perHead, perHeadRange, perHeadText } from '@app/lib/perHead';
+import { budgetChoices } from '@app/lib/budgetChoices';
 import { listTotal, allInTotal } from '@app/lib/planCosts';
 import { landingStage } from '@app/lib/landingStage';
 import { checklistPhases, upNextStep, stepWhen, stepDateText } from '@app/lib/checklistPhases';
@@ -10685,10 +10686,10 @@ export default function HostShellV2() {
     const _stayBasis = (() => {
       try { return lodgingBasisFor(event); } catch (_e) { return null; }
     })();
-    const _stayFloor = (() => {
-      try { return budgetComparableTotal(_stayBasis, spanNights(event)); } catch (_e) { return null; }
-    })();
-    const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date, timeOfDay: timeOfDayFor(event), isDestination: !!event.isDestination, nights: spanNights(event), lodgingFloor: _stayFloor });
+    // ONE BUDGET QUESTION (11/26/2026): the band, its tiers and the stay's floor
+    // come from lib/budgetChoices, the answer hostv4 reads too.
+    const _bc = (() => { try { return budgetChoices(event, foodPP); } catch (_e) { return null; } })();
+    const est = _bc ? _bc.est : null;
     // HOST MODEL: one number (event.totalBudget). Offered three ways — the
     // estimator's real low/mid/high as Lean / Typical / All-out chips (host
     // request, 2026-07-08), a custom number, and the range as a hint.
@@ -10697,9 +10698,7 @@ export default function HostShellV2() {
       try { return est && est.provenanceKeys ? moneyDisclosure(est.provenanceKeys) : null; }
       catch (_e) { return null; }
     })();
-    const opts = est
-      ? [...new Set([est.lowTotal, Math.round(((est.lowTotal + est.highTotal) / 2) / 100) * 100, est.highTotal])]
-      : [];
+    const opts = _bc ? _bc.tiers.map((t) => t.amount) : [];
     // ── A MIDPOINT IS NOT A TYPICAL (host, 2026-10-06) ──────────────────
     // "is typical actually typical for budget or median because they are
     // different". They are, and this was the wrong one. `typical` below is
@@ -10716,9 +10715,9 @@ export default function HostShellV2() {
     // when it is all you have; calling it typical was not. The variable keeps
     // its name because renaming it would touch the engine for a copy fix.
     const OPT_LABELS = ['Lean', 'Mid‑range', 'All-out'];
-    const low = est ? est.lowTotal : 0;
-    const high = est ? est.highTotal : 0;
-    const typical = est ? Math.round(((low + high) / 2) / 100) * 100 : 0;
+    const low = _bc ? _bc.low : 0;
+    const high = _bc ? _bc.high : 0;
+    const typical = _bc ? _bc.typical : 0;
     // "Budget is set" = the host gave us a NUMBER (event.totalBudget), NOT money.planned
     // (which is spend.total — non-zero from line items even when the host set no budget).
     //
