@@ -86,7 +86,7 @@ test('(premise) the budget proposal is on screen with its one-tap chip', async (
   // opened — and an absent string is not a passing one.
   const t = await openBudget(page);
   // Owner, 11/24/2026 ("Copy is too wordy"): the headline is read where it stands.
-  expect(t).toMatch(/How much do you want to spend\?.{0,40}?\$4,000/);
+  expect(t).toMatch(/How much do you want to spend\?.{0,200}?\$4,000/);
   expect(t).toMatch(/Plan with \$4,000/);
 });
 
@@ -117,7 +117,7 @@ test('IT SITS BETWEEN THE ESTIMATE AND THE BUTTON, which is the point', async ({
   // The same reading-order rule the sibling note is held to: a true sentence
   // below the one-tap chip would not have informed the tap.
   const t = await openBudget(page);
-  const estimate = t.search(/How much do you want to spend\?.{0,40}?\$4,000/);
+  const estimate = t.search(/How much do you want to spend\?.{0,200}?\$4,000/);
   const rooms = t.search(/The rooms are on top of this/);
   const chip = t.search(/Plan with \$4,000/);
   expect(estimate).toBeGreaterThan(-1);

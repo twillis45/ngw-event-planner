@@ -163,11 +163,17 @@ test('EVERY TIER IS CHECKABLE, not just the middle one', async ({ page }) => {
   const guests = Number((txt.match(/for (\d+) at an? /i) || [])[1]);
   expect(Number.isFinite(guests) && guests > 0).toBe(true);
   const money = (re) => Number((txt.match(re) || [])[1]?.replace(/,/g, ''));
-  const lean = money(/Lean \$([\d,]+)/);
-  const allout = money(/All-out \$([\d,]+)/);
+  const lean = money(/Lean\s+\$([\d,]+)/);   // a choice row: label, then amount
+  const allout = money(/All-out\s+(?:Covers your plan\s+)?\$([\d,]+)/);
   expect(Number.isFinite(lean) && Number.isFinite(allout)).toBe(true);
-  expect(txt).toMatch(new RegExp(`\\$${Math.round(lean / guests)}\\b`));
-  expect(txt).toMatch(new RegExp(`\\$${Math.round(allout / guests)}\\b`));
+  // Since 11/26/2026 ("As rendered is fine") the per-head stands beside the
+  // PICKED figure, and picking a tier moves it there. So each tier is checked
+  // by picking it: the per-head shown must be that tier over the guests.
+  const per = page.locator('.hero [data-budget-per]').first();
+  for (const [label, amount] of [[/^Lean/, lean], [/^All-out/, allout]]) {
+    await page.locator('.hero .optrow', { hasText: label }).first().click();
+    await expect(per).toContainText(`$${Math.round(amount / guests)} a head`);
+  }
 });
 
 // ── AND THE SCREEN STAYS READABLE, WHICH IS WHY THE FOLD EXISTS ──────────
@@ -222,6 +228,7 @@ test('THE ASK IS NOT A WALL OF TEXT: the exclusions are summarised, not spilled'
 // shape, the host either sees the word or does not.
 test('A MIDPOINT IS NOT A TYPICAL: the label says what the number is', async ({ page }) => {
   await toBudget(page);
+  await openWhy(page);
   const txt = await page.evaluate(() => document.body.innerText || '');
 
   // (premise) this really is the budget ask, carrying its figures.

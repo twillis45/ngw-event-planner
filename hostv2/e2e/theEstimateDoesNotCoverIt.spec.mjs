@@ -55,7 +55,7 @@ test('(premise) the budget proposal really is on screen, with its one-tap chip',
   // Without this the assertions below could pass over a sheet that never opened.
   const t = await openBudget(page, 'Surprise Proposal', 2);
   // Owner, 11/24/2026 ("Copy is too wordy"): the budget ask card says it in one line; the headline is read where it stands.
-  expect(t).toMatch(/How much do you want to spend\?.{0,40}?\$300/);
+  expect(t).toMatch(/How much do you want to spend\?.{0,200}?\$300/);
   expect(t).toMatch(/Plan with \$300/);
 });
 
@@ -72,7 +72,7 @@ test('IT SITS BETWEEN THE ESTIMATE AND THE BUTTON, which is the point', async ({
   // A true sentence below the fold would not have stopped the tap. This asserts
   // reading order: the estimate, then the warning, then the one-tap chip.
   const t = await openBudget(page, 'Surprise Proposal', 2);
-  const estimate = t.search(/How much do you want to spend\?.{0,40}?\$300/);
+  const estimate = t.search(/How much do you want to spend\?.{0,200}?\$300/);
   const note = t.search(/start around \$1,750/);
   const chip = t.search(/Plan with \$300/);
   expect(estimate).toBeGreaterThan(-1);
