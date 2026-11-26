@@ -22,6 +22,15 @@ import { isVendorBooked, isHiredVendor } from './workstreams';
 
 /** Today's schedule: the effective run of show; mid-trip, day K's rows only
  *  (dayless rows count as day 1). Done is read from event.rosDone. */
+// A run step's short title: its first clause, and before a colon when still
+// long ("Baste and rotate the bird"). The Day's buttons and the calendar
+// reminders read it, so a step is named the same way everywhere.
+export const stepTitle = (r) => {
+  let s = String((r && (r.segment || r.task)) || '').split(/;| — /)[0].trim();
+  if (s.length > 46 && s.includes(':')) s = s.split(':')[0];
+  return s;
+};
+
 export function todaysRos(event, now) {
   let all = [];
   try { all = effectiveRos(event) || []; } catch { all = Array.isArray(event && event.ros) ? event.ros : []; }
