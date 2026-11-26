@@ -60,4 +60,22 @@ export function isMalformedEmail(v) {
   return s !== '' && !EMAIL_RE.test(s);
 }
 
-export default { normalizePhone, formatPhoneUS, isValidPhone, isIncompletePhone, isValidEmail, isMalformedEmail };
+// Saved form of an email: the spaces around it trimmed.
+export function cleanEmail(v) {
+  return String(v == null ? '' : v).trim();
+}
+
+// ONE PLAIN LINE about what's wrong, or null (owner, 11/26/2026: "add
+// verification for those values"). Both shells show these under the field.
+export function phoneProblem(v) {
+  if (isValidPhone(v)) return null;
+  const d = normalizePhone(v);
+  const sig = d[0] === '1' ? d.length - 1 : d.length;
+  return sig < 10 ? 'Needs 10 digits.' : 'Too many digits.';
+}
+
+export function emailProblem(v) {
+  return isMalformedEmail(v) ? 'Needs a full email, like name@example.com.' : null;
+}
+
+export default { normalizePhone, formatPhoneUS, isValidPhone, isIncompletePhone, isValidEmail, isMalformedEmail, cleanEmail, phoneProblem, emailProblem };

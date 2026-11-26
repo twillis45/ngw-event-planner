@@ -13,7 +13,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { typingIn } from './layout.js';
 import { countEdit, modeEdit, addNamesEdit, nameLines, rsvpEdit, removeGuestEdit, plusOneEdit, kidsEdit, replyByEdit, replyByProblem, clearReplyByEdit, guestFieldEdit, mealEdit, listToggleEdit, kidsAddedLine, toldEdit, MEAL_CHOICES, guestListCsv, replyAlertsEdit } from '@app/lib/guestEdits';
-import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
+import { formatPhoneUS, cleanEmail, phoneProblem, emailProblem } from '@app/lib/contactFormat';
 import { guestToldMap, isTold } from '@app/lib/guestTold';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { guestCountFor } from '@app/lib/guestCountFor';
@@ -257,6 +257,23 @@ function Field({ label, value, onSave, type = 'text', placeholder, invalid, form
 // Diet and allergies in little space (owner chose "A + B", 11/25/2026): a row
 // that opens a checklist, and what is picked shown under it as chips that
 // remove it. Nothing picked, the row alone.
+// CONTACT (owner, 11/26/2026): a phone formats as it's typed; leaving the field
+// saves it; what's wrong shows in one line once she has left it (lib/contactFormat,
+// the same rules hostv2 uses).
+function ContactField({ kind, label, value, onSave }) {
+  const [v, setV] = useState(value || '');
+  const [left, setLeft] = useState(false);
+  const problem = left ? (kind === 'phone' ? phoneProblem(v) : emailProblem(v)) : null;
+  return (<>
+    <input className="field" type={kind === 'phone' ? 'tel' : 'email'} inputMode={kind === 'phone' ? 'tel' : 'email'} autoComplete="off"
+      aria-label={label} placeholder={label} value={v} aria-invalid={problem ? true : undefined}
+      aria-describedby={problem ? 'cp-' + kind : undefined}
+      onChange={(e) => setV(kind === 'phone' ? formatPhoneUS(e.target.value) : e.target.value)}
+      onBlur={() => { const out = kind === 'phone' ? formatPhoneUS(v) : cleanEmail(v); setV(out); setLeft(true); if (out !== String(value || '')) onSave(out); }} />
+    {problem && <p className="fine warn" id={'cp-' + kind} data-contact-problem={kind}>{problem}</p>}
+  </>);
+}
+
 function ListRow({ label, on, onOpen, onRemove }) {
   const set = Array.isArray(on) ? on : [];
   return (<>
@@ -336,9 +353,8 @@ export function GuestDetail({ ev, g, i, save, onDone, keys }) {
           <p className="fine">Children count in the food plan at a lighter portion.</p>
         </>)}
         <h3 className="lbl">How to reach them</h3>
-        <Field label="Phone" type="tel" placeholder="Phone" value={g.phone} format={formatPhoneUS} onSave={(v) => field({ phone: v })} />
-        <Field label="Email" type="email" placeholder="Email" value={g.email} invalid={isMalformedEmail(g.email)} onSave={(v) => field({ email: v })} />
-        {isMalformedEmail(g.email) && <p className="fine warn">That email doesn’t look right.</p>}
+        <ContactField kind="phone" label="Phone" value={g.phone} onSave={(v) => field({ phone: v })} />
+        <ContactField kind="email" label="Email" value={g.email} onSave={(v) => field({ email: v })} />
         <div className="grp" style={{ marginTop: 16 }}>
           <button className="row go" data-told aria-pressed={told} onClick={() => save(toldEdit(ev, g.id, name, 'other', new Date().toISOString()))}>
             <span className="nm">I told {first} myself<small>A note for you. Nothing is sent.</small></span>{told ? <span className="check" aria-label="Done">✓</span> : null}

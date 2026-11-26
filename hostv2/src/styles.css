@@ -9595,3 +9595,6 @@ html:root .cta.cta:disabled, html:root[data-theme] .hero.elegant .cta.cta:disabl
 .after-gift-name{ flex:1 1 150px; min-width:0; }
 .after-gift-flags{ display:flex; gap:var(--sp-2); margin-left:auto; }
 .recap-preview{ padding:var(--sp-4); border:1px dashed var(--line); border-radius:var(--r-md); }
+/* A contact field's one-line problem sits under its row (ContactInput, owner 11/26/2026). */
+.ged-li:has(.contact-problem){ flex-wrap:wrap; }
+.ged-li .contact-problem{ order:99; flex-basis:100%; margin:var(--sp-1) 0 0; font-size:var(--t-sm, .875rem); }
