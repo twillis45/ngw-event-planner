@@ -234,3 +234,8 @@ kbd { font: 600 .75rem var(--sans); color: var(--ink-3); border: 1px solid var(-
 .path .step.s-later .nm, .path .step.s-later .val { color: var(--ink-3); }
 .path .step.s-done .nm { color: var(--ink-2); }
 .val.warn { color: var(--warn); }
+/* THE PAGE THEY OPEN (owner, 11/26/2026): the guest's own invite, framed. */
+.pvframe { position: relative; height: 420px; overflow: hidden; border-radius: 16px; border: 1px solid var(--hair); background: #f4efe6; margin: 4px 0 8px; }
+.pvframe[data-full="1"] { height: min(1400px, 160vh); }
+.pvframe iframe { display: block; width: 100%; height: 100%; border: 0; }
+.pvframe[data-full="0"]::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: linear-gradient(rgba(0,0,0,0), var(--bg)); pointer-events: none; }

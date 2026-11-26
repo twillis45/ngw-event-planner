@@ -40,6 +40,11 @@ export default function InvitePage({ ev, save, nav, status }) {
   const voices = useMemo(() => { try { return inviteVoicesFor(ev); } catch { return ['as-written']; } }, [ev]);
   const [voice, setVoice] = useState(() => (saved && voices.includes(saved.voice) ? saved.voice : 'as-written'));
   const [sending, setSending] = useState(false);
+  // THE PAGE THEY OPEN (owner, 11/26/2026: "start the invite preview"): the
+  // guest's own invite page, framed, in preview mode (hostv2/src/main.jsx,
+  // ?invite-preview). A saved change gives the frame a new key, so it reloads.
+  const [fullPreview, setFullPreview] = useState(false);
+  const previewKey = useMemo(() => { try { return JSON.stringify(ev).length + ':' + (ev.updatedAt || '') + ':' + JSON.stringify([ev.plusOnePolicy, ev.kidsPolicy, ev.collectAddresses, ev.giftWish, ev.deckLine, ev.inviteStyle, ev.inviteLayout, ev.rsvpDeadline]); } catch { return String(Math.random()); } }, [ev]);
   const profile = useMemo(readProfile, []);
   const subject = useMemo(() => { try { return draftInvite(ev, profile, { voice }).subject || 'You’re invited'; } catch { return 'You’re invited'; } }, [ev, profile, voice]);
   // The words: her saved version when it is the voice shown, else this voice written from the facts.
@@ -76,6 +81,15 @@ export default function InvitePage({ ev, save, nav, status }) {
         <p className="fine">The reply link goes in when it’s sent.{' '}
           {isSaved ? <span className="okline" data-draft-saved>Saved.</span>
             : <button className="link" onClick={() => save(saveDraftEdit({ body, voice, edited: false, line: String(ev.deckLine || '').trim(), now: new Date().toISOString() }))}>Save this version</button>}
+        </p>
+
+        <h3 className="sh">The page they open</h3>
+        <div className="pvframe" data-preview-frame data-full={fullPreview ? '1' : '0'}>
+          <iframe key={previewKey} data-invite-preview title="The page guests open" loading="lazy"
+            src={'../hostv2/?invite-preview=' + encodeURIComponent(ev.id)} />
+        </div>
+        <p className="fine">What a guest sees when they tap the link. Nothing is sent from here.{' '}
+          <button className="link" aria-expanded={fullPreview} onClick={() => setFullPreview((f) => !f)}>{fullPreview ? 'Show less' : 'See the full invite'}</button>
         </p>
 
         <h3 className="sh">Rules</h3>
