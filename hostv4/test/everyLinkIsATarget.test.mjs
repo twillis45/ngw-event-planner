@@ -13,6 +13,14 @@ const css = readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url
 const rules = [...css.matchAll(/([^{}]*\.link[^{}]*)\{([^}]*)\}/g)].map((m) => ({ sel: m[1].trim(), body: m[2] }));
 
 describe('every link is a 44px target', () => {
+  // The live-check session, 11/26/2026: the guest sheet's "Done" measured 40×44,
+  // short a word wide. 44 is a width rule too, so every link carries it.
+  it('every link is at least 44 wide, and no rule narrows it', () => {
+    const base = rules.find((r) => r.sel === '.link');
+    expect(base.body).toMatch(/min-width:\s*44px/);
+    const bad = rules.filter((r) => /min-width:\s*([0-3]?\d|4[0-3])px/.test(r.body) || /min-width:\s*0\b/.test(r.body)).map((r) => r.sel);
+    expect(bad).toEqual([]);
+  });
   it('no rule takes a link below 44px', () => {
     const bad = rules.filter((r) => /min-height:\s*0\b/.test(r.body) || /min-height:\s*([0-3]?\d|4[0-3])px/.test(r.body)).map((r) => r.sel);
     expect(bad).toEqual([]);
