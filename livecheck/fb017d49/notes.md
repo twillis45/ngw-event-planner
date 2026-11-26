@@ -1,4 +1,4 @@
-# Live check fb017d49 (#296, #297, #298, #299, #300, #302): Thu Nov 26, 2026, 1:35–2:05 PM EST
+# Live check fb017d49 (#296, #297, #298, #299, #300, #302): Thu Nov 26, 2026, 1:30–1:48 PM EST
 
 Live: the hostv4 `ngw-build` meta and the hostv2 bundle both read fb017d496e35 (deployed 1:12 PM EST).
 Chromium at 5 sizes. Every POST/PUT/PATCH/DELETE aborted. Weather GETs answered locally (rain). Share, clipboard and open stubbed; share was never called. The probe never taps Send, Email, Text, Copy or "Tell your guests". E2E_TEST_ plans and made-up names only. Nothing sent.
