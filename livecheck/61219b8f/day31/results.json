@@ -1,0 +1,581 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "v2-one-count",
+    "ok": true,
+    "past": [
+     20,
+     20,
+     20,
+     20
+    ],
+    "left": 34,
+    "old": [],
+    "lines": [
+     "p photo Add it WATCH 20 steps past their window Knock them out or l",
+     "eft 1 Plan due today 20 steps past their window Knock them out or l",
+     " 34 plan steps left ",
+     " 20 past their window Knock out what matt",
+     "open Checklist Needs you — 20 past their window Date & time set 7 g"
+    ],
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v2-weather-rain",
+    "ok": true,
+    "kind": "rain",
+    "text": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the walk in. A note to guests now lets them leave a little early; keep a s",
+    "checks": [
+     "wx-coats"
+    ],
+    "umbrella": true,
+    "shared": 0,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-day",
+    "ok": true,
+    "phase": "morning",
+    "now": "Now · since 10:30 AM Baste and rotate the bird; casseroles out of the refrigerator to lose their chill; potatoes peeled ",
+    "wx": "rain",
+    "wxText": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the walk in. A note to guests now lets them leave a li",
+    "listRows": 1,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-weather-note",
+    "ok": true,
+    "note": "Heads-up for E2E_TEST_ Thanksgiving on Thursday: the forecast shows rain. Leave a little extra time to get here, and bring an umbrella. If the weather changes o",
+    "shared": 0,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-todays-run",
+    "ok": true,
+    "steps": 14,
+    "states": [
+     "past",
+     "now",
+     "later"
+    ],
+    "editLink": 1,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-counter-mode",
+    "ok": true,
+    "visible": true,
+    "bigFontPx": 34,
+    "text": "E2E_TEST_ Thanksgiving 10:40 AM Now · since 10:30 AM Baste and rotate the bird; casseroles out of the refrigerator to lo",
+    "left": true,
+    "planChanged": false,
+    "sideways": 0,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-phase-0730",
+    "ok": true,
+    "phase": "morning",
+    "text": "The Day Today · guests at 3:00 PM Up first · 9:00 AM Turkey prepped and into the oven on the map's schedule; timer set for the first check Worth a spot: Group photo Not on today’s run yet. Moderate rain · 48°–54°F · 100%",
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-phase-1600",
+    "ok": true,
+    "phase": "under-way",
+    "text": "The Day Today · guests at 3:00 PM If something goes wrong Running late? Move the rest of today later, once. Now · since 4:00 PM Dinner: everything to the table at once — carve, sauce boats out, sides in their places, and",
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-phase-2010",
+    "ok": true,
+    "phase": "under-way",
+    "text": "The Day Today · guests at 3:00 PM If something goes wrong Running late? Move the rest of today later, once. Now · since 7:30 PM The long afternoon: games, the walk, the couch — and the long-drive guests nudged toward the",
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ],
+  "shared": 0
+ },
+ {
+  "vp": "834x1194",
+  "steps": [
+   {
+    "name": "v2-one-count",
+    "ok": true,
+    "past": [
+     20,
+     20,
+     20,
+     20
+    ],
+    "left": 34,
+    "old": [],
+    "lines": [
+     "p photo Add it WATCH 20 steps past their window Knock them out or l",
+     "eft 1 Plan due today 20 steps past their window Knock them out or l",
+     " 34 plan steps left ",
+     " 20 past their window Knock out what matt",
+     "open Checklist Needs you — 20 past their window Date & time set 7 g"
+    ],
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v2-weather-rain",
+    "ok": true,
+    "kind": "rain",
+    "text": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the walk in. A note to guests now lets them leave a little early; keep a s",
+    "checks": [
+     "wx-coats"
+    ],
+    "umbrella": true,
+    "shared": 0,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-day",
+    "ok": true,
+    "phase": "morning",
+    "now": "Now · since 10:30 AM Baste and rotate the bird; casseroles out of the refrigerator to lose their chill; potatoes peeled ",
+    "wx": "rain",
+    "wxText": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the walk in. A note to guests now lets them leave a li",
+    "listRows": 1,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-weather-note",
+    "ok": true,
+    "note": "Heads-up for E2E_TEST_ Thanksgiving on Thursday: the forecast shows rain. Leave a little extra time to get here, and bring an umbrella. If the weather changes o",
+    "shared": 0,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-todays-run",
+    "ok": true,
+    "steps": 14,
+    "states": [
+     "past",
+     "now",
+     "later"
+    ],
+    "editLink": 1,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-counter-mode",
+    "ok": true,
+    "visible": true,
+    "bigFontPx": 34,
+    "text": "E2E_TEST_ Thanksgiving 10:40 AM Now · since 10:30 AM Baste and rotate the bird; casseroles out of the refrigerator to lo",
+    "left": true,
+    "planChanged": false,
+    "sideways": 0,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ],
+  "shared": 0
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "v2-one-count",
+    "ok": true,
+    "past": [
+     20,
+     20,
+     20,
+     20
+    ],
+    "left": 34,
+    "old": [],
+    "lines": [
+     "p photo Add it WATCH 20 steps past their window Knock them out or l",
+     "eft 1 Plan due today 20 steps past their window Knock them out or l",
+     " 34 plan steps left ",
+     " 20 past their window Knock out what matt",
+     "open Checklist Needs you — 20 past their window Date & time set 7 g"
+    ],
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v2-weather-rain",
+    "ok": true,
+    "kind": "rain",
+    "text": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the walk in. A note to guests now lets them leave a little early; keep a s",
+    "checks": [
+     "wx-coats"
+    ],
+    "umbrella": true,
+    "shared": 0,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-day",
+    "ok": true,
+    "phase": "morning",
+    "now": "Now · since 10:30 AM Baste and rotate the bird; casseroles out of the refrigerator to lose their chill; potatoes peeled ",
+    "wx": "rain",
+    "wxText": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the walk in. A note to guests now lets them leave a li",
+    "listRows": 1,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-weather-note",
+    "ok": true,
+    "note": "Heads-up for E2E_TEST_ Thanksgiving on Thursday: the forecast shows rain. Leave a little extra time to get here, and bring an umbrella. If the weather changes o",
+    "shared": 0,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-todays-run",
+    "ok": true,
+    "steps": 14,
+    "states": [
+     "past",
+     "now",
+     "later"
+    ],
+    "editLink": 1,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-counter-mode",
+    "ok": true,
+    "visible": true,
+    "bigFontPx": 34,
+    "text": "E2E_TEST_ Thanksgiving 10:40 AM Now · since 10:30 AM Baste and rotate the bird; casseroles out of the refrigerator to lo",
+    "left": true,
+    "planChanged": false,
+    "sideways": 0,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ],
+  "shared": 0
+ },
+ {
+  "vp": "1194x834",
+  "steps": [
+   {
+    "name": "v2-one-count",
+    "ok": true,
+    "past": [
+     20,
+     20,
+     20,
+     20
+    ],
+    "left": 34,
+    "old": [],
+    "lines": [
+     "p photo Add it WATCH 20 steps past their window Knock them out or l",
+     "eft 1 Plan due today 20 steps past their window Knock them out or l",
+     " 34 plan steps left ",
+     " 20 past their window Knock out what matt",
+     "open Checklist Needs you — 20 past their window Date & time set 7 g"
+    ],
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v2-weather-rain",
+    "ok": true,
+    "kind": "rain",
+    "text": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the walk in. A note to guests now lets them leave a little early; keep a s",
+    "checks": [
+     "wx-coats"
+    ],
+    "umbrella": true,
+    "shared": 0,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-day",
+    "ok": true,
+    "phase": "morning",
+    "now": "Now · since 10:30 AM Baste and rotate the bird; casseroles out of the refrigerator to lose their chill; potatoes peeled ",
+    "wx": "rain",
+    "wxText": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the walk in. A note to guests now lets them leave a li",
+    "listRows": 1,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-weather-note",
+    "ok": true,
+    "note": "Heads-up for E2E_TEST_ Thanksgiving on Thursday: the forecast shows rain. Leave a little extra time to get here, and bring an umbrella. If the weather changes o",
+    "shared": 0,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-todays-run",
+    "ok": true,
+    "steps": 14,
+    "states": [
+     "past",
+     "now",
+     "later"
+    ],
+    "editLink": 1,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-counter-mode",
+    "ok": true,
+    "visible": true,
+    "bigFontPx": 34,
+    "text": "E2E_TEST_ Thanksgiving 10:40 AM Now · since 10:30 AM Baste and rotate the bird; casseroles out of the refrigerator to lo",
+    "left": true,
+    "planChanged": false,
+    "sideways": 0,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ],
+  "shared": 0
+ },
+ {
+  "vp": "1440x900",
+  "steps": [
+   {
+    "name": "v2-one-count",
+    "ok": true,
+    "past": [
+     20,
+     20,
+     20,
+     20
+    ],
+    "left": 34,
+    "old": [],
+    "lines": [
+     "p photo Add it WATCH 20 steps past their window Knock them out or l",
+     "eft 1 Plan due today 20 steps past their window Knock them out or l",
+     " 34 plan steps left ",
+     " 20 past their window Knock out what matt",
+     "open Checklist Needs you — 20 past their window Date & time set 7 g"
+    ],
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v2-weather-rain",
+    "ok": true,
+    "kind": "rain",
+    "text": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the walk in. A note to guests now lets them leave a little early; keep a s",
+    "checks": [
+     "wx-coats"
+    ],
+    "umbrella": true,
+    "shared": 0,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-day",
+    "ok": true,
+    "phase": "morning",
+    "now": "Now · since 10:30 AM Baste and rotate the bird; casseroles out of the refrigerator to lose their chill; potatoes peeled ",
+    "wx": "rain",
+    "wxText": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the walk in. A note to guests now lets them leave a li",
+    "listRows": 1,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-weather-note",
+    "ok": true,
+    "note": "Heads-up for E2E_TEST_ Thanksgiving on Thursday: the forecast shows rain. Leave a little extra time to get here, and bring an umbrella. If the weather changes o",
+    "shared": 0,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-todays-run",
+    "ok": true,
+    "steps": 14,
+    "states": [
+     "past",
+     "now",
+     "later"
+    ],
+    "editLink": 1,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   },
+   {
+    "name": "v4-counter-mode",
+    "ok": true,
+    "visible": true,
+    "bigFontPx": 34,
+    "text": "E2E_TEST_ Thanksgiving 10:40 AM Now · since 10:30 AM Baste and rotate the bird; casseroles out of the refrigerator to lo",
+    "left": true,
+    "planChanged": false,
+    "sideways": 0,
+    "floors": {
+     "sideways": 0,
+     "small": [],
+     "smallN": 0
+    }
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ],
+  "shared": 0
+ }
+]

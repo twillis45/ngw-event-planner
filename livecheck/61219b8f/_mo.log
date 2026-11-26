@@ -1,0 +1,30 @@
+390x844 ok   v4-moment 
+390x844 ok   v2-trip-day2-add 
+834x1194 ok   v4-moment 
+834x1194 ok   v2-trip-day2-add 
+1024x1366 ok   v4-moment 
+1024x1366 ok   v2-trip-day2-add 
+1194x834 ok   v4-moment 
+1194x834 ok   v2-trip-day2-add 
+1440x900 ok   v4-moment 
+1440x900 ok   v2-trip-day2-add 
+
+390x844 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  v4-moment side 0
+  ok  v2-trip-day2-add side 0
+
+834x1194 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  v4-moment side 0
+  ok  v2-trip-day2-add side 0
+
+1024x1366 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  v4-moment side 0
+  ok  v2-trip-day2-add side 0
+
+1194x834 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  v4-moment side 0
+  ok  v2-trip-day2-add side 0
+
+1440x900 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  v4-moment side 0
+  ok  v2-trip-day2-add side 0

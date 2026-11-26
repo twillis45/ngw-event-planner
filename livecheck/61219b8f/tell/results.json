@@ -1,0 +1,347 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "tell-sheet",
+    "ok": true,
+    "brief": 1,
+    "parking": 1,
+    "updates": 1,
+    "sideways": 0
+   },
+   {
+    "name": "parking-draft",
+    "ok": true,
+    "draft": "Guests can park [street / driveway / nearby lot — pick what fits]. Come to [front door / side gate / backyard — pick one].",
+    "blanks": [
+     "[street / driveway / nearby lot — pick what fits]",
+     "[front door / side gate / backyard — pick one]"
+    ],
+    "copyDisabledWithBlanks": true,
+    "copyDisabledAfterFill": false,
+    "copied": 0,
+    "sideways": 0
+   },
+   {
+    "name": "escape-closes",
+    "ok": true,
+    "sheetsBefore": 1,
+    "sheetsAfter": 0,
+    "escapes": 1,
+    "planChanged": false,
+    "shared": 0,
+    "sideways": 0
+   },
+   {
+    "name": "brief-draft",
+    "ok": true,
+    "draft": "",
+    "sheet": "The details Done Sending uses your account, so replies come back to this plan. Sign in once in the current app, then come back here. Sign in in the current app Back",
+    "copyDisabled": null,
+    "openSheets": 0,
+    "sideways": 0
+   },
+   {
+    "name": "other-sheets-escape",
+    "ok": true,
+    "res": {
+     "run": {
+      "dialogsOpen": 0,
+      "counterOpen": false
+     },
+     "counter": {
+      "dialogsOpen": 1,
+      "counterOpen": true
+     }
+    },
+    "sideways": 0
+   },
+   {
+    "name": "no-place-no-parking",
+    "ok": true,
+    "parking": 0,
+    "brief": 1,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": []
+ },
+ {
+  "vp": "834x1194",
+  "steps": [
+   {
+    "name": "tell-sheet",
+    "ok": true,
+    "brief": 1,
+    "parking": 1,
+    "updates": 1,
+    "sideways": 0
+   },
+   {
+    "name": "parking-draft",
+    "ok": true,
+    "draft": "Guests can park [street / driveway / nearby lot — pick what fits]. Come to [front door / side gate / backyard — pick one].",
+    "blanks": [
+     "[street / driveway / nearby lot — pick what fits]",
+     "[front door / side gate / backyard — pick one]"
+    ],
+    "copyDisabledWithBlanks": true,
+    "copyDisabledAfterFill": false,
+    "copied": 0,
+    "sideways": 0
+   },
+   {
+    "name": "escape-closes",
+    "ok": true,
+    "sheetsBefore": 1,
+    "sheetsAfter": 0,
+    "escapes": 1,
+    "planChanged": false,
+    "shared": 0,
+    "sideways": 0
+   },
+   {
+    "name": "brief-draft",
+    "ok": true,
+    "draft": "",
+    "sheet": "The details Done Sending uses your account, so replies come back to this plan. Sign in once in the current app, then come back here. Sign in in the current app Back",
+    "copyDisabled": null,
+    "openSheets": 0,
+    "sideways": 0
+   },
+   {
+    "name": "other-sheets-escape",
+    "ok": true,
+    "res": {
+     "run": {
+      "dialogsOpen": 0,
+      "counterOpen": false
+     },
+     "counter": {
+      "dialogsOpen": 1,
+      "counterOpen": true
+     }
+    },
+    "sideways": 0
+   },
+   {
+    "name": "no-place-no-parking",
+    "ok": true,
+    "parking": 0,
+    "brief": 1,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": []
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "tell-sheet",
+    "ok": true,
+    "brief": 1,
+    "parking": 1,
+    "updates": 1,
+    "sideways": 0
+   },
+   {
+    "name": "parking-draft",
+    "ok": true,
+    "draft": "Guests can park [street / driveway / nearby lot — pick what fits]. Come to [front door / side gate / backyard — pick one].",
+    "blanks": [
+     "[street / driveway / nearby lot — pick what fits]",
+     "[front door / side gate / backyard — pick one]"
+    ],
+    "copyDisabledWithBlanks": true,
+    "copyDisabledAfterFill": false,
+    "copied": 0,
+    "sideways": 0
+   },
+   {
+    "name": "escape-closes",
+    "ok": true,
+    "sheetsBefore": 1,
+    "sheetsAfter": 0,
+    "escapes": 1,
+    "planChanged": false,
+    "shared": 0,
+    "sideways": 0
+   },
+   {
+    "name": "brief-draft",
+    "ok": true,
+    "draft": "",
+    "sheet": "The details Done Sending uses your account, so replies come back to this plan. Sign in once in the current app, then come back here. Sign in in the current app Back",
+    "copyDisabled": null,
+    "openSheets": 0,
+    "sideways": 0
+   },
+   {
+    "name": "other-sheets-escape",
+    "ok": true,
+    "res": {
+     "run": {
+      "dialogsOpen": 0,
+      "counterOpen": false
+     },
+     "counter": {
+      "dialogsOpen": 1,
+      "counterOpen": true
+     }
+    },
+    "sideways": 0
+   },
+   {
+    "name": "no-place-no-parking",
+    "ok": true,
+    "parking": 0,
+    "brief": 1,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": []
+ },
+ {
+  "vp": "1194x834",
+  "steps": [
+   {
+    "name": "tell-sheet",
+    "ok": true,
+    "brief": 1,
+    "parking": 1,
+    "updates": 1,
+    "sideways": 0
+   },
+   {
+    "name": "parking-draft",
+    "ok": true,
+    "draft": "Guests can park [street / driveway / nearby lot — pick what fits]. Come to [front door / side gate / backyard — pick one].",
+    "blanks": [
+     "[street / driveway / nearby lot — pick what fits]",
+     "[front door / side gate / backyard — pick one]"
+    ],
+    "copyDisabledWithBlanks": true,
+    "copyDisabledAfterFill": false,
+    "copied": 0,
+    "sideways": 0
+   },
+   {
+    "name": "escape-closes",
+    "ok": true,
+    "sheetsBefore": 1,
+    "sheetsAfter": 0,
+    "escapes": 1,
+    "planChanged": false,
+    "shared": 0,
+    "sideways": 0
+   },
+   {
+    "name": "brief-draft",
+    "ok": true,
+    "draft": "",
+    "sheet": "The details Done Sending uses your account, so replies come back to this plan. Sign in once in the current app, then come back here. Sign in in the current app Back",
+    "copyDisabled": null,
+    "openSheets": 0,
+    "sideways": 0
+   },
+   {
+    "name": "other-sheets-escape",
+    "ok": true,
+    "res": {
+     "run": {
+      "dialogsOpen": 0,
+      "counterOpen": false
+     },
+     "counter": {
+      "dialogsOpen": 1,
+      "counterOpen": true
+     }
+    },
+    "sideways": 0
+   },
+   {
+    "name": "no-place-no-parking",
+    "ok": true,
+    "parking": 0,
+    "brief": 1,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": []
+ },
+ {
+  "vp": "1440x900",
+  "steps": [
+   {
+    "name": "tell-sheet",
+    "ok": true,
+    "brief": 1,
+    "parking": 1,
+    "updates": 1,
+    "sideways": 0
+   },
+   {
+    "name": "parking-draft",
+    "ok": true,
+    "draft": "Guests can park [street / driveway / nearby lot — pick what fits]. Come to [front door / side gate / backyard — pick one].",
+    "blanks": [
+     "[street / driveway / nearby lot — pick what fits]",
+     "[front door / side gate / backyard — pick one]"
+    ],
+    "copyDisabledWithBlanks": true,
+    "copyDisabledAfterFill": false,
+    "copied": 0,
+    "sideways": 0
+   },
+   {
+    "name": "escape-closes",
+    "ok": true,
+    "sheetsBefore": 1,
+    "sheetsAfter": 0,
+    "escapes": 1,
+    "planChanged": false,
+    "shared": 0,
+    "sideways": 0
+   },
+   {
+    "name": "brief-draft",
+    "ok": true,
+    "draft": "",
+    "sheet": "The details Done Sending uses your account, so replies come back to this plan. Sign in once in the current app, then come back here. Sign in in the current app Back",
+    "copyDisabled": null,
+    "openSheets": 0,
+    "sideways": 0
+   },
+   {
+    "name": "other-sheets-escape",
+    "ok": true,
+    "res": {
+     "run": {
+      "dialogsOpen": 0,
+      "counterOpen": false
+     },
+     "counter": {
+      "dialogsOpen": 1,
+      "counterOpen": true
+     }
+    },
+    "sideways": 0
+   },
+   {
+    "name": "no-place-no-parking",
+    "ok": true,
+    "parking": 0,
+    "brief": 1,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": []
+ }
+]
