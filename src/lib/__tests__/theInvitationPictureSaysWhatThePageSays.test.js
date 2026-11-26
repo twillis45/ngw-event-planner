@@ -1,6 +1,11 @@
 // Owner, 11/19/2026: "Build the invitation picture email." The picture must say
 // what the guest invite page says (hostv2 InviteV2), from the same helpers.
 import { inviteCardModel, inviteCardKey } from '../inviteCard';
+import { useFrozenClock } from '../../testUtils/frozenClock';
+
+// A week before the party, the day this was written: the event's fixed date is
+// still ahead in every timezone (it read as past on 11/26/2026 in UTC+14).
+useFrozenClock('2026-11-19T12:00:00.000Z');
 
 const EV = { name: 'Vida’s Friendsgiving', type: 'Friendsgiving', date: '2026-11-26', startTime: '16:00', startTimeSource: 'host', venue: 'Vida’s place', hostName: 'Vida Reyes' };
 

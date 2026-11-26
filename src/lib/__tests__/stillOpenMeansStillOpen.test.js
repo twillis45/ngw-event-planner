@@ -13,10 +13,14 @@
 import { playbookChecklist } from '../playbooks';
 import { computeDayAlerts } from '../dayAlerts';
 import { taskIsOverdue, taskIsOpenPastWindow, taskDueInDays } from '../taskLead';
+import { useFrozenClock, daysFromNow } from '../../testUtils/frozenClock';
 
-const iso = new Date().toISOString().slice(0, 10);
+// The morning the owner saw it, on one clock. `iso` was the UTC date while the
+// app reads the local one, so in UTC+14 (CI's Kiritimati pass) the event was
+// already yesterday and nothing was past its window (11/26/2026).
+useFrozenClock('2026-11-26T12:00:00.000Z');
 const plan = (createdAt) => {
-  const ev = { id: 'cust-tg', type: 'Thanksgiving Hosting', name: 'Thanksgiving', date: iso, startTime: '14:00', guestEstimate: 7, guestMode: 'list', guests: [], createdAt };
+  const ev = { id: 'cust-tg', type: 'Thanksgiving Hosting', name: 'Thanksgiving', date: daysFromNow(0), startTime: '14:00', guestEstimate: 7, guestMode: 'list', guests: [], createdAt };
   ev.timeline = (playbookChecklist(ev) || []).map((r) => ({ ...r }));
   ev.timeline.slice(0, 7).forEach((t) => { t.done = true; });
   return ev;
@@ -45,7 +49,7 @@ describe('the day’s "still open" counts every unfinished step past its window'
   it('a snoozed step stays out of both', () => {
     const ev = plan(undefined);
     const t = ev.timeline.find((x) => !x.done && taskDueInDays(x, ev) < 0);
-    const tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
+    const tomorrow = daysFromNow(1);
     t.snoozedUntil = tomorrow;
     expect(taskIsOpenPastWindow(t, ev)).toBe(false);
   });
