@@ -216,6 +216,8 @@ export function RunPage({ ev, save, now: fixed, nav, status }) {
           );
         })}
       </div>
+      {/* Adding, moving or timing a step is in the current app until the run can be edited here. */}
+      <div className="grp gap"><a className="row go" data-edit-run href="../hostv2/"><span className="nm">Change the run in the current app<small>Add, move or time a step.</small></span>{chev}</a></div>
     </main>
     {st.eventDay && st.nowActive && <div className="action"><button className="primary" onClick={() => save(cuesDoneEdit(ev, [st.nowCue.id], 'Done: ' + stepTitle(st.nowCue) + '.'))}>Done, what’s next</button></div>}
   </>);
