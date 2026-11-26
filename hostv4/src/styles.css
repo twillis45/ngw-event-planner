@@ -74,6 +74,8 @@ button.primary { border: 0; cursor: pointer; font-family: var(--sans); }
 .lbl { display: block; font-size: .9375rem; font-weight: 600; color: var(--ink-2); margin: 16px 2px 8px; }
 .field { width: 100%; background: var(--raised); color: var(--ink); border: 1px solid var(--hair); border-radius: 10px; padding: 12px 14px; font: 1.0625rem var(--sans); resize: none; margin-bottom: 10px; }
 .field:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+/* A placeholder is a hint, never an answer (owner, 11/25/2026; UX_11 rule 2). */
+.field::placeholder { color: var(--ink-3); font-style: italic; opacity: 1; }
 .addrow { display: flex; gap: 12px; align-items: flex-start; }
 .addrow .link { padding: 0 4px; }
 .line { font-size: .9375rem; color: var(--ink-2); margin: 0 2px 12px; }
@@ -120,7 +122,10 @@ h3.sh { font-size: 1rem; margin: 22px 2px 8px; }
 .thread { list-style: none; margin: 10px 0 12px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .thread li { max-width: 85%; padding: 10px 12px; border-radius: 14px; background: var(--raised); white-space: pre-wrap; overflow-wrap: anywhere; font-size: 1rem; }
 .thread li b { display: block; font-size: .8125rem; color: var(--ink-3); font-weight: 600; margin-bottom: 2px; }
-.thread li.me { align-self: flex-end; background: rgba(241, 237, 230, .1); }
+/* The host's replies are outlined in bone, a guest's stay solid (owner chose
+   option 2, 11/25/2026: the two fills were 1.48:1 apart). */
+.thread li.me { align-self: flex-end; background: transparent; border: 1.5px solid rgba(241, 237, 230, .55); }
+.thread li.me b { color: var(--ink-2); }
 [data-view="updates"] .addrow .link:disabled, .link:disabled { opacity: .45; }
 select.field { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%), linear-gradient(135deg, var(--ink-3) 50%, transparent 50%); background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; padding-right: 36px; }
 .field[aria-invalid="true"] { border-color: var(--warn); }
@@ -132,3 +137,55 @@ select.field { appearance: none; -webkit-appearance: none; background-image: lin
 @keyframes rise { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .primary:active { transform: none; } .sheet, .pushed .view { animation: fade .2s ease-out; } }
+
+/* ── TABLETS (UX_13, owner 11/25/2026): sidebar, pane bars, three panes ───── */
+.tablet { position: fixed; inset: 0; }
+.tablet .tabbar { display: none; }
+.tablet .side { position: absolute; top: 0; bottom: 0; left: 0; width: 260px; background: #121214; border-right: 1px solid var(--hair); overflow-y: auto; padding: calc(18px + env(safe-area-inset-top, 0px)) 12px 18px calc(12px + env(safe-area-inset-left, 0px)); z-index: 30; }
+.sidehead h1 { font-size: 1.25rem; margin: 6px 10px 2px; text-wrap: balance; }
+.sidehead .sub { margin: 0 10px 14px; font-size: .875rem; }
+.sidelbl { font-size: .8125rem; color: var(--ink-3); font-weight: 600; margin: 18px 10px 6px; }
+.sidenav { display: flex; flex-direction: column; gap: 2px; }
+.sidenav button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 0 10px; border: 0; border-radius: 10px; background: none; color: var(--ink); font: 1.0625rem var(--sans); text-align: left; cursor: pointer; }
+.sidenav button svg { width: 22px; height: 22px; flex: none; color: var(--ink-3); }
+.sidenav button[aria-current="page"] { background: rgba(241, 237, 230, .12); }
+.sidenav button[aria-current="page"] svg { color: var(--accent); }
+.sval { margin-left: auto; color: var(--ink-3); font-size: .875rem; }
+.tablet .side .fine { margin: 18px 10px; }
+.tablet .app { left: 260px; max-width: none; margin: 0; padding-top: 0; }
+/* Each pane has a bar: its back or menu button at the left, its one action at the right (owner: "top of pane"). */
+.tablet .view { padding: calc(60px + env(safe-area-inset-top, 0px)) 24px 32px; }
+.tablet .view > * { max-width: 680px; }
+.tablet .view > .navbar { position: absolute; top: calc(6px + env(safe-area-inset-top, 0px)); left: 16px; margin: 0; }
+.tablet .action { position: absolute; top: calc(8px + env(safe-area-inset-top, 0px)); right: 16px; padding: 0; z-index: 5; }
+.tablet .primary { width: auto; min-height: 44px; padding: 0 18px; }
+.tablet .view > .lt { margin-top: 0; }
+/* Portrait and split screen: one pane; the sidebar slides in over it. */
+.tablet.compact .app { left: 0; }
+.tablet.compact .side { transform: translateX(-105%); transition: transform .3s cubic-bezier(0.22, 1, 0.36, 1); }
+.tablet.compact.sideopen .side { transform: none; }
+.sidescrim { display: none; }
+.tablet.compact.sideopen .sidescrim { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, .45); z-index: 25; }
+.menubtn { position: fixed; top: calc(6px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px)); width: 44px; height: 44px; border: 0; border-radius: 10px; background: none; color: var(--accent); display: flex; align-items: center; justify-content: center; z-index: 6; cursor: pointer; }
+.menubtn svg { width: 22px; height: 22px; }
+/* Guests: the list pane and the guest. */
+.gsplit { display: flex; flex: 1; min-height: 0; height: 100%; }
+.listpane { position: relative; display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.gsplit.split .listpane { flex: none; width: 400px; border-right: 1px solid var(--hair); }
+.gsplit.split .listpane .view { padding-left: 16px; padding-right: 16px; }
+.gdetail { flex: 1; min-width: 0; overflow-y: auto; padding: calc(60px + env(safe-area-inset-top, 0px)) 24px 32px; }
+.gdetail > * { max-width: 560px; }
+.gdetail.pushedpane { position: absolute; inset: 0; background: var(--bg); z-index: 8; animation: push .35s cubic-bezier(0.22, 1, 0.36, 1); }
+.gdetail.pushedpane > .navbar { position: absolute; top: calc(6px + env(safe-area-inset-top, 0px)); left: 16px; margin: 0; }
+.dhead { font-size: 1.5rem; font-weight: 700; margin: 0 2px 6px; }
+.empty { color: var(--ink-3); margin: 40px auto; text-align: center; max-width: 34ch; }
+/* Solid, so the swipe labels under a row never show through the selection. */
+.row.guest[aria-selected="true"] { background: #323233; }
+.keys { display: flex; flex-wrap: wrap; gap: 14px; color: var(--ink-3); font-size: .8125rem; margin: 28px 2px 0; }
+kbd { font: 600 .75rem var(--sans); color: var(--ink-3); border: 1px solid var(--hair); border-radius: 5px; padding: 1px 5px; }
+/* A pointer shows where it is (UX_13 §3). */
+@media (hover: hover) {
+  .row.go:hover, .row.guest:hover, .sidenav button:hover, .row.choice:hover { background: var(--raised-2); }
+  .link:hover { text-decoration: underline; }
+}
+@media (prefers-reduced-motion: reduce) { .tablet.compact .side, .gdetail.pushedpane { transition: none; animation: none; } }

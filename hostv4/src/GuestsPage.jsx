@@ -10,8 +10,9 @@
 // Every change is built by lib/guestEdits, the same builders hostv2 saves, and
 // saved by the shell. What this step does not build yet (the invite, sending,
 // nudges, locking the count, updates) says so and opens the current app.
-import { useMemo, useRef, useState } from 'react';
-import { countEdit, modeEdit, addNamesEdit, nameLines, rsvpEdit, removeGuestEdit, plusOneEdit, kidsEdit, replyByEdit, guestFieldEdit, mealEdit, kidsAddedLine, toldEdit, MEAL_CHOICES, guestListCsv, replyAlertsEdit } from '@app/lib/guestEdits';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { typingIn } from './layout.js';
+import { countEdit, modeEdit, addNamesEdit, nameLines, rsvpEdit, removeGuestEdit, plusOneEdit, kidsEdit, replyByEdit, replyByProblem, clearReplyByEdit, guestFieldEdit, mealEdit, kidsAddedLine, toldEdit, MEAL_CHOICES, guestListCsv, replyAlertsEdit } from '@app/lib/guestEdits';
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { guestToldMap, isTold } from '@app/lib/guestTold';
 import { detectCoupleNames } from '@app/lib/guestSplit';
@@ -41,7 +42,13 @@ export function guestQuestions(ev) {
   // Unset or cleared (Undo writes null back) is unanswered: the question returns.
   if (ev.plusOnePolicy == null) q.push('plus');
   if (ev.kidsPolicy == null) q.push('kids');
-  if (!String(ev.rsvpDeadline || '').trim()) q.push('replyBy');
+  // Too close for an honest reply-by date (owner's Thanksgiving, 11/25/2026:
+  // the party was the next day), the question has no answer, so it isn't asked.
+  if (!String(ev.rsvpDeadline || '').trim()) {
+    let close = false;
+    try { const p = proposeReplyBy(ev); close = !!(p && p.tooClose); } catch { close = false; }
+    if (!close) q.push('replyBy');
+  }
   return q;
 }
 
@@ -88,6 +95,8 @@ export function QuestionCard({ k, ev, count, setCount, save }) {
 // The proposal's reasoning is one tap down (UX_12 §1.4), so the screen stays a question.
 function ReplyByCard({ ev, save }) {
   const [why, setWhy] = useState(false);
+  const [picked, setPicked] = useState('');
+  const problem = picked ? replyByProblem(ev, picked) : null;
   {
     let prop = null;
     try { prop = proposeReplyBy(ev); } catch { prop = null; }
@@ -99,10 +108,18 @@ function ReplyByCard({ ev, save }) {
             <span className="nm">{longDay(prop.iso)}<small>Our suggestion</small>{prop.holiday && <small className="hol" data-holiday>That’s {prop.holiday}. Keep it, or pick another date.</small>}</span>{chev}
           </button>
         )}
+        {/* iPad's picker changes the field as soon as it is touched, so a pick
+            waits for a tap on "Use <date>" (owner, 11/25/2026: the date kept
+            coming back after Undo). */}
         <label className="row">Pick another date
-          <input type="date" className="datein" aria-label="Reply-by date" onChange={(e) => e.target.value && save(replyByEdit(e.target.value))} />
+          <input type="date" className="datein" aria-label="Reply-by date" value={picked} onChange={(e) => setPicked(e.target.value)} />
         </label>
+        {picked && !problem && (
+          <button className="row go" onClick={() => save(replyByEdit(picked))}><span className="nm">Use {longDay(picked)}</span>{chev}</button>
+        )}
+        {String(ev.rsvpDeadline || '').trim() && <button className="row go" onClick={() => save(clearReplyByEdit())}>No reply-by date</button>}
       </div>
+      {picked && problem && <p className="fine" data-problem>{problem}</p>}
       {prop && prop.tooClose && <p className="fine">{prop.why}</p>}
       {prop && !prop.tooClose && (why ? <p className="fine" data-why>{prop.why}</p> : <p className="fine"><button className="link" onClick={() => setWhy(true)}>Why this date</button></p>)}
     </>);
@@ -114,8 +131,9 @@ const ANSWER = {
   mode: (ev) => (ev.guestMode === 'count' ? 'by headcount' : 'by name'),
   plus: (ev) => (ev.plusOnePolicy === 'plus_one_ok' ? '+1s welcome' : 'no +1s'),
   kids: (ev) => (ev.kidsPolicy === 'kids_welcome' ? 'kids welcome' : 'adults only'),
-  replyBy: (ev) => 'replies by ' + new Date(ev.rsvpDeadline + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+  replyBy: (ev) => (String(ev.rsvpDeadline || '').trim() ? 'replies by ' + new Date(ev.rsvpDeadline + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'no reply-by date'),
 };
+export const answersLine = (ev) => Object.keys(ANSWER).map((k) => ANSWER[k](ev)).join(' · ');
 
 /** Your answers: every question again, in a sheet, to change one. */
 function AnswersSheet({ ev, save, onDone }) {
@@ -137,7 +155,7 @@ function AnswersSheet({ ev, save, onDone }) {
 }
 
 /** A row that follows the finger: right past 90px marks coming, left removes. Taps open the guest. */
-function GuestRow({ g, onOpen, onComing, onRemove }) {
+function GuestRow({ g, onOpen, onComing, onRemove, selected }) {
   const ref = useRef(null); const st = useRef(null);
   const set = (x, anim) => { const el = ref.current; if (!el) return; el.style.transition = anim ? 'transform .25s cubic-bezier(0.22, 1, 0.36, 1)' : 'none'; el.style.transform = x ? 'translateX(' + x + 'px)' : ''; };
   const down = (e) => { st.current = { x: e.clientX, y: e.clientY, dx: 0, axis: null, t: Date.now() }; };
@@ -159,7 +177,7 @@ function GuestRow({ g, onOpen, onComing, onRemove }) {
   return (
     <div className="swipe">
       <span className="under ok" aria-hidden="true">Coming</span><span className="under rm" aria-hidden="true">Remove</span>
-      <button ref={ref} className="row guest" data-guest={g.id} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { st.current = null; set(0, true); }}
+      <button ref={ref} className="row guest" data-guest={g.id} aria-selected={selected || undefined} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { st.current = null; set(0, true); }}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}>
         <span>{g.name}</span><span className={'val' + (r === 'yes' ? ' ok' : '')}>{REPLY[r]}</span>
       </button>
@@ -189,7 +207,7 @@ function MealPick({ label, value, onPick }) {
 // the ones hostv2's guest editor saves: reply, meal and needs, their +1 (when
 // plus-ones are welcome), children (when kids are welcome), how to reach them,
 // "I told them myself" (a record only), remove.
-function GuestSheet({ ev, g, i, save, onDone }) {
+function GuestDetail({ ev, g, i, save, onDone, keys }) {
   const r = rsvpState(g);
   const name = String(g.name || '').trim();
   const first = name.split(/\s+/)[0] || 'them';
@@ -198,11 +216,7 @@ function GuestSheet({ ev, g, i, save, onDone }) {
   const kidsOk = ev.kidsPolicy === 'kids_welcome' || kids > 0;
   const told = isTold(guestToldMap(ev), g.id);
   const field = (fields) => save(guestFieldEdit(ev, i, fields, null));
-  return (
-    <div className="scrim" onClick={onDone}>
-      <div className="sheet" role="dialog" aria-label={name} onClick={(e) => e.stopPropagation()}>
-        <div className="grabber" aria-hidden="true" />
-        <div className="sheethead"><h2>{name}</h2><button className="link" onClick={onDone}>Done</button></div>
+  return (<>
         <h3 className="lbl">Reply</h3>
         <div className="seg" role="group" aria-label="Reply">
           {['yes', 'maybe', 'no', 'pending'].map((k) => <button key={k} aria-pressed={r === k} onClick={() => save(rsvpEdit(ev, i, RSVP_VALUE[k]))}>{k === 'pending' ? 'No reply' : k === 'no' ? 'No' : REPLY[k]}</button>)}
@@ -239,12 +253,26 @@ function GuestSheet({ ev, g, i, save, onDone }) {
           </button>
           <button className="row danger" onClick={() => { onDone(); save(removeGuestEdit(ev, i)); }}>Remove from the list</button>
         </div>
+        {keys && <p className="keys" data-keys><span><kbd>↑</kbd> <kbd>↓</kbd> next name</span><span><kbd>/</kbd> find</span><span><kbd>N</kbd> add a name</span><span><kbd>Y</kbd> <kbd>M</kbd> <kbd>X</kbd> reply</span></p>}
+  </>);
+}
+
+// On a phone, one guest is a sheet (UX_12); on an iPad it is the detail pane,
+// or a pushed page in portrait (UX_13). The same detail in each.
+function GuestSheet({ ev, g, i, save, onDone }) {
+  const name = String(g.name || '').trim();
+  return (
+    <div className="scrim" onClick={onDone}>
+      <div className="sheet" role="dialog" aria-label={name} onClick={(e) => e.stopPropagation()}>
+        <div className="grabber" aria-hidden="true" />
+        <div className="sheethead"><h2>{name}</h2><button className="link" onClick={onDone}>Done</button></div>
+        <GuestDetail ev={ev} g={g} i={i} save={save} onDone={onDone} />
       </div>
     </div>
   );
 }
 
-export default function GuestsPage({ ev, save, sample, nav, status, onInvite, onUpdates }) {
+export default function GuestsPage({ ev, save, sample, nav, status, onInvite, onUpdates, layout = 'phone' }) {
   const qs = guestQuestions(ev);
   const [count, setCount] = useState(() => Number(ev.guestEstimate) || Number(guestCountFor(ev).count) || 20);
   const [text, setText] = useState('');
@@ -303,6 +331,32 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   const indexOf = (g) => guests.findIndex((x) => x === g || (x.id && x.id === g.id));
   const shown = filterGuestsByName(guests, find).filter((g) => filter === 'all' || rsvpState(g) === filter);
   const opened = open != null ? guests.find((g) => g.id === open) : null;
+  const tablet = layout !== 'phone';
+  // SPLIT (UX_13): the detail pane always shows someone once there are names.
+  const shownGuest = layout === 'split' && !qs.length && byName ? (opened || shown[0] || null) : null;
+  const selectedId = layout === 'split' ? (shownGuest && shownGuest.id) : open;
+
+  // KEYBOARD (UX_13 §4, owner: "keep shortcuts"): tablets only, never while typing.
+  useEffect(() => {
+    if (!tablet) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') { if (typingIn(document.activeElement)) document.activeElement.blur(); else setOpen(null); return; }
+      if (typingIn(document.activeElement) || e.metaKey || e.ctrlKey || e.altKey) return;
+      const cur = shown.findIndex((g) => g.id === selectedId);
+      const sel = shown[cur] || null;
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const n = shown[Math.min(shown.length - 1, Math.max(0, cur + (e.key === 'ArrowDown' ? 1 : -1)))];
+        if (n) { setOpen(layout === 'split' ? n.id : n.id); const el = document.querySelector('[data-guest="' + n.id + '"]'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' }); }
+      } else if (e.key === '/') { e.preventDefault(); const f = document.getElementById('findguest') || document.getElementById('addname'); if (f) f.focus(); }
+      else if (e.key === 'n' || e.key === 'N') { e.preventDefault(); const f = document.getElementById('addname'); if (f) f.focus(); }
+      else if (sel && (e.key === 'y' || e.key === 'Y')) save(rsvpEdit(ev, indexOf(sel), 'Yes'));
+      else if (sel && (e.key === 'm' || e.key === 'M')) save(rsvpEdit(ev, indexOf(sel), 'Maybe'));
+      else if (sel && (e.key === 'x' || e.key === 'X')) save(rsvpEdit(ev, indexOf(sel), 'No'));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   // THE BOTTOM BUTTON, by state (prototype PRIMARY.guests). One action.
   const action = qs[0] === 'count' ? { label: 'Plan for ' + count, go: () => save(countEdit(ev, count)) }
@@ -315,7 +369,10 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
               : null;
 
   // The page owns its screen and its bottom button (one primary, same place).
-  return (<>
+  const actionEl = action && <div className="action">{action.href
+      ? <a className="primary" href={action.href}>{action.label}</a>
+      : <button className="primary" onClick={action.go}>{action.label}</button>}</div>;
+  const listPane = (<>
     <main className="view" data-view="guests">
     {nav}
     <section data-guests>
@@ -324,7 +381,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
       {qs.length > 0 && <div className="card" data-question={qs[0]}><QuestionCard k={qs[0]} ev={ev} count={count} setCount={setCount} save={save} /></div>}
 
       {!qs.length && (
-        <div className="grp"><button className="row go" data-answers onClick={() => setAnswers(true)}><span className="nm">Your answers<small>{Object.keys(ANSWER).map((k) => ANSWER[k](ev)).join(' · ')}</small></span>{chev}</button></div>
+        <div className="grp"><button className="row go" data-answers onClick={() => setAnswers(true)}><span className="nm">Your answers<small>{answersLine(ev)}</small></span>{chev}</button></div>
       )}
       {answers && <AnswersSheet ev={ev} save={save} onDone={() => setAnswers(false)} />}
 
@@ -343,13 +400,13 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
         </div>
         {couple && <p className="line" data-couple>Couples count as two people. <button className="link" onClick={keepAsWritten}>Keep as written</button></p>}
         {named >= 8 && (<>
-          <input className="field" type="search" placeholder="Find someone on the list" aria-label="Find someone on the list" value={find} onChange={(e) => setFind(e.target.value)} />
+          <input className="field" id="findguest" type="search" placeholder="Find someone on the list" aria-label="Find someone on the list" value={find} onChange={(e) => setFind(e.target.value)} />
           <div className="chips" role="group" aria-label="Show">{FILTERS.map(([k, l]) => <button key={k} aria-pressed={filter === k} onClick={() => setFilter(k)}>{l}</button>)}</div>
         </>)}
         {shown.length ? (
           <div className="grp" data-names>
             {shown.map((g) => (
-              <GuestRow key={g.id || g.name} g={g} onOpen={() => setOpen(g.id)}
+              <GuestRow key={g.id || g.name} g={g} selected={tablet && g.id === selectedId} onOpen={() => setOpen(g.id)}
                 onComing={() => save(rsvpEdit(ev, indexOf(g), 'Yes'))} onRemove={() => save(removeGuestEdit(ev, indexOf(g)))} />
             ))}
           </div>
@@ -382,11 +439,32 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
       </>)}
       {sheet === 'nudge' && <NudgeSheet ev={ev} save={save} onDone={() => setSheet(null)} />}
       {sheet === 'lock' && <LockSheet ev={ev} save={save} onDone={() => setSheet(null)} />}
-      {opened && <GuestSheet key={opened.id} ev={ev} g={opened} i={indexOf(opened)} save={save} onDone={() => setOpen(null)} />}
+      {opened && layout === 'phone' && <GuestSheet key={opened.id} ev={ev} g={opened} i={indexOf(opened)} save={save} onDone={() => setOpen(null)} />}
     </section>
     </main>
-    {action && <div className="action">{action.href
-      ? <a className="primary" href={action.href}>{action.label}</a>
-      : <button className="primary" onClick={action.go}>{action.label}</button>}</div>}
+    {actionEl}
   </>);
+  if (!tablet) return listPane;
+  // iPad (UX_13): the list pane with its action in its bar; beside it (split) or
+  // over it (compact, a pushed page) the guest.
+  const detailGuest = layout === 'split' ? shownGuest : opened;
+  return (
+    <div className={'gsplit ' + layout} data-layout={layout}>
+      <div className="listpane">{listPane}</div>
+      {layout === 'split' && (
+        <aside className="gdetail" data-detail aria-label="Guest">
+          {detailGuest
+            ? <><h2 className="dhead">{detailGuest.name}</h2><GuestDetail key={detailGuest.id} ev={ev} g={detailGuest} i={indexOf(detailGuest)} save={save} onDone={() => setOpen(null)} keys /></>
+            : <p className="empty">{named ? 'Pick a name to see their reply, meal and how to reach them.' : 'Names you add show here, one at a time.'}</p>}
+        </aside>
+      )}
+      {layout === 'compact' && detailGuest && (
+        <aside className="gdetail pushedpane" data-detail aria-label={detailGuest.name}>
+          <div className="navbar"><button className="backbtn" onClick={() => setOpen(null)} aria-label="Back to Guests"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>Guests</button></div>
+          <h2 className="dhead">{detailGuest.name}</h2>
+          <GuestDetail key={detailGuest.id} ev={ev} g={detailGuest} i={indexOf(detailGuest)} save={save} onDone={() => setOpen(null)} keys />
+        </aside>
+      )}
+    </div>
+  );
 }
