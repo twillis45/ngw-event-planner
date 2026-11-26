@@ -32,7 +32,7 @@
 // Writes THROW with e.status, so a page never says "Shared" for a photo the
 // server refused. Reads return a named result, so a refused request is never
 // shown as an empty album.
-import { authHeaders } from '../apiAuth';
+import { authHeaders, isSignedIn } from '../apiAuth';
 
 const BASE = process.env.REACT_APP_API_BASE_URL;
 const enc = encodeURIComponent;
@@ -143,6 +143,7 @@ export function setMyPhotosPrivate(code, guestKey, isPrivate) {
 //   { ok: false, reason: 'not-configured' | 'signed-out' | 'forbidden' | 'unavailable' }
 export async function fetchEventGuestPhotos(eventId) {
   if (!BASE || !eventId) return { ok: false, reason: 'not-configured' };
+  if (!(await isSignedIn())) return { ok: false, reason: 'signed-out' };
   try {
     const res = await fetch(`${BASE}/api/events/${enc(eventId)}/guest-photos`, { headers: await authHeaders() });
     if (res.status === 401) return { ok: false, reason: 'signed-out' };

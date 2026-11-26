@@ -9,6 +9,7 @@
 // The planner token is a TEMPORARY dev gate (matches backend PLANNER_DEV_TOKEN)
 // until Supabase Auth is wired. It is sent as X-Planner-Token.
 import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { isSignedIn } from './apiAuth';
 import { setStripeConfigured, setStripeCanHonourPurchases, setPassSalesPaused } from './stripeApi';
 import { setPassPriceTest } from './passPrice';
 
@@ -44,6 +45,9 @@ const mapChannel = (ch) => CHANNEL_MAP[ch] || 'CLIENT';
 // headers. Re-deriving them there would be a second place to update when the
 // auth rollout finishes, so there is one.
 export async function plannerAuthHeaders() { return authHeaders(); }
+// No session and no dev token: a planner read can only come back 401, so its
+// caller answers "signed out" without asking (live check, 11/26/2026).
+export async function plannerCanAsk() { return Boolean(TOKEN) || isSignedIn(); }
 async function authHeaders() {
   const headers = {};
   if (isSupabaseConfigured() && supabase) {
@@ -160,6 +164,7 @@ export const portalRespond = async (eventId, messageId, payload) => {
 // jsonb codec — see withMetadata); it is decoded here.
 export const listSentMessages = async (eventId) => {
   if (!BASE) return { status: 'not-configured' };
+  if (!(await plannerCanAsk())) return { status: 'signed-out' };
   try {
     const res = await fetch(`${BASE}${base(eventId)}/sent`, { headers: await authHeaders() });
     if (res.status === 401) return { status: 'signed-out' };

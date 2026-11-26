@@ -7,7 +7,7 @@
 //   verifySession         → DONE   (actual payment_status from Stripe API)
 //   Sharing the URL       → LIGHT HANDOFF (copy to clipboard or share externally)
 
-import { plannerAuthHeaders } from './commApi';
+import { plannerAuthHeaders, plannerCanAsk } from './commApi';
 import { publicAppUrl } from './publicAppUrl';
 import { devicePriceKey } from './passPrice';
 
@@ -188,6 +188,8 @@ export const createPassSession = async ({ eventId }) => {
  */
 export const fetchEventPass = async (eventId) => {
   if (!BASE) throw new Error('No API backend configured.');
+  // Signed out the server can only say 401; throw exactly that, unasked.
+  if (!(await plannerCanAsk())) throw new Error('Pass lookup error 401');
   const res = await fetch(
     `${BASE}/api/stripe/pass?event_id=${encodeURIComponent(eventId)}`,
     { headers: { ...(await plannerAuthHeaders()) } },
