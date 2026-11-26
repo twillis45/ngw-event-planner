@@ -45,8 +45,21 @@ test('indoor ice reads as ice', async ({ page }) => {
   await expect(page.locator('[data-wx-travel="ice"]')).toContainText(/Sleet or freezing rain forecast/);
 });
 
-test('indoor rain raises no heads-up', async ({ page }) => {
+// Owner, 11/26/2026: "Yes build the weather line and rain actions". Rain at
+// 30%+ now raises the arrivals heads-up too (wet coats, extra time, a note);
+// still no rain-plan prompt indoors. Light rain under 30% stays quiet.
+test('indoor rain: an arrivals heads-up with a drafted note, no rain plan', async ({ page }) => {
   await boot(page, { pop: 0.8, weather: [{ main: 'Rain', description: 'moderate rain', icon: '10d' }], temp: { min: 48, max: 57 } });
+  const pill = page.locator('[data-wx-travel="rain"]');
+  await expect(pill).toContainText(/Rain forecast for \w+ \(your event day\), 80% chance — guests may need extra time to get there/);
+  await pill.locator('.wxpill-head').click();
+  await expect(pill.getByRole('button', { name: /rain backup|Review the backup/i })).toHaveCount(0);
+  await pill.locator('[data-wx-travel-note]').click();
+  await expect(page.locator('.sheet').last()).toContainText('the forecast shows rain. Leave a little extra time to get here, and bring an umbrella.');
+});
+
+test('indoor light rain under 30% raises no heads-up', async ({ page }) => {
+  await boot(page, { pop: 0.2, weather: [{ main: 'Rain', description: 'light rain', icon: '10d' }], temp: { min: 41, max: 44 } });
   await page.waitForTimeout(1500);
   await expect(page.locator('.wxpill')).toHaveCount(0);
 });

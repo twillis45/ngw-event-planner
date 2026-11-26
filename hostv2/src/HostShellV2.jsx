@@ -74,7 +74,7 @@ import { boardDecisionND, foodDecisionND, blockerDecisionND, foodPanelQuestion, 
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { rsvpHasResponded, notRepliedYet } from '@app/lib/rsvp';
-import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, rainPlanOptions, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, travelHazard, guestTravelMessage } from '@app/lib/weather';
+import { suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, rainPlanOptions, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, forecastLine, skyKind, guestTravelMessage, arrivalWeather, dayWeather } from '@app/lib/weather';
 import { weatherGlyph } from './weatherGlyphs';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { inviteRecipients, inviteSubjectAndBody, greetingName } from '@app/lib/inviteBatch';
@@ -130,6 +130,7 @@ import { identityStatement, honoreeApplies } from '@app/lib/eventIdentity';
 import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, spanEnd, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
 import { dayOfHero } from '@app/lib/dayOfHero';
 import { dayState } from '@app/lib/dayState';
+import { todaysRos, dayOfList, dayOfTickEdit } from '@app/lib/dayOfEdits';
 import { afterOwed } from '@app/lib/afterOwed';
 import { eventDatesPatch, eventSpanLabel, eventStartTimePatch } from '@app/lib/eventDates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
@@ -3711,6 +3712,15 @@ export default function HostShellV2() {
   // the plain forecast the Calendar and Date & time show. Live only — never
   // the sample, which describes no real sky.
   const [dayWx, setDayWx] = useState(null);
+  // FINISHED CHECKS FOLD AWAY (owner, 11/26/2026: "Collapse or remove checks
+  // as they finish" / "Allow collapsing of section"). `dayofDoneOpen` shows the
+  // folded checked rows; `dayofHidden` hides the whole list under its count and
+  // is remembered per event on this device (a convenience, never plan data).
+  const [dayofDoneOpen, setDayofDoneOpen] = useState(false);
+  const [dayofHiddenTick, setDayofHiddenTick] = useState(0);
+  const dayofFoldKey = 'ngw-dayof-hidden-' + (event && event.id);
+  const dayofHidden = (() => { void dayofHiddenTick; try { return localStorage.getItem(dayofFoldKey) === '1'; } catch { return false; } })();
+  const setDayofHidden = (v) => { try { if (v) localStorage.setItem(dayofFoldKey, '1'); else localStorage.removeItem(dayofFoldKey); } catch { /* not remembered */ } setDayofHiddenTick((n) => n + 1); };
   useEffect(() => {
     let dead = false;
     setLiveWx(null);
@@ -3786,7 +3796,8 @@ export default function HostShellV2() {
   const travelWx = useMemo(() => {
     if (!dayWx) return null;
     try { if (placeIsOutdoors(event)) return null; } catch { return null; }
-    try { return travelHazard(dayWx); } catch { return null; }
+    // Rain joins snow, ice and storms (owner, 11/26/2026): lib/weather arrivalWeather.
+    try { return arrivalWeather(dayWx); } catch { return null; }
   }, [event, dayWx]);
   const wxImpact = useMemo(() => {
     if (!wx) return null;
@@ -11061,8 +11072,9 @@ export default function HostShellV2() {
   // Day-before plan — lib/dayBefore, date-gated (0–2 days out). Pure and real:
   // set an event's date to tomorrow and this materializes.
   const dayBefore = useMemo(() => {
-    try { return buildDayBeforePlan(event); } catch { return { applicable: false }; }
-  }, [event]);
+    // dayWx: the live forecast row, so tomorrow's weather rides in the plan.
+    try { return buildDayBeforePlan(event, new Date(), dayWx); } catch { return { applicable: false }; }
+  }, [event, dayWx]);
 
   // ── Create: build a REAL event object and hand it to the engine ──
   const assemble = () => {
@@ -11307,14 +11319,11 @@ export default function HostShellV2() {
   // time of day), a stored ros only when the host has taken ownership.
   const rosBasis = useMemo(() => { try { return rosBasisNote(event); } catch (_e) { return null; } }, [event]);
   const ros = useMemo(() => {
-    try {
-      const all = effectiveRos(event) || [];
-      // ROS day dimension (P1, 2026-07-28): mid-span the Day stage runs TODAY's
-      // rows — day K keeps day-K rows plus the dayless single-day cues on day 1.
-      // Pre-event and single-day: the full program, day labels riding `rel`.
-      const k = dayIndexOf(event);
-      return (k && spanNights(event) > 0) ? all.filter(r => (r.day || 1) === k) : all;
-    } catch { return Array.isArray(event.ros) ? event.ros : []; }
+    // ROS day dimension (P1, 2026-07-28): mid-span the Day stage runs TODAY's
+    // rows — day K keeps day-K rows plus the dayless single-day cues on day 1.
+    // Pre-event and single-day: the full program. lib/dayOfEdits todaysRos, the
+    // reader hostv4's The Day uses too (11/26/2026).
+    try { return todaysRos(event, new Date()); } catch { return Array.isArray(event.ros) ? event.ros : []; }
   }, [event]);
   // Day-of ruling state 3: solemn events drop the count, soften verbs, lean the serif.
   const solemn = useMemo(() => isSolemnEvent(event), [event]);
@@ -11688,8 +11697,41 @@ export default function HostShellV2() {
                 );
   };
 
+  // THE DAY'S WEATHER (owner, 11/26/2026: "Yes build the weather line and rain
+  // actions"). On the day, the forecast for any event: the plain line, and what
+  // it asks of arrivals (rain: a spot for wet coats, a note to guests; snow or
+  // ice: the path). lib/weather dayWeather, the one hostv4's The Day reads.
+  // `title` names the day when the card rides in the day-before plan
+  // (lib/dayBefore dayWeatherLabel: "Tomorrow’s weather").
+  const dayWeatherCard = (title) => {
+    const w = (() => { try { return dayWeather(dayWx); } catch { return null; } })();
+    if (!w) return null;
+    const ticked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
+    return (
+      <div className="card dayof-card" data-day-weather={w.arrival ? w.arrival.kind : 'clear'}>
+        {title && <p className="eyebrow" data-day-weather-title>{title}</p>}
+        <p className="f-name" data-day-weather-line><span className="wx-glyph" aria-hidden="true">{weatherGlyph(w.glyph, { mono: true })}</span> {w.line}</p>
+        {w.arrival && <p className="grounding">{w.arrival.advice}</p>}
+        {w.arrival && w.arrival.checks.map((c) => (
+          <button key={c.key} className={'frow' + (ticked[c.key] ? ' got' : '')} data-wx-check={c.key}
+            onClick={() => { const ed = dayOfTickEdit(event, c.key, c.label); patchEvent(ed.patch, ed.msg); }}>
+            <span className="fcheck" aria-hidden="true" />
+            <span className="f-main"><span className="f-name">{c.label}</span></span>
+          </button>
+        ))}
+        {w.arrival && (
+          <div className="actions-row">
+            <button className="cta" data-wx-day-note onClick={() => { try { openDraft('Weather note to guests', guestTravelMessage(event, w.arrival)); } catch { toast('Couldn’t draft the note.'); } }}>Weather note to guests</button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const dayOfCard = (eyebrow) => {
-                const rc = (() => { try { return playbookDayOfChecklist(event); } catch { return null; } })();
+                // What is checked, and each tick, are lib/dayOfEdits (dayOfList,
+                // dayOfTickEdit): the same reads and writes as hostv4's The Day.
+                const rc = (() => { try { return dayOfList(event); } catch { return null; } })();
                 if (!rc || !rc.items || !rc.items.length) return null;
                 const checked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
                 // ONE RAIN PLAN (single-source audit, 11/18/2026): the 'weather'
@@ -11698,20 +11740,17 @@ export default function HostShellV2() {
                 // beside an unconfirmed "Rain / heat plan". The row now reads the
                 // saved plan, and with none saved a tap opens the rain editor —
                 // where the answer lives — instead of storing a second one.
-                const rainHas = (() => { try { return rainPlanStatus(event).hasPlan; } catch { return false; } })();
+                const rainHas = rc.items.some((p) => p.via === 'rain' && p.checked);
                 const isRainRow = (p) => p.key === 'weather';
                 // ONE TICK (audit 2 lane A P0-6): a row derived from the checklist's
                 // own day-of step IS that step, so it reads and writes the step.
-                const stepIx = (key) => (event.timeline || []).findIndex((t) => t && String(t.id) === String(key));
-                const stepDone = (key) => { const i = stepIx(key); return i >= 0 && !!event.timeline[i].done; };
-                const isChecked = (p) => (isRainRow(p) && rainHas) || !!checked[p.key] || stepDone(p.key);
-                const done = rc.items.filter(isChecked).length;
+                const isChecked = (p) => p.checked;
+                const done = rc.done;
                 const toggle = (key) => {
-                  if (stepIx(key) >= 0 && !checked[key]) { toggleTask(stepIx(key)); return; }
-                  const next = { ...checked };
-                  if (next[key]) delete next[key]; else next[key] = true;
-                  patchEvent({ safetyChecked: next },
-                    (next[key] ? 'Confirmed: ' : 'Reopened: ') + String(rc.items.find((p) => p.key === key)?.label || '').slice(0, 48));
+                  const it = rc.items.find((p) => p.key === key);
+                  if (it && it.via === 'step' && !checked[key]) { toggleTask(it.stepIndex); return; }
+                  const ed = dayOfTickEdit(event, key);
+                  patchEvent(ed.patch, ed.msg);
                 };
                 return (
                   <div className="card dayof-card">
@@ -11729,17 +11768,36 @@ export default function HostShellV2() {
                         so these are the safety basics every event shares. Add anything this one needs.
                       </p>
                     )}
-                    {rc.items.map((p, i) => (
-                      <button key={p.key} className={'frow' + (isChecked(p) ? ' got' : '')}
-                        style={{ animation: rowEnter(i) }} data-dayof-item={p.key}
-                        onClick={() => (isRainRow(p) && (rainHas || !checked[p.key]) ? setSheet({ kind: 'rain' }) : toggle(p.key))}>
-                        <span className="fcheck" aria-hidden="true" />
-                        <span className="f-main">
-                          <span className="f-name">{p.label}</span>
-                          {p.detail ? <span className="f-sub">{p.detail}</span> : null}
-                        </span>
-                      </button>
-                    ))}
+                    <div className="actions-row">
+                      <button className="vd-link dayof-fold" data-dayof-fold aria-expanded={!dayofHidden}
+                        onClick={() => setDayofHidden(!dayofHidden)}>{dayofHidden ? 'Show the list' : 'Hide the list'}</button>
+                    </div>
+                    {!dayofHidden && (() => {
+                      const row = (p, i) => (
+                        <button key={p.key} className={'frow' + (isChecked(p) ? ' got' : '')}
+                          style={{ animation: rowEnter(i) }} data-dayof-item={p.key}
+                          onClick={() => (isRainRow(p) && (rainHas || !checked[p.key]) ? setSheet({ kind: 'rain' }) : toggle(p.key))}>
+                          <span className="fcheck" aria-hidden="true" />
+                          <span className="f-main">
+                            <span className="f-name">{p.label}</span>
+                            {p.detail ? <span className="f-sub">{p.detail}</span> : null}
+                          </span>
+                        </button>
+                      );
+                      // Open rows in full; finished ones fold into one "N done" row.
+                      const open = rc.items.filter((p) => !isChecked(p));
+                      const fin = rc.items.filter(isChecked);
+                      return (<>
+                        {open.map(row)}
+                        {fin.length > 0 && (
+                          <button className="vd-link dayof-done" data-dayof-done aria-expanded={dayofDoneOpen}
+                            onClick={() => setDayofDoneOpen(!dayofDoneOpen)}>
+                            {fin.length} done{dayofDoneOpen ? ' · hide' : ' · show'}
+                          </button>
+                        )}
+                        {dayofDoneOpen && fin.map(row)}
+                      </>);
+                    })()}
                   </div>
                 );
   };
@@ -14740,6 +14798,9 @@ export default function HostShellV2() {
                   {dayBefore.moment && <p><strong style={{ color: 'var(--carbon-text)' }}>Protect the moment:</strong> {dayBefore.moment.text}</p>}
                   <div className="db-rows">
                   {(dayBefore.sections || []).slice(0, 5).map(sec => {
+                    // Tomorrow's weather: the same card The Day shows (line,
+                    // arrival checks, note to guests), named for the day.
+                    if (sec.key === 'weather') return <Fragment key="weather">{dayWeatherCard(sec.label)}</Fragment>;
                     // Modernized rows (2026-07-11): each engine section reads as a
                     // full-width stacked row — a bold plain-language lead carrying
                     // the COUNT, the engine's own honest sentence beneath. The lead
@@ -16357,6 +16418,7 @@ export default function HostShellV2() {
                 </div>
               )}
               {/* Until the doors open: once the event is under way the timeline leads. */}
+              {dayWeatherCard()}
               {!doorsOpen && dayOfCard('Before guests arrive')}
               {/* Day alerts — the SAME engine the production app reads
                   (lib/dayAlerts): what needs you RIGHT NOW, three calm tiers. */}
@@ -16591,6 +16653,7 @@ export default function HostShellV2() {
                   the borrowed playbook does: 32 of 39 playbooks author no
                   day-of list, and a generic safety floor presented as this
                   event's own would be a claim we have not earned. */}
+              {dayWeatherCard()}
               {dayOfCard('Before the big day')}
               {momentSuggestion()}
               <div className="eyebrow">{event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'No date'} · {isPast ? 'as it ran' : 'preview'}</div>

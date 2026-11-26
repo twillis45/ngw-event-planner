@@ -21,7 +21,7 @@ const preview = src.slice(previewStart, previewStart + 20000);
 test('one renderer for the day-of list and one for the moment', () => {
   expect(src.match(/const dayOfCard = \(eyebrow\) => \{/g)).toHaveLength(1);
   expect(src.match(/const momentSuggestion = \(\) => \{/g)).toHaveLength(1);
-  expect(src.match(/playbookDayOfChecklist\(event\)/g)).toHaveLength(1);
+  expect(src.match(/dayOfList\(event\)/g)).toHaveLength(1); // lib/dayOfEdits, shared with hostv4
 });
 test('on the day: the list ("Before guests arrive") and the moment', () => {
   // until the doors open; once the event is under way the timeline leads

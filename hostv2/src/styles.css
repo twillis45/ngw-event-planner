@@ -3626,6 +3626,10 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel-soft); outline-offset
    (.panel: var(--sp-4)); without it the text sat 1px inside the edge in both
    themes (audit 2 lane F P2-5, 11/22/2026; lightSectionsSitOnPanels pins it). */
 .dayof-card{ margin:0 0 var(--sp-5); padding:var(--sp-4); }
+/* Finished checks fold away (owner, 11/26/2026): the list's hide toggle and
+   the "N done" fold are the vd-link text button, flush with the rows. */
+.dayof-card .dayof-fold{ padding-left:0; }
+.dayof-card .dayof-done{ display:flex; width:100%; justify-content:flex-start; padding-left:0; }
 /* The decisions queue's FLIP container. It exists to give `playReorder`
    something to measure inside -- `.map` returns siblings with no shared parent
    -- so it deliberately adds no box of its own: `display:contents` would remove

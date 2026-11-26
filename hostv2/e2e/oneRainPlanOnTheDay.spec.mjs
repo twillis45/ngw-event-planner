@@ -22,6 +22,7 @@ const boot = async (page, extra) => {
 
 test('a saved rain plan confirms the day-of rain row', async ({ page }) => {
   const row = await boot(page, { rainPlan: 'Into the garage' });
+  await page.locator('.dayof-card [data-dayof-done]').click();
   await expect(row).toHaveClass(/\bgot\b/);
 });
 

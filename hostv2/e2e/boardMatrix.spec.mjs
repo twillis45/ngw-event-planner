@@ -388,7 +388,14 @@ for (const state of STATES) {
           const r = el.getBoundingClientRect();
           return { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
         };
-        const layers = ['.next-bar', '.wxpill', '.dock'].map(s => [s, vis(document.querySelector(s))]).filter(([, r]) => r);
+        // PINNED means pinned: on a phone or a tall iPad the weather pill sits
+        // inline in the header's date line (.tt-wx-slot) and scrolls away with
+        // the page (aTallIPadGetsItsOwnBoard: "nothing floats"), so it is not a
+        // layer that can cover content. Counting it read a header 1,400px above
+        // the screen as the pinned top (11/26/2026, once indoor-or-outdoor rain
+        // began raising the pill).
+        const pinnedEl = (sel) => [...document.querySelectorAll(sel)].find((e) => !e.closest('.tt-wx-slot')) || null;
+        const layers = ['.next-bar', '.wxpill', '.dock'].map(s => [s, vis(pinnedEl(s))]).filter(([, r]) => r);
         const overlaps = [];
         for (let i = 0; i < layers.length; i++) for (let j = i + 1; j < layers.length; j++) {
           const [na, a] = layers[i], [nb, b] = layers[j];

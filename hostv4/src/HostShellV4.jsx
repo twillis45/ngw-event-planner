@@ -13,8 +13,9 @@ import InvitePage from './InvitePage.jsx';
 import InviteDesignPage from './InviteDesignPage.jsx';
 
 // Pushed pages, by id: their title and the name of the link back to them.
-const PAGE_TITLE = { guests: 'Guests', updates: 'Updates and questions', invite: 'Your invite', 'invite-design': 'Design this page' };
+const PAGE_TITLE = { guests: 'Guests', updates: 'Updates and questions', invite: 'Your invite', 'invite-design': 'Design this page', run: 'Today’s run' };
 import UpdatesPage from './UpdatesPage.jsx';
+import DayPage, { RunPage, CounterMode } from './DayPage.jsx';
 import { readCustomEvents, patchSavedEvent } from '@app/lib/customEventStore';
 import { sourcedBudget } from '@app/lib/playbooks';
 import { saveEvent as cloudSaveEvent } from '@app/lib/api/events';
@@ -130,6 +131,7 @@ export default function HostShellV4() {
   const [stack, setStack] = useState([]); // pages pushed over the tab: 'guests', then 'invite'
   const layout = useLayout();
   const [sideOpen, setSideOpen] = useState(false);
+  const [counter, setCounter] = useState(false); // counter mode: The Day in large type, over everything
   const page = stack[stack.length - 1] || null;
   // Every pushed page is a history entry, so browser back (and Safari's edge
   // swipe) equals app back (UX_12 §7a.7).
@@ -221,7 +223,7 @@ export default function HostShellV4() {
 
   if (page) {
     // The link back names the page it goes to (one table names both).
-    const from = stack.length > 1 ? PAGE_TITLE[stack[stack.length - 2]] : tab === 'plan' ? 'Your plan' : 'Next step';
+    const from = stack.length > 1 ? PAGE_TITLE[stack[stack.length - 2]] : tab === 'plan' ? 'Your plan' : tab === 'day' ? 'The Day' : 'Next step';
     const navbar = (title, acts) => (<>
       <div className="navbar"><button className="backbtn" onClick={back} aria-label={'Back to ' + from}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>{from}</button></div>
       {acts ? <div className="ltrow"><h1 className="lt">{title}</h1>{acts}</div> : <h1 className="lt">{title}</h1>}
@@ -232,15 +234,26 @@ export default function HostShellV4() {
         {page === 'updates' && <UpdatesPage key={ev.id} ev={ev} nav={navbar(PAGE_TITLE.updates)} status={status} />}
         {page === 'invite' && <InvitePage key={ev.id} ev={ev} save={saveEdit} nav={navbar(PAGE_TITLE.invite)} status={status} onDesign={() => push('invite-design')} />}
         {page === 'invite-design' && <InviteDesignPage key={ev.id} ev={ev} save={saveEdit} nav={navbar(PAGE_TITLE['invite-design'])} status={status} />}
+        {page === 'run' && <RunPage key={ev.id} ev={ev} save={saveEdit} nav={navbar(PAGE_TITLE.run)} status={status} />}
         {tabbar}
       </div>
     );
   }
 
+  // COUNTER MODE covers the app until she leaves it.
+  if (counter) return <CounterMode ev={ev} save={saveEdit} onLeave={() => setCounter(false)} />;
+  // THE DAY (11/26/2026): its own page, with its own title, button and sheets.
+  if (tab === 'day') return frame(
+    <div className="app">
+      <DayPage key={ev.id} ev={ev} save={saveEdit} status={status} date={date} onRun={() => push('run')} onCounter={() => setCounter(true)} />
+      {tabbar}
+    </div>
+  );
+
   return frame(
     <div className="app">
       <main className="view" data-tab={tab}>
-        <h1 className="lt">{tab === 'plan' ? 'Your plan' : tab === 'day' ? 'The Day' : ev.name}</h1>
+        <h1 className="lt">{tab === 'plan' ? 'Your plan' : ev.name}</h1>
         <p className="sub">{sample && tab !== 'plan' ? 'Sample · ' : ''}{tab === 'plan' ? ev.name + (date ? ' · ' + date : '') : date}{holiday && tab !== 'plan' ? ' · ' + holiday : ''}</p>
         {/* The sentence lives on Your plan, so a question screen stays inside its word budget. */}
         {sample && tab === 'plan' && <p className="fine" data-sample>A sample plan. Plans you make in the current app open here.</p>}
@@ -272,7 +285,6 @@ export default function HostShellV4() {
           </section>
         )}
 
-        {tab === 'day' && <p className="qhelp" data-day>The Day’s timeline comes after Guests in the new design. Until then it’s in the current app.</p>}
       </main>
 
       {tab === 'next' && sb && <div className="action"><button className="primary" onClick={() => setBudget(tierPick)}>Plan with {money(tierPick)}</button></div>}
