@@ -39,11 +39,12 @@ button.primary { border: 0; cursor: pointer; font-family: var(--sans); }
 [aria-checked="true"] > .radio { border-color: var(--accent); }
 [aria-checked="true"] > .radio::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: var(--accent); }
 .link { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; font-weight: 500; cursor: pointer; min-height: 44px; }
-.fine .link { min-height: 0; padding: 12px 0; }
+/* A link inside a sentence is still a 44px target (live check, 11/26/2026:
+   Undo measured 38×21); the negative margin keeps the sentence's lines even. */
+.fine .link, .done .link, .line .link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; margin: -12px -4px; vertical-align: middle; }
 .fine.warn { color: var(--warn); }
 .grp + .fine { margin-top: 12px; }
 .done { font-size: .9375rem; line-height: 1.4; color: var(--ok); margin: 0 2px 12px; }
-.done .link { min-height: 0; padding: 0; }
 .sheet .card { margin-top: 14px; }
 .sheet .card .q { font-size: 1.1875rem; }
 .nm { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -79,7 +80,6 @@ button.primary { border: 0; cursor: pointer; font-family: var(--sans); }
 .addrow { display: flex; gap: 12px; align-items: flex-start; }
 .addrow .link { padding: 0 4px; }
 .line { font-size: .9375rem; color: var(--ink-2); margin: 0 2px 12px; }
-.line .link { min-height: 0; padding: 10px 0; }
 .stepper { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; min-height: 64px; }
 .stepper .num { font-size: 1.75rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .stepper .btns { display: flex; gap: 10px; }
