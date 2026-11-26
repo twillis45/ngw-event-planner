@@ -1,0 +1,222 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "v4-moment",
+    "ok": true,
+    "label": "Worth a spot: Group photo Not on today’s run yet.",
+    "nextStep": "3:20 PM",
+    "defaultTime": "15:20",
+    "added": [
+     {
+      "id": "m-groupPhoto",
+      "time": "15:20",
+      "seg": "Group photo"
+     }
+    ],
+    "rosEdited": true,
+    "rowGoneOrNext": "Worth a spot: Shared meal / mingle Not on today’s run yet.",
+    "sideways": 0
+   },
+   {
+    "name": "v2-trip-day2-add",
+    "ok": true,
+    "label": "Worth a spot on the schedule: Group photo Add it",
+    "ids": [
+     "r1",
+     "r2",
+     "r3",
+     "r4",
+     "m-groupPhoto"
+    ],
+    "kept": true,
+    "added": [
+     "m-groupPhoto day undefined"
+    ],
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "834x1194",
+  "steps": [
+   {
+    "name": "v4-moment",
+    "ok": true,
+    "label": "Worth a spot: Group photo Not on today’s run yet.",
+    "nextStep": "3:20 PM",
+    "defaultTime": "15:20",
+    "added": [
+     {
+      "id": "m-groupPhoto",
+      "time": "15:20",
+      "seg": "Group photo"
+     }
+    ],
+    "rosEdited": true,
+    "rowGoneOrNext": "Worth a spot: Shared meal / mingle Not on today’s run yet.",
+    "sideways": 0
+   },
+   {
+    "name": "v2-trip-day2-add",
+    "ok": true,
+    "label": "Worth a spot on the schedule: Group photo Add it",
+    "ids": [
+     "r1",
+     "r2",
+     "r3",
+     "r4",
+     "m-groupPhoto"
+    ],
+    "kept": true,
+    "added": [
+     "m-groupPhoto day undefined"
+    ],
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "v4-moment",
+    "ok": true,
+    "label": "Worth a spot: Group photo Not on today’s run yet.",
+    "nextStep": "3:20 PM",
+    "defaultTime": "15:20",
+    "added": [
+     {
+      "id": "m-groupPhoto",
+      "time": "15:20",
+      "seg": "Group photo"
+     }
+    ],
+    "rosEdited": true,
+    "rowGoneOrNext": "Worth a spot: Shared meal / mingle Not on today’s run yet.",
+    "sideways": 0
+   },
+   {
+    "name": "v2-trip-day2-add",
+    "ok": true,
+    "label": "Worth a spot on the schedule: Group photo Add it",
+    "ids": [
+     "r1",
+     "r2",
+     "r3",
+     "r4",
+     "m-groupPhoto"
+    ],
+    "kept": true,
+    "added": [
+     "m-groupPhoto day undefined"
+    ],
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1194x834",
+  "steps": [
+   {
+    "name": "v4-moment",
+    "ok": true,
+    "label": "Worth a spot: Group photo Not on today’s run yet.",
+    "nextStep": "3:20 PM",
+    "defaultTime": "15:20",
+    "added": [
+     {
+      "id": "m-groupPhoto",
+      "time": "15:20",
+      "seg": "Group photo"
+     }
+    ],
+    "rosEdited": true,
+    "rowGoneOrNext": "Worth a spot: Shared meal / mingle Not on today’s run yet.",
+    "sideways": 0
+   },
+   {
+    "name": "v2-trip-day2-add",
+    "ok": true,
+    "label": "Worth a spot on the schedule: Group photo Add it",
+    "ids": [
+     "r1",
+     "r2",
+     "r3",
+     "r4",
+     "m-groupPhoto"
+    ],
+    "kept": true,
+    "added": [
+     "m-groupPhoto day undefined"
+    ],
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1440x900",
+  "steps": [
+   {
+    "name": "v4-moment",
+    "ok": true,
+    "label": "Worth a spot: Group photo Not on today’s run yet.",
+    "nextStep": "3:20 PM",
+    "defaultTime": "15:20",
+    "added": [
+     {
+      "id": "m-groupPhoto",
+      "time": "15:20",
+      "seg": "Group photo"
+     }
+    ],
+    "rosEdited": true,
+    "rowGoneOrNext": "Worth a spot: Shared meal / mingle Not on today’s run yet.",
+    "sideways": 0
+   },
+   {
+    "name": "v2-trip-day2-add",
+    "ok": true,
+    "label": "Worth a spot on the schedule: Group photo Add it",
+    "ids": [
+     "r1",
+     "r2",
+     "r3",
+     "r4",
+     "m-groupPhoto"
+    ],
+    "kept": true,
+    "added": [
+     "m-groupPhoto day undefined"
+    ],
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ }
+]

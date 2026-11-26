@@ -1,0 +1,457 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "eve-shop-matches",
+    "ok": true,
+    "before": [
+     "shopping: Still to get 28 items",
+     "vendors: Reconfirm your vendors 1 to lock in"
+    ],
+    "stillToGetItems": 28,
+    "markedBought": 28,
+    "after": [
+     "shopping: Still to get 4 rentals",
+     "vendors: Reconfirm your vendors 1 to lock in"
+    ],
+    "rainRow": false,
+    "sideways": 0
+   },
+   {
+    "name": "eve-crab-asks-rain",
+    "ok": true,
+    "rows": [
+     "shopping",
+     "vendors",
+     "rain"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "day-alerts",
+    "ok": true,
+    "line": "Watch 1 hasn’t replied",
+    "aboveNow": true,
+    "rows": [
+     "Watch 1 hasn’t replied Headcount may shift — text them, or plan for 2 to be safe"
+    ],
+    "now": "Now · since 1:00 PM Potatoes on to boil; thermometer check on the bird against t",
+    "sideways": 0
+   },
+   {
+    "name": "day-crew",
+    "ok": true,
+    "row": "Your day crew 1 of 2 sent",
+    "crew": [
+     "Ada Pine Drinks and ice Send",
+     "Ben Oak Coats and parking Link sent Resend"
+    ],
+    "sendButtons": 2,
+    "brief": "Everyone’s part today One message with each person’s job and time.",
+    "printHref": "../hostv2/",
+    "shared": 0,
+    "blockedSoFar": [],
+    "sideways": 0
+   },
+   {
+    "name": "running-late",
+    "ok": true,
+    "options": [
+     "15 min",
+     "30 min",
+     "45 min"
+    ],
+    "preview": "2:30 PM Turkey out to rest under foil 3:00 PM Mash finished and held warm 3:00 PM Arrivals stay at 3:00 PM Guests already have the time. 3:50 PM Arriving dishes landed, labeled, and slotted into the oven map",
+    "savedBeforeGo": false,
+    "rosEdited": true,
+    "arrival": "15:00 Arrivals: coats, first drinks,",
+    "tellRow": 1,
+    "nowBefore": "Now · since 1:00 PM Potatoes on to boil; thermometer check on the bird against t",
+    "nowAfter": "Now · since 1:00 PM Potatoes on to boil; thermometer check on the bird against t",
+    "shared": 0,
+    "sideways": 0
+   },
+   {
+    "name": "counter-late",
+    "ok": true,
+    "runningLateInCounter": 1,
+    "sideways": 0
+   },
+   {
+    "name": "outdoor-weather",
+    "ok": true,
+    "card": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the walk in. A note to guests now lets them leave a little early; keep a spot by the door for wet coats and umbrel",
+    "impact": "Rain risk is on Thursday (your event day), but hourly timing isn’t available yet — confirm the rain plan without assuming when it will hit.",
+    "setRainPlan": 1,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": []
+ },
+ {
+  "vp": "834x1194",
+  "steps": [
+   {
+    "name": "eve-shop-matches",
+    "ok": true,
+    "before": [
+     "shopping: Still to get 28 items",
+     "vendors: Reconfirm your vendors 1 to lock in"
+    ],
+    "stillToGetItems": 28,
+    "markedBought": 28,
+    "after": [
+     "shopping: Still to get 4 rentals",
+     "vendors: Reconfirm your vendors 1 to lock in"
+    ],
+    "rainRow": false,
+    "sideways": 0
+   },
+   {
+    "name": "eve-crab-asks-rain",
+    "ok": true,
+    "rows": [
+     "shopping",
+     "vendors",
+     "rain"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "day-alerts",
+    "ok": true,
+    "line": "Watch 1 hasn’t replied",
+    "aboveNow": true,
+    "rows": [
+     "Watch 1 hasn’t replied Headcount may shift — text them, or plan for 2 to be safe"
+    ],
+    "now": "Now · since 1:00 PM Potatoes on to boil; thermometer check on the bird against t",
+    "sideways": 0
+   },
+   {
+    "name": "day-crew",
+    "ok": true,
+    "row": "Your day crew 1 of 2 sent",
+    "crew": [
+     "Ada Pine Drinks and ice Send",
+     "Ben Oak Coats and parking Link sent Resend"
+    ],
+    "sendButtons": 2,
+    "brief": "Everyone’s part today One message with each person’s job and time.",
+    "printHref": "../hostv2/",
+    "shared": 0,
+    "blockedSoFar": [],
+    "sideways": 0
+   },
+   {
+    "name": "running-late",
+    "ok": true,
+    "options": [
+     "15 min",
+     "30 min",
+     "45 min"
+    ],
+    "preview": "2:30 PM Turkey out to rest under foil 3:00 PM Mash finished and held warm 3:00 PM Arrivals stay at 3:00 PM Guests already have the time. 3:50 PM Arriving dishes landed, labeled, and slotted into the oven map",
+    "savedBeforeGo": false,
+    "rosEdited": true,
+    "arrival": "15:00 Arrivals: coats, first drinks,",
+    "tellRow": 1,
+    "nowBefore": "Now · since 1:00 PM Potatoes on to boil; thermometer check on the bird against t",
+    "nowAfter": "Now · since 1:00 PM Potatoes on to boil; thermometer check on the bird against t",
+    "shared": 0,
+    "sideways": 0
+   },
+   {
+    "name": "counter-late",
+    "ok": true,
+    "runningLateInCounter": 1,
+    "sideways": 0
+   },
+   {
+    "name": "outdoor-weather",
+    "ok": true,
+    "card": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the walk in. A note to guests now lets them leave a little early; keep a spot by the door for wet coats and umbrel",
+    "impact": "Rain risk is on Thursday (your event day), but hourly timing isn’t available yet — confirm the rain plan without assuming when it will hit.",
+    "setRainPlan": 1,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": []
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "eve-shop-matches",
+    "ok": true,
+    "before": [
+     "shopping: Still to get 28 items",
+     "vendors: Reconfirm your vendors 1 to lock in"
+    ],
+    "stillToGetItems": 28,
+    "markedBought": 28,
+    "after": [
+     "shopping: Still to get 4 rentals",
+     "vendors: Reconfirm your vendors 1 to lock in"
+    ],
+    "rainRow": false,
+    "sideways": 0
+   },
+   {
+    "name": "eve-crab-asks-rain",
+    "ok": true,
+    "rows": [
+     "shopping",
+     "vendors",
+     "rain"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "day-alerts",
+    "ok": true,
+    "line": "Watch 1 hasn’t replied",
+    "aboveNow": true,
+    "rows": [
+     "Watch 1 hasn’t replied Headcount may shift — text them, or plan for 2 to be safe"
+    ],
+    "now": "Now · since 1:00 PM Potatoes on to boil; thermometer check on the bird against t",
+    "sideways": 0
+   },
+   {
+    "name": "day-crew",
+    "ok": true,
+    "row": "Your day crew 1 of 2 sent",
+    "crew": [
+     "Ada Pine Drinks and ice Send",
+     "Ben Oak Coats and parking Link sent Resend"
+    ],
+    "sendButtons": 2,
+    "brief": "Everyone’s part today One message with each person’s job and time.",
+    "printHref": "../hostv2/",
+    "shared": 0,
+    "blockedSoFar": [],
+    "sideways": 0
+   },
+   {
+    "name": "running-late",
+    "ok": true,
+    "options": [
+     "15 min",
+     "30 min",
+     "45 min"
+    ],
+    "preview": "2:30 PM Turkey out to rest under foil 3:00 PM Mash finished and held warm 3:00 PM Arrivals stay at 3:00 PM Guests already have the time. 3:50 PM Arriving dishes landed, labeled, and slotted into the oven map",
+    "savedBeforeGo": false,
+    "rosEdited": true,
+    "arrival": "15:00 Arrivals: coats, first drinks,",
+    "tellRow": 1,
+    "nowBefore": "Now · since 1:00 PM Potatoes on to boil; thermometer check on the bird against t",
+    "nowAfter": "Now · since 1:00 PM Potatoes on to boil; thermometer check on the bird against t",
+    "shared": 0,
+    "sideways": 0
+   },
+   {
+    "name": "counter-late",
+    "ok": true,
+    "runningLateInCounter": 1,
+    "sideways": 0
+   },
+   {
+    "name": "outdoor-weather",
+    "ok": true,
+    "card": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the walk in. A note to guests now lets them leave a little early; keep a spot by the door for wet coats and umbrel",
+    "impact": "Rain risk is on Thursday (your event day), but hourly timing isn’t available yet — confirm the rain plan without assuming when it will hit.",
+    "setRainPlan": 1,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": []
+ },
+ {
+  "vp": "1194x834",
+  "steps": [
+   {
+    "name": "eve-shop-matches",
+    "ok": true,
+    "before": [
+     "shopping: Still to get 28 items",
+     "vendors: Reconfirm your vendors 1 to lock in"
+    ],
+    "stillToGetItems": 28,
+    "markedBought": 28,
+    "after": [
+     "shopping: Still to get 4 rentals",
+     "vendors: Reconfirm your vendors 1 to lock in"
+    ],
+    "rainRow": false,
+    "sideways": 0
+   },
+   {
+    "name": "eve-crab-asks-rain",
+    "ok": true,
+    "rows": [
+     "shopping",
+     "vendors",
+     "rain"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "day-alerts",
+    "ok": true,
+    "line": "Watch 1 hasn’t replied",
+    "aboveNow": true,
+    "rows": [
+     "Watch 1 hasn’t replied Headcount may shift — text them, or plan for 2 to be safe"
+    ],
+    "now": "Now · since 1:00 PM Potatoes on to boil; thermometer check on the bird against t",
+    "sideways": 0
+   },
+   {
+    "name": "day-crew",
+    "ok": true,
+    "row": "Your day crew 1 of 2 sent",
+    "crew": [
+     "Ada Pine Drinks and ice Send",
+     "Ben Oak Coats and parking Link sent Resend"
+    ],
+    "sendButtons": 2,
+    "brief": "Everyone’s part today One message with each person’s job and time.",
+    "printHref": "../hostv2/",
+    "shared": 0,
+    "blockedSoFar": [],
+    "sideways": 0
+   },
+   {
+    "name": "running-late",
+    "ok": true,
+    "options": [
+     "15 min",
+     "30 min",
+     "45 min"
+    ],
+    "preview": "2:30 PM Turkey out to rest under foil 3:00 PM Mash finished and held warm 3:00 PM Arrivals stay at 3:00 PM Guests already have the time. 3:50 PM Arriving dishes landed, labeled, and slotted into the oven map",
+    "savedBeforeGo": false,
+    "rosEdited": true,
+    "arrival": "15:00 Arrivals: coats, first drinks,",
+    "tellRow": 1,
+    "nowBefore": "Now · since 1:00 PM Potatoes on to boil; thermometer check on the bird against t",
+    "nowAfter": "Now · since 1:00 PM Potatoes on to boil; thermometer check on the bird against t",
+    "shared": 0,
+    "sideways": 0
+   },
+   {
+    "name": "counter-late",
+    "ok": true,
+    "runningLateInCounter": 1,
+    "sideways": 0
+   },
+   {
+    "name": "outdoor-weather",
+    "ok": true,
+    "card": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the walk in. A note to guests now lets them leave a little early; keep a spot by the door for wet coats and umbrel",
+    "impact": "Rain risk is on Thursday (your event day), but hourly timing isn’t available yet — confirm the rain plan without assuming when it will hit.",
+    "setRainPlan": 1,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": []
+ },
+ {
+  "vp": "1440x900",
+  "steps": [
+   {
+    "name": "eve-shop-matches",
+    "ok": true,
+    "before": [
+     "shopping: Still to get 28 items",
+     "vendors: Reconfirm your vendors 1 to lock in"
+    ],
+    "stillToGetItems": 28,
+    "markedBought": 28,
+    "after": [
+     "shopping: Still to get 4 rentals",
+     "vendors: Reconfirm your vendors 1 to lock in"
+    ],
+    "rainRow": false,
+    "sideways": 0
+   },
+   {
+    "name": "eve-crab-asks-rain",
+    "ok": true,
+    "rows": [
+     "shopping",
+     "vendors",
+     "rain"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "day-alerts",
+    "ok": true,
+    "line": "Watch 1 hasn’t replied",
+    "aboveNow": true,
+    "rows": [
+     "Watch 1 hasn’t replied Headcount may shift — text them, or plan for 2 to be safe"
+    ],
+    "now": "Now · since 1:00 PM Potatoes on to boil; thermometer check on the bird against t",
+    "sideways": 0
+   },
+   {
+    "name": "day-crew",
+    "ok": true,
+    "row": "Your day crew 1 of 2 sent",
+    "crew": [
+     "Ada Pine Drinks and ice Send",
+     "Ben Oak Coats and parking Link sent Resend"
+    ],
+    "sendButtons": 2,
+    "brief": "Everyone’s part today One message with each person’s job and time.",
+    "printHref": "../hostv2/",
+    "shared": 0,
+    "blockedSoFar": [],
+    "sideways": 0
+   },
+   {
+    "name": "running-late",
+    "ok": true,
+    "options": [
+     "15 min",
+     "30 min",
+     "45 min"
+    ],
+    "preview": "2:30 PM Turkey out to rest under foil 3:00 PM Mash finished and held warm 3:00 PM Arrivals stay at 3:00 PM Guests already have the time. 3:50 PM Arriving dishes landed, labeled, and slotted into the oven map",
+    "savedBeforeGo": false,
+    "rosEdited": true,
+    "arrival": "15:00 Arrivals: coats, first drinks,",
+    "tellRow": 1,
+    "nowBefore": "Now · since 1:00 PM Potatoes on to boil; thermometer check on the bird against t",
+    "nowAfter": "Now · since 1:00 PM Potatoes on to boil; thermometer check on the bird against t",
+    "shared": 0,
+    "sideways": 0
+   },
+   {
+    "name": "counter-late",
+    "ok": true,
+    "runningLateInCounter": 1,
+    "sideways": 0
+   },
+   {
+    "name": "outdoor-weather",
+    "ok": true,
+    "card": "Moderate rain · 48°–54°F · 100% chance of rain or snow Rain slows the drive and soaks the walk in. A note to guests now lets them leave a little early; keep a spot by the door for wet coats and umbrel",
+    "impact": "Rain risk is on Thursday (your event day), but hourly timing isn’t available yet — confirm the rain plan without assuming when it will hit.",
+    "setRainPlan": 1,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": []
+ }
+]

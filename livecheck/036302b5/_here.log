@@ -1,0 +1,50 @@
+390x844 ok   here-list 
+390x844 ok   tap-in-and-undo 
+390x844 ok   not-before-doors 
+390x844 ok   not-for-headcount 
+834x1194 ok   here-list 
+834x1194 ok   tap-in-and-undo 
+834x1194 ok   not-before-doors 
+834x1194 ok   not-for-headcount 
+1024x1366 ok   here-list 
+1024x1366 ok   tap-in-and-undo 
+1024x1366 ok   not-before-doors 
+1024x1366 ok   not-for-headcount 
+1194x834 ok   here-list 
+1194x834 ok   tap-in-and-undo 
+1194x834 ok   not-before-doors 
+1194x834 ok   not-for-headcount 
+1440x900 ok   here-list 
+1440x900 ok   tap-in-and-undo 
+1440x900 ok   not-before-doors 
+1440x900 ok   not-for-headcount 
+
+390x844 pageErrors:0 blocked:
+  ok  here-list side 0
+  ok  tap-in-and-undo side 0
+  ok  not-before-doors side 0
+  ok  not-for-headcount side 0
+
+834x1194 pageErrors:0 blocked:
+  ok  here-list side 0
+  ok  tap-in-and-undo side 0
+  ok  not-before-doors side 0
+  ok  not-for-headcount side 0
+
+1024x1366 pageErrors:0 blocked:
+  ok  here-list side 0
+  ok  tap-in-and-undo side 0
+  ok  not-before-doors side 0
+  ok  not-for-headcount side 0
+
+1194x834 pageErrors:0 blocked:
+  ok  here-list side 0
+  ok  tap-in-and-undo side 0
+  ok  not-before-doors side 0
+  ok  not-for-headcount side 0
+
+1440x900 pageErrors:0 blocked:
+  ok  here-list side 0
+  ok  tap-in-and-undo side 0
+  ok  not-before-doors side 0
+  ok  not-for-headcount side 0
