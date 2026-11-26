@@ -307,3 +307,6 @@ a.link { text-decoration: none; }
 /* A row's action is a 44px target with its word centered in it (measured: the
    box was centered but the text sat at its top). */
 .row .act { display: inline-flex; align-items: center; justify-content: center; }
+
+/* Reminders in your calendar: the lead switch sits above the list. */
+.sheet .seg { margin: 0 0 14px; }
