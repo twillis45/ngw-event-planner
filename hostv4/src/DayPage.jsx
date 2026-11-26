@@ -13,7 +13,7 @@
 // lib/dayState and lib/dayOfEdits, and every write is one of their edits.
 import { useEffect, useState } from 'react';
 import { dayState } from '@app/lib/dayState';
-import { todaysRos, dayOfList, dayOfTickEdit, dayOfStepEdit, cuesDoneEdit, ridesDue, nextDayOfCheck } from '@app/lib/dayOfEdits';
+import { todaysRos, dayOfList, dayOfTickEdit, dayOfStepEdit, cuesDoneEdit, ridesDue, nextDayOfCheck, runningLate } from '@app/lib/dayOfEdits';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import { clock12 } from '@app/lib/clock';
 import { parseMin } from '@app/lib/dayAlerts';
@@ -127,7 +127,7 @@ function CheckRow({ item, onTick, onDetail, attr }) {
   );
 }
 
-export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter, onGuests, onCrew, date, forecast }) {
+export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter, onGuests, onCrew, onUpdates, date, forecast }) {
   const now = useNow(fixed);
   const { ros, st, list } = useDay(ev, now);
   const wxRow = useForecast(ev, forecast);
@@ -135,6 +135,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
   const [copied, setCopied] = useState(false);
   const [sheet, setSheet] = useState(null); // 'help' | 'list' | { detail: key }
   const [more, setMore] = useState(false);
+  const [late, setLate] = useState(false);
   const start = clock12(ev.startTime);
 
   const tick = (item) => {
@@ -161,6 +162,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
     </div>
   );
   const sheets = (<>
+    {late && <LateSheet ev={ev} save={save} now={now} onDone={() => setLate(false)} onUpdates={onUpdates} />}
     {sheet === 'help' && <HelpSheet ev={ev} onDone={() => setSheet(null)} />}
     {sheet === 'note' && note && (
       <Sheet title="Weather note to guests" onDone={() => setSheet(null)}>
@@ -195,6 +197,10 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
     <button className="row go" data-open-crew onClick={onCrew}>
       <span className="nm">Your day crew</span><span className="val">{crew.filter((c) => c.linkSent).length} of {crew.length} sent</span>{chev}
     </button>
+  );
+  // RUNNING LATE (B8): once the day is under way (a step has begun).
+  const lateRow = st.started && (st.phase === 'morning' || st.phase === 'under-way') && (
+    <button className="row go" data-late onClick={() => setLate(true)}><span className="nm">Running late?<small>Move the rest of today later, once.</small></span>{chev}</button>
   );
   const helpRow = <button className="row go" data-help onClick={() => setSheet('help')}><span className="nm">If something goes wrong</span>{chev}</button>;
   const nowCard = st.nowCue && (
@@ -283,7 +289,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
     body = (<>
       {nowCard}
       {weatherCard}
-      <div className="grp gap">{runRow}{crewRow}<button className="row go" data-open-counter onClick={onCounter}><span className="nm">Counter mode<small>Large type for the kitchen. The screen stays on.</small></span>{chev}</button></div>
+      <div className="grp gap">{runRow}{crewRow}{lateRow}<button className="row go" data-open-counter onClick={onCounter}><span className="nm">Counter mode<small>Large type for the kitchen. The screen stays on.</small></span>{chev}</button></div>
       {st.nowActive && list
         ? <div className="grp gap"><button className="row go" data-dayof-row onClick={() => setSheet('list')}><span className="nm">Before guests arrive</span><span className={'val' + (open.length ? ' warn' : ' ok')}>{open.length ? open.length + ' to go' : 'All set'}</span>{chev}</button></div>
         : listSection}
@@ -293,7 +299,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
   } else {
     const rides = ridesDue(ev, ros, now);
     body = (<>
-      <div className="grp">{helpRow}</div>
+      <div className="grp">{helpRow}{lateRow}</div>
       <div className="gap">{nowCard}</div>
       {weatherCard}
       {rides && <div className="grp gap"><CheckRow item={rides} attr={{ 'data-rides': true }} onTick={() => tick(rides)} onDetail={() => setSheet({ detail: 'rides' })} /></div>}
@@ -347,6 +353,7 @@ export function RunPage({ ev, save, now: fixed, nav, status }) {
 // COUNTER MODE: propped on the counter, read from three feet. The screen is
 // kept on while it is open (Screen Wake Lock, where the browser allows it).
 export function CounterMode({ ev, save, now: fixed, onLeave }) {
+  const [late, setLate] = useState(false);
   const now = useNow(fixed);
   const { st } = useDay(ev, now);
   useEffect(() => {
@@ -366,7 +373,8 @@ export function CounterMode({ ev, save, now: fixed, onLeave }) {
         {next && <div className="cnext"><div className="cin" data-in>{inLine(nextMin - st.nowMin)}</div><div className="cwhat">{clock12(next.time)} · {stepTitle(next)}</div></div>}
       </>) : <p className="cbig" data-big>{st.allDone ? 'That’s the day.' : 'Nothing on the schedule yet.'}</p>}
       {cue && st.nowActive && <button className="primary cdone" onClick={() => save(cuesDoneEdit(ev, [cue.id], 'Done: ' + stepTitle(cue) + '.'))}>Done, what’s next</button>}
-      <div className="cfoot"><button className="link" onClick={onLeave}>Leave counter mode</button></div>
+      <div className="cfoot"><button className="link" data-late onClick={() => setLate(true)}>Running late</button><button className="link" onClick={onLeave}>Leave counter mode</button></div>
+      {late && <LateSheet ev={ev} save={save} now={now} onDone={() => setLate(false)} />}
     </div>
   );
 }
@@ -471,4 +479,38 @@ export function CrewPage({ ev, save, nav, status }) {
       </Sheet>
     )}
   </>);
+}
+
+// RUNNING LATE (B8, 11/26/2026; the Thanksgiving mockup, 1:05 PM). Move the rest
+// of today later, once: what moves and what stays shows before anything is
+// saved; the save is lib/dayOfEdits runningLate (the schedule writer's shape).
+// Then telling guests is one tap, in Updates.
+function LateSheet({ ev, save, now, onDone, onUpdates }) {
+  const [by, setBy] = useState(30);
+  const [moved, setMoved] = useState(null);
+  const plan = (() => { try { return runningLate(ev, by, now); } catch { return { moved: [], kept: [], edit: null }; } })();
+  const rows = [...plan.moved.map((m) => ({ id: m.id, t: m.to, label: stepTitle({ segment: m.segment }), stay: false })),
+    ...plan.kept.map((k) => ({ id: k.id, t: k.time, label: 'Arrivals stay at ' + clock12(k.time), stay: true }))]
+    .sort((a, b) => (parseMin(a.t) || 0) - (parseMin(b.t) || 0));
+  const go = () => { if (plan.edit && save(plan.edit)) setMoved(plan.edit.msg); };
+  if (moved) return (
+    <Sheet title="The rest of today moved" onDone={onDone}>
+      <p className="qhelp" role="status">{moved}</p>
+      {onUpdates && <button className="primary" data-late-tell onClick={() => { onDone(); onUpdates(); }}>Tell your guests in Updates</button>}
+      <p className="fine">Guests see a change only when you tell them.</p>
+    </Sheet>
+  );
+  return (
+    <Sheet title="Running late?" onDone={onDone}>
+      {!plan.moved.length ? <p className="qhelp">Nothing left today to move.</p> : (<>
+        <p className="qhelp">Move the rest of today later by</p>
+        <div className="seg">{[15, 30, 45].map((m) => <button key={m} data-late-by aria-pressed={by === m} onClick={() => setBy(m)}>{m} min</button>)}</div>
+        <div className="grp gap run" data-late-preview>{rows.slice(0, 4).map((r) => (
+          <div key={r.id} className="row"><span className="tm">{clock12(r.t)}</span><span className="nm">{r.label}{r.stay && <small>Guests already have the time.</small>}</span></div>
+        ))}</div>
+        {rows.length > 4 && <p className="fine">And {rows.length - 4} more after that.</p>}
+        <button className="primary" data-late-go onClick={go}>Move the rest {by} minutes</button>
+      </>)}
+    </Sheet>
+  );
 }

@@ -16,6 +16,7 @@ import { effectiveRos, playbookDayOfChecklist } from './playbooks';
 import { dayIndexOf, spanNights } from './dates';
 import { rainPlanStatus } from './weather';
 import { parseMin } from './dayAlerts';
+import { clock12 } from './clock';
 
 /** Today's schedule: the effective run of show; mid-trip, day K's rows only
  *  (dayless rows count as day 1). Done is read from event.rosDone. */
@@ -90,4 +91,43 @@ export function dayOfStepEdit(event, ix) {
   if (!tl[ix]) return null;
   const on = !tl[ix].done;
   return { patch: { timeline: tl.map((t, i) => (i === ix ? { ...t, done: on } : t)) }, msg: (on ? 'Done: ' : 'Reopened: ') + String(tl[ix].task || '').slice(0, 48) };
+}
+
+/** RUNNING LATE (B8, 11/26/2026; the Thanksgiving mockup at 1:05 PM). Move the
+ *  rest of today `minutes` later, once, through the schedule writer's own shape
+ *  (the whole effective run, rosEdited, as hostv2's writeRosCue and drag-reorder
+ *  write it). What moves: today's steps that haven't started (later than now)
+ *  and aren't done. What stays: the arrival time (a step at the event's start
+ *  time; guests already have it), a step under way, anything done, other days.
+ *  A moved step owns its time (rel cleared, as a dropped row does); its end
+ *  time moves with it. Nothing passes 11:59 PM.
+ *  Returns { moved: [{ id, segment, from, to }], kept: [{ id, segment, time }],
+ *  edit: { patch, msg } | null }. */
+export function runningLate(event, minutes, now) {
+  const ev = event || {};
+  const by = Math.round(Number(minutes) || 0);
+  let full = [];
+  try { full = (effectiveRos(ev) || []).slice(); } catch { full = Array.isArray(ev.ros) ? ev.ros.slice() : []; }
+  const today = new Set(todaysRos(ev, now).map((r) => r && r.id).filter(Boolean));
+  const done = (ev.rosDone && typeof ev.rosDone === 'object') ? ev.rosDone : {};
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const start = parseMin(ev.startTime);
+  const hm = (m) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  const shift = (t) => { const m = parseMin(t); return m === null ? t : hm(Math.min(m + by, 23 * 60 + 59)); };
+  const moved = []; const kept = [];
+  const next = full.map((r) => {
+    if (!r || !r.id || !today.has(r.id) || done[r.id]) return r;
+    const m = parseMin(r.time);
+    if (m === null || m <= nowMin) return r;
+    if (start !== null && m === start) { kept.push({ id: r.id, segment: r.segment, time: r.time }); return r; }
+    const to = shift(r.time);
+    moved.push({ id: r.id, segment: r.segment, from: r.time, to });
+    return { ...r, time: to, rel: null, ...(r.endTime ? { endTime: shift(r.endTime) } : {}) };
+  });
+  if (!by || !moved.length) return { moved: [], kept, edit: null };
+  const arrive = kept.length ? ' Arrivals stay at ' + clock12(kept[0].time) + '.' : '';
+  return {
+    moved, kept,
+    edit: { patch: { ros: next, rosEdited: true }, msg: 'Moved ' + moved.length + ' step' + (moved.length === 1 ? '' : 's') + ' ' + by + ' minutes later.' + arrive },
+  };
 }

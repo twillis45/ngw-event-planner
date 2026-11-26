@@ -246,7 +246,7 @@ export default function HostShellV4() {
   // THE DAY (11/26/2026): its own page, with its own title, button and sheets.
   if (tab === 'day') return frame(
     <div className="app">
-      <DayPage key={ev.id} ev={ev} save={saveEdit} status={status} date={date} onRun={() => push('run')} onCounter={() => setCounter(true)} onGuests={() => push('guests')} onCrew={() => push('crew')} />
+      <DayPage key={ev.id} ev={ev} save={saveEdit} status={status} date={date} onRun={() => push('run')} onCounter={() => setCounter(true)} onGuests={() => push('guests')} onCrew={() => push('crew')} onUpdates={() => push('updates')} />
       {tabbar}
     </div>
   );
