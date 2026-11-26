@@ -99,6 +99,7 @@ import { effectiveTimingProvenance, isGroundedTiming, timingConflict } from '../
 // else. Values, quantities, costs, decisions and ranking are untouched.
 import { effectiveValue } from '../knowledge/knowledgeOverride';
 import { isGroundedCulture } from '../knowledge/culturalContext';
+import { isAlcoholLine } from '../knowledge/storeUnitMap';
 import { militaryDecisionsFor, isGroundedMilitary, militaryRetirementContext, officialCeremonyAnswer } from '../knowledge/militaryRetirement';
 import { hostIsHonoree } from '../hostNameFor';
 import { normalizeCategory } from '../vendorAccountability/playbooks.js';
@@ -3638,6 +3639,37 @@ function normalizeDayOfItems(list) {
     })
     .sort((a, b) => (a.rank - b.rank));
 }
+// DOES THIS PLAN SERVE ALCOHOL? (owner, 11/26/2026: "safety information about if
+// someone has too much to drink ... make sure these are systematic"). Read off
+// the plan, never the type's name: an alcohol line still on the host's own list
+// after the drinks call has had its say (a dry pick has already removed them),
+// or a drinks pick in which the guests bring it (BYOB, "friends bring a
+// bottle"). A type with neither, or no playbook, is not presumed to.
+const GUESTS_BRING_DRINKS_RE = /\b(byob|bring your own|guests bring|friends bring|everyone brings|bring a bottle)\b/i;
+export function servesAlcohol(event) {
+  if (!event) return false;
+  const pb = getPlaybook(event.type);
+  if (!pb) return false;
+  try {
+    const call = (pb.decisions || []).find((d) => d && d.drinksCall === true);
+    const pick = call ? String(choicePickFor(event, call.id) || '') : '';
+    if (pick && GUESTS_BRING_DRINKS_RE.test(pick)) return true;
+    const fp = playbookFoodPlan(event);
+    return !!(fp && Array.isArray(fp.list) && fp.list.some((l) => l && isAlcoholLine(l)));
+  } catch (_e) { return false; }
+}
+// THE RIDES-HOME CHECK, quoting NHTSA's host rule (sources: nhtsa-drunk-driving).
+// Added to the day-of list of any plan that serves alcohol, unless the playbook
+// already wrote its own rides row.
+const DAYOF_RIDES_ROW = {
+  id: 'rides', label: 'Everyone has a sober way home',
+  detail: 'NHTSA’s host rule: make sure every guest leaves with a sober driver. If someone has been drinking, take their keys and arrange the ride, or offer the couch.',
+  severity: 'high',
+};
+// Real rides wording only: Thanksgiving's fire row says "a sober owner" for the
+// fryer, which is not a way home.
+const COVERS_RIDES_RE = /(sober (driver|ride|way home)|designated driver|rides? home|rideshare|take (their|the) keys|way home)/i;
+
 export function playbookDayOfChecklist(event) {
   if (!event) return null;
   const pb = getPlaybook(event.type);
@@ -3700,7 +3732,9 @@ export function playbookDayOfChecklist(event) {
   const rainRow = !source.some((it) => it && it.id === 'weather')
     && (() => { try { return placeIsOutdoors(event); } catch (_e) { return false; } })()
     ? [DAYOF_RAIN_ROW] : [];
-  const items = normalizeDayOfItems([...source, ...rainRow, ...milItems]);
+  const ridesRow = !source.some((it) => it && COVERS_RIDES_RE.test(`${it.label || ''} ${it.detail || ''}`)) && servesAlcohol(event)
+    ? [DAYOF_RIDES_ROW] : [];
+  const items = normalizeDayOfItems([...source, ...rainRow, ...ridesRow, ...milItems]);
   if (!items.length) return null;
   const isDefault = !(authored && authored.length) && !milItems.length && !ownRows.length;
   const typeWord = String(event.type || 'event').toLowerCase();

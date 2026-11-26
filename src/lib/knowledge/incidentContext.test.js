@@ -38,8 +38,13 @@ describe('incident plan', () => {
   test('the fire line gates on flame-cooking events and outdoor gatherings', () => {
     const bbq = incidentPlanFor({ ...BASE });
     expect(bbq.lines.some((l) => l.key === 'fire')).toBe(true);
+    // Owner, 11/26/2026 ("make sure these are systematic"): the line follows the
+    // host cooking, not only flame words in the type. An indoor dinner party the
+    // host cooks gets it; one a private chef cooks does not.
     const indoorDinner = incidentPlanFor({ id: 'x', type: 'Dinner Party', date: '2026-08-08', venue: 'The Hall' });
-    expect(indoorDinner.lines.some((l) => l.key === 'fire')).toBe(false);
+    expect(indoorDinner.lines.some((l) => l.key === 'fire')).toBe(true);
+    const chefDinner = incidentPlanFor({ id: 'x', type: 'Dinner Party', date: '2026-08-08', venue: 'The Hall', foodChoices: { help: 'Private chef' } });
+    expect(chefDinner.lines.some((l) => l.key === 'fire')).toBe(false);
     const fry = incidentPlanFor({ id: 'y', type: 'Fish Fry', date: '2026-08-08', venue: 'The Hall' });
     expect(fry.lines.some((l) => l.key === 'fire')).toBe(true);
   });
