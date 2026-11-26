@@ -280,3 +280,7 @@ kbd { font: 600 .75rem var(--sans); color: var(--ink-3); border: 1px solid var(-
 .counter .cfoot { display: flex; justify-content: center; margin-top: 18px; }
 .counter .cfoot .link { font-size: 1.0625rem; }
 @media (prefers-reduced-motion: reduce) { .counter .cdone:active { transform: none; } }
+
+/* A row that leaves for the current app is a link, but it reads as a row: no
+   underline, the row's own ink (The Day's Before tomorrow and After). */
+a.row { color: inherit; text-decoration: none; }

@@ -20,6 +20,10 @@ import { parseMin } from '@app/lib/dayAlerts';
 import { dayWeather, guestTravelMessage, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
 import { venueGeoQuery } from '@app/lib/venueFor';
 import { daysUntil, daysUntilEnd } from '@app/lib/dates';
+import { buildDayBeforePlan, dayWeatherLabel } from '@app/lib/dayBefore';
+import { stepToggleEdit, tonightsSteps } from '@app/lib/stepToggle';
+import { playbookFoodPlan } from '@app/lib/playbooks';
+import { isReconfirmable } from '@app/lib/workstreams';
 
 const chev = <svg className="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 const lowerFirst = (s) => String(s || '').replace(/^\w/, (c) => c.toLowerCase());
@@ -118,7 +122,7 @@ function CheckRow({ item, onTick, onDetail, attr }) {
   );
 }
 
-export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter, date, forecast }) {
+export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter, onGuests, date, forecast }) {
   const now = useNow(fixed);
   const { ros, st, list } = useDay(ev, now);
   const wxRow = useForecast(ev, forecast);
@@ -202,14 +206,62 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
   );
 
   let body; let action = null;
+  // The day before (B2): buildDayBeforePlan's window, 1–2 days out, read with
+  // the live forecast so tomorrow's weather rides in it.
+  const eve = (() => {
+    if (st.phase !== 'before') return null;
+    let db = null;
+    try { db = buildDayBeforePlan(ev, now, wxRow); } catch { db = null; }
+    if (!db || !db.applicable || db.daysOut < 1) return null;
+    const sec = (k) => (db.sections || []).find((x) => x.key === k) || null;
+    const rows = [];
+    const cnt = sec('count');
+    if (cnt) rows.push({ key: 'count', label: 'Final guest count', val: 'Not settled', go: onGuests });
+    const shop = sec('shopping');
+    if (shop && shop.open) { const l = Number(shop.listLeft) || 0; const g = Number(shop.openGear) || 0; rows.push({ key: 'shopping', label: 'Still to get', val: l ? l + ' item' + (l === 1 ? '' : 's') : g + ' rental' + (g === 1 ? '' : 's') }); }
+    const vend = sec('vendors');
+    if ((ev.vendors || []).some(isReconfirmable) || (vend && vend.open)) rows.push({ key: 'vendors', label: 'Reconfirm your vendors', val: vend && vend.open ? vend.open + ' to lock in' : 'Check in' });
+    const help = sec('helpers');
+    if (help && help.open) rows.push({ key: 'helpers', label: 'People bringing things', val: help.open + ' to confirm' });
+    const rain = sec('rain');
+    if (rain && rain.open) rows.push({ key: 'rain', label: 'Rain backup', val: 'Not set' });
+    return { daysOut: db.daysOut, rows, tonight: db.daysOut === 1 ? tonightsSteps(ev, now) : [] };
+  })();
   const sub = st.eventDay
     ? (st.dayCount > 1 ? 'Day ' + st.dayIndex + ' of ' + st.dayCount : 'Today') + (start ? ' · guests at ' + start : '')
-    : (date || '') + (start ? ' · guests at ' + start : '');
+    : (eve && eve.daysOut === 1 ? 'Tomorrow' : (date || '')) + (start ? ' · guests at ' + start : '');
   if (st.phase === 'after') {
     body = (<>
       <p className="qhelp" data-after>That day is done. Afterward (how many came, the thank-yous) is in the current app for now.</p>
       <div className="grp"><a className="row go" href="../hostv2/"><span className="nm">Open the current app</span>{chev}</a></div>
     </>);
+  } else if (st.phase === 'before' && eve) {
+    // THE DAY BEFORE (B2, 11/26/2026): tonight's steps, then what the day-before
+    // plan (lib/dayBefore, hostv2's) still has open. Ticks are lib/stepToggle.
+    const foodList = () => { try { return (playbookFoodPlan(ev) || {}).list || []; } catch { return []; } };
+    const tickStep = (s) => save(stepToggleEdit(ev, s.index, foodList()));
+    body = (<>
+      {weatherCard && <><h3 className="sh">{dayWeatherLabel(eve.daysOut)}</h3>{weatherCard}</>}
+      {eve.tonight.length > 0 && (
+        <section data-tonight>
+          <h3 className="sh">Tonight</h3>
+          <div className="grp">{eve.tonight.map((s) => <CheckRow key={s.index} item={{ key: String(s.id || s.index), label: s.task, checked: false }} onTick={() => tickStep(s)} onDetail={() => tickStep(s)} />)}</div>
+        </section>
+      )}
+      {eve.rows.length > 0 && (
+        <section data-before-tomorrow>
+          <h3 className="sh">Before {eve.daysOut === 1 ? 'tomorrow' : 'the day'}</h3>
+          <div className="grp">{eve.rows.map((r) => (r.go
+            ? <button key={r.key} className="row go" data-db-row={r.key} onClick={r.go}><span className="nm">{r.label}</span><span className="val warn">{r.val}</span>{chev}</button>
+            : <a key={r.key} className="row go" data-db-row={r.key} href="../hostv2/"><span className="nm">{r.label}</span><span className="val warn">{r.val}</span>{chev}</a>))}
+          </div>
+          {eve.rows.some((r) => !r.go) && <p className="fine">The store run, vendors, helpers and the rain backup open in the current app for now.</p>}
+        </section>
+      )}
+      {runRow && <div className="grp gap">{runRow}</div>}
+      {listSection}
+    </>);
+    if (eve.tonight[0]) action = <button className="primary" onClick={() => tickStep(eve.tonight[0])}>Done: {lowerFirst(stepTitle(eve.tonight[0]))}</button>;
   } else if (st.phase === 'before') {
     body = (<>{weatherCard}{runRow && <div className="grp gap">{runRow}</div>}{listSection}</>);
   } else if (st.phase === 'done-for-today') {

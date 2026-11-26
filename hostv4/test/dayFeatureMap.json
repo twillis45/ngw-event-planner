@@ -13,9 +13,9 @@
         "file": "src/HostShellV2.jsx",
         "contains": "buildDayBeforePlan"
       },
-      "home": "planned",
-      "where": "The day before: tonight’s steps and tomorrow’s setup",
-      "batch": "B2 the day before"
+      "home": "built",
+      "where": "The Day, 1–2 days out: Tomorrow’s weather, Tonight, Before tomorrow",
+      "selector": "data-before-tomorrow"
     },
     {
       "id": "reconfirm-vendors",
@@ -24,9 +24,9 @@
         "file": "src/HostShellV2.jsx",
         "contains": "isReconfirmable"
       },
-      "home": "planned",
-      "where": "The day before, one row per vendor",
-      "batch": "B2 the day before"
+      "home": "linked",
+      "where": "The Day, Before tomorrow · Reconfirm your vendors (the notes are drafted in the current app)",
+      "selector": "Reconfirm your vendors"
     },
     {
       "id": "whos-confirmed",
@@ -36,8 +36,8 @@
         "contains": "Who’s confirmed"
       },
       "home": "planned",
-      "where": "The day before and your day crew",
-      "batch": "B2 the day before"
+      "where": "Your day crew: who answered (needs the vendor and helper answers hostv4 does not read yet)",
+      "batch": "B3 day crew"
     },
     {
       "id": "helper-links",
