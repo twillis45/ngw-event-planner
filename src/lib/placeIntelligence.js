@@ -77,6 +77,14 @@ export function placeIsOutdoors(event = {}) {
     || (!event.indoorOutdoor && isLikelyOutdoor(vf.name, event.notes || ''));
 }
 
+// MAY ANY OF IT BE OUTSIDE? (owner, 11/26/2026: "Yes rain backup"). What asks
+// for a rain backup the day before: the place says outdoors, or nothing answers
+// the question yet and the app's own guess (outdoorsGuess) says outdoors. The
+// host's answer wins: an event marked indoor never asks.
+export function mayBeOutdoors(event = {}) {
+  return placeIsOutdoors(event) || !!outdoorsGuess(event);
+}
+
 export function derivePlaceIntelligence(event = {}) {
   // ONE venue reader (venueFor) — kind rule, at-home carve-out, and the
   // CITY-LEAK gate all live there now instead of a local copy.
