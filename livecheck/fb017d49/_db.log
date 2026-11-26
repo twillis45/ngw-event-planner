@@ -1,0 +1,50 @@
+390x844 ok   v4-evening-before 
+390x844 ok   v4-tonight-ticks 
+390x844 ok   v4-count-opens-guests 
+390x844 ok   v2-tick-unchanged 
+834x1194 ok   v4-evening-before 
+834x1194 ok   v4-tonight-ticks 
+834x1194 ok   v4-count-opens-guests 
+834x1194 ok   v2-tick-unchanged 
+1024x1366 ok   v4-evening-before 
+1024x1366 ok   v4-tonight-ticks 
+1024x1366 ok   v4-count-opens-guests 
+1024x1366 ok   v2-tick-unchanged 
+1194x834 ok   v4-evening-before 
+1194x834 ok   v4-tonight-ticks 
+1194x834 ok   v4-count-opens-guests 
+1194x834 ok   v2-tick-unchanged 
+1440x900 ok   v4-evening-before 
+1440x900 ok   v4-tonight-ticks 
+1440x900 ok   v4-count-opens-guests 
+1440x900 ok   v2-tick-unchanged 
+
+390x844 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  v4-evening-before side 0
+  ok  v4-tonight-ticks side 0
+  ok  v4-count-opens-guests side 0
+  ok  v2-tick-unchanged side 0
+
+834x1194 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  v4-evening-before side 0
+  ok  v4-tonight-ticks side 0
+  ok  v4-count-opens-guests side 0
+  ok  v2-tick-unchanged side 0
+
+1024x1366 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  v4-evening-before side 0
+  ok  v4-tonight-ticks side 0
+  ok  v4-count-opens-guests side 0
+  ok  v2-tick-unchanged side 0
+
+1194x834 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  v4-evening-before side 0
+  ok  v4-tonight-ticks side 0
+  ok  v4-count-opens-guests side 0
+  ok  v2-tick-unchanged side 0
+
+1440x900 pageErrors:0 blocked:POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/
+  ok  v4-evening-before side 0
+  ok  v4-tonight-ticks side 0
+  ok  v4-count-opens-guests side 0
+  ok  v2-tick-unchanged side 0
