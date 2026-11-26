@@ -38,9 +38,11 @@ describe('Guests folds away', () => {
     expect(qa('[data-group]').map((b) => b.getAttribute('data-group') + ':' + b.querySelector('.val').textContent)).toEqual(['yes:4', 'maybe:2', 'pending:4']);
     expect(shownNames()).toEqual([]);
   });
-  it('keeps the page to 8 controls or fewer, and one bottom button', () => {
+  // 8 under #272; 10 once the path came back (owner, 11/26/2026): +, ⋯, four
+  // tappable steps (answers, names, invite, updates), three groups, the button.
+  it('keeps the page to 10 controls or fewer, and one bottom button', () => {
     mount(ten);
-    expect(qa('button, input, textarea, select, a').length).toBeLessThanOrEqual(8);
+    expect(qa('button, input, textarea, select, a').length).toBeLessThanOrEqual(10);
     expect(qa('.primary').length).toBe(1);
   });
   it('opens one group at a time, in place', () => {
@@ -52,11 +54,13 @@ describe('Guests folds away', () => {
     click(q('[data-group="yes"]'));
     expect(shownNames()).toEqual([]);
   });
-  it('hides the rest behind ⋯: answers, invite, updates, share, download, alerts', () => {
+  // The path is back on the page (owner, 11/26/2026); ⋯ keeps the utilities.
+  it('shows the path on the page and keeps the utilities behind ⋯', () => {
     mount(ten);
-    for (const s of ['data-answers', 'data-open-invite', 'data-open-updates', 'data-share-link', 'data-download', 'data-alerts']) expect(q('[' + s + ']')).toBeNull();
+    for (const s of ['answers', 'names', 'invite', 'replies', 'count', 'updates']) expect(q('[data-step="' + s + '"]'), s).not.toBeNull();
+    for (const s of ['data-share-link', 'data-download', 'data-alerts']) expect(q('[' + s + ']')).toBeNull();
     click(q('[aria-label="More"]'));
-    for (const s of ['data-answers', 'data-open-invite', 'data-open-updates', 'data-share-link', 'data-download', 'data-alerts']) expect(q('[' + s + ']'), s).not.toBeNull();
+    for (const s of ['data-share-link', 'data-download', 'data-alerts']) expect(q('[' + s + ']'), s).not.toBeNull();
   });
   it('adds names from +', () => {
     mount(ten);
