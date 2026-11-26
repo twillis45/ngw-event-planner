@@ -60,7 +60,9 @@ const TRIP = { id: 'E2E_TEST_mo-trip', type: 'Group Trip', name: 'E2E_TEST_ Trip
       await row.getByRole('button', { name: 'Add it' }).click(); await p.waitForTimeout(900);
       const e = await stored(p); const ids = (e.ros || []).map((x) => x.id);
       const out = { label, ids, kept: ['r1', 'r2', 'r3', 'r4'].every((id) => ids.includes(id)), added: (e.ros || []).filter((x) => /^m-/.test(String(x.id))).map((x) => x.id + ' day ' + x.day) };
-      if (!out.kept || out.added.length !== 1) throw new Error(JSON.stringify(out));
+      // #307: a moment added on trip day 2 carries day 2.
+      const addedRow = (e.ros || []).find((x) => /^m-/.test(String(x.id)));
+      if (!out.kept || out.added.length !== 1 || !addedRow || addedRow.day !== 2) throw new Error(JSON.stringify(out));
       return out;
     });
     await cur.ctx.close();

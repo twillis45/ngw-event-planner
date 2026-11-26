@@ -1,4 +1,4 @@
-# Live check 61219b8f (#304 B4 tell your guests): Thu Nov 26, 2026, 3:55–4:20 PM EST
+# Live check 61219b8f (#304 B4 tell your guests): Thu Nov 26, 2026, 3:55–4:12 PM EST
 
 Live: the hostv4 `ngw-build` meta reads 61219b8fd056 (deployed 3:40 PM EST). #305 (2737f4f6) is merged but was not live during this check.
 Chromium at 5 sizes. Every POST/PUT/PATCH/DELETE aborted. Share and clipboard stubbed and counted: 0 shares, 0 copies. Copy and "Post it to everyone's invite" were never tapped. E2E_TEST_ plans only. Nothing sent.
