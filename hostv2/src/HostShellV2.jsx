@@ -130,7 +130,7 @@ import { identityStatement, honoreeApplies } from '@app/lib/eventIdentity';
 import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, spanEnd, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
 import { dayOfHero } from '@app/lib/dayOfHero';
 import { dayState } from '@app/lib/dayState';
-import { todaysRos, dayOfList, dayOfTickEdit, addMomentEdit } from '@app/lib/dayOfEdits';
+import { todaysRos, dayOfList, dayOfTickEdit, addMomentEdit, vendorArrivalEdit } from '@app/lib/dayOfEdits';
 import { afterOwed } from '@app/lib/afterOwed';
 import { eventDatesPatch, eventSpanLabel, eventStartTimePatch } from '@app/lib/eventDates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
@@ -16373,11 +16373,19 @@ export default function HostShellV2() {
               )}
               {nudgeFor('program')}
               {momentSuggestion()}
-              {dayAlerts.map(a => (
-                <button key={a.id} onClick={() => alertSheet(a)}
+              {dayAlerts.map(a => {
+                // THEY'RE HERE (owner, 11/26/2026: "Yes add They're here to hostv2").
+                // A vendor's late or arrival alert carries the one tap that ends it:
+                // lib/dayOfEdits vendorArrivalEdit, the arrivalStatus the alert reads
+                // (hostv4's Vendors today writes the same). No screen here wrote it,
+                // so "X hasn't arrived" could not be cleared.
+                const arrivalOf = /^(?:ov|confirm)-(.+)$/.exec(String(a.id || ''));
+                return (
+                <div key={a.id} data-day-alert={a.id} style={{ display: 'flex', gap: 8, alignItems: 'stretch', marginBottom: 'var(--sp-2)' }}>
+                <button onClick={() => alertSheet(a)}
                   style={{
-                    display: 'block', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer',
-                    borderRadius: 'var(--r-row)', padding: 'var(--sp-3) 14px', marginBottom: 'var(--sp-2)', font: 'inherit',
+                    display: 'block', flex: 1, minWidth: 0, textAlign: 'left', border: 'none', cursor: 'pointer',
+                    borderRadius: 'var(--r-row)', padding: 'var(--sp-3) 14px', font: 'inherit',
                     background: a.tier === 'critical' ? 'var(--danger-tint)' : a.tier === 'warning' ? 'var(--warn-tint)' : 'var(--steel-tint)',
                     color: 'var(--carbon-text)',
                   }}>
@@ -16402,7 +16410,13 @@ export default function HostShellV2() {
                   </span>
                   {a.move && <span style={{ display: 'block', fontSize: 'var(--t-row-sub)', marginTop: 2, color: 'var(--carbon-muted)' }}>{a.move}</span>}
                 </button>
-              ))}
+                {arrivalOf && (
+                  <button className="mini" data-vendor-here style={{ flexShrink: 0, alignSelf: 'center', minHeight: 44 }}
+                    onClick={() => { const ed = vendorArrivalEdit(event, arrivalOf[1], 'arrived'); if (ed) patchEvent(ed.patch, ed.msg); }}>They’re here</button>
+                )}
+                </div>
+                );
+              })}
               {dayAllDone ? (
                 // Shared DAY_COMPLETE_COPY (lib/dayOfCopy.js) — same words
                 // legacy renders, not a separately-authored version.
