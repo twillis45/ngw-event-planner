@@ -138,15 +138,19 @@ export function runningLate(event, minutes, now) {
  *  the moment (lib/momentLibrary buildMomentSegment), owned (rosEdited), at the
  *  time the host picked ("HH:MM") or untimed. The whole run, never today's
  *  rows alone: on a trip, saving today's rows would drop the other days. */
-export function addMomentEdit(event, moment, time) {
+export function addMomentEdit(event, moment, time, now = new Date()) {
   const seg = buildMomentSegment(moment);
   if (!seg) return null;
   let full = [];
   try { full = (effectiveRos(event) || []).slice(); } catch { full = Array.isArray(event && event.ros) ? event.ros.slice() : []; }
   const t = /^\d{1,2}:\d{2}$/.test(String(time || '')) ? time : '';
-  const row = { ...seg, time: t, id: 'm-' + moment.id };
+  // A TRIP'S MOMENT LANDS ON THE DAY IT WAS ADDED (live check of 036302b5): a
+  // row with no `day` is day 1 to todaysRos, so day 2's moment showed on day 1.
+  // Before the trip starts it goes on day 1, and the message does not say today.
+  const k = dayIndexOf(event, now);
+  const row = { ...seg, time: t, id: 'm-' + moment.id, ...(spanNights(event) > 0 ? { day: k || 1 } : {}) };
   return {
     patch: { ros: [...full, row], rosEdited: true },
-    msg: t ? seg.segment + ' is on today’s run at ' + clock12(t) + '.' : seg.segment + ' is on the schedule — give it a time when you know it.',
+    msg: t ? seg.segment + (k ? ' is on today’s run at ' : ' is on the run at ') + clock12(t) + '.' : seg.segment + ' is on the schedule — give it a time when you know it.',
   };
 }
