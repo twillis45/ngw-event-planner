@@ -1,0 +1,741 @@
+390x844 question ok 
+390x844 noNames ok 
+390x844 named ok 
+390x844 sent FAIL 
+390x844 pastReplyBy ok 
+834x1194 question ok 
+834x1194 noNames ok 
+834x1194 named ok 
+834x1194 sent FAIL 
+834x1194 pastReplyBy ok 
+1024x1366 question ok 
+1024x1366 noNames ok 
+1024x1366 named ok 
+1024x1366 sent FAIL 
+1024x1366 pastReplyBy ok 
+1194x834 question ok 
+1194x834 noNames ok 
+1194x834 named ok 
+1194x834 sent FAIL 
+1194x834 pastReplyBy ok 
+1440x900 question ok 
+1440x900 noNames ok 
+1440x900 named ok 
+1440x900 sent FAIL 
+1440x900 pastReplyBy ok 
+upd 390x844 true 
+upd 834x1194 true 
+upd 1024x1366 true 
+upd 1194x834 true 
+upd 1440x900 true 
+ctr 834x1194 false 
+ctr 844x390 false 
+ctr 1024x768 false 
+con 390x844 true 
+con 1024x1366 true 
+con 1440x900 true 
+{
+ "path": [
+  {
+   "vp": "390x844",
+   "states": {
+    "question": {
+     "question": "count",
+     "heading": 0,
+     "steps": [],
+     "lit": [],
+     "button": "Plan for 20",
+     "answersRow": 0,
+     "ok": true
+    },
+    "noNames": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:now",
+      "invite:later",
+      "replies:later",
+      "count:later",
+      "updates:-"
+     ],
+     "lit": [
+      "names"
+     ],
+     "button": "Add names",
+     "answersRow": 1,
+     "ok": true
+    },
+    "named": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:done",
+      "invite:now",
+      "replies:later",
+      "count:later",
+      "updates:-"
+     ],
+     "lit": [
+      "invite"
+     ],
+     "button": "Review your invite",
+     "answersRow": 1,
+     "ok": true,
+     "floors": {
+      "sideways": 0,
+      "smallText": 0,
+      "smallTargets": 0
+     },
+     "measure": {
+      "screens": 0.95,
+      "controls": 11
+     },
+     "more": {
+      "hasShare": true,
+      "hasDownload": true,
+      "hasAlerts": true,
+      "hasAnswers": false,
+      "hasInvite": false
+     }
+    },
+    "sent": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:done",
+      "invite:done",
+      "replies:now",
+      "count:later",
+      "updates:-"
+     ],
+     "lit": [
+      "replies"
+     ],
+     "button": "Add how to reach them",
+     "answersRow": 1,
+     "ok": false
+    },
+    "pastReplyBy": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:done",
+      "invite:done",
+      "replies:done",
+      "count:now",
+      "updates:-"
+     ],
+     "lit": [
+      "count"
+     ],
+     "button": "Lock the count",
+     "answersRow": 1,
+     "ok": true
+    }
+   },
+   "blocked": [],
+   "errs": []
+  },
+  {
+   "vp": "834x1194",
+   "states": {
+    "question": {
+     "question": "count",
+     "heading": 0,
+     "steps": [],
+     "lit": [],
+     "button": "Plan for 20",
+     "answersRow": 0,
+     "ok": true
+    },
+    "noNames": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:now",
+      "invite:later",
+      "replies:later",
+      "count:later",
+      "updates:-"
+     ],
+     "lit": [
+      "names"
+     ],
+     "button": "Add names",
+     "answersRow": 1,
+     "ok": true
+    },
+    "named": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:done",
+      "invite:now",
+      "replies:later",
+      "count:later",
+      "updates:-"
+     ],
+     "lit": [
+      "invite"
+     ],
+     "button": "Review your invite",
+     "answersRow": 1,
+     "ok": true,
+     "floors": {
+      "sideways": 0,
+      "smallText": 0,
+      "smallTargets": 0
+     },
+     "more": {
+      "hasShare": true,
+      "hasDownload": true,
+      "hasAlerts": true,
+      "hasAnswers": false,
+      "hasInvite": false
+     }
+    },
+    "sent": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:done",
+      "invite:done",
+      "replies:now",
+      "count:later",
+      "updates:-"
+     ],
+     "lit": [
+      "replies"
+     ],
+     "button": "Add how to reach them",
+     "answersRow": 1,
+     "ok": false
+    },
+    "pastReplyBy": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:done",
+      "invite:done",
+      "replies:done",
+      "count:now",
+      "updates:-"
+     ],
+     "lit": [
+      "count"
+     ],
+     "button": "Lock the count",
+     "answersRow": 1,
+     "ok": true
+    }
+   },
+   "blocked": [],
+   "errs": []
+  },
+  {
+   "vp": "1024x1366",
+   "states": {
+    "question": {
+     "question": "count",
+     "heading": 0,
+     "steps": [],
+     "lit": [],
+     "button": "Plan for 20",
+     "answersRow": 0,
+     "ok": true
+    },
+    "noNames": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:now",
+      "invite:later",
+      "replies:later",
+      "count:later",
+      "updates:-"
+     ],
+     "lit": [
+      "names"
+     ],
+     "button": "Add names",
+     "answersRow": 1,
+     "ok": true
+    },
+    "named": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:done",
+      "invite:now",
+      "replies:later",
+      "count:later",
+      "updates:-"
+     ],
+     "lit": [
+      "invite"
+     ],
+     "button": "Review your invite",
+     "answersRow": 1,
+     "ok": true,
+     "floors": {
+      "sideways": 0,
+      "smallText": 0,
+      "smallTargets": 0
+     },
+     "more": {
+      "hasShare": true,
+      "hasDownload": true,
+      "hasAlerts": true,
+      "hasAnswers": false,
+      "hasInvite": false
+     }
+    },
+    "sent": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:done",
+      "invite:done",
+      "replies:now",
+      "count:later",
+      "updates:-"
+     ],
+     "lit": [
+      "replies"
+     ],
+     "button": "Add how to reach them",
+     "answersRow": 1,
+     "ok": false
+    },
+    "pastReplyBy": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:done",
+      "invite:done",
+      "replies:done",
+      "count:now",
+      "updates:-"
+     ],
+     "lit": [
+      "count"
+     ],
+     "button": "Lock the count",
+     "answersRow": 1,
+     "ok": true
+    }
+   },
+   "blocked": [],
+   "errs": []
+  },
+  {
+   "vp": "1194x834",
+   "states": {
+    "question": {
+     "question": "count",
+     "heading": 0,
+     "steps": [],
+     "lit": [],
+     "button": "Plan for 20",
+     "answersRow": 0,
+     "ok": true
+    },
+    "noNames": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:now",
+      "invite:later",
+      "replies:later",
+      "count:later",
+      "updates:-"
+     ],
+     "lit": [
+      "names"
+     ],
+     "button": "Add names",
+     "answersRow": 1,
+     "ok": true
+    },
+    "named": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:done",
+      "invite:now",
+      "replies:later",
+      "count:later",
+      "updates:-"
+     ],
+     "lit": [
+      "invite"
+     ],
+     "button": "Review your invite",
+     "answersRow": 1,
+     "ok": true,
+     "floors": {
+      "sideways": 0,
+      "smallText": 0,
+      "smallTargets": 0
+     },
+     "more": {
+      "hasShare": true,
+      "hasDownload": true,
+      "hasAlerts": true,
+      "hasAnswers": false,
+      "hasInvite": false
+     }
+    },
+    "sent": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:done",
+      "invite:done",
+      "replies:now",
+      "count:later",
+      "updates:-"
+     ],
+     "lit": [
+      "replies"
+     ],
+     "button": "Add how to reach them",
+     "answersRow": 1,
+     "ok": false
+    },
+    "pastReplyBy": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:done",
+      "invite:done",
+      "replies:done",
+      "count:now",
+      "updates:-"
+     ],
+     "lit": [
+      "count"
+     ],
+     "button": "Lock the count",
+     "answersRow": 1,
+     "ok": true
+    }
+   },
+   "blocked": [],
+   "errs": []
+  },
+  {
+   "vp": "1440x900",
+   "states": {
+    "question": {
+     "question": "count",
+     "heading": 0,
+     "steps": [],
+     "lit": [],
+     "button": "Plan for 20",
+     "answersRow": 0,
+     "ok": true
+    },
+    "noNames": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:now",
+      "invite:later",
+      "replies:later",
+      "count:later",
+      "updates:-"
+     ],
+     "lit": [
+      "names"
+     ],
+     "button": "Add names",
+     "answersRow": 1,
+     "ok": true
+    },
+    "named": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:done",
+      "invite:now",
+      "replies:later",
+      "count:later",
+      "updates:-"
+     ],
+     "lit": [
+      "invite"
+     ],
+     "button": "Review your invite",
+     "answersRow": 1,
+     "ok": true,
+     "floors": {
+      "sideways": 0,
+      "smallText": 0,
+      "smallTargets": 0
+     },
+     "more": {
+      "hasShare": true,
+      "hasDownload": true,
+      "hasAlerts": true,
+      "hasAnswers": false,
+      "hasInvite": false
+     }
+    },
+    "sent": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:done",
+      "invite:done",
+      "replies:now",
+      "count:later",
+      "updates:-"
+     ],
+     "lit": [
+      "replies"
+     ],
+     "button": "Add how to reach them",
+     "answersRow": 1,
+     "ok": false
+    },
+    "pastReplyBy": {
+     "question": null,
+     "heading": 1,
+     "steps": [
+      "answers:done",
+      "names:done",
+      "invite:done",
+      "replies:done",
+      "count:now",
+      "updates:-"
+     ],
+     "lit": [
+      "count"
+     ],
+     "button": "Lock the count",
+     "answersRow": 1,
+     "ok": true
+    }
+   },
+   "blocked": [],
+   "errs": []
+  }
+ ],
+ "updates": [
+  {
+   "vp": "390x844",
+   "text": "Guests Updates and questions Updates and guests’ questions need this plan saved to your account. Sign in from the current app first. Open the current app",
+   "reqs": [],
+   "http": [],
+   "floors": {
+    "sideways": 0,
+    "smallText": 0,
+    "smallTargets": 0
+   },
+   "ok": true,
+   "blocked": []
+  },
+  {
+   "vp": "834x1194",
+   "text": "Guests Updates and questions Updates and guests’ questions need this plan saved to your account. Sign in from the current app first. Open the current app",
+   "reqs": [],
+   "http": [],
+   "floors": {
+    "sideways": 0,
+    "smallText": 0,
+    "smallTargets": 0
+   },
+   "ok": true,
+   "blocked": []
+  },
+  {
+   "vp": "1024x1366",
+   "text": "Guests Updates and questions Updates and guests’ questions need this plan saved to your account. Sign in from the current app first. Open the current app",
+   "reqs": [],
+   "http": [],
+   "floors": {
+    "sideways": 0,
+    "smallText": 0,
+    "smallTargets": 0
+   },
+   "ok": true,
+   "blocked": []
+  },
+  {
+   "vp": "1194x834",
+   "text": "Guests Updates and questions Updates and guests’ questions need this plan saved to your account. Sign in from the current app first. Open the current app",
+   "reqs": [],
+   "http": [],
+   "floors": {
+    "sideways": 0,
+    "smallText": 0,
+    "smallTargets": 0
+   },
+   "ok": true,
+   "blocked": []
+  },
+  {
+   "vp": "1440x900",
+   "text": "Guests Updates and questions Updates and guests’ questions need this plan saved to your account. Sign in from the current app first. Open the current app",
+   "reqs": [],
+   "http": [],
+   "floors": {
+    "sideways": 0,
+    "smallText": 0,
+    "smallTargets": 0
+   },
+   "ok": true,
+   "blocked": []
+  }
+ ],
+ "center": [
+  {
+   "vp": "834x1194",
+   "geo": {
+    "vw": 834,
+    "colLeft": 69,
+    "colRight": 757,
+    "leftMargin": 69,
+    "rightMargin": 77,
+    "back": null,
+    "menu": null,
+    "more": {
+     "left": 713,
+     "right": 757
+    }
+   },
+   "ok": false,
+   "floors": {
+    "sideways": 0,
+    "smallText": 0,
+    "smallTargets": 0
+   }
+  },
+  {
+   "vp": "844x390",
+   "geo": {
+    "vw": 844,
+    "colLeft": 74,
+    "colRight": 762,
+    "leftMargin": 74,
+    "rightMargin": 82,
+    "back": null,
+    "menu": null,
+    "more": {
+     "left": 718,
+     "right": 762
+    }
+   },
+   "ok": false,
+   "floors": {
+    "sideways": 0,
+    "smallText": 0,
+    "smallTargets": 0
+   }
+  },
+  {
+   "vp": "1024x768",
+   "geo": {
+    "vw": 1024,
+    "colLeft": 276,
+    "colRight": 643,
+    "leftMargin": 276,
+    "rightMargin": 381,
+    "back": null,
+    "menu": null,
+    "more": {
+     "left": 599,
+     "right": 643
+    }
+   },
+   "ok": false,
+   "floors": {
+    "sideways": 0,
+    "smallText": 0,
+    "smallTargets": 0
+   }
+  }
+ ],
+ "contact": [
+  {
+   "vp": "390x844",
+   "phoneTyped": "(202) 555-0134",
+   "phoneSaved": "(202) 555-0134",
+   "phoneProblem": 0,
+   "shortProblem": "Needs 10 digits.",
+   "shortInvalid": "true",
+   "emailProblem": "Needs a full email, like name@example.com.",
+   "emailInvalid": "true",
+   "emailSaved": "\"ada.pine@example.com\"",
+   "emailProblemAfter": 0,
+   "floors": {
+    "sideways": 0,
+    "smallText": 0,
+    "smallTargets": 0
+   },
+   "ok": true,
+   "blocked": [],
+   "errs": []
+  },
+  {
+   "vp": "1024x1366",
+   "phoneTyped": "(202) 555-0134",
+   "phoneSaved": "(202) 555-0134",
+   "phoneProblem": 0,
+   "shortProblem": "Needs 10 digits.",
+   "shortInvalid": "true",
+   "emailProblem": "Needs a full email, like name@example.com.",
+   "emailInvalid": "true",
+   "emailSaved": "\"ada.pine@example.com\"",
+   "emailProblemAfter": 0,
+   "floors": {
+    "sideways": 0,
+    "smallText": 0,
+    "smallTargets": 0
+   },
+   "ok": true,
+   "blocked": [],
+   "errs": []
+  },
+  {
+   "vp": "1440x900",
+   "phoneTyped": "(202) 555-0134",
+   "phoneSaved": "(202) 555-0134",
+   "phoneProblem": 0,
+   "shortProblem": "Needs 10 digits.",
+   "shortInvalid": "true",
+   "emailProblem": "Needs a full email, like name@example.com.",
+   "emailInvalid": "true",
+   "emailSaved": "\"ada.pine@example.com\"",
+   "emailProblemAfter": 0,
+   "floors": {
+    "sideways": 0,
+    "smallText": 0,
+    "smallTargets": 0
+   },
+   "ok": true,
+   "blocked": [],
+   "errs": []
+  }
+ ]
+}

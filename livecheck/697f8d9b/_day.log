@@ -1,0 +1,81 @@
+390x844 ok   01-tg-the-day 
+390x844 FAIL 02-still-open-parity mismatch {"theDay":20,"checklist":27,"handledByPlan":0,"seededPastWindow":6,"lines":["ner: Host Run the day Still to do today 2 left 1 Plan due today 20 things still open K"," 27 plan steps still open 27 still open — kno
+390x844 ok   03-every-type 
+390x844 ok   04-your-invite-framed 
+390x844 ok   05-see-full-invite 
+390x844 ok   06-design-this-page 
+390x844 ok   07-links-44 
+834x1194 ok   01-tg-the-day 
+834x1194 FAIL 02-still-open-parity mismatch {"theDay":20,"checklist":27,"handledByPlan":0,"seededPastWindow":6,"lines":["ner: Host Run the day Still to do today 2 left 1 Plan due today 20 things still open K"," 27 plan steps still open 27 still open — kno
+834x1194 ok   04-your-invite-framed 
+834x1194 ok   05-see-full-invite 
+834x1194 ok   06-design-this-page 
+834x1194 ok   07-links-44 
+1024x1366 ok   01-tg-the-day 
+1024x1366 FAIL 02-still-open-parity mismatch {"theDay":20,"checklist":27,"handledByPlan":0,"seededPastWindow":6,"lines":["ner: Host Run the day Still to do today 2 left 1 Plan due today 20 things still open K"," 27 plan steps still open 27 still open — kno
+1024x1366 ok   04-your-invite-framed 
+1024x1366 ok   05-see-full-invite 
+1024x1366 ok   06-design-this-page 
+1024x1366 ok   07-links-44 
+1194x834 ok   01-tg-the-day 
+1194x834 FAIL 02-still-open-parity mismatch {"theDay":20,"checklist":27,"handledByPlan":0,"seededPastWindow":6,"lines":["ner: Host Run the day Still to do today 2 left 1 Plan due today 20 things still open K"," 27 plan steps still open 27 still open — kno
+1194x834 ok   04-your-invite-framed 
+1194x834 ok   05-see-full-invite 
+1194x834 ok   06-design-this-page 
+1194x834 ok   07-links-44 
+1440x900 ok   01-tg-the-day 
+1440x900 FAIL 02-still-open-parity mismatch {"theDay":20,"checklist":27,"handledByPlan":0,"seededPastWindow":6,"lines":["ner: Host Run the day Still to do today 2 left 1 Plan due today 20 things still open K"," 27 plan steps still open 27 still open — kno
+1440x900 ok   04-your-invite-framed 
+1440x900 ok   05-see-full-invite 
+1440x900 ok   06-design-this-page 
+1440x900 ok   07-links-44 
+
+390x844 console:21 http:0 blocked:19 planUnchanged:true
+  ok  01-tg-the-day
+  FAIL 02-still-open-parity — mismatch {"theDay":20,"checklist":27,"handledByPlan":0,"seededPastWindow":6,"lines":["ner: Host Run the day Still to do today 2 left 1 Plan due today 20 things still open K"," 27 plan steps still open 27 still open — kno
+  ok  03-every-type
+  ok  04-your-invite-framed
+  ok  05-see-full-invite
+  ok  06-design-this-page
+  ok  07-links-44
+
+834x1194 console:8 http:0 blocked:5 planUnchanged:true
+  ok  01-tg-the-day
+  FAIL 02-still-open-parity — mismatch {"theDay":20,"checklist":27,"handledByPlan":0,"seededPastWindow":6,"lines":["ner: Host Run the day Still to do today 2 left 1 Plan due today 20 things still open K"," 27 plan steps still open 27 still open — kno
+  ok  04-your-invite-framed
+  ok  05-see-full-invite
+  ok  06-design-this-page
+  ok  07-links-44
+
+1024x1366 console:7 http:0 blocked:5 planUnchanged:true
+  ok  01-tg-the-day
+  FAIL 02-still-open-parity — mismatch {"theDay":20,"checklist":27,"handledByPlan":0,"seededPastWindow":6,"lines":["ner: Host Run the day Still to do today 2 left 1 Plan due today 20 things still open K"," 27 plan steps still open 27 still open — kno
+  ok  04-your-invite-framed
+  ok  05-see-full-invite
+  ok  06-design-this-page
+  ok  07-links-44
+
+1194x834 console:7 http:0 blocked:5 planUnchanged:true
+  ok  01-tg-the-day
+  FAIL 02-still-open-parity — mismatch {"theDay":20,"checklist":27,"handledByPlan":0,"seededPastWindow":6,"lines":["ner: Host Run the day Still to do today 2 left 1 Plan due today 20 things still open K"," 27 plan steps still open 27 still open — kno
+  ok  04-your-invite-framed
+  ok  05-see-full-invite
+  ok  06-design-this-page
+  ok  07-links-44
+
+1440x900 console:7 http:0 blocked:5 planUnchanged:true
+  ok  01-tg-the-day
+  FAIL 02-still-open-parity — mismatch {"theDay":20,"checklist":27,"handledByPlan":0,"seededPastWindow":6,"lines":["ner: Host Run the day Still to do today 2 left 1 Plan due today 20 things still open K"," 27 plan steps still open 27 still open — kno
+  ok  04-your-invite-framed
+  ok  05-see-full-invite
+  ok  06-design-this-page
+  ok  07-links-44
+
+console: [
+  'Failed to load resource: net::ERR_FAILED',
+  "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216."
+]
+http: []
+blocked: [
+  'POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/'
+]

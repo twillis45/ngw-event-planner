@@ -1,0 +1,587 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "01-tg-the-day",
+    "ok": true,
+    "how": "bar",
+    "hasCard": true,
+    "eyebrow": "Before guests arrive 0 of 10 10 still to",
+    "rows": [
+     "The turkey is fully thawed",
+     "The oven map is on the refrigerator",
+     "Thermometer works and the target is known",
+     "The two-hour rule has an owner",
+     "Kitchen fire basics checked",
+     "Everyone has a sober way home",
+     "Every dietary fix is cooked and labeled",
+     "A real seat for every confirmed guest",
+     "The guest room is actually ready",
+     "Arrival windows rechecked against the road"
+    ],
+    "moment": "Group photo",
+    "stillOpen": 20,
+    "sideways": 0,
+    "incident": "If something goes wrongWhen it’s a 911 call — Active danger — a fight happening now, a weapon, someone collapsing — is a 911 call, not a judgment call. Know the address words you’d say before the day.If someone collapses — Call 911, then hands-only CPR: push hard and fast in the center of the chest — the AHA’s two steps, made for untrained bystanders. Most cardiac arrests happen in homes.If someone gets out of hand — Stay calm — your response sets the temperature. Don’t argue with provocations; give space; offer simple choices. Lower-risk than confronting: distract, or bring in their own friend. If it turns violent, that’s the 911 line above.The kit — Know where the first-aid kit is before guests arrive — professional event plans write its location down. The AHA/Red Cross minimum kit list is the standard.Grease or grill fire — Lid on, burner off — never water on a grease fire (NFPA’s own"
+   },
+   {
+    "name": "02-still-open-parity",
+    "ok": false,
+    "error": "mismatch {\"theDay\":20,\"checklist\":27,\"handledByPlan\":0,\"seededPastWindow\":6,\"lines\":[\"ner: Host Run the day Still to do today 2 left 1 Plan due today 20 things still open K\",\" 27 plan steps still open 27 still open — kno"
+   },
+   {
+    "name": "03-every-type",
+    "ok": true,
+    "types": {
+     "Birthday": {
+      "card": "Before guests arrive 0",
+      "moment": "Toast",
+      "rides": true,
+      "fire": false,
+      "rows": 8
+     },
+     "Housewarming": {
+      "card": "Before guests arrive 0",
+      "moment": "Group photo",
+      "rides": true,
+      "fire": false,
+      "rows": 10
+     },
+     "Baby Shower": {
+      "card": "Before guests arrive 0",
+      "moment": "Games",
+      "rides": false,
+      "fire": false,
+      "rows": 5
+     },
+     "New Year's Eve Party": {
+      "card": "Before guests arrive 0",
+      "moment": "Group photo",
+      "rides": false,
+      "fire": false,
+      "rows": 8
+     },
+     "Graduation Party": {
+      "card": "Before guests arrive 0",
+      "moment": "Recognition speech",
+      "rides": true,
+      "fire": false,
+      "rows": 6
+     },
+     "Friendsgiving": {
+      "card": "Before guests arrive 0",
+      "moment": "Group photo",
+      "rides": true,
+      "fire": false,
+      "rows": 9
+     },
+     "Thanksgiving": {
+      "moment": "Group photo"
+     }
+    }
+   },
+   {
+    "name": "04-your-invite-framed",
+    "ok": true,
+    "src": "../hostv2/?invite-preview=E2E_TEST_lc-inv",
+    "frameText": "AN INVITATION JAN 2027 E2E_TEST_ Rosa’s 40th Another year, celebrated right WHEN Monday, January 4 Add to calendar 39 DAYS TO GO THE FAVOR OF A REPLY Kindly rep",
+    "frameSideways": 0,
+    "pageSideways": 0,
+    "smallLinks": []
+   },
+   {
+    "name": "05-see-full-invite",
+    "ok": true,
+    "full": "1",
+    "smallLinks": [],
+    "pageSideways": 0
+   },
+   {
+    "name": "06-design-this-page",
+    "ok": true,
+    "text": "Your invite Design this page What a guest sees when they tap the link. Nothing is sent from here. See the full invite Layout Classic At a glance Your message 30 / 200 The first thing guests read, under your event’s name.",
+    "backSaysYourInvite": true,
+    "smallLinks": [],
+    "pageSideways": 0
+   },
+   {
+    "name": "07-links-44",
+    "ok": true,
+    "checked": "invite, full invite, design, plan, next step"
+   }
+  ],
+  "console": [
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED"
+  ],
+  "http": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ],
+  "tgDay": {
+   "how": "bar",
+   "hasCard": true,
+   "eyebrow": "Before guests arrive 0 of 10 10 still to",
+   "rows": [
+    "The turkey is fully thawed",
+    "The oven map is on the refrigerator",
+    "Thermometer works and the target is known",
+    "The two-hour rule has an owner",
+    "Kitchen fire basics checked",
+    "Everyone has a sober way home",
+    "Every dietary fix is cooked and labeled",
+    "A real seat for every confirmed guest",
+    "The guest room is actually ready",
+    "Arrival windows rechecked against the road"
+   ],
+   "moment": "Group photo",
+   "stillOpen": 20,
+   "sideways": 0,
+   "incident": "If something goes wrongWhen it’s a 911 call — Active danger — a fight happening now, a weapon, someone collapsing — is a 911 call, not a judgment call. Know the address words you’d say before the day.If someone collapses — Call 911, then hands-only CPR: push hard and fast in the center of the chest — the AHA’s two steps, made for untrained bystanders. Most cardiac arrests happen in homes.If someone gets out of hand — Stay calm — your response sets the temperature. Don’t argue with provocations; give space; offer simple choices. Lower-risk than confronting: distract, or bring in their own friend. If it turns violent, that’s the 911 line above.The kit — Know where the first-aid kit is before guests arrive — professional event plans write its location down. The AHA/Red Cross minimum kit list is the standard.Grease or grill fire — Lid on, burner off — never water on a grease fire (NFPA’s own"
+  },
+  "planUnchanged": true
+ },
+ {
+  "vp": "834x1194",
+  "steps": [
+   {
+    "name": "01-tg-the-day",
+    "ok": true,
+    "how": "bar",
+    "hasCard": true,
+    "eyebrow": "Before guests arrive 0 of 10 10 still to",
+    "rows": [
+     "The turkey is fully thawed",
+     "The oven map is on the refrigerator",
+     "Thermometer works and the target is known",
+     "The two-hour rule has an owner",
+     "Kitchen fire basics checked",
+     "Everyone has a sober way home",
+     "Every dietary fix is cooked and labeled",
+     "A real seat for every confirmed guest",
+     "The guest room is actually ready",
+     "Arrival windows rechecked against the road"
+    ],
+    "moment": "Group photo",
+    "stillOpen": 20,
+    "sideways": 0,
+    "incident": "If something goes wrongWhen it’s a 911 call — Active danger — a fight happening now, a weapon, someone collapsing — is a 911 call, not a judgment call. Know the address words you’d say before the day.If someone collapses — Call 911, then hands-only CPR: push hard and fast in the center of the chest — the AHA’s two steps, made for untrained bystanders. Most cardiac arrests happen in homes.If someone gets out of hand — Stay calm — your response sets the temperature. Don’t argue with provocations; give space; offer simple choices. Lower-risk than confronting: distract, or bring in their own friend. If it turns violent, that’s the 911 line above.The kit — Know where the first-aid kit is before guests arrive — professional event plans write its location down. The AHA/Red Cross minimum kit list is the standard.Grease or grill fire — Lid on, burner off — never water on a grease fire (NFPA’s own"
+   },
+   {
+    "name": "02-still-open-parity",
+    "ok": false,
+    "error": "mismatch {\"theDay\":20,\"checklist\":27,\"handledByPlan\":0,\"seededPastWindow\":6,\"lines\":[\"ner: Host Run the day Still to do today 2 left 1 Plan due today 20 things still open K\",\" 27 plan steps still open 27 still open — kno"
+   },
+   {
+    "name": "04-your-invite-framed",
+    "ok": true,
+    "src": "../hostv2/?invite-preview=E2E_TEST_lc-inv",
+    "frameText": "AN INVITATION JAN 2027 E2E_TEST_ Rosa’s 40th Another year, celebrated right WHEN Monday, January 4 Add to calendar 39 DAYS TO GO THE FAVOR OF A REPLY Kindly rep",
+    "frameSideways": 0,
+    "pageSideways": 0,
+    "smallLinks": []
+   },
+   {
+    "name": "05-see-full-invite",
+    "ok": true,
+    "full": "1",
+    "smallLinks": [],
+    "pageSideways": 0
+   },
+   {
+    "name": "06-design-this-page",
+    "ok": true,
+    "text": "E2E_TEST_ Rosa’s 40th Monday, January 4 · 12 guests Next step Your plan The Day Plan parts Guests 1 named Budget, food, the place and the day are in the current app for now. Open the current app Your invite Design this p",
+    "backSaysYourInvite": true,
+    "smallLinks": [],
+    "pageSideways": 0
+   },
+   {
+    "name": "07-links-44",
+    "ok": true,
+    "checked": "invite, full invite, design, plan, next step"
+   }
+  ],
+  "console": [
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED"
+  ],
+  "http": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ],
+  "tgDay": {
+   "how": "bar",
+   "hasCard": true,
+   "eyebrow": "Before guests arrive 0 of 10 10 still to",
+   "rows": [
+    "The turkey is fully thawed",
+    "The oven map is on the refrigerator",
+    "Thermometer works and the target is known",
+    "The two-hour rule has an owner",
+    "Kitchen fire basics checked",
+    "Everyone has a sober way home",
+    "Every dietary fix is cooked and labeled",
+    "A real seat for every confirmed guest",
+    "The guest room is actually ready",
+    "Arrival windows rechecked against the road"
+   ],
+   "moment": "Group photo",
+   "stillOpen": 20,
+   "sideways": 0,
+   "incident": "If something goes wrongWhen it’s a 911 call — Active danger — a fight happening now, a weapon, someone collapsing — is a 911 call, not a judgment call. Know the address words you’d say before the day.If someone collapses — Call 911, then hands-only CPR: push hard and fast in the center of the chest — the AHA’s two steps, made for untrained bystanders. Most cardiac arrests happen in homes.If someone gets out of hand — Stay calm — your response sets the temperature. Don’t argue with provocations; give space; offer simple choices. Lower-risk than confronting: distract, or bring in their own friend. If it turns violent, that’s the 911 line above.The kit — Know where the first-aid kit is before guests arrive — professional event plans write its location down. The AHA/Red Cross minimum kit list is the standard.Grease or grill fire — Lid on, burner off — never water on a grease fire (NFPA’s own"
+  },
+  "planUnchanged": true
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "01-tg-the-day",
+    "ok": true,
+    "how": "rail",
+    "hasCard": true,
+    "eyebrow": "Before guests arrive 0 of 10 10 still to",
+    "rows": [
+     "The turkey is fully thawed",
+     "The oven map is on the refrigerator",
+     "Thermometer works and the target is known",
+     "The two-hour rule has an owner",
+     "Kitchen fire basics checked",
+     "Everyone has a sober way home",
+     "Every dietary fix is cooked and labeled",
+     "A real seat for every confirmed guest",
+     "The guest room is actually ready",
+     "Arrival windows rechecked against the road"
+    ],
+    "moment": "Group photo",
+    "stillOpen": 20,
+    "sideways": 0,
+    "incident": "If something goes wrongWhen it’s a 911 call — Active danger — a fight happening now, a weapon, someone collapsing — is a 911 call, not a judgment call. Know the address words you’d say before the day.If someone collapses — Call 911, then hands-only CPR: push hard and fast in the center of the chest — the AHA’s two steps, made for untrained bystanders. Most cardiac arrests happen in homes.If someone gets out of hand — Stay calm — your response sets the temperature. Don’t argue with provocations; give space; offer simple choices. Lower-risk than confronting: distract, or bring in their own friend. If it turns violent, that’s the 911 line above.The kit — Know where the first-aid kit is before guests arrive — professional event plans write its location down. The AHA/Red Cross minimum kit list is the standard.Grease or grill fire — Lid on, burner off — never water on a grease fire (NFPA’s own"
+   },
+   {
+    "name": "02-still-open-parity",
+    "ok": false,
+    "error": "mismatch {\"theDay\":20,\"checklist\":27,\"handledByPlan\":0,\"seededPastWindow\":6,\"lines\":[\"ner: Host Run the day Still to do today 2 left 1 Plan due today 20 things still open K\",\" 27 plan steps still open 27 still open — kno"
+   },
+   {
+    "name": "04-your-invite-framed",
+    "ok": true,
+    "src": "../hostv2/?invite-preview=E2E_TEST_lc-inv",
+    "frameText": "AN INVITATION JAN 2027 E2E_TEST_ Rosa’s 40th Another year, celebrated right WHEN Monday, January 4 Add to calendar 39 DAYS TO GO THE FAVOR OF A REPLY Kindly rep",
+    "frameSideways": 0,
+    "pageSideways": 0,
+    "smallLinks": []
+   },
+   {
+    "name": "05-see-full-invite",
+    "ok": true,
+    "full": "1",
+    "smallLinks": [],
+    "pageSideways": 0
+   },
+   {
+    "name": "06-design-this-page",
+    "ok": true,
+    "text": "E2E_TEST_ Rosa’s 40th Monday, January 4 · 12 guests Next step Your plan The Day Plan parts Guests 1 named Budget, food, the place and the day are in the current app for now. Open the current app Your invite Design this p",
+    "backSaysYourInvite": true,
+    "smallLinks": [],
+    "pageSideways": 0
+   },
+   {
+    "name": "07-links-44",
+    "ok": true,
+    "checked": "invite, full invite, design, plan, next step"
+   }
+  ],
+  "console": [
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED"
+  ],
+  "http": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ],
+  "tgDay": {
+   "how": "rail",
+   "hasCard": true,
+   "eyebrow": "Before guests arrive 0 of 10 10 still to",
+   "rows": [
+    "The turkey is fully thawed",
+    "The oven map is on the refrigerator",
+    "Thermometer works and the target is known",
+    "The two-hour rule has an owner",
+    "Kitchen fire basics checked",
+    "Everyone has a sober way home",
+    "Every dietary fix is cooked and labeled",
+    "A real seat for every confirmed guest",
+    "The guest room is actually ready",
+    "Arrival windows rechecked against the road"
+   ],
+   "moment": "Group photo",
+   "stillOpen": 20,
+   "sideways": 0,
+   "incident": "If something goes wrongWhen it’s a 911 call — Active danger — a fight happening now, a weapon, someone collapsing — is a 911 call, not a judgment call. Know the address words you’d say before the day.If someone collapses — Call 911, then hands-only CPR: push hard and fast in the center of the chest — the AHA’s two steps, made for untrained bystanders. Most cardiac arrests happen in homes.If someone gets out of hand — Stay calm — your response sets the temperature. Don’t argue with provocations; give space; offer simple choices. Lower-risk than confronting: distract, or bring in their own friend. If it turns violent, that’s the 911 line above.The kit — Know where the first-aid kit is before guests arrive — professional event plans write its location down. The AHA/Red Cross minimum kit list is the standard.Grease or grill fire — Lid on, burner off — never water on a grease fire (NFPA’s own"
+  },
+  "planUnchanged": true
+ },
+ {
+  "vp": "1194x834",
+  "steps": [
+   {
+    "name": "01-tg-the-day",
+    "ok": true,
+    "how": "rail",
+    "hasCard": true,
+    "eyebrow": "Before guests arrive 0 of 10 10 still to",
+    "rows": [
+     "The turkey is fully thawed",
+     "The oven map is on the refrigerator",
+     "Thermometer works and the target is known",
+     "The two-hour rule has an owner",
+     "Kitchen fire basics checked",
+     "Everyone has a sober way home",
+     "Every dietary fix is cooked and labeled",
+     "A real seat for every confirmed guest",
+     "The guest room is actually ready",
+     "Arrival windows rechecked against the road"
+    ],
+    "moment": "Group photo",
+    "stillOpen": 20,
+    "sideways": 0,
+    "incident": "If something goes wrongWhen it’s a 911 call — Active danger — a fight happening now, a weapon, someone collapsing — is a 911 call, not a judgment call. Know the address words you’d say before the day.If someone collapses — Call 911, then hands-only CPR: push hard and fast in the center of the chest — the AHA’s two steps, made for untrained bystanders. Most cardiac arrests happen in homes.If someone gets out of hand — Stay calm — your response sets the temperature. Don’t argue with provocations; give space; offer simple choices. Lower-risk than confronting: distract, or bring in their own friend. If it turns violent, that’s the 911 line above.The kit — Know where the first-aid kit is before guests arrive — professional event plans write its location down. The AHA/Red Cross minimum kit list is the standard.Grease or grill fire — Lid on, burner off — never water on a grease fire (NFPA’s own"
+   },
+   {
+    "name": "02-still-open-parity",
+    "ok": false,
+    "error": "mismatch {\"theDay\":20,\"checklist\":27,\"handledByPlan\":0,\"seededPastWindow\":6,\"lines\":[\"ner: Host Run the day Still to do today 2 left 1 Plan due today 20 things still open K\",\" 27 plan steps still open 27 still open — kno"
+   },
+   {
+    "name": "04-your-invite-framed",
+    "ok": true,
+    "src": "../hostv2/?invite-preview=E2E_TEST_lc-inv",
+    "frameText": "AN INVITATION JAN 2027 E2E_TEST_ Rosa’s 40th Another year, celebrated right WHEN Monday, January 4 Add to calendar 39 DAYS TO GO THE FAVOR OF A REPLY Kindly rep",
+    "frameSideways": 0,
+    "pageSideways": 0,
+    "smallLinks": []
+   },
+   {
+    "name": "05-see-full-invite",
+    "ok": true,
+    "full": "1",
+    "smallLinks": [],
+    "pageSideways": 0
+   },
+   {
+    "name": "06-design-this-page",
+    "ok": true,
+    "text": "E2E_TEST_ Rosa’s 40th Monday, January 4 · 12 guests Next step Your plan The Day Plan parts Guests 1 named Budget, food, the place and the day are in the current app for now. Open the current app Your invite Design this p",
+    "backSaysYourInvite": true,
+    "smallLinks": [],
+    "pageSideways": 0
+   },
+   {
+    "name": "07-links-44",
+    "ok": true,
+    "checked": "invite, full invite, design, plan, next step"
+   }
+  ],
+  "console": [
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED"
+  ],
+  "http": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ],
+  "tgDay": {
+   "how": "rail",
+   "hasCard": true,
+   "eyebrow": "Before guests arrive 0 of 10 10 still to",
+   "rows": [
+    "The turkey is fully thawed",
+    "The oven map is on the refrigerator",
+    "Thermometer works and the target is known",
+    "The two-hour rule has an owner",
+    "Kitchen fire basics checked",
+    "Everyone has a sober way home",
+    "Every dietary fix is cooked and labeled",
+    "A real seat for every confirmed guest",
+    "The guest room is actually ready",
+    "Arrival windows rechecked against the road"
+   ],
+   "moment": "Group photo",
+   "stillOpen": 20,
+   "sideways": 0,
+   "incident": "If something goes wrongWhen it’s a 911 call — Active danger — a fight happening now, a weapon, someone collapsing — is a 911 call, not a judgment call. Know the address words you’d say before the day.If someone collapses — Call 911, then hands-only CPR: push hard and fast in the center of the chest — the AHA’s two steps, made for untrained bystanders. Most cardiac arrests happen in homes.If someone gets out of hand — Stay calm — your response sets the temperature. Don’t argue with provocations; give space; offer simple choices. Lower-risk than confronting: distract, or bring in their own friend. If it turns violent, that’s the 911 line above.The kit — Know where the first-aid kit is before guests arrive — professional event plans write its location down. The AHA/Red Cross minimum kit list is the standard.Grease or grill fire — Lid on, burner off — never water on a grease fire (NFPA’s own"
+  },
+  "planUnchanged": true
+ },
+ {
+  "vp": "1440x900",
+  "steps": [
+   {
+    "name": "01-tg-the-day",
+    "ok": true,
+    "how": "rail",
+    "hasCard": true,
+    "eyebrow": "Before guests arrive 0 of 10 10 still to",
+    "rows": [
+     "The turkey is fully thawed",
+     "The oven map is on the refrigerator",
+     "Thermometer works and the target is known",
+     "The two-hour rule has an owner",
+     "Kitchen fire basics checked",
+     "Everyone has a sober way home",
+     "Every dietary fix is cooked and labeled",
+     "A real seat for every confirmed guest",
+     "The guest room is actually ready",
+     "Arrival windows rechecked against the road"
+    ],
+    "moment": "Group photo",
+    "stillOpen": 20,
+    "sideways": 0,
+    "incident": "If something goes wrongWhen it’s a 911 call — Active danger — a fight happening now, a weapon, someone collapsing — is a 911 call, not a judgment call. Know the address words you’d say before the day.If someone collapses — Call 911, then hands-only CPR: push hard and fast in the center of the chest — the AHA’s two steps, made for untrained bystanders. Most cardiac arrests happen in homes.If someone gets out of hand — Stay calm — your response sets the temperature. Don’t argue with provocations; give space; offer simple choices. Lower-risk than confronting: distract, or bring in their own friend. If it turns violent, that’s the 911 line above.The kit — Know where the first-aid kit is before guests arrive — professional event plans write its location down. The AHA/Red Cross minimum kit list is the standard.Grease or grill fire — Lid on, burner off — never water on a grease fire (NFPA’s own"
+   },
+   {
+    "name": "02-still-open-parity",
+    "ok": false,
+    "error": "mismatch {\"theDay\":20,\"checklist\":27,\"handledByPlan\":0,\"seededPastWindow\":6,\"lines\":[\"ner: Host Run the day Still to do today 2 left 1 Plan due today 20 things still open K\",\" 27 plan steps still open 27 still open — kno"
+   },
+   {
+    "name": "04-your-invite-framed",
+    "ok": true,
+    "src": "../hostv2/?invite-preview=E2E_TEST_lc-inv",
+    "frameText": "AN INVITATION JAN 2027 E2E_TEST_ Rosa’s 40th Another year, celebrated right WHEN Monday, January 4 Add to calendar 39 DAYS TO GO THE FAVOR OF A REPLY Kindly rep",
+    "frameSideways": 0,
+    "pageSideways": 0,
+    "smallLinks": []
+   },
+   {
+    "name": "05-see-full-invite",
+    "ok": true,
+    "full": "1",
+    "smallLinks": [],
+    "pageSideways": 0
+   },
+   {
+    "name": "06-design-this-page",
+    "ok": true,
+    "text": "E2E_TEST_ Rosa’s 40th Monday, January 4 · 12 guests Next step Your plan The Day Plan parts Guests 1 named Budget, food, the place and the day are in the current app for now. Open the current app Your invite Design this p",
+    "backSaysYourInvite": true,
+    "smallLinks": [],
+    "pageSideways": 0
+   },
+   {
+    "name": "07-links-44",
+    "ok": true,
+    "checked": "invite, full invite, design, plan, next step"
+   }
+  ],
+  "console": [
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED"
+  ],
+  "http": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ],
+  "tgDay": {
+   "how": "rail",
+   "hasCard": true,
+   "eyebrow": "Before guests arrive 0 of 10 10 still to",
+   "rows": [
+    "The turkey is fully thawed",
+    "The oven map is on the refrigerator",
+    "Thermometer works and the target is known",
+    "The two-hour rule has an owner",
+    "Kitchen fire basics checked",
+    "Everyone has a sober way home",
+    "Every dietary fix is cooked and labeled",
+    "A real seat for every confirmed guest",
+    "The guest room is actually ready",
+    "Arrival windows rechecked against the road"
+   ],
+   "moment": "Group photo",
+   "stillOpen": 20,
+   "sideways": 0,
+   "incident": "If something goes wrongWhen it’s a 911 call — Active danger — a fight happening now, a weapon, someone collapsing — is a 911 call, not a judgment call. Know the address words you’d say before the day.If someone collapses — Call 911, then hands-only CPR: push hard and fast in the center of the chest — the AHA’s two steps, made for untrained bystanders. Most cardiac arrests happen in homes.If someone gets out of hand — Stay calm — your response sets the temperature. Don’t argue with provocations; give space; offer simple choices. Lower-risk than confronting: distract, or bring in their own friend. If it turns violent, that’s the 911 line above.The kit — Know where the first-aid kit is before guests arrive — professional event plans write its location down. The AHA/Red Cross minimum kit list is the standard.Grease or grill fire — Lid on, burner off — never water on a grease fire (NFPA’s own"
+  },
+  "planUnchanged": true
+ }
+]

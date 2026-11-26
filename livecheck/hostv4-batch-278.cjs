@@ -57,7 +57,7 @@ const floors = (p, touch) => p.evaluate((touch) => {
     await p.waitForSelector('[data-view="guests"]', { timeout: 8000 }); await p.waitForTimeout(600);
     const back = p.getByRole('button', { name: 'Back to Guests', exact: true }); if (await back.isVisible().catch(() => false)) { await back.click(); await p.waitForTimeout(300); }
   };
-  const BUTTON_FOR = { names: /Add names/i, invite: /invite/i, count: /Lock the count/i, replies: /Nudge|remind/i };
+  const BUTTON_FOR = { names: /Add names/i, invite: /invite/i, count: /Lock the count/i, replies: /Nudge|remind|Add how to reach them/i }; // #289 (697f8d9b): no one reachable -> "Add how to reach them"
 
   // ── #278 the path ──
   for (const [w, h, touch] of VPS) {

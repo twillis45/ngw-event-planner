@@ -1,0 +1,307 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "create-1",
+    "ok": true,
+    "sentence": "Baby shower for my sister Ada on March 20 2027 for 30 people",
+    "got": {
+     "typeOnReveal": true,
+     "guestsOnReveal": true,
+     "dateOnPlan": true,
+     "typeOnPlan": true,
+     "guestsOnPlan": true,
+     "savedInThisBrowser": 1
+    },
+    "sideways": 0
+   },
+   {
+    "name": "create-2",
+    "ok": true,
+    "sentence": "Thanksgiving dinner on November 25 2027 for 12",
+    "got": {
+     "typeOnReveal": true,
+     "guestsOnReveal": true,
+     "dateOnPlan": true,
+     "typeOnPlan": true,
+     "guestsOnPlan": true,
+     "savedInThisBrowser": 1
+    },
+    "sideways": 0
+   },
+   {
+    "name": "create-3",
+    "ok": true,
+    "sentence": "Crab feast on July 10 2027 for 40 guests",
+    "got": {
+     "typeOnReveal": true,
+     "guestsOnReveal": true,
+     "dateOnPlan": true,
+     "typeOnPlan": true,
+     "guestsOnPlan": true,
+     "savedInThisBrowser": 1
+    },
+    "sideways": 0
+   },
+   {
+    "name": "create-4",
+    "ok": true,
+    "sentence": "Birthday party for Ben Oak on January 4 2027 for 25 people",
+    "got": {
+     "typeOnReveal": true,
+     "guestsOnReveal": true,
+     "dateOnPlan": true,
+     "typeOnPlan": true,
+     "guestsOnPlan": true,
+     "savedInThisBrowser": 1
+    },
+    "sideways": 0
+   },
+   {
+    "name": "trip-day2-alerts",
+    "ok": true,
+    "brunchHeading": 1,
+    "paymentAlert": 1,
+    "sideways": 0
+   }
+  ],
+  "console": [
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED"
+  ],
+  "http": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "834x1194",
+  "steps": [
+   {
+    "name": "create-1",
+    "ok": true,
+    "sentence": "Baby shower for my sister Ada on March 20 2027 for 30 people",
+    "got": {
+     "typeOnReveal": true,
+     "guestsOnReveal": true,
+     "dateOnPlan": true,
+     "typeOnPlan": true,
+     "guestsOnPlan": true,
+     "savedInThisBrowser": 1
+    },
+    "sideways": 0
+   },
+   {
+    "name": "trip-day2-alerts",
+    "ok": true,
+    "brunchHeading": 1,
+    "paymentAlert": 1,
+    "sideways": 0
+   }
+  ],
+  "console": [
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED"
+  ],
+  "http": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "create-1",
+    "ok": true,
+    "sentence": "Baby shower for my sister Ada on March 20 2027 for 30 people",
+    "got": {
+     "typeOnReveal": true,
+     "guestsOnReveal": true,
+     "dateOnPlan": true,
+     "typeOnPlan": true,
+     "guestsOnPlan": true,
+     "savedInThisBrowser": 1
+    },
+    "sideways": 0
+   },
+   {
+    "name": "trip-day2-alerts",
+    "ok": true,
+    "brunchHeading": 1,
+    "paymentAlert": 1,
+    "sideways": 0
+   }
+  ],
+  "console": [
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED"
+  ],
+  "http": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1194x834",
+  "steps": [
+   {
+    "name": "create-1",
+    "ok": true,
+    "sentence": "Baby shower for my sister Ada on March 20 2027 for 30 people",
+    "got": {
+     "typeOnReveal": true,
+     "guestsOnReveal": true,
+     "dateOnPlan": true,
+     "typeOnPlan": true,
+     "guestsOnPlan": true,
+     "savedInThisBrowser": 1
+    },
+    "sideways": 0
+   },
+   {
+    "name": "trip-day2-alerts",
+    "ok": true,
+    "brunchHeading": 1,
+    "paymentAlert": 1,
+    "sideways": 0
+   }
+  ],
+  "console": [
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED"
+  ],
+  "http": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ },
+ {
+  "vp": "1440x900",
+  "steps": [
+   {
+    "name": "create-1",
+    "ok": true,
+    "sentence": "Baby shower for my sister Ada on March 20 2027 for 30 people",
+    "got": {
+     "typeOnReveal": true,
+     "guestsOnReveal": true,
+     "dateOnPlan": true,
+     "typeOnPlan": true,
+     "guestsOnPlan": true,
+     "savedInThisBrowser": 1
+    },
+    "sideways": 0
+   },
+   {
+    "name": "trip-day2-alerts",
+    "ok": true,
+    "brunchHeading": 1,
+    "paymentAlert": 1,
+    "sideways": 0
+   }
+  ],
+  "console": [
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Blocked call to navigator.vibrate because user hasn't tapped on the frame or any embedded frame yet: https://www.chromestatus.com/feature/5644273861001216.",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED",
+   "Failed to load resource: net::ERR_FAILED"
+  ],
+  "http": [],
+  "blocked": [
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/",
+   "POST https://o4511174955565056.ingest.us.sentry.io/api/4511496830255104/envelope/"
+  ]
+ }
+]
