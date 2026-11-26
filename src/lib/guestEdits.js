@@ -101,6 +101,24 @@ export function replyByEdit(iso) {
   return { patch: { rsvpDeadline: iso }, msg: 'Reply-by date set — your invite and the nudges read it.' };
 }
 
+/** Take the reply-by date off (it had passed, or the party is too close for one). */
+export function clearReplyByEdit() {
+  return { patch: { rsvpDeadline: null }, msg: 'Reply-by date removed.' };
+}
+
+/**
+ * Why a picked reply-by date can't be used, or null when it can. A reply-by
+ * date must still be ahead (after today) and before the party. `today` is a
+ * local YYYY-MM-DD; ISO dates compare as strings.
+ */
+export function replyByProblem(event, iso, today) {
+  const t = today || (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+  if (!iso || iso <= t) return 'That date has already passed. Pick one after today.';
+  const party = String((event && event.date) || '').slice(0, 10);
+  if (party && iso >= party) return 'Replies need to be in before the party. Pick an earlier date.';
+  return null;
+}
+
 /** Ask yeses for a mailing address (for thank-yous). */
 export function addressesEdit(v) {
   return { patch: { collectAddresses: v }, msg: v ? 'Yeses now get an optional mailing-address question, for thank-yous.' : 'Address question removed from the RSVP page.' };
