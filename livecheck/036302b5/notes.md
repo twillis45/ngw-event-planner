@@ -1,4 +1,4 @@
-# Live check 036302b5 (#303 B7 moments): Thu Nov 26, 2026, 3:15–3:45 PM EST
+# Live check 036302b5 (#303 B7 moments): Thu Nov 26, 2026, 3:10–3:29 PM EST
 
 Live: the hostv4 `ngw-build` meta and the hostv2 bundle both read 036302b5f1c7 (deployed 3:05 PM EST).
 Chromium at 5 sizes. Every POST/PUT/PATCH/DELETE aborted (only Sentry). Share, clipboard and open stubbed. E2E_TEST_ plans only. Nothing sent.
