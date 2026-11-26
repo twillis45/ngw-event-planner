@@ -377,7 +377,8 @@ test('tall iPad: near the date, the weather sits in the header’s date line and
 });
 
 test('tall iPad: with nothing to say about the weather, the header carries none', async ({ browser }) => {
-  const { ctx, page } = await wxBoot(browser, WX_EV, { pop: 0.8, weather: [{ main: 'Rain', description: 'moderate rain', icon: '10d' }], temp: { min: 48, max: 57 } });
+  // Light rain under 30% (owner, 11/26/2026: rain at 30%+ now raises the arrivals heads-up).
+  const { ctx, page } = await wxBoot(browser, WX_EV, { pop: 0.2, weather: [{ main: 'Rain', description: 'light rain', icon: '10d' }], temp: { min: 48, max: 57 } });
   await expect(page.locator('.wxpill')).toHaveCount(0);
   await ctx.close();
 });
