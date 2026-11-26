@@ -16,8 +16,9 @@ import { dayState } from '@app/lib/dayState';
 import { todaysRos, dayOfList, dayOfTickEdit, dayOfStepEdit, cuesDoneEdit, ridesDue, nextDayOfCheck, runningLate } from '@app/lib/dayOfEdits';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import { clock12 } from '@app/lib/clock';
-import { parseMin } from '@app/lib/dayAlerts';
-import { dayWeather, guestTravelMessage, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
+import { parseMin, computeDayAlerts } from '@app/lib/dayAlerts';
+import { dayWeather, guestTravelMessage, isWeatherConfigured, geocodeVenue, getEventWeatherSpan, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus } from '@app/lib/weather';
+import { placeIsOutdoors } from '@app/lib/placeIntelligence';
 import { venueGeoQuery } from '@app/lib/venueFor';
 import { daysUntil, daysUntilEnd } from '@app/lib/dates';
 import { buildDayBeforePlan, dayWeatherLabel } from '@app/lib/dayBefore';
@@ -151,9 +152,18 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
   const note = wx && wx.arrival ? guestTravelMessage(ev, wx.arrival) : '';
   const copyNote = async () => { try { await navigator.clipboard.writeText(note); setCopied(true); } catch { setCopied(false); } };
   // THE DAY'S WEATHER: the line for any event, and what it asks of arrivals.
+  // OUTDOOR WEATHER (B5): hostv2's impact read, for an outdoor event, with the
+  // rain plan in mind; indoors the arrivals card above is the whole story.
+  const hasRainPlan = (() => { try { return rainPlanStatus(ev).hasPlan; } catch { return false; } })();
+  const impact = (() => {
+    if (!wxRow) return null;
+    try { if (!placeIsOutdoors(ev)) return null; const im = weatherImpactByEventPhase(ev, wxRow); return im && im.hasImpact ? im : null; } catch { return null; }
+  })();
   const weatherCard = wx && (
     <div className="grp gap" data-day-weather={wx.arrival ? wx.arrival.kind : 'clear'}>
       <div className="row"><span className="nm">{wx.line}{wx.arrival && <small>{wx.arrival.advice}</small>}</span></div>
+      {impact && <div className="row" data-wx-impact><span className="nm">{rainAwareSummary(impact.headline, hasRainPlan)}</span></div>}
+      {impact && !hasRainPlan && <a className="row go" data-wx-rainplan href="../hostv2/"><span className="nm">Set your rain plan<small>Where everyone goes if it rains. In the current app for now.</small></span>{chev}</a>}
       {wx.arrival && wx.arrival.checks.map((c) => (
         <CheckRow key={c.key} item={{ key: c.key, label: c.label, checked: !!ticked[c.key] }}
           onTick={() => save(dayOfTickEdit(ev, c.key, c.label))} onDetail={() => save(dayOfTickEdit(ev, c.key, c.label))} />
@@ -161,9 +171,35 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
       {wx.arrival && <button className="row go" data-wx-note onClick={() => { setCopied(false); setSheet('note'); }}><span className="nm">Weather note to guests</span>{chev}</button>}
     </div>
   );
+  // DAY ALERTS (B5): hostv2's alert engine, any day of the event; the most
+  // urgent above Now, all of them one tap away. The "next up" heads-up is the
+  // Now card's job, so only "Can’t wait" and "Watch" show here.
+  const RANK = { critical: 0, warning: 1 };
+  const alerts = st.eventDay
+    ? (() => { try { return (computeDayAlerts(ev) || []).filter((a) => a.tier in RANK).sort((a, b) => RANK[a.tier] - RANK[b.tier]); } catch { return []; } })()
+    : [];
+  const tierWord = (a) => (a.tier === 'critical' ? 'Can’t wait' : 'Watch');
+  const alertLine = alerts[0] && (
+    <div className="grp gap alertgrp"><button className={'row go alert ' + alerts[0].tier} data-alert onClick={() => setSheet('alerts')}>
+      <span className="nm"><b className="tier">{tierWord(alerts[0])}</b> {alerts[0].headline}{alerts.length > 1 && <small>{alerts.length - 1} more</small>}</span>{chev}
+    </button></div>
+  );
   const sheets = (<>
     {late && <LateSheet ev={ev} save={save} now={now} onDone={() => setLate(false)} onUpdates={onUpdates} />}
     {sheet === 'help' && <HelpSheet ev={ev} onDone={() => setSheet(null)} />}
+    {sheet === 'alerts' && (
+      <Sheet title="Needs you today" onDone={() => setSheet(null)}>
+        <div className="grp">{alerts.map((a) => (
+          <div key={a.id} className={'row alert ' + a.tier} data-alert-row={a.id}>
+            <span className="nm"><b className="tier">{tierWord(a)}</b> {a.headline}{a.move && <small>{a.move}</small>}</span>
+            {a.navTo === 'Guests' && onGuests
+              ? <button className="link act" data-alert-go onClick={() => { setSheet(null); onGuests(); }}>Guests</button>
+              : <a className="link act" data-alert-go href="../hostv2/">Open</a>}
+          </div>
+        ))}</div>
+        {alerts.some((a) => a.navTo !== 'Guests') && <p className="fine">Open takes you to the current app, where that part lives for now.</p>}
+      </Sheet>
+    )}
     {sheet === 'note' && note && (
       <Sheet title="Weather note to guests" onDone={() => setSheet(null)}>
         <p className="qhelp" data-wx-note-text>{note}</p>
@@ -287,6 +323,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
   } else if (st.phase === 'morning') {
     const nextCheck = nextDayOfCheck(ev);
     body = (<>
+      {alertLine}
       {nowCard}
       {weatherCard}
       <div className="grp gap">{runRow}{crewRow}{lateRow}<button className="row go" data-open-counter onClick={onCounter}><span className="nm">Counter mode<small>Large type for the kitchen. The screen stays on.</small></span>{chev}</button></div>
@@ -300,6 +337,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
     const rides = ridesDue(ev, ros, now);
     body = (<>
       <div className="grp">{helpRow}{lateRow}</div>
+      {alertLine}
       <div className="gap">{nowCard}</div>
       {weatherCard}
       {rides && <div className="grp gap"><CheckRow item={rides} attr={{ 'data-rides': true }} onTick={() => tick(rides)} onDetail={() => setSheet({ detail: 'rides' })} /></div>}

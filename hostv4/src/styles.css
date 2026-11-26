@@ -289,3 +289,13 @@ a.row { color: inherit; text-decoration: none; }
 .row .act { margin-left: auto; padding-left: 12px; white-space: nowrap; }
 .nm small b.ok { color: var(--ok); font-weight: 500; }
 .nm small b.warn { color: var(--warn); font-weight: 500; }
+
+/* Day alerts (B5): the tier is a word, colored to agree with it. */
+.alert .tier { font-weight: 600; margin-right: 4px; }
+.alert.critical .tier { color: var(--danger, #ff6961); }
+.alert.warning .tier { color: var(--warn); }
+.alertgrp { margin-bottom: 12px; }
+/* A row's action never gives up its width to the text beside it, and a link
+   that is a button reads as one (no underline). */
+.row .act { flex-shrink: 0; }
+a.link { text-decoration: none; }

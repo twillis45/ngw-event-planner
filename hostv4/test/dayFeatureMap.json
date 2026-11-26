@@ -123,9 +123,9 @@
         "file": "src/HostShellV2.jsx",
         "contains": "weatherImpactByEventPhase"
       },
-      "home": "planned",
-      "where": "A line under the title when it matters",
-      "batch": "B5 weather and alerts"
+      "home": "built",
+      "where": "The Day’s weather card: the impact line for an outdoor event, and Set your rain plan",
+      "selector": "data-wx-impact"
     },
     {
       "id": "day-alerts",
@@ -134,9 +134,9 @@
         "file": "src/HostShellV2.jsx",
         "contains": "computeDayAlerts"
       },
-      "home": "planned",
-      "where": "One line above Now when one is due",
-      "batch": "B5 weather and alerts"
+      "home": "built",
+      "where": "The Day, one line above Now (Can’t wait, Watch); all of them one tap away",
+      "selector": "data-alert"
     },
     {
       "id": "covers-pills",
