@@ -26,7 +26,7 @@ import {
 } from '@app/lib/api/guestPhotos';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 import { openedLine, openDayLine } from '@app/lib/guestInbox';
-import { useGuestQuestions, firstName, inboxWhy } from '@app/lib/guestUpdatesKit';
+import { useGuestQuestions, firstName, inboxWhy, replyPlaceholder } from '@app/lib/guestUpdatesKit';
 import { PhotoShareControls } from './GuestPhotosV2.jsx';
 import PhotoViewer from './PhotoViewer.jsx';
 import { instagramTagUrl } from '@app/lib/photoShare';
@@ -71,7 +71,7 @@ export function HostQuestions({ eventId, onWaiting }) {
                       <>
                         <textarea className="field" style={{ maxWidth: 'none', minHeight: 64, resize: 'vertical', fontSize: 'var(--t-input)' }}
                           maxLength={1000} value={draft} onChange={(e) => setDraft(e.target.value)} aria-label={`Your reply to ${t.guest_name}`}
-                          placeholder="Street parking on Pine — the lot fills up by 4." />
+                          placeholder={replyPlaceholder(t.guest_name)} />
                         <p className="of" data-reply-email style={{ margin: '4px 0 0' }}>{open.thread.email_notices
                           ? `It shows on ${first(t.guest_name)}’s invite, and ${first(t.guest_name)} gets it by email.`
                           : `It shows on ${first(t.guest_name)}’s invite. ${first(t.guest_name)} didn’t ask for email.`}</p>
