@@ -301,3 +301,6 @@ a.row { color: inherit; text-decoration: none; }
 a.link { text-decoration: none; }
 /* Who's here: a checklist row's action sits level with the name. */
 .row.check .act { align-self: center; }
+
+/* A main button that waits on something (a draft with blanks) reads as waiting. */
+.primary:disabled { opacity: .45; cursor: default; }

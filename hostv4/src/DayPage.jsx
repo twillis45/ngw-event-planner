@@ -28,11 +28,12 @@ import { playbookFoodPlan } from '@app/lib/playbooks';
 import { isReconfirmable } from '@app/lib/workstreams';
 import { crewRows, helperJobMessage, helperLinkPatch, helperHandoffPatch, helperMintWhy, helperPageBase } from '@app/lib/helperJob';
 import { mintHelperLinkResult, isHelperLinkApiConfigured, fetchHelperConfirmations, emailHelperJob, helperEmailWords } from '@app/lib/api/helperLink';
-import { draftHelperBrief } from '@app/lib/doItForMe';
+import { draftHelperBrief, draftGuestBrief, draftParkingInstructions } from '@app/lib/doItForMe';
+import { venueFor } from '@app/lib/venueFor';
 import { checkInEdit } from '@app/lib/guestEdits';
 import { tableNeeds } from '@app/lib/dietRows';
 import { publicAppUrl } from '@app/lib/publicAppUrl';
-import { readProfile } from './sendKit.jsx';
+import { readProfile, useSendReady, NotReady } from './sendKit.jsx';
 
 const chev = <svg className="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 const lowerFirst = (s) => String(s || '').replace(/^\w/, (c) => c.toLowerCase());
@@ -93,6 +94,12 @@ function useDay(ev, now) {
 }
 
 function Sheet({ title, onDone, children }) {
+  // Escape closes it, as Done does (live check of 31b2dd20, 834 wide).
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onDone(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onDone]);
   return (
     <div className="scrim" onClick={onDone}>
       <div className="sheet" role="dialog" aria-label={title} onClick={(e) => e.stopPropagation()}>
@@ -142,6 +149,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
   const [late, setLate] = useState(false);
   const [hereOpen, setHereOpen] = useState(false);
   const [momentAt, setMomentAt] = useState(null); // the time field while the moment sheet is open
+  const [tell, setTell] = useState(false);
   const start = clock12(ev.startTime);
 
   const tick = (item) => {
@@ -211,6 +219,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
       </Sheet>
     )}
     {late && <LateSheet ev={ev} save={save} now={now} onDone={() => setLate(false)} onUpdates={onUpdates} />}
+    {tell && <TellSheet ev={ev} onDone={() => setTell(false)} onUpdates={onUpdates} />}
     {sheet === 'help' && <HelpSheet ev={ev} onDone={() => setSheet(null)} />}
     {sheet === 'alerts' && (
       <Sheet title="Needs you today" onDone={() => setSheet(null)}>
@@ -372,6 +381,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
             ? <button key={r.key} className="row go" data-db-row={r.key} onClick={r.go}><span className="nm">{r.label}</span><span className="val warn">{r.val}</span>{chev}</button>
             : <a key={r.key} className="row go" data-db-row={r.key} href="../hostv2/"><span className="nm">{r.label}</span><span className="val warn">{r.val}</span>{chev}</a>))}
           </div>
+          <div className="grp gap"><button className="row go" data-tell onClick={() => setTell(true)}><span className="nm">Tell your guests<small>The details, a parking note, or an update on their invite.</small></span>{chev}</button></div>
           {eve.rows.some((r) => !r.go) && <p className="fine">The store run, vendors, helpers and the rain backup open in the current app for now.</p>}
         </section>
       )}
@@ -390,7 +400,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
       {nowCard}
       {momentRow}
       {weatherCard}
-      <div className="grp gap">{runRow}{crewRow}{lateRow}<button className="row go" data-open-counter onClick={onCounter}><span className="nm">Counter mode<small>Large type for the kitchen. The screen stays on.</small></span>{chev}</button></div>
+      <div className="grp gap">{runRow}{crewRow}{lateRow}<button className="row go" data-tell onClick={() => setTell(true)}><span className="nm">Tell your guests</span>{chev}</button><button className="row go" data-open-counter onClick={onCounter}><span className="nm">Counter mode<small>Large type for the kitchen. The screen stays on.</small></span>{chev}</button></div>
       {st.nowActive && list
         ? <div className="grp gap"><button className="row go" data-dayof-row onClick={() => setSheet('list')}><span className="nm">Before guests arrive</span><span className={'val' + (open.length ? ' warn' : ' ok')}>{open.length ? open.length + ' to go' : 'All set'}</span>{chev}</button></div>
         : listSection}
@@ -616,6 +626,50 @@ function LateSheet({ ev, save, now, onDone, onUpdates }) {
         {rows.length > 4 && <p className="fine">And {rows.length - 4} more after that.</p>}
         <button className="primary" data-late-go onClick={go}>Move the rest {by} minutes</button>
       </>)}
+    </Sheet>
+  );
+}
+
+// TELL YOUR GUESTS (B4, 11/26/2026): hostv2's own guest drafts from The Day.
+// The details carry the reply link, so they wait for it (useSendReady, the
+// invite's own check); the parking note needs a place; an update posts to
+// everyone's invite from Updates. Copy hands the words to her phone; nothing
+// is sent from here.
+function TellSheet({ ev, onDone, onUpdates }) {
+  const [view, setView] = useState(null); // null | 'brief' | 'parking'
+  const [copied, setCopied] = useState(false);
+  const [draft, setDraft] = useState(null); // her edits; null until she types
+  const send = useSendReady(ev);
+  const vf = (() => { try { return venueFor(ev); } catch { return {}; } })();
+  const hasPlace = !!(vf.name || vf.city);
+  const text = view === 'parking'
+    ? (() => { try { return String(draftParkingInstructions(ev) || ''); } catch { return ''; } })()
+    : view === 'brief' && send.ready
+      ? (() => { try { return draftGuestBrief(ev, readProfile(), { rsvpUrl: send.link.url }).body || ''; } catch { return ''; } })()
+      : '';
+  // Her words win once she types. A draft's [ ] blanks (the parking note's
+  // "[street / driveway …]") are filled before anything is copied.
+  const shown = draft !== null ? draft : text;
+  const blanks = /\[[^\]]+\]/.test(shown);
+  const copy = async () => { if (blanks) return; try { await navigator.clipboard.writeText(shown); setCopied(true); } catch { setCopied(false); } };
+  if (view) return (
+    <Sheet title={view === 'parking' ? 'Parking note' : 'The details'} onDone={onDone}>
+      {view === 'brief' && !send.ready ? <NotReady acct={send.acct} link={send.link} check={send.check} /> : (<>
+        <textarea className="field" rows={8} aria-label="The words" data-tell-text value={shown} onChange={(e) => { setDraft(e.target.value); setCopied(false); }} />
+        {blanks && <p className="fine warn">Fill in the [ ] parts first.</p>}
+        <button className="primary" data-tell-copy disabled={blanks} onClick={copy}>{copied ? 'Copied' : 'Copy it'}</button>
+        <p className="fine">Paste it into your group text or email. Nothing is sent from here.</p>
+      </>)}
+      <button className="link" onClick={() => { setView(null); setCopied(false); setDraft(null); }}>Back</button>
+    </Sheet>
+  );
+  return (
+    <Sheet title="Tell your guests" onDone={onDone}>
+      <div className="grp">
+        <button className="row go" data-tell-brief onClick={() => setView('brief')}><span className="nm">Send the details<small>Where, when, what to bring, and their reply link.</small></span>{chev}</button>
+        {hasPlace && <button className="row go" data-tell-parking onClick={() => setView('parking')}><span className="nm">Parking note<small>Where to park and how to find the door.</small></span>{chev}</button>}
+        {onUpdates && <button className="row go" data-tell-updates onClick={() => { onDone(); onUpdates(); }}><span className="nm">Post it to everyone’s invite<small>In Updates; emailed to guests who asked for updates.</small></span>{chev}</button>}
+      </div>
     </Sheet>
   );
 }
