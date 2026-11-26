@@ -1,4 +1,4 @@
-# Live check f60ebbb0 (#305 vendors on the day, #306 day reminders, #307 trip moment day): Thu Nov 26, 2026, 5:50–6:25 PM EST
+# Live check f60ebbb0 (#305 vendors on the day, #306 day reminders, #307 trip moment day): Thu Nov 26, 2026, 5:50–6:10 PM EST
 
 Live: the hostv4 `ngw-build` meta and the hostv2 bundle both read f60ebbb08ccc (deployed 5:19 PM EST).
 Chromium at 5 sizes. Every POST/PUT/PATCH/DELETE aborted (only Sentry). Share, clipboard and open stubbed. "Call" (tel:) and "Send the details" were read, never tapped. The .ics files were saved into vr/<vp>/ and never opened or imported. E2E_TEST_ plans only. Nothing sent.
