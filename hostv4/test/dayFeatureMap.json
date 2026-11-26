@@ -233,9 +233,9 @@
         "file": "src/HostShellV2.jsx",
         "contains": "momentSuggestion"
       },
-      "home": "planned",
-      "where": "Before the moment, as a row under Now",
-      "batch": "B7 moments"
+      "home": "built",
+      "where": "The Day, a row under Now: Worth a spot, with its time picked before it joins the run",
+      "selector": "data-moment"
     },
     {
       "id": "overlap",

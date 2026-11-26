@@ -17,6 +17,7 @@ import { dayIndexOf, spanNights } from './dates';
 import { rainPlanStatus } from './weather';
 import { parseMin } from './dayAlerts';
 import { clock12 } from './clock';
+import { buildMomentSegment } from './momentLibrary';
 
 /** Today's schedule: the effective run of show; mid-trip, day K's rows only
  *  (dayless rows count as day 1). Done is read from event.rosDone. */
@@ -129,5 +130,23 @@ export function runningLate(event, minutes, now) {
   return {
     moved, kept,
     edit: { patch: { ros: next, rosEdited: true }, msg: 'Moved ' + moved.length + ' step' + (moved.length === 1 ? '' : 's') + ' ' + by + ' minutes later.' + arrive },
+  };
+}
+
+/** A MOMENT JOINS THE RUN (B7, 11/26/2026): hostv2's "Worth a spot on the
+ *  schedule · Add it", shared with hostv4's The Day. The whole effective run plus
+ *  the moment (lib/momentLibrary buildMomentSegment), owned (rosEdited), at the
+ *  time the host picked ("HH:MM") or untimed. The whole run, never today's
+ *  rows alone: on a trip, saving today's rows would drop the other days. */
+export function addMomentEdit(event, moment, time) {
+  const seg = buildMomentSegment(moment);
+  if (!seg) return null;
+  let full = [];
+  try { full = (effectiveRos(event) || []).slice(); } catch { full = Array.isArray(event && event.ros) ? event.ros.slice() : []; }
+  const t = /^\d{1,2}:\d{2}$/.test(String(time || '')) ? time : '';
+  const row = { ...seg, time: t, id: 'm-' + moment.id };
+  return {
+    patch: { ros: [...full, row], rosEdited: true },
+    msg: t ? seg.segment + ' is on today’s run at ' + clock12(t) + '.' : seg.segment + ' is on the schedule — give it a time when you know it.',
   };
 }
