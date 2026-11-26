@@ -299,3 +299,5 @@ a.row { color: inherit; text-decoration: none; }
    that is a button reads as one (no underline). */
 .row .act { flex-shrink: 0; }
 a.link { text-decoration: none; }
+/* Who's here: a checklist row's action sits level with the name. */
+.row.check .act { align-self: center; }

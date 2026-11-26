@@ -147,7 +147,7 @@
       },
       "home": "planned",
       "where": "Who’s here, from 3:00 PM",
-      "batch": "B6 who’s here and at the table"
+      "batch": "B6 who’s here and at the table (pills: move hostv2’s dayWhispers into a lib first, so there is one source)"
     },
     {
       "id": "day-hero",

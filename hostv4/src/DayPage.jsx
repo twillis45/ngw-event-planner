@@ -28,6 +28,8 @@ import { isReconfirmable } from '@app/lib/workstreams';
 import { crewRows, helperJobMessage, helperLinkPatch, helperHandoffPatch, helperMintWhy, helperPageBase } from '@app/lib/helperJob';
 import { mintHelperLinkResult, isHelperLinkApiConfigured, fetchHelperConfirmations, emailHelperJob, helperEmailWords } from '@app/lib/api/helperLink';
 import { draftHelperBrief } from '@app/lib/doItForMe';
+import { checkInEdit } from '@app/lib/guestEdits';
+import { tableNeeds } from '@app/lib/dietRows';
 import { publicAppUrl } from '@app/lib/publicAppUrl';
 import { readProfile } from './sendKit.jsx';
 
@@ -137,6 +139,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
   const [sheet, setSheet] = useState(null); // 'help' | 'list' | { detail: key }
   const [more, setMore] = useState(false);
   const [late, setLate] = useState(false);
+  const [hereOpen, setHereOpen] = useState(false);
   const start = clock12(ev.startTime);
 
   const tick = (item) => {
@@ -259,6 +262,44 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
     </section>
   );
 
+  // WHO'S HERE (B6): once guests are due, a list plan's yes guests to tap in
+  // (lib/guestEdits checkInEdit); who is here folds into one row; anyone not
+  // here yet with a phone is one tap to text. Maybes are named under it.
+  const coming = (ev.guests || []).filter((g) => g && g.id && /^y/i.test(String(g.rsvp || '')));
+  const maybes = (ev.guests || []).filter((g) => g && /^m/i.test(String(g.rsvp || '')));
+  const here = coming.filter((g) => g.checkedIn);
+  const notYet = coming.filter((g) => !g.checkedIn);
+  const tapIn = (g) => save(checkInEdit(ev, g.id, now.toISOString()));
+  const hereRow = (g) => {
+    const digits = String(g.phone || '').replace(/[^+\d]/g, '');
+    return (
+      <div key={g.id} className={'row check' + (g.checkedIn ? ' got' : '')} data-here-row={g.id}>
+        <button className="tickbtn" data-tick aria-pressed={!!g.checkedIn} aria-label={(g.checkedIn ? 'Not here: ' : 'Here: ') + g.name} onClick={() => tapIn(g)}><span className="box" aria-hidden="true">{g.checkedIn ? '✓' : ''}</span></button>
+        <span className="nm">{g.name}</span>
+        {!g.checkedIn && digits && <a className="link act" data-here-text href={'sms:' + digits}>Text</a>}
+      </div>
+    );
+  };
+  const whosHere = st.doorsOpen && coming.length > 0 && (
+    <section data-whos-here>
+      <h3 className="sh">Who’s here · {here.length} of {coming.length}</h3>
+      <div className="grp">
+        {here.length > 0 && <button className="row go" data-here-done aria-expanded={hereOpen} onClick={() => setHereOpen(!hereOpen)}><span className="nm">{here.length} here</span><span className="val">{hereOpen ? 'Hide' : 'Show'}</span></button>}
+        {hereOpen && here.map(hereRow)}
+        {notYet.map(hereRow)}
+      </div>
+      {maybes.length > 0 && <p className="fine">Maybe: {maybes.map((g) => g.name).join(', ')}</p>}
+    </section>
+  );
+  // AT THE TABLE (B6): who needs what, from the guest list (lib/dietRows).
+  const needs = st.doorsOpen ? (() => { try { return tableNeeds(ev); } catch { return []; } })() : [];
+  const atTable = needs.length > 0 && (
+    <section data-at-table>
+      <h3 className="sh">At the table</h3>
+      <div className="grp">{needs.map((n) => <div key={n.need} className="row" data-table-need><span className="nm">{n.need}<small>{n.names.join(', ')}</small></span></div>)}</div>
+    </section>
+  );
+
   let body; let action = null;
   // The day before (B2): buildDayBeforePlan's window, 1–2 days out, read with
   // the live forecast so tomorrow's weather rides in it.
@@ -341,6 +382,8 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
       <div className="gap">{nowCard}</div>
       {weatherCard}
       {rides && <div className="grp gap"><CheckRow item={rides} attr={{ 'data-rides': true }} onTick={() => tick(rides)} onDetail={() => setSheet({ detail: 'rides' })} /></div>}
+      {whosHere}
+      {atTable}
       {st.earlierCues.length > 0 && (
         <div className="grp gap"><div className="row" data-earlier><span className="nm sub2">Earlier today · {st.earlierCues.length} step{st.earlierCues.length === 1 ? '' : 's'}</span><button className="link" onClick={markEarlier}>Mark them done</button></div></div>
       )}

@@ -222,3 +222,18 @@ export function replyAlertsEdit(event) {
   const off = event && event.hostAlerts === false;
   return { patch: { hostAlerts: off ? null : false }, msg: off ? 'Reply alerts are on.' : 'Reply alerts are off for this event.' };
 }
+
+/** WHO'S HERE (B6, 11/26/2026): tap a guest in on the day (guest.checkedIn,
+ *  the time they arrived; the field the duplicate rule already resets), tap
+ *  again to undo. `at` is the arrival time (ISO); omitted, it is now. */
+export function checkInEdit(event, guestId, at) {
+  const list = Array.isArray(event && event.guests) ? event.guests : [];
+  const g = list.find((x) => x && x.id === guestId);
+  if (!g) return null;
+  const on = !g.checkedIn;
+  const first = String(g.name || 'They').trim().split(/\s+/)[0];
+  return {
+    patch: { guests: list.map((x) => (x && x.id === guestId ? { ...x, checkedIn: on ? (at || new Date().toISOString()) : null } : x)) },
+    msg: on ? first + ' is here.' : first + ' isn’t checked in.',
+  };
+}
