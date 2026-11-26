@@ -16,6 +16,7 @@ import { isVendorBooked } from './workstreams';
 import { effectiveDone } from './taskEngine';
 import { showsReplyTracking } from './guestMode';
 import { isEventDay } from './dates';
+import { openStepCounts, pastWindowLabel } from './openSteps';
 import { taskIsOpenPastWindow } from './taskLead';
 import { notRepliedYet } from './rsvp';
 
@@ -124,9 +125,13 @@ export function computeDayAlerts(event, opts = {}) {
   // a task the host never ticked but that real event state proves handled (effectiveDone)
   // is NOT open. Raw !t.done counted those as open, so the day-of banner nagged about
   // work already done elsewhere (audit 2026-07-22).
-  const overdueCount = (event.timeline || []).filter(t => t && !effectiveDone(event, t) && overdue(t)).length;
+  // ONE COUNT (owner, 11/26/2026): the default is openSteps' `past`, the number
+  // the run-through card and the checklist row print, in the same words.
+  const overdueCount = opts.isTaskOverdue
+    ? (event.timeline || []).filter(t => t && !effectiveDone(event, t) && overdue(t)).length
+    : openStepCounts(event).past;
   if (overdueCount)
-    push({ id: 'overdue-tasks', tier: 'warning', headline: `${overdueCount} thing${overdueCount > 1 ? 's' : ''} still open`, move: `Knock them out or let them go — the day's already here.`, navTo: 'Planning Tasks' });
+    push({ id: 'overdue-tasks', tier: 'warning', headline: pastWindowLabel(overdueCount), move: `Knock them out or let them go — the day's already here.`, navTo: 'Planning Tasks' });
 
   // Guests with allergies + catering confirmed — on event day, confirm with caterer
   if (isToday(event.date)) {

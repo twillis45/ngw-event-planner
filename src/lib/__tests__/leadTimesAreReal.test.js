@@ -128,6 +128,8 @@ describe('the day-of alert stack can finally fire', () => {
       ],
     };
     const alerts = computeDayAlerts(ev) || [];
-    expect(JSON.stringify(alerts)).toMatch(/still open|open/i);
+    // Worded as the checklist row words it (oneBoardOneCountOfOpenSteps, 11/26/2026).
+    const a = alerts.find((x) => x.id === 'overdue-tasks');
+    expect(a && a.headline).toBe('2 steps past their window');
   });
 });

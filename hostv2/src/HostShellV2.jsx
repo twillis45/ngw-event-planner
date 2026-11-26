@@ -14748,7 +14748,9 @@ export default function HostShellV2() {
                     const n = Number(sec.open) || 0;
                     const lead = (() => {
                       switch (sec.key) {
-                        case 'tasks': return n ? `${n} plan step${n === 1 ? '' : 's'} still open` : 'Plan steps — nothing open';
+                        // One count (lib/openSteps): "left", with the past-window part
+                        // named in the same words as the alert and the checklist row.
+                        case 'tasks': { const p = Number(sec.past) || 0; return n ? `${n} plan step${n === 1 ? '' : 's'} left${p ? ` · ${p} past their window` : ''}` : 'Plan steps — nothing open'; }
                         // Rule 12: n is the list's remainder; rentals are their own fact,
                         // so "all in hand" only when none of them is open either.
                         case 'shopping': { const g = Number(sec.openGear) || 0; const l = sec.listLeft != null ? Number(sec.listLeft) || 0 : n; return l ? `${l} item${l === 1 ? '' : 's'} still to get` : g ? `${g} rental${g === 1 ? '' : 's'} still to sort` : 'Shopping — all in hand'; }
@@ -14786,6 +14788,8 @@ export default function HostShellV2() {
                         const gearBit = g ? ` ${g} rental${g === 1 ? '' : 's'} still to sort.` : '';
                         if (bits.length) return `${bits.join(' · ')} — one store run covers it.${gearBit}`;
                       }
+                      // The lead already carries both numbers; the line under it is the advice.
+                      if (sec.key === 'tasks' && n > 0) return 'Knock out what matters, let the rest go.';
                       if (sec.key !== 'cues') return sec.detail;
                       const cueList = ros.filter(r => r && r.segment);
                       if (!cueList.length) return sec.detail;
