@@ -60,8 +60,11 @@ describe('every outward surface asks the one guard', () => {
 
   test('the shell names from her words and asks the guard on every outward path', () => {
     const SRC = fs.readFileSync(path.join(__dirname, '../../../hostv2/src/HostShellV2.jsx'), 'utf8');
-    expect(/'My ' \+ milestoneName/.test(SRC)).toBe(false);
-    expect(/eventNameFrom\(/.test(SRC)).toBe(true);
+    // Creation names the event in lib/eventFromSentence (owner, 11/26/2026), which the shell calls.
+    const BUILD = fs.readFileSync(path.join(__dirname, '../eventFromSentence.js'), 'utf8');
+    expect(/'My ' \+ milestoneName/.test(SRC + BUILD)).toBe(false);
+    expect(/eventFromSentence\(\{/.test(SRC)).toBe(true);
+    expect(/eventNameFrom\(/.test(BUILD)).toBe(true);
     // invite (via inviteGaps), helper link, vendor brief, family link
     expect((SRC.match(/outwardGaps\(event, '(?:helper|vendor|family)'\)/g) || []).length).toBeGreaterThanOrEqual(3);
   });
