@@ -1,0 +1,242 @@
+[
+ {
+  "vp": "390x844",
+  "steps": [
+   {
+    "name": "here-list",
+    "ok": true,
+    "head": "Who’s here · 0 of 3",
+    "rows": [
+     "g-ada",
+     "g-ben",
+     "g-cy"
+    ],
+    "textHrefs": [
+     "sms:2025550101"
+    ],
+    "maybeNamed": true,
+    "needs": [
+     "Vegetarian Ada Pine, Cy Fern",
+     "Tree nuts Ben Oak"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "tap-in-and-undo",
+    "ok": true,
+    "checkedIn": "2026-11-26T20:20:00.000Z",
+    "headAfter": "Who’s here · 1 of 3",
+    "hereRow": "1 here Show",
+    "afterUndo": null,
+    "otherFieldsKept": true,
+    "sideways": 0
+   },
+   {
+    "name": "not-before-doors",
+    "ok": true,
+    "rows": 0,
+    "sideways": 0
+   },
+   {
+    "name": "not-for-headcount",
+    "ok": true,
+    "rows": 0,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": []
+ },
+ {
+  "vp": "834x1194",
+  "steps": [
+   {
+    "name": "here-list",
+    "ok": true,
+    "head": "Who’s here · 0 of 3",
+    "rows": [
+     "g-ada",
+     "g-ben",
+     "g-cy"
+    ],
+    "textHrefs": [
+     "sms:2025550101"
+    ],
+    "maybeNamed": true,
+    "needs": [
+     "Vegetarian Ada Pine, Cy Fern",
+     "Tree nuts Ben Oak"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "tap-in-and-undo",
+    "ok": true,
+    "checkedIn": "2026-11-26T20:20:00.000Z",
+    "headAfter": "Who’s here · 1 of 3",
+    "hereRow": "1 here Show",
+    "afterUndo": null,
+    "otherFieldsKept": true,
+    "sideways": 0
+   },
+   {
+    "name": "not-before-doors",
+    "ok": true,
+    "rows": 0,
+    "sideways": 0
+   },
+   {
+    "name": "not-for-headcount",
+    "ok": true,
+    "rows": 0,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": []
+ },
+ {
+  "vp": "1024x1366",
+  "steps": [
+   {
+    "name": "here-list",
+    "ok": true,
+    "head": "Who’s here · 0 of 3",
+    "rows": [
+     "g-ada",
+     "g-ben",
+     "g-cy"
+    ],
+    "textHrefs": [
+     "sms:2025550101"
+    ],
+    "maybeNamed": true,
+    "needs": [
+     "Vegetarian Ada Pine, Cy Fern",
+     "Tree nuts Ben Oak"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "tap-in-and-undo",
+    "ok": true,
+    "checkedIn": "2026-11-26T20:20:00.000Z",
+    "headAfter": "Who’s here · 1 of 3",
+    "hereRow": "1 here Show",
+    "afterUndo": null,
+    "otherFieldsKept": true,
+    "sideways": 0
+   },
+   {
+    "name": "not-before-doors",
+    "ok": true,
+    "rows": 0,
+    "sideways": 0
+   },
+   {
+    "name": "not-for-headcount",
+    "ok": true,
+    "rows": 0,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": []
+ },
+ {
+  "vp": "1194x834",
+  "steps": [
+   {
+    "name": "here-list",
+    "ok": true,
+    "head": "Who’s here · 0 of 3",
+    "rows": [
+     "g-ada",
+     "g-ben",
+     "g-cy"
+    ],
+    "textHrefs": [
+     "sms:2025550101"
+    ],
+    "maybeNamed": true,
+    "needs": [
+     "Vegetarian Ada Pine, Cy Fern",
+     "Tree nuts Ben Oak"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "tap-in-and-undo",
+    "ok": true,
+    "checkedIn": "2026-11-26T20:20:00.000Z",
+    "headAfter": "Who’s here · 1 of 3",
+    "hereRow": "1 here Show",
+    "afterUndo": null,
+    "otherFieldsKept": true,
+    "sideways": 0
+   },
+   {
+    "name": "not-before-doors",
+    "ok": true,
+    "rows": 0,
+    "sideways": 0
+   },
+   {
+    "name": "not-for-headcount",
+    "ok": true,
+    "rows": 0,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": []
+ },
+ {
+  "vp": "1440x900",
+  "steps": [
+   {
+    "name": "here-list",
+    "ok": true,
+    "head": "Who’s here · 0 of 3",
+    "rows": [
+     "g-ada",
+     "g-ben",
+     "g-cy"
+    ],
+    "textHrefs": [
+     "sms:2025550101"
+    ],
+    "maybeNamed": true,
+    "needs": [
+     "Vegetarian Ada Pine, Cy Fern",
+     "Tree nuts Ben Oak"
+    ],
+    "sideways": 0
+   },
+   {
+    "name": "tap-in-and-undo",
+    "ok": true,
+    "checkedIn": "2026-11-26T20:20:00.000Z",
+    "headAfter": "Who’s here · 1 of 3",
+    "hereRow": "1 here Show",
+    "afterUndo": null,
+    "otherFieldsKept": true,
+    "sideways": 0
+   },
+   {
+    "name": "not-before-doors",
+    "ok": true,
+    "rows": 0,
+    "sideways": 0
+   },
+   {
+    "name": "not-for-headcount",
+    "ok": true,
+    "rows": 0,
+    "sideways": 0
+   }
+  ],
+  "errs": [],
+  "blocked": []
+ }
+]
