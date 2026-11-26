@@ -158,8 +158,11 @@ describe('census: nothing in the host shell writes the dates or the start time e
   });
 
   test('creation builds its dates with the same setter', () => {
+    // Creation builds the event in lib/eventFromSentence (owner, 11/26/2026), which the shell calls.
     const src = fs.readFileSync(path.join(SHELL_DIR, 'HostShellV2.jsx'), 'utf8');
-    expect(src).toMatch(/eventDatesPatch\(\{\}, \{ date: effDate, endDate: effEndDate \}\)/);
+    const build = fs.readFileSync(path.join(__dirname, '../eventFromSentence.js'), 'utf8');
+    expect(src).toMatch(/eventFromSentence\(\{/);
+    expect(build).toMatch(/eventDatesPatch\(\{\}, \{ date: effDate, endDate: effEndDate \}\)/);
   });
 });
 
