@@ -124,6 +124,7 @@ import { askExchange, appendAskExchange, attachBroaderLook } from '@app/lib/askH
 import { runOrchestration } from '@app/lib/orchestrator';
 import { orchestratorStreamTransport, isOrchestratorApiConfigured } from '@app/lib/orchestratorClient';
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
+import ContactInput from './ContactInput.jsx';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement, honoreeApplies } from '@app/lib/eventIdentity';
 import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, spanEnd, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
@@ -29200,15 +29201,15 @@ export default function HostShellV2() {
                       <div className="ged-list">
                         <div className="ged-li">
                           <span className="ged-k" aria-hidden="true">Phone</span>
-                          <input className="field ged-v" placeholder="Add a number" type="tel" aria-label="Phone"
-                            value={g.phone || ''} onChange={e => writeGuest(i, { phone: formatPhoneUS(e.target.value) }, null)} />
+                          <ContactInput kind="phone" label="Phone" className="field ged-v" placeholder="Add a number"
+                            value={g.phone} onWrite={(v) => writeGuest(i, { phone: v }, null)} />
                           {digits ? <a className="ged-icon" href={'tel:' + digits} aria-label={'Call ' + first}>{ICON_CALL}</a> : null}
                           {digits ? <a className="ged-icon" href={'sms:' + digits} aria-label={'Text ' + first}>{ICON_TEXT}</a> : null}
                         </div>
                         <div className="ged-li">
                           <span className="ged-k" aria-hidden="true">Email</span>
-                          <input className="field ged-v" placeholder="Add an email" type="email" aria-label="Email"
-                            value={g.email || ''} onChange={e => writeGuest(i, { email: e.target.value }, null)} aria-invalid={isMalformedEmail(g.email)} />
+                          <ContactInput kind="email" label="Email" className="field ged-v" placeholder="Add an email"
+                            value={g.email} onWrite={(v) => writeGuest(i, { email: v }, null)} />
                           {email ? <a className="ged-icon" href={'mailto:' + encodeURIComponent(email)} aria-label={'Email ' + first}>{ICON_MAIL}</a> : null}
                         </div>
                         <div className="ged-li">
