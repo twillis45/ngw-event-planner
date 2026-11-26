@@ -10,7 +10,7 @@
 // invite and says plainly that emails already sent stay sent.
 import { useState } from 'react';
 import { isAnnouncementsApiConfigured } from '@app/lib/api/announcements';
-import { useGuestUpdates, updatesFailedLine, updatesLimitLine, updatesReachLine, updatesRoom } from '@app/lib/guestUpdatesKit';
+import { useGuestUpdates, updatesFailedLine, updatesLimitLine, updatesReachLine, updatesRoom, UPDATE_PLACEHOLDER } from '@app/lib/guestUpdatesKit';
 import BusyLine from './BusyLine.jsx';
 
 const when = (iso) => {
@@ -55,9 +55,9 @@ export default function HostUpdates({ eventId }) {
       </p>
       {canPost ? (
         <>
-          <textarea className="field" style={{ maxWidth: 'none', minHeight: 64, resize: 'vertical', fontSize: 'var(--t-input)' }}
+          <textarea className="field ex-ph" style={{ maxWidth: 'none', minHeight: 64, resize: 'vertical', fontSize: 'var(--t-input)' }}
             maxLength={1000} value={draft} onChange={(e) => { setDraft(e.target.value); setConfirm(false); }}
-            aria-label="Your update to every guest" placeholder="Parking is on Elm after 5 — the lot is closed." />
+            aria-label="Your update to every guest" placeholder={UPDATE_PLACEHOLDER} />
           <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'wrap', alignItems: 'center' }}>
             <button className="cta" data-update-post onClick={post} disabled={!draft.trim() || busy === 'post'}
               style={!draft.trim() ? { opacity: .45 } : undefined}>
