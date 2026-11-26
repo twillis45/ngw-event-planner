@@ -130,7 +130,7 @@ import { identityStatement, honoreeApplies } from '@app/lib/eventIdentity';
 import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, spanEnd, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
 import { dayOfHero } from '@app/lib/dayOfHero';
 import { dayState } from '@app/lib/dayState';
-import { todaysRos, dayOfList, dayOfTickEdit } from '@app/lib/dayOfEdits';
+import { todaysRos, dayOfList, dayOfTickEdit, addMomentEdit } from '@app/lib/dayOfEdits';
 import { afterOwed } from '@app/lib/afterOwed';
 import { eventDatesPatch, eventSpanLabel, eventStartTimePatch } from '@app/lib/eventDates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
@@ -311,7 +311,7 @@ import { budgetHeroCopy, estimateShortfallNote, stayOnTopOfTheRangeNote, planHea
 import { CRAB_REFERENCE_MARKET } from '@app/lib/crabServing';
 import { priceSourceNote } from '@app/lib/priceBasis';
 import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
-import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
+import { suggestableMoments } from '@app/lib/momentLibrary';
 import { deliverNotification, deliveryExcuse, notificationApiPresent, DELIVERY } from '@app/lib/notifyDelivery';
 import { signOutThisDevice } from '@app/lib/devicePush';
 import { lodgingBasisFor, budgetComparableTotal } from '@app/lib/knowledge/lodgingBasisLadder';
@@ -11638,15 +11638,13 @@ export default function HostShellV2() {
                     </span>
                     <button className="mini" onClick={() => {
                       try {
-                        const seg = buildMomentSegment(m);
-                        if (!seg) return;
-                        // WAVE-B fix: append to the EFFECTIVE schedule + rosEdited
-                        // (legacy's setRos shape). The old write appended to the
-                        // stored ros without the ownership flag, so on a playbook
-                        // event effectiveRos kept returning the derived schedule
-                        // and the added moment never appeared anywhere.
-                        const rosNext = [...ros, { ...seg, id: 'm-' + Math.random().toString(36).slice(2, 9) }];
-                        patchEvent({ ros: rosNext, rosEdited: true }, (m.label || 'The moment') + ' is on the schedule — give it a time when you know it.');
+                        // lib/dayOfEdits addMomentEdit (B7, 11/26/2026), the add
+                        // hostv4's The Day makes: the WHOLE effective run plus the
+                        // moment, rosEdited (WAVE-B's ownership rule). It used to
+                        // append to today's rows, which on a trip saved over the
+                        // other days.
+                        const ed = addMomentEdit(event, m);
+                        if (ed) patchEvent(ed.patch, ed.msg);
                       } catch { toast('Couldn’t add it.'); }
                     }}>Add it</button>
                   </div>

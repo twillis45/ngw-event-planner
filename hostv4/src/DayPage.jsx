@@ -13,7 +13,8 @@
 // lib/dayState and lib/dayOfEdits, and every write is one of their edits.
 import { useEffect, useState } from 'react';
 import { dayState } from '@app/lib/dayState';
-import { todaysRos, dayOfList, dayOfTickEdit, dayOfStepEdit, cuesDoneEdit, ridesDue, nextDayOfCheck, runningLate } from '@app/lib/dayOfEdits';
+import { todaysRos, dayOfList, dayOfTickEdit, dayOfStepEdit, cuesDoneEdit, ridesDue, nextDayOfCheck, runningLate, addMomentEdit } from '@app/lib/dayOfEdits';
+import { suggestableMoments } from '@app/lib/momentLibrary';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import { clock12 } from '@app/lib/clock';
 import { parseMin, computeDayAlerts } from '@app/lib/dayAlerts';
@@ -140,6 +141,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
   const [more, setMore] = useState(false);
   const [late, setLate] = useState(false);
   const [hereOpen, setHereOpen] = useState(false);
+  const [momentAt, setMomentAt] = useState(null); // the time field while the moment sheet is open
   const start = clock12(ev.startTime);
 
   const tick = (item) => {
@@ -187,7 +189,27 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
       <span className="nm"><b className="tier">{tierWord(alerts[0])}</b> {alerts[0].headline}{alerts.length > 1 && <small>{alerts.length - 1} more</small>}</span>{chev}
     </button></div>
   );
+  // A MOMENT WORTH A SPOT (B7): the type's next moment not yet on the run (the
+  // list hostv2 offers), one row under Now; she picks its time, the next
+  // step's by default, and it joins the run (lib/dayOfEdits addMomentEdit).
+  const moment = st.phase !== 'after' && st.phase !== 'done-for-today'
+    ? (() => { try { return suggestableMoments(ev.type, ros)[0] || null; } catch { return null; } })()
+    : null;
+  const momentDefault = ((st.nextCue || st.nowCue || ros[0] || {}).time) || '';
+  const momentRow = moment && (
+    <div className="grp gap"><button className="row go" data-moment onClick={() => setMomentAt(momentDefault)}>
+      <span className="nm">Worth a spot: {moment.label}<small>Not on today’s run yet.</small></span>{chev}
+    </button></div>
+  );
+
   const sheets = (<>
+    {moment && momentAt !== null && (
+      <Sheet title={moment.label} onDone={() => setMomentAt(null)}>
+        <p className="qhelp">{moment.owner ? 'Usually led by: ' + moment.owner + '.' : 'A moment worth a spot on the day.'}{moment.note ? ' ' + moment.note : ''}</p>
+        <input className="field" type="time" aria-label="When" data-moment-time value={momentAt} onChange={(e) => setMomentAt(e.target.value)} />
+        <button className="primary" data-moment-add onClick={() => { if (save(addMomentEdit(ev, moment, momentAt))) setMomentAt(null); }}>Add it to the run</button>
+      </Sheet>
+    )}
     {late && <LateSheet ev={ev} save={save} now={now} onDone={() => setLate(false)} onUpdates={onUpdates} />}
     {sheet === 'help' && <HelpSheet ev={ev} onDone={() => setSheet(null)} />}
     {sheet === 'alerts' && (
@@ -366,6 +388,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
     body = (<>
       {alertLine}
       {nowCard}
+      {momentRow}
       {weatherCard}
       <div className="grp gap">{runRow}{crewRow}{lateRow}<button className="row go" data-open-counter onClick={onCounter}><span className="nm">Counter mode<small>Large type for the kitchen. The screen stays on.</small></span>{chev}</button></div>
       {st.nowActive && list
@@ -380,6 +403,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
       <div className="grp">{helpRow}{lateRow}</div>
       {alertLine}
       <div className="gap">{nowCard}</div>
+      {momentRow}
       {weatherCard}
       {rides && <div className="grp gap"><CheckRow item={rides} attr={{ 'data-rides': true }} onTick={() => tick(rides)} onDetail={() => setSheet({ detail: 'rides' })} /></div>}
       {whosHere}
