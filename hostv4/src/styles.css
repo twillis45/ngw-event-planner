@@ -114,9 +114,13 @@ button.primary { border: 0; cursor: pointer; font-family: var(--sans); }
 .chips.picked { margin: 0; padding: 0 16px 12px; }
 .swipe { position: relative; overflow: hidden; }
 .swipe + .swipe::before { content: ""; position: absolute; top: 0; right: 0; left: 14px; border-top: 1px solid var(--hair); z-index: 1; }
-.under { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 18px; font-size: .9375rem; font-weight: 600; }
-.under.ok { left: 0; color: var(--ok); }
-.under.rm { right: 0; color: var(--warn); }
+/* Swipe actions (owner, 11/26/2026): revealed under the row, each a 44px+ button. */
+.acts { position: absolute; top: 0; bottom: 0; display: flex; }
+.acts.right { left: 0; } .acts.left { right: 0; }
+.swipe:not([data-dir="right"]) .acts.right, .swipe:not([data-dir="left"]) .acts.left { visibility: hidden; }
+.acts .a { width: 84px; min-height: 44px; border: 0; font: 600 .8125rem/1.15 var(--sans); padding: 0 6px; cursor: pointer; color: #0c0c0e; }
+.acts .a.ok { background: var(--ok); } .acts .a.maybe { background: var(--ink-2); }
+.acts .a.no { background: #8e8e93; color: #fff; } .acts .a.none { background: #48484a; color: var(--ink); } .acts .a.rm { background: var(--warn); }
 .row.guest { width: 100%; border: 0; background: var(--raised); color: var(--ink); font: inherit; font-size: 1.0625rem; text-align: left; cursor: pointer; touch-action: pan-y; position: relative; z-index: 1; }
 .row.danger { width: 100%; border: 0; background: none; color: var(--warn); font: inherit; font-size: 1.0625rem; justify-content: center; cursor: pointer; }
 .datein { margin-left: auto; background: none; border: 0; color: var(--accent); font: inherit; min-height: 44px; color-scheme: dark; }
