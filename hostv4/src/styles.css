@@ -91,6 +91,10 @@ button.primary { border: 0; cursor: pointer; font-family: var(--sans); }
 .chips { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px 12px; padding: 0 16px; scrollbar-width: none; }
 .chips button { flex: none; min-height: 44px; padding: 0 14px; border-radius: 22px; border: 1px solid var(--hair); background: none; color: var(--ink-2); font: 500 .9375rem var(--sans); cursor: pointer; }
 .chips button[aria-pressed="true"] { background: rgba(241, 237, 230, .1); color: var(--ink); border-color: transparent; }
+/* Diet and allergies: a row each, what is picked under it as chips that remove it. */
+.chips.wrap { flex-wrap: wrap; overflow: visible; margin: 0 0 12px; padding: 0; }
+.grp.lists { margin-bottom: 12px; }
+.chips.picked { margin: 0; padding: 0 16px 12px; }
 .swipe { position: relative; overflow: hidden; }
 .swipe + .swipe::before { content: ""; position: absolute; top: 0; right: 0; left: 14px; border-top: 1px solid var(--hair); z-index: 1; }
 .under { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 18px; font-size: .9375rem; font-weight: 600; }
