@@ -17,7 +17,7 @@ import { linesLeftToBuy } from './itemCounts';
 import { rainPlanStatus, RAIN_PLAN_TARGET, dayWeather, guestTravelMessage } from './weather';
 import { deriveHelperResponsibilities } from './helperResponsibility';
 import { isVendorConfirmed, hiredVendors } from './workstreams';
-import { effectiveDone } from './taskEngine';
+import { openSteps } from './openSteps';
 import { daysUntil } from './dates';
 import { byGuestMode } from './guestMode';
 
@@ -49,10 +49,9 @@ export function buildDayBeforePlan(event, now = new Date(), forecast = null) {
   // disagree with every other checklist number on the screen. Known residual:
   // the V2 shell layers two local extras on top (arrivals-grid, buy/shop
   // resolution) that stay V2-side; this engine reads the shared predicate only.
-  const timeline = Array.isArray(ev.timeline) ? ev.timeline.filter(t => t && t.task) : [];
-  const openTasks = timeline.filter(t => {
-    try { return !effectiveDone(ev, t); } catch { return !t.done; }
-  });
+  // ONE COUNT (owner, 11/26/2026): lib/openSteps — `left` here, `past` the
+  // same number the day-of alert and the checklist row print.
+  const { left: openTasks, past: pastTasks } = openSteps(ev, now);
 
   // 2 · Still to get — unbought food lines + unchecked supplies (same single
   // sources the Plan tab checks off against).
@@ -147,9 +146,9 @@ export function buildDayBeforePlan(event, now = new Date(), forecast = null) {
   // Deep-link doctrine: every row lands on its first-undone element.
   const sections = [
     {
-      key: 'tasks', label: 'Open plan steps', open: openTasks.length,
+      key: 'tasks', label: 'Open plan steps', open: openTasks.length, past: pastTasks.length,
       detail: openTasks.length
-        ? `${openTasks.length} still open — knock out what matters, let the rest go.`
+        ? `${openTasks.length} left${pastTasks.length ? `, ${pastTasks.length} past their window` : ''}. Knock out what matters, let the rest go.`
         : 'Nothing open. Stop worrying about the plan.',
       items: openTasks.slice(0, 4).map(t => t.task),
       route: openTasks.length ? { tab: 'Planning Tasks', taskId: '__compressed__' } : null,
