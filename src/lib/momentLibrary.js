@@ -55,6 +55,15 @@ const M = {
   sharedMeal:   { id: 'sharedMeal',   label: 'Shared meal / mingle', owner: 'Host',         support: 'supported', match: ['shared meal', 'mingle'] },
   bouquetToss:  { id: 'bouquetToss',  label: 'Bouquet toss',         owner: 'DJ / MC',      support: 'supported', match: ['bouquet'] },
   reveal:       { id: 'reveal',       label: 'The reveal',           owner: 'Host',         support: 'supported', match: ['the reveal', 'gender reveal'] },
+  // Authored 11/26/2026 from each playbook's own heartMoments (owner: "little
+  // moments like when to take pictures ... make sure these are systematic").
+  thankful:     { id: 'thankful',     label: 'The thankful-for moment', owner: 'Host',      support: 'supported', match: ['thankful'] },
+  countdown:    { id: 'countdown',    label: 'Midnight countdown',   owner: 'Host / DJ',    support: 'supported', match: ['countdown', 'midnight'] },
+  costume:      { id: 'costume',      label: 'Costume contest',      owner: 'Host',         support: 'supported', match: ['costume'] },
+  memories:     { id: 'memories',     label: 'Sharing memories',     owner: 'Family / MC',  support: 'supported', match: ['memories', 'remembrance'] },
+  kinara:       { id: 'kinara',       label: 'Lighting the kinara',  owner: 'Elder / host', support: 'supported', match: ['kinara', 'candle lighting'] },
+  reading:      { id: 'reading',      label: 'The reading',          owner: 'Elder / host', support: 'supported', match: ['the reading', 'reading of'] },
+  coffeeRounds: { id: 'coffeeRounds', label: 'The coffee ceremony',  owner: 'Host',         support: 'supported', match: ['coffee ceremony', 'abol', 'jebena'] },
   proposal:     { id: 'proposal',     label: 'The proposal',         owner: 'Host',         support: 'partial',   match: ['the proposal', 'proposal moment'], note: 'The surprise itself — brief whoever cues the timing/signal.' },
 };
 
@@ -91,6 +100,37 @@ const BY_TYPE = {
   'dinner party':      [M.toast, M.sharedMeal, M.groupPhoto],
   'housewarming':      [M.toast, M.groupPhoto],
   'get-together':      [M.toast, M.groupPhoto],
+  // Every playbook type names its own moments (owner, 11/26/2026). Before this,
+  // 25 of 47 offered only the group photo. Each list is drawn from that
+  // playbook's own heartMoments; theDayCoversEveryType holds all 47 to it.
+  // Where the meal is the whole event, the group photo comes before "shared
+  // meal", which such a day already is.
+  'watch party':       [M.groupPhoto, M.sharedMeal],
+  'game night':        [M.games, M.groupPhoto],
+  'bachelorette':      [M.toast, M.games, M.groupPhoto],
+  'bachelor':          [M.toast, M.games, M.groupPhoto],
+  // Before 'cookout': "Juneteenth Cookout" contains both, and the first key wins.
+  'juneteenth':        [M.reading, M.toast, M.groupPhoto, M.sharedMeal],
+  'cookout':           [M.groupPhoto, M.sharedMeal, M.games],
+  'fish fry':          [M.groupPhoto, M.sharedMeal],
+  'card party':        [M.games, M.groupPhoto],
+  'sunday dinner':     [M.groupPhoto, M.sharedMeal],
+  'day party':         [M.toast, M.groupPhoto],
+  'crab feast':        [M.groupPhoto, M.sharedMeal],
+  'crawfish':          [M.groupPhoto, M.sharedMeal],
+  'low country boil':  [M.groupPhoto, M.sharedMeal],
+  'pupusa':            [M.groupPhoto, M.sharedMeal],
+  'coffee ceremony':   [M.coffeeRounds, M.groupPhoto],
+  'repast':            [M.memories, M.groupPhoto, M.sharedMeal],
+  'kwanzaa':           [M.kinara, M.groupPhoto, M.sharedMeal, M.giftOpening],
+  'board meeting':     [M.keynote, M.recognition, M.groupPhoto],
+  'team retreat':      [M.keynote, M.games, M.recognition, M.groupPhoto],
+  'client dinner':     [M.toast, M.sharedMeal],
+  'thanksgiving':      [M.thankful, M.groupPhoto, M.sharedMeal],
+  'friendsgiving':     [M.thankful, M.toast, M.groupPhoto, M.sharedMeal],
+  'halloween':         [M.costume, M.games, M.groupPhoto],
+  "new year's eve":    [M.countdown, M.toast, M.groupPhoto],
+  'group trip':        [M.groupPhoto, M.sharedMeal],
 };
 
 const norm = (s) => String(s || '').trim().toLowerCase();

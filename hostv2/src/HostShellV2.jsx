@@ -11969,6 +11969,97 @@ export default function HostShellV2() {
     );
   }
 
+  // THE DAY-OF LIST, ON THE DAY TOO (owner, 11/26/2026: on Thanksgiving morning the
+  // nine checks were gone). It lived only in the before-the-day view, so the list
+  // "the host clears the morning of" disappeared on that morning. One renderer,
+  // both views.
+  // A MOMENT WORTH A SPOT (owner, 11/26/2026: "little moments like when to take
+  // pictures"). Offered on the day only until now, when there is no time left to
+  // plan it; the before-the-day view offers it too. Every type has its own
+  // moments (momentLibrary; theDayCoversEveryType).
+  const momentSuggestion = () => {
+                let sugg = [];
+                try { sugg = suggestableMoments(event.type, ros) || []; } catch { sugg = []; }
+                if (!sugg.length) return null;
+                const m = sugg[0];
+                return (
+                  <div className="later-row" style={{ marginTop: 14, marginBottom: 'var(--sp-2)' }}>
+                    <span className="t" style={{ color: 'var(--carbon-muted)', fontWeight: 550, fontSize: 'var(--t-row-sub)' }}>
+                      Worth a spot on the schedule: {m.label || m.title || m.name}
+                    </span>
+                    <button className="mini" onClick={() => {
+                      try {
+                        const seg = buildMomentSegment(m);
+                        if (!seg) return;
+                        // WAVE-B fix: append to the EFFECTIVE schedule + rosEdited
+                        // (legacy's setRos shape). The old write appended to the
+                        // stored ros without the ownership flag, so on a playbook
+                        // event effectiveRos kept returning the derived schedule
+                        // and the added moment never appeared anywhere.
+                        const rosNext = [...ros, { ...seg, id: 'm-' + Math.random().toString(36).slice(2, 9) }];
+                        patchEvent({ ros: rosNext, rosEdited: true }, (m.label || 'The moment') + ' is on the schedule — give it a time when you know it.');
+                      } catch { toast('Couldn’t add it.'); }
+                    }}>Add it</button>
+                  </div>
+                );
+  };
+
+  const dayOfCard = (eyebrow) => {
+                const rc = (() => { try { return playbookDayOfChecklist(event); } catch { return null; } })();
+                if (!rc || !rc.items || !rc.items.length) return null;
+                const checked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
+                // ONE RAIN PLAN (single-source audit, 11/18/2026): the 'weather'
+                // row was its own tick in safetyChecked while the rain section and
+                // readiness read event.rainPlan, so "If it rains: garage" could sit
+                // beside an unconfirmed "Rain / heat plan". The row now reads the
+                // saved plan, and with none saved a tap opens the rain editor —
+                // where the answer lives — instead of storing a second one.
+                const rainHas = (() => { try { return rainPlanStatus(event).hasPlan; } catch { return false; } })();
+                const isRainRow = (p) => p.key === 'weather';
+                // ONE TICK (audit 2 lane A P0-6): a row derived from the checklist's
+                // own day-of step IS that step, so it reads and writes the step.
+                const stepIx = (key) => (event.timeline || []).findIndex((t) => t && String(t.id) === String(key));
+                const stepDone = (key) => { const i = stepIx(key); return i >= 0 && !!event.timeline[i].done; };
+                const isChecked = (p) => (isRainRow(p) && rainHas) || !!checked[p.key] || stepDone(p.key);
+                const done = rc.items.filter(isChecked).length;
+                const toggle = (key) => {
+                  if (stepIx(key) >= 0 && !checked[key]) { toggleTask(stepIx(key)); return; }
+                  const next = { ...checked };
+                  if (next[key]) delete next[key]; else next[key] = true;
+                  patchEvent({ safetyChecked: next },
+                    (next[key] ? 'Confirmed: ' : 'Reopened: ') + String(rc.items.find((p) => p.key === key)?.label || '').slice(0, 48));
+                };
+                return (
+                  <div className="card dayof-card">
+                    <SheetHero
+                      eyebrow={eyebrow}
+                      star={`${done} of ${rc.items.length}`}
+                      tone={done === rc.items.length ? 'ok' : undefined}
+                      sub={done === rc.items.length
+                        ? 'All confirmed.'
+                        : `${rc.items.length - done} still to confirm — ${rc.because}.`}
+                    />
+                    {rc.isDefault && (
+                      <p className="v-meta borrowed-note">
+                        We have no day-of list written for {String(event.type || 'this type').toLowerCase()} yet,
+                        so these are the safety basics every event shares. Add anything this one needs.
+                      </p>
+                    )}
+                    {rc.items.map((p, i) => (
+                      <button key={p.key} className={'frow' + (isChecked(p) ? ' got' : '')}
+                        style={{ animation: rowEnter(i) }} data-dayof-item={p.key}
+                        onClick={() => (isRainRow(p) && (rainHas || !checked[p.key]) ? setSheet({ kind: 'rain' }) : toggle(p.key))}>
+                        <span className="fcheck" aria-hidden="true" />
+                        <span className="f-main">
+                          <span className="f-name">{p.label}</span>
+                          {p.detail ? <span className="f-sub">{p.detail}</span> : null}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                );
+  };
+
   return (
     <div className={['stagewrap', stageMode].filter(Boolean).join(' ')}
       data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'}
@@ -16577,6 +16668,8 @@ export default function HostShellV2() {
                   {dayWhispers.map(w => <span key={w} className="pill p-ok" style={{ cursor: 'default' }}>{w}</span>)}
                 </div>
               )}
+              {/* Until the doors open: once the event is under way the timeline leads. */}
+              {!eventLive && dayOfCard('Before guests arrive')}
               {/* Day alerts — the SAME engine the production app reads
                   (lib/dayAlerts): what needs you RIGHT NOW, three calm tiers. */}
               {rosOverlaps > 0 && (
@@ -16587,32 +16680,7 @@ export default function HostShellV2() {
                 </div>
               )}
               {nudgeFor('program')}
-              {(() => {
-                let sugg = [];
-                try { sugg = suggestableMoments(event.type, ros) || []; } catch { sugg = []; }
-                if (!sugg.length) return null;
-                const m = sugg[0];
-                return (
-                  <div className="later-row" style={{ marginTop: 14, marginBottom: 'var(--sp-2)' }}>
-                    <span className="t" style={{ color: 'var(--carbon-muted)', fontWeight: 550, fontSize: 'var(--t-row-sub)' }}>
-                      Worth a spot on the schedule: {m.label || m.title || m.name}
-                    </span>
-                    <button className="mini" onClick={() => {
-                      try {
-                        const seg = buildMomentSegment(m);
-                        if (!seg) return;
-                        // WAVE-B fix: append to the EFFECTIVE schedule + rosEdited
-                        // (legacy's setRos shape). The old write appended to the
-                        // stored ros without the ownership flag, so on a playbook
-                        // event effectiveRos kept returning the derived schedule
-                        // and the added moment never appeared anywhere.
-                        const rosNext = [...ros, { ...seg, id: 'm-' + Math.random().toString(36).slice(2, 9) }];
-                        patchEvent({ ros: rosNext, rosEdited: true }, (m.label || 'The moment') + ' is on the schedule — give it a time when you know it.');
-                      } catch { toast('Couldn’t add it.'); }
-                    }}>Add it</button>
-                  </div>
-                );
-              })()}
+              {momentSuggestion()}
               {dayAlerts.map(a => (
                 <button key={a.id} onClick={() => alertSheet(a)}
                   style={{
@@ -16835,61 +16903,8 @@ export default function HostShellV2() {
                   the borrowed playbook does: 32 of 39 playbooks author no
                   day-of list, and a generic safety floor presented as this
                   event's own would be a claim we have not earned. */}
-              {(() => {
-                const rc = (() => { try { return playbookDayOfChecklist(event); } catch { return null; } })();
-                if (!rc || !rc.items || !rc.items.length) return null;
-                const checked = (event.safetyChecked && typeof event.safetyChecked === 'object') ? event.safetyChecked : {};
-                // ONE RAIN PLAN (single-source audit, 11/18/2026): the 'weather'
-                // row was its own tick in safetyChecked while the rain section and
-                // readiness read event.rainPlan, so "If it rains: garage" could sit
-                // beside an unconfirmed "Rain / heat plan". The row now reads the
-                // saved plan, and with none saved a tap opens the rain editor —
-                // where the answer lives — instead of storing a second one.
-                const rainHas = (() => { try { return rainPlanStatus(event).hasPlan; } catch { return false; } })();
-                const isRainRow = (p) => p.key === 'weather';
-                // ONE TICK (audit 2 lane A P0-6): a row derived from the checklist's
-                // own day-of step IS that step, so it reads and writes the step.
-                const stepIx = (key) => (event.timeline || []).findIndex((t) => t && String(t.id) === String(key));
-                const stepDone = (key) => { const i = stepIx(key); return i >= 0 && !!event.timeline[i].done; };
-                const isChecked = (p) => (isRainRow(p) && rainHas) || !!checked[p.key] || stepDone(p.key);
-                const done = rc.items.filter(isChecked).length;
-                const toggle = (key) => {
-                  if (stepIx(key) >= 0 && !checked[key]) { toggleTask(stepIx(key)); return; }
-                  const next = { ...checked };
-                  if (next[key]) delete next[key]; else next[key] = true;
-                  patchEvent({ safetyChecked: next },
-                    (next[key] ? 'Confirmed: ' : 'Reopened: ') + String(rc.items.find((p) => p.key === key)?.label || '').slice(0, 48));
-                };
-                return (
-                  <div className="card dayof-card">
-                    <SheetHero
-                      eyebrow="Before the big day"
-                      star={`${done} of ${rc.items.length}`}
-                      tone={done === rc.items.length ? 'ok' : undefined}
-                      sub={done === rc.items.length
-                        ? 'All confirmed.'
-                        : `${rc.items.length - done} still to confirm — ${rc.because}.`}
-                    />
-                    {rc.isDefault && (
-                      <p className="v-meta borrowed-note">
-                        We have no day-of list written for {String(event.type || 'this type').toLowerCase()} yet,
-                        so these are the safety basics every event shares. Add anything this one needs.
-                      </p>
-                    )}
-                    {rc.items.map((p, i) => (
-                      <button key={p.key} className={'frow' + (isChecked(p) ? ' got' : '')}
-                        style={{ animation: rowEnter(i) }} data-dayof-item={p.key}
-                        onClick={() => (isRainRow(p) && (rainHas || !checked[p.key]) ? setSheet({ kind: 'rain' }) : toggle(p.key))}>
-                        <span className="fcheck" aria-hidden="true" />
-                        <span className="f-main">
-                          <span className="f-name">{p.label}</span>
-                          {p.detail ? <span className="f-sub">{p.detail}</span> : null}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                );
-              })()}
+              {dayOfCard('Before the big day')}
+              {momentSuggestion()}
               <div className="eyebrow">{event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'No date'} · {isPast ? 'as it ran' : 'preview'}</div>
               {days === 0 && rosState === 'untimed' && (
                 <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', color: 'var(--carbon-muted)' }}>

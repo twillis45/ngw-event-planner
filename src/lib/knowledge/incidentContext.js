@@ -17,6 +17,7 @@
 import { venueFor } from '../venueFor';
 import { placeIsOutdoors } from '../placeIntelligence';
 import { FIRE_SAFETY_SOURCES } from './fireSafetyContext';
+import { foodApproach } from '../playbooks';
 
 // Every id referenced by a line below resolves here — the same {org, url,
 // fetched, claim} shape as every other *_SOURCES registry, unioned into the
@@ -237,7 +238,11 @@ export function incidentPlanFor(event) {
   });
   // Cooking-fire line gates on the events that actually cook with flame/oil —
   // type/venue words, never an inferred guess about the menu.
-  const flameish = /(bbq|barbecue|cookout|grill|fry|boil|roast|fish fry|crawfish|juneteenth)/i.test([String(ev.type || ''), vfv.name, String(ev.notes || '')].join(' '));
+  // …and whenever the plan has the host cooking (owner, 11/26/2026: "make sure
+  // these are systematic"): Thanksgiving, the peak day for US home cooking
+  // fires, never matched the words above. Read off the plan's own food call.
+  const hostCooks = (() => { try { return foodApproach(ev).cooking === true; } catch (_e) { return false; } })();
+  const flameish = hostCooks || /(bbq|barbecue|cookout|grill|fry|boil|roast|fish fry|crawfish|juneteenth)/i.test([String(ev.type || ''), vfv.name, String(ev.notes || '')].join(' '));
   if (flameish || outdoors) {
     lines.push({
       key: 'fire',
