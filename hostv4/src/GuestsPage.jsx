@@ -30,6 +30,7 @@ import { downloadCSV } from '@app/lib/download';
 import { LINK_WHY } from './sendKit.jsx';
 import { useGuestQuestions } from '@app/lib/guestUpdatesKit';
 import { getLastSyncTime } from '@app/lib/api/syncState';
+import { readOpenGroup, writeOpenGroup } from './viewMemory.js';
 import { questionsWaitingLine } from '@app/lib/guestInbox';
 
 const REPLY = { yes: 'Coming', maybe: 'Maybe', no: 'Can’t make it', pending: 'No reply' };
@@ -337,7 +338,10 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   const [sheet, setSheet] = useState(null); // 'nudge' | 'lock' | 'add' | 'more'
   // The one open group. undefined: not yet chosen (on an iPad split, the
   // selected guest's group opens, so the selection is in view); null: all closed.
-  const [group, setGroup] = useState(undefined);
+  // Remembered per plan in this browser, never in the plan (owner, 11/26/2026:
+  // "remember the open group across reloads").
+  const [group, setGroupState] = useState(() => readOpenGroup(ev.id));
+  const setGroup = (k) => { setGroupState(k); writeOpenGroup(ev.id, k); };
   const [waiting, setWaiting] = useState(0);
   useGuestQuestions(getLastSyncTime(ev.id) ? ev.id : null, setWaiting);
   const [shareLine, setShareLine] = useState('');
@@ -390,7 +394,8 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
   const counts = { yes: 0, maybe: 0, pending: 0, no: 0 };
   for (const g of guests) counts[rsvpState(g)] = (counts[rsvpState(g)] || 0) + 1;
   const finding = named >= FIND_AT && find.trim();
-  const openGroup = group !== undefined ? group : (layout === 'split' && guests.length ? rsvpState((open != null && guests.find((g) => g.id === open)) || guests[0]) : null);
+  // A remembered group with no one left in it falls back to the default.
+  const openGroup = group === null || (group && guests.some((g) => rsvpState(g) === group)) ? group : (layout === 'split' && guests.length ? rsvpState((open != null && guests.find((g) => g.id === open)) || guests[0]) : null);
   const shown = finding ? filterGuestsByName(guests, find) : openGroup ? guests.filter((g) => rsvpState(g) === openGroup) : guests;
   const opened = open != null ? guests.find((g) => g.id === open) : null;
   const tablet = layout !== 'phone';

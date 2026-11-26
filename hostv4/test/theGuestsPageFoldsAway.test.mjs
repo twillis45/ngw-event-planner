@@ -90,7 +90,29 @@ describe('Guests folds away', () => {
     const kit = readFileSync(path.resolve(here, '../../src/lib/guestUpdatesKit.js'), 'utf8');
     expect(kit).toMatch(/isGuestMessagesApiConfigured\(\) && eventId\) load\(\)/);
   });
+  // The owner, 11/26/2026 (relayed by the live-check session): "remember the
+  // open group across reloads". Kept per plan in this browser, never in the plan.
+  it('remembers the open group per plan across a reload, and a closed one too', () => {
+    localStorage.clear();
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([ten]));
+    const plan = localStorage.getItem('ngw-hostv2-custom-events');
+    mount(ten);
+    click(q('[data-group="maybe"]'));
+    act(() => root.unmount()); root = createRoot(host); mount(ten);
+    expect(q('[data-group="maybe"]').getAttribute('aria-expanded')).toBe('true');
+    click(q('[data-group="maybe"]'));
+    act(() => root.unmount()); root = createRoot(host); mount(ten);
+    expect(qa('[data-group][aria-expanded="true"]').length).toBe(0);
+    expect(localStorage.getItem('ngw-hostv2-custom-events')).toBe(plan);
+  });
+  it('falls back to the default when the remembered group has no one left', () => {
+    localStorage.clear();
+    localStorage.setItem('ngw-hostv4-open-group:e1', 'no');
+    mount(ten);
+    expect(qa('[data-group][aria-expanded="true"]').length).toBe(0);
+  });
   it('on an iPad, the first name still fills the detail pane', () => {
+    localStorage.clear();
     mount(ten, 'split');
     expect(q('.gdetail .dhead').textContent).toBe('Ada Pine');
   });
