@@ -1,0 +1,54 @@
+
+390x844  console:0 http:0 blocked:0
+  ok  sample-next  floors 0/0/0
+  ok  sample-tabs  floors 0/0/0
+  ok  sample-budget-not-saved  floors 0/0/0
+  ok  how-we-got-these  floors 0/0/0
+  ok  seeded-next  floors 0/0/0
+  ok  seeded-save  floors 0/0/0
+  ok  seeded-undo  floors 0/0/0
+  ok  seeded-reload  floors 0/0/0
+
+834x1194  console:0 http:0 blocked:0
+  ok  sample-next  floors 0/0/0
+  ok  sample-tabs  floors 0/0/0
+  ok  sample-budget-not-saved  floors 0/0/0
+  ok  how-we-got-these  floors 0/0/0
+  ok  seeded-next  floors 0/0/0
+  ok  seeded-save  floors 0/0/0
+  ok  seeded-undo  floors 0/0/0
+  ok  seeded-reload  floors 0/0/0
+
+1024x1366  console:0 http:0 blocked:0
+  ok  sample-next  floors 0/0/0
+  ok  sample-tabs  floors 0/0/0
+  ok  sample-budget-not-saved  floors 0/0/0
+  ok  how-we-got-these  floors 0/0/0
+  ok  seeded-next  floors 0/0/0
+  ok  seeded-save  floors 0/0/0
+  ok  seeded-undo  floors 0/0/0
+  ok  seeded-reload  floors 0/0/0
+
+1194x834  console:0 http:0 blocked:0
+  ok  sample-next  floors 0/0/0
+  ok  sample-tabs  floors 0/0/0
+  ok  sample-budget-not-saved  floors 0/0/0
+  ok  how-we-got-these  floors 0/0/0
+  ok  seeded-next  floors 0/0/0
+  ok  seeded-save  floors 0/0/0
+  ok  seeded-undo  floors 0/0/0
+  ok  seeded-reload  floors 0/0/0
+
+1440x900  console:0 http:0 blocked:0
+  ok  sample-next  floors 0/0/0
+  ok  sample-tabs  floors 0/0/0
+  ok  sample-budget-not-saved  floors 0/0/0
+  ok  how-we-got-these  floors 0/0/0
+  ok  seeded-next  floors 0/0/0
+  ok  seeded-save  floors 0/0/0
+  ok  seeded-undo  floors 0/0/0
+  ok  seeded-reload  floors 0/0/0
+
+console: []
+http: []
+blocked: []
