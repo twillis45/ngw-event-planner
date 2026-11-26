@@ -495,7 +495,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
       : <div className={'row step s-' + st.state} {...a}>{inner}</div>;
   };
   const pathEl = (
-    <div className="grp path" data-path aria-label="Start to finish">
+    <div className="grp path" data-path aria-label="Your guests, start to finish">
       {path.steps.map(stepRow)}
       <button className="row go step" data-step="updates" onClick={onUpdates}>
         <span className="mark" aria-hidden="true" /><span className="nm">Updates and questions</span>
@@ -539,7 +539,7 @@ export default function GuestsPage({ ev, save, sample, nav, status, onInvite, on
       {answers && <AnswersSheet ev={ev} save={save} onDone={() => setAnswers(false)} />}
       {named > 0 && byName && !qs.length && <Headcount counts={counts} of={locked || planned} />}
       {/* A question screen stays one question (UX_12: 40 words or fewer); the path returns once it's answered. */}
-      {!qs.length && <><h3 className="sh">Start to finish</h3>{pathEl}</>}
+      {!qs.length && <><h3 className="sh">Your guests, start to finish</h3>{pathEl}</>}
 
       {!qs.length && !byName && (<>
         <h3 className="sh">Headcount</h3>
