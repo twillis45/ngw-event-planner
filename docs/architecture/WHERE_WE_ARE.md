@@ -1,5 +1,13 @@
 # Where We Are -- live status board
 
+## November 26, 2026 — hostv4 on the iPad, and the owner's own iPad sets the fixes
+
+hostv4 learned the iPad: three panes side by side in landscape, one at a time in portrait, with keyboard shortcuts. Then the owner used it on his own iPad for a Thanksgiving the next day, and each thing he hit became a fix the same evening. A reply-by date that came back after Undo turned out to be the iPad's date picker saving on touch, and a party too close for any honest reply-by date; both are handled now. Hints in the reply boxes that looked like answers were rewritten in both shells, and the host's replies are now outlined so they read apart from a guest's. Diet and allergies became two separate pick-lists, from one list the guest's form uses too.
+
+He called the Guests page out of control, so it was measured (2.3 screens, 25 controls with 10 names) and redesigned from measured options he chose: a headcount bar and folded groups, everything else behind + and ⋯ (0.8 screens, 7 controls). Apple's glass look was prototyped and parked: on this app's dark lists it adds little and costs a layout change, a solid fallback and contrast.
+
+One check is still open: a Safari-engine test froze twice in CI on the handoff PR, and has not failed once locally.
+
 ## November 25, 2026 (evening) — hostv4: the new design starts doing the work
 
 The owner chose to build the simplified design as its own shell, hostv4, beside hostv2 rather than replace screens inside it. By the end of the day it asks for the budget from cited prices, and it runs Guests end to end: the questions one at a time, the list, each guest's details, the invite and its sending, nudges, locking the count, and updates and guests' questions. It sends on the account the host signed into in hostv2.

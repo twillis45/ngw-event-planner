@@ -1,6 +1,6 @@
 # HANDOFF — NGW Event Planner
 
-**Measured reality, not intentions.** Updated 2026-11-25 (latest entry: hostv4 ships Guests, #263–#266). Before that, 2026-11-03 (sixty-first entry:
+**Measured reality, not intentions.** Updated 2026-11-26 (latest entry: hostv4 on the iPad, and Guests folded, #268–#272). Before that, 2026-11-03 (sixty-first entry:
 **the Path-to-Production command itself ran, not a handoff about it.**
 - **Instruments.** All three stage 4 instruments ran as dispatched subagents on `b056e170`:
   - a measurement pass at 390/1440/1920 with iPhone 13 device emulation;
@@ -17,7 +17,21 @@
 - 🔴 **Trap: the recertification ruled stage 4 on the wrong definition.** The spine's stage 4 critique P0/P1s block **stage 6**, not stage 4. Read the gate text, not the audit that summarized it.)
 
 Before that, 2026-11-02 (sixtieth entry:
-## November 25, 2026 (latest) — hostv4 ships: the budget question, then Guests end to end (#263–#266)
+## November 26, 2026 (latest) — hostv4 on the iPad; Guests folded; owner fixes from his own iPad (#268–#272)
+
+- **Live:** QUEUE_STATE
+- **#268 (`b7f28bb`), iPad (UX_13):** three panes from 1024 (sidebar 260, list 400, detail), one pane with a menu button from 601 to 1023, the pane's action in its bar, keyboard shortcuts (never while typing). Live-checked at 1024x768, 1180x820, 820x1180.
+- **#269 (`f94fa7a`), reply-by:** the owner's Thanksgiving (the next day) kept getting Nov 25 back after Undo. Undo worked (measured live); iPad's picker writes a date the moment it's touched. Now a picked date waits for "Use <date>"; a date today or earlier, or on or after the party, is refused (`lib/guestEdits replyByProblem`); the question isn't asked when `proposeReplyBy` says `tooClose`; "No reply-by date" clears a saved one (`clearReplyByEdit`).
+- **#270, questions and replies:** placeholders that read like answers (reply box "Street parking on Pine…", update box, the guest's "Is there parking nearby?") now say what to do or start "For example:" (`lib/guestUpdatesKit UPDATE_PLACEHOLDER`, `replyPlaceholder`); hostv4 hints faint and italic; the host's replies outlined in bone (owner chose option 2; fills had been 1.48:1 apart). Guard: `hostv4/test/aPlaceholderNeverLooksLikeAnAnswer` scans both shells.
+- **#271, diet and allergies:** `lib/dietOptions` (MEALS, ALLERGENS, DIET_RULES) is one list for the guest form (`InviteV2` imports it) and the host's sheet. The sheet: Meal, then Diet and Allergies as a row each that opens a checklist, picks shown as chips that remove them (owner's "A + B"), then "Anything else". Pescatarian added to the host's meals, the seating pill ('Pesc') and CSV import.
+- **#272, Guests folds away (owner chose option E):** headcount bar; "N guest questions waiting" only when there are some; Coming / Maybe / No reply yet folded, one open at a time; + (add names) and ⋯ (Your answers, invite, updates, share, download, alerts) beside the title; find only past 20 names. Measured on an iPhone 14 with 10 names: 2.3 screens and 25 controls before, 0.8 screens and 7 controls after.
+- **Glass (Apple's Liquid Glass): prototyped, parked by the owner ("Not now").** Measured: smoky, not glassy, on dark text lists; needs content to scroll under the bars (a layout change); with blur off (Reduce Transparency, and headless WebKit) a see-through sheet's text collides with the page under it; grey tab labels fall to 1.3:1 (55% opacity) or 3.4:1 (85%) if the bone button slides under the bar.
+- **Gates (measured):** hostv4 vitest 68/68 on #272's branch; full jest 958/958 suites; hostv2 e2e on a fresh build for the specs each PR touches (28/28, 7/7, 50/50); CI green on each head before merge.
+- 🔴 **Trap: CI "e2e failed" right after a push is usually a cancellation.** A newer push cancels the older run; the summary job then fails with "e2e shards were CANCELLED, not failed". Read the last lines before treating it as red.
+- 🔴 **Trap: Playwright WebKit locally.** `PLAYWRIGHT_BROWSERS_PATH=<dir> npx playwright install webkit` from `hostv2/` (its pinned version, webkit-2311); the global Playwright needs its own (webkit-2359). Chromium for hostv2 e2e: `PW_CHROMIUM=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell`.
+- **Open:** #267 (this handoff) — WebKit `rsvpCapability.spec:92` froze twice in CI as the QR sheet opened (no frames, no evaluation for 25s); it passed 10/10 alone, 49/49 under load and 127/127 in the full WebKit suite locally, so it is not yet reproduced. The rest of hostv4 (Food, Budget page, The Day).
+
+## November 25, 2026 — hostv4 ships: the budget question, then Guests end to end (#263–#266)
 
 - **Live:** `89d7d7f` (#266) on hostv2 and hostv4, live-checked at 390x844 with every write aborted. #263 (`0e1d06b`) shipped the hostv4 shell at `/hostv4/` (owner, 11/25: "create a separate host shell, host v4"; UX_12 direction E). #264 re-checked the birthday prices (all lines `lastVerified` 2026-11-25). #265 (`c78ad02`) added the budget question; #266 added Guests.
 - **hostv4 now does** (every change through shared code that hostv2 also calls; `hostv4/test/sharesTheLogicCopiesNone`):
