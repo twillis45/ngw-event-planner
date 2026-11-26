@@ -4,7 +4,7 @@
 // 11/16/2026): nothing here may ever read "pass-required". Writes THROW so a
 // page never shows "Sent to your host" for a message the server refused; reads
 // return a named result so a refused request is never shown as an empty inbox.
-jest.mock('../apiAuth', () => ({ authHeaders: async () => ({ 'Content-Type': 'application/json', Authorization: 'Bearer t' }) }));
+jest.mock('../apiAuth', () => ({ authHeaders: async () => ({ 'Content-Type': 'application/json', Authorization: 'Bearer t' }), isSignedIn: async () => true }));
 
 const API = 'https://guest-messages-mock.invalid';
 const CODE = 'abcdefghij1234567890xy';

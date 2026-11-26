@@ -22,7 +22,7 @@
 // request is never shown as an empty inbox. NEVER PASS-GATED: a 402 is a plain
 // failure here, never a reason to open the pass sheet. The word is "opened",
 // never "read" or "seen".
-import { authHeaders } from '../apiAuth';
+import { authHeaders, isSignedIn } from '../apiAuth';
 
 const BASE = process.env.REACT_APP_API_BASE_URL;
 const enc = encodeURIComponent;
@@ -45,6 +45,7 @@ async function throwingPost(url, body, headers) {
 // 401 → signed-out, 403 → forbidden, 404 → not-found, else unavailable.
 async function hostGet(path) {
   if (!BASE) return { ok: false, reason: 'not-configured' };
+  if (!(await isSignedIn())) return { ok: false, reason: 'signed-out' };
   try {
     const res = await fetch(`${BASE}${path}`, { headers: await authHeaders() });
     if (res.status === 401) return { ok: false, reason: 'signed-out' };

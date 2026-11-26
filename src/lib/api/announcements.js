@@ -8,7 +8,7 @@
 // Reads return a named result (a refusal is never shown as "no updates");
 // posting returns { ok:false, status, reason } with the server's own sentence,
 // so a limit is said in the server's words.
-import { authHeaders } from '../apiAuth';
+import { authHeaders, isSignedIn } from '../apiAuth';
 
 const BASE = process.env.REACT_APP_API_BASE_URL;
 const enc = encodeURIComponent;
@@ -17,6 +17,7 @@ export const isAnnouncementsApiConfigured = () => Boolean(BASE);
 
 async function call(path, init = {}, auth = true) {
   if (!BASE) return { ok: false, status: 0, reason: 'not-configured' };
+  if (auth && !(await isSignedIn())) return { ok: false, status: 401, reason: 'signed-out' };
   try {
     const headers = { 'Content-Type': 'application/json', ...(auth ? await authHeaders() : {}) };
     const res = await fetch(`${BASE}${path}`, { ...init, headers });

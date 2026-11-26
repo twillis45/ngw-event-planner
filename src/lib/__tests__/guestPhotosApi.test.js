@@ -3,7 +3,7 @@
 // Mirrors guestMessages/helperLink API tests. Writes THROW so a page never says
 // "Shared" for a photo the server refused; reads return a named result so a
 // refused request is never shown as an empty album.
-jest.mock('../apiAuth', () => ({ authHeaders: async () => ({ 'Content-Type': 'application/json', Authorization: 'Bearer t' }) }));
+jest.mock('../apiAuth', () => ({ authHeaders: async () => ({ 'Content-Type': 'application/json', Authorization: 'Bearer t' }), isSignedIn: async () => true }));
 
 const API = 'https://guest-photos-mock.invalid';
 const CODE = 'abcdefghij1234567890xy';

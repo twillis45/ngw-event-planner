@@ -15,14 +15,24 @@
 // answers 401 — the client decides how to degrade (App.js falls back to BYOK).
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 
+async function accessToken() {
+  if (!isSupabaseConfigured() || !supabase) return null;
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data?.session?.access_token || null;
+  } catch { return null; /* unauthenticated — backend will 401 */ }
+}
+
 export async function authHeaders() {
   const headers = { 'Content-Type': 'application/json' };
-  if (isSupabaseConfigured() && supabase) {
-    try {
-      const { data } = await supabase.auth.getSession();
-      const token = data?.session?.access_token;
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-    } catch { /* unauthenticated — backend will 401 */ }
-  }
+  const token = await accessToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
   return headers;
+}
+
+// Signed out, a host-only read can only come back 401. Its caller asks this
+// first and answers "signed out" itself, so no request is made (live check of
+// 2981924, 11/26/2026: a 401 per plan open, focus and page).
+export async function isSignedIn() {
+  return Boolean(await accessToken());
 }
