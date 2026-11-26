@@ -772,9 +772,13 @@ const fmt12h = (t) => {
 // so far" changes sentence and wrap, and everything below it shifts. Chromium
 // and current WebKit anchor the scroll and keep the card still; a browser that
 // does not (an older iPhone Safari) moves it, 16px in anOpenCardHoldsStill.
-// So note the card's top before the write and, on the next frame (after the
-// commit, before paint), scroll back by any drift. A browser that already
-// anchored leaves no drift, and this does nothing.
+// So note the card's top before the write and scroll back by any drift, every
+// frame through a short settle window, not only the next one: a reflow above
+// the card can land after that first frame (main red on WebKit phone,
+// 11/26/2026: 15px left over). Her own touch, wheel or key ends the hold at
+// once, so it never fights her scrolling. A browser that already anchored
+// leaves no drift, and this does nothing.
+const HOLD_MS = 700;
 function holdOpenCard() {
   try {
     const open = () => document.querySelector('.sheet .vcard.open');
@@ -782,15 +786,23 @@ function holdOpenCard() {
     if (!card) return;
     const id = card.id;
     const before = card.getBoundingClientRect().top;
-    requestAnimationFrame(() => {
+    const end = performance.now() + HOLD_MS;
+    let stopped = false;
+    const stop = () => { stopped = true; ['pointerdown', 'wheel', 'touchstart', 'keydown'].forEach((t) => window.removeEventListener(t, stop, true)); };
+    ['pointerdown', 'wheel', 'touchstart', 'keydown'].forEach((t) => window.addEventListener(t, stop, true));
+    const step = () => {
+      if (stopped) return;
       const now = (card.isConnected ? card : (id && document.getElementById(id))) || open();
-      if (!now) return;
+      if (!now) { stop(); return; }
       const delta = now.getBoundingClientRect().top - before;
-      if (Math.abs(delta) < 1) return;
-      let sc = now.parentElement;
-      while (sc && sc !== document.body && !(/(auto|scroll)/.test(getComputedStyle(sc).overflowY) && sc.scrollHeight > sc.clientHeight)) sc = sc.parentElement;
-      (sc && sc !== document.body ? sc : document.scrollingElement).scrollTop += delta;
-    });
+      if (Math.abs(delta) >= 1) {
+        let sc = now.parentElement;
+        while (sc && sc !== document.body && !(/(auto|scroll)/.test(getComputedStyle(sc).overflowY) && sc.scrollHeight > sc.clientHeight)) sc = sc.parentElement;
+        (sc && sc !== document.body ? sc : document.scrollingElement).scrollTop += delta;
+      }
+      if (performance.now() < end) requestAnimationFrame(step); else stop();
+    };
+    requestAnimationFrame(step);
   } catch (_e) { /* a hold is a nicety; the write itself already happened */ }
 }
 
