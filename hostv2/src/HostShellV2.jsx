@@ -128,7 +128,8 @@ import ContactInput from './ContactInput.jsx';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement, honoreeApplies } from '@app/lib/eventIdentity';
 import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, spanEnd, targetMonthLabel, saturdaysOfMonth, localISO, usShortDate } from '@app/lib/dates';
-import { dayOfHero, cueByTheClock } from '@app/lib/dayOfHero';
+import { dayOfHero } from '@app/lib/dayOfHero';
+import { dayState } from '@app/lib/dayState';
 import { afterOwed } from '@app/lib/afterOwed';
 import { eventDatesPatch, eventSpanLabel, eventStartTimePatch } from '@app/lib/eventDates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
@@ -11806,35 +11807,42 @@ export default function HostShellV2() {
   // to find their place; marking done simply re-derives the next NOW.
   // ONE CLOCK (audit 2 lane C P0-1): the board's day-of hero and this card read
   // the same `dayClock`, which ticks every 30s while the event is live.
-  const nowMin = (() => { const d = new Date(dayClock); return d.getHours() * 60 + d.getMinutes(); })();
+  // WHERE THE DAY IS — lib/dayState, the one reader both shells use (phase,
+  // the clock's minute, the cue the clock is on, open cues, doors open).
+  const dayNow = useMemo(() => dayState(event, ros, new Date(dayClock)), [event, ros, dayClock]);
+  const nowMin = dayNow.nowMin;
   // Cue-time math honoring BOTH stored forms — 24h "14:00" and 12h "2:00 PM"
   // (the original's toMins; parsing 12h as 24h creates the 3 AM-cookout bug).
   const cueMins = (t) => parseMin(t); // lib/dayAlerts — one time parser (12h+24h)
   const rosState = useMemo(() => { try { return classifyRos(ros); } catch { return ros.length ? 'timed' : 'empty'; } }, [ros]);
   // Any day of the event is live, a trip's day 3 as much as its day 1 (P1-5).
   const liveDay = stage === 'day' && (days === 0 || eventLive) && rosState === 'timed';
-  const openCues = useMemo(() => ros.filter(r => r && !r.done), [ros]);
-  // THE CUE THE CLOCK IS ON — lib/dayOfHero, the same reader as the board's hero:
-  // the latest cue that has started while it is still open, else the next one.
-  const clockCue = liveDay ? cueByTheClock(ros, nowMin) : null;
-  const nowCue = clockCue ? clockCue.cue : null;
-  const nowActive = !!(clockCue && clockCue.state === 'now');
+  const openCues = dayNow.openCues;
+  // THE CUE THE CLOCK IS ON — lib/dayOfHero via lib/dayState, the same reader as
+  // the board's hero: the latest cue that has started while it is still open,
+  // else the next one.
+  const nowCue = liveDay ? dayNow.nowCue : null;
+  const nowActive = liveDay && dayNow.nowActive;
   // EVERY open cue stays visible (original renders the full timeline): the
   // list is chronological and includes behind-schedule cues, marked honestly.
   const cuesAfterNow = nowCue ? openCues.filter(c => c !== nowCue) : [];
-  const dayAllDone = liveDay && ros.length > 0 && openCues.length === 0;
-  const dayStarted = ros.some(r => r && (r.done || (() => { const m = cueMins(r.time); return m !== null && m <= nowMin; })()));
+  const dayAllDone = liveDay && dayNow.allDone;
+  const dayStarted = dayNow.started;
   // GUESTS ARE DUE once her start time has passed (fix for #281, 11/26/2026:
   // the list was gated on eventLive, which is true all day, so it never showed).
   // The day's prep cues (the turkey at 9) come before the doors; with no start
   // time, the first cue stands in.
-  const doorsOpen = (() => { const m = cueMins(event && event.startTime); return m !== null ? nowMin >= m : dayStarted; })();
+  const doorsOpen = dayNow.doorsOpen;
   // The alert stack — the SAME engine the production app reads (lib/dayAlerts,
   // extracted from App.js so both shells agree). nowMin keeps it current.
+  // Any day of the event (isDuringEvent), not only the first: `days` counts from
+  // event.date, so a trip's day 2 and 3 had no alerts at all (e2e
+  // dayTwoOfATripHasItsAlerts). eventLive reads the real clock; dayClock stops
+  // ticking once the event is over.
   const dayAlerts = useMemo(() => {
-    if (days !== 0) return [];
+    if (!eventLive) return [];
     try { return computeDayAlerts(event) || []; } catch { return []; }
-  }, [event, days, nowMin]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [event, eventLive, nowMin]); // eslint-disable-line react-hooks/exhaustive-deps
   // WAVE-5: the raise ledger, read ONCE. Every qidx attention tint and count
   // badge derives from this — never from a hand-wired local boolean (see
   // surfaceRegistry's header: hand-wiring is the "bug FACTORY" the registry
