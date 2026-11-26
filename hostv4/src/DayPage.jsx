@@ -24,6 +24,11 @@ import { buildDayBeforePlan, dayWeatherLabel } from '@app/lib/dayBefore';
 import { stepToggleEdit, tonightsSteps } from '@app/lib/stepToggle';
 import { playbookFoodPlan } from '@app/lib/playbooks';
 import { isReconfirmable } from '@app/lib/workstreams';
+import { crewRows, helperJobMessage, helperLinkPatch, helperHandoffPatch, helperMintWhy, helperPageBase } from '@app/lib/helperJob';
+import { mintHelperLinkResult, isHelperLinkApiConfigured, fetchHelperConfirmations, emailHelperJob, helperEmailWords } from '@app/lib/api/helperLink';
+import { draftHelperBrief } from '@app/lib/doItForMe';
+import { publicAppUrl } from '@app/lib/publicAppUrl';
+import { readProfile } from './sendKit.jsx';
 
 const chev = <svg className="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 const lowerFirst = (s) => String(s || '').replace(/^\w/, (c) => c.toLowerCase());
@@ -122,7 +127,7 @@ function CheckRow({ item, onTick, onDetail, attr }) {
   );
 }
 
-export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter, onGuests, date, forecast }) {
+export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter, onGuests, onCrew, date, forecast }) {
   const now = useNow(fixed);
   const { ros, st, list } = useDay(ev, now);
   const wxRow = useForecast(ev, forecast);
@@ -182,6 +187,13 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
   const runRow = ros.length > 0 && (
     <button className="row go" data-open-run onClick={onRun}>
       <span className="nm">{st.eventDay ? 'Today’s run' : 'The day’s run'}<small>{ros.length} steps, {clock12(ros[0].time)} to {clock12(ros[ros.length - 1].time)}</small></span>{chev}
+    </button>
+  );
+  // YOUR DAY CREW (B3): one row, with how many helpers have their link.
+  const crew = (() => { try { return crewRows(ev); } catch { return []; } })();
+  const crewRow = crew.length > 0 && onCrew && (
+    <button className="row go" data-open-crew onClick={onCrew}>
+      <span className="nm">Your day crew</span><span className="val">{crew.filter((c) => c.linkSent).length} of {crew.length} sent</span>{chev}
     </button>
   );
   const helpRow = <button className="row go" data-help onClick={() => setSheet('help')}><span className="nm">If something goes wrong</span>{chev}</button>;
@@ -258,7 +270,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
           {eve.rows.some((r) => !r.go) && <p className="fine">The store run, vendors, helpers and the rain backup open in the current app for now.</p>}
         </section>
       )}
-      {runRow && <div className="grp gap">{runRow}</div>}
+      {(runRow || crewRow) && <div className="grp gap">{runRow}{crewRow}</div>}
       {listSection}
     </>);
     if (eve.tonight[0]) action = <button className="primary" onClick={() => tickStep(eve.tonight[0])}>Done: {lowerFirst(stepTitle(eve.tonight[0]))}</button>;
@@ -271,7 +283,7 @@ export default function DayPage({ ev, save, now: fixed, status, onRun, onCounter
     body = (<>
       {nowCard}
       {weatherCard}
-      <div className="grp gap">{runRow}<button className="row go" data-open-counter onClick={onCounter}><span className="nm">Counter mode<small>Large type for the kitchen. The screen stays on.</small></span>{chev}</button></div>
+      <div className="grp gap">{runRow}{crewRow}<button className="row go" data-open-counter onClick={onCounter}><span className="nm">Counter mode<small>Large type for the kitchen. The screen stays on.</small></span>{chev}</button></div>
       {st.nowActive && list
         ? <div className="grp gap"><button className="row go" data-dayof-row onClick={() => setSheet('list')}><span className="nm">Before guests arrive</span><span className={'val' + (open.length ? ' warn' : ' ok')}>{open.length ? open.length + ' to go' : 'All set'}</span>{chev}</button></div>
         : listSection}
@@ -357,4 +369,106 @@ export function CounterMode({ ev, save, now: fixed, onLeave }) {
       <div className="cfoot"><button className="link" onClick={onLeave}>Leave counter mode</button></div>
     </div>
   );
+}
+
+// YOUR DAY CREW (B3, 11/26/2026; the Thanksgiving mockup, 8:00 AM). Each helper
+// gets a link to their own job, nothing else. The send is hostv2's
+// (lib/helperJob): the link is made on the server with the account hostv2
+// signed in, then a text to their phone or a copy; the link and the handoff are
+// recorded; the app emails it when they have an address.
+export function CrewPage({ ev, save, nav, status }) {
+  const [answers, setAnswers] = useState({});
+  const [send, setSend] = useState(null); // { id, busy } | { id, error } | { id, m }
+  const [mail, setMail] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [brief, setBrief] = useState(false);
+  const linked = Array.isArray(ev.helperLinkIds) && ev.helperLinkIds.length > 0;
+  useEffect(() => {
+    if (!isHelperLinkApiConfigured() || !linked) return undefined;
+    let live = true;
+    fetchHelperConfirmations(ev.id).then((rows) => {
+      if (!live || !Array.isArray(rows)) return;
+      const m = {}; for (const a of rows) { const k = String(a && a.helper_key); if (k && !m[k]) m[k] = a; }
+      setAnswers(m);
+    }).catch(() => {});
+    return () => { live = false; };
+  }, [ev.id, linked]);
+  const rows = (() => { try { return crewRows(ev, answers); } catch { return []; } })();
+  const row = send ? rows.find((r) => r.helperId === send.id) : null;
+  const handoff = (channel) => save({ patch: helperHandoffPatch(ev, { helperId: row.helperId, helperName: row.name }, channel) });
+
+  const start = async (r) => {
+    setSend({ id: r.helperId, busy: true }); setMail(null); setCopied(false);
+    let base;
+    try { base = helperPageBase(publicAppUrl()); } catch { setSend({ id: r.helperId, error: 'The public link address is missing, so ' + r.first + '’s link can’t be made. Nothing was sent.' }); return; }
+    const res = await mintHelperLinkResult(ev.id, r.name);
+    if (!res.ok) { setSend({ id: r.helperId, error: helperMintWhy(res.kind, r.first) }); return; }
+    const m = helperJobMessage({ event: ev, profile: readProfile(), helperId: r.helperId, code: res.code, appUrl: base });
+    if (!m) { setSend(null); return; }
+    const lp = helperLinkPatch(ev, r.helperId);
+    if (Object.keys(lp).length) save({ patch: lp });
+    setSend({ id: r.helperId, m });
+  };
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(send.m.body); setCopied(true); handoff('copy'); } catch { setCopied(false); }
+  };
+  const email = async () => {
+    setMail({ busy: true });
+    const res = await emailHelperJob(ev.id, row.name);
+    setMail(res);
+  };
+  // Where they stand, under their jobs: their own answer, else whether the link went out.
+  const said = (r) => (r.answer === 'confirmed' ? <b className="ok" data-crew-said>Has it</b>
+    : r.answer === 'declined' ? <b className="warn" data-crew-said>Can’t do it</b>
+      : r.linkSent ? <span data-crew-said>Link sent</span> : null);
+  const briefText = brief ? (() => { try { const d = draftHelperBrief(ev, readProfile(), { ros: todaysRos(ev, new Date()) }); return d.body || ''; } catch { return ''; } })() : '';
+
+  return (<>
+    <main className="view" data-view="crew">
+      {nav}
+      <p className="sub">Each person gets a link to their own job, nothing else.</p>
+      {status}
+      {rows.length === 0 ? (
+        <div data-crew-empty>
+          <p className="qhelp">No one has a job yet. Give a step or a dish to someone by name in the current app, and they show up here.</p>
+          <div className="grp"><a className="row go" href="../hostv2/"><span className="nm">Open the current app</span>{chev}</a></div>
+        </div>
+      ) : (<>
+        <div className="grp">{rows.map((r) => (
+          <div key={r.helperId} className="row" data-crew-row={r.helperId}>
+            <span className="nm">{r.name}<small>{r.jobs.join(' · ')}</small>{said(r) && <small>{said(r)}</small>}</span>
+            <button className="link act" data-crew-send onClick={() => start(r)} disabled={!!(send && send.busy)}>{r.linkSent ? 'Resend' : 'Send'}</button>
+          </div>
+        ))}</div>
+        <div className="grp gap">
+          <button className="row go" data-crew-brief onClick={() => { setBrief(true); setCopied(false); }}><span className="nm">Everyone’s part today<small>One message with each person’s job and time.</small></span>{chev}</button>
+          <a className="row go" data-crew-print href="../hostv2/"><span className="nm">Print the day sheet<small>For the refrigerator. In the current app for now.</small></span>{chev}</a>
+        </div>
+      </>)}
+    </main>
+    {send && row && (
+      <Sheet title={send.m ? 'Send ' + row.first + ' their job' : row.first + '’s job'} onDone={() => setSend(null)}>
+        {send.busy && <p className="fine" role="status">Making {row.first}’s link…</p>}
+        {send.error && <p className="qhelp" role="alert">{send.error}</p>}
+        {send.m && (<>
+          <p className="qhelp" data-crew-message>{send.m.body}</p>
+          {send.m.href
+            ? <a className="primary" data-crew-text href={send.m.href} onClick={() => handoff('sms')}>Text it to {row.first}</a>
+            : <button className="primary" data-crew-copy onClick={copy}>{copied ? 'Copied' : 'Copy the message'}</button>}
+          {send.m.href && <button className="link" data-crew-copy onClick={copy}>{copied ? 'Copied' : 'Copy it instead'}</button>}
+          {send.m.hasEmail && (mail && !mail.busy
+            ? <p className="fine" data-crew-emailed role="status">{helperEmailWords(mail)}</p>
+            : <button className="link" data-crew-email onClick={email} disabled={!!(mail && mail.busy)}>{mail && mail.busy ? 'Emailing…' : 'Email ' + row.first + ' their job'}</button>)}
+          <p className="fine">Nothing goes out until you send it from your phone{send.m.hasEmail ? ' or tap Email' : ''}.</p>
+        </>)}
+      </Sheet>
+    )}
+    {brief && (
+      <Sheet title="Everyone’s part today" onDone={() => setBrief(false)}>
+        <p className="qhelp" style={{ whiteSpace: 'pre-line' }}>{briefText}</p>
+        <button className="primary" onClick={async () => { try { await navigator.clipboard.writeText(briefText); setCopied(true); } catch { setCopied(false); } }}>{copied ? 'Copied' : 'Copy it'}</button>
+        <p className="fine">Paste it into your group text with your helpers.</p>
+      </Sheet>
+    )}
+  </>);
 }
