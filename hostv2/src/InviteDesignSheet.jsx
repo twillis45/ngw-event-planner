@@ -15,7 +15,7 @@ import { SettledRow, OptionList } from './parity/askKit';
 import HostPhotoRow, { useMyHostPhoto } from './HostPhotoRow.jsx';
 import { suggestedInviteLine, INVITE_MESSAGE_MAX } from '@app/lib/inviteDeck';
 import { hostNameFor } from '@app/lib/hostNameFor';
-import { isValidPhone, isValidEmail } from '@app/lib/contactFormat';
+import { storedInviteMessage, inviteDesignEdit } from '@app/lib/inviteDesign';
 import { INVITE_PALETTES, parseInviteStyle, formatInviteStyle, arrangementsFor, autoInvitePalette, monthPalette, paletteByKey } from '@app/lib/inviteTone';
 
 const InviteV2 = lazy(() => import('./InviteV2.jsx'));
@@ -52,9 +52,9 @@ export default function InviteDesignSheet({
   const [contactErr, setContactErr] = useState('');
   const photoUrl = useMyHostPhoto((profile && profile.hostPhoto) || null);
 
-  // The suggested line saved unchanged is not her words: it is stored empty,
-  // so it stays the suggestion (and unsigned) if the event's type changes.
-  const stored = message.trim() === suggestion ? '' : message.trim().slice(0, INVITE_MESSAGE_MAX);
+  // The suggested line saved unchanged is stored empty (lib/inviteDesign, the
+  // one rule hostv4 saves through too).
+  const stored = storedInviteMessage(event, message);
   const first = String(host || '').trim().split(/\s+/)[0] || '';
   const draft = useMemo(() => ({
     ...event, inviteLayout: layout, deckLine: stored, hostName: host.trim(), hostContact: contact.trim(),
@@ -62,11 +62,10 @@ export default function InviteDesignSheet({
   }), [event, layout, stored, host, contact, paper, crest]);
 
   const save = () => {
-    const c = contact.trim();
-    if (c && !isValidPhone(c) && !isValidEmail(c)) { setContactErr('Add a phone number or an email address, or leave it empty.'); return; }
+    const ed = inviteDesignEdit(event, { inviteLayout: layout, message, hostName: host, hostContact: contact, inviteStyle: paper, inviteCrest: crest });
+    if (ed.error) { setContactErr(ed.error); return; }
     setContactErr('');
-    patchEvent({ inviteLayout: layout, deckLine: stored, hostName: host.trim(), hostContact: c, inviteStyle: paper, inviteCrest: crest },
-      'Your invite page is saved — your link shows it now.');
+    patchEvent(ed.patch, ed.msg);
     onDone();
   };
 

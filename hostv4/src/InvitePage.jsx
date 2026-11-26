@@ -16,8 +16,10 @@ import { draftInvite, inviteVoicesFor } from '@app/lib/doItForMe';
 import { LINK_PLACEHOLDER, savedInviteDraft, saveDraftEdit } from '@app/lib/inviteMessageDraft';
 import { plusOneEdit, kidsEdit, addressesEdit, giftEdit, giftDetailEdit } from '@app/lib/guestEdits';
 import SendSheet from './SendSheet.jsx';
+import InvitePreview from './InvitePreview.jsx';
 import { readProfile } from './sendKit.jsx';
 
+const chev = <svg className="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 const VOICE = { 'as-written': 'As written', tighter: 'Tighter', warmer: 'Warmer', playful: 'Playful', formal: 'Formal' };
 const GAP = { date: 'The day', time: 'The time guests arrive', place: 'Where it is', name: 'The event’s name', address: 'The street address' };
 const GIFT = [['None', null], ['No gifts, please', 'no_gifts'], ['Registry link', 'registry']];
@@ -34,17 +36,12 @@ function Seg({ label, value, options, pick }) {
   );
 }
 
-export default function InvitePage({ ev, save, nav, status }) {
+export default function InvitePage({ ev, save, nav, status, onDesign }) {
   const gaps = inviteGaps(ev);
   const saved = savedInviteDraft(ev);
   const voices = useMemo(() => { try { return inviteVoicesFor(ev); } catch { return ['as-written']; } }, [ev]);
   const [voice, setVoice] = useState(() => (saved && voices.includes(saved.voice) ? saved.voice : 'as-written'));
   const [sending, setSending] = useState(false);
-  // THE PAGE THEY OPEN (owner, 11/26/2026: "start the invite preview"): the
-  // guest's own invite page, framed, in preview mode (hostv2/src/main.jsx,
-  // ?invite-preview). A saved change gives the frame a new key, so it reloads.
-  const [fullPreview, setFullPreview] = useState(false);
-  const previewKey = useMemo(() => { try { return JSON.stringify(ev).length + ':' + (ev.updatedAt || '') + ':' + JSON.stringify([ev.plusOnePolicy, ev.kidsPolicy, ev.collectAddresses, ev.giftWish, ev.deckLine, ev.inviteStyle, ev.inviteLayout, ev.rsvpDeadline]); } catch { return String(Math.random()); } }, [ev]);
   const profile = useMemo(readProfile, []);
   const subject = useMemo(() => { try { return draftInvite(ev, profile, { voice }).subject || 'You’re invited'; } catch { return 'You’re invited'; } }, [ev, profile, voice]);
   // The words: her saved version when it is the voice shown, else this voice written from the facts.
@@ -84,13 +81,8 @@ export default function InvitePage({ ev, save, nav, status }) {
         </p>
 
         <h3 className="sh">The page they open</h3>
-        <div className="pvframe" data-preview-frame data-full={fullPreview ? '1' : '0'}>
-          <iframe key={previewKey} data-invite-preview title="The page guests open" loading="lazy"
-            src={'../hostv2/?invite-preview=' + encodeURIComponent(ev.id)} />
-        </div>
-        <p className="fine">What a guest sees when they tap the link. Nothing is sent from here.{' '}
-          <button className="link" aria-expanded={fullPreview} onClick={() => setFullPreview((f) => !f)}>{fullPreview ? 'Show less' : 'See the full invite'}</button>
-        </p>
+        <InvitePreview ev={ev} />
+        <div className="grp"><button className="row go" data-open-design onClick={onDesign}><span className="nm">Design this page<small>Layout, your message, who it’s from, colors</small></span>{chev}</button></div>
 
         <h3 className="sh">Rules</h3>
         <Seg label="Plus-ones" value={ev.plusOnePolicy || null} options={[['Welcome', 'plus_one_ok'], ['Not this time', 'no_plus_ones']]} pick={(v) => save(plusOneEdit(v))} />
