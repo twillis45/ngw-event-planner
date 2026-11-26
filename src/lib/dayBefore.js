@@ -18,6 +18,7 @@ import { rainPlanStatus, RAIN_PLAN_TARGET, dayWeather, guestTravelMessage } from
 import { deriveHelperResponsibilities } from './helperResponsibility';
 import { isVendorConfirmed, hiredVendors } from './workstreams';
 import { openSteps } from './openSteps';
+import { mayBeOutdoors } from './placeIntelligence';
 import { daysUntil } from './dates';
 import { byGuestMode } from './guestMode';
 
@@ -206,12 +207,13 @@ export function buildDayBeforePlan(event, now = new Date(), forecast = null) {
       route: vendorGaps.length ? { tab: 'Vendors', vendorId: firstGapVendor.id } : null,
       cta: vendorGaps.length ? 'Follow up' : null,
     }] : []),
-    {
+    // Outdoors only (owner, 11/26/2026): an indoor plan has no rain backup to make.
+    ...(mayBeOutdoors(ev) ? [{
       key: 'rain', label: 'Weather backup', open: rain.hasPlan ? 0 : 1,
       detail: rain.hasPlan ? 'Rain plan saved — you know the move if the sky turns.' : 'No backup spot written down yet.',
       route: rain.hasPlan ? null : RAIN_PLAN_TARGET,
       cta: rain.hasPlan ? null : 'Add rain backup',
-    },
+    }] : []),
     ...(cues.length ? [{
       // "How TOMORROW starts" was printed on the day itself. The window runs
       // T-2 through T-0 and only the headline below was ever day-aware, so at
